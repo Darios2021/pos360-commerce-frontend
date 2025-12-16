@@ -3,12 +3,20 @@ import { useAuthStore } from "../store/auth.store";
 
 const Home = () => import("../../modules/dashboard/pages/DashboardHome.vue");
 const Login = () => import("../../modules/auth/pages/LoginPage.vue");
+const Products = () =>
+  import("../../modules/products/pages/ProductsListPage.vue");
 
 const routes = [
   {
     path: "/",
     name: "home",
     component: Home,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/products",
+    name: "products",
+    component: Products,
     meta: { requiresAuth: true },
   },
   {
@@ -23,7 +31,7 @@ export const router = createRouter({
   routes,
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach((to) => {
   const auth = useAuthStore();
 
   if (auth.status === "idle") auth.hydrate();
@@ -32,15 +40,9 @@ router.beforeEach(async (to) => {
     return { name: "login" };
   }
 
-  if (to.meta.requiresAuth && auth.isAuthed && !auth.user) {
-    try {
-      await auth.me();
-    } catch {
-      return { name: "login" };
-    }
-  }
-
   if (to.name === "login" && auth.isAuthed) {
     return { name: "home" };
   }
 });
+
+export default router;

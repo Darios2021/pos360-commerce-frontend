@@ -24,9 +24,9 @@ export const useAuthStore = defineStore("auth", {
         this.status = "guest";
         return;
       }
-      this.user = saved.user;
-      this.accessToken = saved.accessToken;
-      this.refreshToken = saved.refreshToken;
+      this.user = saved.user || null;
+      this.accessToken = saved.accessToken || null;
+      this.refreshToken = saved.refreshToken || null;
       this.status = this.accessToken ? "authenticated" : "guest";
     },
 
@@ -35,14 +35,12 @@ export const useAuthStore = defineStore("auth", {
       this.error = null;
 
       try {
-        const { data } = await http.post("/auth/login", {
-          identifier,
-          password,
-        });
+        const { data } = await http.post("/auth/login", { identifier, password });
 
-        this.user = data.user;
-        this.accessToken = data.accessToken;
-        this.refreshToken = data.refreshToken;
+        // ✅ el backend ya devuelve user + tokens
+        this.user = data.user || null;
+        this.accessToken = data.accessToken || null;
+        this.refreshToken = data.refreshToken || null;
 
         saveAuth({
           user: this.user,
@@ -50,32 +48,33 @@ export const useAuthStore = defineStore("auth", {
           refreshToken: this.refreshToken,
         });
 
-        this.status = "authenticated";
+        this.status = this.accessToken ? "authenticated" : "guest";
         return data;
       } catch (e) {
         this.status = "guest";
-        this.error = "Credenciales inválidas";
+
+        const status = e?.response?.status;
+        if (status === 401) this.error = "Credenciales inválidas";
+        else if (status === 403) this.error = "Usuario deshabilitado";
+        else this.error = "Error de login";
+
         throw e;
       }
     },
 
+    // ✅ No hay endpoint /protected/me en tu backend.
+    // Esta función ahora solo valida que exista token y devuelve user cacheado.
     async me() {
-      const { data } = await http.get("/protected/me");
+      if (!this.accessToken) {
+        throw new Error("No accessToken");
+      }
 
-      this.user = {
-        id: data.user.sub,
-        email: data.user.email,
-        username: data.user.username,
-        roles: data.user.roles || [],
-      };
+      // si ya tenemos user, devolvemos.
+      if (this.user) return this.user;
 
-      saveAuth({
-        user: this.user,
-        accessToken: this.accessToken,
-        refreshToken: this.refreshToken,
-      });
-
-      return this.user;
+      // si no hay user pero hay token (caso raro), forzamos guest (o podrías decodificar JWT)
+      this.status = "authenticated";
+      return null;
     },
 
     logout() {

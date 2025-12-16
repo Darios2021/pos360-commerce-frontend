@@ -12,5 +12,10 @@
         Ir a Login
       </v-btn>
     </v-card>
+
+    <v-btn color="primary" @click="$router.push({ name: 'products' })">
+  IR A PRODUCTOS
+</v-btn>
+
   </v-container>
 </template>

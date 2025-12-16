@@ -7,9 +7,14 @@ export const http = axios.create({
 });
 
 http.interceptors.request.use((config) => {
-  const auth = useAuthStore();
-  if (auth.accessToken) {
-    config.headers.Authorization = `Bearer ${auth.accessToken}`;
+  try {
+    const auth = useAuthStore();
+    if (auth?.accessToken) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${auth.accessToken}`;
+    }
+  } catch {
+    // si pinia aún no está lista, no hacemos nada
   }
   return config;
 });
@@ -18,8 +23,12 @@ http.interceptors.response.use(
   (r) => r,
   (error) => {
     if (error?.response?.status === 401) {
-      const auth = useAuthStore();
-      auth.logout();
+      try {
+        const auth = useAuthStore();
+        auth.logout();
+      } catch {
+        // ignore
+      }
     }
     return Promise.reject(error);
   }
