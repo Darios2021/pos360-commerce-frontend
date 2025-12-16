@@ -1,70 +1,62 @@
-<script setup>
-import { ref } from "vue";
-import { useAuthStore } from "../../../app/store/auth.store";
-import { useRouter } from "vue-router";
-
-const auth = useAuthStore();
-const router = useRouter();
-
-const identifier = ref("admin@360pos.local");
-const password = ref("360pos1234");
-const loading = ref(false);
-const errorMsg = ref("");
-
-const submit = async () => {
-  errorMsg.value = "";
-  loading.value = true;
-  try {
-    await auth.login({
-      identifier: identifier.value,
-      password: password.value,
-    });
-    await auth.me();
-    router.push({ name: "home" });
-  } catch {
-    errorMsg.value = auth.error || "Error de login";
-  } finally {
-    loading.value = false;
-  }
-};
-</script>
-
 <template>
-  <v-container class="py-8">
-    <v-card rounded="xl" elevation="2" class="pa-6" max-width="520">
-      <div class="text-h6 font-weight-bold mb-2">Ingresar</div>
+  <v-container class="py-10">
+    <v-card class="mx-auto" max-width="520" rounded="xl" elevation="2">
+      <v-card-title class="text-h6 font-weight-bold">Ingresar</v-card-title>
+      <v-divider />
+      <v-card-text class="pt-5">
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+          {{ error }}
+        </v-alert>
 
-      <v-alert
-        v-if="errorMsg"
-        type="error"
-        variant="tonal"
-        class="mb-4"
-      >
-        {{ errorMsg }}
-      </v-alert>
+        <v-form @submit.prevent="submit">
+          <v-text-field
+            v-model="identifier"
+            label="Usuario o email"
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="password"
+            label="Contraseña"
+            type="password"
+            variant="outlined"
+            density="comfortable"
+          />
 
-      <v-text-field
-        v-model="identifier"
-        label="Usuario o email"
-        autocomplete="username"
-      />
-
-      <v-text-field
-        v-model="password"
-        label="Contraseña"
-        type="password"
-        autocomplete="current-password"
-      />
-
-      <v-btn
-        class="mt-4"
-        block
-        color="primary"
-        :loading="loading"
-        @click="submit"
-      >
-        Entrar
-      </v-btn>
+          <v-btn class="mt-4" block color="primary" size="large" type="submit" :loading="loading">
+            ENTRAR
+          </v-btn>
+        </v-form>
+      </v-card-text>
     </v-card>
   </v-container>
 </template>
+
+<script setup>
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../../../app/store/auth.store";
+
+const router = useRouter();
+const auth = useAuthStore();
+
+const identifier = ref("admin@360pos.local");
+const password = ref("360pos1234");
+
+const loading = ref(false);
+const error = ref(null);
+
+async function submit() {
+  loading.value = true;
+  error.value = null;
+  try {
+    await auth.login({ identifier: identifier.value, password: password.value });
+    router.push({ name: "home" });
+  } catch (e) {
+    error.value = e?.friendlyMessage || e?.message || "Error de login";
+  } finally {
+    loading.value = false;
+  }
+}
+</script>

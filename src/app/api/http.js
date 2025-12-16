@@ -1,35 +1,49 @@
+// src/app/api/http.js
 import axios from "axios";
-import { useAuthStore } from "../store/auth.store";
+import { loadAuth, clearAuth } from "../utils/storage";
 
-export const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL?.trim() ||
+  (import.meta.env.DEV ? "/api/v1" : "/api/v1");
+
+if (!import.meta.env.VITE_API_BASE_URL) {
+  console.warn("⚠️ VITE_API_BASE_URL no está definido. Usando:", baseURL);
+}
+
+const http = axios.create({
+  baseURL,
   timeout: 20000,
 });
 
+// Attach token
 http.interceptors.request.use((config) => {
-  try {
-    const auth = useAuthStore();
-    if (auth?.accessToken) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${auth.accessToken}`;
-    }
-  } catch {
-    // si pinia aún no está lista, no hacemos nada
+  const auth = loadAuth();
+  const token = auth?.accessToken;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
+// Normalize errors + auto logout on 401
 http.interceptors.response.use(
   (r) => r,
-  (error) => {
-    if (error?.response?.status === 401) {
-      try {
-        const auth = useAuthStore();
-        auth.logout();
-      } catch {
-        // ignore
-      }
+  (err) => {
+    const status = err?.response?.status;
+
+    if (status === 401) {
+      clearAuth();
     }
-    return Promise.reject(error);
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data?.code ||
+      err?.message ||
+      "Network Error";
+
+    return Promise.reject(Object.assign(err, { friendlyMessage: msg }));
   }
 );
+
+export default http;
