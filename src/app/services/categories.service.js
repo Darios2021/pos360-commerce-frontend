@@ -4,11 +4,6 @@ import http from "../api/http";
 export const CategoriesService = {
   async list() {
     const { data } = await http.get("/categories");
-    return data; // { ok, items }
-  },
-
-  async getOne(id) {
-    const { data } = await http.get(`/categories/${id}`);
     return data;
   },
 

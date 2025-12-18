@@ -16,24 +16,48 @@ export const useCategoriesStore = defineStore("categories", {
 
       this.loading = true;
       this.error = null;
-
       try {
-        const resp = await CategoriesService.list(); // { ok, items }
+        const resp = await CategoriesService.list();
         if (!resp?.ok) throw new Error(resp?.message || "Error listando categorías");
-
         this.items = resp.items || [];
         this.loaded = true;
       } catch (e) {
         this.error = e?.friendlyMessage || e?.message || String(e);
-        this.items = [];
-        this.loaded = false;
       } finally {
         this.loading = false;
       }
     },
 
-    invalidate() {
-      this.loaded = false;
+    async create(payload) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const resp = await CategoriesService.create(payload);
+        if (!resp?.ok) throw new Error(resp?.message || "Error creando categoría");
+        await this.fetchAll(true);
+        return resp.item;
+      } catch (e) {
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async update(id, payload) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const resp = await CategoriesService.update(id, payload);
+        if (!resp?.ok) throw new Error(resp?.message || "Error actualizando categoría");
+        await this.fetchAll(true);
+        return resp.item;
+      } catch (e) {
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
+      } finally {
+        this.loading = false;
+      }
     },
   },
 });
