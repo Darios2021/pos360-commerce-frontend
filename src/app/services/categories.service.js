@@ -4,6 +4,11 @@ import http from "../api/http";
 export const CategoriesService = {
   async list() {
     const { data } = await http.get("/categories");
+    return data; // { ok, items }
+  },
+
+  async getOne(id) {
+    const { data } = await http.get(`/categories/${id}`);
     return data;
   },
 
@@ -13,12 +18,7 @@ export const CategoriesService = {
   },
 
   async update(id, payload) {
-    const { data } = await http.patch(`/categories/${id}`, payload);
-    return data;
-  },
-
-  async getOne(id) {
-    const { data } = await http.get(`/categories/${id}`);
+    const { data } = await http.put(`/categories/${id}`, payload);
     return data;
   },
 };

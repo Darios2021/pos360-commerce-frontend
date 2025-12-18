@@ -7,26 +7,33 @@ export const useCategoriesStore = defineStore("categories", {
     items: [],
     loading: false,
     error: null,
+    loaded: false,
   }),
 
-  getters: {
-    activeItems(state) {
-      return (state.items || []).filter((c) => c?.is_active === 1 || c?.is_active === true);
-    },
-  },
-
   actions: {
-    async fetchAll() {
+    async fetchAll(force = false) {
+      if (this.loaded && !force) return;
+
       this.loading = true;
       this.error = null;
+
       try {
-        const res = await CategoriesService.list();
-        this.items = res?.items || [];
+        const resp = await CategoriesService.list(); // { ok, items }
+        if (!resp?.ok) throw new Error(resp?.message || "Error listando categorías");
+
+        this.items = resp.items || [];
+        this.loaded = true;
       } catch (e) {
-        this.error = e?.friendlyMessage || e?.message || "Network Error";
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        this.items = [];
+        this.loaded = false;
       } finally {
         this.loading = false;
       }
+    },
+
+    invalidate() {
+      this.loaded = false;
     },
   },
 });

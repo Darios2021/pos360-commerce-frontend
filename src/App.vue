@@ -1,5 +1,7 @@
 <template>
-  <component :is="layoutComponent" />
+  <v-app>
+    <component :is="layoutComponent" />
+  </v-app>
 </template>
 
 <script setup>
@@ -10,7 +12,6 @@ import AuthLayout from "./app/layouts/AuthLayout.vue";
 
 const route = useRoute();
 
-// Ocultamos shell en login (y cualquier /auth/*)
 const layoutComponent = computed(() => {
   const p = String(route.path || "");
   if (p.startsWith("/auth")) return AuthLayout;

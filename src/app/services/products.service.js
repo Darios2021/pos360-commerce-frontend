@@ -2,21 +2,33 @@
 import http from "../api/http";
 
 export const ProductsService = {
-  async list({ page = 1, limit = 20, q = "" } = {}) {
-    const { data } = await http.get("/products", { params: { page, limit, q } });
-    if (!data?.ok) throw new Error(data?.message || "PRODUCTS_LIST_FAILED");
+  async list(params = {}) {
+    const { data } = await http.get("/products", { params });
+    return data;
+  },
+
+  async getOne(id) {
+    const { data } = await http.get(`/products/${id}`);
     return data;
   },
 
   async create(payload) {
     const { data } = await http.post("/products", payload);
-    if (!data?.ok) throw new Error(data?.message || "PRODUCT_CREATE_FAILED");
     return data;
   },
 
+  // ✅ robusto: intenta PUT y si tu backend no lo tiene, cae a PATCH
   async update(id, payload) {
-    const { data } = await http.patch(`/products/${id}`, payload);
-    if (!data?.ok) throw new Error(data?.message || "PRODUCT_UPDATE_FAILED");
-    return data;
+    try {
+      const { data } = await http.put(`/products/${id}`, payload);
+      return data;
+    } catch (e) {
+      const status = e?.response?.status;
+      if (status === 404 || status === 405) {
+        const { data } = await http.patch(`/products/${id}`, payload);
+        return data;
+      }
+      throw e;
+    }
   },
 };

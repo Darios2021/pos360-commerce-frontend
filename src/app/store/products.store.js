@@ -11,21 +11,49 @@ export const useProductsStore = defineStore("products", {
     q: "",
     loading: false,
     error: null,
+    current: null, // ✅ para "ver"
   }),
 
   actions: {
-    async fetch({ page = 1, limit = this.limit, q = this.q } = {}) {
+    async fetch({ q, page, limit } = {}) {
+      this.loading = true;
+      this.error = null;
+
+      if (q !== undefined) this.q = q;
+      if (page !== undefined) this.page = page;
+      if (limit !== undefined) this.limit = limit;
+
+      try {
+        const resp = await ProductsService.list({
+          q: this.q,
+          page: this.page,
+          limit: this.limit,
+        });
+
+        if (!resp?.ok) throw new Error(resp?.message || "Error listando productos");
+
+        this.items = resp.items || [];
+        this.total = resp.total ?? 0;
+        this.page = resp.page ?? this.page;
+        this.limit = resp.limit ?? this.limit;
+      } catch (e) {
+        this.error = e?.friendlyMessage || e?.message || String(e);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async getOne(id) {
       this.loading = true;
       this.error = null;
       try {
-        const data = await ProductsService.list({ page, limit, q });
-        this.items = data.items || [];
-        this.total = data.total || 0;
-        this.page = data.page || page;
-        this.limit = data.limit || limit;
-        this.q = q || "";
+        const resp = await ProductsService.getOne(id);
+        if (!resp?.ok) throw new Error(resp?.message || "Error obteniendo producto");
+        this.current = resp.item || null;
+        return this.current;
       } catch (e) {
-        this.error = e.friendlyMessage || e.message;
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
       } finally {
         this.loading = false;
       }
@@ -35,10 +63,13 @@ export const useProductsStore = defineStore("products", {
       this.loading = true;
       this.error = null;
       try {
-        await ProductsService.create(payload);
-        await this.fetch({ page: 1, q: this.q });
+        const resp = await ProductsService.create(payload);
+        if (!resp?.ok) throw new Error(resp?.message || "Error creando producto");
+        await this.fetch({ page: 1 });
+        return resp.item;
       } catch (e) {
-        this.error = e.friendlyMessage || e.message;
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
       } finally {
         this.loading = false;
       }
@@ -48,10 +79,13 @@ export const useProductsStore = defineStore("products", {
       this.loading = true;
       this.error = null;
       try {
-        await ProductsService.update(id, payload);
-        await this.fetch({ page: this.page, q: this.q });
+        const resp = await ProductsService.update(id, payload);
+        if (!resp?.ok) throw new Error(resp?.message || "Error actualizando producto");
+        await this.fetch();
+        return resp.item;
       } catch (e) {
-        this.error = e.friendlyMessage || e.message;
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
       } finally {
         this.loading = false;
       }

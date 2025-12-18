@@ -1,12 +1,8 @@
 <template>
-  <v-app>
-    <v-main class="auth-main">
-      <router-view />
-    </v-main>
-  </v-app>
+  <v-main class="auth-main">
+    <router-view />
+  </v-main>
 </template>
-
-<script setup></script>
 
 <style scoped>
 .auth-main {

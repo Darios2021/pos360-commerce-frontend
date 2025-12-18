@@ -1,4 +1,5 @@
 /* src/style.css */
+/* Reset limpio para Vuetify (el CSS default de Vite rompe v-app/v-main) */
 
 *,
 *::before,
@@ -13,19 +14,16 @@ body {
 
 body {
   margin: 0;
+  padding: 0;
 }
 
-/* Que la app use toda la altura */
+/* Vuetify necesita que #app ocupe todo */
 #app {
   min-height: 100vh;
+  width: 100%;
 }
 
-/* Prolijidad visual de tablas Vuetify */
-.v-data-table {
-  border-radius: 16px;
-}
-
-/* Evita que la tipografía se vea rara en Windows */
+/* Opcional: suaviza la tipografía en Windows */
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
