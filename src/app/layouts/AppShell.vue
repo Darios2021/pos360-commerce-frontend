@@ -41,9 +41,18 @@
 
       <v-list nav density="comfortable">
         <v-list-item :to="{ name: 'home' }" prepend-icon="mdi-view-dashboard-outline" title="Dashboard" />
+
         <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" />
+        <v-list-item
+          :to="{ name: 'products_import' }"
+          prepend-icon="mdi-file-upload-outline"
+          title="Importar CSV"
+        />
+
         <v-list-item :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" />
+
         <v-divider class="my-2" />
+
         <v-list-item :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" />
       </v-list>
 
@@ -66,7 +75,6 @@ import { computed, ref } from "vue";
 import { useDisplay } from "vuetify";
 import { useRouter } from "vue-router";
 
-// ✅ ESTE IMPORT ES EL CORRECTO
 import { useAuthStore } from "../store/auth.store";
 
 const { mdAndUp } = useDisplay();

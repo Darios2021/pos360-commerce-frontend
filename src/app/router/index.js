@@ -7,17 +7,17 @@ const Home = () => import("../../modules/dashboard/pages/DashboardHome.vue");
 const Login = () => import("../../modules/auth/pages/LoginPage.vue");
 
 const Products = () => import("../../modules/products/pages/ProductsListPage.vue");
-const Stock = () => import("../../modules/stock/pages/StockPage.vue");
+const ProductsImport = () => import("../../modules/products/pages/ProductsImportPage.vue");
 
-// ✅ nuevo
+const Stock = () => import("../../modules/stock/pages/StockPage.vue");
 const Categories = () => import("../../modules/categories/pages/CategoriesPage.vue");
 
 const routes = [
   { path: "/", name: "home", component: Home, meta: { requiresAuth: true } },
   { path: "/products", name: "products", component: Products, meta: { requiresAuth: true } },
-  { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
+  { path: "/products/import", name: "products_import", component: ProductsImport, meta: { requiresAuth: true } },
 
-  // ✅ parametrización
+  { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
   { path: "/categories", name: "categories", component: Categories, meta: { requiresAuth: true } },
 
   { path: "/auth/login", name: "login", component: Login },
