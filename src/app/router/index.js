@@ -7,15 +7,18 @@ const Home = () => import("../../modules/dashboard/pages/DashboardHome.vue");
 const Login = () => import("../../modules/auth/pages/LoginPage.vue");
 
 const Products = () => import("../../modules/products/pages/ProductsListPage.vue");
-const ProductsImport = () => import("../../modules/products/pages/ProductsImportPage.vue");
-
 const Stock = () => import("../../modules/stock/pages/StockPage.vue");
 const Categories = () => import("../../modules/categories/pages/CategoriesPage.vue");
+
+// ✅ IMPORT (ajustado a tu carpeta real: modules/import/page)
+const ImportProducts = () => import("../../modules/import/page/ImportProductsPage.vue");
 
 const routes = [
   { path: "/", name: "home", component: Home, meta: { requiresAuth: true } },
   { path: "/products", name: "products", component: Products, meta: { requiresAuth: true } },
-  { path: "/products/import", name: "products_import", component: ProductsImport, meta: { requiresAuth: true } },
+
+  // ✅ Importador CSV
+  { path: "/products/import", name: "productsImport", component: ImportProducts, meta: { requiresAuth: true } },
 
   { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
   { path: "/categories", name: "categories", component: Categories, meta: { requiresAuth: true } },

@@ -17,18 +17,8 @@ export const ProductsService = {
     return data;
   },
 
-  // ✅ robusto: intenta PUT y si tu backend no lo tiene, cae a PATCH
   async update(id, payload) {
-    try {
-      const { data } = await http.put(`/products/${id}`, payload);
-      return data;
-    } catch (e) {
-      const status = e?.response?.status;
-      if (status === 404 || status === 405) {
-        const { data } = await http.patch(`/products/${id}`, payload);
-        return data;
-      }
-      throw e;
-    }
+    const { data } = await http.put(`/products/${id}`, payload);
+    return data;
   },
 };
