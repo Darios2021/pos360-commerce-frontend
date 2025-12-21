@@ -1,16 +1,17 @@
 // src/app/utils/storage.js
-const KEY = "pos360_auth_v1";
-
-export function saveAuth(payload) {
-  localStorage.setItem(KEY, JSON.stringify(payload || {}));
-}
+const KEY = "pos360_auth";
 
 export function loadAuth() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "null");
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
+}
+
+export function saveAuth(payload) {
+  localStorage.setItem(KEY, JSON.stringify(payload));
 }
 
 export function clearAuth() {

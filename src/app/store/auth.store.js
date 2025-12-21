@@ -32,14 +32,9 @@ export const useAuthStore = defineStore("auth", {
     async login({ identifier, password }) {
       this.error = null;
 
-      // debug opcional
-      console.log("[AUTH] login payload", { identifier, password: "***" });
+      const { data } = await http.post("/auth/login", { identifier, password });
 
-      const { data } = await http.post("/auth/login", {
-        identifier,
-        password,
-      });
-
+      // tu backend devuelve { ok:true, accessToken, refreshToken?, user? }
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
 
       this.accessToken = data.accessToken;

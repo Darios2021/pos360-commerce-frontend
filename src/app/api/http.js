@@ -12,7 +12,7 @@ if (!import.meta.env.VITE_API_BASE_URL) {
 
 const http = axios.create({
   baseURL,
-  timeout: 20000,
+  timeout: 60000, // ✅ 60s para debug (antes 20s)
 });
 
 // Attach token

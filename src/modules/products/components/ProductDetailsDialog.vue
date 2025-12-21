@@ -1,150 +1,124 @@
-<!-- src/modules/products/components/ProductDetailsDialog.vue -->
 <template>
-  <v-dialog v-model="localOpen" max-width="1100" scrollable>
-    <v-card class="pos-card">
-      <v-card-title class="d-flex align-center justify-space-between py-4">
-        <div class="d-flex flex-column">
+  <v-dialog v-model="openModel" max-width="1100">
+    <v-card rounded="xl" class="overflow-hidden">
+      <v-card-title class="d-flex align-center justify-space-between">
+        <div>
           <div class="text-h6 font-weight-bold">Detalle de producto</div>
           <div class="text-caption text-medium-emphasis">Vista rápida (galería + ficha técnica)</div>
         </div>
-
-        <div class="d-flex ga-2 align-center">
-          <v-chip v-if="p.id" size="small" variant="tonal">ID #{{ p.id }}</v-chip>
-          <v-btn icon="mdi-close" variant="text" @click="close" />
-        </div>
+        <v-btn icon="mdi-close" variant="text" @click="openModel = false" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pt-4">
-        <v-alert
-          v-if="errorText"
-          type="error"
-          variant="tonal"
-          class="mb-4"
-          :text="errorText"
-        />
-
-        <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+      <v-card-text>
+        <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+          {{ error }}
+        </v-alert>
 
         <v-row dense>
-          <!-- IMÁGENES -->
+          <!-- Galería -->
           <v-col cols="12" md="5">
-            <v-card variant="tonal" class="pa-4" rounded="xl" style="min-height: 340px">
+            <v-card variant="tonal" rounded="xl" class="pa-4">
               <div class="font-weight-bold mb-2">Imágenes</div>
 
-              <div v-if="images.length === 0" class="text-caption text-medium-emphasis mb-4">
+              <div class="text-caption text-medium-emphasis mb-3">
                 Todavía no hay imágenes (cuando esté MinIO, acá van las URLs).
               </div>
 
-              <v-carousel
-                v-if="images.length"
-                height="260"
-                hide-delimiters
-                show-arrows="hover"
-                rounded="xl"
-              >
-                <v-carousel-item v-for="(src, i) in images" :key="i">
-                  <v-img :src="src" height="260" cover />
-                </v-carousel-item>
-              </v-carousel>
-
-              <div v-else class="d-flex align-center justify-center" style="height: 260px">
-                <v-icon size="72" icon="mdi-image-off-outline" class="text-medium-emphasis" />
+              <div class="d-flex align-center justify-center gallery-placeholder">
+                <v-icon size="72" icon="mdi-image-off-outline" />
               </div>
             </v-card>
           </v-col>
 
-          <!-- FICHA -->
+          <!-- Ficha -->
           <v-col cols="12" md="7">
-            <v-card variant="tonal" class="pa-4" rounded="xl">
-              <div class="d-flex align-start justify-space-between ga-3">
-                <div class="flex-grow-1">
-                  <div class="text-h6 font-weight-bold">{{ p.name || "—" }}</div>
-
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    <span class="mr-3">SKU: <b>{{ p.sku || "—" }}</b></span>
-                    <span>Código: <b>{{ p.code || "—" }}</b></span>
-                  </div>
-                </div>
+            <v-card variant="tonal" rounded="xl" class="pa-4">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <div class="font-weight-bold">{{ product?.name || "—" }}</div>
 
                 <v-btn
                   color="primary"
                   variant="flat"
                   prepend-icon="mdi-pencil-outline"
+                  :disabled="!product?.id"
                   @click="emitEdit"
-                  :disabled="!p.id"
                 >
                   Editar
                 </v-btn>
               </div>
 
-              <div class="d-flex flex-wrap ga-2 mt-4">
-                <v-chip variant="tonal">
-                  {{ rubroLabel }}
-                </v-chip>
-                <v-chip variant="tonal">
-                  {{ subrubroLabel }}
-                </v-chip>
+              <div class="text-caption text-medium-emphasis mb-3">
+                SKU: <b>{{ product?.sku || "—" }}</b>
+                &nbsp;&nbsp; Código: <b>{{ product?.code || "—" }}</b>
+              </div>
 
-                <v-chip variant="tonal">
-                  {{ p.is_new ? "Nuevo" : "Existente" }}
-                </v-chip>
-
-                <v-chip variant="tonal" :color="p.is_promo ? 'green' : 'grey'">
-                  {{ p.is_promo ? "Promo" : "No promo" }}
-                </v-chip>
-
-                <v-chip variant="tonal" :color="p.is_active ? 'primary' : 'red'">
-                  {{ p.is_active ? "Activo" : "Inactivo" }}
+              <div class="d-flex flex-wrap ga-2 mb-4">
+                <v-chip size="small" variant="tonal">{{ rubroLabel }}</v-chip>
+                <v-chip size="small" variant="tonal">{{ subrubroLabel }}</v-chip>
+                <v-chip size="small" variant="tonal">{{ product?.is_new ? "Nuevo" : "Existente" }}</v-chip>
+                <v-chip size="small" variant="tonal">{{ product?.is_promo ? "Promo" : "No promo" }}</v-chip>
+                <v-chip size="small" variant="tonal" :color="product?.is_active ? 'primary' : 'red'">
+                  {{ product?.is_active ? "Activo" : "Inactivo" }}
                 </v-chip>
               </div>
 
-              <v-divider class="my-4" />
+              <v-divider class="mb-4" />
 
-              <v-row dense>
-                <v-col cols="12" md="6">
+              <v-row dense class="mb-2">
+                <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis">Marca</div>
-                  <div class="font-weight-bold">{{ p.brand || "—" }}</div>
+                  <div class="font-weight-bold">{{ product?.brand || "—" }}</div>
                 </v-col>
 
-                <v-col cols="12" md="6">
+                <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis">Modelo</div>
-                  <div class="font-weight-bold">{{ p.model || "—" }}</div>
+                  <div class="font-weight-bold">{{ product?.model || "—" }}</div>
                 </v-col>
+              </v-row>
 
-                <v-col cols="12" md="6">
+              <v-row dense class="mb-2">
+                <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis">Garantía</div>
-                  <div class="font-weight-bold">{{ p.warranty_months }} meses</div>
+                  <div class="font-weight-bold">{{ toInt(product?.warranty_months) }} meses</div>
                 </v-col>
 
-                <v-col cols="12" md="6">
+                <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis">IVA</div>
-                  <div class="font-weight-bold">{{ p.tax_rate.toFixed(2) }}%</div>
+                  <div class="font-weight-bold">{{ pct(product?.tax_rate) }}</div>
                 </v-col>
               </v-row>
 
               <v-divider class="my-4" />
 
               <v-row dense>
-                <v-col cols="12" md="4">
+                <v-col cols="12" sm="4">
                   <div class="text-caption text-medium-emphasis">Lista</div>
-                  <div class="text-h6 font-weight-bold">{{ money(p.price_list) }}</div>
+                  <div class="text-h6 font-weight-bold">{{ money(product?.price_list) }}</div>
                 </v-col>
-                <v-col cols="12" md="4">
+
+                <v-col cols="12" sm="4">
                   <div class="text-caption text-medium-emphasis">Descuento</div>
-                  <div class="text-h6 font-weight-bold">{{ money(p.price_discount) }}</div>
+                  <div class="text-h6 font-weight-bold">{{ money(product?.price_discount) }}</div>
                 </v-col>
-                <v-col cols="12" md="4">
+
+                <v-col cols="12" sm="4">
                   <div class="text-caption text-medium-emphasis">Revendedor</div>
-                  <div class="text-h6 font-weight-bold">{{ money(p.price_reseller) }}</div>
+                  <div class="text-h6 font-weight-bold">{{ money(product?.price_reseller) }}</div>
                 </v-col>
               </v-row>
 
               <v-divider class="my-4" />
 
-              <div class="text-caption text-medium-emphasis mb-1">Descripción</div>
-              <div style="white-space: pre-wrap">{{ p.description || "—" }}</div>
+              <div class="text-caption text-medium-emphasis">Descripción</div>
+              <div class="font-weight-medium">{{ product?.description || "—" }}</div>
+
+              <v-progress-linear
+                v-if="loading"
+                indeterminate
+                class="mt-4"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -152,38 +126,59 @@
 
       <v-divider />
 
-      <v-card-actions class="pa-4 d-flex justify-end">
-        <v-btn variant="text" @click="close">Cerrar</v-btn>
+      <v-card-actions class="justify-end">
+        <v-btn variant="text" @click="openModel = false">Cerrar</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-
-  // podés pasar productId SIEMPRE (recomendado)
   productId: { type: [Number, String], default: null },
-
-  // opcional: item ya cargado (igual lo normalizamos)
-  item: { type: Object, default: null },
 });
 
 const emit = defineEmits(["update:open", "edit"]);
 
 const products = useProductsStore();
 
-const localOpen = computed({
+const loading = ref(false);
+const error = ref("");
+
+const openModel = computed({
   get: () => props.open,
   set: (v) => emit("update:open", v),
 });
 
-const loading = computed(() => !!products.loading);
-const errorText = computed(() => products.error || "");
+const product = computed(() => {
+  const id = Number(props.productId);
+  if (!id) return null;
+  // asumimos que fetchOne guarda el producto en el store y también lo devuelve.
+  // Si tu store tiene un "byId" úsalo acá. Sino, buscamos en items + selected/current.
+  const fromSelected = products.current || products.selected || null;
+  if (fromSelected?.id === id) return fromSelected;
+
+  const fromList = (products.items || []).find((x) => Number(x.id) === id);
+  return fromList || fromSelected;
+});
+
+const rubroLabel = computed(() => {
+  const name = product.value?.category?.parent?.name;
+  return name ? clean(name) : "Sin rubro";
+});
+
+const subrubroLabel = computed(() => {
+  const name = product.value?.category?.name;
+  return name ? clean(name) : "Sin subrubro";
+});
+
+function clean(v) {
+  return String(v ?? "").split(">").pop().replace(/\s+/g, " ").trim();
+}
 
 function toNum(v, d = 0) {
   if (v === null || v === undefined || v === "") return d;
@@ -191,90 +186,53 @@ function toNum(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
-const p = computed(() => {
-  // prioridad: producto cargado por fetchOne
-  const src =
-    products.current ||
-    props.item ||
-    {};
+function toInt(v, d = 0) {
+  const n = parseInt(String(v ?? ""), 10);
+  return Number.isFinite(n) ? n : d;
+}
 
-  return {
-    id: src.id ?? null,
-    sku: src.sku ?? "",
-    code: src.code ?? "",
-    barcode: src.barcode ?? "",
-
-    name: src.name ?? "",
-    description: src.description ?? "",
-
-    brand: src.brand ?? "",
-    model: src.model ?? "",
-
-    warranty_months: toNum(src.warranty_months, 0),
-    tax_rate: toNum(src.tax_rate, 0),
-
-    is_new: !!src.is_new,
-    is_promo: !!src.is_promo,
-    is_active: !!src.is_active,
-
-    price_list: toNum(src.price_list, 0),
-    price_discount: toNum(src.price_discount, 0),
-    price_reseller: toNum(src.price_reseller, 0),
-
-    // categoría: backend devuelve src.category.parent
-    category: src.category || null,
-    category_id: src.category_id ?? null,
-
-    // images: si mañana implementás product_images
-    images: Array.isArray(src.images) ? src.images : [],
-  };
-});
-
-const rubroLabel = computed(() => {
-  const cat = p.value.category;
-  const rubro = cat?.parent?.name || cat?.parent_name || p.value.rubro || null;
-  return rubro ? String(rubro) : "Sin rubro";
-});
-
-const subrubroLabel = computed(() => {
-  const cat = p.value.category;
-  const sub = cat?.name || p.value.subrubro || null;
-  return sub ? String(sub) : "Sin subrubro";
-});
-
-const images = computed(() => (p.value.images || []).slice(0, 3));
-
-function money(n) {
+function money(v) {
+  const n = toNum(v, 0);
   try {
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(n, 0));
+    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(n);
   } catch {
-    return `$ ${toNum(n, 0).toFixed(2)}`;
+    return `$ ${n.toFixed(2)}`;
   }
 }
 
-function close() {
-  localOpen.value = false;
+function pct(v) {
+  const n = toNum(v, 0);
+  return `${n.toFixed(2)}%`;
+}
+
+async function fetchIfNeeded() {
+  error.value = "";
+  const id = Number(props.productId);
+  if (!openModel.value || !id) return;
+
+  loading.value = true;
+  try {
+    await products.fetchOne(id, { force: true });
+  } catch (e) {
+    error.value = e?.friendlyMessage || e?.message || String(e);
+  } finally {
+    loading.value = false;
+  }
 }
 
 function emitEdit() {
-  if (!p.value.id) return;
-  emit("edit", { id: p.value.id });
+  const id = Number(props.productId);
+  if (!id) return;
+  emit("edit", { id });
 }
 
-watch(
-  () => props.open,
-  async (isOpen) => {
-    if (!isOpen) return;
-
-    // siempre traer el producto “completo” por ID
-    const id = props.productId ?? props.item?.id ?? null;
-    if (id) await products.fetchOne(Number(id));
-  }
-);
+watch(() => props.open, fetchIfNeeded);
+watch(() => props.productId, fetchIfNeeded);
 </script>
 
 <style scoped>
-.pos-card {
-  overflow: hidden;
+.gallery-placeholder {
+  min-height: 260px;
+  border-radius: 16px;
 }
 </style>

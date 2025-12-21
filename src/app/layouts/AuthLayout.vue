@@ -1,14 +1,19 @@
+<!-- src/app/layouts/AuthLayout.vue -->
 <template>
-  <v-main class="auth-main">
-    <router-view />
-  </v-main>
+  <v-app>
+    <v-main class="d-flex align-center justify-center" style="min-height: 100vh">
+      <v-container style="max-width: 520px">
+        <v-card rounded="xl" class="pa-6">
+          <slot />
+        </v-card>
+
+        <div class="text-center text-caption text-medium-emphasis mt-4">
+          360POS · Frontend
+        </div>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
-<style scoped>
-.auth-main {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-</style>
+<script setup>
+</script>

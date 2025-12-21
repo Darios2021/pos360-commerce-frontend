@@ -21,7 +21,13 @@
       <v-divider />
 
       <v-card-text class="pt-4">
-        <v-alert v-if="errorText" type="error" variant="tonal" class="mb-4" :text="errorText" />
+        <v-alert
+          v-if="errorText || localError"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+          :text="localError || errorText"
+        />
 
         <v-tabs v-model="tab" density="comfortable" class="mb-4">
           <v-tab value="basic" prepend-icon="mdi-text-box-outline">Datos</v-tab>
@@ -41,7 +47,7 @@
                     label="SKU *"
                     prepend-inner-icon="mdi-tag-outline"
                     :rules="[r.required]"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -50,7 +56,7 @@
                     v-model="form.code"
                     label="Código"
                     prepend-inner-icon="mdi-barcode"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -59,7 +65,7 @@
                     v-model="form.barcode"
                     label="Barcode"
                     prepend-inner-icon="mdi-barcode-scan"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -69,7 +75,7 @@
                     label="Nombre *"
                     prepend-inner-icon="mdi-format-title"
                     :rules="[r.required]"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -78,7 +84,7 @@
                     v-model="form.brand"
                     label="Marca"
                     prepend-inner-icon="mdi-factory"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -87,43 +93,43 @@
                     v-model="form.model"
                     label="Modelo"
                     prepend-inner-icon="mdi-cube-outline"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
-                <!-- Rubro -->
+                <!-- Rubro (padre) -->
                 <v-col cols="12" md="4">
                   <v-select
-                    v-model="rubroId"
+                    v-model="form.category_id"
                     label="Rubro"
-                    :items="rubros"
-                    item-title="name"
-                    item-value="id"
+                    :items="rubrosItems"
+                    item-title="name_clean"
+                    item-value="id_num"
                     :loading="cats.loading"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                     clearable
                     prepend-inner-icon="mdi-shape-outline"
                     @update:modelValue="onRubroChange"
                   />
                 </v-col>
 
-                <!-- Subrubro -->
+                <!-- Subrubro (hijo/hoja) -->
                 <v-col cols="12" md="4">
                   <v-select
-                    v-model="form.category_id"
+                    v-model="form.subcategory_id"
                     label="Sub rubro"
-                    :items="subrubros"
-                    item-title="name"
-                    item-value="id"
+                    :items="subrubrosItems"
+                    item-title="name_clean"
+                    item-value="id_num"
                     :loading="cats.loading"
-                    :disabled="loading || !rubroId"
+                    :disabled="uiBusy || !form.category_id"
                     clearable
                     prepend-inner-icon="mdi-shape-plus-outline"
                     :rules="[r.requiredIfRubro]"
                     no-data-text="No hay subrubros para este rubro"
                   />
                   <div
-                    v-if="rubroId && !cats.loading && subrubros.length === 0"
+                    v-if="form.category_id && !cats.loading && subrubrosItems.length === 0"
                     class="text-caption text-medium-emphasis mt-1"
                   >
                     No hay subrubros cargados. Crealos en la parametrización (tabla <b>categories</b> con <b>parent_id</b>).
@@ -136,7 +142,7 @@
                     type="number"
                     label="Garantía (meses)"
                     prepend-inner-icon="mdi-shield-check-outline"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
 
@@ -147,7 +153,7 @@
                     prepend-inner-icon="mdi-text-long"
                     rows="3"
                     auto-grow
-                    :disabled="loading"
+                    :disabled="uiBusy"
                   />
                 </v-col>
               </v-row>
@@ -166,27 +172,63 @@
 
                   <v-row dense>
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.cost" type="number" label="Costo" prepend-inner-icon="mdi-currency-usd" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.cost"
+                        type="number"
+                        label="Costo"
+                        prepend-inner-icon="mdi-currency-usd"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
 
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.price" type="number" label="Precio (general)" prepend-inner-icon="mdi-cash" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.price"
+                        type="number"
+                        label="Precio (general)"
+                        prepend-inner-icon="mdi-cash"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
 
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.tax_rate" type="number" label="IVA (%)" prepend-inner-icon="mdi-percent" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.tax_rate"
+                        type="number"
+                        label="IVA (%)"
+                        prepend-inner-icon="mdi-percent"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
 
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.price_list" type="number" label="Precio lista" prepend-inner-icon="mdi-format-list-bulleted" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.price_list"
+                        type="number"
+                        label="Precio lista"
+                        prepend-inner-icon="mdi-format-list-bulleted"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
 
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.price_discount" type="number" label="Precio descuento" prepend-inner-icon="mdi-sale" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.price_discount"
+                        type="number"
+                        label="Precio descuento"
+                        prepend-inner-icon="mdi-sale"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
 
                     <v-col cols="12" md="4">
-                      <v-text-field v-model.number="form.price_reseller" type="number" label="Precio revendedor" prepend-inner-icon="mdi-account-tie-outline" :disabled="loading" />
+                      <v-text-field
+                        v-model.number="form.price_reseller"
+                        type="number"
+                        label="Precio revendedor"
+                        prepend-inner-icon="mdi-account-tie-outline"
+                        :disabled="uiBusy"
+                      />
                     </v-col>
                   </v-row>
 
@@ -206,10 +248,18 @@
                   <div class="font-weight-bold mb-3">Estado del producto</div>
 
                   <v-row dense>
-                    <v-col cols="12" md="3"><v-switch v-model="form.is_new" label="Artículo nuevo" inset :disabled="loading" /></v-col>
-                    <v-col cols="12" md="3"><v-switch v-model="form.is_promo" label="En promoción" inset :disabled="loading" /></v-col>
-                    <v-col cols="12" md="3"><v-switch v-model="form.track_stock" label="Controla stock" inset :disabled="loading" /></v-col>
-                    <v-col cols="12" md="3"><v-switch v-model="form.is_active" label="Activo" inset :disabled="loading" /></v-col>
+                    <v-col cols="12" md="3">
+                      <v-switch v-model="form.is_new" label="Artículo nuevo" inset :disabled="uiBusy" />
+                    </v-col>
+                    <v-col cols="12" md="3">
+                      <v-switch v-model="form.is_promo" label="En promoción" inset :disabled="uiBusy" />
+                    </v-col>
+                    <v-col cols="12" md="3">
+                      <v-switch v-model="form.track_stock" label="Controla stock" inset :disabled="uiBusy" />
+                    </v-col>
+                    <v-col cols="12" md="3">
+                      <v-switch v-model="form.is_active" label="Activo" inset :disabled="uiBusy" />
+                    </v-col>
                   </v-row>
 
                   <v-divider class="my-3" />
@@ -218,9 +268,11 @@
                     <v-chip :color="form.is_active ? 'primary' : 'red'" variant="tonal">
                       {{ form.is_active ? "Activo" : "Inactivo" }}
                     </v-chip>
+
                     <v-chip :color="form.is_promo ? 'green' : 'grey'" variant="tonal">
                       {{ form.is_promo ? "En promo" : "No promo" }}
                     </v-chip>
+
                     <v-chip variant="tonal">{{ form.is_new ? "Nuevo" : "Existente" }}</v-chip>
                     <v-chip variant="tonal">{{ form.track_stock ? "Controla stock" : "Sin stock" }}</v-chip>
                   </div>
@@ -247,7 +299,7 @@
                     :show-size="true"
                     label="Seleccionar imágenes"
                     prepend-inner-icon="mdi-image-multiple"
-                    :disabled="loading"
+                    :disabled="uiBusy"
                     @update:modelValue="onImagesSelected"
                   />
 
@@ -270,7 +322,7 @@
                   <v-divider class="my-3" />
 
                   <div class="text-caption text-medium-emphasis">
-                    Cuando esté MinIO: subimos estas imágenes y guardamos URLs en <b>product_images</b>.
+                    Al guardar: subimos estas imágenes y guardamos URLs en <b>product_images</b>.
                   </div>
                 </v-card>
               </v-col>
@@ -282,17 +334,34 @@
       <v-divider />
 
       <v-card-actions class="pa-4 d-flex justify-end ga-2">
-        <v-btn variant="text" @click="close" :disabled="loading">Cancelar</v-btn>
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save-outline" @click="save" :loading="loading">
-          Guardar
+        <v-btn variant="text" @click="close" :disabled="uiBusy">Cancelar</v-btn>
+
+        <!-- ✅ BOTÓN CON LOGS VISUALES -->
+        <v-btn
+          color="primary"
+          variant="flat"
+          :prepend-inner-icon="uploading ? 'mdi-cloud-upload-outline' : saving ? 'mdi-content-save-outline' : 'mdi-content-save-outline'"
+          @click="save"
+          :loading="uiBusy"
+          :disabled="uiBusy"
+        >
+          <span v-if="saving">Guardando…</span>
+          <span v-else-if="uploading">Subiendo…</span>
+          <span v-else>Guardar</span>
         </v-btn>
       </v-card-actions>
+
+      <!-- ✅ SNACKBAR LOG -->
+      <v-snackbar v-model="snack" :color="snackColor" timeout="3000">
+        {{ snackText }}
+      </v-snackbar>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useCategoriesStore } from "../../../app/store/categories.store";
 
@@ -309,7 +378,21 @@ const cats = useCategoriesStore();
 
 const tab = ref("basic");
 const formRef = ref(null);
-const rubroId = ref(null);
+
+const localError = ref("");
+
+// ✅ UI logs
+const saving = ref(false);
+const uploading = ref(false);
+const snack = ref(false);
+const snackText = ref("");
+const snackColor = ref("success");
+
+function toast(msg, color = "success") {
+  snackText.value = msg;
+  snackColor.value = color;
+  snack.value = true;
+}
 
 const localOpen = computed({
   get: () => props.open,
@@ -317,29 +400,39 @@ const localOpen = computed({
 });
 
 const loading = computed(() => !!products.loading);
+const uiBusy = computed(() => loading.value || saving.value || uploading.value);
+
 const title = computed(() => (props.mode === "edit" ? "Editar producto" : "Nuevo producto"));
 const errorText = computed(() => products.error || cats.error || "");
 
-// ✅ robusto con Number() para evitar string vs number
-const rubros = computed(() =>
-  (cats.items || []).filter((c) => !c.parent_id && Number(c.is_active ?? 1) !== 0)
-);
+// helpers
+function cleanName(v) {
+  return String(v ?? "")
+    .split(">")
+    .pop()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
+}
+function toId(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
-const subrubros = computed(() =>
-  (cats.items || []).filter(
-    (c) =>
-      Number(c.parent_id ?? 0) === Number(rubroId.value ?? 0) &&
-      Number(c.is_active ?? 1) !== 0
-  )
-);
-
+// form
 const form = reactive({
   code: "",
   sku: "",
   barcode: "",
   name: "",
   description: "",
-  category_id: null,
+  category_id: null,      // rubro (PADRE)
+  subcategory_id: null,   // subrubro (HIJO / HOJA)
   brand: "",
   model: "",
   warranty_months: 0,
@@ -355,13 +448,31 @@ const form = reactive({
   tax_rate: 21,
 });
 
+// stores -> categories (self-referential)
+const rubrosItems = computed(() =>
+  (cats.items || [])
+    .filter((c) => !c.parent_id && Number(c.is_active ?? 1) !== 0)
+    .map((c) => ({ ...c, id_num: toId(c.id), name_clean: cleanName(c.name) }))
+    .filter((c) => c.id_num !== null)
+);
+
+const subrubrosItems = computed(() => {
+  const rubroId = toId(form.category_id);
+  if (!rubroId) return [];
+  return (cats.items || [])
+    .filter((c) => toId(c.parent_id) === rubroId && Number(c.is_active ?? 1) !== 0)
+    .map((c) => ({ ...c, id_num: toId(c.id), name_clean: cleanName(c.name) }))
+    .filter((c) => c.id_num !== null);
+});
+
+// images
 const imageFiles = ref([]);
 const imagePreviews = ref([]);
 const imagesError = ref("");
 
 const r = {
   required: (v) => !!String(v ?? "").trim() || "Requerido",
-  requiredIfRubro: () => (!!rubroId.value ? (!!form.category_id || "Elegí un sub rubro") : true),
+  requiredIfRubro: () => (form.category_id ? (form.subcategory_id ? true : "Elegí un sub rubro") : true),
 };
 
 function close() {
@@ -369,11 +480,23 @@ function close() {
 }
 
 async function ensureCategories() {
-  await cats.fetchAll?.();
+  if (typeof cats.fetchAll === "function") await cats.fetchAll();
 }
 
 function onRubroChange() {
-  form.category_id = null;
+  form.subcategory_id = null;
+}
+
+async function hydrateEditItemIfNeeded() {
+  if (props.mode !== "edit") return null;
+  const id = toId(props.item?.id);
+  if (!id) return null;
+  try {
+    const full = await products.fetchOne(id, { force: true });
+    return full?.data ?? full ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function resetForm() {
@@ -383,15 +506,14 @@ function resetForm() {
   form.name = "";
   form.description = "";
   form.category_id = null;
+  form.subcategory_id = null;
   form.brand = "";
   form.model = "";
   form.warranty_months = 0;
-
   form.is_new = false;
   form.is_promo = false;
   form.track_stock = true;
   form.is_active = true;
-
   form.cost = 0;
   form.price = 0;
   form.price_list = 0;
@@ -399,14 +521,19 @@ function resetForm() {
   form.price_reseller = 0;
   form.tax_rate = 21;
 
-  rubroId.value = null;
-
   imageFiles.value = [];
   imagePreviews.value = [];
   imagesError.value = "";
+  localError.value = "";
   tab.value = "basic";
 }
 
+/**
+ * FIX CLAVE:
+ * - DB: Product.category_id = HOJA (subrubro)
+ * - UI: form.category_id = PADRE, form.subcategory_id = HOJA
+ * - Derivo desde item.category + item.category.parent cuando existan.
+ */
 function fillFormFromItem(item) {
   form.code = item?.code ?? "";
   form.sku = item?.sku ?? "";
@@ -414,29 +541,40 @@ function fillFormFromItem(item) {
   form.name = item?.name ?? "";
   form.description = item?.description ?? "";
 
-  const leafId = item?.category_id ?? item?.category?.id ?? null;
-  form.category_id = leafId ? Number(leafId) : null;
+  const leaf = item?.category ?? null;
+  const parent = leaf?.parent ?? null;
 
-  // si no viene parent, lo calculo desde cats.items
-  const leaf = form.category_id ? (cats.items || []).find((c) => Number(c.id) === Number(form.category_id)) : null;
-  rubroId.value = leaf?.parent_id ? Number(leaf.parent_id) : null;
+  const leafId = toId(leaf?.id) ?? toId(item?.subcategory_id) ?? null;
+  const parentId = toId(parent?.id) ?? null;
+
+  if (parentId && leafId) {
+    form.category_id = parentId;
+    form.subcategory_id = leafId;
+  } else {
+    // fallback
+    form.category_id = null;
+    form.subcategory_id = toId(item?.category_id);
+  }
 
   form.brand = item?.brand ?? "";
   form.model = item?.model ?? "";
-  form.warranty_months = Number(item?.warranty_months ?? 0);
+  form.warranty_months = Number(item?.warranty_months ?? 0) || 0;
 
   form.is_new = !!item?.is_new;
   form.is_promo = !!item?.is_promo;
-  form.track_stock = !!item?.track_stock;
-  form.is_active = !!item?.is_active;
+  form.track_stock = item?.track_stock === undefined ? true : !!item?.track_stock;
+  form.is_active = item?.is_active === undefined ? true : !!item?.is_active;
 
-  form.cost = Number(item?.cost ?? 0);
-  form.price = Number(item?.price ?? 0);
-  form.price_list = Number(item?.price_list ?? 0);
-  form.price_discount = Number(item?.price_discount ?? 0);
-  form.price_reseller = Number(item?.price_reseller ?? 0);
-  form.tax_rate = Number(item?.tax_rate ?? 21);
+  form.cost = toNum(item?.cost, 0);
+  form.price = toNum(item?.price, 0);
+  form.price_list = toNum(item?.price_list, 0);
+  form.price_discount = toNum(item?.price_discount, 0);
+  form.price_reseller = toNum(item?.price_reseller, 0);
+  form.tax_rate = toNum(item?.tax_rate, 21);
 
+  imageFiles.value = [];
+  imagePreviews.value = [];
+  imagesError.value = "";
   tab.value = "basic";
 }
 
@@ -459,17 +597,52 @@ function removeImage(idx) {
   imagePreviews.value = p;
 }
 
+/**
+ * ✅ Subida REAL (persistente) contra tu nuevo endpoint:
+ * POST /products/:id/images   (FormData files[])
+ */
+async function uploadImages(productId) {
+  const files = imageFiles.value || [];
+  if (!files.length) return 0;
+
+  if (imagesError.value) throw new Error(imagesError.value);
+
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+
+  uploading.value = true;
+  try {
+    const { data } = await http.post(`/products/${productId}/images`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 60000,
+    });
+
+    if (!data?.ok) throw new Error(data?.message || "UPLOAD_FAILED");
+    return Number(data?.uploaded || files.length);
+  } finally {
+    uploading.value = false;
+  }
+}
+
 async function save() {
+  localError.value = "";
+  products.error = null;
+
   const ok = await formRef.value?.validate?.();
   if (ok && ok.valid === false) return;
 
+  // ✅ payload correcto para tu DB:
+  // Product.category_id = HOJA (subrubro) => usamos form.subcategory_id
   const payload = {
     code: form.code || null,
     sku: form.sku,
     barcode: form.barcode || null,
     name: form.name,
     description: form.description || null,
-    category_id: form.category_id || null,
+
+    // ✅ HOJA
+    category_id: toId(form.subcategory_id),
+
     brand: form.brand || null,
     model: form.model || null,
     warranty_months: Number(form.warranty_months ?? 0),
@@ -477,30 +650,65 @@ async function save() {
     is_promo: form.is_promo ? 1 : 0,
     track_stock: form.track_stock ? 1 : 0,
     is_active: form.is_active ? 1 : 0,
-    cost: Number(form.cost ?? 0),
-    price: Number(form.price ?? 0),
-    price_list: Number(form.price_list ?? 0),
-    price_discount: Number(form.price_discount ?? 0),
-    price_reseller: Number(form.price_reseller ?? 0),
-    tax_rate: Number(form.tax_rate ?? 21),
+
+    cost: toNum(form.cost, 0),
+    price: toNum(form.price, 0),
+    price_list: toNum(form.price_list, 0),
+    price_discount: toNum(form.price_discount, 0),
+    price_reseller: toNum(form.price_reseller, 0),
+    tax_rate: toNum(form.tax_rate, 21),
   };
 
-  if (props.mode === "edit" && props.item?.id) await products.update(props.item.id, payload);
-  else await products.create(payload);
+  saving.value = true;
+  try {
+    toast("Guardando producto…", "info");
 
-  if (products.error) return;
+    let productId = toId(props.item?.id);
 
-  emit("saved", { mode: props.mode, id: props.item?.id ?? null, images: imageFiles.value || [] });
-  close();
+    if (props.mode === "edit" && productId) {
+      const res = await products.update(productId, payload);
+      productId = toId(res?.item?.id) ?? productId;
+    } else {
+      const res = await products.create(payload);
+      productId = toId(res?.item?.id) ?? toId(res?.id) ?? productId;
+    }
+
+    if (products.error) throw new Error(products.error);
+    if (!productId) throw new Error("No pude obtener el ID del producto.");
+
+    // ✅ subir imágenes persistentes
+    if ((imageFiles.value || []).length) {
+      toast("Producto guardado. Subiendo imágenes…", "info");
+      const uploaded = await uploadImages(productId);
+      toast(`✅ Imágenes subidas: ${uploaded}`, "success");
+    } else {
+      toast("✅ Guardado", "success");
+    }
+
+    emit("saved", { mode: props.mode, id: productId });
+    close();
+  } catch (e) {
+    console.error(e);
+    localError.value = e?.friendlyMessage || e?.message || "ERROR";
+    toast(localError.value, "error");
+  } finally {
+    saving.value = false;
+  }
 }
 
 watch(
-  () => props.open,
-  async (isOpen) => {
+  () => [props.open, props.mode, props.item?.id],
+  async ([isOpen, mode]) => {
     if (!isOpen) return;
+
     await ensureCategories();
-    if (props.mode === "edit" && props.item) fillFormFromItem(props.item);
-    else resetForm();
+
+    if (mode === "edit" && props.item?.id) {
+      const full = await hydrateEditItemIfNeeded();
+      fillFormFromItem(full || props.item);
+    } else {
+      resetForm();
+    }
   },
   { immediate: true }
 );
