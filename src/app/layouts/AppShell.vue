@@ -1,7 +1,5 @@
-<!-- src/app/layouts/AppShell.vue -->
 <template>
   <v-app>
-    <!-- APP BAR -->
     <v-app-bar elevation="0" color="surface" height="72" class="pos-appbar">
       <template #prepend>
         <v-btn icon="mdi-menu" variant="text" @click="drawer = !drawer" />
@@ -27,7 +25,6 @@
       <v-btn icon="mdi-logout-variant" variant="text" title="Salir" @click="logout" />
     </v-app-bar>
 
-    <!-- DRAWER -->
     <v-navigation-drawer
       v-model="drawer"
       :permanent="mdAndUp"
@@ -41,13 +38,30 @@
 
       <v-list nav density="comfortable">
         <v-list-item :to="{ name: 'home' }" prepend-icon="mdi-view-dashboard-outline" title="Dashboard" />
-        <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" />
 
-        <!-- ✅ Importador -->
-        <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" />
+        <v-list-item
+          :to="{ name: 'pos' }"
+          prepend-icon="mdi-point-of-sale"
+          title="Punto de Venta"
+          color="primary"
+          base-color="primary"
+          variant="tonal"
+          class="mb-1 font-weight-bold"
+        />
 
-        <v-list-item :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" />
+        <!-- ✅ NUEVO: Ventas -->
+        <v-list-item
+          :to="{ name: 'posSales' }"
+          prepend-icon="mdi-receipt-text-outline"
+          title="Ventas"
+        />
+
         <v-divider class="my-2" />
+        <div class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
+
+        <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" />
+        <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" />
+        <v-list-item :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" />
         <v-list-item :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" />
       </v-list>
 
@@ -56,7 +70,6 @@
       <div class="pa-4 text-caption text-medium-emphasis">v1 · 2025</div>
     </v-navigation-drawer>
 
-    <!-- MAIN -->
     <v-main class="pos-main">
       <v-container fluid class="pos-container">
         <router-view />

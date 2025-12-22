@@ -6,4 +6,18 @@ import router from "./app/router";
 import vuetify from "./app/plugins/vuetify";
 import "./style.css";
 
-createApp(App).use(createPinia()).use(router).use(vuetify).mount("#app");
+// ApexCharts
+import VueApexCharts from "vue3-apexcharts";
+
+const app = createApp(App);
+
+app
+  .use(createPinia())
+  .use(router)
+  .use(vuetify)
+  .use(VueApexCharts);
+
+// componente global
+app.component("apexchart", VueApexCharts);
+
+app.mount("#app");
