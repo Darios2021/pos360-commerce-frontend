@@ -588,9 +588,42 @@ const auth = useAuthStore();
 // Ajustá si tu branch viene de store/config
 const branchId = 1;
 
+// ✅ ADMIN DETECTOR ROBUSTO (para que SIEMPRE te aparezca el botón Eliminar si corresponde)
 const isAdmin = computed(() => {
-  const roles = auth?.user?.roles || [];
-  return roles.some(r => String(r?.name || r).toLowerCase() === "admin" || String(r?.name || r).toLowerCase() === "super_admin");
+  const u = auth?.user || {};
+
+  // roles puede venir como:
+  // - ["admin", "user"]
+  // - [{ name: "admin" }]
+  // - [{ role: { name: "admin" } }]
+  // - [{ Role: { name: "admin" } }]
+  // - { role: "admin" } o { role: { name: "admin" } }
+  const rawRoles = Array.isArray(u.roles) ? u.roles : [];
+  const roleNames = [];
+
+  // 1) roles[] (array)
+  for (const r of rawRoles) {
+    if (!r) continue;
+
+    if (typeof r === "string") roleNames.push(r);
+    else if (typeof r?.name === "string") roleNames.push(r.name);
+    else if (typeof r?.role === "string") roleNames.push(r.role);
+    else if (typeof r?.role?.name === "string") roleNames.push(r.role.name);
+    else if (typeof r?.Role?.name === "string") roleNames.push(r.Role.name);
+  }
+
+  // 2) role suelto (no array)
+  if (typeof u.role === "string") roleNames.push(u.role);
+  if (typeof u?.role?.name === "string") roleNames.push(u.role.name);
+
+  // 3) flags típicos (por si existen)
+  if (u.is_admin === true || u.isAdmin === true) return true;
+
+  const norm = (s) => String(s || "").trim().toLowerCase();
+
+  return roleNames
+    .map(norm)
+    .some((x) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(x));
 });
 
 const dense = ref(false);
@@ -638,7 +671,10 @@ const kpis = computed(() => {
   let topM = "—";
   let topC = 0;
   for (const [k, v] of Object.entries(map)) {
-    if (v > topC) { topC = v; topM = k; }
+    if (v > topC) {
+      topC = v;
+      topM = k;
+    }
   }
   return {
     totalFacturado,
@@ -666,7 +702,9 @@ const headers = [
 
 // ===== Helpers UI =====
 function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(
+    Number(val || 0)
+  );
 }
 function dt(val) {
   if (!val) return "—";
@@ -808,7 +846,9 @@ async function openDetail(id) {
 
 function goToProduct(productId) {
   if (!productId) return;
-  router.push({ name: "productProfile", params: { id: productId } }).catch(() => router.push("/products"));
+  router
+    .push({ name: "productProfile", params: { id: productId } })
+    .catch(() => router.push("/products"));
 }
 
 const filteredItems = computed(() => {
@@ -816,7 +856,7 @@ const filteredItems = computed(() => {
   const qq = String(itemQ.value || "").trim().toLowerCase();
   if (!qq) return items;
 
-  return items.filter(it => {
+  return items.filter((it) => {
     const name = (it.product?.name || it.product_name_snapshot || "").toLowerCase();
     const sku = (it.product?.sku || it.product_sku_snapshot || "").toLowerCase();
     const bc = (it.product?.barcode || it.product_barcode_snapshot || "").toLowerCase();
@@ -939,7 +979,7 @@ function printSale(sale) {
 
 // CSV export local
 function exportCsv() {
-  const rows = sales.value.map(s => ({
+  const rows = sales.value.map((s) => ({
     id: s.id,
     sold_at: dt(s.sold_at),
     customer: s.customer_name || "Consumidor Final",
@@ -950,14 +990,20 @@ function exportCsv() {
   }));
 
   const header = Object.keys(rows[0] || {}).join(",");
-  const body = rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const body = rows
+    .map((r) =>
+      Object.values(r)
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    )
+    .join("\n");
   const csv = header + "\n" + body;
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `ventas_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -990,6 +1036,7 @@ const KpiCard = {
   `,
 };
 </script>
+
 
 <style scoped>
 .border { border: 1px solid rgba(0,0,0,.08); }
