@@ -11,6 +11,19 @@
       </div>
 
       <div class="d-flex ga-2 align-center">
+        <!-- ✅ Admin bulk delete -->
+        <v-btn
+          v-if="isAdmin"
+          variant="tonal"
+          color="red"
+          :disabled="loading || !selected.length"
+          @click="askDeleteMany"
+          title="Eliminar ventas seleccionadas"
+        >
+          <v-icon start>mdi-delete-sweep</v-icon>
+          Eliminar seleccionadas ({{ selected.length }})
+        </v-btn>
+
         <v-btn variant="tonal" @click="resetFilters" :disabled="loading">
           <v-icon start>mdi-filter-off</v-icon>
           Reset
@@ -72,7 +85,7 @@
             <v-text-field
               v-model="q"
               label="Buscar"
-              placeholder="Cliente / N° venta / ID / Método / Total (ej: 25000)"
+              placeholder="Cliente / N° venta / ID / Total (ej: 25000)"
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="comfortable"
@@ -110,7 +123,11 @@
                   placeholder="(sin filtro)"
                 />
               </template>
-              <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFilters()" />
+              <v-date-picker
+                v-model="from"
+                show-adjacent-months
+                @update:model-value="fromMenu = false; applyFilters()"
+              />
             </v-menu>
           </v-col>
 
@@ -129,7 +146,11 @@
                   placeholder="(sin filtro)"
                 />
               </template>
-              <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFilters()" />
+              <v-date-picker
+                v-model="to"
+                show-adjacent-months
+                @update:model-value="toMenu = false; applyFilters()"
+              />
             </v-menu>
           </v-col>
 
@@ -149,7 +170,11 @@
           <v-spacer />
 
           <v-chip size="small" variant="tonal" color="primary">
-            Branch: {{ branchId }}
+            Branch: {{ branchId ?? "—" }}
+          </v-chip>
+
+          <v-chip size="small" variant="tonal" :color="isAdmin ? 'green' : 'grey'">
+            Admin: {{ isAdmin ? "SI" : "NO" }}
           </v-chip>
 
           <v-select
@@ -246,7 +271,7 @@
               <v-icon>mdi-printer</v-icon>
             </v-btn>
 
-            <!-- ✅ Solo admin -->
+            <!-- ✅ Admin -->
             <v-btn
               v-if="isAdmin"
               size="small"
@@ -284,7 +309,7 @@
       </v-data-table>
     </v-card>
 
-    <!-- DETALLE (MEJORADO) -->
+    <!-- DETALLE -->
     <v-dialog v-model="detailDialog" max-width="1100">
       <v-card class="rounded-xl">
         <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
@@ -324,7 +349,9 @@
                   <div class="d-flex justify-space-between flex-wrap ga-4">
                     <div>
                       <div class="text-caption text-medium-emphasis">Cliente</div>
-                      <div class="text-h6 font-weight-black">{{ detail.customer_name || "Consumidor Final" }}</div>
+                      <div class="text-h6 font-weight-black">
+                        {{ detail.customer_name || "Consumidor Final" }}
+                      </div>
                       <div class="text-caption text-medium-emphasis mt-1">
                         Fecha: {{ dt(detail.sold_at) }}
                         <span v-if="detail.sale_number"> · N°: {{ detail.sale_number }}</span>
@@ -422,7 +449,9 @@
             <v-tab value="items">
               <v-icon start>mdi-cart</v-icon>
               Productos
-              <v-chip class="ml-2" size="x-small" variant="tonal">{{ (detail.items || []).length }}</v-chip>
+              <v-chip class="ml-2" size="x-small" variant="tonal">
+                {{ (detail.items || []).length }}
+              </v-chip>
             </v-tab>
             <v-tab value="raw">
               <v-icon start>mdi-code-json</v-icon>
@@ -449,20 +478,11 @@
               </div>
 
               <v-row dense>
-                <v-col
-                  v-for="it in filteredItems"
-                  :key="it.id"
-                  cols="12"
-                  md="6"
-                >
+                <v-col v-for="it in filteredItems" :key="it.id" cols="12" md="6">
                   <v-card class="rounded-xl" elevation="1">
                     <v-card-text class="d-flex ga-3">
                       <v-avatar rounded="lg" size="78" class="border">
-                        <v-img
-                          v-if="productImage(it)"
-                          :src="productImage(it)"
-                          cover
-                        />
+                        <v-img v-if="productImage(it)" :src="productImage(it)" cover />
                         <v-icon v-else size="34">mdi-package-variant</v-icon>
                       </v-avatar>
 
@@ -548,7 +568,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Confirm delete -->
+    <!-- Confirm delete (single) -->
     <v-dialog v-model="deleteDialog" max-width="520">
       <v-card class="rounded-xl">
         <v-card-title class="font-weight-bold">Eliminar venta</v-card-title>
@@ -570,6 +590,26 @@
       </v-card>
     </v-dialog>
 
+    <!-- Confirm delete (many) -->
+    <v-dialog v-model="deleteManyDialog" max-width="560">
+      <v-card class="rounded-xl">
+        <v-card-title class="font-weight-bold">Eliminar ventas seleccionadas</v-card-title>
+        <v-divider />
+        <v-card-text>
+          ¿Seguro que querés eliminar <b>{{ selected.length }}</b> venta(s) seleccionada(s)?
+          <div class="text-caption text-medium-emphasis mt-2">Esta acción es irreversible.</div>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="deleteManyDialog = false">Cancelar</v-btn>
+          <v-spacer />
+          <v-btn color="red" variant="flat" :loading="deletingMany" @click="confirmDeleteMany">
+            <v-icon start>mdi-delete-sweep</v-icon>
+            Eliminar todas
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="snack.show" :timeout="3000">
       {{ snack.text }}
     </v-snackbar>
@@ -577,7 +617,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
@@ -585,26 +625,75 @@ import { useAuthStore } from "../../../app/store/auth.store";
 const router = useRouter();
 const auth = useAuthStore();
 
-// Ajustá si tu branch viene de store/config
-const branchId = 1;
+// ✅ branchId REAL (sale del /me -> users.branch_id)
+// fallback: si no está, queda null y backend puede resolver por warehouse/contexto
+const branchId = computed(() => {
+  const u = auth?.user || null;
+  const id = Number(u?.branch_id || auth?.branchId || 0);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
 
-// ✅ ADMIN DETECTOR ROBUSTO (para que SIEMPRE te aparezca el botón Eliminar si corresponde)
+// ===== Helpers auth (JWT) =====
+function safeAtob(str) {
+  try {
+    return atob(str);
+  } catch {
+    return "";
+  }
+}
+function decodeJwtPayload(token) {
+  try {
+    if (!token || typeof token !== "string") return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = safeAtob(b64);
+    return json ? JSON.parse(json) : null;
+  } catch {
+    return null;
+  }
+}
+function getAccessToken() {
+  return (
+    auth?.accessToken ||
+    auth?.token ||
+    auth?.tokens?.accessToken ||
+    auth?.session?.accessToken ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("jwt") ||
+    ""
+  );
+}
+function extractRoleNamesFromPayload(payload) {
+  const names = [];
+  if (!payload || typeof payload !== "object") return names;
+
+  if (typeof payload.role === "string") names.push(payload.role);
+
+  if (Array.isArray(payload.roles)) {
+    for (const r of payload.roles) {
+      if (!r) continue;
+      if (typeof r === "string") names.push(r);
+      else if (typeof r?.name === "string") names.push(r.name);
+    }
+  }
+
+  if (typeof payload.rol === "string") names.push(payload.rol);
+  if (typeof payload.user_role === "string") names.push(payload.user_role);
+
+  return names;
+}
+
+// ✅ ADMIN DETECTOR ultra robusto
 const isAdmin = computed(() => {
-  const u = auth?.user || {};
-
-  // roles puede venir como:
-  // - ["admin", "user"]
-  // - [{ name: "admin" }]
-  // - [{ role: { name: "admin" } }]
-  // - [{ Role: { name: "admin" } }]
-  // - { role: "admin" } o { role: { name: "admin" } }
-  const rawRoles = Array.isArray(u.roles) ? u.roles : [];
+  const u = auth?.user || auth?.me || auth?.profile || {};
   const roleNames = [];
+  const norm = (s) => String(s || "").trim().toLowerCase();
 
-  // 1) roles[] (array)
+  const rawRoles = Array.isArray(u.roles) ? u.roles : [];
   for (const r of rawRoles) {
     if (!r) continue;
-
     if (typeof r === "string") roleNames.push(r);
     else if (typeof r?.name === "string") roleNames.push(r.name);
     else if (typeof r?.role === "string") roleNames.push(r.role);
@@ -612,18 +701,23 @@ const isAdmin = computed(() => {
     else if (typeof r?.Role?.name === "string") roleNames.push(r.Role.name);
   }
 
-  // 2) role suelto (no array)
   if (typeof u.role === "string") roleNames.push(u.role);
   if (typeof u?.role?.name === "string") roleNames.push(u.role.name);
 
-  // 3) flags típicos (por si existen)
-  if (u.is_admin === true || u.isAdmin === true) return true;
+  if (u.is_admin === true || u.isAdmin === true || u.admin === true) return true;
 
-  const norm = (s) => String(s || "").trim().toLowerCase();
+  if (typeof auth?.role === "string") roleNames.push(auth.role);
 
-  return roleNames
-    .map(norm)
-    .some((x) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(x));
+  const token = getAccessToken();
+  const payload = decodeJwtPayload(token);
+  roleNames.push(...extractRoleNamesFromPayload(payload));
+
+  const email = String(u.email || u.identifier || u.username || "").toLowerCase();
+  if (email === "admin@360pos.local" || email.includes("admin@360pos.local")) return true;
+
+  return roleNames.map(norm).some((x) =>
+    ["admin", "super_admin", "superadmin", "root", "owner"].includes(x)
+  );
 });
 
 const dense = ref(false);
@@ -654,6 +748,10 @@ const itemQ = ref("");
 const deleteDialog = ref(false);
 const toDelete = ref(null);
 const deleting = ref(false);
+
+// delete many
+const deleteManyDialog = ref(false);
+const deletingMany = ref(false);
 
 const snack = ref({ show: false, text: "" });
 
@@ -691,7 +789,7 @@ const statusItems = [
   { title: "Reintegrada", value: "REFUNDED" },
 ];
 
-// Tabla headers (más “POS”)
+// Tabla headers
 const headers = [
   { title: "Fecha", key: "sold_at", sortable: false, width: 190 },
   { title: "Cliente / Pago", key: "customer_name", sortable: false },
@@ -768,7 +866,6 @@ function qtyFmt(v) {
 function productImage(it) {
   const imgs = it?.product?.images || [];
   const first = imgs[0];
-  // soporta varios nombres posibles según tu modelo
   return first?.url || first?.public_url || first?.path || first?.key || "";
 }
 
@@ -802,8 +899,10 @@ async function fetchSales() {
       limit: meta.value.limit,
       q: q.value || undefined,
       status: status.value || undefined,
-      branch_id: branchId,
     };
+
+    // ✅ solo filtra por branch si lo tenemos
+    if (branchId.value) params.branch_id = branchId.value;
 
     if (hasFrom) params.from = toStartOfDay(from.value);
     if (hasTo) params.to = toEndOfDay(to.value);
@@ -846,9 +945,7 @@ async function openDetail(id) {
 
 function goToProduct(productId) {
   if (!productId) return;
-  router
-    .push({ name: "productProfile", params: { id: productId } })
-    .catch(() => router.push("/products"));
+  router.push({ name: "productProfile", params: { id: productId } }).catch(() => router.push("/products"));
 }
 
 const filteredItems = computed(() => {
@@ -864,26 +961,56 @@ const filteredItems = computed(() => {
   });
 });
 
-// ===== Delete =====
+// ===== Delete (single) =====
 function askDelete(item) {
   toDelete.value = item;
   deleteDialog.value = true;
 }
 
 async function confirmDelete() {
-  if (!toDelete.value?.id) return;
+  const id = toDelete.value?.id;
+  if (!id) return;
   deleting.value = true;
   try {
-    const { data } = await http.delete(`/pos/sales/${toDelete.value.id}`);
+    const { data } = await http.delete(`/pos/sales/${id}`);
     if (!data?.ok) throw new Error(data?.message || "No se pudo eliminar");
     snack.value = { show: true, text: data.message || "Venta eliminada" };
     deleteDialog.value = false;
     toDelete.value = null;
+    selected.value = selected.value.filter((x) => x?.id !== id);
     fetchSales();
   } catch (e) {
     snack.value = { show: true, text: e.message || "Error" };
   } finally {
     deleting.value = false;
+  }
+}
+
+// ===== Delete (many) =====
+function askDeleteMany() {
+  if (!selected.value.length) return;
+  deleteManyDialog.value = true;
+}
+
+async function confirmDeleteMany() {
+  if (!selected.value.length) return;
+  deletingMany.value = true;
+  try {
+    const ids = selected.value.map((x) => (typeof x === "object" ? x.id : x)).filter(Boolean);
+
+    for (const id of ids) {
+      const { data } = await http.delete(`/pos/sales/${id}`);
+      if (!data?.ok) throw new Error(data?.message || `No se pudo eliminar #${id}`);
+    }
+
+    snack.value = { show: true, text: `Eliminadas: ${ids.length} venta(s)` };
+    deleteManyDialog.value = false;
+    selected.value = [];
+    fetchSales();
+  } catch (e) {
+    snack.value = { show: true, text: e.message || "Error" };
+  } finally {
+    deletingMany.value = false;
   }
 }
 
@@ -961,7 +1088,6 @@ async function copyText(txt) {
     if (!txt) return;
     await navigator.clipboard.writeText(txt);
   } catch {
-    // fallback
     const ta = document.createElement("textarea");
     ta.value = txt;
     document.body.appendChild(ta);
@@ -971,7 +1097,7 @@ async function copyText(txt) {
   }
 }
 
-// “Print” demo (lo dejamos simple)
+// “Print” demo
 function printSale(sale) {
   if (!sale) return;
   snack.value = { show: true, text: "Impresión: pendiente de plantilla (OK)" };
@@ -1008,7 +1134,13 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-onMounted(fetchSales);
+onMounted(async () => {
+  // ✅ si el store tiene token pero no user cargado, pedimos /me
+  if (auth?.isAuthed && !auth.user && typeof auth.fetchMe === "function") {
+    try { await auth.fetchMe(); } catch {}
+  }
+  fetchSales();
+});
 
 // ================== KPI CARD (local component) ==================
 const KpiCard = {
@@ -1036,7 +1168,6 @@ const KpiCard = {
   `,
 };
 </script>
-
 
 <style scoped>
 .border { border: 1px solid rgba(0,0,0,.08); }

@@ -14,6 +14,11 @@ export const useAuthStore = defineStore("auth", {
 
   getters: {
     isAuthed: (s) => !!s.accessToken && s.status === "authed",
+    branchId: (s) => Number(s.user?.branch_id || 0) || null,
+    roles: (s) => (Array.isArray(s.user?.roles) ? s.user.roles : []),
+
+    // ✅ helper directo
+    isAdmin: (s) => Array.isArray(s.user?.roles) && s.user.roles.includes("admin"),
   },
 
   actions: {
@@ -29,12 +34,32 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    async fetchMe() {
+      if (!this.accessToken) return;
+
+      try {
+        // ✅ FIX: tu ruta real es /auth/me
+        const { data } = await http.get("/auth/me");
+
+        if (data?.ok && data.user) {
+          this.user = data.user;
+
+          saveAuth({
+            accessToken: this.accessToken,
+            refreshToken: this.refreshToken,
+            user: this.user,
+          });
+        }
+      } catch (e) {
+        // Si falla /me, no tiramos el login abajo, pero guardamos error para debug
+        this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
+      }
+    },
+
     async login({ identifier, password }) {
       this.error = null;
 
       const { data } = await http.post("/auth/login", { identifier, password });
-
-      // tu backend devuelve { ok:true, accessToken, refreshToken?, user? }
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
 
       this.accessToken = data.accessToken;
@@ -47,6 +72,9 @@ export const useAuthStore = defineStore("auth", {
         refreshToken: this.refreshToken,
         user: this.user,
       });
+
+      // ✅ siempre refrescar "me" (branch_id, roles, etc.)
+      await this.fetchMe();
     },
 
     logout() {

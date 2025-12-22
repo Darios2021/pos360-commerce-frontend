@@ -4,7 +4,7 @@ import { loadAuth, clearAuth } from "../utils/storage";
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL?.trim() ||
-  (import.meta.env.DEV ? "/api/v1" : "/api/v1");
+  "/api/v1";
 
 if (!import.meta.env.VITE_API_BASE_URL) {
   console.warn("⚠️ VITE_API_BASE_URL no está definido. Usando:", baseURL);
@@ -12,7 +12,7 @@ if (!import.meta.env.VITE_API_BASE_URL) {
 
 const http = axios.create({
   baseURL,
-  timeout: 60000, // ✅ 60s para debug (antes 20s)
+  timeout: 60000,
 });
 
 // Attach token
