@@ -43,6 +43,20 @@
           <div class="text-caption text-medium-emphasis">SKU: {{ item.sku || "—" }}</div>
         </template>
 
+        <!-- ✅ Sucursal (solo admin) -->
+        <template v-if="isAdmin" #item.branch="{ item }">
+          <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
+            {{ branchLabel(item.branch_id) }}
+          </v-chip>
+        </template>
+
+        <!-- ✅ Stock (para futuro Inventario) -->
+        <template #item.stock="{ item }">
+          <div class="text-right">
+            <span class="font-weight-bold">{{ stockLabel(item) }}</span>
+          </div>
+        </template>
+
         <template #item.code="{ item }">{{ item.code || "—" }}</template>
         <template #item.rubro="{ item }">{{ item.rubro || "—" }}</template>
         <template #item.subrubro="{ item }">{{ item.subrubro || "—" }}</template>
@@ -70,7 +84,6 @@
         <template #bottom>
           <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
             <div class="text-caption text-medium-emphasis">Mostrando {{ rows.length }} de {{ products.total }}</div>
-
             <v-pagination v-model="page" :length="pages" :total-visible="7" @update:modelValue="onPage" />
           </div>
         </template>
@@ -131,19 +144,33 @@ const formItem = ref(null);
 const deleteOpen = ref(false);
 const deleteItem = ref(null);
 
-const isAdmin = computed(() => (auth.roles || []).includes("admin"));
+const isAdmin = computed(() => {
+  const r = auth.roles || [];
+  return r.includes("admin") || r.includes("super_admin");
+});
 
-const headers = [
-  { title: "Nombre / SKU", key: "name", sortable: false },
-  { title: "Código", key: "code", sortable: false },
-  { title: "Rubro", key: "rubro", sortable: false },
-  { title: "Subrubro", key: "subrubro", sortable: false },
-  { title: "Marca", key: "brand", sortable: false },
-  { title: "Modelo", key: "model", sortable: false },
-  { title: "Activo", key: "active", sortable: false },
-  { title: "Lista", key: "price_list", sortable: false, align: "end" },
-  { title: "", key: "actions", sortable: false, align: "end" },
-];
+// ✅ headers dinámicos: agrega Sucursal sólo para admin
+const headers = computed(() => {
+  const base = [
+    { title: "Nombre / SKU", key: "name", sortable: false },
+    // (Sucursal entra aquí si admin)
+    { title: "Código", key: "code", sortable: false },
+    { title: "Rubro", key: "rubro", sortable: false },
+    { title: "Subrubro", key: "subrubro", sortable: false },
+    { title: "Marca", key: "brand", sortable: false },
+    { title: "Modelo", key: "model", sortable: false },
+    { title: "Stock", key: "stock", sortable: false, align: "end" }, // ✅ futuro Inventario
+    { title: "Activo", key: "active", sortable: false },
+    { title: "Lista", key: "price_list", sortable: false, align: "end" },
+    { title: "", key: "actions", sortable: false, align: "end" },
+  ];
+
+  if (!isAdmin.value) return base;
+
+  const out = [...base];
+  out.splice(1, 0, { title: "Sucursal", key: "branch", sortable: false });
+  return out;
+});
 
 function toNum(v, d = 0) {
   if (v === null || v === undefined || v === "") return d;
@@ -157,6 +184,36 @@ function money(n) {
   } catch {
     return `$ ${toNum(n, 0).toFixed(2)}`;
   }
+}
+
+// ✅ NO depende de associations: usa branch_id directo
+function branchLabel(branchId) {
+  const id = Number(branchId || 0);
+  return id ? `Sucursal #${id}` : "—";
+}
+
+function branchColor(branchId) {
+  const id = Number(branchId || 0);
+  if (!id) return "grey";
+  if (id === 1) return "primary";
+  if (id === 2) return "green";
+  if (id === 3) return "deep-purple";
+  return "blue-grey";
+}
+
+// ✅ Stock (placeholder): si backend manda stock_qty / stock / qty, lo muestra.
+// (cuando migremos a Inventario, lo alineamos a StockBalance por warehouse/branch)
+function stockLabel(item) {
+  const v =
+    item?.stock_qty ??
+    item?.stock ??
+    item?.qty ??
+    item?.quantity ??
+    null;
+
+  if (v === null || v === undefined || v === "") return "—";
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(3) : String(v);
 }
 
 const rows = computed(() => {

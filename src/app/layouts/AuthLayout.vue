@@ -1,22 +1,28 @@
-<!-- src/app/layouts/AuthLayout.vue -->
 <template>
-  <v-main class="auth-bg">
-    <v-container class="fill-height" fluid>
-      <v-row align="center" justify="center">
-        <v-col cols="12" sm="10" md="6" lg="4">
-          <slot />
-        </v-col>
-      </v-row>
-    </v-container>
-  </v-main>
+  <v-app>
+    <v-main class="auth-main">
+      <v-container class="auth-container" fluid>
+        <slot />
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <script setup>
-// nada
+// layout simple para /auth/*
+// importante: envolver en v-app para que Vuetify inyecte layout
 </script>
 
 <style scoped>
-.auth-bg {
+.auth-main {
+  min-height: 100vh;
   background: rgb(var(--v-theme-background));
+}
+
+.auth-container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
 }
 </style>

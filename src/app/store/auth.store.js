@@ -3,6 +3,39 @@ import { defineStore } from "pinia";
 import http from "../api/http";
 import { loadAuth, saveAuth, clearAuth } from "../utils/storage";
 
+/**
+ * Normaliza roles desde cualquier formato posible:
+ * - user.roles = ["admin"]
+ * - user.role = "admin"
+ * - user.rol = "admin"
+ */
+function normalizeRoles(user) {
+  const raw =
+    user?.roles ??
+    (user?.role ? [user.role] : null) ??
+    (user?.rol ? [user.rol] : null) ??
+    [];
+
+  const arr = Array.isArray(raw) ? raw : [raw];
+
+  const roles = arr
+    .map((r) => {
+      if (!r) return null;
+      if (typeof r === "string") return r.toLowerCase();
+      if (typeof r === "object" && r.name) return String(r.name).toLowerCase();
+      return null;
+    })
+    .filter(Boolean);
+
+  // ✅ regla CLAVE:
+  // admin siempre incluye permisos de user
+  if (roles.includes("admin") && !roles.includes("user")) {
+    roles.push("user");
+  }
+
+  return roles;
+}
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     status: "idle", // idle | authed | guest
@@ -15,10 +48,11 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthed: (s) => !!s.accessToken && s.status === "authed",
     branchId: (s) => Number(s.user?.branch_id || 0) || null,
-    roles: (s) => (Array.isArray(s.user?.roles) ? s.user.roles : []),
 
-    // ✅ helper directo
-    isAdmin: (s) => Array.isArray(s.user?.roles) && s.user.roles.includes("admin"),
+    // 👉 siempre roles normalizados
+    roles: (s) => normalizeRoles(s.user),
+
+    isAdmin: (s) => normalizeRoles(s.user).includes("admin"),
   },
 
   actions: {
@@ -38,11 +72,14 @@ export const useAuthStore = defineStore("auth", {
       if (!this.accessToken) return;
 
       try {
-        // ✅ FIX: tu ruta real es /auth/me
         const { data } = await http.get("/auth/me");
 
         if (data?.ok && data.user) {
-          this.user = data.user;
+          // ✅ normalizar roles SIEMPRE
+          this.user = {
+            ...data.user,
+            roles: normalizeRoles(data.user),
+          };
 
           saveAuth({
             accessToken: this.accessToken,
@@ -51,20 +88,32 @@ export const useAuthStore = defineStore("auth", {
           });
         }
       } catch (e) {
-        // Si falla /me, no tiramos el login abajo, pero guardamos error para debug
-        this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
+        this.error =
+          e?.response?.data?.message ||
+          e?.message ||
+          "FETCH_ME_FAILED";
       }
     },
 
     async login({ identifier, password }) {
       this.error = null;
 
-      const { data } = await http.post("/auth/login", { identifier, password });
+      const { data } = await http.post("/auth/login", {
+        identifier,
+        password,
+      });
+
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
+
+      // ✅ normalizar roles desde login
+      const normalizedUser = {
+        ...data.user,
+        roles: normalizeRoles(data.user),
+      };
 
       this.accessToken = data.accessToken;
       this.refreshToken = data.refreshToken || null;
-      this.user = data.user || null;
+      this.user = normalizedUser;
       this.status = "authed";
 
       saveAuth({
@@ -73,7 +122,7 @@ export const useAuthStore = defineStore("auth", {
         user: this.user,
       });
 
-      // ✅ siempre refrescar "me" (branch_id, roles, etc.)
+      // refresca branch_id / estado real desde backend
       await this.fetchMe();
     },
 

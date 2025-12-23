@@ -7,6 +7,30 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+// ✅ Unwrap helpers (soporta distintos formatos backend)
+function unwrapOne(res) {
+  // soporta: {ok, data}, {ok, item}, {ok, product}, {data:{...}} etc.
+  if (!res) return null;
+  if (res.ok === false) return null;
+  return res.data ?? res.item ?? res.product ?? res.user ?? null;
+}
+
+function unwrapList(res) {
+  // soporta: {ok, data:[...]}, {ok, items:[...]}, {items:[...]}, {data:{items:[...]}}
+  if (!res) return [];
+  if (res.ok === false) return [];
+  const v = res.data ?? res.items ?? res.list ?? res.rows ?? res.result ?? null;
+  if (Array.isArray(v)) return v;
+  if (v && Array.isArray(v.items)) return v.items;
+  return [];
+}
+
+function unwrapMeta(res) {
+  // soporta: {meta}, {data:{meta}}, {pagination}
+  if (!res) return {};
+  return res.meta ?? res.pagination ?? res.data?.meta ?? {};
+}
+
 export const useProductsStore = defineStore("products", {
   state: () => ({
     items: [],
@@ -23,23 +47,22 @@ export const useProductsStore = defineStore("products", {
 
   actions: {
     setError(e) {
-      this.error = e?.friendlyMessage || e?.message || String(e || "");
+      this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e || "");
     },
 
-    // ✅ Ajustado a backend: { ok, data, meta:{page,limit,total,pages} }
+    // ✅ GET /products
     async fetchList({ q = "", page = 1, limit = 20 } = {}) {
       this.loading = true;
       this.error = null;
       try {
         const { data } = await http.get("/products", { params: { q, page, limit } });
 
-        if (!data?.ok) throw new Error(data?.message || "FETCH_PRODUCTS_FAILED");
+        const list = unwrapList(data);
+        const meta = unwrapMeta(data);
 
-        const list = data.data || [];
-        const meta = data.meta || {};
-
+        // si tu backend manda total/pages
         this.items = list;
-        this.total = toInt(meta.total, 0);
+        this.total = toInt(meta.total, list.length || 0);
         this.page = toInt(meta.page, page);
         this.limit = toInt(meta.limit, limit);
         this.pages = toInt(meta.pages, 1) || 1;
@@ -53,7 +76,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ Ajustado a backend: { ok, data: product }
+    // ✅ GET /products/:id
     async fetchOne(id, { force = false } = {}) {
       const pid = toInt(id, 0);
       if (!pid) return null;
@@ -64,9 +87,9 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.get(`/products/${pid}`);
-        if (!data?.ok) throw new Error(data?.message || "FETCH_PRODUCT_FAILED");
+        const one = unwrapOne(data);
 
-        this.current = data.data || null;
+        this.current = one || null;
 
         if (this.current?.id) {
           const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
@@ -82,15 +105,14 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ create: backend devuelve { ok, data }
+    // ✅ POST /products
     async create(payload) {
       this.loading = true;
       this.error = null;
       try {
         const { data } = await http.post("/products", payload);
-        if (!data?.ok) throw new Error(data?.message || "CREATE_PRODUCT_FAILED");
 
-        const created = data.data || null;
+        const created = unwrapOne(data);
         if (created?.id) {
           this.current = created;
           this.items = [created, ...(this.items || [])];
@@ -106,7 +128,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ update: backend devuelve { ok, data }
+    // ✅ PATCH /products/:id
     async update(id, payload) {
       const pid = toInt(id, 0);
       if (!pid) throw new Error("MISSING_ID");
@@ -115,10 +137,9 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.patch(`/products/${pid}`, payload);
-        if (!data?.ok) throw new Error(data?.message || "UPDATE_PRODUCT_FAILED");
 
-        const updated = data.data || null;
-        this.current = updated;
+        const updated = unwrapOne(data);
+        this.current = updated || null;
 
         if (updated?.id) {
           const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
@@ -134,7 +155,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ DELETE producto (si tu backend lo tiene)
+    // ✅ DELETE /products/:id
     async remove(id) {
       const pid = toInt(id, 0);
       if (!pid) return false;
@@ -143,7 +164,7 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.delete(`/products/${pid}`);
-        if (!data?.ok) throw new Error(data?.message || "DELETE_PRODUCT_FAILED");
+        if (data?.ok === false) throw new Error(data?.message || "DELETE_PRODUCT_FAILED");
 
         this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
         this.total = Math.max(0, toInt(this.total, 0) - 1);
@@ -162,8 +183,6 @@ export const useProductsStore = defineStore("products", {
     // ==========================
     // IMÁGENES
     // ==========================
-
-    // GET /products/:id/images  => { ok, items }
     async fetchImages(productId) {
       const pid = toInt(productId, 0);
       if (!pid) return [];
@@ -171,15 +190,14 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.get(`/products/${pid}/images`);
-        if (!data?.ok) throw new Error(data?.message || "FETCH_IMAGES_FAILED");
-        return data.items || [];
+        // soporta {ok, items} o {ok, data:[...]}
+        return unwrapList(data);
       } catch (e) {
         this.setError(e);
         return [];
       }
     },
 
-    // POST /products/:id/images (multipart) => { ok, items }
     async uploadImages(productId, files = []) {
       const pid = toInt(productId, 0);
       if (!pid) return null;
@@ -197,8 +215,8 @@ export const useProductsStore = defineStore("products", {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        if (!data?.ok) throw new Error(data?.message || "UPLOAD_IMAGES_FAILED");
-        return data.items || [];
+        if (data?.ok === false) throw new Error(data?.message || "UPLOAD_IMAGES_FAILED");
+        return unwrapList(data);
       } catch (e) {
         this.setError(e);
         return null;
@@ -207,7 +225,6 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // DELETE /products/:id/images/:imageId => { ok }
     async removeImage(productId, imageId) {
       const pid = toInt(productId, 0);
       const iid = toInt(imageId, 0);
@@ -217,7 +234,46 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.delete(`/products/${pid}/images/${iid}`);
-        if (!data?.ok) throw new Error(data?.message || "DELETE_IMAGE_FAILED");
+        if (data?.ok === false) throw new Error(data?.message || "DELETE_IMAGE_FAILED");
+        return true;
+      } catch (e) {
+        this.setError(e);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ==========================
+    // BRANCHES (para stock en admin)
+    // ==========================
+    async fetchBranches() {
+      this.error = null;
+      try {
+        const { data } = await http.get("/branches");
+        // soporta {ok, items} o {ok, data:[...]}
+        return unwrapList(data);
+      } catch (e) {
+        this.setError(e);
+        return [];
+      }
+    },
+
+    // ==========================
+    // STOCK INIT (POST /stock/init)
+    // ==========================
+    async initStock({ product_id, branch_id, qty }) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const payload = {
+          product_id: toInt(product_id, 0),
+          branch_id: toInt(branch_id, 0),
+          qty: Number(qty || 0),
+        };
+
+        const { data } = await http.post("/stock/init", payload);
+        if (data?.ok === false) throw new Error(data?.message || "INIT_STOCK_FAILED");
         return true;
       } catch (e) {
         this.setError(e);
