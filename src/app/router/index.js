@@ -1,3 +1,4 @@
+// src/app/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../store/auth.store";
 
@@ -19,11 +20,13 @@ const PosSales = () => import("../../modules/pos/pages/PosSalesPage.vue");
 const PosSaleDetail = () => import("../../modules/pos/pages/PosSaleDetailPage.vue");
 
 const routes = [
+  // Home/Dashboard
   { path: "/", name: "home", component: Home, meta: { requiresAuth: true } },
 
   // Inventario
   { path: "/products", name: "products", component: Products, meta: { requiresAuth: true } },
-  // ✅ NUEVO: Perfil producto
+
+  // Perfil producto
   { path: "/products/:id", name: "productProfile", component: ProductProfile, meta: { requiresAuth: true } },
 
   { path: "/products/import", name: "productsImport", component: ImportProducts, meta: { requiresAuth: true } },
@@ -35,21 +38,26 @@ const routes = [
   { path: "/pos/sales", name: "posSales", component: PosSales, meta: { requiresAuth: true } },
   { path: "/pos/sales/:id", name: "posSaleDetail", component: PosSaleDetail, meta: { requiresAuth: true } },
 
-  // Auth
-  { path: "/auth/login", name: "login", component: Login },
+  // Auth (✅ layout auth para que App.vue use AuthLayout)
+  { path: "/auth/login", name: "login", component: Login, meta: { layout: "auth" } },
 ];
 
-export const router = createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior() {
+    return { top: 0 };
+  },
 });
 
 router.beforeEach((to) => {
   const auth = useAuthStore();
+
   if (auth.status === "idle") auth.hydrate?.();
 
-  if (to.meta.requiresAuth && !auth.isAuthed) return { name: "login" };
+  if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
+
   return true;
 });
 

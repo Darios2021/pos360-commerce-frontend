@@ -1,3 +1,4 @@
+<!-- src/app/layouts/AppShell.vue -->
 <template>
   <v-app>
     <v-app-bar elevation="0" color="surface" height="72" class="pos-appbar">
@@ -49,12 +50,7 @@
           class="mb-1 font-weight-bold"
         />
 
-        <!-- ✅ NUEVO: Ventas -->
-        <v-list-item
-          :to="{ name: 'posSales' }"
-          prepend-icon="mdi-receipt-text-outline"
-          title="Ventas"
-        />
+        <v-list-item :to="{ name: 'posSales' }" prepend-icon="mdi-receipt-text-outline" title="Ventas" />
 
         <v-divider class="my-2" />
         <div class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
@@ -65,6 +61,32 @@
         <v-list-item :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" />
       </v-list>
 
+      <v-divider class="my-2" />
+
+      <!-- ✅ Switch dark mode -->
+      <div class="px-4 pb-2">
+        <v-card rounded="lg" variant="tonal" class="pa-3">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center ga-2">
+              <v-icon>{{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}</v-icon>
+              <div class="text-body-2 font-weight-bold">Modo oscuro</div>
+            </div>
+
+            <v-switch
+              inset
+              hide-details
+              density="compact"
+              :model-value="isDark"
+              @update:model-value="setDark"
+            />
+          </div>
+
+          <div class="text-caption text-medium-emphasis mt-1">
+            Se guarda en el navegador.
+          </div>
+        </v-card>
+      </div>
+
       <v-spacer />
 
       <div class="pa-4 text-caption text-medium-emphasis">v1 · 2025</div>
@@ -72,17 +94,19 @@
 
     <v-main class="pos-main">
       <v-container fluid class="pos-container">
-        <router-view />
+        <slot />
       </v-container>
     </v-main>
   </v-app>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { useDisplay } from "vuetify";
+import { computed, ref, watch } from "vue";
+import { useDisplay, useTheme } from "vuetify";
 import { useRouter } from "vue-router";
+
 import { useAuthStore } from "../store/auth.store";
+import { useThemeStore } from "../store/theme.store";
 
 const { mdAndUp } = useDisplay();
 const drawer = ref(true);
@@ -90,7 +114,33 @@ const drawer = ref(true);
 const auth = useAuthStore();
 const router = useRouter();
 
+const theme = useTheme();
+const themeStore = useThemeStore();
+
 const userLabel = computed(() => auth?.user?.email || auth?.user?.username || "Usuario");
+const isDark = computed(() => themeStore.isDark);
+
+function applyVuetifyTheme(dark) {
+  const name = dark ? "dark" : "light";
+  // Vuetify cambia según versión: protegemos ambas opciones
+  try {
+    if (typeof theme?.change === "function") theme.change(name);
+    else if (theme?.global?.name) theme.global.name.value = name;
+  } catch {
+    // ignore
+  }
+}
+
+function setDark(v) {
+  themeStore.setDark(!!v);
+  applyVuetifyTheme(!!v);
+}
+
+watch(
+  () => themeStore.isDark,
+  (v) => applyVuetifyTheme(!!v),
+  { immediate: true }
+);
 
 function logout() {
   auth.logout?.();

@@ -20,13 +20,9 @@
           placeholder="Buscar (nombre / sku / barcode / code / marca / modelo)"
           @keyup.enter="search"
         />
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="search">
-          Buscar
-        </v-btn>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="search">Buscar</v-btn>
         <v-btn variant="tonal" @click="clear">Limpiar</v-btn>
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate">
-          Nuevo producto
-        </v-btn>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate">Nuevo producto</v-btn>
       </div>
     </div>
 
@@ -47,25 +43,11 @@
           <div class="text-caption text-medium-emphasis">SKU: {{ item.sku || "—" }}</div>
         </template>
 
-        <template #item.code="{ item }">
-          {{ item.code || "—" }}
-        </template>
-
-        <template #item.rubro="{ item }">
-          {{ item.rubro || "—" }}
-        </template>
-
-        <template #item.subrubro="{ item }">
-          {{ item.subrubro || "—" }}
-        </template>
-
-        <template #item.brand="{ item }">
-          {{ item.brand || "—" }}
-        </template>
-
-        <template #item.model="{ item }">
-          {{ item.model || "—" }}
-        </template>
+        <template #item.code="{ item }">{{ item.code || "—" }}</template>
+        <template #item.rubro="{ item }">{{ item.rubro || "—" }}</template>
+        <template #item.subrubro="{ item }">{{ item.subrubro || "—" }}</template>
+        <template #item.brand="{ item }">{{ item.brand || "—" }}</template>
+        <template #item.model="{ item }">{{ item.model || "—" }}</template>
 
         <template #item.active="{ item }">
           <v-chip size="small" variant="tonal" :color="item.is_active ? 'primary' : 'red'">
@@ -81,35 +63,20 @@
           <div class="d-flex justify-end ga-1">
             <v-btn icon="mdi-eye-outline" variant="text" @click="openDetails(item.id)" />
             <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
-
-            <!-- ✅ eliminar solo admin -->
-            <v-btn
-              v-if="isAdmin"
-              icon="mdi-delete-outline"
-              variant="text"
-              @click="askDelete(item)"
-            />
+            <v-btn v-if="isAdmin" icon="mdi-delete-outline" variant="text" @click="askDelete(item)" />
           </div>
         </template>
 
         <template #bottom>
           <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
-            <div class="text-caption text-medium-emphasis">
-              Mostrando {{ rows.length }} de {{ products.total }}
-            </div>
+            <div class="text-caption text-medium-emphasis">Mostrando {{ rows.length }} de {{ products.total }}</div>
 
-            <v-pagination
-              v-model="page"
-              :length="pages"
-              :total-visible="7"
-              @update:modelValue="onPage"
-            />
+            <v-pagination v-model="page" :length="pages" :total-visible="7" @update:modelValue="onPage" />
           </div>
         </template>
       </v-data-table>
     </v-card>
 
-    <!-- Detalle -->
     <ProductDetailsDialog
       v-model:open="detailsOpen"
       :product-id="selectedId"
@@ -117,7 +84,6 @@
       @deleted="afterDeleted"
     />
 
-    <!-- Form -->
     <ProductFormDialog
       v-model:open="formOpen"
       :mode="formMode"
@@ -126,21 +92,16 @@
       @deleted="afterDeleted"
     />
 
-    <!-- Confirm delete -->
     <v-dialog v-model="deleteOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
         <v-card-text>
           ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">
-            Esta acción no se puede deshacer.
-          </div>
+          <div class="text-caption text-medium-emphasis mt-2">Esta acción no se puede deshacer.</div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDelete" :loading="products.loading">
-            Eliminar
-          </v-btn>
+          <v-btn color="red" variant="flat" @click="doDelete" :loading="products.loading">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -212,9 +173,7 @@ const rows = computed(() => {
   });
 });
 
-const pages = computed(() => {
-  return Number(products.pages || 1) || 1;
-});
+const pages = computed(() => Number(products.pages || 1) || 1);
 
 async function load() {
   if (!auth.isAuthed) return;
@@ -276,7 +235,6 @@ async function doDelete() {
 async function afterSaved() {
   await load();
 }
-
 async function afterDeleted() {
   await load();
 }

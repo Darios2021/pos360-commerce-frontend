@@ -23,7 +23,7 @@
     <v-row dense class="pos-grid">
       <!-- LEFT: Productos -->
       <v-col cols="12" md="8" class="pos-left">
-        <v-card class="rounded-xl pos-toolbar" elevation="1">
+        <v-card class="rounded-xl pos-toolbar pos-surface" elevation="1">
           <v-card-text class="py-3">
             <v-row dense class="align-center">
               <v-col cols="12" md="6">
@@ -83,7 +83,7 @@
         </v-card>
 
         <!-- Grid productos -->
-        <div class="pos-products mt-3">
+        <div class="pos-products mt-3 pos-surface">
           <div v-if="loadingList" class="d-flex justify-center align-center py-12">
             <v-progress-circular indeterminate />
           </div>
@@ -99,17 +99,12 @@
               xl="2"
             >
               <v-card
-                class="rounded-xl product-card"
+                class="rounded-xl product-card pos-surface"
                 elevation="1"
                 :class="{ 'product-disabled': !hasPrice(p) }"
               >
                 <div class="thumb-wrap">
-                  <v-img
-                    v-if="productImage(p)"
-                    :src="productImage(p)"
-                    cover
-                    class="thumb"
-                  />
+                  <v-img v-if="productImage(p)" :src="productImage(p)" cover class="thumb" />
                   <div v-else class="thumb thumb-empty">
                     <v-icon size="34">mdi-package-variant</v-icon>
                   </div>
@@ -157,7 +152,10 @@
             </v-col>
           </v-row>
 
-          <div v-if="!loadingList && productsStore.items.length === 0" class="text-center py-12 text-medium-emphasis">
+          <div
+            v-if="!loadingList && productsStore.items.length === 0"
+            class="text-center py-12 text-medium-emphasis"
+          >
             <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
             <div class="text-h6">No se encontraron productos</div>
           </div>
@@ -166,7 +164,7 @@
 
       <!-- RIGHT: Carrito -->
       <v-col cols="12" md="4" class="pos-right">
-        <v-card class="rounded-xl cart-card" elevation="1">
+        <v-card class="rounded-xl cart-card pos-surface" elevation="1">
           <!-- Cart Header fijo -->
           <div class="cart-head">
             <div class="d-flex align-center justify-space-between px-4 py-3">
@@ -204,11 +202,7 @@
             </div>
 
             <v-list v-else density="compact" class="pa-0" bg-color="transparent">
-              <v-list-item
-                v-for="it in posStore.cart"
-                :key="it.id"
-                class="cart-item rounded-lg mb-2"
-              >
+              <v-list-item v-for="it in posStore.cart" :key="it.id" class="cart-item rounded-lg mb-2">
                 <template #prepend>
                   <v-avatar rounded="lg" size="44" class="border">
                     <v-img v-if="it.image" :src="it.image" cover />
@@ -273,11 +267,11 @@
                 </div>
               </div>
 
-              <div class="d-flex ga-2 mt-3">
+              <div class="d-flex ga-2 mt-3 cart-actions">
                 <v-btn
                   block
                   variant="tonal"
-                  color="grey-darken-1"
+                  color="grey"
                   :disabled="posStore.cart.length === 0"
                   @click="posStore.clearCart()"
                 >
@@ -285,12 +279,7 @@
                   Vaciar
                 </v-btn>
 
-                <v-btn
-                  block
-                  color="primary"
-                  :disabled="posStore.cart.length === 0"
-                  @click="openCheckout"
-                >
+                <v-btn block color="primary" :disabled="posStore.cart.length === 0" @click="openCheckout">
                   <v-icon start>mdi-cash-register</v-icon>
                   Cobrar
                 </v-btn>
@@ -357,7 +346,6 @@
 
             <v-divider class="my-2" />
 
-            <!-- ✅ Mercado Pago -->
             <v-radio value="QR">
               <template #label>
                 <div class="d-flex align-center w-100">
@@ -400,8 +388,8 @@
 
         <v-divider />
 
-        <v-card-actions class="pa-4 bg-grey-lighten-5">
-          <v-btn size="large" variant="text" color="grey-darken-1" @click="checkoutDialog = false" :disabled="posStore.loading">
+        <v-card-actions class="pa-4">
+          <v-btn size="large" variant="text" color="grey" @click="checkoutDialog = false" :disabled="posStore.loading">
             Cancelar
           </v-btn>
           <v-spacer />
@@ -658,8 +646,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* =========================
+   ✅ DARK/LIGHT SAFE BASE
+========================= */
 .pos-wrap {
-  background: #f6f7f9;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
   min-height: calc(100vh - 24px);
   padding: 16px;
 }
@@ -674,10 +666,23 @@ onMounted(async () => {
   flex-direction: column;
 }
 
+/* helper: superficies coherentes con theme */
+.pos-surface {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* líneas/bordes usando theme (no rgba negro fijo) */
+.pos-surface,
+.cart-item,
+.empty,
+.badge-sku,
+.border {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
 /* =========================
-   ✅ NUEVO: “CAJA” para productos (no en el aire)
-   - Hace que la lista/grilla de productos viva dentro de un panel
-   - Con altura controlada y scroll interno
+   ✅ Caja productos con scroll interno
 ========================= */
 .pos-left {
   min-height: calc(100vh - 110px);
@@ -687,23 +692,14 @@ onMounted(async () => {
   flex: 1 1 auto;
   min-height: 0;
 
-  /* caja */
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   padding: 12px;
 
-  /* altura + scroll interno */
   max-height: calc(100vh - 190px);
   overflow: auto;
 
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
-}
-
-/* si querés que el loader/empty no quede pegado */
-.pos-products .py-12 {
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
+  scrollbar-gutter: stable;
 }
 
 .pos-toolbar {
@@ -729,7 +725,7 @@ onMounted(async () => {
 .thumb-wrap {
   height: 110px;
   position: relative;
-  background: white;
+  background: rgb(var(--v-theme-surface));
 }
 .thumb {
   height: 110px;
@@ -739,7 +735,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 110px;
-  background: #f2f4f7;
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .badge-sku {
@@ -749,8 +745,8 @@ onMounted(async () => {
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(var(--v-theme-surface), 0.92);
+  backdrop-filter: blur(4px);
 }
 
 .title {
@@ -762,11 +758,11 @@ onMounted(async () => {
 
 .meta {
   font-size: 11px;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.66);
   margin-top: 6px;
 }
 .meta .muted {
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 .meta .dot {
   margin: 0 6px;
@@ -786,11 +782,8 @@ onMounted(async () => {
 }
 
 /* =========================
-   CARRITO (FIX ALTURA + FOOTER SIEMPRE VISIBLE)
-   - NO se estira hacia abajo.
-   - El scroll solo en el body.
+   CARRITO (alto fijo + scroll en body)
 ========================= */
-
 .cart-card {
   position: sticky;
   top: 12px;
@@ -798,34 +791,25 @@ onMounted(async () => {
   flex-direction: column;
   overflow: hidden;
   border-radius: 16px;
-  background: white;
 
-  /* ✅ altura controlada (clave) */
   height: calc(100vh - 110px);
   max-height: calc(100vh - 110px);
 }
 
-/* Header fijo */
 .cart-head {
   flex: 0 0 auto;
-  background: white;
 }
 
-/* Body scrolleable (clave: min-height:0) */
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding-bottom: 14px;
-
-  /* opcional, evita saltos por scrollbar */
   scrollbar-gutter: stable;
 }
 
-/* Footer fijo (NO sticky, en flex queda siempre visible) */
 .cart-foot {
   flex: 0 0 auto;
-  background: white;
   z-index: 2;
   box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
 }
@@ -835,8 +819,7 @@ onMounted(async () => {
 }
 
 .cart-item {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: white;
+  background: rgba(var(--v-theme-surface), 0.9);
 }
 
 .cart-title {
@@ -846,15 +829,15 @@ onMounted(async () => {
 }
 
 .border {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
 }
 
 .empty {
-  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-style: dashed;
   border-radius: 14px;
   padding: 18px;
   text-align: center;
-  background: white;
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .totals .row {
@@ -866,21 +849,18 @@ onMounted(async () => {
 .totals .row.total {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .muted {
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
-/* =========================
-   FIX: BOTONES DEL FOOTER (VACÍAR / COBRAR)
-   - Mantiene 2 botones visibles siempre.
-========================= */
-.cart-foot .d-flex.ga-2 {
+/* botones del footer */
+.cart-actions {
   flex-wrap: nowrap;
 }
-.cart-foot .d-flex.ga-2 > .v-btn {
+.cart-actions > .v-btn {
   flex: 1 1 0;
   min-width: 0;
 }
@@ -889,7 +869,7 @@ onMounted(async () => {
 }
 
 /* =========================
-   MOBILE TUNING
+   MOBILE
 ========================= */
 @media (max-width: 960px) {
   .pos-wrap {
@@ -901,7 +881,6 @@ onMounted(async () => {
     top: auto;
   }
 
-  /* en mobile, evitamos cajas con height fijo */
   .pos-left {
     min-height: auto;
   }

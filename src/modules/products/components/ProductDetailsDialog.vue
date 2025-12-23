@@ -2,7 +2,6 @@
 <template>
   <v-dialog v-model="openLocal" max-width="980">
     <v-card rounded="xl" class="pd-root">
-      <!-- HEADER -->
       <div class="pd-header">
         <div class="pd-title">
           <div class="text-h6 font-weight-bold">Detalle producto</div>
@@ -45,7 +44,6 @@
         <v-skeleton-loader v-if="loading" type="article" />
 
         <template v-else>
-          <!-- TOP SUMMARY -->
           <div class="pd-summary">
             <div>
               <div class="text-h5 font-weight-bold">{{ item?.name || "—" }}</div>
@@ -58,17 +56,10 @@
               <v-chip size="small" variant="tonal" :color="item?.is_active ? 'primary' : 'red'">
                 {{ item?.is_active ? "Activo" : "Inactivo" }}
               </v-chip>
-              <v-chip size="small" variant="tonal">
-                {{ item?.is_new ? "Nuevo" : "Existente" }}
-              </v-chip>
-              <v-chip size="small" variant="tonal">
-                Promo: {{ item?.is_promo ? "Sí" : "No" }}
-              </v-chip>
             </div>
           </div>
 
           <v-row dense>
-            <!-- LEFT: DATA -->
             <v-col cols="12" md="5">
               <v-card rounded="xl" variant="flat" class="pd-card">
                 <div class="pd-card-title">
@@ -99,7 +90,7 @@
 
                 <div class="pd-card-title">
                   <v-icon size="18">mdi-cash</v-icon>
-                  <span>Precios</span>
+                  <span>Precio lista</span>
                 </div>
 
                 <div class="pd-prices">
@@ -107,24 +98,10 @@
                     <div class="pd-price-k">Lista</div>
                     <div class="pd-price-v">{{ money(item?.price_list) }}</div>
                   </div>
-                  <div class="pd-price">
-                    <div class="pd-price-k">Dto.</div>
-                    <div class="pd-price-v">{{ money(item?.price_discount) }}</div>
-                  </div>
-                  <div class="pd-price">
-                    <div class="pd-price-k">Rev.</div>
-                    <div class="pd-price-v">{{ money(item?.price_reseller) }}</div>
-                  </div>
-                </div>
-
-                <div v-if="item?.description" class="mt-3">
-                  <div class="text-caption text-medium-emphasis mb-1">Descripción</div>
-                  <div class="text-body-2 pd-desc">{{ item.description }}</div>
                 </div>
               </v-card>
             </v-col>
 
-            <!-- RIGHT: IMAGES -->
             <v-col cols="12" md="7">
               <v-card rounded="xl" variant="flat" class="pd-card">
                 <div class="d-flex align-center justify-space-between">
@@ -144,7 +121,7 @@
                 <div v-else class="pd-img-grid">
                   <div v-for="img in images" :key="img.id" class="pd-img-tile">
                     <div class="pd-img-wrap">
-                      <img :src="img.url" :alt="`img-${img.id}`" class="pd-img" />
+                      <img :src="normalizeUrl(img.url)" :alt="`img-${img.id}`" class="pd-img" />
                       <div class="pd-img-overlay">
                         <v-chip size="x-small" variant="tonal">ID {{ img.id }}</v-chip>
 
@@ -172,7 +149,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- confirm delete producto -->
     <v-dialog v-model="deleteOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
@@ -189,7 +165,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- confirm delete imagen -->
     <v-dialog v-model="deleteImgOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar imagen</v-card-title>
@@ -234,7 +209,6 @@ const rubro = computed(() => item.value?.category?.parent?.name || null);
 const subrubro = computed(() => item.value?.category?.name || null);
 
 const deleteOpen = ref(false);
-
 const deleteImgOpen = ref(false);
 const deleteImg = ref(null);
 
@@ -248,6 +222,16 @@ watch(
 );
 
 watch(openLocal, (v) => emit("update:open", v));
+
+function normalizeUrl(u) {
+  if (!u) return "";
+  const s = String(u);
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+
+  const base = (import.meta.env.VITE_S3_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+  if (!base) return s;
+  return base + (s.startsWith("/") ? s : `/${s}`);
+}
 
 async function load() {
   const id = Number(props.productId);
@@ -317,155 +301,29 @@ async function doDeleteProduct() {
 </script>
 
 <style scoped>
-.pd-root {
-  overflow: hidden;
-}
+.pd-root { overflow: hidden; }
+.pd-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; }
+.pd-actions { display:flex; align-items:center; gap:10px; }
+.pd-body { padding:18px 20px 22px; }
+.pd-summary { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.pd-card { border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 24px rgba(0,0,0,.05); padding:16px; }
+.pd-card-title { display:flex; align-items:center; gap:8px; font-weight:800; margin-bottom:10px; }
+.pd-kv { display:grid; gap:8px; }
+.pd-kv-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.pd-k { font-size:12px; opacity:.7; }
+.pd-v { font-size:14px; font-weight:600; text-align:right; }
+.pd-prices { display:grid; gap:10px; }
+.pd-price { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.pd-price-k { font-size:12px; opacity:.7; }
+.pd-price-v { font-size:15px; font-weight:800; }
 
-.pd-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px;
-}
+.pd-img-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+@media (max-width:700px){ .pd-img-grid { grid-template-columns: 1fr; } }
 
-.pd-title {
-  display: grid;
-  gap: 2px;
-}
-
-.pd-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pd-body {
-  padding: 18px 20px 22px;
-}
-
-.pd-summary {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.pd-card {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
-  padding: 16px;
-}
-
-.pd-card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-.pd-kv {
-  display: grid;
-  gap: 8px;
-}
-
-.pd-kv-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pd-k {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.pd-v {
-  font-size: 14px;
-  font-weight: 600;
-  text-align: right;
-}
-
-.pd-prices {
-  display: grid;
-  gap: 10px;
-}
-
-.pd-price {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pd-price-k {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.pd-price-v {
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.pd-desc {
-  white-space: pre-wrap;
-}
-
-.pd-img-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-@media (max-width: 700px) {
-  .pd-img-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.pd-img-tile {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
-}
-
-.pd-img-wrap {
-  position: relative;
-  width: 100%;
-  height: 210px;
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.pd-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transform: scale(1);
-  transition: transform 180ms ease;
-}
-
-.pd-img-wrap:hover .pd-img {
-  transform: scale(1.03);
-}
-
-.pd-img-overlay {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pd-img-del {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-}
+.pd-img-tile { border-radius:14px; overflow:hidden; border:1px solid rgba(0,0,0,.06); box-shadow:0 8px 18px rgba(0,0,0,.06); }
+.pd-img-wrap { position:relative; width:100%; height:210px; background:rgba(0,0,0,.03); }
+.pd-img { width:100%; height:100%; object-fit:cover; display:block; transform:scale(1); transition:transform 180ms ease; }
+.pd-img-wrap:hover .pd-img { transform:scale(1.03); }
+.pd-img-overlay { position:absolute; left:10px; right:10px; bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pd-img-del { box-shadow: 0 10px 24px rgba(0,0,0,.18); }
 </style>

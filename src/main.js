@@ -11,13 +11,9 @@ import VueApexCharts from "vue3-apexcharts";
 
 const app = createApp(App);
 
-app
-  .use(createPinia())
-  .use(router)
-  .use(vuetify)
-  .use(VueApexCharts);
+app.use(createPinia()).use(router).use(vuetify);
 
-// componente global
-app.component("apexchart", VueApexCharts);
+// ✅ NO lo registres dos veces
+app.use(VueApexCharts);
 
 app.mount("#app");

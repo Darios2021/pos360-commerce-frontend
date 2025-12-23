@@ -1,12 +1,20 @@
 /* src/style.css */
-/* Reset limpio para Vuetify (el CSS default de Vite rompe v-app/v-main) */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* Base */
+:root {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* -----------------------------
+   POS360 Theme helpers
+   ----------------------------- */
+
+/* Fondo general siempre guiado por Vuetify theme */
 html,
 body {
   height: 100%;
@@ -14,16 +22,68 @@ body {
 
 body {
   margin: 0;
-  padding: 0;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
 }
 
-/* Vuetify necesita que #app ocupe todo */
-#app {
-  min-height: 100vh;
-  width: 100%;
+/* Helpers que podés usar en vistas */
+.pos-page {
+  background: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
+  min-height: calc(100vh - 72px); /* appbar */
 }
 
-/* Opcional: suaviza la tipografía en Windows */
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+.pos-surface {
+  background: rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.pos-surface-variant {
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  color: rgb(var(--v-theme-on-surface-variant)) !important;
+}
+
+/* -----------------------------
+   FIX: Clases "lighten" rompen dark
+   ----------------------------- */
+
+/* Si tu POS tiene bg-grey-lighten-4 o similares, en dark las pisamos */
+.v-theme--dark .bg-grey-lighten-5,
+.v-theme--dark .bg-grey-lighten-4,
+.v-theme--dark .bg-grey-lighten-3,
+.v-theme--dark .bg-grey-lighten-2,
+.v-theme--dark .bg-grey-lighten-1,
+.v-theme--dark .bg-grey-lighten-0 {
+  background-color: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
+}
+
+/* A veces quedan contenedores con blanco fijo */
+.v-theme--dark .bg-white,
+.v-theme--dark .bg-light,
+.v-theme--dark .bg-grey {
+  background-color: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
+}
+
+/* -----------------------------
+   Cards / panels: asegurar contraste
+   ----------------------------- */
+
+/* Muchos layouts usan v-card con fondos raros. Forzamos a surface en dark */
+.v-theme--dark .v-card {
+  background-color: rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* Inputs dentro de paneles oscuros */
+.v-theme--dark .v-field,
+.v-theme--dark .v-input__control,
+.v-theme--dark .v-field__input {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* Tip: bordes suaves en dark */
+.v-theme--dark .v-divider {
+  opacity: 0.18;
 }
