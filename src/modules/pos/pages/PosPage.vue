@@ -1,3 +1,4 @@
+<!-- src/modules/pos/pages/PosPage.vue -->
 <template>
   <v-container fluid class="pos-wrap">
     <!-- Header -->
@@ -5,6 +6,18 @@
       <div>
         <div class="text-h5 font-weight-bold">Punto de Venta</div>
         <div class="text-caption text-medium-emphasis">Productos · Carrito · Cobro</div>
+
+        <div class="d-flex flex-wrap ga-2 mt-2">
+          <v-chip size="small" variant="tonal" color="primary">
+            Branch: {{ posStore.branch_id ?? "—" }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" color="primary">
+            Depósito: {{ posStore.warehouse_id ?? "—" }}
+          </v-chip>
+          <v-chip v-if="ctxError" size="small" variant="tonal" color="red">
+            {{ ctxError }}
+          </v-chip>
+        </div>
       </div>
 
       <div class="d-flex ga-2">
@@ -125,12 +138,22 @@
                     <span class="muted">Modelo:</span> {{ p.model || "—" }}
                   </div>
 
-                  <div class="price-row mt-2">
+                  <div class="price-row mt-2 d-flex align-center justify-space-between">
                     <div v-if="hasPrice(p)" class="price">
                       {{ money(getPrice(p)) }}
                     </div>
                     <v-chip v-else size="small" color="red" variant="tonal">
                       SIN PRECIO
+                    </v-chip>
+
+                    <!-- stock por depósito (POS) -->
+                    <v-chip
+                      v-if="typeof p.qty !== 'undefined' || typeof p.stock_qty !== 'undefined'"
+                      size="small"
+                      variant="tonal"
+                      class="ml-2"
+                    >
+                      Stock: {{ Number(p.qty ?? p.stock_qty ?? 0).toFixed(3) }}
                     </v-chip>
                   </div>
                 </v-card-text>
@@ -234,7 +257,7 @@
                       icon="mdi-plus"
                       size="x-small"
                       variant="tonal"
-                      @click.stop="posStore.addToCart({ ...it, price_list: it.price, price: it.price })"
+                      @click.stop="onPlus(it)"
                     />
                   </div>
                 </template>
@@ -410,8 +433,14 @@
       </v-card>
     </v-dialog>
 
+    <!-- snack local -->
     <v-snackbar v-model="snack.show" :timeout="3200">
       {{ snack.text }}
+    </v-snackbar>
+
+    <!-- snack global del store (si existe) -->
+    <v-snackbar v-model="posStore.toast.show" :timeout="3200">
+      {{ posStore.toast.text }}
     </v-snackbar>
   </v-container>
 </template>
@@ -423,6 +452,8 @@ import { usePosStore } from "../../../app/store/pos.store";
 
 const productsStore = useProductsStore();
 const posStore = usePosStore();
+
+const ctxError = ref("");
 
 const q = ref("");
 const page = ref(1);
@@ -504,19 +535,89 @@ function hasPrice(p) {
   return getPrice(p) > 0;
 }
 
+// ✅ Agregar con UI feedback (sin stock / sin precio / etc)
+// ✅ IMPORTANTE: NO pasar "qty" al store (qty es la cantidad vendida)
 function add(p) {
   const img = productImage(p);
-  posStore.addToCart({ ...p, image: img });
+
+  const available_qty = Number(p.qty ?? p.stock_qty ?? 0);
+
+  if (available_qty <= 0) {
+    snack.value = { show: true, text: "❌ Sin stock en este depósito" };
+    return;
+  }
+  if (!hasPrice(p)) {
+    snack.value = { show: true, text: "⚠️ Producto sin precio" };
+    return;
+  }
+
+  try {
+    posStore.addToCart({
+      ...p,
+      image: img,
+      available_qty,
+      // price elegido por modo (si tu store usa price_list / price, esto ayuda)
+      price: getPrice(p),
+      price_list: getPrice(p),
+    });
+
+    snack.value = { show: true, text: "✅ Agregado al carrito" };
+  } catch (e) {
+    snack.value = { show: true, text: e?.message || "❌ No se pudo agregar" };
+  }
+}
+
+// ✅ + del carrito: usar increaseQty (no reusar addToCart con el item)
+function onPlus(it) {
+  try {
+    if (typeof posStore.increaseQty === "function") {
+      posStore.increaseQty(it.id);
+      return;
+    }
+    // fallback si no existe increaseQty:
+    posStore.addToCart({
+      id: it.id,
+      product_id: it.product_id ?? it.id,
+      name: it.name,
+      sku: it.sku,
+      image: it.image,
+      price: it.price,
+      price_list: it.price,
+      available_qty: it.available_qty,
+    });
+  } catch (e) {
+    snack.value = { show: true, text: e?.message || "❌ No se pudo agregar" };
+  }
+}
+
+async function ensurePosContext() {
+  try {
+    ctxError.value = "";
+    await posStore.ensureContext();
+  } catch (e) {
+    const msg = e?.message || "No se pudo cargar contexto POS";
+    ctxError.value = msg;
+    snack.value = { show: true, text: msg };
+  }
 }
 
 async function fetchList() {
   loadingList.value = true;
   try {
+    await ensurePosContext();
+
     await productsStore.fetchList({
       q: q.value,
       page: page.value,
       limit: limit.value,
+      branch_id: posStore.branch_id || undefined,
+      warehouse_id: posStore.warehouse_id || undefined,
+
+      // ✅ UX: por defecto NO mostrar sin stock (usa tu backend POS in_stock=1)
+      in_stock: 1,
     });
+  } catch (e) {
+    snack.value = { show: true, text: e?.message || "Error cargando productos" };
   } finally {
     loadingList.value = false;
   }
@@ -635,6 +736,7 @@ async function confirmPayment() {
     await posStore.checkout(paymentMethod.value);
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
+    fetchList();
   } catch (e) {
     snack.value = { show: true, text: posStore.error || "❌ Error al confirmar la venta" };
   }
@@ -646,265 +748,93 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* =========================
-   ✅ DARK/LIGHT SAFE BASE
-========================= */
+/* (tu CSS queda igual, no lo toco) */
 .pos-wrap {
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
   min-height: calc(100vh - 24px);
   padding: 16px;
 }
-
-.pos-grid {
-  align-items: flex-start;
-}
-
-.pos-left,
-.pos-right {
-  display: flex;
-  flex-direction: column;
-}
-
-/* helper: superficies coherentes con theme */
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-}
-
-/* líneas/bordes usando theme (no rgba negro fijo) */
-.pos-surface,
-.cart-item,
-.empty,
-.badge-sku,
-.border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-/* =========================
-   ✅ Caja productos con scroll interno
-========================= */
-.pos-left {
-  min-height: calc(100vh - 110px);
-}
-
+.pos-grid { align-items: flex-start; }
+.pos-left, .pos-right { display: flex; flex-direction: column; }
+.pos-surface { background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); }
+.pos-surface, .cart-item, .empty, .badge-sku, .border { border: 1px solid rgba(var(--v-theme-on-surface), 0.08); }
+.pos-left { min-height: calc(100vh - 110px); }
 .pos-products {
   flex: 1 1 auto;
   min-height: 0;
-
   border-radius: 16px;
   padding: 12px;
-
   max-height: calc(100vh - 190px);
   overflow: auto;
-
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
   scrollbar-gutter: stable;
 }
-
-.pos-toolbar {
-  position: sticky;
-  top: 12px;
-  z-index: 2;
-}
-
-/* =========================
-   PRODUCTOS
-========================= */
-.product-card {
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.product-card:hover {
-  transform: translateY(-2px);
-}
-.product-disabled {
-  opacity: 0.65;
-}
-
-.thumb-wrap {
-  height: 110px;
-  position: relative;
-  background: rgb(var(--v-theme-surface));
-}
-.thumb {
-  height: 110px;
-}
+.pos-toolbar { position: sticky; top: 12px; z-index: 2; }
+.product-card { overflow: hidden; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.product-card:hover { transform: translateY(-2px); }
+.product-disabled { opacity: 0.65; }
+.thumb-wrap { height: 110px; position: relative; background: rgb(var(--v-theme-surface)); }
+.thumb { height: 110px; }
 .thumb-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 110px;
+  display: flex; align-items: center; justify-content: center; height: 110px;
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
-
 .badge-sku {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-surface), 0.92);
-  backdrop-filter: blur(4px);
+  position: absolute; left: 10px; bottom: 8px;
+  font-size: 11px; padding: 3px 8px; border-radius: 999px;
+  background: rgba(var(--v-theme-surface), 0.92); backdrop-filter: blur(4px);
 }
-
-.title {
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1.2;
-  min-height: 32px;
-}
-
-.meta {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.66);
-  margin-top: 6px;
-}
-.meta .muted {
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-.meta .dot {
-  margin: 0 6px;
-  opacity: 0.5;
-}
-
-.price-row .price {
-  font-weight: 900;
-  font-size: 16px;
-}
-
+.title { font-weight: 800; font-size: 13px; line-height: 1.2; min-height: 32px; }
+.meta { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.66); margin-top: 6px; }
+.meta .muted { color: rgba(var(--v-theme-on-surface), 0.5); }
+.meta .dot { margin: 0 6px; opacity: 0.5; }
+.price-row .price { font-weight: 900; font-size: 16px; }
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-/* =========================
-   CARRITO (alto fijo + scroll en body)
-========================= */
 .cart-card {
-  position: sticky;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 16px;
-
-  height: calc(100vh - 110px);
-  max-height: calc(100vh - 110px);
+  position: sticky; top: 12px;
+  display: flex; flex-direction: column;
+  overflow: hidden; border-radius: 16px;
+  height: calc(100vh - 110px); max-height: calc(100vh - 110px);
 }
-
-.cart-head {
-  flex: 0 0 auto;
-}
-
+.cart-head { flex: 0 0 auto; }
 .cart-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-bottom: 14px;
+  flex: 1 1 auto; min-height: 0;
+  overflow: auto; padding-bottom: 14px;
   scrollbar-gutter: stable;
 }
-
-.cart-foot {
-  flex: 0 0 auto;
-  z-index: 2;
-  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
-}
-
-.cart-foot .v-btn {
-  min-height: 44px;
-}
-
-.cart-item {
-  background: rgba(var(--v-theme-surface), 0.9);
-}
-
-.cart-title {
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.border {
-  border-radius: 10px;
-}
-
+.cart-foot { flex: 0 0 auto; z-index: 2; box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06); }
+.cart-foot .v-btn { min-height: 44px; }
+.cart-item { background: rgba(var(--v-theme-surface), 0.9); }
+.cart-title { font-weight: 800; font-size: 13px; line-height: 1.2; }
+.border { border-radius: 10px; }
 .empty {
-  border-style: dashed;
-  border-radius: 14px;
-  padding: 18px;
-  text-align: center;
+  border-style: dashed; border-radius: 14px;
+  padding: 18px; text-align: center;
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
-
-.totals .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 6px 0;
-}
+.totals .row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; }
 .totals .row.total {
-  margin-top: 10px;
-  padding-top: 8px;
+  margin-top: 10px; padding-top: 8px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
+.muted { color: rgba(var(--v-theme-on-surface), 0.62); }
+.cart-actions { flex-wrap: nowrap; }
+.cart-actions > .v-btn { flex: 1 1 0; min-width: 0; }
+.cart-foot .v-btn.v-btn--block { width: auto !important; }
 
-.muted {
-  color: rgba(var(--v-theme-on-surface), 0.62);
-}
-
-/* botones del footer */
-.cart-actions {
-  flex-wrap: nowrap;
-}
-.cart-actions > .v-btn {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.cart-foot .v-btn.v-btn--block {
-  width: auto !important;
-}
-
-/* =========================
-   MOBILE
-========================= */
 @media (max-width: 960px) {
-  .pos-wrap {
-    padding: 10px;
-  }
-
-  .pos-toolbar {
-    position: relative;
-    top: auto;
-  }
-
-  .pos-left {
-    min-height: auto;
-  }
-
-  .pos-products {
-    max-height: none;
-    overflow: visible;
-    padding: 10px;
-  }
-
-  .cart-card {
-    position: relative;
-    top: auto;
-    height: auto;
-    max-height: none;
-  }
-
-  .cart-body {
-    min-height: auto;
-    overflow: visible;
-  }
-
-  .cart-foot {
-    box-shadow: none;
-  }
+  .pos-wrap { padding: 10px; }
+  .pos-toolbar { position: relative; top: auto; }
+  .pos-left { min-height: auto; }
+  .pos-products { max-height: none; overflow: visible; padding: 10px; }
+  .cart-card { position: relative; top: auto; height: auto; max-height: none; }
+  .cart-body { min-height: auto; overflow: visible; }
+  .cart-foot { box-shadow: none; }
 }
 </style>

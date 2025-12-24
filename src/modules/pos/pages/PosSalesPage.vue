@@ -108,6 +108,20 @@
             />
           </v-col>
 
+          <!-- ✅ Admin: filtro por sucursal -->
+          <v-col cols="12" sm="6" md="3" v-if="isAdmin">
+            <v-select
+              v-model="selectedBranchId"
+              :items="branchSelectItems"
+              label="Sucursal"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              :loading="branchesLoading"
+              @update:model-value="applyFilters"
+            />
+          </v-col>
+
           <v-col cols="12" sm="6" md="2">
             <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
               <template #activator="{ props }">
@@ -170,7 +184,7 @@
           <v-spacer />
 
           <v-chip size="small" variant="tonal" color="primary">
-            Branch: {{ branchId ?? "—" }}
+            Branch: {{ effectiveBranchId ?? "— (todas)" }}
           </v-chip>
 
           <v-chip size="small" variant="tonal" :color="isAdmin ? 'green' : 'grey'">
@@ -319,17 +333,6 @@
           </div>
 
           <div class="d-flex ga-2">
-            <v-btn
-              v-if="detail"
-              size="small"
-              variant="tonal"
-              @click="printSale(detail)"
-              title="Imprimir (demo)"
-            >
-              <v-icon start>mdi-printer</v-icon>
-              Imprimir
-            </v-btn>
-
             <v-btn icon="mdi-close" variant="text" @click="detailDialog = false" />
           </div>
         </v-card-title>
@@ -341,229 +344,7 @@
         </v-card-text>
 
         <v-card-text v-else-if="detail">
-          <!-- RESUMEN -->
-          <v-row dense>
-            <v-col cols="12" md="7">
-              <v-card class="rounded-xl" elevation="1">
-                <v-card-text>
-                  <div class="d-flex justify-space-between flex-wrap ga-4">
-                    <div>
-                      <div class="text-caption text-medium-emphasis">Cliente</div>
-                      <div class="text-h6 font-weight-black">
-                        {{ detail.customer_name || "Consumidor Final" }}
-                      </div>
-                      <div class="text-caption text-medium-emphasis mt-1">
-                        Fecha: {{ dt(detail.sold_at) }}
-                        <span v-if="detail.sale_number"> · N°: {{ detail.sale_number }}</span>
-                      </div>
-                    </div>
-
-                    <div class="text-right">
-                      <div class="text-caption text-medium-emphasis">Total</div>
-                      <div class="text-h5 font-weight-black">{{ money(detail.total) }}</div>
-                      <div class="text-caption text-medium-emphasis">
-                        Estado: <b>{{ statusLabel(detail.status) }}</b>
-                      </div>
-                    </div>
-                  </div>
-
-                  <v-divider class="my-4" />
-
-                  <div class="d-flex flex-wrap ga-2">
-                    <v-chip variant="tonal" color="primary">
-                      Pagado: <b class="ml-1">{{ money(detail.paid_total) }}</b>
-                    </v-chip>
-                    <v-chip variant="tonal" color="grey">
-                      Vuelto: <b class="ml-1">{{ money(detail.change_total) }}</b>
-                    </v-chip>
-
-                    <v-spacer />
-
-                    <v-btn size="small" variant="tonal" @click="copySaleId(detail.id)">
-                      <v-icon start>mdi-content-copy</v-icon>
-                      Copiar ID
-                    </v-btn>
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-
-            <v-col cols="12" md="5">
-              <v-card class="rounded-xl" elevation="1">
-                <v-card-text>
-                  <div class="text-subtitle-2 font-weight-bold mb-2">Pagos</div>
-
-                  <div v-if="!detail.payments?.length" class="text-caption text-medium-emphasis">
-                    Sin pagos asociados.
-                  </div>
-
-                  <v-list v-else density="compact" class="py-0">
-                    <v-list-item v-for="p in detail.payments" :key="p.id">
-                      <template #prepend>
-                        <v-avatar size="32" variant="tonal" color="primary">
-                          <v-icon size="18">{{ methodIcon(p.method) }}</v-icon>
-                        </v-avatar>
-                      </template>
-
-                      <v-list-item-title class="font-weight-bold">
-                        {{ methodLabel(p.method) }}
-                      </v-list-item-title>
-
-                      <v-list-item-subtitle class="text-caption">
-                        {{ dt(p.paid_at || detail.sold_at) }}
-                      </v-list-item-subtitle>
-
-                      <template #append>
-                        <div class="font-weight-black">{{ money(p.amount) }}</div>
-                      </template>
-                    </v-list-item>
-                  </v-list>
-
-                  <v-divider class="my-3" />
-
-                  <div class="d-flex justify-space-between">
-                    <span class="text-caption text-medium-emphasis">Subtotal</span>
-                    <span class="font-weight-bold">{{ money(detail.subtotal) }}</span>
-                  </div>
-                  <div class="d-flex justify-space-between">
-                    <span class="text-caption text-medium-emphasis">Descuento</span>
-                    <span class="font-weight-bold">{{ money(detail.discount_total) }}</span>
-                  </div>
-                  <div class="d-flex justify-space-between">
-                    <span class="text-caption text-medium-emphasis">Impuestos</span>
-                    <span class="font-weight-bold">{{ money(detail.tax_total) }}</span>
-                  </div>
-                  <div class="d-flex justify-space-between mt-2">
-                    <span class="text-subtitle-2 font-weight-bold">Total</span>
-                    <span class="text-h6 font-weight-black">{{ money(detail.total) }}</span>
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <!-- TABS DETALLE -->
-          <v-divider class="my-4" />
-
-          <v-tabs v-model="detailTab" color="primary">
-            <v-tab value="items">
-              <v-icon start>mdi-cart</v-icon>
-              Productos
-              <v-chip class="ml-2" size="x-small" variant="tonal">
-                {{ (detail.items || []).length }}
-              </v-chip>
-            </v-tab>
-            <v-tab value="raw">
-              <v-icon start>mdi-code-json</v-icon>
-              JSON
-            </v-tab>
-          </v-tabs>
-
-          <v-window v-model="detailTab" class="mt-3">
-            <!-- ITEMS -->
-            <v-window-item value="items">
-              <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-                <div class="text-subtitle-2 font-weight-bold">Productos vendidos</div>
-
-                <v-text-field
-                  v-model="itemQ"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                  clearable
-                  prepend-inner-icon="mdi-magnify"
-                  placeholder="Filtrar por nombre / SKU / barcode..."
-                  style="max-width: 360px;"
-                />
-              </div>
-
-              <v-row dense>
-                <v-col v-for="it in filteredItems" :key="it.id" cols="12" md="6">
-                  <v-card class="rounded-xl" elevation="1">
-                    <v-card-text class="d-flex ga-3">
-                      <v-avatar rounded="lg" size="78" class="border">
-                        <v-img v-if="productImage(it)" :src="productImage(it)" cover />
-                        <v-icon v-else size="34">mdi-package-variant</v-icon>
-                      </v-avatar>
-
-                      <div class="flex-grow-1">
-                        <div class="font-weight-black">
-                          {{ it.product?.name || it.product_name_snapshot || "Producto" }}
-                        </div>
-
-                        <div class="text-caption text-medium-emphasis">
-                          SKU: {{ it.product?.sku || it.product_sku_snapshot || "—" }}
-                          · Código: {{ it.product?.code || "—" }}
-                          · Barcode: {{ it.product?.barcode || "—" }}
-                        </div>
-
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          Marca: {{ it.product?.brand || "—" }} · Modelo: {{ it.product?.model || "—" }}
-                        </div>
-
-                        <div class="mt-2 d-flex justify-space-between align-end">
-                          <div class="text-caption">
-                            {{ qtyFmt(it.quantity) }} × {{ money(it.unit_price) }}
-                          </div>
-                          <div class="text-h6 font-weight-black">
-                            {{ money(it.line_total) }}
-                          </div>
-                        </div>
-
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          Categoría: {{ it.product?.category?.name || "—" }}
-                          <span v-if="it.product?.category?.parent?.name">
-                            · Padre: {{ it.product.category.parent.name }}
-                          </span>
-                        </div>
-                      </div>
-                    </v-card-text>
-
-                    <v-divider />
-
-                    <v-card-actions class="px-4 py-2">
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        color="primary"
-                        @click="goToProduct(it.product?.id)"
-                        :disabled="!it.product?.id"
-                      >
-                        <v-icon start>mdi-eye</v-icon>
-                        Ver producto
-                      </v-btn>
-
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        @click="copyText(it.product?.sku || it.product_sku_snapshot || '')"
-                        :disabled="!(it.product?.sku || it.product_sku_snapshot)"
-                        title="Copiar SKU"
-                      >
-                        <v-icon start>mdi-content-copy</v-icon>
-                        SKU
-                      </v-btn>
-
-                      <v-spacer />
-
-                      <div class="text-caption text-medium-emphasis">
-                        Lista: {{ money(it.product?.price_list) }} · Precio: {{ money(it.product?.price) }}
-                      </div>
-                    </v-card-actions>
-                  </v-card>
-                </v-col>
-              </v-row>
-            </v-window-item>
-
-            <!-- RAW JSON -->
-            <v-window-item value="raw">
-              <v-card class="rounded-xl" elevation="1">
-                <v-card-text>
-                  <pre class="json">{{ pretty(detail) }}</pre>
-                </v-card-text>
-              </v-card>
-            </v-window-item>
-          </v-window>
+          <pre class="json">{{ pretty(detail) }}</pre>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -625,21 +406,9 @@ import { useAuthStore } from "../../../app/store/auth.store";
 const router = useRouter();
 const auth = useAuthStore();
 
-// ✅ branchId REAL (sale del /me -> users.branch_id)
-// fallback: si no está, queda null y backend puede resolver por warehouse/contexto
-const branchId = computed(() => {
-  const u = auth?.user || null;
-  const id = Number(u?.branch_id || auth?.branchId || 0);
-  return Number.isFinite(id) && id > 0 ? id : null;
-});
-
 // ===== Helpers auth (JWT) =====
 function safeAtob(str) {
-  try {
-    return atob(str);
-  } catch {
-    return "";
-  }
+  try { return atob(str); } catch { return ""; }
 }
 function decodeJwtPayload(token) {
   try {
@@ -720,6 +489,62 @@ const isAdmin = computed(() => {
   );
 });
 
+// ✅ branchId del user (solo para no-admin)
+const userBranchId = computed(() => {
+  const u = auth?.user || null;
+  const id = Number(u?.branch_id || auth?.branchId || 0);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
+
+// ✅ Admin puede elegir sucursal (null = todas)
+const selectedBranchId = ref(null);
+
+// ✅ branch efectivo que se manda al backend
+const effectiveBranchId = computed(() => {
+  if (isAdmin.value) {
+    const v = Number(selectedBranchId.value || 0);
+    return Number.isFinite(v) && v > 0 ? v : null; // null = todas
+  }
+  return userBranchId.value; // user normal: su sucursal
+});
+
+// ===== Branches (para admin select) =====
+const branches = ref([]);
+const branchesLoading = ref(false);
+
+function pickArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
+  return [];
+}
+
+const branchSelectItems = computed(() => {
+  const arr = Array.isArray(branches.value) ? branches.value : [];
+  return [
+    { title: "Todas", value: null },
+    ...arr
+      .filter((b) => String(b?.is_active ?? 1) !== "0")
+      .map((b) => ({ title: b.name || `Sucursal #${b.id}`, value: Number(b.id) })),
+  ];
+});
+
+async function loadBranchesIfAdmin() {
+  if (!isAdmin.value) return;
+  branchesLoading.value = true;
+  try {
+    const { data } = await http.get("/branches");
+    if (!data?.ok) throw new Error(data?.message || "Error listando sucursales");
+    branches.value = pickArray(data) || [];
+  } catch (e) {
+    console.warn("No pude cargar /branches:", e?.message || e);
+  } finally {
+    branchesLoading.value = false;
+  }
+}
+
+// ===== UI state =====
 const dense = ref(false);
 const selected = ref([]);
 
@@ -741,8 +566,6 @@ const toMenu = ref(false);
 const detailDialog = ref(false);
 const loadingDetail = ref(false);
 const detail = ref(null);
-const detailTab = ref("items");
-const itemQ = ref("");
 
 // delete
 const deleteDialog = ref(false);
@@ -832,15 +655,6 @@ function methodLabel(m) {
   return m || "—";
 }
 
-function methodIcon(m) {
-  const x = String(m || "").toUpperCase();
-  if (x === "CASH") return "mdi-cash";
-  if (x === "CARD") return "mdi-credit-card";
-  if (x === "TRANSFER") return "mdi-bank-transfer";
-  if (x === "QR") return "mdi-qrcode";
-  return "mdi-dots-horizontal";
-}
-
 function statusLabel(s) {
   const x = String(s || "").toUpperCase();
   if (x === "PAID") return "Pagada";
@@ -858,23 +672,8 @@ function statusColor(s) {
   return "grey";
 }
 
-function qtyFmt(v) {
-  const n = Number(v || 0);
-  return n.toFixed(3);
-}
-
-function productImage(it) {
-  const imgs = it?.product?.images || [];
-  const first = imgs[0];
-  return first?.url || first?.public_url || first?.path || first?.key || "";
-}
-
 function pretty(obj) {
-  try {
-    return JSON.stringify(obj, null, 2);
-  } catch {
-    return String(obj);
-  }
+  try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
 }
 
 // ===== Debounce simple =====
@@ -901,8 +700,8 @@ async function fetchSales() {
       status: status.value || undefined,
     };
 
-    // ✅ solo filtra por branch si lo tenemos
-    if (branchId.value) params.branch_id = branchId.value;
+    // ✅ clave: solo mandar branch_id si corresponde (admin: opcional)
+    if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
 
     if (hasFrom) params.from = toStartOfDay(from.value);
     if (hasTo) params.to = toEndOfDay(to.value);
@@ -928,8 +727,6 @@ async function openDetail(id) {
   detailDialog.value = true;
   loadingDetail.value = true;
   detail.value = null;
-  detailTab.value = "items";
-  itemQ.value = "";
 
   try {
     const { data } = await http.get(`/pos/sales/${id}`);
@@ -942,24 +739,6 @@ async function openDetail(id) {
     loadingDetail.value = false;
   }
 }
-
-function goToProduct(productId) {
-  if (!productId) return;
-  router.push({ name: "productProfile", params: { id: productId } }).catch(() => router.push("/products"));
-}
-
-const filteredItems = computed(() => {
-  const items = detail.value?.items || [];
-  const qq = String(itemQ.value || "").trim().toLowerCase();
-  if (!qq) return items;
-
-  return items.filter((it) => {
-    const name = (it.product?.name || it.product_name_snapshot || "").toLowerCase();
-    const sku = (it.product?.sku || it.product_sku_snapshot || "").toLowerCase();
-    const bc = (it.product?.barcode || it.product_barcode_snapshot || "").toLowerCase();
-    return name.includes(qq) || sku.includes(qq) || bc.includes(qq);
-  });
-});
 
 // ===== Delete (single) =====
 function askDelete(item) {
@@ -1057,6 +836,10 @@ function resetFilters() {
   to.value = "";
   selected.value = [];
   meta.value.page = 1;
+
+  // ✅ admin vuelve a "todas"
+  if (isAdmin.value) selectedBranchId.value = null;
+
   fetchSales();
 }
 
@@ -1120,7 +903,7 @@ function exportCsv() {
     .map((r) =>
       Object.values(r)
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(",")
+        .join(","),
     )
     .join("\n");
   const csv = header + "\n" + body;
@@ -1135,10 +918,11 @@ function exportCsv() {
 }
 
 onMounted(async () => {
-  // ✅ si el store tiene token pero no user cargado, pedimos /me
   if (auth?.isAuthed && !auth.user && typeof auth.fetchMe === "function") {
     try { await auth.fetchMe(); } catch {}
   }
+
+  await loadBranchesIfAdmin();
   fetchSales();
 });
 
@@ -1170,7 +954,6 @@ const KpiCard = {
 </script>
 
 <style scoped>
-.border { border: 1px solid rgba(0,0,0,.08); }
 .json {
   font-size: 12px;
   background: rgba(0,0,0,.04);
