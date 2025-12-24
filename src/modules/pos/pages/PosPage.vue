@@ -103,7 +103,11 @@
 
           <v-row v-else dense>
             <v-col v-for="p in items" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
-              <v-card class="rounded-xl product-card pos-surface" elevation="1" :class="{ 'product-disabled': !hasPrice(p) }">
+              <v-card
+                class="rounded-xl product-card pos-surface"
+                elevation="1"
+                :class="{ 'product-disabled': !isSellable(p) }"
+              >
                 <div class="thumb-wrap">
                   <v-img v-if="productImage(p)" :src="productImage(p)" cover class="thumb" />
                   <div v-else class="thumb thumb-empty">
@@ -137,7 +141,14 @@
                 </v-card-text>
 
                 <v-card-actions class="pt-0 pb-3 px-3">
-                  <v-btn block size="small" color="primary" variant="tonal" :disabled="!hasPrice(p)" @click="add(p)">
+                  <v-btn
+                    block
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    :disabled="!isSellable(p)"
+                    @click="add(p)"
+                  >
                     <v-icon start>mdi-plus</v-icon>
                     Agregar
                   </v-btn>
@@ -210,7 +221,7 @@
                     </div>
 
                     <v-btn icon="mdi-minus" size="x-small" variant="tonal" @click.stop="posStore.decreaseQty(it.id)" />
-                    <v-btn icon="mdi-plus" size="x-small" variant="tonal" @click.stop="onPlus(it)" />
+                    <v-btn icon="mdi-plus" size="x-small" variant="tonal" @click.stop="posStore.increaseQty(it.id)" />
                   </div>
                 </template>
               </v-list-item>
@@ -249,6 +260,7 @@
       </v-col>
     </v-row>
 
+    <!-- Cobro -->
     <v-dialog v-model="checkoutDialog" max-width="520" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -418,6 +430,14 @@ function hasPrice(p) {
   return getPrice(p) > 0;
 }
 
+function hasStock(p) {
+  return Number(p?.qty ?? 0) > 0;
+}
+
+function isSellable(p) {
+  return hasPrice(p) && hasStock(p);
+}
+
 function add(p) {
   const available_qty = Number(p.qty ?? 0);
 
@@ -450,17 +470,11 @@ function add(p) {
   snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
-function onPlus(it) {
-  posStore.increaseQty(it.id);
-}
-
 /**
- * ✅ CLAVE:
- * Si auth.branch_id != pos.branch_id => el POS está con CONTEXTO VIEJO (localStorage o backend).
- * Entonces reseteamos y forzamos contexto según el usuario.
+ * ✅ Sync duro: branch del auth manda.
+ * Si localStorage quedó viejo, resetea y vuelve a resolver depósito.
  */
 async function hardSyncPosContextWithAuth() {
-  // asegurar que auth tenga lo más fresco
   try {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
   } catch {}
@@ -471,34 +485,19 @@ async function hardSyncPosContextWithAuth() {
   dbg("SYNC check", { authBranch, posBranch, posWarehouse: posStore.warehouse_id });
 
   if (!authBranch) {
-    dbg("SYNC: authBranch missing, fallback to pos.ensureContext()");
+    dbg("SYNC: authBranch missing -> pos.ensureContext(force)");
     await posStore.ensureContext({ force: true });
     return;
   }
 
-  // mismatch => reset total
   if (authBranch !== posBranch) {
-    dbg("SYNC: MISMATCH detected -> RESET + setBranch(auth) + ensureContext(force)", {
-      authBranch,
-      posBranch,
-      beforeWarehouse: posStore.warehouse_id,
-    });
-
+    dbg("SYNC: MISMATCH -> RESET + setBranch(auth) + ensureContext(force)", { authBranch, posBranch });
     posStore.resetContext();
     posStore.setBranch(authBranch);
     await posStore.ensureContext({ force: true });
-
-    dbg("SYNC: DONE", {
-      branch_id: posStore.branch_id,
-      warehouse_id: posStore.warehouse_id,
-      ls_branch: localStorage.getItem("pos_branch_id"),
-      ls_warehouse: localStorage.getItem("pos_warehouse_id"),
-    });
-
     return;
   }
 
-  // si branch coincide pero warehouse no, forzamos 1 vez por las dudas
   if (!Number(posStore.warehouse_id || 0)) {
     dbg("SYNC: branch ok but warehouse missing -> ensureContext(force)");
     await posStore.ensureContext({ force: true });
@@ -520,12 +519,15 @@ async function fetchList() {
       page: page.value,
       limit: limit.value,
       price_mode: priceMode.value,
-      in_stock: 0,
+
+      // ✅ CLAVE: no mostrar sin stock
+      in_stock: 1,
       sellable: 1,
+
       branch_id: posStore.branch_id || undefined,
       warehouse_id: posStore.warehouse_id || undefined,
 
-      // compat
+      // compat (por si backend usa estos nombres)
       branchId: posStore.branch_id || undefined,
       warehouseId: posStore.warehouse_id || undefined,
     };
@@ -537,14 +539,14 @@ async function fetchList() {
     const out = data?.data || [];
     const meta = data?.meta || {};
 
-    items.value = Array.isArray(out) ? out : [];
-    total.value = Number(meta?.total || 0);
+    // ✅ filtro defensivo extra (por si backend ignora in_stock)
+    const arr = Array.isArray(out) ? out : [];
+    items.value = arr.filter((p) => Number(p?.qty ?? 0) > 0);
+
+    total.value = Number(meta?.total || items.value.length || 0);
 
     dbg("pos/products meta", meta);
-
-    // log express de SKU problema
-    const hit = items.value.find((x) => String(x?.sku || "") === "123456");
-    dbg("sku 123456 in response", hit ? { id: hit.id, sku: hit.sku, qty: hit.qty } : "NOT_FOUND");
+    dbg("items after filter", { count: items.value.length });
 
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
@@ -645,12 +647,33 @@ watch([paymentMethod, cashInput], () => {
 
 async function confirmPayment() {
   try {
-    await posStore.checkout(paymentMethod.value);
+    dbg("confirmPayment start", {
+      method: paymentMethod.value,
+      branch_id: posStore.branch_id,
+      warehouse_id: posStore.warehouse_id,
+      total: posStore.totalAmount,
+      cart: posStore.cart?.map((x) => ({ id: x.id, product_id: x.product_id, qty: x.qty, price: x.price })),
+    });
+
+    // ✅ soporta store nuevo y viejo
+    if (typeof posStore.checkoutSale === "function") {
+      await posStore.checkoutSale(paymentMethod.value);
+    } else if (typeof posStore.checkout === "function") {
+      await posStore.checkout(paymentMethod.value);
+    } else {
+      throw new Error("posStore.checkout/checkoutSale no existe (store desactualizado o import incorrecto)");
+    }
+
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
     fetchList();
   } catch (e) {
-    snack.value = { show: true, text: posStore.error || "❌ Error al confirmar la venta" };
+    dbg("confirmPayment ERROR", {
+      msg: e?.message,
+      status: e?.response?.status,
+      data: e?.response?.data,
+    });
+    snack.value = { show: true, text: posStore.error || e?.response?.data?.message || "❌ Error al confirmar la venta" };
   }
 }
 
@@ -660,7 +683,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* tu CSS igual */
+/* (tu CSS igual, no lo toco) */
 .pos-wrap {
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
