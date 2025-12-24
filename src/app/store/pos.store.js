@@ -6,12 +6,10 @@ function toNum(v, d = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
 }
-
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
-
 function apiErrorMessage(err, fallback = "Error") {
   try {
     const data = err?.response?.data;
@@ -21,22 +19,73 @@ function apiErrorMessage(err, fallback = "Error") {
   }
 }
 
+const LS_BRANCH = "pos_branch_id";
+const LS_WAREHOUSE = "pos_warehouse_id";
+
+const POS_DEBUG =
+  String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" ||
+  import.meta?.env?.DEV;
+
+function dbg(...args) {
+  if (!POS_DEBUG) return;
+  // eslint-disable-next-line no-console
+  console.log("[POS]", ...args);
+}
+
+function readLSInt(key) {
+  try {
+    const v = localStorage.getItem(key);
+    const n = toInt(v, 0);
+    return n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+function writeLSInt(key, val) {
+  try {
+    if (!val) localStorage.removeItem(key);
+    else localStorage.setItem(key, String(val));
+  } catch {}
+}
+
+async function fetchFirstWarehouseIdByBranch(branchId) {
+  const bid = toInt(branchId, 0);
+  if (!bid) return null;
+
+  try {
+    const { data } = await http.get("/warehouses", {
+      params: { branch_id: bid, limit: 200 },
+    });
+
+    dbg("GET /warehouses raw", data);
+
+    const list = data?.data?.items || data?.items || data?.data || [];
+    const arr = Array.isArray(list) ? list : [];
+    const sorted = [...arr].sort((a, b) => toInt(a?.id, 0) - toInt(b?.id, 0));
+    const first = sorted[0];
+    const wid = toInt(first?.id, 0);
+
+    dbg("fetchFirstWarehouseIdByBranch", { branchId: bid, resolvedWarehouseId: wid || null });
+
+    return wid > 0 ? wid : null;
+  } catch (e) {
+    dbg("fetchFirstWarehouseIdByBranch ERROR", { branchId: bid, status: e?.response?.status, data: e?.response?.data });
+  }
+
+  return null;
+}
+
 export const usePosStore = defineStore("pos", {
   state: () => ({
     loading: false,
     error: "",
 
-    // contexto POS
-    branch_id: null,
-    warehouse_id: null,
+    branch_id: readLSInt(LS_BRANCH),
+    warehouse_id: readLSInt(LS_WAREHOUSE),
 
-    // cliente
     customer: { name: "Consumidor Final" },
-
-    // carrito
     cart: [],
 
-    // opcional: si querés un "toast" global desde store
     toast: { show: false, text: "" },
   }),
 
@@ -50,18 +99,45 @@ export const usePosStore = defineStore("pos", {
   },
 
   actions: {
-    // =========================
-    // Contexto POS
-    // =========================
-    async ensureContext() {
-      // Si ya lo tenemos, no molestamos
-      if (toInt(this.branch_id, 0) > 0 && toInt(this.warehouse_id, 0) > 0) return;
+    setWarehouse(id) {
+      const wid = toInt(id, 0);
+      this.warehouse_id = wid > 0 ? wid : null;
+      writeLSInt(LS_WAREHOUSE, this.warehouse_id);
+      dbg("setWarehouse", { warehouse_id: this.warehouse_id });
+    },
+
+    setBranch(id) {
+      const bid = toInt(id, 0);
+      this.branch_id = bid > 0 ? bid : null;
+      writeLSInt(LS_BRANCH, this.branch_id);
+      dbg("setBranch", { branch_id: this.branch_id });
+    },
+
+    resetContext() {
+      this.branch_id = null;
+      this.warehouse_id = null;
+      writeLSInt(LS_BRANCH, null);
+      writeLSInt(LS_WAREHOUSE, null);
+      dbg("resetContext");
+    },
+
+    async ensureContext({ force = false } = {}) {
+      const currB = toInt(this.branch_id, 0);
+      const currW = toInt(this.warehouse_id, 0);
+
+      if (!force && currB > 0 && currW > 0) {
+        dbg("ensureContext skip (already set)", { branch_id: currB, warehouse_id: currW });
+        return;
+      }
 
       try {
+        dbg("ensureContext start", { force, currB, currW });
+
         const { data } = await http.get("/pos/context");
+        dbg("GET /pos/context raw", data);
+
         const ctx = data?.data || {};
 
-        // el middleware te puede setear ctx.* o el user trae branch_id
         const branchId =
           toInt(ctx?.branchId, 0) ||
           toInt(ctx?.branch?.id, 0) ||
@@ -71,19 +147,45 @@ export const usePosStore = defineStore("pos", {
           toInt(ctx?.warehouseId, 0) ||
           toInt(ctx?.warehouse?.id, 0);
 
-        this.branch_id = branchId || null;
-        this.warehouse_id = warehouseId || null;
+        dbg("ensureContext derived", { branchId, warehouseId, ctx });
 
-        // si no viene warehouse, no rompemos acá: el backend la puede resolver
+        if (branchId > 0 && (force || toInt(this.branch_id, 0) <= 0)) {
+          this.branch_id = branchId;
+          writeLSInt(LS_BRANCH, branchId);
+        }
+
+        if (warehouseId > 0 && (force || toInt(this.warehouse_id, 0) <= 0)) {
+          this.warehouse_id = warehouseId;
+          writeLSInt(LS_WAREHOUSE, warehouseId);
+        }
+
+        if (toInt(this.branch_id, 0) > 0 && toInt(this.warehouse_id, 0) <= 0) {
+          const wid = await fetchFirstWarehouseIdByBranch(this.branch_id);
+          if (wid) {
+            this.warehouse_id = wid;
+            writeLSInt(LS_WAREHOUSE, wid);
+            dbg("ensureContext fallback warehouse resolved", {
+              branch_id: this.branch_id,
+              warehouse_id: this.warehouse_id,
+            });
+          } else {
+            dbg("ensureContext fallback warehouse NOT found", { branch_id: this.branch_id });
+          }
+        }
+
+        dbg("ensureContext done", {
+          branch_id: this.branch_id,
+          warehouse_id: this.warehouse_id,
+          ls_branch: readLSInt(LS_BRANCH),
+          ls_warehouse: readLSInt(LS_WAREHOUSE),
+        });
       } catch (e) {
         this.error = apiErrorMessage(e, "No se pudo cargar contexto POS");
+        dbg("ensureContext ERROR", { msg: this.error, status: e?.response?.status, data: e?.response?.data });
         throw e;
       }
     },
 
-    // =========================
-    // Carrito
-    // =========================
     clearCart() {
       this.cart = [];
     },
@@ -95,10 +197,17 @@ export const usePosStore = defineStore("pos", {
     },
 
     addToCart(product) {
-      // product.available_qty = stock disponible (por depósito)
       const available = toNum(product?.available_qty, toNum(product?.qty, 0));
 
-      // ✅ si no hay stock disponible, avisamos por UI
+      dbg("addToCart input", {
+        id: product?.id,
+        sku: product?.sku,
+        available_qty: available,
+        qty: product?.qty,
+        branch_id: this.branch_id,
+        warehouse_id: this.warehouse_id,
+      });
+
       if (available <= 0) {
         this.toast = { show: true, text: "❌ Producto sin stock en este depósito." };
         return;
@@ -125,16 +234,14 @@ export const usePosStore = defineStore("pos", {
       if (!existing) {
         const it = {
           id,
+          product_id: toInt(product?.product_id, id) || id,
           name: String(product?.name || ""),
           sku: product?.sku || null,
           barcode: product?.barcode || null,
           image: product?.image || null,
-
-          // ✅ campos clave
-          qty: 1, // cantidad a vender (arranca en 1)
-          available_qty: available, // stock disponible
-
-          price, // precio unitario
+          qty: 1,
+          available_qty: available,
+          price,
           subtotal: 0,
         };
 
@@ -143,7 +250,6 @@ export const usePosStore = defineStore("pos", {
         return;
       }
 
-      // ya existe: intentamos sumar 1 pero sin pasar stock
       if (toNum(existing.qty, 0) + 1 > toNum(existing.available_qty, 0)) {
         this.toast = {
           show: true,
@@ -154,107 +260,6 @@ export const usePosStore = defineStore("pos", {
 
       existing.qty = toNum(existing.qty, 0) + 1;
       this._recalcLine(existing);
-    },
-
-    increaseQty(id) {
-      const it = this.cart.find((x) => toInt(x.id, 0) === toInt(id, 0));
-      if (!it) return;
-
-      if (toNum(it.qty, 0) + 1 > toNum(it.available_qty, 0)) {
-        this.toast = {
-          show: true,
-          text: `⚠️ Stock insuficiente. Disponible: ${toNum(it.available_qty, 0).toFixed(3)}`,
-        };
-        return;
-      }
-
-      it.qty = toNum(it.qty, 0) + 1;
-      this._recalcLine(it);
-    },
-
-    decreaseQty(id) {
-      const it = this.cart.find((x) => toInt(x.id, 0) === toInt(id, 0));
-      if (!it) return;
-
-      it.qty = Math.max(0, toNum(it.qty, 0) - 1);
-      if (it.qty <= 0) {
-        this.cart = this.cart.filter((x) => toInt(x.id, 0) !== toInt(id, 0));
-        return;
-      }
-
-      this._recalcLine(it);
-    },
-
-    // =========================
-    // Checkout
-    // =========================
-    async checkout(paymentMethod = "CASH") {
-      this.loading = true;
-      this.error = "";
-
-      try {
-        await this.ensureContext();
-
-        if (!this.cart.length) {
-          throw new Error("Carrito vacío");
-        }
-
-        // ✅ pre-validación local (evita 409)
-        for (const it of this.cart) {
-          if (toNum(it.qty, 0) <= 0) throw new Error("Cantidad inválida en carrito");
-          if (toNum(it.price, 0) <= 0) throw new Error("Precio inválido en carrito");
-          if (toNum(it.available_qty, 0) > 0 && toNum(it.qty, 0) > toNum(it.available_qty, 0)) {
-            throw new Error(
-              `Stock insuficiente para ${it.name}. Disponible: ${toNum(it.available_qty, 0).toFixed(3)}`
-            );
-          }
-        }
-
-        const payload = {
-          customer_name: (this.customer?.name || "Consumidor Final").trim() || "Consumidor Final",
-
-          // ✅ el backend resuelve branch/warehouse, pero lo mandamos igual para contexto
-          branch_id: this.branch_id || undefined,
-          warehouse_id: this.warehouse_id || undefined,
-
-          items: this.cart.map((it) => ({
-            product_id: toInt(it.id, 0),
-            quantity: toNum(it.qty, 0),
-            unit_price: toNum(it.price, 0),
-          })),
-
-          payments: [
-            {
-              method: String(paymentMethod || "CASH").toUpperCase(),
-              amount: toNum(this.totalAmount, 0),
-            },
-          ],
-        };
-
-        const { data } = await http.post("/pos/sales", payload);
-
-        // ok
-        this.clearCart();
-        this.toast = { show: true, text: "✅ Venta registrada correctamente" };
-        return data;
-      } catch (e) {
-        // ✅ mostrar mensajes del backend (409 STOCK_INSUFFICIENT, etc.)
-        const msg = apiErrorMessage(e, "Error al confirmar la venta");
-        this.error = msg;
-
-        // UX friendly
-        if (e?.response?.status === 409) {
-          this.toast = { show: true, text: `⚠️ ${msg}` };
-        } else if (e?.response?.status === 403) {
-          this.toast = { show: true, text: `⛔ ${msg}` };
-        } else {
-          this.toast = { show: true, text: `❌ ${msg}` };
-        }
-
-        throw e;
-      } finally {
-        this.loading = false;
-      }
     },
   },
 });

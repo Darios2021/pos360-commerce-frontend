@@ -3,6 +3,16 @@ import { defineStore } from "pinia";
 import http from "../api/http";
 import { loadAuth, saveAuth, clearAuth } from "../utils/storage";
 
+const AUTH_DEBUG =
+  String(import.meta?.env?.VITE_AUTH_DEBUG ?? "").toLowerCase() === "true" ||
+  import.meta?.env?.DEV;
+
+function adbg(...args) {
+  if (!AUTH_DEBUG) return;
+  // eslint-disable-next-line no-console
+  console.log("[AUTH]", ...args);
+}
+
 /**
  * Normaliza roles desde cualquier formato posible:
  * - user.roles = ["admin"]
@@ -27,12 +37,8 @@ function normalizeRoles(user) {
     })
     .filter(Boolean);
 
-  // ✅ regla CLAVE:
-  // admin siempre incluye permisos de user
-  if (roles.includes("admin") && !roles.includes("user")) {
-    roles.push("user");
-  }
-
+  // admin siempre incluye user
+  if (roles.includes("admin") && !roles.includes("user")) roles.push("user");
   return roles;
 }
 
@@ -48,10 +54,7 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthed: (s) => !!s.accessToken && s.status === "authed",
     branchId: (s) => Number(s.user?.branch_id || 0) || null,
-
-    // 👉 siempre roles normalizados
     roles: (s) => normalizeRoles(s.user),
-
     isAdmin: (s) => normalizeRoles(s.user).includes("admin"),
   },
 
@@ -63,8 +66,10 @@ export const useAuthStore = defineStore("auth", {
         this.refreshToken = saved.refreshToken || null;
         this.user = saved.user || null;
         this.status = "authed";
+        adbg("hydrate", { branch_id: this.user?.branch_id, email: this.user?.email, roles: normalizeRoles(this.user) });
       } else {
         this.status = "guest";
+        adbg("hydrate guest");
       }
     },
 
@@ -74,12 +79,20 @@ export const useAuthStore = defineStore("auth", {
       try {
         const { data } = await http.get("/auth/me");
 
+        adbg("GET /auth/me raw", data);
+
         if (data?.ok && data.user) {
-          // ✅ normalizar roles SIEMPRE
           this.user = {
             ...data.user,
             roles: normalizeRoles(data.user),
           };
+
+          adbg("fetchMe -> user", {
+            id: this.user?.id,
+            email: this.user?.email,
+            branch_id: this.user?.branch_id,
+            roles: this.user?.roles,
+          });
 
           saveAuth({
             accessToken: this.accessToken,
@@ -88,24 +101,20 @@ export const useAuthStore = defineStore("auth", {
           });
         }
       } catch (e) {
-        this.error =
-          e?.response?.data?.message ||
-          e?.message ||
-          "FETCH_ME_FAILED";
+        this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
+        adbg("fetchMe ERROR", { status: e?.response?.status, data: e?.response?.data, msg: this.error });
       }
     },
 
     async login({ identifier, password }) {
       this.error = null;
 
-      const { data } = await http.post("/auth/login", {
-        identifier,
-        password,
-      });
+      const { data } = await http.post("/auth/login", { identifier, password });
+
+      adbg("POST /auth/login raw", data);
 
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
 
-      // ✅ normalizar roles desde login
       const normalizedUser = {
         ...data.user,
         roles: normalizeRoles(data.user),
@@ -116,13 +125,19 @@ export const useAuthStore = defineStore("auth", {
       this.user = normalizedUser;
       this.status = "authed";
 
+      adbg("login -> user", {
+        id: this.user?.id,
+        email: this.user?.email,
+        branch_id: this.user?.branch_id,
+        roles: this.user?.roles,
+      });
+
       saveAuth({
         accessToken: this.accessToken,
         refreshToken: this.refreshToken,
         user: this.user,
       });
 
-      // refresca branch_id / estado real desde backend
       await this.fetchMe();
     },
 
@@ -133,6 +148,18 @@ export const useAuthStore = defineStore("auth", {
       this.accessToken = null;
       this.refreshToken = null;
       this.error = null;
+      adbg("logout");
+    },
+
+    // 🔥 útil para testeo: fuerza limpiar todo y rehidratar
+    hardResetAuth() {
+      clearAuth();
+      this.status = "guest";
+      this.user = null;
+      this.accessToken = null;
+      this.refreshToken = null;
+      this.error = null;
+      adbg("hardResetAuth (cleared storage)");
     },
   },
 });

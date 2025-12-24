@@ -80,7 +80,7 @@
 
             <div class="d-flex justify-space-between flex-wrap ga-2 mt-2">
               <div class="text-caption text-medium-emphasis">
-                Mostrando {{ productsStore.items.length }} de {{ productsStore.total || 0 }}
+                Mostrando {{ items.length }} de {{ total || 0 }}
               </div>
 
               <div class="d-flex ga-2">
@@ -102,29 +102,15 @@
           </div>
 
           <v-row v-else dense>
-            <v-col
-              v-for="p in productsStore.items"
-              :key="p.id"
-              cols="12"
-              sm="6"
-              md="4"
-              lg="3"
-              xl="2"
-            >
-              <v-card
-                class="rounded-xl product-card pos-surface"
-                elevation="1"
-                :class="{ 'product-disabled': !hasPrice(p) }"
-              >
+            <v-col v-for="p in items" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
+              <v-card class="rounded-xl product-card pos-surface" elevation="1" :class="{ 'product-disabled': !hasPrice(p) }">
                 <div class="thumb-wrap">
                   <v-img v-if="productImage(p)" :src="productImage(p)" cover class="thumb" />
                   <div v-else class="thumb thumb-empty">
                     <v-icon size="34">mdi-package-variant</v-icon>
                   </div>
 
-                  <div class="badge-sku">
-                    SKU: {{ p.sku || "—" }}
-                  </div>
+                  <div class="badge-sku">SKU: {{ p.sku || "—" }}</div>
                 </div>
 
                 <v-card-text class="pt-3 pb-2">
@@ -142,31 +128,16 @@
                     <div v-if="hasPrice(p)" class="price">
                       {{ money(getPrice(p)) }}
                     </div>
-                    <v-chip v-else size="small" color="red" variant="tonal">
-                      SIN PRECIO
-                    </v-chip>
+                    <v-chip v-else size="small" color="red" variant="tonal">SIN PRECIO</v-chip>
 
-                    <!-- stock por depósito (POS) -->
-                    <v-chip
-                      v-if="typeof p.qty !== 'undefined' || typeof p.stock_qty !== 'undefined'"
-                      size="small"
-                      variant="tonal"
-                      class="ml-2"
-                    >
-                      Stock: {{ Number(p.qty ?? p.stock_qty ?? 0).toFixed(3) }}
+                    <v-chip size="small" variant="tonal" class="ml-2">
+                      Stock: {{ Number(p.qty ?? 0).toFixed(3) }}
                     </v-chip>
                   </div>
                 </v-card-text>
 
                 <v-card-actions class="pt-0 pb-3 px-3">
-                  <v-btn
-                    block
-                    size="small"
-                    color="primary"
-                    variant="tonal"
-                    :disabled="!hasPrice(p)"
-                    @click="add(p)"
-                  >
+                  <v-btn block size="small" color="primary" variant="tonal" :disabled="!hasPrice(p)" @click="add(p)">
                     <v-icon start>mdi-plus</v-icon>
                     Agregar
                   </v-btn>
@@ -175,10 +146,7 @@
             </v-col>
           </v-row>
 
-          <div
-            v-if="!loadingList && productsStore.items.length === 0"
-            class="text-center py-12 text-medium-emphasis"
-          >
+          <div v-if="!loadingList && items.length === 0" class="text-center py-12 text-medium-emphasis">
             <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
             <div class="text-h6">No se encontraron productos</div>
           </div>
@@ -188,7 +156,6 @@
       <!-- RIGHT: Carrito -->
       <v-col cols="12" md="4" class="pos-right">
         <v-card class="rounded-xl cart-card pos-surface" elevation="1">
-          <!-- Cart Header fijo -->
           <div class="cart-head">
             <div class="d-flex align-center justify-space-between px-4 py-3">
               <div class="d-flex align-center ga-2">
@@ -196,9 +163,7 @@
                 <span class="font-weight-bold">Carrito</span>
               </div>
 
-              <v-chip size="small" variant="tonal">
-                {{ posStore.totalItems }} ítems
-              </v-chip>
+              <v-chip size="small" variant="tonal">{{ posStore.totalItems }} ítems</v-chip>
             </div>
 
             <v-divider />
@@ -216,7 +181,6 @@
             </div>
           </div>
 
-          <!-- Cart Body scrolleable -->
           <div class="cart-body px-4 pt-3">
             <div v-if="posStore.cart.length === 0" class="empty">
               <v-icon size="56" class="mb-2">mdi-cart-off</v-icon>
@@ -233,9 +197,7 @@
                   </v-avatar>
                 </template>
 
-                <v-list-item-title class="cart-title">
-                  {{ it.name }}
-                </v-list-item-title>
+                <v-list-item-title class="cart-title">{{ it.name }}</v-list-item-title>
 
                 <v-list-item-subtitle class="text-caption text-medium-emphasis">
                   {{ qty3(it.qty) }} × {{ money(it.price) }}
@@ -247,41 +209,21 @@
                       <div class="font-weight-bold">{{ money(it.subtotal) }}</div>
                     </div>
 
-                    <v-btn
-                      icon="mdi-minus"
-                      size="x-small"
-                      variant="tonal"
-                      @click.stop="posStore.decreaseQty(it.id)"
-                    />
-                    <v-btn
-                      icon="mdi-plus"
-                      size="x-small"
-                      variant="tonal"
-                      @click.stop="onPlus(it)"
-                    />
+                    <v-btn icon="mdi-minus" size="x-small" variant="tonal" @click.stop="posStore.decreaseQty(it.id)" />
+                    <v-btn icon="mdi-plus" size="x-small" variant="tonal" @click.stop="onPlus(it)" />
                   </div>
                 </template>
               </v-list-item>
             </v-list>
           </div>
 
-          <!-- Cart Footer fijo -->
           <div class="cart-foot">
             <v-divider />
-
             <div class="px-4 py-3">
               <div class="totals">
                 <div class="row">
                   <span class="muted">Subtotal</span>
                   <span class="font-weight-bold">{{ money(posStore.totalAmount) }}</span>
-                </div>
-                <div class="row">
-                  <span class="muted">Descuento</span>
-                  <span class="font-weight-bold">{{ money(0) }}</span>
-                </div>
-                <div class="row">
-                  <span class="muted">Impuestos</span>
-                  <span class="font-weight-bold">{{ money(0) }}</span>
                 </div>
 
                 <div class="row total">
@@ -291,13 +233,7 @@
               </div>
 
               <div class="d-flex ga-2 mt-3 cart-actions">
-                <v-btn
-                  block
-                  variant="tonal"
-                  color="grey"
-                  :disabled="posStore.cart.length === 0"
-                  @click="posStore.clearCart()"
-                >
+                <v-btn block variant="tonal" color="grey" :disabled="posStore.cart.length === 0" @click="posStore.clearCart()">
                   <v-icon start>mdi-broom</v-icon>
                   Vaciar
                 </v-btn>
@@ -313,7 +249,6 @@
       </v-col>
     </v-row>
 
-    <!-- Dialog: Cobro -->
     <v-dialog v-model="checkoutDialog" max-width="520" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -327,67 +262,13 @@
           <div class="text-subtitle-2 font-weight-bold mb-3">Método de pago</div>
 
           <v-radio-group v-model="paymentMethod" color="primary">
-            <v-radio value="CASH">
-              <template #label>
-                <div class="d-flex align-center w-100">
-                  <v-icon start class="mr-3">mdi-cash</v-icon>
-                  <div>
-                    <div class="font-weight-bold">Efectivo</div>
-                    <div class="text-caption text-medium-emphasis">Pago en caja</div>
-                  </div>
-                </div>
-              </template>
-            </v-radio>
-
-            <v-divider class="my-2" />
-
-            <v-radio value="CARD">
-              <template #label>
-                <div class="d-flex align-center w-100">
-                  <v-icon start class="mr-3">mdi-credit-card</v-icon>
-                  <div>
-                    <div class="font-weight-bold">Tarjeta / Débito</div>
-                    <div class="text-caption text-medium-emphasis">Posnet</div>
-                  </div>
-                </div>
-              </template>
-            </v-radio>
-
-            <v-divider class="my-2" />
-
-            <v-radio value="TRANSFER">
-              <template #label>
-                <div class="d-flex align-center w-100">
-                  <v-icon start class="mr-3">mdi-bank-transfer</v-icon>
-                  <div>
-                    <div class="font-weight-bold">Transferencia</div>
-                    <div class="text-caption text-medium-emphasis">Banco / Billetera</div>
-                  </div>
-                </div>
-              </template>
-            </v-radio>
-
-            <v-divider class="my-2" />
-
-            <v-radio value="QR">
-              <template #label>
-                <div class="d-flex align-center w-100">
-                  <v-icon start class="mr-3">mdi-qrcode-scan</v-icon>
-                  <div>
-                    <div class="font-weight-bold">Mercado Pago</div>
-                    <div class="text-caption text-medium-emphasis">QR / Billetera</div>
-                  </div>
-                </div>
-              </template>
-            </v-radio>
+            <v-radio value="CASH" label="Efectivo" />
+            <v-radio value="CARD" label="Tarjeta / Débito" />
+            <v-radio value="TRANSFER" label="Transferencia" />
+            <v-radio value="QR" label="Mercado Pago" />
           </v-radio-group>
 
           <v-divider class="my-4" />
-
-          <div class="d-flex align-center justify-space-between">
-            <div class="text-caption text-medium-emphasis">Pagado</div>
-            <div class="font-weight-bold">{{ money(paidAmount) }}</div>
-          </div>
 
           <v-text-field
             v-if="paymentMethod === 'CASH'"
@@ -395,18 +276,11 @@
             label="Efectivo recibido"
             variant="outlined"
             density="comfortable"
-            class="mt-3"
             prepend-inner-icon="mdi-cash"
-            placeholder="Ej: 20000"
             :error="cashError"
             :error-messages="cashErrorMsg"
             @keyup.enter="confirmPayment"
           />
-
-          <div v-if="paymentMethod === 'CASH'" class="d-flex align-center justify-space-between mt-2">
-            <div class="text-caption text-medium-emphasis">Vuelto</div>
-            <div class="text-h6 font-weight-black">{{ money(changeAmount) }}</div>
-          </div>
         </v-card-text>
 
         <v-divider />
@@ -433,12 +307,10 @@
       </v-card>
     </v-dialog>
 
-    <!-- snack local -->
     <v-snackbar v-model="snack.show" :timeout="3200">
       {{ snack.text }}
     </v-snackbar>
 
-    <!-- snack global del store (si existe) -->
     <v-snackbar v-model="posStore.toast.show" :timeout="3200">
       {{ posStore.toast.text }}
     </v-snackbar>
@@ -447,14 +319,24 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { useProductsStore } from "../../../app/store/products.store";
+import http from "../../../app/api/http";
 import { usePosStore } from "../../../app/store/pos.store";
+import { useAuthStore } from "../../../app/store/auth.store";
 
-const productsStore = useProductsStore();
 const posStore = usePosStore();
+const auth = useAuthStore();
+
+const POS_DEBUG =
+  String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" ||
+  import.meta?.env?.DEV;
+
+function dbg(...args) {
+  if (!POS_DEBUG) return;
+  // eslint-disable-next-line no-console
+  console.log("[POS_PAGE]", ...args);
+}
 
 const ctxError = ref("");
-
 const q = ref("");
 const page = ref(1);
 const limit = ref(24);
@@ -485,10 +367,12 @@ const cashError = ref(false);
 const cashErrorMsg = ref("");
 
 const snack = ref({ show: false, text: "" });
+const items = ref([]);
+const total = ref(0);
 
 const pages = computed(() => {
-  const total = Number(productsStore.total || 0);
-  return Math.max(1, Math.ceil(total / Number(limit.value || 24)));
+  const t = Number(total.value || 0);
+  return Math.max(1, Math.ceil(t / Number(limit.value || 24)));
 });
 
 function money(val) {
@@ -527,7 +411,6 @@ function getPrice(p) {
   if (priceMode.value === "BASE") return base;
   if (priceMode.value === "DISCOUNT") return disc || list || base;
   if (priceMode.value === "RESELLER") return res || list || base;
-
   return list || base;
 }
 
@@ -535,12 +418,17 @@ function hasPrice(p) {
   return getPrice(p) > 0;
 }
 
-// ✅ Agregar con UI feedback (sin stock / sin precio / etc)
-// ✅ IMPORTANTE: NO pasar "qty" al store (qty es la cantidad vendida)
 function add(p) {
-  const img = productImage(p);
+  const available_qty = Number(p.qty ?? 0);
 
-  const available_qty = Number(p.qty ?? p.stock_qty ?? 0);
+  dbg("ADD click", {
+    sku: p?.sku,
+    product_id: p?.id,
+    qty: p?.qty,
+    available_qty,
+    pos_branch: posStore.branch_id,
+    pos_warehouse: posStore.warehouse_id,
+  });
 
   if (available_qty <= 0) {
     snack.value = { show: true, text: "❌ Sin stock en este depósito" };
@@ -551,73 +439,118 @@ function add(p) {
     return;
   }
 
-  try {
-    posStore.addToCart({
-      ...p,
-      image: img,
-      available_qty,
-      // price elegido por modo (si tu store usa price_list / price, esto ayuda)
-      price: getPrice(p),
-      price_list: getPrice(p),
-    });
+  posStore.addToCart({
+    ...p,
+    image: productImage(p),
+    available_qty,
+    price: getPrice(p),
+    price_list: getPrice(p),
+  });
 
-    snack.value = { show: true, text: "✅ Agregado al carrito" };
-  } catch (e) {
-    snack.value = { show: true, text: e?.message || "❌ No se pudo agregar" };
-  }
+  snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
-// ✅ + del carrito: usar increaseQty (no reusar addToCart con el item)
 function onPlus(it) {
-  try {
-    if (typeof posStore.increaseQty === "function") {
-      posStore.increaseQty(it.id);
-      return;
-    }
-    // fallback si no existe increaseQty:
-    posStore.addToCart({
-      id: it.id,
-      product_id: it.product_id ?? it.id,
-      name: it.name,
-      sku: it.sku,
-      image: it.image,
-      price: it.price,
-      price_list: it.price,
-      available_qty: it.available_qty,
-    });
-  } catch (e) {
-    snack.value = { show: true, text: e?.message || "❌ No se pudo agregar" };
-  }
+  posStore.increaseQty(it.id);
 }
 
-async function ensurePosContext() {
+/**
+ * ✅ CLAVE:
+ * Si auth.branch_id != pos.branch_id => el POS está con CONTEXTO VIEJO (localStorage o backend).
+ * Entonces reseteamos y forzamos contexto según el usuario.
+ */
+async function hardSyncPosContextWithAuth() {
+  // asegurar que auth tenga lo más fresco
   try {
-    ctxError.value = "";
+    if (typeof auth.fetchMe === "function") await auth.fetchMe();
+  } catch {}
+
+  const authBranch = Number(auth.branchId || 0) || null;
+  const posBranch = Number(posStore.branch_id || 0) || null;
+
+  dbg("SYNC check", { authBranch, posBranch, posWarehouse: posStore.warehouse_id });
+
+  if (!authBranch) {
+    dbg("SYNC: authBranch missing, fallback to pos.ensureContext()");
+    await posStore.ensureContext({ force: true });
+    return;
+  }
+
+  // mismatch => reset total
+  if (authBranch !== posBranch) {
+    dbg("SYNC: MISMATCH detected -> RESET + setBranch(auth) + ensureContext(force)", {
+      authBranch,
+      posBranch,
+      beforeWarehouse: posStore.warehouse_id,
+    });
+
+    posStore.resetContext();
+    posStore.setBranch(authBranch);
+    await posStore.ensureContext({ force: true });
+
+    dbg("SYNC: DONE", {
+      branch_id: posStore.branch_id,
+      warehouse_id: posStore.warehouse_id,
+      ls_branch: localStorage.getItem("pos_branch_id"),
+      ls_warehouse: localStorage.getItem("pos_warehouse_id"),
+    });
+
+    return;
+  }
+
+  // si branch coincide pero warehouse no, forzamos 1 vez por las dudas
+  if (!Number(posStore.warehouse_id || 0)) {
+    dbg("SYNC: branch ok but warehouse missing -> ensureContext(force)");
+    await posStore.ensureContext({ force: true });
+  } else {
     await posStore.ensureContext();
-  } catch (e) {
-    const msg = e?.message || "No se pudo cargar contexto POS";
-    ctxError.value = msg;
-    snack.value = { show: true, text: msg };
   }
 }
 
 async function fetchList() {
   loadingList.value = true;
-  try {
-    await ensurePosContext();
 
-    await productsStore.fetchList({
+  try {
+    ctxError.value = "";
+
+    await hardSyncPosContextWithAuth();
+
+    const params = {
       q: q.value,
       page: page.value,
       limit: limit.value,
+      price_mode: priceMode.value,
+      in_stock: 0,
+      sellable: 1,
       branch_id: posStore.branch_id || undefined,
       warehouse_id: posStore.warehouse_id || undefined,
 
-      // ✅ UX: por defecto NO mostrar sin stock (usa tu backend POS in_stock=1)
-      in_stock: 1,
-    });
+      // compat
+      branchId: posStore.branch_id || undefined,
+      warehouseId: posStore.warehouse_id || undefined,
+    };
+
+    dbg("GET /pos/products params", params);
+
+    const { data } = await http.get("/pos/products", { params });
+
+    const out = data?.data || [];
+    const meta = data?.meta || {};
+
+    items.value = Array.isArray(out) ? out : [];
+    total.value = Number(meta?.total || 0);
+
+    dbg("pos/products meta", meta);
+
+    // log express de SKU problema
+    const hit = items.value.find((x) => String(x?.sku || "") === "123456");
+    dbg("sku 123456 in response", hit ? { id: hit.id, sku: hit.sku, qty: hit.qty } : "NOT_FOUND");
+
   } catch (e) {
-    snack.value = { show: true, text: e?.message || "Error cargando productos" };
+    const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
+    ctxError.value = msg;
+    snack.value = { show: true, text: msg };
+    dbg("fetchList ERROR", { status: e?.response?.status, data: e?.response?.data, err: e?.message });
   } finally {
     loadingList.value = false;
   }
@@ -677,11 +610,6 @@ const paidAmount = computed(() => {
   return parseCash(cashInput.value);
 });
 
-const changeAmount = computed(() => {
-  const ch = paidAmount.value - Number(posStore.totalAmount || 0);
-  return ch > 0 ? ch : 0;
-});
-
 const cannotConfirm = computed(() => {
   if (posStore.loading) return true;
   if (posStore.cart.length === 0) return true;
@@ -696,7 +624,7 @@ watch([paymentMethod, cashInput], () => {
     return;
   }
 
-  const total = Number(posStore.totalAmount || 0);
+  const totalAmt = Number(posStore.totalAmount || 0);
   const paid = paidAmount.value;
 
   if (!cashInput.value) {
@@ -705,9 +633,9 @@ watch([paymentMethod, cashInput], () => {
     return;
   }
 
-  if (paid < total) {
+  if (paid < totalAmt) {
     cashError.value = true;
-    cashErrorMsg.value = `El efectivo es menor al total (${money(total)}).`;
+    cashErrorMsg.value = `El efectivo es menor al total (${money(totalAmt)}).`;
     return;
   }
 
@@ -716,22 +644,6 @@ watch([paymentMethod, cashInput], () => {
 });
 
 async function confirmPayment() {
-  const total = Number(posStore.totalAmount || 0);
-
-  if (paymentMethod.value === "CASH") {
-    const paid = paidAmount.value;
-    if (paid <= 0) {
-      cashError.value = true;
-      cashErrorMsg.value = "Ingresá el efectivo recibido.";
-      return;
-    }
-    if (paid < total) {
-      cashError.value = true;
-      cashErrorMsg.value = `El efectivo es menor al total (${money(total)}).`;
-      return;
-    }
-  }
-
   try {
     await posStore.checkout(paymentMethod.value);
     checkoutDialog.value = false;
@@ -748,7 +660,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* (tu CSS queda igual, no lo toco) */
+/* tu CSS igual */
 .pos-wrap {
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
