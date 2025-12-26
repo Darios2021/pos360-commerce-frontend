@@ -84,7 +84,7 @@
                   density="comfortable"
                   hide-details
                   clearable
-                  :disabled="!rubroId && subrubroItems.length === 0"
+                  :disabled="!rubroId"
                   no-data-text="No hay subrubros"
                 />
               </v-col>
@@ -119,7 +119,13 @@
             <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
               <v-card class="rounded-xl product-card pos-surface" elevation="1">
                 <div class="thumb-wrap">
-                  <v-img v-if="productImage(p)" :src="productImage(p)" cover class="thumb" />
+                  <v-img
+                    v-if="productImage(p)"
+                    :src="productImage(p)"
+                    cover
+                    class="thumb"
+                    :lazy-src="productImage(p)"
+                  />
                   <div v-else class="thumb thumb-empty">
                     <v-icon size="34">mdi-package-variant</v-icon>
                   </div>
@@ -131,7 +137,7 @@
                   </div>
                 </div>
 
-                <v-card-text class="pt-3 pb-2">
+                <v-card-text class="pt-4 pb-3">
                   <div class="title line-clamp-2" :title="p.name">
                     {{ p.name }}
                   </div>
@@ -148,7 +154,7 @@
                     <span class="muted">Subrubro:</span> {{ subrubroName(p) || "—" }}
                   </div>
 
-                  <div class="price-row mt-2 d-flex align-center justify-space-between">
+                  <div class="price-row mt-3 d-flex align-center justify-space-between">
                     <div class="price">
                       {{ money(resolveUnitPrice(p, "LIST")) }}
                     </div>
@@ -156,18 +162,20 @@
                   </div>
                 </v-card-text>
 
-                <v-card-actions class="pt-0 pb-3 px-3 d-flex ga-2">
-                  <v-btn block size="small" color="primary" variant="tonal" @click="add(p)">
+                <v-card-actions class="pt-1 pb-4 px-3 d-flex ga-2">
+                  <v-btn block size="small" color="primary" variant="tonal" class="btn-pad" @click="add(p)">
                     <v-icon start>mdi-plus</v-icon>
                     Agregar
                   </v-btn>
 
+                  <!-- (por ahora dejo el botón de ver como “acción secundaria” sin navegar) -->
                   <v-btn
                     icon="mdi-eye-outline"
                     size="small"
                     variant="tonal"
-                    title="Ver perfil"
-                    @click="goProductProfile(p.id)"
+                    class="btn-icon"
+                    title="Ver detalle"
+                    @click="openDetails(p)"
                   />
                 </v-card-actions>
               </v-card>
@@ -321,7 +329,56 @@
       </v-col>
     </v-row>
 
-    <!-- Cobro -->
+    <!-- Modal detalle (simple, sin salir del POS) -->
+    <v-dialog v-model="detailsOpen" max-width="900">
+      <v-card rounded="xl">
+        <v-card-title class="font-weight-black">Detalle producto</v-card-title>
+        <v-card-text>
+          <div v-if="!detailsItem" class="text-medium-emphasis">—</div>
+
+          <div v-else class="d-flex ga-4 flex-wrap">
+            <v-avatar rounded="xl" size="160" class="border">
+              <v-img v-if="productImage(detailsItem)" :src="productImage(detailsItem)" cover />
+              <v-icon v-else size="48">mdi-package-variant</v-icon>
+            </v-avatar>
+
+            <div style="min-width: 240px; flex:1;">
+              <div class="text-h6 font-weight-black">{{ detailsItem.name }}</div>
+              <div class="text-caption text-medium-emphasis">SKU: {{ detailsItem.sku || "—" }}</div>
+
+              <div class="mt-3">
+                <div class="text-caption text-medium-emphasis">Stock: <b>{{ qty3(detailsItem.qty ?? 0) }}</b></div>
+                <div class="text-caption text-medium-emphasis">
+                  Rubro: <b>{{ rubroName(detailsItem) || "—" }}</b>
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Subrubro: <b>{{ subrubroName(detailsItem) || "—" }}</b>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <div class="text-caption text-medium-emphasis">Marca: <b>{{ detailsItem.brand || "—" }}</b></div>
+                <div class="text-caption text-medium-emphasis">Modelo: <b>{{ detailsItem.model || "—" }}</b></div>
+              </div>
+
+              <div class="mt-3 text-h6 font-weight-black">
+                {{ money(resolveUnitPrice(detailsItem, "LIST")) }}
+                <span class="text-caption text-medium-emphasis"> (lista)</span>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn variant="tonal" @click="detailsOpen = false">Cerrar</v-btn>
+          <v-btn color="primary" variant="flat" @click="detailsItem && add(detailsItem)">
+            <v-icon start>mdi-plus</v-icon> Agregar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Cobro (por ahora queda acá; luego lo componentizamos) -->
     <v-dialog v-model="checkoutDialog" max-width="560" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -375,7 +432,6 @@
 
           <v-divider class="my-4" />
 
-          <!-- Datos comprobante según método -->
           <v-row dense>
             <v-col cols="12" v-if="paymentMethod === 'TRANSFER'">
               <v-text-field
@@ -457,23 +513,12 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 
-const router = useRouter();
 const posStore = usePosStore();
 const auth = useAuthStore();
-
-const POS_DEBUG =
-  String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" || import.meta?.env?.DEV;
-
-function dbg(...args) {
-  if (!POS_DEBUG) return;
-  // eslint-disable-next-line no-console
-  console.log("[POS_PAGE]", ...args);
-}
 
 const ctxError = ref("");
 const q = ref("");
@@ -505,8 +550,11 @@ const cashError = ref(false);
 const cashErrorMsg = ref("");
 
 const snack = ref({ show: false, text: "" });
-
 const allSellable = ref([]);
+
+/** detalle */
+const detailsOpen = ref(false);
+const detailsItem = ref(null);
 
 /** Cliente rápido */
 const customer = ref({
@@ -527,6 +575,16 @@ function money(val) {
 function qty3(n) {
   return Number(n || 0).toFixed(3);
 }
+function toNum(v) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** =========================
+ *  IMÁGENES (FIX REAL)
+ *  ========================= */
+const imageCache = ref(new Map()); // productId -> url (string) | "" (sin imagen)
+const imageLoading = ref(new Set());
 
 function normalizeUrl(u) {
   if (!u) return "";
@@ -541,14 +599,202 @@ function normalizeUrl(u) {
   return base + (s.startsWith("/") ? s : `/${s}`);
 }
 
-function productImage(p) {
-  const url = p?.image_url || p?.image || "";
-  return normalizeUrl(url);
+function pickImageFromProduct(p) {
+  // 1) si el endpoint ya trae algo útil
+  const direct =
+    p?.image_url ||
+    p?.image ||
+    p?.thumbnail_url ||
+    p?.thumb_url ||
+    null;
+
+  if (direct) return normalizeUrl(direct);
+
+  // 2) si trae array
+  const arr =
+    Array.isArray(p?.product_images) ? p.product_images :
+    Array.isArray(p?.images) ? p.images :
+    null;
+
+  if (arr && arr.length) {
+    const first = arr[0];
+    const u = first?.url || first?.image_url || first?.path || first?.key || first?.filename || null;
+    if (u) return normalizeUrl(u);
+  }
+
+  return "";
 }
 
-function toNum(v) {
-  const n = Number(v ?? 0);
-  return Number.isFinite(n) ? n : 0;
+async function fetchFirstImage(productId) {
+  const id = Number(productId || 0);
+  if (!id) return "";
+
+  if (imageCache.value.has(id)) return imageCache.value.get(id) || "";
+  if (imageLoading.value.has(id)) return "";
+
+  imageLoading.value.add(id);
+
+  try {
+    // probamos endpoints comunes (sin saber tu router exacto)
+    const tries = [
+      `/products/${id}/images`,
+      `/products/${id}/product-images`,
+      `/product-images?product_id=${id}`,
+    ];
+
+    for (const url of tries) {
+      try {
+        const { data } = await http.get(url);
+        const list = data?.data || data || [];
+        const arr = Array.isArray(list) ? list : [];
+        if (arr.length) {
+          const first = arr[0];
+          const u = first?.url || first?.image_url || first?.path || first?.key || first?.filename || "";
+          if (u) {
+            const normalized = normalizeUrl(u);
+            imageCache.value.set(id, normalized);
+            return normalized;
+          }
+        }
+      } catch {
+        // siguiente endpoint
+      }
+    }
+
+    imageCache.value.set(id, "");
+    return "";
+  } finally {
+    imageLoading.value.delete(id);
+  }
+}
+
+function productImage(p) {
+  const id = Number(p?.id || 0);
+  if (!id) return "";
+
+  // si el objeto ya trae
+  const fromObj = pickImageFromProduct(p);
+  if (fromObj) {
+    imageCache.value.set(id, fromObj);
+    return fromObj;
+  }
+
+  // cache
+  if (imageCache.value.has(id)) return imageCache.value.get(id) || "";
+
+  // lazy fetch (no await acá)
+  fetchFirstImage(id);
+  return "";
+}
+
+async function prefetchImagesForVisible(items) {
+  const ids = (items || [])
+    .map((x) => Number(x?.id || 0))
+    .filter((x) => x > 0 && !imageCache.value.has(x));
+
+  // no mates el server
+  const batch = ids.slice(0, 24);
+  await Promise.all(batch.map((id) => fetchFirstImage(id)));
+}
+
+/** =========================
+ *  CATEGORÍAS (FIX RUBRO/SUB)
+ *  ========================= */
+const categories = ref([]);
+const catById = computed(() => {
+  const m = new Map();
+  for (const c of categories.value || []) m.set(Number(c.id), c);
+  return m;
+});
+const parentOf = computed(() => {
+  const m = new Map();
+  for (const c of categories.value || []) {
+    const pid = Number(c.parent_id || c.parentId || c.parent?.id || 0) || null;
+    if (pid) m.set(Number(c.id), pid);
+  }
+  return m;
+});
+
+async function loadCategoriesSafe() {
+  try {
+    // intentamos /categories (lo más normal)
+    const { data } = await http.get("/categories", { params: { limit: 5000 } });
+    const arr = data?.data || data || [];
+    categories.value = Array.isArray(arr) ? arr : [];
+    return;
+  } catch {}
+
+  try {
+    // fallback por si tu backend lo expone en otro path
+    const { data } = await http.get("/products/categories");
+    const arr = data?.data || data || [];
+    categories.value = Array.isArray(arr) ? arr : [];
+  } catch {
+    categories.value = [];
+  }
+}
+
+function getSubCategoryId(p) {
+  return Number(p?.category_id || p?.subcategory_id || p?.category?.id || 0) || null;
+}
+
+function getRubroId(p) {
+  const subId = getSubCategoryId(p);
+  if (!subId) return null;
+  return parentOf.value.get(subId) || null;
+}
+
+function rubroName(p) {
+  // primero si viene del endpoint
+  const direct = p?.parent_category_name || null;
+  if (direct) return direct;
+
+  const rid = getRubroId(p);
+  if (!rid) return null;
+  return catById.value.get(rid)?.name || null;
+}
+
+function subrubroName(p) {
+  const direct = p?.subcategory_name || null;
+  if (direct) return direct;
+
+  const sid = getSubCategoryId(p);
+  if (!sid) return null;
+  return catById.value.get(sid)?.name || null;
+}
+
+const rubroItems = computed(() => {
+  const map = new Map();
+  for (const p of allSellable.value || []) {
+    const rid = getRubroId(p);
+    const name = rubroName(p);
+    if (!rid || !name) continue;
+    if (!map.has(rid)) map.set(rid, { title: String(name), value: Number(rid) });
+  }
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+});
+
+const subrubroItems = computed(() => {
+  const rid = Number(rubroId.value || 0);
+  if (!rid) return [];
+
+  const map = new Map();
+  for (const p of allSellable.value || []) {
+    const pr = getRubroId(p);
+    if (Number(pr || 0) !== rid) continue;
+
+    const sid = getSubCategoryId(p);
+    const name = subrubroName(p);
+    if (!sid || !name) continue;
+    if (!map.has(sid)) map.set(sid, { title: String(name), value: Number(sid) });
+  }
+
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+});
+
+function onRubroChange() {
+  subrubroId.value = null;
+  page.value = 1;
 }
 
 /**
@@ -592,41 +838,6 @@ function isSellable(p) {
   return hasStock(p) && hasAnyPrice(p);
 }
 
-function rubroName(p) {
-  return p?.parent_category_name || p?.category_name || null;
-}
-function subrubroName(p) {
-  return p?.subcategory_name || null;
-}
-
-const rubroItems = computed(() => {
-  const map = new Map();
-  for (const p of allSellable.value) {
-    const name = rubroName(p);
-    const id = p?.parent_category_id || p?.category_id || null;
-    if (!name || !id) continue;
-    if (!map.has(id)) map.set(id, { title: String(name), value: Number(id) });
-  }
-  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
-});
-
-const subrubroItems = computed(() => {
-  const map = new Map();
-  for (const p of allSellable.value) {
-    if (rubroId.value && Number(p?.parent_category_id || p?.category_id) !== Number(rubroId.value)) continue;
-    const name = subrubroName(p);
-    const id = p?.subcategory_id || null;
-    if (!name || !id) continue;
-    if (!map.has(id)) map.set(id, { title: String(name), value: Number(id) });
-  }
-  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
-});
-
-function onRubroChange() {
-  subrubroId.value = null;
-  page.value = 1;
-}
-
 /** filtro + paginación */
 const filteredItems = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
@@ -635,12 +846,11 @@ const filteredItems = computed(() => {
     if (!isSellable(p)) return false;
 
     if (rubroId.value) {
-      const pid = Number(p?.parent_category_id || p?.category_id || 0);
-      if (pid !== Number(rubroId.value)) return false;
+      if (Number(getRubroId(p) || 0) !== Number(rubroId.value)) return false;
     }
 
     if (subrubroId.value) {
-      if (Number(p?.subcategory_id || 0) !== Number(subrubroId.value)) return false;
+      if (Number(getSubCategoryId(p) || 0) !== Number(subrubroId.value)) return false;
     }
 
     if (qq) {
@@ -676,6 +886,14 @@ const pagedItems = computed(() => {
   return filteredItems.value.slice(start, end);
 });
 
+watch(
+  () => [page.value, filteredTotal.value],
+  async () => {
+    // precarga imágenes de la página visible
+    await prefetchImagesForVisible(pagedItems.value);
+  }
+);
+
 function debounceSearch() {
   clearTimeout(tSearch);
   tSearch = setTimeout(() => {
@@ -699,9 +917,9 @@ function nextPage() {
   page.value++;
 }
 
-function goProductProfile(id) {
-  if (!id) return;
-  router.push({ name: "productProfile", params: { id } });
+function openDetails(p) {
+  detailsItem.value = p || null;
+  detailsOpen.value = true;
 }
 
 function add(p) {
@@ -710,7 +928,6 @@ function add(p) {
     return;
   }
 
-  // al agregar, mostramos por defecto LISTA, el precio real se define al cobrar
   const unit = resolveUnitPrice(p, "LIST");
   if (unit <= 0) {
     snack.value = { show: true, text: "⚠️ Producto sin precio" };
@@ -741,8 +958,6 @@ async function hardSyncPosContextWithAuth() {
 
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
-
-  dbg("SYNC check", { authBranch, posBranch, posWarehouse: posStore.warehouse_id });
 
   if (!authBranch) {
     await posStore.ensureContext?.({ force: true });
@@ -778,8 +993,6 @@ async function fetchSellablePool() {
       warehouse_id: posStore.warehouse_id || undefined,
     };
 
-    dbg("GET /pos/products pool params", params);
-
     const { data } = await http.get("/pos/products", { params });
     const out = data?.data || [];
 
@@ -788,12 +1001,12 @@ async function fetchSellablePool() {
 
     if (page.value > pages.value) page.value = 1;
 
-    dbg("pool loaded", { count: allSellable.value.length });
+    // precarga imágenes primera tanda
+    await prefetchImagesForVisible(pagedItems.value);
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
     ctxError.value = msg;
     snack.value = { show: true, text: msg };
-    dbg("fetchSellablePool ERROR", { status: e?.response?.status, data: e?.response?.data, err: e?.message });
   } finally {
     loadingList.value = false;
   }
@@ -838,8 +1051,6 @@ const checkoutTotal = computed(() => {
 });
 
 const checkoutTotalPreview = computed(() => {
-  // lo que vemos abajo a la derecha mientras armo carrito (informativo)
-  // usamos LISTA como preview
   let sum = 0;
   for (const it of posStore.cart || []) sum += toNum(it.qty) * toNum(it.price);
   return sum;
@@ -931,24 +1142,12 @@ async function confirmPayment() {
       customer: { ...customer.value },
     };
 
-    dbg("confirmPayment start", {
-      method: paymentMethod.value,
-      extra,
-      total: checkoutTotal.value,
-      cart: posStore.cart?.map((x) => ({ product_id: x.product_id || x.id, qty: x.qty, price: x.price })),
-    });
-
     await posStore.checkoutSale(paymentMethod.value, extra);
 
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
     fetchSellablePool();
   } catch (e) {
-    dbg("confirmPayment ERROR", {
-      msg: e?.message,
-      status: e?.response?.status,
-      data: e?.response?.data,
-    });
     snack.value = {
       show: true,
       text: posStore.error || e?.response?.data?.message || "❌ Error al confirmar la venta",
@@ -957,7 +1156,8 @@ async function confirmPayment() {
 }
 
 onMounted(async () => {
-  await fetchSellablePool();
+  await loadCategoriesSafe();     // <-- FIX rubros
+  await fetchSellablePool();      // <-- carga pool + imágenes
 });
 </script>
 
@@ -1023,29 +1223,29 @@ onMounted(async () => {
 }
 
 .thumb-wrap {
-  height: 120px;
+  height: 140px; /* MÁS ALTO: se ve la imagen */
   position: relative;
   background: rgb(var(--v-theme-surface));
 }
 
 .thumb {
-  height: 120px;
+  height: 140px;
 }
 
 .thumb-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 120px;
+  height: 140px;
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .badge-sku {
   position: absolute;
   left: 10px;
-  bottom: 8px;
+  bottom: 10px;
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: rgba(var(--v-theme-surface), 0.92);
   backdrop-filter: blur(4px);
@@ -1054,9 +1254,9 @@ onMounted(async () => {
 .badge-stock {
   position: absolute;
   right: 10px;
-  bottom: 8px;
+  bottom: 10px;
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: rgba(var(--v-theme-surface), 0.92);
   backdrop-filter: blur(4px);
@@ -1098,6 +1298,14 @@ onMounted(async () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* MÁS AIRE EN ACCIONES */
+.btn-pad {
+  min-height: 38px;
+}
+.btn-icon {
+  min-width: 42px;
 }
 
 /* Carrito */

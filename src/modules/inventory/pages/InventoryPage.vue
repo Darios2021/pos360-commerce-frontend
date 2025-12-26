@@ -359,7 +359,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 
@@ -424,13 +424,16 @@ const isAdmin = computed(() => {
   const roleNames = roles
     .map((r) => (typeof r === "string" ? r : (r?.name || r?.role || "")))
     .map((s) => String(s).toLowerCase());
-  return roleNames.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)) || u?.is_admin === true;
+  return (
+    roleNames.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)) ||
+    u?.is_admin === true
+  );
 });
 
-/** data local (para paginación real con filtros) */
+/** data local */
 const loadingAll = ref(false);
 const allItems = ref([]); // cache full list segun q
-const branches = ref([]); // para mostrar nombre sucursal (si endpoint existe)
+const branches = ref([]);
 const branchesLoaded = ref(false);
 
 /** selección múltiple */
@@ -452,7 +455,7 @@ const inactiveItem = ref(null);
 
 const snack = ref({ show: false, text: "" });
 
-/** paginación real (cliente) */
+/** paginación real */
 const page = ref(1);
 const pageSize = 25;
 
@@ -461,13 +464,11 @@ function toNum(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
-
 function toMaybeNumber(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
-
 function cleanCatName(s) {
   if (!s) return "";
   return String(s).replace(/\s*>\s*/g, " / ").replace(/\s+/g, " ").trim();
@@ -479,7 +480,6 @@ function branchName(branch_id) {
   const found = (branches.value || []).find((b) => Number(b?.id) === id);
   return found?.name ? found.name : `Sucursal #${id}`;
 }
-
 function branchColor(branch_id) {
   const id = Number(branch_id || 0);
   if (!id) return "grey";
@@ -489,7 +489,7 @@ function branchColor(branch_id) {
   return "blue-grey";
 }
 
-/** stock: no está en columns -> usamos lo que venga en list o sheet_stock_label */
+/** stock */
 function stockNumber(item) {
   const v =
     item?.stock_qty ??
@@ -501,56 +501,46 @@ function stockNumber(item) {
 
   if (v === null || v === undefined || v === "") return null;
 
-  // si viene string tipo "10.000" -> parse
   const n = Number(String(v).replace(",", "."));
   if (Number.isFinite(n)) return n;
-
-  // si es texto no numérico -> sin dato
   return null;
 }
-
 function stockLabel(item) {
   const n = stockNumber(item);
   if (n === null) return "—";
   return n.toFixed(3);
 }
-
-/** precio lista para filtros */
 function priceListNumber(item) {
   return toNum(item?.price_list, 0);
 }
 
-/** imágenes: cache + prefetch por página */
-const imagesCountCache = ref(new Map()); // id -> count
+/** imágenes */
+const imagesCountCache = ref(new Map());
 
 function hasImagesSync(item) {
   const id = Number(item?.id || 0);
   if (!id) return null;
 
-  // si backend trae info en list:
   const c1 = Number(item?.images_count ?? item?.image_count ?? 0);
   if (Number.isFinite(c1) && c1 > 0) return true;
   if (item?.has_images === true) return true;
   if (Array.isArray(item?.product_images) && item.product_images.length > 0) return true;
 
-  // cache
   if (imagesCountCache.value.has(id)) {
     const c = Number(imagesCountCache.value.get(id) || 0);
     return c > 0;
   }
 
-  return null; // unknown
+  return null;
 }
 
 async function prefetchImagesForItems(items) {
-  // solo cuando user filtra por imágenes
   if (imagesMode.value === "all") return;
 
   const list = (items || [])
     .map((x) => Number(x?.id || 0))
     .filter((id) => id > 0 && !imagesCountCache.value.has(id));
 
-  // limitamos para no matar el server
   const batch = list.slice(0, 25);
   if (!batch.length) return;
 
@@ -567,9 +557,9 @@ async function prefetchImagesForItems(items) {
   );
 }
 
-/** headers mínimos */
+/** headers */
 const headers = computed(() => {
-  const base = [
+  return [
     { title: "Nombre", key: "name", sortable: false },
     { title: "Sucursal", key: "branch", sortable: false },
     { title: "Rubro", key: "rubro", sortable: false },
@@ -577,15 +567,11 @@ const headers = computed(() => {
     { title: "Stock", key: "stock", sortable: false, align: "end" },
     { title: "", key: "actions", sortable: false, align: "end" },
   ];
-
-  // si no es admin, igual mostramos sucursal (ya viene) porque inventario admin/gestion.
-  return base;
 });
 
 /** Normalización rubro/subrubro */
 const normalizedAll = computed(() => {
   return (allItems.value || []).map((x) => {
-    // tus asociaciones suelen ser: x.category.name y x.category.parent.name
     const rubroName =
       x?.category?.parent?.name ||
       x?.parent_category?.name ||
@@ -599,7 +585,6 @@ const normalizedAll = computed(() => {
       x?.subrubro ||
       null;
 
-    // IDs reales para filtrar (si existen)
     const pid = Number(x?.parent_category_id || x?.category?.parent?.id || 0) || null;
     const cid = Number(x?.category_id || x?.category?.id || 0) || null;
 
@@ -613,7 +598,6 @@ const normalizedAll = computed(() => {
   });
 });
 
-/** items rubro/subrubro para selects */
 const rubroItems = computed(() => {
   const map = new Map();
   for (const it of normalizedAll.value) {
@@ -621,10 +605,9 @@ const rubroItems = computed(() => {
     const name = it?.rubro || null;
     if (pid && name) map.set(pid, name);
   }
-  const out = Array.from(map.entries())
+  return Array.from(map.entries())
     .map(([value, title]) => ({ value, title }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title)));
-  return out;
 });
 
 const subrubroItems = computed(() => {
@@ -639,10 +622,9 @@ const subrubroItems = computed(() => {
     const title = it?.subrubro || null;
     if (cid && title) map.set(cid, title);
   }
-  const out = Array.from(map.entries())
+  return Array.from(map.entries())
     .map(([value, title]) => ({ value, title }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title)));
-  return out;
 });
 
 function onRubroChange() {
@@ -650,7 +632,6 @@ function onRubroChange() {
   page.value = 1;
 }
 
-/** branches dropdown */
 const branchItems = computed(() => {
   const set = new Set();
   for (const it of normalizedAll.value) {
@@ -663,7 +644,6 @@ const branchItems = computed(() => {
   return out;
 });
 
-/** chips */
 const chips = computed(() => {
   const out = [];
   if (q.value?.trim()) out.push({ key: "q", label: `Buscar: ${q.value}`, onClose: () => (q.value = "") });
@@ -712,23 +692,19 @@ const chips = computed(() => {
   return out;
 });
 
-/** filtro principal (inactivos SIEMPRE fuera) */
+/** filtro principal */
 const filteredAll = computed(() => {
   const pmin = toMaybeNumber(priceMin.value);
   const pmax = toMaybeNumber(priceMax.value);
 
   return normalizedAll.value.filter((it) => {
-    // invisible si inactivo
     if (it?.is_active === false || Number(it?.is_active) === 0) return false;
 
-    // branch (solo admin)
     if (isAdmin.value && branchId.value && Number(it.branch_id) !== Number(branchId.value)) return false;
 
-    // rubro/sub
     if (rubroId.value && Number(it.parent_category_id || 0) !== Number(rubroId.value)) return false;
     if (subrubroId.value && Number(it.category_id || 0) !== Number(subrubroId.value)) return false;
 
-    // stock
     if (stockMode.value !== "all") {
       const s = stockNumber(it);
       if (stockMode.value === "missing" && s !== null) return false;
@@ -738,7 +714,6 @@ const filteredAll = computed(() => {
       if (stockMode.value === "lt0" && !(s < 0)) return false;
     }
 
-    // precio presencia + rango (precio lista)
     const pl = priceListNumber(it);
     if (pricePresence.value === "with" && !(pl > 0)) return false;
     if (pricePresence.value === "without" && !(pl <= 0)) return false;
@@ -746,17 +721,14 @@ const filteredAll = computed(() => {
     if (pmin !== null && pl < pmin) return false;
     if (pmax !== null && pl > pmax) return false;
 
-    // imágenes
     if (imagesMode.value !== "all") {
-      const has = hasImagesSync(it); // true/false/null
-      // si no sabemos aún, lo dejamos pasar; cuando cachee, se ajusta solo
+      const has = hasImagesSync(it);
       if (has !== null) {
         if (imagesMode.value === "with" && has !== true) return false;
         if (imagesMode.value === "without" && has !== false) return false;
       }
     }
 
-    // faltantes
     if (missing.value?.length) {
       for (const m of missing.value) {
         if (m === "category" && it.parent_category_id) return false;
@@ -772,8 +744,6 @@ const filteredAll = computed(() => {
 });
 
 const filteredCount = computed(() => filteredAll.value.length);
-
-/** paginación real según filtrado */
 const pages = computed(() => Math.max(1, Math.ceil(filteredAll.value.length / pageSize)));
 
 watch(pages, (p) => {
@@ -785,7 +755,6 @@ const pagedRows = computed(() => {
   return filteredAll.value.slice(start, start + pageSize);
 });
 
-/** cuando cambia página o filtro de imágenes, prefetch para la página visible */
 watch(
   () => [imagesMode.value, page.value, filteredCount.value],
   async () => {
@@ -795,9 +764,29 @@ watch(
   { immediate: true }
 );
 
-/** Load ALL list (para que la paginación sea coherente al filtrar) */
+/* ==========================
+   ✅ FIX DUPLICADOS:
+   - sacamos onMounted()
+   - dejamos SOLO este watch (immediate)
+   - agregamos lock (si ya está cargando, no recargar)
+========================== */
+async function loadBranchesSafe() {
+  branchesLoaded.value = true;
+  try {
+    if (typeof products.fetchBranches === "function") {
+      const arr = await products.fetchBranches();
+      branches.value = Array.isArray(arr) ? arr : [];
+    } else {
+      branches.value = [];
+    }
+  } catch {
+    branches.value = [];
+  }
+}
+
 async function loadAll() {
   if (!auth.isAuthed) return;
+  if (loadingAll.value) return; // ✅ lock anti doble load
 
   loadingAll.value = true;
   try {
@@ -806,7 +795,6 @@ async function loadAll() {
     selectedIds.value = [];
     page.value = 1;
 
-    // si tu endpoint soporta limit grande, intentamos 1000
     const LIMIT = 1000;
     let p = 1;
     let pagesServer = 1;
@@ -822,42 +810,32 @@ async function loadAll() {
       allItems.value = allItems.value.concat(items);
 
       p++;
-    } while (p <= pagesServer && p < 50); // safety
+    } while (p <= pagesServer && p < 50);
 
-    // branches (si existe endpoint)
     if (!branchesLoaded.value) await loadBranchesSafe();
   } finally {
     loadingAll.value = false;
   }
 }
 
-/** branches safe */
-async function loadBranchesSafe() {
-  branchesLoaded.value = true;
-  try {
-    if (typeof products.fetchBranches === "function") {
-      const arr = await products.fetchBranches();
-      branches.value = Array.isArray(arr) ? arr : [];
-    } else {
-      branches.value = [];
-    }
-  } catch {
-    branches.value = [];
-  }
-}
+watch(
+  () => auth.isAuthed,
+  async (v) => {
+    if (v) await loadAll();
+  },
+  { immediate: true }
+);
 
 /** actions */
 function openDetails(id) {
   selectedId.value = Number(id);
   detailsOpen.value = true;
 }
-
 function openCreate() {
   formMode.value = "create";
   formItem.value = null;
   formOpen.value = true;
 }
-
 async function openEdit(id) {
   const full = await products.fetchOne(Number(id), { force: true });
   if (!full) return;
@@ -865,7 +843,6 @@ async function openEdit(id) {
   formItem.value = full;
   formOpen.value = true;
 }
-
 async function afterSaved() {
   snack.value = { show: true, text: "Guardado OK" };
   await loadAll();
@@ -874,11 +851,9 @@ async function afterDeleted() {
   snack.value = { show: true, text: "Actualizado" };
   await loadAll();
 }
-
 async function search() {
   await loadAll();
 }
-
 async function clear() {
   q.value = "";
   branchId.value = null;
@@ -900,7 +875,6 @@ function askInactivate(item) {
   inactiveItem.value = item;
   inactiveOpen.value = true;
 }
-
 async function doInactivate() {
   const it = inactiveItem.value;
   if (!it?.id) return;
@@ -916,12 +890,10 @@ async function doInactivate() {
     snack.value = { show: true, text: e?.message || "No se pudo inactivar" };
   }
 }
-
 function askDelete(item) {
   deleteItem.value = item;
   deleteOpen.value = true;
 }
-
 async function doDelete() {
   const it = deleteItem.value;
   if (!it?.id) return;
@@ -931,7 +903,6 @@ async function doDelete() {
     if (!ok) throw new Error(products.error || "No se pudo eliminar");
     snack.value = { show: true, text: "Producto eliminado" };
   } catch (e) {
-    // fallback por FK: inactivar
     try {
       const updated = await products.update(Number(it.id), { is_active: false });
       if (!updated?.id && products.error) throw new Error(products.error);
@@ -962,7 +933,6 @@ async function bulkInactivate() {
   selectedIds.value = [];
   await loadAll();
 }
-
 async function bulkDelete() {
   const ids = (selectedIds.value || []).map((x) => Number(x)).filter((x) => x > 0);
   if (!ids.length) return;
@@ -987,18 +957,6 @@ async function bulkDelete() {
   selectedIds.value = [];
   await loadAll();
 }
-
-onMounted(async () => {
-  await loadAll();
-});
-
-watch(
-  () => auth.isAuthed,
-  async (v) => {
-    if (v) await loadAll();
-  },
-  { immediate: true }
-);
 </script>
 
 <style scoped>
