@@ -9,14 +9,12 @@ function toInt(v, d = 0) {
 
 // ✅ Unwrap helpers (soporta distintos formatos backend)
 function unwrapOne(res) {
-  // soporta: {ok, data}, {ok, item}, {ok, product}, {data:{...}} etc.
   if (!res) return null;
   if (res.ok === false) return null;
   return res.data ?? res.item ?? res.product ?? res.user ?? null;
 }
 
 function unwrapList(res) {
-  // soporta: {ok, data:[...]}, {ok, items:[...]}, {items:[...]}, {data:{items:[...]}}
   if (!res) return [];
   if (res.ok === false) return [];
   const v = res.data ?? res.items ?? res.list ?? res.rows ?? res.result ?? null;
@@ -26,9 +24,19 @@ function unwrapList(res) {
 }
 
 function unwrapMeta(res) {
-  // soporta: {meta}, {data:{meta}}, {pagination}
   if (!res) return {};
   return res.meta ?? res.pagination ?? res.data?.meta ?? {};
+}
+
+// Detecta si un error es 404 de ruta
+function is404(err) {
+  const code = err?.response?.status;
+  const msg = String(err?.response?.data?.message || err?.message || "");
+  return (
+    code === 404 ||
+    msg.toLowerCase().includes("not found") ||
+    msg.toLowerCase().includes("ruta no encontrada")
+  );
 }
 
 export const useProductsStore = defineStore("products", {
@@ -47,7 +55,11 @@ export const useProductsStore = defineStore("products", {
 
   actions: {
     setError(e) {
-      this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e || "");
+      this.error =
+        e?.response?.data?.message ||
+        e?.friendlyMessage ||
+        e?.message ||
+        String(e || "");
     },
 
     // ✅ GET /products
@@ -60,7 +72,6 @@ export const useProductsStore = defineStore("products", {
         const list = unwrapList(data);
         const meta = unwrapMeta(data);
 
-        // si tu backend manda total/pages
         this.items = list;
         this.total = toInt(meta.total, list.length || 0);
         this.page = toInt(meta.page, page);
@@ -190,7 +201,6 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.get(`/products/${pid}/images`);
-        // soporta {ok, items} o {ok, data:[...]}
         return unwrapList(data);
       } catch (e) {
         this.setError(e);
@@ -251,7 +261,6 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.get("/branches");
-        // soporta {ok, items} o {ok, data:[...]}
         return unwrapList(data);
       } catch (e) {
         this.setError(e);
@@ -260,21 +269,63 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ==========================
-    // STOCK INIT (POST /stock/init)
+    // STOCK INIT (🔥 FIX + DEBUG REAL)
     // ==========================
     async initStock({ product_id, branch_id, qty }) {
       this.loading = true;
       this.error = null;
-      try {
-        const payload = {
-          product_id: toInt(product_id, 0),
-          branch_id: toInt(branch_id, 0),
-          qty: Number(qty || 0),
-        };
 
-        const { data } = await http.post("/stock/init", payload);
-        if (data?.ok === false) throw new Error(data?.message || "INIT_STOCK_FAILED");
-        return true;
+      const payload = {
+        product_id: toInt(product_id, 0),
+        branch_id: toInt(branch_id, 0),
+        qty: Number(qty || 0),
+      };
+
+      // OJO: http ya tiene baseURL "/api/v1"
+      // entonces acá ponemos rutas RELATIVAS reales
+      const candidates = [
+        "pos/stock/init",
+        "pos/stocks/init",
+        "pos/stock",
+        "pos/stocks",
+        "stock/init",
+        "stocks/init",
+        "stock",
+        "stocks",
+        "inventory/stock/init",
+        "inventory/stock",
+      ];
+
+      let lastErr = null;
+
+      try {
+        for (const path of candidates) {
+          try {
+            console.log("[initStock] TRY:", path, payload);
+
+            const { data } = await http.post(path, payload);
+
+            if (data?.ok === false) throw new Error(data?.message || `INIT_STOCK_FAILED (${path})`);
+
+            console.log("[initStock] OK:", path, data);
+            return true;
+          } catch (e) {
+            lastErr = e;
+            const status = e?.response?.status;
+            const msg = String(e?.response?.data?.message || e?.message || "");
+            console.warn("[initStock] FAIL:", path, "status=", status, "msg=", msg);
+
+            // si NO es 404 => error real del backend => cortamos
+            if (!is404(e)) throw e;
+          }
+        }
+
+        const msg =
+          lastErr?.response?.data?.message ||
+          lastErr?.message ||
+          "INIT_STOCK_ROUTE_NOT_FOUND";
+
+        throw new Error(msg);
       } catch (e) {
         this.setError(e);
         return false;

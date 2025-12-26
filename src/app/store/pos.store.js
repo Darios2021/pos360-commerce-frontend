@@ -21,11 +21,9 @@ function apiErrorMessage(err, fallback = "Error") {
   }
 }
 
-// ===== localStorage keys =====
 const LS_BRANCH = "pos_branch_id";
 const LS_WAREHOUSE = "pos_warehouse_id";
 
-// debug flag (podés activar con VITE_POS_DEBUG=true)
 const POS_DEBUG =
   String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" ||
   import.meta?.env?.DEV;
@@ -50,9 +48,7 @@ function writeLSInt(key, val) {
   try {
     if (!val) localStorage.removeItem(key);
     else localStorage.setItem(key, String(val));
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 async function fetchFirstWarehouseIdByBranch(branchId) {
@@ -93,7 +89,7 @@ export const usePosStore = defineStore("pos", {
     branch_id: readLSInt(LS_BRANCH),
     warehouse_id: readLSInt(LS_WAREHOUSE),
 
-    // cliente
+    // cliente (fallback)
     customer: { name: "Consumidor Final" },
 
     // carrito
@@ -138,12 +134,10 @@ export const usePosStore = defineStore("pos", {
     },
 
     /**
-     * ✅ Contexto robusto para TODOS:
-     * - lee /pos/context
-     * - setea branch si viene
-     * - setea warehouse si viene
-     * - si NO viene warehouse, intenta resolver por sucursal (primer depósito)
-     * - persiste en localStorage
+     * ✅ Contexto robusto:
+     * - llama /pos/context
+     * - MUY IMPORTANTE: manda branch_id/warehouse_id actuales como hint
+     *   (para admin y para evitar que te “caiga” al primer depósito equivocado)
      */
     async ensureContext({ force = false } = {}) {
       const currB = toInt(this.branch_id, 0);
@@ -157,7 +151,13 @@ export const usePosStore = defineStore("pos", {
       try {
         dbg("ensureContext start", { force, currB, currW });
 
-        const { data } = await http.get("/pos/context");
+        const { data } = await http.get("/pos/context", {
+          params: {
+            branch_id: currB || undefined,
+            warehouse_id: currW || undefined,
+          },
+        });
+
         const ctx = data?.data || {};
 
         const branchId =
@@ -181,7 +181,7 @@ export const usePosStore = defineStore("pos", {
           writeLSInt(LS_WAREHOUSE, warehouseId);
         }
 
-        // ✅ fallback si vino sin warehouse:
+        // fallback si vino sin warehouse
         if (toInt(this.branch_id, 0) > 0 && toInt(this.warehouse_id, 0) <= 0) {
           const wid = await fetchFirstWarehouseIdByBranch(this.branch_id);
           if (wid) {
@@ -249,9 +249,12 @@ export const usePosStore = defineStore("pos", {
         return;
       }
 
+      // precio > 0 obligatorio
       const price =
-        toNum(product?.price_list, 0) ||
         toNum(product?.price, 0) ||
+        toNum(product?.price_list, 0) ||
+        toNum(product?.price_discount, 0) ||
+        toNum(product?.price_reseller, 0) ||
         toNum(product?.effective_price, 0);
 
       if (price <= 0) {
@@ -268,10 +271,18 @@ export const usePosStore = defineStore("pos", {
           name: String(product?.name || ""),
           sku: product?.sku || null,
           barcode: product?.barcode || null,
-          image: product?.image || null,
+          image: product?.image || product?.image_url || null,
+
           qty: 1,
           available_qty: available,
-          price,
+
+          // precios (guardamos todos para poder recalcular)
+          price: price,
+          price_list: toNum(product?.price_list, 0),
+          price_discount: toNum(product?.price_discount, 0),
+          price_reseller: toNum(product?.price_reseller, 0),
+
+          price_label: product?.price_label || "Precio",
           subtotal: 0,
         };
 
@@ -326,10 +337,13 @@ export const usePosStore = defineStore("pos", {
     // =========================
 
     /**
-     * ✅ NUEVO nombre “real”
-     * (y abajo dejamos alias checkout() para que JAMÁS vuelva a romper)
+     * ✅ checkoutSale(method, extra)
+     * extra:
+     * - customer {first_name,last_name,whatsapp,email}
+     * - proof (transfer/qr)
+     * - price_policy, installments
      */
-    async checkoutSale(paymentMethod = "CASH") {
+    async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
       this.error = "";
 
@@ -339,6 +353,7 @@ export const usePosStore = defineStore("pos", {
           cartItems: this.cart.length,
           branch_id: this.branch_id,
           warehouse_id: this.warehouse_id,
+          extra,
         });
 
         await this.ensureContext();
@@ -353,12 +368,6 @@ export const usePosStore = defineStore("pos", {
         }
 
         if (!wid) {
-          dbg("checkoutSale BLOCKED: warehouse missing", {
-            branch_id: this.branch_id,
-            warehouse_id: this.warehouse_id,
-            ls_branch: readLSInt(LS_BRANCH),
-            ls_warehouse: readLSInt(LS_WAREHOUSE),
-          });
           throw new Error("No hay depósito seleccionado. Configurá warehouse_id en el POS.");
         }
 
@@ -372,19 +381,41 @@ export const usePosStore = defineStore("pos", {
           }
         }
 
+        const c = extra?.customer || {};
+        const fullName = `${String(c.first_name || "").trim()} ${String(c.last_name || "").trim()}`.trim();
+        const customer_name =
+          (fullName || String(this.customer?.name || "").trim() || "Consumidor Final").trim() || "Consumidor Final";
+
+        const noteParts = [];
+        if (c.whatsapp) noteParts.push(`WA:${String(c.whatsapp).trim()}`);
+        if (c.email) noteParts.push(`MAIL:${String(c.email).trim()}`);
+        if (extra?.price_policy) noteParts.push(`POLICY:${String(extra.price_policy).trim()}`);
+        if (extra?.installments) noteParts.push(`CUOTAS:${String(extra.installments).trim()}`);
+        if (extra?.proof) noteParts.push(`PROOF:${String(extra.proof).trim()}`);
+
+        const note = noteParts.length ? noteParts.join(" | ") : null;
+
         const payload = {
-          customer_name: (this.customer?.name || "Consumidor Final").trim() || "Consumidor Final",
+          customer_name,
+          note,
+
           branch_id: toInt(this.branch_id, 0) || undefined,
           warehouse_id: wid,
+
           items: this.cart.map((it) => ({
             product_id: toInt(it.product_id, toInt(it.id, 0)),
             quantity: toNum(it.qty, 0),
             unit_price: toNum(it.price, 0),
           })),
+
           payments: [
             {
               method: String(paymentMethod || "CASH").toUpperCase(),
               amount: toNum(this.totalAmount, 0),
+              reference: extra?.proof || null,
+              note: extra?.price_policy
+                ? `price_policy=${extra.price_policy}${extra?.installments ? `; installments=${extra.installments}` : ""}`
+                : null,
             },
           ],
         };
@@ -419,13 +450,9 @@ export const usePosStore = defineStore("pos", {
       }
     },
 
-    /**
-     * ✅ ALIAS CRÍTICO:
-     * Si el frontend llama posStore.checkout() y por HMR tenés versión vieja/nueva,
-     * NO rompe más: siempre existe checkout().
-     */
-    async checkout(paymentMethod = "CASH") {
-      return this.checkoutSale(paymentMethod);
+    // alias para no romper jamás
+    async checkout(paymentMethod = "CASH", extra = {}) {
+      return this.checkoutSale(paymentMethod, extra);
     },
   },
 });

@@ -1,85 +1,61 @@
+<!-- src/modules/dashboard/components/DashboardCharts.vue -->
 <template>
-  <v-row dense>
-    <!-- Ventas por día -->
-    <v-col cols="12" md="8">
-      <v-card rounded="xl" elevation="1">
-        <v-card-title class="font-weight-bold">
-          Ventas por día
-        </v-card-title>
-        <v-card-text>
-          <apexchart
-            height="300"
-            type="line"
-            :options="salesOptions"
-            :series="salesSeries"
-          />
-        </v-card-text>
-      </v-card>
-    </v-col>
+  <v-card class="dash-card" rounded="xl" elevation="0">
+    <div class="d-flex align-center justify-space-between px-4 pt-4 pb-2">
+      <div class="text-subtitle-1 font-weight-bold">{{ titleLeft }}</div>
+      <div class="d-flex align-center ga-2">
+        <slot name="right" />
+      </div>
+    </div>
 
-    <!-- Métodos de pago -->
-    <v-col cols="12" md="4">
-      <v-card rounded="xl" elevation="1">
-        <v-card-title class="font-weight-bold">
-          Métodos de pago
-        </v-card-title>
-        <v-card-text>
-          <apexchart
-            height="300"
-            type="donut"
-            :options="paymentOptions"
-            :series="paymentSeries"
-          />
-        </v-card-text>
-      </v-card>
-    </v-col>
-  </v-row>
+    <div class="px-2 pb-3">
+      <div v-if="!ready" class="px-4 py-8 text-medium-emphasis">
+        Sin datos para graficar.
+      </div>
+
+      <ApexChart
+        v-else
+        :key="chartKey"
+        :type="type"
+        :height="height"
+        :series="seriesSafe"
+        :options="optionsSafe"
+      />
+    </div>
+  </v-card>
 </template>
 
 <script setup>
 import { computed } from "vue";
+import ApexChart from "vue3-apexcharts";
 
 const props = defineProps({
-  salesByDay: { type: Array, default: () => [] }, // [{ date, total }]
-  payments: { type: Object, default: () => ({}) }, // { CASH: 1000 }
+  titleLeft: { type: String, default: "" },
+  type: { type: String, default: "line" },
+  height: { type: [Number, String], default: 320 },
+
+  // Apex:
+  // - series: [{ name, data: [] }] o [number] si donut/pie
+  series: { type: Array, default: () => [] },
+  options: { type: Object, default: () => ({}) },
+
+  ready: { type: Boolean, default: false },
 });
 
-// ================= Ventas =================
-const salesSeries = computed(() => [
-  { name: "Ventas", data: props.salesByDay.map(i => i.total) },
-]);
+const seriesSafe = computed(() => props.series || []);
+const optionsSafe = computed(() => props.options || {});
 
-const salesOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  stroke: { curve: "smooth", width: 3 },
-  xaxis: { categories: props.salesByDay.map(i => i.date) },
-  dataLabels: { enabled: false },
-  colors: ["#1976D2"],
-  tooltip: {
-    y: {
-      formatter: v =>
-        new Intl.NumberFormat("es-AR", {
-          style: "currency",
-          currency: "ARS",
-        }).format(v),
-    },
-  },
-}));
-
-// ================= Pagos =================
-const paymentSeries = computed(() => Object.values(props.payments));
-
-const paymentOptions = computed(() => ({
-  labels: Object.keys(props.payments).map(methodLabel),
-  legend: { position: "bottom" },
-  colors: ["#2E7D32", "#1565C0", "#6A1B9A", "#EF6C00"],
-}));
-
-function methodLabel(m) {
-  if (m === "CASH") return "Efectivo";
-  if (m === "CARD") return "Tarjeta";
-  if (m === "TRANSFER") return "Transferencia";
-  if (m === "QR") return "QR";
-  return m;
-}
+// ✅ evita "Element not found" + fuerza re-mount cuando cambian datos
+const chartKey = computed(() => {
+  const s = JSON.stringify(seriesSafe.value ?? []).slice(0, 2500);
+  const o = JSON.stringify(optionsSafe.value ?? {}).slice(0, 2500);
+  return `${props.type}-${props.height}-${s.length}-${o.length}`;
+});
 </script>
+
+<style scoped>
+.dash-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+</style>

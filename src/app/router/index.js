@@ -2,17 +2,19 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../store/auth.store";
 
-// Lazy pages
+// Dashboard / Auth
 const Home = () => import("../../modules/dashboard/pages/DashboardHome.vue");
 const Login = () => import("../../modules/auth/pages/LoginPage.vue");
 
-// Inventario
+// Inventario / Productos
 const Products = () => import("../../modules/products/pages/ProductsListPage.vue");
 const ProductProfile = () => import("../../modules/products/pages/ProductProfilePage.vue");
-
+const ImportProducts = () => import("../../modules/import/page/ImportProductsPage.vue");
 const Stock = () => import("../../modules/stock/pages/StockPage.vue");
 const Categories = () => import("../../modules/categories/pages/CategoriesPage.vue");
-const ImportProducts = () => import("../../modules/import/page/ImportProductsPage.vue");
+
+// ✅ Inventario Admin (NUEVO) — OJO: está en modules/inventory/pages
+const Inventory = () => import("../../modules/inventory/pages/InventoryPage.vue");
 
 // POS
 const Pos = () => import("../../modules/pos/pages/PosPage.vue");
@@ -20,16 +22,21 @@ const PosSales = () => import("../../modules/pos/pages/PosSalesPage.vue");
 const PosSaleDetail = () => import("../../modules/pos/pages/PosSaleDetailPage.vue");
 
 const routes = [
-  // Home/Dashboard
   { path: "/", name: "home", component: Home, meta: { requiresAuth: true } },
 
-  // Inventario
+  // Productos
   { path: "/products", name: "products", component: Products, meta: { requiresAuth: true } },
-
-  // Perfil producto
+  { path: "/products/import", name: "productsImport", component: ImportProducts, meta: { requiresAuth: true } },
   { path: "/products/:id", name: "productProfile", component: ProductProfile, meta: { requiresAuth: true } },
 
-  { path: "/products/import", name: "productsImport", component: ImportProducts, meta: { requiresAuth: true } },
+  // ✅ Inventario (admin)
+  {
+    path: "/inventory",
+    name: "inventory",
+    component: Inventory,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
   { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
   { path: "/categories", name: "categories", component: Categories, meta: { requiresAuth: true } },
 
@@ -38,16 +45,14 @@ const routes = [
   { path: "/pos/sales", name: "posSales", component: PosSales, meta: { requiresAuth: true } },
   { path: "/pos/sales/:id", name: "posSaleDetail", component: PosSaleDetail, meta: { requiresAuth: true } },
 
-  // Auth (✅ layout auth para que App.vue use AuthLayout)
+  // Auth
   { path: "/auth/login", name: "login", component: Login, meta: { layout: "auth" } },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
-    return { top: 0 };
-  },
+  scrollBehavior: () => ({ top: 0 }),
 });
 
 router.beforeEach((to) => {
@@ -58,7 +63,13 @@ router.beforeEach((to) => {
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
 
-  return true;
+  // ✅ Gate de roles (Inventario admin y futuras rutas con roles)
+  const roles = to.meta?.roles;
+  if (roles && roles.length) {
+    const r = auth.roles || [];
+    const ok = roles.some((x) => r.includes(x));
+    if (!ok) return { name: "home" };
+  }
 });
 
 export default router;

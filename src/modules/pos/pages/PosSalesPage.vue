@@ -244,6 +244,26 @@
           </div>
         </template>
 
+        <!-- ✅ Sucursal -->
+        <template #item.branch="{ item }">
+          <div class="font-weight-bold">
+            {{ branchLabel(item) }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            Branch ID: {{ item.branch_id ?? "—" }}
+          </div>
+        </template>
+
+        <!-- ✅ Usuario/Vendedor -->
+        <template #item.user="{ item }">
+          <div class="font-weight-bold">
+            {{ userLabel(item) }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            User ID: {{ item.user_id ?? "—" }}
+          </div>
+        </template>
+
         <!-- Cliente -->
         <template #item.customer_name="{ item }">
           <div class="font-weight-bold">{{ item.customer_name || "Consumidor Final" }}</div>
@@ -333,6 +353,16 @@
           </div>
 
           <div class="d-flex ga-2">
+            <v-btn
+              v-if="detail"
+              size="small"
+              variant="tonal"
+              @click="windowPrint"
+              title="Imprimir"
+            >
+              <v-icon start>mdi-printer</v-icon>
+              Imprimir
+            </v-btn>
             <v-btn icon="mdi-close" variant="text" @click="detailDialog = false" />
           </div>
         </v-card-title>
@@ -344,7 +374,134 @@
         </v-card-text>
 
         <v-card-text v-else-if="detail">
-          <pre class="json">{{ pretty(detail) }}</pre>
+          <v-row dense>
+            <v-col cols="12" md="6">
+              <v-card elevation="0" class="rounded-xl pa-4" style="background: rgba(0,0,0,.03);">
+                <div class="text-caption text-medium-emphasis">Cliente</div>
+                <div class="text-h6 font-weight-black">{{ detail.customer_name || "Consumidor Final" }}</div>
+
+                <div class="text-caption text-medium-emphasis mt-3">Fecha</div>
+                <div class="text-body-2 font-weight-medium">{{ dt(detail.sold_at || detail.created_at) }}</div>
+
+                <div class="d-flex flex-wrap ga-2 mt-3">
+                  <v-chip size="small" variant="tonal" :color="statusColor(detail.status)">
+                    {{ statusLabel(detail.status) }}
+                  </v-chip>
+
+                  <v-chip size="small" variant="tonal" :color="payColor(detail.payments?.[0]?.method)">
+                    {{ methodLabel(detail.payments?.[0]?.method) }}
+                  </v-chip>
+
+                  <v-chip size="small" variant="tonal" color="primary">
+                    Sucursal: {{ detail.branch_id ?? "—" }}
+                  </v-chip>
+
+                  <v-chip size="small" variant="tonal" color="primary">
+                    Usuario: {{ detail.user_id ?? "—" }}
+                  </v-chip>
+                </div>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-card elevation="0" class="rounded-xl pa-4" style="background: rgba(0,0,0,.03);">
+                <div class="d-flex justify-space-between"><span>Subtotal</span><b>{{ money(detail.subtotal) }}</b></div>
+                <div class="d-flex justify-space-between"><span>Descuento</span><b>{{ money(detail.discount_total) }}</b></div>
+                <div class="d-flex justify-space-between"><span>Impuestos</span><b>{{ money(detail.tax_total) }}</b></div>
+                <v-divider class="my-2" />
+                <div class="d-flex justify-space-between align-center">
+                  <span class="text-h6 font-weight-black">TOTAL</span>
+                  <span class="text-h6 font-weight-black">{{ money(detail.total) }}</span>
+                </div>
+                <div class="d-flex justify-space-between"><span>Pagado</span><b>{{ money(detail.paid_total) }}</b></div>
+                <div class="d-flex justify-space-between"><span>Vuelto</span><b>{{ money(detail.change_total) }}</b></div>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <v-divider class="my-4" />
+
+          <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-2">
+            <div class="text-subtitle-2 font-weight-bold">Productos</div>
+            <div class="text-caption text-medium-emphasis">
+              Ítems: <b>{{ (detail.items || []).length }}</b>
+            </div>
+          </div>
+
+          <v-data-table
+            :headers="itemsHeaders"
+            :items="detail.items || []"
+            density="comfortable"
+            class="elevation-0 rounded-xl"
+            item-key="id"
+          >
+            <template #item.thumb="{ item }">
+              <div class="d-flex align-center ga-3">
+                <v-avatar size="44" rounded="lg" style="background: rgba(0,0,0,.06);">
+                  <v-img
+                    v-if="imgUrl(item)"
+                    :src="imgUrl(item)"
+                    cover
+                    :alt="item.product_name_snapshot || 'Producto'"
+                  />
+                  <v-icon v-else>mdi-image-off-outline</v-icon>
+                </v-avatar>
+
+                <div>
+                  <div class="font-weight-bold">{{ item.product_name_snapshot || "Item" }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    SKU: {{ item.product_sku_snapshot || "—" }}
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template #item.quantity="{ item }">
+              <b>{{ Number(item.quantity || 0) }}</b>
+            </template>
+
+            <template #item.unit_price="{ item }">{{ money(item.unit_price) }}</template>
+            <template #item.line_total="{ item }"><b>{{ money(item.line_total) }}</b></template>
+
+            <template #bottom />
+          </v-data-table>
+
+          <v-alert
+            v-if="!((detail.items || []).length)"
+            type="warning"
+            variant="tonal"
+            class="mt-4 rounded-xl"
+          >
+            Esta venta no trae <b>items</b>. El backend te está devolviendo solo encabezado (sale + payments).
+            Hay que incluir los items en <code>/pos/sales/:id</code>.
+          </v-alert>
+
+          <v-divider class="my-4" />
+
+          <div class="text-subtitle-2 font-weight-bold mb-2">Pagos</div>
+          <v-list density="compact" class="bg-transparent">
+            <v-list-item v-for="p in (detail.payments || [])" :key="p.id" class="px-0">
+              <v-list-item-title class="text-body-2 font-weight-medium">
+                {{ methodLabel(p.method) }}
+              </v-list-item-title>
+              <template #append><b>{{ money(p.amount) }}</b></template>
+            </v-list-item>
+          </v-list>
+
+          <v-expansion-panels class="mt-4" variant="accordion">
+            <v-expansion-panel>
+              <v-expansion-panel-title class="text-caption text-medium-emphasis">
+                Ver JSON (debug)
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <pre class="json">{{ pretty(detail) }}</pre>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-card-text>
+
+        <v-card-text v-else class="text-medium-emphasis">
+          No se encontró la venta.
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -399,17 +556,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
 
-const router = useRouter();
 const auth = useAuthStore();
+const FILES_BASE = import.meta.env.VITE_FILES_BASE_URL || "";
 
 // ===== Helpers auth (JWT) =====
-function safeAtob(str) {
-  try { return atob(str); } catch { return ""; }
-}
+function safeAtob(str) { try { return atob(str); } catch { return ""; } }
 function decodeJwtPayload(token) {
   try {
     if (!token || typeof token !== "string") return null;
@@ -418,9 +572,7 @@ function decodeJwtPayload(token) {
     const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const json = safeAtob(b64);
     return json ? JSON.parse(json) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 function getAccessToken() {
   return (
@@ -437,9 +589,7 @@ function getAccessToken() {
 function extractRoleNamesFromPayload(payload) {
   const names = [];
   if (!payload || typeof payload !== "object") return names;
-
   if (typeof payload.role === "string") names.push(payload.role);
-
   if (Array.isArray(payload.roles)) {
     for (const r of payload.roles) {
       if (!r) continue;
@@ -447,10 +597,8 @@ function extractRoleNamesFromPayload(payload) {
       else if (typeof r?.name === "string") names.push(r.name);
     }
   }
-
   if (typeof payload.rol === "string") names.push(payload.rol);
   if (typeof payload.user_role === "string") names.push(payload.user_role);
-
   return names;
 }
 
@@ -612,13 +760,23 @@ const statusItems = [
   { title: "Reintegrada", value: "REFUNDED" },
 ];
 
-// Tabla headers
+// ✅ Tabla headers (agregadas columnas)
 const headers = [
   { title: "Fecha", key: "sold_at", sortable: false, width: 190 },
+  { title: "Sucursal", key: "branch", sortable: false, width: 210 },
+  { title: "Usuario", key: "user", sortable: false, width: 210 },
   { title: "Cliente / Pago", key: "customer_name", sortable: false },
   { title: "Total", key: "total", sortable: false, width: 220 },
   { title: "Estado", key: "status", sortable: false, width: 140 },
   { title: "Acciones", key: "actions", sortable: false, width: 360 },
+];
+
+// Headers items detalle
+const itemsHeaders = [
+  { title: "Producto", key: "thumb", sortable: false },
+  { title: "Cant.", key: "quantity", sortable: false, width: 100 },
+  { title: "Unit.", key: "unit_price", sortable: false, width: 140 },
+  { title: "Total", key: "line_total", sortable: false, width: 140 },
 ];
 
 // ===== Helpers UI =====
@@ -654,6 +812,14 @@ function methodLabel(m) {
   if (x === "OTHER") return "Otro";
   return m || "—";
 }
+function payColor(m) {
+  const x = String(m || "").toUpperCase();
+  if (x === "CASH") return "green";
+  if (x === "CARD") return "indigo";
+  if (x === "TRANSFER") return "purple";
+  if (x === "QR") return "orange";
+  return "grey";
+}
 
 function statusLabel(s) {
   const x = String(s || "").toUpperCase();
@@ -674,6 +840,52 @@ function statusColor(s) {
 
 function pretty(obj) {
   try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+}
+
+// ✅ Labels robustos (no rompen si el backend no manda includes)
+function branchLabel(sale) {
+  return (
+    sale?.branch?.name ||
+    sale?.Branch?.name ||
+    sale?.branch_name ||
+    sale?.branch_name_snapshot ||
+    (sale?.branch_id ? `Sucursal #${sale.branch_id}` : "—")
+  );
+}
+function userLabel(sale) {
+  const u =
+    sale?.user ||
+    sale?.User ||
+    sale?.seller ||
+    sale?.cashier ||
+    null;
+
+  return (
+    sale?.user_name ||
+    sale?.user_name_snapshot ||
+    (u?.name || u?.full_name || u?.email || u?.username) ||
+    (sale?.user_id ? `Usuario #${sale.user_id}` : "—")
+  );
+}
+
+// ===== Imágenes (snapshot flexible) =====
+function absUrl(u) {
+  if (!u) return "";
+  const s = String(u);
+  if (/^https?:\/\//i.test(s) || s.startsWith("data:")) return s;
+  if (!FILES_BASE) return s;
+  return FILES_BASE.replace(/\/$/, "") + (s.startsWith("/") ? s : "/" + s);
+}
+function imgUrl(item) {
+  return absUrl(
+    item?.product_image_snapshot ||
+      item?.image_snapshot ||
+      item?.image_url ||
+      item?.product?.image_url ||
+      item?.product?.cover_url ||
+      item?.product?.thumbnail_url ||
+      ""
+  );
 }
 
 // ===== Debounce simple =====
@@ -700,7 +912,8 @@ async function fetchSales() {
       status: status.value || undefined,
     };
 
-    // ✅ clave: solo mandar branch_id si corresponde (admin: opcional)
+    // ✅ SOLO se manda branch_id si hay una sucursal efectiva
+    // Admin con "Todas" => effectiveBranchId = null => NO filtra => backend debe devolver todas
     if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
 
     if (hasFrom) params.from = toStartOfDay(from.value);
@@ -794,14 +1007,8 @@ async function confirmDeleteMany() {
 }
 
 // ===== Ranges =====
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-function clearDates() {
-  from.value = "";
-  to.value = "";
-  applyFilters();
-}
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function clearDates() { from.value = ""; to.value = ""; applyFilters(); }
 function setToday() {
   const t = todayISO();
   from.value = t;
@@ -837,7 +1044,6 @@ function resetFilters() {
   selected.value = [];
   meta.value.page = 1;
 
-  // ✅ admin vuelve a "todas"
   if (isAdmin.value) selectedBranchId.value = null;
 
   fetchSales();
@@ -857,9 +1063,7 @@ function nextPage() {
   }
 }
 
-function toggleDense() {
-  dense.value = !dense.value;
-}
+function toggleDense() { dense.value = !dense.value; }
 
 // ===== UX Helpers =====
 async function copySaleId(id) {
@@ -880,17 +1084,16 @@ async function copyText(txt) {
   }
 }
 
-// “Print” demo
-function printSale(sale) {
-  if (!sale) return;
-  snack.value = { show: true, text: "Impresión: pendiente de plantilla (OK)" };
-}
+function printSale() { snack.value = { show: true, text: "Impresión: pendiente de plantilla (OK)" }; }
+function windowPrint() { window.print(); }
 
-// CSV export local
+// ✅ CSV export (incluye branch y user)
 function exportCsv() {
   const rows = sales.value.map((s) => ({
     id: s.id,
     sold_at: dt(s.sold_at),
+    branch: branchLabel(s),
+    user: userLabel(s),
     customer: s.customer_name || "Consumidor Final",
     status: statusLabel(s.status),
     total: Number(s.total || 0),

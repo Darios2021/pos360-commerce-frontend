@@ -57,6 +57,15 @@
           <div class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
 
           <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" />
+
+          <!-- ✅ Inventario (solo admin) -->
+          <v-list-item
+            v-if="isAdmin"
+            :to="{ name: 'inventory' }"
+            prepend-icon="mdi-clipboard-list-outline"
+            title="Inventario"
+          />
+
           <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" />
           <v-list-item :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" />
           <v-list-item :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" />
@@ -121,6 +130,12 @@ const themeStore = useThemeStore();
 
 const userLabel = computed(() => auth?.user?.email || auth?.user?.username || "Usuario");
 const isDark = computed(() => themeStore.isDark);
+
+// ✅ Admin gate para mostrar "Inventario"
+const isAdmin = computed(() => {
+  const r = auth.roles || [];
+  return r.includes("admin") || r.includes("super_admin");
+});
 
 function applyVuetifyTheme(dark) {
   const name = dark ? "dark" : "light";

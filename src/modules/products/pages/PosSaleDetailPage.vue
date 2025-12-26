@@ -32,7 +32,7 @@
 
               <div class="d-flex ga-2 mt-3">
                 <v-chip size="small" variant="tonal" :color="statusColor(sale.status)">
-                  {{ sale.status || "—" }}
+                  {{ sale.status }}
                 </v-chip>
 
                 <v-chip size="small" variant="tonal" color="primary">
@@ -52,8 +52,6 @@
                 <span>TOTAL</span>
                 <span>{{ money(sale.total) }}</span>
               </div>
-              <div class="d-flex justify-space-between"><span>Pagado</span><b>{{ money(sale.paid_total) }}</b></div>
-              <div class="d-flex justify-space-between"><span>Vuelto</span><b>{{ money(sale.change_total) }}</b></div>
             </v-card>
           </v-col>
         </v-row>
@@ -61,10 +59,7 @@
         <v-divider class="my-4" />
 
         <!-- PRODUCTOS -->
-        <div class="d-flex align-center justify-space-between mb-2">
-          <div class="text-subtitle-2 font-weight-bold">Productos</div>
-          <div class="text-caption text-medium-emphasis">items: {{ (sale.items || []).length }}</div>
-        </div>
+        <div class="text-subtitle-2 font-weight-bold mb-2">Productos</div>
 
         <v-data-table
           :headers="itemsHeaders"
@@ -76,74 +71,58 @@
           <!-- PRODUCTO -->
           <template #item.product="{ item }">
             <div class="d-flex align-center ga-3">
-              <v-avatar size="42" rounded="lg" style="background: rgba(0,0,0,.06);">
-                <v-img v-if="thumb(toRawItem(item))" :src="thumb(toRawItem(item))" cover />
+              <v-avatar size="42" rounded="lg">
+                <v-img
+                  v-if="thumb(item)"
+                  :src="thumb(item)"
+                  cover
+                />
                 <v-icon v-else>mdi-image-off-outline</v-icon>
               </v-avatar>
 
-              <div class="min-w-0">
+              <div>
                 <div
-                  class="font-weight-bold text-truncate"
-                  style="cursor:pointer;"
-                  @click="goToProduct(toRawItem(item).product_id)"
-                  :title="toRawItem(item).product_name_snapshot || 'Producto'"
+                  class="font-weight-bold"
+                  style="cursor:pointer"
+                  @click="goToProduct(item.product_id)"
                 >
-                  {{ toRawItem(item).product_name_snapshot || "Producto" }}
+                  {{ item.product_name_snapshot || "Producto" }}
                 </div>
-
-                <div class="text-caption text-medium-emphasis text-truncate">
-                  SKU: {{ toRawItem(item).product_sku_snapshot || "—" }}
+                <div class="text-caption text-medium-emphasis">
+                  SKU: {{ item.product_sku_snapshot || "—" }}
                 </div>
               </div>
             </div>
           </template>
 
-          <!-- CANT -->
           <template #item.quantity="{ item }">
-            <b>{{ Number(toRawItem(item).quantity || 0) }}</b>
+            <b>{{ item.quantity }}</b>
           </template>
 
-          <!-- UNIT -->
           <template #item.unit_price="{ item }">
-            {{ money(toRawItem(item).unit_price) }}
+            {{ money(item.unit_price) }}
           </template>
 
-          <!-- TOTAL -->
           <template #item.line_total="{ item }">
-            <b>{{ money(toRawItem(item).line_total) }}</b>
+            <b>{{ money(item.line_total) }}</b>
           </template>
 
-          <!-- ✅ ACCIONES (PERFIL) -->
+          <!-- ACCIONES -->
           <template #item.actions="{ item }">
             <v-btn
               size="small"
               variant="tonal"
               color="primary"
-              :disabled="!toRawItem(item).product_id"
-              @click="goToProduct(toRawItem(item).product_id)"
-              title="Ver perfil del producto"
+              @click="goToProduct(item.product_id)"
             >
               <v-icon start>mdi-package-variant</v-icon>
               Perfil
             </v-btn>
           </template>
-
-          <template #bottom />
         </v-data-table>
-
-        <v-divider class="my-4" />
-
-        <!-- PAGOS -->
-        <div class="text-subtitle-2 font-weight-bold mb-2">Pagos</div>
-        <v-list density="compact" class="bg-transparent">
-          <v-list-item v-for="p in (sale.payments || [])" :key="p.id" class="px-0">
-            <v-list-item-title class="text-body-2 font-weight-medium">{{ p.method || "—" }}</v-list-item-title>
-            <template #append><b>{{ money(p.amount) }}</b></template>
-          </v-list-item>
-        </v-list>
       </v-card-text>
 
-      <v-card-text v-else class="text-medium-emphasis">
+      <v-card-text v-else>
         No se encontró la venta.
       </v-card-text>
     </v-card>
@@ -162,19 +141,14 @@ const id = computed(() => route.params.id);
 const loading = ref(false);
 const sale = ref(null);
 
-// ✅ Headers: acá SÍ o SÍ tiene que estar "actions" para que aparezca la columna Perfil
+// headers tabla
 const itemsHeaders = [
   { title: "Producto", key: "product", sortable: false },
   { title: "Cant.", key: "quantity", sortable: false, width: 90 },
   { title: "Unit.", key: "unit_price", sortable: false, width: 140 },
   { title: "Total", key: "line_total", sortable: false, width: 140 },
-  { title: "", key: "actions", sortable: false, width: 160 },
+  { title: "Acciones", key: "actions", sortable: false, width: 160 },
 ];
-
-// Vuetify 3: a veces item viene como { raw: {...} }
-function toRawItem(item) {
-  return item?.raw ?? item ?? {};
-}
 
 function money(v) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" })
@@ -189,35 +163,28 @@ function statusColor(s) {
   if (s === "PAID") return "green";
   if (s === "CANCELLED") return "red";
   if (s === "REFUNDED") return "orange";
-  if (s === "DRAFT") return "blue";
   return "grey";
 }
 
-// miniatura: soporta snapshots o sub-objeto product si viniera
 function thumb(item) {
   return (
-    item?.product_image_snapshot ||
-    item?.image_snapshot ||
-    item?.image_url ||
-    item?.product?.image_url ||
-    item?.product?.thumbnail_url ||
-    item?.product?.cover_url ||
+    item.product_image_snapshot ||
+    item.image_snapshot ||
+    item.product?.image_url ||
     ""
   );
 }
 
-// ✅ navega al perfil creado (router name ya existe: productProfile)
 function goToProduct(pid) {
-  const idn = Number(pid || 0);
-  if (!idn) return;
-  router.push({ name: "productProfile", params: { id: idn } });
+  if (!pid) return;
+  router.push({ name: "productProfile", params: { id: pid } });
 }
 
 async function load() {
   loading.value = true;
   try {
     const { data } = await http.get(`/pos/sales/${id.value}`);
-    if (!data?.ok) throw new Error(data?.message || "Error");
+    if (!data?.ok) throw new Error();
     sale.value = data.data;
   } catch {
     sale.value = null;
@@ -228,7 +195,3 @@ async function load() {
 
 onMounted(load);
 </script>
-
-<style scoped>
-.min-w-0 { min-width: 0; }
-</style>

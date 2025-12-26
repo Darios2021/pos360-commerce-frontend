@@ -9,11 +9,13 @@
 
         <div class="d-flex flex-wrap ga-2 mt-2">
           <v-chip size="small" variant="tonal" color="primary">
-            Branch: {{ posStore.branch_id ?? "—" }}
+            Sucursal: {{ branchName || `Sucursal #${posStore.branch_id ?? "—"}` }}
           </v-chip>
+
           <v-chip size="small" variant="tonal" color="primary">
-            Depósito: {{ posStore.warehouse_id ?? "—" }}
+            Productos listos para vender: {{ filteredTotal }}
           </v-chip>
+
           <v-chip v-if="ctxError" size="small" variant="tonal" color="red">
             {{ ctxError }}
           </v-chip>
@@ -43,7 +45,7 @@
                 <v-text-field
                   v-model="q"
                   label="Buscar productos"
-                  placeholder="Nombre / SKU / Marca / Modelo"
+                  placeholder="Nombre / SKU / Código / Barcode / Marca / Modelo / Rubro / Subrubro"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   density="comfortable"
@@ -57,38 +59,50 @@
 
               <v-col cols="12" sm="6" md="3">
                 <v-select
-                  v-model="priceMode"
-                  :items="priceModeItems"
-                  label="Precio a usar"
+                  v-model="rubroId"
+                  :items="rubroItems"
+                  item-title="title"
+                  item-value="value"
+                  label="Rubro"
                   variant="outlined"
                   density="comfortable"
                   hide-details
+                  clearable
+                  no-data-text="No hay rubros"
+                  @update:model-value="onRubroChange"
                 />
               </v-col>
 
               <v-col cols="12" sm="6" md="3">
                 <v-select
-                  v-model="limit"
-                  :items="limitItems"
-                  label="Por página"
+                  v-model="subrubroId"
+                  :items="subrubroItems"
+                  item-title="title"
+                  item-value="value"
+                  label="Subrubro"
                   variant="outlined"
                   density="comfortable"
                   hide-details
+                  clearable
+                  :disabled="!rubroId && subrubroItems.length === 0"
+                  no-data-text="No hay subrubros"
                 />
               </v-col>
             </v-row>
 
             <div class="d-flex justify-space-between flex-wrap ga-2 mt-2">
               <div class="text-caption text-medium-emphasis">
-                Mostrando {{ items.length }} de {{ total || 0 }}
+                Mostrando {{ pagedItems.length }} de {{ filteredTotal }}
               </div>
 
               <div class="d-flex ga-2">
                 <v-btn size="small" variant="tonal" @click="prevPage" :disabled="page <= 1">
-                  <v-icon start>mdi-chevron-left</v-icon> Anterior
+                  <v-icon start>mdi-chevron-left</v-icon>
+                  Anterior
                 </v-btn>
                 <v-btn size="small" variant="tonal" @click="nextPage" :disabled="page >= pages">
-                  Siguiente <v-icon end>mdi-chevron-right</v-icon>
+                  Siguiente
+                  <v-icon end>mdi-chevron-right</v-icon>
                 </v-btn>
               </div>
             </div>
@@ -102,12 +116,8 @@
           </div>
 
           <v-row v-else dense>
-            <v-col v-for="p in items" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
-              <v-card
-                class="rounded-xl product-card pos-surface"
-                elevation="1"
-                :class="{ 'product-disabled': !isSellable(p) }"
-              >
+            <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
+              <v-card class="rounded-xl product-card pos-surface" elevation="1">
                 <div class="thumb-wrap">
                   <v-img v-if="productImage(p)" :src="productImage(p)" cover class="thumb" />
                   <div v-else class="thumb thumb-empty">
@@ -115,6 +125,10 @@
                   </div>
 
                   <div class="badge-sku">SKU: {{ p.sku || "—" }}</div>
+
+                  <div class="badge-stock badge-stock-ok">
+                    Stock: {{ qty3(p.qty ?? 0) }}
+                  </div>
                 </div>
 
                 <v-card-text class="pt-3 pb-2">
@@ -128,38 +142,42 @@
                     <span class="muted">Modelo:</span> {{ p.model || "—" }}
                   </div>
 
-                  <div class="price-row mt-2 d-flex align-center justify-space-between">
-                    <div v-if="hasPrice(p)" class="price">
-                      {{ money(getPrice(p)) }}
-                    </div>
-                    <v-chip v-else size="small" color="red" variant="tonal">SIN PRECIO</v-chip>
+                  <div class="meta mt-1">
+                    <span class="muted">Rubro:</span> {{ rubroName(p) || "—" }}
+                    <span class="dot">·</span>
+                    <span class="muted">Subrubro:</span> {{ subrubroName(p) || "—" }}
+                  </div>
 
-                    <v-chip size="small" variant="tonal" class="ml-2">
-                      Stock: {{ Number(p.qty ?? 0).toFixed(3) }}
-                    </v-chip>
+                  <div class="price-row mt-2 d-flex align-center justify-space-between">
+                    <div class="price">
+                      {{ money(resolveUnitPrice(p, "LIST")) }}
+                    </div>
+                    <v-chip size="small" variant="tonal">Lista</v-chip>
                   </div>
                 </v-card-text>
 
-                <v-card-actions class="pt-0 pb-3 px-3">
-                  <v-btn
-                    block
-                    size="small"
-                    color="primary"
-                    variant="tonal"
-                    :disabled="!isSellable(p)"
-                    @click="add(p)"
-                  >
+                <v-card-actions class="pt-0 pb-3 px-3 d-flex ga-2">
+                  <v-btn block size="small" color="primary" variant="tonal" @click="add(p)">
                     <v-icon start>mdi-plus</v-icon>
                     Agregar
                   </v-btn>
+
+                  <v-btn
+                    icon="mdi-eye-outline"
+                    size="small"
+                    variant="tonal"
+                    title="Ver perfil"
+                    @click="goProductProfile(p.id)"
+                  />
                 </v-card-actions>
               </v-card>
             </v-col>
           </v-row>
 
-          <div v-if="!loadingList && items.length === 0" class="text-center py-12 text-medium-emphasis">
+          <div v-if="!loadingList && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
             <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
-            <div class="text-h6">No se encontraron productos</div>
+            <div class="text-h6">No se encontraron productos listos para vender</div>
+            <div class="text-caption">Solo se muestran productos con stock y precio &gt; 0.</div>
           </div>
         </div>
       </v-col>
@@ -179,16 +197,51 @@
 
             <v-divider />
 
+            <!-- Cliente rápido -->
             <div class="px-4 pt-3">
-              <v-text-field
-                v-model="posStore.customer.name"
-                label="Cliente"
-                placeholder="Consumidor Final"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-                prepend-inner-icon="mdi-account"
-              />
+              <div class="text-caption text-medium-emphasis mb-2">Cliente (rápido)</div>
+
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="customer.first_name"
+                    label="Nombre"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    prepend-inner-icon="mdi-account"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="customer.last_name"
+                    label="Apellido"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="customer.whatsapp"
+                    label="WhatsApp"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    prepend-inner-icon="mdi-whatsapp"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="customer.email"
+                    label="Email"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    prepend-inner-icon="mdi-email-outline"
+                  />
+                </v-col>
+              </v-row>
             </div>
           </div>
 
@@ -212,6 +265,8 @@
 
                 <v-list-item-subtitle class="text-caption text-medium-emphasis">
                   {{ qty3(it.qty) }} × {{ money(it.price) }}
+                  <span class="dot">·</span>
+                  <span class="muted">{{ it.price_label || "Precio" }}</span>
                 </v-list-item-subtitle>
 
                 <template #append>
@@ -234,17 +289,23 @@
               <div class="totals">
                 <div class="row">
                   <span class="muted">Subtotal</span>
-                  <span class="font-weight-bold">{{ money(posStore.totalAmount) }}</span>
+                  <span class="font-weight-bold">{{ money(checkoutTotalPreview) }}</span>
                 </div>
 
                 <div class="row total">
                   <span class="text-subtitle-1 font-weight-bold">Total</span>
-                  <span class="text-h6 font-weight-black">{{ money(posStore.totalAmount) }}</span>
+                  <span class="text-h6 font-weight-black">{{ money(checkoutTotalPreview) }}</span>
                 </div>
               </div>
 
               <div class="d-flex ga-2 mt-3 cart-actions">
-                <v-btn block variant="tonal" color="grey" :disabled="posStore.cart.length === 0" @click="posStore.clearCart()">
+                <v-btn
+                  block
+                  variant="tonal"
+                  color="grey"
+                  :disabled="posStore.cart.length === 0"
+                  @click="posStore.clearCart()"
+                >
                   <v-icon start>mdi-broom</v-icon>
                   Vaciar
                 </v-btn>
@@ -261,12 +322,15 @@
     </v-row>
 
     <!-- Cobro -->
-    <v-dialog v-model="checkoutDialog" max-width="520" persistent>
+    <v-dialog v-model="checkoutDialog" max-width="560" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
           <div class="text-overline text-white opacity-80 mb-1">Confirmar Cobro</div>
           <div class="text-h4 font-weight-black text-white">
-            {{ money(posStore.totalAmount) }}
+            {{ money(checkoutTotal) }}
+          </div>
+          <div class="text-caption text-white opacity-85 mt-1">
+            * El precio se define acá según método de pago / cuotas / revendedor.
           </div>
         </div>
 
@@ -280,19 +344,81 @@
             <v-radio value="QR" label="Mercado Pago" />
           </v-radio-group>
 
+          <v-row dense class="mt-2">
+            <v-col cols="12" md="6">
+              <v-switch
+                v-model="applyReseller"
+                inset
+                color="primary"
+                label="Aplicar precio revendedor"
+                hide-details
+              />
+              <div class="text-caption text-medium-emphasis">
+                Si no existe precio revendedor (&gt; 0), cae a descuento/lista según corresponda.
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="6" v-if="paymentMethod === 'CARD' && !applyReseller">
+              <v-select
+                v-model="installments"
+                :items="installmentsItems"
+                label="Cuotas"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              />
+              <div class="text-caption text-medium-emphasis mt-1">
+                1 pago = descuento · 2 a 6 cuotas = precio lista.
+              </div>
+            </v-col>
+          </v-row>
+
           <v-divider class="my-4" />
 
-          <v-text-field
-            v-if="paymentMethod === 'CASH'"
-            v-model="cashInput"
-            label="Efectivo recibido"
-            variant="outlined"
-            density="comfortable"
-            prepend-inner-icon="mdi-cash"
-            :error="cashError"
-            :error-messages="cashErrorMsg"
-            @keyup.enter="confirmPayment"
-          />
+          <!-- Datos comprobante según método -->
+          <v-row dense>
+            <v-col cols="12" v-if="paymentMethod === 'TRANSFER'">
+              <v-text-field
+                v-model="paymentProof"
+                label="Comprobante / N° operación"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-receipt-text-outline"
+                hide-details
+              />
+              <div class="text-caption text-medium-emphasis mt-1">
+                Guardalo para trazabilidad (transferencia).
+              </div>
+            </v-col>
+
+            <v-col cols="12" v-if="paymentMethod === 'QR'">
+              <v-text-field
+                v-model="paymentProof"
+                label="ID operación / Comprobante"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-qrcode-scan"
+                hide-details
+              />
+            </v-col>
+
+            <v-col cols="12" v-if="paymentMethod === 'CASH'">
+              <v-text-field
+                v-model="cashInput"
+                label="Efectivo recibido"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="mdi-cash"
+                :error="cashError"
+                :error-messages="cashErrorMsg"
+                @keyup.enter="confirmPayment"
+              />
+            </v-col>
+          </v-row>
+
+          <v-alert type="info" variant="tonal" class="mt-3">
+            {{ checkoutPriceHint }}
+          </v-alert>
         </v-card-text>
 
         <v-divider />
@@ -331,16 +457,17 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 
+const router = useRouter();
 const posStore = usePosStore();
 const auth = useAuthStore();
 
 const POS_DEBUG =
-  String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" ||
-  import.meta?.env?.DEV;
+  String(import.meta?.env?.VITE_POS_DEBUG ?? "").toLowerCase() === "true" || import.meta?.env?.DEV;
 
 function dbg(...args) {
   if (!POS_DEBUG) return;
@@ -353,38 +480,45 @@ const q = ref("");
 const page = ref(1);
 const limit = ref(24);
 
-const priceMode = ref("LIST");
-const priceModeItems = [
-  { title: "Precio de lista", value: "LIST" },
-  { title: "Precio base", value: "BASE" },
-  { title: "Descuento", value: "DISCOUNT" },
-  { title: "Mayorista", value: "RESELLER" },
-];
-
-const limitItems = [
-  { title: "12", value: 12 },
-  { title: "24", value: 24 },
-  { title: "48", value: 48 },
-  { title: "96", value: 96 },
-];
+const rubroId = ref(null);
+const subrubroId = ref(null);
 
 const loadingList = ref(false);
 let tSearch = null;
 
 const checkoutDialog = ref(false);
 const paymentMethod = ref("CASH");
-const cashInput = ref("");
+const installments = ref(1);
+const installmentsItems = [
+  { title: "1 pago", value: 1 },
+  { title: "2 cuotas", value: 2 },
+  { title: "3 cuotas", value: 3 },
+  { title: "4 cuotas", value: 4 },
+  { title: "5 cuotas", value: 5 },
+  { title: "6 cuotas", value: 6 },
+];
+const applyReseller = ref(false);
+const paymentProof = ref("");
 
+const cashInput = ref("");
 const cashError = ref(false);
 const cashErrorMsg = ref("");
 
 const snack = ref({ show: false, text: "" });
-const items = ref([]);
-const total = ref(0);
 
-const pages = computed(() => {
-  const t = Number(total.value || 0);
-  return Math.max(1, Math.ceil(t / Number(limit.value || 24)));
+const allSellable = ref([]);
+
+/** Cliente rápido */
+const customer = ref({
+  first_name: "",
+  last_name: "",
+  whatsapp: "",
+  email: "",
+});
+
+const branchName = computed(() => {
+  const u = auth?.user || {};
+  return u?.branch?.name || u?.branch_name || null;
 });
 
 function money(val) {
@@ -408,72 +542,198 @@ function normalizeUrl(u) {
 }
 
 function productImage(p) {
-  const imgs = p?.images || [];
-  const first = imgs[0];
-  const url = first?.url || first?.public_url || first?.path || "";
+  const url = p?.image_url || p?.image || "";
   return normalizeUrl(url);
 }
 
-function getPrice(p) {
-  const base = Number(p?.price || 0);
-  const list = Number(p?.price_list || 0);
-  const disc = Number(p?.price_discount || 0);
-  const res = Number(p?.price_reseller || 0);
-
-  if (priceMode.value === "BASE") return base;
-  if (priceMode.value === "DISCOUNT") return disc || list || base;
-  if (priceMode.value === "RESELLER") return res || list || base;
-  return list || base;
+function toNum(v) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function hasPrice(p) {
-  return getPrice(p) > 0;
+/**
+ * Política precio:
+ * - LIST (cuotas 2-6)
+ * - DISCOUNT (1 pago: efectivo/transfer/qr o tarjeta 1)
+ * - RESELLER (solo si switch y existe >0; si no, cae)
+ */
+function resolveUnitPrice(p, policy) {
+  const base = toNum(p?.price);
+  const list = toNum(p?.price_list);
+  const disc = toNum(p?.price_discount);
+  const res = toNum(p?.price_reseller);
+
+  if (policy === "RESELLER") return res > 0 ? res : (disc > 0 ? disc : (list > 0 ? list : base));
+  if (policy === "DISCOUNT") return disc > 0 ? disc : (list > 0 ? list : base);
+  return list > 0 ? list : base; // LIST
+}
+
+function pricePolicyLabel(policy) {
+  if (policy === "RESELLER") return "Revendedor";
+  if (policy === "DISCOUNT") return "Descuento";
+  return "Lista";
 }
 
 function hasStock(p) {
-  return Number(p?.qty ?? 0) > 0;
+  return toNum(p?.qty) > 0;
+}
+
+function hasAnyPrice(p) {
+  return (
+    toNum(p?.price) > 0 ||
+    toNum(p?.price_list) > 0 ||
+    toNum(p?.price_discount) > 0 ||
+    toNum(p?.price_reseller) > 0
+  );
 }
 
 function isSellable(p) {
-  return hasPrice(p) && hasStock(p);
+  if (p?.is_active === false) return false;
+  return hasStock(p) && hasAnyPrice(p);
+}
+
+function rubroName(p) {
+  return p?.parent_category_name || p?.category_name || null;
+}
+function subrubroName(p) {
+  return p?.subcategory_name || null;
+}
+
+const rubroItems = computed(() => {
+  const map = new Map();
+  for (const p of allSellable.value) {
+    const name = rubroName(p);
+    const id = p?.parent_category_id || p?.category_id || null;
+    if (!name || !id) continue;
+    if (!map.has(id)) map.set(id, { title: String(name), value: Number(id) });
+  }
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+});
+
+const subrubroItems = computed(() => {
+  const map = new Map();
+  for (const p of allSellable.value) {
+    if (rubroId.value && Number(p?.parent_category_id || p?.category_id) !== Number(rubroId.value)) continue;
+    const name = subrubroName(p);
+    const id = p?.subcategory_id || null;
+    if (!name || !id) continue;
+    if (!map.has(id)) map.set(id, { title: String(name), value: Number(id) });
+  }
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+});
+
+function onRubroChange() {
+  subrubroId.value = null;
+  page.value = 1;
+}
+
+/** filtro + paginación */
+const filteredItems = computed(() => {
+  const qq = String(q.value || "").trim().toLowerCase();
+
+  return (allSellable.value || []).filter((p) => {
+    if (!isSellable(p)) return false;
+
+    if (rubroId.value) {
+      const pid = Number(p?.parent_category_id || p?.category_id || 0);
+      if (pid !== Number(rubroId.value)) return false;
+    }
+
+    if (subrubroId.value) {
+      if (Number(p?.subcategory_id || 0) !== Number(subrubroId.value)) return false;
+    }
+
+    if (qq) {
+      const hay =
+        String(p?.name || "").toLowerCase().includes(qq) ||
+        String(p?.sku || "").toLowerCase().includes(qq) ||
+        String(p?.code || "").toLowerCase().includes(qq) ||
+        String(p?.barcode || "").toLowerCase().includes(qq) ||
+        String(p?.brand || "").toLowerCase().includes(qq) ||
+        String(p?.model || "").toLowerCase().includes(qq) ||
+        String(rubroName(p) || "").toLowerCase().includes(qq) ||
+        String(subrubroName(p) || "").toLowerCase().includes(qq);
+
+      if (!hay) return false;
+    }
+
+    return true;
+  });
+});
+
+const filteredTotal = computed(() => Number(filteredItems.value.length || 0));
+
+const pages = computed(() => {
+  const t = filteredTotal.value;
+  const l = Number(limit.value || 24);
+  return Math.max(1, Math.ceil(t / l));
+});
+
+const pagedItems = computed(() => {
+  const l = Number(limit.value || 24);
+  const start = (Number(page.value || 1) - 1) * l;
+  const end = start + l;
+  return filteredItems.value.slice(start, end);
+});
+
+function debounceSearch() {
+  clearTimeout(tSearch);
+  tSearch = setTimeout(() => {
+    page.value = 1;
+  }, 250);
+}
+function doSearch() {
+  page.value = 1;
+}
+function clearSearch() {
+  q.value = "";
+  page.value = 1;
+}
+
+function prevPage() {
+  if (page.value <= 1) return;
+  page.value--;
+}
+function nextPage() {
+  if (page.value >= pages.value) return;
+  page.value++;
+}
+
+function goProductProfile(id) {
+  if (!id) return;
+  router.push({ name: "productProfile", params: { id } });
 }
 
 function add(p) {
-  const available_qty = Number(p.qty ?? 0);
-
-  dbg("ADD click", {
-    sku: p?.sku,
-    product_id: p?.id,
-    qty: p?.qty,
-    available_qty,
-    pos_branch: posStore.branch_id,
-    pos_warehouse: posStore.warehouse_id,
-  });
-
-  if (available_qty <= 0) {
-    snack.value = { show: true, text: "❌ Sin stock en este depósito" };
+  if (!isSellable(p)) {
+    snack.value = { show: true, text: "❌ No vendible (sin stock o sin precio)" };
     return;
   }
-  if (!hasPrice(p)) {
+
+  // al agregar, mostramos por defecto LISTA, el precio real se define al cobrar
+  const unit = resolveUnitPrice(p, "LIST");
+  if (unit <= 0) {
     snack.value = { show: true, text: "⚠️ Producto sin precio" };
     return;
   }
 
   posStore.addToCart({
     ...p,
+    product_id: p.id,
     image: productImage(p),
-    available_qty,
-    price: getPrice(p),
-    price_list: getPrice(p),
+    available_qty: toNum(p.qty),
+
+    price: unit,
+    price_label: "Lista",
+
+    price_list: toNum(p.price_list),
+    price_discount: toNum(p.price_discount),
+    price_reseller: toNum(p.price_reseller),
   });
 
   snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
-/**
- * ✅ Sync duro: branch del auth manda.
- * Si localStorage quedó viejo, resetea y vuelve a resolver depósito.
- */
 async function hardSyncPosContextWithAuth() {
   try {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
@@ -485,115 +745,111 @@ async function hardSyncPosContextWithAuth() {
   dbg("SYNC check", { authBranch, posBranch, posWarehouse: posStore.warehouse_id });
 
   if (!authBranch) {
-    dbg("SYNC: authBranch missing -> pos.ensureContext(force)");
-    await posStore.ensureContext({ force: true });
+    await posStore.ensureContext?.({ force: true });
     return;
   }
 
   if (authBranch !== posBranch) {
-    dbg("SYNC: MISMATCH -> RESET + setBranch(auth) + ensureContext(force)", { authBranch, posBranch });
-    posStore.resetContext();
-    posStore.setBranch(authBranch);
-    await posStore.ensureContext({ force: true });
+    posStore.resetContext?.();
+    posStore.setBranch?.(authBranch);
+    await posStore.ensureContext?.({ force: true });
     return;
   }
 
   if (!Number(posStore.warehouse_id || 0)) {
-    dbg("SYNC: branch ok but warehouse missing -> ensureContext(force)");
-    await posStore.ensureContext({ force: true });
+    await posStore.ensureContext?.({ force: true });
   } else {
-    await posStore.ensureContext();
+    await posStore.ensureContext?.();
   }
 }
 
-async function fetchList() {
+async function fetchSellablePool() {
   loadingList.value = true;
-
   try {
     ctxError.value = "";
-
     await hardSyncPosContextWithAuth();
 
     const params = {
-      q: q.value,
-      page: page.value,
-      limit: limit.value,
-      price_mode: priceMode.value,
-
-      // ✅ CLAVE: no mostrar sin stock
+      q: "",
+      page: 1,
+      limit: 5000,
       in_stock: 1,
       sellable: 1,
-
-      branch_id: posStore.branch_id || undefined,
       warehouse_id: posStore.warehouse_id || undefined,
-
-      // compat (por si backend usa estos nombres)
-      branchId: posStore.branch_id || undefined,
-      warehouseId: posStore.warehouse_id || undefined,
     };
 
-    dbg("GET /pos/products params", params);
+    dbg("GET /pos/products pool params", params);
 
     const { data } = await http.get("/pos/products", { params });
-
     const out = data?.data || [];
-    const meta = data?.meta || {};
 
-    // ✅ filtro defensivo extra (por si backend ignora in_stock)
     const arr = Array.isArray(out) ? out : [];
-    items.value = arr.filter((p) => Number(p?.qty ?? 0) > 0);
+    allSellable.value = arr.filter((p) => isSellable(p));
 
-    total.value = Number(meta?.total || items.value.length || 0);
+    if (page.value > pages.value) page.value = 1;
 
-    dbg("pos/products meta", meta);
-    dbg("items after filter", { count: items.value.length });
-
+    dbg("pool loaded", { count: allSellable.value.length });
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
     ctxError.value = msg;
     snack.value = { show: true, text: msg };
-    dbg("fetchList ERROR", { status: e?.response?.status, data: e?.response?.data, err: e?.message });
+    dbg("fetchSellablePool ERROR", { status: e?.response?.status, data: e?.response?.data, err: e?.message });
   } finally {
     loadingList.value = false;
   }
 }
 
-function debounceSearch() {
-  clearTimeout(tSearch);
-  tSearch = setTimeout(() => {
-    page.value = 1;
-    fetchList();
-  }, 350);
-}
-
-function doSearch() {
-  page.value = 1;
-  fetchList();
-}
-
-function clearSearch() {
-  q.value = "";
-  page.value = 1;
-  fetchList();
-}
-
-function prevPage() {
-  if (page.value <= 1) return;
-  page.value--;
-  fetchList();
-}
-function nextPage() {
-  if (page.value >= pages.value) return;
-  page.value++;
-  fetchList();
-}
-
 function refresh() {
-  fetchList();
+  fetchSellablePool();
 }
+
+function currentPricePolicy() {
+  if (applyReseller.value) return "RESELLER";
+
+  if (paymentMethod.value === "CARD") {
+    return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
+  }
+
+  if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") {
+    return "DISCOUNT";
+  }
+
+  return "DISCOUNT";
+}
+
+const checkoutPriceHint = computed(() => {
+  const pol = currentPricePolicy();
+  if (pol === "RESELLER") return "Se cobrará con precio REVENDEDOR (si existe).";
+  if (pol === "LIST") return "Se cobrará con precio LISTA (cuotas).";
+  return "Se cobrará con precio DESCUENTO (1 pago).";
+});
+
+const checkoutTotal = computed(() => {
+  const pol = currentPricePolicy();
+  let sum = 0;
+
+  for (const it of posStore.cart || []) {
+    const p = allSellable.value.find((x) => Number(x.id) === Number(it.product_id || it.id)) || it;
+    const unit = resolveUnitPrice(p, pol);
+    sum += unit * toNum(it.qty);
+  }
+
+  return sum;
+});
+
+const checkoutTotalPreview = computed(() => {
+  // lo que vemos abajo a la derecha mientras armo carrito (informativo)
+  // usamos LISTA como preview
+  let sum = 0;
+  for (const it of posStore.cart || []) sum += toNum(it.qty) * toNum(it.price);
+  return sum;
+});
 
 function openCheckout() {
   paymentMethod.value = "CASH";
+  installments.value = 1;
+  applyReseller.value = false;
+  paymentProof.value = "";
   cashInput.value = "";
   cashError.value = false;
   cashErrorMsg.value = "";
@@ -608,25 +864,31 @@ function parseCash(v) {
 }
 
 const paidAmount = computed(() => {
-  if (paymentMethod.value !== "CASH") return Number(posStore.totalAmount || 0);
+  if (paymentMethod.value !== "CASH") return Number(checkoutTotal.value || 0);
   return parseCash(cashInput.value);
 });
 
 const cannotConfirm = computed(() => {
   if (posStore.loading) return true;
-  if (posStore.cart.length === 0) return true;
-  if (paymentMethod.value !== "CASH") return false;
-  return paidAmount.value < Number(posStore.totalAmount || 0);
+  if ((posStore.cart || []).length === 0) return true;
+
+  if (paymentMethod.value === "CASH") {
+    const totalAmt = Number(checkoutTotal.value || 0);
+    if (!cashInput.value) return true;
+    return paidAmount.value < totalAmt;
+  }
+
+  return false;
 });
 
-watch([paymentMethod, cashInput], () => {
+watch([paymentMethod, installments, applyReseller, cashInput], () => {
   if (paymentMethod.value !== "CASH") {
     cashError.value = false;
     cashErrorMsg.value = "";
     return;
   }
 
-  const totalAmt = Number(posStore.totalAmount || 0);
+  const totalAmt = Number(checkoutTotal.value || 0);
   const paid = paidAmount.value;
 
   if (!cashInput.value) {
@@ -645,56 +907,95 @@ watch([paymentMethod, cashInput], () => {
   cashErrorMsg.value = "";
 });
 
+function applyCheckoutPricesIntoStore() {
+  const pol = currentPricePolicy();
+
+  for (const it of posStore.cart || []) {
+    const p = allSellable.value.find((x) => Number(x.id) === Number(it.product_id || it.id)) || it;
+    const unit = resolveUnitPrice(p, pol);
+
+    it.price = unit;
+    it.price_label = pricePolicyLabel(pol);
+    it.subtotal = unit * toNum(it.qty);
+  }
+}
+
 async function confirmPayment() {
   try {
+    applyCheckoutPricesIntoStore();
+
+    const extra = {
+      price_policy: currentPricePolicy(),
+      installments: Number(installments.value || 1),
+      proof: paymentProof.value || null,
+      customer: { ...customer.value },
+    };
+
     dbg("confirmPayment start", {
       method: paymentMethod.value,
-      branch_id: posStore.branch_id,
-      warehouse_id: posStore.warehouse_id,
-      total: posStore.totalAmount,
-      cart: posStore.cart?.map((x) => ({ id: x.id, product_id: x.product_id, qty: x.qty, price: x.price })),
+      extra,
+      total: checkoutTotal.value,
+      cart: posStore.cart?.map((x) => ({ product_id: x.product_id || x.id, qty: x.qty, price: x.price })),
     });
 
-    // ✅ soporta store nuevo y viejo
-    if (typeof posStore.checkoutSale === "function") {
-      await posStore.checkoutSale(paymentMethod.value);
-    } else if (typeof posStore.checkout === "function") {
-      await posStore.checkout(paymentMethod.value);
-    } else {
-      throw new Error("posStore.checkout/checkoutSale no existe (store desactualizado o import incorrecto)");
-    }
+    await posStore.checkoutSale(paymentMethod.value, extra);
 
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
-    fetchList();
+    fetchSellablePool();
   } catch (e) {
     dbg("confirmPayment ERROR", {
       msg: e?.message,
       status: e?.response?.status,
       data: e?.response?.data,
     });
-    snack.value = { show: true, text: posStore.error || e?.response?.data?.message || "❌ Error al confirmar la venta" };
+    snack.value = {
+      show: true,
+      text: posStore.error || e?.response?.data?.message || "❌ Error al confirmar la venta",
+    };
   }
 }
 
 onMounted(async () => {
-  await fetchList();
+  await fetchSellablePool();
 });
 </script>
 
 <style scoped>
-/* (tu CSS igual, no lo toco) */
 .pos-wrap {
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
   min-height: calc(100vh - 24px);
   padding: 16px;
 }
-.pos-grid { align-items: flex-start; }
-.pos-left, .pos-right { display: flex; flex-direction: column; }
-.pos-surface { background: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); }
-.pos-surface, .cart-item, .empty, .badge-sku, .border { border: 1px solid rgba(var(--v-theme-on-surface), 0.08); }
-.pos-left { min-height: calc(100vh - 110px); }
+
+.pos-grid {
+  align-items: flex-start;
+}
+
+.pos-left,
+.pos-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.pos-surface {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.pos-surface,
+.cart-item,
+.empty,
+.badge-sku,
+.border {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.pos-left {
+  min-height: calc(100vh - 110px);
+}
+
 .pos-products {
   flex: 1 1 auto;
   min-height: 0;
@@ -705,71 +1006,214 @@ onMounted(async () => {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
   scrollbar-gutter: stable;
 }
-.pos-toolbar { position: sticky; top: 12px; z-index: 2; }
-.product-card { overflow: hidden; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-.product-card:hover { transform: translateY(-2px); }
-.product-disabled { opacity: 0.65; }
-.thumb-wrap { height: 110px; position: relative; background: rgb(var(--v-theme-surface)); }
-.thumb { height: 110px; }
+
+.pos-toolbar {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+}
+
+.product-card {
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+}
+
+.thumb-wrap {
+  height: 120px;
+  position: relative;
+  background: rgb(var(--v-theme-surface));
+}
+
+.thumb {
+  height: 120px;
+}
+
 .thumb-empty {
-  display: flex; align-items: center; justify-content: center; height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
+
 .badge-sku {
-  position: absolute; left: 10px; bottom: 8px;
-  font-size: 11px; padding: 3px 8px; border-radius: 999px;
-  background: rgba(var(--v-theme-surface), 0.92); backdrop-filter: blur(4px);
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-surface), 0.92);
+  backdrop-filter: blur(4px);
 }
-.title { font-weight: 800; font-size: 13px; line-height: 1.2; min-height: 32px; }
-.meta { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.66); margin-top: 6px; }
-.meta .muted { color: rgba(var(--v-theme-on-surface), 0.5); }
-.meta .dot { margin: 0 6px; opacity: 0.5; }
-.price-row .price { font-weight: 900; font-size: 16px; }
+
+.badge-stock {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-surface), 0.92);
+  backdrop-filter: blur(4px);
+  opacity: 0.92;
+}
+.badge-stock-ok {
+  font-weight: 900;
+}
+
+.title {
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1.2;
+  min-height: 32px;
+}
+
+.meta {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.66);
+  margin-top: 6px;
+}
+
+.meta .muted {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.meta .dot {
+  margin: 0 6px;
+  opacity: 0.5;
+}
+
+.price-row .price {
+  font-weight: 950;
+  font-size: 16px;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Carrito */
 .cart-card {
-  position: sticky; top: 12px;
-  display: flex; flex-direction: column;
-  overflow: hidden; border-radius: 16px;
-  height: calc(100vh - 110px); max-height: calc(100vh - 110px);
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  height: calc(100vh - 110px);
+  max-height: calc(100vh - 110px);
 }
-.cart-head { flex: 0 0 auto; }
+
+.cart-head {
+  flex: 0 0 auto;
+}
+
 .cart-body {
-  flex: 1 1 auto; min-height: 0;
-  overflow: auto; padding-bottom: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 14px;
   scrollbar-gutter: stable;
 }
-.cart-foot { flex: 0 0 auto; z-index: 2; box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06); }
-.cart-foot .v-btn { min-height: 44px; }
-.cart-item { background: rgba(var(--v-theme-surface), 0.9); }
-.cart-title { font-weight: 800; font-size: 13px; line-height: 1.2; }
-.border { border-radius: 10px; }
+
+.cart-foot {
+  flex: 0 0 auto;
+  z-index: 2;
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
+}
+
+.cart-foot .v-btn {
+  min-height: 44px;
+}
+
+.cart-item {
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+
+.cart-title {
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.border {
+  border-radius: 10px;
+}
+
 .empty {
-  border-style: dashed; border-radius: 14px;
-  padding: 18px; text-align: center;
+  border-style: dashed;
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
-.totals .row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; }
+
+.totals .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0;
+}
+
 .totals .row.total {
-  margin-top: 10px; padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
-.muted { color: rgba(var(--v-theme-on-surface), 0.62); }
-.cart-actions { flex-wrap: nowrap; }
-.cart-actions > .v-btn { flex: 1 1 0; min-width: 0; }
-.cart-foot .v-btn.v-btn--block { width: auto !important; }
+
+.muted {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.cart-actions {
+  flex-wrap: nowrap;
+}
+
+.cart-actions > .v-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.cart-foot .v-btn.v-btn--block {
+  width: auto !important;
+}
 
 @media (max-width: 960px) {
-  .pos-wrap { padding: 10px; }
-  .pos-toolbar { position: relative; top: auto; }
-  .pos-left { min-height: auto; }
-  .pos-products { max-height: none; overflow: visible; padding: 10px; }
-  .cart-card { position: relative; top: auto; height: auto; max-height: none; }
-  .cart-body { min-height: auto; overflow: visible; }
-  .cart-foot { box-shadow: none; }
+  .pos-wrap {
+    padding: 10px;
+  }
+  .pos-toolbar {
+    position: relative;
+    top: auto;
+  }
+  .pos-left {
+    min-height: auto;
+  }
+  .pos-products {
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+  }
+  .cart-card {
+    position: relative;
+    top: auto;
+    height: auto;
+    max-height: none;
+  }
+  .cart-body {
+    min-height: auto;
+    overflow: visible;
+  }
+  .cart-foot {
+    box-shadow: none;
+  }
 }
 </style>
