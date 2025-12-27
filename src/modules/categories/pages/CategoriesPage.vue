@@ -11,9 +11,10 @@
       </div>
 
       <div class="d-flex ga-2">
-        <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="reload">Recargar</v-btn>
+        <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="reload">
+          Recargar
+        </v-btn>
 
-        <!-- ✅ Acciones claras -->
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateRoot">
           Nuevo rubro
         </v-btn>
@@ -24,7 +25,6 @@
           prepend-icon="mdi-plus-box"
           :disabled="!selectedId"
           @click="openCreateChild"
-          title="Crea una subcategoría dentro de la categoría seleccionada"
         >
           Nueva subcategoría
         </v-btn>
@@ -40,22 +40,18 @@
       <v-col cols="12" md="7">
         <v-card rounded="xl" class="h-100">
           <v-card-text>
-            <div class="d-flex ga-2 align-center mb-3">
-              <v-text-field
-                v-model="q"
-                label="Buscar en categorías"
-                prepend-inner-icon="mdi-magnify"
-                hide-details
-                clearable
-              />
-              <v-chip v-if="selectedNode" variant="tonal" color="primary" class="ml-1">
-                Seleccionada: {{ selectedNode.name }}
-              </v-chip>
-            </div>
+            <v-text-field
+              v-model="q"
+              label="Buscar en categorías"
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              clearable
+              class="mb-3"
+            />
 
             <v-divider class="mb-3" />
 
-            <!-- ✅ TREE VIEW -->
+            <!-- TREE -->
             <v-treeview
               :items="treeItems"
               item-title="name"
@@ -63,11 +59,10 @@
               open-on-click
               activatable
               :search="q"
-              :open.sync="openIds"
-              :active.sync="activeIds"
+              v-model:opened="openIds"
+              v-model:activated="activeIds"
               density="comfortable"
             >
-              <!-- render de cada nodo -->
               <template #prepend="{ item }">
                 <v-icon size="18">
                   {{ item.children?.length ? "mdi-folder-outline" : "mdi-tag-outline" }}
@@ -78,15 +73,9 @@
                 <div class="d-flex align-center justify-space-between ga-2 w-100">
                   <div class="d-flex flex-column">
                     <div class="d-flex align-center ga-2">
-                      <span class="font-weight-medium">{{ item.name }}</span>
-
-                      <v-chip
-                        size="x-small"
-                        variant="tonal"
-                        :color="item.is_active ? 'primary' : 'red'"
-                      >
-                        {{ item.is_active ? "Activa" : "Inactiva" }}
-                      </v-chip>
+                      <span class="font-weight-medium">
+                        {{ item.name }}
+                      </span>
 
                       <v-chip size="x-small" variant="tonal">
                         Nivel {{ item.depth + 1 }}
@@ -98,28 +87,29 @@
                     </div>
                   </div>
 
-                  <!-- acciones inline -->
                   <div class="d-flex ga-1">
                     <v-btn
                       icon="mdi-plus-box"
                       variant="text"
                       size="small"
+                      title="Crear subcategoría"
                       @click.stop="openCreateChildFrom(item)"
-                      title="Crear subcategoría dentro de esta"
                     />
                     <v-btn
                       icon="mdi-pencil-outline"
                       variant="text"
                       size="small"
-                      @click.stop="openEdit(item)"
                       title="Editar"
+                      @click.stop="openEdit(item)"
                     />
                     <v-btn
-                      :icon="item.is_active ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline'"
+                      :icon="item.is_active
+                        ? 'mdi-close-circle-outline'
+                        : 'mdi-check-circle-outline'"
                       variant="text"
                       size="small"
-                      @click.stop="toggle(item)"
                       :title="item.is_active ? 'Desactivar' : 'Activar'"
+                      @click.stop="toggle(item)"
                     />
                   </div>
                 </div>
@@ -135,7 +125,7 @@
         </v-card>
       </v-col>
 
-      <!-- RIGHT: DETAILS -->
+      <!-- RIGHT: DETAIL -->
       <v-col cols="12" md="5">
         <v-card rounded="xl" class="h-100">
           <v-card-text>
@@ -146,8 +136,8 @@
                 v-if="selectedNode"
                 icon="mdi-pencil-outline"
                 variant="text"
+                title="Editar categoría"
                 @click="openEdit(selectedNode)"
-                title="Editar seleccionada"
               />
             </div>
 
@@ -160,35 +150,41 @@
             <div v-else class="d-flex flex-column ga-3">
               <div>
                 <div class="text-caption text-medium-emphasis">Nombre</div>
-                <div class="text-body-1 font-weight-medium">{{ selectedNode.name }}</div>
+                <div class="text-body-1 font-weight-medium">
+                  {{ selectedNode.name }}
+                </div>
               </div>
 
               <div>
                 <div class="text-caption text-medium-emphasis">Ruta</div>
-                <div class="text-body-2">{{ selectedNode.path }}</div>
+                <div class="text-body-2">
+                  {{ selectedNode.path }}
+                </div>
               </div>
 
               <div class="d-flex ga-2 flex-wrap">
                 <v-chip variant="tonal">ID #{{ selectedNode.id }}</v-chip>
-                <v-chip variant="tonal">Nivel {{ selectedNode.depth + 1 }}</v-chip>
-                <v-chip
-                  variant="tonal"
-                  :color="selectedNode.is_active ? 'primary' : 'red'"
-                >
-                  {{ selectedNode.is_active ? "Activa" : "Inactiva" }}
+                <v-chip variant="tonal">
+                  Nivel {{ selectedNode.depth + 1 }}
                 </v-chip>
               </div>
 
               <v-divider class="my-2" />
 
               <div class="d-flex flex-column ga-2">
-                <v-btn color="primary" prepend-icon="mdi-plus-box" @click="openCreateChild" :disabled="!selectedId">
+                <v-btn
+                  color="primary"
+                  prepend-icon="mdi-plus-box"
+                  @click="openCreateChild"
+                >
                   Nueva subcategoría aquí
                 </v-btn>
 
                 <v-btn
                   variant="tonal"
-                  :prepend-icon="selectedNode.is_active ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline'"
+                  :prepend-icon="selectedNode.is_active
+                    ? 'mdi-close-circle-outline'
+                    : 'mdi-check-circle-outline'"
                   @click="toggle(selectedNode)"
                 >
                   {{ selectedNode.is_active ? "Desactivar" : "Activar" }}
@@ -196,7 +192,8 @@
               </div>
 
               <div class="text-caption text-medium-emphasis mt-2">
-                Tip: “Nuevo rubro” crea raíz. “Nueva subcategoría” crea dentro de la seleccionada.
+                Tip: “Nuevo rubro” crea una categoría raíz.  
+                “Nueva subcategoría” crea dentro de la seleccionada.
               </div>
             </div>
           </v-card-text>
@@ -225,106 +222,89 @@ const cats = useCategoriesStore();
 
 const q = ref("");
 
+// dialog
 const dlgOpen = ref(false);
-const dlgMode = ref("create"); // create | edit
+const dlgMode = ref("create");
 const dlgItem = ref(null);
-
-// ✅ presets para crear intuitivo
-const dlgPresetKind = ref("root"); // root | child
+const dlgPresetKind = ref("root");
 const dlgPresetParentId = ref(null);
 
-// tree state
+// tree state (Vuetify 3)
 const openIds = ref([]);
 const activeIds = ref([]);
 
-// ============================
-// FETCH
-// ============================
+// fetch
 onMounted(async () => {
   await cats.fetchAll(true);
 });
 
-// ============================
-// TREE BUILD (n niveles)
-// ============================
-const itemsById = computed(() => {
+// build tree
+function buildTree(items) {
   const map = new Map();
-  for (const c of cats.items || []) map.set(Number(c.id), c);
-  return map;
-});
-
-function buildTree(sourceItems) {
-  const childrenByParent = new Map();
-  for (const c of sourceItems) {
+  for (const c of items || []) {
     const pid = Number(c.parent_id || 0);
-    if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
-    childrenByParent.get(pid).push(c);
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(c);
   }
-  for (const [k, arr] of childrenByParent) {
-    arr.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-    childrenByParent.set(k, arr);
+
+  for (const arr of map.values()) {
+    arr.sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "es")
+    );
   }
 
   const makeNode = (c, depth, parentPath) => {
     const name = String(c.name || "").trim();
     const path = parentPath ? `${parentPath} > ${name}` : name;
 
-    const node = {
+    return {
       id: Number(c.id),
       name,
       is_active: Number(c.is_active ?? 1) !== 0,
       parent_id: c.parent_id ? Number(c.parent_id) : null,
       depth,
       path,
-      children: [],
+      children: (map.get(Number(c.id)) || []).map((k) =>
+        makeNode(k, depth + 1, path)
+      ),
     };
-
-    const kids = childrenByParent.get(node.id) || [];
-    node.children = kids.map((k) => makeNode(k, depth + 1, path));
-    return node;
   };
 
-  const roots = childrenByParent.get(0) || [];
-  return roots.map((r) => makeNode(r, 0, ""));
+  return (map.get(0) || []).map((r) => makeNode(r, 0, ""));
 }
 
-const treeItems = computed(() => buildTree(cats.items || []));
+const treeItems = computed(() => buildTree(cats.items));
 
-// ============================
-// SELECTION
-// ============================
-const selectedId = computed(() => Number(activeIds.value?.[0] || 0) || null);
+// selection
+const selectedId = computed(() =>
+  activeIds.value?.[0] ? Number(activeIds.value[0]) : null
+);
 
-function findNodeInTree(nodes, id) {
+function findNode(nodes, id) {
   for (const n of nodes) {
-    if (Number(n.id) === Number(id)) return n;
+    if (n.id === id) return n;
     if (n.children?.length) {
-      const x = findNodeInTree(n.children, id);
+      const x = findNode(n.children, id);
       if (x) return x;
     }
   }
   return null;
 }
 
-const selectedNode = computed(() => {
-  if (!selectedId.value) return null;
-  return findNodeInTree(treeItems.value, selectedId.value);
-});
+const selectedNode = computed(() =>
+  selectedId.value ? findNode(treeItems.value, selectedId.value) : null
+);
 
-// auto abrir ramas cuando seleccionas (mejor UX)
 watch(
   () => selectedNode.value,
   (n) => {
-    if (!n) return;
-    // abrimos la rama del parent para que siempre se vea
-    const pid = n.parent_id ? Number(n.parent_id) : 0;
-    if (pid && !openIds.value.includes(pid)) openIds.value = [...openIds.value, pid];
+    if (n?.parent_id && !openIds.value.includes(n.parent_id)) {
+      openIds.value.push(n.parent_id);
+    }
   }
 );
 
-// ============================
-// ACTIONS
-// ============================
+// actions
 async function reload() {
   await cats.fetchAll(true);
 }
@@ -350,7 +330,7 @@ function openCreateChildFrom(item) {
   dlgMode.value = "create";
   dlgItem.value = null;
   dlgPresetKind.value = "child";
-  dlgPresetParentId.value = Number(item.id);
+  dlgPresetParentId.value = item.id;
   dlgOpen.value = true;
 }
 
