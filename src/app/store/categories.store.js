@@ -38,24 +38,27 @@ export const useCategoriesStore = defineStore("categories", {
         if (!map[pid]) map[pid] = [];
         map[pid].push(c);
       }
-      // ordenar hijos por nombre
       for (const pid of Object.keys(map)) {
         map[pid].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), "es"));
       }
       return map;
     },
 
-    // ✅ función práctica: devuelve subrubros por rubro
-    childrenByParent: (s) => (parentId) => {
-      const pid = toInt(parentId, 0);
-      if (!pid) return [];
-      const map = (Array.isArray(s.items) ? null : null); // dummy para no confundir linters
-      // usar subsMap del getter (pinia recomputa y cachea)
-      return (s.subsMap && s.subsMap[pid]) ? s.subsMap[pid] : [];
+    // ✅ FIX: en Pinia, para usar otros getters, usá "this"
+    childrenByParent() {
+      return (parentId) => {
+        const pid = toInt(parentId, 0);
+        if (!pid) return [];
+        return this.subsMap?.[pid] || [];
+      };
     },
   },
 
   actions: {
+    clearError() {
+      this.error = null;
+    },
+
     async fetchAll(force = false) {
       if (this.loaded && !force) return;
 
@@ -67,7 +70,7 @@ export const useCategoriesStore = defineStore("categories", {
         this.items = resp.items || [];
         this.loaded = true;
       } catch (e) {
-        this.error = e?.friendlyMessage || e?.message || String(e);
+        this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e);
       } finally {
         this.loading = false;
       }
@@ -82,7 +85,7 @@ export const useCategoriesStore = defineStore("categories", {
         await this.fetchAll(true);
         return resp.item;
       } catch (e) {
-        this.error = e?.friendlyMessage || e?.message || String(e);
+        this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e);
         throw e;
       } finally {
         this.loading = false;
@@ -98,7 +101,29 @@ export const useCategoriesStore = defineStore("categories", {
         await this.fetchAll(true);
         return resp.item;
       } catch (e) {
-        this.error = e?.friendlyMessage || e?.message || String(e);
+        this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e);
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // ✅ “Eliminar” recomendado en POS: desactivar (soft delete)
+    async deactivate(id) {
+      return this.update(id, { is_active: 0 });
+    },
+
+    // ✅ delete real (solo si tu backend lo soporta)
+    async remove(id) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const resp = await CategoriesService.remove(id);
+        if (!resp?.ok) throw new Error(resp?.message || "Error eliminando categoría");
+        await this.fetchAll(true);
+        return true;
+      } catch (e) {
+        this.error = e?.response?.data?.message || e?.friendlyMessage || e?.message || String(e);
         throw e;
       } finally {
         this.loading = false;
