@@ -1,3 +1,4 @@
+<!-- src/modules/pos/pages/PosPage.vue -->
 <template>
   <v-container fluid class="pos-wrap">
     <!-- Header -->
@@ -132,7 +133,7 @@
                 :subrubro-label="subrubroName(p) || ''"
                 :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
                 :price-list="resolveUnitPrice(p, 'LIST')"
-                price-label="Precio"
+                price-label="Descuento"
                 @add="add"
                 @details="openDetails"
               />
@@ -307,7 +308,7 @@
       </v-col>
     </v-row>
 
-    <!-- ✅ DETALLE CON OPCIONES DE PAGO + CUOTAS -->
+    <!-- ✅ DETALLE CON OPCIONES DE PAGO -->
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
       :can-sell="canSell"
@@ -321,7 +322,7 @@
       @add="addFromDetails"
     />
 
-    <!-- ✅ COBRO COMPLETO (componentizado) -->
+    <!-- ✅ COBRO COMPLETO -->
     <CheckoutDialog
       v-model:open="checkoutDialog"
       :total="checkoutTotal"
@@ -347,6 +348,16 @@
       @confirm="confirmPayment"
     />
 
+    <!-- ✅ TICKET / COMPROBANTE (AUTO OPEN post-venta) -->
+    <ReceiptDialog
+      v-model:open="receiptOpen"
+      :sale="receiptSale"
+      :company-name="receiptCompanyName"
+      :company-tagline="receiptCompanyTagline"
+      :branch-name="branchName || ''"
+      :branch-address="receiptBranchAddress"
+    />
+
     <v-snackbar v-model="snack.show" :timeout="3200">
       {{ snack.text }}
     </v-snackbar>
@@ -367,6 +378,7 @@ import { useProductsStore } from "../../../app/store/products.store";
 import PosProductCard from "../components/PosProductCard.vue";
 import CheckoutDialog from "../components/CheckoutDialog.vue";
 import PosProductDetailsDialog from "../components/PosProductDetailsDialog.vue";
+import ReceiptDialog from "../components/ReceiptDialog.vue";
 
 const posStore = usePosStore();
 const auth = useAuthStore();
@@ -384,8 +396,8 @@ const loadingList = ref(false);
 let tSearch = null;
 
 const checkoutDialog = ref(false);
-let paymentMethod = ref("CASH");
-let installments = ref(1);
+const paymentMethod = ref("CASH");
+const installments = ref(1);
 const installmentsItems = [
   { title: "1 pago", value: 1 },
   { title: "2 cuotas", value: 2 },
@@ -394,10 +406,10 @@ const installmentsItems = [
   { title: "5 cuotas", value: 5 },
   { title: "6 cuotas", value: 6 },
 ];
-let applyReseller = ref(false);
-let paymentProof = ref("");
+const applyReseller = ref(false);
+const paymentProof = ref("");
 
-let cashInput = ref("");
+const cashInput = ref("");
 const cashError = ref(false);
 const cashErrorMsg = ref("");
 
@@ -415,6 +427,13 @@ const customer = ref({
   whatsapp: "",
   email: "",
 });
+
+/** ✅ Ticket / comprobante */
+const receiptOpen = ref(false);
+const receiptSale = ref(null);
+const receiptCompanyName = ref("POS360");
+const receiptCompanyTagline = ref("Inventario · Ecommerce · POS");
+const receiptBranchAddress = ref("");
 
 const isAdmin = computed(() => {
   const u = auth?.user || {};
@@ -564,12 +583,7 @@ const catById = computed(() => {
 });
 
 function getCatIdFromProduct(p) {
-  return (
-    Number(p?.category_id || 0) ||
-    Number(p?.subcategory_id || 0) ||
-    Number(p?.category?.id || 0) ||
-    null
-  );
+  return Number(p?.category_id || 0) || Number(p?.subcategory_id || 0) || Number(p?.category?.id || 0) || null;
 }
 
 function deriveRubroSub(p) {
@@ -837,13 +851,11 @@ function addFromDetails(payload) {
     price: unit,
     price_label: payload?.price_label || pricePolicyLabel(pol),
 
-    // guardo precios por si después recalculás en checkout
     price_list: toNum(p.price_list),
     price_discount: toNum(p.price_discount),
     price_reseller: toNum(p.price_reseller),
     effective_price: toNum(p.effective_price),
 
-    // opcional: info del detalle elegido
     chosen_payment_method: payload?.paymentMethod || null,
     chosen_installments: Number(payload?.installments || 1),
     chosen_price_policy: pol,
@@ -854,14 +866,13 @@ function addFromDetails(payload) {
 }
 
 /* =========================
-   ✅ CONTEXTO POS + FETCH PRODUCTS (FIX ADMIN REAL)
+   ✅ CONTEXTO POS + FETCH PRODUCTS (ADMIN FIX)
 ========================= */
 async function hardSyncPosContextWithAuth() {
   try {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
   } catch {}
 
-  // ✅ ADMIN: NO warehouse. (para que backend use ADMIN_ALL)
   if (isAdmin.value) {
     if (typeof posStore.ensureContext === "function") {
       await posStore.ensureContext({ force: true, isAdmin: true });
@@ -871,7 +882,6 @@ async function hardSyncPosContextWithAuth() {
     return;
   }
 
-  // ✅ USER común: contexto normal
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
 
@@ -903,18 +913,8 @@ async function fetchSellablePool() {
     const bid = Number(posStore.branch_id || 0) || null;
     const wid = Number(posStore.warehouse_id || 0) || null;
 
-    // ✅ ADMIN: llama al backend SIN warehouse_id => ADMIN_ALL
     if (isAdmin.value) {
-      const params = {
-        // branch_id: bid || undefined,
-        q: "",
-        page: 1,
-        limit: 5000,
-        in_stock: 1,
-        sellable: 1,
-        include_images: 1,
-      };
-
+      const params = { q: "", page: 1, limit: 5000, in_stock: 1, sellable: 1, include_images: 1 };
       const { data } = await http.get("/pos/products", { params });
       const out = data?.data || data || [];
       allSellable.value = Array.isArray(out) ? out : [];
@@ -924,7 +924,6 @@ async function fetchSellablePool() {
       return;
     }
 
-    // ✅ USER común: requiere depósito
     if (!wid) {
       allSellable.value = [];
       ctxError.value = "Falta depósito (warehouse). Verificá que tu usuario tenga sucursal y depósito asignado.";
@@ -1080,6 +1079,7 @@ function applyCheckoutPricesIntoStore() {
   }
 }
 
+/** ✅ CONFIRMAR VENTA + ABRIR TICKET */
 async function confirmPayment() {
   if (!canSell.value) {
     snack.value = { show: true, text: "🔒 Admin: no se puede confirmar ventas." };
@@ -1096,10 +1096,46 @@ async function confirmPayment() {
       customer: { ...customer.value },
     };
 
-    await posStore.checkoutSale(paymentMethod.value, extra);
+    const result = await posStore.checkoutSale(paymentMethod.value, extra);
 
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
+
+    // ✅ Sale real si vino del backend
+    const sale =
+      result?.sale ||
+      result?.data?.sale ||
+      result?.data ||
+      result ||
+      null;
+
+    if (sale && (sale.id || sale.number || sale.created_at || sale.items)) {
+      receiptSale.value = sale;
+    } else {
+      // ✅ Fallback: armamos comprobante desde el carrito ya recalculado
+      receiptSale.value = {
+        id: Date.now(),
+        created_at: new Date().toISOString(),
+        payment_method: paymentMethod.value,
+        installments: Number(installments.value || 1),
+        proof: paymentProof.value || null,
+        customer: { ...customer.value },
+        subtotal: checkoutTotal.value,
+        total: checkoutTotal.value,
+        items: (posStore.cart || []).map((it) => ({
+          name: it.name,
+          qty: toNum(it.qty),
+          unit_price: toNum(it.price),
+          subtotal: toNum(it.subtotal),
+          price_label: it.price_label || "",
+        })),
+      };
+    }
+
+    // ✅ Abrir ticket automáticamente
+    receiptOpen.value = true;
+
+    // refrescar pool
     fetchSellablePool();
   } catch (e) {
     snack.value = {
