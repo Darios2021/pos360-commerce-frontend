@@ -57,18 +57,109 @@
           <div class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
 
           <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" />
-
-          <!-- ✅ Inventario (solo admin) -->
-          <v-list-item
-            v-if="isAdmin"
-            :to="{ name: 'inventory' }"
-            prepend-icon="mdi-clipboard-list-outline"
-            title="Inventario"
-          />
-
           <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" />
           <v-list-item :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" />
-          <v-list-item :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" />
+
+          <!-- =========================
+               ✅ CONFIGURACIÓN (nuevo)
+               - Agrupa inventario, categorías, usuarios, etc.
+               - Cada item solo se muestra si existe la ruta (router.hasRoute)
+               ========================= -->
+          <v-divider class="my-2" />
+          <div class="px-4 py-2 text-caption text-medium-emphasis">Sistema</div>
+
+          <v-list-group
+            v-if="showConfig"
+            value="config"
+            prepend-icon="mdi-cog-outline"
+          >
+            <template #activator="{ props }">
+              <v-list-item v-bind="props" title="Configuración" />
+            </template>
+
+            <!-- ✅ Inventario (solo admin) -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('inventory')"
+              :to="{ name: 'inventory' }"
+              prepend-icon="mdi-clipboard-list-outline"
+              title="Gestión de inventario"
+            />
+
+            <!-- ✅ Categorías (rubro/subrubro) -->
+            <v-list-item
+              v-if="hasRoute('categories')"
+              :to="{ name: 'categories' }"
+              prepend-icon="mdi-shape-outline"
+              title="Categorías"
+            />
+
+            <!-- ✅ Usuarios / roles (solo admin) -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('users')"
+              :to="{ name: 'users' }"
+              prepend-icon="mdi-account-multiple-outline"
+              title="Usuarios"
+            />
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('roles')"
+              :to="{ name: 'roles' }"
+              prepend-icon="mdi-shield-account-outline"
+              title="Roles y permisos"
+            />
+
+            <!-- ✅ Estructura de sucursales y depósitos (solo admin) -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('branches')"
+              :to="{ name: 'branches' }"
+              prepend-icon="mdi-storefront-outline"
+              title="Sucursales"
+            />
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('warehouses')"
+              :to="{ name: 'warehouses' }"
+              prepend-icon="mdi-warehouse"
+              title="Depósitos"
+            />
+
+            <!-- ✅ Parametrización POS -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('posSettings')"
+              :to="{ name: 'posSettings' }"
+              prepend-icon="mdi-cash-register"
+              title="Parámetros POS"
+            />
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('paymentMethods')"
+              :to="{ name: 'paymentMethods' }"
+              prepend-icon="mdi-credit-card-outline"
+              title="Medios de pago"
+            />
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('taxes')"
+              :to="{ name: 'taxes' }"
+              prepend-icon="mdi-percent-outline"
+              title="Impuestos"
+            />
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('documents')"
+              :to="{ name: 'documents' }"
+              prepend-icon="mdi-file-document-outline"
+              title="Comprobantes"
+            />
+
+            <!-- ✅ Integraciones -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('integrations')"
+              :to="{ name: 'integrations' }"
+              prepend-icon="mdi-lan-connect"
+              title="Integraciones"
+            />
+          </v-list-group>
         </v-list>
 
         <v-divider class="my-2" />
@@ -131,10 +222,40 @@ const themeStore = useThemeStore();
 const userLabel = computed(() => auth?.user?.email || auth?.user?.username || "Usuario");
 const isDark = computed(() => themeStore.isDark);
 
-// ✅ Admin gate para mostrar "Inventario"
+// ✅ Admin gate
 const isAdmin = computed(() => {
   const r = auth.roles || [];
   return r.includes("admin") || r.includes("super_admin");
+});
+
+// ✅ Mostrar items solo si existe la ruta (evita links rotos mientras armás módulos)
+function hasRoute(name) {
+  try {
+    return router?.hasRoute?.(name) === true;
+  } catch {
+    return false;
+  }
+}
+
+// ✅ Mostrar “Configuración” solo si hay algo para mostrar
+const showConfig = computed(() => {
+  // Si no existe ninguna ruta, no mostramos el group
+  const any =
+    hasRoute("inventory") ||
+    hasRoute("categories") ||
+    hasRoute("users") ||
+    hasRoute("roles") ||
+    hasRoute("branches") ||
+    hasRoute("warehouses") ||
+    hasRoute("posSettings") ||
+    hasRoute("paymentMethods") ||
+    hasRoute("taxes") ||
+    hasRoute("documents") ||
+    hasRoute("integrations");
+
+  // Si hay rutas “públicas” o el usuario es admin para las admin-only
+  // (igual cada item ya está gateado; esto solo evita mostrar el group vacío)
+  return any;
 });
 
 function applyVuetifyTheme(dark) {

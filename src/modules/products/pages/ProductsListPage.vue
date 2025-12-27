@@ -1,3 +1,4 @@
+<!-- src/modules/products/pages/ProductsListPage.vue -->
 <template>
   <div>
     <!-- HEADER -->
@@ -44,17 +45,18 @@
           />
         </v-col>
 
-        <!-- Sucursal (solo admin) -->
+        <!-- ✅ Sucursal (solo admin) => FILTRA POR STOCK EN ESA SUCURSAL (no por dueño) -->
         <v-col cols="12" md="4" v-if="isAdmin">
           <v-select
             v-model="branchId"
             :items="branchItems"
             item-title="title"
             item-value="value"
-            label="Sucursal"
+            label="Sucursal (stock en sucursal)"
             variant="outlined"
             density="comfortable"
             clearable
+            @update:modelValue="applyFilters"
           />
         </v-col>
 
@@ -168,23 +170,15 @@
       >
         <!-- Nombre + estado inactivo -->
         <template #item.name="{ item }">
-          <div
-            class="font-weight-bold d-flex align-center"
-            :style="isInactive(item) ? 'opacity:.55' : ''"
-          >
+          <div class="font-weight-bold d-flex align-center" :style="isInactive(item) ? 'opacity:.55' : ''">
             {{ item.name }}
-            <v-chip
-              v-if="isInactive(item)"
-              class="ml-2"
-              size="x-small"
-              color="grey"
-              variant="tonal"
-            >
+            <v-chip v-if="isInactive(item)" class="ml-2" size="x-small" color="grey" variant="tonal">
               Inactivo
             </v-chip>
           </div>
         </template>
 
+        <!-- ✅ mostramos sucursal dueña (products.branch_id) SOLO COMO INFO -->
         <template v-if="isAdmin" #item.branch="{ item }">
           <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
             {{ branchName(item.branch_id) }}
@@ -247,13 +241,7 @@
       @deleted="reload"
     />
 
-    <ProductFormDialog
-      v-model:open="formOpen"
-      :mode="formMode"
-      :item="formItem"
-      @saved="reload"
-      @deleted="reload"
-    />
+    <ProductFormDialog v-model:open="formOpen" :mode="formMode" :item="formItem" @saved="reload" @deleted="reload" />
 
     <!-- CONFIRM: inactivar -->
     <v-dialog v-model="disableOpen" max-width="520">
@@ -261,9 +249,7 @@
         <v-card-title class="font-weight-bold">Inactivar producto</v-card-title>
         <v-card-text>
           ¿Seguro que querés inactivar <b>{{ disableItem?.name }}</b> (ID #{{ disableItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">
-            Se oculta para usuarios y POS (no se borra).
-          </div>
+          <div class="text-caption text-medium-emphasis mt-2">Se oculta para usuarios y POS (no se borra).</div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="disableOpen = false" :disabled="products.loading">Cancelar</v-btn>
@@ -278,9 +264,7 @@
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
         <v-card-text>
           ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">
-            Si falla por ventas/relaciones, se inactiva automáticamente.
-          </div>
+          <div class="text-caption text-medium-emphasis mt-2">Si falla por ventas/relaciones, se inactiva automáticamente.</div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
@@ -319,7 +303,7 @@ const isAdmin = computed(() => {
    FILTROS
 ========================= */
 const q = ref("");
-const branchId = ref(null);
+const branchId = ref(null); // ✅ admin: "stock en sucursal"
 const categoryId = ref(null);
 const subcategoryId = ref(null);
 
@@ -435,7 +419,7 @@ function branchColor(id) {
 }
 
 /* =========================
-   CATEGORÍAS
+   CATEGORÍAS (se infieren de products.items)
 ========================= */
 const categoryItems = computed(() => {
   const map = new Map();
@@ -480,15 +464,12 @@ function onCategoryChange() {
    BRANCH FILTER ITEMS (admin)
 ========================= */
 const branchItems = computed(() => {
-  const set = new Set();
-  for (const it of products.items || []) {
-    if (it?.branch_id) set.add(Number(it.branch_id));
-  }
   const out = [{ title: "Todas", value: null }];
-  Array.from(set)
-    .sort((a, b) => a - b)
-    .forEach((id) => out.push({ title: branchName(id), value: id }));
-  return out;
+  const arr = (branches.value || [])
+    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => a.value - b.value);
+  return out.concat(arr);
 });
 
 /* =========================
@@ -498,7 +479,6 @@ const normalized = computed(() => {
   return (products.items || []).map((x) => {
     const rubro = x?.category?.parent?.name || null;
     const subrubro = x?.category?.name || null;
-
     const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
 
     return {
@@ -514,7 +494,9 @@ const normalized = computed(() => {
 
 /* =========================
    FILTRADO
-   ✅ Ocultamos inactivos para TODOS (admin y user)
+   ✅ IMPORTANTE:
+   - "Sucursal (stock)" NO filtra por dueño (products.branch_id)
+   - Filtra por STOCK en esa sucursal (el backend ya calculó stock_qty con branch_id)
 ========================= */
 const filteredAll = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
@@ -525,12 +507,16 @@ const filteredAll = computed(() => {
   const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
 
   return normalized.value.filter((it) => {
-    // ✅ ocultar inactivos para todos
+    // ocultar inactivos para todos
     if (isInactive(it)) return false;
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    if (isAdmin.value && branchId.value && Number(it.branch_id) !== Number(branchId.value)) return false;
+    // ✅ admin + sucursal elegida => stock en esa sucursal
+    // (como ya pedimos al backend stock_qty para branchId, _stock_num es de esa sucursal)
+    if (isAdmin.value && branchId.value) {
+      if (!(it._stock_num > 0)) return false;
+    }
 
     if (pid && Number(it?.category?.parent?.id || 0) !== pid) return false;
     if (cid && Number(it?.category?.id || 0) !== cid) return false;
@@ -594,7 +580,8 @@ const headers = computed(() => {
   if (!isAdmin.value) return base;
 
   const out = [...base];
-  out.splice(1, 0, { title: "Sucursal", key: "branch", sortable: false });
+  // ✅ esta es sucursal DUEÑA (branch_id en products), no la del stock
+  out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false });
   return out;
 });
 
@@ -629,7 +616,11 @@ function openDetails(id) {
 
 async function openEdit(id) {
   if (!auth.isAuthed) return;
-  const full = await products.fetchOne(Number(id), { force: true });
+
+  // ✅ si admin tiene sucursal elegida, pedimos detalle con stock_qty de esa sucursal
+  const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+
+  const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
 
   formMode.value = "edit";
@@ -643,8 +634,9 @@ function openCreate() {
   formOpen.value = true;
 }
 
-function applyFilters() {
+async function applyFilters() {
   page.value = 1;
+  await reload();
 }
 
 async function clearFilters() {
@@ -765,7 +757,10 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  await products.fetchList({ q: "", page: 1, limit: 1000 });
+  // ✅ si admin elige sucursal, el backend calcula stock_qty para ESA sucursal
+  const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+
+  await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
   await loadBranchesSafe();
 }
 

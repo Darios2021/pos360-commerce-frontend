@@ -47,18 +47,19 @@
     <!-- FILTERS -->
     <v-card rounded="xl" class="mb-4 pa-4" variant="tonal">
       <v-row dense>
-        <!-- Sucursal (solo admin) -->
+        <!-- ✅ Sucursal (solo admin) => FILTRA POR STOCK EN ESA SUCURSAL (no por dueño) -->
         <v-col cols="12" md="3" v-if="isAdmin">
           <v-select
             v-model="branchId"
             :items="branchItems"
             item-title="title"
             item-value="value"
-            label="Sucursal"
+            label="Sucursal (stock en sucursal)"
             variant="outlined"
             density="comfortable"
             clearable
             hide-details
+            @update:modelValue="onBranchChange"
           />
         </v-col>
 
@@ -211,12 +212,10 @@
             Limpiar selección
           </v-btn>
 
-          <!-- Para TODOS: “eliminar” = inactivar -->
           <v-btn color="red" variant="flat" prepend-icon="mdi-eye-off-outline" @click="bulkInactivate">
             Inactivar seleccionados
           </v-btn>
 
-          <!-- Admin: borrar real (si no se puede por FK, cae a inactivar) -->
           <v-btn
             v-if="isAdmin"
             color="red"
@@ -247,10 +246,13 @@
           <div class="font-weight-bold">{{ item.name || "—" }}</div>
         </template>
 
-        <!-- Sucursal -->
+        <!-- ✅ Sucursal visible:
+             - si admin eligió sucursal => mostramos ESA sucursal (contexto stock)
+             - si no eligió => mostramos sucursal dueña del producto (branch_id)
+        -->
         <template #item.branch="{ item }">
-          <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
-            {{ branchName(item.branch_id) }}
+          <v-chip size="small" variant="tonal" :color="branchColor(branchId || item.branch_id)">
+            {{ branchName(branchId || item.branch_id) }}
           </v-chip>
         </template>
 
@@ -270,7 +272,6 @@
             <v-btn icon="mdi-eye-outline" variant="text" @click="openDetails(item.id)" />
             <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
 
-            <!-- Usuario: inactivar (no borrar) -->
             <v-btn
               v-if="!isAdmin"
               icon="mdi-eye-off-outline"
@@ -279,7 +280,6 @@
               @click="askInactivate(item)"
             />
 
-            <!-- Admin: borrar (puede fallar por FK -> fallback a inactivar) -->
             <v-btn
               v-else
               icon="mdi-delete-outline"
@@ -302,7 +302,7 @@
       </v-data-table>
     </v-card>
 
-    <!-- DIALOGS (reusamos los de products) -->
+    <!-- DIALOGS -->
     <ProductDetailsDialog
       v-model:open="detailsOpen"
       :product-id="selectedId"
@@ -363,7 +363,6 @@ import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 
-// Reusamos componentes existentes del módulo products
 import ProductDetailsDialog from "../../products/components/ProductDetailsDialog.vue";
 import ProductFormDialog from "../../products/components/ProductFormDialog.vue";
 
@@ -375,11 +374,11 @@ const q = ref("");
 const advanced = ref(false);
 
 /** filtros */
-const branchId = ref(null);
+const branchId = ref(null);      // ✅ admin: stock en sucursal
 const rubroId = ref(null);       // parent_category_id
 const subrubroId = ref(null);    // category_id
 
-// stock (según lo que venga en list)
+// stock
 const stockMode = ref("all"); // all | gt0 | eq0 | lt0 | missing
 const stockModes = [
   { title: "Todos", value: "all" },
@@ -432,11 +431,11 @@ const isAdmin = computed(() => {
 
 /** data local */
 const loadingAll = ref(false);
-const allItems = ref([]); // cache full list segun q
+const allItems = ref([]);
 const branches = ref([]);
 const branchesLoaded = ref(false);
 
-/** selección múltiple */
+/** selección */
 const selectedIds = ref([]);
 
 /** dialogs */
@@ -455,7 +454,7 @@ const inactiveItem = ref(null);
 
 const snack = ref({ show: false, text: "" });
 
-/** paginación real */
+/** paginación */
 const page = ref(1);
 const pageSize = 25;
 
@@ -474,6 +473,7 @@ function cleanCatName(s) {
   return String(s).replace(/\s*>\s*/g, " / ").replace(/\s+/g, " ").trim();
 }
 
+/** branches helpers */
 function branchName(branch_id) {
   const id = Number(branch_id || 0);
   if (!id) return "—";
@@ -558,16 +558,14 @@ async function prefetchImagesForItems(items) {
 }
 
 /** headers */
-const headers = computed(() => {
-  return [
-    { title: "Nombre", key: "name", sortable: false },
-    { title: "Sucursal", key: "branch", sortable: false },
-    { title: "Rubro", key: "rubro", sortable: false },
-    { title: "Subrubro", key: "subrubro", sortable: false },
-    { title: "Stock", key: "stock", sortable: false, align: "end" },
-    { title: "", key: "actions", sortable: false, align: "end" },
-  ];
-});
+const headers = computed(() => ([
+  { title: "Nombre", key: "name", sortable: false },
+  { title: "Sucursal", key: "branch", sortable: false },
+  { title: "Rubro", key: "rubro", sortable: false },
+  { title: "Subrubro", key: "subrubro", sortable: false },
+  { title: "Stock", key: "stock", sortable: false, align: "end" },
+  { title: "", key: "actions", sortable: false, align: "end" },
+]));
 
 /** Normalización rubro/subrubro */
 const normalizedAll = computed(() => {
@@ -632,16 +630,20 @@ function onRubroChange() {
   page.value = 1;
 }
 
+function onBranchChange() {
+  page.value = 1;
+  selectedIds.value = [];
+  loadAll(); // ✅ recarga lista con branch_id para stock por sucursal
+}
+
+/** ✅ branchItems desde /branches (no desde items) */
 const branchItems = computed(() => {
-  const set = new Set();
-  for (const it of normalizedAll.value) {
-    if (it?.branch_id) set.add(Number(it.branch_id));
-  }
   const out = [{ title: "Todas", value: null }];
-  Array.from(set)
-    .sort((a, b) => a - b)
-    .forEach((id) => out.push({ title: branchName(id), value: id }));
-  return out;
+  const arr = (branches.value || [])
+    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => a.value - b.value);
+  return out.concat(arr);
 });
 
 const chips = computed(() => {
@@ -651,7 +653,7 @@ const chips = computed(() => {
   if (isAdmin.value && branchId.value) out.push({
     key: "branch",
     label: `Sucursal: ${branchName(branchId.value)}`,
-    onClose: () => (branchId.value = null),
+    onClose: () => { branchId.value = null; loadAll(); },
   });
 
   if (rubroId.value) {
@@ -692,7 +694,10 @@ const chips = computed(() => {
   return out;
 });
 
-/** filtro principal */
+/** ✅ filtro principal (FIX SUCURSAL):
+    - si admin eligió sucursal => NO comparar it.branch_id
+    - filtrar por stock en esa sucursal (ya viene en stock_qty por branch_id)
+*/
 const filteredAll = computed(() => {
   const pmin = toMaybeNumber(priceMin.value);
   const pmax = toMaybeNumber(priceMax.value);
@@ -700,7 +705,11 @@ const filteredAll = computed(() => {
   return normalizedAll.value.filter((it) => {
     if (it?.is_active === false || Number(it?.is_active) === 0) return false;
 
-    if (isAdmin.value && branchId.value && Number(it.branch_id) !== Number(branchId.value)) return false;
+    // ✅ admin + sucursal => mostrar solo los que tengan stock en ESA sucursal
+    if (isAdmin.value && branchId.value) {
+      const s = stockNumber(it);
+      if (!(s !== null && s > 0)) return false;
+    }
 
     if (rubroId.value && Number(it.parent_category_id || 0) !== Number(rubroId.value)) return false;
     if (subrubroId.value && Number(it.category_id || 0) !== Number(subrubroId.value)) return false;
@@ -765,10 +774,9 @@ watch(
 );
 
 /* ==========================
-   ✅ FIX DUPLICADOS:
-   - sacamos onMounted()
-   - dejamos SOLO este watch (immediate)
-   - agregamos lock (si ya está cargando, no recargar)
+   DATA LOAD (FIX SUCURSAL)
+   - al cargar lista, si admin eligió branchId => pasamos branch_id al backend
+   - así stock_qty viene calculado para esa sucursal
 ========================== */
 async function loadBranchesSafe() {
   branchesLoaded.value = true;
@@ -786,7 +794,7 @@ async function loadBranchesSafe() {
 
 async function loadAll() {
   if (!auth.isAuthed) return;
-  if (loadingAll.value) return; // ✅ lock anti doble load
+  if (loadingAll.value) return;
 
   loadingAll.value = true;
   try {
@@ -799,8 +807,11 @@ async function loadAll() {
     let p = 1;
     let pagesServer = 1;
 
+    // ✅ si admin eligió sucursal, la usamos para stock_qty
+    const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+
     do {
-      await products.fetchList({ q: q.value, page: p, limit: LIMIT });
+      await products.fetchList({ q: q.value, page: p, limit: LIMIT, branch_id: bid });
 
       const items = Array.isArray(products.items) ? products.items : [];
       const totalPages = Number(products.pages || 1) || 1;
@@ -831,29 +842,36 @@ function openDetails(id) {
   selectedId.value = Number(id);
   detailsOpen.value = true;
 }
+
 function openCreate() {
   formMode.value = "create";
   formItem.value = null;
   formOpen.value = true;
 }
+
 async function openEdit(id) {
-  const full = await products.fetchOne(Number(id), { force: true });
+  const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+  const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
   formMode.value = "edit";
   formItem.value = full;
   formOpen.value = true;
 }
+
 async function afterSaved() {
   snack.value = { show: true, text: "Guardado OK" };
   await loadAll();
 }
+
 async function afterDeleted() {
   snack.value = { show: true, text: "Actualizado" };
   await loadAll();
 }
+
 async function search() {
   await loadAll();
 }
+
 async function clear() {
   q.value = "";
   branchId.value = null;
@@ -875,6 +893,7 @@ function askInactivate(item) {
   inactiveItem.value = item;
   inactiveOpen.value = true;
 }
+
 async function doInactivate() {
   const it = inactiveItem.value;
   if (!it?.id) return;
@@ -890,10 +909,12 @@ async function doInactivate() {
     snack.value = { show: true, text: e?.message || "No se pudo inactivar" };
   }
 }
+
 function askDelete(item) {
   deleteItem.value = item;
   deleteOpen.value = true;
 }
+
 async function doDelete() {
   const it = deleteItem.value;
   if (!it?.id) return;
@@ -933,6 +954,7 @@ async function bulkInactivate() {
   selectedIds.value = [];
   await loadAll();
 }
+
 async function bulkDelete() {
   const ids = (selectedIds.value || []).map((x) => Number(x)).filter((x) => x > 0);
   if (!ids.length) return;
