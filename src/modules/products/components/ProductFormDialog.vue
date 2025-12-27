@@ -36,6 +36,10 @@
           {{ products.error }}
         </v-alert>
 
+        <v-alert v-if="apiErrorText" type="error" variant="tonal" class="mb-4">
+          {{ apiErrorText }}
+        </v-alert>
+
         <v-alert v-if="mode === 'create' && model?.id" type="success" variant="tonal" class="mb-4">
           Producto creado (ID #{{ model.id }}). Podés seguir subiendo imágenes o presionar <b>Finalizar</b>.
         </v-alert>
@@ -75,7 +79,7 @@
                   v-model="model.name"
                   label="Nombre *"
                   variant="outlined"
-                  :error="!!fieldErrors.name"
+                  :error="(fieldErrors.name || []).length > 0"
                   :error-messages="fieldErrors.name"
                 />
               </v-col>
@@ -85,7 +89,7 @@
                   v-model="model.sku"
                   label="SKU *"
                   variant="outlined"
-                  :error="!!fieldErrors.sku"
+                  :error="(fieldErrors.sku || []).length > 0"
                   :error-messages="fieldErrors.sku"
                 />
               </v-col>
@@ -107,7 +111,7 @@
                   :disabled="catsLoading"
                   clearable
                   no-data-text="No hay rubros"
-                  :error="!!fieldErrors.parent_category_id"
+                  :error="(fieldErrors.parent_category_id || []).length > 0"
                   :error-messages="fieldErrors.parent_category_id"
                 />
               </v-col>
@@ -259,7 +263,7 @@
                     :disabled="branchesLoading"
                     clearable
                     no-data-text="No hay sucursales"
-                    :error="!!fieldErrors.branch_id"
+                    :error="(fieldErrors.branch_id || []).length > 0"
                     :error-messages="fieldErrors.branch_id"
                     hint="Esta selección define: 1) sucursal donde mirar/poner stock 2) (opcional) sucursal dueña del producto si guardás."
                     persistent-hint
@@ -381,7 +385,9 @@
         </v-btn>
 
         <div class="d-flex ga-2">
-          <v-btn variant="tonal" @click="close" :disabled="products.loading || uploading || savingStock">Cancelar</v-btn>
+          <v-btn variant="tonal" @click="close" :disabled="products.loading || uploading || savingStock">
+            Cancelar
+          </v-btn>
 
           <v-btn
             v-if="mode === 'create' && model?.id"
@@ -457,6 +463,8 @@ const openLocal = ref(false);
 const tab = ref("datos");
 const hydrating = ref(false);
 
+const apiErrorText = ref("");
+
 const model = ref({
   id: null,
   name: "",
@@ -522,18 +530,22 @@ const userBranchLabel = computed(() => {
 });
 
 const productOwnerBranchLabel = computed(() => {
-  const bid = Number(props?.item?.branch_id || 0) || Number((products.current || {})?.branch_id || 0) || Number(stock.value.branch_id || 0) || 0;
+  const bid =
+    Number(props?.item?.branch_id || 0) ||
+    Number((products.current || {})?.branch_id || 0) ||
+    Number(stock.value.branch_id || 0) ||
+    0;
   if (!bid) return "—";
   const found = (branches.value || []).find((b) => Number(b?.id) === Number(bid));
   return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${bid}`;
 });
 
-/** errores */
+/** errores (arrays) */
 const fieldErrors = ref({
-  name: "",
-  sku: "",
-  branch_id: "",
-  parent_category_id: "",
+  name: [],
+  sku: [],
+  branch_id: [],
+  parent_category_id: [],
 });
 
 const snack = ref({ show: false, text: "" });
@@ -559,7 +571,7 @@ function debugClear() {
 }
 
 function clearFieldErrors() {
-  fieldErrors.value = { name: "", sku: "", branch_id: "", parent_category_id: "" };
+  fieldErrors.value = { name: [], sku: [], branch_id: [], parent_category_id: [] };
 }
 
 function toInt(v, d = 0) {
@@ -647,6 +659,7 @@ watch(
     openLocal.value = v;
     if (!v) return;
 
+    apiErrorText.value = "";
     hydrating.value = true;
     tab.value = "datos";
     clearFieldErrors();
@@ -693,7 +706,11 @@ watch(
 
     // ✅ si es edit, pedí el producto con stock_qty del backend (ya lo agregamos en getOne)
     if (model.value.id) {
-      await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
+      try {
+        await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
+      } catch (e) {
+        debugLog("ERROR fetchOne()", e?.message || e);
+      }
       await refreshCurrentStock();
     }
 
@@ -756,22 +773,106 @@ function finalize() {
 
 function validateBeforeSave() {
   clearFieldErrors();
+  apiErrorText.value = "";
 
-  if (!String(model.value.name || "").trim()) fieldErrors.value.name = "El nombre es obligatorio.";
-  if (!String(model.value.sku || "").trim()) fieldErrors.value.sku = "El SKU es obligatorio.";
-  if (!model.value.parent_category_id) fieldErrors.value.parent_category_id = "Elegí un rubro.";
+  if (!String(model.value.name || "").trim()) fieldErrors.value.name.push("El nombre es obligatorio.");
+  if (!String(model.value.sku || "").trim()) fieldErrors.value.sku.push("El SKU es obligatorio.");
+  if (!model.value.parent_category_id) fieldErrors.value.parent_category_id.push("Elegí un rubro.");
 
   // ✅ Admin: en create exigimos sucursal (porque define branch_id del producto)
   if (props.mode === "create" && isAdmin.value && !stock.value.branch_id) {
-    fieldErrors.value.branch_id = "Elegí una sucursal.";
+    fieldErrors.value.branch_id.push("Elegí una sucursal.");
   }
 
-  return (
-    !fieldErrors.value.name &&
-    !fieldErrors.value.sku &&
-    !fieldErrors.value.branch_id &&
-    !fieldErrors.value.parent_category_id
-  );
+  const ok =
+    (fieldErrors.value.name || []).length === 0 &&
+    (fieldErrors.value.sku || []).length === 0 &&
+    (fieldErrors.value.branch_id || []).length === 0 &&
+    (fieldErrors.value.parent_category_id || []).length === 0;
+
+  return ok;
+}
+
+function goToTabForField(field) {
+  const f = String(field || "").toLowerCase();
+  if (["name", "sku", "code", "barcode", "brand", "model", "description", "parent_category_id", "category_id"].includes(f)) {
+    tab.value = "datos";
+    return;
+  }
+  if (["price_list", "price_discount", "price_reseller", "price"].includes(f)) {
+    tab.value = "precios";
+    return;
+  }
+  if (["is_active", "is_new", "is_promo"].includes(f)) {
+    tab.value = "estado";
+    return;
+  }
+  if (["branch_id"].includes(f)) {
+    tab.value = "stock";
+    return;
+  }
+}
+
+function applyBackendErrors(err) {
+  // Esperamos algo como:
+  // err = { status, message, code, errors: [{ field, message }] }
+  // o backend: { ok:false, message, errors:[...] }
+  // o Sequelize: { errors:[{ path, message }] }
+  apiErrorText.value = "";
+
+  const status = err?.status || err?.response?.status || 0;
+  const message =
+    err?.message ||
+    err?.response?.data?.message ||
+    err?.response?.data?.error ||
+    (typeof err?.response?.data === "string" ? "Error en el servidor." : "") ||
+    "";
+
+  const errorsArr =
+    err?.errors ||
+    err?.response?.data?.errors ||
+    err?.response?.data?.validationErrors ||
+    err?.response?.data?.details ||
+    [];
+
+  clearFieldErrors();
+
+  const mapped = [];
+
+  if (Array.isArray(errorsArr) && errorsArr.length) {
+    for (const e of errorsArr) {
+      const field = e?.field || e?.path || e?.param || e?.key || "";
+      const msg = e?.message || e?.msg || e?.error || "Campo inválido";
+      mapped.push({ field, msg });
+    }
+  }
+
+  if (mapped.length) {
+    for (const { field, msg } of mapped) {
+      const k = String(field || "").trim();
+
+      // mapeos típicos
+      if (k === "parent_category_id") fieldErrors.value.parent_category_id.push(msg);
+      else if (k === "branch_id") fieldErrors.value.branch_id.push(msg);
+      else if (k === "name") fieldErrors.value.name.push(msg);
+      else if (k === "sku") fieldErrors.value.sku.push(msg);
+      else {
+        // si viene un campo que no tenemos, lo mostramos arriba
+        apiErrorText.value = apiErrorText.value ? `${apiErrorText.value} · ${msg}` : msg;
+      }
+
+      goToTabForField(k);
+    }
+
+    // si no seteó apiErrorText, ponemos uno genérico
+    if (!apiErrorText.value) apiErrorText.value = "Corregí los campos marcados.";
+    return;
+  }
+
+  // sin errors[] => mensaje global
+  if (message) apiErrorText.value = message;
+  else if (status >= 500) apiErrorText.value = "Error interno del servidor. Revisá logs del backend.";
+  else apiErrorText.value = "No se pudo completar la acción.";
 }
 
 const stockInfo = computed(() => {
@@ -919,10 +1020,11 @@ async function doDeleteProduct() {
 async function save() {
   if (!auth.isAuthed) return;
 
+  apiErrorText.value = "";
   syncRubroFromSubrubro();
 
   if (!validateBeforeSave()) {
-    tab.value = fieldErrors.value.branch_id ? "stock" : "datos";
+    tab.value = (fieldErrors.value.branch_id || []).length ? "stock" : "datos";
     debugLog("VALIDATION FAIL", fieldErrors.value);
     return;
   }
@@ -957,32 +1059,57 @@ async function save() {
     stock: { branch_id: stock.value.branch_id, current_qty: stock.value.current_qty, assign_qty: stock.value.assign_qty },
   });
 
-  // EDIT
-  if (props.mode === "edit" && model.value.id) {
-    const updated = await products.update(model.value.id, payload);
-    debugLog("UPDATE result", updated);
+  try {
+    // EDIT
+    if (props.mode === "edit" && model.value.id) {
+      const updated = await products.update(model.value.id, payload);
+      debugLog("UPDATE result", updated);
 
-    if (updated?.id) {
-      emit("saved", { id: updated.id });
-      close();
+      // soporta store que devuelve {ok,data} o directamente el item
+      const u = updated?.data || updated;
+      if (u?.id) {
+        emit("saved", { id: u.id });
+        close();
+      } else {
+        snack.value = { show: true, text: "No se pudo actualizar (respuesta inesperada)." };
+      }
+      return;
     }
-    return;
-  }
 
-  // CREATE
-  const created = await products.create(payload);
-  debugLog("CREATE result", created);
+    // CREATE
+    const created = await products.create(payload);
+    debugLog("CREATE result", created);
 
-  if (created?.id) {
-    model.value.id = created.id;
-    emit("saved", { id: created.id });
+    const c = created?.data || created;
+    if (c?.id) {
+      model.value.id = c.id;
+      emit("saved", { id: c.id });
 
-    tab.value = "imagenes";
-    if (newFiles.value?.length) {
-      await uploadSelected();
+      tab.value = "imagenes";
+      if (newFiles.value?.length) {
+        await uploadSelected();
+      } else {
+        await loadImages();
+      }
     } else {
-      await loadImages();
+      snack.value = { show: true, text: "No se pudo crear (respuesta inesperada)." };
     }
+  } catch (e) {
+    debugLog("SAVE ERROR", e);
+    applyBackendErrors(e);
+
+    // si hay error por campos, mandamos a la tab correspondiente
+    if (
+      (fieldErrors.value.name || []).length ||
+      (fieldErrors.value.sku || []).length ||
+      (fieldErrors.value.parent_category_id || []).length
+    ) {
+      tab.value = "datos";
+    } else if ((fieldErrors.value.branch_id || []).length) {
+      tab.value = "stock";
+    }
+
+    snack.value = { show: true, text: apiErrorText.value || "No se pudo guardar." };
   }
 }
 </script>

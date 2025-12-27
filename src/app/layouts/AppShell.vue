@@ -1,8 +1,7 @@
-<!-- src/app/layouts/AppShell.vue -->
 <template>
   <v-app>
     <v-layout>
-      <!-- Header -->
+      <!-- ================= HEADER ================= -->
       <v-app-bar elevation="0" color="surface" height="72" class="pos-appbar">
         <template #prepend>
           <v-btn
@@ -20,20 +19,103 @@
 
           <div class="d-flex flex-column">
             <div class="font-weight-bold">POS360</div>
-            <div class="text-caption text-medium-emphasis">Inventario · Ecommerce · POS</div>
+            <div class="text-caption text-medium-emphasis">
+              Inventario · Ecommerce · POS
+            </div>
           </div>
         </div>
 
         <v-spacer />
 
-        <v-chip variant="tonal" class="mr-3" prepend-icon="mdi-account-circle-outline">
-          {{ userLabel }}
-        </v-chip>
+        <!-- ===== Cuenta (Google-like) ===== -->
+        <v-menu
+          v-model="accountMenu"
+          :close-on-content-click="false"
+          location="bottom end"
+          offset="12"
+        >
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon
+              variant="text"
+              class="mr-1"
+              title="Cuenta"
+            >
+              <v-avatar size="34" class="pos-avatar-btn">
+                <v-img v-if="userAvatar" :src="userAvatar" cover />
+                <span v-else class="text-caption font-weight-bold">
+                  {{ userInitials }}
+                </span>
+              </v-avatar>
+            </v-btn>
+          </template>
 
-        <v-btn icon="mdi-logout-variant" variant="text" title="Salir" @click="logout" />
+          <v-card rounded="xl" class="pos-account-card" min-width="340">
+            <!-- Header -->
+            <div class="d-flex align-center justify-space-between px-4 pt-4">
+              <div class="text-caption text-medium-emphasis">Cuenta</div>
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                density="comfortable"
+                @click="accountMenu = false"
+              />
+            </div>
+
+            <!-- Identity -->
+            <div class="px-4 pt-3 pb-2 text-center">
+              <v-avatar size="84" class="mx-auto mb-3 pos-account-avatar">
+                <v-img v-if="userAvatar" :src="userAvatar" cover />
+                <span v-else class="text-h6 font-weight-bold">
+                  {{ userInitials }}
+                </span>
+              </v-avatar>
+
+              <div class="text-h6 font-weight-bold">
+                {{ userFullName || "Usuario" }}
+              </div>
+
+              <div class="text-caption text-medium-emphasis">
+                {{ userRoleLabel }}
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-1">
+                {{ userEmailOrUsername }}
+              </div>
+            </div>
+
+            <div class="px-4 pb-2">
+              <v-btn
+                block
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-account-edit-outline"
+                :to="{ name: 'profile' }"
+                @click="accountMenu = false"
+              >
+                Mi perfil
+              </v-btn>
+            </div>
+
+            <v-divider class="my-3" />
+
+            <div class="px-4 pb-4">
+              <v-btn
+                block
+                color="red"
+                variant="tonal"
+                prepend-icon="mdi-logout-variant"
+                @click="onLogout"
+              >
+                Cerrar sesión
+              </v-btn>
+            </div>
+          </v-card>
+        </v-menu>
       </v-app-bar>
 
-      <!-- ✅ Drawer manual: SIN expand-on-hover -->
+      <!-- ================= DRAWER ================= -->
       <v-navigation-drawer
         v-model="drawer"
         permanent
@@ -44,7 +126,9 @@
       >
         <div class="pt-2"></div>
 
-        <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Navegación</div>
+        <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">
+          Navegación
+        </div>
 
         <v-list nav density="comfortable">
           <v-list-item
@@ -53,7 +137,9 @@
             title="Dashboard"
             exact
           >
-            <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Dashboard
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item
@@ -62,7 +148,9 @@
             title="Punto de Venta"
             exact
           >
-            <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Punto de Venta
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item
@@ -71,12 +159,16 @@
             title="Ventas"
             exact
           >
-            <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Ventas
+            </v-tooltip>
           </v-list-item>
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">
+            Gestión
+          </div>
 
           <v-list-item
             :to="{ name: 'products' }"
@@ -84,7 +176,9 @@
             title="Productos"
             exact
           >
-            <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Productos
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item
@@ -93,17 +187,23 @@
             title="Importar CSV"
             exact
           >
-            <v-tooltip v-if="rail" activator="parent" location="right">Importar CSV</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Importar CSV
+            </v-tooltip>
           </v-list-item>
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Sistema</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">
+            Sistema
+          </div>
 
           <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Configuración">
-                <v-tooltip v-if="rail" activator="parent" location="right">Configuración</v-tooltip>
+                <v-tooltip v-if="rail" activator="parent" location="right">
+                  Configuración
+                </v-tooltip>
               </v-list-item>
             </template>
 
@@ -130,66 +230,20 @@
               title="Categorías"
               exact
             />
-
-            <v-list-item
-              v-if="isAdmin && hasRoute('users')"
-              :to="{ name: 'users' }"
-              prepend-icon="mdi-account-multiple-outline"
-              title="Usuarios"
-              exact
-            />
-
-            <v-list-item
-              v-if="isAdmin && hasRoute('roles')"
-              :to="{ name: 'roles' }"
-              prepend-icon="mdi-shield-account-outline"
-              title="Roles y permisos"
-              exact
-            />
           </v-list-group>
         </v-list>
 
         <v-spacer />
 
-        <!-- Bottom -->
-        <div class="px-4 pb-2" v-if="!rail">
-          <v-card rounded="lg" variant="tonal" class="pa-3">
-            <div class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center ga-2">
-                <v-icon>{{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}</v-icon>
-                <div class="text-body-2 font-weight-bold">Modo oscuro</div>
-              </div>
-
-              <v-switch
-                inset
-                hide-details
-                density="compact"
-                :model-value="isDark"
-                @update:model-value="setDark"
-              />
-            </div>
-
-            <div class="text-caption text-medium-emphasis mt-1">
-              Se guarda en el navegador.
-            </div>
-          </v-card>
+        <div class="pa-4 text-caption text-medium-emphasis" v-if="!rail">
+          v1 · 2025
         </div>
-
-        <div class="px-2 pb-2" v-else>
-          <v-btn
-            block
-            variant="text"
-            :icon="isDark ? 'mdi-weather-night' : 'mdi-white-balance-sunny'"
-            @click="setDark(!isDark)"
-          >
-            <v-tooltip activator="parent" location="right">Modo oscuro</v-tooltip>
-          </v-btn>
+        <div class="px-2 pb-4 text-caption text-medium-emphasis text-center" v-else>
+          v1
         </div>
-
-        <div class="pa-4 text-caption text-medium-emphasis" v-if="!rail">v1 · 2025</div>
-        <div class="px-2 pb-4 text-caption text-medium-emphasis text-center" v-else>v1</div>
       </v-navigation-drawer>
 
+      <!-- ================= MAIN ================= -->
       <v-main class="pos-main">
         <v-container fluid class="pos-container">
           <slot />
@@ -200,81 +254,71 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
-import { useTheme } from "vuetify";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-
 import { useAuthStore } from "../store/auth.store";
-import { useThemeStore } from "../store/theme.store";
 
 const drawer = ref(true);
 const rail = ref(false);
+const accountMenu = ref(false);
 
 const auth = useAuthStore();
 const router = useRouter();
-
-const theme = useTheme();
-const themeStore = useThemeStore();
-
-const userLabel = computed(() => auth?.user?.email || auth?.user?.username || "Usuario");
-const isDark = computed(() => themeStore.isDark);
 
 const isAdmin = computed(() => {
   const r = auth.roles || [];
   return r.includes("admin") || r.includes("super_admin");
 });
 
+const userAvatar = computed(() => {
+  const u = auth.user || {};
+  return u.avatar_url || "";
+});
+
+const userEmailOrUsername = computed(() => {
+  const u = auth.user || {};
+  return u.email || u.username || "";
+});
+
+const userFullName = computed(() => {
+  const u = auth.user || {};
+  return [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+});
+
+const userInitials = computed(() => {
+  const u = auth.user || {};
+  const a = (u.first_name || "").trim();
+  const b = (u.last_name || "").trim();
+  return ((a[0] || "") + (b[0] || "")).toUpperCase() || "U";
+});
+
+const userRoleLabel = computed(() => {
+  const r = auth.roles || [];
+  if (r.includes("super_admin")) return "Super Admin";
+  if (r.includes("admin")) return "Administrador";
+  if (r.includes("manager")) return "Supervisor";
+  if (r.includes("seller")) return "Vendedor";
+  return r[0] || "Usuario";
+});
+
 function hasRoute(name) {
   try {
-    return router?.hasRoute?.(name) === true;
+    return router.hasRoute(name);
   } catch {
     return false;
   }
 }
 
-const showConfig = computed(() => {
-  return (
-    hasRoute("stock") ||
-    hasRoute("inventory") ||
-    hasRoute("categories") ||
-    hasRoute("users") ||
-    hasRoute("roles") ||
-    hasRoute("branches") ||
-    hasRoute("warehouses") ||
-    hasRoute("posSettings") ||
-    hasRoute("paymentMethods") ||
-    hasRoute("taxes") ||
-    hasRoute("documents") ||
-    hasRoute("integrations")
-  );
-});
+const showConfig = computed(() =>
+  hasRoute("stock") || hasRoute("inventory") || hasRoute("categories")
+);
 
 function toggleRail() {
   rail.value = !rail.value;
 }
 
-function applyVuetifyTheme(dark) {
-  const name = dark ? "dark" : "light";
-  try {
-    if (typeof theme?.change === "function") theme.change(name);
-    else if (theme?.global?.name) theme.global.name.value = name;
-  } catch {
-    // ignore
-  }
-}
-
-function setDark(v) {
-  themeStore.setDark(!!v);
-  applyVuetifyTheme(!!v);
-}
-
-watch(
-  () => themeStore.isDark,
-  (v) => applyVuetifyTheme(!!v),
-  { immediate: true }
-);
-
-function logout() {
+function onLogout() {
+  accountMenu.value = false;
   auth.logout?.();
   router.push({ name: "login" });
 }
@@ -294,5 +338,14 @@ function logout() {
   padding-top: 16px;
   padding-bottom: 24px;
   max-width: 1400px;
+}
+.pos-avatar-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.pos-account-card {
+  overflow: hidden;
+}
+.pos-account-avatar {
+  border: 3px solid rgba(255, 255, 255, 0.2);
 }
 </style>

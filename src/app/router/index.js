@@ -13,8 +13,11 @@ const ImportProducts = () => import("../../modules/import/page/ImportProductsPag
 const Stock = () => import("../../modules/stock/pages/StockPage.vue");
 const Categories = () => import("../../modules/categories/pages/CategoriesPage.vue");
 
-// ✅ Inventario Admin (NUEVO) — OJO: está en modules/inventory/pages
+// ✅ Inventario Admin
 const Inventory = () => import("../../modules/inventory/pages/InventoryPage.vue");
+
+// ✅ Perfil (nuevo)
+const Profile = () => import("../../modules/account/pages/ProfilePage.vue");
 
 // POS
 const Pos = () => import("../../modules/pos/pages/PosPage.vue");
@@ -40,6 +43,9 @@ const routes = [
   { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
   { path: "/categories", name: "categories", component: Categories, meta: { requiresAuth: true } },
 
+  // ✅ Perfil (nuevo)
+  { path: "/account/profile", name: "profile", component: Profile, meta: { requiresAuth: true } },
+
   // POS
   { path: "/pos", name: "pos", component: Pos, meta: { requiresAuth: true } },
   { path: "/pos/sales", name: "posSales", component: PosSales, meta: { requiresAuth: true } },
@@ -63,7 +69,7 @@ router.beforeEach((to) => {
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
 
-  // ✅ Gate de roles (Inventario admin y futuras rutas con roles)
+  // ✅ Gate de roles
   const roles = to.meta?.roles;
   if (roles && roles.length) {
     const r = auth.roles || [];
