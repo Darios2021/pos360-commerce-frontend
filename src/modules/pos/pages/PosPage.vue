@@ -1,4 +1,3 @@
-<!-- src/modules/pos/pages/PosPage.vue -->
 <template>
   <v-container fluid class="pos-wrap">
     <!-- Header -->
@@ -131,8 +130,9 @@
                 :image="productImage(p) || ''"
                 :rubro-label="rubroName(p) || ''"
                 :subrubro-label="subrubroName(p) || ''"
-                :price="resolveUnitPrice(p, 'LIST')"
-                price-label="Lista"
+                :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
+                :price-list="resolveUnitPrice(p, 'LIST')"
+                price-label="Precio"
                 @add="add"
                 @details="openDetails"
               />
@@ -307,189 +307,45 @@
       </v-col>
     </v-row>
 
-    <!-- Modal detalle -->
-    <v-dialog v-model="detailsOpen" max-width="900">
-      <v-card rounded="xl">
-        <v-card-title class="font-weight-black">Detalle producto</v-card-title>
-        <v-card-text>
-          <div v-if="!detailsItem" class="text-medium-emphasis">—</div>
+    <!-- ✅ DETALLE CON OPCIONES DE PAGO + CUOTAS -->
+    <PosProductDetailsDialog
+      v-model:open="detailsOpen"
+      :can-sell="canSell"
+      :item="detailsItem"
+      :image="detailsItem ? productImage(detailsItem) : ''"
+      :rubro-label="detailsItem ? (rubroName(detailsItem) || '') : ''"
+      :subrubro-label="detailsItem ? (subrubroName(detailsItem) || '') : ''"
+      :price-list="detailsItem ? resolveUnitPrice(detailsItem, 'LIST') : 0"
+      :price-discount="detailsItem ? resolveUnitPrice(detailsItem, 'DISCOUNT') : 0"
+      :price-reseller="detailsItem ? resolveUnitPrice(detailsItem, 'RESELLER') : 0"
+      @add="addFromDetails"
+    />
 
-          <div v-else class="d-flex ga-4 flex-wrap">
-            <v-avatar rounded="xl" size="160" class="border">
-              <v-img v-if="productImage(detailsItem)" :src="productImage(detailsItem)" cover />
-              <v-icon v-else size="48">mdi-package-variant</v-icon>
-            </v-avatar>
-
-            <div style="min-width: 240px; flex:1;">
-              <div class="text-h6 font-weight-black">{{ detailsItem.name }}</div>
-              <div class="text-caption text-medium-emphasis">SKU: {{ detailsItem.sku || "—" }}</div>
-
-              <div class="mt-3">
-                <div class="text-caption text-medium-emphasis">Stock: <b>{{ qty3(detailsItem.qty ?? 0) }}</b></div>
-                <div class="text-caption text-medium-emphasis">
-                  Rubro: <b>{{ rubroName(detailsItem) || "—" }}</b>
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  Subrubro: <b>{{ subrubroName(detailsItem) || "—" }}</b>
-                </div>
-              </div>
-
-              <div class="mt-3">
-                <div class="text-caption text-medium-emphasis">Marca: <b>{{ detailsItem.brand || "—" }}</b></div>
-                <div class="text-caption text-medium-emphasis">Modelo: <b>{{ detailsItem.model || "—" }}</b></div>
-              </div>
-
-              <div class="mt-3 text-h6 font-weight-black">
-                {{ money(resolveUnitPrice(detailsItem, "LIST")) }}
-                <span class="text-caption text-medium-emphasis"> (lista)</span>
-              </div>
-            </div>
-          </div>
-        </v-card-text>
-
-        <v-card-actions class="justify-end">
-          <v-btn variant="tonal" @click="detailsOpen = false">Cerrar</v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            :disabled="!canSell"
-            :title="!canSell ? 'El usuario admin no puede vender' : ''"
-            @click="detailsItem && add(detailsItem)"
-          >
-            <v-icon start>mdi-plus</v-icon> Agregar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- ✅ COBRO COMPLETO -->
-    <v-dialog v-model="checkoutDialog" max-width="560" persistent>
-      <v-card class="rounded-xl overflow-hidden">
-        <div class="bg-primary pa-4 text-center">
-          <div class="text-overline text-white opacity-80 mb-1">Confirmar Cobro</div>
-          <div class="text-h4 font-weight-black text-white">
-            {{ money(checkoutTotal) }}
-          </div>
-          <div class="text-caption text-white opacity-85 mt-1">
-            * El precio se define acá según método de pago / cuotas / revendedor.
-          </div>
-        </div>
-
-        <v-card-text class="pa-5">
-          <v-alert v-if="!canSell" type="warning" variant="tonal" class="mb-4">
-            Estás logueado como <b>admin</b>. Podés ver productos, pero <b>no podés registrar ventas</b>.
-          </v-alert>
-
-          <div class="text-subtitle-2 font-weight-bold mb-3">Método de pago</div>
-
-          <v-radio-group v-model="paymentMethod" color="primary" :disabled="!canSell">
-            <v-radio value="CASH" label="Efectivo" />
-            <v-radio value="CARD" label="Tarjeta / Débito" />
-            <v-radio value="TRANSFER" label="Transferencia" />
-            <v-radio value="QR" label="Mercado Pago" />
-          </v-radio-group>
-
-          <v-row dense class="mt-2">
-            <v-col cols="12" md="6">
-              <v-switch
-                v-model="applyReseller"
-                inset
-                color="primary"
-                label="Aplicar precio revendedor"
-                hide-details
-                :disabled="!canSell"
-              />
-              <div class="text-caption text-medium-emphasis">
-                Si no existe precio revendedor (&gt; 0), cae a descuento/lista según corresponda.
-              </div>
-            </v-col>
-
-            <v-col cols="12" md="6" v-if="paymentMethod === 'CARD' && !applyReseller">
-              <v-select
-                v-model="installments"
-                :items="installmentsItems"
-                label="Cuotas"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-                :disabled="!canSell"
-              />
-              <div class="text-caption text-medium-emphasis mt-1">
-                1 pago = descuento · 2 a 6 cuotas = precio lista.
-              </div>
-            </v-col>
-          </v-row>
-
-          <v-divider class="my-4" />
-
-          <v-row dense>
-            <v-col cols="12" v-if="paymentMethod === 'TRANSFER'">
-              <v-text-field
-                v-model="paymentProof"
-                label="Comprobante / N° operación"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-receipt-text-outline"
-                hide-details
-                :disabled="!canSell"
-              />
-            </v-col>
-
-            <v-col cols="12" v-if="paymentMethod === 'QR'">
-              <v-text-field
-                v-model="paymentProof"
-                label="ID operación / Comprobante"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-qrcode-scan"
-                hide-details
-                :disabled="!canSell"
-              />
-            </v-col>
-
-            <v-col cols="12" v-if="paymentMethod === 'CASH'">
-              <v-text-field
-                v-model="cashInput"
-                label="Efectivo recibido"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-cash"
-                :error="cashError"
-                :error-messages="cashErrorMsg"
-                @keyup.enter="confirmPayment"
-                :disabled="!canSell"
-              />
-            </v-col>
-          </v-row>
-
-          <v-alert type="info" variant="tonal" class="mt-3">
-            {{ checkoutPriceHint }}
-          </v-alert>
-        </v-card-text>
-
-        <v-divider />
-
-        <v-card-actions class="pa-4">
-          <v-btn size="large" variant="text" color="grey" @click="checkoutDialog = false" :disabled="posStore.loading">
-            Cancelar
-          </v-btn>
-          <v-spacer />
-
-          <v-btn
-            size="large"
-            color="green-darken-1"
-            variant="flat"
-            class="px-6"
-            :loading="posStore.loading"
-            :disabled="cannotConfirm || !canSell"
-            @click="confirmPayment"
-          >
-            <v-icon start>mdi-check</v-icon>
-            Confirmar venta
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- ✅ COBRO COMPLETO (componentizado) -->
+    <CheckoutDialog
+      v-model:open="checkoutDialog"
+      :total="checkoutTotal"
+      :total-preview="checkoutTotalPreview"
+      :cart="posStore.cart"
+      :loading="posStore.loading"
+      :cannot-confirm="cannotConfirm || !canSell"
+      :cash-error="cashError"
+      :cash-error-msg="cashErrorMsg"
+      :payment-method="paymentMethod"
+      :installments="installments"
+      :installments-items="installmentsItems"
+      :apply-reseller="applyReseller"
+      :payment-proof="paymentProof"
+      :cash-input="cashInput"
+      :price-hint="checkoutPriceHint"
+      @update:paymentMethod="(v) => (paymentMethod = v)"
+      @update:installments="(v) => (installments = v)"
+      @update:applyReseller="(v) => (applyReseller = v)"
+      @update:paymentProof="(v) => (paymentProof = v)"
+      @update:cashInput="(v) => (cashInput = v)"
+      @cancel="checkoutDialog = false"
+      @confirm="confirmPayment"
+    />
 
     <v-snackbar v-model="snack.show" :timeout="3200">
       {{ snack.text }}
@@ -507,7 +363,10 @@ import http from "../../../app/api/http";
 import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { useProductsStore } from "../../../app/store/products.store";
+
 import PosProductCard from "../components/PosProductCard.vue";
+import CheckoutDialog from "../components/CheckoutDialog.vue";
+import PosProductDetailsDialog from "../components/PosProductDetailsDialog.vue";
 
 const posStore = usePosStore();
 const auth = useAuthStore();
@@ -525,8 +384,8 @@ const loadingList = ref(false);
 let tSearch = null;
 
 const checkoutDialog = ref(false);
-const paymentMethod = ref("CASH");
-const installments = ref(1);
+let paymentMethod = ref("CASH");
+let installments = ref(1);
 const installmentsItems = [
   { title: "1 pago", value: 1 },
   { title: "2 cuotas", value: 2 },
@@ -535,10 +394,10 @@ const installmentsItems = [
   { title: "5 cuotas", value: 5 },
   { title: "6 cuotas", value: 6 },
 ];
-const applyReseller = ref(false);
-const paymentProof = ref("");
+let applyReseller = ref(false);
+let paymentProof = ref("");
 
-const cashInput = ref("");
+let cashInput = ref("");
 const cashError = ref(false);
 const cashErrorMsg = ref("");
 
@@ -629,10 +488,11 @@ function pickImageFromProduct(p) {
 
   if (direct) return normalizeUrl(direct);
 
-  const arr =
-    Array.isArray(p?.images) ? p.images :
-    Array.isArray(p?.product_images) ? p.product_images :
-    null;
+  const arr = Array.isArray(p?.images)
+    ? p.images
+    : Array.isArray(p?.product_images)
+    ? p.product_images
+    : null;
 
   if (arr?.length) {
     const u = pickUrlFromImageRow(arr[0]);
@@ -724,8 +584,12 @@ function deriveRubroSub(p) {
   return { rubroId: Number(c.id), subId: null };
 }
 
-function productRubroId(p) { return deriveRubroSub(p).rubroId; }
-function productSubId(p) { return deriveRubroSub(p).subId; }
+function productRubroId(p) {
+  return deriveRubroSub(p).rubroId;
+}
+function productSubId(p) {
+  return deriveRubroSub(p).subId;
+}
 
 function rubroName(p) {
   const { rubroId } = deriveRubroSub(p);
@@ -799,8 +663,8 @@ function resolveUnitPrice(p, policy) {
   const disc = toNum(p?.price_discount);
   const res = toNum(p?.price_reseller);
 
-  if (policy === "RESELLER") return res > 0 ? res : (disc > 0 ? disc : (list > 0 ? list : base));
-  if (policy === "DISCOUNT") return disc > 0 ? disc : (list > 0 ? list : base);
+  if (policy === "RESELLER") return res > 0 ? res : disc > 0 ? disc : list > 0 ? list : base;
+  if (policy === "DISCOUNT") return disc > 0 ? disc : list > 0 ? list : base;
   return list > 0 ? list : base;
 }
 
@@ -810,7 +674,9 @@ function pricePolicyLabel(policy) {
   return "Lista";
 }
 
-function hasStock(p) { return toNum(p?.qty) > 0; }
+function hasStock(p) {
+  return toNum(p?.qty) > 0;
+}
 function hasAnyPrice(p) {
   return (
     toNum(p?.price) > 0 ||
@@ -874,18 +740,32 @@ const pagedItems = computed(() => {
   return filteredItems.value.slice(start, end);
 });
 
-watch(() => [page.value, filteredTotal.value], async () => {
-  await prefetchImagesForVisible(pagedItems.value);
-});
+watch(
+  () => [page.value, filteredTotal.value],
+  async () => {
+    await prefetchImagesForVisible(pagedItems.value);
+  }
+);
 
 function debounceSearch() {
   clearTimeout(tSearch);
-  tSearch = setTimeout(() => { page.value = 1; }, 250);
+  tSearch = setTimeout(() => {
+    page.value = 1;
+  }, 250);
 }
-function doSearch() { page.value = 1; }
-function clearSearch() { q.value = ""; page.value = 1; }
-function prevPage() { if (page.value > 1) page.value--; }
-function nextPage() { if (page.value < pages.value) page.value++; }
+function doSearch() {
+  page.value = 1;
+}
+function clearSearch() {
+  q.value = "";
+  page.value = 1;
+}
+function prevPage() {
+  if (page.value > 1) page.value--;
+}
+function nextPage() {
+  if (page.value < pages.value) page.value++;
+}
 
 /* =========================
    ✅ DETALLE / ADD
@@ -906,7 +786,8 @@ function add(p) {
     return;
   }
 
-  const unit = resolveUnitPrice(p, "LIST");
+  // ✅ por defecto: agregar con DESCUENTO (1 pago)
+  const unit = resolveUnitPrice(p, "DISCOUNT");
   if (unit <= 0) {
     snack.value = { show: true, text: "⚠️ Producto sin precio" };
     return;
@@ -919,7 +800,7 @@ function add(p) {
     available_qty: toNum(p.qty),
 
     price: unit,
-    price_label: "Lista",
+    price_label: "Descuento",
 
     price_list: toNum(p.price_list),
     price_discount: toNum(p.price_discount),
@@ -930,73 +811,87 @@ function add(p) {
   snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
+function addFromDetails(payload) {
+  const p = detailsItem.value;
+  if (!p) return;
+
+  if (!canSell.value) {
+    snack.value = { show: true, text: "🔒 El usuario admin puede ver, pero NO puede vender." };
+    return;
+  }
+
+  const pol = payload?.price_policy || "DISCOUNT";
+  const unit = Number(payload?.unit_price || 0);
+
+  if (!(unit > 0)) {
+    snack.value = { show: true, text: "⚠️ No se pudo calcular precio" };
+    return;
+  }
+
+  posStore.addToCart({
+    ...p,
+    product_id: p.id,
+    image: productImage(p),
+    available_qty: toNum(p.qty),
+
+    price: unit,
+    price_label: payload?.price_label || pricePolicyLabel(pol),
+
+    // guardo precios por si después recalculás en checkout
+    price_list: toNum(p.price_list),
+    price_discount: toNum(p.price_discount),
+    price_reseller: toNum(p.price_reseller),
+    effective_price: toNum(p.effective_price),
+
+    // opcional: info del detalle elegido
+    chosen_payment_method: payload?.paymentMethod || null,
+    chosen_installments: Number(payload?.installments || 1),
+    chosen_price_policy: pol,
+  });
+
+  detailsOpen.value = false;
+  snack.value = { show: true, text: "✅ Agregado al carrito (según método elegido)" };
+}
+
 /* =========================
-   ✅ CONTEXTO POS + FETCH PRODUCTS
+   ✅ CONTEXTO POS + FETCH PRODUCTS (FIX ADMIN REAL)
 ========================= */
 async function hardSyncPosContextWithAuth() {
-  try { if (typeof auth.fetchMe === "function") await auth.fetchMe(); } catch {}
+  try {
+    if (typeof auth.fetchMe === "function") await auth.fetchMe();
+  } catch {}
 
+  // ✅ ADMIN: NO warehouse. (para que backend use ADMIN_ALL)
+  if (isAdmin.value) {
+    if (typeof posStore.ensureContext === "function") {
+      await posStore.ensureContext({ force: true, isAdmin: true });
+    } else if (typeof posStore.resetContext === "function") {
+      posStore.resetContext();
+    }
+    return;
+  }
+
+  // ✅ USER común: contexto normal
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
 
-  // ✅ FIX CLAVE:
-  // - si admin NO tiene branch en auth, IGUAL intentamos contexto (para que haya branch/warehouse por defecto)
   if (!authBranch) {
-    await posStore.ensureContext?.({ force: true });
+    await posStore.ensureContext?.({ force: true, isAdmin: false });
     return;
   }
 
   if (authBranch !== posBranch) {
     posStore.resetContext?.();
     posStore.setBranch?.(authBranch);
-    await posStore.ensureContext?.({ force: true });
+    await posStore.ensureContext?.({ force: true, isAdmin: false });
     return;
   }
 
   if (!Number(posStore.warehouse_id || 0)) {
-    await posStore.ensureContext?.({ force: true });
+    await posStore.ensureContext?.({ force: true, isAdmin: false });
   } else {
-    await posStore.ensureContext?.();
+    await posStore.ensureContext?.({ isAdmin: false });
   }
-}
-
-async function fetchWarehousesSafe() {
-  // ✅ intenta sin branch_id, con branch_id, y varios formatos
-  const bid = Number(posStore.branch_id || 0) || null;
-
-  const candidates = [
-    { url: "/warehouses", params: { limit: 5000 } },
-    { url: "/warehouses", params: { page: 1, limit: 5000 } },
-    ...(bid ? [{ url: "/warehouses", params: { branch_id: bid, limit: 5000 } }] : []),
-    ...(bid ? [{ url: "/warehouses", params: { branch_id: bid, page: 1, limit: 5000 } }] : []),
-  ];
-
-  for (const c of candidates) {
-    try {
-      const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
-      const arr = data?.data?.items || data?.items || data?.data || data || [];
-      const out = Array.isArray(arr) ? arr : [];
-      if (out.length) return out;
-    } catch {}
-  }
-
-  return [];
-}
-
-// Merge simple por product.id (suma qty)
-function mergeProductPools(pools) {
-  const map = new Map();
-  for (const arr of pools) {
-    for (const p of arr || []) {
-      const id = Number(p?.id || 0);
-      if (!id) continue;
-
-      const cur = map.get(id);
-      if (!cur) map.set(id, { ...p, qty: toNum(p?.qty) });
-      else cur.qty = toNum(cur.qty) + toNum(p?.qty);
-    }
-  }
-  return Array.from(map.values());
 }
 
 async function fetchSellablePool() {
@@ -1008,11 +903,10 @@ async function fetchSellablePool() {
     const bid = Number(posStore.branch_id || 0) || null;
     const wid = Number(posStore.warehouse_id || 0) || null;
 
-    // ✅ NORMAL: si hay warehouse => pedimos por depósito
-    if (wid) {
+    // ✅ ADMIN: llama al backend SIN warehouse_id => ADMIN_ALL
+    if (isAdmin.value) {
       const params = {
-        branch_id: bid || undefined,
-        warehouse_id: wid,
+        // branch_id: bid || undefined,
         q: "",
         page: 1,
         limit: 5000,
@@ -1022,39 +916,38 @@ async function fetchSellablePool() {
       };
 
       const { data } = await http.get("/pos/products", { params });
-      const arr = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.data?.items) ? data.data.items : []);
-      allSellable.value = arr;
+      const out = data?.data || data || [];
+      allSellable.value = Array.isArray(out) ? out : [];
 
       if (page.value > pages.value) page.value = 1;
       await prefetchImagesForVisible(pagedItems.value);
       return;
     }
 
-    // ✅ NO warehouse:
-    if (!isAdmin.value) {
+    // ✅ USER común: requiere depósito
+    if (!wid) {
       allSellable.value = [];
       ctxError.value = "Falta depósito (warehouse). Verificá que tu usuario tenga sucursal y depósito asignado.";
       return;
     }
 
-    // ✅ admin sin warehouse => listar depósitos y mergear
-    const whs = await fetchWarehousesSafe();
+    const params = {
+      branch_id: bid || undefined,
+      warehouse_id: wid,
+      q: "",
+      page: 1,
+      limit: 5000,
+      in_stock: 1,
+      sellable: 1,
+      include_images: 1,
+    };
 
-    // 🔥 si backend te devuelve vacío, volvemos a intentar forzar contexto y reintentar warehouses
-    if (!whs.length) {
-      await posStore.ensureContext?.({ force: true });
-      const whs2 = await fetchWarehousesSafe();
-      if (!whs2.length) {
-        allSellable.value = [];
-        ctxError.value = "Admin: no hay depósitos disponibles para listar productos (warehouses vacío).";
-        return;
-      }
-      // eslint-disable-next-line no-use-before-define
-      await fetchAdminWarehousesPools(whs2, bid);
-      return;
-    }
+    const { data } = await http.get("/pos/products", { params });
+    const out = data?.data || data || [];
+    allSellable.value = Array.isArray(out) ? out : [];
 
-    await fetchAdminWarehousesPools(whs, bid);
+    if (page.value > pages.value) page.value = 1;
+    await prefetchImagesForVisible(pagedItems.value);
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
     ctxError.value = msg;
@@ -1064,35 +957,9 @@ async function fetchSellablePool() {
   }
 }
 
-async function fetchAdminWarehousesPools(whs, bid) {
-  const calls = (whs || []).slice(0, 120).map(async (w) => {
-    const params = {
-      branch_id: bid || undefined,
-      warehouse_id: Number(w.id),
-      q: "",
-      page: 1,
-      limit: 5000,
-      in_stock: 1,
-      sellable: 1,
-      include_images: 1,
-    };
-    try {
-      const { data } = await http.get("/pos/products", { params });
-      const out = data?.data || data?.data?.items || data?.items || [];
-      return Array.isArray(out) ? out : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const pools = await Promise.all(calls);
-  allSellable.value = mergeProductPools(pools);
-
-  if (page.value > pages.value) page.value = 1;
-  await prefetchImagesForVisible(pagedItems.value);
+function refresh() {
+  fetchSellablePool();
 }
-
-function refresh() { fetchSellablePool(); }
 
 /* =========================
    ✅ CHECKOUT
@@ -1106,14 +973,15 @@ const productById = computed(() => {
 function currentPricePolicy() {
   if (applyReseller.value) return "RESELLER";
   if (paymentMethod.value === "CARD") return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
-  if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") return "DISCOUNT";
+  if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR")
+    return "DISCOUNT";
   return "DISCOUNT";
 }
 
 const checkoutPriceHint = computed(() => {
   const pol = currentPricePolicy();
   if (pol === "RESELLER") return "Se cobrará con precio REVENDEDOR (si existe).";
-  if (pol === "LIST") return "Se cobrará con precio LISTA (cuotas).";
+  if (pol === "LIST") return `Se cobrará con precio LISTA (${installments.value} cuotas).`;
   return "Se cobrará con precio DESCUENTO (1 pago).";
 });
 
@@ -1242,6 +1110,10 @@ async function confirmPayment() {
 }
 
 onMounted(async () => {
+  if (isAdmin.value) {
+    posStore.resetContext?.();
+  }
+
   await loadCategoriesSafe();
   await fetchSellablePool();
 });
@@ -1255,19 +1127,30 @@ onMounted(async () => {
   padding: 16px;
 }
 
-.pos-grid { align-items: flex-start; }
-.pos-left, .pos-right { display: flex; flex-direction: column; }
+.pos-grid {
+  align-items: flex-start;
+}
+.pos-left,
+.pos-right {
+  display: flex;
+  flex-direction: column;
+}
 
 .pos-surface {
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
 }
 
-.pos-surface, .cart-item, .empty, .border {
+.pos-surface,
+.cart-item,
+.empty,
+.border {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.pos-left { min-height: calc(100vh - 110px); }
+.pos-left {
+  min-height: calc(100vh - 110px);
+}
 
 .pos-products {
   flex: 1 1 auto;
@@ -1280,7 +1163,11 @@ onMounted(async () => {
   scrollbar-gutter: stable;
 }
 
-.pos-toolbar { position: sticky; top: 12px; z-index: 2; }
+.pos-toolbar {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+}
 
 .cart-card {
   position: sticky;
@@ -1293,7 +1180,9 @@ onMounted(async () => {
   max-height: calc(100vh - 110px);
 }
 
-.cart-head { flex: 0 0 auto; }
+.cart-head {
+  flex: 0 0 auto;
+}
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1308,9 +1197,17 @@ onMounted(async () => {
   box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
 }
 
-.cart-item { background: rgba(var(--v-theme-surface), 0.9); }
-.cart-title { font-weight: 900; font-size: 13px; line-height: 1.2; }
-.border { border-radius: 10px; }
+.cart-item {
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+.cart-title {
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.border {
+  border-radius: 10px;
+}
 
 .empty {
   border-style: dashed;
@@ -1333,17 +1230,45 @@ onMounted(async () => {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
-.muted { color: rgba(var(--v-theme-on-surface), 0.62); }
-.cart-actions { flex-wrap: nowrap; }
-.cart-actions > .v-btn { flex: 1 1 0; min-width: 0; }
+.muted {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+.cart-actions {
+  flex-wrap: nowrap;
+}
+.cart-actions > .v-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 @media (max-width: 960px) {
-  .pos-wrap { padding: 10px; }
-  .pos-toolbar { position: relative; top: auto; }
-  .pos-left { min-height: auto; }
-  .pos-products { max-height: none; overflow: visible; padding: 10px; }
-  .cart-card { position: relative; top: auto; height: auto; max-height: none; }
-  .cart-body { min-height: auto; overflow: visible; }
-  .cart-foot { box-shadow: none; }
+  .pos-wrap {
+    padding: 10px;
+  }
+  .pos-toolbar {
+    position: relative;
+    top: auto;
+  }
+  .pos-left {
+    min-height: auto;
+  }
+  .pos-products {
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+  }
+  .cart-card {
+    position: relative;
+    top: auto;
+    height: auto;
+    max-height: none;
+  }
+  .cart-body {
+    min-height: auto;
+    overflow: visible;
+  }
+  .cart-foot {
+    box-shadow: none;
+  }
 }
 </style>

@@ -24,6 +24,11 @@
         <v-chip size="x-small" variant="flat" class="ppc-chip">
           Stock: <b class="ml-1">{{ qty3(item?.qty ?? 0) }}</b>
         </v-chip>
+
+        <v-chip v-if="hasDiscount" size="x-small" variant="flat" class="ppc-chip-off">
+          <v-icon start size="14">mdi-tag-outline</v-icon>
+          {{ offPct }}% OFF
+        </v-chip>
       </div>
     </div>
 
@@ -47,9 +52,24 @@
         </div>
       </div>
 
+      <!-- ✅ PRECIOS: principal = descuento -->
       <div class="ppc-price-row">
-        <div class="ppc-price">{{ money(price) }}</div>
-        <v-chip size="small" variant="tonal">{{ priceLabel }}</v-chip>
+        <div class="d-flex flex-column">
+          <div class="ppc-price">{{ money(priceDiscount) }}</div>
+
+          <div v-if="hasDiscount" class="ppc-price-sub">
+            <span class="muted">Lista:</span>
+            <span class="ppc-strike">{{ money(priceList) }}</span>
+          </div>
+          <div v-else class="ppc-price-sub">
+            <span class="muted">Precio:</span>
+            <span class="muted">{{ priceLabel }}</span>
+          </div>
+        </div>
+
+        <v-chip size="small" variant="tonal">
+          {{ hasDiscount ? "Descuento" : priceLabel }}
+        </v-chip>
       </div>
     </v-card-text>
 
@@ -91,8 +111,11 @@ const props = defineProps({
   image: { type: String, default: "" },
   rubroLabel: { type: String, default: "" },
   subrubroLabel: { type: String, default: "" },
-  price: { type: [Number, String], default: 0 },
-  priceLabel: { type: String, default: "Lista" },
+
+  // ✅ ahora la card recibe descuento + lista (y muestra descuento como principal)
+  priceDiscount: { type: [Number, String], default: 0 },
+  priceList: { type: [Number, String], default: 0 },
+  priceLabel: { type: String, default: "Precio" },
 });
 
 const emit = defineEmits(["add", "details"]);
@@ -103,9 +126,26 @@ function money(val) {
 function qty3(n) {
   return Number(n || 0).toFixed(3);
 }
+function toNum(v) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 const rubro = computed(() => String(props.rubroLabel || "").trim());
 const subrubro = computed(() => String(props.subrubroLabel || "").trim());
+
+const hasDiscount = computed(() => {
+  const l = toNum(props.priceList);
+  const d = toNum(props.priceDiscount);
+  return l > 0 && d > 0 && d < l;
+});
+
+const offPct = computed(() => {
+  const l = toNum(props.priceList);
+  const d = toNum(props.priceDiscount);
+  if (!(l > 0 && d > 0 && d < l)) return 0;
+  return Math.round(((l - d) / l) * 100);
+});
 </script>
 
 <style scoped>
@@ -113,46 +153,28 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   overflow: hidden;
   border-radius: 18px;
 
-  /* 🔥 CONTRASTE */
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.08),
-    rgba(255,255,255,0.02)
-  );
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 
-  /* 🔥 BORDE + GLOW */
-  border: 1px solid rgba(255,255,255,0.18);
-  box-shadow:
-    0 8px 22px rgba(0,0,0,0.45),
-    inset 0 0 0 1px rgba(255,255,255,0.04);
-
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-/* ✨ HOVER = card “flota” */
 .ppc-card:hover {
   transform: translateY(-3px);
-  box-shadow:
-    0 14px 34px rgba(0,0,0,0.55),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.35);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--v-theme-primary), 0.35);
 }
 
-/* =======================
-   IMAGEN
-======================= */
 .ppc-thumb {
   position: relative;
   height: 150px;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .ppc-img {
   height: 150px;
 }
 
-/* =======================
-   BADGES (SKU / STOCK)
-======================= */
 .ppc-badges-bar {
   position: absolute;
   left: 10px;
@@ -166,30 +188,33 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   padding: 8px 10px;
   border-radius: 999px;
 
-  background: rgba(0,0,0,0.65);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   z-index: 5;
 }
 
 .ppc-chip {
   color: #fff !important;
-  background: rgba(255,255,255,0.14) !important;
-  border: 1px solid rgba(255,255,255,0.22) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
   font-weight: 600;
 }
 
-/* =======================
-   BODY
-======================= */
+.ppc-chip-off {
+  color: #fff !important;
+  background: rgba(0, 200, 83, 0.18) !important;
+  border: 1px solid rgba(0, 200, 83, 0.35) !important;
+  font-weight: 800;
+}
+
 .ppc-body {
   padding-top: 14px !important;
   padding-bottom: 12px !important;
 }
 
-/* TÍTULO */
 .ppc-title {
   font-weight: 900;
   font-size: 13.5px;
@@ -198,11 +223,10 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   color: #fff;
 }
 
-/* META */
 .ppc-meta {
   margin-top: 10px;
   font-size: 11px;
-  color: rgba(255,255,255,0.72);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .ppc-row {
@@ -212,7 +236,7 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
 }
 
 .muted {
-  color: rgba(255,255,255,0.55);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .dot {
@@ -220,9 +244,6 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   opacity: 0.5;
 }
 
-/* =======================
-   PRECIO
-======================= */
 .ppc-price-row {
   margin-top: 14px;
   display: flex;
@@ -236,9 +257,19 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   color: #fff;
 }
 
-/* =======================
-   ACCIONES
-======================= */
+.ppc-price-sub {
+  font-size: 11px;
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ppc-strike {
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
 .ppc-actions {
   padding: 12px;
   gap: 12px;
@@ -248,8 +279,8 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   min-width: 52px;
   min-height: 52px;
 
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid rgba(255,255,255,0.22) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
 }
 
 .ppc-action-btn:hover {
@@ -257,12 +288,10 @@ const subrubro = computed(() => String(props.subrubroLabel || "").trim());
   border-color: rgba(var(--v-theme-primary), 0.6) !important;
 }
 
-/* clamp */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 </style>

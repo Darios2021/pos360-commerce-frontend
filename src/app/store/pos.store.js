@@ -67,7 +67,6 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
     const wid = toInt(first?.id, 0);
 
     dbg("fetchFirstWarehouseIdByBranch OK", { branchId: bid, wid, first });
-
     return wid > 0 ? wid : null;
   } catch (e) {
     dbg("fetchFirstWarehouseIdByBranch FAIL", {
@@ -85,16 +84,11 @@ export const usePosStore = defineStore("pos", {
     loading: false,
     error: "",
 
-    // contexto POS
     branch_id: readLSInt(LS_BRANCH),
     warehouse_id: readLSInt(LS_WAREHOUSE),
 
-    // cliente (fallback)
     customer: { name: "Consumidor Final" },
-
-    // carrito
     cart: [],
-
     toast: { show: false, text: "" },
   }),
 
@@ -108,9 +102,6 @@ export const usePosStore = defineStore("pos", {
   },
 
   actions: {
-    // =========================
-    // Contexto POS
-    // =========================
     setWarehouse(id) {
       const wid = toInt(id, 0);
       this.warehouse_id = wid > 0 ? wid : null;
@@ -136,30 +127,30 @@ export const usePosStore = defineStore("pos", {
     /**
      * ✅ Contexto robusto:
      * - llama /pos/context
-     * - manda branch_id/warehouse_id actuales como hint
+     * - si isAdmin=true: NO fija warehouse default (lo limpia) para permitir ADMIN_ALL
      */
-    async ensureContext({ force = false } = {}) {
+    async ensureContext({ force = false, isAdmin = false } = {}) {
       const currB = toInt(this.branch_id, 0);
       const currW = toInt(this.warehouse_id, 0);
 
-      if (!force && currB > 0 && currW > 0) {
-        dbg("ensureContext skip (already set)", { branch_id: currB, warehouse_id: currW });
+      if (!force && currB > 0 && (isAdmin || currW > 0)) {
+        dbg("ensureContext skip", { isAdmin, branch_id: currB, warehouse_id: currW });
         return;
       }
 
       try {
-        dbg("ensureContext start", { force, currB, currW });
+        dbg("ensureContext start", { force, isAdmin, currB, currW });
 
         const { data } = await http.get("/pos/context", {
           params: {
             branch_id: currB || undefined,
-            warehouse_id: currW || undefined,
+            // ✅ admin: NO mandar warehouse_id como hint
+            warehouse_id: !isAdmin ? (currW || undefined) : undefined,
           },
         });
 
         const ctx = data?.data || data || {};
 
-        // ✅ más tolerante con nombres de campos
         const branchId =
           toInt(ctx?.branchId, 0) ||
           toInt(ctx?.branch_id, 0) ||
@@ -171,11 +162,19 @@ export const usePosStore = defineStore("pos", {
           toInt(ctx?.warehouse_id, 0) ||
           toInt(ctx?.warehouse?.id, 0);
 
-        dbg("ensureContext got /pos/context", { ctx, branchId, warehouseId });
+        dbg("ensureContext got /pos/context", { branchId, warehouseId, ctx });
 
         if (branchId > 0 && (force || toInt(this.branch_id, 0) <= 0)) {
           this.branch_id = branchId;
           writeLSInt(LS_BRANCH, branchId);
+        }
+
+        if (isAdmin) {
+          // 🔥 clave: admin queda SIN warehouse
+          this.warehouse_id = null;
+          writeLSInt(LS_WAREHOUSE, null);
+          dbg("ensureContext admin: warehouse cleared");
+          return;
         }
 
         if (warehouseId > 0 && (force || toInt(this.warehouse_id, 0) <= 0)) {
@@ -183,7 +182,7 @@ export const usePosStore = defineStore("pos", {
           writeLSInt(LS_WAREHOUSE, warehouseId);
         }
 
-        // fallback si vino sin warehouse
+        // fallback: solo para no-admin
         if (toInt(this.branch_id, 0) > 0 && toInt(this.warehouse_id, 0) <= 0) {
           const wid = await fetchFirstWarehouseIdByBranch(this.branch_id);
           if (wid) {
@@ -193,16 +192,13 @@ export const usePosStore = defineStore("pos", {
               branch_id: this.branch_id,
               warehouse_id: this.warehouse_id,
             });
-          } else {
-            dbg("ensureContext fallback warehouse NOT found", { branch_id: this.branch_id });
           }
         }
 
         dbg("ensureContext done", {
+          isAdmin,
           branch_id: this.branch_id,
           warehouse_id: this.warehouse_id,
-          ls_branch: readLSInt(LS_BRANCH),
-          ls_warehouse: readLSInt(LS_WAREHOUSE),
         });
       } catch (e) {
         this.error = apiErrorMessage(e, "No se pudo cargar contexto POS");
@@ -232,14 +228,6 @@ export const usePosStore = defineStore("pos", {
     addToCart(product) {
       const available = toNum(product?.available_qty, toNum(product?.qty, 0));
 
-      dbg("addToCart", {
-        id: product?.id,
-        sku: product?.sku,
-        available,
-        warehouse_id: this.warehouse_id,
-        branch_id: this.branch_id,
-      });
-
       if (available <= 0) {
         this.toast = { show: true, text: "❌ Producto sin stock en este depósito." };
         return;
@@ -251,7 +239,6 @@ export const usePosStore = defineStore("pos", {
         return;
       }
 
-      // precio > 0 obligatorio
       const price =
         toNum(product?.price, 0) ||
         toNum(product?.price_list, 0) ||
@@ -274,12 +261,10 @@ export const usePosStore = defineStore("pos", {
           sku: product?.sku || null,
           barcode: product?.barcode || null,
           image: product?.image || product?.image_url || null,
-
           qty: 1,
           available_qty: available,
 
-          // precios (guardamos todos para poder recalcular)
-          price: price,
+          price,
           price_list: toNum(product?.price_list, 0),
           price_discount: toNum(product?.price_discount, 0),
           price_reseller: toNum(product?.price_reseller, 0),
@@ -342,66 +327,33 @@ export const usePosStore = defineStore("pos", {
       this.error = "";
 
       try {
-        dbg("checkoutSale start", {
-          paymentMethod,
-          cartItems: this.cart.length,
-          branch_id: this.branch_id,
-          warehouse_id: this.warehouse_id,
-          extra,
-        });
-
-        await this.ensureContext();
+        // checkout siempre no-admin (requiere depósito)
+        await this.ensureContext({ isAdmin: false });
 
         if (!this.cart.length) throw new Error("Carrito vacío");
 
         let wid = toInt(this.warehouse_id, 0);
         if (!wid) {
-          dbg("checkoutSale: warehouse missing, force ensureContext...");
-          await this.ensureContext({ force: true });
+          await this.ensureContext({ force: true, isAdmin: false });
           wid = toInt(this.warehouse_id, 0);
         }
-
-        if (!wid) {
-          throw new Error("No hay depósito seleccionado. Configurá warehouse_id en el POS.");
-        }
-
-        for (const it of this.cart) {
-          if (toNum(it.qty, 0) <= 0) throw new Error("Cantidad inválida en carrito");
-          if (toNum(it.price, 0) <= 0) throw new Error("Precio inválido en carrito");
-          if (toNum(it.available_qty, 0) > 0 && toNum(it.qty, 0) > toNum(it.available_qty, 0)) {
-            throw new Error(
-              `Stock insuficiente para ${it.name}. Disponible: ${toNum(it.available_qty, 0).toFixed(3)}`
-            );
-          }
-        }
+        if (!wid) throw new Error("No hay depósito seleccionado. Configurá warehouse_id en el POS.");
 
         const c = extra?.customer || {};
         const fullName = `${String(c.first_name || "").trim()} ${String(c.last_name || "").trim()}`.trim();
         const customer_name =
           (fullName || String(this.customer?.name || "").trim() || "Consumidor Final").trim() || "Consumidor Final";
 
-        const noteParts = [];
-        if (c.whatsapp) noteParts.push(`WA:${String(c.whatsapp).trim()}`);
-        if (c.email) noteParts.push(`MAIL:${String(c.email).trim()}`);
-        if (extra?.price_policy) noteParts.push(`POLICY:${String(extra.price_policy).trim()}`);
-        if (extra?.installments) noteParts.push(`CUOTAS:${String(extra.installments).trim()}`);
-        if (extra?.proof) noteParts.push(`PROOF:${String(extra.proof).trim()}`);
-
-        const note = noteParts.length ? noteParts.join(" | ") : null;
-
         const payload = {
           customer_name,
-          note,
-
+          note: extra?.note || null,
           branch_id: toInt(this.branch_id, 0) || undefined,
           warehouse_id: wid,
-
           items: this.cart.map((it) => ({
             product_id: toInt(it.product_id, toInt(it.id, 0)),
             quantity: toNum(it.qty, 0),
             unit_price: toNum(it.price, 0),
           })),
-
           payments: [
             {
               method: String(paymentMethod || "CASH").toUpperCase(),
@@ -414,11 +366,7 @@ export const usePosStore = defineStore("pos", {
           ],
         };
 
-        dbg("checkoutSale payload", payload);
-
         const { data } = await http.post("/pos/sales", payload);
-
-        dbg("checkoutSale OK", data);
 
         this.clearCart();
         this.toast = { show: true, text: "✅ Venta registrada correctamente" };
@@ -426,13 +374,6 @@ export const usePosStore = defineStore("pos", {
       } catch (e) {
         const msg = apiErrorMessage(e, "Error al confirmar la venta");
         this.error = msg;
-
-        dbg("checkoutSale ERROR", {
-          msg,
-          status: e?.response?.status,
-          data: e?.response?.data,
-          err: e?.message,
-        });
 
         if (e?.response?.status === 409) this.toast = { show: true, text: `⚠️ ${msg}` };
         else if (e?.response?.status === 403) this.toast = { show: true, text: `⛔ ${msg}` };
@@ -444,7 +385,6 @@ export const usePosStore = defineStore("pos", {
       }
     },
 
-    // alias para no romper jamás
     async checkout(paymentMethod = "CASH", extra = {}) {
       return this.checkoutSale(paymentMethod, extra);
     },
