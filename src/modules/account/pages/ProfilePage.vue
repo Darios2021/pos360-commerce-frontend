@@ -1,34 +1,54 @@
+<!-- src/modules/account/pages/ProfilePage.vue -->
 <template>
-  <v-container class="py-6" style="max-width: 980px;">
+  <v-container class="py-6" style="max-width: 1100px;">
     <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
       <div>
         <div class="text-h5 font-weight-bold">Perfil</div>
-        <div class="text-caption text-medium-emphasis">Cuenta · Foto · Contraseña</div>
+        <div class="text-caption text-medium-emphasis">Cuenta · Foto · Seguridad</div>
       </div>
 
-      <v-btn color="primary" variant="tonal" prepend-icon="mdi-content-save" :loading="saving" @click="saveProfile">
-        Guardar
-      </v-btn>
+      <div class="d-flex ga-2">
+        <v-btn variant="tonal" prepend-icon="mdi-refresh" :loading="loadingMe" @click="loadMe">
+          Actualizar
+        </v-btn>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save" :loading="saving" @click="saveProfile">
+          Guardar
+        </v-btn>
+      </div>
     </div>
 
-    <v-row class="ga-4" dense>
-      <!-- Avatar -->
+    <v-alert v-if="pageError" type="error" variant="tonal" class="mb-4">
+      {{ pageError }}
+    </v-alert>
+
+    <v-row dense class="ga-4">
+      <!-- LEFT: Card identidad -->
       <v-col cols="12" md="4">
-        <v-card rounded="xl" class="pa-4">
+        <v-card rounded="xl" class="pa-4 prof-card">
           <div class="d-flex align-center ga-3">
-            <v-avatar size="88" color="primary" variant="tonal">
-              <v-img v-if="avatarPreview || me.avatar_url" :src="avatarPreview || me.avatar_url" cover />
-              <span v-else class="font-weight-bold text-h6">{{ initials }}</span>
+            <v-avatar size="92" class="prof-avatar">
+              <v-img
+                v-if="avatarSrc && !avatarError"
+                :key="avatarKey"
+                :src="avatarSrc"
+                cover
+                @error="avatarError = true"
+              />
+              <span v-else class="font-weight-black text-h5">{{ initials }}</span>
             </v-avatar>
 
-            <div class="d-flex flex-column">
-              <div class="font-weight-bold">{{ fullName || "Usuario" }}</div>
+            <div class="flex-grow-1">
+              <div class="text-subtitle-1 font-weight-bold">{{ fullName || "Usuario" }}</div>
               <div class="text-caption text-medium-emphasis">{{ roleLabel }}</div>
               <div class="text-caption text-medium-emphasis">{{ me.email || me.username || "" }}</div>
             </div>
           </div>
 
           <v-divider class="my-4" />
+
+          <div class="text-caption text-medium-emphasis mb-2">
+            Foto (png/jpg/webp, máx 5MB)
+          </div>
 
           <input
             ref="fileInput"
@@ -40,7 +60,7 @@
 
           <div class="d-flex ga-2">
             <v-btn variant="tonal" prepend-icon="mdi-camera" @click="pickFile">
-              Cambiar foto
+              Elegir
             </v-btn>
 
             <v-btn
@@ -58,13 +78,30 @@
           <div v-if="avatarHint" class="text-caption text-medium-emphasis mt-2">
             {{ avatarHint }}
           </div>
+
+          <v-divider class="my-4" />
+
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <div class="font-weight-bold">Seguridad</div>
+              <div class="text-caption text-medium-emphasis">Actualizá tu contraseña.</div>
+            </div>
+            <v-btn color="primary" variant="tonal" prepend-icon="mdi-lock-reset" @click="pwDialog = true">
+              Cambiar
+            </v-btn>
+          </div>
         </v-card>
       </v-col>
 
-      <!-- Datos -->
+      <!-- RIGHT: datos -->
       <v-col cols="12" md="8">
-        <v-card rounded="xl" class="pa-4">
-          <div class="text-subtitle-1 font-weight-bold mb-3">Datos personales</div>
+        <v-card rounded="xl" class="pa-4 prof-card">
+          <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+            <div>
+              <div class="text-subtitle-1 font-weight-bold">Datos personales</div>
+              <div class="text-caption text-medium-emphasis">Tu información básica.</div>
+            </div>
+          </div>
 
           <v-row dense>
             <v-col cols="12" md="6">
@@ -81,18 +118,30 @@
               <v-text-field :model-value="roleLabel" label="Rol" variant="outlined" disabled />
             </v-col>
           </v-row>
+        </v-card>
 
-          <v-divider class="my-4" />
+        <v-card rounded="xl" class="pa-4 prof-card mt-4">
+          <div class="text-subtitle-1 font-weight-bold mb-2">Vista previa</div>
+          <div class="text-caption text-medium-emphasis mb-3">
+            Así debería verse tu avatar en el menú.
+          </div>
 
-          <div class="d-flex align-center justify-space-between flex-wrap ga-3">
+          <div class="d-flex align-center ga-3">
+            <v-avatar size="44" class="prof-avatar-mini">
+              <v-img
+                v-if="avatarSrc && !avatarError"
+                :key="avatarKey + '-mini'"
+                :src="avatarSrc"
+                cover
+                @error="avatarError = true"
+              />
+              <span v-else class="font-weight-bold">{{ initials }}</span>
+            </v-avatar>
+
             <div>
-              <div class="text-subtitle-1 font-weight-bold">Seguridad</div>
-              <div class="text-caption text-medium-emphasis">Actualizá tu contraseña periódicamente.</div>
+              <div class="font-weight-bold">{{ fullName || "Usuario" }}</div>
+              <div class="text-caption text-medium-emphasis">{{ me.email || me.username || "" }}</div>
             </div>
-
-            <v-btn color="primary" variant="tonal" prepend-icon="mdi-lock-reset" @click="pwDialog = true">
-              Cambiar contraseña
-            </v-btn>
           </div>
         </v-card>
       </v-col>
@@ -106,25 +155,9 @@
           <v-btn icon="mdi-close" variant="text" @click="pwDialog = false" />
         </div>
 
-        <v-text-field
-          v-model="pw.current_password"
-          label="Contraseña actual"
-          type="password"
-          variant="outlined"
-          class="mt-2"
-        />
-        <v-text-field
-          v-model="pw.new_password"
-          label="Nueva contraseña (mínimo 8)"
-          type="password"
-          variant="outlined"
-        />
-        <v-text-field
-          v-model="pw.new_password2"
-          label="Repetir nueva contraseña"
-          type="password"
-          variant="outlined"
-        />
+        <v-text-field v-model="pw.current_password" label="Contraseña actual" type="password" variant="outlined" class="mt-2" />
+        <v-text-field v-model="pw.new_password" label="Nueva contraseña (mínimo 8)" type="password" variant="outlined" />
+        <v-text-field v-model="pw.new_password2" label="Repetir nueva contraseña" type="password" variant="outlined" />
 
         <v-alert v-if="pwError" type="error" variant="tonal" class="mt-2">
           {{ pwError }}
@@ -139,15 +172,14 @@
       </v-card>
     </v-dialog>
 
-    <!-- feedback -->
-    <v-snackbar v-model="snack.open" :color="snack.color" timeout="2500">
+    <v-snackbar v-model="snack.open" :color="snack.color" timeout="2600">
       {{ snack.text }}
     </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useAuthStore } from "@/app/store/auth.store";
 import { MeService } from "@/app/services/me.service";
 
@@ -163,42 +195,51 @@ const me = reactive({
   roles: [],
 });
 
-const form = reactive({
-  first_name: "",
-  last_name: "",
-});
+const form = reactive({ first_name: "", last_name: "" });
 
+const loadingMe = ref(false);
 const saving = ref(false);
 const uploading = ref(false);
+const pageError = ref("");
+
 const pwDialog = ref(false);
 const pwLoading = ref(false);
 const pwError = ref("");
 
-const pw = reactive({
-  current_password: "",
-  new_password: "",
-  new_password2: "",
-});
+const pw = reactive({ current_password: "", new_password: "", new_password2: "" });
 
 const snack = reactive({ open: false, text: "", color: "success" });
-
 function toast(text, color = "success") {
   snack.text = text;
   snack.color = color;
   snack.open = true;
 }
 
-const fullName = computed(() => {
-  const n = [me.first_name, me.last_name].filter(Boolean).join(" ").trim();
-  return n || "";
-});
+// --------------------
+// Avatar URL NORMALIZER (igual que AppShell)
+// --------------------
+const avatarError = ref(false);
+const avatarBuster = ref(Date.now());
 
+function normalizeUrl(u) {
+  const s = String(u || "").trim();
+  if (!s) return "";
+  if (s.startsWith("data:") || s.startsWith("blob:") || s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("//")) return `https:${s}`;
+
+  const s3 = String(import.meta.env.VITE_S3_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+  if (s3) return s3 + (s.startsWith("/") ? s : `/${s}`);
+
+  const api = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  if (!api) return s;
+  return api + (s.startsWith("/") ? s : `/${s}`);
+}
+
+const fullName = computed(() => [me.first_name, me.last_name].filter(Boolean).join(" ").trim());
 const initials = computed(() => {
   const a = (me.first_name || "").trim();
   const b = (me.last_name || "").trim();
-  const i1 = a ? a[0].toUpperCase() : "";
-  const i2 = b ? b[0].toUpperCase() : "";
-  return (i1 + i2) || "U";
+  return ((a ? a[0].toUpperCase() : "") + (b ? b[0].toUpperCase() : "")) || "U";
 });
 
 const roleLabel = computed(() => {
@@ -210,10 +251,31 @@ const roleLabel = computed(() => {
   return roles[0] || "Usuario";
 });
 
-// Avatar
+// avatar final con cache-bust
+const avatarSrc = computed(() => {
+  const raw =
+    me.avatar_url ||
+    auth.user?.avatar_url ||
+    auth.user?.avatar ||
+    auth.user?.picture ||
+    "";
+  const base = normalizeUrl(raw);
+  if (!base) return "";
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}v=${avatarBuster.value}`;
+});
+
+const avatarKey = computed(() => `${avatarSrc.value}-${avatarBuster.value}`);
+
+watch(avatarSrc, () => {
+  avatarError.value = false;
+});
+
+// --------------------
+// File picker
+// --------------------
 const fileInput = ref(null);
 const avatarFile = ref(null);
-const avatarPreview = ref("");
 const avatarHint = ref("");
 
 function pickFile() {
@@ -226,34 +288,50 @@ function onPickFile(e) {
 
   if (f.size > 5 * 1024 * 1024) {
     avatarHint.value = "Máximo 5MB.";
+    avatarFile.value = null;
     return;
   }
 
   avatarFile.value = f;
-  avatarPreview.value = URL.createObjectURL(f);
   avatarHint.value = `${f.name} (${Math.round(f.size / 1024)} KB)`;
 }
 
+// --------------------
+// API
+// --------------------
 async function loadMe() {
-  const r = await MeService.getMe();
-  Object.assign(me, r.data);
-  form.first_name = me.first_name || "";
-  form.last_name = me.last_name || "";
+  pageError.value = "";
+  loadingMe.value = true;
+  try {
+    const r = await MeService.getMe();
+    const data = r?.data?.data || r?.data || {};
+    Object.assign(me, data);
+
+    form.first_name = me.first_name || "";
+    form.last_name = me.last_name || "";
+
+    // sincroniza auth store (sin pisar avatar si viene vacío)
+    auth.setUser?.(data);
+
+    avatarBuster.value = Date.now();
+  } catch (e) {
+    pageError.value = e?.response?.data?.message || e?.message || "No se pudo cargar el perfil";
+  } finally {
+    loadingMe.value = false;
+  }
 }
 
 async function saveProfile() {
   saving.value = true;
+  pageError.value = "";
   try {
-    const r = await MeService.updateMe({
-      first_name: form.first_name,
-      last_name: form.last_name,
-    });
-    Object.assign(me, r.data);
-    // opcional: refrescar auth.user si lo usás globalmente
-    auth.setUser?.(r.data);
+    const r = await MeService.updateMe({ first_name: form.first_name, last_name: form.last_name });
+    const data = r?.data?.data || r?.data || {};
+    Object.assign(me, data);
+    auth.setUser?.(data);
     toast("Perfil actualizado");
   } catch (e) {
-    toast(e?.message || "No se pudo guardar", "error");
+    toast(e?.response?.data?.message || e?.message || "No se pudo guardar", "error");
   } finally {
     saving.value = false;
   }
@@ -262,16 +340,24 @@ async function saveProfile() {
 async function uploadAvatar() {
   if (!avatarFile.value) return;
   uploading.value = true;
+  pageError.value = "";
   try {
     const r = await MeService.uploadAvatar(avatarFile.value);
-    Object.assign(me, r.data);
-    auth.setUser?.(r.data);
+
+    // soporta {data:{...}} o {...}
+    const data = r?.data?.data || r?.data || {};
+    Object.assign(me, data);
+
+    // IMPORTANTÍSIMO: guardar en auth store para que el menú lo vea
+    auth.setUser?.(data);
+
+    // cache-bust + reset file
+    avatarBuster.value = Date.now();
     avatarFile.value = null;
-    avatarPreview.value = "";
     avatarHint.value = "";
     toast("Foto actualizada");
   } catch (e) {
-    toast(e?.message || "No se pudo subir la foto", "error");
+    toast(e?.response?.data?.message || e?.message || "No se pudo subir la foto", "error");
   } finally {
     uploading.value = false;
   }
@@ -295,17 +381,14 @@ async function changePassword() {
 
   pwLoading.value = true;
   try {
-    await MeService.changePassword({
-      current_password: pw.current_password,
-      new_password: pw.new_password,
-    });
+    await MeService.changePassword({ current_password: pw.current_password, new_password: pw.new_password });
     pw.current_password = "";
     pw.new_password = "";
     pw.new_password2 = "";
     pwDialog.value = false;
     toast("Contraseña actualizada");
   } catch (e) {
-    pwError.value = e?.message || "No se pudo cambiar la contraseña.";
+    pwError.value = e?.response?.data?.message || e?.message || "No se pudo cambiar la contraseña.";
   } finally {
     pwLoading.value = false;
   }
@@ -313,3 +396,16 @@ async function changePassword() {
 
 onMounted(loadMe);
 </script>
+
+<style scoped>
+.prof-card{
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+}
+.prof-avatar{
+  border: 2px solid rgba(255,255,255,.12);
+}
+.prof-avatar-mini{
+  border: 1px solid rgba(255,255,255,.12);
+}
+</style>

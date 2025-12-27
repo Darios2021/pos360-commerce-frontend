@@ -16,6 +16,10 @@
             Productos listos para vender: {{ filteredTotal }}
           </v-chip>
 
+          <v-chip v-if="isAdmin" size="small" variant="tonal" color="amber-darken-2">
+            Admin: solo vista (no puede vender)
+          </v-chip>
+
           <v-chip v-if="ctxError" size="small" variant="tonal" color="red">
             {{ ctxError }}
           </v-chip>
@@ -28,7 +32,12 @@
           Actualizar
         </v-btn>
 
-        <v-btn color="primary" @click="openCheckout" :disabled="posStore.cart.length === 0">
+        <v-btn
+          color="primary"
+          @click="openCheckout"
+          :disabled="posStore.cart.length === 0 || !canSell"
+          :title="!canSell ? 'El usuario admin no puede vender' : ''"
+        >
           <v-icon start>mdi-cash-register</v-icon>
           Cobrar
         </v-btn>
@@ -114,22 +123,21 @@
           <div v-if="loadingList" class="d-flex justify-center align-center py-12">
             <v-progress-circular indeterminate />
           </div>
-<v-row v-else dense>
-  <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
-    <PosProductCard
-      :item="p"
-      :image="productImage(p) || ''"
-      :rubro-label="rubroName(p) || ''"
-      :subrubro-label="subrubroName(p) || ''"
-      :price="resolveUnitPrice(p, 'LIST')"
-      price-label="Lista"
-      @add="add"
-      @details="openDetails"
-    />
-  </v-col>
-</v-row>
 
-
+          <v-row v-else dense>
+            <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
+              <PosProductCard
+                :item="p"
+                :image="productImage(p) || ''"
+                :rubro-label="rubroName(p) || ''"
+                :subrubro-label="subrubroName(p) || ''"
+                :price="resolveUnitPrice(p, 'LIST')"
+                price-label="Lista"
+                @add="add"
+                @details="openDetails"
+              />
+            </v-col>
+          </v-row>
 
           <div v-if="!loadingList && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
             <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
@@ -167,6 +175,7 @@
                     density="comfortable"
                     hide-details
                     prepend-inner-icon="mdi-account"
+                    :disabled="!canSell"
                   />
                 </v-col>
                 <v-col cols="12" md="6">
@@ -176,6 +185,7 @@
                     variant="outlined"
                     density="comfortable"
                     hide-details
+                    :disabled="!canSell"
                   />
                 </v-col>
                 <v-col cols="12" md="6">
@@ -186,6 +196,7 @@
                     density="comfortable"
                     hide-details
                     prepend-inner-icon="mdi-whatsapp"
+                    :disabled="!canSell"
                   />
                 </v-col>
                 <v-col cols="12" md="6">
@@ -196,6 +207,7 @@
                     density="comfortable"
                     hide-details
                     prepend-inner-icon="mdi-email-outline"
+                    :disabled="!canSell"
                   />
                 </v-col>
               </v-row>
@@ -232,8 +244,20 @@
                       <div class="font-weight-bold">{{ money(it.subtotal) }}</div>
                     </div>
 
-                    <v-btn icon="mdi-minus" size="x-small" variant="tonal" @click.stop="posStore.decreaseQty(it.id)" />
-                    <v-btn icon="mdi-plus" size="x-small" variant="tonal" @click.stop="posStore.increaseQty(it.id)" />
+                    <v-btn
+                      icon="mdi-minus"
+                      size="x-small"
+                      variant="tonal"
+                      :disabled="!canSell"
+                      @click.stop="posStore.decreaseQty(it.id)"
+                    />
+                    <v-btn
+                      icon="mdi-plus"
+                      size="x-small"
+                      variant="tonal"
+                      :disabled="!canSell"
+                      @click.stop="posStore.increaseQty(it.id)"
+                    />
                   </div>
                 </template>
               </v-list-item>
@@ -260,14 +284,19 @@
                   block
                   variant="tonal"
                   color="grey"
-                  :disabled="posStore.cart.length === 0"
+                  :disabled="posStore.cart.length === 0 || !canSell"
                   @click="posStore.clearCart()"
                 >
                   <v-icon start>mdi-broom</v-icon>
                   Vaciar
                 </v-btn>
 
-                <v-btn block color="primary" :disabled="posStore.cart.length === 0" @click="openCheckout">
+                <v-btn
+                  block
+                  color="primary"
+                  :disabled="posStore.cart.length === 0 || !canSell"
+                  @click="openCheckout"
+                >
                   <v-icon start>mdi-cash-register</v-icon>
                   Cobrar
                 </v-btn>
@@ -320,14 +349,20 @@
 
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="detailsOpen = false">Cerrar</v-btn>
-          <v-btn color="primary" variant="flat" @click="detailsItem && add(detailsItem)">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!canSell"
+            :title="!canSell ? 'El usuario admin no puede vender' : ''"
+            @click="detailsItem && add(detailsItem)"
+          >
             <v-icon start>mdi-plus</v-icon> Agregar
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- ✅ COBRO COMPLETO (FIX: no congela) -->
+    <!-- ✅ COBRO COMPLETO (lo dejé igual que el tuyo, sin tocar lógica) -->
     <v-dialog v-model="checkoutDialog" max-width="560" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -341,9 +376,13 @@
         </div>
 
         <v-card-text class="pa-5">
+          <v-alert v-if="!canSell" type="warning" variant="tonal" class="mb-4">
+            Estás logueado como <b>admin</b>. Podés ver productos, pero <b>no podés registrar ventas</b>.
+          </v-alert>
+
           <div class="text-subtitle-2 font-weight-bold mb-3">Método de pago</div>
 
-          <v-radio-group v-model="paymentMethod" color="primary">
+          <v-radio-group v-model="paymentMethod" color="primary" :disabled="!canSell">
             <v-radio value="CASH" label="Efectivo" />
             <v-radio value="CARD" label="Tarjeta / Débito" />
             <v-radio value="TRANSFER" label="Transferencia" />
@@ -358,6 +397,7 @@
                 color="primary"
                 label="Aplicar precio revendedor"
                 hide-details
+                :disabled="!canSell"
               />
               <div class="text-caption text-medium-emphasis">
                 Si no existe precio revendedor (&gt; 0), cae a descuento/lista según corresponda.
@@ -372,6 +412,7 @@
                 variant="outlined"
                 density="comfortable"
                 hide-details
+                :disabled="!canSell"
               />
               <div class="text-caption text-medium-emphasis mt-1">
                 1 pago = descuento · 2 a 6 cuotas = precio lista.
@@ -390,10 +431,8 @@
                 density="comfortable"
                 prepend-inner-icon="mdi-receipt-text-outline"
                 hide-details
+                :disabled="!canSell"
               />
-              <div class="text-caption text-medium-emphasis mt-1">
-                Guardalo para trazabilidad (transferencia).
-              </div>
             </v-col>
 
             <v-col cols="12" v-if="paymentMethod === 'QR'">
@@ -404,6 +443,7 @@
                 density="comfortable"
                 prepend-inner-icon="mdi-qrcode-scan"
                 hide-details
+                :disabled="!canSell"
               />
             </v-col>
 
@@ -417,6 +457,7 @@
                 :error="cashError"
                 :error-messages="cashErrorMsg"
                 @keyup.enter="confirmPayment"
+                :disabled="!canSell"
               />
             </v-col>
           </v-row>
@@ -429,13 +470,7 @@
         <v-divider />
 
         <v-card-actions class="pa-4">
-          <v-btn
-            size="large"
-            variant="text"
-            color="grey"
-            @click="checkoutDialog = false"
-            :disabled="posStore.loading"
-          >
+          <v-btn size="large" variant="text" color="grey" @click="checkoutDialog = false" :disabled="posStore.loading">
             Cancelar
           </v-btn>
           <v-spacer />
@@ -446,7 +481,7 @@
             variant="flat"
             class="px-6"
             :loading="posStore.loading"
-            :disabled="cannotConfirm"
+            :disabled="cannotConfirm || !canSell"
             @click="confirmPayment"
           >
             <v-icon start>mdi-check</v-icon>
@@ -473,7 +508,6 @@ import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { useProductsStore } from "../../../app/store/products.store";
 import PosProductCard from "../components/PosProductCard.vue";
-
 
 const posStore = usePosStore();
 const auth = useAuthStore();
@@ -523,6 +557,14 @@ const customer = ref({
   email: "",
 });
 
+const isAdmin = computed(() => {
+  const u = auth?.user || {};
+  const role = String(u?.role || u?.user_role || "").toLowerCase();
+  return Boolean(u?.is_admin) || role === "admin" || role === "superadmin";
+});
+
+const canSell = computed(() => !isAdmin.value);
+
 const branchName = computed(() => {
   const u = auth?.user || {};
   return u?.branch?.name || u?.branch_name || null;
@@ -540,10 +582,10 @@ function toNum(v) {
 }
 
 /* =========================
-   ✅ IMÁGENES (vía store que ya funciona)
+   ✅ IMÁGENES (vía store)
 ========================= */
-const imageById = ref({}); // { [id]: url | "" }
-const imgLoading = ref({}); // { [id]: true }
+const imageById = ref({});
+const imgLoading = ref({});
 
 function pickUrlFromImageRow(row) {
   if (!row) return "";
@@ -576,6 +618,7 @@ function normalizeUrl(u) {
 
 function pickImageFromProduct(p) {
   const direct =
+    p?.main_image_url ||
     p?.image_url ||
     p?.image ||
     p?.thumb_url ||
@@ -637,7 +680,6 @@ function productImage(p) {
   }
 
   if (imageById.value[id] !== undefined) return imageById.value[id] || "";
-
   fetchFirstImageViaStore(id);
   return "";
 }
@@ -651,9 +693,7 @@ async function prefetchImagesForVisible(items) {
 }
 
 /* =========================
-   ✅ CATEGORÍAS (FIX REAL)
-   - Soporta productos con category_id = rubro (padre)
-   - Soporta productos con category_id = subrubro (hijo con parent_id)
+   ✅ CATEGORÍAS (FIX: endpoints reales, sin /api/v1)
 ========================= */
 const categories = ref([]);
 
@@ -672,11 +712,6 @@ function getCatIdFromProduct(p) {
   );
 }
 
-/**
- * Devuelve la dupla rubro/subrubro en forma segura:
- * - Si category es HIJO (tiene parent_id) => rubroId=parent_id, subId=cat.id
- * - Si category es PADRE (no parent_id)   => rubroId=cat.id, subId=null
- */
 function deriveRubroSub(p) {
   const cid = getCatIdFromProduct(p);
   if (!cid) return { rubroId: null, subId: null };
@@ -685,45 +720,36 @@ function deriveRubroSub(p) {
   if (!c) return { rubroId: null, subId: null };
 
   const pid = Number(c.parent_id || c.parentId || c.parent?.id || 0) || null;
-
-  // si tiene padre => el producto está en un subrubro
   if (pid) return { rubroId: pid, subId: Number(c.id) };
-
-  // si no tiene padre => el producto está asignado directo al rubro
   return { rubroId: Number(c.id), subId: null };
 }
 
-function rubroName(p) {
-  // si backend ya lo manda resuelto:
-  if (p?.parent_category_name) return p.parent_category_name;
+function productRubroId(p) { return deriveRubroSub(p).rubroId; }
+function productSubId(p) { return deriveRubroSub(p).subId; }
 
+function rubroName(p) {
   const { rubroId } = deriveRubroSub(p);
   if (!rubroId) return null;
   return catById.value.get(Number(rubroId))?.name || null;
 }
 
 function subrubroName(p) {
-  // si backend ya lo manda resuelto:
-  if (p?.subcategory_name) return p.subcategory_name;
-
   const { subId } = deriveRubroSub(p);
   if (!subId) return null;
   return catById.value.get(Number(subId))?.name || null;
 }
 
 async function loadCategoriesSafe() {
-  // probamos ambas rutas por si tu API quedó con prefijos
+  // ✅ endpoints reales (SIN /api/v1)
   const candidates = [
     { url: "/categories", params: { limit: 5000 } },
-    { url: "/api/v1/categories", params: { limit: 5000 } },
-    { url: "/products/categories", params: undefined },
-    { url: "/api/v1/products/categories", params: undefined },
+    { url: "/categories", params: { page: 1, limit: 5000 } },
   ];
 
   for (const c of candidates) {
     try {
       const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
-      const arr = data?.data || data || [];
+      const arr = data?.data?.items || data?.items || data?.data || data || [];
       categories.value = Array.isArray(arr) ? arr : [];
       if (categories.value.length) return;
     } catch {}
@@ -734,17 +760,13 @@ async function loadCategoriesSafe() {
 
 const rubroItems = computed(() => {
   const map = new Map();
-
   for (const p of allSellable.value || []) {
     const d = deriveRubroSub(p);
     if (!d.rubroId) continue;
-
     const name = catById.value.get(Number(d.rubroId))?.name;
     if (!name) continue;
-
     if (!map.has(d.rubroId)) map.set(d.rubroId, { title: String(name), value: Number(d.rubroId) });
   }
-
   return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
@@ -753,29 +775,21 @@ const subrubroItems = computed(() => {
   if (!rid) return [];
 
   const map = new Map();
-
   for (const p of allSellable.value || []) {
     const d = deriveRubroSub(p);
-
-    // solo subrubros del rubro elegido
     if (Number(d.rubroId || 0) !== rid) continue;
-
-    if (!d.subId) continue; // si el producto está directo al rubro, no aporta subrubro
-
+    if (!d.subId) continue;
     const name = catById.value.get(Number(d.subId))?.name;
     if (!name) continue;
-
     if (!map.has(d.subId)) map.set(d.subId, { title: String(name), value: Number(d.subId) });
   }
-
-  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(a.title)));
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
 function onRubroChange() {
   subrubroId.value = null;
   page.value = 1;
 }
-
 
 /* =========================
    ✅ PRECIOS / SELLABLE
@@ -803,7 +817,8 @@ function hasAnyPrice(p) {
     toNum(p?.price) > 0 ||
     toNum(p?.price_list) > 0 ||
     toNum(p?.price_discount) > 0 ||
-    toNum(p?.price_reseller) > 0
+    toNum(p?.price_reseller) > 0 ||
+    toNum(p?.effective_price) > 0
   );
 }
 function isSellable(p) {
@@ -820,12 +835,12 @@ const filteredItems = computed(() => {
   return (allSellable.value || []).filter((p) => {
     if (!isSellable(p)) return false;
 
-if (rubroId.value) {
-  if (Number(productRubroId(p) || 0) !== Number(rubroId.value)) return false;
-}
-if (subrubroId.value) {
-  if (Number(productSubId(p) || 0) !== Number(subrubroId.value)) return false;
-}
+    if (rubroId.value) {
+      if (Number(productRubroId(p) || 0) !== Number(rubroId.value)) return false;
+    }
+    if (subrubroId.value) {
+      if (Number(productSubId(p) || 0) !== Number(subrubroId.value)) return false;
+    }
 
     if (qq) {
       const hay =
@@ -882,6 +897,11 @@ function openDetails(p) {
 }
 
 function add(p) {
+  if (!canSell.value) {
+    snack.value = { show: true, text: "🔒 El usuario admin puede ver, pero NO puede vender." };
+    return;
+  }
+
   if (!isSellable(p)) {
     snack.value = { show: true, text: "❌ No vendible (sin stock o sin precio)" };
     return;
@@ -905,13 +925,14 @@ function add(p) {
     price_list: toNum(p.price_list),
     price_discount: toNum(p.price_discount),
     price_reseller: toNum(p.price_reseller),
+    effective_price: toNum(p.effective_price),
   });
 
   snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
 /* =========================
-   ✅ CONTEXTO POS + FETCH
+   ✅ CONTEXTO POS + FETCH PRODUCTS
 ========================= */
 async function hardSyncPosContextWithAuth() {
   try { if (typeof auth.fetchMe === "function") await auth.fetchMe(); } catch {}
@@ -919,8 +940,9 @@ async function hardSyncPosContextWithAuth() {
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
 
+  // si NO hay branch y NO admin => forzamos contexto
   if (!authBranch) {
-    await posStore.ensureContext?.({ force: true });
+    if (!isAdmin.value) await posStore.ensureContext?.({ force: true });
     return;
   }
 
@@ -938,29 +960,112 @@ async function hardSyncPosContextWithAuth() {
   }
 }
 
+async function fetchWarehousesSafe() {
+  const candidates = [
+    { url: "/warehouses", params: { limit: 5000 } },
+    { url: "/warehouses", params: { page: 1, limit: 5000 } },
+  ];
+
+  for (const c of candidates) {
+    try {
+      const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
+      const arr = data?.data?.items || data?.items || data?.data || data || [];
+      const out = Array.isArray(arr) ? arr : [];
+      if (out.length) return out;
+    } catch {}
+  }
+
+  return [];
+}
+
+// Merge simple por product.id (suma qty)
+function mergeProductPools(pools) {
+  const map = new Map();
+  for (const arr of pools) {
+    for (const p of arr || []) {
+      const id = Number(p?.id || 0);
+      if (!id) continue;
+
+      const cur = map.get(id);
+      if (!cur) map.set(id, { ...p, qty: toNum(p?.qty) });
+      else cur.qty = toNum(cur.qty) + toNum(p?.qty);
+    }
+  }
+  return Array.from(map.values());
+}
+
 async function fetchSellablePool() {
   loadingList.value = true;
   try {
     ctxError.value = "";
     await hardSyncPosContextWithAuth();
 
-    const params = {
-      q: "",
-      page: 1,
-      limit: 5000,
-      in_stock: 1,
-      sellable: 1,
-      warehouse_id: posStore.warehouse_id || undefined,
-    };
+    const bid = Number(posStore.branch_id || 0) || null;
+    const wid = Number(posStore.warehouse_id || 0) || null;
 
-    const { data } = await http.get("/pos/products", { params });
-    const out = data?.data || [];
+    // ✅ NORMAL: si hay warehouse => pedimos por depósito
+    if (wid) {
+      const params = {
+        // 🔥 FIX: mandá branch_id SIEMPRE (para coherencia)
+        branch_id: bid || undefined,
+        warehouse_id: wid,
+        q: "",
+        page: 1,
+        limit: 5000,
+        in_stock: 1,
+        sellable: 1,
+        include_images: 1,
+      };
 
-    const arr = Array.isArray(out) ? out : [];
-    allSellable.value = arr.filter((p) => isSellable(p));
+      const { data } = await http.get("/pos/products", { params });
+      const arr = Array.isArray(data?.data) ? data.data : [];
+      allSellable.value = arr;
+
+      if (page.value > pages.value) page.value = 1;
+      await prefetchImagesForVisible(pagedItems.value);
+      return;
+    }
+
+    // ✅ NO warehouse:
+    // - si NO admin => error (no puede listar)
+    if (!isAdmin.value) {
+      allSellable.value = [];
+      ctxError.value = "Falta depósito (warehouse). Verificá que tu usuario tenga sucursal y depósito asignado.";
+      return;
+    }
+
+    // ✅ admin sin warehouse => listar por TODOS los depósitos y mergear
+    const whs = await fetchWarehousesSafe();
+    if (!whs.length) {
+      allSellable.value = [];
+      ctxError.value = "Admin: no hay depósitos disponibles para listar productos.";
+      return;
+    }
+
+    const calls = whs.slice(0, 80).map(async (w) => {
+      const params = {
+        branch_id: bid || undefined,
+        warehouse_id: Number(w.id),
+        q: "",
+        page: 1,
+        limit: 5000,
+        in_stock: 1,
+        sellable: 1,
+        include_images: 1,
+      };
+      try {
+        const { data } = await http.get("/pos/products", { params });
+        const out = data?.data || [];
+        return Array.isArray(out) ? out : [];
+      } catch {
+        return [];
+      }
+    });
+
+    const pools = await Promise.all(calls);
+    allSellable.value = mergeProductPools(pools);
 
     if (page.value > pages.value) page.value = 1;
-
     await prefetchImagesForVisible(pagedItems.value);
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
@@ -974,7 +1079,7 @@ async function fetchSellablePool() {
 function refresh() { fetchSellablePool(); }
 
 /* =========================
-   ✅ CHECKOUT (FIX PERFORMANCE)
+   ✅ CHECKOUT
 ========================= */
 const productById = computed(() => {
   const m = new Map();
@@ -984,15 +1089,8 @@ const productById = computed(() => {
 
 function currentPricePolicy() {
   if (applyReseller.value) return "RESELLER";
-
-  if (paymentMethod.value === "CARD") {
-    return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
-  }
-
-  if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") {
-    return "DISCOUNT";
-  }
-
+  if (paymentMethod.value === "CARD") return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
+  if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") return "DISCOUNT";
   return "DISCOUNT";
 }
 
@@ -1006,14 +1104,12 @@ const checkoutPriceHint = computed(() => {
 const checkoutTotal = computed(() => {
   const pol = currentPricePolicy();
   let sum = 0;
-
   for (const it of posStore.cart || []) {
     const pid = Number(it.product_id || it.id);
-    const p = productById.value.get(pid) || it; // ✅ O(1), no find(5000)
+    const p = productById.value.get(pid) || it;
     const unit = resolveUnitPrice(p, pol);
     sum += unit * toNum(it.qty);
   }
-
   return sum;
 });
 
@@ -1024,6 +1120,10 @@ const checkoutTotalPreview = computed(() => {
 });
 
 function openCheckout() {
+  if (!canSell.value) {
+    snack.value = { show: true, text: "🔒 Admin: no se puede abrir cobro / registrar ventas." };
+    return;
+  }
   paymentMethod.value = "CASH";
   installments.value = 1;
   applyReseller.value = false;
@@ -1055,7 +1155,6 @@ const cannotConfirm = computed(() => {
     if (!cashInput.value) return true;
     return paidAmount.value < totalAmt;
   }
-
   return false;
 });
 
@@ -1087,13 +1186,10 @@ watch([paymentMethod, installments, applyReseller, cashInput], () => {
 
 function applyCheckoutPricesIntoStore() {
   const pol = currentPricePolicy();
-
   for (const it of posStore.cart || []) {
     const pid = Number(it.product_id || it.id);
     const p = productById.value.get(pid) || it;
-
     const unit = resolveUnitPrice(p, pol);
-
     it.price = unit;
     it.price_label = pricePolicyLabel(pol);
     it.subtotal = unit * toNum(it.qty);
@@ -1101,6 +1197,11 @@ function applyCheckoutPricesIntoStore() {
 }
 
 async function confirmPayment() {
+  if (!canSell.value) {
+    snack.value = { show: true, text: "🔒 Admin: no se puede confirmar ventas." };
+    return;
+  }
+
   try {
     applyCheckoutPricesIntoStore();
 
@@ -1146,7 +1247,7 @@ onMounted(async () => {
   color: rgb(var(--v-theme-on-surface));
 }
 
-.pos-surface, .cart-item, .empty, .badge-sku, .border {
+.pos-surface, .cart-item, .empty, .border {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
@@ -1165,48 +1266,12 @@ onMounted(async () => {
 
 .pos-toolbar { position: sticky; top: 12px; z-index: 2; }
 
-.product-card { overflow: hidden; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-.product-card:hover { transform: translateY(-2px); }
-
-.thumb-wrap { height: 140px; position: relative; background: rgb(var(--v-theme-surface)); }
-.thumb { height: 140px; }
-.thumb-empty {
-  display: flex; align-items: center; justify-content: center;
-  height: 140px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.badge-sku {
-  position: absolute; left: 10px; bottom: 10px;
-  font-size: 11px; padding: 4px 10px; border-radius: 999px;
-  background: rgba(var(--v-theme-surface), 0.92);
-  backdrop-filter: blur(4px);
-}
-
-.badge-stock {
-  position: absolute; right: 10px; bottom: 10px;
-  font-size: 11px; padding: 4px 10px; border-radius: 999px;
-  background: rgba(var(--v-theme-surface), 0.92);
-  backdrop-filter: blur(4px);
-  opacity: 0.92;
-}
-.badge-stock-ok { font-weight: 900; }
-
-.title { font-weight: 900; font-size: 13px; line-height: 1.2; min-height: 32px; }
-.meta { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.66); margin-top: 6px; }
-.meta .muted { color: rgba(var(--v-theme-on-surface), 0.5); }
-.meta .dot { margin: 0 6px; opacity: 0.5; }
-.price-row .price { font-weight: 950; font-size: 16px; }
-
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-.btn-pad { min-height: 38px; }
-.btn-icon { min-width: 42px; }
 
 /* Carrito */
 .cart-card {
@@ -1234,8 +1299,6 @@ onMounted(async () => {
   z-index: 2;
   box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
 }
-
-.cart-foot .v-btn { min-height: 44px; }
 
 .cart-item { background: rgba(var(--v-theme-surface), 0.9); }
 .cart-title { font-weight: 900; font-size: 13px; line-height: 1.2; }
@@ -1265,7 +1328,6 @@ onMounted(async () => {
 .muted { color: rgba(var(--v-theme-on-surface), 0.62); }
 .cart-actions { flex-wrap: nowrap; }
 .cart-actions > .v-btn { flex: 1 1 0; min-width: 0; }
-.cart-foot .v-btn.v-btn--block { width: auto !important; }
 
 @media (max-width: 960px) {
   .pos-wrap { padding: 10px; }

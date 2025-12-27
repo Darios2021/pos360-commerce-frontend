@@ -42,6 +42,45 @@ function normalizeRoles(user) {
   return roles;
 }
 
+// ----------
+// Avatar helpers
+// ----------
+function pickAvatar(u) {
+  if (!u) return "";
+  return (
+    u.avatar_url ||
+    u.avatarUrl ||
+    u.avatar ||
+    u.photo_url ||
+    u.image_url ||
+    u.picture ||
+    ""
+  );
+}
+
+/**
+ * ✅ MERGE: si el user nuevo NO trae avatar, conservar el actual
+ */
+function mergeUserKeepAvatar(prev, next) {
+  const p = prev || {};
+  const n = next || {};
+
+  const prevAvatar = pickAvatar(p);
+  const nextAvatar = pickAvatar(n);
+
+  const merged = { ...p, ...n };
+
+  // si el nuevo no trae avatar, no lo pises
+  if (!nextAvatar && prevAvatar) {
+    // guardamos en avatar_url para estandarizar
+    merged.avatar_url = prevAvatar;
+  }
+
+  // roles siempre normalizados
+  merged.roles = normalizeRoles(merged);
+  return merged;
+}
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     status: "idle", // idle | authed | guest
@@ -64,13 +103,53 @@ export const useAuthStore = defineStore("auth", {
       if (saved?.accessToken) {
         this.accessToken = saved.accessToken;
         this.refreshToken = saved.refreshToken || null;
-        this.user = saved.user || null;
+
+        // ✅ conserva avatar del storage y normaliza roles
+        const savedUser = saved.user || null;
+        this.user = savedUser ? mergeUserKeepAvatar(null, savedUser) : null;
+
         this.status = "authed";
-        adbg("hydrate", { branch_id: this.user?.branch_id, email: this.user?.email, roles: normalizeRoles(this.user) });
+
+        adbg("hydrate", {
+          branch_id: this.user?.branch_id,
+          email: this.user?.email,
+          roles: normalizeRoles(this.user),
+          avatar: pickAvatar(this.user),
+        });
       } else {
         this.status = "guest";
         adbg("hydrate guest");
       }
+    },
+
+    /**
+     * ✅ setUser persistente
+     * y NO pisa avatar si viene vacío
+     */
+    setUser(user) {
+      this.user = mergeUserKeepAvatar(this.user, user);
+
+      saveAuth({
+        accessToken: this.accessToken,
+        refreshToken: this.refreshToken,
+        user: this.user,
+      });
+
+      adbg("setUser", {
+        id: this.user?.id,
+        email: this.user?.email,
+        roles: this.user?.roles,
+        avatar: pickAvatar(this.user),
+      });
+    },
+
+    /**
+     * ✅ helper por si tu endpoint devuelve solo la url
+     */
+    setAvatar(avatar_url) {
+      const next = { ...(this.user || {}), avatar_url };
+      this.setUser(next);
+      adbg("setAvatar", { avatar_url });
     },
 
     async fetchMe() {
@@ -78,28 +157,15 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const { data } = await http.get("/auth/me");
-
         adbg("GET /auth/me raw", data);
 
-        if (data?.ok && data.user) {
-          this.user = {
-            ...data.user,
-            roles: normalizeRoles(data.user),
-          };
+        // soporta: { ok:true, user:{...} } o { user:{...} }
+        const u = data?.user || data?.data?.user || null;
+        if (!u) return;
 
-          adbg("fetchMe -> user", {
-            id: this.user?.id,
-            email: this.user?.email,
-            branch_id: this.user?.branch_id,
-            roles: this.user?.roles,
-          });
-
-          saveAuth({
-            accessToken: this.accessToken,
-            refreshToken: this.refreshToken,
-            user: this.user,
-          });
-        }
+        // ✅ MERGE (no pises avatar si /auth/me no lo manda)
+        this.setUser(u);
+        this.status = "authed";
       } catch (e) {
         this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
         adbg("fetchMe ERROR", { status: e?.response?.status, data: e?.response?.data, msg: this.error });
@@ -110,15 +176,11 @@ export const useAuthStore = defineStore("auth", {
       this.error = null;
 
       const { data } = await http.post("/auth/login", { identifier, password });
-
       adbg("POST /auth/login raw", data);
 
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
 
-      const normalizedUser = {
-        ...data.user,
-        roles: normalizeRoles(data.user),
-      };
+      const normalizedUser = mergeUserKeepAvatar(null, data.user);
 
       this.accessToken = data.accessToken;
       this.refreshToken = data.refreshToken || null;
@@ -130,6 +192,7 @@ export const useAuthStore = defineStore("auth", {
         email: this.user?.email,
         branch_id: this.user?.branch_id,
         roles: this.user?.roles,
+        avatar: pickAvatar(this.user),
       });
 
       saveAuth({
@@ -138,6 +201,7 @@ export const useAuthStore = defineStore("auth", {
         user: this.user,
       });
 
+      // si /auth/me no trae avatar, NO lo borra gracias al merge
       await this.fetchMe();
     },
 
@@ -151,7 +215,6 @@ export const useAuthStore = defineStore("auth", {
       adbg("logout");
     },
 
-    // 🔥 útil para testeo: fuerza limpiar todo y rehidratar
     hardResetAuth() {
       clearAuth();
       this.status = "guest";

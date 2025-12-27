@@ -1,7 +1,8 @@
 <!-- src/modules/products/components/ProductDetailsDialog.vue -->
 <template>
-  <v-dialog v-model="openLocal" max-width="980">
+  <v-dialog v-model="openLocal" max-width="1120">
     <v-card rounded="xl" class="pd-root">
+      <!-- HEADER -->
       <div class="pd-header">
         <div class="pd-title">
           <div class="text-h6 font-weight-bold">Detalle producto</div>
@@ -44,6 +45,7 @@
         <v-skeleton-loader v-if="loading" type="article" />
 
         <template v-else>
+          <!-- SUMMARY -->
           <div class="pd-summary">
             <div>
               <div class="text-h5 font-weight-bold">{{ item?.name || "—" }}</div>
@@ -56,10 +58,15 @@
               <v-chip size="small" variant="tonal" :color="item?.is_active ? 'primary' : 'red'">
                 {{ item?.is_active ? "Activo" : "Inactivo" }}
               </v-chip>
+
+              <v-chip v-if="hasDiscount" size="small" variant="tonal" color="green" class="font-weight-bold">
+                -{{ discountPercent }}%
+              </v-chip>
             </div>
           </div>
 
           <v-row dense>
+            <!-- LEFT -->
             <v-col cols="12" md="5">
               <v-card rounded="xl" variant="flat" class="pd-card">
                 <div class="pd-card-title">
@@ -88,20 +95,53 @@
 
                 <v-divider class="my-3" />
 
-                <div class="pd-card-title">
-                  <v-icon size="18">mdi-cash</v-icon>
-                  <span>Precio lista</span>
+                <div class="d-flex align-center justify-space-between">
+                  <div class="pd-card-title mb-0">
+                    <v-icon size="18">mdi-cash</v-icon>
+                    <span>Precios</span>
+                  </div>
+
+                  <v-chip
+                    v-if="hasDiscount"
+                    size="small"
+                    variant="tonal"
+                    color="green"
+                    class="font-weight-bold"
+                  >
+                    Ahorrás {{ money(discountAmount) }}
+                  </v-chip>
                 </div>
+
+                <v-divider class="my-3" />
 
                 <div class="pd-prices">
                   <div class="pd-price">
                     <div class="pd-price-k">Lista</div>
-                    <div class="pd-price-v">{{ money(item?.price_list) }}</div>
+                    <div class="pd-price-v">
+                      <span :class="hasDiscount ? 'pd-strike' : ''">{{ money(priceList) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="pd-price">
+                    <div class="pd-price-k">Descuento</div>
+                    <div class="pd-price-v">
+                      <span v-if="hasDiscount">{{ money(priceDiscount) }}</span>
+                      <span v-else class="text-caption text-medium-emphasis">—</span>
+                    </div>
+                  </div>
+
+                  <div class="pd-price">
+                    <div class="pd-price-k">Revendedor</div>
+                    <div class="pd-price-v">
+                      <span v-if="hasReseller">{{ money(priceReseller) }}</span>
+                      <span v-else class="text-caption text-medium-emphasis">—</span>
+                    </div>
                   </div>
                 </div>
               </v-card>
             </v-col>
 
+            <!-- RIGHT -->
             <v-col cols="12" md="7">
               <v-card rounded="xl" variant="flat" class="pd-card">
                 <div class="d-flex align-center justify-space-between">
@@ -109,7 +149,20 @@
                     <v-icon size="18">mdi-image-multiple-outline</v-icon>
                     <span>Imágenes</span>
                   </div>
-                  <div class="text-caption text-medium-emphasis">product_images · {{ images.length }}</div>
+
+                  <div class="d-flex align-center ga-2">
+                    <div class="text-caption text-medium-emphasis">product_images · {{ images.length }}</div>
+
+                    <v-btn
+                      v-if="images.length"
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-fullscreen"
+                      @click="viewerOpen = true"
+                    >
+                      Ver grande
+                    </v-btn>
+                  </div>
                 </div>
 
                 <v-divider class="my-3" />
@@ -118,24 +171,68 @@
                   Sin imágenes cargadas.
                 </v-alert>
 
-                <div v-else class="pd-img-grid">
-                  <div v-for="img in images" :key="img.id" class="pd-img-tile">
-                    <div class="pd-img-wrap">
-                      <img :src="normalizeUrl(img.url)" :alt="`img-${img.id}`" class="pd-img" />
-                      <div class="pd-img-overlay">
-                        <v-chip size="x-small" variant="tonal">ID {{ img.id }}</v-chip>
+                <!-- ✅ Carousel cheto -->
+                <div v-else class="pd-carousel">
+                  <v-carousel
+                    v-model="activeSlide"
+                    hide-delimiter-background
+                    show-arrows="hover"
+                    height="360"
+                    class="pd-carousel-inner"
+                  >
+                    <v-carousel-item v-for="(img, i) in images" :key="img.id || i">
+                      <div class="pd-slide">
+                        <v-img
+                          :src="normalizeUrl(img.url)"
+                          :alt="`img-${img.id || i}`"
+                          cover
+                          class="pd-slide-img"
+                        >
+                          <template #placeholder>
+                            <div class="pd-img-ph">
+                              <v-progress-circular indeterminate />
+                            </div>
+                          </template>
+                        </v-img>
 
-                        <v-btn
-                          v-if="isAdmin"
-                          icon="mdi-delete-outline"
-                          size="small"
-                          variant="flat"
-                          color="red"
-                          class="pd-img-del"
-                          @click="askRemoveImage(img)"
-                        />
+                        <div class="pd-slide-overlay">
+                          <v-chip size="small" variant="tonal">#{{ i + 1 }} / {{ images.length }}</v-chip>
+                          <div class="d-flex ga-2">
+                            <v-btn
+                              icon="mdi-magnify-plus-outline"
+                              size="small"
+                              variant="tonal"
+                              @click="openViewerAt(i)"
+                              title="Zoom / Maximizar"
+                            />
+                            <v-btn
+                              v-if="isAdmin"
+                              icon="mdi-delete-outline"
+                              size="small"
+                              variant="flat"
+                              color="red"
+                              @click="askRemoveImage(img)"
+                              title="Eliminar"
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </v-carousel-item>
+                  </v-carousel>
+
+                  <!-- thumbs -->
+                  <div class="pd-thumbs">
+                    <button
+                      v-for="(img, i) in images"
+                      :key="`t-${img.id || i}`"
+                      class="pd-thumb"
+                      :class="{ active: i === activeSlide }"
+                      type="button"
+                      @click="activeSlide = i"
+                      :title="`Ver imagen ${i + 1}`"
+                    >
+                      <img :src="normalizeUrl(img.url)" :alt="`thumb-${img.id || i}`" />
+                    </button>
                   </div>
                 </div>
 
@@ -149,6 +246,74 @@
       </v-card-text>
     </v-card>
 
+    <!-- ✅ Viewer full-screen + zoom -->
+    <v-dialog v-model="viewerOpen" fullscreen transition="dialog-bottom-transition">
+      <v-card class="pd-viewer">
+        <div class="pd-viewer-top">
+          <div class="d-flex align-center ga-2">
+            <v-btn icon="mdi-close" variant="text" @click="viewerOpen = false" />
+            <div class="font-weight-bold">{{ item?.name || "Imágenes" }}</div>
+            <div class="text-caption text-medium-emphasis" v-if="images.length">
+              · {{ activeSlide + 1 }}/{{ images.length }}
+            </div>
+          </div>
+
+          <div class="d-flex align-center ga-2">
+            <v-btn
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-magnify-minus-outline"
+              @click="zoomOut"
+              :disabled="zoom <= 1"
+            >
+              Zoom -
+            </v-btn>
+            <v-btn
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-magnify-plus-outline"
+              @click="zoomIn"
+              :disabled="zoom >= 3"
+            >
+              Zoom +
+            </v-btn>
+            <v-btn
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-restart"
+              @click="resetZoom"
+            >
+              Reset
+            </v-btn>
+          </div>
+        </div>
+
+        <v-divider />
+
+        <div class="pd-viewer-body">
+          <v-carousel
+            v-model="activeSlide"
+            hide-delimiters
+            show-arrows="hover"
+            height="calc(100vh - 120px)"
+            class="pd-viewer-carousel"
+          >
+            <v-carousel-item v-for="(img, i) in images" :key="`v-${img.id || i}`">
+              <div class="pd-viewer-stage" @dblclick="toggleZoom">
+                <img
+                  :src="normalizeUrl(img.url)"
+                  :alt="`viewer-${img.id || i}`"
+                  class="pd-viewer-img"
+                  :style="{ transform: `scale(${zoom})` }"
+                />
+              </div>
+            </v-carousel-item>
+          </v-carousel>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <!-- Confirm delete producto -->
     <v-dialog v-model="deleteOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
@@ -165,12 +330,11 @@
       </v-card>
     </v-dialog>
 
+    <!-- Confirm delete imagen -->
     <v-dialog v-model="deleteImgOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar imagen</v-card-title>
-        <v-card-text>
-          ¿Eliminar imagen ID <b>#{{ deleteImg?.id }}</b>?
-        </v-card-text>
+        <v-card-text>¿Eliminar imagen ID <b>#{{ deleteImg?.id }}</b>?</v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteImgOpen = false">Cancelar</v-btn>
           <v-btn color="red" variant="flat" @click="doDeleteImage" :loading="products.loading">
@@ -203,14 +367,47 @@ const loading = ref(false);
 const item = ref(null);
 const images = ref([]);
 
-const isAdmin = computed(() => (auth.roles || []).includes("admin"));
+const deleteOpen = ref(false);
+const deleteImgOpen = ref(false);
+const deleteImg = ref(null);
+
+const activeSlide = ref(0);
+const viewerOpen = ref(false);
+const zoom = ref(1);
+
+const isAdmin = computed(() => {
+  const roles = auth.roles || [];
+  return roles.includes("admin") || roles.includes("super_admin");
+});
 
 const rubro = computed(() => item.value?.category?.parent?.name || null);
 const subrubro = computed(() => item.value?.category?.name || null);
 
-const deleteOpen = ref(false);
-const deleteImgOpen = ref(false);
-const deleteImg = ref(null);
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
+}
+
+function money(n) {
+  try {
+    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(n, 0));
+  } catch {
+    return `$ ${toNum(n, 0).toFixed(2)}`;
+  }
+}
+
+const priceList = computed(() => toNum(item.value?.price_list, 0));
+const priceDiscount = computed(() => toNum(item.value?.price_discount, 0));
+const priceReseller = computed(() => toNum(item.value?.price_reseller, 0));
+
+const hasDiscount = computed(() => priceDiscount.value > 0 && priceDiscount.value < priceList.value);
+const hasReseller = computed(() => priceReseller.value > 0);
+const discountAmount = computed(() => (hasDiscount.value ? priceList.value - priceDiscount.value : 0));
+const discountPercent = computed(() => {
+  if (!hasDiscount.value || priceList.value <= 0) return 0;
+  return Math.round((discountAmount.value / priceList.value) * 100);
+});
 
 watch(
   () => props.open,
@@ -241,7 +438,12 @@ async function load() {
   try {
     const p = await products.fetchOne(id, { force: true });
     item.value = p || null;
-    images.value = await products.fetchImages(id);
+
+    const imgs = await products.fetchImages(id);
+    images.value = Array.isArray(imgs) ? imgs : [];
+
+    activeSlide.value = 0;
+    zoom.value = 1;
   } finally {
     loading.value = false;
   }
@@ -254,20 +456,6 @@ function close() {
 function onEdit() {
   if (!item.value?.id) return;
   emit("edit", { id: item.value.id });
-}
-
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
-}
-
-function money(n) {
-  try {
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(n, 0));
-  } catch {
-    return `$ ${toNum(n, 0).toFixed(2)}`;
-  }
 }
 
 function askRemoveImage(img) {
@@ -291,12 +479,31 @@ async function doDeleteProduct() {
   const pid = Number(props.productId);
   if (!pid) return;
 
-  const ok = await products.remove(pid);
-  if (ok) {
+  const r = await products.remove(pid);
+  if (r?.ok === true) {
     deleteOpen.value = false;
     emit("deleted", { id: pid });
     close();
   }
+}
+
+function openViewerAt(i) {
+  activeSlide.value = Number(i || 0);
+  zoom.value = 1;
+  viewerOpen.value = true;
+}
+
+function zoomIn() {
+  zoom.value = Math.min(3, Math.round((zoom.value + 0.25) * 100) / 100);
+}
+function zoomOut() {
+  zoom.value = Math.max(1, Math.round((zoom.value - 0.25) * 100) / 100);
+}
+function resetZoom() {
+  zoom.value = 1;
+}
+function toggleZoom() {
+  zoom.value = zoom.value === 1 ? 2 : 1;
 }
 </script>
 
@@ -305,25 +512,88 @@ async function doDeleteProduct() {
 .pd-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; }
 .pd-actions { display:flex; align-items:center; gap:10px; }
 .pd-body { padding:18px 20px 22px; }
+
 .pd-summary { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+
 .pd-card { border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 24px rgba(0,0,0,.05); padding:16px; }
+
 .pd-card-title { display:flex; align-items:center; gap:8px; font-weight:800; margin-bottom:10px; }
+
 .pd-kv { display:grid; gap:8px; }
 .pd-kv-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .pd-k { font-size:12px; opacity:.7; }
-.pd-v { font-size:14px; font-weight:600; text-align:right; }
+.pd-v { font-size:14px; font-weight:700; text-align:right; }
+
 .pd-prices { display:grid; gap:10px; }
 .pd-price { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
 .pd-price-k { font-size:12px; opacity:.7; }
-.pd-price-v { font-size:15px; font-weight:800; }
+.pd-price-v { font-size:15px; font-weight:900; }
+.pd-strike { text-decoration: line-through; opacity: .6; font-weight: 700; }
 
-.pd-img-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
-@media (max-width:700px){ .pd-img-grid { grid-template-columns: 1fr; } }
+.pd-carousel { display:grid; gap:12px; }
+.pd-carousel-inner { border-radius: 18px; overflow:hidden; border:1px solid rgba(0,0,0,.06); box-shadow:0 10px 24px rgba(0,0,0,.06); }
+.pd-slide { position:relative; width:100%; height:100%; }
+.pd-slide-img { width:100%; height:360px; }
+.pd-img-ph { height:360px; display:grid; place-items:center; background: rgba(0,0,0,.03); }
 
-.pd-img-tile { border-radius:14px; overflow:hidden; border:1px solid rgba(0,0,0,.06); box-shadow:0 8px 18px rgba(0,0,0,.06); }
-.pd-img-wrap { position:relative; width:100%; height:210px; background:rgba(0,0,0,.03); }
-.pd-img { width:100%; height:100%; object-fit:cover; display:block; transform:scale(1); transition:transform 180ms ease; }
-.pd-img-wrap:hover .pd-img { transform:scale(1.03); }
-.pd-img-overlay { position:absolute; left:10px; right:10px; bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.pd-img-del { box-shadow: 0 10px 24px rgba(0,0,0,.18); }
+.pd-slide-overlay {
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  pointer-events: none;
+}
+.pd-slide-overlay :deep(.v-btn),
+.pd-slide-overlay :deep(.v-chip) { pointer-events: auto; }
+
+.pd-thumbs {
+  display:flex;
+  gap:10px;
+  overflow:auto;
+  padding: 2px 2px 6px;
+}
+.pd-thumb {
+  width: 82px;
+  height: 54px;
+  border-radius: 12px;
+  overflow:hidden;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(0,0,0,.03);
+  flex: 0 0 auto;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+.pd-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.pd-thumb:hover { transform: translateY(-1px); box-shadow: 0 10px 18px rgba(0,0,0,.10); }
+.pd-thumb.active { border-color: rgba(25,118,210,.6); box-shadow: 0 10px 18px rgba(25,118,210,.12); }
+
+.pd-viewer { background: rgb(var(--v-theme-background)); }
+.pd-viewer-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding: 12px 14px;
+}
+.pd-viewer-body { height: calc(100vh - 60px); }
+
+.pd-viewer-stage {
+  height: calc(100vh - 120px);
+  display:grid;
+  place-items:center;
+  background: rgba(0,0,0,.92);
+  overflow:auto;
+}
+.pd-viewer-img {
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center center;
+  transition: transform 120ms ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 </style>

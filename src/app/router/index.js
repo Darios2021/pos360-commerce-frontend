@@ -1,58 +1,88 @@
 // src/app/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "../store/auth.store";
+import { useAuthStore } from "@/app/store/auth.store";
 
-// Dashboard / Auth
-const Home = () => import("../../modules/dashboard/pages/DashboardHome.vue");
-const Login = () => import("../../modules/auth/pages/LoginPage.vue");
+// Layouts
+import AppShell from "@/app/layouts/AppShell.vue";
+import AuthLayout from "@/app/layouts/AuthLayout.vue";
 
-// Inventario / Productos
-const Products = () => import("../../modules/products/pages/ProductsListPage.vue");
-const ProductProfile = () => import("../../modules/products/pages/ProductProfilePage.vue");
-const ImportProducts = () => import("../../modules/import/page/ImportProductsPage.vue");
-const Stock = () => import("../../modules/stock/pages/StockPage.vue");
-const Categories = () => import("../../modules/categories/pages/CategoriesPage.vue");
+// Pages
+import LoginPage from "@/modules/auth/pages/LoginPage.vue";
+import ProfilePage from "@/modules/account/pages/ProfilePage.vue";
 
-// ✅ Inventario Admin
-const Inventory = () => import("../../modules/inventory/pages/InventoryPage.vue");
-
-// ✅ Perfil (nuevo)
-const Profile = () => import("../../modules/account/pages/ProfilePage.vue");
+// Dashboard
+import DashboardHome from "@/modules/dashboard/pages/DashboardHome.vue";
 
 // POS
-const Pos = () => import("../../modules/pos/pages/PosPage.vue");
-const PosSales = () => import("../../modules/pos/pages/PosSalesPage.vue");
-const PosSaleDetail = () => import("../../modules/pos/pages/PosSaleDetailPage.vue");
+import PosPage from "@/modules/pos/pages/PosPage.vue";
+import PosSalesPage from "@/modules/pos/pages/PosSalesPage.vue";
+import PosSaleDetailPage from "@/modules/pos/pages/PosSaleDetailPage.vue";
+
+// Products
+import ProductsListPage from "@/modules/products/pages/ProductsListPage.vue";
+import ProductProfilePage from "@/modules/products/pages/ProductProfilePage.vue";
+
+// Import
+import ImportProductsPage from "@/modules/import/pages/ImportProductsPage.vue";
+
+// Configuración
+import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
+import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
+import StockPage from "@/modules/stock/pages/StockPage.vue";
 
 const routes = [
-  { path: "/", name: "home", component: Home, meta: { requiresAuth: true } },
-
-  // Productos
-  { path: "/products", name: "products", component: Products, meta: { requiresAuth: true } },
-  { path: "/products/import", name: "productsImport", component: ImportProducts, meta: { requiresAuth: true } },
-  { path: "/products/:id", name: "productProfile", component: ProductProfile, meta: { requiresAuth: true } },
-
-  // ✅ Inventario (admin)
+  // =========================
+  // AUTH (sin header/drawer)
+  // =========================
   {
-    path: "/inventory",
-    name: "inventory",
-    component: Inventory,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+    path: "/auth",
+    component: AuthLayout,
+    children: [
+      { path: "login", name: "login", component: LoginPage, meta: { public: true } },
+      { path: "", redirect: { name: "login" } },
+    ],
   },
 
-  { path: "/stock", name: "stock", component: Stock, meta: { requiresAuth: true } },
-  { path: "/categories", name: "categories", component: Categories, meta: { requiresAuth: true } },
+  // =========================
+  // APP (con header/drawer)
+  // =========================
+  {
+    path: "/",
+    component: AppShell,
+    meta: { requiresAuth: true },
+    children: [
+      // Home real (Dashboard)
+      { path: "", name: "home", component: DashboardHome },
 
-  // ✅ Perfil (nuevo)
-  { path: "/account/profile", name: "profile", component: Profile, meta: { requiresAuth: true } },
+      // POS
+      { path: "pos", name: "pos", component: PosPage },
+      { path: "pos/sales", name: "posSales", component: PosSalesPage },
+      { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
-  // POS
-  { path: "/pos", name: "pos", component: Pos, meta: { requiresAuth: true } },
-  { path: "/pos/sales", name: "posSales", component: PosSales, meta: { requiresAuth: true } },
-  { path: "/pos/sales/:id", name: "posSaleDetail", component: PosSaleDetail, meta: { requiresAuth: true } },
+      // Products
+      { path: "products", name: "products", component: ProductsListPage },
+      { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
-  // Auth
-  { path: "/auth/login", name: "login", component: Login, meta: { layout: "auth" } },
+      // Import
+      { path: "products-import", name: "productsImport", component: ImportProductsPage },
+
+      // Configuración
+      { path: "stock", name: "stock", component: StockPage },
+      {
+        path: "inventory",
+        name: "inventory",
+        component: InventoryPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+      { path: "categories", name: "categories", component: CategoriesPage },
+
+      // Cuenta
+      { path: "profile", name: "profile", component: ProfilePage },
+    ],
+  },
+
+  // fallback
+  { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
 ];
 
 const router = createRouter({
@@ -61,21 +91,25 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 });
 
+// =========================
+// ✅ Guard: auth + roles
+// =========================
 router.beforeEach((to) => {
   const auth = useAuthStore();
 
   if (auth.status === "idle") auth.hydrate?.();
 
-  if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
+  if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
 
-  // ✅ Gate de roles
   const roles = to.meta?.roles;
   if (roles && roles.length) {
     const r = auth.roles || [];
     const ok = roles.some((x) => r.includes(x));
     if (!ok) return { name: "home" };
   }
+
+  return true;
 });
 
 export default router;
