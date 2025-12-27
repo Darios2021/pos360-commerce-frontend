@@ -36,10 +36,6 @@
           {{ products.error }}
         </v-alert>
 
-        <v-alert v-if="apiErrorText" type="error" variant="tonal" class="mb-4">
-          {{ apiErrorText }}
-        </v-alert>
-
         <v-alert v-if="mode === 'create' && model?.id" type="success" variant="tonal" class="mb-4">
           Producto creado (ID #{{ model.id }}). Podés seguir subiendo imágenes o presionar <b>Finalizar</b>.
         </v-alert>
@@ -79,7 +75,7 @@
                   v-model="model.name"
                   label="Nombre *"
                   variant="outlined"
-                  :error="(fieldErrors.name || []).length > 0"
+                  :error="!!fieldErrors.name"
                   :error-messages="fieldErrors.name"
                 />
               </v-col>
@@ -89,7 +85,7 @@
                   v-model="model.sku"
                   label="SKU *"
                   variant="outlined"
-                  :error="(fieldErrors.sku || []).length > 0"
+                  :error="!!fieldErrors.sku"
                   :error-messages="fieldErrors.sku"
                 />
               </v-col>
@@ -111,7 +107,7 @@
                   :disabled="catsLoading"
                   clearable
                   no-data-text="No hay rubros"
-                  :error="(fieldErrors.parent_category_id || []).length > 0"
+                  :error="!!fieldErrors.parent_category_id"
                   :error-messages="fieldErrors.parent_category_id"
                 />
               </v-col>
@@ -263,9 +259,9 @@
                     :disabled="branchesLoading"
                     clearable
                     no-data-text="No hay sucursales"
-                    :error="(fieldErrors.branch_id || []).length > 0"
+                    :error="!!fieldErrors.branch_id"
                     :error-messages="fieldErrors.branch_id"
-                    hint="Esta selección define: 1) sucursal donde mirar/poner stock 2) (opcional) sucursal dueña del producto si guardás."
+                    hint="Esta selección define: 1) sucursal donde mirar/poner stock 2) sucursal dueña del producto si guardás."
                     persistent-hint
                   />
                 </v-col>
@@ -385,9 +381,7 @@
         </v-btn>
 
         <div class="d-flex ga-2">
-          <v-btn variant="tonal" @click="close" :disabled="products.loading || uploading || savingStock">
-            Cancelar
-          </v-btn>
+          <v-btn variant="tonal" @click="close" :disabled="products.loading || uploading || savingStock">Cancelar</v-btn>
 
           <v-btn
             v-if="mode === 'create' && model?.id"
@@ -463,8 +457,6 @@ const openLocal = ref(false);
 const tab = ref("datos");
 const hydrating = ref(false);
 
-const apiErrorText = ref("");
-
 const model = ref({
   id: null,
   name: "",
@@ -480,8 +472,8 @@ const model = ref({
   price_list: 0,
   price_discount: 0,
   price_reseller: 0,
-  parent_category_id: null,
-  category_id: null,
+  parent_category_id: null, // Rubro
+  category_id: null,        // Subrubro
 });
 
 // ✅ admin detector robusto
@@ -508,11 +500,10 @@ const subcategories = computed(() => categories.childrenByParent(model.value.par
 const branches = ref([]);
 const branchesLoading = ref(false);
 
-// ✅ stock state separado: actual vs asignar
 const stock = ref({
-  branch_id: null,      // sucursal "destino" / efectiva para ver stock
-  current_qty: 0,       // stock real (readonly)
-  assign_qty: 0,        // cantidad a asignar con botón
+  branch_id: null,
+  current_qty: 0,
+  assign_qty: 0,
 });
 
 const savingStock = ref(false);
@@ -540,12 +531,12 @@ const productOwnerBranchLabel = computed(() => {
   return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${bid}`;
 });
 
-/** errores (arrays) */
+/** errores */
 const fieldErrors = ref({
-  name: [],
-  sku: [],
-  branch_id: [],
-  parent_category_id: [],
+  name: "",
+  sku: "",
+  branch_id: "",
+  parent_category_id: "",
 });
 
 const snack = ref({ show: false, text: "" });
@@ -571,7 +562,7 @@ function debugClear() {
 }
 
 function clearFieldErrors() {
-  fieldErrors.value = { name: [], sku: [], branch_id: [], parent_category_id: [] };
+  fieldErrors.value = { name: "", sku: "", branch_id: "", parent_category_id: "" };
 }
 
 function toInt(v, d = 0) {
@@ -579,9 +570,6 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
-/**
- * Si viene category_id sin parent_category_id, lo inferimos.
- */
 function inferParentIdFromCategoryId(categoryId) {
   const cid = toInt(categoryId, 0);
   if (!cid) return null;
@@ -609,6 +597,16 @@ function syncRubroFromSubrubro() {
   }
 }
 
+function normalizeApiError(e) {
+  const d = e?.response?.data || e?.data || null;
+  const msg =
+    d?.message ||
+    d?.error ||
+    e?.message ||
+    "Error inesperado. Revisá consola/servidor.";
+  return { data: d, message: String(msg) };
+}
+
 async function loadBranches() {
   branchesLoading.value = true;
   try {
@@ -630,11 +628,9 @@ async function forceReloadData() {
   } catch (e) {
     debugLog("ERROR recargando categorías", e?.message || e);
   }
-
   await loadBranches();
 }
 
-// ✅ trae stock actual real (según effectiveBranchId)
 async function refreshCurrentStock() {
   const pid = toInt(model.value.id, 0);
   const bid = toInt(effectiveBranchId.value, 0);
@@ -659,7 +655,6 @@ watch(
     openLocal.value = v;
     if (!v) return;
 
-    apiErrorText.value = "";
     hydrating.value = true;
     tab.value = "datos";
     clearFieldErrors();
@@ -669,7 +664,6 @@ watch(
     await categories.fetchAll(false);
     await loadBranches();
 
-    // ✅ cloná el item (no lo uses directo) para no mutar el listado
     const it = props.item ? JSON.parse(JSON.stringify(props.item)) : null;
 
     model.value = {
@@ -693,28 +687,19 @@ watch(
 
     syncRubroFromSubrubro();
 
-    // ✅ stock defaults
     stock.value = { branch_id: null, current_qty: 0, assign_qty: 0 };
 
     if (isAdmin.value) {
-      // admin: por defecto ver stock según branch_id actual del producto
       stock.value.branch_id = toInt(it?.branch_id, 0) || null;
     } else {
-      // user: su branch fijo
       stock.value.branch_id = userBranchId.value;
     }
 
-    // ✅ si es edit, pedí el producto con stock_qty del backend (ya lo agregamos en getOne)
     if (model.value.id) {
-      try {
-        await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
-      } catch (e) {
-        debugLog("ERROR fetchOne()", e?.message || e);
-      }
+      await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
       await refreshCurrentStock();
     }
 
-    // imágenes
     existingImages.value = [];
     newFiles.value = [];
     if (model.value.id) await loadImages();
@@ -724,7 +709,6 @@ watch(
   { immediate: true }
 );
 
-// ✅ cuando cambia la sucursal efectiva (admin cambia select), refrescá stock actual
 watch(
   () => effectiveBranchId.value,
   async () => {
@@ -773,106 +757,21 @@ function finalize() {
 
 function validateBeforeSave() {
   clearFieldErrors();
-  apiErrorText.value = "";
 
-  if (!String(model.value.name || "").trim()) fieldErrors.value.name.push("El nombre es obligatorio.");
-  if (!String(model.value.sku || "").trim()) fieldErrors.value.sku.push("El SKU es obligatorio.");
-  if (!model.value.parent_category_id) fieldErrors.value.parent_category_id.push("Elegí un rubro.");
+  if (!String(model.value.name || "").trim()) fieldErrors.value.name = "El nombre es obligatorio.";
+  if (!String(model.value.sku || "").trim()) fieldErrors.value.sku = "El SKU es obligatorio.";
+  if (!model.value.parent_category_id) fieldErrors.value.parent_category_id = "Elegí un rubro.";
 
-  // ✅ Admin: en create exigimos sucursal (porque define branch_id del producto)
   if (props.mode === "create" && isAdmin.value && !stock.value.branch_id) {
-    fieldErrors.value.branch_id.push("Elegí una sucursal.");
+    fieldErrors.value.branch_id = "Elegí una sucursal.";
   }
 
-  const ok =
-    (fieldErrors.value.name || []).length === 0 &&
-    (fieldErrors.value.sku || []).length === 0 &&
-    (fieldErrors.value.branch_id || []).length === 0 &&
-    (fieldErrors.value.parent_category_id || []).length === 0;
-
-  return ok;
-}
-
-function goToTabForField(field) {
-  const f = String(field || "").toLowerCase();
-  if (["name", "sku", "code", "barcode", "brand", "model", "description", "parent_category_id", "category_id"].includes(f)) {
-    tab.value = "datos";
-    return;
-  }
-  if (["price_list", "price_discount", "price_reseller", "price"].includes(f)) {
-    tab.value = "precios";
-    return;
-  }
-  if (["is_active", "is_new", "is_promo"].includes(f)) {
-    tab.value = "estado";
-    return;
-  }
-  if (["branch_id"].includes(f)) {
-    tab.value = "stock";
-    return;
-  }
-}
-
-function applyBackendErrors(err) {
-  // Esperamos algo como:
-  // err = { status, message, code, errors: [{ field, message }] }
-  // o backend: { ok:false, message, errors:[...] }
-  // o Sequelize: { errors:[{ path, message }] }
-  apiErrorText.value = "";
-
-  const status = err?.status || err?.response?.status || 0;
-  const message =
-    err?.message ||
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    (typeof err?.response?.data === "string" ? "Error en el servidor." : "") ||
-    "";
-
-  const errorsArr =
-    err?.errors ||
-    err?.response?.data?.errors ||
-    err?.response?.data?.validationErrors ||
-    err?.response?.data?.details ||
-    [];
-
-  clearFieldErrors();
-
-  const mapped = [];
-
-  if (Array.isArray(errorsArr) && errorsArr.length) {
-    for (const e of errorsArr) {
-      const field = e?.field || e?.path || e?.param || e?.key || "";
-      const msg = e?.message || e?.msg || e?.error || "Campo inválido";
-      mapped.push({ field, msg });
-    }
-  }
-
-  if (mapped.length) {
-    for (const { field, msg } of mapped) {
-      const k = String(field || "").trim();
-
-      // mapeos típicos
-      if (k === "parent_category_id") fieldErrors.value.parent_category_id.push(msg);
-      else if (k === "branch_id") fieldErrors.value.branch_id.push(msg);
-      else if (k === "name") fieldErrors.value.name.push(msg);
-      else if (k === "sku") fieldErrors.value.sku.push(msg);
-      else {
-        // si viene un campo que no tenemos, lo mostramos arriba
-        apiErrorText.value = apiErrorText.value ? `${apiErrorText.value} · ${msg}` : msg;
-      }
-
-      goToTabForField(k);
-    }
-
-    // si no seteó apiErrorText, ponemos uno genérico
-    if (!apiErrorText.value) apiErrorText.value = "Corregí los campos marcados.";
-    return;
-  }
-
-  // sin errors[] => mensaje global
-  if (message) apiErrorText.value = message;
-  else if (status >= 500) apiErrorText.value = "Error interno del servidor. Revisá logs del backend.";
-  else apiErrorText.value = "No se pudo completar la acción.";
+  return (
+    !fieldErrors.value.name &&
+    !fieldErrors.value.sku &&
+    !fieldErrors.value.branch_id &&
+    !fieldErrors.value.parent_category_id
+  );
 }
 
 const stockInfo = computed(() => {
@@ -930,8 +829,9 @@ async function doDeleteImage() {
     await loadImages();
     snack.value = { show: true, text: "Imagen eliminada" };
   } catch (e) {
-    debugLog("ERROR removeImage", e?.message || e);
-    snack.value = { show: true, text: e?.message || "No se pudo eliminar la imagen" };
+    const { message } = normalizeApiError(e);
+    debugLog("ERROR removeImage", message);
+    snack.value = { show: true, text: message || "No se pudo eliminar la imagen" };
   } finally {
     uploading.value = false;
   }
@@ -960,14 +860,14 @@ async function uploadSelected() {
     await loadImages();
     snack.value = { show: true, text: "Imágenes subidas OK" };
   } catch (e) {
-    debugLog("ERROR uploadImages", e?.message || e);
-    snack.value = { show: true, text: e?.message || "No se pudieron subir las imágenes" };
+    const { message } = normalizeApiError(e);
+    debugLog("ERROR uploadImages", message);
+    snack.value = { show: true, text: message || "No se pudieron subir las imágenes" };
   } finally {
     uploading.value = false;
   }
 }
 
-/** stock init */
 async function saveStockNow() {
   const pid = model.value.id;
   const bid = effectiveBranchId.value;
@@ -993,8 +893,9 @@ async function saveStockNow() {
 
     await refreshCurrentStock();
   } catch (e) {
-    debugLog("ERROR initStock", e?.message || e);
-    snack.value = { show: true, text: e?.message || "No se pudo asignar stock" };
+    const { message } = normalizeApiError(e);
+    debugLog("ERROR initStock", message);
+    snack.value = { show: true, text: message || "No se pudo asignar stock" };
   } finally {
     savingStock.value = false;
   }
@@ -1012,42 +913,52 @@ async function doDeleteProduct() {
     snack.value = { show: true, text: "Producto eliminado" };
     close();
   } catch (e) {
-    debugLog("ERROR delete product", e?.message || e);
-    snack.value = { show: true, text: e?.message || "No se pudo eliminar el producto" };
+    const { message } = normalizeApiError(e);
+    debugLog("ERROR delete product", message);
+    snack.value = { show: true, text: message || "No se pudo eliminar el producto" };
   }
+}
+
+function normalizeEntity(res) {
+  // Acepta: {id...} o {ok:true,data:{id...}} o {data:{id...}}
+  if (!res) return null;
+  if (res?.id) return res;
+  if (res?.data?.id) return res.data;
+  return null;
 }
 
 async function save() {
   if (!auth.isAuthed) return;
 
-  apiErrorText.value = "";
   syncRubroFromSubrubro();
 
   if (!validateBeforeSave()) {
-    tab.value = (fieldErrors.value.branch_id || []).length ? "stock" : "datos";
+    tab.value = fieldErrors.value.branch_id ? "stock" : "datos";
     debugLog("VALIDATION FAIL", fieldErrors.value);
     return;
   }
 
+  // ✅ IMPORTANTE: backend tiene category_id + subcategory_id
   const payload = {
-    name: model.value.name,
-    sku: model.value.sku,
-    code: model.value.code,
-    barcode: model.value.barcode,
-    description: model.value.description,
-    brand: model.value.brand,
-    model: model.value.model,
-    is_active: model.value.is_active,
-    is_new: model.value.is_new,
-    is_promo: model.value.is_promo,
-    price_list: model.value.price_list,
-    price_discount: model.value.price_discount,
-    price_reseller: model.value.price_reseller,
-    parent_category_id: model.value.parent_category_id,
-    category_id: model.value.category_id || null,
+    name: String(model.value.name || "").trim(),
+    sku: String(model.value.sku || "").trim(),
+    code: model.value.code || null,
+    barcode: model.value.barcode || null,
+    description: model.value.description || null,
+    brand: model.value.brand || null,
+    model: model.value.model || null,
+    is_active: !!model.value.is_active,
+    is_new: !!model.value.is_new,
+    is_promo: !!model.value.is_promo,
+    price_list: Number(model.value.price_list || 0),
+    price_discount: Number(model.value.price_discount || 0),
+    price_reseller: Number(model.value.price_reseller || 0),
+
+    // ✅ Rubro/Subrubro -> backend
+    category_id: model.value.parent_category_id ? toInt(model.value.parent_category_id, null) : null,
+    subcategory_id: model.value.category_id ? toInt(model.value.category_id, null) : null,
   };
 
-  // ✅ Admin define sucursal dueña del producto
   if (isAdmin.value) {
     const bid = toInt(stock.value.branch_id, 0);
     if (bid > 0) payload.branch_id = bid;
@@ -1062,28 +973,27 @@ async function save() {
   try {
     // EDIT
     if (props.mode === "edit" && model.value.id) {
-      const updated = await products.update(model.value.id, payload);
-      debugLog("UPDATE result", updated);
+      const res = await products.update(model.value.id, payload);
+      debugLog("UPDATE result", res);
 
-      // soporta store que devuelve {ok,data} o directamente el item
-      const u = updated?.data || updated;
-      if (u?.id) {
-        emit("saved", { id: u.id });
+      const updated = normalizeEntity(res);
+      if (updated?.id) {
+        emit("saved", { id: updated.id });
         close();
       } else {
-        snack.value = { show: true, text: "No se pudo actualizar (respuesta inesperada)." };
+        snack.value = { show: true, text: products.error || "No se pudo actualizar." };
       }
       return;
     }
 
     // CREATE
-    const created = await products.create(payload);
-    debugLog("CREATE result", created);
+    const res = await products.create(payload);
+    debugLog("CREATE result", res);
 
-    const c = created?.data || created;
-    if (c?.id) {
-      model.value.id = c.id;
-      emit("saved", { id: c.id });
+    const created = normalizeEntity(res);
+    if (created?.id) {
+      model.value.id = created.id;
+      emit("saved", { id: created.id });
 
       tab.value = "imagenes";
       if (newFiles.value?.length) {
@@ -1092,24 +1002,24 @@ async function save() {
         await loadImages();
       }
     } else {
-      snack.value = { show: true, text: "No se pudo crear (respuesta inesperada)." };
+      snack.value = { show: true, text: products.error || "No se pudo crear el producto." };
     }
   } catch (e) {
-    debugLog("SAVE ERROR", e);
-    applyBackendErrors(e);
+    const { data, message } = normalizeApiError(e);
+    debugLog("SAVE ERROR", { message, data });
 
-    // si hay error por campos, mandamos a la tab correspondiente
-    if (
-      (fieldErrors.value.name || []).length ||
-      (fieldErrors.value.sku || []).length ||
-      (fieldErrors.value.parent_category_id || []).length
-    ) {
-      tab.value = "datos";
-    } else if ((fieldErrors.value.branch_id || []).length) {
-      tab.value = "stock";
+    // si backend manda errores por campo: {errors:{sku:"...",name:"..."}}
+    const errs = data?.errors || null;
+    if (errs && typeof errs === "object") {
+      if (errs.name) fieldErrors.value.name = String(errs.name);
+      if (errs.sku) fieldErrors.value.sku = String(errs.sku);
+      if (errs.branch_id) fieldErrors.value.branch_id = String(errs.branch_id);
+      if (errs.parent_category_id) fieldErrors.value.parent_category_id = String(errs.parent_category_id);
     }
 
-    snack.value = { show: true, text: apiErrorText.value || "No se pudo guardar." };
+    snack.value = { show: true, text: message };
+    // opcional: reflejar en el alert superior si tu store lo usa
+    products.error = message;
   }
 }
 </script>

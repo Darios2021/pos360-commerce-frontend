@@ -43,7 +43,12 @@
               title="Cuenta"
             >
               <v-avatar size="34" class="pos-avatar-btn">
-                <v-img v-if="userAvatar" :src="userAvatar" cover />
+                <v-img
+                  v-if="userAvatar"
+                  :key="userAvatar"
+                  :src="userAvatar"
+                  cover
+                />
                 <span v-else class="text-caption font-weight-bold">
                   {{ userInitials }}
                 </span>
@@ -66,7 +71,12 @@
             <!-- Identity -->
             <div class="px-4 pt-3 pb-2 text-center">
               <v-avatar size="84" class="mx-auto mb-3 pos-account-avatar">
-                <v-img v-if="userAvatar" :src="userAvatar" cover />
+                <v-img
+                  v-if="userAvatar"
+                  :key="userAvatar + '-big'"
+                  :src="userAvatar"
+                  cover
+                />
                 <span v-else class="text-h6 font-weight-bold">
                   {{ userInitials }}
                 </span>
@@ -257,6 +267,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth.store";
+import { loadAuth } from "../utils/storage";
 
 const drawer = ref(true);
 const rail = ref(false);
@@ -270,26 +281,57 @@ const isAdmin = computed(() => {
   return r.includes("admin") || r.includes("super_admin");
 });
 
+// ✅ resolver robusto: auth.user + storage + variantes de nombre de campo
 const userAvatar = computed(() => {
   const u = auth.user || {};
-  return u.avatar_url || "";
+  const stored = loadAuth?.() || {};
+  const su = stored.user || stored.profile || {};
+
+  return (
+    u.avatar_url ||
+    u.avatarUrl ||
+    u.avatar ||
+    u.photo_url ||
+    u.image_url ||
+    u.picture ||
+    su.avatar_url ||
+    su.avatarUrl ||
+    su.avatar ||
+    su.photo_url ||
+    su.image_url ||
+    su.picture ||
+    ""
+  );
 });
 
 const userEmailOrUsername = computed(() => {
   const u = auth.user || {};
-  return u.email || u.username || "";
+  const stored = loadAuth?.() || {};
+  const su = stored.user || stored.profile || {};
+  return u.email || u.username || su.email || su.username || "";
 });
 
 const userFullName = computed(() => {
   const u = auth.user || {};
-  return [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+  const stored = loadAuth?.() || {};
+  const su = stored.user || stored.profile || {};
+
+  const first = u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "";
+  const last = u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "";
+  return [first, last].filter(Boolean).join(" ").trim();
 });
 
 const userInitials = computed(() => {
+  const stored = loadAuth?.() || {};
+  const su = stored.user || stored.profile || {};
   const u = auth.user || {};
-  const a = (u.first_name || "").trim();
-  const b = (u.last_name || "").trim();
-  return ((a[0] || "") + (b[0] || "")).toUpperCase() || "U";
+
+  const first = String(u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "").trim();
+  const last = String(u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "").trim();
+
+  const i1 = first ? first[0].toUpperCase() : "";
+  const i2 = last ? last[0].toUpperCase() : "";
+  return (i1 + i2) || "U";
 });
 
 const userRoleLabel = computed(() => {
