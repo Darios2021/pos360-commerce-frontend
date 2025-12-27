@@ -30,7 +30,7 @@
       {{ products.error }}
     </v-alert>
 
-    <!-- FILTROS (mismo estilo que Inventario) -->
+    <!-- FILTROS -->
     <v-card rounded="xl" class="pa-4 mb-4">
       <v-row dense>
         <v-col cols="12" md="4">
@@ -155,7 +155,7 @@
       </v-row>
     </v-card>
 
-    <!-- TABLA (mínimo) -->
+    <!-- TABLA -->
     <v-card rounded="xl" class="overflow-hidden">
       <v-data-table
         :headers="headers"
@@ -166,8 +166,23 @@
         :loading="products.loading"
         class="pos-table"
       >
+        <!-- Nombre + estado inactivo -->
         <template #item.name="{ item }">
-          <div class="font-weight-bold">{{ item.name }}</div>
+          <div
+            class="font-weight-bold d-flex align-center"
+            :style="isInactive(item) ? 'opacity:.55' : ''"
+          >
+            {{ item.name }}
+            <v-chip
+              v-if="isInactive(item)"
+              class="ml-2"
+              size="x-small"
+              color="grey"
+              variant="tonal"
+            >
+              Inactivo
+            </v-chip>
+          </div>
         </template>
 
         <template v-if="isAdmin" #item.branch="{ item }">
@@ -208,6 +223,7 @@
               color="red"
               @click="askDelete(item)"
               :title="'Eliminar'"
+              :disabled="isInactive(item)"
             />
           </div>
         </template>
@@ -263,7 +279,7 @@
         <v-card-text>
           ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
           <div class="text-caption text-medium-emphasis mt-2">
-            Si falla por ventas/relaciones, te va a avisar (FK).
+            Si falla por ventas/relaciones, se inactiva automáticamente.
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
@@ -272,6 +288,11 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- SNACK -->
+    <v-snackbar v-model="snack.show" :timeout="3500">
+      {{ snack.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -295,19 +316,19 @@ const isAdmin = computed(() => {
 });
 
 /* =========================
-   FILTROS (misma lógica inventario)
+   FILTROS
 ========================= */
 const q = ref("");
-const branchId = ref(null); // solo admin
+const branchId = ref(null);
 const categoryId = ref(null);
 const subcategoryId = ref(null);
 
-const stockFilter = ref("all"); // all | with | without
-const pricePresence = ref("all"); // all | with | without (0 = sin precio)
+const stockFilter = ref("all");
+const pricePresence = ref("all");
 const priceMin = ref(null);
 const priceMax = ref(null);
 
-const imagesFilter = ref("all"); // all | with | without
+const imagesFilter = ref("all");
 
 /* =========================
    UI / PAGINACIÓN
@@ -333,6 +354,14 @@ const disableOpen = ref(false);
 const disableItem = ref(null);
 
 /* =========================
+   SNACK
+========================= */
+const snack = ref({ show: false, text: "" });
+function toast(text) {
+  snack.value = { show: true, text: String(text || "") };
+}
+
+/* =========================
    HELPERS
 ========================= */
 function toNum(v, d = 0) {
@@ -342,13 +371,10 @@ function toNum(v, d = 0) {
 }
 
 function priceListNumber(it) {
-  // ✅ 0 = sin precio
   return toNum(it?.price_list, 0);
 }
 
 function stockQtyNumber(it) {
-  // ojo: products table no tiene stock, depende de tu backend list
-  // fallback a 0
   const v = it?.stock_qty ?? it?.stock ?? it?.qty ?? it?.quantity ?? 0;
   return toNum(v, 0);
 }
@@ -357,19 +383,32 @@ function stockLabel(it) {
   return stockQtyNumber(it).toFixed(3);
 }
 
-// limpia "AAA > BBB" -> "AAA / BBB"
 function cleanTrail(s) {
   if (!s) return "";
   return String(s).replace(/\s*>\s*/g, " / ").trim();
 }
 
+function isInactive(it) {
+  return it?.is_active === false || Number(it?.is_active) === 0;
+}
+
+/** Soporta remove() boolean o {ok,code,message} */
+function normalizeRemoveResult(r) {
+  if (typeof r === "boolean") {
+    return { ok: r, code: r ? null : "DELETE_FAILED", message: r ? null : "No se pudo eliminar" };
+  }
+  if (r && typeof r === "object") {
+    return { ok: !!r.ok, code: r.code || null, message: r.message || null };
+  }
+  return { ok: false, code: "DELETE_FAILED", message: "No se pudo eliminar" };
+}
+
 /* =========================
-   BRANCHES (nombre real)
+   BRANCHES
 ========================= */
 const branches = ref([]);
 
 async function loadBranchesSafe() {
-  // tu ProductFormDialog ya usaba products.fetchBranches()
   if (typeof products.fetchBranches !== "function") return;
   try {
     const arr = await products.fetchBranches();
@@ -396,9 +435,7 @@ function branchColor(id) {
 }
 
 /* =========================
-   CATEGORÍAS (nombres reales)
-   - usa associations: item.category / item.category.parent
-   - fallback: arma desde items
+   CATEGORÍAS
 ========================= */
 const categoryItems = computed(() => {
   const map = new Map();
@@ -462,7 +499,6 @@ const normalized = computed(() => {
     const rubro = x?.category?.parent?.name || null;
     const subrubro = x?.category?.name || null;
 
-    // imágenes: si el backend no manda, default 0
     const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
 
     return {
@@ -477,7 +513,8 @@ const normalized = computed(() => {
 });
 
 /* =========================
-   FILTRADO (client-side, y paginación correcta)
+   FILTRADO
+   ✅ Ocultamos inactivos para TODOS (admin y user)
 ========================= */
 const filteredAll = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
@@ -488,24 +525,19 @@ const filteredAll = computed(() => {
   const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
 
   return normalized.value.filter((it) => {
-    // ✅ usuarios no ven inactivos
-    if (!isAdmin.value && !it.is_active) return false;
+    // ✅ ocultar inactivos para todos
+    if (isInactive(it)) return false;
 
-    // q
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    // branch (admin)
     if (isAdmin.value && branchId.value && Number(it.branch_id) !== Number(branchId.value)) return false;
 
-    // rubro/subrubro
     if (pid && Number(it?.category?.parent?.id || 0) !== pid) return false;
     if (cid && Number(it?.category?.id || 0) !== cid) return false;
 
-    // stock
     if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
     if (stockFilter.value === "without" && !(it._stock_num <= 0)) return false;
 
-    // precio (lista): ✅ 0 = sin precio
     const pl = it._price_list_num;
     if (pricePresence.value === "with" && !(pl > 0)) return false;
     if (pricePresence.value === "without" && !(pl <= 0)) return false;
@@ -513,7 +545,6 @@ const filteredAll = computed(() => {
     if (pmin !== null && pl < pmin) return false;
     if (pmax !== null && pl > pmax) return false;
 
-    // imágenes
     if (imagesFilter.value === "with" && !(it.imagesCount > 0)) return false;
     if (imagesFilter.value === "without" && !(it.imagesCount <= 0)) return false;
 
@@ -529,7 +560,6 @@ const pagedRows = computed(() => {
   return filteredAll.value.slice(start, start + l);
 });
 
-// si cambian filtros => vuelve a página 1
 watch(
   () => [
     q.value,
@@ -550,12 +580,11 @@ watch(
 );
 
 /* =========================
-   HEADERS MÍNIMOS
+   HEADERS
 ========================= */
 const headers = computed(() => {
   const base = [
     { title: "Nombre", key: "name", sortable: false },
-    // sucursal admin
     { title: "Rubro", key: "rubro", sortable: false },
     { title: "Subrubro", key: "subrubro", sortable: false },
     { title: "Stock", key: "stock", sortable: false, align: "end" },
@@ -645,8 +674,14 @@ function askDisable(item) {
 
 async function doDisable() {
   if (!disableItem.value?.id) return;
-  const ok = await products.update(disableItem.value.id, { is_active: false });
-  if (ok) {
+
+  try {
+    const updated = await products.update(disableItem.value.id, { is_active: false });
+    if (!updated?.id) throw new Error(products.error || "No se pudo inactivar");
+    toast("Producto inactivado");
+  } catch (e) {
+    toast(e?.message || "No se pudo inactivar");
+  } finally {
     disableOpen.value = false;
     disableItem.value = null;
     await reload();
@@ -655,8 +690,29 @@ async function doDisable() {
 
 async function doDelete() {
   if (!deleteItem.value?.id) return;
-  const ok = await products.remove(deleteItem.value.id);
-  if (ok) {
+
+  const id = Number(deleteItem.value.id);
+
+  try {
+    const r0 = await products.remove(id);
+    const r = normalizeRemoveResult(r0);
+
+    if (r.ok) {
+      toast("Producto eliminado");
+      return;
+    }
+
+    if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
+      const updated = await products.update(id, { is_active: false });
+      if (!updated?.id) throw new Error(products.error || "No se pudo inactivar (fallback FK)");
+      toast("No se pudo borrar (FK). Se inactivó.");
+      return;
+    }
+
+    throw new Error(r.message || products.error || "No se pudo eliminar");
+  } catch (e) {
+    toast(e?.message || "No se pudo eliminar");
+  } finally {
     deleteOpen.value = false;
     deleteItem.value = null;
     await reload();
@@ -666,15 +722,40 @@ async function doDelete() {
 async function bulkDisableOrDelete() {
   if (!selectedIds.value?.length) return;
 
-  for (const id of selectedIds.value) {
-    if (isAdmin.value) {
-      await products.remove(Number(id));
-    } else {
-      await products.update(Number(id), { is_active: false });
+  const ids = [...selectedIds.value].map((x) => Number(x)).filter((x) => x > 0);
+
+  let deleted = 0;
+  let inactivated = 0;
+  let failed = 0;
+
+  for (const id of ids) {
+    try {
+      if (isAdmin.value) {
+        const r = normalizeRemoveResult(await products.remove(id));
+        if (r.ok) {
+          deleted++;
+        } else if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
+          const updated = await products.update(id, { is_active: false });
+          if (updated?.id) inactivated++;
+          else failed++;
+        } else {
+          failed++;
+        }
+      } else {
+        const updated = await products.update(id, { is_active: false });
+        if (updated?.id) inactivated++;
+        else failed++;
+      }
+    } catch {
+      failed++;
     }
   }
 
   selectedIds.value = [];
+
+  if (isAdmin.value) toast(`Eliminados: ${deleted} · Inactivados(FK): ${inactivated} · Fallidos: ${failed}`);
+  else toast(`Inactivados: ${inactivated} · Fallidos: ${failed}`);
+
   await reload();
 }
 
@@ -684,10 +765,7 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  // trae lista (server), filtramos client-side
   await products.fetchList({ q: "", page: 1, limit: 1000 });
-
-  // trae branches para nombres reales
   await loadBranchesSafe();
 }
 

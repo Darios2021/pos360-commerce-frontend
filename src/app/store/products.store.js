@@ -28,15 +28,20 @@ function unwrapMeta(res) {
   return res.meta ?? res.pagination ?? res.data?.meta ?? {};
 }
 
+// ✅ Unwrap resultado OK genérico
+function unwrapOk(res) {
+  if (!res) return { ok: false, code: "NO_RESPONSE", message: "Sin respuesta del servidor" };
+  if (typeof res.ok === "boolean") {
+    return { ok: res.ok, code: res.code || null, message: res.message || null, data: res.data ?? null };
+  }
+  return { ok: true, code: null, message: null, data: res.data ?? null };
+}
+
 // Detecta si un error es 404 de ruta
 function is404(err) {
   const code = err?.response?.status;
   const msg = String(err?.response?.data?.message || err?.message || "");
-  return (
-    code === 404 ||
-    msg.toLowerCase().includes("not found") ||
-    msg.toLowerCase().includes("ruta no encontrada")
-  );
+  return code === 404 || msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("ruta no encontrada");
 }
 
 export const useProductsStore = defineStore("products", {
@@ -63,11 +68,15 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ✅ GET /products
-    async fetchList({ q = "", page = 1, limit = 20 } = {}) {
+    async fetchList({ q = "", page = 1, limit = 20, branch_id = null } = {}) {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await http.get("/products", { params: { q, page, limit } });
+        const params = { q, page, limit };
+        const bid = toInt(branch_id, 0);
+        if (bid > 0) params.branch_id = bid; // admin filtra stock_qty por sucursal
+
+        const { data } = await http.get("/products", { params });
 
         const list = unwrapList(data);
         const meta = unwrapMeta(data);
@@ -87,8 +96,8 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ GET /products/:id
-    async fetchOne(id, { force = false } = {}) {
+    // ✅ GET /products/:id (con branch_id opcional => stock_qty correcto)
+    async fetchOne(id, { force = false, branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) return null;
 
@@ -97,14 +106,24 @@ export const useProductsStore = defineStore("products", {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await http.get(`/products/${pid}`);
+        const params = {};
+        const bid = toInt(branch_id, 0);
+        if (bid > 0) params.branch_id = bid;
+
+        const { data } = await http.get(`/products/${pid}`, { params });
         const one = unwrapOne(data);
 
         this.current = one || null;
 
-        if (this.current?.id) {
+        // ✅ NO pisar listado con objeto peor (evita “stock 0” al tocar lápiz)
+        if (one?.id) {
           const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
-          if (idx >= 0) this.items[idx] = this.current;
+          if (idx >= 0) {
+            const prev = this.items[idx] || {};
+            const next = { ...prev, ...one };
+            if (one.stock_qty == null && prev.stock_qty != null) next.stock_qty = prev.stock_qty;
+            this.items[idx] = next;
+          }
         }
 
         return this.current;
@@ -113,6 +132,22 @@ export const useProductsStore = defineStore("products", {
         return null;
       } finally {
         this.loading = false;
+      }
+    },
+
+    // ✅ GET /products/:id/stock?branch_id=
+    async fetchStockQty(productId, branch_id) {
+      const pid = toInt(productId, 0);
+      const bid = toInt(branch_id, 0);
+      if (!pid || !bid) return 0;
+
+      try {
+        const { data } = await http.get(`/products/${pid}/stock`, { params: { branch_id: bid } });
+        const obj = unwrapOne(data) || data?.data || null;
+        const qty = Number(obj?.qty ?? 0);
+        return Number.isFinite(qty) ? qty : 0;
+      } catch {
+        return 0;
       }
     },
 
@@ -140,21 +175,30 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ✅ PATCH /products/:id
-    async update(id, payload) {
+    async update(id, payload, { branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) throw new Error("MISSING_ID");
 
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await http.patch(`/products/${pid}`, payload);
+        const params = {};
+        const bid = toInt(branch_id, 0);
+        if (bid > 0) params.branch_id = bid;
+
+        const { data } = await http.patch(`/products/${pid}`, payload, { params });
 
         const updated = unwrapOne(data);
         this.current = updated || null;
 
         if (updated?.id) {
           const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
-          if (idx >= 0) this.items[idx] = updated;
+          if (idx >= 0) {
+            const prev = this.items[idx] || {};
+            const next = { ...prev, ...updated };
+            if (updated.stock_qty == null && prev.stock_qty != null) next.stock_qty = prev.stock_qty;
+            this.items[idx] = next;
+          }
         }
 
         return updated;
@@ -169,23 +213,31 @@ export const useProductsStore = defineStore("products", {
     // ✅ DELETE /products/:id
     async remove(id) {
       const pid = toInt(id, 0);
-      if (!pid) return false;
+      if (!pid) return { ok: false, code: "MISSING_ID", message: "ID inválido" };
 
       this.loading = true;
       this.error = null;
+
       try {
         const { data } = await http.delete(`/products/${pid}`);
-        if (data?.ok === false) throw new Error(data?.message || "DELETE_PRODUCT_FAILED");
+        const r = unwrapOk(data);
 
-        this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
-        this.total = Math.max(0, toInt(this.total, 0) - 1);
+        if (r.ok === true) {
+          this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
+          this.total = Math.max(0, toInt(this.total, 0) - 1);
+          if (this.current?.id === pid) this.current = null;
 
-        if (this.current?.id === pid) this.current = null;
+          return { ok: true, code: null, message: r.message || "Producto eliminado" };
+        }
 
-        return true;
+        return { ok: false, code: r.code || "DELETE_DENIED", message: r.message || "No se pudo eliminar" };
       } catch (e) {
         this.setError(e);
-        return false;
+        return {
+          ok: false,
+          code: `HTTP_${e?.response?.status || "ERR"}`,
+          message: e?.response?.data?.message || e?.message || "No se pudo eliminar",
+        };
       } finally {
         this.loading = false;
       }
@@ -225,7 +277,9 @@ export const useProductsStore = defineStore("products", {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        if (data?.ok === false) throw new Error(data?.message || "UPLOAD_IMAGES_FAILED");
+        const r = unwrapOk(data);
+        if (r.ok === false) throw new Error(r.message || "UPLOAD_IMAGES_FAILED");
+
         return unwrapList(data);
       } catch (e) {
         this.setError(e);
@@ -244,7 +298,8 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.delete(`/products/${pid}/images/${iid}`);
-        if (data?.ok === false) throw new Error(data?.message || "DELETE_IMAGE_FAILED");
+        const r = unwrapOk(data);
+        if (r.ok === false) throw new Error(r.message || "DELETE_IMAGE_FAILED");
         return true;
       } catch (e) {
         this.setError(e);
@@ -255,7 +310,7 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ==========================
-    // BRANCHES (para stock en admin)
+    // BRANCHES
     // ==========================
     async fetchBranches() {
       this.error = null;
@@ -269,7 +324,7 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ==========================
-    // STOCK INIT (🔥 FIX + DEBUG REAL)
+    // STOCK INIT
     // ==========================
     async initStock({ product_id, branch_id, qty }) {
       this.loading = true;
@@ -281,8 +336,6 @@ export const useProductsStore = defineStore("products", {
         qty: Number(qty || 0),
       };
 
-      // OJO: http ya tiene baseURL "/api/v1"
-      // entonces acá ponemos rutas RELATIVAS reales
       const candidates = [
         "pos/stock/init",
         "pos/stocks/init",
@@ -301,30 +354,28 @@ export const useProductsStore = defineStore("products", {
       try {
         for (const path of candidates) {
           try {
+            // eslint-disable-next-line no-console
             console.log("[initStock] TRY:", path, payload);
 
             const { data } = await http.post(path, payload);
+            const r = unwrapOk(data);
+            if (r.ok === false) throw new Error(r.message || `INIT_STOCK_FAILED (${path})`);
 
-            if (data?.ok === false) throw new Error(data?.message || `INIT_STOCK_FAILED (${path})`);
-
+            // eslint-disable-next-line no-console
             console.log("[initStock] OK:", path, data);
             return true;
           } catch (e) {
             lastErr = e;
             const status = e?.response?.status;
             const msg = String(e?.response?.data?.message || e?.message || "");
+            // eslint-disable-next-line no-console
             console.warn("[initStock] FAIL:", path, "status=", status, "msg=", msg);
 
-            // si NO es 404 => error real del backend => cortamos
             if (!is404(e)) throw e;
           }
         }
 
-        const msg =
-          lastErr?.response?.data?.message ||
-          lastErr?.message ||
-          "INIT_STOCK_ROUTE_NOT_FOUND";
-
+        const msg = lastErr?.response?.data?.message || lastErr?.message || "INIT_STOCK_ROUTE_NOT_FOUND";
         throw new Error(msg);
       } catch (e) {
         this.setError(e);

@@ -189,13 +189,38 @@
           <v-window-item value="stock">
             <v-card rounded="xl" variant="tonal" class="pa-4">
               <div class="d-flex align-center justify-space-between mb-2">
-                <div class="font-weight-bold">Sucursal + Stock inicial</div>
+                <div class="font-weight-bold">Sucursal + Stock</div>
                 <div class="text-caption text-medium-emphasis">
                   Admin elige sucursal · Usuario usa su sucursal fija
                 </div>
               </div>
 
-              <!-- ✅ USER: NO elige sucursal, PERO sí asigna stock -->
+              <!-- ✅ Sucursal dueña actual (readonly) -->
+              <v-row dense class="mb-2" v-if="mode === 'edit' && model?.id">
+                <v-col cols="12" md="8">
+                  <v-text-field
+                    :model-value="productOwnerBranchLabel"
+                    label="Sucursal dueña (actual)"
+                    variant="outlined"
+                    readonly
+                    hint="Esto es el branch_id guardado en products (dueño). No es el depósito de stock."
+                    persistent-hint
+                  />
+                </v-col>
+
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    :model-value="String(stock.current_qty)"
+                    label="Stock actual (sucursal efectiva)"
+                    variant="outlined"
+                    readonly
+                    hint="Suma de stock_balances en depósitos de esa sucursal."
+                    persistent-hint
+                  />
+                </v-col>
+              </v-row>
+
+              <!-- ✅ USER -->
               <v-row dense v-if="!isAdmin">
                 <v-col cols="12" md="8">
                   <v-text-field
@@ -210,17 +235,17 @@
 
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model.number="stock.initial_qty"
-                    label="Stock inicial"
+                    v-model.number="stock.assign_qty"
+                    label="Cantidad a asignar ahora"
                     type="number"
                     variant="outlined"
-                    hint="Se asigna a tu sucursal."
+                    hint="Esto NO es el stock actual; es lo que vas a asignar con el botón."
                     persistent-hint
                   />
                 </v-col>
               </v-row>
 
-              <!-- ✅ ADMIN: elige sucursal -->
+              <!-- ✅ ADMIN -->
               <v-row dense v-else>
                 <v-col cols="12" md="8">
                   <v-select
@@ -228,7 +253,7 @@
                     :items="branches"
                     item-title="name"
                     item-value="id"
-                    label="Sucursal *"
+                    label="Sucursal destino de stock *"
                     variant="outlined"
                     :loading="branchesLoading"
                     :disabled="branchesLoading"
@@ -236,17 +261,19 @@
                     no-data-text="No hay sucursales"
                     :error="!!fieldErrors.branch_id"
                     :error-messages="fieldErrors.branch_id"
+                    hint="Esta selección define: 1) sucursal donde mirar/poner stock 2) (opcional) sucursal dueña del producto si guardás."
+                    persistent-hint
                   />
                 </v-col>
 
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model.number="stock.initial_qty"
-                    label="Stock inicial"
+                    v-model.number="stock.assign_qty"
+                    label="Cantidad a asignar ahora"
                     type="number"
                     variant="outlined"
                     :disabled="!stock.branch_id"
-                    hint="Cantidad inicial para la sucursal seleccionada."
+                    hint="Esto NO es el stock actual; es lo que vas a asignar con el botón."
                     persistent-hint
                   />
                 </v-col>
@@ -428,8 +455,6 @@ const categories = useCategoriesStore();
 
 const openLocal = ref(false);
 const tab = ref("datos");
-
-// evita que watchers rompan durante carga
 const hydrating = ref(false);
 
 const model = ref({
@@ -451,11 +476,13 @@ const model = ref({
   category_id: null,
 });
 
-// ✅ admin detector robusto (sin depender de un formato único)
+// ✅ admin detector robusto
 const isAdmin = computed(() => {
   const u = auth?.user || {};
   const roles = Array.isArray(u.roles) ? u.roles : (Array.isArray(auth.roles) ? auth.roles : []);
-  const roleNames = roles.map((r) => (typeof r === "string" ? r : (r?.name || r?.role || ""))).map((s) => String(s).toLowerCase());
+  const roleNames = roles
+    .map((r) => (typeof r === "string" ? r : (r?.name || r?.role || "")))
+    .map((s) => String(s).toLowerCase());
   return roleNames.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)) || u?.is_admin === true;
 });
 
@@ -472,7 +499,14 @@ const subcategories = computed(() => categories.childrenByParent(model.value.par
 /** stock */
 const branches = ref([]);
 const branchesLoading = ref(false);
-const stock = ref({ branch_id: null, initial_qty: 0 });
+
+// ✅ stock state separado: actual vs asignar
+const stock = ref({
+  branch_id: null,      // sucursal "destino" / efectiva para ver stock
+  current_qty: 0,       // stock real (readonly)
+  assign_qty: 0,        // cantidad a asignar con botón
+});
+
 const savingStock = ref(false);
 
 const effectiveBranchId = computed(() => {
@@ -485,6 +519,13 @@ const userBranchLabel = computed(() => {
   if (!id) return "—";
   const found = (branches.value || []).find((b) => Number(b?.id) === Number(id));
   return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${id}`;
+});
+
+const productOwnerBranchLabel = computed(() => {
+  const bid = Number(props?.item?.branch_id || 0) || Number((products.current || {})?.branch_id || 0) || Number(stock.value.branch_id || 0) || 0;
+  if (!bid) return "—";
+  const found = (branches.value || []).find((b) => Number(b?.id) === Number(bid));
+  return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${bid}`;
 });
 
 /** errores */
@@ -503,10 +544,12 @@ const debugText = computed(() => debugLines.value.join("\n"));
 function debugLog(...args) {
   const line =
     `[${new Date().toISOString()}] ` +
-    args.map((a) => {
-      try { return typeof a === "string" ? a : JSON.stringify(a); }
-      catch { return String(a); }
-    }).join(" ");
+    args
+      .map((a) => {
+        try { return typeof a === "string" ? a : JSON.stringify(a); }
+        catch { return String(a); }
+      })
+      .join(" ");
   debugLines.value.unshift(line);
   // eslint-disable-next-line no-console
   console.debug("[ProductFormDialog]", ...args);
@@ -579,6 +622,25 @@ async function forceReloadData() {
   await loadBranches();
 }
 
+// ✅ trae stock actual real (según effectiveBranchId)
+async function refreshCurrentStock() {
+  const pid = toInt(model.value.id, 0);
+  const bid = toInt(effectiveBranchId.value, 0);
+  if (!pid || !bid) {
+    stock.value.current_qty = 0;
+    return;
+  }
+
+  try {
+    const qty = await products.fetchStockQty(pid, bid);
+    stock.value.current_qty = Number(qty || 0);
+    debugLog("stock_qty refreshed", { product_id: pid, branch_id: bid, qty: stock.value.current_qty });
+  } catch (e) {
+    stock.value.current_qty = 0;
+    debugLog("ERROR refresh stock_qty", e?.message || e);
+  }
+}
+
 watch(
   () => props.open,
   async (v) => {
@@ -594,7 +656,8 @@ watch(
     await categories.fetchAll(false);
     await loadBranches();
 
-    const it = props.item || null;
+    // ✅ cloná el item (no lo uses directo) para no mutar el listado
+    const it = props.item ? JSON.parse(JSON.stringify(props.item)) : null;
 
     model.value = {
       id: it?.id ?? null,
@@ -617,9 +680,22 @@ watch(
 
     syncRubroFromSubrubro();
 
-    // stock defaults
-    stock.value = { branch_id: null, initial_qty: 0 };
-    if (!isAdmin.value) stock.value.branch_id = userBranchId.value;
+    // ✅ stock defaults
+    stock.value = { branch_id: null, current_qty: 0, assign_qty: 0 };
+
+    if (isAdmin.value) {
+      // admin: por defecto ver stock según branch_id actual del producto
+      stock.value.branch_id = toInt(it?.branch_id, 0) || null;
+    } else {
+      // user: su branch fijo
+      stock.value.branch_id = userBranchId.value;
+    }
+
+    // ✅ si es edit, pedí el producto con stock_qty del backend (ya lo agregamos en getOne)
+    if (model.value.id) {
+      await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
+      await refreshCurrentStock();
+    }
 
     // imágenes
     existingImages.value = [];
@@ -629,6 +705,15 @@ watch(
     hydrating.value = false;
   },
   { immediate: true }
+);
+
+// ✅ cuando cambia la sucursal efectiva (admin cambia select), refrescá stock actual
+watch(
+  () => effectiveBranchId.value,
+  async () => {
+    if (hydrating.value) return;
+    await refreshCurrentStock();
+  }
 );
 
 watch(
@@ -676,7 +761,7 @@ function validateBeforeSave() {
   if (!String(model.value.sku || "").trim()) fieldErrors.value.sku = "El SKU es obligatorio.";
   if (!model.value.parent_category_id) fieldErrors.value.parent_category_id = "Elegí un rubro.";
 
-  // ✅ Admin: elegí sucursal si querés setear stock inicial desde acá (lo dejamos obligatorio al crear)
+  // ✅ Admin: en create exigimos sucursal (porque define branch_id del producto)
   if (props.mode === "create" && isAdmin.value && !stock.value.branch_id) {
     fieldErrors.value.branch_id = "Elegí una sucursal.";
   }
@@ -691,10 +776,10 @@ function validateBeforeSave() {
 
 const stockInfo = computed(() => {
   const bid = Number(effectiveBranchId.value || 0);
-  const qty = Number(stock.value.initial_qty || 0);
+  const qty = Number(stock.value.assign_qty || 0);
   if (!bid) return "";
-  if (!qty) return "Sin stock inicial (0). Podés asignarlo ahora o después.";
-  return `Se asignará stock inicial ${qty} a la sucursal ID ${bid}.`;
+  if (!qty) return "Sin asignación pendiente (0). Podés asignar stock ahora o después.";
+  return `Se asignará ${qty} a la sucursal ID ${bid}. Stock actual: ${Number(stock.value.current_qty || 0)}.`;
 });
 
 /** imágenes */
@@ -785,7 +870,7 @@ async function uploadSelected() {
 async function saveStockNow() {
   const pid = model.value.id;
   const bid = effectiveBranchId.value;
-  const qty = Number(stock.value.initial_qty || 0);
+  const qty = Number(stock.value.assign_qty || 0);
 
   if (!pid) {
     snack.value = { show: true, text: "Primero guardá el producto." };
@@ -801,7 +886,11 @@ async function saveStockNow() {
     debugLog("initStock()", { product_id: pid, branch_id: bid, qty });
     const ok = await products.initStock({ product_id: pid, branch_id: bid, qty });
     if (!ok) throw new Error(products.error || "INIT_STOCK_FAILED");
-    snack.value = { show: true, text: "Stock inicial asignado OK" };
+
+    snack.value = { show: true, text: "Stock asignado OK" };
+    stock.value.assign_qty = 0;
+
+    await refreshCurrentStock();
   } catch (e) {
     debugLog("ERROR initStock", e?.message || e);
     snack.value = { show: true, text: e?.message || "No se pudo asignar stock" };
@@ -856,7 +945,17 @@ async function save() {
     category_id: model.value.category_id || null,
   };
 
-  debugLog("SAVE start", { mode: props.mode, payload });
+  // ✅ Admin define sucursal dueña del producto
+  if (isAdmin.value) {
+    const bid = toInt(stock.value.branch_id, 0);
+    if (bid > 0) payload.branch_id = bid;
+  }
+
+  debugLog("SAVE start", {
+    mode: props.mode,
+    payload,
+    stock: { branch_id: stock.value.branch_id, current_qty: stock.value.current_qty, assign_qty: stock.value.assign_qty },
+  });
 
   // EDIT
   if (props.mode === "edit" && model.value.id) {
@@ -865,14 +964,7 @@ async function save() {
 
     if (updated?.id) {
       emit("saved", { id: updated.id });
-
-      // si cargaron qty, lo dejamos listo con botón “Asignar stock ahora”
-      if (Number(stock.value.initial_qty || 0) > 0) {
-        tab.value = "stock";
-        snack.value = { show: true, text: "Producto actualizado. Asigná stock con el botón." };
-      } else {
-        close();
-      }
+      close();
     }
     return;
   }
@@ -885,13 +977,6 @@ async function save() {
     model.value.id = created.id;
     emit("saved", { id: created.id });
 
-    // ✅ si hay stock qty, asignalo ya (usa tu endpoint /stock/init)
-    if (Number(stock.value.initial_qty || 0) > 0) {
-      tab.value = "stock";
-      await saveStockNow();
-    }
-
-    // ✅ auto-upload si eligió imágenes antes
     tab.value = "imagenes";
     if (newFiles.value?.length) {
       await uploadSelected();
@@ -905,7 +990,7 @@ async function save() {
 <style scoped>
 .json {
   font-size: 12px;
-  background: rgba(0,0,0,.04);
+  background: rgba(0, 0, 0, 0.04);
   padding: 12px;
   border-radius: 12px;
   overflow: auto;
