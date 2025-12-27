@@ -32,17 +32,14 @@
       <v-divider />
 
       <v-card-text>
-        <!-- ✅ Mensaje global de error (store) -->
         <v-alert v-if="products.error" type="error" variant="tonal" class="mb-4">
           {{ products.error }}
         </v-alert>
 
-        <!-- ✅ Success en create -->
         <v-alert v-if="mode === 'create' && model?.id" type="success" variant="tonal" class="mb-4">
           Producto creado (ID #{{ model.id }}). Podés seguir subiendo imágenes o presionar <b>Finalizar</b>.
         </v-alert>
 
-        <!-- ✅ LOGS -->
         <v-expansion-panels class="mb-4" variant="accordion">
           <v-expansion-panel>
             <v-expansion-panel-title class="text-caption text-medium-emphasis">
@@ -197,7 +194,6 @@
                 </div>
               </div>
 
-              <!-- ✅ Sucursal dueña actual (readonly) -->
               <v-row dense class="mb-2" v-if="mode === 'edit' && model?.id">
                 <v-col cols="12" md="8">
                   <v-text-field
@@ -222,7 +218,6 @@
                 </v-col>
               </v-row>
 
-              <!-- ✅ USER -->
               <v-row dense v-if="!isAdmin">
                 <v-col cols="12" md="8">
                   <v-text-field
@@ -247,7 +242,6 @@
                 </v-col>
               </v-row>
 
-              <!-- ✅ ADMIN -->
               <v-row dense v-else>
                 <v-col cols="12" md="8">
                   <v-select
@@ -445,7 +439,6 @@ const props = defineProps({
   mode: { type: String, default: "create" }, // create | edit
   item: { type: Object, default: null },
 });
-
 const emit = defineEmits(["update:open", "saved", "deleted"]);
 
 const products = useProductsStore();
@@ -581,9 +574,64 @@ function toInt(v, d = 0) {
 }
 
 /**
- * Si viene subrubro sin rubro, lo inferimos mirando parents->children.
- * (solo aplica si tu store de categories expone childrenByParent)
+ * ✅ Normaliza error de API soportando:
+ * - objeto normalizado del service: {status, message, errors, raw}
+ * - axios error crudo
  */
+function normalizeApiError(e) {
+  // Caso 1: viene del service
+  if (e && typeof e === "object" && ("status" in e || "raw" in e) && "message" in e) {
+    const data = e.raw ?? e.data ?? null;
+    return {
+      data,
+      message: String(e.message || data?.message || data?.error || "Error inesperado"),
+      code: e.code || data?.code || "ERROR",
+      errors: Array.isArray(e.errors) ? e.errors : Array.isArray(data?.errors) ? data.errors : [],
+      status: e.status || 0,
+    };
+  }
+
+  // Caso 2: axios error crudo
+  const d = e?.response?.data || e?.data || null;
+  const msg = d?.message || d?.error || e?.message || "Error inesperado. Revisá consola/servidor.";
+  return {
+    data: d,
+    message: String(msg),
+    code: d?.code || "ERROR",
+    errors: Array.isArray(d?.errors) ? d.errors : [],
+    status: e?.response?.status || 0,
+  };
+}
+
+/**
+ * Convierte:
+ * - [{field,message}] o [{path,message}] -> { field: "msg" }
+ */
+function errorsArrayToMap(arr) {
+  const out = {};
+  const a = Array.isArray(arr) ? arr : [];
+  for (const it of a) {
+    const k = String(it?.field || it?.path || "").trim();
+    const m = String(it?.message || "").trim();
+    if (!k || !m) continue;
+    if (!out[k]) out[k] = m;
+  }
+  return out;
+}
+
+async function loadBranches() {
+  branchesLoading.value = true;
+  try {
+    const arr = await products.fetchBranches();
+    branches.value = Array.isArray(arr) ? arr : [];
+    debugLog("Branches cargadas", { count: branches.value.length });
+  } catch (e) {
+    debugLog("ERROR branches", e?.message || e);
+  } finally {
+    branchesLoading.value = false;
+  }
+}
+
 function inferParentIdFromCategoryId(categoryId) {
   const cid = toInt(categoryId, 0);
   if (!cid) return null;
@@ -608,30 +656,6 @@ function syncRubroFromSubrubro() {
       model.value.parent_category_id = inferred;
       debugLog("Inferí parent_category_id desde category_id", { cid, inferred });
     }
-  }
-}
-
-/**
- * ✅ Normaliza error de API para:
- * - mostrar snack al usuario
- * - loguear payload y errores por campo si vienen
- */
-function normalizeApiError(e) {
-  const d = e?.response?.data || e?.data || null;
-  const msg = d?.message || d?.error || e?.message || "Error inesperado. Revisá consola/servidor.";
-  return { data: d, message: String(msg) };
-}
-
-async function loadBranches() {
-  branchesLoading.value = true;
-  try {
-    const arr = await products.fetchBranches();
-    branches.value = Array.isArray(arr) ? arr : [];
-    debugLog("Branches cargadas", { count: branches.value.length });
-  } catch (e) {
-    debugLog("ERROR branches", e?.message || e);
-  } finally {
-    branchesLoading.value = false;
   }
 }
 
@@ -680,7 +704,6 @@ watch(
     await categories.fetchAll(false);
     await loadBranches();
 
-    // ✅ cloná el item (no lo uses directo) para no mutar el listado
     const it = props.item ? JSON.parse(JSON.stringify(props.item)) : null;
 
     model.value = {
@@ -699,7 +722,6 @@ watch(
       price_discount: Number(it?.price_discount ?? 0),
       price_reseller: Number(it?.price_reseller ?? 0),
 
-      // ✅ MAPEO REAL DB/API -> UI
       // DB/API: category_id (rubro) / subcategory_id (subrubro)
       parent_category_id: toInt(it?.category_id, 0) || null,
       category_id: toInt(it?.subcategory_id, 0) || null,
@@ -707,24 +729,15 @@ watch(
 
     syncRubroFromSubrubro();
 
-    // ✅ stock defaults
     stock.value = { branch_id: null, current_qty: 0, assign_qty: 0 };
+    if (isAdmin.value) stock.value.branch_id = toInt(it?.branch_id, 0) || null;
+    else stock.value.branch_id = userBranchId.value;
 
-    if (isAdmin.value) {
-      // admin: por defecto ver stock según branch_id actual del producto (si viene)
-      stock.value.branch_id = toInt(it?.branch_id, 0) || null;
-    } else {
-      // user: su branch fijo
-      stock.value.branch_id = userBranchId.value;
-    }
-
-    // ✅ si es edit, pedí el producto con stock_qty del backend (si lo soporta)
     if (model.value.id) {
       await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
       await refreshCurrentStock();
     }
 
-    // imágenes
     existingImages.value = [];
     newFiles.value = [];
     if (model.value.id) await loadImages();
@@ -734,7 +747,6 @@ watch(
   { immediate: true }
 );
 
-// ✅ cuando cambia la sucursal efectiva (admin cambia select), refrescá stock actual
 watch(
   () => effectiveBranchId.value,
   async () => {
@@ -788,7 +800,6 @@ function validateBeforeSave() {
   if (!String(model.value.sku || "").trim()) fieldErrors.value.sku = "El SKU es obligatorio.";
   if (!model.value.parent_category_id) fieldErrors.value.parent_category_id = "Elegí un rubro.";
 
-  // ✅ Admin: en create exigimos sucursal (porque define branch_id del producto)
   if (props.mode === "create" && isAdmin.value && !stock.value.branch_id) {
     fieldErrors.value.branch_id = "Elegí una sucursal.";
   }
@@ -948,7 +959,6 @@ async function doDeleteProduct() {
 }
 
 function normalizeEntity(res) {
-  // Acepta: {id...} o {ok:true,data:{id...}} o {data:{id...}}
   if (!res) return null;
   if (res?.id) return res;
   if (res?.data?.id) return res.data;
@@ -967,7 +977,6 @@ async function save() {
     return;
   }
 
-  // ✅ IMPORTANTE: backend/DB tiene category_id + subcategory_id + branch_id (NOT NULL)
   const payload = {
     name: String(model.value.name || "").trim(),
     sku: String(model.value.sku || "").trim(),
@@ -983,14 +992,11 @@ async function save() {
     price_discount: Number(model.value.price_discount || 0),
     price_reseller: Number(model.value.price_reseller || 0),
 
-    // ✅ UI -> DB/API
+    // UI -> DB/API
     category_id: model.value.parent_category_id ? toInt(model.value.parent_category_id, null) : null,
     subcategory_id: model.value.category_id ? toInt(model.value.category_id, null) : null,
   };
 
-  // ✅ branch_id es obligatorio en DB:
-  // - admin lo define con select
-  // - user lo mandamos desde su cuenta para no depender de middleware
   if (isAdmin.value) {
     const bid = toInt(stock.value.branch_id, 0);
     if (bid > 0) payload.branch_id = bid;
@@ -1046,30 +1052,22 @@ async function save() {
       products.error = msg;
     }
   } catch (e) {
-    const { data, message } = normalizeApiError(e);
-    debugLog("SAVE ERROR", { message, data });
+    const { data, message, errors } = normalizeApiError(e);
+    debugLog("SAVE ERROR", { message, data, errors });
 
-    // ✅ Si backend manda errores por campo: { errors: { sku: "...", name:"...", branch_id:"...", category_id:"..." } }
-    const errs = data?.errors || null;
-    if (errs && typeof errs === "object") {
-      if (errs.name) fieldErrors.value.name = String(errs.name);
-      if (errs.sku) fieldErrors.value.sku = String(errs.sku);
-      if (errs.branch_id) fieldErrors.value.branch_id = String(errs.branch_id);
+    // ✅ soporta errors array -> map por campo
+    const errMap = Array.isArray(errors) ? errorsArrayToMap(errors) : (errors && typeof errors === "object" ? errors : {});
 
-      // backend: category_id (rubro)
-      if (errs.category_id) fieldErrors.value.parent_category_id = String(errs.category_id);
+    if (errMap.name) fieldErrors.value.name = String(errMap.name);
+    if (errMap.sku) fieldErrors.value.sku = String(errMap.sku);
+    if (errMap.branch_id) fieldErrors.value.branch_id = String(errMap.branch_id);
+    if (errMap.category_id) fieldErrors.value.parent_category_id = String(errMap.category_id);
 
-      // Si alguna vez querés mostrar error específico de subrubro:
-      // if (errs.subcategory_id) { ... }
-    }
-
-    // ✅ Mensaje visible al usuario + store alert arriba
     snack.value = { show: true, text: message };
     products.error = message;
 
-    // Si hay error de rubro/sucursal, llevá a esa tab:
-    if (errs?.branch_id) tab.value = "stock";
-    else if (errs?.category_id || errs?.name || errs?.sku) tab.value = "datos";
+    if (errMap.branch_id) tab.value = "stock";
+    else if (errMap.category_id || errMap.name || errMap.sku) tab.value = "datos";
   }
 }
 </script>

@@ -44,6 +44,19 @@ function is404(err) {
   return code === 404 || msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("ruta no encontrada");
 }
 
+// ✅ errors: [{field,message}] -> {field:message}
+function errorsArrayToMap(arr) {
+  const out = {};
+  const a = Array.isArray(arr) ? arr : [];
+  for (const it of a) {
+    const k = String(it?.field || it?.path || "").trim();
+    const m = String(it?.message || "").trim();
+    if (!k || !m) continue;
+    if (!out[k]) out[k] = m;
+  }
+  return out;
+}
+
 export const useProductsStore = defineStore("products", {
   state: () => ({
     items: [],
@@ -56,12 +69,26 @@ export const useProductsStore = defineStore("products", {
     error: null,
 
     current: null,
+
+    // ✅ debug
+    lastError: null,
+    lastFieldErrors: null,
   }),
 
   actions: {
     setError(e) {
+      const data = e?.response?.data || e?.raw || null;
+
+      // guarda el error entero para debug (dialog puede mostrarlo si querés)
+      this.lastError = data || e || null;
+
+      // si el backend manda errors array (como tu controller)
+      const errsArr = Array.isArray(data?.errors) ? data.errors : [];
+      this.lastFieldErrors = errsArr.length ? errorsArrayToMap(errsArr) : null;
+
       this.error =
-        e?.response?.data?.message ||
+        data?.message ||
+        data?.error ||
         e?.friendlyMessage ||
         e?.message ||
         String(e || "");
@@ -71,10 +98,13 @@ export const useProductsStore = defineStore("products", {
     async fetchList({ q = "", page = 1, limit = 20, branch_id = null } = {}) {
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const params = { q, page, limit };
         const bid = toInt(branch_id, 0);
-        if (bid > 0) params.branch_id = bid; // admin filtra stock_qty por sucursal
+        if (bid > 0) params.branch_id = bid;
 
         const { data } = await http.get("/products", { params });
 
@@ -96,7 +126,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ GET /products/:id (con branch_id opcional => stock_qty correcto)
+    // ✅ GET /products/:id
     async fetchOne(id, { force = false, branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) return null;
@@ -105,6 +135,9 @@ export const useProductsStore = defineStore("products", {
 
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const params = {};
         const bid = toInt(branch_id, 0);
@@ -115,7 +148,6 @@ export const useProductsStore = defineStore("products", {
 
         this.current = one || null;
 
-        // ✅ NO pisar listado con objeto peor (evita “stock 0” al tocar lápiz)
         if (one?.id) {
           const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
           if (idx >= 0) {
@@ -135,7 +167,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ GET /products/:id/stock?branch_id=
+    // ✅ GET /products/:id/stock
     async fetchStockQty(productId, branch_id) {
       const pid = toInt(productId, 0);
       const bid = toInt(branch_id, 0);
@@ -151,10 +183,13 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ POST /products
+    // ✅ POST /products  (DEVUELVE ENVELOPE COMPLETO)
     async create(payload) {
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const { data } = await http.post("/products", payload);
 
@@ -165,7 +200,8 @@ export const useProductsStore = defineStore("products", {
           this.total = toInt(this.total, 0) + 1;
         }
 
-        return created;
+        // ✅ IMPORTANTE: devolvemos data completo para que el Dialog lea res.data.id
+        return data;
       } catch (e) {
         this.setError(e);
         return null;
@@ -174,13 +210,16 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ PATCH /products/:id
+    // ✅ PATCH /products/:id  (DEVUELVE ENVELOPE COMPLETO)
     async update(id, payload, { branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) throw new Error("MISSING_ID");
 
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const params = {};
         const bid = toInt(branch_id, 0);
@@ -201,7 +240,8 @@ export const useProductsStore = defineStore("products", {
           }
         }
 
-        return updated;
+        // ✅ devolvemos envelope completo
+        return data;
       } catch (e) {
         this.setError(e);
         return null;
@@ -217,6 +257,8 @@ export const useProductsStore = defineStore("products", {
 
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
 
       try {
         const { data } = await http.delete(`/products/${pid}`);
@@ -269,6 +311,9 @@ export const useProductsStore = defineStore("products", {
 
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const fd = new FormData();
         for (const f of arr) fd.append("files", f);
@@ -296,6 +341,9 @@ export const useProductsStore = defineStore("products", {
 
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
+
       try {
         const { data } = await http.delete(`/products/${pid}/images/${iid}`);
         const r = unwrapOk(data);
@@ -329,6 +377,8 @@ export const useProductsStore = defineStore("products", {
     async initStock({ product_id, branch_id, qty }) {
       this.loading = true;
       this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
 
       const payload = {
         product_id: toInt(product_id, 0),

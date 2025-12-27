@@ -49,7 +49,6 @@ export const ProductsService = {
 
   async update(id, payload, params = {}) {
     try {
-      // ✅ backend controller usa PATCH
       const { data } = await http.patch(`/products/${id}`, payload, { params });
       return data;
     } catch (err) {
