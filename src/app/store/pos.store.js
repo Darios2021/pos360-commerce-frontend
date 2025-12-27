@@ -60,7 +60,7 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
       params: { branch_id: bid, limit: 200 },
     });
 
-    const list = data?.data?.items || data?.items || data?.data || [];
+    const list = data?.data?.items || data?.items || data?.data || data || [];
     const arr = Array.isArray(list) ? list : [];
     const sorted = [...arr].sort((a, b) => toInt(a?.id, 0) - toInt(b?.id, 0));
     const first = sorted[0];
@@ -136,8 +136,7 @@ export const usePosStore = defineStore("pos", {
     /**
      * ✅ Contexto robusto:
      * - llama /pos/context
-     * - MUY IMPORTANTE: manda branch_id/warehouse_id actuales como hint
-     *   (para admin y para evitar que te “caiga” al primer depósito equivocado)
+     * - manda branch_id/warehouse_id actuales como hint
      */
     async ensureContext({ force = false } = {}) {
       const currB = toInt(this.branch_id, 0);
@@ -158,15 +157,18 @@ export const usePosStore = defineStore("pos", {
           },
         });
 
-        const ctx = data?.data || {};
+        const ctx = data?.data || data || {};
 
+        // ✅ más tolerante con nombres de campos
         const branchId =
           toInt(ctx?.branchId, 0) ||
+          toInt(ctx?.branch_id, 0) ||
           toInt(ctx?.branch?.id, 0) ||
           toInt(ctx?.user?.branch_id, 0);
 
         const warehouseId =
           toInt(ctx?.warehouseId, 0) ||
+          toInt(ctx?.warehouse_id, 0) ||
           toInt(ctx?.warehouse?.id, 0);
 
         dbg("ensureContext got /pos/context", { ctx, branchId, warehouseId });
@@ -335,14 +337,6 @@ export const usePosStore = defineStore("pos", {
     // =========================
     // Checkout
     // =========================
-
-    /**
-     * ✅ checkoutSale(method, extra)
-     * extra:
-     * - customer {first_name,last_name,whatsapp,email}
-     * - proof (transfer/qr)
-     * - price_policy, installments
-     */
     async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
       this.error = "";

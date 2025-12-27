@@ -362,7 +362,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- ✅ COBRO COMPLETO (lo dejé igual que el tuyo, sin tocar lógica) -->
+    <!-- ✅ COBRO COMPLETO -->
     <v-dialog v-model="checkoutDialog" max-width="560" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -693,7 +693,7 @@ async function prefetchImagesForVisible(items) {
 }
 
 /* =========================
-   ✅ CATEGORÍAS (FIX: endpoints reales, sin /api/v1)
+   ✅ CATEGORÍAS
 ========================= */
 const categories = ref([]);
 
@@ -740,7 +740,6 @@ function subrubroName(p) {
 }
 
 async function loadCategoriesSafe() {
-  // ✅ endpoints reales (SIN /api/v1)
   const candidates = [
     { url: "/categories", params: { limit: 5000 } },
     { url: "/categories", params: { page: 1, limit: 5000 } },
@@ -940,9 +939,10 @@ async function hardSyncPosContextWithAuth() {
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
 
-  // si NO hay branch y NO admin => forzamos contexto
+  // ✅ FIX CLAVE:
+  // - si admin NO tiene branch en auth, IGUAL intentamos contexto (para que haya branch/warehouse por defecto)
   if (!authBranch) {
-    if (!isAdmin.value) await posStore.ensureContext?.({ force: true });
+    await posStore.ensureContext?.({ force: true });
     return;
   }
 
@@ -961,9 +961,14 @@ async function hardSyncPosContextWithAuth() {
 }
 
 async function fetchWarehousesSafe() {
+  // ✅ intenta sin branch_id, con branch_id, y varios formatos
+  const bid = Number(posStore.branch_id || 0) || null;
+
   const candidates = [
     { url: "/warehouses", params: { limit: 5000 } },
     { url: "/warehouses", params: { page: 1, limit: 5000 } },
+    ...(bid ? [{ url: "/warehouses", params: { branch_id: bid, limit: 5000 } }] : []),
+    ...(bid ? [{ url: "/warehouses", params: { branch_id: bid, page: 1, limit: 5000 } }] : []),
   ];
 
   for (const c of candidates) {
@@ -1006,7 +1011,6 @@ async function fetchSellablePool() {
     // ✅ NORMAL: si hay warehouse => pedimos por depósito
     if (wid) {
       const params = {
-        // 🔥 FIX: mandá branch_id SIEMPRE (para coherencia)
         branch_id: bid || undefined,
         warehouse_id: wid,
         q: "",
@@ -1018,7 +1022,7 @@ async function fetchSellablePool() {
       };
 
       const { data } = await http.get("/pos/products", { params });
-      const arr = Array.isArray(data?.data) ? data.data : [];
+      const arr = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.data?.items) ? data.data.items : []);
       allSellable.value = arr;
 
       if (page.value > pages.value) page.value = 1;
@@ -1027,46 +1031,30 @@ async function fetchSellablePool() {
     }
 
     // ✅ NO warehouse:
-    // - si NO admin => error (no puede listar)
     if (!isAdmin.value) {
       allSellable.value = [];
       ctxError.value = "Falta depósito (warehouse). Verificá que tu usuario tenga sucursal y depósito asignado.";
       return;
     }
 
-    // ✅ admin sin warehouse => listar por TODOS los depósitos y mergear
+    // ✅ admin sin warehouse => listar depósitos y mergear
     const whs = await fetchWarehousesSafe();
+
+    // 🔥 si backend te devuelve vacío, volvemos a intentar forzar contexto y reintentar warehouses
     if (!whs.length) {
-      allSellable.value = [];
-      ctxError.value = "Admin: no hay depósitos disponibles para listar productos.";
+      await posStore.ensureContext?.({ force: true });
+      const whs2 = await fetchWarehousesSafe();
+      if (!whs2.length) {
+        allSellable.value = [];
+        ctxError.value = "Admin: no hay depósitos disponibles para listar productos (warehouses vacío).";
+        return;
+      }
+      // eslint-disable-next-line no-use-before-define
+      await fetchAdminWarehousesPools(whs2, bid);
       return;
     }
 
-    const calls = whs.slice(0, 80).map(async (w) => {
-      const params = {
-        branch_id: bid || undefined,
-        warehouse_id: Number(w.id),
-        q: "",
-        page: 1,
-        limit: 5000,
-        in_stock: 1,
-        sellable: 1,
-        include_images: 1,
-      };
-      try {
-        const { data } = await http.get("/pos/products", { params });
-        const out = data?.data || [];
-        return Array.isArray(out) ? out : [];
-      } catch {
-        return [];
-      }
-    });
-
-    const pools = await Promise.all(calls);
-    allSellable.value = mergeProductPools(pools);
-
-    if (page.value > pages.value) page.value = 1;
-    await prefetchImagesForVisible(pagedItems.value);
+    await fetchAdminWarehousesPools(whs, bid);
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
     ctxError.value = msg;
@@ -1074,6 +1062,34 @@ async function fetchSellablePool() {
   } finally {
     loadingList.value = false;
   }
+}
+
+async function fetchAdminWarehousesPools(whs, bid) {
+  const calls = (whs || []).slice(0, 120).map(async (w) => {
+    const params = {
+      branch_id: bid || undefined,
+      warehouse_id: Number(w.id),
+      q: "",
+      page: 1,
+      limit: 5000,
+      in_stock: 1,
+      sellable: 1,
+      include_images: 1,
+    };
+    try {
+      const { data } = await http.get("/pos/products", { params });
+      const out = data?.data || data?.data?.items || data?.items || [];
+      return Array.isArray(out) ? out : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const pools = await Promise.all(calls);
+  allSellable.value = mergeProductPools(pools);
+
+  if (page.value > pages.value) page.value = 1;
+  await prefetchImagesForVisible(pagedItems.value);
 }
 
 function refresh() { fetchSellablePool(); }
@@ -1266,14 +1282,6 @@ onMounted(async () => {
 
 .pos-toolbar { position: sticky; top: 12px; z-index: 2; }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Carrito */
 .cart-card {
   position: sticky;
   top: 12px;
