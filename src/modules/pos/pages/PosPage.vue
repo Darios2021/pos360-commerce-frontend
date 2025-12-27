@@ -114,73 +114,22 @@
           <div v-if="loadingList" class="d-flex justify-center align-center py-12">
             <v-progress-circular indeterminate />
           </div>
+<v-row v-else dense>
+  <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
+    <PosProductCard
+      :item="p"
+      :image="productImage(p) || ''"
+      :rubro-label="rubroName(p) || ''"
+      :subrubro-label="subrubroName(p) || ''"
+      :price="resolveUnitPrice(p, 'LIST')"
+      price-label="Lista"
+      @add="add"
+      @details="openDetails"
+    />
+  </v-col>
+</v-row>
 
-          <v-row v-else dense>
-            <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
-              <v-card class="rounded-xl product-card pos-surface" elevation="1">
-                <div class="thumb-wrap">
-                  <v-img
-                    v-if="productImage(p)"
-                    :src="productImage(p)"
-                    cover
-                    class="thumb"
-                    :lazy-src="productImage(p)"
-                  />
-                  <div v-else class="thumb thumb-empty">
-                    <v-icon size="34">mdi-package-variant</v-icon>
-                  </div>
 
-                  <div class="badge-sku">SKU: {{ p.sku || "—" }}</div>
-
-                  <div class="badge-stock badge-stock-ok">
-                    Stock: {{ qty3(p.qty ?? 0) }}
-                  </div>
-                </div>
-
-                <v-card-text class="pt-4 pb-3">
-                  <div class="title line-clamp-2" :title="p.name">
-                    {{ p.name }}
-                  </div>
-
-                  <div class="meta">
-                    <span class="muted">Marca:</span> {{ p.brand || "—" }}
-                    <span class="dot">·</span>
-                    <span class="muted">Modelo:</span> {{ p.model || "—" }}
-                  </div>
-
-                  <div class="meta mt-1">
-                    <span class="muted">Rubro:</span> {{ rubroName(p) || "—" }}
-                    <span class="dot">·</span>
-                    <span class="muted">Subrubro:</span> {{ subrubroName(p) || "—" }}
-                  </div>
-
-                  <div class="price-row mt-3 d-flex align-center justify-space-between">
-                    <div class="price">
-                      {{ money(resolveUnitPrice(p, "LIST")) }}
-                    </div>
-                    <v-chip size="small" variant="tonal">Lista</v-chip>
-                  </div>
-                </v-card-text>
-
-                <v-card-actions class="pt-1 pb-4 px-3 d-flex ga-2">
-                  <v-btn block size="small" color="primary" variant="tonal" class="btn-pad" @click="add(p)">
-                    <v-icon start>mdi-plus</v-icon>
-                    Agregar
-                  </v-btn>
-
-                  <!-- (por ahora dejo el botón de ver como “acción secundaria” sin navegar) -->
-                  <v-btn
-                    icon="mdi-eye-outline"
-                    size="small"
-                    variant="tonal"
-                    class="btn-icon"
-                    title="Ver detalle"
-                    @click="openDetails(p)"
-                  />
-                </v-card-actions>
-              </v-card>
-            </v-col>
-          </v-row>
 
           <div v-if="!loadingList && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
             <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
@@ -329,7 +278,7 @@
       </v-col>
     </v-row>
 
-    <!-- Modal detalle (simple, sin salir del POS) -->
+    <!-- Modal detalle -->
     <v-dialog v-model="detailsOpen" max-width="900">
       <v-card rounded="xl">
         <v-card-title class="font-weight-black">Detalle producto</v-card-title>
@@ -378,7 +327,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Cobro (por ahora queda acá; luego lo componentizamos) -->
+    <!-- ✅ COBRO COMPLETO (FIX: no congela) -->
     <v-dialog v-model="checkoutDialog" max-width="560" persistent>
       <v-card class="rounded-xl overflow-hidden">
         <div class="bg-primary pa-4 text-center">
@@ -480,7 +429,13 @@
         <v-divider />
 
         <v-card-actions class="pa-4">
-          <v-btn size="large" variant="text" color="grey" @click="checkoutDialog = false" :disabled="posStore.loading">
+          <v-btn
+            size="large"
+            variant="text"
+            color="grey"
+            @click="checkoutDialog = false"
+            :disabled="posStore.loading"
+          >
             Cancelar
           </v-btn>
           <v-spacer />
@@ -516,9 +471,13 @@ import { ref, computed, onMounted, watch } from "vue";
 import http from "../../../app/api/http";
 import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
+import { useProductsStore } from "../../../app/store/products.store";
+import PosProductCard from "../components/PosProductCard.vue";
+
 
 const posStore = usePosStore();
 const auth = useAuthStore();
+const products = useProductsStore();
 
 const ctxError = ref("");
 const q = ref("");
@@ -580,91 +539,90 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** =========================
- *  IMÁGENES (FIX REAL)
- *  ========================= */
-const imageCache = ref(new Map()); // productId -> url (string) | "" (sin imagen)
-const imageLoading = ref(new Set());
+/* =========================
+   ✅ IMÁGENES (vía store que ya funciona)
+========================= */
+const imageById = ref({}); // { [id]: url | "" }
+const imgLoading = ref({}); // { [id]: true }
+
+function pickUrlFromImageRow(row) {
+  if (!row) return "";
+  return (
+    row.url ||
+    row.public_url ||
+    row.publicUrl ||
+    row.image_url ||
+    row.path ||
+    row.key ||
+    row.location ||
+    row.filename ||
+    ""
+  );
+}
 
 function normalizeUrl(u) {
   if (!u) return "";
   const s = String(u);
   if (s.startsWith("http://") || s.startsWith("https://")) return s;
 
-  const base =
-    (import.meta.env.VITE_S3_PUBLIC_BASE_URL || "").replace(/\/$/, "") ||
-    (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  if (apiBase && s.startsWith("/")) return apiBase + s;
 
-  if (!base) return s;
-  return base + (s.startsWith("/") ? s : `/${s}`);
+  const s3Base = (import.meta.env.VITE_S3_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+  if (s3Base) return s3Base + (s.startsWith("/") ? s : `/${s}`);
+
+  return s;
 }
 
 function pickImageFromProduct(p) {
-  // 1) si el endpoint ya trae algo útil
   const direct =
     p?.image_url ||
     p?.image ||
-    p?.thumbnail_url ||
     p?.thumb_url ||
+    p?.thumbnail_url ||
+    p?.public_url ||
+    p?.publicUrl ||
     null;
 
   if (direct) return normalizeUrl(direct);
 
-  // 2) si trae array
   const arr =
-    Array.isArray(p?.product_images) ? p.product_images :
     Array.isArray(p?.images) ? p.images :
+    Array.isArray(p?.product_images) ? p.product_images :
     null;
 
-  if (arr && arr.length) {
-    const first = arr[0];
-    const u = first?.url || first?.image_url || first?.path || first?.key || first?.filename || null;
+  if (arr?.length) {
+    const u = pickUrlFromImageRow(arr[0]);
     if (u) return normalizeUrl(u);
   }
 
   return "";
 }
 
-async function fetchFirstImage(productId) {
+async function fetchFirstImageViaStore(productId) {
   const id = Number(productId || 0);
   if (!id) return "";
 
-  if (imageCache.value.has(id)) return imageCache.value.get(id) || "";
-  if (imageLoading.value.has(id)) return "";
+  if (imageById.value[id] !== undefined) return imageById.value[id] || "";
+  if (imgLoading.value[id]) return "";
 
-  imageLoading.value.add(id);
+  imgLoading.value = { ...imgLoading.value, [id]: true };
 
   try {
-    // probamos endpoints comunes (sin saber tu router exacto)
-    const tries = [
-      `/products/${id}/images`,
-      `/products/${id}/product-images`,
-      `/product-images?product_id=${id}`,
-    ];
+    const imgs = await products.fetchImages(id);
+    const arr = Array.isArray(imgs) ? imgs : [];
+    const u = pickUrlFromImageRow(arr[0] || null);
+    const finalUrl = u ? normalizeUrl(u) : "";
 
-    for (const url of tries) {
-      try {
-        const { data } = await http.get(url);
-        const list = data?.data || data || [];
-        const arr = Array.isArray(list) ? list : [];
-        if (arr.length) {
-          const first = arr[0];
-          const u = first?.url || first?.image_url || first?.path || first?.key || first?.filename || "";
-          if (u) {
-            const normalized = normalizeUrl(u);
-            imageCache.value.set(id, normalized);
-            return normalized;
-          }
-        }
-      } catch {
-        // siguiente endpoint
-      }
-    }
-
-    imageCache.value.set(id, "");
+    imageById.value = { ...imageById.value, [id]: finalUrl };
+    return finalUrl;
+  } catch {
+    imageById.value = { ...imageById.value, [id]: "" };
     return "";
   } finally {
-    imageLoading.value.delete(id);
+    const next = { ...imgLoading.value };
+    delete next[id];
+    imgLoading.value = next;
   }
 }
 
@@ -672,105 +630,121 @@ function productImage(p) {
   const id = Number(p?.id || 0);
   if (!id) return "";
 
-  // si el objeto ya trae
   const fromObj = pickImageFromProduct(p);
   if (fromObj) {
-    imageCache.value.set(id, fromObj);
+    if (imageById.value[id] !== fromObj) imageById.value = { ...imageById.value, [id]: fromObj };
     return fromObj;
   }
 
-  // cache
-  if (imageCache.value.has(id)) return imageCache.value.get(id) || "";
+  if (imageById.value[id] !== undefined) return imageById.value[id] || "";
 
-  // lazy fetch (no await acá)
-  fetchFirstImage(id);
+  fetchFirstImageViaStore(id);
   return "";
 }
 
 async function prefetchImagesForVisible(items) {
   const ids = (items || [])
     .map((x) => Number(x?.id || 0))
-    .filter((x) => x > 0 && !imageCache.value.has(x));
+    .filter((x) => x > 0 && imageById.value[x] === undefined);
 
-  // no mates el server
-  const batch = ids.slice(0, 24);
-  await Promise.all(batch.map((id) => fetchFirstImage(id)));
+  await Promise.all(ids.slice(0, 24).map((id) => fetchFirstImageViaStore(id)));
 }
 
-/** =========================
- *  CATEGORÍAS (FIX RUBRO/SUB)
- *  ========================= */
+/* =========================
+   ✅ CATEGORÍAS (FIX REAL)
+   - Soporta productos con category_id = rubro (padre)
+   - Soporta productos con category_id = subrubro (hijo con parent_id)
+========================= */
 const categories = ref([]);
+
 const catById = computed(() => {
   const m = new Map();
   for (const c of categories.value || []) m.set(Number(c.id), c);
   return m;
 });
-const parentOf = computed(() => {
-  const m = new Map();
-  for (const c of categories.value || []) {
-    const pid = Number(c.parent_id || c.parentId || c.parent?.id || 0) || null;
-    if (pid) m.set(Number(c.id), pid);
-  }
-  return m;
-});
 
-async function loadCategoriesSafe() {
-  try {
-    // intentamos /categories (lo más normal)
-    const { data } = await http.get("/categories", { params: { limit: 5000 } });
-    const arr = data?.data || data || [];
-    categories.value = Array.isArray(arr) ? arr : [];
-    return;
-  } catch {}
-
-  try {
-    // fallback por si tu backend lo expone en otro path
-    const { data } = await http.get("/products/categories");
-    const arr = data?.data || data || [];
-    categories.value = Array.isArray(arr) ? arr : [];
-  } catch {
-    categories.value = [];
-  }
+function getCatIdFromProduct(p) {
+  return (
+    Number(p?.category_id || 0) ||
+    Number(p?.subcategory_id || 0) ||
+    Number(p?.category?.id || 0) ||
+    null
+  );
 }
 
-function getSubCategoryId(p) {
-  return Number(p?.category_id || p?.subcategory_id || p?.category?.id || 0) || null;
-}
+/**
+ * Devuelve la dupla rubro/subrubro en forma segura:
+ * - Si category es HIJO (tiene parent_id) => rubroId=parent_id, subId=cat.id
+ * - Si category es PADRE (no parent_id)   => rubroId=cat.id, subId=null
+ */
+function deriveRubroSub(p) {
+  const cid = getCatIdFromProduct(p);
+  if (!cid) return { rubroId: null, subId: null };
 
-function getRubroId(p) {
-  const subId = getSubCategoryId(p);
-  if (!subId) return null;
-  return parentOf.value.get(subId) || null;
+  const c = catById.value.get(Number(cid)) || null;
+  if (!c) return { rubroId: null, subId: null };
+
+  const pid = Number(c.parent_id || c.parentId || c.parent?.id || 0) || null;
+
+  // si tiene padre => el producto está en un subrubro
+  if (pid) return { rubroId: pid, subId: Number(c.id) };
+
+  // si no tiene padre => el producto está asignado directo al rubro
+  return { rubroId: Number(c.id), subId: null };
 }
 
 function rubroName(p) {
-  // primero si viene del endpoint
-  const direct = p?.parent_category_name || null;
-  if (direct) return direct;
+  // si backend ya lo manda resuelto:
+  if (p?.parent_category_name) return p.parent_category_name;
 
-  const rid = getRubroId(p);
-  if (!rid) return null;
-  return catById.value.get(rid)?.name || null;
+  const { rubroId } = deriveRubroSub(p);
+  if (!rubroId) return null;
+  return catById.value.get(Number(rubroId))?.name || null;
 }
 
 function subrubroName(p) {
-  const direct = p?.subcategory_name || null;
-  if (direct) return direct;
+  // si backend ya lo manda resuelto:
+  if (p?.subcategory_name) return p.subcategory_name;
 
-  const sid = getSubCategoryId(p);
-  if (!sid) return null;
-  return catById.value.get(sid)?.name || null;
+  const { subId } = deriveRubroSub(p);
+  if (!subId) return null;
+  return catById.value.get(Number(subId))?.name || null;
+}
+
+async function loadCategoriesSafe() {
+  // probamos ambas rutas por si tu API quedó con prefijos
+  const candidates = [
+    { url: "/categories", params: { limit: 5000 } },
+    { url: "/api/v1/categories", params: { limit: 5000 } },
+    { url: "/products/categories", params: undefined },
+    { url: "/api/v1/products/categories", params: undefined },
+  ];
+
+  for (const c of candidates) {
+    try {
+      const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
+      const arr = data?.data || data || [];
+      categories.value = Array.isArray(arr) ? arr : [];
+      if (categories.value.length) return;
+    } catch {}
+  }
+
+  categories.value = [];
 }
 
 const rubroItems = computed(() => {
   const map = new Map();
+
   for (const p of allSellable.value || []) {
-    const rid = getRubroId(p);
-    const name = rubroName(p);
-    if (!rid || !name) continue;
-    if (!map.has(rid)) map.set(rid, { title: String(name), value: Number(rid) });
+    const d = deriveRubroSub(p);
+    if (!d.rubroId) continue;
+
+    const name = catById.value.get(Number(d.rubroId))?.name;
+    if (!name) continue;
+
+    if (!map.has(d.rubroId)) map.set(d.rubroId, { title: String(name), value: Number(d.rubroId) });
   }
+
   return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
@@ -779,17 +753,22 @@ const subrubroItems = computed(() => {
   if (!rid) return [];
 
   const map = new Map();
-  for (const p of allSellable.value || []) {
-    const pr = getRubroId(p);
-    if (Number(pr || 0) !== rid) continue;
 
-    const sid = getSubCategoryId(p);
-    const name = subrubroName(p);
-    if (!sid || !name) continue;
-    if (!map.has(sid)) map.set(sid, { title: String(name), value: Number(sid) });
+  for (const p of allSellable.value || []) {
+    const d = deriveRubroSub(p);
+
+    // solo subrubros del rubro elegido
+    if (Number(d.rubroId || 0) !== rid) continue;
+
+    if (!d.subId) continue; // si el producto está directo al rubro, no aporta subrubro
+
+    const name = catById.value.get(Number(d.subId))?.name;
+    if (!name) continue;
+
+    if (!map.has(d.subId)) map.set(d.subId, { title: String(name), value: Number(d.subId) });
   }
 
-  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(a.title)));
 });
 
 function onRubroChange() {
@@ -797,12 +776,10 @@ function onRubroChange() {
   page.value = 1;
 }
 
-/**
- * Política precio:
- * - LIST (cuotas 2-6)
- * - DISCOUNT (1 pago: efectivo/transfer/qr o tarjeta 1)
- * - RESELLER (solo si switch y existe >0; si no, cae)
- */
+
+/* =========================
+   ✅ PRECIOS / SELLABLE
+========================= */
 function resolveUnitPrice(p, policy) {
   const base = toNum(p?.price);
   const list = toNum(p?.price_list);
@@ -811,7 +788,7 @@ function resolveUnitPrice(p, policy) {
 
   if (policy === "RESELLER") return res > 0 ? res : (disc > 0 ? disc : (list > 0 ? list : base));
   if (policy === "DISCOUNT") return disc > 0 ? disc : (list > 0 ? list : base);
-  return list > 0 ? list : base; // LIST
+  return list > 0 ? list : base;
 }
 
 function pricePolicyLabel(policy) {
@@ -820,10 +797,7 @@ function pricePolicyLabel(policy) {
   return "Lista";
 }
 
-function hasStock(p) {
-  return toNum(p?.qty) > 0;
-}
-
+function hasStock(p) { return toNum(p?.qty) > 0; }
 function hasAnyPrice(p) {
   return (
     toNum(p?.price) > 0 ||
@@ -832,26 +806,26 @@ function hasAnyPrice(p) {
     toNum(p?.price_reseller) > 0
   );
 }
-
 function isSellable(p) {
   if (p?.is_active === false) return false;
   return hasStock(p) && hasAnyPrice(p);
 }
 
-/** filtro + paginación */
+/* =========================
+   ✅ FILTRO + PAGINACIÓN
+========================= */
 const filteredItems = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
 
   return (allSellable.value || []).filter((p) => {
     if (!isSellable(p)) return false;
 
-    if (rubroId.value) {
-      if (Number(getRubroId(p) || 0) !== Number(rubroId.value)) return false;
-    }
-
-    if (subrubroId.value) {
-      if (Number(getSubCategoryId(p) || 0) !== Number(subrubroId.value)) return false;
-    }
+if (rubroId.value) {
+  if (Number(productRubroId(p) || 0) !== Number(rubroId.value)) return false;
+}
+if (subrubroId.value) {
+  if (Number(productSubId(p) || 0) !== Number(subrubroId.value)) return false;
+}
 
     if (qq) {
       const hay =
@@ -886,37 +860,22 @@ const pagedItems = computed(() => {
   return filteredItems.value.slice(start, end);
 });
 
-watch(
-  () => [page.value, filteredTotal.value],
-  async () => {
-    // precarga imágenes de la página visible
-    await prefetchImagesForVisible(pagedItems.value);
-  }
-);
+watch(() => [page.value, filteredTotal.value], async () => {
+  await prefetchImagesForVisible(pagedItems.value);
+});
 
 function debounceSearch() {
   clearTimeout(tSearch);
-  tSearch = setTimeout(() => {
-    page.value = 1;
-  }, 250);
+  tSearch = setTimeout(() => { page.value = 1; }, 250);
 }
-function doSearch() {
-  page.value = 1;
-}
-function clearSearch() {
-  q.value = "";
-  page.value = 1;
-}
+function doSearch() { page.value = 1; }
+function clearSearch() { q.value = ""; page.value = 1; }
+function prevPage() { if (page.value > 1) page.value--; }
+function nextPage() { if (page.value < pages.value) page.value++; }
 
-function prevPage() {
-  if (page.value <= 1) return;
-  page.value--;
-}
-function nextPage() {
-  if (page.value >= pages.value) return;
-  page.value++;
-}
-
+/* =========================
+   ✅ DETALLE / ADD
+========================= */
 function openDetails(p) {
   detailsItem.value = p || null;
   detailsOpen.value = true;
@@ -951,10 +910,11 @@ function add(p) {
   snack.value = { show: true, text: "✅ Agregado al carrito" };
 }
 
+/* =========================
+   ✅ CONTEXTO POS + FETCH
+========================= */
 async function hardSyncPosContextWithAuth() {
-  try {
-    if (typeof auth.fetchMe === "function") await auth.fetchMe();
-  } catch {}
+  try { if (typeof auth.fetchMe === "function") await auth.fetchMe(); } catch {}
 
   const authBranch = Number(auth.branchId || 0) || null;
   const posBranch = Number(posStore.branch_id || 0) || null;
@@ -1001,7 +961,6 @@ async function fetchSellablePool() {
 
     if (page.value > pages.value) page.value = 1;
 
-    // precarga imágenes primera tanda
     await prefetchImagesForVisible(pagedItems.value);
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || "Error cargando productos";
@@ -1012,9 +971,16 @@ async function fetchSellablePool() {
   }
 }
 
-function refresh() {
-  fetchSellablePool();
-}
+function refresh() { fetchSellablePool(); }
+
+/* =========================
+   ✅ CHECKOUT (FIX PERFORMANCE)
+========================= */
+const productById = computed(() => {
+  const m = new Map();
+  for (const p of allSellable.value || []) m.set(Number(p.id), p);
+  return m;
+});
 
 function currentPricePolicy() {
   if (applyReseller.value) return "RESELLER";
@@ -1042,7 +1008,8 @@ const checkoutTotal = computed(() => {
   let sum = 0;
 
   for (const it of posStore.cart || []) {
-    const p = allSellable.value.find((x) => Number(x.id) === Number(it.product_id || it.id)) || it;
+    const pid = Number(it.product_id || it.id);
+    const p = productById.value.get(pid) || it; // ✅ O(1), no find(5000)
     const unit = resolveUnitPrice(p, pol);
     sum += unit * toNum(it.qty);
   }
@@ -1122,7 +1089,9 @@ function applyCheckoutPricesIntoStore() {
   const pol = currentPricePolicy();
 
   for (const it of posStore.cart || []) {
-    const p = allSellable.value.find((x) => Number(x.id) === Number(it.product_id || it.id)) || it;
+    const pid = Number(it.product_id || it.id);
+    const p = productById.value.get(pid) || it;
+
     const unit = resolveUnitPrice(p, pol);
 
     it.price = unit;
@@ -1156,8 +1125,8 @@ async function confirmPayment() {
 }
 
 onMounted(async () => {
-  await loadCategoriesSafe();     // <-- FIX rubros
-  await fetchSellablePool();      // <-- carga pool + imágenes
+  await loadCategoriesSafe();
+  await fetchSellablePool();
 });
 </script>
 
@@ -1169,32 +1138,19 @@ onMounted(async () => {
   padding: 16px;
 }
 
-.pos-grid {
-  align-items: flex-start;
-}
-
-.pos-left,
-.pos-right {
-  display: flex;
-  flex-direction: column;
-}
+.pos-grid { align-items: flex-start; }
+.pos-left, .pos-right { display: flex; flex-direction: column; }
 
 .pos-surface {
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
 }
 
-.pos-surface,
-.cart-item,
-.empty,
-.badge-sku,
-.border {
+.pos-surface, .cart-item, .empty, .badge-sku, .border {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.pos-left {
-  min-height: calc(100vh - 110px);
-}
+.pos-left { min-height: calc(100vh - 110px); }
 
 .pos-products {
   flex: 1 1 auto;
@@ -1207,91 +1163,40 @@ onMounted(async () => {
   scrollbar-gutter: stable;
 }
 
-.pos-toolbar {
-  position: sticky;
-  top: 12px;
-  z-index: 2;
-}
+.pos-toolbar { position: sticky; top: 12px; z-index: 2; }
 
-.product-card {
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
+.product-card { overflow: hidden; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.product-card:hover { transform: translateY(-2px); }
 
-.product-card:hover {
-  transform: translateY(-2px);
-}
-
-.thumb-wrap {
-  height: 140px; /* MÁS ALTO: se ve la imagen */
-  position: relative;
-  background: rgb(var(--v-theme-surface));
-}
-
-.thumb {
-  height: 140px;
-}
-
+.thumb-wrap { height: 140px; position: relative; background: rgb(var(--v-theme-surface)); }
+.thumb { height: 140px; }
 .thumb-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   height: 140px;
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .badge-sku {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  position: absolute; left: 10px; bottom: 10px;
+  font-size: 11px; padding: 4px 10px; border-radius: 999px;
   background: rgba(var(--v-theme-surface), 0.92);
   backdrop-filter: blur(4px);
 }
 
 .badge-stock {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  position: absolute; right: 10px; bottom: 10px;
+  font-size: 11px; padding: 4px 10px; border-radius: 999px;
   background: rgba(var(--v-theme-surface), 0.92);
   backdrop-filter: blur(4px);
   opacity: 0.92;
 }
-.badge-stock-ok {
-  font-weight: 900;
-}
+.badge-stock-ok { font-weight: 900; }
 
-.title {
-  font-weight: 900;
-  font-size: 13px;
-  line-height: 1.2;
-  min-height: 32px;
-}
-
-.meta {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.66);
-  margin-top: 6px;
-}
-
-.meta .muted {
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.meta .dot {
-  margin: 0 6px;
-  opacity: 0.5;
-}
-
-.price-row .price {
-  font-weight: 950;
-  font-size: 16px;
-}
+.title { font-weight: 900; font-size: 13px; line-height: 1.2; min-height: 32px; }
+.meta { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.66); margin-top: 6px; }
+.meta .muted { color: rgba(var(--v-theme-on-surface), 0.5); }
+.meta .dot { margin: 0 6px; opacity: 0.5; }
+.price-row .price { font-weight: 950; font-size: 16px; }
 
 .line-clamp-2 {
   display: -webkit-box;
@@ -1300,13 +1205,8 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* MÁS AIRE EN ACCIONES */
-.btn-pad {
-  min-height: 38px;
-}
-.btn-icon {
-  min-width: 42px;
-}
+.btn-pad { min-height: 38px; }
+.btn-icon { min-width: 42px; }
 
 /* Carrito */
 .cart-card {
@@ -1320,10 +1220,7 @@ onMounted(async () => {
   max-height: calc(100vh - 110px);
 }
 
-.cart-head {
-  flex: 0 0 auto;
-}
-
+.cart-head { flex: 0 0 auto; }
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1338,23 +1235,11 @@ onMounted(async () => {
   box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
 }
 
-.cart-foot .v-btn {
-  min-height: 44px;
-}
+.cart-foot .v-btn { min-height: 44px; }
 
-.cart-item {
-  background: rgba(var(--v-theme-surface), 0.9);
-}
-
-.cart-title {
-  font-weight: 900;
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.border {
-  border-radius: 10px;
-}
+.cart-item { background: rgba(var(--v-theme-surface), 0.9); }
+.cart-title { font-weight: 900; font-size: 13px; line-height: 1.2; }
+.border { border-radius: 10px; }
 
 .empty {
   border-style: dashed;
@@ -1377,51 +1262,18 @@ onMounted(async () => {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
-.muted {
-  color: rgba(var(--v-theme-on-surface), 0.62);
-}
-
-.cart-actions {
-  flex-wrap: nowrap;
-}
-
-.cart-actions > .v-btn {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.cart-foot .v-btn.v-btn--block {
-  width: auto !important;
-}
+.muted { color: rgba(var(--v-theme-on-surface), 0.62); }
+.cart-actions { flex-wrap: nowrap; }
+.cart-actions > .v-btn { flex: 1 1 0; min-width: 0; }
+.cart-foot .v-btn.v-btn--block { width: auto !important; }
 
 @media (max-width: 960px) {
-  .pos-wrap {
-    padding: 10px;
-  }
-  .pos-toolbar {
-    position: relative;
-    top: auto;
-  }
-  .pos-left {
-    min-height: auto;
-  }
-  .pos-products {
-    max-height: none;
-    overflow: visible;
-    padding: 10px;
-  }
-  .cart-card {
-    position: relative;
-    top: auto;
-    height: auto;
-    max-height: none;
-  }
-  .cart-body {
-    min-height: auto;
-    overflow: visible;
-  }
-  .cart-foot {
-    box-shadow: none;
-  }
+  .pos-wrap { padding: 10px; }
+  .pos-toolbar { position: relative; top: auto; }
+  .pos-left { min-height: auto; }
+  .pos-products { max-height: none; overflow: visible; padding: 10px; }
+  .cart-card { position: relative; top: auto; height: auto; max-height: none; }
+  .cart-body { min-height: auto; overflow: visible; }
+  .cart-foot { box-shadow: none; }
 }
 </style>

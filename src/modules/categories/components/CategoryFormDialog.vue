@@ -60,7 +60,13 @@
 
       <v-card-actions class="pa-4 d-flex justify-end ga-2">
         <v-btn variant="text" @click="close">Cancelar</v-btn>
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save-outline" @click="save" :loading="loading">
+        <v-btn
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-content-save-outline"
+          @click="save"
+          :loading="loading"
+        >
           Guardar
         </v-btn>
       </v-card-actions>
@@ -89,11 +95,12 @@ const localOpen = computed({
 
 const loading = computed(() => !!cats.loading);
 const errorText = computed(() => cats.error || "");
-
 const title = computed(() => (props.mode === "edit" ? "Editar categoría" : "Nueva categoría"));
 
 const parents = computed(() =>
-  (cats.items || []).filter((c) => !c.parent_id && c.is_active !== 0).sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+  (cats.items || [])
+    .filter((c) => !c.parent_id && Number(c.is_active ?? 1) !== 0)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 );
 
 const formRef = ref(null);
@@ -121,16 +128,25 @@ function resetForm() {
 function fillFromItem(item) {
   form.name = item?.name ?? "";
   form.parent_id = item?.parent_id ?? null;
-  form.is_active = item?.is_active !== 0;
+  form.is_active = Number(item?.is_active ?? 1) !== 0;
+}
+
+async function validateForm() {
+  const res = await formRef.value?.validate?.();
+  if (typeof res === "boolean") return res;
+  if (res && typeof res === "object" && "valid" in res) return !!res.valid;
+  return true;
 }
 
 async function save() {
-  const ok = await formRef.value?.validate?.();
-  if (ok && ok.valid === false) return;
+  cats.clearError?.();
+
+  const ok = await validateForm();
+  if (!ok) return;
 
   const payload = {
     name: String(form.name || "").trim(),
-    parent_id: form.parent_id || null,
+    parent_id: form.parent_id ? Number(form.parent_id) : null,
     is_active: form.is_active ? 1 : 0,
   };
 
@@ -150,8 +166,6 @@ watch(
   () => props.open,
   async (isOpen) => {
     if (!isOpen) return;
-
-    // aseguramos catálogo cargado
     await cats.fetchAll?.();
 
     if (props.mode === "edit" && props.item) fillFromItem(props.item);

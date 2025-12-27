@@ -1,285 +1,268 @@
 <template>
-  <v-card class="pos-card" rounded="xl" variant="tonal" @click="emit('details', item)">
-    <!-- Imagen -->
-    <div class="pos-img-wrap">
-      <v-img
-        v-if="imgSrc"
-        :src="imgSrc"
-        cover
-        height="150"
-        class="pos-img"
-      >
+  <v-card class="ppc-card" rounded="xl" elevation="1">
+    <!-- Imagen + badges -->
+    <div class="ppc-thumb">
+      <v-img :src="image || undefined" cover class="ppc-img" height="150">
         <template #placeholder>
-          <div class="pos-img-skeleton"></div>
+          <div class="ppc-thumb-empty">
+            <v-progress-circular indeterminate size="24" />
+          </div>
+        </template>
+        <template #error>
+          <div class="ppc-thumb-empty">
+            <v-icon size="34">mdi-image-off-outline</v-icon>
+          </div>
         </template>
       </v-img>
 
-      <div v-else class="pos-img-empty">
-        <v-icon size="42" color="grey-lighten-2">mdi-image-off-outline</v-icon>
-      </div>
-
-      <!-- Badges -->
-      <div class="pos-badges">
-        <v-chip size="x-small" variant="tonal" class="mr-1">
+      <!-- ✅ Barra badges (SIEMPRE visible) -->
+      <div class="ppc-badges-bar">
+        <v-chip size="x-small" variant="flat" class="ppc-chip">
           SKU: <b class="ml-1">{{ item?.sku || item?.code || "—" }}</b>
         </v-chip>
-        <v-chip size="x-small" variant="tonal">
-          Stock: <b class="ml-1">{{ stockLabel }}</b>
+
+        <v-chip size="x-small" variant="flat" class="ppc-chip">
+          Stock: <b class="ml-1">{{ qty3(item?.qty ?? 0) }}</b>
         </v-chip>
       </div>
     </div>
 
-    <v-card-text class="pt-3">
-      <div class="text-subtitle-1 font-weight-bold clamp-2">
+    <!-- Info -->
+    <v-card-text class="ppc-body">
+      <div class="ppc-title line-clamp-2" :title="item?.name || ''">
         {{ item?.name || "—" }}
       </div>
 
-      <div class="text-caption text-medium-emphasis mt-2">
-        <div>Marca: <b>{{ item?.brand || "—" }}</b></div>
-        <div>Modelo: <b>{{ item?.model || "—" }}</b></div>
-        <div>Rubro: <b>{{ rubro || "—" }}</b></div>
-        <div>Subrubro: <b>{{ subrubro || "—" }}</b></div>
+      <div class="ppc-meta">
+        <div class="ppc-row">
+          <span class="muted">Marca:</span> <b>{{ item?.brand || "—" }}</b>
+          <span class="dot">·</span>
+          <span class="muted">Modelo:</span> <b>{{ item?.model || "—" }}</b>
+        </div>
+
+        <div class="ppc-row">
+          <span class="muted">Rubro:</span> <b>{{ rubro || "—" }}</b>
+          <span class="dot">·</span>
+          <span class="muted">Subrubro:</span> <b>{{ subrubro || "—" }}</b>
+        </div>
       </div>
 
-      <div class="d-flex align-center justify-space-between mt-3">
-        <div class="text-h6 font-weight-bold">
-          {{ priceLabel }}
-        </div>
-
-        <div class="d-flex ga-1">
-          <!-- VER -->
-          <v-btn
-            icon
-            size="small"
-            variant="text"
-            @click.stop="emit('details', item)"
-            :title="'Ver'"
-          >
-            <v-icon>mdi-eye-outline</v-icon>
-          </v-btn>
-
-          <!-- EDITAR -->
-          <v-btn
-            icon
-            size="small"
-            variant="text"
-            @click.stop="emit('edit', item)"
-            :title="'Editar'"
-          >
-            <v-icon>mdi-pencil-outline</v-icon>
-          </v-btn>
-        </div>
+      <div class="ppc-price-row">
+        <div class="ppc-price">{{ money(price) }}</div>
+        <v-chip size="small" variant="tonal">{{ priceLabel }}</v-chip>
       </div>
     </v-card-text>
 
-    <v-card-actions class="pt-0">
+    <!-- Acciones (icono) -->
+    <v-card-actions class="ppc-actions">
       <v-btn
-        block
+        icon
+        size="large"
+        variant="tonal"
         color="primary"
-        variant="flat"
-        prepend-icon="mdi-plus"
+        class="ppc-action-btn"
+        title="Agregar"
         @click.stop="emit('add', item)"
-        :disabled="disableAdd"
       >
-        AGREGAR
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
+
+      <v-spacer />
+
+      <v-btn
+        icon
+        size="large"
+        variant="tonal"
+        class="ppc-action-btn"
+        title="Ver detalle"
+        @click.stop="emit('details', item)"
+      >
+        <v-icon>mdi-eye-outline</v-icon>
       </v-btn>
     </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
-import { useProductsStore } from "../../../app/store/products.store";
+import { computed } from "vue";
 
 const props = defineProps({
   item: { type: Object, required: true },
-  // si querés bloquear "Agregar" por stock 0, dejalo true.
-  blockWhenNoStock: { type: Boolean, default: true },
+  image: { type: String, default: "" },
+  rubroLabel: { type: String, default: "" },
+  subrubroLabel: { type: String, default: "" },
+  price: { type: [Number, String], default: 0 },
+  priceLabel: { type: String, default: "Lista" },
 });
 
-const emit = defineEmits(["add", "details", "edit"]);
+const emit = defineEmits(["add", "details"]);
 
-const products = useProductsStore();
-const fetchedImages = ref([]);
-
-/* =========================
-   Helpers
-========================= */
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
+function money(val) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+}
+function qty3(n) {
+  return Number(n || 0).toFixed(3);
 }
 
-// intenta sacar URL de diferentes formatos de backend
-function pickImageUrl(x) {
-  if (!x) return "";
-  return (
-    x.url ||
-    x.public_url ||
-    x.publicUrl ||
-    x.thumb_url ||
-    x.thumbUrl ||
-    x.path ||
-    x.key ||
-    x.location ||
-    ""
-  );
-}
-
-// si viene "key" o "path" sin http, lo dejamos tal cual (muchos setups ya devuelven URL completa)
-function normalizeUrl(u) {
-  if (!u) return "";
-  return String(u);
-}
-
-/* =========================
-   Stock / Price / Rubro
-========================= */
-const stockNum = computed(() => {
-  const v =
-    props.item?.stock_qty ??
-    props.item?.stock ??
-    props.item?.qty ??
-    props.item?.quantity ??
-    props.item?.sheet_stock_label ??
-    null;
-
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-});
-
-const stockLabel = computed(() => {
-  if (stockNum.value === null) return "—";
-  return stockNum.value.toFixed(3);
-});
-
-const disableAdd = computed(() => {
-  if (!props.blockWhenNoStock) return false;
-  if (stockNum.value === null) return false; // si no sabemos, dejá agregar
-  return !(stockNum.value > 0);
-});
-
-function moneyARS(v) {
-  const n = toNum(v, 0);
-  try {
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(n);
-  } catch {
-    return `$ ${n.toFixed(2)}`;
-  }
-}
-
-const priceLabel = computed(() => {
-  // elegí el que uses en POS; acá prioridad: discount > list
-  const d = toNum(props.item?.price_discount, 0);
-  const l = toNum(props.item?.price_list, 0);
-  const v = d > 0 ? d : l;
-  return moneyARS(v);
-});
-
-const rubro = computed(() => props.item?.category?.parent?.name || props.item?.rubro || "");
-const subrubro = computed(() => props.item?.category?.name || props.item?.subrubro || "");
-
-/* =========================
-   IMAGEN
-   - Si la lista ya trae images[], la usamos
-   - Si no trae, pero images_count > 0 => fetch /products/:id/images
-========================= */
-const imgSrc = computed(() => {
-  // 1) si backend ya trae images (array)
-  const listImages = Array.isArray(props.item?.images) ? props.item.images : null;
-  if (listImages?.length) {
-    const u = normalizeUrl(pickImageUrl(listImages[0]));
-    if (u) return u;
-  }
-
-  // 2) si backend trae algo tipo image_url directo
-  const direct =
-    props.item?.image_url ||
-    props.item?.imageUrl ||
-    props.item?.thumb_url ||
-    props.item?.thumbUrl ||
-    "";
-  if (direct) return normalizeUrl(direct);
-
-  // 3) fallback a lo fetcheado
-  if (fetchedImages.value?.length) {
-    const u = normalizeUrl(pickImageUrl(fetchedImages.value[0]));
-    if (u) return u;
-  }
-
-  return "";
-});
-
-async function ensureImages() {
-  const id = Number(props.item?.id || 0);
-  if (!id) return;
-
-  const hasCount = Number(props.item?.images_count ?? props.item?.image_count ?? 0);
-  const already = Array.isArray(props.item?.images) && props.item.images.length > 0;
-
-  if (already) return;
-  if (!(hasCount > 0)) return;
-  if (fetchedImages.value.length) return;
-
-  const imgs = await products.fetchImages(id);
-  fetchedImages.value = Array.isArray(imgs) ? imgs : [];
-}
-
-onMounted(ensureImages);
-
-watch(
-  () => [props.item?.id, props.item?.images_count, props.item?.image_count],
-  () => {
-    fetchedImages.value = [];
-    ensureImages();
-  }
-);
+const rubro = computed(() => String(props.rubroLabel || "").trim());
+const subrubro = computed(() => String(props.subrubroLabel || "").trim());
 </script>
 
 <style scoped>
-.pos-card {
-  width: 260px;
+.ppc-card {
   overflow: hidden;
-  cursor: pointer;
+  border-radius: 18px;
+
+  /* 🔥 CONTRASTE */
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.02)
+  );
+
+  /* 🔥 BORDE + GLOW */
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow:
+    0 8px 22px rgba(0,0,0,0.45),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 
-.pos-img-wrap {
+/* ✨ HOVER = card “flota” */
+.ppc-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 34px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.35);
+}
+
+/* =======================
+   IMAGEN
+======================= */
+.ppc-thumb {
   position: relative;
-}
-
-.pos-img {
-  border-bottom: 1px solid rgba(255,255,255,.06);
-}
-
-.pos-img-empty {
   height: 150px;
-  display: grid;
-  place-items: center;
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  background: rgba(255,255,255,.03);
+  background: rgba(0,0,0,0.25);
 }
 
-.pos-img-skeleton {
+.ppc-img {
   height: 150px;
-  width: 100%;
-  background: rgba(255,255,255,.06);
 }
 
-.pos-badges {
+/* =======================
+   BADGES (SKU / STOCK)
+======================= */
+.ppc-badges-bar {
   position: absolute;
   left: 10px;
-  top: 10px;
+  right: 10px;
+  bottom: 10px;
+
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+
+  padding: 8px 10px;
+  border-radius: 999px;
+
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  z-index: 5;
 }
 
-.clamp-2 {
+.ppc-chip {
+  color: #fff !important;
+  background: rgba(255,255,255,0.14) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  font-weight: 600;
+}
+
+/* =======================
+   BODY
+======================= */
+.ppc-body {
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+/* TÍTULO */
+.ppc-title {
+  font-weight: 900;
+  font-size: 13.5px;
+  line-height: 1.25;
+  min-height: 34px;
+  color: #fff;
+}
+
+/* META */
+.ppc-meta {
+  margin-top: 10px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.72);
+}
+
+.ppc-row {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: rgba(255,255,255,0.55);
+}
+
+.dot {
+  margin: 0 6px;
+  opacity: 0.5;
+}
+
+/* =======================
+   PRECIO
+======================= */
+.ppc-price-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ppc-price {
+  font-weight: 900;
+  font-size: 17px;
+  color: #fff;
+}
+
+/* =======================
+   ACCIONES
+======================= */
+.ppc-actions {
+  padding: 12px;
+  gap: 12px;
+}
+
+.ppc-action-btn {
+  min-width: 52px;
+  min-height: 52px;
+
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+}
+
+.ppc-action-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.25) !important;
+  border-color: rgba(var(--v-theme-primary), 0.6) !important;
+}
+
+/* clamp */
+.line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
 </style>
