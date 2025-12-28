@@ -79,6 +79,129 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
   }
 }
 
+/* =========================
+   ✅ HELPERS: Normalización para ticket
+========================= */
+function normalizeMethod(m) {
+  return String(m || "").toUpperCase() || "CASH";
+}
+
+function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_id, cart, totalAmount }) {
+  const now = new Date();
+
+  const items = (cart || []).map((it) => {
+    const qty = toNum(it.qty, 0);
+    const unit = toNum(it.price, 0);
+    const sub = toNum(it.subtotal, qty * unit);
+
+    return {
+      // formatos “flexibles”
+      name: String(it.name || ""),
+      qty,
+      quantity: qty,
+
+      unit_price: unit,
+      unitPrice: unit,
+      price: unit,
+
+      subtotal: sub,
+      price_label: it.price_label || it.priceLabel || "",
+
+      product_id: toInt(it.product_id, toInt(it.id, 0)),
+      sku: it.sku || null,
+      barcode: it.barcode || null,
+    };
+  });
+
+  const total = toNum(totalAmount, 0);
+
+  return {
+    id: saleId || `LOCAL-${Date.now()}`,
+    number: saleId || `LOCAL-${Date.now()}`,
+    created_at: now,
+    payment_method: normalizeMethod(paymentMethod),
+    installments: toInt(extra?.installments, 1) || 1,
+    proof: extra?.proof || null,
+    customer: extra?.customer || null,
+
+    branch_id: branch_id || null,
+    warehouse_id: warehouse_id || null,
+
+    items,
+    subtotal: total,
+    total,
+    amount_total: total,
+  };
+}
+
+function normalizeSaleShape(saleMaybe) {
+  if (!saleMaybe || typeof saleMaybe !== "object") return null;
+
+  // algunos backends devuelven {data:{...}} o {sale:{...}}
+  const s = saleMaybe.sale || saleMaybe.data?.sale || saleMaybe.data || saleMaybe;
+
+  if (!s || typeof s !== "object") return null;
+
+  // items
+  const rawItems = s.items || s.lines || s.sale_items || s.cart || [];
+  const items = Array.isArray(rawItems) ? rawItems : [];
+
+  // totales
+  const total =
+    toNum(s.total, 0) ||
+    toNum(s.amount_total, 0) ||
+    toNum(s.total_amount, 0) ||
+    toNum(s.grand_total, 0) ||
+    0;
+
+  const subtotal =
+    toNum(s.subtotal, 0) ||
+    (items.length
+      ? items.reduce((a, it) => {
+          const qty = toNum(it.qty ?? it.quantity, 0);
+          const unit = toNum(it.unit_price ?? it.price ?? it.unitPrice, 0);
+          const sub = toNum(it.subtotal, qty * unit);
+          return a + sub;
+        }, 0)
+      : 0);
+
+  return {
+    ...s,
+    // “unifico” campos útiles para el ticket
+    payment_method: normalizeMethod(s.payment_method || s.method || s.paymentMethod),
+    installments: toInt(s.installments || s.cuotas, 1) || 1,
+    proof: s.proof || s.payment_proof || s.proof_id || s.operation_id || null,
+
+    items,
+    subtotal: subtotal || subtotal === 0 ? subtotal : 0,
+    total: total || subtotal || 0,
+  };
+}
+
+async function fetchSaleDetailBestEffort(saleId) {
+  const id = toInt(saleId, 0);
+  if (!id) return null;
+
+  const endpoints = [
+    `/pos/sales/${id}`,
+    `/sales/${id}`,
+    `/pos/receipts/${id}`,
+    `/receipts/${id}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const { data } = await http.get(url);
+      const norm = normalizeSaleShape(data);
+      if (norm) return norm;
+    } catch (e) {
+      dbg("fetchSaleDetailBestEffort miss", { url, status: e?.response?.status });
+    }
+  }
+
+  return null;
+}
+
 export const usePosStore = defineStore("pos", {
   state: () => ({
     loading: false,
@@ -90,6 +213,9 @@ export const usePosStore = defineStore("pos", {
     customer: { name: "Consumidor Final" },
     cart: [],
     toast: { show: false, text: "" },
+
+    // ✅ último comprobante normalizado (opcional)
+    last_sale: null,
   }),
 
   getters: {
@@ -320,11 +446,15 @@ export const usePosStore = defineStore("pos", {
     },
 
     // =========================
-    // Checkout
+    // Checkout (✅ ahora devuelve SALE “ticket-friendly” SIEMPRE)
     // =========================
     async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
       this.error = "";
+
+      // ✅ snapshot del carrito ANTES de post (porque luego se limpia)
+      const cartSnapshot = (this.cart || []).map((it) => ({ ...it }));
+      const totalSnapshot = toNum(this.totalAmount, 0);
 
       try {
         // checkout siempre no-admin (requiere depósito)
@@ -356,7 +486,7 @@ export const usePosStore = defineStore("pos", {
           })),
           payments: [
             {
-              method: String(paymentMethod || "CASH").toUpperCase(),
+              method: normalizeMethod(paymentMethod),
               amount: toNum(this.totalAmount, 0),
               reference: extra?.proof || null,
               note: extra?.price_policy
@@ -368,9 +498,55 @@ export const usePosStore = defineStore("pos", {
 
         const { data } = await http.post("/pos/sales", payload);
 
+        dbg("checkoutSale POST /pos/sales resp", data);
+
+        // 1) intento normalizar lo que vino
+        let sale = normalizeSaleShape(data);
+
+        // 2) saco id como pueda
+        const saleId =
+          toInt(sale?.id, 0) ||
+          toInt(sale?.sale_id, 0) ||
+          toInt(data?.sale_id, 0) ||
+          toInt(data?.data?.sale_id, 0) ||
+          toInt(data?.id, 0) ||
+          toInt(data?.data?.id, 0) ||
+          0;
+
+        // 3) si no vino con items/totales, intento traer detalle
+        const needDetails = !sale || !Array.isArray(sale.items) || sale.items.length === 0 || toNum(sale.total, 0) <= 0;
+        if (needDetails && saleId > 0) {
+          const full = await fetchSaleDetailBestEffort(saleId);
+          if (full) sale = full;
+        }
+
+        // 4) último fallback: construyo “sale” desde el carrito snapshot (SIEMPRE muestra items/total)
+        if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
+          sale = buildSaleFromCart({
+            saleId: saleId || null,
+            paymentMethod,
+            extra,
+            branch_id: toInt(this.branch_id, 0) || null,
+            warehouse_id: wid || null,
+            cart: cartSnapshot,
+            totalAmount: totalSnapshot,
+          });
+        } else {
+          // aseguro totales si vinieron vacíos
+          if (toNum(sale.total, 0) <= 0) sale.total = totalSnapshot;
+          if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
+        }
+
+        // ✅ guardo el último comprobante para que el UI lo tome
+        this.last_sale = sale;
+
+        // ✅ recién ahora limpio carrito
         this.clearCart();
+
         this.toast = { show: true, text: "✅ Venta registrada correctamente" };
-        return data;
+
+        // ✅ retorno “ticket-friendly”
+        return { ok: true, sale, raw: data };
       } catch (e) {
         const msg = apiErrorMessage(e, "Error al confirmar la venta");
         this.error = msg;

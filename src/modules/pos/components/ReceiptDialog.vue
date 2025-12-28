@@ -1,21 +1,18 @@
 <!-- src/modules/pos/components/ReceiptDialog.vue -->
 <template>
-  <v-dialog v-model="openLocal" max-width="860">
+  <v-dialog v-model="openLocal" max-width="920">
     <v-card class="rd-root rounded-xl overflow-hidden">
       <!-- HEADER -->
       <div class="rd-head d-flex align-center justify-space-between px-4 py-3">
         <div>
-          <div class="text-h6 font-weight-black">Comprobante de compra</div>
+          <div class="text-h6 font-weight-black">Comprobante</div>
           <div class="text-caption text-medium-emphasis">
-            {{ companyName }} · {{ companyTagline }}
-          </div>
-          <div class="text-caption text-medium-emphasis mt-1">
-            {{ branchDisplay }}
+            {{ companyName }} · {{ branchName || "Sucursal" }}
           </div>
         </div>
 
         <div class="d-flex ga-2">
-          <v-btn color="primary" variant="flat" @click="onPrint" :disabled="!canPrint">
+          <v-btn color="primary" variant="tonal" @click="onPrint" :disabled="!canPrint">
             <v-icon start>mdi-printer</v-icon>
             Imprimir
           </v-btn>
@@ -26,34 +23,30 @@
       <v-divider />
 
       <v-card-text class="rd-body">
-        <!-- ✅ ÁREA IMPRIMIBLE -->
+        <!-- ✅ Vista en pantalla -->
         <div ref="printArea" class="ticket">
-          <!-- BRAND BLOCK -->
           <div class="ticket__top">
-            <div class="ticket__logo">{{ companyName }}</div>
+            <div class="ticket__brand">{{ companyName }}</div>
             <div class="ticket__tagline">{{ companyTagline }}</div>
 
             <div class="ticket__branch">
-              <div class="bname">{{ branchName || "Sucursal" }}</div>
-              <div class="bline" v-if="branchAddress">{{ branchAddress }}</div>
-              <div class="bline" v-if="branchPhone">Tel: {{ branchPhone }}</div>
-              <div class="bline" v-if="branchEmail">Email: {{ branchEmail }}</div>
-              <div class="bline" v-if="branchCuit">CUIT: {{ branchCuit }}</div>
+              <div class="b1">{{ branchName || "Sucursal" }}</div>
+              <div v-if="branchAddress" class="b2">{{ branchAddress }}</div>
+              <div v-if="branchPhone" class="b2">{{ branchPhone }}</div>
             </div>
           </div>
 
-          <div class="ticket__sep"></div>
-
-          <!-- META -->
           <div class="ticket__meta">
             <div class="row">
               <span class="k">Fecha</span>
               <span class="v">{{ fmtDate(saleDate) }}</span>
             </div>
+
             <div class="row">
               <span class="k">Comprobante</span>
               <span class="v">#{{ saleNumber }}</span>
             </div>
+
             <div class="row">
               <span class="k">Método</span>
               <span class="v">{{ paymentLabel }}</span>
@@ -70,16 +63,14 @@
             </div>
           </div>
 
-          <!-- CUSTOMER -->
-          <div v-if="customerBlock" class="ticket__sep"></div>
+          <div v-if="customerBlock" class="ticket__line"></div>
+
           <div v-if="customerBlock" class="ticket__customer">
             <div class="ttl">Cliente</div>
-            <div class="line" v-if="customerName"><b>{{ customerName }}</b></div>
-            <div class="line" v-if="customerWhatsapp">WhatsApp: {{ customerWhatsapp }}</div>
-            <div class="line" v-if="customerEmail">Email: {{ customerEmail }}</div>
+            <div class="sub">{{ customerBlock }}</div>
           </div>
 
-          <div class="ticket__sep"></div>
+          <div class="ticket__line"></div>
 
           <!-- ITEMS -->
           <div class="ticket__items">
@@ -88,51 +79,50 @@
               <span class="right">Importe</span>
             </div>
 
-            <div v-if="normalizedItems.length === 0" class="empty-items">
-              No hay ítems en el comprobante. (Falta pasar items/total en la venta)
-            </div>
-
             <div v-for="(it, idx) in normalizedItems" :key="idx" class="item">
-              <div class="item__left">
+              <div class="item__name">
                 <div class="nm">{{ it.name }}</div>
                 <div class="sub">
                   {{ qty3(it.qty) }} × {{ money(it.unit_price) }}
                   <span v-if="it.price_label" class="lbl">· {{ it.price_label }}</span>
                 </div>
               </div>
-              <div class="item__right right">
+              <div class="item__total right">
                 {{ money(it.subtotal) }}
               </div>
             </div>
+
+            <div v-if="normalizedItems.length === 0" class="empty-items">
+              No hay ítems para mostrar.
+            </div>
           </div>
 
-          <div class="ticket__sep"></div>
+          <div class="ticket__line"></div>
 
-          <!-- TOTALS -->
+          <!-- TOTAL -->
           <div class="ticket__totals">
             <div class="row">
               <span class="k">Subtotal</span>
               <span class="v">{{ money(subtotal) }}</span>
             </div>
+
             <div class="row total">
               <span class="k">TOTAL</span>
               <span class="v">{{ money(total) }}</span>
             </div>
           </div>
 
-          <div class="ticket__sep"></div>
-
-          <!-- MARKETING FOOTER -->
           <div class="ticket__footer">
-            <div class="thanks">¡Gracias por elegir San Juan Tecnología!</div>
-            <div class="mkt">
-              Electrónica · Hogar · Seguridad Inteligente
-            </div>
-            <div class="mkt2" v-if="marketingLine">
+            <div class="thanks">¡Gracias por su compra!</div>
+            <div class="marketing">
               {{ marketingLine }}
             </div>
             <div class="legal">{{ legalLine }}</div>
           </div>
+        </div>
+
+        <div v-if="!canPrint" class="mt-3 text-caption text-medium-emphasis">
+          ⚠️ Para imprimir, el navegador debe permitir ventanas emergentes (pop-ups) para este sitio.
         </div>
       </v-card-text>
 
@@ -154,22 +144,16 @@ import { computed, ref } from "vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-
-  // venta (lo que venga del backend o armado en frontend)
   sale: { type: Object, default: () => ({}) },
 
-  // Marca / Marketing
   companyName: { type: String, default: "San Juan Tecnología" },
   companyTagline: { type: String, default: "Electrónica, Hogar y Seguridad Inteligente" },
-  marketingLine: { type: String, default: "Seguinos y enterate de promos y novedades." },
+  marketingLine: { type: String, default: "Seguinos en redes · Promos y novedades todas las semanas" },
   legalLine: { type: String, default: "Documento no válido como factura. Uso interno/comercial." },
 
-  // Sucursal (podés pasarlos desde POS)
   branchName: { type: String, default: "" },
   branchAddress: { type: String, default: "" },
   branchPhone: { type: String, default: "" },
-  branchEmail: { type: String, default: "" },
-  branchCuit: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:open"]);
@@ -233,95 +217,68 @@ const installmentsText = computed(() => {
   const s = props.sale || {};
   const inst = Number(s.installments || s.cuotas || 0);
   if (!(inst > 1)) return "";
-  const t = toNum(s.total || s.amount_total || s.amountTotal || 0);
+  const t = toNum(s.total || s.amount_total || 0);
   const per = inst > 0 ? t / inst : 0;
   return `${inst} cuotas de ${money(per)}`;
 });
 
 const proofText = computed(() => {
   const s = props.sale || {};
-  return s.proof || s.payment_proof || s.proof_id || s.operation_id || s.operationId || "";
+  return s.proof || s.payment_proof || s.proof_id || s.operation_id || "";
 });
 
 const normalizedItems = computed(() => {
   const s = props.sale || {};
-  const raw = s.items || s.lines || s.sale_items || s.saleItems || s.cart || s.detail || [];
+  const raw = s.items || s.lines || s.sale_items || s.cart || [];
   const arr = Array.isArray(raw) ? raw : [];
 
-  return arr.map((it) => {
-    const qty = toNum(it.qty || it.quantity || it.cantidad || 0);
-    const unit = toNum(it.unit_price ?? it.price ?? it.unitPrice ?? it.unit ?? 0);
-    const sub = toNum(it.subtotal ?? it.total_line ?? it.totalLine ?? qty * unit);
-    return {
-      name: it.name || it.product_name || it.productName || it.title || "—",
-      qty,
-      unit_price: unit,
-      subtotal: sub,
-      price_label: it.price_label || it.priceLabel || it.policy || "",
-    };
-  });
+  return arr
+    .map((it) => {
+      const qty = toNum(it.qty ?? it.quantity ?? 0);
+      const unit = toNum(it.unit_price ?? it.price ?? it.unitPrice ?? 0);
+      const sub = toNum(it.subtotal ?? (qty * unit));
+      return {
+        name: it.name || it.product_name || it.title || "—",
+        qty,
+        unit_price: unit,
+        subtotal: sub,
+        price_label: it.price_label || it.priceLabel || "",
+      };
+    })
+    .filter((x) => String(x.name || "").trim() !== "");
 });
 
 const subtotal = computed(() => {
   const s = props.sale || {};
-  const v = toNum(s.subtotal || s.amount_subtotal || s.amountSubtotal || 0);
-  if (v > 0) return v;
+  if (toNum(s.subtotal) > 0) return toNum(s.subtotal);
   return normalizedItems.value.reduce((a, it) => a + toNum(it.subtotal), 0);
 });
 
 const total = computed(() => {
   const s = props.sale || {};
-  const v1 = toNum(s.total || s.amount_total || s.amountTotal || 0);
-  if (v1 > 0) return v1;
+  if (toNum(s.total) > 0) return toNum(s.total);
+  if (toNum(s.amount_total) > 0) return toNum(s.amount_total);
   return subtotal.value;
 });
 
-// Customer (sale.customer o sale.client)
-const customer = computed(() => {
-  const s = props.sale || {};
-  return s.customer || s.client || s.cliente || {};
-});
-
-const customerName = computed(() => {
-  const c = customer.value || {};
-  const n = [c.first_name || c.firstName || c.nombre || "", c.last_name || c.lastName || c.apellido || ""]
-    .join(" ")
-    .trim();
-  return n || "";
-});
-
-const customerWhatsapp = computed(() => {
-  const c = customer.value || {};
-  return c.whatsapp || c.phone || c.telefono || "";
-});
-
-const customerEmail = computed(() => {
-  const c = customer.value || {};
-  return c.email || "";
-});
-
 const customerBlock = computed(() => {
-  return [customerName.value, customerWhatsapp.value, customerEmail.value].filter(Boolean).join(" · ").trim();
-});
-
-const branchDisplay = computed(() => {
-  const bits = [props.branchName || "Sucursal"];
-  if (props.branchAddress) bits.push(props.branchAddress);
-  return bits.join(" · ");
+  const s = props.sale || {};
+  const c = s.customer || s.client || {};
+  const name = [c.first_name || c.firstName || "", c.last_name || c.lastName || ""].join(" ").trim();
+  const wa = c.whatsapp || c.phone || "";
+  const em = c.email || "";
+  const out = [name, wa, em].filter(Boolean).join(" · ").trim();
+  return out || "";
 });
 
 const canPrint = computed(() => {
-  // imprimible aunque haya pocos datos, pero al menos debe existir el DOM
+  // print usa window.open -> si el browser bloquea popups, no imprime
   return true;
 });
 
-/* ===========================
-   ✅ PRINT ROBUSTO (sin popup)
-   Usa iframe oculto → dispara impresora
-=========================== */
 function buildPrintCss() {
   return `
-    @page { margin: 6mm; }
+    @page { margin: 8mm; }
     html, body { height: 100%; }
     body {
       font-family: Arial, Helvetica, sans-serif;
@@ -333,36 +290,35 @@ function buildPrintCss() {
       print-color-adjust: exact;
     }
     .wrap { padding: 0; }
-
-    /* 80mm típico ticket */
     #ticketRoot { width: 80mm; max-width: 100%; margin: 0 auto; }
 
     .ticket {
-      padding: 10px;
+      padding: 10px 10px;
       border: 1px dashed #777;
       border-radius: 10px;
     }
-    .ticket__logo { font-size: 16px; font-weight: 900; text-align:center; }
-    .ticket__tagline { font-size: 11px; text-align:center; opacity:.9; margin-top:4px; }
-    .ticket__branch { margin-top: 10px; text-align:center; font-size: 11px; opacity:.95; }
-    .ticket__branch .bname { font-weight: 900; margin-bottom: 2px; }
-    .ticket__branch .bline { opacity: .9; margin-top: 1px; }
 
-    .ticket__sep { border-top: 1px dashed #444; margin: 10px 0; }
+    .ticket__brand { font-size: 16px; font-weight: 900; text-align:center; }
+    .ticket__tagline { font-size: 11px; text-align:center; opacity:.9; margin-top:3px; }
+    .ticket__branch { text-align:center; margin-top:8px; }
+    .ticket__branch .b1 { font-weight: 800; font-size: 12px; }
+    .ticket__branch .b2 { font-size: 11px; opacity:.85; margin-top:2px; }
 
     .ticket__meta .row, .ticket__totals .row {
       display:flex; justify-content:space-between; gap:10px;
       font-size: 11px; margin: 4px 0;
     }
+    .ticket__line { border-top: 1px dashed #444; margin: 10px 0; }
+
     .items__head {
       display:flex; justify-content:space-between;
-      font-size: 11px; font-weight: 800; margin-bottom: 6px;
+      font-size: 11px; font-weight: 900; margin-bottom: 6px;
     }
     .item {
       display:flex; justify-content:space-between; gap:10px;
       font-size: 11px; margin: 8px 0;
     }
-    .nm { font-weight: 800; }
+    .nm { font-weight: 900; }
     .sub { opacity:.85; margin-top: 2px; }
     .lbl { opacity:.85; }
     .right { text-align:right; white-space:nowrap; }
@@ -370,82 +326,47 @@ function buildPrintCss() {
     .ticket__totals .total { font-size: 13px; font-weight: 900; margin-top: 8px; }
 
     .ticket__customer .ttl { font-weight: 900; font-size: 12px; margin-bottom: 4px; }
-    .ticket__customer .line { font-size: 11px; margin-top: 2px; }
+    .ticket__customer .sub { font-size: 11px; opacity:.9; }
 
-    .ticket__footer { margin-top: 10px; text-align:center; font-size: 11px; }
+    .ticket__footer { margin-top: 14px; text-align:center; font-size: 11px; }
     .thanks { font-weight: 900; }
-    .mkt { margin-top: 6px; opacity: .9; }
-    .mkt2 { margin-top: 6px; opacity: .85; }
-    .legal { opacity:.7; margin-top:8px; }
+    .marketing { opacity: .9; margin-top: 6px; }
+    .legal { opacity:.7; margin-top:6px; }
 
     * { box-shadow: none !important; }
   `;
-}
-
-function printHtmlInIframe(html) {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  iframe.setAttribute("aria-hidden", "true");
-
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) {
-    document.body.removeChild(iframe);
-    return false;
-  }
-
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  iframe.onload = () => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } finally {
-      // limpiar
-      setTimeout(() => {
-        try {
-          document.body.removeChild(iframe);
-        } catch {}
-      }, 300);
-    }
-  };
-
-  return true;
 }
 
 function onPrint() {
   const el = printArea.value;
   if (!el) return;
 
-  // 👉 clono SOLO el contenido del ticket dentro de un root 80mm
-  const ticketInner = el.innerHTML;
+  // IMPORTANTE: outerHTML evita perder estructura; NO meter </script> en template string
+  const ticketOuter = el.outerHTML;
 
   const html =
-    `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Comprobante</title>
-  <style>${buildPrintCss()}</style>
-</head>
-<body>
-  <div id="ticketRoot">
-    <div class="ticket">
-      ${ticketInner}
-    </div>
-  </div>
-</body>
-</html>`;
+    "<!doctype html>" +
+    "<html><head>" +
+    '<meta charset="utf-8" />' +
+    "<title>Comprobante</title>" +
+    "<style>" +
+    buildPrintCss() +
+    "</style>" +
+    "</head><body>" +
+    '<div class="wrap"><div id="ticketRoot">' +
+    ticketOuter +
+    "</div></div>" +
+    "<scr" +
+    'ipt>window.onload=function(){window.print();window.close();};</scr' +
+    "ipt>" +
+    "</body></html>";
 
-  printHtmlInIframe(html);
+  const w = window.open("", "_blank", "noopener,noreferrer,width=520,height=720");
+  if (!w) return; // popup bloqueado
+
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 </script>
 
@@ -458,47 +379,39 @@ function onPrint() {
   padding: 16px;
 }
 
-/* Vista en pantalla */
+/* Vista en pantalla (dialog) */
 .ticket {
   max-width: 640px;
   margin: 0 auto;
   padding: 18px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 16px;
-  background: rgba(var(--v-theme-surface), 0.9);
 }
 
-.ticket__logo {
-  font-weight: 900;
-  font-size: 22px;
+.ticket__brand {
+  font-weight: 1000;
+  font-size: 20px;
   text-align: center;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.6px;
 }
-
 .ticket__tagline {
-  font-size: 13px;
+  font-size: 12px;
   text-align: center;
   opacity: 0.9;
   margin-top: 4px;
 }
-
 .ticket__branch {
-  margin-top: 12px;
   text-align: center;
-  font-size: 12px;
-  opacity: 0.92;
+  margin-top: 10px;
 }
-.ticket__branch .bname {
+.ticket__branch .b1 {
   font-weight: 900;
+  font-size: 13px;
 }
-.ticket__branch .bline {
+.ticket__branch .b2 {
+  font-size: 12px;
+  opacity: 0.85;
   margin-top: 2px;
-  opacity: 0.9;
-}
-
-.ticket__sep {
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.35);
-  margin: 14px 0;
 }
 
 .ticket__meta .row,
@@ -510,12 +423,17 @@ function onPrint() {
   margin: 6px 0;
 }
 
+.ticket__line {
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.35);
+  margin: 12px 0;
+}
+
 .items__head {
   display: flex;
   justify-content: space-between;
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .item {
@@ -526,64 +444,54 @@ function onPrint() {
   margin: 10px 0;
 }
 
-.item__left .nm {
-  font-weight: 900;
+.item__name .nm {
+  font-weight: 1000;
 }
-.item__left .sub {
+.item__name .sub {
   opacity: 0.85;
   margin-top: 2px;
 }
 .lbl {
   opacity: 0.85;
 }
+
 .right {
   text-align: right;
   white-space: nowrap;
 }
 
 .ticket__totals .total {
-  font-size: 16px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 1000;
   margin-top: 10px;
 }
 
 .ticket__customer .ttl {
-  font-weight: 900;
+  font-weight: 1000;
   font-size: 13px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.ticket__customer .line {
+.ticket__customer .sub {
   font-size: 12px;
   opacity: 0.95;
-  margin-top: 2px;
 }
 
 .ticket__footer {
-  margin-top: 10px;
+  margin-top: 16px;
   text-align: center;
   font-size: 12px;
 }
 .thanks {
-  font-weight: 900;
-  font-size: 13px;
-}
-.mkt {
-  opacity: 0.92;
-  margin-top: 6px;
-}
-.mkt2 {
-  opacity: 0.86;
-  margin-top: 6px;
+  font-weight: 1000;
 }
 .legal {
   opacity: 0.7;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .empty-items {
-  padding: 10px;
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.25);
-  border-radius: 10px;
-  opacity: 0.85;
+  padding: 10px 0;
+  opacity: 0.7;
+  font-size: 12px;
 }
 </style>
