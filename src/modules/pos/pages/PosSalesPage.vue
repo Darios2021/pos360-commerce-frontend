@@ -11,7 +11,7 @@
       </div>
 
       <div class="d-flex ga-2 align-center">
-        <!-- ✅ Solo si realmente puede borrar en backend -->
+        <!-- ✅ Visible para admin (UI). Si backend no permite, caerá en 403 -->
         <v-btn
           v-if="canDeleteSales"
           variant="tonal"
@@ -266,7 +266,7 @@
               <v-icon>mdi-printer</v-icon>
             </v-btn>
 
-            <!-- ✅ Delete SOLO si backend debería permitirlo -->
+            <!-- ✅ Delete visible para admin (UI). Si backend no permite, 403 -->
             <v-btn
               v-if="canDeleteSales"
               size="small"
@@ -389,17 +389,49 @@
             class="elevation-0 rounded-xl"
             item-key="id"
           >
+            <!-- ✅ Producto con miniatura + acciones -->
             <template #item.thumb="{ item }">
               <div class="d-flex align-center ga-3">
-                <v-avatar size="44" rounded="lg" style="background: rgba(0,0,0,.06);">
-                  <v-img v-if="imgUrl(item)" :src="imgUrl(item)" cover :alt="item.product_name_snapshot || 'Producto'" />
+                <!-- IMAGEN (click = zoom) -->
+                <v-avatar
+                  size="46"
+                  rounded="lg"
+                  class="product-thumb"
+                  @click="openImage(item)"
+                  :title="'Click para agrandar'"
+                >
+                  <v-img
+                    v-if="imgUrl(item)"
+                    :src="imgUrl(item)"
+                    cover
+                    :alt="item.product_name_snapshot || 'Producto'"
+                  />
                   <v-icon v-else>mdi-image-off-outline</v-icon>
                 </v-avatar>
 
-                <div>
-                  <div class="font-weight-bold">{{ item.product_name_snapshot || "Item" }}</div>
-                  <div class="text-caption text-medium-emphasis">
-                    SKU: {{ item.product_sku_snapshot || "—" }}
+                <!-- INFO (click = perfil) -->
+                <div class="min-w-0">
+                  <div
+                    class="font-weight-bold text-truncate product-link"
+                    @click="goToProduct(item.product_id)"
+                    :title="item.product_name_snapshot || 'Producto'"
+                  >
+                    {{ item.product_name_snapshot || "Item" }}
+                  </div>
+
+                  <div class="text-caption text-medium-emphasis d-flex align-center ga-2">
+                    <span class="text-truncate">SKU: {{ item.product_sku_snapshot || "—" }}</span>
+
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      title="Copiar SKU"
+                      @click.stop="copyText(String(item.product_sku_snapshot || ''))"
+                      :disabled="!item.product_sku_snapshot"
+                    >
+                      <v-icon size="16">mdi-content-copy</v-icon>
+                    </v-btn>
                   </div>
                 </div>
               </div>
@@ -408,6 +440,32 @@
             <template #item.quantity="{ item }"><b>{{ Number(item.quantity || 0) }}</b></template>
             <template #item.unit_price="{ item }">{{ money(item.unit_price) }}</template>
             <template #item.line_total="{ item }"><b>{{ money(item.line_total) }}</b></template>
+
+            <template #item.item_actions="{ item }">
+              <div class="d-flex ga-2 justify-end flex-wrap">
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  :disabled="!Number(item?.product_id || 0)"
+                  @click="goToProduct(item.product_id)"
+                  title="Ver perfil del producto"
+                >
+                  <v-icon start>mdi-package-variant</v-icon>
+                  Perfil
+                </v-btn>
+
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  @click="openImage(item)"
+                  title="Ver imagen"
+                >
+                  <v-icon start>mdi-magnify-plus-outline</v-icon>
+                  Zoom
+                </v-btn>
+              </div>
+            </template>
 
             <template #bottom />
           </v-data-table>
@@ -436,6 +494,50 @@
         </v-card-text>
 
         <v-card-text v-else class="text-medium-emphasis">No se encontró la venta.</v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- ✅ Zoom imagen producto (desde items del detalle) -->
+    <v-dialog v-model="imageDialog" max-width="720">
+      <v-card class="rounded-xl">
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div class="font-weight-bold">
+            {{ imageItem?.product_name_snapshot || "Producto" }}
+          </div>
+          <v-btn icon="mdi-close" variant="text" @click="imageDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text>
+          <v-img
+            v-if="imgUrl(imageItem)"
+            :src="imgUrl(imageItem)"
+            cover
+            style="max-height: 440px; border-radius: 14px;"
+          />
+
+          <v-alert v-else type="info" variant="tonal" class="rounded-xl">
+            Este producto no tiene imagen asociada.
+          </v-alert>
+
+          <div class="d-flex ga-2 mt-4">
+            <v-btn
+              variant="tonal"
+              color="primary"
+              @click="goToProduct(imageItem?.product_id)"
+              :disabled="!Number(imageItem?.product_id || 0)"
+            >
+              <v-icon start>mdi-package-variant</v-icon>
+              Ver perfil
+            </v-btn>
+
+            <v-btn variant="tonal" @click="copyText(imgUrl(imageItem) || '')" :disabled="!imgUrl(imageItem)">
+              <v-icon start>mdi-link-variant</v-icon>
+              Copiar URL
+            </v-btn>
+          </div>
+        </v-card-text>
       </v-card>
     </v-dialog>
 
@@ -489,7 +591,9 @@
 import { ref, computed, onMounted } from "vue";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
+import { useRouter } from "vue-router";
 
+const router = useRouter();
 const auth = useAuthStore();
 const FILES_BASE = import.meta.env.VITE_FILES_BASE_URL || "";
 
@@ -571,8 +675,12 @@ const isAdmin = computed(() => {
   return roles.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r));
 });
 
-// ✅ Delete REAL: normalmente lo dejamos solo a super_admin/root/owner (evita UI mintiendo vs backend)
+// ✅ Delete visible para admin (UI). Permiso real lo decide backend (y catch muestra 403)
 const canDeleteSales = computed(() => {
+  // Admin ve el botón (como antes)
+  if (isAdmin.value) return true;
+
+  // Permisos fuertes (si querés mantener un “permiso real” por rol)
   const roles = getRoleNamesFromStores();
   return roles.some((r) => ["super_admin", "superadmin", "root", "owner"].includes(r));
 });
@@ -666,6 +774,10 @@ const deletingMany = ref(false);
 
 const snack = ref({ show: false, text: "" });
 
+// ✅ Zoom imagen producto
+const imageDialog = ref(false);
+const imageItem = ref(null);
+
 // KPI local
 const kpis = computed(() => {
   const arr = sales.value || [];
@@ -704,11 +816,13 @@ const headers = [
   { title: "Acciones", key: "actions", sortable: false, width: 360 },
 ];
 
+// ✅ Items headers con acciones (más interactividad)
 const itemsHeaders = [
   { title: "Producto", key: "thumb", sortable: false },
   { title: "Cant.", key: "quantity", sortable: false, width: 100 },
   { title: "Unit.", key: "unit_price", sortable: false, width: 140 },
   { title: "Total", key: "line_total", sortable: false, width: 140 },
+  { title: "", key: "item_actions", sortable: false, width: 220 },
 ];
 
 // ===== Helpers UI =====
@@ -788,6 +902,24 @@ function imgUrl(item) {
     item?.product?.thumbnail_url ||
     ""
   );
+}
+
+// ✅ Zoom modal
+function openImage(item) {
+  imageItem.value = item || null;
+  imageDialog.value = true;
+}
+
+// ✅ Navegar a perfil de producto (primero intenta named-route, si no existe cae a path)
+function goToProduct(pid) {
+  const id = Number(pid || 0);
+  if (!id) return;
+
+  try {
+    router.push({ name: "productProfile", params: { id } });
+  } catch {
+    router.push(`/products/${id}`);
+  }
 }
 
 // ===== Debounce =====
@@ -1087,5 +1219,20 @@ const KpiCard = {
   border-radius: 12px;
   overflow: auto;
   max-height: 420px;
+}
+
+.min-w-0 { min-width: 0; }
+
+.product-thumb {
+  cursor: zoom-in;
+  background: rgba(0,0,0,.06);
+}
+
+.product-link {
+  cursor: pointer;
+}
+
+.product-link:hover {
+  text-decoration: underline;
 }
 </style>

@@ -1,18 +1,18 @@
 <!-- src/modules/pos/components/ReceiptDialog.vue -->
 <template>
-  <v-dialog v-model="openLocal" max-width="920">
+  <v-dialog v-model="openLocal" max-width="980">
     <v-card class="rd-root rounded-xl overflow-hidden">
       <!-- HEADER -->
       <div class="rd-head d-flex align-center justify-space-between px-4 py-3">
         <div>
           <div class="text-h6 font-weight-black">Comprobante</div>
           <div class="text-caption text-medium-emphasis">
-            {{ companyName }} · {{ branchName || "Sucursal" }}
+            {{ companyName }} · {{ branchNameEff || "Sucursal" }}
           </div>
         </div>
 
         <div class="d-flex ga-2">
-          <v-btn color="primary" variant="tonal" @click="onPrint" :disabled="!canPrint">
+          <v-btn color="primary" variant="tonal" @click="onPrint">
             <v-icon start>mdi-printer</v-icon>
             Imprimir
           </v-btn>
@@ -22,134 +22,107 @@
 
       <v-divider />
 
+      <!-- BODY -->
       <v-card-text class="rd-body">
-        <!-- ✅ Vista en pantalla -->
-        <div ref="printArea" class="ticket">
-          <div class="ticket__top">
-            <div class="ticket__brand">{{ companyName }}</div>
-            <div class="ticket__tagline">{{ companyTagline }}</div>
+        <div class="screen-wrap">
+          <div ref="printArea" class="ticket">
+            <!-- MARCA -->
+            <div class="brand__name">{{ companyName }}</div>
+            <div class="brand__tag">{{ companyTagline }}</div>
 
-            <div class="ticket__branch">
-              <div class="b1">{{ branchName || "Sucursal" }}</div>
-              <div v-if="branchAddress" class="b2">{{ branchAddress }}</div>
-              <div v-if="branchPhone" class="b2">{{ branchPhone }}</div>
+            <div class="chip-row">
+              <span class="chip">{{ branchNameEff || "Sucursal" }}</span>
+              <span class="chip chip--muted">{{ paymentLabel }}</span>
             </div>
-          </div>
 
-          <div class="ticket__meta">
-            <div class="row">
+            <div v-if="branchAddressEff || branchPhoneEff" class="branch">
+              <div v-if="branchAddressEff" class="branch__line">
+                {{ branchAddressEff }}
+              </div>
+              <div v-if="branchPhoneEff" class="branch__line">
+                {{ branchPhoneEff }}
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <!-- META -->
+            <div class="meta__row">
               <span class="k">Fecha</span>
               <span class="v">{{ fmtDate(saleDate) }}</span>
             </div>
-
-            <div class="row">
+            <div class="meta__row">
               <span class="k">Comprobante</span>
               <span class="v">#{{ saleNumber }}</span>
             </div>
 
-            <div class="row">
-              <span class="k">Método</span>
-              <span class="v">{{ paymentLabel }}</span>
-            </div>
+            <div class="hr"></div>
 
-            <div v-if="installmentsText" class="row">
-              <span class="k">Cuotas</span>
-              <span class="v">{{ installmentsText }}</span>
-            </div>
-
-            <div v-if="proofText" class="row">
-              <span class="k">Operación / ID</span>
-              <span class="v">{{ proofText }}</span>
-            </div>
-          </div>
-
-          <div v-if="customerBlock" class="ticket__line"></div>
-
-          <div v-if="customerBlock" class="ticket__customer">
-            <div class="ttl">Cliente</div>
-            <div class="sub">{{ customerBlock }}</div>
-          </div>
-
-          <div class="ticket__line"></div>
-
-          <!-- ITEMS -->
-          <div class="ticket__items">
+            <!-- ITEMS -->
             <div class="items__head">
               <span>Detalle</span>
               <span class="right">Importe</span>
             </div>
 
             <div v-for="(it, idx) in normalizedItems" :key="idx" class="item">
-              <div class="item__name">
-                <div class="nm">{{ it.name }}</div>
-                <div class="sub">
-                  {{ qty3(it.qty) }} × {{ money(it.unit_price) }}
-                  <span v-if="it.price_label" class="lbl">· {{ it.price_label }}</span>
+              <div>
+                <div class="item__name">{{ it.name }}</div>
+                <div class="item__sub">
+                  {{ qtyPretty(it.qty) }} × {{ money(it.unit_price) }}
                 </div>
               </div>
-              <div class="item__total right">
-                {{ money(it.subtotal) }}
-              </div>
+              <div class="right">{{ money(it.subtotal) }}</div>
             </div>
 
             <div v-if="normalizedItems.length === 0" class="empty-items">
               No hay ítems para mostrar.
             </div>
-          </div>
 
-          <div class="ticket__line"></div>
+            <div class="hr"></div>
 
-          <!-- TOTAL -->
-          <div class="ticket__totals">
-            <div class="row">
+            <!-- TOTAL -->
+            <div class="totals__row">
               <span class="k">Subtotal</span>
               <span class="v">{{ money(subtotal) }}</span>
             </div>
-
-            <div class="row total">
+            <div class="totals__row grand">
               <span class="k">TOTAL</span>
               <span class="v">{{ money(total) }}</span>
             </div>
-          </div>
 
-          <div class="ticket__footer">
-            <div class="thanks">¡Gracias por su compra!</div>
-            <div class="marketing">
-              {{ marketingLine }}
+            <div class="hr hr--soft"></div>
+
+            <!-- FOOTER -->
+            <div class="footer">
+              <div class="thanks">¡Gracias por tu compra! 🙌</div>
+              <div class="marketing">{{ marketingLine }}</div>
+              <div class="legal">{{ legalLine }}</div>
             </div>
-            <div class="legal">{{ legalLine }}</div>
           </div>
-        </div>
-
-        <div v-if="!canPrint" class="mt-3 text-caption text-medium-emphasis">
-          ⚠️ Para imprimir, el navegador debe permitir ventanas emergentes (pop-ups) para este sitio.
         </div>
       </v-card-text>
-
-      <v-divider />
-
-      <v-card-actions class="px-4 py-3">
-        <v-spacer />
-        <v-btn color="primary" variant="flat" @click="onPrint" :disabled="!canPrint">
-          <v-icon start>mdi-printer</v-icon>
-          Imprimir ticket
-        </v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, nextTick } from "vue";
 
+/* ================= PROPS ================= */
 const props = defineProps({
   open: { type: Boolean, default: false },
   sale: { type: Object, default: () => ({}) },
 
-  companyName: { type: String, default: "San Juan Tecnología" },
-  companyTagline: { type: String, default: "Electrónica, Hogar y Seguridad Inteligente" },
-  marketingLine: { type: String, default: "Seguinos en redes · Promos y novedades todas las semanas" },
-  legalLine: { type: String, default: "Documento no válido como factura. Uso interno/comercial." },
+  companyName: { type: String, default: "SAN JUAN TECNOLOGIA" },
+  companyTagline: { type: String, default: "Electrodomesticos · Hogar · Seguridad Inteligente" },
+  marketingLine: {
+    type: String,
+    default: "Seguinos en redes · Promos y novedades todas las semanas",
+  },
+  legalLine: {
+    type: String,
+    default: "Documento no válido como factura. Uso interno/comercial.",
+  },
 
   branchName: { type: String, default: "" },
   branchAddress: { type: String, default: "" },
@@ -165,34 +138,33 @@ const openLocal = computed({
 
 const printArea = ref(null);
 
-function toNum(v) {
+/* ================= HELPERS ================= */
+const toNum = (v) => {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
-}
+};
 
-function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(val));
-}
+const money = (v) =>
+  new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(toNum(v));
 
-function qty3(n) {
-  return toNum(n).toFixed(3);
-}
+const qtyPretty = (n) => {
+  const x = toNum(n);
+  return Number.isInteger(x) ? String(x) : x.toFixed(3);
+};
 
-function fmtDate(d) {
-  try {
-    const dt = d ? new Date(d) : new Date();
-    return dt.toLocaleString("es-AR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
+const fmtDate = (d) =>
+  new Date(d || Date.now()).toLocaleString("es-AR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
+/* ================= META ================= */
 const saleNumber = computed(() => {
   const s = props.sale || {};
   return s.number || s.receipt_number || s.invoice_number || s.id || "—";
@@ -200,259 +172,299 @@ const saleNumber = computed(() => {
 
 const saleDate = computed(() => {
   const s = props.sale || {};
-  return s.created_at || s.createdAt || s.date || s.sold_at || new Date();
+  return s.created_at || s.createdAt || s.date || new Date();
 });
 
 const paymentLabel = computed(() => {
   const s = props.sale || {};
-  const m = String(s.payment_method || s.method || s.paymentMethod || "").toUpperCase();
+  const m = String(s.payment_method || s.method || "").toUpperCase();
   if (m === "CASH") return "Efectivo";
-  if (m === "CARD") return "Tarjeta / Débito";
+  if (m === "CARD") return "Tarjeta";
   if (m === "TRANSFER") return "Transferencia";
-  if (m === "QR") return "Mercado Pago (QR)";
+  if (m === "QR") return "Mercado Pago";
   return m || "—";
 });
 
-const installmentsText = computed(() => {
+/* ================= SUCURSAL ================= */
+const branchNameEff = computed(() => {
   const s = props.sale || {};
-  const inst = Number(s.installments || s.cuotas || 0);
-  if (!(inst > 1)) return "";
-  const t = toNum(s.total || s.amount_total || 0);
-  const per = inst > 0 ? t / inst : 0;
-  return `${inst} cuotas de ${money(per)}`;
+  const b = s.branch || s.sucursal || s.store || {};
+  return props.branchName || b.name || b.nombre || "";
 });
 
-const proofText = computed(() => {
+const branchAddressEff = computed(() => {
   const s = props.sale || {};
-  return s.proof || s.payment_proof || s.proof_id || s.operation_id || "";
+  const b = s.branch || s.sucursal || s.store || {};
+  return props.branchAddress || b.address || b.direccion || "";
 });
+
+const branchPhoneEff = computed(() => {
+  const s = props.sale || {};
+  const b = s.branch || s.sucursal || s.store || {};
+  return props.branchPhone || b.phone || b.telefono || "";
+});
+
+/* ================= ITEMS ================= */
+function pickItems(s) {
+  return s.items || s.lines || s.details || s.products || s.cart?.items || [];
+}
+
+function pickName(it) {
+  return (
+    it.name ||
+    it.nombre ||
+    it.descripcion ||
+    it.product?.name ||
+    it.product?.nombre ||
+    it.sku ||
+    "—"
+  );
+}
 
 const normalizedItems = computed(() => {
-  const s = props.sale || {};
-  const raw = s.items || s.lines || s.sale_items || s.cart || [];
-  const arr = Array.isArray(raw) ? raw : [];
-
-  return arr
-    .map((it) => {
-      const qty = toNum(it.qty ?? it.quantity ?? 0);
-      const unit = toNum(it.unit_price ?? it.price ?? it.unitPrice ?? 0);
-      const sub = toNum(it.subtotal ?? (qty * unit));
-      return {
-        name: it.name || it.product_name || it.title || "—",
-        qty,
-        unit_price: unit,
-        subtotal: sub,
-        price_label: it.price_label || it.priceLabel || "",
-      };
-    })
-    .filter((x) => String(x.name || "").trim() !== "");
+  const arr = Array.isArray(pickItems(props.sale)) ? pickItems(props.sale) : [];
+  return arr.map((it) => {
+    const qty = toNum(it.qty ?? it.quantity ?? it.cantidad ?? 1);
+    const unit = toNum(it.unit_price ?? it.price ?? it.precio ?? 0);
+    const sub = toNum(it.subtotal ?? it.total ?? qty * unit);
+    return { name: pickName(it), qty, unit_price: unit, subtotal: sub };
+  });
 });
 
-const subtotal = computed(() => {
-  const s = props.sale || {};
-  if (toNum(s.subtotal) > 0) return toNum(s.subtotal);
-  return normalizedItems.value.reduce((a, it) => a + toNum(it.subtotal), 0);
-});
+const subtotal = computed(() =>
+  normalizedItems.value.reduce((a, it) => a + toNum(it.subtotal), 0)
+);
 
 const total = computed(() => {
   const s = props.sale || {};
-  if (toNum(s.total) > 0) return toNum(s.total);
-  if (toNum(s.amount_total) > 0) return toNum(s.amount_total);
-  return subtotal.value;
+  return toNum(s.total || s.amount_total) || subtotal.value;
 });
 
-const customerBlock = computed(() => {
-  const s = props.sale || {};
-  const c = s.customer || s.client || {};
-  const name = [c.first_name || c.firstName || "", c.last_name || c.lastName || ""].join(" ").trim();
-  const wa = c.whatsapp || c.phone || "";
-  const em = c.email || "";
-  const out = [name, wa, em].filter(Boolean).join(" · ").trim();
-  return out || "";
-});
-
-const canPrint = computed(() => {
-  // print usa window.open -> si el browser bloquea popups, no imprime
-  return true;
-});
-
+/* ================= PRINT ================= */
 function buildPrintCss() {
   return `
-    @page { margin: 8mm; }
-    html, body { height: 100%; }
-    body {
-      font-family: Arial, Helvetica, sans-serif;
+    @page { size: 80mm auto; margin: 5mm; }
+
+    html, body {
       margin: 0;
       padding: 0;
       background: #fff;
-      color: #111;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .wrap { padding: 0; }
-    #ticketRoot { width: 80mm; max-width: 100%; margin: 0 auto; }
+
+    /* Tema oscuro fix: siempre negro */
+    body, body * { color: #111 !important; }
+
+    #ticketRoot { width: 80mm; margin: 0 auto; }
 
     .ticket {
-      padding: 10px 10px;
-      border: 1px dashed #777;
+      background: #fff !important;
+      padding: 11px 11px;
+      border: 1px solid #111;
       border-radius: 10px;
+      line-height: 1.15;
     }
 
-    .ticket__brand { font-size: 16px; font-weight: 900; text-align:center; }
-    .ticket__tagline { font-size: 11px; text-align:center; opacity:.9; margin-top:3px; }
-    .ticket__branch { text-align:center; margin-top:8px; }
-    .ticket__branch .b1 { font-weight: 800; font-size: 12px; }
-    .ticket__branch .b2 { font-size: 11px; opacity:.85; margin-top:2px; }
+    /* Tipografía tipo ticket (evita “Word gigante”) */
+    .ticket, .ticket * { font-size: 10.5px !important; }
 
-    .ticket__meta .row, .ticket__totals .row {
-      display:flex; justify-content:space-between; gap:10px;
-      font-size: 11px; margin: 4px 0;
+    .brand__name {
+      font-size: 15px !important;
+      font-weight: 900 !important;
+      text-align: center !important;
+      letter-spacing: .3px;
+      margin: 0;
     }
-    .ticket__line { border-top: 1px dashed #444; margin: 10px 0; }
+    .brand__tag {
+      font-size: 10px !important;
+      opacity: .85;
+      text-align: center;
+      margin: 2px 0 6px 0;
+    }
 
-    .items__head {
-      display:flex; justify-content:space-between;
-      font-size: 11px; font-weight: 900; margin-bottom: 6px;
+    /* Chips sin gap (PDF engines raros) */
+    .chip-row { text-align: center; margin: 6px 0 8px; }
+    .chip {
+      display: inline-block !important;
+      border: 1px solid #111;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 9px !important;
+      font-weight: 800;
+      margin-right: 5px;
+      margin-bottom: 5px;
     }
+    .chip--muted { opacity: .85; }
+
+    .branch { text-align: center; margin-top: 2px; }
+    .branch__line { font-size: 10px !important; opacity: .85; margin-top: 2px; }
+
+    .hr { border-top: 1px dashed #111; margin: 8px 0; }
+    .hr--soft { opacity: .7; }
+
+    /* FIX PDF: grid para columnas */
+    .meta__row,
+    .totals__row,
+    .items__head,
     .item {
-      display:flex; justify-content:space-between; gap:10px;
-      font-size: 11px; margin: 8px 0;
+      display: grid !important;
+      grid-template-columns: 1fr auto !important;
+      column-gap: 10px !important;
+      align-items: baseline !important;
+      margin: 4px 0;
     }
-    .nm { font-weight: 900; }
-    .sub { opacity:.85; margin-top: 2px; }
-    .lbl { opacity:.85; }
-    .right { text-align:right; white-space:nowrap; }
 
-    .ticket__totals .total { font-size: 13px; font-weight: 900; margin-top: 8px; }
+    .k { opacity: .82; }
+    .v { font-weight: 800; justify-self: end !important; }
+    .right { justify-self: end !important; white-space: nowrap !important; text-align: right !important; }
 
-    .ticket__customer .ttl { font-weight: 900; font-size: 12px; margin-bottom: 4px; }
-    .ticket__customer .sub { font-size: 11px; opacity:.9; }
+    .items__head { font-weight: 900; margin-top: 2px; }
+    .item { margin: 6px 0; }
 
-    .ticket__footer { margin-top: 14px; text-align:center; font-size: 11px; }
+    .item__name { font-weight: 900; }
+    .item__sub { opacity: .85; margin-top: 2px; }
+
+    .totals__row { margin-top: 4px; }
+    .totals__row.grand { font-size: 12.5px !important; font-weight: 900; margin-top: 6px; }
+
+    .footer { text-align: center; margin-top: 10px; }
     .thanks { font-weight: 900; }
     .marketing { opacity: .9; margin-top: 6px; }
-    .legal { opacity:.7; margin-top:6px; }
-
-    * { box-shadow: none !important; }
+    .legal { opacity: .7; margin-top: 6px; }
   `;
 }
 
-function onPrint() {
+async function onPrint() {
+  await nextTick();
   const el = printArea.value;
   if (!el) return;
 
-  // IMPORTANTE: outerHTML evita perder estructura; NO meter </script> en template string
-  const ticketOuter = el.outerHTML;
-
   const html =
-    "<!doctype html>" +
-    "<html><head>" +
-    '<meta charset="utf-8" />' +
-    "<title>Comprobante</title>" +
+    "<!doctype html><html><head><meta charset='utf-8'>" +
     "<style>" +
     buildPrintCss() +
-    "</style>" +
-    "</head><body>" +
-    '<div class="wrap"><div id="ticketRoot">' +
-    ticketOuter +
-    "</div></div>" +
-    "<scr" +
-    'ipt>window.onload=function(){window.print();window.close();};</scr' +
-    "ipt>" +
-    "</body></html>";
+    "</style></head><body>" +
+    "<div id='ticketRoot'>" +
+    el.outerHTML +
+    "</div></body></html>";
 
-  const w = window.open("", "_blank", "noopener,noreferrer,width=520,height=720");
-  if (!w) return; // popup bloqueado
+  const w = window.open("", "_blank", "width=520,height=720");
+  if (!w) return;
 
   w.document.open();
   w.document.write(html);
   w.document.close();
+
+  setTimeout(() => {
+    w.print();
+    w.close();
+  }, 200);
 }
 </script>
 
 <style scoped>
-.rd-root {
-  background: rgb(var(--v-theme-surface));
+/* ===== FIX DEFINITIVO: texto visible en tema oscuro ===== */
+.ticket,
+.ticket * {
+  color: #111 !important;
 }
 
-.rd-body {
-  padding: 16px;
-}
-
-/* Vista en pantalla (dialog) */
 .ticket {
-  max-width: 640px;
-  margin: 0 auto;
+  background: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.7);
+  border-radius: 14px;
   padding: 18px;
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
-  border-radius: 16px;
 }
 
-.ticket__brand {
+/* Mejoras pantalla: más lindo, no cambia tu estructura */
+.brand__name {
+  font-size: 22px;
   font-weight: 1000;
-  font-size: 20px;
   text-align: center;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.4px;
 }
-.ticket__tagline {
+
+.brand__tag {
+  text-align: center;
   font-size: 12px;
-  text-align: center;
   opacity: 0.9;
-  margin-top: 4px;
+  margin-top: 2px;
 }
-.ticket__branch {
-  text-align: center;
-  margin-top: 10px;
+
+.chip-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 10px;
+  flex-wrap: wrap;
 }
-.ticket__branch .b1 {
+
+.chip {
+  border: 1px solid #000;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
   font-weight: 900;
-  font-size: 13px;
 }
-.ticket__branch .b2 {
+
+.chip--muted {
+  opacity: 0.85;
+}
+
+.branch {
+  text-align: center;
+  margin-top: 6px;
+}
+
+.branch__line {
   font-size: 12px;
   opacity: 0.85;
   margin-top: 2px;
 }
 
-.ticket__meta .row,
-.ticket__totals .row {
+.hr {
+  border-top: 1px dashed rgba(0, 0, 0, 0.55);
+  margin: 14px 0;
+}
+.hr--soft {
+  opacity: 0.7;
+}
+
+.meta__row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
   margin: 6px 0;
 }
+.k { opacity: 0.78; }
+.v { font-weight: 900; }
 
-.ticket__line {
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.35);
-  margin: 12px 0;
-}
-
-.items__head {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 1000;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
+.items__head,
 .item {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+}
+
+.items__head {
+  font-weight: 1000;
+  margin-bottom: 8px;
+}
+
+.item {
   margin: 10px 0;
 }
 
-.item__name .nm {
+.item__name {
   font-weight: 1000;
 }
-.item__name .sub {
+
+.item__sub {
+  font-size: 12px;
   opacity: 0.85;
   margin-top: 2px;
-}
-.lbl {
-  opacity: 0.85;
 }
 
 .right {
@@ -460,38 +472,24 @@ function onPrint() {
   white-space: nowrap;
 }
 
-.ticket__totals .total {
-  font-size: 15px;
+.totals__row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.totals__row.grand {
+  font-size: 16px;
   font-weight: 1000;
   margin-top: 10px;
 }
 
-.ticket__customer .ttl {
-  font-weight: 1000;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-.ticket__customer .sub {
-  font-size: 12px;
-  opacity: 0.95;
+.footer {
+  text-align: center;
+  margin-top: 14px;
 }
 
-.ticket__footer {
-  margin-top: 16px;
-  text-align: center;
-  font-size: 12px;
-}
 .thanks {
   font-weight: 1000;
-}
-.legal {
-  opacity: 0.7;
-  margin-top: 6px;
-}
-
-.empty-items {
-  padding: 10px 0;
-  opacity: 0.7;
-  font-size: 12px;
 }
 </style>

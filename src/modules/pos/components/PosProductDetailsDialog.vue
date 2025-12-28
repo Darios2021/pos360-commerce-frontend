@@ -6,7 +6,8 @@
         <div>
           <div class="text-h6 font-weight-black">Detalle producto</div>
           <div class="text-caption text-medium-emphasis">
-            SKU: {{ item?.sku || item?.code || "—" }} · Stock: <b>{{ qty3(item?.qty ?? 0) }}</b>
+            SKU: {{ item?.sku || item?.code || "—" }} · Stock:
+            <b>{{ qty3(item?.qty ?? 0) }}</b>
           </div>
         </div>
 
@@ -29,7 +30,9 @@
                 <v-icon v-else size="56">mdi-package-variant</v-icon>
               </v-avatar>
 
-              <div class="text-h6 font-weight-black">{{ item?.name || "—" }}</div>
+              <div class="text-h6 font-weight-black">
+                {{ item?.name || "—" }}
+              </div>
 
               <div class="mt-2">
                 <div class="text-caption text-medium-emphasis">
@@ -41,8 +44,12 @@
               </div>
 
               <div class="mt-2">
-                <div class="text-caption text-medium-emphasis">Marca: <b>{{ item?.brand || "—" }}</b></div>
-                <div class="text-caption text-medium-emphasis">Modelo: <b>{{ item?.model || "—" }}</b></div>
+                <div class="text-caption text-medium-emphasis">
+                  Marca: <b>{{ item?.brand || "—" }}</b>
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Modelo: <b>{{ item?.model || "—" }}</b>
+                </div>
               </div>
 
               <v-divider class="my-3" />
@@ -50,12 +57,18 @@
               <!-- Precio rápido -->
               <div class="d-flex align-center justify-space-between">
                 <div>
-                  <div class="text-caption text-medium-emphasis">Precio descuento (1 pago)</div>
-                  <div class="text-h6 font-weight-black">{{ money(priceDiscount) }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    Precio descuento (1 pago)
+                  </div>
+                  <div class="text-h6 font-weight-black">
+                    {{ money(priceDiscount) }}
+                  </div>
                 </div>
 
                 <div v-if="hasDiscount" class="text-right">
-                  <div class="text-caption text-medium-emphasis">Precio lista</div>
+                  <div class="text-caption text-medium-emphasis">
+                    Precio lista
+                  </div>
                   <div class="text-subtitle-1 font-weight-bold">
                     <span class="strike">{{ money(priceList) }}</span>
                     <span class="ml-2 off">{{ offPct }}% OFF</span>
@@ -69,12 +82,17 @@
           <v-col cols="12" md="7">
             <v-card class="rounded-xl pa-4 pdd-panel" elevation="0">
               <div class="d-flex align-center justify-space-between">
-                <div class="text-subtitle-1 font-weight-black">Opciones de pago</div>
-                <v-chip size="small" variant="tonal">{{ pricePolicyLabel(currentPolicy) }}</v-chip>
+                <div class="text-subtitle-1 font-weight-black">
+                  Opciones de pago
+                </div>
+                <v-chip size="small" variant="tonal">
+                  {{ pricePolicyLabel(currentPolicyComputed) }}
+                </v-chip>
               </div>
 
               <div class="text-caption text-medium-emphasis mt-1">
-                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista · Revendedor (si existe) pisa todo.
+                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista ·
+                Revendedor (si existe) pisa todo.
               </div>
 
               <v-divider class="my-4" />
@@ -96,11 +114,16 @@
                     hide-details
                   />
                   <div class="text-caption text-medium-emphasis">
-                    Si no existe revendedor (&gt; 0), cae a descuento/lista según corresponda.
+                    Si no existe revendedor (&gt; 0), cae a descuento/lista
+                    según corresponda.
                   </div>
                 </v-col>
 
-                <v-col cols="12" md="6" v-if="paymentMethod === 'CARD' && !applyReseller">
+                <v-col
+                  cols="12"
+                  md="6"
+                  v-if="paymentMethod === 'CARD' && !applyReseller"
+                >
                   <v-select
                     v-model="installments"
                     :items="installmentsItems"
@@ -117,25 +140,37 @@
 
               <v-divider class="my-4" />
 
-              <!-- ✅ Resultado calculado -->
+              <!-- Resultado -->
               <v-alert type="info" variant="tonal">
-                <div class="d-flex flex-wrap align-center justify-space-between ga-3">
+                <div
+                  class="d-flex flex-wrap align-center justify-space-between ga-3"
+                >
                   <div>
-                    <div class="text-caption text-medium-emphasis">Precio unitario</div>
-                    <div class="text-h6 font-weight-black">{{ money(unitPrice) }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      Precio unitario
+                    </div>
+                    <div class="text-h6 font-weight-black">
+                      {{ money(unitPrice) }}
+                    </div>
                   </div>
 
-                  <div v-if="showInstallmentBreakdown" class="text-right">
+                  <div
+                    v-if="showInstallmentBreakdown"
+                    class="text-right"
+                  >
                     <div class="text-caption text-medium-emphasis">
                       {{ installments }} cuotas de
                     </div>
-                    <div class="text-h6 font-weight-black">{{ money(perInstallment) }}</div>
+                    <div class="text-h6 font-weight-black">
+                      {{ money(perInstallment) }}
+                    </div>
                   </div>
                 </div>
               </v-alert>
 
               <div class="text-caption text-medium-emphasis mt-3">
-                Política aplicada: <b>{{ pricePolicyLabel(currentPolicy) }}</b>
+                Política aplicada:
+                <b>{{ pricePolicyLabel(currentPolicyComputed) }}</b>
               </div>
             </v-card>
           </v-col>
@@ -145,7 +180,9 @@
       <v-divider />
 
       <v-card-actions class="pa-4">
-        <v-btn variant="tonal" @click="openLocal = false">Cerrar</v-btn>
+        <v-btn variant="tonal" @click="openLocal = false">
+          Cerrar
+        </v-btn>
         <v-spacer />
 
         <v-btn
@@ -175,7 +212,6 @@ const props = defineProps({
   rubroLabel: { type: String, default: "" },
   subrubroLabel: { type: String, default: "" },
 
-  // precios del producto
   priceList: { type: [Number, String], default: 0 },
   priceDiscount: { type: [Number, String], default: 0 },
   priceReseller: { type: [Number, String], default: 0 },
@@ -206,7 +242,10 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(Number(val || 0));
 }
 function qty3(n) {
   return Number(n || 0).toFixed(3);
@@ -233,7 +272,6 @@ function currentPolicy() {
     const k = Number(installments.value || 1);
     return k > 1 ? "LIST" : "DISCOUNT";
   }
-  // CASH / TRANSFER / QR -> descuento
   return "DISCOUNT";
 }
 
@@ -248,17 +286,23 @@ function resolveUnitPrice(policy) {
   const disc = toNum(props.priceDiscount);
   const res = toNum(props.priceReseller);
 
-  if (policy === "RESELLER") return res > 0 ? res : disc > 0 ? disc : list;
+  if (policy === "RESELLER")
+    return res > 0 ? res : disc > 0 ? disc : list;
   if (policy === "DISCOUNT") return disc > 0 ? disc : list;
   return list > 0 ? list : disc;
 }
 
 const currentPolicyComputed = computed(() => currentPolicy());
-
-const unitPrice = computed(() => resolveUnitPrice(currentPolicyComputed.value));
+const unitPrice = computed(() =>
+  resolveUnitPrice(currentPolicyComputed.value)
+);
 
 const showInstallmentBreakdown = computed(() => {
-  return paymentMethod.value === "CARD" && !applyReseller.value && Number(installments.value || 1) > 1;
+  return (
+    paymentMethod.value === "CARD" &&
+    !applyReseller.value &&
+    Number(installments.value || 1) > 1
+  );
 });
 
 const perInstallment = computed(() => {
@@ -271,7 +315,6 @@ watch(
   () => props.open,
   (v) => {
     if (!v) return;
-    // default “detalle”: arrancar en descuento 1 pago
     paymentMethod.value = "CASH";
     installments.value = 1;
     applyReseller.value = false;
