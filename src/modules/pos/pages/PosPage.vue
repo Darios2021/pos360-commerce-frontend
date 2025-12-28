@@ -435,10 +435,29 @@ const receiptCompanyName = ref("POS360");
 const receiptCompanyTagline = ref("Inventario · Ecommerce · POS");
 const receiptBranchAddress = ref("");
 
+/* =========================
+   ✅ FIX ADMIN DETECTION
+   - evita que "0" (string) se tome como true
+========================= */
+function flagTrue(v) {
+  if (v === true) return true;
+  if (v === 1) return true;
+  if (v === "1") return true;
+  if (String(v || "").toLowerCase() === "true") return true;
+  return false;
+}
+
 const isAdmin = computed(() => {
   const u = auth?.user || {};
-  const role = String(u?.role || u?.user_role || "").toLowerCase();
-  return Boolean(u?.is_admin) || role === "admin" || role === "superadmin";
+  const role = String(u?.role || u?.user_role || "").toLowerCase().trim();
+
+  const isAdminFlag =
+    flagTrue(u?.is_admin) ||
+    flagTrue(u?.isAdmin) ||
+    flagTrue(u?.admin) ||
+    false;
+
+  return isAdminFlag || role === "admin" || role === "superadmin";
 });
 
 const canSell = computed(() => !isAdmin.value);
@@ -1101,18 +1120,11 @@ async function confirmPayment() {
     checkoutDialog.value = false;
     snack.value = { show: true, text: "✅ Venta registrada correctamente" };
 
-    // ✅ Sale real si vino del backend
-    const sale =
-      result?.sale ||
-      result?.data?.sale ||
-      result?.data ||
-      result ||
-      null;
+    const sale = result?.sale || result?.data?.sale || result?.data || result || null;
 
     if (sale && (sale.id || sale.number || sale.created_at || sale.items)) {
       receiptSale.value = sale;
     } else {
-      // ✅ Fallback: armamos comprobante desde el carrito ya recalculado
       receiptSale.value = {
         id: Date.now(),
         created_at: new Date().toISOString(),
@@ -1132,10 +1144,8 @@ async function confirmPayment() {
       };
     }
 
-    // ✅ Abrir ticket automáticamente
     receiptOpen.value = true;
 
-    // refrescar pool
     fetchSellablePool();
   } catch (e) {
     snack.value = {

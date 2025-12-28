@@ -1,3 +1,4 @@
+<!-- src/app/layouts/AppShell.vue -->
 <template>
   <v-app>
     <v-layout>
@@ -19,9 +20,7 @@
 
           <div class="d-flex flex-column">
             <div class="font-weight-bold">POS360</div>
-            <div class="text-caption text-medium-emphasis">
-              Inventario · Ecommerce · POS
-            </div>
+            <div class="text-caption text-medium-emphasis">Inventario · Ecommerce · POS</div>
           </div>
         </div>
 
@@ -39,12 +38,7 @@
         </v-btn>
 
         <!-- ===== Cuenta (Google-like) ===== -->
-        <v-menu
-          v-model="accountMenu"
-          :close-on-content-click="false"
-          location="bottom end"
-          offset="12"
-        >
+        <v-menu v-model="accountMenu" :close-on-content-click="false" location="bottom end" offset="12">
           <template #activator="{ props }">
             <v-btn v-bind="props" icon variant="text" class="ml-1" title="Cuenta">
               <v-avatar size="34" class="pos-avatar-btn">
@@ -129,7 +123,12 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" exact>
+          <v-list-item
+            :to="{ name: 'productsImport' }"
+            prepend-icon="mdi-database-import-outline"
+            title="Importar CSV"
+            exact
+          >
             <v-tooltip v-if="rail" activator="parent" location="right">Importar CSV</v-tooltip>
           </v-list-item>
 
@@ -144,7 +143,13 @@
               </v-list-item>
             </template>
 
-            <v-list-item v-if="hasRoute('stock')" :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" exact />
+            <v-list-item
+              v-if="hasRoute('stock')"
+              :to="{ name: 'stock' }"
+              prepend-icon="mdi-warehouse"
+              title="Stock"
+              exact
+            />
             <v-list-item
               v-if="isAdmin && hasRoute('inventory')"
               :to="{ name: 'inventory' }"
@@ -152,7 +157,22 @@
               title="Gestión de inventario"
               exact
             />
-            <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" exact />
+            <v-list-item
+              v-if="hasRoute('categories')"
+              :to="{ name: 'categories' }"
+              prepend-icon="mdi-shape-outline"
+              title="Categorías"
+              exact
+            />
+
+            <!-- ✅ NUEVO: Usuarios (solo admin/super_admin) -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('users')"
+              :to="{ name: 'users' }"
+              prepend-icon="mdi-account-multiple-outline"
+              title="Usuarios"
+              exact
+            />
           </v-list-group>
         </v-list>
 
@@ -223,7 +243,7 @@ const isAdmin = computed(() => {
   return r.includes("admin") || r.includes("super_admin");
 });
 
-/* ===== Router guard helpers ===== */
+/* ===== Router helpers ===== */
 function hasRoute(name) {
   try {
     return router?.hasRoute?.(name) === true;
@@ -233,7 +253,7 @@ function hasRoute(name) {
 }
 
 const showConfig = computed(() => {
-  return hasRoute("stock") || hasRoute("inventory") || hasRoute("categories");
+  return hasRoute("stock") || hasRoute("inventory") || hasRoute("categories") || hasRoute("users");
 });
 
 /* ===== User menu ===== */
@@ -261,15 +281,15 @@ const userFullName = computed(() => {
 });
 
 const userInitials = computed(() => {
-  const first = String((auth.user?.first_name ?? "")).trim();
-  const last = String((auth.user?.last_name ?? "")).trim();
+  const first = String(auth.user?.first_name ?? "").trim();
+  const last = String(auth.user?.last_name ?? "").trim();
   const i1 = first ? first[0].toUpperCase() : "";
   const i2 = last ? last[0].toUpperCase() : "";
   return (i1 + i2) || "U";
 });
 
 const userRoleLabel = computed(() => {
-  const roles = Array.isArray(auth.roles) ? auth.roles : (auth.user?.roles || []);
+  const roles = Array.isArray(auth.roles) ? auth.roles : auth.user?.roles || [];
   if (roles.includes("super_admin")) return "Super Admin";
   if (roles.includes("admin")) return "Administrador";
   if (roles.includes("manager")) return "Supervisor";

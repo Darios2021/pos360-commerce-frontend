@@ -30,6 +30,9 @@ import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
 import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
 import StockPage from "@/modules/stock/pages/StockPage.vue";
 
+// ✅ Users (nuevo)
+import UsersPage from "@/modules/users/pages/UsersPage.vue";
+
 const routes = [
   // =========================
   // AUTH (sin header/drawer)
@@ -75,6 +78,14 @@ const routes = [
         meta: { roles: ["admin", "super_admin"] },
       },
       { path: "categories", name: "categories", component: CategoriesPage },
+
+      // ✅ Users management (solo admin/super_admin por ahora)
+      {
+        path: "users",
+        name: "users",
+        component: UsersPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
 
       // Cuenta
       { path: "profile", name: "profile", component: ProfilePage },
