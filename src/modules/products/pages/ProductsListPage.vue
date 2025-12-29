@@ -197,6 +197,20 @@
           <div class="text-right font-weight-bold">{{ stockLabel(item) }}</div>
         </template>
 
+        <!-- ✅ NUEVO: creador -->
+        <template #item.created_by="{ item }">
+          <div class="text-caption">
+            {{ creatorLabel(item) || "—" }}
+          </div>
+        </template>
+
+        <!-- ✅ NUEVO: fecha/hora -->
+        <template #item.created_at="{ item }">
+          <div class="text-caption">
+            {{ fmtDateTime(item?.created_at || item?.createdAt || item?.created_on || item?.createdOn) || "—" }}
+          </div>
+        </template>
+
         <template #item.actions="{ item }">
           <div class="d-flex justify-end ga-1">
             <v-btn icon="mdi-eye-outline" variant="text" @click="openDetails(item.id)" />
@@ -241,7 +255,13 @@
       @deleted="reload"
     />
 
-    <ProductFormDialog v-model:open="formOpen" :mode="formMode" :item="formItem" @saved="reload" @deleted="reload" />
+    <ProductFormDialog
+      v-model:open="formOpen"
+      :mode="formMode"
+      :item="formItem"
+      @saved="reload"
+      @deleted="reload"
+    />
 
     <!-- CONFIRM: inactivar -->
     <v-dialog v-model="disableOpen" max-width="520">
@@ -264,7 +284,9 @@
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
         <v-card-text>
           ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">Si falla por ventas/relaciones, se inactiva automáticamente.</div>
+          <div class="text-caption text-medium-emphasis mt-2">
+            Si falla por ventas/relaciones, se inactiva automáticamente.
+          </div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
@@ -297,6 +319,16 @@ const auth = useAuthStore();
 const isAdmin = computed(() => {
   const r = auth.roles || [];
   return r.includes("admin") || r.includes("super_admin");
+});
+
+/* ✅ branch del usuario (para scope) */
+const userBranchId = computed(() => {
+  const u = auth?.user || {};
+  const bid =
+    Number(u?.branch_id || 0) ||
+    Number(auth?.branchId || 0) ||
+    0;
+  return bid > 0 ? bid : null;
 });
 
 /* =========================
@@ -374,6 +406,59 @@ function cleanTrail(s) {
 
 function isInactive(it) {
   return it?.is_active === false || Number(it?.is_active) === 0;
+}
+
+function fmtDateTime(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("es-AR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
+/* ✅ intenta sacar “creador” con varios nombres posibles */
+function creatorLabel(it) {
+  const x =
+    it?.created_by_user ||
+    it?.createdByUser ||
+    it?.created_by ||
+    it?.createdBy ||
+    it?.creator ||
+    it?.user ||
+    null;
+
+  // si viene objeto
+  if (x && typeof x === "object") {
+    return (
+      x.username ||
+      x.email ||
+      [x.first_name, x.last_name].filter(Boolean).join(" ") ||
+      x.name ||
+      x.id ||
+      ""
+    );
+  }
+
+  // si viene string/id
+  if (typeof x === "string" && x.trim()) return x.trim();
+  if (typeof x === "number" && x > 0) return `User #${x}`;
+
+  // alternativas por campos sueltos
+  const alt =
+    it?.created_by_name ||
+    it?.createdByName ||
+    it?.created_by_email ||
+    it?.createdByEmail ||
+    it?.created_by_username ||
+    it?.createdByUsername ||
+    null;
+
+  return alt ? String(alt) : "";
 }
 
 /** Soporta remove() boolean o {ok,code,message} */
@@ -494,9 +579,6 @@ const normalized = computed(() => {
 
 /* =========================
    FILTRADO
-   ✅ IMPORTANTE:
-   - "Sucursal (stock)" NO filtra por dueño (products.branch_id)
-   - Filtra por STOCK en esa sucursal (el backend ya calculó stock_qty con branch_id)
 ========================= */
 const filteredAll = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
@@ -513,7 +595,6 @@ const filteredAll = computed(() => {
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
     // ✅ admin + sucursal elegida => stock en esa sucursal
-    // (como ya pedimos al backend stock_qty para branchId, _stock_num es de esa sucursal)
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
@@ -574,6 +655,11 @@ const headers = computed(() => {
     { title: "Rubro", key: "rubro", sortable: false },
     { title: "Subrubro", key: "subrubro", sortable: false },
     { title: "Stock", key: "stock", sortable: false, align: "end" },
+
+    // ✅ nuevos campos (si el backend los trae)
+    { title: "Creado por", key: "created_by", sortable: false },
+    { title: "Creado", key: "created_at", sortable: false },
+
     { title: "", key: "actions", sortable: false, align: "end" },
   ];
 
@@ -618,7 +704,10 @@ async function openEdit(id) {
   if (!auth.isAuthed) return;
 
   // ✅ si admin tiene sucursal elegida, pedimos detalle con stock_qty de esa sucursal
-  const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+  // ✅ si NO admin, pedimos SIEMPRE con su branch_id (scope correcto)
+  const bid = isAdmin.value
+    ? (branchId.value ? Number(branchId.value) : null)
+    : (userBranchId.value ? Number(userBranchId.value) : null);
 
   const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
@@ -757,8 +846,12 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  // ✅ si admin elige sucursal, el backend calcula stock_qty para ESA sucursal
-  const bid = isAdmin.value && branchId.value ? Number(branchId.value) : null;
+  // ✅ clave del bug:
+  // - admin puede pedir stock_qty por sucursal elegida
+  // - usuario normal SIEMPRE pide por SU branch_id para que el backend aplique scope correcto
+  const bid = isAdmin.value
+    ? (branchId.value ? Number(branchId.value) : null)
+    : (userBranchId.value ? Number(userBranchId.value) : null);
 
   await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
   await loadBranchesSafe();
