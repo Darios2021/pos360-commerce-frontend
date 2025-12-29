@@ -348,7 +348,7 @@
       @confirm="confirmPayment"
     />
 
-    <!-- ✅ TICKET / COMPROBANTE (AUTO OPEN post-venta) -->
+    <!-- ✅ TICKET / COMPROBANTE -->
     <ReceiptDialog
       v-model:open="receiptOpen"
       :sale="receiptSale"
@@ -436,35 +436,27 @@ const receiptCompanyTagline = ref("Inventario · Ecommerce · POS");
 const receiptBranchAddress = ref("");
 
 /* =========================
-   ✅ FIX ADMIN DETECTION
-   - evita que "0" (string) se tome como true
+   ✅ ROLES REALES (auth.user.roles[])
 ========================= */
-function flagTrue(v) {
-  if (v === true) return true;
-  if (v === 1) return true;
-  if (v === "1") return true;
-  if (String(v || "").toLowerCase() === "true") return true;
-  return false;
-}
-
-const isAdmin = computed(() => {
-  const u = auth?.user || {};
-  const role = String(u?.role || u?.user_role || "").toLowerCase().trim();
-
-  const isAdminFlag =
-    flagTrue(u?.is_admin) ||
-    flagTrue(u?.isAdmin) ||
-    flagTrue(u?.admin) ||
-    false;
-
-  return isAdminFlag || role === "admin" || role === "superadmin";
+const roles = computed(() => {
+  const arr = auth?.user?.roles;
+  return Array.isArray(arr) ? arr.map((x) => String(x).toLowerCase().trim()) : [];
 });
 
-const canSell = computed(() => !isAdmin.value);
+const isSuperAdmin = computed(() => roles.value.includes("super_admin"));
+
+// ✅ Admin = admin o super_admin (para "ver todo")
+const isAdmin = computed(() => roles.value.includes("admin") || roles.value.includes("super_admin"));
+
+// ✅ Bloquea venta solo al admin "puro"
+const canSell = computed(() => !roles.value.includes("admin"));
 
 const branchName = computed(() => {
   const u = auth?.user || {};
-  return u?.branch?.name || u?.branch_name || null;
+  const bid = Number(u?.branch_id || 0) || null;
+  const bs = Array.isArray(u?.branches) ? u.branches : [];
+  const found = bid ? bs.find((b) => Number(b?.id) === bid) : null;
+  return found?.name || null;
 });
 
 function money(val) {
@@ -819,7 +811,6 @@ function add(p) {
     return;
   }
 
-  // ✅ por defecto: agregar con DESCUENTO (1 pago)
   const unit = resolveUnitPrice(p, "DISCOUNT");
   if (unit <= 0) {
     snack.value = { show: true, text: "⚠️ Producto sin precio" };
@@ -885,14 +876,15 @@ function addFromDetails(payload) {
 }
 
 /* =========================
-   ✅ CONTEXTO POS + FETCH PRODUCTS (ADMIN FIX)
+   ✅ CONTEXTO POS + FETCH PRODUCTS
 ========================= */
 async function hardSyncPosContextWithAuth() {
   try {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
   } catch {}
 
-  if (isAdmin.value) {
+  // ✅ SOLO admin (no super_admin)
+  if (roles.value.includes("admin")) {
     if (typeof posStore.ensureContext === "function") {
       await posStore.ensureContext({ force: true, isAdmin: true });
     } else if (typeof posStore.resetContext === "function") {
@@ -932,6 +924,7 @@ async function fetchSellablePool() {
     const bid = Number(posStore.branch_id || 0) || null;
     const wid = Number(posStore.warehouse_id || 0) || null;
 
+    // ✅ admin/super_admin: ver TODO sin filtros
     if (isAdmin.value) {
       const params = { q: "", page: 1, limit: 5000, in_stock: 1, sellable: 1, include_images: 1 };
       const { data } = await http.get("/pos/products", { params });
@@ -1098,7 +1091,6 @@ function applyCheckoutPricesIntoStore() {
   }
 }
 
-/** ✅ CONFIRMAR VENTA + ABRIR TICKET */
 async function confirmPayment() {
   if (!canSell.value) {
     snack.value = { show: true, text: "🔒 Admin: no se puede confirmar ventas." };
@@ -1156,7 +1148,8 @@ async function confirmPayment() {
 }
 
 onMounted(async () => {
-  if (isAdmin.value) {
+  // ✅ solo admin resetea contexto
+  if (roles.value.includes("admin")) {
     posStore.resetContext?.();
   }
 
