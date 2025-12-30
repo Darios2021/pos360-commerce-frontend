@@ -451,8 +451,8 @@ const hydrating = ref(false);
 
 /**
  * UI model:
- * - parent_category_id: Rubro (DB/API: category_id)
- * - category_id:        Subrubro (DB/API: subcategory_id)
+ * - parent_category_id: Rubro (nivel 1)
+ * - category_id:        Subrubro (nivel 2) (en UI)
  */
 const model = ref({
   id: null,
@@ -470,7 +470,7 @@ const model = ref({
   price_discount: 0,
   price_reseller: 0,
   parent_category_id: null, // Rubro (categories.id)
-  category_id: null,        // Subrubro (subcategories.id) (en UI)
+  category_id: null,        // Subrubro (categories.id) (en UI)
 });
 
 // ✅ admin detector robusto
@@ -573,13 +573,17 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+// ✅ FIX: category_id FINAL que se guarda en products.category_id
+function resolveFinalCategoryId() {
+  const sub = toInt(model.value.category_id, 0); // subrubro UI
+  const rub = toInt(model.value.parent_category_id, 0); // rubro UI
+  return sub > 0 ? sub : (rub > 0 ? rub : null);
+}
+
 /**
- * ✅ Normaliza error de API soportando:
- * - objeto normalizado del service: {status, message, errors, raw}
- * - axios error crudo
+ * ✅ Normaliza error de API
  */
 function normalizeApiError(e) {
-  // Caso 1: viene del service
   if (e && typeof e === "object" && ("status" in e || "raw" in e) && "message" in e) {
     const data = e.raw ?? e.data ?? null;
     return {
@@ -591,7 +595,6 @@ function normalizeApiError(e) {
     };
   }
 
-  // Caso 2: axios error crudo
   const d = e?.response?.data || e?.data || null;
   const msg = d?.message || d?.error || e?.message || "Error inesperado. Revisá consola/servidor.";
   return {
@@ -603,10 +606,6 @@ function normalizeApiError(e) {
   };
 }
 
-/**
- * Convierte:
- * - [{field,message}] o [{path,message}] -> { field: "msg" }
- */
 function errorsArrayToMap(arr) {
   const out = {};
   const a = Array.isArray(arr) ? arr : [];
@@ -670,7 +669,7 @@ async function forceReloadData() {
   await loadBranches();
 }
 
-// ✅ trae stock actual real (según effectiveBranchId)
+// ✅ trae stock actual real
 async function refreshCurrentStock() {
   const pid = toInt(model.value.id, 0);
   const bid = toInt(effectiveBranchId.value, 0);
@@ -706,6 +705,25 @@ watch(
 
     const it = props.item ? JSON.parse(JSON.stringify(props.item)) : null;
 
+    // ✅ FIX: hidratar rubro/subrubro robusto
+    // - si viene category con parent => subrubro = category.id y rubro = parent.id
+    // - si no viene parent => rubro = category.id (o it.category_id) y subrubro null
+    const catObj = it?.category || null;
+    const catParent = catObj?.parent || null;
+
+    const rubroFromObj = catParent?.id ? toInt(catParent.id, 0) : (catObj?.id ? toInt(catObj.id, 0) : 0);
+    const subFromObj = catParent?.id ? (catObj?.id ? toInt(catObj.id, 0) : 0) : 0;
+
+    const rubroFromFields =
+      toInt(it?.parent_category_id, 0) ||
+      toInt(it?.category_id, 0) ||
+      0;
+
+    const subFromFields =
+      toInt(it?.subcategory_id, 0) ||
+      toInt(it?.sub_category_id, 0) ||
+      0;
+
     model.value = {
       id: it?.id ?? null,
       name: it?.name ?? "",
@@ -722,9 +740,9 @@ watch(
       price_discount: Number(it?.price_discount ?? 0),
       price_reseller: Number(it?.price_reseller ?? 0),
 
-      // DB/API: category_id (rubro) / subcategory_id (subrubro)
-      parent_category_id: toInt(it?.category_id, 0) || null,
-      category_id: toInt(it?.subcategory_id, 0) || null,
+      // UI fields:
+      parent_category_id: (rubroFromObj || rubroFromFields) || null,
+      category_id: (subFromObj || subFromFields) || null,
     };
 
     syncRubroFromSubrubro();
@@ -977,6 +995,9 @@ async function save() {
     return;
   }
 
+  // ✅ FIX: category_id final (lo que se guarda en products.category_id)
+  const finalCategoryId = resolveFinalCategoryId();
+
   const payload = {
     name: String(model.value.name || "").trim(),
     sku: String(model.value.sku || "").trim(),
@@ -992,8 +1013,13 @@ async function save() {
     price_discount: Number(model.value.price_discount || 0),
     price_reseller: Number(model.value.price_reseller || 0),
 
-    // UI -> DB/API
-    category_id: model.value.parent_category_id ? toInt(model.value.parent_category_id, null) : null,
+    // ✅ FIX REAL:
+    // - si hay subrubro => category_id = subrubro
+    // - si no => category_id = rubro
+    category_id: finalCategoryId,
+
+    // ✅ compat opcional (si tu backend lo soporta / lo ignora no pasa nada)
+    parent_category_id: model.value.parent_category_id ? toInt(model.value.parent_category_id, null) : null,
     subcategory_id: model.value.category_id ? toInt(model.value.category_id, null) : null,
   };
 
@@ -1007,6 +1033,7 @@ async function save() {
   debugLog("SAVE start", {
     mode: props.mode,
     payload,
+    ui: { rubro: model.value.parent_category_id, subrubro: model.value.category_id, finalCategoryId },
     stock: { branch_id: stock.value.branch_id, current_qty: stock.value.current_qty, assign_qty: stock.value.assign_qty },
   });
 
@@ -1055,12 +1082,13 @@ async function save() {
     const { data, message, errors } = normalizeApiError(e);
     debugLog("SAVE ERROR", { message, data, errors });
 
-    // ✅ soporta errors array -> map por campo
     const errMap = Array.isArray(errors) ? errorsArrayToMap(errors) : (errors && typeof errors === "object" ? errors : {});
 
     if (errMap.name) fieldErrors.value.name = String(errMap.name);
     if (errMap.sku) fieldErrors.value.sku = String(errMap.sku);
     if (errMap.branch_id) fieldErrors.value.branch_id = String(errMap.branch_id);
+
+    // si backend valida category_id, lo mostramos como error de rubro (campo principal)
     if (errMap.category_id) fieldErrors.value.parent_category_id = String(errMap.category_id);
 
     snack.value = { show: true, text: message };

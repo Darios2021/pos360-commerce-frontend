@@ -306,12 +306,14 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
+import { useCategoriesStore } from "../../../app/store/categories.store";
 
 import ProductDetailsDialog from "../components/ProductDetailsDialog.vue";
 import ProductFormDialog from "../components/ProductFormDialog.vue";
 
 const products = useProductsStore();
 const auth = useAuthStore();
+const categories = useCategoriesStore();
 
 /* =========================
    FLAGS / PERMISOS
@@ -324,10 +326,7 @@ const isAdmin = computed(() => {
 /* ✅ branch del usuario (para scope) */
 const userBranchId = computed(() => {
   const u = auth?.user || {};
-  const bid =
-    Number(u?.branch_id || 0) ||
-    Number(auth?.branchId || 0) ||
-    0;
+  const bid = Number(u?.branch_id || 0) || Number(auth?.branchId || 0) || 0;
   return bid > 0 ? bid : null;
 });
 
@@ -335,7 +334,7 @@ const userBranchId = computed(() => {
    FILTROS
 ========================= */
 const q = ref("");
-const branchId = ref(null); // ✅ admin: "stock en sucursal"
+const branchId = ref(null);
 const categoryId = ref(null);
 const subcategoryId = ref(null);
 
@@ -421,7 +420,6 @@ function fmtDateTime(v) {
   }).format(d);
 }
 
-/* ✅ intenta sacar “creador” con varios nombres posibles */
 function creatorLabel(it) {
   const x =
     it?.created_by_user ||
@@ -432,7 +430,6 @@ function creatorLabel(it) {
     it?.user ||
     null;
 
-  // si viene objeto
   if (x && typeof x === "object") {
     return (
       x.username ||
@@ -444,11 +441,9 @@ function creatorLabel(it) {
     );
   }
 
-  // si viene string/id
   if (typeof x === "string" && x.trim()) return x.trim();
   if (typeof x === "number" && x > 0) return `User #${x}`;
 
-  // alternativas por campos sueltos
   const alt =
     it?.created_by_name ||
     it?.createdByName ||
@@ -461,7 +456,6 @@ function creatorLabel(it) {
   return alt ? String(alt) : "";
 }
 
-/** Soporta remove() boolean o {ok,code,message} */
 function normalizeRemoveResult(r) {
   if (typeof r === "boolean") {
     return { ok: r, code: r ? null : "DELETE_FAILED", message: r ? null : "No se pudo eliminar" };
@@ -504,40 +498,48 @@ function branchColor(id) {
 }
 
 /* =========================
-   CATEGORÍAS (se infieren de products.items)
+   ✅ CATEGORIES: cargar siempre del store (no inferir por products)
 ========================= */
-const categoryItems = computed(() => {
-  const map = new Map();
-  for (const it of products.items || []) {
-    const pid = it?.category?.parent?.id ?? null;
-    const pname = it?.category?.parent?.name ?? null;
-    if (pid && pname) map.set(Number(pid), String(pname));
+async function loadCategoriesSafe() {
+  try {
+    if (typeof categories.fetchAll === "function") {
+      await categories.fetchAll(true);
+      return;
+    }
+  } catch {
+    // ignore
   }
+}
+
+const categoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
-  Array.from(map.entries())
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
-    .forEach(([id, name]) => out.push({ title: name, value: id }));
+  const parents = Array.isArray(categories.parents) ? categories.parents : [];
+
+  parents
+    .map((c) => ({ id: Number(c?.id || 0), name: String(c?.name || "").trim() }))
+    .filter((x) => x.id > 0 && x.name)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .forEach((x) => out.push({ title: x.name, value: x.id }));
+
   return out;
 });
 
 const subcategoryItems = computed(() => {
-  if (!categoryId.value) return [{ title: "Todos", value: null }];
-  const pid = Number(categoryId.value);
-  const map = new Map();
-
-  for (const it of products.items || []) {
-    const itPid = it?.category?.parent?.id ?? null;
-    if (Number(itPid) !== pid) continue;
-
-    const cid = it?.category?.id ?? null;
-    const cname = it?.category?.name ?? null;
-    if (cid && cname) map.set(Number(cid), String(cname));
-  }
-
   const out = [{ title: "Todos", value: null }];
-  Array.from(map.entries())
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
-    .forEach(([id, name]) => out.push({ title: name, value: id }));
+  if (!categoryId.value) return out;
+
+  const pid = Number(categoryId.value);
+  const children =
+    typeof categories.childrenByParent === "function"
+      ? categories.childrenByParent(pid)
+      : [];
+
+  children
+    .map((c) => ({ id: Number(c?.id || 0), name: String(c?.name || "").trim() }))
+    .filter((x) => x.id > 0 && x.name)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .forEach((x) => out.push({ title: x.name, value: x.id }));
+
   return out;
 });
 
@@ -558,18 +560,29 @@ const branchItems = computed(() => {
 });
 
 /* =========================
-   ROWS NORMALIZADAS
+   ✅ ROWS NORMALIZADAS
+   FIX REAL: si no hay parent => rubro = category.name, subrubro = null
+   Además guardamos rubro_id y subrubro_id para filtrar perfecto.
 ========================= */
 const normalized = computed(() => {
   return (products.items || []).map((x) => {
-    const rubro = x?.category?.parent?.name || null;
-    const subrubro = x?.category?.name || null;
+    const cat = x?.category || null;
+    const parent = cat?.parent || null;
+
+    const rubro = parent?.name || cat?.name || null;
+    const subrubro = parent?.name ? (cat?.name || null) : null;
+
+    const rubro_id = parent?.id ? Number(parent.id) : (cat?.id ? Number(cat.id) : null);
+    const subrubro_id = parent?.id ? (cat?.id ? Number(cat.id) : null) : null;
+
     const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
 
     return {
       ...x,
       rubro,
       subrubro,
+      rubro_id,
+      subrubro_id,
       imagesCount,
       _price_list_num: priceListNumber(x),
       _stock_num: stockQtyNumber(x),
@@ -589,18 +602,17 @@ const filteredAll = computed(() => {
   const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
 
   return normalized.value.filter((it) => {
-    // ocultar inactivos para todos
     if (isInactive(it)) return false;
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    // ✅ admin + sucursal elegida => stock en esa sucursal
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
 
-    if (pid && Number(it?.category?.parent?.id || 0) !== pid) return false;
-    if (cid && Number(it?.category?.id || 0) !== cid) return false;
+    // ✅ filtros correctos
+    if (pid && Number(it?.rubro_id || 0) !== pid) return false;
+    if (cid && Number(it?.subrubro_id || 0) !== cid) return false;
 
     if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
     if (stockFilter.value === "without" && !(it._stock_num <= 0)) return false;
@@ -655,18 +667,14 @@ const headers = computed(() => {
     { title: "Rubro", key: "rubro", sortable: false },
     { title: "Subrubro", key: "subrubro", sortable: false },
     { title: "Stock", key: "stock", sortable: false, align: "end" },
-
-    // ✅ nuevos campos (si el backend los trae)
     { title: "Creado por", key: "created_by", sortable: false },
     { title: "Creado", key: "created_at", sortable: false },
-
     { title: "", key: "actions", sortable: false, align: "end" },
   ];
 
   if (!isAdmin.value) return base;
 
   const out = [...base];
-  // ✅ esta es sucursal DUEÑA (branch_id en products), no la del stock
   out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false });
   return out;
 });
@@ -703,8 +711,6 @@ function openDetails(id) {
 async function openEdit(id) {
   if (!auth.isAuthed) return;
 
-  // ✅ si admin tiene sucursal elegida, pedimos detalle con stock_qty de esa sucursal
-  // ✅ si NO admin, pedimos SIEMPRE con su branch_id (scope correcto)
   const bid = isAdmin.value
     ? (branchId.value ? Number(branchId.value) : null)
     : (userBranchId.value ? Number(userBranchId.value) : null);
@@ -846,13 +852,11 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  // ✅ clave del bug:
-  // - admin puede pedir stock_qty por sucursal elegida
-  // - usuario normal SIEMPRE pide por SU branch_id para que el backend aplique scope correcto
   const bid = isAdmin.value
     ? (branchId.value ? Number(branchId.value) : null)
     : (userBranchId.value ? Number(userBranchId.value) : null);
 
+  await loadCategoriesSafe();
   await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
   await loadBranchesSafe();
 }
