@@ -1,4 +1,9 @@
 // src/modules/shop/service/shop.taxonomy.api.js
+// ✅ COPY-PASTE FINAL (100% basado en categories.parent_id, como tu POS)
+// - /public/categories trae TODO (padres + hijos) con parent_id
+// - Rubros = parent_id null
+// - Subrubros = parent_id = rubro_id
+
 import axios from "axios";
 
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -7,43 +12,58 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// GET /public/categories -> idealmente { ok:true, items:[{id,name,parent_id,is_active}] }
-export async function getPublicCategories() {
+let _allCache = null;
+let _at = 0;
+const TTL = 60_000;
+
+function now() {
+  return Date.now();
+}
+
+function toInt(v, d = 0) {
+  const n = parseInt(String(v ?? ""), 10);
+  return Number.isFinite(n) ? n : d;
+}
+
+async function fetchAll() {
   const r = await api.get("/categories");
-  return r.data?.items || [];
+  const items = Array.isArray(r.data?.items) ? r.data.items : [];
+  return items;
 }
 
-// GET /public/categories/:id/children -> { ok:true, items:[{id,name,parent_id,is_active}] }
-export async function getPublicCategoryChildren(parent_id) {
-  const r = await api.get(`/categories/${parent_id}/children`);
-  return r.data?.items || [];
+// ✅ ALL (padres + hijos)
+export async function getPublicCategoriesAll({ force = false } = {}) {
+  if (!force && _allCache && now() - _at < TTL) return _allCache;
+  const all = await fetchAll();
+  _allCache = all;
+  _at = now();
+  return all;
 }
 
-/**
- * ✅ Devuelve lista “flatten” que INCLUYE padres + hijos.
- * - Si /categories ya trae parent_id en algunos items => usamos eso.
- * - Si /categories trae solo padres => traemos children por cada padre en paralelo.
- */
-export async function getPublicCategoriesAll() {
-  const baseList = await getPublicCategories();
-  const arr = Array.isArray(baseList) ? baseList : [];
+// ✅ Alias compat
+export async function getPublicCategories(opts = {}) {
+  return await getPublicCategoriesAll(opts);
+}
 
-  const hasAnyChild = arr.some((x) => x && x.parent_id != null);
-  if (hasAnyChild) return arr;
+// ✅ Solo rubros (padres)
+export async function getPublicParentCategories() {
+  const all = await getPublicCategoriesAll();
+  return (all || []).filter((c) => c && (c.parent_id === null || c.parent_id === undefined));
+}
 
-  // si no hay parent_id en la lista, asumimos que vinieron solo padres
-  const parents = arr;
-  const results = [...parents];
+// ✅ Subrubros por rubro (hijos)
+export async function getPublicSubcategoriesByCategory(category_id) {
+  const pid = toInt(category_id, 0);
+  if (!pid) return [];
+  const all = await getPublicCategoriesAll();
+  return (all || []).filter((c) => c && Number(c.parent_id) === pid);
+}
 
-  const jobs = parents.map(async (p) => {
-    try {
-      const kids = await getPublicCategoryChildren(p.id);
-      (kids || []).forEach((k) => results.push(k));
-    } catch (_) {
-      // noop
-    }
-  });
+// ✅ COMPAT con componentes viejos
+export async function getPublicCategoryChildren(category_id) {
+  return await getPublicSubcategoriesByCategory(category_id);
+}
 
-  await Promise.all(jobs);
-  return results;
+export async function getPublicCategorySubcategories(category_id) {
+  return await getPublicSubcategoriesByCategory(category_id);
 }

@@ -1,23 +1,45 @@
 <!-- src/modules/shop/pages/ShopHome.vue -->
 <template>
-  <v-container fluid class="py-6">
-    <div class="shop-inner">
-      <!-- HERO -->
-      <div class="hero-wrap">
-        <HeroSlider
-          :slides="heroSlides"
-          @goShop="scrollToProducts"
-          @clickSlide="onHeroClick"
-        />
+  <v-container fluid class="shop-page">
+    <!-- ✅ HERO FULL-BLEED (100vw) -->
+    <section class="hero-fullbleed">
+      <div class="hero-bleed-inner">
+        <div class="hero-wrap">
+          <HeroSlider
+            :slides="heroSlides"
+            @goShop="scrollToProducts"
+            @clickSlide="onHeroClick"
+          />
 
-        <!-- ✅ Cards MÁS ABAJO + no bloquean flechas -->
-        <div class="hero-float" v-if="allCats.length">
-          <HomeCategoryFloatRow :categories="allCats" :max="6" />
+          <!-- ✅ Cards centradas y más abajo (NO bloquean flechas) -->
+          <div class="hero-float" v-if="allCats.length">
+            <HomeCategoryFloatRow :categories="allCats" :max="6" />
+          </div>
         </div>
       </div>
+    </section>
 
-      <!-- ✅ espacio para la superposición (más grande) -->
+    <!-- ✅ CONTENIDO CENTRADO (como ML) -->
+    <section class="content">
       <div class="after-hero-spacer"></div>
+
+      <!-- ✅ PROMO SLIDER -->
+      <div class="mb-6">
+        <PromoSlider
+          :items="promoItems"
+          :perPage="promoPerPage"
+          @seeAll="scrollToProducts"
+        />
+      </div>
+
+      <!-- ✅ CategoriesShowcase MÁS ABAJO (no en el hero) -->
+      <div class="mb-8" v-if="parentCats.length">
+        <CategoriesShowcase
+          :items="parentCats"
+          :perPage="6"
+          @seeAll="goAllCategories"
+        />
+      </div>
 
       <!-- Productos -->
       <div ref="productsTop" class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
@@ -62,43 +84,14 @@
         No hay productos para mostrar con estos criterios.
       </v-alert>
 
+      <!-- ✅ PRODUCT GRID con ProductCard.vue -->
       <div v-else class="product-grid">
-        <v-card
+        <ProductCard
           v-for="p in items"
           :key="p.product_id"
-          class="rounded-xl product-card"
-          variant="outlined"
-        >
-          <v-img :src="p.image_url" height="190" cover class="rounded-t-xl" />
-
-          <v-card-text class="pt-3">
-            <div class="text-h6 font-weight-black mb-1">
-              $ {{ fmtMoney(finalPrice(p)) }}
-            </div>
-
-            <div class="font-weight-bold text-uppercase product-title">
-              {{ p.name }}
-            </div>
-
-            <div class="text-caption text-medium-emphasis mt-2">
-              {{ p.category_name || "—" }}
-              <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
-            </div>
-          </v-card-text>
-
-          <v-card-actions class="px-4 pb-4">
-            <v-btn variant="text" @click="goProduct(p.product_id)">Ver</v-btn>
-            <v-spacer />
-            <v-btn
-              color="primary"
-              variant="text"
-              :disabled="p.track_stock && Number(p.stock_qty) <= 0"
-              @click="addToCart(p)"
-            >
-              Agregar
-            </v-btn>
-          </v-card-actions>
-        </v-card>
+          :p="p"
+          @add="addToCart"
+        />
       </div>
 
       <div v-if="pages > 1" class="d-flex justify-center align-center ga-2 mt-6">
@@ -106,7 +99,7 @@
         <div class="text-caption text-medium-emphasis">Página {{ page }} / {{ pages }}</div>
         <v-btn variant="tonal" :disabled="page >= pages || loading" @click="nextPage">Siguiente</v-btn>
       </div>
-    </div>
+    </section>
   </v-container>
 </template>
 
@@ -120,6 +113,9 @@ import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
+import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
+import CategoriesShowcase from "@/modules/shop/components/CategoriesShowcase.vue";
+import ProductCard from "@/modules/shop/components/ProductCard.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -134,9 +130,19 @@ const total = ref(0);
 
 const allCats = ref([]);
 
+/* query-driven filters */
 const q = computed(() => String(route.query.q || "").trim());
 const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
 const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
+
+/* ✅ padres reales */
+const parentCats = computed(() => {
+  const arr = Array.isArray(allCats.value) ? allCats.value : [];
+  return arr
+    .filter((c) => c && (c.parent_id === null || c.parent_id === undefined))
+    .filter((c) => Number(c.is_active ?? 1) === 1)
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
+});
 
 const pages = computed(() => {
   const t = Number(total.value || 0);
@@ -150,25 +156,10 @@ function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
-function fmtMoney(v) {
-  return new Intl.NumberFormat("es-AR").format(Math.round(toNum(v)));
-}
-function finalPrice(p) {
-  const d = toNum(p.price_discount);
-  if (d > 0) return d;
-  const l = toNum(p.price_list);
-  if (l > 0) return l;
-  return toNum(p.price);
-}
 
-function goProduct(id) {
-  router.push({ name: "shopProduct", params: { id } });
-}
-function addToCart(p) {
-  cart.add(p, 1);
-}
-
-/* HERO */
+/* =========================
+   HERO
+   ========================= */
 const heroSlides = ref([
   {
     pill: "OFERTAS",
@@ -192,7 +183,9 @@ function onHeroClick() {
   scrollToProducts();
 }
 
-/* Header context */
+/* =========================
+   Header context
+   ========================= */
 const resultsTitle = computed(() => {
   if (q.value || category_id.value || subcategory_id.value) return "Resultados";
   return "Productos";
@@ -214,8 +207,11 @@ function clearAllFilters() {
   router.replace({ name: "shopHome", query: nq });
 }
 
-/* Scroll */
+/* =========================
+   Scroll
+   ========================= */
 const productsTop = ref(null);
+
 function scrollToProducts() {
   const el = productsTop.value;
   if (!el) return;
@@ -223,7 +219,43 @@ function scrollToProducts() {
   window.scrollTo({ top: y, behavior: "smooth" });
 }
 
-/* Catalog */
+/* =========================
+   Promo slider data (REAL)
+   ========================= */
+const promoPerPage = computed(() => 5);
+
+const promoItems = computed(() => {
+  const arr = Array.isArray(items.value) ? items.value : [];
+  if (!arr.length) return [];
+
+  const promos = arr.filter((p) => {
+    const disc = toNum(p.price_discount);
+    return Boolean(p.is_promo) || Boolean(p.is_new) || disc > 0;
+  });
+
+  const base = promos.length ? promos : arr;
+  return base.slice(0, 18);
+});
+
+/* =========================
+   Categories “see all”
+   ========================= */
+function goAllCategories() {
+  // si más adelante tenés ruta, lo enchufamos acá.
+  // por ahora: baja al catálogo.
+  scrollToProducts();
+}
+
+/* =========================
+   Cart
+   ========================= */
+function addToCart(p) {
+  cart.add(p, 1);
+}
+
+/* =========================
+   Catalog
+   ========================= */
 async function fetchCatalog() {
   loading.value = true;
   try {
@@ -263,6 +295,7 @@ function prevPage() {
   }
 }
 
+/* bootstrap */
 onMounted(async () => {
   await fetchCatalog();
   try {
@@ -283,68 +316,68 @@ watch(
 </script>
 
 <style scoped>
-.shop-inner {
-  width: 100%;
-  max-width: 1850px;
-  margin: 0 auto;
+.shop-page {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  --shop-max: 1200px;
 }
 
-/* ✅ cards flotantes MÁS ABAJO y SIN bloquear flechas */
+.hero-fullbleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+
 .hero-wrap {
   position: relative;
+  width: 100%;
 }
+
+/* float row del hero */
 .hero-float {
   position: absolute;
   left: 0;
   right: 0;
-
-  /* ✅ las bajamos para que no tapen el contenido del hero */
-  bottom: -110px;
-
-  z-index: 20;
-
-  /* ✅ clave: el contenedor NO captura clicks, solo las cards (adentro) */
+  bottom: -165px;
+  z-index: 30;
   pointer-events: none;
 }
-
-/* el componente de cards ya habilita pointer-events solo en las cards */
 .hero-float :deep(.float-inner) {
   pointer-events: auto;
+  width: min(var(--shop-max), calc(100% - 24px));
+  margin: 0 auto;
 }
 
-/* ✅ espacio post-hero para que no tape “Productos” */
-.after-hero-spacer {
-  height: 140px;
+.after-hero-spacer { height: 205px; }
+
+.content {
+  width: min(var(--shop-max), calc(100% - 24px));
+  margin: 0 auto;
+  padding-bottom: 40px;
 }
 
+/* ✅ Grid homogéneo con ProductCard */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
 
-.product-card {
-  width: 100%;
-  max-width: 340px;
+@media (max-width: 1400px) {
+  .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
-
-.product-title {
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
+@media (max-width: 1200px) {
+  .shop-page { --shop-max: 1100px; }
+  .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-
 @media (max-width: 960px) {
-  .hero-float {
-    bottom: -70px;
-  }
-  .after-hero-spacer {
-    height: 110px;
-  }
-  .product-card { max-width: 100%; }
+  .hero-float { bottom: -125px; }
+  .after-hero-spacer { height: 165px; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .hero-float { bottom: -110px; }
+  .after-hero-spacer { height: 150px; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

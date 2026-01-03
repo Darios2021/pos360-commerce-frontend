@@ -1,182 +1,149 @@
 <!-- src/modules/shop/pages/ShopCategory.vue -->
 <template>
-  <v-container fluid class="py-6 shop-container">
-    <div class="shop-inner">
-      <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
-        <div>
-          <v-btn to="/shop" variant="text" class="mb-2">
-            <v-icon start>mdi-arrow-left</v-icon> Volver
-          </v-btn>
+  <div class="category-page">
+    <section class="section">
+      <!-- HEADER -->
+      <div class="section-head">
+        <div class="head-left">
+          <h1 class="section-title">{{ parent?.name || "Categoría" }}</h1>
 
-          <div class="text-h4 font-weight-black">
-            {{ parentName }}
+          <!-- ✅ CONTROLES: buscador + contador -->
+          <div class="controls-row">
+            <v-text-field
+              v-model="searchText"
+              density="comfortable"
+              variant="outlined"
+              hide-details
+              clearable
+              class="search"
+              prepend-inner-icon="mdi-magnify"
+              placeholder="Buscar dentro de la categoría…"
+              @keyup.enter="applySearch"
+              @click:clear="clearSearch"
+            />
+
+            <div class="count">{{ resultsLabel }}</div>
           </div>
 
-          <div class="text-body-2 text-medium-emphasis">
-            Filtrá por subrubros como MercadoLibre.
+          <!-- ✅ SUBRUBROS (HIJOS DE categories.parent_id) -->
+          <div v-if="subcats.length" class="subcats-row">
+            <v-chip
+              size="small"
+              :variant="selectedSubId === null ? 'flat' : 'tonal'"
+              color="primary"
+              @click="selectSub(null)"
+            >
+              Todos
+            </v-chip>
+
+            <v-chip
+              v-for="s in subcats"
+              :key="s.id"
+              size="small"
+              :variant="selectedSubId === Number(s.id) ? 'flat' : 'tonal'"
+              color="primary"
+              @click="selectSub(Number(s.id))"
+              :title="s.name"
+              class="subchip"
+            >
+              {{ s.name }}
+            </v-chip>
           </div>
         </div>
 
-        <div class="d-flex ga-2 align-center flex-wrap">
-          <v-text-field
-            v-model="localQ"
-            density="comfortable"
-            variant="outlined"
-            prepend-inner-icon="mdi-magnify"
-            placeholder="Buscar dentro de la categoría…"
-            hide-details
-            style="min-width: 320px; max-width: 560px"
-            @keyup.enter="applySearch"
-          />
-          <v-btn variant="tonal" @click="applySearch">Buscar</v-btn>
-
-          <v-btn to="/shop/cart" color="primary" variant="tonal">
-            Carrito ({{ cartCount }})
+        <div class="head-right">
+          <v-btn variant="tonal" @click="applySearch" :loading="loading">
+            Buscar
           </v-btn>
+
+          <v-btn variant="tonal" to="/shop">Volver</v-btn>
         </div>
       </div>
 
-      <v-row class="ga-4">
-        <v-col cols="12" md="3" lg="2">
-          <v-card class="rounded-xl filter-card" variant="outlined">
-            <v-card-title class="font-weight-bold">Filtros</v-card-title>
-            <v-card-text>
-              <div class="text-caption text-medium-emphasis mb-2">Subrubros</div>
+      <!-- ERROR -->
+      <v-alert v-if="err" type="error" variant="tonal" class="mb-6">
+        {{ err }}
+      </v-alert>
 
-              <v-chip
-                class="mb-2"
-                :color="!selectedChildId ? 'primary' : undefined"
-                :variant="!selectedChildId ? 'flat' : 'tonal'"
-                @click="setChild(null)"
-              >
-                Todos
-              </v-chip>
+      <!-- PROMO -->
+      <PromoSlider
+        v-if="promoItems.length"
+        :items="promoItems"
+        class="mb-8"
+        @seeAll="fetchCatalog"
+      />
 
-              <div class="d-flex flex-wrap ga-2">
-                <v-chip
-                  v-for="sc in children"
-                  :key="sc.id"
-                  class="text-uppercase"
-                  :color="selectedChildId === sc.id ? 'primary' : undefined"
-                  :variant="selectedChildId === sc.id ? 'flat' : 'tonal'"
-                  @click="setChild(sc.id)"
-                >
-                  {{ sc.name }}
-                </v-chip>
-              </div>
+      <!-- LOADING -->
+      <div v-if="loading" class="product-grid">
+        <div v-for="n in 12" :key="n">
+          <v-skeleton-loader type="image, article" />
+        </div>
+      </div>
 
-              <v-divider class="my-4" />
+      <!-- EMPTY -->
+      <v-alert v-else-if="!items.length" type="info" variant="tonal">
+        No hay productos para mostrar con estos criterios.
+      </v-alert>
 
-              <v-switch
-                v-model="onlyStock"
-                density="compact"
-                color="primary"
-                hide-details
-                label="Solo con stock"
-              />
-            </v-card-text>
-          </v-card>
-        </v-col>
+      <!-- PRODUCTOS -->
+      <div v-else class="product-grid">
+        <ProductCard v-for="p in items" :key="p.product_id" :p="p" @add="addToCart" />
+      </div>
 
-        <v-col cols="12" md="9" lg="10">
-          <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-            <div class="text-h6 font-weight-bold">
-              Productos
-              <span class="text-caption text-medium-emphasis" v-if="total">
-                ({{ total }})
-              </span>
-            </div>
-
-            <v-btn variant="tonal" :loading="loading" @click="fetchCatalog">
-              Actualizar
-            </v-btn>
-          </div>
-
-          <div v-if="loading" class="product-grid">
-            <div v-for="n in 12" :key="n">
-              <v-skeleton-loader type="image, article" />
-            </div>
-          </div>
-
-          <v-alert v-else-if="!items.length" type="info" variant="tonal">
-            No hay productos para mostrar con estos filtros.
-          </v-alert>
-
-          <div v-else class="product-grid">
-            <v-card
-              v-for="p in items"
-              :key="p.product_id"
-              class="rounded-xl product-card"
-              variant="outlined"
-            >
-              <v-img :src="p.image_url" height="180" cover class="rounded-t-xl" />
-
-              <v-card-text class="pt-3">
-                <div class="text-h6 font-weight-black mb-1">
-                  $ {{ fmtMoney(finalPrice(p)) }}
-                </div>
-
-                <div class="font-weight-bold text-uppercase product-title">
-                  {{ p.name }}
-                </div>
-
-                <div class="text-caption text-medium-emphasis mt-2">
-                  {{ p.category_name || "—" }}
-                  <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
-                </div>
-              </v-card-text>
-
-              <v-card-actions class="px-4 pb-4">
-                <v-btn variant="text" @click="goProduct(p.product_id)">Ver</v-btn>
-                <v-spacer />
-                <v-btn
-                  color="primary"
-                  variant="text"
-                  :disabled="p.track_stock && Number(p.stock_qty) <= 0"
-                  @click="addToCart(p)"
-                >
-                  Agregar
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </div>
-
-          <div v-if="pages > 1" class="d-flex justify-center align-center ga-2 mt-6">
-            <v-btn variant="tonal" :disabled="page <= 1 || loading" @click="prevPage">Anterior</v-btn>
-            <div class="text-caption text-medium-emphasis">Página {{ page }} / {{ pages }}</div>
-            <v-btn variant="tonal" :disabled="page >= pages || loading" @click="nextPage">Siguiente</v-btn>
-          </div>
-        </v-col>
-      </v-row>
-    </div>
-  </v-container>
+      <!-- PAGINACIÓN -->
+      <div v-if="pages > 1" class="pager">
+        <v-btn variant="tonal" :disabled="page <= 1 || loading" @click="prevPage">
+          Anterior
+        </v-btn>
+        <div class="pager-text">Página {{ page }} / {{ pages }}</div>
+        <v-btn variant="tonal" :disabled="page >= pages || loading" @click="nextPage">
+          Siguiente
+        </v-btn>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
-import { getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
+import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
+
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+
+import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
+import ProductCard from "@/modules/shop/components/ProductCard.vue";
 
 const route = useRoute();
 const router = useRouter();
 const cart = useShopCartStore();
 
+const loading = ref(false);
+const err = ref("");
+
 const parentId = computed(() => Number(route.params.id || 0));
 
-const selectedChildId = ref(route.query.sub ? Number(route.query.sub) : null);
-const onlyStock = ref(String(route.query.stock ?? "1") !== "0");
-const localQ = ref(String(route.query.q || ""));
+const catsAll = ref([]);
+const parent = computed(() => (catsAll.value || []).find((c) => Number(c.id) === parentId.value));
+
+// ✅ subrubros = children categories
+const subcats = ref([]);
+
+// ✅ selectedSubId ahora ES category_id del subrubro (hijo). null => "Todos"
+const selectedSubId = ref(null);
+
+// buscador
+const searchText = ref(String(route.query.q || ""));
+
+// paginación
 const page = ref(Number(route.query.page || 1));
 const limit = ref(24);
-
-const loading = ref(false);
-const items = ref([]);
 const total = ref(0);
 
-const children = ref([]);
-const parentName = computed(() => `Categoría #${parentId.value}`);
+const items = ref([]);
+const promoItems = ref([]);
 
 const pages = computed(() => {
   const t = Number(total.value || 0);
@@ -184,158 +151,264 @@ const pages = computed(() => {
   return t ? Math.max(1, Math.ceil(t / l)) : 1;
 });
 
-const cartCount = computed(() => cart.count);
-
-function fmtMoney(v) {
-  return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
-}
-
-function finalPrice(p) {
-  const d = Number(p.price_discount || 0);
-  if (d > 0) return d;
-  const l = Number(p.price_list || 0);
-  if (l > 0) return l;
-  return Number(p.price || 0);
-}
-
-function goProduct(id) {
-  router.push({ name: "shopProduct", params: { id } });
-}
+const resultsLabel = computed(() => {
+  const t = Number(total.value || 0);
+  if (!t && !loading.value) return "Productos (0)";
+  return `Productos (${t})`;
+});
 
 function addToCart(p) {
   cart.add(p, 1);
 }
 
-function setChild(id) {
-  selectedChildId.value = id ? Number(id) : null;
+function toNum(v) {
+  const n = Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+function buildPromo(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  const promos = a.filter((p) => {
+    const disc = toNum(p.price_discount);
+    return Boolean(p.is_promo) || Boolean(p.is_new) || disc > 0;
+  });
+  return (promos.length ? promos : a).slice(0, 18);
+}
+
+/* =========================
+   SUBRUBROS (children de categories)
+   ========================= */
+async function fetchSubcats() {
+  try {
+    const kids = await getPublicCategoryChildren(parentId.value);
+    subcats.value = Array.isArray(kids) ? kids : [];
+  } catch (e) {
+    console.error("❌ fetchSubcats", e);
+    subcats.value = [];
+  }
+}
+
+/* =========================
+   QUERY HELPERS
+   ========================= */
+function setQuery(partial) {
+  const q = { ...route.query, ...partial };
+  Object.keys(q).forEach((k) => {
+    const v = q[k];
+    if (v === null || v === undefined || v === "") delete q[k];
+  });
+  router.replace({ name: route.name, params: route.params, query: q });
+}
+
+function selectSub(idOrNull) {
+  selectedSubId.value = idOrNull == null ? null : Number(idOrNull);
   page.value = 1;
-  syncQuery();
+
+  setQuery({
+    sub: selectedSubId.value == null ? null : String(selectedSubId.value),
+    page: "1",
+  });
+
+  fetchCatalog(); // ✅ siempre
 }
 
 function applySearch() {
   page.value = 1;
-  syncQuery();
+  setQuery({
+    q: String(searchText.value || "").trim() || null,
+    page: "1",
+  });
+  fetchCatalog();
 }
 
-function syncQuery() {
-  const nq = {
-    ...route.query,
-    q: String(localQ.value || "").trim() || undefined,
-    sub: selectedChildId.value ? String(selectedChildId.value) : undefined,
-    stock: onlyStock.value ? "1" : "0",
-    page: String(page.value),
-  };
-  Object.keys(nq).forEach((k) => (nq[k] === undefined ? delete nq[k] : null));
-  router.replace({ name: "shopCategory", params: { id: parentId.value }, query: nq });
+function clearSearch() {
+  searchText.value = "";
+  applySearch();
 }
 
+/* =========================
+   CATALOG (MODELO POS)
+   ========================= */
 async function fetchCatalog() {
   loading.value = true;
+  err.value = "";
   try {
-    const r = await getCatalog({
-      search: String(route.query.q || ""),
-      in_stock: onlyStock.value ? 1 : 0,
+    const qStr = String(searchText.value || "").trim();
+    const isAll = selectedSubId.value == null;
+
+    const params = {
       page: page.value,
       limit: limit.value,
-      category_id: selectedChildId.value ? null : parentId.value,
-      subcategory_id: selectedChildId.value ? selectedChildId.value : null,
-      include_children: selectedChildId.value ? null : 1,
-    });
+      search: qStr || "",
+
+      // ✅ padre siempre
+      category_id: parentId.value,
+
+      // ✅ chip: va por subcategory_id (aunque se filtre por products.category_id en backend)
+      subcategory_id: isAll ? null : selectedSubId.value,
+
+      // ✅ "Todos" = incluye hijos
+      include_children: isAll ? 1 : 0,
+
+      // mostrar todo (sin filtrar por stock)
+      in_stock: 0,
+    };
+
+    const r = await getCatalog(params);
 
     items.value = Array.isArray(r.items) ? r.items : [];
     total.value = Number(r.total || 0);
+    promoItems.value = buildPromo(items.value);
   } catch (e) {
-    console.error("❌ fetchCatalog(Category)", e);
+    console.error("❌ fetchCatalog(ShopCategory)", e);
+    err.value = "No se pudo cargar el catálogo para esta categoría.";
     items.value = [];
+    promoItems.value = [];
     total.value = 0;
   } finally {
     loading.value = false;
   }
 }
 
+/* =========================
+   PAGER
+   ========================= */
 function nextPage() {
   if (page.value < pages.value) {
     page.value += 1;
-    syncQuery();
+    setQuery({ page: String(page.value) });
+    fetchCatalog();
   }
 }
 function prevPage() {
   if (page.value > 1) {
     page.value -= 1;
-    syncQuery();
+    setQuery({ page: String(page.value) });
+    fetchCatalog();
   }
 }
 
-async function bootstrap() {
-  try {
-    children.value = await getPublicCategoryChildren(parentId.value);
-  } catch (e) {
-    console.error("❌ children", e);
-    children.value = [];
-  }
+/* =========================
+   BOOTSTRAP
+   ========================= */
+onMounted(async () => {
+  catsAll.value = await getPublicCategoriesAll();
 
-  selectedChildId.value = route.query.sub ? Number(route.query.sub) : null;
-  onlyStock.value = String(route.query.stock ?? "1") !== "0";
-  localQ.value = String(route.query.q || "");
+  selectedSubId.value = route.query.sub ? Number(route.query.sub) : null;
+  searchText.value = String(route.query.q || "");
   page.value = Number(route.query.page || 1);
 
+  await fetchSubcats();
   await fetchCatalog();
-}
-
-onMounted(bootstrap);
-watch(() => parentId.value, bootstrap);
+});
 
 watch(
-  () => route.query,
-  () => {
-    selectedChildId.value = route.query.sub ? Number(route.query.sub) : null;
-    onlyStock.value = String(route.query.stock ?? "1") !== "0";
-    localQ.value = String(route.query.q || "");
-    page.value = Number(route.query.page || 1);
-    fetchCatalog();
+  () => parentId.value,
+  async () => {
+    selectedSubId.value = null;
+    searchText.value = "";
+    page.value = 1;
+
+    setQuery({ sub: null, q: null, page: "1" });
+
+    await fetchSubcats();
+    await fetchCatalog();
   }
 );
 
-watch(onlyStock, () => {
-  page.value = 1;
-  syncQuery();
-});
+// back/forward / URL compartida
+watch(
+  () => route.query,
+  async () => {
+    selectedSubId.value = route.query.sub ? Number(route.query.sub) : null;
+    searchText.value = String(route.query.q || "");
+    page.value = Number(route.query.page || 1);
+    await fetchCatalog();
+  }
+);
 </script>
 
 <style scoped>
-.shop-inner {
-  width: 100%;
-  max-width: 1850px;
+.category-page { background: #f5f5f5; }
+
+.section {
+  max-width: 1300px;
   margin: 0 auto;
+  padding: 26px 16px 48px;
 }
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.head-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: 30px;
+  font-weight: 950;
+  margin: 0;
+  letter-spacing: -0.4px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search { width: 420px; max-width: 100%; }
+
+.count {
+  font-size: 13px;
+  font-weight: 900;
+  opacity: 0.75;
+}
+
+.subcats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+.subchip { max-width: 260px; }
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
 
-.product-card {
-  width: 100%;
-  max-width: 340px;
+.pager {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+.pager-text {
+  font-size: 12px;
+  opacity: 0.75;
+  font-weight: 900;
 }
 
-.product-title {
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.filter-card {
-  position: sticky;
-  top: 90px;
-}
-@media (max-width: 960px) {
-  .filter-card { position: static; }
-  .product-card { max-width: 100%; }
-}
+@media (max-width: 1400px) { .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 960px)  { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search { width: 100%; } }
 </style>

@@ -119,8 +119,8 @@ function onImgError(e) {
 }
 </script>
 
+
 <style scoped>
-/* ✅ NO bloquea el hero: la fila no captura clicks fuera de las cards */
 .float-row {
   width: 100%;
   display: flex;
@@ -128,11 +128,12 @@ function onImgError(e) {
   pointer-events: none;
 }
 .float-inner {
-  width: min(1360px, calc(100% - 24px));
+  width: min(var(--shop-max, 1200px), calc(100% - 24px));
+  margin: 0 auto;
   pointer-events: auto;
 }
 
-/* ✅ grid fijo, como ML */
+/* ✅ grid fijo, no slider */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -140,7 +141,6 @@ function onImgError(e) {
   align-items: stretch;
 }
 
-/* Card */
 .ml-card {
   width: 100%;
   height: 320px;
@@ -153,19 +153,27 @@ function onImgError(e) {
   flex-direction: column;
 }
 
+/* ✅ header con altura fija y titulo que NO rompe */
 .ml-card-head {
-  padding: 14px 14px 10px;
+  padding: 12px 14px 10px;
+  height: 48px;                 /* ✅ fijo */
+  display: flex;
+  align-items: center;
   font-weight: 1000;
   font-size: 18px;
 }
+
 .ml-card-title {
-  line-height: 1.1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  width: 100%;
+  text-transform: uppercase;
+
+  /* ✅ NO romper layout */
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* imagen */
 .ml-card-media {
   height: 150px;
   background: #f2f2f2;
@@ -179,33 +187,50 @@ function onImgError(e) {
   display: block;
 }
 
+/* body */
 .ml-card-body {
   padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
   justify-content: space-between;
 }
+
 .ml-card-desc {
   font-size: 13px;
   color: rgba(0,0,0,.72);
   line-height: 1.25;
+
+  /* ✅ clamp 2 líneas para no estirar */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+
 .ml-card-btn {
   font-weight: 1000;
   border-radius: 8px;
 }
 
-/* responsive: mantiene “fijo” pero baja columnas */
+/* responsive */
 @media (max-width: 1400px) {
   .cards-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
+
 @media (max-width: 1200px) {
   .cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
 @media (max-width: 960px) {
   .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ml-card { height: 300px; }
+  .ml-card-head { height: 46px; font-size: 17px; }
+}
+
+@media (max-width: 600px) {
+  .ml-card-head { font-size: 16px; }
 }
 </style>
+

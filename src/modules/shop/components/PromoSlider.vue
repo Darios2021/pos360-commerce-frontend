@@ -1,11 +1,12 @@
 <!-- src/modules/shop/components/PromoSlider.vue -->
 <template>
-  <v-card class="rounded-xl promo-wrap" variant="outlined">
-    <v-card-text class="pa-0">
+  <section class="promo-shell">
+    <div class="promo-inner">
+      <!-- Header -->
       <div class="promo-head">
-        <div>
-          <div class="promo-title">Ofertas destacadas</div>
-          <div class="promo-sub">Promos y productos recomendados</div>
+        <div class="promo-head-left">
+          <div class="promo-title">Inspirado en lo último que viste</div>
+          <div class="promo-sub">Recomendados y ofertas destacadas</div>
         </div>
 
         <v-btn variant="text" class="promo-more" @click="$emit('seeAll')">
@@ -14,8 +15,9 @@
         </v-btn>
       </div>
 
-      <v-divider />
+      <v-divider class="promo-divider" />
 
+      <!-- Slider -->
       <div class="promo-body">
         <v-slide-group
           v-model="model"
@@ -26,11 +28,7 @@
             v-for="p in items"
             :key="p.product_id"
           >
-            <v-card
-              class="promo-card"
-              variant="flat"
-              @click="open(p)"
-            >
+            <button class="promo-card" type="button" @click="open(p)">
               <div class="promo-img">
                 <img :src="p.image_url" alt="" />
                 <div v-if="badgeText(p)" class="promo-badge">
@@ -39,15 +37,16 @@
               </div>
 
               <div class="promo-info">
-                <div class="promo-price">
-                  $ {{ fmtMoney(finalPrice(p)) }}
+                <div class="promo-price-row">
+                  <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
+
+                  <div class="promo-off" v-if="offPct(p)">
+                    {{ offPct(p) }}% OFF
+                  </div>
                 </div>
 
                 <div v-if="showOldPrice(p)" class="promo-old">
                   $ {{ fmtMoney(oldPrice(p)) }}
-                  <span class="promo-off" v-if="offPct(p)">
-                    {{ offPct(p) }}% OFF
-                  </span>
                 </div>
 
                 <div class="promo-name">
@@ -58,8 +57,12 @@
                   {{ p.category_name || "—" }}
                   <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
                 </div>
+
+                <div class="promo-free" v-if="freeShip(p)">
+                  Envío gratis
+                </div>
               </div>
-            </v-card>
+            </button>
           </v-slide-group-item>
         </v-slide-group>
 
@@ -72,11 +75,12 @@
             :class="{ active: i - 1 === dotIndex }"
             @click="jumpTo(i - 1)"
             type="button"
+            aria-label="Ir a página"
           />
         </div>
       </div>
-    </v-card-text>
-  </v-card>
+    </div>
+  </section>
 </template>
 
 <script setup>
@@ -90,7 +94,7 @@ const props = defineProps({
 defineEmits(["seeAll"]);
 
 const router = useRouter();
-const model = ref(null);
+const model = ref(0);
 
 function open(p) {
   router.push({ name: "shopProduct", params: { id: p.product_id } });
@@ -140,6 +144,11 @@ function badgeText(p) {
   return "";
 }
 
+// opcional: si en tu backend tenés un flag
+function freeShip(p) {
+  return Boolean(p.free_shipping) || Boolean(p.is_free_shipping);
+}
+
 /** Puntitos:
  * En vuetify slide-group el model es index del item visible.
  * Lo convertimos a “página” para puntitos.
@@ -170,59 +179,105 @@ watch(
 </script>
 
 <style scoped>
-.promo-wrap {
-  overflow: hidden;
-  background: #fff;
+/* ✅ contenedor suave estilo ML */
+.promo-shell {
+  width: 100%;
 }
 
+.promo-inner {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 28px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+
+/* header */
 .promo-head {
-  padding: 14px 16px;
+  padding: 16px 18px 14px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.promo-title {
-  font-size: 18px;
-  font-weight: 900;
+.promo-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
+
+.promo-title {
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: -0.2px;
+}
+
 .promo-sub {
   font-size: 12px;
-  opacity: 0.75;
+  opacity: 0.72;
 }
+
 .promo-more {
-  font-weight: 800;
+  font-weight: 900;
+  opacity: 0.9;
 }
 
+.promo-divider {
+  opacity: 0.65;
+}
+
+/* body */
 .promo-body {
-  padding: 12px 10px 10px;
+  padding: 10px 10px 10px;
 }
 
+/* ✅ más aire, flechas de slide-group */
 .promo-slide :deep(.v-slide-group__content) {
-  gap: 12px;
-  padding: 6px 4px 10px;
+  gap: 14px;
+  padding: 10px 6px 12px;
 }
 
-.promo-card {
-  width: 220px;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 16px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform .12s ease, box-shadow .12s ease;
+.promo-slide :deep(.v-slide-group__prev),
+.promo-slide :deep(.v-slide-group__next) {
+  opacity: 0.95;
 }
+
+.promo-slide :deep(.v-slide-group__prev .v-btn),
+.promo-slide :deep(.v-slide-group__next .v-btn) {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.10);
+  box-shadow: 0 10px 26px rgba(0,0,0,.10);
+}
+
+/* ✅ card: sin borde duro, hover suave */
+.promo-card {
+  width: 210px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 6px 16px rgba(0,0,0,.05);
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+
 .promo-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  box-shadow: 0 14px 34px rgba(0,0,0,.10);
+  border-color: rgba(0,0,0,.10);
 }
 
+/* imagen */
 .promo-img {
   position: relative;
   width: 100%;
   height: 150px;
-  background: #f4f4f4;
+  background: #f5f5f5;
 }
+
 .promo-img img {
   width: 100%;
   height: 100%;
@@ -230,44 +285,56 @@ watch(
   display: block;
 }
 
+/* badge suave */
 .promo-badge {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: #00a650;
+  background: rgba(0,166,80,0.95);
   color: #fff;
-  font-weight: 900;
+  font-weight: 950;
   font-size: 11px;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.12);
 }
 
+/* info */
 .promo-info {
   padding: 10px 12px 12px;
 }
 
+.promo-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .promo-price {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 950;
+  letter-spacing: -0.2px;
   line-height: 1.1;
+}
+
+.promo-off {
+  font-size: 12px;
+  font-weight: 950;
+  color: #00a650;
+  white-space: nowrap;
 }
 
 .promo-old {
   margin-top: 2px;
   font-size: 12px;
-  opacity: 0.75;
+  opacity: 0.6;
   text-decoration: line-through;
-}
-.promo-off {
-  margin-left: 6px;
-  text-decoration: none;
-  color: #00a650;
-  font-weight: 900;
 }
 
 .promo-name {
   margin-top: 8px;
-  font-weight: 800;
+  font-weight: 850;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;
@@ -280,6 +347,17 @@ watch(
   margin-top: 6px;
   font-size: 11px;
   opacity: 0.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.promo-free {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #00a650;
 }
 
 /* puntitos */
@@ -287,23 +365,31 @@ watch(
   display: flex;
   justify-content: center;
   gap: 8px;
-  padding: 6px 0 2px;
+  padding: 8px 0 6px;
 }
+
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   border: 0;
-  background: rgba(0,0,0,.18);
+  background: rgba(0,0,0,.16);
   cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
 }
+
+.dot:hover {
+  transform: scale(1.15);
+}
+
 .dot.active {
-  background: rgba(0,0,0,.6);
+  background: rgba(0,0,0,.55);
 }
 
 /* responsive */
 @media (max-width: 960px) {
-  .promo-card { width: 200px; }
+  .promo-card { width: 195px; }
   .promo-img { height: 140px; }
+  .promo-head { padding: 14px 14px 12px; }
 }
 </style>
