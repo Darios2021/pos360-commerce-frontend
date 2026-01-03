@@ -6,6 +6,9 @@ import { useAuthStore } from "@/app/store/auth.store";
 import AppShell from "@/app/layouts/AppShell.vue";
 import AuthLayout from "@/app/layouts/AuthLayout.vue";
 
+// Shop routes (aislado)
+import { shopRoutes } from "@/modules/shop/router/shop.routes";
+
 // Pages
 import LoginPage from "@/modules/auth/pages/LoginPage.vue";
 import ProfilePage from "@/modules/account/pages/ProfilePage.vue";
@@ -30,10 +33,15 @@ import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
 import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
 import StockPage from "@/modules/stock/pages/StockPage.vue";
 
-// ✅ Users (nuevo)
+// Users
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
 const routes = [
+  // =========================
+  // ✅ SHOP (aislado)
+  // =========================
+  ...shopRoutes,
+
   // =========================
   // AUTH (sin header/drawer)
   // =========================
@@ -47,14 +55,13 @@ const routes = [
   },
 
   // =========================
-  // APP (con header/drawer)
+  // APP (con header/drawer) - privado
   // =========================
   {
     path: "/",
     component: AppShell,
     meta: { requiresAuth: true },
     children: [
-      // Home real (Dashboard)
       { path: "", name: "home", component: DashboardHome },
 
       // POS
@@ -79,7 +86,7 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ Users management (solo admin/super_admin por ahora)
+      // Users
       {
         path: "users",
         name: "users",
@@ -92,23 +99,25 @@ const routes = [
     ],
   },
 
-  // fallback
-  { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
+  // fallback -> Shop (público)
+  { path: "/:pathMatch(.*)*", redirect: { name: "shopHome" } },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to, from, saved) => saved || { top: 0 },
 });
 
 // =========================
-// ✅ Guard: auth + roles
+// ✅ Guard global
 // =========================
 router.beforeEach((to) => {
   const auth = useAuthStore();
-
   if (auth.status === "idle") auth.hydrate?.();
+
+  // ✅ Público (incluye shop)
+  if (to.meta?.public) return true;
 
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
