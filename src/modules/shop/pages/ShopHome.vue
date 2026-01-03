@@ -42,7 +42,11 @@
       </div>
 
       <!-- Productos -->
-      <div ref="productsTop" class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
+      <div
+        id="shop-products-top"
+        ref="productsTop"
+        class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4"
+      >
         <div class="d-flex align-center ga-2">
           <div class="text-h6 font-weight-black">{{ resultsTitle }}</div>
           <span class="text-caption text-medium-emphasis" v-if="total">({{ total }})</span>
@@ -204,7 +208,7 @@ function clearAllFilters() {
   delete nq.category_id;
   delete nq.subcategory_id;
   nq.page = "1";
-  router.replace({ name: "shopHome", query: nq });
+  router.replace({ path: "/shop", query: nq });
 }
 
 /* =========================
@@ -241,8 +245,6 @@ const promoItems = computed(() => {
    Categories “see all”
    ========================= */
 function goAllCategories() {
-  // si más adelante tenés ruta, lo enchufamos acá.
-  // por ahora: baja al catálogo.
   scrollToProducts();
 }
 
@@ -280,7 +282,7 @@ async function fetchCatalog() {
 
 function syncQuery() {
   const nq = { ...route.query, page: String(page.value) };
-  router.replace({ name: "shopHome", query: nq });
+  router.replace({ path: "/shop", query: nq });
 }
 function nextPage() {
   if (page.value < pages.value) {

@@ -7,25 +7,21 @@
         <div class="head-left">
           <h1 class="section-title">{{ parent?.name || "Categoría" }}</h1>
 
-          <!-- ✅ CONTROLES: buscador + contador -->
+          <!-- ✅ CONTROLES: buscador + contador (componentizado) -->
           <div class="controls-row">
-            <v-text-field
+            <ShopSearchBar
               v-model="searchText"
-              density="comfortable"
-              variant="outlined"
-              hide-details
-              clearable
-              class="search"
-              prepend-inner-icon="mdi-magnify"
+              :loading="loading"
               placeholder="Buscar dentro de la categoría…"
-              @keyup.enter="applySearch"
-              @click:clear="clearSearch"
+              :show-count="true"
+              :count-label="resultsLabel"
+              :show-button="false"
+              @search="applySearch"
+              @clear="clearSearch"
             />
-
-            <div class="count">{{ resultsLabel }}</div>
           </div>
 
-          <!-- ✅ SUBRUBROS (HIJOS DE categories.parent_id) -->
+          <!-- ✅ SUBRUBROS -->
           <div v-if="subcats.length" class="subcats-row">
             <v-chip
               size="small"
@@ -52,10 +48,8 @@
         </div>
 
         <div class="head-right">
-          <v-btn variant="tonal" @click="applySearch" :loading="loading">
-            Buscar
-          </v-btn>
-
+          <!-- mantenemos el botón "Buscar" como acción manual -->
+          <v-btn variant="tonal" @click="applySearch" :loading="loading">Buscar</v-btn>
           <v-btn variant="tonal" to="/shop">Volver</v-btn>
         </div>
       </div>
@@ -110,11 +104,11 @@ import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
-
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
+import ShopSearchBar from "@/modules/shop/components/ShopSearchBar.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -128,10 +122,10 @@ const parentId = computed(() => Number(route.params.id || 0));
 const catsAll = ref([]);
 const parent = computed(() => (catsAll.value || []).find((c) => Number(c.id) === parentId.value));
 
-// ✅ subrubros = children categories
+// ✅ subrubros (hijos) = categories.parent_id = parentId
 const subcats = ref([]);
 
-// ✅ selectedSubId ahora ES category_id del subrubro (hijo). null => "Todos"
+// ✅ selectedSubId = ID del HIJO. null => "Todos"
 const selectedSubId = ref(null);
 
 // buscador
@@ -175,7 +169,7 @@ function buildPromo(arr) {
 }
 
 /* =========================
-   SUBRUBROS (children de categories)
+   SUBRUBROS
    ========================= */
 async function fetchSubcats() {
   try {
@@ -208,7 +202,7 @@ function selectSub(idOrNull) {
     page: "1",
   });
 
-  fetchCatalog(); // ✅ siempre
+  fetchCatalog();
 }
 
 function applySearch() {
@@ -226,7 +220,9 @@ function clearSearch() {
 }
 
 /* =========================
-   CATALOG (MODELO POS)
+   CATALOG (CONTRATO CORRECTO)
+   - Todos: category_id = padre + include_children=1 + subcategory_id = null
+   - Chip:  category_id = padre + subcategory_id = hijo + include_children=0
    ========================= */
 async function fetchCatalog() {
   loading.value = true;
@@ -240,13 +236,13 @@ async function fetchCatalog() {
       limit: limit.value,
       search: qStr || "",
 
-      // ✅ padre siempre
+      // ✅ padre SIEMPRE
       category_id: parentId.value,
 
-      // ✅ chip: va por subcategory_id (aunque se filtre por products.category_id en backend)
+      // ✅ hijo SOLO cuando hay chip
       subcategory_id: isAll ? null : selectedSubId.value,
 
-      // ✅ "Todos" = incluye hijos
+      // ✅ "Todos" incluye hijos
       include_children: isAll ? 1 : 0,
 
       // mostrar todo (sin filtrar por stock)
@@ -372,6 +368,7 @@ watch(
   flex-wrap: wrap;
 }
 
+/* ahora el ancho lo maneja ShopSearchBar internamente, pero lo dejamos por si querés mantener */
 .search { width: 420px; max-width: 100%; }
 
 .count {
@@ -410,5 +407,5 @@ watch(
 
 @media (max-width: 1400px) { .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 960px)  { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search { width: 100%; } }
+@media (max-width: 960px)  { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

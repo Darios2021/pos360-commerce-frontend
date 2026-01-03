@@ -11,16 +11,11 @@
         </router-link>
 
         <div class="ml-search">
-          <v-text-field
-            v-model="q"
-            variant="solo"
-            density="comfortable"
-            hide-details
-            placeholder="Buscar productos, marcas y más..."
-            prepend-inner-icon="mdi-magnify"
-            @keyup.enter="doSearch"
-            clearable
-            @click:clear="clearSearch"
+          <!-- ✅ SearchBox ML -->
+          <ShopSearchBox
+            :branchId="branchId"
+            :mode="route.name === 'shopCategory' ? 'category' : 'home'"
+            :categoryId="route.name === 'shopCategory' ? Number(route.params.id || 0) : null"
           />
         </div>
 
@@ -107,20 +102,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import { getPublicCategoriesAll } from "@/modules/shop/service/shop.taxonomy.api";
+import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 
 const router = useRouter();
 const route = useRoute();
 const cart = useShopCartStore();
 
-const q = ref(String(route.query.q || ""));
 const menu = ref(false);
 
 const allCats = ref([]);
 const hoverParentId = ref(null);
+
+// ✅ si querés que sea dinámico por URL, lo enchufamos después.
+// por ahora fijo como venís usando
+const branchId = 3;
 
 const parents = computed(() =>
   (allCats.value || [])
@@ -148,79 +147,30 @@ const hoverChildren = computed(() =>
   (childrenByParent.value[hoverParentId.value] || []).filter((x) => Number(x.is_active ?? 1) === 1)
 );
 
-// ✅ Search: si estás en /shop/c/:id mantiene categoría; si estás en home aplica global
-function doSearch() {
-  const value = String(q.value || "").trim();
-  const nq = { ...route.query };
-  if (value) nq.q = value;
-  else delete nq.q;
-
-  // reset de paginado
-  delete nq.page;
-
-  // si ya estás en categoría, quedate ahí; si no, mandá a /shop
-  if (route.name === "shopCategory") {
-    router.push({ name: "shopCategory", params: { id: route.params.id }, query: nq });
-  } else {
-    router.push({ name: "shopHome", query: nq });
-  }
-  menu.value = false;
-}
-
-function clearSearch() {
-  q.value = "";
-  const nq = { ...route.query };
-  delete nq.q;
-  delete nq.page;
-
-  if (route.name === "shopCategory") {
-    router.push({ name: "shopCategory", params: { id: route.params.id }, query: nq });
-  } else {
-    router.push({ name: "shopHome", query: nq });
-  }
-}
-
-// ✅ Click rubro padre => ir a landing /shop/c/:id (y limpiar filtros child)
 function pickParent(c) {
   const nq = { ...route.query };
-  delete nq.sub; // subrubro dentro de la landing
+  delete nq.sub;
   delete nq.page;
   router.push({ name: "shopCategory", params: { id: c.id }, query: nq });
   menu.value = false;
 }
 
-// ✅ Click subrubro => ir a landing del padre (si no estás) y setear sub
 function pickChild(s) {
   const parentId = s.parent_id ? Number(s.parent_id) : null;
   const nq = { ...route.query, sub: String(s.id) };
   delete nq.page;
 
-  if (route.name === "shopCategory" && Number(route.params.id) === Number(parentId)) {
-    router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
-  } else if (parentId) {
-    router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
-  } else {
-    // fallback: si no hay parent_id, al menos filtra por sub y manda a home
-    router.push({ name: "shopHome", query: nq });
-  }
+  if (parentId) router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
+  else router.push({ name: "shopHome", query: nq });
 
   menu.value = false;
 }
 
 onMounted(async () => {
   allCats.value = await getPublicCategoriesAll();
-
   const first = parents.value[0];
   if (first) hoverParentId.value = first.id;
 });
-
-// mantener input q sincronizado con query
-watch(
-  () => route.query.q,
-  (v) => {
-    q.value = String(v || "");
-  }
-);
 </script>
 
 <style scoped>
