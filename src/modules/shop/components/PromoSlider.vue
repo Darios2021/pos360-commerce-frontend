@@ -5,7 +5,7 @@
       <!-- Header -->
       <div class="promo-head">
         <div class="promo-head-left">
-          <div class="promo-title">Inspirado en lo último que viste</div>
+          <div class="promo-title">Productos en promoción</div>
           <div class="promo-sub">Recomendados y ofertas destacadas</div>
         </div>
 
@@ -19,15 +19,8 @@
 
       <!-- Slider -->
       <div class="promo-body">
-        <v-slide-group
-          v-model="model"
-          show-arrows
-          class="promo-slide"
-        >
-          <v-slide-group-item
-            v-for="p in items"
-            :key="p.product_id"
-          >
+        <v-slide-group v-model="model" show-arrows class="promo-slide">
+          <v-slide-group-item v-for="p in items" :key="p.product_id">
             <button class="promo-card" type="button" @click="open(p)">
               <div class="promo-img">
                 <img :src="p.image_url" alt="" />
@@ -89,7 +82,7 @@ import { useRouter } from "vue-router";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
-  perPage: { type: Number, default: 5 }, // aprox desktop
+  perPage: { type: Number, default: 5 },
 });
 defineEmits(["seeAll"]);
 
@@ -144,15 +137,10 @@ function badgeText(p) {
   return "";
 }
 
-// opcional: si en tu backend tenés un flag
 function freeShip(p) {
   return Boolean(p.free_shipping) || Boolean(p.is_free_shipping);
 }
 
-/** Puntitos:
- * En vuetify slide-group el model es index del item visible.
- * Lo convertimos a “página” para puntitos.
- */
 const dotIndex = computed(() => {
   const idx = Number(model.value ?? 0);
   return Math.max(0, Math.floor(idx / props.perPage));
@@ -165,11 +153,9 @@ const dotsCount = computed(() => {
 });
 
 function jumpTo(pageIdx) {
-  const target = pageIdx * props.perPage;
-  model.value = target;
+  model.value = pageIdx * props.perPage;
 }
 
-// si items cambia, resetea
 watch(
   () => props.items,
   () => {
@@ -179,7 +165,6 @@ watch(
 </script>
 
 <style scoped>
-/* ✅ contenedor suave estilo ML */
 .promo-shell {
   width: 100%;
 }
@@ -187,12 +172,11 @@ watch(
 .promo-inner {
   background: #fff;
   border-radius: 18px;
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 10px 28px rgba(0,0,0,.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }
 
-/* header */
 .promo-head {
   padding: 16px 18px 14px;
   display: flex;
@@ -227,50 +211,41 @@ watch(
   opacity: 0.65;
 }
 
-/* body */
 .promo-body {
   padding: 10px 10px 10px;
 }
 
-/* ✅ más aire, flechas de slide-group */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
   padding: 10px 6px 12px;
 }
 
-.promo-slide :deep(.v-slide-group__prev),
-.promo-slide :deep(.v-slide-group__next) {
-  opacity: 0.95;
-}
-
 .promo-slide :deep(.v-slide-group__prev .v-btn),
 .promo-slide :deep(.v-slide-group__next .v-btn) {
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.10);
-  box-shadow: 0 10px 26px rgba(0,0,0,.10);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
 
-/* ✅ card: sin borde duro, hover suave */
 .promo-card {
   width: 210px;
   border-radius: 16px;
   overflow: hidden;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 6px 16px rgba(0,0,0,.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   text-align: left;
   padding: 0;
-  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
 }
 
 .promo-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(0,0,0,.10);
-  border-color: rgba(0,0,0,.10);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
-/* imagen */
 .promo-img {
   position: relative;
   width: 100%;
@@ -285,21 +260,19 @@ watch(
   display: block;
 }
 
-/* badge suave */
 .promo-badge {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(0,166,80,0.95);
+  background: rgba(0, 166, 80, 0.95);
   color: #fff;
   font-weight: 950;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
-  box-shadow: 0 8px 18px rgba(0,0,0,.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
-/* info */
 .promo-info {
   padding: 10px 12px 12px;
 }
@@ -308,7 +281,8 @@ watch(
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap; /* ✅ no corta precio/off en mobile */
 }
 
 .promo-price {
@@ -316,6 +290,7 @@ watch(
   font-weight: 950;
   letter-spacing: -0.2px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .promo-off {
@@ -323,6 +298,7 @@ watch(
   font-weight: 950;
   color: #00a650;
   white-space: nowrap;
+  margin-left: auto;
 }
 
 .promo-old {
@@ -360,7 +336,6 @@ watch(
   color: #00a650;
 }
 
-/* puntitos */
 .promo-dots {
   display: flex;
   justify-content: center;
@@ -373,9 +348,9 @@ watch(
   height: 7px;
   border-radius: 999px;
   border: 0;
-  background: rgba(0,0,0,.16);
+  background: rgba(0, 0, 0, 0.16);
   cursor: pointer;
-  transition: transform .12s ease, background .12s ease;
+  transition: transform 0.12s ease, background 0.12s ease;
 }
 
 .dot:hover {
@@ -383,13 +358,28 @@ watch(
 }
 
 .dot.active {
-  background: rgba(0,0,0,.55);
+  background: rgba(0, 0, 0, 0.55);
 }
 
-/* responsive */
+/* ✅ mobile: un toque más ancho y OFF más chico */
 @media (max-width: 960px) {
-  .promo-card { width: 195px; }
-  .promo-img { height: 140px; }
-  .promo-head { padding: 14px 14px 12px; }
+  .promo-card {
+    width: 220px;
+  }
+  .promo-img {
+    height: 140px;
+  }
+  .promo-head {
+    padding: 14px 14px 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .promo-card {
+    width: 240px; /* ✅ evita que se “aplane” y corte el row */
+  }
+  .promo-off {
+    font-size: 10px;
+  }
 }
 </style>
