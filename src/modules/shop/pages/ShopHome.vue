@@ -11,7 +11,7 @@
             @clickSlide="onHeroClick"
           />
 
-          <!-- ✅ Cards centradas y más abajo (NO bloquean flechas) -->
+          <!-- ✅ FLOTANTE: DESKTOP cards / MOBILE pelotitas (lo maneja el componente) -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" :max="6" />
           </div>
@@ -29,15 +29,6 @@
           :items="promoItems"
           :perPage="promoPerPage"
           @seeAll="scrollToProducts"
-        />
-      </div>
-
-      <!-- ✅ CategoriesShowcase MÁS ABAJO (no en el hero) -->
-      <div class="mb-8" v-if="parentCats.length">
-        <CategoriesShowcase
-          :items="parentCats"
-          :perPage="6"
-          @seeAll="goAllCategories"
         />
       </div>
 
@@ -118,7 +109,6 @@ import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
-import CategoriesShowcase from "@/modules/shop/components/CategoriesShowcase.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 
 const route = useRoute();
@@ -138,15 +128,6 @@ const allCats = ref([]);
 const q = computed(() => String(route.query.q || "").trim());
 const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
 const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
-
-/* ✅ padres reales */
-const parentCats = computed(() => {
-  const arr = Array.isArray(allCats.value) ? allCats.value : [];
-  return arr
-    .filter((c) => c && (c.parent_id === null || c.parent_id === undefined))
-    .filter((c) => Number(c.is_active ?? 1) === 1)
-    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
-});
 
 const pages = computed(() => {
   const t = Number(total.value || 0);
@@ -242,13 +223,6 @@ const promoItems = computed(() => {
 });
 
 /* =========================
-   Categories “see all”
-   ========================= */
-function goAllCategories() {
-  scrollToProducts();
-}
-
-/* =========================
    Cart
    ========================= */
 function addToCart(p) {
@@ -324,32 +298,41 @@ watch(
   --shop-max: 1200px;
 }
 
+/* ✅ FULL BLEED */
 .hero-fullbleed {
   width: 100vw;
   margin-left: calc(50% - 50vw);
+  overflow: visible; /* ✅ clave: permite que el float sobresalga */
 }
 
+/* ✅ stacking correcto: asegura que el float pueda quedar arriba */
 .hero-wrap {
   position: relative;
   width: 100%;
+  overflow: visible;      /* ✅ clave */
+  isolation: isolate;     /* ✅ crea stacking context sano */
 }
 
-/* float row del hero */
+/* ✅ FLOAT SUPERPUESTO (encima del hero) */
 .hero-float {
   position: absolute;
   left: 0;
   right: 0;
   bottom: -165px;
-  z-index: 30;
-  pointer-events: none;
+  z-index: 999;           /* ✅ BIEN ARRIBA (no atrás del hero) */
+  pointer-events: none;   /* ✅ no tapar flechas del hero */
 }
+
+/* el contenido interno sí es clickeable */
 .hero-float :deep(.float-inner) {
   pointer-events: auto;
   width: min(var(--shop-max), calc(100% - 24px));
   margin: 0 auto;
 }
 
-.after-hero-spacer { height: 205px; }
+.after-hero-spacer {
+  height: 205px; /* reserva del solapamiento */
+}
 
 .content {
   width: min(var(--shop-max), calc(100% - 24px));
@@ -357,7 +340,7 @@ watch(
   padding-bottom: 40px;
 }
 
-/* ✅ Grid homogéneo con ProductCard */
+/* ✅ Grid productos */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -371,15 +354,19 @@ watch(
 @media (max-width: 1200px) {
   .shop-page { --shop-max: 1100px; }
   .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .hero-float { bottom: -150px; }
+  .after-hero-spacer { height: 190px; }
 }
 @media (max-width: 960px) {
-  .hero-float { bottom: -125px; }
-  .after-hero-spacer { height: 165px; }
+  /* en mobile el componente cambia a “pelotitas” y necesita menos alto */
+  .hero-float { bottom: -92px; }
+  .after-hero-spacer { height: 140px; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
-  .hero-float { bottom: -110px; }
-  .after-hero-spacer { height: 150px; }
+  .hero-float { bottom: -86px; }
+  .after-hero-spacer { height: 132px; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

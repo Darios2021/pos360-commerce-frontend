@@ -2,7 +2,24 @@
 <template>
   <div class="float-row">
     <div class="float-inner">
-      <div class="cards-grid">
+      <!-- ✅ MOBILE/TABLET: “pelotitas” en carrusel (tipo ML) -->
+      <div v-if="isMobile" class="bubbles-wrap">
+        <v-slide-group class="bubbles-slide" show-arrows>
+          <v-slide-group-item v-for="c in cats" :key="c.id">
+            <button class="bubble" type="button" @click="go(c.id)" :title="c.name">
+              <div class="bubble-ring">
+                <div class="bubble-avatar">
+                  <img :src="imgFor(c)" :alt="c.name" @error="onImgError" />
+                </div>
+              </div>
+              <div class="bubble-label">{{ c.name }}</div>
+            </button>
+          </v-slide-group-item>
+        </v-slide-group>
+      </div>
+
+      <!-- ✅ DESKTOP: cards (grid) -->
+      <div v-else class="cards-grid">
         <v-card
           v-for="c in cats"
           :key="c.id"
@@ -46,13 +63,16 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   categories: { type: Array, default: () => [] }, // padres reales
-  max: { type: Number, default: 6 }, // como ML
+  max: { type: Number, default: 6 }, // como ML (desktop)
 });
 
 const router = useRouter();
+const { mdAndDown } = useDisplay();
+const isMobile = computed(() => !!mdAndDown.value);
 
 const cats = computed(() => {
   const arr = Array.isArray(props.categories) ? props.categories : [];
@@ -60,6 +80,9 @@ const cats = computed(() => {
     .filter((x) => x && (x.parent_id == null || x.parent_id === 0 || x.parent_id === "0"))
     .filter((x) => Number(x.is_active ?? 1) === 1)
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
+
+  // desktop: max, mobile: dejamos más para que el carrusel tenga sentido
+  if (isMobile.value) return parents.slice(0, 18);
   return parents.slice(0, Math.max(1, Number(props.max || 6)));
 });
 
@@ -119,8 +142,8 @@ function onImgError(e) {
 }
 </script>
 
-
 <style scoped>
+/* NO tapar flechas del hero */
 .float-row {
   width: 100%;
   display: flex;
@@ -133,7 +156,78 @@ function onImgError(e) {
   pointer-events: auto;
 }
 
-/* ✅ grid fijo, no slider */
+/* =========================
+   MOBILE “pelotitas” (ML)
+   ========================= */
+.bubbles-wrap {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 16px;
+  padding: 10px 8px;
+  box-shadow: 0 10px 22px rgba(0,0,0,.10);
+}
+
+.bubbles-slide :deep(.v-slide-group__content) {
+  gap: 10px;
+  padding: 4px 2px 6px;
+}
+.bubbles-slide :deep(.v-slide-group__prev),
+.bubbles-slide :deep(.v-slide-group__next) {
+  opacity: 0.95;
+}
+
+.bubble {
+  border: 0;
+  background: transparent;
+  padding: 4px 6px;
+  cursor: pointer;
+  width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bubble-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.10);
+}
+
+.bubble-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f2f2f2;
+}
+.bubble-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bubble-label {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+  max-width: 92px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: rgba(0,0,0,.8);
+}
+
+/* =========================
+   DESKTOP cards (grid)
+   ========================= */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -153,21 +247,18 @@ function onImgError(e) {
   flex-direction: column;
 }
 
-/* ✅ header con altura fija y titulo que NO rompe */
+/* header */
 .ml-card-head {
   padding: 12px 14px 10px;
-  height: 48px;                 /* ✅ fijo */
+  height: 48px;
   display: flex;
   align-items: center;
   font-weight: 1000;
   font-size: 18px;
 }
-
 .ml-card-title {
   width: 100%;
   text-transform: uppercase;
-
-  /* ✅ NO romper layout */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,41 +287,25 @@ function onImgError(e) {
   flex: 1;
   justify-content: space-between;
 }
-
 .ml-card-desc {
   font-size: 13px;
   color: rgba(0,0,0,.72);
   line-height: 1.25;
-
-  /* ✅ clamp 2 líneas para no estirar */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 .ml-card-btn {
   font-weight: 1000;
   border-radius: 8px;
 }
 
-/* responsive */
+/* responsive desktop grid */
 @media (max-width: 1400px) {
   .cards-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
-
 @media (max-width: 1200px) {
   .cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-
-@media (max-width: 960px) {
-  .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ml-card { height: 300px; }
-  .ml-card-head { height: 46px; font-size: 17px; }
-}
-
-@media (max-width: 600px) {
-  .ml-card-head { font-size: 16px; }
-}
 </style>
-

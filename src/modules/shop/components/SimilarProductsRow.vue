@@ -43,11 +43,11 @@
         >
           <v-slide-group-item
             v-for="p in normalized"
-            :key="p.id"
+            :key="p.product_id"
           >
             <div class="item">
-              <!-- ✅ le pasamos al ProductCard un product ya normalizado -->
-              <ProductCard :product="p" />
+              <!-- ✅ FIX: ProductCard espera prop "p" -->
+              <ProductCard :p="p" />
             </div>
           </v-slide-group-item>
         </v-slide-group>
@@ -91,23 +91,16 @@ function uniqUrls(list) {
 function normalizeImages(raw) {
   const acc = [];
 
-  // image_url / image / url / src
-  const main =
-    raw?.image_url || raw?.image || raw?.url || raw?.src || raw?.path || null;
+  const main = raw?.image_url || raw?.image || raw?.url || raw?.src || raw?.path || null;
   if (main) acc.push(main);
 
-  // images array (strings u objects)
   if (Array.isArray(raw?.images)) {
     for (const it of raw.images) {
-      const u =
-        typeof it === "string"
-          ? it
-          : it?.url || it?.image_url || it?.src || it?.path;
+      const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
       if (u) acc.push(u);
     }
   }
 
-  // image_urls array
   if (Array.isArray(raw?.image_urls)) {
     for (const u of raw.image_urls) if (u) acc.push(u);
   }
@@ -116,23 +109,15 @@ function normalizeImages(raw) {
 }
 
 function normalizeProduct(raw) {
-  const id = toInt(raw?.id ?? raw?.product_id, 0);
+  const id = toInt(raw?.product_id ?? raw?.id, 0);
   if (!id) return null;
 
   const images = normalizeImages(raw);
   const image_url = images[0] || String(raw?.image_url || "").trim() || "";
 
-  // precios: admitimos varios nombres posibles sin romper
-  const price_discount = toNum(
-    raw?.price_discount ?? raw?.discount_price ?? raw?.promo_price,
-    0
-  );
-  const price_list = toNum(
-    raw?.price_list ?? raw?.list_price ?? raw?.price,
-    0
-  );
+  const price_discount = toNum(raw?.price_discount ?? raw?.discount_price ?? raw?.promo_price, 0);
+  const price_list = toNum(raw?.price_list ?? raw?.list_price ?? raw?.price, 0);
 
-  // stock
   const track_stock =
     raw?.track_stock === true ||
     raw?.track_stock === 1 ||
@@ -144,7 +129,8 @@ function normalizeProduct(raw) {
   if (!name) return null;
 
   return {
-    // ✅ estándar que ya usa tu UI
+    // ✅ adaptado a tu UI (ProductCard / Shop)
+    product_id: id,
     id,
     name,
     description: raw?.description ?? "",
@@ -163,7 +149,6 @@ function normalizeProduct(raw) {
     track_stock,
     stock_qty,
 
-    // por si el ProductCard usa estos flags:
     is_new: !!raw?.is_new,
     is_promo: !!raw?.is_promo,
     is_active: raw?.is_active ?? true,
@@ -178,11 +163,10 @@ const normalized = computed(() => {
   for (const raw of arr) {
     const p = normalizeProduct(raw);
     if (!p) continue;
-    if (seen.has(p.id)) continue;
-    seen.add(p.id);
+    if (seen.has(p.product_id)) continue;
+    seen.add(p.product_id);
 
-    // ✅ filtro opcional: evita “$0” si no hay precio
-    // (si querés permitirlo, borrá este if)
+    // evita $0
     if (!p.price_list && !p.price_discount) continue;
 
     out.push(p);
@@ -216,50 +200,63 @@ const normalized = computed(() => {
 
 /* Slide row */
 .slide :deep(.v-slide-group__content) {
-  padding: 4px 2px 10px;
+  padding: 6px 2px 12px;
+  scroll-snap-type: x mandatory; /* ✅ feel “ML” */
 }
 
+.slide :deep(.v-slide-group__content > *) {
+  scroll-snap-align: start;
+}
+
+/* ✅ ancho responsive (desktop/tablet/mobile) */
 .item {
-  width: 260px; /* ✅ ancho homogéneo */
+  width: 260px;
   padding: 0 10px;
 }
 
+@media (max-width: 1200px) {
+  .item { width: 240px; }
+}
 @media (max-width: 900px) {
   .item { width: 220px; }
 }
 @media (max-width: 520px) {
-  .item { width: 200px; }
+  .item { width: 190px; padding: 0 8px; }
 }
 
 .empty {
   padding: 14px 6px;
-  color: rgba(0,0,0,.62);
+  color: rgba(0, 0, 0, 0.62);
 }
 
-/* Skeleton (suave y prolijo) */
+/* Skeleton */
 .row {
   display: flex;
   gap: 14px;
   overflow: hidden;
-  padding: 4px 2px 10px;
+  padding: 6px 2px 12px;
 }
 .skel {
   width: 260px;
-  border: 1px solid rgba(0,0,0,.10);
+  border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 16px;
   padding: 12px;
-  background: rgba(0,0,0,.02);
+  background: rgba(0, 0, 0, 0.02);
 }
+@media (max-width: 1200px) { .skel { width: 240px; } }
+@media (max-width: 900px)  { .skel { width: 220px; } }
+@media (max-width: 520px)  { .skel { width: 190px; } }
+
 .skel-img {
   height: 150px;
   border-radius: 14px;
-  background: rgba(0,0,0,.08);
+  background: rgba(0, 0, 0, 0.08);
   animation: pulse 1.2s ease-in-out infinite;
 }
 .skel-line {
   height: 12px;
   border-radius: 999px;
-  background: rgba(0,0,0,.08);
+  background: rgba(0, 0, 0, 0.08);
   margin-top: 12px;
   animation: pulse 1.2s ease-in-out infinite;
 }
@@ -274,7 +271,7 @@ const normalized = computed(() => {
   width: 96px;
   height: 34px;
   border-radius: 999px;
-  background: rgba(0,0,0,.08);
+  background: rgba(0, 0, 0, 0.08);
   animation: pulse 1.2s ease-in-out infinite;
 }
 

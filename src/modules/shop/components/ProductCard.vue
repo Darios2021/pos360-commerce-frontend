@@ -1,8 +1,9 @@
 <!-- src/modules/shop/components/ProductCard.vue -->
 <template>
   <v-card class="ml-card" variant="flat" rounded="xl">
+    <!-- Media (clickable) -->
     <button class="ml-media" type="button" @click="openProduct" :title="p?.name || ''">
-      <img v-if="img" :src="img" alt="" />
+      <img v-if="img" :src="img" alt="" loading="lazy" />
       <div v-else class="ml-media-empty">Sin imagen</div>
     </button>
 
@@ -19,16 +20,14 @@
 
       <!-- Precio + acción -->
       <div class="ml-foot">
-        <div class="ml-price">
-          $ {{ fmtMoney(priceValue(p)) }}
-        </div>
+        <div class="ml-price">$ {{ fmtMoney(priceValue(p)) }}</div>
 
         <v-btn
           color="primary"
           variant="flat"
           size="small"
           class="ml-btn"
-          :disabled="p?.track_stock && Number(p?.stock_qty || 0) <= 0"
+          :disabled="disabledAdd"
           @click.stop="$emit('add', p)"
         >
           Agregar
@@ -80,40 +79,51 @@ function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
 
+const disabledAdd = computed(() => {
+  const p = props.p || {};
+  return !!(p?.track_stock && Number(p?.stock_qty || 0) <= 0);
+});
+
 function openProduct() {
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
   router.push({
     name: "shopProduct",
-    params: { id: String(props.p?.product_id) },
+    params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
     query: { branch_id },
   });
 }
 </script>
 
 <style scoped>
-/* ====== ML style: borde suave + sombra leve ====== */
+/* ================================
+   ML style: compact + consistente
+   ================================ */
 .ml-card {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.08);         /* ✅ contorno MUY suave */
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);     /* ✅ sombra sutil */
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  overflow: hidden;
 }
 
-.ml-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(0,0,0,.10);
-  box-shadow: 0 10px 22px rgba(0,0,0,.10);   /* ✅ hover ML */
+/* Hover solo desktop (no jode touch) */
+@media (hover: hover) and (pointer: fine) {
+  .ml-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
+  }
 }
 
-/* ====== Imagen ====== */
+/* ====== Imagen (ML: alto fijo, NO cuadrado) ====== */
 .ml-media {
   border: 0;
   padding: 10px;
   width: 100%;
-  height: 190px;
+  height: var(--media-h);
   background: #fff;
   cursor: pointer;
   display: flex;
@@ -124,13 +134,13 @@ function openProduct() {
 .ml-media img {
   width: 100%;
   height: 100%;
-  object-fit: contain;                        /* ✅ no recorta */
+  object-fit: contain;
   display: block;
 }
 
 .ml-media-empty {
   font-size: 12px;
-  opacity: .55;
+  opacity: 0.55;
 }
 
 /* ====== Body ====== */
@@ -140,14 +150,13 @@ function openProduct() {
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  min-height: 150px;                          /* ✅ todas iguales */
 }
 
 .ml-title {
-  font-weight: 650;                           /* ✅ ML no tan “negro” */
+  font-weight: 650;
   letter-spacing: -0.1px;
   line-height: 1.2;
-  min-height: 2.4em;                          /* 2 líneas */
+  min-height: 2.4em; /* 2 líneas */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -157,7 +166,7 @@ function openProduct() {
 
 .ml-meta {
   font-size: 12px;
-  opacity: .72;
+  opacity: 0.72;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -180,17 +189,34 @@ function openProduct() {
   white-space: nowrap;
 }
 
-/* ✅ botón discreto estilo ML */
 .ml-btn {
   border-radius: 12px;
   font-weight: 800;
   padding-inline: 12px;
   box-shadow: none !important;
+  text-transform: none;
 }
 
-/* responsive */
+/* =========================
+   Responsive heights (clave)
+   ========================= */
+.ml-card {
+  --media-h: 190px; /* desktop */
+}
+
+@media (max-width: 1200px) {
+  .ml-card { --media-h: 180px; }
+  .ml-price { font-size: 19px; }
+}
+
+@media (max-width: 960px) {
+  .ml-card { --media-h: 170px; }
+  .ml-price { font-size: 18px; }
+}
+
 @media (max-width: 600px) {
-  .ml-media { height: 170px; }
+  .ml-card { --media-h: 160px; }
+  .ml-body { padding: 10px 10px 12px; gap: 6px; }
   .ml-price { font-size: 18px; }
 }
 </style>
