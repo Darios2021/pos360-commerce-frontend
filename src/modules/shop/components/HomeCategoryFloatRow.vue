@@ -2,20 +2,29 @@
 <template>
   <div class="float-row">
     <div class="float-inner">
-      <!-- ✅ MOBILE/TABLET: “pelotitas” en carrusel (tipo ML) -->
-      <div v-if="isMobile" class="bubbles-wrap">
-        <v-slide-group class="bubbles-slide" show-arrows>
-          <v-slide-group-item v-for="c in cats" :key="c.id">
-            <button class="bubble" type="button" @click="go(c.id)" :title="c.name">
-              <div class="bubble-ring">
-                <div class="bubble-avatar">
-                  <img :src="imgFor(c)" :alt="c.name" @error="onImgError" />
-                </div>
+      <!-- ✅ MOBILE/TABLET: pelotitas tipo Mercado Libre (sin card, con scroll) -->
+      <div v-if="isMobile" class="ml-bubbles">
+        <div class="ml-bubbles-track" role="list" aria-label="Categorías">
+          <button
+            v-for="c in cats"
+            :key="c.id"
+            class="ml-bubble"
+            type="button"
+            role="listitem"
+            @click="go(c.id)"
+            :title="c.name"
+          >
+            <div class="ml-bubble-ring">
+              <div class="ml-bubble-avatar">
+                <img :src="imgFor(c)" :alt="c.name" @error="onImgError" loading="lazy" />
               </div>
-              <div class="bubble-label">{{ c.name }}</div>
-            </button>
-          </v-slide-group-item>
-        </v-slide-group>
+            </div>
+
+            <div class="ml-bubble-label">
+              {{ c.name }}
+            </div>
+          </button>
+        </div>
       </div>
 
       <!-- ✅ DESKTOP: cards (grid) -->
@@ -32,12 +41,7 @@
           </div>
 
           <div class="ml-card-media">
-            <img
-              :src="imgFor(c)"
-              :alt="c.name"
-              @error="onImgError"
-              loading="lazy"
-            />
+            <img :src="imgFor(c)" :alt="c.name" @error="onImgError" loading="lazy" />
           </div>
 
           <div class="ml-card-body">
@@ -45,12 +49,7 @@
               Explorá subrubros y productos de {{ c.name }}.
             </div>
 
-            <v-btn
-              variant="tonal"
-              color="primary"
-              class="ml-card-btn"
-              @click.stop="go(c.id)"
-            >
+            <v-btn variant="tonal" color="primary" class="ml-card-btn" @click.stop="go(c.id)">
               Ver productos
             </v-btn>
           </div>
@@ -66,8 +65,8 @@ import { useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
-  categories: { type: Array, default: () => [] }, // padres reales
-  max: { type: Number, default: 6 }, // como ML (desktop)
+  categories: { type: Array, default: () => [] },
+  max: { type: Number, default: 6 },
 });
 
 const router = useRouter();
@@ -81,8 +80,10 @@ const cats = computed(() => {
     .filter((x) => Number(x.is_active ?? 1) === 1)
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
 
-  // desktop: max, mobile: dejamos más para que el carrusel tenga sentido
-  if (isMobile.value) return parents.slice(0, 18);
+  // mobile: más ítems (scroll)
+  if (isMobile.value) return parents.slice(0, 24);
+
+  // desktop: como venías
   return parents.slice(0, Math.max(1, Number(props.max || 6)));
 });
 
@@ -143,7 +144,6 @@ function onImgError(e) {
 </script>
 
 <style scoped>
-/* NO tapar flechas del hero */
 .float-row {
   width: 100%;
   display: flex;
@@ -157,72 +157,88 @@ function onImgError(e) {
 }
 
 /* =========================
-   MOBILE “pelotitas” (ML)
+   MOBILE: pelotitas estilo ML
    ========================= */
-.bubbles-wrap {
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 16px;
-  padding: 10px 8px;
-  box-shadow: 0 10px 22px rgba(0,0,0,.10);
+.ml-bubbles {
+  /* sin card: solo padding y nada de recortes raros */
+  width: 100%;
+  padding: 6px 0 2px;
 }
 
-.bubbles-slide :deep(.v-slide-group__content) {
-  gap: 10px;
-  padding: 4px 2px 6px;
+.ml-bubbles-track {
+  display: flex;
+  gap: 14px;
+
+  /* ✅ scroll horizontal tipo ML */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+
+  /* ✅ “safe area” laterales para que la primera/última no queden cortadas */
+  padding: 6px 14px 10px;
+
+  /* ✅ snap suave (se siente ML) */
+  scroll-snap-type: x mandatory;
+
+  /* scrollbar oculto */
+  scrollbar-width: none; /* firefox */
 }
-.bubbles-slide :deep(.v-slide-group__prev),
-.bubbles-slide :deep(.v-slide-group__next) {
-  opacity: 0.95;
+.ml-bubbles-track::-webkit-scrollbar {
+  display: none; /* chrome */
 }
 
-.bubble {
+.ml-bubble {
   border: 0;
   background: transparent;
-  padding: 4px 6px;
+  padding: 0;
   cursor: pointer;
-  width: 92px;
+
+  width: 76px; /* tamaño tipo ML */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+
+  flex: 0 0 auto;
+  scroll-snap-align: start;
 }
 
-.bubble-ring {
-  width: 58px;
-  height: 58px;
+.ml-bubble-ring {
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
-  display: grid;
-  place-items: center;
   background: #fff;
   border: 2px solid rgba(0,0,0,.10);
+  display: grid;
+  place-items: center;
 }
 
-.bubble-avatar {
-  width: 48px;
-  height: 48px;
+.ml-bubble-avatar {
+  width: 46px;
+  height: 46px;
   border-radius: 999px;
   overflow: hidden;
   background: #f2f2f2;
 }
-.bubble-avatar img {
+.ml-bubble-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.bubble-label {
-  font-size: 12px;
-  font-weight: 800;
+.ml-bubble-label {
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.05;
   text-align: center;
-  max-width: 92px;
+  color: rgba(0,0,0,.78);
+
+  max-width: 76px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  color: rgba(0,0,0,.8);
 }
 
 /* =========================
@@ -247,7 +263,6 @@ function onImgError(e) {
   flex-direction: column;
 }
 
-/* header */
 .ml-card-head {
   padding: 12px 14px 10px;
   height: 48px;
@@ -264,7 +279,6 @@ function onImgError(e) {
   text-overflow: ellipsis;
 }
 
-/* imagen */
 .ml-card-media {
   height: 150px;
   background: #f2f2f2;
@@ -278,7 +292,6 @@ function onImgError(e) {
   display: block;
 }
 
-/* body */
 .ml-card-body {
   padding: 12px 14px 14px;
   display: flex;
@@ -301,7 +314,6 @@ function onImgError(e) {
   border-radius: 8px;
 }
 
-/* responsive desktop grid */
 @media (max-width: 1400px) {
   .cards-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
