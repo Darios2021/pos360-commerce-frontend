@@ -1,13 +1,21 @@
-<!-- src/modules/shop/components/PromoSlider.vue -->
+<!-- src/modules/shop/components/PromoSliderAuriculares.vue -->
 <template>
   <section class="promo-shell">
     <div class="promo-inner">
       <!-- Header -->
       <div class="promo-head">
         <div class="promo-head-left">
-          <div class="promo-title">Productos en promoción</div>
-          <div class="promo-sub">Recomendados y ofertas destacadas</div>
+          <div class="promo-title">
+            <img class="promo-icon" :src="iconUrl" alt="" loading="lazy" />
+            Auriculares
+          </div>
+          <div class="promo-sub">Selección destacada</div>
         </div>
+
+        <v-btn variant="text" class="promo-more" @click="goToAuriculares">
+          Ver todo
+          <v-icon end>mdi-chevron-right</v-icon>
+        </v-btn>
       </div>
 
       <v-divider class="promo-divider" />
@@ -32,28 +40,21 @@
                 <div class="promo-info">
                   <div class="promo-price-row">
                     <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
-
-                    <div class="promo-off" v-if="offPct(p)">
-                      {{ offPct(p) }}% OFF
-                    </div>
+                    <div class="promo-off" v-if="offPct(p)">{{ offPct(p) }}% OFF</div>
                   </div>
 
                   <div v-if="showOldPrice(p)" class="promo-old">
                     $ {{ fmtMoney(oldPrice(p)) }}
                   </div>
 
-                  <div class="promo-name">
-                    {{ p.name }}
-                  </div>
+                  <div class="promo-name">{{ p.name }}</div>
 
                   <div class="promo-meta">
                     {{ p.category_name || "—" }}
                     <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
                   </div>
 
-                  <div class="promo-free" v-if="freeShip(p)">
-                    Envío gratis
-                  </div>
+                  <div class="promo-free" v-if="freeShip(p)">Envío gratis</div>
                 </div>
               </button>
             </div>
@@ -84,14 +85,38 @@ import { useRouter } from "vue-router";
 const props = defineProps({
   items: { type: Array, default: () => [] },
   perPage: { type: Number, default: 5 },
+
+  // ✅ Categoria AUDIO
+  categoryId: { type: Number, required: true },
+
+  // ✅ TODAS las subcategorías que son “AURICULARES…”
+  // Ej: [25, 26, 27]
+  subIds: { type: Array, default: () => [] },
 });
-defineEmits(["seeAll"]);
 
 const router = useRouter();
 const model = ref(0);
 
+const iconUrl =
+  "https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg";
+
 function open(p) {
   router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
+}
+
+/**
+ * ✅ Ir a AUDIO con sub=ID1,ID2,ID3
+ * Nota: Esto requiere que tu página de categoría soporte sub múltiple.
+ * (Si todavía no lo soporta, te paso el fix en ShopCategory.vue)
+ */
+function goToAuriculares() {
+  const ids = (props.subIds || []).map((x) => String(x)).filter(Boolean);
+  const query = ids.length ? { sub: ids.join(",") } : {};
+  router.push({
+    name: "shopCategory",
+    params: { id: String(props.categoryId) },
+    query,
+  });
 }
 
 function toNum(v) {
@@ -167,19 +192,16 @@ watch(
 </script>
 
 <style scoped>
-.promo-shell {
-  width: 100%;
-}
+.promo-shell { width: 100%; }
 
 .promo-inner {
   background: #fff;
   border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 28px rgba(0,0,0,.06);
   overflow: hidden;
 }
 
-/* header */
 .promo-head {
   padding: 16px 18px 14px;
   display: flex;
@@ -187,99 +209,69 @@ watch(
   justify-content: space-between;
   gap: 12px;
 }
-
-.promo-head-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.promo-head-left { display: flex; flex-direction: column; gap: 4px; }
 
 .promo-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 16px;
   font-weight: 950;
   letter-spacing: -0.2px;
   line-height: 1.1;
 }
-
-.promo-sub {
-  font-size: 12px;
-  opacity: 0.72;
+.promo-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,.08);
 }
 
-.promo-more {
-  font-weight: 900;
-  opacity: 0.9;
-}
+.promo-sub { font-size: 12px; opacity: .72; }
+.promo-more { font-weight: 900; opacity: .9; }
+.promo-divider { opacity: .65; }
 
-.promo-divider {
-  opacity: 0.65;
-}
+.promo-body { padding: 10px 10px 10px; }
 
-/* body */
-.promo-body {
-  padding: 10px 10px 10px;
-}
-
-/* ✅ Drag OK */
-.promo-slide {
-  touch-action: pan-x;
-}
-
+/* drag ok */
+.promo-slide { touch-action: pan-x; }
 .promo-slide :deep(.v-slide-group__container) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.promo-slide :deep(.v-slide-group__container::-webkit-scrollbar) {
-  display: none;
-}
+.promo-slide :deep(.v-slide-group__container::-webkit-scrollbar) { display: none; }
 
-/* ✅ “más libre”: le damos padding lateral al CONTENIDO,
-   así la card no queda tapada por los bordes/contorno. */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
   padding: 10px 6px 12px;
 }
 
-/* flechas */
 .promo-slide :deep(.v-slide-group__prev),
-.promo-slide :deep(.v-slide-group__next) {
-  opacity: 0.95;
-}
+.promo-slide :deep(.v-slide-group__next) { opacity: .95; }
+
 .promo-slide :deep(.v-slide-group__prev .v-btn),
 .promo-slide :deep(.v-slide-group__next .v-btn) {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.10);
+  box-shadow: 0 10px 26px rgba(0,0,0,.10);
 }
 
-.promo-item {
-  display: inline-flex;
-}
+.promo-item { display: inline-flex; }
 
-/* card */
 .promo-card {
   width: 210px;
   border-radius: 16px;
   overflow: hidden;
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 6px 16px rgba(0,0,0,.05);
   cursor: pointer;
   text-align: left;
   padding: 0;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .promo-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
-    border-color: rgba(0, 0, 0, 0.1);
-  }
-}
-
-/* imagen */
 .promo-img {
   position: relative;
   width: 100%;
@@ -297,19 +289,16 @@ watch(
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(0, 166, 80, 0.95);
+  background: rgba(0,166,80,.95);
   color: #fff;
   font-weight: 950;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 18px rgba(0,0,0,.12);
 }
 
-.promo-info {
-  padding: 10px 12px 12px;
-}
-
+.promo-info { padding: 10px 12px 12px; }
 .promo-price-row {
   display: flex;
   align-items: baseline;
@@ -317,28 +306,9 @@ watch(
   gap: 8px;
   flex-wrap: nowrap;
 }
-
-.promo-price {
-  font-size: 18px;
-  font-weight: 950;
-  letter-spacing: -0.2px;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.promo-off {
-  font-size: 12px;
-  font-weight: 950;
-  color: #00a650;
-  white-space: nowrap;
-}
-
-.promo-old {
-  margin-top: 2px;
-  font-size: 12px;
-  opacity: 0.6;
-  text-decoration: line-through;
-}
+.promo-price { font-size: 18px; font-weight: 950; white-space: nowrap; }
+.promo-off { font-size: 12px; font-weight: 950; color: #00a650; white-space: nowrap; }
+.promo-old { margin-top: 2px; font-size: 12px; opacity: .6; text-decoration: line-through; }
 
 .promo-name {
   margin-top: 8px;
@@ -354,102 +324,33 @@ watch(
 .promo-meta {
   margin-top: 6px;
   font-size: 11px;
-  opacity: 0.7;
+  opacity: .7;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.promo-free {
-  margin-top: 6px;
-  font-size: 12px;
-  font-weight: 900;
-  color: #00a650;
-}
+.promo-free { margin-top: 6px; font-size: 12px; font-weight: 900; color: #00a650; }
 
-/* dots */
-.promo-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 0 6px;
-}
+.promo-dots { display: flex; justify-content: center; gap: 8px; padding: 8px 0 6px; }
+.dot { width: 7px; height: 7px; border-radius: 999px; border: 0; background: rgba(0,0,0,.16); cursor: pointer; }
+.dot.active { background: rgba(0,0,0,.55); }
 
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  border: 0;
-  background: rgba(0, 0, 0, 0.16);
-  cursor: pointer;
-  transition: transform 0.12s ease, background 0.12s ease;
-}
-
-.dot:hover {
-  transform: scale(1.15);
-}
-
-.dot.active {
-  background: rgba(0, 0, 0, 0.55);
-}
-
-/* ✅ MOBILE “más libre”:
-   - la card ocupa casi todo el ancho
-   - el carrusel deja aire a ambos lados (no “tapa”)
-   - flechas más hacia afuera y sin comerse la card
-*/
+/* mobile: más libre */
 @media (max-width: 600px) {
-  .promo-head {
-    padding: 12px 14px;
-  }
+  .promo-head { padding: 12px 14px; }
+  .promo-sub { display: none; }
+  .promo-body { padding: 10px 8px 10px; }
 
-  .promo-title {
-    font-size: 14px;
-    font-weight: 950;
-  }
-
-  .promo-sub {
-    display: none;
-  }
-
-  /* más aire general del bloque */
-  .promo-body {
-    padding: 10px 8px 10px;
-  }
-
-  /* ✅ clave: padding lateral grande para que la card no quede “cortada”
-     y puedas verla entera aunque se deslice */
   .promo-slide :deep(.v-slide-group__content) {
     padding-left: 18px;
     padding-right: 18px;
     gap: 12px;
   }
 
-  /* ✅ card casi full width */
-  .promo-card {
-    width: min(86vw, 340px);
-  }
-
-  .promo-img {
-    height: 160px;
-  }
-
-  .promo-off {
-    font-size: 10px;
-  }
-
-  /* flechas un poco más afuera */
-  .promo-slide :deep(.v-slide-group__prev),
-  .promo-slide :deep(.v-slide-group__next) {
-    width: 36px;
-  }
-
-  .promo-slide :deep(.v-slide-group__prev) {
-    margin-left: -6px;
-  }
-  .promo-slide :deep(.v-slide-group__next) {
-    margin-right: -6px;
-  }
+  .promo-card { width: min(86vw, 340px); }
+  .promo-img { height: 160px; }
+  .promo-off { font-size: 10px; }
 }
 </style>

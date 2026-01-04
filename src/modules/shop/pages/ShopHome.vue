@@ -23,13 +23,9 @@
     <section class="content">
       <div class="after-hero-spacer"></div>
 
-      <!-- ✅ PROMO SLIDER -->
+      <!-- ✅ PROMO SLIDER (general) -->
       <div class="mb-6">
-        <PromoSlider
-          :items="promoItems"
-          :perPage="promoPerPage"
-          @seeAll="scrollToProducts"
-        />
+        <PromoSlider :items="promoItems" :perPage="promoPerPage" @seeAll="scrollToProducts" />
       </div>
 
       <!-- Productos -->
@@ -55,11 +51,9 @@
         </div>
 
         <div class="d-flex ga-2 align-center flex-wrap">
-          <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">
-            Limpiar
-          </v-btn>
+          <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
 
-          <v-btn variant="tonal" :loading="loading" @click="fetchCatalog">
+          <v-btn variant="tonal" :loading="loading" @click="fetchCatalog({ append: false })">
             Actualizar
           </v-btn>
 
@@ -69,32 +63,26 @@
         </div>
       </div>
 
-      <div v-if="loading" class="product-grid">
+      <div v-if="loading && !items.length" class="product-grid">
         <div v-for="n in 12" :key="n">
           <v-skeleton-loader type="image, article" />
         </div>
       </div>
 
-      <v-alert v-else-if="!items.length" type="info" variant="tonal">
+      <v-alert v-else-if="!loading && !items.length" type="info" variant="tonal">
         No hay productos para mostrar con estos criterios.
       </v-alert>
 
-      <!-- ✅ PRODUCT GRID con ProductCard.vue -->
       <div v-else class="product-grid">
-        <ProductCard
-          v-for="p in items"
-          :key="p.product_id"
-          :p="p"
-          @add="addToCart"
-        />
+        <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
-      <!-- ✅ Banner Parlantes: DESPUÉS de productos (desktop + mobile) -->
-      <div class="after-products-banner" v-if="!loading">
+      <!-- ✅ Banner Parlantes: DESPUÉS de productos -->
+      <div class="after-products-banner" v-if="!loading && items.length">
         <PromoBannerParlantes />
       </div>
 
-      <!-- ✅ VER MÁS (reemplaza paginador) -->
+      <!-- ✅ VER MÁS -->
       <div class="see-more-wrap" v-if="!loading && page < pages">
         <v-btn
           class="see-more-btn"
@@ -108,6 +96,22 @@
         <div class="see-more-hint text-caption text-medium-emphasis">
           Mostrando {{ items.length }} de {{ total }}
         </div>
+      </div>
+
+      <!-- ✅ PASARELA AURICULARES: ÚLTIMO LUGAR DEL HOME -->
+      <div class="mt-6">
+        <div v-if="aurisLoading" class="auris-skel">
+          <v-skeleton-loader type="heading, image" />
+        </div>
+
+        <PromoSliderAuriculares
+          v-else
+          v-if="aurisItems.length"
+          :items="aurisItems"
+          :perPage="promoPerPage"
+          :categoryId="AUDIO_CATEGORY_ID"
+          :subIds="AURICULARES_SUB_IDS"
+        />
       </div>
     </section>
   </v-container>
@@ -124,6 +128,7 @@ import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
+import PromoSliderAuriculares from "@/modules/shop/components/PromoSliderAuriculares.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 
@@ -135,12 +140,21 @@ const loading = ref(false);
 const loadingMore = ref(false);
 
 const items = ref([]);
-
 const page = ref(Number(route.query.page || 1));
 const limit = ref(24);
 const total = ref(0);
-
 const allCats = ref([]);
+
+/* ✅ IDs reales (AJUSTÁ ESTO) */
+const AUDIO_CATEGORY_ID = 2; // tu URL muestra /shop/c/2 = AUDIO
+
+// ⚠️ Poné acá los IDs reales de:
+// AURICULARES / AURICULARES BT / AURICULARES M. LIBRES
+const AURICULARES_SUB_IDS = [/* ej */ 21, 22, 23];
+
+/* ✅ slider auriculares: fetch propio (NO depende del page del home) */
+const aurisLoading = ref(false);
+const aurisItems = ref([]);
 
 /* query-driven filters */
 const q = computed(() => String(route.query.q || "").trim());
@@ -160,9 +174,7 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/* =========================
-   HERO
-   ========================= */
+/* HERO */
 const heroSlides = ref([
   {
     pill: "OFERTAS",
@@ -186,19 +198,19 @@ function onHeroClick() {
   scrollToProducts();
 }
 
-/* =========================
-   Header context
-   ========================= */
+/* Header context */
 const resultsTitle = computed(() => {
   if (q.value || category_id.value || subcategory_id.value) return "Resultados";
   return "Productos";
 });
+
 const activeChip = computed(() => {
   if (q.value) return `Buscar: ${q.value}`;
   if (subcategory_id.value) return `Subcategoría #${subcategory_id.value}`;
   if (category_id.value) return `Categoría #${category_id.value}`;
   return "";
 });
+
 const hasAnyFilter = computed(() => !!q.value || !!category_id.value || !!subcategory_id.value);
 
 function clearAllFilters() {
@@ -210,9 +222,7 @@ function clearAllFilters() {
   router.replace({ path: "/shop", query: nq });
 }
 
-/* =========================
-   Scroll
-   ========================= */
+/* Scroll */
 const productsTop = ref(null);
 
 function scrollToProducts() {
@@ -222,9 +232,7 @@ function scrollToProducts() {
   window.scrollTo({ top: y, behavior: "smooth" });
 }
 
-/* =========================
-   Promo slider data (REAL)
-   ========================= */
+/* Promo slider data (general) */
 const promoPerPage = computed(() => 5);
 
 const promoItems = computed(() => {
@@ -240,16 +248,7 @@ const promoItems = computed(() => {
   return base.slice(0, 18);
 });
 
-/* =========================
-   Cart
-   ========================= */
-function addToCart(p) {
-  cart.add(p, 1);
-}
-
-/* =========================
-   Catalog
-   ========================= */
+/* Catalog (Home grid) */
 async function fetchCatalog({ append = false } = {}) {
   if (!append) loading.value = true;
   try {
@@ -295,33 +294,95 @@ async function loadMore() {
   loadingMore.value = true;
   try {
     page.value += 1;
-    // mantenemos query sync pero sin romper UX
     const nq = { ...route.query, page: String(page.value) };
     router.replace({ path: "/shop", query: nq });
-
     await fetchCatalog({ append: true });
   } finally {
     loadingMore.value = false;
   }
 }
 
+/* ✅ FETCH PROPIO: Auriculares (todas las subcategorías “auriculares…”) */
+async function fetchAuricularesSlider() {
+  const subs = Array.isArray(AURICULARES_SUB_IDS) ? AURICULARES_SUB_IDS.filter(Boolean) : [];
+  if (!subs.length) {
+    aurisItems.value = [];
+    return;
+  }
+
+  aurisLoading.value = true;
+  try {
+    const merged = [];
+    const seen = new Set();
+
+    // Traemos una “rodaja” por cada subcategoría y mezclamos
+    // (tu backend hoy recibe un solo subcategory_id, por eso iteramos)
+    for (const sid of subs) {
+      try {
+        const r = await getCatalog({
+          search: "",
+          page: 1,
+          limit: 12, // por sub, después cortamos a 18 total
+          category_id: AUDIO_CATEGORY_ID,
+          subcategory_id: Number(sid),
+        });
+
+        const list = Array.isArray(r.items) ? r.items : [];
+        for (const it of list) {
+          const k = String(it?.product_id ?? it?.id ?? "");
+          if (!k || seen.has(k)) continue;
+          merged.push(it);
+          seen.add(k);
+        }
+      } catch (e2) {
+        console.error("❌ fetchAuricularesSlider sub:", sid, e2);
+      }
+    }
+
+    // cortamos a 18 para slider
+    aurisItems.value = merged.slice(0, 18);
+  } finally {
+    aurisLoading.value = false;
+  }
+}
+
 /* bootstrap */
 onMounted(async () => {
-  await fetchCatalog();
+  await fetchCatalog({ append: false });
+
   try {
     allCats.value = await getPublicCategories();
   } catch (e) {
     console.error("❌ getPublicCategories(Home)", e);
     allCats.value = [];
   }
+
+  // ✅ siempre cargamos la pasarela al final
+  await fetchAuricularesSlider();
 });
 
 watch(
   () => route.query,
-  async () => {
-    // si cambian filtros o búsqueda, reseteamos paginado e items
+  async (nq, oq) => {
+    const onlyPageChanged =
+      String(nq?.q || "") === String(oq?.q || "") &&
+      String(nq?.category_id || "") === String(oq?.category_id || "") &&
+      String(nq?.subcategory_id || "") === String(oq?.subcategory_id || "") &&
+      String(nq?.page || "1") !== String(oq?.page || "1");
+
     page.value = Number(route.query.page || 1);
-    await fetchCatalog({ append: false });
+
+    if (!onlyPageChanged) {
+      page.value = 1;
+      const q2 = { ...route.query, page: "1" };
+      router.replace({ path: "/shop", query: q2 });
+      await fetchCatalog({ append: false });
+    } else {
+      await fetchCatalog({ append: false });
+    }
+
+    // ✅ refrescamos la pasarela (no molesta)
+    await fetchAuricularesSlider();
   }
 );
 </script>
@@ -333,14 +394,12 @@ watch(
   --shop-max: 1200px;
 }
 
-/* ✅ FULL BLEED */
 .hero-fullbleed {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   overflow: visible;
 }
 
-/* stacking */
 .hero-wrap {
   position: relative;
   width: 100%;
@@ -348,7 +407,6 @@ watch(
   isolation: isolate;
 }
 
-/* ✅ FLOAT SUPERPUESTO (solo desktop; el componente maneja pelotitas en mobile) */
 .hero-float {
   position: absolute;
   left: 0;
@@ -363,9 +421,7 @@ watch(
   margin: 0 auto;
 }
 
-.after-hero-spacer {
-  height: 205px;
-}
+.after-hero-spacer { height: 205px; }
 
 .content {
   width: min(var(--shop-max), calc(100% - 24px));
@@ -373,7 +429,6 @@ watch(
   padding-bottom: 40px;
 }
 
-/* ✅ Grid productos */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -381,9 +436,7 @@ watch(
   align-items: start;
 }
 
-.after-products-banner {
-  margin-top: 18px;
-}
+.after-products-banner { margin-top: 18px; }
 
 .see-more-wrap {
   margin-top: 14px;
@@ -401,30 +454,29 @@ watch(
   padding-inline: 22px;
 }
 
-.see-more-hint {
-  opacity: 0.8;
+.see-more-hint { opacity: 0.8; }
+
+.auris-skel {
+  border-radius: 18px;
+  overflow: hidden;
 }
 
-/* responsive */
 @media (max-width: 1400px) {
   .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 1200px) {
   .shop-page { --shop-max: 1100px; }
   .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
   .hero-float { bottom: -150px; }
   .after-hero-spacer { height: 190px; }
 }
 @media (max-width: 960px) {
-  /* en mobile NO queremos superposición (pelotitas abajo), lo resuelve el componente + este ajuste */
   .hero-float {
     position: static;
     margin-top: 10px;
     pointer-events: auto;
   }
   .after-hero-spacer { height: 16px; }
-
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
