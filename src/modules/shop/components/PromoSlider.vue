@@ -19,43 +19,49 @@
 
       <!-- Slider -->
       <div class="promo-body">
-        <v-slide-group v-model="model" show-arrows class="promo-slide">
-          <v-slide-group-item v-for="p in items" :key="p.product_id">
-            <button class="promo-card" type="button" @click="open(p)">
-              <div class="promo-img">
-                <img :src="p.image_url" alt="" />
-                <div v-if="badgeText(p)" class="promo-badge">
-                  {{ badgeText(p) }}
-                </div>
-              </div>
-
-              <div class="promo-info">
-                <div class="promo-price-row">
-                  <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
-
-                  <div class="promo-off" v-if="offPct(p)">
-                    {{ offPct(p) }}% OFF
+        <v-slide-group v-model="model" show-arrows class="promo-slide" :mandatory="false">
+          <v-slide-group-item
+            v-for="(p, idx) in items"
+            :key="p.product_id ?? p.id ?? idx"
+            v-slot="{ toggle }"
+          >
+            <div class="promo-item">
+              <button class="promo-card" type="button" @click="toggle(); open(p)">
+                <div class="promo-img">
+                  <img :src="p.image_url" alt="" />
+                  <div v-if="badgeText(p)" class="promo-badge">
+                    {{ badgeText(p) }}
                   </div>
                 </div>
 
-                <div v-if="showOldPrice(p)" class="promo-old">
-                  $ {{ fmtMoney(oldPrice(p)) }}
-                </div>
+                <div class="promo-info">
+                  <div class="promo-price-row">
+                    <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
 
-                <div class="promo-name">
-                  {{ p.name }}
-                </div>
+                    <div class="promo-off" v-if="offPct(p)">
+                      {{ offPct(p) }}% OFF
+                    </div>
+                  </div>
 
-                <div class="promo-meta">
-                  {{ p.category_name || "—" }}
-                  <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
-                </div>
+                  <div v-if="showOldPrice(p)" class="promo-old">
+                    $ {{ fmtMoney(oldPrice(p)) }}
+                  </div>
 
-                <div class="promo-free" v-if="freeShip(p)">
-                  Envío gratis
+                  <div class="promo-name">
+                    {{ p.name }}
+                  </div>
+
+                  <div class="promo-meta">
+                    {{ p.category_name || "—" }}
+                    <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
+                  </div>
+
+                  <div class="promo-free" v-if="freeShip(p)">
+                    Envío gratis
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </v-slide-group-item>
         </v-slide-group>
 
@@ -90,7 +96,7 @@ const router = useRouter();
 const model = ref(0);
 
 function open(p) {
-  router.push({ name: "shopProduct", params: { id: p.product_id } });
+  router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
 }
 
 function toNum(v) {
@@ -141,6 +147,7 @@ function freeShip(p) {
   return Boolean(p.free_shipping) || Boolean(p.is_free_shipping);
 }
 
+/** Puntitos */
 const dotIndex = computed(() => {
   const idx = Number(model.value ?? 0);
   return Math.max(0, Math.floor(idx / props.perPage));
@@ -177,10 +184,11 @@ watch(
   overflow: hidden;
 }
 
+/* header */
 .promo-head {
   padding: 16px 18px 14px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -195,6 +203,7 @@ watch(
   font-size: 16px;
   font-weight: 950;
   letter-spacing: -0.2px;
+  line-height: 1.1;
 }
 
 .promo-sub {
@@ -211,15 +220,37 @@ watch(
   opacity: 0.65;
 }
 
+/* body */
 .promo-body {
   padding: 10px 10px 10px;
 }
 
+/* ✅ Drag OK */
+.promo-slide {
+  touch-action: pan-x;
+}
+
+.promo-slide :deep(.v-slide-group__container) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.promo-slide :deep(.v-slide-group__container::-webkit-scrollbar) {
+  display: none;
+}
+
+/* ✅ “más libre”: le damos padding lateral al CONTENIDO,
+   así la card no queda tapada por los bordes/contorno. */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
   padding: 10px 6px 12px;
 }
 
+/* flechas */
+.promo-slide :deep(.v-slide-group__prev),
+.promo-slide :deep(.v-slide-group__next) {
+  opacity: 0.95;
+}
 .promo-slide :deep(.v-slide-group__prev .v-btn),
 .promo-slide :deep(.v-slide-group__next .v-btn) {
   background: rgba(255, 255, 255, 0.92);
@@ -227,6 +258,11 @@ watch(
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
 
+.promo-item {
+  display: inline-flex;
+}
+
+/* card */
 .promo-card {
   width: 210px;
   border-radius: 16px;
@@ -240,19 +276,21 @@ watch(
   transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
 }
 
-.promo-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.1);
+@media (hover: hover) and (pointer: fine) {
+  .promo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.1);
+  }
 }
 
+/* imagen */
 .promo-img {
   position: relative;
   width: 100%;
   height: 150px;
   background: #f5f5f5;
 }
-
 .promo-img img {
   width: 100%;
   height: 100%;
@@ -282,7 +320,7 @@ watch(
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  flex-wrap: wrap; /* ✅ no corta precio/off en mobile */
+  flex-wrap: nowrap;
 }
 
 .promo-price {
@@ -298,7 +336,6 @@ watch(
   font-weight: 950;
   color: #00a650;
   white-space: nowrap;
-  margin-left: auto;
 }
 
 .promo-old {
@@ -336,6 +373,7 @@ watch(
   color: #00a650;
 }
 
+/* dots */
 .promo-dots {
   display: flex;
   justify-content: center;
@@ -361,25 +399,62 @@ watch(
   background: rgba(0, 0, 0, 0.55);
 }
 
-/* ✅ mobile: un toque más ancho y OFF más chico */
-@media (max-width: 960px) {
-  .promo-card {
-    width: 220px;
-  }
-  .promo-img {
-    height: 140px;
-  }
-  .promo-head {
-    padding: 14px 14px 12px;
-  }
-}
-
+/* ✅ MOBILE “más libre”:
+   - la card ocupa casi todo el ancho
+   - el carrusel deja aire a ambos lados (no “tapa”)
+   - flechas más hacia afuera y sin comerse la card
+*/
 @media (max-width: 600px) {
-  .promo-card {
-    width: 240px; /* ✅ evita que se “aplane” y corte el row */
+  .promo-head {
+    padding: 12px 14px;
   }
+
+  .promo-title {
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .promo-sub {
+    display: none;
+  }
+
+  /* más aire general del bloque */
+  .promo-body {
+    padding: 10px 8px 10px;
+  }
+
+  /* ✅ clave: padding lateral grande para que la card no quede “cortada”
+     y puedas verla entera aunque se deslice */
+  .promo-slide :deep(.v-slide-group__content) {
+    padding-left: 18px;
+    padding-right: 18px;
+    gap: 12px;
+  }
+
+  /* ✅ card casi full width */
+  .promo-card {
+    width: min(86vw, 340px);
+  }
+
+  .promo-img {
+    height: 160px;
+  }
+
   .promo-off {
     font-size: 10px;
+  }
+
+  /* flechas un poco más afuera */
+  .promo-slide :deep(.v-slide-group__prev),
+  .promo-slide :deep(.v-slide-group__next) {
+    width: 36px;
+  }
+
+  .promo-slide :deep(.v-slide-group__prev) {
+    margin-left: -6px;
+  }
+  .promo-slide :deep(.v-slide-group__next) {
+    margin-right: -6px;
   }
 }
 </style>
