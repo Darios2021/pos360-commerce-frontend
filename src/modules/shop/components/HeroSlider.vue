@@ -487,20 +487,55 @@ watch(
   }
 }
 
+/* ✅ SOLO MOBILE: centrar texto y evitar choque con flechas (desktop intacto) */
 @media (max-width: 600px) {
   .ml-slide {
     height: 400px;
   }
+
+  /* 👇 deja “canal” lateral + centra todo */
+  .ml-content {
+    left: 68px;
+    right: 68px;
+    max-width: none;
+
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  /* centramos pill y acciones */
+  .ml-pill {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .ml-actions {
+    justify-content: center;
+  }
+
+  /* título/sub un toque más equilibrados */
+  .ml-title {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .ml-subtitle {
     font-size: 14px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;
   }
+
+  /* flechas un toque más al borde para ganar espacio */
   .ml-arrow {
     width: 54px;
     height: 54px;
   }
-  .ml-content {
-    left: 54px;
-    right: 54px;
+  .ml-arrow.left {
+    left: 10px;
+  }
+  .ml-arrow.right {
+    right: 10px;
   }
 }
 </style>

@@ -160,8 +160,7 @@ const IMG_SUB = {
 
 const STOCK = {
   camaras: "https://storage-files.cingulado.org/pos360/products/156/1767564820325-624a77bd.jpg",
-  telefonos:
-    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=80",
+  telefonos: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=80",
 };
 
 const targets = [
@@ -195,7 +194,8 @@ function buildFeaturedFromTaxonomy() {
       const name = norm(n?.name);
       const slug = norm(n?.slug);
       if (t.key === "camaras") return name.includes("cam") || slug.includes("cam") || name.includes("seguridad");
-      if (t.key === "telefonos") return name.includes("tel") || slug.includes("tel") || name.includes("cel") || slug.includes("cel");
+      if (t.key === "telefonos")
+        return name.includes("tel") || slug.includes("tel") || name.includes("cel") || slug.includes("cel");
       return name.includes(t.key) || slug.includes(t.key);
     });
 
@@ -270,9 +270,7 @@ const visibleCount = ref(1);
 const viewportMaxPx = ref(null);
 const viewportStyle = computed(() => {
   // centrado y sin “peek”
-  return viewportMaxPx.value
-    ? { maxWidth: `${viewportMaxPx.value}px`, margin: "0 auto" }
-    : { maxWidth: "100%" };
+  return viewportMaxPx.value ? { maxWidth: `${viewportMaxPx.value}px`, margin: "0 auto" } : { maxWidth: "100%" };
 });
 
 const maxIndex = computed(() => Math.max(0, featured.value.length - visibleCount.value));
@@ -438,7 +436,11 @@ watch(
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  touch-action: pan-x;
+
+  /* ✅ FIX 1: dejar scrollear para abajo con el dedo (NO bloquear pan-y) */
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
 }
 .bubbles::-webkit-scrollbar {
   display: none;
@@ -456,6 +458,10 @@ watch(
   border: 0;
   cursor: pointer;
   scroll-snap-align: start;
+
+  /* ✅ FIX 1 (extra): no “secuestrar” el gesto vertical */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .ring {
@@ -490,8 +496,16 @@ watch(
   font-size: 11px;
   line-height: 1.1;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+
+  /* ✅ FIX 2: que el texto se vea SIEMPRE sobre fondo claro */
+  color: rgba(7, 28, 48, 0.96);
+  text-shadow: none;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(7, 28, 48, 0.1);
+  border-radius: 10px;
+  padding: 4px 6px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -654,14 +668,6 @@ watch(
 @media (max-width: 1200px) {
   .card {
     width: 200px;
-  }
-}
-
-/* Mobile label en fondos claros */
-@media (prefers-color-scheme: light) {
-  .label {
-    color: rgba(7, 28, 48, 0.92);
-    text-shadow: none;
   }
 }
 </style>
