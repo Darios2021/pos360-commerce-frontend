@@ -2,67 +2,68 @@
 <template>
   <div class="float-row">
     <div class="float-inner">
-      <!-- ✅ MOBILE/TABLET: pelotitas tipo Mercado Libre (sin card, con scroll) -->
-      <div v-if="isMobile" class="ml-bubbles">
-        <div class="ml-bubbles-track" role="list" aria-label="Categorías">
-          <button
-            v-for="c in cats"
-            :key="c.id"
-            class="ml-bubble"
-            type="button"
-            role="listitem"
-            @click="go(c.id)"
-            :title="c.name"
-          >
-            <div class="ml-bubble-ring">
-              <div class="ml-bubble-avatar">
-                <img :src="imgFor(c)" :alt="c.name" @error="onImgError" loading="lazy" />
-              </div>
-            </div>
-
-            <div class="ml-bubble-label">
-              {{ c.name }}
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- ✅ DESKTOP: cards (grid) -->
-      <div v-else class="cards-grid">
-        <v-card
-          v-for="c in cats"
-          :key="c.id"
-          class="ml-card"
-          elevation="6"
-          @click="go(c.id)"
+      <div class="wrap">
+        <!-- VIEWPORT: nunca deja ver media card -->
+        <div
+          ref="viewportEl"
+          class="viewport"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="onPointerUp"
+          @pointercancel="onPointerUp"
+          @pointerleave="onPointerUp"
         >
-          <div class="ml-card-head">
-            <div class="ml-card-title">{{ c.name }}</div>
-          </div>
+          <div ref="trackEl" class="track" :style="trackStyle">
+            <button
+              v-for="c in featured"
+              :key="c.key"
+              class="card"
+              type="button"
+              @click="go(c)"
+              :title="c.name"
+            >
+              <div class="head">
+                <div class="title">{{ c.name }}</div>
+              </div>
 
-          <div class="ml-card-media">
-            <img :src="imgFor(c)" :alt="c.name" @error="onImgError" loading="lazy" />
-          </div>
+              <div class="media">
+                <img :src="c.img" :alt="c.name" @error="onImgError" loading="lazy" />
+              </div>
 
-          <div class="ml-card-body">
-            <div class="ml-card-desc">
-              Explorá subrubros y productos de {{ c.name }}.
-            </div>
-
-            <v-btn variant="tonal" color="primary" class="ml-card-btn" @click.stop="go(c.id)">
-              Ver productos
-            </v-btn>
+              <div class="body">
+                <div class="desc">Explorá subrubros y productos de {{ c.name }}.</div>
+                <span class="cta">Ver productos</span>
+              </div>
+            </button>
           </div>
-        </v-card>
+        </div>
+
+        <!-- Flechas -->
+        <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
+          ‹
+        </button>
+        <button
+          class="arrow right"
+          type="button"
+          aria-label="Siguiente"
+          @click="next"
+          :disabled="index >= maxIndex"
+        >
+          ›
+        </button>
+
+        <!-- Dots -->
+        <div class="dots" v-if="maxIndex > 0">
+          <span v-for="i in maxIndex + 1" :key="i" class="dot" :class="{ active: i - 1 === index }" />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useDisplay } from "vuetify";
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
@@ -70,77 +71,220 @@ const props = defineProps({
 });
 
 const router = useRouter();
-const { mdAndDown } = useDisplay();
-const isMobile = computed(() => !!mdAndDown.value);
 
-const cats = computed(() => {
-  const arr = Array.isArray(props.categories) ? props.categories : [];
-  const parents = arr
-    .filter((x) => x && (x.parent_id == null || x.parent_id === 0 || x.parent_id === "0"))
-    .filter((x) => Number(x.is_active ?? 1) === 1)
-    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
-
-  // mobile: más ítems (scroll)
-  if (isMobile.value) return parents.slice(0, 24);
-
-  // desktop: como venías
-  return parents.slice(0, Math.max(1, Number(props.max || 6)));
-});
-
-function go(id) {
-  router.push({ name: "shopCategory", params: { id } });
+/* =========================
+   Helpers
+   ========================= */
+function norm(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+function toId(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+function isRootCategory(c) {
+  const p = c?.parent_id;
+  const pn = Number(p);
+  return p === null || p === undefined || p === "" || p === 0 || p === "0" || pn === 0 || !Number.isFinite(pn);
+}
+function getChildren(cat) {
+  if (!cat) return [];
+  const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
+  return (candidates.find((x) => Array.isArray(x)) || []).filter(Boolean);
+}
+function findNodeDeep(list, predicate) {
+  const arr = Array.isArray(list) ? list : [];
+  for (const node of arr) {
+    if (!node) continue;
+    if (predicate(node)) return node;
+    const kids = getChildren(node);
+    const hit = findNodeDeep(kids, predicate);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 const FALLBACK =
   "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1400&q=80";
 
-const STOCK = {
-  audio:
-    "https://images.unsplash.com/photo-1518441984357-749f0f4a53b1?auto=format&fit=crop&w=1400&q=80",
-  celulares:
-    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=80",
-  cables:
-    "https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=1400&q=80",
-  gaming:
-    "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?auto=format&fit=crop&w=1400&q=80",
-  hogar:
-    "https://images.unsplash.com/photo-1582582429415-bc0c8b5bb85a?auto=format&fit=crop&w=1400&q=80",
-  seguridad:
-    "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1400&q=80",
-  notebooks:
-    "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1400&q=80",
-  tv:
-    "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?auto=format&fit=crop&w=1400&q=80",
-  wearables:
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=80",
-  auto:
-    "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=1400&q=80",
-  energia:
-    "https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1400&q=80",
+/* =========================
+   Imágenes
+   ========================= */
+const IMG_SUB = {
+  parlantes: "https://storage-files.cingulado.org/pos360/products/17/1766780472298-78438395.jpeg",
+  auriculares: "https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg",
+  microfonos: "https://storage-files.cingulado.org/pos360/products/28/1766786438106-89dda16c.jpeg",
+  electro: "https://storage-files.cingulado.org/pos360/products/68/1766793570645-acbcae20.jpg",
 };
 
-function imgFor(c) {
-  const name = String(c?.name || "").toLowerCase();
+const STOCK = {
+  camaras: "https://storage-files.cingulado.org/pos360/products/156/1767564820325-624a77bd.jpg",
+  telefonos:
+    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=80",
+};
 
-  if (name.includes("audio") || name.includes("parl") || name.includes("auric")) return STOCK.audio;
-  if (name.includes("cel") || name.includes("tel") || name.includes("smart")) return STOCK.celulares;
-  if (name.includes("cable") || name.includes("carg") || name.includes("usb")) return STOCK.cables;
-  if (name.includes("gaming") || name.includes("juego") || name.includes("consol")) return STOCK.gaming;
-  if (name.includes("hogar") || name.includes("cocina") || name.includes("mueble")) return STOCK.hogar;
-  if (name.includes("seg") || name.includes("cámara") || name.includes("camara") || name.includes("cctv")) return STOCK.seguridad;
-  if (name.includes("notebook") || name.includes("laptop") || name.includes("pc")) return STOCK.notebooks;
-  if (name.includes("tv") || name.includes("tele")) return STOCK.tv;
-  if (name.includes("reloj") || name.includes("smartwatch") || name.includes("wear")) return STOCK.wearables;
-  if (name.includes("auto") || name.includes("moto") || name.includes("autom")) return STOCK.auto;
-  if (name.includes("energ") || name.includes("solar") || name.includes("bater")) return STOCK.energia;
+const targets = [
+  { key: "parlantes", label: "PARLANTES", img: IMG_SUB.parlantes },
+  { key: "auriculares", label: "AURICULARES", img: IMG_SUB.auriculares },
+  { key: "microfonos", label: "MICROFONOS", img: IMG_SUB.microfonos },
+  { key: "electro", label: "ELECTRO", img: IMG_SUB.electro },
+  { key: "camaras", label: "CAMARAS DE SEGURIDAD", img: STOCK.camaras },
+  { key: "telefonos", label: "TELEFONOS", img: STOCK.telefonos },
+];
 
-  return FALLBACK;
+/* ✅ rutas fijas */
+const FIXED_ROUTE = {
+  parlantes: { cat: 2, sub: 25, q: "PARLANTES" },
+  auriculares: { cat: 2, sub: 22 },
+  microfonos: { cat: 2, sub: 26 },
+  electro: { cat: 7, sub: 38 },
+  camaras: { cat: 11, sub: 58 },
+};
+
+function buildFeaturedFromTaxonomy() {
+  const cats = Array.isArray(props.categories) ? props.categories : [];
+  const roots = cats.filter(isRootCategory);
+  const space = roots.length ? roots : cats;
+
+  return targets.map((t) => {
+    const fixed = FIXED_ROUTE[t.key] || null;
+
+    // opcional: ids por si hacen falta
+    const hit = findNodeDeep(space, (n) => {
+      const name = norm(n?.name);
+      const slug = norm(n?.slug);
+      if (t.key === "camaras") return name.includes("cam") || slug.includes("cam") || name.includes("seguridad");
+      if (t.key === "telefonos") return name.includes("tel") || slug.includes("tel") || name.includes("cel") || slug.includes("cel");
+      return name.includes(t.key) || slug.includes(t.key);
+    });
+
+    return {
+      key: t.key,
+      name: t.label,
+      img: t.img || FALLBACK,
+      id: toId(hit?.id),
+      parentId: toId(hit?.parent_id),
+      fixed,
+    };
+  });
+}
+
+const featured = computed(() => buildFeaturedFromTaxonomy());
+
+function go(item) {
+  if (item?.fixed?.cat && item?.fixed?.sub) {
+    const q = item.fixed.q;
+    router.push({
+      path: `/shop/c/${String(item.fixed.cat)}`,
+      query: {
+        branch_id: "3",
+        page: "1",
+        sub: String(item.fixed.sub),
+        ...(q ? { q: String(q) } : {}),
+      },
+    });
+    return;
+  }
+
+  router.push({ path: "/shop", query: { q: item?.name || "" } });
 }
 
 function onImgError(e) {
   const el = e?.target;
   if (el && el.tagName === "IMG") el.src = FALLBACK;
 }
+
+/* =========================
+   Slider por pasos (sin recortes)
+   ========================= */
+const viewportEl = ref(null);
+const trackEl = ref(null);
+
+const index = ref(0);
+const cardW = ref(210);
+const gap = ref(14);
+
+const maxIndex = computed(() => Math.max(0, featured.value.length - visibleCount.value));
+const visibleCount = ref(1);
+
+function measure() {
+  const vp = viewportEl.value;
+  if (!vp) return;
+
+  const cw = vp.clientWidth || 1;
+  // usa cardW actual según breakpoint del CSS
+  const w = window.innerWidth;
+  cardW.value = w <= 900 ? 186 : w <= 1200 ? 200 : 210;
+  gap.value = 14;
+
+  visibleCount.value = Math.max(1, Math.floor((cw + gap.value) / (cardW.value + gap.value)));
+  if (index.value > maxIndex.value) index.value = maxIndex.value;
+}
+
+const trackStyle = computed(() => {
+  const step = cardW.value + gap.value;
+  const x = -index.value * step;
+  return { transform: `translate3d(${x}px, 0, 0)` };
+});
+
+function next() {
+  index.value = Math.min(maxIndex.value, index.value + 1);
+}
+function prev() {
+  index.value = Math.max(0, index.value - 1);
+}
+
+/* touch/drag: arrastra pero al soltar “snapea” al paso */
+let dragging = false;
+let startX = 0;
+let startIndex = 0;
+
+function onPointerDown(e) {
+  dragging = true;
+  startX = e.clientX;
+  startIndex = index.value;
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  } catch {}
+}
+function onPointerMove(e) {
+  if (!dragging) return;
+  const dx = e.clientX - startX;
+  const step = cardW.value + gap.value;
+  const delta = Math.round(-dx / step);
+  const target = startIndex + delta;
+  index.value = Math.max(0, Math.min(maxIndex.value, target));
+}
+function onPointerUp() {
+  dragging = false;
+}
+
+function onWinResize() {
+  measure();
+}
+
+onMounted(async () => {
+  await nextTick();
+  measure();
+  window.addEventListener("resize", onWinResize, { passive: true });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", onWinResize);
+});
+
+watch(
+  () => props.categories,
+  async () => {
+    await nextTick();
+    measure();
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
@@ -156,168 +300,167 @@ function onImgError(e) {
   pointer-events: auto;
 }
 
-/* =========================
-   MOBILE: pelotitas estilo ML
-   ========================= */
-.ml-bubbles {
-  /* sin card: solo padding y nada de recortes raros */
+/* Contenedor */
+.wrap {
+  position: relative;
   width: 100%;
-  padding: 6px 0 2px;
+  padding-bottom: 18px;
 }
 
-.ml-bubbles-track {
+/* Viewport: NO permite asomar cards */
+.viewport {
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 0 6px 10px;
+  touch-action: pan-y;
+}
+
+/* Track movido por transform */
+.track {
   display: flex;
   gap: 14px;
-
-  /* ✅ scroll horizontal tipo ML */
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-
-  /* ✅ “safe area” laterales para que la primera/última no queden cortadas */
-  padding: 6px 14px 10px;
-
-  /* ✅ snap suave (se siente ML) */
-  scroll-snap-type: x mandatory;
-
-  /* scrollbar oculto */
-  scrollbar-width: none; /* firefox */
-}
-.ml-bubbles-track::-webkit-scrollbar {
-  display: none; /* chrome */
+  will-change: transform;
+  transition: transform 180ms ease;
 }
 
-.ml-bubble {
-  border: 0;
-  background: transparent;
-  padding: 0;
+/* Card */
+.card {
+  flex: 0 0 auto;
+  width: 210px;
+  height: 280px;
+  border-radius: 10px;
+  overflow: hidden;
   cursor: pointer;
-
-  width: 76px; /* tamaño tipo ML */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
   display: flex;
   flex-direction: column;
+  text-align: left;
+  padding: 0;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
+  }
+}
+
+.head {
+  padding: 10px 12px 8px;
+  min-height: 48px;
+  display: flex;
   align-items: center;
-  gap: 6px;
-
-  flex: 0 0 auto;
-  scroll-snap-align: start;
 }
-
-.ml-bubble-ring {
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  background: #fff;
-  border: 2px solid rgba(0,0,0,.10);
-  display: grid;
-  place-items: center;
-}
-
-.ml-bubble-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #f2f2f2;
-}
-.ml-bubble-avatar img {
+.title {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.ml-bubble-label {
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.05;
-  text-align: center;
-  color: rgba(0,0,0,.78);
-
-  max-width: 76px;
+  font-weight: 900;
+  font-size: 15px;
+  text-transform: uppercase;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.1;
 }
 
-/* =========================
-   DESKTOP cards (grid)
-   ========================= */
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
-  align-items: stretch;
-}
-
-.ml-card {
-  width: 100%;
-  height: 320px;
-  border-radius: 10px;
-  overflow: hidden;
-  cursor: pointer;
-  border: 1px solid rgba(0,0,0,.08);
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-}
-
-.ml-card-head {
-  padding: 12px 14px 10px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  font-weight: 1000;
-  font-size: 18px;
-}
-.ml-card-title {
-  width: 100%;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ml-card-media {
-  height: 150px;
+.media {
+  height: 130px;
   background: #f2f2f2;
-  border-top: 1px solid rgba(0,0,0,.06);
-  border-bottom: 1px solid rgba(0,0,0,.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
-.ml-card-media img {
+.media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.ml-card-body {
-  padding: 12px 14px 14px;
+.body {
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   flex: 1;
   justify-content: space-between;
 }
-.ml-card-desc {
-  font-size: 13px;
-  color: rgba(0,0,0,.72);
-  line-height: 1.25;
+.desc {
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.72);
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.ml-card-btn {
-  font-weight: 1000;
+.cta {
+  display: inline-flex;
+  width: fit-content;
+  padding: 9px 12px;
   border-radius: 8px;
+  background: rgba(45, 108, 223, 0.12);
+  color: #2d6cdf;
+  font-weight: 900;
 }
 
-@media (max-width: 1400px) {
-  .cards-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* Flechas */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  display: grid;
+  place-items: center;
 }
+.arrow:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.arrow.left {
+  left: 10px;
+}
+.arrow.right {
+  right: 10px;
+}
+
+/* Dots */
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 10px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.dot.active {
+  background: #2d6cdf;
+}
+
+/* Responsive */
 @media (max-width: 1200px) {
-  .cards-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card {
+    width: 200px;
+  }
+}
+@media (max-width: 900px) {
+  .card {
+    width: 186px;
+    height: 268px;
+  }
 }
 </style>

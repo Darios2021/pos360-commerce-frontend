@@ -6,8 +6,8 @@
       <div class="ml-inner">
         <!-- ✅ SOLO LOGO (sin título) -->
         <router-link to="/shop" class="ml-logo" aria-label="POS360 Store">
-          <v-avatar size="32" class="ml-logo-avatar" color="white">
-            <v-icon color="primary" size="18">mdi-storefront</v-icon>
+          <v-avatar size="34" class="ml-logo-avatar">
+            <v-icon size="18">mdi-storefront</v-icon>
           </v-avatar>
         </router-link>
 
@@ -66,7 +66,7 @@
             </button>
           </template>
 
-          <v-card class="ml-cat-card" elevation="8" rounded="lg">
+          <v-card class="ml-cat-card" elevation="10" rounded="xl">
             <div class="ml-cat-grid">
               <!-- Left: rubros (padres) -->
               <v-list density="comfortable" class="ml-cat-left">
@@ -353,136 +353,274 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ✅ STICKY como ML */
+/* =========================
+   BRAND TOKENS
+   ========================= */
 .ml-header {
+  --brand-primary: #1488d1;
+  --brand-dark: #071c30;
+  --brand-white: #ffffff;
+  --brand-white-80: rgba(255, 255, 255, 0.8);
+  --brand-white-65: rgba(255, 255, 255, 0.65);
+  --brand-border: rgba(255, 255, 255, 0.12);
+
   width: 100%;
   position: sticky;
   top: 0;
   z-index: 60;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
-.ml-top { background: #ffe600; }
-.ml-bottom { background: #ffe600; padding-bottom: 8px; }
+/* fondo con acento */
+.ml-top,
+.ml-bottom {
+  background:
+    radial-gradient(900px 220px at 15% -10%, rgba(20, 136, 209, 0.38), transparent 60%),
+    radial-gradient(700px 220px at 85% 0%, rgba(20, 136, 209, 0.18), transparent 55%),
+    linear-gradient(180deg, var(--brand-dark) 0%, #06172a 100%);
+  color: var(--brand-white);
+}
 
+.ml-bottom {
+  padding-bottom: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ancho alineado con shop */
 .ml-inner {
-  max-width: 1300px;
+  width: min(var(--shop-max, 1200px), calc(100% - 24px));
   margin: 0 auto;
-  padding: 8px 12px;
+  padding: 10px 0;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .ml-inner-bottom {
-  padding-top: 6px;
-  padding-bottom: 8px;
+  padding-top: 8px;
+  padding-bottom: 10px;
 }
 
-/* ✅ SOLO LOGO */
+/* LOGO */
 .ml-logo {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
-  color: #111;
   flex: 0 0 auto;
 }
+
 .ml-logo-avatar {
-  box-shadow: 0 2px 10px rgba(0,0,0,.10);
+  background: rgba(20, 136, 209, 0.18) !important;
+  border: 1px solid rgba(20, 136, 209, 0.45) !important;
+  color: var(--brand-white) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+}
+.ml-logo-avatar :deep(.v-icon) {
+  color: var(--brand-white) !important;
 }
 
-/* ✅ Search: más prolijo (evita “texto roto”) */
+/* ================= SEARCH ================= */
 .ml-search {
   flex: 1;
   min-width: 0;
   display: flex;
 }
+
 .ml-search :deep(.v-field),
 .ml-search :deep(.v-text-field),
 .ml-search :deep(.v-input) {
   width: 100%;
 }
+
+.ml-search :deep(.v-field) {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--brand-border);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+}
+
+.ml-search :deep(.v-field__outline) {
+  border-radius: 16px;
+}
+
 .ml-search :deep(input) {
+  color: var(--brand-white);
   font-size: 14px;
   line-height: 1.2;
 }
 
-/* forzamos que el placeholder nunca “salte” raro */
 .ml-search :deep(input::placeholder) {
-  opacity: .55;
+  color: rgba(255, 255, 255, 0.68);
+  opacity: 1;
 }
 
-/* si tu ShopSearchBox internamente usa v-text-field, esto ayuda al layout */
 .ml-search :deep(.v-field__input) {
-  min-height: 40px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-.ml-search :deep(.v-field__outline) {
-  border-radius: 14px;
+  min-height: 42px;
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 
-/* Desktop actions */
-.ml-actions { display: flex; gap: 12px; align-items: center; }
-.ml-actions-mobile { display:flex; align-items:center; gap: 6px; }
+.ml-search :deep(.v-field__prepend-inner),
+.ml-search :deep(.v-field__append-inner) {
+  color: rgba(255, 255, 255, 0.85);
+}
 
-.ml-link { color:#111; text-decoration:none; font-weight:700; opacity:.85; font-size: 13px; }
-.ml-link:hover { opacity: 1; text-decoration: underline; }
+/* ================= ACTIONS ================= */
+.ml-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.ml-actions-mobile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-.ml-cart { color:#111; display:inline-flex; align-items:center; }
+.ml-link {
+  color: var(--brand-white);
+  text-decoration: none;
+  font-weight: 850;
+  font-size: 13px;
+  opacity: 0.92;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.ml-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.ml-cart {
+  color: var(--brand-white);
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.92;
+}
+.ml-cart:hover {
+  opacity: 1;
+}
 
 .ml-icon-btn {
-  border-radius: 12px;
+  border-radius: 14px;
   width: 40px;
   height: 40px;
+  color: var(--brand-white);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--brand-border);
+}
+.ml-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
 }
 
+/* ================= BOTTOM ROW ================= */
 .ml-cat-btn {
-  border:0;
-  background:transparent;
-  font-weight:800;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  gap: 6px;
-  color:#111;
-  font-size: 13px;
+  border: 1px solid var(--brand-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--brand-white);
+  font-weight: 950;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+.ml-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(20, 136, 209, 0.45);
+}
+.ml-cat-icon {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.ml-hint { font-size:12px; opacity:.78; margin-left:auto; }
+.ml-hint {
+  font-size: 12px;
+  color: var(--brand-white-65);
+  margin-left: auto;
+}
 
-/* Mega menu desktop */
-.ml-cat-card { width: 720px; }
-.ml-cat-grid { display:grid; grid-template-columns: 300px 1fr; }
-.ml-cat-left { border-right:1px solid rgba(0,0,0,.08); max-height:420px; overflow:auto; }
-.ml-cat-right { padding:14px; max-height:420px; overflow:auto; }
-.ml-cat-right-title { font-weight: 950; margin-bottom: 10px; }
-.ml-cat-right-items { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* ================= MEGA MENU ================= */
+.ml-cat-card {
+  width: 720px;
+  background:
+    radial-gradient(900px 260px at 15% -10%, rgba(20, 136, 209, 0.22), transparent 60%),
+    linear-gradient(180deg, #0a233b 0%, #06172a 100%) !important;
+  color: var(--brand-white);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.ml-cat-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+}
+
+.ml-cat-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+  max-height: 420px;
+  overflow: auto;
+  background: transparent !important;
+}
+.ml-cat-left :deep(.v-list-item) {
+  border-radius: 12px;
+  margin: 3px 6px;
+}
+.ml-cat-left :deep(.v-list-item--active) {
+  background: rgba(20, 136, 209, 0.20) !important;
+}
+.ml-cat-left :deep(.v-list-item-title) {
+  font-weight: 850;
+  color: var(--brand-white);
+}
+
+.ml-cat-right {
+  padding: 14px;
+  max-height: 420px;
+  overflow: auto;
+}
+.ml-cat-right-title {
+  font-weight: 950;
+  margin-bottom: 10px;
+  color: var(--brand-white);
+}
+.ml-cat-right-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .ml-subcat {
-  text-align:left;
-  border:1px solid rgba(0,0,0,.08);
-  background:#fff;
-  padding:10px 12px;
-  border-radius:12px;
-  cursor:pointer;
-  font-weight:750;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 850;
+  color: rgba(255, 255, 255, 0.92);
 }
-.ml-subcat:hover { border-color: rgba(0,0,0,.2); }
-.ml-cat-empty { padding: 8px; }
+.ml-subcat:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(20, 136, 209, 0.55);
+}
 
-/* ✅ Mobile row2: SOLO categorías y alineado prolijo */
+.ml-cat-empty {
+  padding: 8px;
+}
+
+/* ================= MOBILE ROW2 ================= */
 .ml-mobile-row2 {
   width: 100%;
   display: flex;
   justify-content: flex-end;
 }
 
-/* Pill base */
 .ml-pill {
-  border: 1px solid rgba(0,0,0,.12);
-  background: rgba(255,255,255,.22);
-  box-shadow: 0 6px 16px rgba(0,0,0,.10);
-  backdrop-filter: blur(6px);
-  color: #111;
+  border: 1px solid var(--brand-border);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
+  backdrop-filter: blur(10px);
+  color: var(--brand-white);
   border-radius: 16px;
   padding: 10px 12px;
   display: inline-flex;
@@ -490,16 +628,26 @@ onMounted(async () => {
   gap: 8px;
 }
 
-/* Categories pill */
 .ml-cat-mobile-btn {
   cursor: pointer;
-  font-weight: 900;
+  font-weight: 950;
   font-size: 12px;
   white-space: nowrap;
 }
 
-/* Drawer base */
-.ml-drawer :deep(.v-navigation-drawer__content) { padding: 12px; }
+/* ================= DRAWERS ================= */
+.ml-drawer :deep(.v-navigation-drawer__content) {
+  padding: 12px;
+  background:
+    radial-gradient(900px 260px at 15% -10%, rgba(20, 136, 209, 0.22), transparent 60%),
+    linear-gradient(180deg, var(--brand-dark) 0%, #06172a 100%);
+  color: var(--brand-white);
+}
+
+.ml-drawer :deep(.v-list) {
+  background: transparent !important;
+}
+
 .ml-drawer-head {
   display: flex;
   align-items: center;
@@ -507,37 +655,60 @@ onMounted(async () => {
   gap: 10px;
   padding: 6px 4px 10px;
 }
-.ml-drawer-title { font-weight: 950; font-size: 16px; }
-.ml-drawer-list { padding-top: 6px; }
-.ml-drawer-foot { padding: 12px 6px 4px; }
+.ml-drawer-title {
+  font-weight: 950;
+  font-size: 16px;
+  color: var(--brand-white);
+}
 
-/* Accordion ML */
-.ml-acc { padding: 10px 6px; }
-.ml-acc-item { margin-bottom: 8px; }
+.ml-drawer-foot {
+  padding: 12px 6px 4px;
+  color: var(--brand-white-80);
+}
+
+/* Accordion */
+.ml-acc {
+  padding: 10px 6px;
+}
+.ml-acc-item {
+  margin-bottom: 8px;
+}
 .ml-acc-parent {
   width: 100%;
-  border: 0;
-  background: rgba(0,0,0,.03);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
   padding: 10px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   cursor: pointer;
-  color: #111;
+  color: var(--brand-white);
 }
-.ml-acc-parent.open { background: rgba(25,118,210,.08); }
-.ml-acc-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ml-acc-ico { opacity: .75; }
+.ml-acc-parent.open {
+  background: rgba(20, 136, 209, 0.20);
+  border-color: rgba(20, 136, 209, 0.35);
+}
+.ml-acc-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ml-acc-ico {
+  opacity: 0.9;
+}
 .ml-acc-title {
-  font-weight: 850;
+  font-weight: 900;
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ml-acc-chevron { opacity: .7; }
+.ml-acc-chevron {
+  opacity: 0.9;
+}
 .ml-acc-children {
   padding: 8px 6px 2px 34px;
   display: flex;
@@ -550,45 +721,76 @@ onMounted(async () => {
   background: transparent;
   padding: 6px 4px;
   cursor: pointer;
-  color: rgba(0,0,0,.72);
-  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 800;
   font-size: 13px;
+}
+.ml-acc-child:hover {
+  color: var(--brand-white);
 }
 .ml-acc-all {
   margin-top: 6px;
   text-align: left;
-  border: 1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
   font-weight: 950;
   font-size: 13px;
+  color: var(--brand-white);
 }
-.ml-acc-empty { padding: 10px 6px; color: rgba(0,0,0,.55); font-size: 12px; }
+.ml-acc-all:hover {
+  border-color: rgba(20, 136, 209, 0.55);
+}
+.ml-acc-empty {
+  padding: 10px 6px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+}
 
 @media (max-width: 960px) {
-  .ml-inner { flex-wrap: wrap; }
-  .ml-hint { width: 100%; margin-left: 0; }
-  .ml-cat-card { width: 92vw; }
-  .ml-cat-grid { grid-template-columns: 1fr; }
-  .ml-cat-left { border-right: 0; border-bottom: 1px solid rgba(0,0,0,.08); }
-  .ml-cat-right-items { grid-template-columns: 1fr; }
-
-  /* ✅ en mobile le damos un toque más de altura al input para que se vea “ML” */
+  .ml-inner {
+    flex-wrap: wrap;
+  }
+  .ml-hint {
+    width: 100%;
+    margin-left: 0;
+  }
+  .ml-cat-card {
+    width: 92vw;
+  }
+  .ml-cat-grid {
+    grid-template-columns: 1fr;
+  }
+  .ml-cat-left {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  }
+  .ml-cat-right-items {
+    grid-template-columns: 1fr;
+  }
   .ml-search :deep(.v-field__input) {
-    min-height: 42px;
-    padding-top: 9px;
-    padding-bottom: 9px;
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 }
 
 @media (max-width: 420px) {
-  .ml-inner { padding: 8px 10px; gap: 10px; }
-  .ml-pill { padding: 9px 10px; border-radius: 15px; }
-  .ml-icon-btn { width: 38px; height: 38px; }
-
-  /* ✅ placeholder y texto un poquito más chicos para que no “rompa” */
-  .ml-search :deep(input) { font-size: 13px; }
+  .ml-inner {
+    width: calc(100% - 20px);
+  }
+  .ml-pill {
+    padding: 9px 10px;
+    border-radius: 15px;
+  }
+  .ml-icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .ml-search :deep(input) {
+    font-size: 13px;
+  }
 }
 </style>

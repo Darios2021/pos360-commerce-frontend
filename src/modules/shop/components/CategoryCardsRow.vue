@@ -25,7 +25,7 @@
             <v-card class="cat-card" variant="flat" @click="go(c.id)">
               <div class="cat-top">
                 <div class="cat-title">{{ c.name }}</div>
-                <div class="cat-pill">Ver productos</div>
+                <div class="cat-pill"> productos</div>
               </div>
 
               <div class="cat-img">

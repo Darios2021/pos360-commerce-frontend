@@ -126,6 +126,9 @@ function dedupeCatalogItems(items) {
 
 /**
  * ✅ CATÁLOGO
+ * ✅ NUEVO (opcional):
+ *  - strict_search: 1 => el backend NO busca en description (evita “cargadores para auriculares”)
+ *  - exclude_terms: "cargador,cable,energia,usb" => el backend excluye esos matches
  */
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
@@ -139,6 +142,10 @@ export async function getCatalog(params = {}) {
     in_stock: params.in_stock ?? 1,
     page: params.page ?? 1,
     limit: params.limit ?? 24,
+
+    // ✅ NUEVO (si no vienen, cleanParams los elimina y NO afecta nada)
+    strict_search: params.strict_search ?? null,
+    exclude_terms: params.exclude_terms ?? null,
   });
 
   const r = await api.get("/catalog", { params: q });
@@ -257,7 +264,6 @@ export async function getSimilarProducts({
   }
 
   // 3) Hidrata con detalle real (name, price, images)
-  //    (si alguno falla, lo saltea)
   const hydrated = await Promise.all(
     ids.map(async (id) => {
       try {
@@ -277,7 +283,6 @@ export async function getSimilarProducts({
         ...p,
         images: imgs,
         image_url: imgs[0] || absUrl(p.image_url) || "",
-        // fallback precio para cards
         price:
           p.price ??
           (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
