@@ -3,58 +3,84 @@
   <div class="float-row">
     <div class="float-inner">
       <div class="wrap">
-        <!-- VIEWPORT: nunca deja ver media card -->
-        <div
-          ref="viewportEl"
-          class="viewport"
-          @pointerdown="onPointerDown"
-          @pointermove="onPointerMove"
-          @pointerup="onPointerUp"
-          @pointercancel="onPointerUp"
-          @pointerleave="onPointerUp"
-        >
-          <div ref="trackEl" class="track" :style="trackStyle">
-            <button
-              v-for="c in featured"
-              :key="c.key"
-              class="card"
-              type="button"
-              @click="go(c)"
-              :title="c.name"
-            >
-              <div class="head">
-                <div class="title">{{ c.name }}</div>
-              </div>
-
-              <div class="media">
+        <!-- =========================
+             MOBILE/TABLET: PEL0TITAS (ML)
+             ========================= -->
+        <div v-if="isMobile" class="bubbles" ref="bubblesEl" aria-label="Accesos rápidos">
+          <button
+            v-for="c in featured"
+            :key="c.key"
+            class="bubble"
+            type="button"
+            @click.stop="go(c)"
+            :title="c.name"
+          >
+            <span class="ring">
+              <span class="avatar">
                 <img :src="c.img" :alt="c.name" @error="onImgError" loading="lazy" />
-              </div>
-
-              <div class="body">
-                <div class="desc">Explorá subrubros y productos de {{ c.name }}.</div>
-                <span class="cta">Ver productos</span>
-              </div>
-            </button>
-          </div>
+              </span>
+            </span>
+            <span class="label">{{ c.name }}</span>
+          </button>
         </div>
 
-        <!-- Flechas -->
-        <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
-          ‹
-        </button>
-        <button
-          class="arrow right"
-          type="button"
-          aria-label="Siguiente"
-          @click="next"
-          :disabled="index >= maxIndex"
-        >
-          ›
-        </button>
+        <!-- =========================
+             DESKTOP: CARDS
+             ========================= -->
+        <div v-else class="cards-wrap">
+          <div
+            ref="viewportEl"
+            class="viewport"
+            :style="viewportStyle"
+            @pointerdown="onPointerDown"
+            @pointermove="onPointerMove"
+            @pointerup="onPointerUp"
+            @pointercancel="onPointerUp"
+            @pointerleave="onPointerUp"
+          >
+            <div ref="trackEl" class="track" :style="trackStyle">
+              <button
+                v-for="c in featured"
+                :key="c.key"
+                class="card"
+                type="button"
+                @click.stop="go(c)"
+                :title="c.name"
+              >
+                <div class="head">
+                  <div class="title">{{ c.name }}</div>
+                </div>
 
-        <!-- Dots -->
-        <div class="dots" v-if="maxIndex > 0">
-          <span v-for="i in maxIndex + 1" :key="i" class="dot" :class="{ active: i - 1 === index }" />
+                <div class="media">
+                  <img :src="c.img" :alt="c.name" @error="onImgError" loading="lazy" />
+                </div>
+
+                <div class="body">
+                  <div class="desc">Explorá subrubros y productos de {{ c.name }}.</div>
+                  <span class="cta">Ver productos</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Flechas -->
+          <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
+            ‹
+          </button>
+          <button
+            class="arrow right"
+            type="button"
+            aria-label="Siguiente"
+            @click="next"
+            :disabled="index >= maxIndex"
+          >
+            ›
+          </button>
+
+          <!-- Dots -->
+          <div class="dots" v-if="maxIndex > 0">
+            <span v-for="i in maxIndex + 1" :key="i" class="dot" :class="{ active: i - 1 === index }" />
+          </div>
         </div>
       </div>
     </div>
@@ -71,6 +97,17 @@ const props = defineProps({
 });
 
 const router = useRouter();
+
+/* =========================
+   Responsive
+   ========================= */
+const winW = ref(typeof window !== "undefined" ? window.innerWidth : 9999);
+const isMobile = computed(() => winW.value <= 900);
+
+function onWinResize() {
+  winW.value = window.innerWidth;
+  if (!isMobile.value) measure();
+}
 
 /* =========================
    Helpers
@@ -136,13 +173,14 @@ const targets = [
   { key: "telefonos", label: "TELEFONOS", img: STOCK.telefonos },
 ];
 
-/* ✅ rutas fijas */
+/* ✅ rutas fijas (si las tenés) */
 const FIXED_ROUTE = {
   parlantes: { cat: 2, sub: 25, q: "PARLANTES" },
   auriculares: { cat: 2, sub: 22 },
   microfonos: { cat: 2, sub: 26 },
   electro: { cat: 7, sub: 38 },
   camaras: { cat: 11, sub: 58 },
+  // telefonos: si sabés cat/sub, lo ponés acá, pero ya lo resolvemos por taxonomy
 };
 
 function buildFeaturedFromTaxonomy() {
@@ -153,7 +191,6 @@ function buildFeaturedFromTaxonomy() {
   return targets.map((t) => {
     const fixed = FIXED_ROUTE[t.key] || null;
 
-    // opcional: ids por si hacen falta
     const hit = findNodeDeep(space, (n) => {
       const name = norm(n?.name);
       const slug = norm(n?.slug);
@@ -175,21 +212,40 @@ function buildFeaturedFromTaxonomy() {
 
 const featured = computed(() => buildFeaturedFromTaxonomy());
 
+/* =========================
+   ✅ Navegación (FIX TELÉFONOS)
+   ========================= */
 function go(item) {
-  if (item?.fixed?.cat && item?.fixed?.sub) {
+  // 1) Si tiene ruta fija, usamos esa
+  if (item?.fixed?.cat) {
     const q = item.fixed.q;
     router.push({
       path: `/shop/c/${String(item.fixed.cat)}`,
       query: {
         branch_id: "3",
         page: "1",
-        sub: String(item.fixed.sub),
+        ...(item.fixed.sub ? { sub: String(item.fixed.sub) } : {}),
         ...(q ? { q: String(q) } : {}),
       },
     });
     return;
   }
 
+  // 2) ✅ Si la taxonomía nos dio ids, navegamos directo (esto arregla TELÉFONOS)
+  //    - si tiene parentId => es subcategoría => /shop/c/<parentId>?sub=<id>
+  //    - si no tiene parentId => es categoría raíz => /shop/c/<id>
+  if (item?.id) {
+    const catId = item.parentId || item.id;
+    const query = {
+      branch_id: "3",
+      page: "1",
+      ...(item.parentId ? { sub: String(item.id) } : {}),
+    };
+    router.push({ path: `/shop/c/${String(catId)}`, query });
+    return;
+  }
+
+  // 3) fallback de búsqueda
   router.push({ path: "/shop", query: { q: item?.name || "" } });
 }
 
@@ -199,29 +255,49 @@ function onImgError(e) {
 }
 
 /* =========================
-   Slider por pasos (sin recortes)
+   Desktop slider (cards)
    ========================= */
 const viewportEl = ref(null);
 const trackEl = ref(null);
+const bubblesEl = ref(null);
 
 const index = ref(0);
 const cardW = ref(210);
 const gap = ref(14);
+const visibleCount = ref(1);
+
+// ✅ para evitar “asomar media card”
+const viewportMaxPx = ref(null);
+const viewportStyle = computed(() => {
+  // centrado y sin “peek”
+  return viewportMaxPx.value
+    ? { maxWidth: `${viewportMaxPx.value}px`, margin: "0 auto" }
+    : { maxWidth: "100%" };
+});
 
 const maxIndex = computed(() => Math.max(0, featured.value.length - visibleCount.value));
-const visibleCount = ref(1);
 
 function measure() {
   const vp = viewportEl.value;
   if (!vp) return;
 
-  const cw = vp.clientWidth || 1;
-  // usa cardW actual según breakpoint del CSS
   const w = window.innerWidth;
-  cardW.value = w <= 900 ? 186 : w <= 1200 ? 200 : 210;
+
+  // tamaños desktop
+  cardW.value = w <= 1200 ? 200 : 210;
   gap.value = 14;
 
-  visibleCount.value = Math.max(1, Math.floor((cw + gap.value) / (cardW.value + gap.value)));
+  // cuántas cards entran en el ancho disponible
+  const available = vp.parentElement?.clientWidth || vp.clientWidth || 1;
+
+  // calculo “visibleCount” sobre el ancho disponible
+  const count = Math.max(1, Math.floor((available + gap.value) / (cardW.value + gap.value)));
+  visibleCount.value = count;
+
+  // ✅ ancho exacto del viewport para NO mostrar media card
+  const exact = count * cardW.value + (count - 1) * gap.value;
+  viewportMaxPx.value = Math.min(exact, available);
+
   if (index.value > maxIndex.value) index.value = maxIndex.value;
 }
 
@@ -238,38 +314,62 @@ function prev() {
   index.value = Math.max(0, index.value - 1);
 }
 
-/* touch/drag: arrastra pero al soltar “snapea” al paso */
+/* =========================
+   Drag FIX (no romper clicks)
+   ========================= */
 let dragging = false;
+let moved = false;
 let startX = 0;
 let startIndex = 0;
+let pointerId = null;
+const DRAG_THRESHOLD_PX = 6;
 
 function onPointerDown(e) {
+  if (e.button !== 0) return;
+
+  // ✅ si arranca sobre una card, NO hacemos drag (deja click perfecto)
+  if (e.target?.closest?.(".card")) return;
+
   dragging = true;
+  moved = false;
   startX = e.clientX;
   startIndex = index.value;
+  pointerId = e.pointerId;
+
   try {
     e.currentTarget.setPointerCapture(e.pointerId);
   } catch {}
 }
+
 function onPointerMove(e) {
   if (!dragging) return;
+
   const dx = e.clientX - startX;
+  if (!moved && Math.abs(dx) >= DRAG_THRESHOLD_PX) moved = true;
+  if (!moved) return;
+
   const step = cardW.value + gap.value;
   const delta = Math.round(-dx / step);
   const target = startIndex + delta;
   index.value = Math.max(0, Math.min(maxIndex.value, target));
 }
-function onPointerUp() {
+
+function onPointerUp(e) {
+  if (!dragging) return;
   dragging = false;
+
+  try {
+    if (pointerId != null) e.currentTarget?.releasePointerCapture?.(pointerId);
+  } catch {}
+
+  pointerId = null;
 }
 
-function onWinResize() {
-  measure();
-}
-
+/* lifecycle */
 onMounted(async () => {
   await nextTick();
-  measure();
+  index.value = 0;
+  if (!isMobile.value) measure();
   window.addEventListener("resize", onWinResize, { passive: true });
 });
 
@@ -281,49 +381,147 @@ watch(
   () => props.categories,
   async () => {
     await nextTick();
-    measure();
+    index.value = 0; // ✅ arranca siempre “bien” (no a mitad)
+    if (!isMobile.value) measure();
   },
   { deep: true }
+);
+
+watch(
+  () => isMobile.value,
+  async (m) => {
+    await nextTick();
+    index.value = 0;
+    if (!m) measure();
+  }
 );
 </script>
 
 <style scoped>
+/* ✅ Bajamos un poco en desktop para que no choque con el hero */
 .float-row {
   width: 100%;
   display: flex;
   justify-content: center;
-  pointer-events: none;
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+  margin-top: 14px;
 }
+@media (min-width: 901px) {
+  .float-row {
+    margin-top: 34px; /* más abajo en desktop */
+  }
+}
+
 .float-inner {
   width: min(var(--shop-max, 1200px), calc(100% - 24px));
   margin: 0 auto;
   pointer-events: auto;
 }
 
-/* Contenedor */
 .wrap {
   position: relative;
   width: 100%;
-  padding-bottom: 18px;
+  padding-bottom: 14px;
 }
 
-/* Viewport: NO permite asomar cards */
+/* =========================
+   MOBILE: BUBBLES
+   ========================= */
+.bubbles {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 4px 10px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+.bubbles::-webkit-scrollbar {
+  display: none;
+}
+
+.bubble {
+  flex: 0 0 auto;
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.ring {
+  width: 74px;
+  height: 74px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(20, 136, 209, 0.22), rgba(7, 28, 48, 0.14));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: #fff;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.label {
+  width: 100%;
+  text-align: center;
+  font-weight: 900;
+  font-size: 11px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* =========================
+   DESKTOP: CARDS
+   ========================= */
+.cards-wrap {
+  position: relative;
+  pointer-events: auto;
+}
+
 .viewport {
   overflow: hidden;
   border-radius: 12px;
   padding: 0 6px 10px;
   touch-action: pan-y;
+  pointer-events: auto;
 }
 
-/* Track movido por transform */
 .track {
   display: flex;
   gap: 14px;
   will-change: transform;
   transition: transform 180ms ease;
+  pointer-events: auto;
 }
 
-/* Card */
 .card {
   flex: 0 0 auto;
   width: 210px;
@@ -422,6 +620,7 @@ watch(
   line-height: 1;
   display: grid;
   place-items: center;
+  z-index: 2;
 }
 .arrow:disabled {
   opacity: 0.45;
@@ -451,16 +650,18 @@ watch(
   background: #2d6cdf;
 }
 
-/* Responsive */
+/* Breakpoints */
 @media (max-width: 1200px) {
   .card {
     width: 200px;
   }
 }
-@media (max-width: 900px) {
-  .card {
-    width: 186px;
-    height: 268px;
+
+/* Mobile label en fondos claros */
+@media (prefers-color-scheme: light) {
+  .label {
+    color: rgba(7, 28, 48, 0.92);
+    text-shadow: none;
   }
 }
 </style>
