@@ -1,6 +1,7 @@
 <!-- src/modules/shop/pages/ShopHome.vue -->
 <template>
-  <v-container fluid class="shop-page">
+  <!-- ✅ FIX: sacamos el padding 16px del v-container (era el culpable de la “línea” arriba/abajo) -->
+  <v-container fluid class="shop-page pa-0">
     <!-- ✅ HERO FULL-BLEED (100vw) -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
@@ -92,7 +93,7 @@
       </div>
     </section>
 
-    <!-- ✅ FOOTER (SIN OVERLAY) -->
+    <!-- ✅ FOOTER -->
     <ShopFooter />
   </v-container>
 </template>
@@ -319,8 +320,7 @@ async function fetchAuricularesSlider() {
 
     if (!merged.length) {
       const tries = ["auriculares", "auricular", "headphones", "headset", "earbuds", "tws"];
-      const EXCLUDE =
-        "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank";
+      const EXCLUDE = "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank";
 
       for (const term of tries) {
         try {
@@ -384,22 +384,36 @@ watch(
 </script>
 
 <style scoped>
-.shop-page {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  --shop-max: 1200px;
+/* ✅ FIX GLOBAL para que jamás asome “blanco” por márgenes/padding del layout */
+:global(html),
+:global(body) {
+  margin: 0 !important;
+  padding: 0 !important;
 }
+
+/* ✅ el root del shop NO debe tener padding (Vuetify mete 16px por defecto) */
+.shop-page {
+  --shop-max: 1200px;
+  padding: 0 !important; /* 👈 mata el gap arriba/abajo */
+  margin: 0 !important;
+}
+
+/* ✅ HERO FULL-BLEED (sin espacio contra el header) */
 .hero-fullbleed {
   width: 100vw;
   margin-left: calc(50% - 50vw);
+  margin-top: 0;
+  padding-top: 0;
   overflow: visible;
 }
+
 .hero-wrap {
   position: relative;
   width: 100%;
   overflow: visible;
   isolation: isolate;
 }
+
 .hero-float {
   position: absolute;
   left: 0;
@@ -408,25 +422,31 @@ watch(
   z-index: 999;
   pointer-events: none;
 }
+
 .hero-float :deep(.float-inner) {
   pointer-events: auto;
   width: min(var(--shop-max), calc(100% - 24px));
   margin: 0 auto;
 }
+
 .after-hero-spacer {
   height: 205px;
 }
+
+/* ✅ el padding “real” lo maneja este wrapper, no el v-container */
 .content {
   width: min(var(--shop-max), calc(100% - 24px));
   margin: 0 auto;
-  padding-bottom: 40px;
+  padding-bottom: 40px; /* espacio antes del footer, pero dentro del flujo (sin línea blanca afuera) */
 }
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
+
 .after-products-banner {
   margin-top: 18px;
 }

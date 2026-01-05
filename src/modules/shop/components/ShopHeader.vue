@@ -1,14 +1,14 @@
 <!-- src/modules/shop/components/ShopHeader.vue -->
 <template>
   <header class="ml-header">
-    <!-- ================= TOP (ML main row) ================= -->
-    <div class="ml-top">
-      <div class="ml-inner">
-        <!-- ✅ SOLO LOGO (sin título) -->
-        <router-link to="/shop" class="ml-logo" aria-label="POS360 Store">
-          <v-avatar size="34" class="ml-logo-avatar">
+    <!-- ================= ROW 1 (TOP): brand + search + user actions ================= -->
+    <div class="ml-row ml-row-top">
+      <div class="ml-container ml-top-grid">
+        <router-link to="/shop" class="ml-brand" aria-label="San Juan Tecnología">
+          <v-avatar size="34" class="ml-brand-ico">
             <v-icon size="18">mdi-storefront</v-icon>
           </v-avatar>
+          <span class="ml-brand-text">San Juan Tecnología</span>
         </router-link>
 
         <div class="ml-search">
@@ -19,25 +19,32 @@
           />
         </div>
 
-        <!-- DESKTOP actions -->
-        <nav v-if="!isMobile" class="ml-actions">
-          <router-link class="ml-link" to="/shop">Inicio</router-link>
-          <router-link class="ml-link" to="/auth/login">Ingresá</router-link>
-          <router-link class="ml-cart" to="/shop/cart" :title="`Carrito (${cart.count})`">
+        <!-- RIGHT (desktop): Ingresá / Mis compras / Carrito -->
+        <div v-if="!isMobile" class="ml-top-actions">
+          <router-link class="ml-top-link" to="/auth/login">
+            <v-icon size="18" class="ml-top-ico">mdi-account-outline</v-icon>
+            <span>Ingresá</span>
+          </router-link>
+
+          <router-link class="ml-top-link" to="/shop">
+            Mis compras
+          </router-link>
+
+          <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22">mdi-cart-outline</v-icon>
             </v-badge>
             <v-icon v-else size="22">mdi-cart-outline</v-icon>
           </router-link>
-        </nav>
+        </div>
 
-        <!-- MOBILE actions -->
-        <div v-else class="ml-actions-mobile">
+        <!-- RIGHT (mobile): menu + carrito -->
+        <div v-else class="ml-top-actions">
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
             <v-icon size="22">mdi-menu</v-icon>
           </v-btn>
 
-          <router-link class="ml-cart" to="/shop/cart" :title="`Carrito (${cart.count})`">
+          <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22">mdi-cart-outline</v-icon>
             </v-badge>
@@ -47,96 +54,102 @@
       </div>
     </div>
 
-    <!-- ================= BOTTOM ================= -->
-    <div class="ml-bottom">
-      <div class="ml-inner ml-inner-bottom">
-        <!-- DESKTOP: mega menú categorías -->
-        <v-menu
-          v-if="!isMobile"
-          v-model="menu"
-          location="bottom start"
-          :close-on-content-click="false"
-          open-on-hover
-          offset="8"
-        >
-          <template #activator="{ props }">
-            <button class="ml-cat-btn" v-bind="props" type="button">
-              Categorías
-              <v-icon size="18" class="ml-cat-icon">mdi-chevron-down</v-icon>
-            </button>
-          </template>
+    <!-- ================= ROW 2 (BOTTOM): categorías + nav (sin userbar) ================= -->
+    <div class="ml-row ml-row-bottom">
+      <div class="ml-container ml-bottom-grid">
+        <!-- Desktop: ubicación opcional (si no la querés, borrá este bloque) -->
+        <button v-if="!isMobile" class="ml-loc" type="button">
+          <v-icon size="16" class="ml-loc-ico">mdi-map-marker-outline</v-icon>
+          <span class="ml-loc-text">
+            <span class="ml-loc-top">Enviar a</span>
+            <span class="ml-loc-bottom">San Juan</span>
+          </span>
+        </button>
 
-          <v-card class="ml-cat-card" elevation="10" rounded="xl">
-            <div class="ml-cat-grid">
-              <!-- Left: rubros (padres) -->
-              <v-list density="comfortable" class="ml-cat-left">
-                <v-list-item
-                  v-for="c in parents"
-                  :key="c.id"
-                  :active="hoverParentId === c.id"
-                  @mouseenter="hoverParentId = c.id"
-                  @click="pickParent(c)"
-                >
-                  <v-list-item-title>{{ c.name }}</v-list-item-title>
-                  <template #append>
-                    <v-icon size="18" v-if="(childrenByParent[c.id] || []).length">
-                      mdi-chevron-right
-                    </v-icon>
-                  </template>
-                </v-list-item>
-              </v-list>
+        <!-- Desktop nav -->
+        <nav v-if="!isMobile" class="ml-nav">
+          <!-- Categorías + mega menú -->
+          <v-menu
+            v-model="menu"
+            location="bottom start"
+            :close-on-content-click="false"
+            open-on-hover
+            offset="10"
+          >
+            <template #activator="{ props }">
+              <button class="ml-nav-link ml-nav-cats" v-bind="props" type="button">
+                Categorías
+                <v-icon size="16" class="ml-nav-chevron">mdi-chevron-down</v-icon>
+              </button>
+            </template>
 
-              <!-- Right: subrubros (hijos) -->
-              <div class="ml-cat-right">
-                <div class="ml-cat-right-title">
-                  {{ hoverParent?.name || "Elegí una categoría" }}
-                </div>
-
-                <div class="ml-cat-right-items" v-if="hoverChildren.length">
-                  <button
-                    class="ml-subcat"
-                    v-for="s in hoverChildren"
-                    :key="s.id"
-                    type="button"
-                    @click="pickChild(s)"
+            <v-card class="ml-cat-card" elevation="10" rounded="xl">
+              <div class="ml-cat-grid">
+                <v-list density="comfortable" class="ml-cat-left">
+                  <v-list-item
+                    v-for="c in parents"
+                    :key="c.id"
+                    :active="hoverParentId === c.id"
+                    @mouseenter="hoverParentId = c.id"
+                    @click="pickParent(c)"
                   >
-                    {{ s.name }}
-                  </button>
-                </div>
+                    <v-list-item-title>{{ c.name }}</v-list-item-title>
+                    <template #append>
+                      <v-icon size="18" v-if="(childrenByParent[c.id] || []).length">mdi-chevron-right</v-icon>
+                    </template>
+                  </v-list-item>
+                </v-list>
 
-                <div class="ml-cat-empty" v-else>
-                  <div class="text-caption text-medium-emphasis">
-                    No hay subcategorías para este rubro.
+                <div class="ml-cat-right">
+                  <div class="ml-cat-right-title">
+                    {{ hoverParent?.name || "Elegí una categoría" }}
+                  </div>
+
+                  <div class="ml-cat-right-items" v-if="hoverChildren.length">
+                    <button
+                      class="ml-subcat"
+                      v-for="s in hoverChildren"
+                      :key="s.id"
+                      type="button"
+                      @click="pickChild(s)"
+                    >
+                      {{ s.name }}
+                    </button>
+                  </div>
+
+                  <div class="ml-cat-empty" v-else>
+                    <div class="text-caption text-medium-emphasis">
+                      No hay subcategorías para este rubro.
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </v-card>
-        </v-menu>
+            </v-card>
+          </v-menu>
 
-        <!-- ✅ MOBILE: SOLO "Categorías" (sin "Enviar a") -->
+          <router-link class="ml-nav-link" to="/shop">Ofertas</router-link>
+          <router-link class="ml-nav-link" to="/shop">Cupones</router-link>
+          <router-link class="ml-nav-link" to="/shop">Supermercado</router-link>
+          <router-link class="ml-nav-link" to="/shop">Moda</router-link>
+          <router-link class="ml-nav-link" to="/shop">Ayuda</router-link>
+        </nav>
+
+        <!-- Mobile row2 -->
         <div v-else class="ml-mobile-row2">
           <button class="ml-pill ml-cat-mobile-btn" type="button" @click="mobileCats = true">
             <span>Categorías</span>
             <v-icon size="16">mdi-chevron-down</v-icon>
           </button>
-        </div>
 
-        <!-- Hint desktop -->
-        <div v-if="!isMobile" class="ml-hint">
-          Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
+          <div class="ml-hint-mobile">
+            Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
+          </div>
         </div>
       </div>
     </div>
 
     <!-- ================= MOBILE DRAWER (menú general) ================= -->
-    <v-navigation-drawer
-      v-model="mobileDrawer"
-      location="right"
-      temporary
-      width="320"
-      class="ml-drawer"
-    >
+    <v-navigation-drawer v-model="mobileDrawer" location="right" temporary width="320" class="ml-drawer">
       <div class="ml-drawer-head">
         <div class="ml-drawer-title">Menú</div>
         <v-btn icon variant="text" @click="mobileDrawer = false" aria-label="Cerrar">
@@ -160,14 +173,8 @@
       </div>
     </v-navigation-drawer>
 
-    <!-- ================= MOBILE CATEGORIES (Accordion ML REAL) ================= -->
-    <v-navigation-drawer
-      v-model="mobileCats"
-      location="left"
-      temporary
-      width="320"
-      class="ml-drawer"
-    >
+    <!-- ================= MOBILE CATEGORIES (Accordion) ================= -->
+    <v-navigation-drawer v-model="mobileCats" location="left" temporary width="320" class="ml-drawer">
       <div class="ml-drawer-head">
         <div class="ml-drawer-title">Categorías</div>
         <v-btn icon variant="text" @click="mobileCats = false" aria-label="Cerrar">
@@ -242,7 +249,6 @@ const { smAndDown } = useDisplay();
 const isMobile = computed(() => !!smAndDown.value);
 
 const menu = ref(false);
-
 const mobileDrawer = ref(false);
 const mobileCats = ref(false);
 
@@ -282,9 +288,6 @@ const hoverChildren = computed(() =>
   (childrenByParent.value[hoverParentId.value] || []).filter((x) => Number(x.is_active ?? 1) === 1)
 );
 
-/* ======================
-   Desktop navigation
-   ====================== */
 function pickParent(c) {
   const nq = { ...route.query };
   delete nq.sub;
@@ -304,17 +307,13 @@ function pickChild(s) {
   menu.value = false;
 }
 
-/* ======================
-   Mobile navigation
-   ====================== */
 function openCatsFromMenu() {
   mobileDrawer.value = false;
   mobileCats.value = true;
 }
 
-/* ✅ Accordion state (solo uno abierto) */
+/* accordion */
 const openParentId = ref(null);
-
 function toggleParent(p) {
   const id = Number(p?.id || 0);
   if (!id) return;
@@ -325,7 +324,6 @@ async function pickParentMobile(p) {
   const nq = { ...route.query };
   delete nq.sub;
   delete nq.page;
-
   await router.push({ name: "shopCategory", params: { id: p.id }, query: nq });
   mobileCats.value = false;
 }
@@ -343,7 +341,6 @@ async function pickChildMobile(s) {
 
 onMounted(async () => {
   allCats.value = await getPublicCategoriesAll();
-
   const first = parents.value[0];
   if (first) {
     hoverParentId.value = first.id;
@@ -353,210 +350,245 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* =========================
-   BRAND TOKENS
-   ========================= */
 .ml-header {
-  --brand-primary: #1488d1;
-  --brand-dark: #071c30;
-  --brand-white: #ffffff;
-  --brand-white-80: rgba(255, 255, 255, 0.8);
-  --brand-white-65: rgba(255, 255, 255, 0.65);
-  --brand-border: rgba(255, 255, 255, 0.12);
+  --ml-blue: #1488d1;
+  --ml-white: #ffffff;
+  --ml-white-80: rgba(255, 255, 255, 0.8);
+  --ml-white-65: rgba(255, 255, 255, 0.65);
 
-  width: 100%;
   position: sticky;
   top: 0;
   z-index: 60;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+
+  background: var(--ml-blue);
+
+  /* ✅ importante: sin borde inferior (hairline) */
+  border-bottom: 0 !important;
+
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 
-/* fondo con acento */
-.ml-top,
-.ml-bottom {
-  background:
-    radial-gradient(900px 220px at 15% -10%, rgba(20, 136, 209, 0.38), transparent 60%),
-    radial-gradient(700px 220px at 85% 0%, rgba(20, 136, 209, 0.18), transparent 55%),
-    linear-gradient(180deg, var(--brand-dark) 0%, #06172a 100%);
-  color: var(--brand-white);
+.ml-row {
+  background: var(--ml-blue);
+  color: var(--ml-white);
 }
 
-.ml-bottom {
-  padding-bottom: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+/* ✅ sacamos el borde que estabas metiendo acá */
+.ml-row-top {
+  border-bottom: 0 !important;
 }
 
-/* ancho alineado con shop */
-.ml-inner {
+.ml-row-bottom {
+  /* ✅ sin padding inferior que deja “corte” visual */
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* contenedor */
+.ml-container {
   width: min(var(--shop-max, 1200px), calc(100% - 24px));
   margin: 0 auto;
-  padding: 10px 0;
-  display: flex;
+  display: grid;
   align-items: center;
   gap: 12px;
 }
 
-.ml-inner-bottom {
-  padding-top: 8px;
-  padding-bottom: 10px;
+/* grids */
+.ml-top-grid {
+  grid-template-columns: auto 1fr auto;
+  padding: 10px 0;
 }
 
-/* LOGO */
-.ml-logo {
+.ml-bottom-grid {
+  grid-template-columns: auto 1fr;
+  padding: 6px 0;
+}
+
+/* brand */
+.ml-brand {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   text-decoration: none;
-  flex: 0 0 auto;
-}
-
-.ml-logo-avatar {
-  background: rgba(20, 136, 209, 0.18) !important;
-  border: 1px solid rgba(20, 136, 209, 0.45) !important;
-  color: var(--brand-white) !important;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
-}
-.ml-logo-avatar :deep(.v-icon) {
-  color: var(--brand-white) !important;
-}
-
-/* ================= SEARCH ================= */
-.ml-search {
-  flex: 1;
+  color: var(--ml-white);
   min-width: 0;
-  display: flex;
 }
 
-.ml-search :deep(.v-field),
-.ml-search :deep(.v-text-field),
-.ml-search :deep(.v-input) {
-  width: 100%;
+.ml-brand-ico {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+}
+.ml-brand-ico :deep(.v-icon) {
+  color: var(--ml-white) !important;
+}
+
+.ml-brand-text {
+  font-weight: 1000;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* search */
+.ml-search {
+  min-width: 0;
 }
 
 .ml-search :deep(.v-field) {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--brand-border);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-}
-
-.ml-search :deep(.v-field__outline) {
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
 }
 
 .ml-search :deep(input) {
-  color: var(--brand-white);
-  font-size: 14px;
-  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.78);
 }
-
 .ml-search :deep(input::placeholder) {
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(0, 0, 0, 0.45);
   opacity: 1;
 }
-
 .ml-search :deep(.v-field__input) {
-  min-height: 42px;
-  padding-top: 9px;
-  padding-bottom: 9px;
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
-
 .ml-search :deep(.v-field__prepend-inner),
 .ml-search :deep(.v-field__append-inner) {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(0, 0, 0, 0.55);
 }
 
-/* ================= ACTIONS ================= */
-.ml-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.ml-actions-mobile {
+/* top actions */
+.ml-top-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 14px;
 }
 
-.ml-link {
-  color: var(--brand-white);
-  text-decoration: none;
-  font-weight: 850;
-  font-size: 13px;
-  opacity: 0.92;
-  transition: opacity 0.15s ease, color 0.15s ease;
-}
-.ml-link:hover {
-  opacity: 1;
-  text-decoration: underline;
-}
-
-.ml-cart {
-  color: var(--brand-white);
+.ml-top-link {
   display: inline-flex;
   align-items: center;
-  opacity: 0.92;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 850;
+  padding: 8px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
-.ml-cart:hover {
+.ml-top-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  opacity: 1;
+}
+
+.ml-top-ico {
+  color: #fff;
+  opacity: 0.95;
+}
+
+.ml-top-icon {
+  color: #fff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.95;
+}
+.ml-top-icon :deep(.v-icon) {
+  color: #fff !important;
+}
+.ml-top-icon:hover {
   opacity: 1;
 }
 
 .ml-icon-btn {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 14px;
-  width: 40px;
-  height: 40px;
-  color: var(--brand-white);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--brand-border);
-}
-.ml-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.10);
 }
 
-/* ================= BOTTOM ROW ================= */
-.ml-cat-btn {
-  border: 1px solid var(--brand-border);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--brand-white);
-  font-weight: 950;
-  cursor: pointer;
+/* bottom: location */
+.ml-loc {
+  border: 0;
+  background: transparent;
+  color: #fff;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  cursor: pointer;
 }
-.ml-cat-btn:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(20, 136, 209, 0.45);
-}
-.ml-cat-icon {
-  color: rgba(255, 255, 255, 0.9);
+.ml-loc:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.ml-hint {
+.ml-loc-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.ml-loc-top {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.80);
+}
+.ml-loc-bottom {
   font-size: 12px;
-  color: var(--brand-white-65);
-  margin-left: auto;
+  font-weight: 950;
 }
 
-/* ================= MEGA MENU ================= */
+/* nav */
+.ml-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ml-nav-link {
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+.ml-nav-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ml-nav-cats {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.ml-nav-chevron {
+  opacity: 0.95;
+  color: #fff;
+}
+
+/* mega menu */
 .ml-cat-card {
-  width: 720px;
-  background:
-    radial-gradient(900px 260px at 15% -10%, rgba(20, 136, 209, 0.22), transparent 60%),
-    linear-gradient(180deg, #0a233b 0%, #06172a 100%) !important;
-  color: var(--brand-white);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  width: 740px;
+  background: #fff !important;
+  color: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .ml-cat-grid {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 310px 1fr;
 }
 
 .ml-cat-left {
-  border-right: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
   max-height: 420px;
   overflow: auto;
   background: transparent !important;
@@ -566,11 +598,11 @@ onMounted(async () => {
   margin: 3px 6px;
 }
 .ml-cat-left :deep(.v-list-item--active) {
-  background: rgba(20, 136, 209, 0.20) !important;
+  background: rgba(20, 136, 209, 0.12) !important;
 }
 .ml-cat-left :deep(.v-list-item-title) {
-  font-weight: 850;
-  color: var(--brand-white);
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.78);
 }
 
 .ml-cat-right {
@@ -581,73 +613,70 @@ onMounted(async () => {
 .ml-cat-right-title {
   font-weight: 950;
   margin-bottom: 10px;
-  color: var(--brand-white);
 }
 .ml-cat-right-items {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-
 .ml-subcat {
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(0, 0, 0, 0.02);
   padding: 10px 12px;
   border-radius: 14px;
   cursor: pointer;
   font-weight: 850;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(0, 0, 0, 0.72);
 }
 .ml-subcat:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(20, 136, 209, 0.55);
+  background: rgba(20, 136, 209, 0.10);
+  border-color: rgba(20, 136, 209, 0.45);
 }
-
 .ml-cat-empty {
   padding: 8px;
 }
 
-/* ================= MOBILE ROW2 ================= */
+/* mobile row2 */
 .ml-mobile-row2 {
-  width: 100%;
+  grid-column: 1 / -1;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
 }
 
 .ml-pill {
-  border: 1px solid var(--brand-border);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
-  backdrop-filter: blur(10px);
-  color: var(--brand-white);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
   border-radius: 16px;
   padding: 10px 12px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-
-.ml-cat-mobile-btn {
-  cursor: pointer;
   font-weight: 950;
   font-size: 12px;
-  white-space: nowrap;
 }
 
-/* ================= DRAWERS ================= */
+.ml-hint-mobile {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: right;
+  line-height: 1.15;
+  max-width: 55%;
+}
+
+/* drawers */
 .ml-drawer :deep(.v-navigation-drawer__content) {
   padding: 12px;
-  background:
-    radial-gradient(900px 260px at 15% -10%, rgba(20, 136, 209, 0.22), transparent 60%),
-    linear-gradient(180deg, var(--brand-dark) 0%, #06172a 100%);
-  color: var(--brand-white);
+  background: var(--ml-blue);
+  color: #fff;
 }
-
 .ml-drawer :deep(.v-list) {
   background: transparent !important;
 }
-
 .ml-drawer-head {
   display: flex;
   align-items: center;
@@ -658,15 +687,14 @@ onMounted(async () => {
 .ml-drawer-title {
   font-weight: 950;
   font-size: 16px;
-  color: var(--brand-white);
+  color: #fff;
 }
-
 .ml-drawer-foot {
   padding: 12px 6px 4px;
-  color: var(--brand-white-80);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* Accordion */
+/* accordion */
 .ml-acc {
   padding: 10px 6px;
 }
@@ -675,8 +703,8 @@ onMounted(async () => {
 }
 .ml-acc-parent {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   padding: 10px 10px;
   display: flex;
@@ -684,11 +712,10 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 10px;
   cursor: pointer;
-  color: var(--brand-white);
+  color: #fff;
 }
 .ml-acc-parent.open {
-  background: rgba(20, 136, 209, 0.20);
-  border-color: rgba(20, 136, 209, 0.35);
+  background: rgba(255, 255, 255, 0.22);
 }
 .ml-acc-left {
   display: flex;
@@ -696,18 +723,12 @@ onMounted(async () => {
   gap: 10px;
   min-width: 0;
 }
-.ml-acc-ico {
-  opacity: 0.9;
-}
 .ml-acc-title {
   font-weight: 900;
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.ml-acc-chevron {
-  opacity: 0.9;
 }
 .ml-acc-children {
   padding: 8px 6px 2px 34px;
@@ -721,41 +742,34 @@ onMounted(async () => {
   background: transparent;
   padding: 6px 4px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.92);
   font-weight: 800;
   font-size: 13px;
 }
 .ml-acc-child:hover {
-  color: var(--brand-white);
+  text-decoration: underline;
 }
 .ml-acc-all {
   margin-top: 6px;
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.16);
   padding: 10px 12px;
   border-radius: 14px;
   cursor: pointer;
   font-weight: 950;
   font-size: 13px;
-  color: var(--brand-white);
-}
-.ml-acc-all:hover {
-  border-color: rgba(20, 136, 209, 0.55);
+  color: #fff;
 }
 .ml-acc-empty {
   padding: 10px 6px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.80);
   font-size: 12px;
 }
 
 @media (max-width: 960px) {
-  .ml-inner {
-    flex-wrap: wrap;
-  }
-  .ml-hint {
-    width: 100%;
-    margin-left: 0;
+  .ml-bottom-grid {
+    grid-template-columns: 1fr;
   }
   .ml-cat-card {
     width: 92vw;
@@ -765,32 +779,13 @@ onMounted(async () => {
   }
   .ml-cat-left {
     border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
   .ml-cat-right-items {
     grid-template-columns: 1fr;
   }
-  .ml-search :deep(.v-field__input) {
-    min-height: 44px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
-}
-
-@media (max-width: 420px) {
-  .ml-inner {
-    width: calc(100% - 20px);
-  }
-  .ml-pill {
-    padding: 9px 10px;
-    border-radius: 15px;
-  }
-  .ml-icon-btn {
-    width: 38px;
-    height: 38px;
-  }
-  .ml-search :deep(input) {
-    font-size: 13px;
+  .ml-brand-text {
+    max-width: 180px;
   }
 }
 </style>

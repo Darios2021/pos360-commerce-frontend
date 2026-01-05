@@ -135,32 +135,42 @@ function toTop() {
 </script>
 
 <style scoped>
+/* ✅ FIX REAL: el 1px blanco viene del fondo global (html/body/vuetify app) */
+:global(html),
+:global(body) {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #1488d1 !important; /* mismo color del header/footer */
+}
+
+:global(#app),
+:global(.v-application),
+:global(.v-application__wrap) {
+  background: #1488d1 !important;
+}
+
+/* ✅ footer alineado con el header */
 .shop-footer {
-  --brand-primary: #1488d1;
-  --brand-dark: #071c30;
-  --brand-white: #ffffff;
-  --brand-white-80: rgba(255, 255, 255, 0.8);
-  --brand-white-65: rgba(255, 255, 255, 0.65);
-  --brand-border: rgba(255, 255, 255, 0.12);
+  --ml-blue: #1488d1;
+  --ml-white: #ffffff;
+  --ml-border: rgba(255, 255, 255, 0.14);
 
   position: relative;
   z-index: 1;
   width: 100%;
-  color: var(--brand-white);
-  background:
-    radial-gradient(1200px 420px at 12% -10%, rgba(20, 136, 209, 0.38), transparent 60%),
-    radial-gradient(900px 380px at 88% 0%, rgba(20, 136, 209, 0.16), transparent 55%),
-    linear-gradient(180deg, var(--brand-dark) 0%, #06172a 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--ml-white);
+  background: var(--ml-blue) !important;
+  border-top: 1px solid var(--ml-border);
   overflow: hidden;
 }
 
+/* glow superior */
 .footer-top-glow {
   position: absolute;
   inset: -2px 0 auto 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(20, 136, 209, 0.95), transparent);
-  opacity: 0.85;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  opacity: 0.6;
 }
 
 .footer-inner {
@@ -170,44 +180,46 @@ function toTop() {
   padding-right: 0;
 }
 
+/* brand */
 .brand-badge {
-  background: rgba(20, 136, 209, 0.18) !important;
-  border: 1px solid rgba(20, 136, 209, 0.45) !important;
-  color: var(--brand-white) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #fff !important;
 }
 
 .brand-title {
-  font-weight: 900;
+  font-weight: 1000;
   letter-spacing: 0.2px;
   font-size: 1.12rem;
 }
-
 .brand-subtitle {
-  opacity: 0.82;
+  opacity: 0.9;
   font-size: 0.85rem;
 }
-
 .brand-desc {
-  opacity: 0.88;
+  opacity: 0.92;
   font-size: 0.92rem;
   line-height: 1.45;
   max-width: 460px;
 }
 
+/* pills */
 .pill {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid var(--brand-border) !important;
-  color: var(--brand-white) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
 }
 
+/* sections */
 .section-title {
-  font-weight: 850;
+  font-weight: 950;
   font-size: 0.92rem;
   letter-spacing: 0.2px;
   margin-bottom: 12px;
-  color: var(--brand-white);
+  color: #fff;
 }
 
+/* links */
 .footer-list {
   list-style: none;
   padding: 0;
@@ -219,63 +231,73 @@ function toTop() {
 .footer-list a {
   cursor: pointer;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.86);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.92rem;
-  transition: color 0.15s ease, transform 0.15s ease;
+  transition: color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  opacity: 0.92;
 }
 .footer-list a:hover {
-  color: var(--brand-white);
+  color: #fff;
+  opacity: 1;
   transform: translateX(2px);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
+/* contact */
 .contact {
   display: flex;
   align-items: center;
   gap: 10px;
-  opacity: 0.9;
+  opacity: 0.92;
   font-size: 0.92rem;
   margin-bottom: 10px;
 }
 
+/* payments */
 .pay-chip {
   display: inline-flex;
   align-items: center;
   height: 30px;
   padding: 0 10px;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 0.78rem;
   letter-spacing: 0.2px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--brand-border);
-  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
 }
 
+/* divider */
 .divider {
   height: 1px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.14);
 }
 
+/* bottom */
 .bottom {
-  opacity: 0.92;
+  opacity: 0.94;
 }
 .copy {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.86rem;
 }
 
+/* socials */
 .social {
-  color: rgba(255, 255, 255, 0.78) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 .social:hover {
-  color: var(--brand-white) !important;
+  color: #fff !important;
 }
 
+/* to top */
 .to-top {
-  background: rgba(20, 136, 209, 0.18) !important;
-  border: 1px solid rgba(20, 136, 209, 0.35) !important;
-  color: var(--brand-white) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
 }
 
 @media (max-width: 600px) {
