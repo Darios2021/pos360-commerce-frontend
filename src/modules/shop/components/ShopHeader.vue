@@ -1,16 +1,19 @@
 <!-- src/modules/shop/components/ShopHeader.vue -->
 <template>
   <header class="ml-header">
-    <!-- ================= ROW 1 (TOP): brand + search + user actions ================= -->
+    <!-- ================= ROW 1 (TOP): brand + search + actions ================= -->
     <div class="ml-row ml-row-top">
-      <div class="ml-container ml-top-grid">
+      <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" aria-label="San Juan Tecnología">
           <v-avatar size="34" class="ml-brand-ico">
             <v-icon size="18">mdi-storefront</v-icon>
           </v-avatar>
-          <span class="ml-brand-text">San Juan Tecnología</span>
+
+          <!-- ✅ En mobile ocultamos el texto para que el buscador NO quede anulado -->
+          <span v-if="!isMobile" class="ml-brand-text">San Juan Tecnología</span>
         </router-link>
 
+        <!-- ✅ Buscador “protagonista” (en mobile ocupa el espacio real) -->
         <div class="ml-search">
           <ShopSearchBox
             :branchId="branchId"
@@ -26,9 +29,7 @@
             <span>Ingresá</span>
           </router-link>
 
-          <router-link class="ml-top-link" to="/shop">
-            Mis compras
-          </router-link>
+          <router-link class="ml-top-link" to="/shop">Mis compras</router-link>
 
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -38,9 +39,15 @@
           </router-link>
         </div>
 
-        <!-- RIGHT (mobile): menu + carrito -->
-        <div v-else class="ml-top-actions">
-          <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
+        <!-- RIGHT (mobile): menu + carrito (compactos para no comer al search) -->
+        <div v-else class="ml-top-actions ml-top-actions-mobile">
+          <v-btn
+            icon
+            variant="text"
+            class="ml-icon-btn"
+            @click="mobileDrawer = true"
+            aria-label="Menú"
+          >
             <v-icon size="22">mdi-menu</v-icon>
           </v-btn>
 
@@ -54,10 +61,10 @@
       </div>
     </div>
 
-    <!-- ================= ROW 2 (BOTTOM): categorías + nav (sin userbar) ================= -->
+    <!-- ================= ROW 2 (BOTTOM): desktop nav / mobile “ML-like” ================= -->
     <div class="ml-row ml-row-bottom">
-      <div class="ml-container ml-bottom-grid">
-        <!-- Desktop: ubicación opcional (si no la querés, borrá este bloque) -->
+      <div class="ml-container ml-bottom-grid" :class="{ 'is-mobile': isMobile }">
+        <!-- Desktop: ubicación opcional -->
         <button v-if="!isMobile" class="ml-loc" type="button">
           <v-icon size="16" class="ml-loc-ico">mdi-map-marker-outline</v-icon>
           <span class="ml-loc-text">
@@ -68,7 +75,6 @@
 
         <!-- Desktop nav -->
         <nav v-if="!isMobile" class="ml-nav">
-          <!-- Categorías + mega menú -->
           <v-menu
             v-model="menu"
             location="bottom start"
@@ -134,15 +140,19 @@
           <router-link class="ml-nav-link" to="/shop">Ayuda</router-link>
         </nav>
 
-        <!-- Mobile row2 -->
-        <div v-else class="ml-mobile-row2">
-          <button class="ml-pill ml-cat-mobile-btn" type="button" @click="mobileCats = true">
-            <span>Categorías</span>
-            <v-icon size="16">mdi-chevron-down</v-icon>
-          </button>
+        <!-- ✅ Mobile: estilo ML (location bar + categorías) -->
+        <div v-else class="ml-mobile-stack">
+      
 
-          <div class="ml-hint-mobile">
-            Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
+          <div class="ml-mobile-row2">
+            <button class="ml-pill ml-cat-mobile-btn" type="button" @click="mobileCats = true">
+              <span>Categorías</span>
+              <v-icon size="16">mdi-chevron-down</v-icon>
+            </button>
+
+            <div class="ml-hint-mobile">
+              Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
+            </div>
           </div>
         </div>
       </div>
@@ -359,12 +369,7 @@ onMounted(async () => {
   position: sticky;
   top: 0;
   z-index: 60;
-
   background: var(--ml-blue);
-
-  /* ✅ importante: sin borde inferior (hairline) */
-  border-bottom: 0 !important;
-
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 
@@ -372,19 +377,13 @@ onMounted(async () => {
   background: var(--ml-blue);
   color: var(--ml-white);
 }
-
-/* ✅ sacamos el borde que estabas metiendo acá */
 .ml-row-top {
-  border-bottom: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
-
 .ml-row-bottom {
-  /* ✅ sin padding inferior que deja “corte” visual */
-  padding-bottom: 0 !important;
-  margin-bottom: 0 !important;
+  padding-bottom: 8px;
 }
 
-/* contenedor */
 .ml-container {
   width: min(var(--shop-max, 1200px), calc(100% - 24px));
   margin: 0 auto;
@@ -399,9 +398,19 @@ onMounted(async () => {
   padding: 10px 0;
 }
 
+/* ✅ mobile: damos prioridad al search */
+.ml-top-grid.is-mobile {
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  padding: 10px 0;
+}
+
 .ml-bottom-grid {
   grid-template-columns: auto 1fr;
   padding: 6px 0;
+}
+.ml-bottom-grid.is-mobile {
+  grid-template-columns: 1fr;
 }
 
 /* brand */
@@ -413,7 +422,6 @@ onMounted(async () => {
   color: var(--ml-white);
   min-width: 0;
 }
-
 .ml-brand-ico {
   background: rgba(255, 255, 255, 0.16) !important;
   border: 1px solid rgba(255, 255, 255, 0.22) !important;
@@ -421,7 +429,6 @@ onMounted(async () => {
 .ml-brand-ico :deep(.v-icon) {
   color: var(--ml-white) !important;
 }
-
 .ml-brand-text {
   font-weight: 1000;
   letter-spacing: 0.2px;
@@ -435,14 +442,18 @@ onMounted(async () => {
 .ml-search {
   min-width: 0;
 }
-
 .ml-search :deep(.v-field) {
-  background: rgba(255, 255, 255, 0.94);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 18px;
+  border-radius: 999px;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
 }
-
+.ml-search :deep(.v-field__input) {
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
 .ml-search :deep(input) {
   color: rgba(0, 0, 0, 0.78);
 }
@@ -450,21 +461,19 @@ onMounted(async () => {
   color: rgba(0, 0, 0, 0.45);
   opacity: 1;
 }
-.ml-search :deep(.v-field__input) {
-  min-height: 44px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
 .ml-search :deep(.v-field__prepend-inner),
 .ml-search :deep(.v-field__append-inner) {
   color: rgba(0, 0, 0, 0.55);
 }
 
-/* top actions */
+/* actions */
 .ml-top-actions {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+.ml-top-actions-mobile {
+  gap: 8px;
 }
 
 .ml-top-link {
@@ -484,12 +493,10 @@ onMounted(async () => {
   text-underline-offset: 4px;
   opacity: 1;
 }
-
 .ml-top-ico {
   color: #fff;
   opacity: 0.95;
 }
-
 .ml-top-icon {
   color: #fff;
   text-decoration: none;
@@ -511,7 +518,7 @@ onMounted(async () => {
   border-radius: 14px;
 }
 
-/* bottom: location */
+/* bottom: desktop location */
 .ml-loc {
   border: 0;
   background: transparent;
@@ -526,7 +533,6 @@ onMounted(async () => {
 .ml-loc:hover {
   background: rgba(255, 255, 255, 0.12);
 }
-
 .ml-loc-text {
   display: flex;
   flex-direction: column;
@@ -548,7 +554,6 @@ onMounted(async () => {
   gap: 14px;
   min-width: 0;
 }
-
 .ml-nav-link {
   color: rgba(255, 255, 255, 0.92);
   text-decoration: none;
@@ -564,7 +569,6 @@ onMounted(async () => {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-
 .ml-nav-cats {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -581,12 +585,10 @@ onMounted(async () => {
   color: rgba(0, 0, 0, 0.78);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
-
 .ml-cat-grid {
   display: grid;
   grid-template-columns: 310px 1fr;
 }
-
 .ml-cat-left {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   max-height: 420px;
@@ -604,7 +606,6 @@ onMounted(async () => {
   font-weight: 900;
   color: rgba(0, 0, 0, 0.78);
 }
-
 .ml-cat-right {
   padding: 14px;
   max-height: 420px;
@@ -637,16 +638,55 @@ onMounted(async () => {
   padding: 8px;
 }
 
-/* mobile row2 */
-.ml-mobile-row2 {
-  grid-column: 1 / -1;
+/* ✅ mobile stack */
+.ml-mobile-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ml-mobile-loc {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 14px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 2px;
+  cursor: pointer;
+}
+.ml-mobile-loc-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ml-mobile-loc-text {
+  font-weight: 850;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+.ml-mobile-loc-ico {
+  opacity: 0.95;
+}
+.ml-mobile-loc-arrow {
+  opacity: 0.9;
 }
 
+/* mobile row2 */
+.ml-mobile-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
 .ml-pill {
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.14);
@@ -658,14 +698,14 @@ onMounted(async () => {
   gap: 8px;
   font-weight: 950;
   font-size: 12px;
+  flex: 0 0 auto;
 }
-
 .ml-hint-mobile {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.9);
   text-align: right;
   line-height: 1.15;
-  max-width: 55%;
+  max-width: 58%;
 }
 
 /* drawers */
@@ -768,9 +808,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 960px) {
-  .ml-bottom-grid {
-    grid-template-columns: 1fr;
-  }
   .ml-cat-card {
     width: 92vw;
   }
@@ -783,9 +820,6 @@ onMounted(async () => {
   }
   .ml-cat-right-items {
     grid-template-columns: 1fr;
-  }
-  .ml-brand-text {
-    max-width: 180px;
   }
 }
 </style>
