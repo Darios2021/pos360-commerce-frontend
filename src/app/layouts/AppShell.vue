@@ -165,7 +165,16 @@
               exact
             />
 
-            <!-- ✅ NUEVO: Usuarios (solo admin/super_admin) -->
+            <!-- ✅ NUEVO: Tienda (Branding) -->
+            <v-list-item
+              v-if="isAdmin && hasRoute('shopBranding')"
+              :to="{ name: 'shopBranding' }"
+              prepend-icon="mdi-storefront-outline"
+              title="Tienda"
+              exact
+            />
+
+            <!-- ✅ Usuarios (solo admin/super_admin) -->
             <v-list-item
               v-if="isAdmin && hasRoute('users')"
               :to="{ name: 'users' }"
@@ -185,7 +194,6 @@
       <!-- ================= MAIN ================= -->
       <v-main class="pos-main">
         <v-container fluid class="pos-container">
-          <!-- ✅ MUY IMPORTANTE: layout con children -->
           <router-view />
         </v-container>
       </v-main>
@@ -253,7 +261,13 @@ function hasRoute(name) {
 }
 
 const showConfig = computed(() => {
-  return hasRoute("stock") || hasRoute("inventory") || hasRoute("categories") || hasRoute("users");
+  return (
+    hasRoute("stock") ||
+    hasRoute("inventory") ||
+    hasRoute("categories") ||
+    hasRoute("shopBranding") || // ✅ nuevo
+    hasRoute("users")
+  );
 });
 
 /* ===== User menu ===== */

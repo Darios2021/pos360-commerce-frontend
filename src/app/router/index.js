@@ -36,6 +36,9 @@ import StockPage from "@/modules/stock/pages/StockPage.vue";
 // Users
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
+// ✅ NUEVO: Tienda (Branding)
+import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
+
 const routes = [
   // =========================
   // ✅ SHOP (aislado)
@@ -85,6 +88,14 @@ const routes = [
         meta: { roles: ["admin", "super_admin"] },
       },
       { path: "categories", name: "categories", component: CategoriesPage },
+
+      // ✅ NUEVO: Tienda / Branding (solo admin)
+      {
+        path: "shop/branding",
+        name: "shopBranding",
+        component: ShopBrandingView,
+        meta: { roles: ["admin", "super_admin"] },
+      },
 
       // Users
       {

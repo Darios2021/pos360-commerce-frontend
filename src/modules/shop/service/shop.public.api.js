@@ -96,10 +96,7 @@ function dedupeCatalogItems(items) {
       // si viene baseObj.images
       if (Array.isArray(baseObj.images)) {
         for (const it of baseObj.images) {
-          const u =
-            typeof it === "string"
-              ? it
-              : it?.url || it?.image_url || it?.src || it?.path;
+          const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
           if (u) images.push(absUrl(u));
         }
       }
@@ -125,10 +122,26 @@ function dedupeCatalogItems(items) {
 }
 
 /**
+ * ✅ BRANDING PÚBLICO
+ * Requiere backend: GET /public/shop/branding
+ * Devuelve item desde tabla shop_branding.
+ */
+export async function getShopBranding() {
+  const r = await api.get("/shop/branding");
+  const it = r.data?.item || null;
+  return {
+    name: String(it?.name || "San Juan Tecnología"),
+    logo_url: it?.logo_url ? absUrl(it.logo_url) : "",
+    favicon_url: it?.favicon_url ? absUrl(it.favicon_url) : "",
+    updated_at: it?.updated_at || null,
+  };
+}
+
+/**
  * ✅ CATÁLOGO
  * ✅ NUEVO (opcional):
- *  - strict_search: 1 => el backend NO busca en description (evita “cargadores para auriculares”)
- *  - exclude_terms: "cargador,cable,energia,usb" => el backend excluye esos matches
+ *  - strict_search: 1 => el backend NO busca en description
+ *  - exclude_terms: "cargador,cable,energia,usb"
  */
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
@@ -143,7 +156,7 @@ export async function getCatalog(params = {}) {
     page: params.page ?? 1,
     limit: params.limit ?? 24,
 
-    // ✅ NUEVO (si no vienen, cleanParams los elimina y NO afecta nada)
+    // ✅ NUEVO (si no vienen, cleanParams los elimina)
     strict_search: params.strict_search ?? null,
     exclude_terms: params.exclude_terms ?? null,
   });
@@ -180,7 +193,6 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
   const r = await api.get("/suggestions", { params });
   const items = Array.isArray(r.data?.items) ? r.data.items : [];
 
-  // normaliza urls en suggestions
   return items.map((it) => {
     const imgs = uniqUrls([...(it.images || []).map(absUrl), absUrl(it.image_url)]);
     return { ...it, images: imgs, image_url: imgs[0] || absUrl(it.image_url) || "" };
@@ -201,14 +213,10 @@ export async function getProduct(id) {
   if (item) {
     const img = item?.image_url ? absUrl(item.image_url) : "";
     const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
-
-    // merge + abs
     const merged = uniqUrls([...(img ? [img] : []), ...images.map(absUrl)]);
 
     item.images = merged;
     item.image_url = merged[0] || img || "";
-
-    // asegura campos de precio que suele usar el frontend
     if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
   }
 
@@ -217,8 +225,6 @@ export async function getProduct(id) {
 
 /**
  * ✅ SIMILARES (HIDRATADO)
- * 1) pide /catalog para conseguir IDs (rápido)
- * 2) hidrata cada ID con getProduct() (data homogénea con ProductCard)
  */
 export async function getSimilarProducts({
   productId,
@@ -232,14 +238,13 @@ export async function getSimilarProducts({
   const pid = toInt(productId, 0);
   const lim = Math.max(1, toInt(limit, 8));
 
-  // 1) Traemos candidatos por catálogo
   const q = cleanParams({
     branch_id: bid,
     category_id: category_id ?? null,
     subcategory_id: subcategory_id ?? null,
     in_stock,
     page: 1,
-    limit: lim * 3, // pedimos más para poder filtrar/excluir
+    limit: lim * 3,
   });
 
   let candidates = [];
@@ -251,7 +256,6 @@ export async function getSimilarProducts({
     candidates = [];
   }
 
-  // 2) IDs únicos, excluyendo el actual
   const ids = [];
   const seen = new Set();
   for (const it of candidates) {
@@ -263,7 +267,6 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  // 3) Hidrata con detalle real (name, price, images)
   const hydrated = await Promise.all(
     ids.map(async (id) => {
       try {
@@ -274,7 +277,6 @@ export async function getSimilarProducts({
     })
   );
 
-  // 4) Filtra null y asegura urls
   return hydrated
     .filter(Boolean)
     .map((p) => {
@@ -283,9 +285,7 @@ export async function getSimilarProducts({
         ...p,
         images: imgs,
         image_url: imgs[0] || absUrl(p.image_url) || "",
-        price:
-          p.price ??
-          (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
+        price: p.price ?? (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
       };
     });
 }

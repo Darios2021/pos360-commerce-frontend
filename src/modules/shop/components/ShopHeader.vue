@@ -4,13 +4,16 @@
     <!-- ================= ROW 1 (TOP): brand + search + actions ================= -->
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
-        <router-link to="/shop" class="ml-brand" aria-label="San Juan Tecnología">
+        <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
           <v-avatar size="34" class="ml-brand-ico">
-            <v-icon size="18">mdi-storefront</v-icon>
+            <template v-if="branding.logo_url">
+              <img :src="branding.logo_url" :alt="branding.name" class="ml-brand-img" />
+            </template>
+            <v-icon v-else size="18">mdi-storefront</v-icon>
           </v-avatar>
 
           <!-- ✅ En mobile ocultamos el texto para que el buscador NO quede anulado -->
-          <span v-if="!isMobile" class="ml-brand-text">San Juan Tecnología</span>
+          <span v-if="!isMobile" class="ml-brand-text">{{ branding.name || "San Juan Tecnología" }}</span>
         </router-link>
 
         <!-- ✅ Buscador “protagonista” (en mobile ocupa el espacio real) -->
@@ -41,13 +44,7 @@
 
         <!-- RIGHT (mobile): menu + carrito (compactos para no comer al search) -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
-          <v-btn
-            icon
-            variant="text"
-            class="ml-icon-btn"
-            @click="mobileDrawer = true"
-            aria-label="Menú"
-          >
+          <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
             <v-icon size="22">mdi-menu</v-icon>
           </v-btn>
 
@@ -112,21 +109,13 @@
                   </div>
 
                   <div class="ml-cat-right-items" v-if="hoverChildren.length">
-                    <button
-                      class="ml-subcat"
-                      v-for="s in hoverChildren"
-                      :key="s.id"
-                      type="button"
-                      @click="pickChild(s)"
-                    >
+                    <button class="ml-subcat" v-for="s in hoverChildren" :key="s.id" type="button" @click="pickChild(s)">
                       {{ s.name }}
                     </button>
                   </div>
 
                   <div class="ml-cat-empty" v-else>
-                    <div class="text-caption text-medium-emphasis">
-                      No hay subcategorías para este rubro.
-                    </div>
+                    <div class="text-caption text-medium-emphasis">No hay subcategorías para este rubro.</div>
                   </div>
                 </div>
               </div>
@@ -140,10 +129,8 @@
           <router-link class="ml-nav-link" to="/shop">Ayuda</router-link>
         </nav>
 
-        <!-- ✅ Mobile: estilo ML (location bar + categorías) -->
+        <!-- ✅ Mobile: estilo ML (categorías + hint) -->
         <div v-else class="ml-mobile-stack">
-      
-
           <div class="ml-mobile-row2">
             <button class="ml-pill ml-cat-mobile-btn" type="button" @click="mobileCats = true">
               <span>Categorías</span>
@@ -250,6 +237,7 @@ import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import { getPublicCategoriesAll } from "@/modules/shop/service/shop.taxonomy.api";
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
+import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const router = useRouter();
 const route = useRoute();
@@ -267,6 +255,33 @@ const hoverParentId = ref(null);
 
 // ✅ branch fijo como venís usando
 const branchId = 3;
+
+// ✅ BRANDING (viene de shop_branding en BD)
+const branding = ref({
+  name: "San Juan Tecnología",
+  logo_url: "",
+  favicon_url: "",
+  updated_at: null,
+});
+
+function setFavicon(url) {
+  const u = String(url || "").trim();
+  if (!u) return;
+
+  const head = document.head || document.getElementsByTagName("head")[0];
+  if (!head) return;
+
+  const rels = ["icon", "shortcut icon", "apple-touch-icon"];
+  for (const rel of rels) {
+    let link = head.querySelector(`link[rel="${rel}"]`);
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("rel", rel);
+      head.appendChild(link);
+    }
+    link.setAttribute("href", u);
+  }
+}
 
 const parents = computed(() =>
   (allCats.value || [])
@@ -350,6 +365,19 @@ async function pickChildMobile(s) {
 }
 
 onMounted(async () => {
+  // 1) branding (logo + favicon + name)
+  try {
+    const b = await getShopBranding();
+    if (b && typeof b === "object") {
+      branding.value = { ...branding.value, ...b };
+      if (branding.value?.favicon_url) setFavicon(branding.value.favicon_url);
+      if (branding.value?.name) document.title = branding.value.name;
+    }
+  } catch {
+    // no cortamos nada si falla
+  }
+
+  // 2) categorías
   allCats.value = await getPublicCategoriesAll();
   const first = parents.value[0];
   if (first) {
@@ -436,6 +464,14 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 240px;
+}
+
+/* ✅ logo img adentro del avatar */
+.ml-brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 /* search */
@@ -540,7 +576,7 @@ onMounted(async () => {
 }
 .ml-loc-top {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.80);
+  color: rgba(255, 255, 255, 0.8);
 }
 .ml-loc-bottom {
   font-size: 12px;
@@ -622,7 +658,7 @@ onMounted(async () => {
 }
 .ml-subcat {
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   background: rgba(0, 0, 0, 0.02);
   padding: 10px 12px;
   border-radius: 14px;
@@ -631,7 +667,7 @@ onMounted(async () => {
   color: rgba(0, 0, 0, 0.72);
 }
 .ml-subcat:hover {
-  background: rgba(20, 136, 209, 0.10);
+  background: rgba(20, 136, 209, 0.1);
   border-color: rgba(20, 136, 209, 0.45);
 }
 .ml-cat-empty {
@@ -644,40 +680,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.ml-mobile-loc {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.20);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-radius: 14px;
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  cursor: pointer;
-}
-.ml-mobile-loc-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.ml-mobile-loc-text {
-  font-weight: 850;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.92;
-}
-.ml-mobile-loc-ico {
-  opacity: 0.95;
-}
-.ml-mobile-loc-arrow {
-  opacity: 0.9;
 }
 
 /* mobile row2 */
@@ -803,7 +805,7 @@ onMounted(async () => {
 }
 .ml-acc-empty {
   padding: 10px 6px;
-  color: rgba(255, 255, 255, 0.80);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 12px;
 }
 
