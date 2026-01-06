@@ -6,19 +6,23 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-
-# Build Vite (usa variables VITE_* en build-time)
 RUN npm run build
 
-# ===== Serve =====
-FROM nginx:1.27-alpine
+# ===== Serve (Node HTML injector) =====
+FROM node:20-alpine AS serve
+WORKDIR /app
 
-# SPA fallback (Vue Router history mode)
-RUN rm -rf /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# deps del server solamente
+COPY server/package.json ./server/package.json
+RUN cd server && npm install --omit=dev
 
-# Copiamos el dist al docroot
-COPY --from=build /app/dist /usr/share/nginx/html
+# dist del build
+COPY --from=build /app/dist ./dist
 
+# server code
+COPY server/server.js ./server/server.js
+
+ENV NODE_ENV=production
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+CMD ["node", "server/server.js"]
