@@ -29,12 +29,29 @@
         @mouseenter="activeIdx = i"
         @mousedown.prevent="pick(s)"
       >
-        <div class="sb-title">{{ s.name }}</div>
-        <div class="sb-meta">
-          <span v-if="s.brand">{{ s.brand }}</span>
-          <span v-if="s.model">· {{ s.model }}</span>
-          <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
-          <span v-else-if="s.category_name">· {{ s.category_name }}</span>
+        <!-- ✅ THUMB -->
+        <div class="sb-thumb" aria-hidden="true">
+          <img
+            v-if="thumbOf(s)"
+            :src="thumbOf(s)"
+            :alt="s.name || 'Producto'"
+            loading="lazy"
+            @error="onThumbErr"
+          />
+          <div v-else class="sb-thumb-ph">
+            <v-icon size="18">mdi-image-outline</v-icon>
+          </div>
+        </div>
+
+        <!-- TEXT -->
+        <div class="sb-info">
+          <div class="sb-title">{{ s.name }}</div>
+          <div class="sb-meta">
+            <span v-if="s.brand">{{ s.brand }}</span>
+            <span v-if="s.model">· {{ s.model }}</span>
+            <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
+            <span v-else-if="s.category_name">· {{ s.category_name }}</span>
+          </div>
         </div>
       </button>
 
@@ -52,11 +69,7 @@ import { getSuggestions } from "@/modules/shop/service/shop.public.api";
 
 const props = defineProps({
   branchId: { type: Number, default: 3 },
-
-  // "home" o "category"
   mode: { type: String, default: "home" },
-
-  // si mode="category", pasá el parentId
   categoryId: { type: Number, default: null },
 });
 
@@ -142,26 +155,19 @@ function move(dir) {
 
 function pick(s) {
   close();
-
-  // ✅ tu ruta real es /shop/product/:id
   router.push({
     name: "shopProduct",
     params: { id: String(s.product_id) },
-    query: {
-      // mantenemos branch_id por si tu detalle lo usa
-      branch_id: String(props.branchId),
-    },
+    query: { branch_id: String(props.branchId) },
   });
 }
 
 function onEnter() {
-  // si hay una sugerencia activa, abrila
   if (open.value && activeIdx.value >= 0 && suggestions.value[activeIdx.value]) {
     pick(suggestions.value[activeIdx.value]);
     return;
   }
 
-  // sino: búsqueda normal en home o en categoría
   const q = normalize(text.value);
   close();
 
@@ -179,7 +185,30 @@ function onEnter() {
   }
 }
 
-// mantener sync con URL compartida/back-forward
+/* ✅ toma miniatura desde cualquier key común */
+function thumbOf(s) {
+  const cands = [
+    s?.thumbnail_url,
+    s?.thumb_url,
+    s?.image_thumb,
+    s?.image_url,
+    s?.photo_url,
+    s?.image,
+    s?.img,
+    s?.cover_url,
+    s?.main_image_url,
+    s?.product_image_url,
+  ];
+  const u = cands.find((x) => typeof x === "string" && x.trim().length > 0);
+  return u ? u.trim() : "";
+}
+
+function onThumbErr(ev) {
+  // si falla la img, la ocultamos y queda el placeholder
+  const img = ev?.target;
+  if (img) img.style.display = "none";
+}
+
 watch(
   () => route.query.q,
   (v) => {
@@ -198,47 +227,97 @@ watch(
   border-radius: 14px;
 }
 
+/* Dropdown theme-safe */
 .sb-dd {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: #fff;
+
+  background: rgba(var(--v-theme-surface), 0.98);
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 14px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   z-index: 999;
 }
 
+/* Row layout */
 .sb-row {
   width: 100%;
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 12px 14px;
+  padding: 10px 12px;
   cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  color: rgb(var(--v-theme-on-surface));
 }
 
-.sb-row:hover,
+.sb-row:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
 .sb-row.active {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+/* Thumb */
+.sb-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  display: grid;
+  place-items: center;
+}
+
+.sb-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sb-thumb-ph {
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+/* Text block */
+.sb-info {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .sb-title {
   font-weight: 900;
   line-height: 1.15;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sb-meta {
   margin-top: 3px;
   font-size: 12px;
-  opacity: 0.8;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sb-foot {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   padding: 10px 14px;
   font-size: 12px;
-  opacity: 0.7;
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 </style>
