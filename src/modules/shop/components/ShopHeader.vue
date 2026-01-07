@@ -5,12 +5,12 @@
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
-          <!-- ✅ LOGO MÁS GRANDE -->
-          <v-avatar size="44" class="ml-brand-ico">
+          <!-- ✅ LOGO MÁS GRANDE (responsive) -->
+          <v-avatar class="ml-brand-ico" :size="logoSize">
             <template v-if="branding.logo_url">
-              <img :src="branding.logo_url" :alt="branding.name" class="ml-brand-img" />
+              <img :src="logoHeaderUrl" :alt="branding.name" class="ml-brand-img" />
             </template>
-            <v-icon v-else size="24">mdi-storefront</v-icon>
+            <v-icon v-else :size="iconSize">mdi-storefront</v-icon>
           </v-avatar>
 
           <!-- ✅ En mobile ocultamos el texto para que el buscador NO quede anulado -->
@@ -237,7 +237,6 @@
   </header>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -281,13 +280,11 @@ function withVersion(url, v) {
   const ver = String(v || "").trim();
   if (!ver) return u;
 
-  // no duplicar v si ya existe
   try {
     const parsed = new URL(u, window.location.origin);
     if (!parsed.searchParams.has("v")) parsed.searchParams.set("v", ver);
     return parsed.toString();
   } catch {
-    // fallback si no parsea
     return u.includes("?") ? `${u}&v=${encodeURIComponent(ver)}` : `${u}?v=${encodeURIComponent(ver)}`;
   }
 }
@@ -311,18 +308,15 @@ function setFavicon(url, updatedAt) {
 
   const u = withVersion(u0, updatedAt);
 
-  // icon
   {
     const link = ensureLink("icon");
     if (link) {
       link.setAttribute("href", u);
-      link.setAttribute("type", "image/png"); // si usás .ico, podés cambiarlo a image/x-icon
-      // sizes opcional (si es PNG cuadrado)
+      link.setAttribute("type", "image/png");
       link.setAttribute("sizes", "64x64");
     }
   }
 
-  // shortcut icon (algunos navegadores viejos)
   {
     const link = ensureLink("shortcut icon");
     if (link) {
@@ -332,16 +326,21 @@ function setFavicon(url, updatedAt) {
     }
   }
 
-  // apple touch icon
   {
     const link = ensureLink("apple-touch-icon");
     if (link) {
       link.setAttribute("href", u);
-      // Apple suele preferir 180x180, pero si le das 64/48 igual lo usa
       link.setAttribute("sizes", "180x180");
     }
   }
 }
+
+/** ===============================
+ * Branding responsive sizes
+ * =============================== */
+const logoSize = computed(() => (isMobile.value ? 56 : 76));
+const iconSize = computed(() => (isMobile.value ? 24 : 30));
+const logoHeaderUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
 
 /** ===============================
  * Categorías
@@ -434,17 +433,13 @@ onMounted(async () => {
     if (b && typeof b === "object") {
       branding.value = { ...branding.value, ...b };
 
-      // título
       if (branding.value?.name) document.title = branding.value.name;
 
-      // favicon (cache-bust por updated_at)
       if (branding.value?.favicon_url) {
         setFavicon(branding.value.favicon_url, branding.value.updated_at);
       }
     }
-  } catch {
-    // no cortamos nada si falla
-  }
+  } catch {}
 
   // 2) categorías
   allCats.value = await getPublicCategoriesAll();
@@ -455,12 +450,6 @@ onMounted(async () => {
   }
 });
 </script>
-
-
-
-
-
-
 <style scoped>
 .ml-header {
   --ml-blue: #1488d1;
@@ -499,8 +488,6 @@ onMounted(async () => {
   grid-template-columns: auto 1fr auto;
   padding: 10px 0;
 }
-
-/* ✅ mobile: damos prioridad al search */
 .ml-top-grid.is-mobile {
   grid-template-columns: auto 1fr auto;
   gap: 10px;
@@ -519,13 +506,13 @@ onMounted(async () => {
 .ml-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px; /* un poquito más para el avatar grande */
+  gap: 12px;
   text-decoration: none;
   color: var(--ml-white);
   min-width: 0;
 }
 
-/* ✅ avatar más grande + borde un toque más presente */
+/* (se deja, lo neutraliza el FIX FINAL abajo) */
 .ml-brand-ico {
   background: rgba(255, 255, 255, 0.16) !important;
   border: 1px solid rgba(255, 255, 255, 0.26) !important;
@@ -533,14 +520,12 @@ onMounted(async () => {
 .ml-brand-ico :deep(.v-icon) {
   color: var(--ml-white) !important;
 }
-
-/* ✅ logo img adentro del avatar (mejor fit para tamaños grandes) */
 .ml-brand-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
-  padding: 4px; /* evita que el logo toque el borde */
+  padding: 6px;
 }
 
 .ml-brand-text {
@@ -625,6 +610,7 @@ onMounted(async () => {
   opacity: 1;
 }
 
+/* ✅ HAMBURGUESA (base desktop) */
 .ml-icon-btn {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.14);
@@ -752,7 +738,7 @@ onMounted(async () => {
   padding: 8px;
 }
 
-/* ✅ mobile stack */
+/* mobile stack */
 .ml-mobile-stack {
   width: 100%;
   display: flex;
@@ -902,4 +888,62 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===============================
+   ✅ MOBILE MÁS SUTIL (hamburguesa + categorías)
+   =============================== */
+@media (max-width: 600px) {
+  /* hamburguesa */
+  .ml-icon-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px;
+  }
+
+  /* pill categorías (row 2) */
+  .ml-pill {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+
+  /* accordion parent + ver todo */
+  .ml-acc-parent {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+  .ml-acc-parent.open {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+  .ml-acc-all {
+    background: rgba(255, 255, 255, 0.10) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+}
+
+/* ===============================
+   ✅ FIX FINAL: logo SIN círculo/aro
+   + texto Orbitron Black en MAYÚSCULAS
+   =============================== */
+.ml-brand-ico {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+.ml-brand-ico :deep(.v-avatar__underlay) {
+  display: none !important;
+}
+.ml-brand-img {
+  padding: 0 !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+.ml-brand-text {
+  font-family: "Orbitron", sans-serif !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
 </style>
+
