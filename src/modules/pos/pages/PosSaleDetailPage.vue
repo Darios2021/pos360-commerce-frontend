@@ -1,234 +1,419 @@
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
-  <v-container fluid class="pa-4 bg-grey-lighten-4" style="min-height:100vh;">
-    <!-- HEADER -->
+  <v-container fluid class="pa-6 pos-sale-detail">
+    <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-4">
       <div>
-        <div class="text-h5 font-weight-bold">Venta #{{ id }}</div>
+        <div class="text-h4 font-weight-black">Venta #{{ sale?.id ?? id }}</div>
         <div class="text-caption text-medium-emphasis">Detalle completo</div>
       </div>
 
-      <v-btn variant="tonal" @click="router.back()">
+      <v-btn variant="tonal" @click="$router.back()">
         <v-icon start>mdi-arrow-left</v-icon>
         Volver
       </v-btn>
     </div>
 
-    <v-card class="rounded-xl" elevation="1">
+    <!-- Card principal -->
+    <v-card class="rounded-xl elevation-3">
       <v-card-text v-if="loading" class="py-10 d-flex justify-center">
         <v-progress-circular indeterminate />
       </v-card-text>
 
-      <v-card-text v-else-if="sale">
-        <!-- RESUMEN -->
-        <v-row dense>
-          <v-col cols="12" md="6">
-            <v-card elevation="0" class="rounded-xl pa-4 bg-grey-lighten-3">
-              <div class="text-caption">Cliente</div>
-              <div class="text-h6 font-weight-bold">{{ sale.customer_name || "Consumidor Final" }}</div>
+      <v-card-text v-else-if="!sale">
+        <v-alert type="warning" variant="tonal" class="rounded-xl">
+          Venta no encontrada.
+        </v-alert>
+      </v-card-text>
 
-              <div class="text-caption mt-3">Fecha</div>
-              <div>{{ dt(sale.sold_at || sale.created_at) }}</div>
+      <v-card-text v-else>
+        <!-- Top: cliente + totales -->
+        <div class="d-flex flex-wrap align-start justify-space-between ga-6">
+          <!-- Cliente -->
+          <div class="min-w-320">
+            <div class="text-caption text-medium-emphasis mb-1">Cliente</div>
+            <div class="text-h5 font-weight-black">{{ sale.customer_name || "Consumidor Final" }}</div>
 
-              <div class="d-flex ga-2 mt-3">
-                <v-chip size="small" variant="tonal" :color="statusColor(sale.status)">
-                  {{ sale.status || "—" }}
-                </v-chip>
+            <div class="text-caption text-medium-emphasis mt-4 mb-1">Fecha</div>
+            <div class="text-body-1 font-weight-medium">{{ dt(sale.sold_at || sale.created_at) }}</div>
 
-                <v-chip size="small" variant="tonal" color="primary">
-                  {{ sale.payments?.[0]?.method || "—" }}
-                </v-chip>
+            <div class="d-flex flex-wrap ga-2 mt-4">
+              <v-chip size="small" variant="tonal" :color="statusColor(sale.status)">
+                {{ sale.status || "—" }}
+              </v-chip>
+
+              <v-chip size="small" variant="tonal" :color="payColor(topPaymentMethod)">
+                {{ methodLabel(topPaymentMethod) }}
+              </v-chip>
+
+              <v-chip size="small" variant="tonal" color="primary">
+                Sucursal: {{ sale.branch?.name || sale.branch_id || "—" }}
+              </v-chip>
+
+              <v-chip size="small" variant="tonal" color="primary">
+                Usuario: {{ userLabel(sale) }}
+              </v-chip>
+            </div>
+
+            <div class="d-flex flex-wrap ga-2 mt-3">
+              <v-chip v-if="sale.customer_doc" size="small" variant="tonal">
+                <v-icon start size="16">mdi-card-account-details-outline</v-icon>
+                {{ sale.customer_doc }}
+              </v-chip>
+              <v-chip v-if="sale.customer_phone" size="small" variant="tonal">
+                <v-icon start size="16">mdi-phone</v-icon>
+                {{ sale.customer_phone }}
+              </v-chip>
+            </div>
+
+            <div v-if="sale.note" class="mt-4">
+              <div class="text-caption text-medium-emphasis mb-1">Nota</div>
+              <div class="text-body-2">{{ sale.note }}</div>
+            </div>
+          </div>
+
+          <!-- Totales -->
+          <div class="flex-1 min-w-360">
+            <div class="d-flex justify-space-between">
+              <div>
+                <div class="text-body-2">Subtotal</div>
+                <div class="text-body-2">Descuento</div>
+                <div class="text-body-2">Impuestos</div>
               </div>
-            </v-card>
-          </v-col>
-
-          <v-col cols="12" md="6">
-            <v-card elevation="0" class="rounded-xl pa-4 bg-grey-lighten-3">
-              <div class="d-flex justify-space-between"><span>Subtotal</span><b>{{ money(sale.subtotal) }}</b></div>
-              <div class="d-flex justify-space-between"><span>Descuento</span><b>{{ money(sale.discount_total) }}</b></div>
-              <div class="d-flex justify-space-between"><span>Impuestos</span><b>{{ money(sale.tax_total) }}</b></div>
-              <v-divider class="my-2" />
-              <div class="d-flex justify-space-between text-h6 font-weight-bold">
-                <span>TOTAL</span>
-                <span>{{ money(sale.total) }}</span>
+              <div class="text-right">
+                <div class="text-body-2 font-weight-bold">{{ money(sale.subtotal) }}</div>
+                <div class="text-body-2 font-weight-bold">{{ money(sale.discount_total) }}</div>
+                <div class="text-body-2 font-weight-bold">{{ money(sale.tax_total) }}</div>
               </div>
-              <div class="d-flex justify-space-between"><span>Pagado</span><b>{{ money(sale.paid_total) }}</b></div>
-              <div class="d-flex justify-space-between"><span>Vuelto</span><b>{{ money(sale.change_total) }}</b></div>
-            </v-card>
-          </v-col>
-        </v-row>
+            </div>
 
-        <v-divider class="my-4" />
+            <v-divider class="my-4" />
 
-        <!-- PRODUCTOS -->
+            <div class="d-flex justify-space-between align-center">
+              <div class="text-h6 font-weight-black">TOTAL</div>
+              <div class="text-h5 font-weight-black">{{ money(sale.total) }}</div>
+            </div>
+
+            <div class="d-flex justify-space-between mt-3">
+              <div>
+                <div class="text-body-2">Pagado</div>
+                <div class="text-body-2">Vuelto</div>
+              </div>
+              <div class="text-right">
+                <div class="text-body-2 font-weight-bold">{{ money(sale.paid_total) }}</div>
+                <div class="text-body-2 font-weight-bold">{{ money(sale.change_total) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <v-divider class="my-6" />
+
+        <!-- Productos -->
         <div class="d-flex align-center justify-space-between mb-2">
-          <div class="text-subtitle-2 font-weight-bold">Productos</div>
-          <div class="text-caption text-medium-emphasis">items: {{ (sale.items || []).length }}</div>
+          <div class="text-subtitle-1 font-weight-bold">Productos</div>
+          <div class="text-caption text-medium-emphasis">
+            items: {{ (sale.items || []).length }}
+          </div>
         </div>
 
         <v-data-table
           :headers="itemsHeaders"
           :items="sale.items || []"
           item-key="id"
+          class="rounded-xl"
           density="comfortable"
-          class="elevation-0"
         >
-          <!-- PRODUCTO -->
+          <!-- Producto enriquecido -->
           <template #item.product="{ item }">
             <div class="d-flex align-center ga-3">
-              <v-avatar size="42" rounded="lg" style="background: rgba(0,0,0,.06);">
-                <v-img v-if="thumb(toRawItem(item))" :src="thumb(toRawItem(item))" cover />
+              <!-- Thumb -->
+              <v-avatar size="54" rounded="lg" class="thumb" @click="openImage(item)">
+                <v-img v-if="imgUrl(item)" :src="imgUrl(item)" cover />
                 <v-icon v-else>mdi-image-off-outline</v-icon>
               </v-avatar>
 
+              <!-- Meta -->
               <div class="min-w-0">
-                <div
-                  class="font-weight-bold text-truncate"
-                  style="cursor:pointer;"
-                  @click="goToProduct(toRawItem(item).product_id)"
-                  :title="toRawItem(item).product_name_snapshot || 'Producto'"
-                >
-                  {{ toRawItem(item).product_name_snapshot || "Producto" }}
+                <div class="text-body-1 font-weight-black text-truncate">
+                  {{ productName(item) }}
                 </div>
 
-                <div class="text-caption text-medium-emphasis text-truncate">
-                  SKU: {{ toRawItem(item).product_sku_snapshot || "—" }}
+                <div class="text-caption text-medium-emphasis mt-1 d-flex flex-wrap ga-2">
+                  <span><b>SKU:</b> {{ productSku(item) }}</span>
+                  <span v-if="productBrand(item) !== '—'"><b>Marca:</b> {{ productBrand(item) }}</span>
+                  <span v-if="productModel(item) !== '—'"><b>Modelo:</b> {{ productModel(item) }}</span>
+                </div>
+
+                <div class="d-flex flex-wrap ga-1 mt-2">
+                  <v-chip size="x-small" variant="tonal">
+                    Cat: {{ categoryLabel(item) }}
+                  </v-chip>
+
+                  <v-chip size="x-small" variant="tonal" :color="trackStock(item) ? 'indigo' : 'grey'">
+                    {{ trackStock(item) ? "Control stock" : "Sin stock" }}
+                  </v-chip>
+
+                  <v-chip size="x-small" variant="tonal" v-if="warehouseLabel(item) !== '—'">
+                    Depósito: {{ warehouseLabel(item) }}
+                  </v-chip>
                 </div>
               </div>
             </div>
           </template>
 
-          <!-- CANT -->
-          <template #item.quantity="{ item }">
-            <b>{{ Number(toRawItem(item).quantity || 0) }}</b>
+          <template #item.qty="{ item }">
+            <div class="font-weight-black">{{ number(item.quantity) }}</div>
           </template>
 
-          <!-- UNIT -->
-          <template #item.unit_price="{ item }">
-            {{ money(toRawItem(item).unit_price) }}
+          <template #item.unit="{ item }">
+            <div class="font-weight-bold">{{ money(item.unit_price) }}</div>
           </template>
 
-          <!-- TOTAL -->
-          <template #item.line_total="{ item }">
-            <b>{{ money(toRawItem(item).line_total) }}</b>
+          <template #item.total="{ item }">
+            <div class="font-weight-black">{{ money(item.line_total) }}</div>
           </template>
 
-          <!-- ✅ ACCIONES (PERFIL) -->
           <template #item.actions="{ item }">
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="primary"
-              :disabled="!toRawItem(item).product_id"
-              @click="goToProduct(toRawItem(item).product_id)"
-              title="Ver perfil del producto"
-            >
-              <v-icon start>mdi-package-variant</v-icon>
-              Perfil
-            </v-btn>
+            <div class="d-flex ga-2 justify-end">
+              <v-btn size="small" variant="tonal" color="primary" @click="goToProduct(item.product_id)">
+                <v-icon start>mdi-cube-outline</v-icon>
+                Perfil
+              </v-btn>
+            </div>
           </template>
 
           <template #bottom />
         </v-data-table>
 
-        <v-divider class="my-4" />
+        <!-- Pagos -->
+        <v-divider class="my-6" />
+        <div class="text-subtitle-1 font-weight-bold mb-2">Pagos</div>
 
-        <!-- PAGOS -->
-        <div class="text-subtitle-2 font-weight-bold mb-2">Pagos</div>
-        <v-list density="compact" class="bg-transparent">
-          <v-list-item v-for="p in (sale.payments || [])" :key="p.id" class="px-0">
-            <v-list-item-title class="text-body-2 font-weight-medium">{{ p.method || "—" }}</v-list-item-title>
-            <template #append><b>{{ money(p.amount) }}</b></template>
-          </v-list-item>
-        </v-list>
-      </v-card-text>
+        <div v-if="(sale.payments || []).length" class="d-flex flex-column ga-2">
+          <div
+            v-for="p in sale.payments"
+            :key="p.id"
+            class="d-flex justify-space-between align-center"
+          >
+            <div class="text-body-2 font-weight-medium">
+              {{ methodLabel(p.method) }}
+              <span v-if="p.paid_at" class="text-caption text-medium-emphasis"> · {{ dt(p.paid_at) }}</span>
+            </div>
+            <div class="text-body-2 font-weight-black">{{ money(p.amount) }}</div>
+          </div>
+        </div>
 
-      <v-card-text v-else class="text-medium-emphasis">
-        No se encontró la venta.
+        <v-alert v-else type="info" variant="tonal" class="rounded-xl">
+          Sin pagos registrados.
+        </v-alert>
       </v-card-text>
     </v-card>
+
+    <!-- Dialog imagen -->
+    <v-dialog v-model="imageDialog" max-width="860">
+      <v-card class="rounded-xl">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="font-weight-black">{{ productName(imageItem) }}</div>
+          <v-btn icon variant="text" @click="imageDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-img
+            v-if="imgUrl(imageItem)"
+            :src="imgUrl(imageItem)"
+            cover
+            style="max-height:540px; border-radius: 14px;"
+          />
+          <v-alert v-else type="info" variant="tonal" class="rounded-xl">
+            Este producto no tiene imagen asociada.
+          </v-alert>
+
+          <div class="d-flex ga-2 mt-4">
+            <v-btn variant="tonal" color="primary" @click="goToProduct(imageItem?.product_id)" :disabled="!imageItem?.product_id">
+              <v-icon start>mdi-cube-outline</v-icon>
+              Ver producto
+            </v-btn>
+
+            <v-btn variant="tonal" @click="copyText(imgUrl(imageItem) || '')" :disabled="!imgUrl(imageItem)">
+              <v-icon start>mdi-link-variant</v-icon>
+              Copiar URL
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snack.show" :timeout="3200">
+      {{ snack.text }}
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 
 const route = useRoute();
 const router = useRouter();
-const id = computed(() => route.params.id);
 
+const id = computed(() => Number(route.params.id || 0));
 const loading = ref(false);
 const sale = ref(null);
 
-// ✅ Headers: acá SÍ o SÍ tiene que estar "actions" para que aparezca la columna Perfil
+const snack = ref({ show: false, text: "" });
+
+const imageDialog = ref(false);
+const imageItem = ref(null);
+
 const itemsHeaders = [
   { title: "Producto", key: "product", sortable: false },
-  { title: "Cant.", key: "quantity", sortable: false, width: 90 },
-  { title: "Unit.", key: "unit_price", sortable: false, width: 140 },
-  { title: "Total", key: "line_total", sortable: false, width: 140 },
-  { title: "", key: "actions", sortable: false, width: 160 },
+  { title: "Cant.", key: "qty", sortable: false, width: 110 },
+  { title: "Unit.", key: "unit", sortable: false, width: 160 },
+  { title: "Total", key: "total", sortable: false, width: 160 },
+  { title: "", key: "actions", sortable: false, width: 140 },
 ];
 
-// Vuetify 3: a veces item viene como { raw: {...} }
-function toRawItem(item) {
-  return item?.raw ?? item ?? {};
+const topPaymentMethod = computed(() => {
+  const p = sale.value?.payments?.[0]?.method;
+  return String(p || "").toUpperCase();
+});
+
+// ===== Helpers UI =====
+function money(val) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+}
+function dt(val) {
+  return val ? new Date(val).toLocaleString("es-AR") : "—";
+}
+function number(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function money(v) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" })
-    .format(Number(v || 0));
+// ===== labels =====
+function methodLabel(m) {
+  const x = String(m || "").toUpperCase();
+  if (x === "CASH") return "Efectivo";
+  if (x === "CARD") return "Tarjeta / Débito";
+  if (x === "TRANSFER") return "Transferencia";
+  if (x === "QR") return "QR";
+  if (x === "OTHER") return "Otro";
+  return m || "—";
 }
-
-function dt(v) {
-  return v ? new Date(v).toLocaleString("es-AR") : "—";
-}
-
-function statusColor(s) {
-  if (s === "PAID") return "green";
-  if (s === "CANCELLED") return "red";
-  if (s === "REFUNDED") return "orange";
-  if (s === "DRAFT") return "blue";
+function payColor(m) {
+  const x = String(m || "").toUpperCase();
+  if (x === "CASH") return "green";
+  if (x === "CARD") return "indigo";
+  if (x === "TRANSFER") return "purple";
+  if (x === "QR") return "cyan";
   return "grey";
 }
-
-// miniatura: soporta snapshots o sub-objeto product si viniera
-function thumb(item) {
-  return (
-    item?.product_image_snapshot ||
-    item?.image_snapshot ||
-    item?.image_url ||
-    item?.product?.image_url ||
-    item?.product?.thumbnail_url ||
-    item?.product?.cover_url ||
-    ""
-  );
+function statusColor(s) {
+  const x = String(s || "").toUpperCase();
+  if (x === "PAID") return "green";
+  if (x === "CANCELLED") return "red";
+  if (x === "REFUNDED") return "orange";
+  if (x === "DRAFT") return "blue";
+  return "grey";
+}
+function userLabel(s) {
+  const u = s?.user || null;
+  return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
 }
 
-// ✅ navega al perfil creado (router name ya existe: productProfile)
+// ===== Product getters (usa include del backend) =====
+function p(item) {
+  return item?.product || null;
+}
+function productName(item) {
+  return item?.product_name_snapshot || p(item)?.name || p(item)?.title || "Producto";
+}
+function productSku(item) {
+  return item?.product_sku_snapshot || p(item)?.sku || p(item)?.code || "—";
+}
+function productBrand(item) {
+  return p(item)?.brand || "—";
+}
+function productModel(item) {
+  return p(item)?.model || "—";
+}
+function trackStock(item) {
+  return !!p(item)?.track_stock;
+}
+function warehouseLabel(item) {
+  return item?.warehouse?.name || (item?.warehouse_id ? `#${item.warehouse_id}` : "—");
+}
+function categoryLabel(item) {
+  const cat = p(item)?.category || null;
+  if (!cat) return "—";
+  const parent = cat?.parent?.name ? ` / ${cat.parent.name}` : "";
+  return `${cat.name || "—"}${parent}`;
+}
+function imgUrl(item) {
+  const imgs = p(item)?.images || [];
+  const first = Array.isArray(imgs) && imgs.length ? imgs[0] : null;
+  return first?.url || first?.public_url || first?.path || "";
+}
+
+// ===== actions =====
 function goToProduct(pid) {
-  const idn = Number(pid || 0);
-  if (!idn) return;
-  router.push({ name: "productProfile", params: { id: idn } });
+  const n = Number(pid || 0);
+  if (!n) return;
+  router.push({ name: "productProfile", params: { id: n } });
 }
 
+function openImage(item) {
+  imageItem.value = item || null;
+  imageDialog.value = true;
+}
+
+async function copyText(txt) {
+  try {
+    if (!txt) return;
+    await navigator.clipboard.writeText(txt);
+    snack.value = { show: true, text: "Copiado" };
+  } catch {
+    snack.value = { show: true, text: "No se pudo copiar" };
+  }
+}
+
+// ===== Load =====
 async function load() {
   loading.value = true;
+  sale.value = null;
   try {
     const { data } = await http.get(`/pos/sales/${id.value}`);
-    if (!data?.ok) throw new Error(data?.message || "Error");
+    if (!data?.ok) throw new Error(data?.message || "Error cargando venta");
     sale.value = data.data;
-  } catch {
-    sale.value = null;
+  } catch (e) {
+    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
   } finally {
     loading.value = false;
   }
 }
 
 onMounted(load);
+watch(id, () => load());
 </script>
 
 <style scoped>
+.pos-sale-detail {
+  background: radial-gradient(1200px 600px at 30% 0%, rgba(255,255,255,.06), transparent 60%),
+              radial-gradient(900px 500px at 80% 10%, rgba(255,255,255,.04), transparent 60%),
+              rgba(0,0,0,.02);
+}
+
 .min-w-0 { min-width: 0; }
+.min-w-320 { min-width: 320px; }
+.min-w-360 { min-width: 360px; }
+
+.thumb {
+  cursor: zoom-in;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+}
 </style>
