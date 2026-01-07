@@ -5,11 +5,12 @@
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
-          <v-avatar size="34" class="ml-brand-ico">
+          <!-- ✅ LOGO MÁS GRANDE -->
+          <v-avatar size="44" class="ml-brand-ico">
             <template v-if="branding.logo_url">
               <img :src="branding.logo_url" :alt="branding.name" class="ml-brand-img" />
             </template>
-            <v-icon v-else size="18">mdi-storefront</v-icon>
+            <v-icon v-else size="24">mdi-storefront</v-icon>
           </v-avatar>
 
           <!-- ✅ En mobile ocultamos el texto para que el buscador NO quede anulado -->
@@ -109,7 +110,13 @@
                   </div>
 
                   <div class="ml-cat-right-items" v-if="hoverChildren.length">
-                    <button class="ml-subcat" v-for="s in hoverChildren" :key="s.id" type="button" @click="pickChild(s)">
+                    <button
+                      class="ml-subcat"
+                      v-for="s in hoverChildren"
+                      :key="s.id"
+                      type="button"
+                      @click="pickChild(s)"
+                    >
                       {{ s.name }}
                     </button>
                   </div>
@@ -445,18 +452,30 @@ onMounted(async () => {
 .ml-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px; /* un poquito más para el avatar grande */
   text-decoration: none;
   color: var(--ml-white);
   min-width: 0;
 }
+
+/* ✅ avatar más grande + borde un toque más presente */
 .ml-brand-ico {
   background: rgba(255, 255, 255, 0.16) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.26) !important;
 }
 .ml-brand-ico :deep(.v-icon) {
   color: var(--ml-white) !important;
 }
+
+/* ✅ logo img adentro del avatar (mejor fit para tamaños grandes) */
+.ml-brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 4px; /* evita que el logo toque el borde */
+}
+
 .ml-brand-text {
   font-weight: 1000;
   letter-spacing: 0.2px;
@@ -464,14 +483,6 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 240px;
-}
-
-/* ✅ logo img adentro del avatar */
-.ml-brand-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
 }
 
 /* search */
