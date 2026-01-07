@@ -237,6 +237,7 @@
   </header>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -271,23 +272,38 @@ const branding = ref({
   updated_at: null,
 });
 
-function setFavicon(url) {
-  const u = String(url || "").trim();
-  if (!u) return;
+function setFavicon(url, version) {
+  const u0 = String(url || "").trim();
+  if (!u0) return;
+
+  // ✅ cache-bust con updated_at (o Date.now)
+  const v = String(version || Date.now());
+  const sep = u0.includes("?") ? "&" : "?";
+  const u = `${u0}${sep}v=${encodeURIComponent(v)}`;
 
   const head = document.head || document.getElementsByTagName("head")[0];
   if (!head) return;
 
-  const rels = ["icon", "shortcut icon", "apple-touch-icon"];
-  for (const rel of rels) {
-    let link = head.querySelector(`link[rel="${rel}"]`);
-    if (!link) {
-      link = document.createElement("link");
-      link.setAttribute("rel", rel);
-      head.appendChild(link);
-    }
-    link.setAttribute("href", u);
-  }
+  // ✅ limpiamos favicons anteriores para forzar refresh real
+  const olds = head.querySelectorAll(
+    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+  );
+  olds.forEach((n) => n.parentNode && n.parentNode.removeChild(n));
+
+  const linkIcon = document.createElement("link");
+  linkIcon.setAttribute("rel", "icon");
+  linkIcon.setAttribute("href", u);
+  head.appendChild(linkIcon);
+
+  const linkShortcut = document.createElement("link");
+  linkShortcut.setAttribute("rel", "shortcut icon");
+  linkShortcut.setAttribute("href", u);
+  head.appendChild(linkShortcut);
+
+  const linkApple = document.createElement("link");
+  linkApple.setAttribute("rel", "apple-touch-icon");
+  linkApple.setAttribute("href", u);
+  head.appendChild(linkApple);
 }
 
 const parents = computed(() =>
@@ -377,8 +393,13 @@ onMounted(async () => {
     const b = await getShopBranding();
     if (b && typeof b === "object") {
       branding.value = { ...branding.value, ...b };
-      if (branding.value?.favicon_url) setFavicon(branding.value.favicon_url);
-      if (branding.value?.name) document.title = branding.value.name;
+
+      if (branding.value?.favicon_url) {
+        setFavicon(branding.value.favicon_url, branding.value.updated_at || Date.now());
+      }
+      if (branding.value?.name) {
+        document.title = branding.value.name;
+      }
     }
   } catch {
     // no cortamos nada si falla
@@ -393,6 +414,10 @@ onMounted(async () => {
   }
 });
 </script>
+
+
+
+
 
 <style scoped>
 .ml-header {
