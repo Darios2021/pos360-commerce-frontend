@@ -272,40 +272,80 @@ const branding = ref({
   updated_at: null,
 });
 
-function setFavicon(url, version) {
+/** ===============================
+ * Helpers: cache bust + favicon
+ * =============================== */
+function withVersion(url, v) {
+  const u = String(url || "").trim();
+  if (!u) return "";
+  const ver = String(v || "").trim();
+  if (!ver) return u;
+
+  // no duplicar v si ya existe
+  try {
+    const parsed = new URL(u, window.location.origin);
+    if (!parsed.searchParams.has("v")) parsed.searchParams.set("v", ver);
+    return parsed.toString();
+  } catch {
+    // fallback si no parsea
+    return u.includes("?") ? `${u}&v=${encodeURIComponent(ver)}` : `${u}?v=${encodeURIComponent(ver)}`;
+  }
+}
+
+function ensureLink(rel) {
+  const head = document.head || document.getElementsByTagName("head")[0];
+  if (!head) return null;
+
+  let link = head.querySelector(`link[rel="${rel}"]`);
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", rel);
+    head.appendChild(link);
+  }
+  return link;
+}
+
+function setFavicon(url, updatedAt) {
   const u0 = String(url || "").trim();
   if (!u0) return;
 
-  // ✅ cache-bust con updated_at (o Date.now)
-  const v = String(version || Date.now());
-  const sep = u0.includes("?") ? "&" : "?";
-  const u = `${u0}${sep}v=${encodeURIComponent(v)}`;
+  const u = withVersion(u0, updatedAt);
 
-  const head = document.head || document.getElementsByTagName("head")[0];
-  if (!head) return;
+  // icon
+  {
+    const link = ensureLink("icon");
+    if (link) {
+      link.setAttribute("href", u);
+      link.setAttribute("type", "image/png"); // si usás .ico, podés cambiarlo a image/x-icon
+      // sizes opcional (si es PNG cuadrado)
+      link.setAttribute("sizes", "64x64");
+    }
+  }
 
-  // ✅ limpiamos favicons anteriores para forzar refresh real
-  const olds = head.querySelectorAll(
-    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-  );
-  olds.forEach((n) => n.parentNode && n.parentNode.removeChild(n));
+  // shortcut icon (algunos navegadores viejos)
+  {
+    const link = ensureLink("shortcut icon");
+    if (link) {
+      link.setAttribute("href", u);
+      link.setAttribute("type", "image/png");
+      link.setAttribute("sizes", "64x64");
+    }
+  }
 
-  const linkIcon = document.createElement("link");
-  linkIcon.setAttribute("rel", "icon");
-  linkIcon.setAttribute("href", u);
-  head.appendChild(linkIcon);
-
-  const linkShortcut = document.createElement("link");
-  linkShortcut.setAttribute("rel", "shortcut icon");
-  linkShortcut.setAttribute("href", u);
-  head.appendChild(linkShortcut);
-
-  const linkApple = document.createElement("link");
-  linkApple.setAttribute("rel", "apple-touch-icon");
-  linkApple.setAttribute("href", u);
-  head.appendChild(linkApple);
+  // apple touch icon
+  {
+    const link = ensureLink("apple-touch-icon");
+    if (link) {
+      link.setAttribute("href", u);
+      // Apple suele preferir 180x180, pero si le das 64/48 igual lo usa
+      link.setAttribute("sizes", "180x180");
+    }
+  }
 }
 
+/** ===============================
+ * Categorías
+ * =============================== */
 const parents = computed(() =>
   (allCats.value || [])
     .filter((x) => x && x.parent_id == null && Number(x.is_active ?? 1) === 1)
@@ -394,11 +434,12 @@ onMounted(async () => {
     if (b && typeof b === "object") {
       branding.value = { ...branding.value, ...b };
 
+      // título
+      if (branding.value?.name) document.title = branding.value.name;
+
+      // favicon (cache-bust por updated_at)
       if (branding.value?.favicon_url) {
-        setFavicon(branding.value.favicon_url, branding.value.updated_at || Date.now());
-      }
-      if (branding.value?.name) {
-        document.title = branding.value.name;
+        setFavicon(branding.value.favicon_url, branding.value.updated_at);
       }
     }
   } catch {
@@ -414,6 +455,7 @@ onMounted(async () => {
   }
 });
 </script>
+
 
 
 
