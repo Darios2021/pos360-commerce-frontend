@@ -6,24 +6,12 @@
       <div>
         <div class="text-h5 font-weight-bold">Ventas</div>
         <div class="text-caption text-medium-emphasis">
-          Total (con filtros): <b>{{ meta.total }}</b> · Página {{ meta.page }}/{{ meta.pages || 1 }}
+          Total: <b>{{ meta.total }}</b> · Página {{ meta.page }}/{{ meta.pages || 1 }}
         </div>
       </div>
 
       <div class="d-flex ga-2 align-center flex-wrap">
-        <v-btn
-          variant="tonal"
-          color="primary"
-          :loading="loadingGlobal"
-          :disabled="loading || meta.total === 0"
-          @click="recalcGlobalStats"
-          title="Calcula facturación / ticket / método recorriendo todas las páginas con los filtros actuales"
-        >
-          <v-icon start>mdi-chart-box-outline</v-icon>
-          Recalcular stats
-        </v-btn>
-
-        <v-btn variant="tonal" @click="resetFilters" :disabled="loading">
+        <v-btn variant="tonal" @click="resetFilters" :disabled="loading || statsLoading">
           <v-icon start>mdi-filter-off</v-icon>
           Reset
         </v-btn>
@@ -33,60 +21,152 @@
           Exportar
         </v-btn>
 
-        <v-btn color="primary" @click="fetchSales" :loading="loading">
+        <v-btn color="primary" @click="refreshAll" :loading="loading || statsLoading">
           <v-icon start>mdi-refresh</v-icon>
           Actualizar
         </v-btn>
       </div>
     </div>
 
-    <!-- KPIs (claros, sin confundir) -->
+    <!-- ✅ STATS: totales + por método (LO QUE PEDISTE) -->
     <v-row dense class="mb-4">
-      <v-col cols="12" md="3">
-        <KpiCard title="Ventas (página)" :value="sales.length" icon="mdi-receipt-text-outline" :loading="loading" />
-      </v-col>
-      <v-col cols="12" md="3">
-        <KpiCard title="Ventas (con filtros)" :value="meta.total" icon="mdi-counter" :loading="loading" />
-      </v-col>
-      <v-col cols="12" md="3">
+      <v-col cols="12" md="4">
         <KpiCard
-          title="Facturado (global con filtros)"
-          :value="globalStats.ready ? money(globalStats.totalFacturado) : '—'"
+          title="Cantidad de ventas"
+          :value="stats.ready ? stats.sales_count : '—'"
+          icon="mdi-receipt-text-outline"
+          :loading="statsLoading"
+        />
+      </v-col>
+
+      <v-col cols="12" md="4">
+        <KpiCard
+          title="Total vendido"
+          :value="stats.ready ? money(stats.total_sum) : '—'"
           icon="mdi-cash-multiple"
-          :loading="loadingGlobal"
-          :subtitle="globalStats.ready ? `Ticket: ${money(globalStats.ticketPromedio)}` : 'Sin calcular'"
+          :loading="statsLoading"
         />
       </v-col>
-      <v-col cols="12" md="3">
+
+      <v-col cols="12" md="4">
         <KpiCard
-          title="Método principal (global con filtros)"
-          :value="globalStats.ready ? globalStats.topMetodoLabel : '—'"
-          icon="mdi-credit-card-outline"
-          :loading="loadingGlobal"
-          :subtitle="globalStats.ready ? `Ventas analizadas: ${globalStats.ventasAnalizadas}` : 'Sin calcular'"
+          title="Total cobrado"
+          :value="stats.ready ? money(stats.paid_sum) : '—'"
+          icon="mdi-cash-check"
+          :loading="statsLoading"
         />
+      </v-col>
+
+      <v-col cols="12">
+        <v-card class="rounded-xl" elevation="1">
+          <v-card-text class="d-flex align-center justify-space-between flex-wrap ga-2">
+            <div class="text-subtitle-2 font-weight-bold">
+              Recaudación por método de pago
+            </div>
+
+            <div class="d-flex ga-2 flex-wrap">
+              <v-chip size="small" variant="tonal" color="green">
+                Efectivo: {{ stats.ready ? money(stats.payments.cash) : "—" }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="purple">
+                Transferencia: {{ stats.ready ? money(stats.payments.transfer) : "—" }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="indigo">
+                Débito: {{ stats.ready ? money(stats.payments.debit) : "—" }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="blue">
+                Crédito: {{ stats.ready ? money(stats.payments.credit) : "—" }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="orange">
+                QR: {{ stats.ready ? money(stats.payments.qr) : "—" }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="grey">
+                Otro: {{ stats.ready ? money(stats.payments.other) : "—" }}
+              </v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
       </v-col>
     </v-row>
 
-    <!-- FILTROS -->
+    <!-- FILTROS (SIN INPUTS VACÍOS) -->
     <v-card class="rounded-xl mb-4" elevation="1">
       <v-card-text>
         <v-row dense class="align-center">
-          <v-col cols="12" md="5">
-            <v-text-field
-              v-model="q"
-              label="Buscar"
-              placeholder="Cliente / DNI / Teléfono / N° venta / ID / Total"
-              prepend-inner-icon="mdi-magnify"
+          <!-- ✅ Cliente (autocomplete real) -->
+          <v-col cols="12" md="4">
+            <v-autocomplete
+              v-model="customerValue"
+              :items="customerItems"
+              :loading="customerLoading"
+              label="Cliente"
+              placeholder="Buscar cliente (nombre / doc / teléfono)"
+              prepend-inner-icon="mdi-account-search"
               variant="outlined"
               density="comfortable"
               hide-details
               clearable
-              @keyup.enter="applyFilters"
-              @update:model-value="debouncedApply()"
+              item-title="title"
+              item-value="value"
+              @update:search="onCustomerSearch"
+              @update:model-value="applyFilters"
             />
           </v-col>
 
+          <!-- ✅ Cajero/Vendedor (autocomplete real) -->
+          <v-col cols="12" sm="6" md="3">
+            <v-autocomplete
+              v-model="sellerId"
+              :items="sellerItems"
+              :loading="sellerLoading"
+              label="Cajero / Vendedor"
+              placeholder="Buscar vendedor"
+              prepend-inner-icon="mdi-account"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              clearable
+              item-title="title"
+              item-value="value"
+              @update:search="onSellerSearch"
+              @update:model-value="applyFilters"
+            />
+          </v-col>
+
+          <!-- ✅ Producto (autocomplete real) -->
+          <v-col cols="12" sm="6" md="3">
+            <v-autocomplete
+              v-model="productId"
+              :items="productItems"
+              :loading="productLoading"
+              label="Producto"
+              placeholder="Buscar producto"
+              prepend-inner-icon="mdi-package-variant-closed"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              clearable
+              item-title="title"
+              item-value="value"
+              @update:search="onProductSearch"
+              @update:model-value="applyFilters"
+            />
+          </v-col>
+
+          <!-- ✅ Tipo de pago -->
+          <v-col cols="12" sm="6" md="2">
+            <v-select
+              v-model="payMethod"
+              :items="payMethodItems"
+              label="Tipo de pago"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              @update:model-value="applyFilters"
+            />
+          </v-col>
+
+          <!-- Estado -->
           <v-col cols="12" sm="6" md="2">
             <v-select
               v-model="status"
@@ -99,8 +179,8 @@
             />
           </v-col>
 
-          <!-- Admin: filtro por sucursal -->
-          <v-col cols="12" sm="6" md="3" v-if="isAdmin">
+          <!-- Admin: sucursal -->
+          <v-col cols="12" md="3" v-if="isAdmin">
             <v-select
               v-model="selectedBranchId"
               :items="branchSelectItems"
@@ -113,6 +193,7 @@
             />
           </v-col>
 
+          <!-- Fechas -->
           <v-col cols="12" sm="6" md="2">
             <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
               <template #activator="{ props }">
@@ -125,7 +206,7 @@
                   density="comfortable"
                   hide-details
                   readonly
-                  placeholder="(sin filtro)"
+                  placeholder="(sin fecha)"
                 />
               </template>
               <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFilters()" />
@@ -144,7 +225,7 @@
                   density="comfortable"
                   hide-details
                   readonly
-                  placeholder="(sin filtro)"
+                  placeholder="(sin fecha)"
                 />
               </template>
               <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFilters()" />
@@ -152,7 +233,7 @@
           </v-col>
 
           <v-col cols="12" md="1">
-            <v-btn block color="primary" @click="applyFilters" :loading="loading">
+            <v-btn block color="primary" @click="applyFilters" :loading="loading || statsLoading">
               <v-icon>mdi-filter</v-icon>
             </v-btn>
           </v-col>
@@ -167,7 +248,7 @@
           <v-spacer />
 
           <v-chip size="small" variant="tonal" color="primary">
-            Branch: {{ effectiveBranchId ?? "— (todas)" }}
+            Sucursal: {{ effectiveBranchId ?? "— (todas)" }}
           </v-chip>
 
           <v-select
@@ -178,7 +259,7 @@
             variant="outlined"
             hide-details
             style="max-width:150px"
-            @update:model-value="meta.page = 1; fetchSales()"
+            @update:model-value="meta.page = 1; refreshAll()"
           />
         </div>
       </v-card-text>
@@ -272,12 +353,12 @@
             </div>
 
             <div class="d-flex align-center ga-2">
-              <v-btn variant="text" :disabled="meta.page <= 1 || loading" @click="prevPage">
+              <v-btn variant="text" :disabled="meta.page <= 1 || loading || statsLoading" @click="prevPage">
                 <v-icon start>mdi-chevron-left</v-icon>
                 Anterior
               </v-btn>
 
-              <v-btn variant="text" :disabled="meta.page >= meta.pages || loading" @click="nextPage">
+              <v-btn variant="text" :disabled="meta.page >= meta.pages || loading || statsLoading" @click="nextPage">
                 Siguiente
                 <v-icon end>mdi-chevron-right</v-icon>
               </v-btn>
@@ -381,24 +462,38 @@ const loading = ref(false);
 const sales = ref([]);
 const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
 
-const q = ref("");
 const status = ref("");
 const from = ref("");
 const to = ref("");
 const fromMenu = ref(false);
 const toMenu = ref(false);
-
 const snack = ref({ show: false, text: "" });
 
-// ===== Global stats (reales) =====
-const loadingGlobal = ref(false);
-const globalStats = ref({
+// ===== filtros “no vacíos” =====
+const customerValue = ref(null); // string (doc/phone/name)
+const sellerId = ref(null);      // number
+const productId = ref(null);     // string product_id
+
+const payMethod = ref("");
+
+// ===== autocomplete data =====
+const customerItems = ref([]);
+const customerLoading = ref(false);
+
+const sellerItems = ref([]);
+const sellerLoading = ref(false);
+
+const productItems = ref([]);
+const productLoading = ref(false);
+
+// ===== stats =====
+const statsLoading = ref(false);
+const stats = ref({
   ready: false,
-  ventasAnalizadas: 0,
-  totalFacturado: 0,
-  ticketPromedio: 0,
-  topMetodo: "",
-  topMetodoLabel: "",
+  sales_count: 0,
+  total_sum: 0,
+  paid_sum: 0,
+  payments: { cash: 0, transfer: 0, debit: 0, credit: 0, qr: 0, other: 0, raw_by_method: {} },
 });
 
 const statusItems = [
@@ -407,6 +502,16 @@ const statusItems = [
   { title: "Borrador", value: "DRAFT" },
   { title: "Cancelada", value: "CANCELLED" },
   { title: "Reintegrada", value: "REFUNDED" },
+];
+
+const payMethodItems = [
+  { title: "Todos", value: "" },
+  { title: "Efectivo", value: "CASH" },
+  { title: "Débito", value: "DEBIT" },
+  { title: "Crédito", value: "CREDIT" },
+  { title: "Transferencia", value: "TRANSFER" },
+  { title: "QR", value: "QR" },
+  { title: "Otro", value: "OTHER" },
 ];
 
 const headers = [
@@ -434,7 +539,8 @@ function toEndOfDay(dateStr) { const d = normalizeDate(dateStr); return d ? `${d
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
-  if (x === "CARD") return "Tarjeta / Débito";
+  if (x === "DEBIT") return "Débito";
+  if (x === "CREDIT") return "Crédito";
   if (x === "TRANSFER") return "Transferencia";
   if (x === "QR") return "QR";
   if (x === "OTHER") return "Otro";
@@ -443,7 +549,8 @@ function methodLabel(m) {
 function payColor(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "green";
-  if (x === "CARD") return "indigo";
+  if (x === "DEBIT") return "indigo";
+  if (x === "CREDIT") return "blue";
   if (x === "TRANSFER") return "purple";
   if (x === "QR") return "orange";
   return "grey";
@@ -472,8 +579,13 @@ function buildParams(page, limit) {
   const params = {
     page,
     limit,
-    q: q.value || undefined,
     status: status.value || undefined,
+
+    // ✅ filtros reales:
+    customer: customerValue.value || undefined,         // texto (doc/tel/nombre)
+    seller_id: sellerId.value || undefined,            // id vendedor
+    product: productId.value || undefined,             // product_id
+    pay_method: payMethod.value || undefined,          // método
   };
 
   if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
@@ -491,9 +603,6 @@ async function fetchSales() {
     if (!data?.ok) throw new Error(data?.message || "Error listando ventas");
     sales.value = data.data || [];
     meta.value = data.meta || meta.value;
-
-    // cuando cambian filtros/lista, invalidamos global (para evitar confusión)
-    globalStats.value.ready = false;
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
   } finally {
@@ -501,80 +610,82 @@ async function fetchSales() {
   }
 }
 
-function applyFilters() { meta.value.page = 1; fetchSales(); }
-
-// ===== Global stats (recorre páginas con filtros actuales) =====
-async function recalcGlobalStats() {
-  loadingGlobal.value = true;
+async function fetchStats() {
+  statsLoading.value = true;
   try {
-    const total = Number(meta.value.total || 0);
-    if (!total) {
-      globalStats.value = { ready: true, ventasAnalizadas: 0, totalFacturado: 0, ticketPromedio: 0, topMetodo: "", topMetodoLabel: "—" };
-      return;
-    }
-
-    // recorremos en chunks para no reventar
-    const chunk = 200;
-    const pages = Math.max(1, Math.ceil(total / chunk));
-
-    let ventasAnalizadas = 0;
-    let totalFacturado = 0;
-
-    const methodCount = {};
-    for (let p = 1; p <= pages; p++) {
-      const { data } = await http.get("/pos/sales", { params: buildParams(p, chunk) });
-      if (!data?.ok) throw new Error(data?.message || "Error global stats");
-      const rows = data.data || [];
-      ventasAnalizadas += rows.length;
-      for (const s of rows) {
-        totalFacturado += Number(s.total || 0);
-        const m = String(s?.payments?.[0]?.method || "—").toUpperCase() || "—";
-        methodCount[m] = (methodCount[m] || 0) + 1;
-      }
-    }
-
-    let topMetodo = "—";
-    let topC = 0;
-    for (const [k, v] of Object.entries(methodCount)) {
-      if (v > topC) { topC = v; topMetodo = k; }
-    }
-
-    const ticketPromedio = ventasAnalizadas ? totalFacturado / ventasAnalizadas : 0;
-
-    globalStats.value = {
+    const { data } = await http.get("/pos/sales/stats", { params: buildParams(1, 1) });
+    if (!data?.ok) throw new Error(data?.message || "Error calculando stats");
+    const d = data.data || {};
+    stats.value = {
       ready: true,
-      ventasAnalizadas,
-      totalFacturado,
-      ticketPromedio,
-      topMetodo,
-      topMetodoLabel: topMetodo === "—" ? "—" : methodLabel(topMetodo),
+      sales_count: Number(d.sales_count || 0),
+      total_sum: Number(d.total_sum || 0),
+      paid_sum: Number(d.paid_sum || 0),
+      payments: d.payments || stats.value.payments,
     };
   } catch (e) {
-    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error recalculando stats" };
-    globalStats.value.ready = false;
+    stats.value.ready = false;
+    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error stats" };
   } finally {
-    loadingGlobal.value = false;
+    statsLoading.value = false;
   }
 }
 
-// ===== Row click / navigation =====
-function goDetail(id) {
-  router.push({ name: "posSaleDetail", params: { id } });
-}
-function onRowClick(_, row) {
-  const item = row?.item;
-  if (item?.id) goDetail(item.id);
+async function refreshAll() {
+  await Promise.all([fetchSales(), fetchStats()]);
 }
 
-// ===== Debounce =====
-let tDeb = null;
-function debouncedApply() {
-  clearTimeout(tDeb);
-  tDeb = setTimeout(() => {
-    meta.value.page = 1;
-    fetchSales();
-  }, 400);
+function applyFilters() {
+  meta.value.page = 1;
+  refreshAll();
 }
+
+// ===== Autocomplete loaders =====
+let tCust = null;
+async function onCustomerSearch(q) {
+  clearTimeout(tCust);
+  tCust = setTimeout(async () => {
+    customerLoading.value = true;
+    try {
+      const { data } = await http.get("/pos/sales/options/customers", { params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) } });
+      if (data?.ok) customerItems.value = data.data || [];
+    } finally {
+      customerLoading.value = false;
+    }
+  }, 250);
+}
+
+let tSeller = null;
+async function onSellerSearch(q) {
+  clearTimeout(tSeller);
+  tSeller = setTimeout(async () => {
+    sellerLoading.value = true;
+    try {
+      const { data } = await http.get("/pos/sales/options/sellers", { params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) } });
+      if (data?.ok) sellerItems.value = data.data || [];
+    } finally {
+      sellerLoading.value = false;
+    }
+  }, 250);
+}
+
+let tProd = null;
+async function onProductSearch(q) {
+  clearTimeout(tProd);
+  tProd = setTimeout(async () => {
+    productLoading.value = true;
+    try {
+      const { data } = await http.get("/pos/sales/options/products", { params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) } });
+      if (data?.ok) productItems.value = data.data || [];
+    } finally {
+      productLoading.value = false;
+    }
+  }, 250);
+}
+
+// ===== Row click / navigation =====
+function goDetail(id) { router.push({ name: "posSaleDetail", params: { id } }); }
+function onRowClick(_, row) { const item = row?.item; if (item?.id) goDetail(item.id); }
 
 // ===== Ranges =====
 function todayISO() { return new Date().toISOString().slice(0, 10); }
@@ -587,7 +698,6 @@ function setThisWeek() {
   monday.setDate(now.getDate() - (day - 1));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-
   from.value = monday.toISOString().slice(0, 10);
   to.value = sunday.toISOString().slice(0, 10);
   applyFilters();
@@ -602,19 +712,21 @@ function setThisMonth() {
 }
 
 function resetFilters() {
-  q.value = "";
+  customerValue.value = null;
+  sellerId.value = null;
+  productId.value = null;
+  payMethod.value = "";
   status.value = "";
   from.value = "";
   to.value = "";
   meta.value.page = 1;
   if (isAdmin.value) selectedBranchId.value = null;
-  globalStats.value.ready = false;
-  fetchSales();
+  refreshAll();
 }
 
 // ===== Paging =====
-function prevPage() { if (meta.value.page > 1) { meta.value.page--; fetchSales(); } }
-function nextPage() { if (meta.value.page < meta.value.pages) { meta.value.page++; fetchSales(); } }
+function prevPage() { if (meta.value.page > 1) { meta.value.page--; refreshAll(); } }
+function nextPage() { if (meta.value.page < meta.value.pages) { meta.value.page++; refreshAll(); } }
 function toggleDense() { dense.value = !dense.value; }
 
 // ===== Clipboard =====
@@ -652,6 +764,7 @@ function exportCsv() {
         .join(","),
     )
     .join("\n");
+
   const csv = header + "\n" + body;
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -668,7 +781,13 @@ onMounted(async () => {
     try { await auth.fetchMe(); } catch {}
   }
   await loadBranchesIfAdmin();
-  fetchSales();
+
+  // precarga mínima para que no estén “vacíos”
+  onCustomerSearch("");
+  onSellerSearch("");
+  onProductSearch("");
+
+  refreshAll();
 });
 
 // ===== KPI component =====
