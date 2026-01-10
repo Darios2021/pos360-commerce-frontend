@@ -1,7 +1,6 @@
-<!-- ✅ COPY-PASTE FINAL (COMPLETO) -->
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
 <template>
-  <v-container fluid class="pa-4 bg-grey-lighten-4" style="min-height:100vh;">
+  <v-container fluid class="pa-4 bg-grey-lighten-4" style="min-height: 100vh">
     <!-- HEADER -->
     <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4">
       <div>
@@ -61,9 +60,7 @@
       <v-col cols="12">
         <v-card class="rounded-xl" elevation="1">
           <v-card-text class="d-flex align-center justify-space-between flex-wrap ga-2">
-            <div class="text-subtitle-2 font-weight-bold">
-              Recaudación por método de pago
-            </div>
+            <div class="text-subtitle-2 font-weight-bold">Recaudación por método de pago</div>
 
             <div class="d-flex ga-2 flex-wrap">
               <v-chip size="small" variant="tonal" color="green">
@@ -184,7 +181,7 @@
               density="comfortable"
               hide-details
               :loading="branchesLoading"
-              @update:model-value="applyFilters"
+              @update:model-value="onBranchChanged"
             />
           </v-col>
 
@@ -252,7 +249,7 @@
             density="compact"
             variant="outlined"
             hide-details
-            style="max-width:150px"
+            style="max-width: 150px"
             @update:model-value="meta.page = 1; refreshAll()"
           />
         </div>
@@ -261,13 +258,11 @@
 
     <!-- TABLA -->
     <v-card class="rounded-xl" elevation="1">
-      <v-card-title class="d-flex align-center justify-space-between flexzp flex-wrap ga-2">
+      <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
         <div class="text-subtitle-1 font-weight-bold">Ventas</div>
 
         <div class="d-flex ga-2 align-center">
-          <v-chip size="small" variant="tonal">
-            Mostrando {{ sales.length }} de {{ meta.total }}
-          </v-chip>
+          <v-chip size="small" variant="tonal">Mostrando {{ sales.length }} de {{ meta.total }}</v-chip>
 
           <v-btn size="small" variant="tonal" @click="toggleDense">
             <v-icon start>{{ dense ? "mdi-format-line-spacing" : "mdi-format-line-weight" }}</v-icon>
@@ -327,16 +322,17 @@
           </v-chip>
         </template>
 
-        <!-- ✅ ACCIONES -->
         <template #item.actions="{ item }">
           <div class="d-flex ga-2 flex-wrap">
-            <!-- VER: admin + usuario -->
             <v-btn size="small" variant="tonal" color="primary" @click.stop="goDetail(item.id)">
               <v-icon start>mdi-eye</v-icon>
               Ver
             </v-btn>
 
-            <!-- Devolución: visible para todos (backend decide permisos) -->
+            <v-btn size="small" variant="tonal" @click.stop="copyText(String(item.id))" title="Copiar ID">
+              <v-icon>mdi-content-copy</v-icon>
+            </v-btn>
+
             <v-btn
               size="small"
               variant="tonal"
@@ -349,11 +345,11 @@
               Devolución
             </v-btn>
 
-            <!-- Cambio: visible para todos (backend decide permisos) -->
             <v-btn
               size="small"
               variant="tonal"
               color="cyan"
+              :loading="exchangingId === item.id"
               @click.stop="openExchange(item)"
               title="Registrar cambio"
             >
@@ -361,7 +357,6 @@
               Cambio
             </v-btn>
 
-            <!-- Eliminar: solo admin -->
             <v-btn
               v-if="isAdmin"
               size="small"
@@ -413,7 +408,8 @@
 
         <v-card-text>
           <div class="text-caption text-medium-emphasis mb-3">
-            Total: <b>{{ money(refundDialog.sale?.total) }}</b> · Pagado: <b>{{ money(refundDialog.sale?.paid_total) }}</b>
+            Total: <b>{{ money(refundDialog.sale?.total) }}</b> · Pagado:
+            <b>{{ money(refundDialog.sale?.paid_total) }}</b>
           </div>
 
           <v-card class="rounded-lg mb-3" variant="tonal">
@@ -486,13 +482,7 @@
             </v-col>
 
             <v-col cols="12" md="6" class="d-flex align-center">
-              <v-switch
-                v-model="refundForm.restock"
-                inset
-                color="green"
-                label="Reingresar stock"
-                hide-details
-              />
+              <v-switch v-model="refundForm.restock" inset color="green" label="Reingresar stock" hide-details />
             </v-col>
 
             <v-col cols="12">
@@ -509,8 +499,8 @@
           </v-row>
 
           <v-alert v-if="refundMethodMismatch" type="warning" variant="tonal" class="mt-3" title="Atención">
-            El reintegro se está registrando con un medio distinto al pago principal.
-            Agregá motivo o referencia para auditoría.
+            El reintegro se está registrando con un medio distinto al pago principal. Agregá motivo o referencia para
+            auditoría.
           </v-alert>
         </v-card-text>
 
@@ -528,21 +518,19 @@
       </v-card>
     </v-dialog>
 
-    <!-- ✅ DIALOG CAMBIO (UX) -->
+    <!-- ✅ DIALOG CAMBIO (CONECTADO) -->
     <v-dialog v-model="exchangeDialog.show" max-width="820">
       <v-card>
         <v-card-title class="font-weight-bold d-flex align-center justify-space-between">
           <div>Registrar cambio</div>
-          <v-chip size="small" variant="tonal" color="cyan">
-            Venta #{{ exchangeDialog.sale?.id || "—" }}
-          </v-chip>
+          <v-chip size="small" variant="tonal" color="cyan">Venta #{{ exchangeDialog.sale?.id || "—" }}</v-chip>
         </v-card-title>
 
         <v-divider />
 
         <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-3" title="Nota">
-            El backend de cambios se conecta después. Acá se va a registrar: producto que vuelve, producto que se lleva, diferencia y medio.
+          <v-alert type="info" variant="tonal" class="mb-3" title="Cambio">
+            Esto registra un cambio en el backend (producto que vuelve, producto que se lleva, diferencia y medio).
           </v-alert>
 
           <v-row dense>
@@ -551,9 +539,16 @@
                 <v-card-text>
                   <div class="text-subtitle-2 font-weight-bold mb-2">1) Producto que vuelve</div>
                   <div class="text-caption text-medium-emphasis">
-                    (Se seleccionan items y cantidades)
+                    (Si tu backend espera items, acá se cargan en <b>exchangeForm.returns</b>)
                   </div>
-                  <v-switch v-model="exchangeForm.restock" inset color="green" label="Reingresar stock" hide-details class="mt-2" />
+                  <v-switch
+                    v-model="exchangeForm.restock"
+                    inset
+                    color="green"
+                    label="Reingresar stock"
+                    hide-details
+                    class="mt-2"
+                  />
                 </v-card-text>
               </v-card>
             </v-col>
@@ -563,17 +558,54 @@
                 <v-card-text>
                   <div class="text-subtitle-2 font-weight-bold mb-2">2) Producto que se lleva</div>
                   <div class="text-caption text-medium-emphasis">
-                    (Se busca producto y se calcula diferencia)
+                    (Si tu backend espera items, acá se cargan en <b>exchangeForm.takes</b>)
                   </div>
                 </v-card-text>
               </v-card>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="exchangeForm.diff_amount"
+                type="number"
+                label="Diferencia ($) (puede ser + o -)"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="exchangeForm.method"
+                :items="exchangeMethodItems"
+                label="Medio (dif./reintegro)"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="exchangeForm.reference"
+                label="Referencia (opcional)"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Ej: operación / comprobante"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field v-model="exchangeForm.note" label="Nota (opcional)" variant="outlined" density="comfortable" hide-details />
             </v-col>
           </v-row>
         </v-card-text>
 
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="exchangeDialog.show = false">Cerrar</v-btn>
-          <v-btn color="cyan" variant="flat" @click="snack = { show:true, text:'Cambio: falta conectar backend (endpoint)' }">
+          <v-btn variant="text" :disabled="exchangingId != null" @click="exchangeDialog.show = false">Cerrar</v-btn>
+          <v-btn color="cyan" variant="flat" :loading="exchangingId === exchangeDialog.sale?.id" @click="confirmExchange">
             Registrar cambio
           </v-btn>
         </v-card-actions>
@@ -585,19 +617,13 @@
       <v-card>
         <v-card-title class="font-weight-bold">Confirmar eliminación</v-card-title>
         <v-card-text>
-          ¿Seguro querés eliminar la venta <b>ID {{ deleteDialog.sale?.id }}</b>?
-          <div class="text-caption text-medium-emphasis mt-2">
-            ⚠️ Acción irreversible.
-          </div>
+          ¿Seguro querés eliminar la venta <b>ID {{ deleteDialog.sale?.id }}</b
+          >?
+          <div class="text-caption text-medium-emphasis mt-2">⚠️ Acción irreversible.</div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" :disabled="deletingId != null" @click="deleteDialog.show = false">Cancelar</v-btn>
-          <v-btn
-            color="red"
-            variant="flat"
-            :loading="deletingId === deleteDialog.sale?.id"
-            @click="deleteSaleConfirmed"
-          >
+          <v-btn color="red" variant="flat" :loading="deletingId === deleteDialog.sale?.id" @click="deleteSaleConfirmed">
             Eliminar
           </v-btn>
         </v-card-actions>
@@ -618,6 +644,14 @@ import { useAuthStore } from "../../../app/store/auth.store";
 
 const router = useRouter();
 const auth = useAuthStore();
+
+/**
+ * IMPORTANTE (tu error actual):
+ * - En consola te da 501 en /pos/sales/options/*
+ *   Eso es backend (ruta no implementada / handler no conectado / reverse proxy).
+ * - Igual, acá dejo el frontend "a prueba de forma de datos": normaliza items para que los desplegables
+ *   funcionen aunque el backend devuelva {id,name}, strings, etc.
+ */
 
 // ===== Admin (UI) =====
 const isAdmin = computed(() => {
@@ -641,7 +675,7 @@ const isAdmin = computed(() => {
 
   const roles = raw.map((s) => String(s || "").trim().toLowerCase()).filter(Boolean);
   return roles.some((r) =>
-    ["admin","administrador","administrator","super_admin","superadmin","root","owner","dueño","dueno"].includes(r)
+    ["admin", "administrador", "administrator", "super_admin", "superadmin", "root", "owner", "dueño", "dueno"].includes(r),
   );
 });
 
@@ -723,6 +757,11 @@ const sellerLoading = ref(false);
 const productItems = ref([]);
 const productLoading = ref(false);
 
+// Cache (para que si el backend falla, al menos filtre lo ya cargado)
+const cacheCustomers = ref([]);
+const cacheSellers = ref([]);
+const cacheProducts = ref([]);
+
 // ===== stats =====
 const statsLoading = ref(false);
 const stats = ref({
@@ -744,7 +783,8 @@ const statusItems = [
 const payMethodItems = [
   { title: "Todos", value: "" },
   { title: "Efectivo", value: "CASH" },
-  { title: "Tarjeta", value: "CARD" },
+  { title: "Débito", value: "DEBIT" },
+  { title: "Crédito", value: "CREDIT" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "QR", value: "QR" },
   { title: "Otro", value: "OTHER" },
@@ -756,28 +796,39 @@ const headers = [
   { title: "Total", key: "total", sortable: false, width: 220 },
   { title: "Pago", key: "method", sortable: false, width: 190 },
   { title: "Estado", key: "status", sortable: false, width: 140 },
-  // ✅ más ancho para que no desaparezcan
-  { title: "Acciones", key: "actions", sortable: false, width: 420 },
+  { title: "Acciones", key: "actions", sortable: false, width: 520 },
 ];
 
 // ===== Helpers =====
+function toast(msg) {
+  snack.value = { show: true, text: String(msg || "Error") };
+}
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
-function dt(val) { return val ? new Date(val).toLocaleString("es-AR") : "—"; }
+function dt(val) {
+  return val ? new Date(val).toLocaleString("es-AR") : "—";
+}
 
 function normalizeDate(v) {
   if (!v) return "";
   if (typeof v === "string") return v.slice(0, 10);
   return new Date(v).toISOString().slice(0, 10);
 }
-function toStartOfDay(dateStr) { const d = normalizeDate(dateStr); return d ? `${d} 00:00:00` : ""; }
-function toEndOfDay(dateStr) { const d = normalizeDate(dateStr); return d ? `${d} 23:59:59` : ""; }
+function toStartOfDay(dateStr) {
+  const d = normalizeDate(dateStr);
+  return d ? `${d} 00:00:00` : "";
+}
+function toEndOfDay(dateStr) {
+  const d = normalizeDate(dateStr);
+  return d ? `${d} 23:59:59` : "";
+}
 
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
-  if (x === "CARD") return "Tarjeta";
+  if (x === "DEBIT") return "Débito";
+  if (x === "CREDIT") return "Crédito";
   if (x === "TRANSFER") return "Transferencia";
   if (x === "QR") return "QR";
   if (x === "OTHER") return "Otro";
@@ -786,7 +837,8 @@ function methodLabel(m) {
 function payColor(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "green";
-  if (x === "CARD") return "blue";
+  if (x === "DEBIT") return "indigo";
+  if (x === "CREDIT") return "blue";
   if (x === "TRANSFER") return "purple";
   if (x === "QR") return "orange";
   return "grey";
@@ -836,16 +888,55 @@ function primaryPayment(saleLike) {
   return sorted[0] || pays[0] || null;
 }
 
+// ===== Normalizador de opciones (ARREGLA "desplegables vacíos") =====
+function normalizeOptions(list) {
+  const arr = Array.isArray(list) ? list : [];
+  return arr
+    .map((x) => {
+      // si viene string
+      if (typeof x === "string") return { title: x, value: x };
+
+      // formatos comunes
+      const id = x?.value ?? x?.id ?? x?.user_id ?? x?.product_id ?? x?.customer_id ?? x?.seller_id ?? null;
+      const title =
+        x?.title ??
+        x?.name ??
+        x?.full_name ??
+        x?.customer_name ??
+        x?.seller_name ??
+        x?.product_name ??
+        x?.label ??
+        x?.text ??
+        (id != null ? String(id) : "");
+
+      const value =
+        x?.value ??
+        (id != null ? Number(id) : title) ??
+        title;
+
+      return { title: String(title || ""), value, _raw: x };
+    })
+    .filter((i) => i.title);
+}
+
+function localFilter(items, q) {
+  const term = String(q || "").trim().toLowerCase();
+  if (!term) return items.slice(0, 25);
+  return items.filter((i) => String(i.title || "").toLowerCase().includes(term)).slice(0, 25);
+}
+
 // ===== Fetch =====
 async function fetchSales() {
   loading.value = true;
   try {
     const { data } = await http.get("/pos/sales", { params: buildParams(meta.value.page, meta.value.limit) });
     if (!data?.ok) throw new Error(data?.message || "Error listando ventas");
-    sales.value = data.data || [];
+
+    const arr = Array.isArray(data.data) ? data.data : [];
+    sales.value = arr;
     meta.value = data.meta || meta.value;
   } catch (e) {
-    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
+    toast(e?.response?.data?.message || e?.message || "Error");
   } finally {
     loading.value = false;
   }
@@ -866,7 +957,7 @@ async function fetchStats() {
     };
   } catch (e) {
     stats.value.ready = false;
-    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error stats" };
+    toast(e?.response?.data?.message || e?.message || "Error stats");
   } finally {
     statsLoading.value = false;
   }
@@ -881,7 +972,7 @@ function applyFilters() {
   refreshAll();
 }
 
-// ===== Autocomplete loaders =====
+// ===== Autocomplete loaders (con fallback) =====
 let tCust = null;
 async function onCustomerSearch(q) {
   clearTimeout(tCust);
@@ -889,9 +980,19 @@ async function onCustomerSearch(q) {
     customerLoading.value = true;
     try {
       const { data } = await http.get("/pos/sales/options/customers", {
-        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) }
+        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) },
       });
-      if (data?.ok) customerItems.value = data.data || [];
+      if (data?.ok) {
+        const items = normalizeOptions(data.data || []);
+        customerItems.value = items;
+        cacheCustomers.value = items;
+      } else {
+        // fallback si ok=false
+        customerItems.value = localFilter(cacheCustomers.value, q);
+      }
+    } catch (e) {
+      // 501/500 backend => no rompas UI
+      customerItems.value = localFilter(cacheCustomers.value, q);
     } finally {
       customerLoading.value = false;
     }
@@ -905,9 +1006,17 @@ async function onSellerSearch(q) {
     sellerLoading.value = true;
     try {
       const { data } = await http.get("/pos/sales/options/sellers", {
-        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) }
+        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) },
       });
-      if (data?.ok) sellerItems.value = data.data || [];
+      if (data?.ok) {
+        const items = normalizeOptions(data.data || []);
+        sellerItems.value = items;
+        cacheSellers.value = items;
+      } else {
+        sellerItems.value = localFilter(cacheSellers.value, q);
+      }
+    } catch (e) {
+      sellerItems.value = localFilter(cacheSellers.value, q);
     } finally {
       sellerLoading.value = false;
     }
@@ -921,23 +1030,62 @@ async function onProductSearch(q) {
     productLoading.value = true;
     try {
       const { data } = await http.get("/pos/sales/options/products", {
-        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) }
+        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) },
       });
-      if (data?.ok) productItems.value = data.data || [];
+      if (data?.ok) {
+        const items = normalizeOptions(data.data || []);
+        productItems.value = items;
+        cacheProducts.value = items;
+      } else {
+        productItems.value = localFilter(cacheProducts.value, q);
+      }
+    } catch (e) {
+      productItems.value = localFilter(cacheProducts.value, q);
     } finally {
       productLoading.value = false;
     }
   }, 250);
 }
 
+// ===== Branch change =====
+function onBranchChanged() {
+  // al cambiar sucursal: reseteo filtros dependientes + recargo opciones + datos
+  customerValue.value = null;
+  sellerId.value = null;
+  productId.value = null;
+
+  // recarga opciones (si backend responde)
+  onCustomerSearch("");
+  onSellerSearch("");
+  onProductSearch("");
+
+  applyFilters();
+}
+
 // ===== Row click / navigation =====
-function goDetail(id) { router.push({ name: "posSaleDetail", params: { id } }); }
-function onRowClick(_, row) { const item = row?.item; if (item?.id) goDetail(item.id); }
+function goDetail(id) {
+  router.push({ name: "posSaleDetail", params: { id } });
+}
+function onRowClick(_, row) {
+  const item = row?.item;
+  if (item?.id) goDetail(item.id);
+}
 
 // ===== Ranges =====
-function todayISO() { return new Date().toISOString().slice(0, 10); }
-function clearDates() { from.value = ""; to.value = ""; applyFilters(); }
-function setToday() { const t = todayISO(); from.value = t; to.value = t; applyFilters(); }
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function clearDates() {
+  from.value = "";
+  to.value = "";
+  applyFilters();
+}
+function setToday() {
+  const t = todayISO();
+  from.value = t;
+  to.value = t;
+  applyFilters();
+}
 function setThisWeek() {
   const now = new Date();
   const day = now.getDay() || 7;
@@ -972,9 +1120,32 @@ function resetFilters() {
 }
 
 // ===== Paging =====
-function prevPage() { if (meta.value.page > 1) { meta.value.page--; refreshAll(); } }
-function nextPage() { if (meta.value.page < meta.value.pages) { meta.value.page++; refreshAll(); } }
-function toggleDense() { dense.value = !dense.value; }
+function prevPage() {
+  if (meta.value.page > 1) {
+    meta.value.page--;
+    refreshAll();
+  }
+}
+function nextPage() {
+  if (meta.value.page < meta.value.pages) {
+    meta.value.page++;
+    refreshAll();
+  }
+}
+function toggleDense() {
+  dense.value = !dense.value;
+}
+
+// ===== Clipboard =====
+async function copyText(txt) {
+  try {
+    if (!txt) return;
+    await navigator.clipboard.writeText(txt);
+    toast("Copiado");
+  } catch {
+    toast("No se pudo copiar");
+  }
+}
 
 // ===== CSV =====
 function exportCsv() {
@@ -1032,11 +1203,11 @@ async function deleteSaleConfirmed() {
   try {
     const { data } = await http.delete(`/pos/sales/${id}`);
     if (!data?.ok) throw new Error(data?.message || "No se pudo eliminar");
-    snack.value = { show: true, text: "Venta eliminada" };
+    toast("Venta eliminada");
     deleteDialog.value = { show: false, sale: null };
     await refreshAll();
   } catch (e) {
-    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error eliminando" };
+    toast(e?.response?.data?.message || e?.message || "Error eliminando");
   } finally {
     deletingId.value = null;
   }
@@ -1056,7 +1227,8 @@ const refundForm = ref({
 
 const refundMethodItems = [
   { title: "Efectivo", value: "CASH" },
-  { title: "Tarjeta", value: "CARD" },
+  { title: "Débito", value: "DEBIT" },
+  { title: "Crédito", value: "CREDIT" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "QR", value: "QR" },
   { title: "Otro", value: "OTHER" },
@@ -1093,7 +1265,6 @@ async function openRefund(item) {
     reference: "",
   };
 
-  // Traer detalle real para pagos correctos (si existe endpoint)
   try {
     const { data } = await http.get(`/pos/sales/${item.id}`);
     if (data?.ok && data.data) {
@@ -1101,7 +1272,7 @@ async function openRefund(item) {
       const main2 = primaryPayment(data.data)?.method || main || "CASH";
       refundForm.value.refund_method = String(main2).toUpperCase();
     }
-  } catch (e) {
+  } catch {
     // no bloquea
   }
 }
@@ -1114,17 +1285,14 @@ async function confirmRefund() {
   const amount = Number(String(refundForm.value.amount || "").replace(",", "."));
   const maxPaid = Number(sale?.paid_total || 0);
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    snack.value = { show: true, text: "Monto inválido" };
-    return;
-  }
-  if (amount > maxPaid + 0.0001) {
-    snack.value = { show: true, text: "El monto excede lo pagado" };
-    return;
-  }
-  if (refundMethodMismatch.value && !String(refundForm.value.reason || "").trim() && !String(refundForm.value.reference || "").trim()) {
-    snack.value = { show: true, text: "Si cambiás el medio de reintegro, agregá motivo o referencia" };
-    return;
+  if (!Number.isFinite(amount) || amount <= 0) return toast("Monto inválido");
+  if (amount > maxPaid + 0.0001) return toast("El monto excede lo pagado");
+  if (
+    refundMethodMismatch.value &&
+    !String(refundForm.value.reason || "").trim() &&
+    !String(refundForm.value.reference || "").trim()
+  ) {
+    return toast("Si cambiás el medio de reintegro, agregá motivo o referencia");
   }
 
   refundingId.value = id;
@@ -1140,35 +1308,108 @@ async function confirmRefund() {
     const { data } = await http.post(`/pos/sales/${id}/refunds`, payload);
     if (!data?.ok) throw new Error(data?.message || "No se pudo registrar la devolución");
 
-    snack.value = { show: true, text: "Devolución registrada" };
+    toast("Devolución registrada");
     refundDialog.value = { show: false, sale: null };
     await refreshAll();
   } catch (e) {
-    // si el usuario común no tiene permisos, backend devolverá 403
-    const msg = e?.response?.data?.message || e?.message || "Error devolución";
-    snack.value = { show: true, text: msg };
+    toast(e?.response?.data?.message || e?.message || "Error devolución");
   } finally {
     refundingId.value = null;
   }
 }
 
-// ===== CAMBIO (UX por ahora) =====
+// ===== CAMBIO (CONECTADO) =====
+const exchangingId = ref(null);
 const exchangeDialog = ref({ show: false, sale: null });
-const exchangeForm = ref({ restock: true });
 
-function openExchange(item) {
-  exchangeDialog.value = { show: true, sale: item };
-  exchangeForm.value = { restock: true };
+const exchangeForm = ref({
+  restock: true,
+  returns: [],
+  takes: [],
+  diff_amount: 0,
+  method: "CASH",
+  reference: "",
+  note: "",
+});
+
+const exchangeMethodItems = [
+  { title: "Efectivo", value: "CASH" },
+  { title: "Débito", value: "DEBIT" },
+  { title: "Crédito", value: "CREDIT" },
+  { title: "Transferencia", value: "TRANSFER" },
+  { title: "QR", value: "QR" },
+  { title: "Otro", value: "OTHER" },
+];
+
+async function openExchange(item) {
+  exchangeDialog.value = { show: true, sale: { ...item } };
+
+  exchangeForm.value = {
+    restock: true,
+    returns: [],
+    takes: [],
+    diff_amount: 0,
+    method: "CASH",
+    reference: "",
+    note: "",
+  };
+
+  try {
+    const { data } = await http.get(`/pos/sales/${item.id}`);
+    if (data?.ok && data.data) {
+      exchangeDialog.value.sale = data.data;
+      const main = primaryPayment(data.data)?.method;
+      if (main) exchangeForm.value.method = String(main).toUpperCase();
+    }
+  } catch {
+    // no bloquea
+  }
+}
+
+async function confirmExchange() {
+  const sale = exchangeDialog.value.sale;
+  const id = sale?.id;
+  if (!id) return;
+
+  exchangingId.value = id;
+  try {
+    const payload = {
+      restock: !!exchangeForm.value.restock,
+      returns: Array.isArray(exchangeForm.value.returns) ? exchangeForm.value.returns : [],
+      takes: Array.isArray(exchangeForm.value.takes) ? exchangeForm.value.takes : [],
+      diff_amount: Number(exchangeForm.value.diff_amount || 0),
+      method: String(exchangeForm.value.method || "CASH").toUpperCase(),
+      reference: String(exchangeForm.value.reference || "").trim() || null,
+      note: String(exchangeForm.value.note || "").trim() || null,
+    };
+
+    const { data } = await http.post(`/pos/sales/${id}/exchanges`, payload);
+    if (!data?.ok) throw new Error(data?.message || "No se pudo registrar el cambio");
+
+    toast("Cambio registrado");
+    exchangeDialog.value = { show: false, sale: null };
+    await refreshAll();
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "Error cambio");
+  } finally {
+    exchangingId.value = null;
+  }
 }
 
 onMounted(async () => {
   if (auth?.isAuthed && !auth.user && typeof auth.fetchMe === "function") {
-    try { await auth.fetchMe(); } catch {}
+    try {
+      await auth.fetchMe();
+    } catch {}
   }
+
   await loadBranchesIfAdmin();
+
+  // precarga mínima (si backend está caído, NO rompe: queda vacío y listo)
   onCustomerSearch("");
   onSellerSearch("");
   onProductSearch("");
+
   refreshAll();
 });
 
@@ -1194,3 +1435,7 @@ const KpiCard = {
   `,
 };
 </script>
+
+<style scoped>
+/* (opcional) nada por ahora */
+</style>
