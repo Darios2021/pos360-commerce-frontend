@@ -124,16 +124,13 @@
           class="rounded-xl"
           density="comfortable"
         >
-          <!-- Producto enriquecido -->
           <template #item.product="{ item }">
             <div class="d-flex align-center ga-3">
-              <!-- Thumb -->
               <v-avatar size="54" rounded="lg" class="thumb" @click="openImage(item)">
                 <v-img v-if="imgUrl(item)" :src="imgUrl(item)" cover />
                 <v-icon v-else>mdi-image-off-outline</v-icon>
               </v-avatar>
 
-              <!-- Meta -->
               <div class="min-w-0">
                 <div class="text-body-1 font-weight-black text-truncate">
                   {{ productName(item) }}
@@ -232,7 +229,12 @@
           </v-alert>
 
           <div class="d-flex ga-2 mt-4">
-            <v-btn variant="tonal" color="primary" @click="goToProduct(imageItem?.product_id)" :disabled="!imageItem?.product_id">
+            <v-btn
+              variant="tonal"
+              color="primary"
+              @click="goToProduct(imageItem?.product_id)"
+              :disabled="!imageItem?.product_id"
+            >
               <v-icon start>mdi-cube-outline</v-icon>
               Ver producto
             </v-btn>
@@ -262,7 +264,10 @@ const router = useRouter();
 
 const id = computed(() => Number(route.params.id || 0));
 const loading = ref(false);
-const sale = ref(null);
+
+// ✅ el backend devuelve: { sale, refunds, exchanges }
+const payload = ref(null);
+const sale = computed(() => payload.value?.sale || null);
 
 const snack = ref({ show: false, text: "" });
 
@@ -384,11 +389,11 @@ async function copyText(txt) {
 // ===== Load =====
 async function load() {
   loading.value = true;
-  sale.value = null;
+  payload.value = null;
   try {
     const { data } = await http.get(`/pos/sales/${id.value}`);
     if (!data?.ok) throw new Error(data?.message || "Error cargando venta");
-    sale.value = data.data;
+    payload.value = data.data || null; // ✅ { sale, refunds, exchanges }
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
   } finally {

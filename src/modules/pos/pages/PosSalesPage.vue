@@ -598,7 +598,13 @@
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-text-field v-model="exchangeForm.note" label="Nota (opcional)" variant="outlined" density="comfortable" hide-details />
+              <v-text-field
+                v-model="exchangeForm.note"
+                label="Nota (opcional)"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              />
             </v-col>
           </v-row>
         </v-card-text>
@@ -646,11 +652,12 @@ const router = useRouter();
 const auth = useAuthStore();
 
 /**
- * IMPORTANTE (tu error actual):
- * - En consola te da 501 en /pos/sales/options/*
- *   Eso es backend (ruta no implementada / handler no conectado / reverse proxy).
- * - Igual, acá dejo el frontend "a prueba de forma de datos": normaliza items para que los desplegables
- *   funcionen aunque el backend devuelva {id,name}, strings, etc.
+ * ✅ FIX CLAVE PARA FILTROS:
+ * Mandamos ALIAS DOBLES en params para no depender de cómo esté implementado el backend:
+ * - customer + customer_id
+ * - product + product_id
+ * - pay_method + method
+ * Esto hace que filtre aunque tu controller espere otros nombres.
  */
 
 // ===== Admin (UI) =====
@@ -860,19 +867,47 @@ function statusColor(s) {
   return "grey";
 }
 
+function numOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function buildParams(page, limit) {
   const hasFrom = !!normalizeDate(from.value);
   const hasTo = !!normalizeDate(to.value);
 
+  const c = customerValue.value ?? null;
+  const s = sellerId.value ?? null;
+  const p = productId.value ?? null;
+  const pm = String(payMethod.value || "").trim();
+  const st = String(status.value || "").trim();
+
   const params = {
     page,
     limit,
-    status: status.value || undefined,
-    customer: customerValue.value || undefined,
-    seller_id: sellerId.value || undefined,
-    product: productId.value || undefined,
-    pay_method: payMethod.value || undefined,
+
+    // ✅ Nombres "clásicos"
+    status: st || undefined,
+    seller_id: numOrNull(s) ?? undefined,
+    pay_method: pm || undefined,
+
+    // ✅ ALIAS para compatibilidad máxima
+    method: pm || undefined, // algunos backends esperan "method"
   };
+
+  // ✅ customer: mandamos ambos
+  if (c != null && c !== "") {
+    const cid = numOrNull(c);
+    params.customer = cid ?? c; // si es num -> id, sino string fallback
+    params.customer_id = cid ?? undefined;
+  }
+
+  // ✅ product: mandamos ambos
+  if (p != null && p !== "") {
+    const pid = numOrNull(p);
+    params.product = pid ?? p;
+    params.product_id = pid ?? undefined;
+  }
 
   if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
   if (hasFrom) params.from = toStartOfDay(from.value);
@@ -893,10 +928,8 @@ function normalizeOptions(list) {
   const arr = Array.isArray(list) ? list : [];
   return arr
     .map((x) => {
-      // si viene string
       if (typeof x === "string") return { title: x, value: x };
 
-      // formatos comunes
       const id = x?.value ?? x?.id ?? x?.user_id ?? x?.product_id ?? x?.customer_id ?? x?.seller_id ?? null;
       const title =
         x?.title ??
@@ -909,11 +942,7 @@ function normalizeOptions(list) {
         x?.text ??
         (id != null ? String(id) : "");
 
-      const value =
-        x?.value ??
-        (id != null ? Number(id) : title) ??
-        title;
-
+      const value = x?.value ?? (id != null ? Number(id) : title) ?? title;
       return { title: String(title || ""), value, _raw: x };
     })
     .filter((i) => i.title);
@@ -987,11 +1016,9 @@ async function onCustomerSearch(q) {
         customerItems.value = items;
         cacheCustomers.value = items;
       } else {
-        // fallback si ok=false
         customerItems.value = localFilter(cacheCustomers.value, q);
       }
-    } catch (e) {
-      // 501/500 backend => no rompas UI
+    } catch {
       customerItems.value = localFilter(cacheCustomers.value, q);
     } finally {
       customerLoading.value = false;
@@ -1015,7 +1042,7 @@ async function onSellerSearch(q) {
       } else {
         sellerItems.value = localFilter(cacheSellers.value, q);
       }
-    } catch (e) {
+    } catch {
       sellerItems.value = localFilter(cacheSellers.value, q);
     } finally {
       sellerLoading.value = false;
@@ -1039,7 +1066,7 @@ async function onProductSearch(q) {
       } else {
         productItems.value = localFilter(cacheProducts.value, q);
       }
-    } catch (e) {
+    } catch {
       productItems.value = localFilter(cacheProducts.value, q);
     } finally {
       productLoading.value = false;
@@ -1049,12 +1076,10 @@ async function onProductSearch(q) {
 
 // ===== Branch change =====
 function onBranchChanged() {
-  // al cambiar sucursal: reseteo filtros dependientes + recargo opciones + datos
   customerValue.value = null;
   sellerId.value = null;
   productId.value = null;
 
-  // recarga opciones (si backend responde)
   onCustomerSearch("");
   onSellerSearch("");
   onProductSearch("");
@@ -1405,7 +1430,6 @@ onMounted(async () => {
 
   await loadBranchesIfAdmin();
 
-  // precarga mínima (si backend está caído, NO rompe: queda vacío y listo)
   onCustomerSearch("");
   onSellerSearch("");
   onProductSearch("");
