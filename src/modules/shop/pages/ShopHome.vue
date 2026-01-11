@@ -1,14 +1,12 @@
 <!-- src/modules/shop/pages/ShopHome.vue -->
 <template>
-  <!-- ✅ FIX: sacamos el padding 16px del v-container (era el culpable de la “línea” arriba/abajo) -->
   <v-container fluid class="shop-page pa-0">
-    <!-- ✅ HERO FULL-BLEED (100vw) -->
+    <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
         <div class="hero-wrap">
           <HeroSlider :slides="heroSlides" @goShop="scrollToProducts" @clickSlide="onHeroClick" />
 
-          <!-- ✅ FLOAT: SUBCATEGORÍAS (flechas + auto-move en desktop) -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" mode="subcategories" />
           </div>
@@ -23,7 +21,6 @@
         <PromoSlider :items="promoItems" :perPage="promoPerPage" @seeAll="scrollToProducts" />
       </div>
 
-      <!-- ✅ RESTAURADO: HomeCategoriesCarousel -->
       <div class="mb-6" v-if="allCats.length">
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
@@ -62,25 +59,39 @@
         </div>
       </div>
 
-      <div v-if="loading && !items.length" class="product-grid">
+      <!-- ⚠️ ALERTA DE ERROR EN CATALOGO (visible también en navegador de Meta) -->
+      <v-alert
+        v-if="itemsError"
+        type="error"
+        variant="tonal"
+        class="mb-4"
+      >
+        Error al cargar el catálogo: {{ itemsError }}
+        <template v-if="isMetaWebView">
+          <br />
+          Estás usando el navegador interno de Instagram/Facebook. Si el problema continúa,
+          abrí esta web en el navegador del teléfono (tres puntos ··· → “Abrir en navegador”).
+        </template>
+      </v-alert>
+
+      <div v-if="loading && !items.length && !itemsError" class="product-grid">
         <div v-for="n in 12" :key="n">
           <v-skeleton-loader type="image, article" />
         </div>
       </div>
 
-      <v-alert v-else-if="!loading && !items.length" type="info" variant="tonal">
+      <v-alert v-else-if="!loading && !items.length && !itemsError" type="info" variant="tonal">
         No hay productos para mostrar con estos criterios.
       </v-alert>
 
-      <div v-else class="product-grid">
+      <div v-else-if="!itemsError" class="product-grid">
         <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
-      <div class="after-products-banner" v-if="!loading && items.length">
+      <div class="after-products-banner" v-if="!loading && items.length && !itemsError">
         <PromoBannerParlantes />
       </div>
 
-      <!-- ✅ PASARELA AURICULARES -->
       <div class="mt-6">
         <PromoSliderAuriculares
           :loading="aurisLoading"
@@ -93,7 +104,6 @@
       </div>
     </section>
 
-    <!-- ✅ FOOTER -->
     <ShopFooter />
   </v-container>
 </template>
@@ -120,6 +130,7 @@ const router = useRouter();
 const cart = useShopCartStore();
 
 const loading = ref(false);
+const itemsError = ref(null);
 
 const items = ref([]);
 const page = ref(Number(route.query.page || 1));
@@ -140,6 +151,11 @@ const subcategory_id = computed(() =>
 );
 
 const cartCount = computed(() => cart.count);
+
+// Detectar navegador interno de Meta (Instagram / FB / Messenger)
+const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(
+  navigator.userAgent || ""
+);
 
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -219,6 +235,8 @@ const promoItems = computed(() => {
 
 async function fetchCatalog({ append = false } = {}) {
   if (!append) loading.value = true;
+  itemsError.value = null;
+
   try {
     const r = await getCatalog({
       search: q.value || "",
@@ -230,10 +248,17 @@ async function fetchCatalog({ append = false } = {}) {
 
     const newItems = Array.isArray(r.items) ? r.items : [];
     total.value = Number(r.total || 0);
-
     items.value = newItems;
   } catch (e) {
     console.error("❌ fetchCatalog(Home)", e);
+
+    // Mensaje visible para debug (especialmente en Meta WebView)
+    const msg =
+      e?.response?.status
+        ? `${e.response.status} ${e.response.statusText || ""}`.trim()
+        : e?.message || String(e);
+
+    itemsError.value = msg;
     items.value = [];
     total.value = 0;
   } finally {
@@ -247,6 +272,7 @@ function norm(s) {
     .trim()
     .toLowerCase()
     .normalize("NFD")
+    // fallo posible en engines viejos → try/catch de seguridad
     .replace(/\p{Diacritic}/gu, "");
 }
 function getCatSubs(cat) {
@@ -372,7 +398,7 @@ watch(
     if (!allCats.value?.length) {
       try {
         allCats.value = await getPublicCategories();
-      } catch (e) {
+      } catch {
         allCats.value = [];
       }
     }
@@ -384,21 +410,18 @@ watch(
 </script>
 
 <style scoped>
-/* ✅ FIX GLOBAL para que jamás asome “blanco” por márgenes/padding del layout */
 :global(html),
 :global(body) {
   margin: 0 !important;
   padding: 0 !important;
 }
 
-/* ✅ el root del shop NO debe tener padding (Vuetify mete 16px por defecto) */
 .shop-page {
   --shop-max: 1200px;
-  padding: 0 !important; /* 👈 mata el gap arriba/abajo */
+  padding: 0 !important;
   margin: 0 !important;
 }
 
-/* ✅ HERO FULL-BLEED (sin espacio contra el header) */
 .hero-fullbleed {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -433,11 +456,10 @@ watch(
   height: 205px;
 }
 
-/* ✅ el padding “real” lo maneja este wrapper, no el v-container */
 .content {
   width: min(var(--shop-max), calc(100% - 24px));
   margin: 0 auto;
-  padding-bottom: 40px; /* espacio antes del footer, pero dentro del flujo (sin línea blanca afuera) */
+  padding-bottom: 40px;
 }
 
 .product-grid {
