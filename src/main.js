@@ -1,42 +1,75 @@
 // =============================
-// 🔐 PATCH GLOBAL localStorage
-// (Instagram / Facebook WebView / iOS incógnito / navegadores capados)
+// 🔐 PATCH GLOBAL para WebViews capados (Instagram / Facebook / iOS Private)
 // Debe ir antes de cualquier import
 // =============================
 (function () {
   if (typeof window === "undefined") return;
 
+  const isMetaWebView =
+    /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
+
+  // --- PATCH localStorage ---
   try {
     const testKey = "__ls_test__";
     window.localStorage.setItem(testKey, "1");
     window.localStorage.removeItem(testKey);
-    // Si esto funciona, localStorage está OK → no tocamos nada
-  } catch (err) {
-    // localStorage explotó → reemplazamos por dummy storage
-    // 👇 Devolvemos la cadena "null" para que JSON.parse("null") no rompa
-    const noopStorage = {
-      getItem() {
-        return "null"; // Hace seguro JSON.parse(localStorage.getItem(...))
-      },
+  } catch (_) {
+    const noopLS = {
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
+      key() { return null; },
+      get length() { return 0; },
+    };
+    try {
+      Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
+    } catch {
+      window.localStorage = noopLS;
+    }
+  }
+
+  // --- PATCH sessionStorage ---
+  try {
+    const testKey = "__ss_test__";
+    window.sessionStorage.setItem(testKey, "1");
+    window.sessionStorage.removeItem(testKey);
+  } catch (_) {
+    const noopSS = {
+      getItem() { return "null"; },
+      setItem() {},
+      removeItem() {},
+      clear() {},
+      key() { return null; },
+      get length() { return 0; },
+    };
+    try {
+      Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
+    } catch {
+      window.sessionStorage = noopSS;
+    }
+  }
+
+  // --- PATCH IndexedDB (eliminar crash silencioso en Meta WebView) ---
+  try {
+    if (!window.indexedDB && !window.webkitIndexedDB) {
+      window.indexedDB = {
+        open() {
+          return { onerror() {}, onsuccess() {}, onupgradeneeded() {} };
+        },
+      };
+    }
+  } catch (_) {
+    window.indexedDB = {
+      open() {
+        return { onerror() {}, onsuccess() {}, onupgradeneeded() {} };
       },
     };
+  }
 
-    try {
-      Object.defineProperty(window, "localStorage", {
-        value: noopStorage,
-        configurable: true,
-      });
-    } catch (e) {
-      window.localStorage = noopStorage;
-    }
+  // Log mínimo para debug en Meta
+  if (isMetaWebView) {
+    console.log("[META WEBVIEW DETECTADO]");
   }
 })();
 
