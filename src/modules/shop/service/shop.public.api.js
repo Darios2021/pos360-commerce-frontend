@@ -1,7 +1,32 @@
 // src/modules/shop/service/shop.public.api.js
 import axios from "axios";
 
-const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+// =============================
+// BASE URL con FIX para Meta WebView (Instagram/Facebook)
+// =============================
+
+// Valor por defecto desde Vite (.env)
+// Ej: VITE_API_BASE_URL="https://pos360-commerce.cingulado.org/api/v1"
+const defaultBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
+// Para el navegador interno de Instagram/Facebook forzamos a usar el mismo host
+// que la web pública (sanjuantecnologia.com). Asegurate de tener nginx
+// proxy_pass /api/v1 -> backend real.
+const META_FIX_BASE = "https://sanjuantecnologia.com/api/v1";
+
+const base = (() => {
+  if (typeof window !== "undefined") {
+    const ua = navigator.userAgent || "";
+    const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(ua);
+
+    if (isMetaWebView) {
+      // En Meta WebView intentamos usar la API por el mismo host de la web
+      // para evitar bloqueos de red a dominios externos.
+      return META_FIX_BASE.replace(/\/+$/, "");
+    }
+  }
+  return defaultBase;
+})();
 
 /**
  * Si tu API está en .../api, las imágenes suelen servirse en el host raíz.
@@ -96,7 +121,8 @@ function dedupeCatalogItems(items) {
       // si viene baseObj.images
       if (Array.isArray(baseObj.images)) {
         for (const it of baseObj.images) {
-          const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
+          const u =
+            typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
           if (u) images.push(absUrl(u));
         }
       }
@@ -155,8 +181,6 @@ export async function getCatalog(params = {}) {
     in_stock: params.in_stock ?? 1,
     page: params.page ?? 1,
     limit: params.limit ?? 24,
-
-    // ✅ NUEVO (si no vienen, cleanParams los elimina)
     strict_search: params.strict_search ?? null,
     exclude_terms: params.exclude_terms ?? null,
   });
@@ -166,7 +190,6 @@ export async function getCatalog(params = {}) {
 
   data.items = dedupeCatalogItems(data.items);
 
-  // normaliza URLs
   data.items = (data.items || []).map((it) => {
     const imgs = uniqUrls([...(it.images || []).map(absUrl), absUrl(it.image_url)]);
     return { ...it, images: imgs, image_url: imgs[0] || absUrl(it.image_url) || "" };
@@ -285,7 +308,11 @@ export async function getSimilarProducts({
         ...p,
         images: imgs,
         image_url: imgs[0] || absUrl(p.image_url) || "",
-        price: p.price ?? (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
+        price:
+          p.price ??
+          (toNum(p.price_discount, 0) > 0
+            ? toNum(p.price_discount, 0)
+            : toNum(p.price_list, 0)),
       };
     });
 }
