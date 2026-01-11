@@ -15,7 +15,7 @@
     window.localStorage.removeItem(testKey);
   } catch (_) {
     const noopLS = {
-      getItem() { return "null"; },
+      getItem() { return "null"; }, // JSON.parse("null") => null (no rompe)
       setItem() {},
       removeItem() {},
       clear() {},
@@ -23,7 +23,10 @@
       get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
+      Object.defineProperty(window, "localStorage", {
+        value: noopLS,
+        configurable: true,
+      });
     } catch {
       window.localStorage = noopLS;
     }
@@ -44,13 +47,16 @@
       get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
+      Object.defineProperty(window, "sessionStorage", {
+        value: noopSS,
+        configurable: true,
+      });
     } catch {
       window.sessionStorage = noopSS;
     }
   }
 
-  // --- PATCH IndexedDB (eliminar crash silencioso en Meta WebView) ---
+  // --- PATCH IndexedDB (evita crash silencioso en algunos WebViews) ---
   try {
     if (!window.indexedDB && !window.webkitIndexedDB) {
       window.indexedDB = {
@@ -67,7 +73,6 @@
     };
   }
 
-  // Log mínimo para debug en Meta
   if (isMetaWebView) {
     console.log("[META WEBVIEW DETECTADO]");
   }
