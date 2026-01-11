@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <!-- ✅ STATS -->
+    <!-- STATS -->
     <v-row dense class="mb-4">
       <v-col cols="12" md="4">
         <KpiCard
@@ -41,19 +41,21 @@
 
       <v-col cols="12" md="4">
         <KpiCard
-          title="Total vendido"
+          title="Total vendido (neto)"
           :value="stats.ready ? money(stats.total_sum) : '—'"
           icon="mdi-cash-multiple"
           :loading="statsLoading"
+          subtitle="Resta devoluciones"
         />
       </v-col>
 
       <v-col cols="12" md="4">
         <KpiCard
-          title="Total cobrado"
+          title="Total cobrado (neto)"
           :value="stats.ready ? money(stats.paid_sum) : '—'"
           icon="mdi-cash-check"
           :loading="statsLoading"
+          subtitle="Resta devoluciones"
         />
       </v-col>
 
@@ -63,22 +65,19 @@
             <div class="text-subtitle-2 font-weight-bold">Recaudación por método de pago</div>
 
             <div class="d-flex ga-2 flex-wrap">
-              <v-chip size="small" variant="tonal" color="green">
+              <v-chip size="small" variant="tonal">
                 Efectivo: {{ stats.ready ? money(stats.payments.cash) : "—" }}
               </v-chip>
-              <v-chip size="small" variant="tonal" color="purple">
+              <v-chip size="small" variant="tonal">
                 Transferencia: {{ stats.ready ? money(stats.payments.transfer) : "—" }}
               </v-chip>
-              <v-chip size="small" variant="tonal" color="indigo">
-                Débito: {{ stats.ready ? money(stats.payments.debit) : "—" }}
+              <v-chip size="small" variant="tonal">
+                Tarjeta: {{ stats.ready ? money(stats.payments.card) : "—" }}
               </v-chip>
-              <v-chip size="small" variant="tonal" color="blue">
-                Crédito: {{ stats.ready ? money(stats.payments.credit) : "—" }}
-              </v-chip>
-              <v-chip size="small" variant="tonal" color="orange">
+              <v-chip size="small" variant="tonal">
                 QR: {{ stats.ready ? money(stats.payments.qr) : "—" }}
               </v-chip>
-              <v-chip size="small" variant="tonal" color="grey">
+              <v-chip size="small" variant="tonal">
                 Otro: {{ stats.ready ? money(stats.payments.other) : "—" }}
               </v-chip>
             </div>
@@ -87,183 +86,199 @@
       </v-col>
     </v-row>
 
-    <!-- FILTROS -->
-    <v-card class="rounded-xl mb-4" elevation="1">
-      <v-card-text>
-        <v-row dense class="align-center">
-          <v-col cols="12" md="4">
-            <v-autocomplete
-              v-model="customerValue"
-              :items="customerItems"
-              :loading="customerLoading"
-              label="Cliente"
-              placeholder="Buscar cliente (nombre / doc / teléfono)"
-              prepend-inner-icon="mdi-account-search"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-              item-title="title"
-              item-value="value"
-              @update:search="onCustomerSearch"
-              @update:model-value="applyFilters"
-            />
-          </v-col>
+    <!-- FILTROS (más limpio: panel colapsable) -->
+    <v-expansion-panels class="mb-4" variant="accordion">
+      <v-expansion-panel elevation="1" class="rounded-xl">
+        <v-expansion-panel-title>
+          <div class="d-flex align-center ga-2">
+            <v-icon>mdi-filter</v-icon>
+            <b>Filtros</b>
+            <v-chip size="x-small" class="ml-2" variant="tonal">
+              Página {{ meta.page }} · {{ meta.limit }}/pág
+            </v-chip>
+          </div>
+        </v-expansion-panel-title>
 
-          <v-col cols="12" sm="6" md="3">
-            <v-autocomplete
-              v-model="sellerId"
-              :items="sellerItems"
-              :loading="sellerLoading"
-              label="Cajero / Vendedor"
-              placeholder="Buscar vendedor"
-              prepend-inner-icon="mdi-account"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-              item-title="title"
-              item-value="value"
-              @update:search="onSellerSearch"
-              @update:model-value="applyFilters"
-            />
-          </v-col>
+        <v-expansion-panel-text>
+          <v-row dense class="align-center">
+            <v-col cols="12" md="4">
+              <v-autocomplete
+                v-model="customerValue"
+                :items="customerItems"
+                :loading="customerLoading"
+                label="Cliente"
+                placeholder="Buscar cliente (nombre / doc / teléfono)"
+                prepend-inner-icon="mdi-account-search"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                clearable
+                item-title="title"
+                item-value="value"
+                @update:search="onCustomerSearch"
+                @update:model-value="applyFilters"
+              />
+            </v-col>
 
-          <v-col cols="12" sm="6" md="3">
-            <v-autocomplete
-              v-model="productId"
-              :items="productItems"
-              :loading="productLoading"
-              label="Producto"
-              placeholder="Buscar producto"
-              prepend-inner-icon="mdi-package-variant-closed"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-              item-title="title"
-              item-value="value"
-              @update:search="onProductSearch"
-              @update:model-value="applyFilters"
-            />
-          </v-col>
+            <v-col cols="12" sm="6" md="3">
+              <v-autocomplete
+                v-model="sellerId"
+                :items="sellerItems"
+                :loading="sellerLoading"
+                label="Cajero / Vendedor"
+                placeholder="Buscar vendedor"
+                prepend-inner-icon="mdi-account"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                clearable
+                item-title="title"
+                item-value="value"
+                @update:search="onSellerSearch"
+                @update:model-value="applyFilters"
+              />
+            </v-col>
 
-          <v-col cols="12" sm="6" md="2">
-            <v-select
-              v-model="payMethod"
-              :items="payMethodItems"
-              label="Tipo de pago"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              @update:model-value="applyFilters"
-            />
-          </v-col>
+            <v-col cols="12" sm="6" md="3">
+              <v-autocomplete
+                v-model="productId"
+                :items="productItems"
+                :loading="productLoading"
+                label="Producto (vendido)"
+                placeholder="Buscar producto en ventas"
+                prepend-inner-icon="mdi-package-variant-closed"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                clearable
+                item-title="title"
+                item-value="value"
+                @update:search="onProductSearch"
+                @update:model-value="applyFilters"
+              />
+            </v-col>
 
-          <v-col cols="12" sm="6" md="2">
-            <v-select
-              v-model="status"
-              :items="statusItems"
-              label="Estado"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              @update:model-value="applyFilters"
-            />
-          </v-col>
+            <v-col cols="12" sm="6" md="2">
+              <v-select
+                v-model="payMethod"
+                :items="payMethodItems"
+                label="Tipo de pago"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                @update:model-value="applyFilters"
+              />
+            </v-col>
 
-          <v-col cols="12" md="3" v-if="isAdmin">
-            <v-select
-              v-model="selectedBranchId"
-              :items="branchSelectItems"
-              label="Sucursal"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              :loading="branchesLoading"
-              @update:model-value="onBranchChanged"
-            />
-          </v-col>
+            <v-col cols="12" sm="6" md="2">
+              <v-select
+                v-model="status"
+                :items="statusItems"
+                label="Estado"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                @update:model-value="applyFilters"
+              />
+            </v-col>
 
-          <v-col cols="12" sm="6" md="2">
-            <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
-              <template #activator="{ props }">
-                <v-text-field
-                  v-bind="props"
-                  :model-value="from || ''"
-                  label="Desde"
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  readonly
-                  placeholder="(sin fecha)"
-                />
-              </template>
-              <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFilters()" />
-            </v-menu>
-          </v-col>
+            <v-col cols="12" md="3" v-if="isAdmin">
+              <v-select
+                v-model="selectedBranchId"
+                :items="branchSelectItems"
+                label="Sucursal"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                :loading="branchesLoading"
+                @update:model-value="onBranchChanged"
+              />
+            </v-col>
 
-          <v-col cols="12" sm="6" md="2">
-            <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
-              <template #activator="{ props }">
-                <v-text-field
-                  v-bind="props"
-                  :model-value="to || ''"
-                  label="Hasta"
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  readonly
-                  placeholder="(sin fecha)"
-                />
-              </template>
-              <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFilters()" />
-            </v-menu>
-          </v-col>
+            <v-col cols="12" sm="6" md="2">
+              <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
+                <template #activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    :model-value="from || ''"
+                    label="Desde"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    readonly
+                    placeholder="(sin fecha)"
+                  />
+                </template>
+                <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFilters()" />
+              </v-menu>
+            </v-col>
 
-          <v-col cols="12" md="1">
-            <v-btn block color="primary" @click="applyFilters" :loading="loading || statsLoading">
-              <v-icon>mdi-filter</v-icon>
-            </v-btn>
-          </v-col>
-        </v-row>
+            <v-col cols="12" sm="6" md="2">
+              <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
+                <template #activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    :model-value="to || ''"
+                    label="Hasta"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    readonly
+                    placeholder="(sin fecha)"
+                  />
+                </template>
+                <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFilters()" />
+              </v-menu>
+            </v-col>
 
-        <div class="d-flex flex-wrap ga-2 mt-3 align-center">
-          <v-btn size="small" variant="tonal" @click="setToday">Hoy</v-btn>
-          <v-btn size="small" variant="tonal" @click="setThisWeek">Esta semana</v-btn>
-          <v-btn size="small" variant="tonal" @click="setThisMonth">Este mes</v-btn>
-          <v-btn size="small" variant="text" @click="clearDates">Limpiar fechas</v-btn>
+            <v-col cols="12" md="3">
+              <div class="d-flex ga-2 flex-wrap">
+                <v-btn size="small" variant="tonal" @click="setToday">Hoy</v-btn>
+                <v-btn size="small" variant="tonal" @click="setThisWeek">Esta semana</v-btn>
+                <v-btn size="small" variant="tonal" @click="setThisMonth">Este mes</v-btn>
+                <v-btn size="small" variant="text" @click="clearDates">Limpiar</v-btn>
+              </div>
+            </v-col>
 
-          <v-spacer />
+            <v-col cols="12" md="2">
+              <v-select
+                v-model="meta.limit"
+                :items="[10, 20, 50, 100]"
+                label="Por página"
+                density="compact"
+                variant="outlined"
+                hide-details
+                @update:model-value="meta.page = 1; refreshAll()"
+              />
+            </v-col>
 
-          <v-chip size="small" variant="tonal" color="primary">
-            Sucursal: {{ effectiveBranchId ?? "— (todas)" }}
-          </v-chip>
+            <v-col cols="12" md="1">
+              <v-btn block color="primary" @click="applyFilters" :loading="loading || statsLoading">
+                <v-icon>mdi-filter</v-icon>
+              </v-btn>
+            </v-col>
 
-          <v-select
-            v-model="meta.limit"
-            :items="[10, 20, 50, 100]"
-            label="Por página"
-            density="compact"
-            variant="outlined"
-            hide-details
-            style="max-width: 150px"
-            @update:model-value="meta.page = 1; refreshAll()"
-          />
-        </div>
-      </v-card-text>
-    </v-card>
+            <v-col cols="12" class="pt-0">
+              <v-chip size="small" variant="tonal" color="primary">
+                Sucursal: {{ effectiveBranchId ?? "— (todas)" }}
+              </v-chip>
+            </v-col>
+          </v-row>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
 
     <!-- TABLA -->
     <v-card class="rounded-xl" elevation="1">
       <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
-        <div class="text-subtitle-1 font-weight-bold">Ventas</div>
+        <div class="d-flex align-center ga-2">
+          <div class="text-subtitle-1 font-weight-bold">Ventas</div>
+          <v-chip size="small" variant="tonal">Mostrando {{ sales.length }} de {{ meta.total }}</v-chip>
+        </div>
 
         <div class="d-flex ga-2 align-center">
-          <v-chip size="small" variant="tonal">Mostrando {{ sales.length }} de {{ meta.total }}</v-chip>
-
           <v-btn size="small" variant="tonal" @click="toggleDense">
             <v-icon start>{{ dense ? "mdi-format-line-spacing" : "mdi-format-line-weight" }}</v-icon>
             {{ dense ? "Normal" : "Compacta" }}
@@ -323,52 +338,51 @@
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex ga-2 flex-wrap">
-            <v-btn size="small" variant="tonal" color="primary" @click.stop="goDetail(item.id)">
-              <v-icon start>mdi-eye</v-icon>
-              Ver
+          <div class="d-flex ga-2 align-center flex-wrap">
+            <v-btn size="small" variant="tonal" color="primary" @click.stop="openPostSale(item)">
+              <v-icon start>mdi-clipboard-text-outline</v-icon>
+              Post-venta
             </v-btn>
 
-            <v-btn size="small" variant="tonal" @click.stop="copyText(String(item.id))" title="Copiar ID">
-              <v-icon>mdi-content-copy</v-icon>
-            </v-btn>
+            <v-menu>
+              <template #activator="{ props }">
+                <v-btn v-bind="props" size="small" variant="tonal">
+                  <v-icon start>mdi-dots-vertical</v-icon>
+                  Acciones
+                </v-btn>
+              </template>
 
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="orange"
-              :loading="refundingId === item.id"
-              @click.stop="openRefund(item)"
-              title="Registrar devolución"
-            >
-              <v-icon start>mdi-cash-refund</v-icon>
-              Devolución
-            </v-btn>
+              <v-list density="comfortable">
+                <v-list-item @click="goDetail(item.id)">
+                  <template #prepend><v-icon>mdi-eye</v-icon></template>
+                  <v-list-item-title>Ver detalle</v-list-item-title>
+                </v-list-item>
 
-            <v-btn
-              size="small"
-              variant="tonal"
-              color="cyan"
-              :loading="exchangingId === item.id"
-              @click.stop="openExchange(item)"
-              title="Registrar cambio"
-            >
-              <v-icon start>mdi-swap-horizontal</v-icon>
-              Cambio
-            </v-btn>
+                <v-list-item @click="copyText(String(item.id))">
+                  <template #prepend><v-icon>mdi-content-copy</v-icon></template>
+                  <v-list-item-title>Copiar ID</v-list-item-title>
+                </v-list-item>
 
-            <v-btn
-              v-if="isAdmin"
-              size="small"
-              variant="tonal"
-              color="red"
-              :loading="deletingId === item.id"
-              @click.stop="openDelete(item)"
-              title="Eliminar venta (solo admin)"
-            >
-              <v-icon start>mdi-trash-can-outline</v-icon>
-              Eliminar
-            </v-btn>
+                <v-divider />
+
+                <v-list-item @click="openPostSale(item, 'refunds')">
+                  <template #prepend><v-icon color="orange">mdi-cash-refund</v-icon></template>
+                  <v-list-item-title>Registrar devolución</v-list-item-title>
+                </v-list-item>
+
+                <v-list-item @click="openPostSale(item, 'exchanges')">
+                  <template #prepend><v-icon color="cyan">mdi-swap-horizontal</v-icon></template>
+                  <v-list-item-title>Registrar cambio</v-list-item-title>
+                </v-list-item>
+
+                <v-divider v-if="isAdmin" />
+
+                <v-list-item v-if="isAdmin" @click="openDelete(item)">
+                  <template #prepend><v-icon color="red">mdi-trash-can-outline</v-icon></template>
+                  <v-list-item-title>Eliminar venta</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
           </div>
         </template>
 
@@ -394,7 +408,204 @@
       </v-data-table>
     </v-card>
 
-    <!-- ✅ DIALOG DEVOLUCIÓN -->
+    <!-- DRAWER POST-VENTA -->
+    <v-navigation-drawer v-model="postSale.open" location="right" temporary width="520" class="pa-0">
+      <div class="pa-4 d-flex align-center justify-space-between">
+        <div>
+          <div class="text-subtitle-1 font-weight-black">Post-venta</div>
+          <div class="text-caption text-medium-emphasis" v-if="postSale.sale?.id">
+            Venta #{{ postSale.sale.id }} · {{ dt(postSale.sale.sold_at) }}
+          </div>
+        </div>
+
+        <div class="d-flex ga-2">
+          <v-btn icon variant="tonal" @click="refreshPostSale" :loading="postSale.loading" :disabled="!postSale.sale?.id">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+          <v-btn icon variant="text" @click="postSale.open = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
+      </div>
+
+      <v-divider />
+
+      <div class="pa-4" v-if="!postSale.sale?.id">
+        <v-alert type="info" variant="tonal">Seleccioná una venta para ver devoluciones y cambios.</v-alert>
+      </div>
+
+      <div v-else class="pa-0">
+        <v-tabs v-model="postSale.tab" density="comfortable" class="px-2">
+          <v-tab value="summary">
+            <v-icon start>mdi-information-outline</v-icon>
+            Resumen
+          </v-tab>
+          <v-tab value="refunds">
+            <v-icon start color="orange">mdi-cash-refund</v-icon>
+            Devoluciones
+            <v-chip class="ml-2" size="x-small" variant="tonal">{{ postSale.refunds.length }}</v-chip>
+          </v-tab>
+          <v-tab value="exchanges">
+            <v-icon start color="cyan">mdi-swap-horizontal</v-icon>
+            Cambios
+            <v-chip class="ml-2" size="x-small" variant="tonal">{{ postSale.exchanges.length }}</v-chip>
+          </v-tab>
+        </v-tabs>
+
+        <v-divider />
+
+        <!-- SUMMARY -->
+        <div v-show="postSale.tab === 'summary'" class="pa-4">
+          <v-card class="rounded-xl mb-3" elevation="0" variant="outlined">
+            <v-card-text>
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-caption text-medium-emphasis">Cliente</div>
+                  <div class="font-weight-bold">{{ postSale.sale.customer_name || "Consumidor Final" }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    <span v-if="postSale.sale.customer_doc">Doc: {{ postSale.sale.customer_doc }}</span>
+                    <span v-if="postSale.sale.customer_doc && postSale.sale.customer_phone"> · </span>
+                    <span v-if="postSale.sale.customer_phone">Tel: {{ postSale.sale.customer_phone }}</span>
+                  </div>
+                </div>
+                <v-chip size="small" variant="tonal" :color="statusColor(postSale.sale.status)">
+                  {{ statusLabel(postSale.sale.status) }}
+                </v-chip>
+              </div>
+
+              <v-divider class="my-3" />
+
+              <div class="d-flex justify-space-between">
+                <div>
+                  <div class="text-caption text-medium-emphasis">Total</div>
+                  <div class="text-h6 font-weight-black">{{ money(postSale.sale.total) }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-caption text-medium-emphasis">Pagado</div>
+                  <div class="text-h6 font-weight-black">{{ money(postSale.sale.paid_total) }}</div>
+                  <div class="text-caption text-medium-emphasis">Vuelto: {{ money(postSale.sale.change_total) }}</div>
+                </div>
+              </div>
+
+              <v-divider class="my-3" />
+
+              <div>
+                <div class="text-caption text-medium-emphasis mb-2">Pagos</div>
+                <div class="d-flex flex-wrap ga-2">
+                  <v-chip
+                    v-for="p in (postSale.sale.payments || [])"
+                    :key="p.id || p.created_at || JSON.stringify(p)"
+                    size="small"
+                    variant="tonal"
+                    :color="payColor(p.method)"
+                  >
+                    {{ methodLabel(p.method) }}: {{ money(p.amount) }}
+                  </v-chip>
+                  <v-chip v-if="!(postSale.sale.payments || []).length" size="small" variant="tonal">
+                    (sin pagos)
+                  </v-chip>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <div class="d-flex ga-2 flex-wrap">
+            <v-btn color="orange" variant="flat" @click="openRefundFromPostSale" :disabled="!postSale.sale?.id">
+              <v-icon start>mdi-cash-refund</v-icon>
+              Nueva devolución
+            </v-btn>
+            <v-btn color="cyan" variant="flat" @click="openExchangeFromPostSale" :disabled="!postSale.sale?.id">
+              <v-icon start>mdi-swap-horizontal</v-icon>
+              Nuevo cambio
+            </v-btn>
+
+            <v-spacer />
+
+            <v-btn variant="tonal" @click="goDetail(postSale.sale.id)">
+              <v-icon start>mdi-eye</v-icon>
+              Ver detalle
+            </v-btn>
+          </div>
+        </div>
+
+        <!-- REFUNDS -->
+        <div v-show="postSale.tab === 'refunds'" class="pa-4">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <div class="text-subtitle-2 font-weight-bold">Devoluciones</div>
+            <v-btn color="orange" variant="tonal" @click="openRefundFromPostSale">
+              <v-icon start>mdi-plus</v-icon>
+              Registrar
+            </v-btn>
+          </div>
+
+          <v-alert v-if="!postSale.refunds.length" type="info" variant="tonal">
+            No hay devoluciones registradas para esta venta.
+          </v-alert>
+
+          <v-card v-for="r in postSale.refunds" :key="r.id" class="rounded-xl mb-2" variant="outlined">
+            <v-card-text>
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-caption text-medium-emphasis">Fecha</div>
+                  <div class="font-weight-bold">{{ dt(r.created_at) }}</div>
+                </div>
+                <v-chip size="small" variant="tonal" color="orange">
+                  {{ money(r.amount) }}
+                </v-chip>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-2">
+                Medio: <b>{{ methodLabel(r.refund_method) }}</b>
+                <span v-if="r.reference"> · Ref: {{ r.reference }}</span>
+              </div>
+
+              <div class="text-caption text-medium-emphasis" v-if="r.reason">
+                Motivo: {{ r.reason }}
+              </div>
+            </v-card-text>
+          </v-card>
+        </div>
+
+        <!-- EXCHANGES -->
+        <div v-show="postSale.tab === 'exchanges'" class="pa-4">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <div class="text-subtitle-2 font-weight-bold">Cambios</div>
+            <v-btn color="cyan" variant="tonal" @click="openExchangeFromPostSale">
+              <v-icon start>mdi-plus</v-icon>
+              Registrar
+            </v-btn>
+          </div>
+
+          <v-alert v-if="!postSale.exchanges.length" type="info" variant="tonal">
+            No hay cambios registrados para esta venta.
+          </v-alert>
+
+          <v-card v-for="x in postSale.exchanges" :key="x.id" class="rounded-xl mb-2" variant="outlined">
+            <v-card-text>
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-caption text-medium-emphasis">Fecha</div>
+                  <div class="font-weight-bold">{{ dt(x.created_at) }}</div>
+                </div>
+                <v-chip size="small" variant="tonal" color="cyan">
+                  Dif: {{ money(x.diff) }}
+                </v-chip>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-2">
+                Original: {{ money(x.original_total) }} · Nuevo: {{ money(x.new_total) }} · Devuelto: {{ money(x.returned_amount) }}
+              </div>
+
+              <div class="text-caption text-medium-emphasis" v-if="x.note">
+                Nota: {{ x.note }}
+              </div>
+            </v-card-text>
+          </v-card>
+        </div>
+      </div>
+    </v-navigation-drawer>
+
+    <!-- DIALOG DEVOLUCIÓN -->
     <v-dialog v-model="refundDialog.show" max-width="760">
       <v-card>
         <v-card-title class="font-weight-bold d-flex align-center justify-space-between">
@@ -416,8 +627,8 @@
             <v-card-text class="py-3">
               <div class="d-flex align-center justify-space-between flex-wrap ga-2">
                 <div class="text-subtitle-2 font-weight-bold">Pagado por</div>
-                <v-chip size="small" variant="tonal" color="grey">
-                  Método sugerido: <b class="ml-1">{{ methodLabel(refundForm.refund_method) }}</b>
+                <v-chip size="small" variant="tonal">
+                  Método sugerido: <b class="ml-1">{{ methodLabel(refundForm.method) }}</b>
                 </v-chip>
               </div>
 
@@ -431,7 +642,7 @@
                 >
                   {{ methodLabel(p.method) }}: {{ money(p.amount) }}
                 </v-chip>
-                <v-chip v-if="!refundPaymentsSummary.length" size="small" variant="tonal" color="grey">
+                <v-chip v-if="!refundPaymentsSummary.length" size="small" variant="tonal">
                   (sin pagos en el detalle)
                 </v-chip>
               </div>
@@ -461,7 +672,7 @@
 
             <v-col cols="12" md="6">
               <v-select
-                v-model="refundForm.refund_method"
+                v-model="refundForm.method"
                 :items="refundMethodItems"
                 label="Medio de reintegro"
                 variant="outlined"
@@ -518,8 +729,8 @@
       </v-card>
     </v-dialog>
 
-    <!-- ✅ DIALOG CAMBIO (CONECTADO) -->
-    <v-dialog v-model="exchangeDialog.show" max-width="820">
+    <!-- ✅ DIALOG CAMBIO (UX PRO: devolver + llevar + cálculo automático) -->
+    <v-dialog v-model="exchangeDialog.show" max-width="980">
       <v-card>
         <v-card-title class="font-weight-bold d-flex align-center justify-space-between">
           <div>Registrar cambio</div>
@@ -529,102 +740,279 @@
         <v-divider />
 
         <v-card-text>
-          <v-alert type="info" variant="tonal" class="mb-3" title="Cambio">
-            Esto registra un cambio en el backend (producto que vuelve, producto que se lleva, diferencia y medio).
+          <v-alert type="info" variant="tonal" class="mb-3" title="Cambio (con productos)">
+            1) Marcá qué vuelve (de esta venta) · 2) Agregá qué se lleva · 3) El sistema calcula la diferencia.
           </v-alert>
 
+          <!-- Resumen de cálculo -->
+          <v-card class="rounded-xl mb-3" variant="outlined">
+            <v-card-text class="d-flex align-center justify-space-between flex-wrap ga-2">
+              <div class="d-flex align-center ga-2 flex-wrap">
+                <v-chip size="small" variant="tonal">
+                  Devuelve: <b class="ml-1">{{ money(exchangeTotals.returned_amount) }}</b>
+                </v-chip>
+                <v-chip size="small" variant="tonal">
+                  Se lleva: <b class="ml-1">{{ money(exchangeTotals.new_total) }}</b>
+                </v-chip>
+              </div>
+
+              <div class="d-flex align-center ga-2">
+                <v-chip
+                  size="small"
+                  variant="tonal"
+                  :color="exchangeTotals.diff > 0 ? 'green' : exchangeTotals.diff < 0 ? 'orange' : 'grey'"
+                >
+                  Diferencia: <b class="ml-1">{{ money(exchangeTotals.diff) }}</b>
+                </v-chip>
+                <div class="text-caption text-medium-emphasis" style="max-width: 360px;">
+                  <span v-if="exchangeTotals.diff > 0">(+): cliente paga diferencia</span>
+                  <span v-else-if="exchangeTotals.diff < 0">(−): reintegro al cliente</span>
+                  <span v-else>(=): cambio directo</span>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
           <v-row dense>
+            <!-- DEVUELVE -->
             <v-col cols="12" md="6">
-              <v-card class="rounded-lg" variant="outlined">
-                <v-card-text>
-                  <div class="text-subtitle-2 font-weight-bold mb-2">1) Producto que vuelve</div>
-                  <div class="text-caption text-medium-emphasis">
-                    (Si tu backend espera items, acá se cargan en <b>exchangeForm.returns</b>)
+              <v-card class="rounded-xl" variant="outlined">
+                <v-card-title class="d-flex align-center justify-space-between">
+                  <div class="text-subtitle-2 font-weight-bold">
+                    <v-icon start color="orange">mdi-arrow-u-left-top</v-icon>
+                    Devuelve (de la venta)
                   </div>
-                  <v-switch
-                    v-model="exchangeForm.restock"
-                    inset
-                    color="green"
-                    label="Reingresar stock"
-                    hide-details
-                    class="mt-2"
-                  />
+                  <v-chip size="x-small" variant="tonal">
+                    {{ exchangeReturnsSelectedCount }} item(s)
+                  </v-chip>
+                </v-card-title>
+                <v-divider />
+                <v-card-text class="pt-3">
+                  <v-alert v-if="!exchangeSaleItems.length" type="warning" variant="tonal" class="mb-3">
+                    No pude leer los items de la venta. Verificá que GET /pos/sales/:id incluya los SaleItem.
+                  </v-alert>
+
+                  <div v-else class="exchange-items-list">
+                    <div
+                      v-for="it in exchangeSaleItems"
+                      :key="it.id || `${it.product_id}-${it.warehouse_id}`"
+                      class="exchange-sale-item"
+                    >
+                      <v-checkbox
+                        v-model="it._checked"
+                        density="compact"
+                        hide-details
+                        class="mr-2"
+                      />
+                      <div class="flex-grow-1">
+                        <div class="font-weight-bold">
+                          {{ it.product_name_snapshot || it.product?.name || `Producto #${it.product_id}` }}
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          Cant. vendida: <b>{{ it.quantity }}</b> · Precio: <b>{{ money(it.unit_price) }}</b>
+                        </div>
+
+                        <div class="d-flex ga-2 mt-2 flex-wrap">
+                          <v-text-field
+                            v-model="it._qty"
+                            type="number"
+                            density="compact"
+                            variant="outlined"
+                            label="Cantidad a devolver"
+                            :min="0"
+                            :max="Number(it.quantity || 0)"
+                            hide-details
+                            style="max-width: 180px"
+                            :disabled="!it._checked"
+                            @update:model-value="onExchangeReturnQtyChanged(it)"
+                          />
+                          <v-text-field
+                            v-model="it._unit_price"
+                            type="number"
+                            density="compact"
+                            variant="outlined"
+                            label="Precio unit."
+                            :min="0"
+                            :step="0.01"
+                            hide-details
+                            style="max-width: 180px"
+                            :disabled="!it._checked"
+                          />
+                          <v-chip size="small" variant="tonal" class="mt-1">
+                            Subtotal: <b class="ml-1">{{ money(Number(it._qty || 0) * Number(it._unit_price || 0)) }}</b>
+                          </v-chip>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <v-divider class="my-3" />
+
+                  <v-switch v-model="exchangeForm.restock" inset color="green" label="Reingresar stock" hide-details />
                 </v-card-text>
               </v-card>
             </v-col>
 
+            <!-- SE LLEVA -->
             <v-col cols="12" md="6">
-              <v-card class="rounded-lg" variant="outlined">
-                <v-card-text>
-                  <div class="text-subtitle-2 font-weight-bold mb-2">2) Producto que se lleva</div>
-                  <div class="text-caption text-medium-emphasis">
-                    (Si tu backend espera items, acá se cargan en <b>exchangeForm.takes</b>)
+              <v-card class="rounded-xl" variant="outlined">
+                <v-card-title class="d-flex align-center justify-space-between">
+                  <div class="text-subtitle-2 font-weight-bold">
+                    <v-icon start color="cyan">mdi-arrow-u-right-top</v-icon>
+                    Se lleva (nuevo)
                   </div>
+                  <div class="d-flex ga-2 align-center">
+                    <v-btn size="small" variant="tonal" color="cyan" @click="addTakeRow">
+                      <v-icon start>mdi-plus</v-icon>
+                      Agregar
+                    </v-btn>
+                  </div>
+                </v-card-title>
+                <v-divider />
+                <v-card-text class="pt-3">
+                  <v-alert v-if="!exchangeForm.takes.length" type="info" variant="tonal" class="mb-3">
+                    Agregá al menos un producto que se lleva.
+                  </v-alert>
+
+                  <div v-for="(row, idx) in exchangeForm.takes" :key="row._key" class="mb-3">
+                    <v-card class="rounded-lg" variant="tonal">
+                      <v-card-text class="py-3">
+                        <div class="d-flex align-center justify-space-between">
+                          <div class="font-weight-bold">Ítem #{{ idx + 1 }}</div>
+                          <v-btn icon variant="text" @click="removeTakeRow(idx)">
+                            <v-icon color="red">mdi-close</v-icon>
+                          </v-btn>
+                        </div>
+
+                        <v-row dense class="mt-2">
+                          <v-col cols="12">
+                            <v-autocomplete
+                              v-model="row.product_id"
+                              :items="exchangeProductItems"
+                              :loading="exchangeProductLoading"
+                              label="Producto"
+                              placeholder="Buscar producto"
+                              prepend-inner-icon="mdi-magnify"
+                              variant="outlined"
+                              density="comfortable"
+                              hide-details
+                              clearable
+                              item-title="title"
+                              item-value="value"
+                              @update:search="onExchangeProductSearch"
+                              @update:model-value="onTakeProductSelected(row)"
+                            />
+                          </v-col>
+
+                          <v-col cols="12" sm="4">
+                            <v-text-field
+                              v-model="row.qty"
+                              type="number"
+                              label="Cantidad"
+                              variant="outlined"
+                              density="comfortable"
+                              :min="0"
+                              hide-details
+                            />
+                          </v-col>
+
+                          <v-col cols="12" sm="4">
+                            <v-text-field
+                              v-model="row.unit_price"
+                              type="number"
+                              label="Precio unit."
+                              variant="outlined"
+                              density="comfortable"
+                              :min="0"
+                              :step="0.01"
+                              hide-details
+                            />
+                          </v-col>
+
+                          <v-col cols="12" sm="4" class="d-flex align-center justify-end">
+                            <v-chip size="small" variant="tonal">
+                              Subtotal: <b class="ml-1">{{ money(Number(row.qty || 0) * Number(row.unit_price || 0)) }}</b>
+                            </v-chip>
+                          </v-col>
+                        </v-row>
+                      </v-card-text>
+                    </v-card>
+                  </div>
+
+                  <v-divider class="my-2" />
+
+                  <!-- MEDIO + REF + NOTA (solo si hay diferencia) -->
+                  <v-row dense>
+                    <v-col cols="12" md="6">
+                      <v-select
+                        v-model="exchangeForm.method"
+                        :items="exchangeMethodItems"
+                        label="Medio (dif./reintegro)"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                        :disabled="exchangeTotals.diff === 0"
+                      />
+                      <div class="text-caption text-medium-emphasis mt-1" v-if="exchangeTotals.diff === 0">
+                        (Sin diferencia: no hace falta medio)
+                      </div>
+                    </v-col>
+
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="exchangeForm.reference"
+                        label="Referencia (opcional)"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details
+                        placeholder="Ej: operación / comprobante"
+                        :disabled="exchangeTotals.diff === 0"
+                      />
+                    </v-col>
+
+                    <v-col cols="12">
+                      <v-textarea
+                        v-model="exchangeForm.note"
+                        label="Nota (opcional)"
+                        variant="outlined"
+                        density="comfortable"
+                        rows="2"
+                        auto-grow
+                        hide-details
+                      />
+                    </v-col>
+                  </v-row>
                 </v-card-text>
               </v-card>
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="exchangeForm.diff_amount"
-                type="number"
-                label="Diferencia ($) (puede ser + o -)"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="exchangeForm.method"
-                :items="exchangeMethodItems"
-                label="Medio (dif./reintegro)"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="exchangeForm.reference"
-                label="Referencia (opcional)"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-                placeholder="Ej: operación / comprobante"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="exchangeForm.note"
-                label="Nota (opcional)"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-              />
             </v-col>
           </v-row>
+
+          <v-alert v-if="exchangeErrors.length" type="error" variant="tonal" class="mt-3" title="Revisá">
+            <div v-for="(e, i) in exchangeErrors" :key="i">• {{ e }}</div>
+          </v-alert>
         </v-card-text>
 
         <v-card-actions class="justify-end">
           <v-btn variant="text" :disabled="exchangingId != null" @click="exchangeDialog.show = false">Cerrar</v-btn>
-          <v-btn color="cyan" variant="flat" :loading="exchangingId === exchangeDialog.sale?.id" @click="confirmExchange">
+          <v-btn
+            color="cyan"
+            variant="flat"
+            :loading="exchangingId === exchangeDialog.sale?.id"
+            :disabled="exchangeErrors.length > 0"
+            @click="confirmExchange"
+          >
             Registrar cambio
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- ✅ DIALOG ELIMINAR -->
+    <!-- DIALOG ELIMINAR -->
     <v-dialog v-model="deleteDialog.show" max-width="540">
       <v-card>
         <v-card-title class="font-weight-bold">Confirmar eliminación</v-card-title>
         <v-card-text>
-          ¿Seguro querés eliminar la venta <b>ID {{ deleteDialog.sale?.id }}</b
-          >?
+          ¿Seguro querés eliminar la venta <b>ID {{ deleteDialog.sale?.id }}</b>?
           <div class="text-caption text-medium-emphasis mt-2">⚠️ Acción irreversible.</div>
         </v-card-text>
         <v-card-actions class="justify-end">
@@ -651,14 +1039,28 @@ import { useAuthStore } from "../../../app/store/auth.store";
 const router = useRouter();
 const auth = useAuthStore();
 
-/**
- * ✅ FIX CLAVE PARA FILTROS:
- * Mandamos ALIAS DOBLES en params para no depender de cómo esté implementado el backend:
- * - customer + customer_id
- * - product + product_id
- * - pay_method + method
- * Esto hace que filtre aunque tu controller espere otros nombres.
- */
+// =====================================
+// ✅ FIX CRÍTICO: usar PK real de sales
+// (en tu caso: sales.id ~ 91, no 1753)
+// =====================================
+function getSaleId(saleLike) {
+  // Si tu listado trae sale_number (ej 1753) y el PK real está en otro campo,
+  // esto lo resuelve sin romper el resto.
+  const candidates = [
+    saleLike?.sale_id,
+    saleLike?.saleId,
+    saleLike?.id, // ojo: en muchos listados "id" sí es PK; si no, los otros lo pisan
+    saleLike?.sale?.id,
+    saleLike?.sale?.sale_id,
+    saleLike?.sale?.saleId,
+  ];
+
+  for (const c of candidates) {
+    const n = Number(c || 0);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
 
 // ===== Admin (UI) =====
 const isAdmin = computed(() => {
@@ -764,7 +1166,6 @@ const sellerLoading = ref(false);
 const productItems = ref([]);
 const productLoading = ref(false);
 
-// Cache (para que si el backend falla, al menos filtre lo ya cargado)
 const cacheCustomers = ref([]);
 const cacheSellers = ref([]);
 const cacheProducts = ref([]);
@@ -776,7 +1177,7 @@ const stats = ref({
   sales_count: 0,
   total_sum: 0,
   paid_sum: 0,
-  payments: { cash: 0, transfer: 0, debit: 0, credit: 0, qr: 0, other: 0, raw_by_method: {} },
+  payments: { cash: 0, transfer: 0, card: 0, qr: 0, other: 0, raw_by_method: {} },
 });
 
 const statusItems = [
@@ -790,8 +1191,7 @@ const statusItems = [
 const payMethodItems = [
   { title: "Todos", value: "" },
   { title: "Efectivo", value: "CASH" },
-  { title: "Débito", value: "DEBIT" },
-  { title: "Crédito", value: "CREDIT" },
+  { title: "Tarjeta", value: "CARD" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "QR", value: "QR" },
   { title: "Otro", value: "OTHER" },
@@ -801,9 +1201,9 @@ const headers = [
   { title: "Fecha", key: "sold_at", sortable: false, width: 190 },
   { title: "Cliente", key: "customer", sortable: false },
   { title: "Total", key: "total", sortable: false, width: 220 },
-  { title: "Pago", key: "method", sortable: false, width: 190 },
+  { title: "Pago", key: "method", sortable: false, width: 180 },
   { title: "Estado", key: "status", sortable: false, width: 140 },
-  { title: "Acciones", key: "actions", sortable: false, width: 520 },
+  { title: "Acciones", key: "actions", sortable: false, width: 340 },
 ];
 
 // ===== Helpers =====
@@ -834,9 +1234,8 @@ function toEndOfDay(dateStr) {
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
-  if (x === "DEBIT") return "Débito";
-  if (x === "CREDIT") return "Crédito";
   if (x === "TRANSFER") return "Transferencia";
+  if (x === "CARD") return "Tarjeta";
   if (x === "QR") return "QR";
   if (x === "OTHER") return "Otro";
   return m || "—";
@@ -844,9 +1243,8 @@ function methodLabel(m) {
 function payColor(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "green";
-  if (x === "DEBIT") return "indigo";
-  if (x === "CREDIT") return "blue";
   if (x === "TRANSFER") return "purple";
+  if (x === "CARD") return "blue";
   if (x === "QR") return "orange";
   return "grey";
 }
@@ -885,24 +1283,18 @@ function buildParams(page, limit) {
   const params = {
     page,
     limit,
-
-    // ✅ Nombres "clásicos"
     status: st || undefined,
     seller_id: numOrNull(s) ?? undefined,
     pay_method: pm || undefined,
-
-    // ✅ ALIAS para compatibilidad máxima
-    method: pm || undefined, // algunos backends esperan "method"
+    method: pm || undefined,
   };
 
-  // ✅ customer: mandamos ambos
   if (c != null && c !== "") {
     const cid = numOrNull(c);
-    params.customer = cid ?? c; // si es num -> id, sino string fallback
+    params.customer = cid ?? c;
     params.customer_id = cid ?? undefined;
   }
 
-  // ✅ product: mandamos ambos
   if (p != null && p !== "") {
     const pid = numOrNull(p);
     params.product = pid ?? p;
@@ -923,13 +1315,12 @@ function primaryPayment(saleLike) {
   return sorted[0] || pays[0] || null;
 }
 
-// ===== Normalizador de opciones (ARREGLA "desplegables vacíos") =====
+// ===== Normalizador de opciones =====
 function normalizeOptions(list) {
   const arr = Array.isArray(list) ? list : [];
   return arr
     .map((x) => {
       if (typeof x === "string") return { title: x, value: x };
-
       const id = x?.value ?? x?.id ?? x?.user_id ?? x?.product_id ?? x?.customer_id ?? x?.seller_id ?? null;
       const title =
         x?.title ??
@@ -941,7 +1332,6 @@ function normalizeOptions(list) {
         x?.label ??
         x?.text ??
         (id != null ? String(id) : "");
-
       const value = x?.value ?? (id != null ? Number(id) : title) ?? title;
       return { title: String(title || ""), value, _raw: x };
     })
@@ -977,12 +1367,20 @@ async function fetchStats() {
     const { data } = await http.get("/pos/sales/stats", { params: buildParams(1, 1) });
     if (!data?.ok) throw new Error(data?.message || "Error calculando stats");
     const d = data.data || {};
+    const p = d.payments || {};
     stats.value = {
       ready: true,
       sales_count: Number(d.sales_count || 0),
       total_sum: Number(d.total_sum || 0),
       paid_sum: Number(d.paid_sum || 0),
-      payments: d.payments || stats.value.payments,
+      payments: {
+        cash: Number(p.cash || 0),
+        transfer: Number(p.transfer || 0),
+        card: Number(p.card || 0),
+        qr: Number(p.qr || 0),
+        other: Number(p.other || 0),
+        raw_by_method: p.raw_by_method || {},
+      },
     };
   } catch (e) {
     stats.value.ready = false;
@@ -1001,7 +1399,7 @@ function applyFilters() {
   refreshAll();
 }
 
-// ===== Autocomplete loaders (con fallback) =====
+// ===== Autocomplete loaders =====
 let tCust = null;
 async function onCustomerSearch(q) {
   clearTimeout(tCust);
@@ -1093,7 +1491,8 @@ function goDetail(id) {
 }
 function onRowClick(_, row) {
   const item = row?.item;
-  if (item?.id) goDetail(item.id);
+  if (!item) return;
+  openPostSale(item);
 }
 
 // ===== Ranges =====
@@ -1221,8 +1620,8 @@ function openDelete(item) {
 }
 
 async function deleteSaleConfirmed() {
-  const id = deleteDialog.value.sale?.id;
-  if (!id) return;
+  const id = getSaleId(deleteDialog.value.sale);
+  if (!id) return toast("ID de venta inválido");
 
   deletingId.value = id;
   try {
@@ -1238,6 +1637,59 @@ async function deleteSaleConfirmed() {
   }
 }
 
+// ==============================
+// POST-VENTA (Drawer unificado)
+// ==============================
+const postSale = ref({
+  open: false,
+  tab: "summary",
+  loading: false,
+  sale: null,
+  refunds: [],
+  exchanges: [],
+});
+
+async function loadPostSale(saleId) {
+  const id = Number(saleId || 0);
+  if (!id) return;
+
+  postSale.value.loading = true;
+  try {
+    const { data } = await http.get(`/pos/sales/${id}`);
+    if (!data?.ok) throw new Error(data?.message || "No se pudo cargar la venta");
+
+    const pack = data.data || {};
+    const sale = pack.sale || pack;
+
+    postSale.value.sale = sale;
+    postSale.value.refunds = Array.isArray(pack.refunds) ? pack.refunds : [];
+    postSale.value.exchanges = Array.isArray(pack.exchanges) ? pack.exchanges : [];
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "Error post-venta");
+  } finally {
+    postSale.value.loading = false;
+  }
+}
+
+async function openPostSale(item, tab = "summary") {
+  const id = getSaleId(item);
+  if (!id) return toast("ID de venta inválido");
+
+  postSale.value.open = true;
+  postSale.value.tab = tab;
+  postSale.value.sale = { ...item };
+  postSale.value.refunds = [];
+  postSale.value.exchanges = [];
+
+  await loadPostSale(id);
+}
+
+async function refreshPostSale() {
+  const id = getSaleId(postSale.value.sale);
+  if (!id) return;
+  await loadPostSale(id);
+}
+
 // ===== DEVOLUCIÓN =====
 const refundingId = ref(null);
 const refundDialog = ref({ show: false, sale: null });
@@ -1246,14 +1698,13 @@ const refundForm = ref({
   amount: "",
   reason: "",
   restock: true,
-  refund_method: "CASH",
+  method: "CASH",
   reference: "",
 });
 
 const refundMethodItems = [
   { title: "Efectivo", value: "CASH" },
-  { title: "Débito", value: "DEBIT" },
-  { title: "Crédito", value: "CREDIT" },
+  { title: "Tarjeta", value: "CARD" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "QR", value: "QR" },
   { title: "Otro", value: "OTHER" },
@@ -1275,37 +1726,44 @@ const refundMethodMismatch = computed(() => {
   const sale = refundDialog.value.sale;
   const main = primaryPayment(sale)?.method;
   if (!main) return false;
-  return String(refundForm.value.refund_method || "").toUpperCase() !== String(main).toUpperCase();
+  return String(refundForm.value.method || "").toUpperCase() !== String(main).toUpperCase();
 });
 
+function openRefundFromPostSale() {
+  if (!postSale.value.sale) return;
+  openRefund(postSale.value.sale);
+}
+
 async function openRefund(item) {
+  const id = getSaleId(item);
+  if (!id) return toast("ID de venta inválido");
+
   refundDialog.value = { show: true, sale: { ...item } };
 
-  const main = primaryPayment(item)?.method || "CASH";
+  const main = String(primaryPayment(item)?.method || "CASH").toUpperCase();
   refundForm.value = {
     amount: String(Number(item?.paid_total || 0)),
     reason: "",
     restock: true,
-    refund_method: String(main).toUpperCase(),
+    method: main,
     reference: "",
   };
 
   try {
-    const { data } = await http.get(`/pos/sales/${item.id}`);
+    const { data } = await http.get(`/pos/sales/${id}`);
     if (data?.ok && data.data) {
-      refundDialog.value.sale = data.data;
-      const main2 = primaryPayment(data.data)?.method || main || "CASH";
-      refundForm.value.refund_method = String(main2).toUpperCase();
+      const pack = data.data || {};
+      refundDialog.value.sale = pack.sale || pack;
+      const main2 = String(primaryPayment(refundDialog.value.sale)?.method || main || "CASH").toUpperCase();
+      refundForm.value.method = main2;
     }
-  } catch {
-    // no bloquea
-  }
+  } catch {}
 }
 
 async function confirmRefund() {
   const sale = refundDialog.value.sale;
-  const id = sale?.id;
-  if (!id) return;
+  const id = getSaleId(sale);
+  if (!id) return toast("ID de venta inválido");
 
   const amount = Number(String(refundForm.value.amount || "").replace(",", "."));
   const maxPaid = Number(sale?.paid_total || 0);
@@ -1326,7 +1784,8 @@ async function confirmRefund() {
       amount,
       reason: String(refundForm.value.reason || "").trim(),
       restock: !!refundForm.value.restock,
-      refund_method: String(refundForm.value.refund_method || "CASH").toUpperCase(),
+      method: String(refundForm.value.method || "CASH").toUpperCase(),
+      refund_method: String(refundForm.value.method || "CASH").toUpperCase(),
       reference: String(refundForm.value.reference || "").trim() || null,
     };
 
@@ -1335,7 +1794,9 @@ async function confirmRefund() {
 
     toast("Devolución registrada");
     refundDialog.value = { show: false, sale: null };
+
     await refreshAll();
+    if (postSale.value.open && getSaleId(postSale.value.sale) === id) await refreshPostSale();
   } catch (e) {
     toast(e?.response?.data?.message || e?.message || "Error devolución");
   } finally {
@@ -1343,66 +1804,238 @@ async function confirmRefund() {
   }
 }
 
-// ===== CAMBIO (CONECTADO) =====
+// ===== CAMBIO (con productos + cálculo) =====
 const exchangingId = ref(null);
 const exchangeDialog = ref({ show: false, sale: null });
 
 const exchangeForm = ref({
   restock: true,
-  returns: [],
-  takes: [],
-  diff_amount: 0,
   method: "CASH",
   reference: "",
   note: "",
+  takes: [],
 });
 
 const exchangeMethodItems = [
   { title: "Efectivo", value: "CASH" },
-  { title: "Débito", value: "DEBIT" },
-  { title: "Crédito", value: "CREDIT" },
+  { title: "Tarjeta", value: "CARD" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "QR", value: "QR" },
   { title: "Otro", value: "OTHER" },
 ];
 
+// Items originales de la venta para “devuelve”
+const exchangeSaleItems = ref([]);
+
+// Autocomplete productos (para “se lleva”)
+const exchangeProductItems = ref([]);
+const exchangeProductLoading = ref(false);
+const exchangeProductsCache = ref([]);
+
+let tExProd = null;
+async function onExchangeProductSearch(q) {
+  clearTimeout(tExProd);
+  tExProd = setTimeout(async () => {
+    exchangeProductLoading.value = true;
+    try {
+      const { data } = await http.get("/pos/sales/options/products", {
+        params: { q: q || "", limit: 25, ...(effectiveBranchId.value ? { branch_id: effectiveBranchId.value } : {}) },
+      });
+      if (data?.ok) {
+        const items = normalizeOptions(data.data || []);
+        exchangeProductItems.value = items;
+        exchangeProductsCache.value = items;
+      } else {
+        exchangeProductItems.value = localFilter(exchangeProductsCache.value, q);
+      }
+    } catch {
+      exchangeProductItems.value = localFilter(exchangeProductsCache.value, q);
+    } finally {
+      exchangeProductLoading.value = false;
+    }
+  }, 250);
+}
+
+function openExchangeFromPostSale() {
+  if (!postSale.value.sale) return;
+  openExchange(postSale.value.sale);
+}
+
+function normalizeSaleItemsFromDetail(detailSale) {
+  const candidates = [
+    detailSale?.sale_items,
+    detailSale?.SaleItems,
+    detailSale?.items,
+    detailSale?.saleItems,
+    detailSale?.sale_items_rows,
+  ].filter(Boolean);
+
+  const arr = Array.isArray(candidates[0]) ? candidates[0] : [];
+  return arr;
+}
+
 async function openExchange(item) {
+  const id = getSaleId(item);
+  if (!id) return toast("ID de venta inválido");
+
   exchangeDialog.value = { show: true, sale: { ...item } };
 
+  // reset
   exchangeForm.value = {
     restock: true,
-    returns: [],
-    takes: [],
-    diff_amount: 0,
-    method: "CASH",
+    method: String(primaryPayment(item)?.method || "CASH").toUpperCase(),
     reference: "",
     note: "",
+    takes: [],
   };
+  exchangeSaleItems.value = [];
+  exchangeProductItems.value = exchangeProductsCache.value.slice(0, 25);
 
+  // Traer detalle para items
   try {
-    const { data } = await http.get(`/pos/sales/${item.id}`);
+    const { data } = await http.get(`/pos/sales/${id}`);
     if (data?.ok && data.data) {
-      exchangeDialog.value.sale = data.data;
-      const main = primaryPayment(data.data)?.method;
-      if (main) exchangeForm.value.method = String(main).toUpperCase();
+      const pack = data.data || {};
+      const sale = pack.sale || pack;
+
+      // armar items seleccionables
+      const saleItems = normalizeSaleItemsFromDetail(sale);
+      exchangeSaleItems.value = (Array.isArray(saleItems) ? saleItems : []).map((it) => ({
+        ...it,
+        _checked: false,
+        _qty: Number(it.quantity || 0),
+        _unit_price: Number(it.unit_price || 0),
+      }));
     }
   } catch {
-    // no bloquea
+    // no bloquea el modal; solo no muestra items
   }
+
+  // arranca con 1 fila
+  addTakeRow();
 }
+
+function onExchangeReturnQtyChanged(it) {
+  const max = Number(it.quantity || 0);
+  let v = Number(it._qty || 0);
+  if (!Number.isFinite(v)) v = 0;
+  if (v < 0) v = 0;
+  if (v > max) v = max;
+  it._qty = v;
+}
+
+// takes helpers
+function addTakeRow() {
+  exchangeForm.value.takes.push({
+    _key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    product_id: null,
+    qty: 1,
+    unit_price: 0,
+  });
+}
+function removeTakeRow(idx) {
+  exchangeForm.value.takes.splice(idx, 1);
+}
+function onTakeProductSelected(row) {
+  if (!row) return;
+  if (!row.qty || Number(row.qty) <= 0) row.qty = 1;
+}
+
+// cálculo automático
+const exchangeTotals = computed(() => {
+  const returned = (exchangeSaleItems.value || [])
+    .filter((it) => !!it._checked)
+    .reduce((a, it) => {
+      const q = Number(it._qty || 0);
+      const up = Number(it._unit_price || 0);
+      return a + Math.max(0, q) * Math.max(0, up);
+    }, 0);
+
+  const newTotal = (exchangeForm.value.takes || []).reduce((a, it) => {
+    const q = Number(it.qty || 0);
+    const up = Number(it.unit_price || 0);
+    return a + Math.max(0, q) * Math.max(0, up);
+  }, 0);
+
+  const diff = Number((newTotal - returned).toFixed(2));
+  return {
+    returned_amount: Number(returned.toFixed(2)),
+    new_total: Number(newTotal.toFixed(2)),
+    diff,
+  };
+});
+
+const exchangeReturnsSelectedCount = computed(() => {
+  return (exchangeSaleItems.value || []).filter((it) => !!it._checked).length;
+});
+
+const exchangeErrors = computed(() => {
+  const errs = [];
+
+  const returnsSelected = (exchangeSaleItems.value || []).filter((it) => !!it._checked);
+  if (!returnsSelected.length) errs.push("Seleccioná al menos un ítem a devolver (columna izquierda).");
+
+  for (const it of returnsSelected) {
+    const max = Number(it.quantity || 0);
+    const q = Number(it._qty || 0);
+    const up = Number(it._unit_price || 0);
+    if (!Number.isFinite(q) || q <= 0) errs.push("En 'Devuelve': la cantidad debe ser > 0 en todos los ítems seleccionados.");
+    if (q > max + 0.0001) errs.push("En 'Devuelve': la cantidad no puede superar la cantidad vendida.");
+    if (!Number.isFinite(up) || up < 0) errs.push("En 'Devuelve': el precio unitario no puede ser negativo.");
+  }
+
+  const takes = Array.isArray(exchangeForm.value.takes) ? exchangeForm.value.takes : [];
+  if (!takes.length) errs.push("Agregá al menos un producto que se lleva (columna derecha).");
+
+  for (const t of takes) {
+    const pid = Number(t.product_id || 0);
+    const q = Number(t.qty || 0);
+    const up = Number(t.unit_price || 0);
+    if (!pid) errs.push("En 'Se lleva': falta seleccionar producto en alguna fila.");
+    if (!Number.isFinite(q) || q <= 0) errs.push("En 'Se lleva': la cantidad debe ser > 0 en todas las filas.");
+    if (!Number.isFinite(up) || up < 0) errs.push("En 'Se lleva': el precio unitario no puede ser negativo.");
+  }
+
+  const diff = exchangeTotals.value.diff;
+  const method = String(exchangeForm.value.method || "").toUpperCase();
+  const allowed = new Set(["CASH", "TRANSFER", "CARD", "QR", "OTHER"]);
+  if (diff !== 0 && !allowed.has(method)) errs.push("Elegí un medio válido para la diferencia/reintegro.");
+
+  return Array.from(new Set(errs));
+});
 
 async function confirmExchange() {
   const sale = exchangeDialog.value.sale;
-  const id = sale?.id;
-  if (!id) return;
+  const id = getSaleId(sale);
+  if (!id) return toast("ID de venta inválido");
+
+  if (exchangeErrors.value.length) {
+    return toast("Revisá el formulario de cambio");
+  }
+
+  const returnsSelected = (exchangeSaleItems.value || []).filter((it) => !!it._checked);
+
+  const returns = returnsSelected.map((it) => ({
+    sale_item_id: Number(it.id || 0) || null,
+    product_id: Number(it.product_id || 0),
+    warehouse_id: Number(it.warehouse_id || 0),
+    qty: Number(it._qty || 0),
+    unit_price: Number(it._unit_price || 0),
+  }));
+
+  const takes = (exchangeForm.value.takes || []).map((it) => ({
+    product_id: Number(it.product_id || 0),
+    warehouse_id: Number(returnsSelected?.[0]?.warehouse_id || 0), // fallback
+    qty: Number(it.qty || 0),
+    unit_price: Number(it.unit_price || 0),
+  }));
 
   exchangingId.value = id;
   try {
     const payload = {
       restock: !!exchangeForm.value.restock,
-      returns: Array.isArray(exchangeForm.value.returns) ? exchangeForm.value.returns : [],
-      takes: Array.isArray(exchangeForm.value.takes) ? exchangeForm.value.takes : [],
-      diff_amount: Number(exchangeForm.value.diff_amount || 0),
+      returns,
+      takes,
       method: String(exchangeForm.value.method || "CASH").toUpperCase(),
       reference: String(exchangeForm.value.reference || "").trim() || null,
       note: String(exchangeForm.value.note || "").trim() || null,
@@ -1413,7 +2046,9 @@ async function confirmExchange() {
 
     toast("Cambio registrado");
     exchangeDialog.value = { show: false, sale: null };
+
     await refreshAll();
+    if (postSale.value.open && getSaleId(postSale.value.sale) === id) await refreshPostSale();
   } catch (e) {
     toast(e?.response?.data?.message || e?.message || "Error cambio");
   } finally {
@@ -1433,6 +2068,8 @@ onMounted(async () => {
   onCustomerSearch("");
   onSellerSearch("");
   onProductSearch("");
+
+  onExchangeProductSearch("");
 
   refreshAll();
 });
@@ -1460,6 +2097,20 @@ const KpiCard = {
 };
 </script>
 
+
 <style scoped>
-/* (opcional) nada por ahora */
+.exchange-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.exchange-sale-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.03);
+}
 </style>
