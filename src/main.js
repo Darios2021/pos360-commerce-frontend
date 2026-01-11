@@ -13,13 +13,20 @@
     // Si esto funciona, localStorage está OK → no tocamos nada
   } catch (err) {
     // localStorage explotó → reemplazamos por dummy storage
+    // 👇 Devolvemos la cadena "null" para que JSON.parse("null") no rompa
     const noopStorage = {
-      getItem() { return null; },
+      getItem() {
+        return "null"; // Hace seguro JSON.parse(localStorage.getItem(...))
+      },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() { return null; },
-      get length() { return 0; },
+      key() {
+        return null;
+      },
+      get length() {
+        return 0;
+      },
     };
 
     try {
@@ -51,9 +58,10 @@ import VueApexCharts from "vue3-apexcharts";
 // =============================
 const app = createApp(App);
 
-app.use(createPinia())
-   .use(router)
-   .use(vuetify);
+app
+  .use(createPinia())
+  .use(router)
+  .use(vuetify);
 
 // ⚠️ (Nota tuya: NO registrar dos veces)
 app.use(VueApexCharts);
