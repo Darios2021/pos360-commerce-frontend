@@ -2,14 +2,13 @@
 import axios from "axios";
 
 /**
- * BASE URL de la API pública del shop
+ * BASE de la API del shop
  *
- * REGLA:
- * - Si estoy en sanjuantecnologia.com (cualquier navegador/webview):
- *     usar SIEMPRE https://sanjuantecnologia.com/api/v1
- *   (que Nginx proxy-passea al backend commerce)
+ * - Si estoy en sanjuantecnologia.com → usar SIEMPRE path relativo:
+ *     /api/v1/public/...
+ *   (mismo origen, 0 CORS, 0 lío de dominios para el WebView de Instagram)
  *
- * - En cualquier otro host (localhost, cingulado, etc.):
+ * - En cualquier otro host (localhost, dominios cingulado, etc.) →
  *     usar VITE_API_BASE_URL como antes.
  */
 
@@ -17,41 +16,58 @@ import axios from "axios";
 // Ej: VITE_API_BASE_URL="https://pos360-commerce-api.cingulado.org/api/v1"
 const defaultBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-// Host fijo para producción pública
-const PUBLIC_API_BASE = "https://sanjuantecnologia.com/api/v1";
+// basePath puede ser absoluto (https://...) o relativo (/api/v1)
+let basePath = defaultBase;
 
-const base = (() => {
-  if (typeof window !== "undefined") {
-    const host = (window.location.hostname || "").toLowerCase();
+if (typeof window !== "undefined") {
+  const host = (window.location.hostname || "").toLowerCase();
 
-    // cualquier variante de sanjuantecnologia.com
-    if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
-      return PUBLIC_API_BASE.replace(/\/+$/, "");
-    }
+  // cualquier variante de sanjuantecnologia.com
+  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
+    // 👇 SOLO PATH RELATIVO PARA EVITAR RAREZAS DEL WEBVIEW
+    basePath = "/api/v1";
   }
+}
 
-  return defaultBase;
-})();
+// Normaliza basePath para axios
+function buildBaseURL(path) {
+  const p = String(path || "").trim();
+  if (!p) return "";
+  // relativo → lo dejamos así
+  if (p.startsWith("/")) return p.replace(/\/+$/, "") + "/public";
+  // absoluto → recortamos barras y agregamos /public
+  return p.replace(/\/+$/, "") + "/public";
+}
+
+const apiBaseURL = buildBaseURL(basePath);
 
 /**
- * Si tu API está en .../api, las imágenes suelen servirse en el host raíz.
- * Ej: https://dominio.com/api  -> imgs en https://dominio.com/uploads/...
+ * assetBase:
+ * - si basePath es relativo (/api/v1) → usamos origin de la ventana
+ * - si es absoluto (https://...) → recortamos /api o /api/v1
  */
 const assetBase = (() => {
-  const b = String(base || "").replace(/\/+$/, "");
-  // recorta /api o /api/v1 si existiera
+  if (typeof window !== "undefined" && basePath.startsWith("/")) {
+    const origin = window.location.origin.replace(/\/+$/, "");
+    return origin;
+  }
+  const b = String(basePath || "").replace(/\/+$/, "");
   const cut = b.replace(/\/api(\/v\d+)?$/i, "");
   return (cut || b).replace(/\/+$/, "");
 })();
 
 const api = axios.create({
-  baseURL: `${base}/public`,
+  baseURL: apiBaseURL,
   timeout: 15000,
 });
 
-// 👀 Debug mínimo para saber a qué endpoint está pegando en producción
+// 👀 Debug mínimo: en qué base está pegando realmente
 if (typeof window !== "undefined") {
-  console.log("[SHOP API] baseURL =", `${base}/public`);
+  console.log("[SHOP API] basePath =", basePath, " → baseURL =", apiBaseURL);
+}
+
+export function getShopApiBase() {
+  return api.defaults.baseURL;
 }
 
 function toInt(v, d = 0) {
@@ -91,15 +107,12 @@ function absUrl(u) {
   if (!s) return "";
   if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith("//")) return `https:${s}`;
-  // relativo -> lo pegamos al assetBase
   if (!assetBase) return s;
   return `${assetBase}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
 /**
  * ✅ Tu backend exige branch_id
- * Para navegación “tipo ML” usamos un branch fijo interno.
- * La SUCURSAL REAL se elige solo en checkout.
  */
 const CATALOG_BRANCH_ID = 3;
 
@@ -128,7 +141,6 @@ function dedupeCatalogItems(items) {
 
       const images = [];
 
-      // si viene baseObj.images
       if (Array.isArray(baseObj.images)) {
         for (const it of baseObj.images) {
           const u =
@@ -159,8 +171,6 @@ function dedupeCatalogItems(items) {
 
 /**
  * ✅ BRANDING PÚBLICO
- * Requiere backend: GET /public/shop/branding
- * Devuelve item desde tabla shop_branding.
  */
 export async function getShopBranding() {
   const r = await api.get("/shop/branding");
@@ -175,9 +185,6 @@ export async function getShopBranding() {
 
 /**
  * ✅ CATÁLOGO
- * ✅ NUEVO (opcional):
- *  - strict_search: 1 => el backend NO busca en description
- *  - exclude_terms: "cargador,cable,energia,usb"
  */
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
@@ -209,7 +216,7 @@ export async function getCatalog(params = {}) {
 }
 
 /**
- * ✅ SUGERENCIAS (NUEVO ENDPOINT)
+ * ✅ SUGERENCIAS
  */
 export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
@@ -233,7 +240,7 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 }
 
 /**
- * ✅ PRODUCTO (detalle real)
+ * ✅ PRODUCTO
  */
 export async function getProduct(id) {
   const pid = toInt(id, 0);
@@ -257,7 +264,7 @@ export async function getProduct(id) {
 }
 
 /**
- * ✅ SIMILARES (HIDRATADO)
+ * ✅ SIMILARES
  */
 export async function getSimilarProducts({
   productId,
