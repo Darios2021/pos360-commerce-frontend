@@ -1,30 +1,35 @@
 // src/modules/shop/service/shop.public.api.js
 import axios from "axios";
 
-// =============================
-// BASE URL con FIX para Meta WebView (Instagram/Facebook)
-// =============================
+/**
+ * BASE URL de la API pública del shop
+ *
+ * REGLA:
+ * - Si estoy en sanjuantecnologia.com (cualquier navegador/webview):
+ *     usar SIEMPRE https://sanjuantecnologia.com/api/v1
+ *   (que Nginx proxy-passea al backend commerce)
+ *
+ * - En cualquier otro host (localhost, cingulado, etc.):
+ *     usar VITE_API_BASE_URL como antes.
+ */
 
 // Valor por defecto desde Vite (.env)
-// Ej: VITE_API_BASE_URL="https://pos360-commerce.cingulado.org/api/v1"
+// Ej: VITE_API_BASE_URL="https://pos360-commerce-api.cingulado.org/api/v1"
 const defaultBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-// Para el navegador interno de Instagram/Facebook forzamos a usar el mismo host
-// que la web pública (sanjuantecnologia.com). Asegurate de tener nginx
-// proxy_pass /api/v1 -> backend real.
-const META_FIX_BASE = "https://sanjuantecnologia.com/api/v1";
+// Host fijo para producción pública
+const PUBLIC_API_BASE = "https://sanjuantecnologia.com/api/v1";
 
 const base = (() => {
   if (typeof window !== "undefined") {
-    const ua = navigator.userAgent || "";
-    const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(ua);
+    const host = (window.location.hostname || "").toLowerCase();
 
-    if (isMetaWebView) {
-      // En Meta WebView intentamos usar la API por el mismo host de la web
-      // para evitar bloqueos de red a dominios externos.
-      return META_FIX_BASE.replace(/\/+$/, "");
+    // cualquier variante de sanjuantecnologia.com
+    if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
+      return PUBLIC_API_BASE.replace(/\/+$/, "");
     }
   }
+
   return defaultBase;
 })();
 
@@ -43,6 +48,11 @@ const api = axios.create({
   baseURL: `${base}/public`,
   timeout: 15000,
 });
+
+// 👀 Debug mínimo para saber a qué endpoint está pegando en producción
+if (typeof window !== "undefined") {
+  console.log("[SHOP API] baseURL =", `${base}/public`);
+}
 
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
