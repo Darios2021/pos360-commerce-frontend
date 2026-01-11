@@ -375,21 +375,36 @@ const hoverChildren = computed(() =>
   (childrenByParent.value[hoverParentId.value] || []).filter((x) => Number(x.is_active ?? 1) === 1)
 );
 
+// ===============================
+// Navegación catálogo (DESKTOP)
+// ===============================
 function pickParent(c) {
   const nq = { ...route.query };
-  delete nq.sub;
+
+  // limpiamos filtros viejos
+  delete nq.subcategory_id;
+  delete nq.category_id;
   delete nq.page;
+
+  // dejamos category_id en query (útil para Home o para el backend)
+  nq.category_id = String(c.id);
+
   router.push({ name: "shopCategory", params: { id: c.id }, query: nq });
-  menu.value = false;
 }
 
 function pickChild(s) {
   const parentId = s.parent_id ? Number(s.parent_id) : null;
-  const nq = { ...route.query, sub: String(s.id) };
+
+  const nq = { ...route.query, subcategory_id: String(s.id) };
+  delete nq.sub; // legacy
   delete nq.page;
 
-  if (parentId) router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
-  else router.push({ name: "shopHome", query: nq });
+  if (parentId) {
+    nq.category_id = String(parentId);
+    router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
+  } else {
+    router.push({ name: "shopHome", query: nq });
+  }
 
   menu.value = false;
 }
@@ -399,7 +414,7 @@ function openCatsFromMenu() {
   mobileCats.value = true;
 }
 
-/* accordion */
+/* accordion (MOBILE) */
 const openParentId = ref(null);
 function toggleParent(p) {
   const id = Number(p?.id || 0);
@@ -409,19 +424,28 @@ function toggleParent(p) {
 
 async function pickParentMobile(p) {
   const nq = { ...route.query };
-  delete nq.sub;
+  delete nq.subcategory_id;
+  delete nq.category_id;
   delete nq.page;
+  nq.category_id = String(p.id);
+
   await router.push({ name: "shopCategory", params: { id: p.id }, query: nq });
   mobileCats.value = false;
 }
 
 async function pickChildMobile(s) {
   const parentId = s.parent_id ? Number(s.parent_id) : null;
-  const nq = { ...route.query, sub: String(s.id) };
+
+  const nq = { ...route.query, subcategory_id: String(s.id) };
+  delete nq.sub;
   delete nq.page;
 
-  if (parentId) await router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
-  else await router.push({ name: "shopHome", query: nq });
+  if (parentId) {
+    nq.category_id = String(parentId);
+    await router.push({ name: "shopCategory", params: { id: parentId }, query: nq });
+  } else {
+    await router.push({ name: "shopHome", query: nq });
+  }
 
   mobileCats.value = false;
 }
@@ -450,6 +474,7 @@ onMounted(async () => {
   }
 });
 </script>
+
 <style scoped>
 .ml-header {
   --ml-blue: #1488d1;
@@ -946,4 +971,3 @@ onMounted(async () => {
   letter-spacing: 1px !important;
 }
 </style>
-
