@@ -242,7 +242,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
+import { getPublicCategoriesAll } from "@/modules/shop/service/shop.taxonomy.api";
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
@@ -342,35 +342,38 @@ const logoSize = computed(() => (isMobile.value ? 56 : 76));
 const iconSize = computed(() => (isMobile.value ? 24 : 30));
 const logoHeaderUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
 
-/* taxonomy helpers (igual que en ShopHome) */
-function getCatSubs(cat) {
-  if (!cat) return [];
-  const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
-  return (candidates.find((x) => Array.isArray(x)) || []).filter(Boolean);
-}
-
 /** ===============================
  * Categorías
  * =============================== */
 const parents = computed(() =>
   (allCats.value || [])
-    .filter(Boolean)
+    .filter((x) => x && x.parent_id == null && Number(x.is_active ?? 1) === 1)
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"))
 );
 
 const childrenByParent = computed(() => {
   const map = {};
-  for (const p of parents.value) {
-    map[p.id] = getCatSubs(p);
+  for (const c of allCats.value || []) {
+    if (!c) continue;
+    const pid = c.parent_id == null ? null : Number(c.parent_id);
+    if (pid != null) {
+      if (!map[pid]) map[pid] = [];
+      if (Number(c.is_active ?? 1) === 1) map[pid].push(c);
+    }
+  }
+  for (const k of Object.keys(map)) {
+    map[k].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
   }
   return map;
 });
 
 const hoverParent = computed(
-  () => parents.value.find((x) => String(x.id) === String(hoverParentId.value)) || null
+  () => parents.value.find((x) => Number(x.id) === Number(hoverParentId.value)) || null
 );
 
-const hoverChildren = computed(() => childrenByParent.value[hoverParentId.value] || []);
+const hoverChildren = computed(() =>
+  (childrenByParent.value[hoverParentId.value] || []).filter((x) => Number(x.is_active ?? 1) === 1)
+);
 
 // ===============================
 // Navegación catálogo (DESKTOP)
@@ -378,10 +381,12 @@ const hoverChildren = computed(() => childrenByParent.value[hoverParentId.value]
 function pickParent(c) {
   const nq = { ...route.query };
 
+  // limpiamos filtros viejos
   delete nq.subcategory_id;
   delete nq.category_id;
   delete nq.page;
 
+  // dejamos category_id en query (útil para Home o para el backend)
   nq.category_id = String(c.id);
 
   router.push({ name: "shopCategory", params: { id: c.id }, query: nq });
@@ -391,7 +396,7 @@ function pickChild(s) {
   const parentId = s.parent_id ? Number(s.parent_id) : null;
 
   const nq = { ...route.query, subcategory_id: String(s.id) };
-  delete nq.sub;
+  delete nq.sub; // legacy
   delete nq.page;
 
   if (parentId) {
@@ -460,13 +465,8 @@ onMounted(async () => {
     }
   } catch {}
 
-  // 2) categorías (USAMOS EL MISMO ENDPOINT QUE ShopHome)
-  try {
-    allCats.value = await getPublicCategories();
-  } catch {
-    allCats.value = [];
-  }
-
+  // 2) categorías
+  allCats.value = await getPublicCategoriesAll();
   const first = parents.value[0];
   if (first) {
     hoverParentId.value = first.id;
@@ -476,11 +476,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* … TODO: dejar exactamente los mismos estilos que ya tenías, no los toco … */
-
-/* (copié todos tus estilos tal cual del archivo anterior) */
-
-/* ====== pegá aquí todos los <style scoped> que ya tenías, sin cambios ====== */
 .ml-header {
   --ml-blue: #1488d1;
   --ml-white: #ffffff;
