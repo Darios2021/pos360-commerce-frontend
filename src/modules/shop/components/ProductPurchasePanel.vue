@@ -57,7 +57,7 @@
       </div>
 
       <!-- =======================
-           HIGHLIGHTS (lo que tenés que saber)
+           HIGHLIGHTS
            ======================= -->
       <div class="ml-know">
         <div class="ml-know-title">Lo que tenés que saber de este producto</div>
@@ -73,7 +73,7 @@
       </div>
 
       <!-- =======================
-           BOX: envío / impuestos / vendedor / stock / cantidad / acciones
+           BOX: stock / cantidad / acciones
            ======================= -->
       <div class="ml-sidebox">
         <div class="ml-sidebox-top">
@@ -156,7 +156,7 @@
             size="large"
             block
             :disabled="disabledAdd"
-            @click="$emit('add', product, qty)"
+            @click="onAddToCart"
           >
             <v-icon start>mdi-cart-outline</v-icon>
             Agregar al carrito
@@ -178,7 +178,7 @@
       </div>
 
       <!-- =======================
-           CUOTAS (tu bloque existente)
+           CUOTAS
            ======================= -->
       <div v-if="installments.length" class="ml-installments">
         <div class="ml-installments-title">Cuotas</div>
@@ -192,7 +192,6 @@
         </div>
       </div>
 
-      <!-- footer hint -->
       <div class="ml-footnote">
         Elegís sucursal al finalizar si es retiro.
       </div>
@@ -209,13 +208,10 @@ const props = defineProps({
 
 const emit = defineEmits(["add", "buy"]);
 
-// =====================
 // Helpers
-// =====================
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
-
 function priceValue(p) {
   const d = Number(p?.price_discount || 0);
   if (d > 0) return d;
@@ -223,22 +219,17 @@ function priceValue(p) {
   if (l > 0) return l;
   return Number(p?.price || 0);
 }
-
 function toNum(v, d = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
 }
-
 function asText(v) {
   const s = String(v ?? "").trim();
   return s ? s : "";
 }
 
-// =====================
 // Price
-// =====================
 const price = computed(() => priceValue(props.product));
-
 const priceInt = computed(() => {
   const v = toNum(price.value, 0);
   const [i] = v.toFixed(2).split(".");
@@ -248,21 +239,16 @@ const priceDec = computed(() => {
   const v = toNum(price.value, 0);
   const parts = v.toFixed(2).split(".");
   const dec = parts?.[1] || "";
-  // si es "00" no lo mostramos (MercadoLibre lo suele ocultar)
   return dec === "00" ? "" : dec;
 });
 
-// =====================
 // Disabled add (stock)
-// =====================
 const disabledAdd = computed(() => {
   const p = props.product || {};
   return !!(p.track_stock && Number(p.stock_qty) <= 0);
 });
 
-// =====================
-// Installments (tu lógica existente)
-// =====================
+// Installments (tu lógica)
 function extractInstallments(p) {
   if (!p) return [];
 
@@ -298,20 +284,19 @@ function extractInstallments(p) {
   if (p6 > 0) out.push({ n: 6, amount: p6, label: "6 cuotas" });
 
   if (out.length === 1 && base > 0) {
-    out.push({ n: 3, amount: base / 3, label: "Estimado" }, { n: 6, amount: base / 6, label: "Estimado" });
+    out.push(
+      { n: 3, amount: base / 3, label: "Estimado" },
+      { n: 6, amount: base / 6, label: "Estimado" }
+    );
   }
 
   return out;
 }
-
 const installments = computed(() => extractInstallments(props.product));
 
-// =====================
-// MercadoLibre-like metadata (toma lo que exista)
-// =====================
+// Metadata
 const conditionLabel = computed(() => {
   const p = props.product || {};
-  // soporta: condition, estado, is_new
   const c = asText(p.condition || p.estado);
   if (c) return c.charAt(0).toUpperCase() + c.slice(1);
   if (p.is_new === true) return "Nuevo";
@@ -325,7 +310,6 @@ const soldCountLabel = computed(() => {
   return v > 0 ? `+${v} vendidos` : "";
 });
 
-// rating
 const ratingValue = computed(() => {
   const p = props.product || {};
   return Math.max(0, Math.min(5, toNum(p.rating ?? p.stars ?? 0, 0)));
@@ -336,15 +320,15 @@ const ratingCount = computed(() => {
 });
 const showRating = computed(() => ratingValue.value > 0 && ratingCount.value > 0);
 
-// color / specs (si vienen)
 const colorLabel = computed(() => asText(props.product?.color || props.product?.color_name));
+
 const ramLabel = computed(() => {
   const p = props.product || {};
   const r = asText(p.ram || p.ram_gb || p.memory_ram);
   if (!r) return "";
-  // si ya dice "GB", lo dejamos
   return /gb/i.test(r) ? r : `${r} GB`;
 });
+
 const storageLabel = computed(() => {
   const p = props.product || {};
   const s = asText(p.storage || p.storage_gb || p.memory_storage || p.rom);
@@ -352,7 +336,6 @@ const storageLabel = computed(() => {
   return /gb/i.test(s) ? s : `${s} GB`;
 });
 
-// internacional / envío / impuestos (si existen)
 const isInternational = computed(() => {
   const p = props.product || {};
   return Boolean(p.is_international ?? p.international ?? p.imported ?? false);
@@ -360,7 +343,6 @@ const isInternational = computed(() => {
 
 const shippingText = computed(() => {
   const p = props.product || {};
-  // texto verde tipo "Llega gratis"
   return asText(p.shipping_text || p.shippingTitle || (p.free_shipping ? "Llega gratis" : ""));
 });
 
@@ -371,7 +353,6 @@ const shippingEtaText = computed(() => {
 
 const shippingNote = computed(() => {
   const p = props.product || {};
-  // "Envío desde USA", etc.
   return asText(p.shipping_note || p.shippingFrom || "");
 });
 
@@ -385,26 +366,22 @@ const taxesHelp = computed(() => {
   return asText(p.taxes_help || p.taxesNote || "");
 });
 
-// vendedor
 const sellerLabel = computed(() => asText(props.product?.seller_name || props.product?.seller));
 const sellerMeta = computed(() => asText(props.product?.seller_meta || props.product?.seller_badge));
 
-// devolución
-const returnText = computed(() => asText(props.product?.return_text || (props.product?.free_returns ? "Devolución gratis" : "")));
+const returnText = computed(() =>
+  asText(props.product?.return_text || (props.product?.free_returns ? "Devolución gratis" : ""))
+);
 const returnNote = computed(() => asText(props.product?.return_note || ""));
 
-// stock labels
 const stockSubLabel = computed(() => {
   const p = props.product || {};
   const shipBy = asText(p.fulfillment_label || p.shipped_by || "");
   if (shipBy) return shipBy;
-  // fallback suave
   return "Listo para despachar";
 });
 
-// =====================
-// Cantidad (MercadoLibre-like)
-// =====================
+// Cantidad
 const qty = ref(1);
 
 watch(
@@ -416,7 +393,6 @@ watch(
 
 const maxQty = computed(() => {
   const p = props.product || {};
-  // limite de compra
   const limit = Math.max(1, Math.floor(toNum(p.max_qty ?? p.max_purchase_qty ?? 2, 2)));
   if (p.track_stock) {
     const stock = Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)));
@@ -434,18 +410,22 @@ const qtyItems = computed(() => {
 
 const qtyHint = computed(() => {
   const p = props.product || {};
-  const extra = p.track_stock ? `(+${Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)) - 1)} disponibles)` : "";
+  const extra = p.track_stock
+    ? `(+${Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)) - 1)} disponibles)`
+    : "";
   const limit = maxQty.value;
   const limTxt = limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
   return `${extra ? extra + " · " : ""}${limTxt}`;
 });
 
-// =====================
 // Actions
-// =====================
+function onAddToCart() {
+  if (disabledAdd.value) return;
+  emit("add", props.product, qty.value);
+}
+
 function onBuyNow() {
-  // Si tu vista padre quiere manejar "comprar ahora", puede escuchar @buy
-  // Si no lo usás, esto no rompe nada.
+  if (disabledAdd.value) return;
   emit("buy", props.product, qty.value);
 }
 </script>
@@ -670,7 +650,7 @@ function onBuyNow() {
   font-size: 13px;
 }
 
-/* installments (tu bloque) */
+/* installments */
 .ml-installments {
   margin-top: 16px;
 }
@@ -680,7 +660,6 @@ function onBuyNow() {
   margin-bottom: 8px;
 }
 
-/* mantiene tu grid, un poquito más ML */
 .inst-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

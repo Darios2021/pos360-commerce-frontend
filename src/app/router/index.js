@@ -1,4 +1,6 @@
 // src/app/router/index.js
+// ✅ COPY-PASTE FINAL COMPLETO (Shop público + Admin + Tienda Admin)
+
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 
@@ -8,6 +10,10 @@ import AuthLayout from "@/app/layouts/AuthLayout.vue";
 
 // Shop routes (aislado)
 import { shopRoutes } from "@/modules/shop/router/shop.routes";
+
+// ✅ Admin Shop routes (Branding / Pedidos / Envíos / Retiros / Pagos / Notificaciones)
+// OJO: tu carpeta es /modules/admin/routes (no /router)
+import { shopAdminRoutes } from "@/modules/admin/routes/shopAdmin.routes";
 
 // Pages
 import LoginPage from "@/modules/auth/pages/LoginPage.vue";
@@ -36,12 +42,9 @@ import StockPage from "@/modules/stock/pages/StockPage.vue";
 // Users
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
-// ✅ NUEVO: Tienda (Branding)
-import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
-
 const routes = [
   // =========================
-  // ✅ SHOP (aislado)
+  // ✅ SHOP (aislado, público)
   // =========================
   ...shopRoutes,
 
@@ -89,13 +92,8 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ NUEVO: Tienda / Branding (solo admin)
-      {
-        path: "shop/branding",
-        name: "shopBranding",
-        component: ShopBrandingView,
-        meta: { roles: ["admin", "super_admin"] },
-      },
+      // ✅ TIENDA ADMIN (rutas /admin/shop/*) bajo el mismo layout
+      ...shopAdminRoutes,
 
       // Users
       {

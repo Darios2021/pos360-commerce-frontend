@@ -24,7 +24,7 @@
               >
                 <v-card-text class="d-flex ga-3 align-center">
                   <v-img
-                    :src="it.image_url"
+                    :src="it.image_url || it.image || it.cover_url"
                     width="84"
                     height="84"
                     cover
@@ -62,11 +62,11 @@
         </v-card>
       </v-col>
 
-      <!-- Checkout -->
+      <!-- Resumen / CTA -->
       <v-col cols="12" md="4">
         <v-card class="rounded-xl" variant="outlined">
           <v-card-text>
-            <div class="text-subtitle-1 font-weight-bold mb-2">Confirmación</div>
+            <div class="text-subtitle-1 font-weight-bold mb-2">Resumen</div>
 
             <div class="d-flex justify-space-between mb-1">
               <span class="text-medium-emphasis">Subtotal</span>
@@ -75,56 +75,18 @@
 
             <v-divider class="my-3" />
 
-            <!-- ✅ Fulfillment -->
-            <div class="text-subtitle-2 font-weight-bold mb-2">Entrega</div>
-
-            <v-radio-group v-model="fulfillment" density="compact">
-              <v-radio label="Retiro en sucursal" value="pickup" />
-              <v-radio label="Envío (próximamente / básico)" value="delivery" />
-            </v-radio-group>
-
-            <div v-if="fulfillment === 'pickup'" class="mt-2">
-              <v-select
-                v-model="pickupBranchId"
-                :items="branches"
-                item-title="name"
-                item-value="id"
-                label="Elegí sucursal para retirar"
-                variant="outlined"
-                density="comfortable"
-                :loading="loadingBranches"
-                :disabled="loadingBranches"
-              />
-              <div class="text-caption text-medium-emphasis mt-1">
-                La sucursal se elige acá, no afecta la navegación del catálogo.
-              </div>
-            </div>
-
-            <div v-else class="mt-2">
-              <v-text-field v-model="ship.name" label="Nombre" variant="outlined" density="comfortable" />
-              <v-text-field v-model="ship.phone" label="Teléfono" variant="outlined" density="comfortable" />
-              <v-text-field v-model="ship.address1" label="Dirección" variant="outlined" density="comfortable" />
-              <v-text-field v-model="ship.city" label="Ciudad" variant="outlined" density="comfortable" />
-            </div>
-
-            <v-divider class="my-3" />
-
             <v-btn
               color="primary"
               block
               size="large"
-              :disabled="!canCheckout"
-              @click="confirm"
+              :disabled="!items.length"
+              @click="goCheckout"
             >
-              Confirmar compra
+              Continuar compra
             </v-btn>
 
             <div v-if="!items.length" class="text-caption text-medium-emphasis mt-2">
               Agregá productos para continuar.
-            </div>
-
-            <div v-else-if="fulfillment === 'pickup' && !pickupBranchId" class="text-caption text-medium-emphasis mt-2">
-              Elegí una sucursal para retiro.
             </div>
           </v-card-text>
         </v-card>
@@ -134,10 +96,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-import { getBranches } from "@/modules/shop/service/shop.public.api";
 
+const router = useRouter();
 const cart = useShopCartStore();
 
 const items = computed(() => cart.items || []);
@@ -158,43 +121,14 @@ function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
 
-// ✅ Fulfillment selector (sucursal solo acá)
-const fulfillment = ref("pickup");
-const branches = ref([]);
-const loadingBranches = ref(false);
-const pickupBranchId = ref(null);
-
-const ship = ref({
-  name: "",
-  phone: "",
-  address1: "",
-  city: "",
-});
-
-const canCheckout = computed(() => {
-  if (!items.value.length) return false;
-  if (fulfillment.value === "pickup") return !!pickupBranchId.value;
-  return !!ship.value.name && !!ship.value.phone;
-});
-
-onMounted(async () => {
-  loadingBranches.value = true;
-  try {
-    branches.value = await getBranches();
-  } finally {
-    loadingBranches.value = false;
+function goCheckout() {
+  // ✅ Tu router usa names tipo shopHome/shopCart/etc → usamos shopCheckout
+  if (router.hasRoute("shopCheckout")) {
+    router.push({ name: "shopCheckout" });
+    return;
   }
-});
 
-function confirm() {
-  const payload = {
-    items: items.value.map((it) => ({ product_id: it.product_id, qty: it.qty })),
-    fulfillment: fulfillment.value,
-    pickup_branch_id: fulfillment.value === "pickup" ? pickupBranchId.value : null,
-    shipping: fulfillment.value === "delivery" ? ship.value : null,
-  };
-
-  console.log("✅ CHECKOUT PAYLOAD", payload);
-  alert("OK: checkout armado (ver consola). Siguiente paso: crear pedido y pago.");
+  console.warn("⚠️ No existe la ruta 'shopCheckout'. Revisá shop.routes.js.");
+  router.push("/shop/checkout");
 }
 </script>

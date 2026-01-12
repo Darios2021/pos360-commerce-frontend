@@ -17,6 +17,8 @@ function loadInitialState() {
       branch_id: null,
       branches: [],
       items: [],
+      // ✅ UI (no persistimos)
+      drawer_open: false,
     };
   }
 
@@ -26,6 +28,8 @@ function loadInitialState() {
     branch_id,
     branches: Array.isArray(branches) ? branches : [],
     items: Array.isArray(items) ? items : [],
+    // ✅ UI (no persistimos)
+    drawer_open: false,
   };
 }
 
@@ -54,6 +58,19 @@ export const useShopCartStore = defineStore("shopCart", {
   },
 
   actions: {
+    // ======================
+    // UI Drawer (NO PERSIST)
+    // ======================
+    openDrawer() {
+      this.drawer_open = true;
+    },
+    closeDrawer() {
+      this.drawer_open = false;
+    },
+    toggleDrawer(v) {
+      this.drawer_open = typeof v === "boolean" ? v : !this.drawer_open;
+    },
+
     setBranches(list) {
       this.branches = Array.isArray(list) ? list : [];
       persistState(this);
@@ -76,6 +93,9 @@ export const useShopCartStore = defineStore("shopCart", {
       else this.items.push({ ...product, product_id: pid, qty: q });
 
       persistState(this);
+
+      // ✅ comportamiento MercadoLibre: abrir drawer lateral
+      this.openDrawer();
     },
 
     inc(product_id) {

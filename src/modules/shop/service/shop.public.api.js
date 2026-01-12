@@ -1,55 +1,59 @@
 // src/modules/shop/service/shop.public.api.js
+// ✅ COPY-PASTE FINAL COMPLETO (ANTI-CORS + FORZAR SAME-ORIGIN + ABS URLS)
 import axios from "axios";
 
 /**
  * BASE de la API del shop
  *
- * - Si estoy en sanjuantecnologia.com → usar SIEMPRE path relativo:
- *     /api/v1/public/...
- *   (mismo origen, 0 CORS, 0 lío de dominios para el WebView de Instagram)
+ * Modos:
+ * 1) ✅ SAME-ORIGIN (recomendado para Instagram WebView / cero CORS):
+ *    - Si host es sanjuantecnologia.com => usa /api/v1
+ *    - O si seteás VITE_SHOP_API_SAME_ORIGIN="1" => usa /api/v1 (en cualquier dominio)
  *
- * - En cualquier otro host (localhost, dominios cingulado, etc.) →
- *     usar VITE_API_BASE_URL como antes.
+ * 2) ABSOLUTO (como siempre):
+ *    - Usa VITE_API_BASE_URL, ej: https://pos360-commerce-api.cingulado.org/api/v1
+ *
+ * Además:
+ * - ✅ Remueve headers "cache-control" / "pragma" para evitar preflight con CORS estricto
+ * - ✅ absUrl() arma URLs absolutas para imágenes aunque vengan relativas
  */
 
-// Valor por defecto desde Vite (.env)
+const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
+const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
+
 // Ej: VITE_API_BASE_URL="https://pos360-commerce-api.cingulado.org/api/v1"
-const defaultBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+const defaultBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
 // basePath puede ser absoluto (https://...) o relativo (/api/v1)
 let basePath = defaultBase;
 
 if (typeof window !== "undefined") {
-  const host = (window.location.hostname || "").toLowerCase();
+  const host = String(window.location.hostname || "").toLowerCase();
 
-  // cualquier variante de sanjuantecnologia.com
+  // ✅ sanjuantecnologia.com => SIEMPRE same-origin
   if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
-    // 👇 SOLO PATH RELATIVO PARA EVITAR RAREZAS DEL WEBVIEW
+    basePath = "/api/v1";
+  }
+
+  // ✅ override manual por env (sirve para WebView/embeds o pruebas)
+  if (FORCE_SAME_ORIGIN) {
     basePath = "/api/v1";
   }
 }
 
-// Normaliza basePath para axios
 function buildBaseURL(path) {
   const p = String(path || "").trim();
   if (!p) return "";
-  // relativo → lo dejamos así
   if (p.startsWith("/")) return p.replace(/\/+$/, "") + "/public";
-  // absoluto → recortamos barras y agregamos /public
   return p.replace(/\/+$/, "") + "/public";
 }
 
 const apiBaseURL = buildBaseURL(basePath);
 
-/**
- * assetBase:
- * - si basePath es relativo (/api/v1) → usamos origin de la ventana
- * - si es absoluto (https://...) → recortamos /api o /api/v1
- */
+// assetBase: base para convertir paths relativos en URLs absolutas
 const assetBase = (() => {
   if (typeof window !== "undefined" && basePath.startsWith("/")) {
-    const origin = window.location.origin.replace(/\/+$/, "");
-    return origin;
+    return window.location.origin.replace(/\/+$/, "");
   }
   const b = String(basePath || "").replace(/\/+$/, "");
   const cut = b.replace(/\/api(\/v\d+)?$/i, "");
@@ -59,11 +63,25 @@ const assetBase = (() => {
 const api = axios.create({
   baseURL: apiBaseURL,
   timeout: 15000,
+  headers: {
+    // ✅ no seteamos cache-control acá
+  },
 });
 
-// 👀 Debug mínimo: en qué base está pegando realmente
+// ✅ Anti-preflight por headers “cache-control/pragma” que a veces mete algún wrapper/interceptor
+api.interceptors.request.use((config) => {
+  const h = config.headers || {};
+  // axios puede poner headers en distintas “capas”
+  delete h["Cache-Control"];
+  delete h["cache-control"];
+  delete h["Pragma"];
+  delete h["pragma"];
+  config.headers = h;
+  return config;
+});
+
 if (typeof window !== "undefined") {
-  console.log("[SHOP API] basePath =", basePath, " → baseURL =", apiBaseURL);
+  console.log("[SHOP API] basePath =", basePath, "→ baseURL =", apiBaseURL, "assetBase =", assetBase);
 }
 
 export function getShopApiBase() {
@@ -138,13 +156,11 @@ function dedupeCatalogItems(items) {
 
     if (!map.has(pid)) {
       const baseObj = { ...raw };
-
       const images = [];
 
       if (Array.isArray(baseObj.images)) {
         for (const it of baseObj.images) {
-          const u =
-            typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
+          const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
           if (u) images.push(absUrl(u));
         }
       }
@@ -180,6 +196,33 @@ export async function getShopBranding() {
     logo_url: it?.logo_url ? absUrl(it.logo_url) : "",
     favicon_url: it?.favicon_url ? absUrl(it.favicon_url) : "",
     updated_at: it?.updated_at || null,
+  };
+}
+
+/**
+ * ✅ PAYMENT CONFIG (real)
+ * GET /api/v1/public/shop/payment-config
+ */
+export async function getShopPaymentConfig() {
+  const r = await api.get("/shop/payment-config");
+  const d = r.data || {};
+
+  return {
+    transfer: {
+      enabled: !!d?.transfer?.enabled,
+      bank: String(d?.transfer?.bank || "").trim(),
+      alias: String(d?.transfer?.alias || "").trim(),
+      cbu: String(d?.transfer?.cbu || "").trim(),
+      holder: String(d?.transfer?.holder || "").trim(),
+      instructions: String(d?.transfer?.instructions || "").trim(),
+    },
+    mercadopago: {
+      enabled: !!d?.mercadopago?.enabled,
+    },
+    cash: {
+      enabled: !!d?.cash?.enabled,
+      note: String(d?.cash?.note || "").trim(),
+    },
   };
 }
 
@@ -221,7 +264,6 @@ export async function getCatalog(params = {}) {
 export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
   const qq = String(q || "").trim();
-
   if (!qq) return [];
 
   const params = cleanParams({
@@ -327,9 +369,7 @@ export async function getSimilarProducts({
         image_url: imgs[0] || absUrl(p.image_url) || "",
         price:
           p.price ??
-          (toNum(p.price_discount, 0) > 0
-            ? toNum(p.price_discount, 0)
-            : toNum(p.price_list, 0)),
+          (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
       };
     });
 }

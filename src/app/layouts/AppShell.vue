@@ -136,6 +136,7 @@
 
           <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Sistema</div>
 
+          <!-- ✅ Configuración (queda igual, SOLO ocultamos el item “Tienda” cuando existe el nuevo menú Tienda) -->
           <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Configuración">
@@ -150,6 +151,7 @@
               title="Stock"
               exact
             />
+
             <v-list-item
               v-if="isAdmin && hasRoute('inventory')"
               :to="{ name: 'inventory' }"
@@ -157,6 +159,7 @@
               title="Gestión de inventario"
               exact
             />
+
             <v-list-item
               v-if="hasRoute('categories')"
               :to="{ name: 'categories' }"
@@ -165,21 +168,79 @@
               exact
             />
 
-            <!-- ✅ NUEVO: Tienda (Branding) -->
+            <!-- ✅ LEGACY: Tienda dentro de Configuración (solo si NO existe el nuevo menú Tienda) -->
             <v-list-item
-              v-if="isAdmin && hasRoute('shopBranding')"
+              v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
               :to="{ name: 'shopBranding' }"
               prepend-icon="mdi-storefront-outline"
               title="Tienda"
               exact
             />
 
-            <!-- ✅ Usuarios (solo admin/super_admin) -->
             <v-list-item
               v-if="isAdmin && hasRoute('users')"
               :to="{ name: 'users' }"
               prepend-icon="mdi-account-multiple-outline"
               title="Usuarios"
+              exact
+            />
+          </v-list-group>
+
+          <!-- ✅ NUEVO MENÚ: TIENDA -->
+          <v-list-group
+            v-if="isAdmin && showShopMenu"
+            value="shopAdmin"
+            prepend-icon="mdi-storefront-outline"
+          >
+            <template #activator="{ props }">
+              <v-list-item v-bind="props" title="Tienda">
+                <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
+              </v-list-item>
+            </template>
+
+            <v-list-item
+              v-if="hasRoute('shopBranding')"
+              :to="{ name: 'shopBranding' }"
+              prepend-icon="mdi-palette-outline"
+              title="Branding"
+              exact
+            />
+
+            <!-- ✅ FIX ACÁ: Pedidos debe ir al LISTADO -->
+            <v-list-item
+              v-if="hasRoute('shopOrders')"
+              :to="{ name: 'shopOrders' }"
+              prepend-icon="mdi-receipt-text-outline"
+              title="Pedidos"
+              exact
+            />
+
+            <v-list-item
+              v-if="hasRoute('shopShippingSettings')"
+              :to="{ name: 'shopShippingSettings' }"
+              prepend-icon="mdi-truck-delivery-outline"
+              title="Envíos"
+              exact
+            />
+            <v-list-item
+              v-if="hasRoute('shopPickupSettings')"
+              :to="{ name: 'shopPickupSettings' }"
+              prepend-icon="mdi-store-marker-outline"
+              title="Retiros"
+              exact
+            />
+            <v-list-item
+              v-if="hasRoute('shopPaymentsSettings')"
+              :to="{ name: 'shopPaymentsSettings' }"
+              prepend-icon="mdi-credit-card-outline"
+              title="Pagos"
+              exact
+            />
+            <v-list-item
+              v-if="hasRoute('shopNotificationsSettings')"
+              :to="{ name: 'shopNotificationsSettings' }"
+              prepend-icon="mdi-bell-outline"
+              title="Notificaciones"
               exact
             />
           </v-list-group>
@@ -265,8 +326,20 @@ const showConfig = computed(() => {
     hasRoute("stock") ||
     hasRoute("inventory") ||
     hasRoute("categories") ||
-    hasRoute("shopBranding") || // ✅ nuevo
+    hasRoute("shopBranding") || // existe
     hasRoute("users")
+  );
+});
+
+const showShopMenu = computed(() => {
+  // Si existe cualquiera de estas rutas, mostramos el menú nuevo “Tienda”
+  return (
+    hasRoute("shopOrders") ||
+    hasRoute("shopOrdersSettings") ||
+    hasRoute("shopShippingSettings") ||
+    hasRoute("shopPickupSettings") ||
+    hasRoute("shopPaymentsSettings") ||
+    hasRoute("shopNotificationsSettings")
   );
 });
 

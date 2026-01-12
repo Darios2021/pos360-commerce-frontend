@@ -1,6 +1,9 @@
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
+    <!-- ✅ IMPORTANTE: el drawer debe estar montado para verse -->
+    <ShopCartDrawer />
+
     <div class="product-shell">
       <!-- Volver -->
       <v-btn to="/shop" variant="tonal" class="mb-3">
@@ -15,7 +18,11 @@
         <ProductGallery :product="product" />
 
         <!-- RIGHT: Compra -->
-        <ProductPurchasePanel :product="product" @add="onAddToCart" />
+        <ProductPurchasePanel
+          :product="product"
+          @add="onAddToCart"
+          @buy="onBuyNow"
+        />
       </div>
 
       <!-- Similares abajo -->
@@ -34,17 +41,19 @@
 
 <script setup>
 import { ref, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import ShopBreadcrumb from "@/modules/shop/components/ShopBreadcrumb.vue";
 import ProductGallery from "@/modules/shop/components/ProductGallery.vue";
 import ProductPurchasePanel from "@/modules/shop/components/ProductPurchasePanel.vue";
 import SimilarProductsRow from "@/modules/shop/components/SimilarProductsRow.vue";
+import ShopCartDrawer from "@/modules/shop/components/ShopCartDrawer.vue";
 
 import { getProduct, getSimilarProducts } from "@/modules/shop/service/shop.public.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 const route = useRoute();
+const router = useRouter();
 const cart = useShopCartStore();
 
 const product = ref(null);
@@ -53,11 +62,18 @@ const similar = ref([]);
 const similarLoading = ref(false);
 
 function onAddToCart(p, qty = 1) {
+  // ✅ esto debe abrir el drawer SI tu store.add() hace cart.openDrawer()
   cart.add(p, qty);
 }
 
+function onBuyNow(p, qty = 1) {
+  // ✅ comprar ahora = agregar y llevar al carrito
+  cart.add(p, qty);
+  cart.closeDrawer?.(); // por si justo abre, cerramos para navegar limpio
+  router.push("/shop/cart");
+}
+
 function resolveCategoryId(p) {
-  // soporta varios formatos
   return (
     p?.category_id ||
     p?.Category?.id ||
@@ -75,7 +91,6 @@ async function load() {
   const p = await getProduct(route.params.id);
   product.value = p;
 
-  // Similares
   const categoryId = resolveCategoryId(p);
   similarLoading.value = true;
   similar.value = await getSimilarProducts({

@@ -4,7 +4,7 @@
     <v-card rounded="xl" elevation="3" class="pa-4">
       <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
         <div>
-          <div class="text-h6 font-weight-bold">Tienda</div>
+          <div class="text-h6 font-weight-bold">Tienda · Branding</div>
           <div class="text-caption text-medium-emphasis">
             Configurá nombre, logo y favicon que se ven en el ecommerce público.
           </div>

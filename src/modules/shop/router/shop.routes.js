@@ -6,6 +6,9 @@ import ShopCategory from "@/modules/shop/pages/ShopCategory.vue";
 import ShopProduct from "@/modules/shop/pages/ShopProduct.vue";
 import ShopCart from "@/modules/shop/pages/ShopCart.vue";
 
+// ✅ NUEVO
+import ShopCheckout from "@/modules/shop/pages/ShopCheckout.vue";
+
 export const shopRoutes = [
   {
     path: "/shop",
@@ -19,6 +22,9 @@ export const shopRoutes = [
 
       { path: "product/:id", name: "shopProduct", component: ShopProduct, meta: { public: true } },
       { path: "cart", name: "shopCart", component: ShopCart, meta: { public: true } },
+
+      // ✅ CHECKOUT (3 pasos)
+      { path: "checkout", name: "shopCheckout", component: ShopCheckout, meta: { public: true } },
     ],
   },
 ];
