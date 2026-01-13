@@ -1,61 +1,61 @@
 // src/app/api/http.js
 import axios from "axios";
+import { loadAuth, clearAuth } from "../utils/storage";
 
-function getApiBase() {
-  const env = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
-  // same-origin si no hay env
-  return env || "";
+const raw = (import.meta.env.VITE_API_BASE_URL || "").trim();
+
+// ✅ Si NO hay env, asumimos same-origin y que el backend está en /api/v1
+const baseURL = raw || "/api/v1";
+
+if (!raw) {
+  console.warn("⚠️ VITE_API_BASE_URL no está definido. Usando:", baseURL);
 }
 
-function getTokenSafe() {
-  // ✅ soporta varios nombres típicos (por si en algún momento lo guardaste distinto)
-  const keys = ["pos360_token", "pos360_access_token", "access_token", "token"];
-  for (const k of keys) {
-    const v = localStorage.getItem(k);
-    if (v && typeof v === "string" && v.trim().length > 10) return v.trim();
-  }
-
-  // ✅ fallback: auth json
-  try {
-    const raw = localStorage.getItem("auth");
-    if (raw) {
-      const j = JSON.parse(raw);
-      const t = j?.token || j?.access_token || j?.accessToken;
-      if (t && String(t).trim().length > 10) return String(t).trim();
-    }
-  } catch {}
-
-  return "";
-}
-
-const apiBase = getApiBase();
-
-// ✅ PRIVATE/AUTH API (POS, admin, backoffice)
 const http = axios.create({
-  baseURL: `${apiBase}/api/v1`,
-  withCredentials: false,
-  timeout: 25000,
+  baseURL,
+  timeout: 60000,
 });
 
-// ✅ Adjunta Bearer si existe token
-http.interceptors.request.use(
-  (config) => {
-    const token = getTokenSafe();
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+// Attach token
+http.interceptors.request.use((config) => {
+  const auth = loadAuth();
+  const token = auth?.accessToken || auth?.token || auth?.access_token || auth?.jwt;
+
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+
+    // ✅ Debug útil (solo dev)
+    if (import.meta.env.DEV) {
+      console.log("[HTTP AUTH] ->", config.method?.toUpperCase(), config.url, "token: YES");
     }
-    return config;
-  },
-  (err) => Promise.reject(err)
-);
+  } else {
+    if (import.meta.env.DEV) {
+      console.log("[HTTP AUTH] ->", config.method?.toUpperCase(), config.url, "token: NO");
+    }
+  }
 
-// ✅ log simple opcional (si querés ver rápido qué baseURL está usando)
-// console.log("[AUTH API] baseURL =", http.defaults.baseURL);
+  return config;
+});
 
+// Normalize errors + auto logout on 401
 http.interceptors.response.use(
   (r) => r,
-  (err) => Promise.reject(err)
+  (err) => {
+    const status = err?.response?.status;
+
+    if (status === 401) {
+      clearAuth();
+    }
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data?.code ||
+      err?.message ||
+      "Network Error";
+
+    return Promise.reject(Object.assign(err, { friendlyMessage: msg }));
+  }
 );
 
 export default http;
