@@ -1,49 +1,61 @@
 // src/app/api/http.js
 import axios from "axios";
-import { loadAuth, clearAuth } from "../utils/storage";
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.trim() ||
-  "/api/v1";
-
-if (!import.meta.env.VITE_API_BASE_URL) {
-  console.warn("⚠️ VITE_API_BASE_URL no está definido. Usando:", baseURL);
+function getApiBase() {
+  const env = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+  // same-origin si no hay env
+  return env || "";
 }
 
-const http = axios.create({
-  baseURL,
-  timeout: 60000,
-});
-
-// Attach token
-http.interceptors.request.use((config) => {
-  const auth = loadAuth();
-  const token = auth?.accessToken;
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+function getTokenSafe() {
+  // ✅ soporta varios nombres típicos (por si en algún momento lo guardaste distinto)
+  const keys = ["pos360_token", "pos360_access_token", "access_token", "token"];
+  for (const k of keys) {
+    const v = localStorage.getItem(k);
+    if (v && typeof v === "string" && v.trim().length > 10) return v.trim();
   }
-  return config;
+
+  // ✅ fallback: auth json
+  try {
+    const raw = localStorage.getItem("auth");
+    if (raw) {
+      const j = JSON.parse(raw);
+      const t = j?.token || j?.access_token || j?.accessToken;
+      if (t && String(t).trim().length > 10) return String(t).trim();
+    }
+  } catch {}
+
+  return "";
+}
+
+const apiBase = getApiBase();
+
+// ✅ PRIVATE/AUTH API (POS, admin, backoffice)
+const http = axios.create({
+  baseURL: `${apiBase}/api/v1`,
+  withCredentials: false,
+  timeout: 25000,
 });
 
-// Normalize errors + auto logout on 401
+// ✅ Adjunta Bearer si existe token
+http.interceptors.request.use(
+  (config) => {
+    const token = getTokenSafe();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (err) => Promise.reject(err)
+);
+
+// ✅ log simple opcional (si querés ver rápido qué baseURL está usando)
+// console.log("[AUTH API] baseURL =", http.defaults.baseURL);
+
 http.interceptors.response.use(
   (r) => r,
-  (err) => {
-    const status = err?.response?.status;
-
-    if (status === 401) {
-      clearAuth();
-    }
-
-    const msg =
-      err?.response?.data?.message ||
-      err?.response?.data?.code ||
-      err?.message ||
-      "Network Error";
-
-    return Promise.reject(Object.assign(err, { friendlyMessage: msg }));
-  }
+  (err) => Promise.reject(err)
 );
 
 export default http;

@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopCheckout.vue -->
 <template>
   <v-container class="py-6">
@@ -357,11 +358,14 @@
                           {{ delivery.city || "—" }}, {{ delivery.province || "—" }},
                           CP {{ delivery.zip || "—" }}
                           <div class="text-caption text-medium-emphasis mt-1">
-                            {{ delivery.contact_name || buyer.name || "—" }} · {{ delivery.phone || buyer.phone || "—" }}
+                            {{ delivery.contact_name || buyer.name || "—" }} ·
+                            {{ delivery.phone || buyer.phone || "—" }}
                           </div>
                           <div v-if="shippingQuote.status === 'ok'" class="text-caption mt-1">
                             Envío: <b>$ {{ fmtMoney(shippingQuote.amount) }}</b>
-                            <span v-if="shippingQuote.eta" class="text-medium-emphasis"> · {{ shippingQuote.eta }}</span>
+                            <span v-if="shippingQuote.eta" class="text-medium-emphasis">
+                              · {{ shippingQuote.eta }}
+                            </span>
                           </div>
                         </div>
 
@@ -370,7 +374,10 @@
                         <div class="section-subtitle">Pago</div>
                         <div class="text-body-2">
                           Método: <b>{{ paymentLabel }}</b>
-                          <div v-if="payment.method === 'TRANSFER' && payment.reference" class="text-caption text-medium-emphasis mt-1">
+                          <div
+                            v-if="payment.method === 'TRANSFER' && payment.reference"
+                            class="text-caption text-medium-emphasis mt-1"
+                          >
                             Ref/Comp.: {{ payment.reference }}
                           </div>
                           <div v-if="payment.method === 'MERCADO_PAGO'" class="text-caption text-medium-emphasis mt-1">
@@ -484,6 +491,9 @@ const step = ref(1);
 const submitting = ref(false);
 const submitError = ref("");
 
+// ========================
+// Items
+// ========================
 const items = computed(() => cart.items || []);
 
 function fmtMoney(v) {
@@ -548,6 +558,7 @@ function branchesForItem(it) {
     it?.branches_available ||
     null;
 
+  // fallback “optimista” si no viene stock por branch en el item
   if (!Array.isArray(list) || list.length === 0) {
     return branches.value.map((b) => ({ branch_id: Number(b.id), qty: 1 }));
   }
@@ -555,6 +566,7 @@ function branchesForItem(it) {
   const normalized = list.map(normalizeBranchStock).filter(Boolean);
   return normalized.filter((x) => Number(x.qty || 0) > 0);
 }
+
 const pickupBranches = computed(() => {
   const all = branches.value || [];
   if (!all.length) return [];
@@ -586,9 +598,30 @@ const selectedBranchName = computed(() => {
 // Delivery + Shipping quote
 // ========================
 const provinces = [
-  "San Juan","Buenos Aires","CABA","Córdoba","Santa Fe","Mendoza","San Luis","La Rioja","Tucumán","Salta","Jujuy",
-  "Chaco","Corrientes","Entre Ríos","Formosa","Misiones","Neuquén","Río Negro","Chubut","Santa Cruz","Tierra del Fuego",
-  "La Pampa","Catamarca","Santiago del Estero",
+  "San Juan",
+  "Buenos Aires",
+  "CABA",
+  "Córdoba",
+  "Santa Fe",
+  "Mendoza",
+  "San Luis",
+  "La Rioja",
+  "Tucumán",
+  "Salta",
+  "Jujuy",
+  "Chaco",
+  "Corrientes",
+  "Entre Ríos",
+  "Formosa",
+  "Misiones",
+  "Neuquén",
+  "Río Negro",
+  "Chubut",
+  "Santa Cruz",
+  "Tierra del Fuego",
+  "La Pampa",
+  "Catamarca",
+  "Santiago del Estero",
 ];
 
 const delivery = ref({
@@ -620,9 +653,17 @@ function quoteShipping() {
   }
 
   if (isSJ) {
-    shippingQuote.value = { status: "ok", amount: subtotal.value >= 50000 ? 0 : 2500, eta: "Llega hoy o mañana" };
+    shippingQuote.value = {
+      status: "ok",
+      amount: subtotal.value >= 50000 ? 0 : 2500,
+      eta: "Llega hoy o mañana",
+    };
   } else {
-    shippingQuote.value = { status: "ok", amount: Math.max(4500, Math.round(subtotal.value * 0.04)), eta: "Llega en 3 a 7 días" };
+    shippingQuote.value = {
+      status: "ok",
+      amount: Math.max(4500, Math.round(subtotal.value * 0.04)),
+      eta: "Llega en 3 a 7 días",
+    };
   }
 }
 
@@ -718,6 +759,7 @@ function normalizePayMethodForBackend() {
 function buildBackendPayload() {
   const isPickup = delivery.value.mode === "pickup";
 
+  // ✅ backend espera: pickup | delivery
   return {
     fulfillment_type: isPickup ? "pickup" : "delivery",
     pickup_branch_id: isPickup ? Number(delivery.value.pickup_branch_id || 0) || null : null,
@@ -757,6 +799,45 @@ function buildBackendPayload() {
   };
 }
 
+function mapCheckoutErrorToHumanMessage(err) {
+  const status = Number(err?.response?.status || 0);
+
+  const apiCode = String(
+    err?.response?.data?.code ||
+      err?.response?.data?.error_code ||
+      err?.response?.data?.payload?.code ||
+      ""
+  ).toUpperCase();
+
+  const apiMsg = String(
+    err?.response?.data?.message ||
+      err?.response?.data?.detail ||
+      err?.response?.data?.error ||
+      ""
+  ).trim();
+
+  // ✅ Si el backend aplica el fix sugerido: MP_POLICY_BLOCKED
+  if (apiCode === "MP_POLICY_BLOCKED") {
+    return (
+      "Mercado Pago rechazó el pago por políticas. " +
+      "Revisá que el SHOP_PUBLIC_URL sea https y que las credenciales coincidan (TEST/LIVE)."
+    );
+  }
+
+  // ✅ Si el backend todavía devuelve 500 pero dentro viene info de MP
+  if (status === 500 && apiCode.includes("UNAUTHORIZED_RESULT_FROM_POLICIES")) {
+    return (
+      "Mercado Pago rechazó el pago por políticas (PolicyAgent). " +
+      "Revisá SHOP_PUBLIC_URL (https), credenciales TEST/LIVE y que el dominio esté correcto."
+    );
+  }
+
+  // ✅ fallback decente
+  if (apiMsg) return apiMsg;
+  if (status >= 500) return "No se pudo crear la orden (error interno). Probá de nuevo en unos segundos.";
+  return "No se pudo crear la orden. Revisá los datos e intentá nuevamente.";
+}
+
 async function submitOrder() {
   submitError.value = "";
   submitting.value = true;
@@ -770,21 +851,20 @@ async function submitOrder() {
       data?.redirect_url ||
       data?.payment?.redirect_url ||
       data?.payment?.init_point ||
+      data?.payment?.sandbox_init_point ||
       null;
 
+    // MP (redirect)
     if (redirectUrl) {
       window.location.href = redirectUrl;
       return;
     }
 
+    // No redirect => pedido creado
     cart.clear?.();
     router.push("/shop");
   } catch (err) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.response?.data?.detail ||
-      "No se pudo crear la orden.";
-    submitError.value = msg;
+    submitError.value = mapCheckoutErrorToHumanMessage(err);
   } finally {
     submitting.value = false;
   }
@@ -827,7 +907,6 @@ onMounted(async () => {
       payment.value.method = "TRANSFER";
     }
   } catch {
-    transferInfo.value = transferInfo.value;
     mpEnabled.value = false;
     if (payment.value.method === "MERCADO_PAGO") payment.value.method = "TRANSFER";
   }
