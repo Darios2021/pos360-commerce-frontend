@@ -12,158 +12,67 @@
           </div>
         </div>
 
-        <div class="d-flex align-center ga-2">
-          <v-chip v-if="model?.id" size="small" variant="tonal">ID #{{ model.id }}</v-chip>
-
-          <v-btn
-            v-if="mode === 'edit' && isAdmin"
-            color="red"
-            variant="tonal"
-            prepend-icon="mdi-delete-outline"
-            @click="deleteOpen = true"
-          >
-            Eliminar
-          </v-btn>
-
-          <v-btn icon="mdi-close" variant="text" @click="close" />
-        </div>
+        <v-btn icon="mdi-close" variant="text" @click="close" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text>
-        <v-alert v-if="products.error" type="error" variant="tonal" class="mb-4">
+      <v-card-text class="pt-4">
+        <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3">
           {{ products.error }}
         </v-alert>
 
-        <v-alert v-if="mode === 'create' && model?.id" type="success" variant="tonal" class="mb-4">
-          Producto creado (ID #{{ model.id }}). Podés seguir subiendo imágenes o presionar <b>Finalizar</b>.
-        </v-alert>
-
-        <v-expansion-panels class="mb-4" variant="accordion">
-          <v-expansion-panel>
-            <v-expansion-panel-title class="text-caption text-medium-emphasis">
-              Logs (debug)
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <div class="d-flex justify-end mb-2">
-                <v-btn size="small" variant="tonal" @click="debugClear">
-                  <v-icon start>mdi-broom</v-icon>
-                  Limpiar
-                </v-btn>
-              </div>
-              <pre class="json">{{ debugText }}</pre>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-
         <v-tabs v-model="tab" density="comfortable">
-          <v-tab value="datos" prepend-icon="mdi-text-box-outline">DATOS</v-tab>
-          <v-tab value="precios" prepend-icon="mdi-cash">PRECIOS</v-tab>
-          <v-tab value="estado" prepend-icon="mdi-toggle-switch-outline">ESTADO</v-tab>
-          <v-tab value="stock" prepend-icon="mdi-warehouse">STOCK</v-tab>
-          <v-tab value="imagenes" prepend-icon="mdi-image-multiple-outline">IMÁGENES</v-tab>
+          <v-tab value="datos">DATOS</v-tab>
+          <v-tab value="precios">PRECIOS</v-tab>
+          <v-tab value="estado">ESTADO</v-tab>
+          <v-tab value="stock">STOCK</v-tab>
+          <v-tab value="imagenes">IMÁGENES</v-tab>
         </v-tabs>
 
-        <v-window v-model="tab" class="mt-4">
+        <v-divider class="my-3" />
+
+        <v-window v-model="tab">
           <!-- DATOS -->
           <v-window-item value="datos">
-            <v-row dense>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="model.name"
-                  label="Nombre *"
-                  variant="outlined"
-                  :error="!!fieldErrors.name"
-                  :error-messages="fieldErrors.name"
-                />
-              </v-col>
-
-              <v-col cols="12" md="3">
-                <v-text-field
-                  v-model="model.sku"
-                  label="SKU *"
-                  variant="outlined"
-                  :error="!!fieldErrors.sku"
-                  :error-messages="fieldErrors.sku"
-                />
-              </v-col>
-
-              <v-col cols="12" md="3">
-                <v-text-field v-model="model.code" label="Código" variant="outlined" />
-              </v-col>
-
-              <!-- Rubro / Subrubro -->
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="model.parent_category_id"
-                  :items="parents"
-                  item-title="name"
-                  item-value="id"
-                  label="Rubro *"
-                  variant="outlined"
-                  :loading="catsLoading"
-                  :disabled="catsLoading"
-                  clearable
-                  no-data-text="No hay rubros"
-                  :error="!!fieldErrors.parent_category_id"
-                  :error-messages="fieldErrors.parent_category_id"
-                />
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="model.category_id"
-                  :items="subcategories"
-                  item-title="name"
-                  item-value="id"
-                  label="Subrubro"
-                  variant="outlined"
-                  :loading="catsLoading"
-                  :disabled="catsLoading || !model.parent_category_id"
-                  clearable
-                  no-data-text="No hay subrubros"
-                  hint="Se filtra según el Rubro."
-                  persistent-hint
-                />
-              </v-col>
-
-              <v-col cols="12" md="4">
-                <v-text-field v-model="model.brand" label="Marca" variant="outlined" />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field v-model="model.model" label="Modelo" variant="outlined" />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field v-model="model.barcode" label="Barcode" variant="outlined" />
-              </v-col>
-
-              <v-col cols="12">
-                <v-textarea v-model="model.description" label="Descripción" variant="outlined" rows="3" />
-              </v-col>
-            </v-row>
+            <ProductDataPanel
+              v-model="form"
+              :disabled="loading"
+              :product-id="productId"
+            />
           </v-window-item>
 
           <!-- PRECIOS -->
           <v-window-item value="precios">
             <v-row dense>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="model.price_list" label="Precio Lista" type="number" variant="outlined" />
-              </v-col>
-              <v-col cols="12" md="4">
                 <v-text-field
-                  v-model.number="model.price_discount"
-                  label="Precio Descuento"
+                  v-model="form.price_list"
                   type="number"
+                  label="Precio lista"
                   variant="outlined"
+                  density="comfortable"
+                  :disabled="loading"
                 />
               </v-col>
               <v-col cols="12" md="4">
                 <v-text-field
-                  v-model.number="model.price_reseller"
-                  label="Precio Revendedor"
+                  v-model="form.price_discount"
                   type="number"
+                  label="Precio descuento"
                   variant="outlined"
+                  density="comfortable"
+                  :disabled="loading"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="form.price_reseller"
+                  type="number"
+                  label="Precio revendedor"
+                  variant="outlined"
+                  density="comfortable"
+                  :disabled="loading"
                 />
               </v-col>
             </v-row>
@@ -172,519 +81,230 @@
           <!-- ESTADO -->
           <v-window-item value="estado">
             <v-row dense>
-              <v-col cols="12" md="4">
-                <v-switch v-model="model.is_active" label="Activo" color="primary" inset />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-switch v-model="model.is_new" label="Nuevo" color="primary" inset />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-switch v-model="model.is_promo" label="En promo" color="primary" inset />
+              <v-col cols="12" md="6">
+                <v-switch v-model="form.is_active" label="Activo" inset :disabled="loading" />
               </v-col>
             </v-row>
           </v-window-item>
 
           <!-- STOCK -->
           <v-window-item value="stock">
-            <v-card rounded="xl" variant="tonal" class="pa-4">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <div class="font-weight-bold">Sucursal + Stock</div>
-                <div class="text-caption text-medium-emphasis">
-                  Admin elige sucursal · Usuario usa su sucursal fija
-                </div>
-              </div>
-
-              <v-row dense class="mb-2" v-if="mode === 'edit' && model?.id">
-                <v-col cols="12" md="8">
-                  <v-text-field
-                    :model-value="productOwnerBranchLabel"
-                    label="Sucursal dueña (actual)"
-                    variant="outlined"
-                    readonly
-                    hint="Esto es el branch_id guardado en products (dueño). No es el depósito de stock."
-                    persistent-hint
-                  />
-                </v-col>
-
-                <v-col cols="12" md="4">
-                  <v-text-field
-                    :model-value="String(stock.current_qty)"
-                    label="Stock actual (sucursal efectiva)"
-                    variant="outlined"
-                    readonly
-                    hint="Suma de stock_balances en depósitos de esa sucursal."
-                    persistent-hint
-                  />
-                </v-col>
-              </v-row>
-
-              <v-row dense v-if="!isAdmin">
-                <v-col cols="12" md="8">
-                  <v-text-field
-                    :model-value="userBranchLabel"
-                    label="Sucursal"
-                    variant="outlined"
-                    readonly
-                    hint="Se toma de tu usuario (no editable)."
-                    persistent-hint
-                  />
-                </v-col>
-
-                <v-col cols="12" md="4">
-                  <v-text-field
-                    v-model.number="stock.assign_qty"
-                    label="Cantidad a asignar ahora"
-                    type="number"
-                    variant="outlined"
-                    hint="Esto NO es el stock actual; es lo que vas a asignar con el botón."
-                    persistent-hint
-                  />
-                </v-col>
-              </v-row>
-
-              <v-row dense v-else>
-                <v-col cols="12" md="8">
-                  <v-select
-                    v-model="stock.branch_id"
-                    :items="branches"
-                    item-title="name"
-                    item-value="id"
-                    label="Sucursal destino de stock *"
-                    variant="outlined"
-                    :loading="branchesLoading"
-                    :disabled="branchesLoading"
-                    clearable
-                    no-data-text="No hay sucursales"
-                    :error="!!fieldErrors.branch_id"
-                    :error-messages="fieldErrors.branch_id"
-                    hint="Esta selección define: 1) sucursal donde mirar/poner stock 2) sucursal dueña del producto si guardás."
-                    persistent-hint
-                  />
-                </v-col>
-
-                <v-col cols="12" md="4">
-                  <v-text-field
-                    v-model.number="stock.assign_qty"
-                    label="Cantidad a asignar ahora"
-                    type="number"
-                    variant="outlined"
-                    :disabled="!stock.branch_id"
-                    hint="Esto NO es el stock actual; es lo que vas a asignar con el botón."
-                    persistent-hint
-                  />
-                </v-col>
-              </v-row>
-
-              <v-alert v-if="stockInfo" type="info" variant="tonal" class="mt-3">
-                {{ stockInfo }}
-              </v-alert>
-
-              <div class="d-flex justify-end mt-2">
-                <v-btn
-                  color="primary"
-                  variant="flat"
-                  prepend-icon="mdi-warehouse"
-                  :disabled="!model?.id || !effectiveBranchId || savingStock"
-                  :loading="savingStock"
-                  @click="saveStockNow"
-                >
-                  Asignar stock ahora
-                </v-btn>
-              </div>
-            </v-card>
+            <ProductStockPanel
+              v-model="stockMatrix"
+              :product-id="productId"
+              @applied="onStockApplied"
+            />
           </v-window-item>
 
-          <!-- IMÁGENES -->
+          <!-- ✅ IMÁGENES -->
           <v-window-item value="imagenes">
-            <v-card rounded="xl" variant="tonal" class="pa-4">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <div class="font-weight-bold">Imágenes</div>
-                <div class="text-caption text-medium-emphasis">Máximo 3 · listo para MinIO</div>
-              </div>
+            <ProductImagesPanel
+              :images="images"
+              :loading="imagesLoading || loading"
+              :error="imagesError"
+              :max="3"
+              @upload="onUploadImages"
+              @removeOne="askRemoveOneImage"
+              @removeAll="askRemoveAllImages"
+            />
 
-              <v-row dense v-if="existingImages.length">
-                <v-col v-for="img in existingImages" :key="img.id" cols="12" sm="6" md="4">
-                  <v-card rounded="lg" class="overflow-hidden">
-                    <v-img :src="img.url" height="160" cover />
-                    <v-divider />
-                    <v-card-actions class="justify-space-between">
-                      <div class="text-caption text-medium-emphasis">ID {{ img.id }}</div>
-                      <v-btn
-                        icon="mdi-delete-outline"
-                        variant="text"
-                        color="red"
-                        @click="askRemoveImage(img)"
-                        :disabled="products.loading || uploading"
-                      />
-                    </v-card-actions>
-                  </v-card>
-                </v-col>
-              </v-row>
-
-              <v-alert v-else type="info" variant="tonal" class="mb-3">
-                Este producto no tiene imágenes cargadas todavía.
-              </v-alert>
-
-              <v-file-input
-                v-model="newFiles"
-                label="Seleccionar imágenes (opcional)"
-                variant="outlined"
-                prepend-icon="mdi-image-plus"
-                multiple
-                accept="image/*"
-                :hint="!model?.id ? 'Podés elegirlas ahora: se suben automáticamente al guardar el producto.' : ''"
-                persistent-hint
-              />
-
-              <div class="d-flex justify-space-between align-center mt-3">
-                <div class="text-caption text-medium-emphasis">
-                  Seleccionadas: <b>{{ newFiles.length }}</b> · Existentes: <b>{{ existingImages.length }}</b>
-                </div>
-
-                <div class="d-flex ga-2">
-                  <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="loadImages" :disabled="!model?.id || uploading">
-                    Refrescar
+            <!-- confirm borrar 1 -->
+            <v-dialog v-model="deleteImgOpen" max-width="520">
+              <v-card rounded="xl">
+                <v-card-title class="font-weight-bold">Eliminar imagen</v-card-title>
+                <v-card-text>
+                  ¿Eliminar imagen ID <b>#{{ deleteImg?.id }}</b>?
+                </v-card-text>
+                <v-card-actions class="justify-end">
+                  <v-btn variant="tonal" @click="deleteImgOpen = false">Cancelar</v-btn>
+                  <v-btn color="red" variant="flat" @click="doRemoveOneImage" :loading="imagesLoading">
+                    Eliminar
                   </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
 
-                  <v-btn
-                    color="primary"
-                    variant="flat"
-                    prepend-icon="mdi-cloud-upload-outline"
-                    @click="uploadSelected"
-                    :disabled="!model?.id || !newFiles.length"
-                    :loading="uploading"
-                  >
-                    Subir seleccionadas
+            <!-- confirm borrar todas -->
+            <v-dialog v-model="deleteAllOpen" max-width="520">
+              <v-card rounded="xl">
+                <v-card-title class="font-weight-bold">Eliminar imágenes</v-card-title>
+                <v-card-text>
+                  ¿Eliminar <b>todas</b> las imágenes del producto?
+                  <div class="text-caption text-medium-emphasis mt-2">No se puede deshacer.</div>
+                </v-card-text>
+                <v-card-actions class="justify-end">
+                  <v-btn variant="tonal" @click="deleteAllOpen = false">Cancelar</v-btn>
+                  <v-btn color="red" variant="flat" @click="doRemoveAllImages" :loading="imagesLoading">
+                    Eliminar todas
                   </v-btn>
-                </div>
-              </div>
-            </v-card>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           </v-window-item>
         </v-window>
       </v-card-text>
 
       <v-divider />
 
-      <v-card-actions class="justify-space-between">
-        <v-btn variant="text" @click="forceReloadData" :disabled="catsLoading || branchesLoading">
-          <v-icon start>mdi-refresh</v-icon>
+      <v-card-actions class="justify-space-between px-4 py-3">
+        <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="reloadFull" :loading="loading">
           Recargar datos
         </v-btn>
 
         <div class="d-flex ga-2">
-          <v-btn variant="tonal" @click="close" :disabled="products.loading || uploading || savingStock">
-            Cancelar
-          </v-btn>
+          <v-btn variant="tonal" @click="close" :disabled="loading">Cancelar</v-btn>
 
-          <v-btn
-            v-if="mode === 'create' && model?.id"
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-check"
-            @click="finalize"
-          >
-            Finalizar
-          </v-btn>
-
-          <v-btn v-else color="primary" variant="flat" @click="save" :loading="products.loading">
+          <v-btn color="primary" variant="flat" @click="saveOnly" :loading="loading">
             Guardar
+          </v-btn>
+
+          <v-btn color="primary" variant="flat" prepend-icon="mdi-check" @click="saveOnly" :loading="loading">
+            Guardar (seguir)
           </v-btn>
         </div>
       </v-card-actions>
     </v-card>
-
-    <!-- Confirm delete imagen -->
-    <v-dialog v-model="deleteImgOpen" max-width="520">
-      <v-card rounded="xl">
-        <v-card-title class="font-weight-bold">Eliminar imagen</v-card-title>
-        <v-card-text>¿Eliminar la imagen ID <b>#{{ deleteImg?.id }}</b>?</v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="tonal" @click="deleteImgOpen = false" :disabled="products.loading || uploading">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDeleteImage" :loading="uploading">Eliminar</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Confirm delete producto -->
-    <v-dialog v-model="deleteOpen" max-width="520">
-      <v-card rounded="xl">
-        <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
-        <v-card-text>
-          ¿Seguro que querés eliminar <b>{{ model?.name }}</b> (ID #{{ model?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">No se puede deshacer.</div>
-        </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading || uploading">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDeleteProduct" :loading="products.loading || uploading">
-            Eliminar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-snackbar v-model="snack.show" :timeout="3500">
-      {{ snack.text }}
-    </v-snackbar>
   </v-dialog>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
-import { useAuthStore } from "../../../app/store/auth.store";
-import { useCategoriesStore } from "../../../app/store/categories.store";
+
+import ProductDataPanel from "./ProductDataPanel.vue";
+import ProductStockPanel from "./ProductStockPanel.vue";
+import ProductImagesPanel from "./ProductImagesPanel.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
   mode: { type: String, default: "create" }, // create | edit
   item: { type: Object, default: null },
 });
+
 const emit = defineEmits(["update:open", "saved", "deleted"]);
 
 const products = useProductsStore();
-const auth = useAuthStore();
-const categories = useCategoriesStore();
 
 const openLocal = ref(false);
+const loading = ref(false);
 const tab = ref("datos");
-const hydrating = ref(false);
 
-/**
- * UI model:
- * - parent_category_id: Rubro (nivel 1)
- * - category_id:        Subrubro (nivel 2) (en UI)
- */
-const model = ref({
-  id: null,
+const productId = computed(() => Number(props.item?.id || products.current?.id || 0) || null);
+
+// ✅ form COMPLETO
+const form = reactive({
   name: "",
   sku: "",
   code: "",
-  barcode: null,
-  description: null,
-  brand: null,
-  model: null,
-  is_active: true,
-  is_new: false,
-  is_promo: false,
+  brand: "",
+  model: "",
+  description: "",
+  category_id: null,
+  track_stock: true,
+
   price_list: 0,
   price_discount: 0,
   price_reseller: 0,
-  parent_category_id: null, // Rubro (categories.id)
-  category_id: null,        // Subrubro (categories.id) (en UI)
+
+  is_active: true,
+
+  // opcional: para inferencia del panel
+  category: null,
 });
 
-// ✅ admin detector robusto
-const isAdmin = computed(() => {
-  const u = auth?.user || {};
-  const roles = Array.isArray(u.roles) ? u.roles : (Array.isArray(auth.roles) ? auth.roles : []);
-  const roleNames = roles
-    .map((r) => (typeof r === "string" ? r : (r?.name || r?.role || "")))
-    .map((s) => String(s).toLowerCase());
-  return (
-    roleNames.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)) ||
-    u?.is_admin === true
-  );
-});
+const stockMatrix = ref([]);
 
-const userBranchId = computed(() => {
-  const u = auth?.user || {};
-  const v = Number(u.branch_id || auth.branchId || 0);
-  return Number.isFinite(v) && v > 0 ? v : null;
-});
+// =====================
+// IMÁGENES state
+// =====================
+const images = ref([]);
+const imagesLoading = ref(false);
+const imagesError = ref(null);
 
-const catsLoading = computed(() => categories.loading);
-const parents = computed(() => categories.parents || []);
-const subcategories = computed(() => categories.childrenByParent(model.value.parent_category_id));
+const deleteImgOpen = ref(false);
+const deleteAllOpen = ref(false);
+const deleteImg = ref(null);
 
-/** stock */
-const branches = ref([]);
-const branchesLoading = ref(false);
-
-const stock = ref({
-  branch_id: null,
-  current_qty: 0,
-  assign_qty: 0,
-});
-
-const savingStock = ref(false);
-
-const effectiveBranchId = computed(() => {
-  if (isAdmin.value) return Number(stock.value.branch_id || 0) || null;
-  return userBranchId.value;
-});
-
-const userBranchLabel = computed(() => {
-  const id = userBranchId.value;
-  if (!id) return "—";
-  const found = (branches.value || []).find((b) => Number(b?.id) === Number(id));
-  return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${id}`;
-});
-
-const productOwnerBranchLabel = computed(() => {
-  const bid =
-    Number(props?.item?.branch_id || 0) ||
-    Number((products.current || {})?.branch_id || 0) ||
-    Number(stock.value.branch_id || 0) ||
-    0;
-  if (!bid) return "—";
-  const found = (branches.value || []).find((b) => Number(b?.id) === Number(bid));
-  return found?.name ? `${found.name} (ID ${found.id})` : `Sucursal ID ${bid}`;
-});
-
-/** errores */
-const fieldErrors = ref({
-  name: "",
-  sku: "",
-  branch_id: "",
-  parent_category_id: "",
-});
-
-const snack = ref({ show: false, text: "" });
-
-/** logs */
-const debugLines = ref([]);
-const debugText = computed(() => debugLines.value.join("\n"));
-function debugLog(...args) {
-  const line =
-    `[${new Date().toISOString()}] ` +
-    args
-      .map((a) => {
-        try {
-          return typeof a === "string" ? a : JSON.stringify(a);
-        } catch {
-          return String(a);
-        }
-      })
-      .join(" ");
-  debugLines.value.unshift(line);
-  // eslint-disable-next-line no-console
-  console.debug("[ProductFormDialog]", ...args);
-}
-function debugClear() {
-  debugLines.value = [];
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
 }
 
-function clearFieldErrors() {
-  fieldErrors.value = { name: "", sku: "", branch_id: "", parent_category_id: "" };
-}
-
-function toInt(v, d = 0) {
+function toInt(v, d = null) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
 
-// ✅ FIX: category_id FINAL que se guarda en products.category_id
-function resolveFinalCategoryId() {
-  const sub = toInt(model.value.category_id, 0); // subrubro UI
-  const rub = toInt(model.value.parent_category_id, 0); // rubro UI
-  return sub > 0 ? sub : (rub > 0 ? rub : null);
+function hydrateForm(p) {
+  form.name = p?.name || "";
+  form.sku = p?.sku || "";
+  form.code = p?.code || "";
+  form.brand = p?.brand || "";
+  form.model = p?.model || "";
+  form.description = p?.description || p?.desc || "";
+  form.category_id = toInt(p?.category_id ?? p?.categoryId ?? p?.category?.id, null);
+  form.track_stock = p?.track_stock === false || Number(p?.track_stock || 0) === 0 ? false : true;
+
+  form.price_list = toNum(p?.price_list, 0);
+  form.price_discount = toNum(p?.price_discount, 0);
+  form.price_reseller = toNum(p?.price_reseller, 0);
+  form.is_active = p?.is_active === false || Number(p?.is_active || 0) === 0 ? false : true;
+
+  form.category = p?.category || null;
 }
 
-/**
- * ✅ Normaliza error de API
- */
-function normalizeApiError(e) {
-  if (e && typeof e === "object" && ("status" in e || "raw" in e) && "message" in e) {
-    const data = e.raw ?? e.data ?? null;
-    return {
-      data,
-      message: String(e.message || data?.message || data?.error || "Error inesperado"),
-      code: e.code || data?.code || "ERROR",
-      errors: Array.isArray(e.errors) ? e.errors : Array.isArray(data?.errors) ? data.errors : [],
-      status: e.status || 0,
-    };
-  }
-
-  const d = e?.response?.data || e?.data || null;
-  const msg = d?.message || d?.error || e?.message || "Error inesperado. Revisá consola/servidor.";
-  return {
-    data: d,
-    message: String(msg),
-    code: d?.code || "ERROR",
-    errors: Array.isArray(d?.errors) ? d.errors : [],
-    status: e?.response?.status || 0,
-  };
+function hydrateMatrix(p) {
+  const m = Array.isArray(p?.stock_matrix) ? p.stock_matrix : [];
+  stockMatrix.value = m.map((x) => ({
+    branch_id: Number(x.branch_id || 0),
+    branch_name: x.branch_name || "",
+    enabled: x.enabled === true || Number(x.enabled || 0) === 1,
+    current_qty: toNum(x.current_qty, 0),
+  }));
 }
 
-function errorsArrayToMap(arr) {
-  const out = {};
-  const a = Array.isArray(arr) ? arr : [];
-  for (const it of a) {
-    const k = String(it?.field || it?.path || "").trim();
-    const m = String(it?.message || "").trim();
-    if (!k || !m) continue;
-    if (!out[k]) out[k] = m;
-  }
-  return out;
-}
-
-async function loadBranches() {
-  branchesLoading.value = true;
-  try {
-    const arr = await products.fetchBranches();
-    branches.value = Array.isArray(arr) ? arr : [];
-    debugLog("Branches cargadas", { count: branches.value.length });
-  } catch (e) {
-    debugLog("ERROR branches", e?.message || e);
-  } finally {
-    branchesLoading.value = false;
-  }
-}
-
-function inferParentIdFromCategoryId(categoryId) {
-  const cid = toInt(categoryId, 0);
-  if (!cid) return null;
-
-  const ps = parents.value || [];
-  for (const p of ps) {
-    const pid = toInt(p?.id, 0);
-    if (!pid) continue;
-    const children = categories.childrenByParent(pid) || [];
-    if (children.some((c) => toInt(c?.id, 0) === cid)) return pid;
-  }
-  return null;
-}
-
-function syncRubroFromSubrubro() {
-  const pid = toInt(model.value.parent_category_id, 0);
-  const cid = toInt(model.value.category_id, 0);
-  if (pid > 0) return;
-  if (cid > 0) {
-    const inferred = inferParentIdFromCategoryId(cid);
-    if (inferred) {
-      model.value.parent_category_id = inferred;
-      debugLog("Inferí parent_category_id desde category_id", { cid, inferred });
-    }
-  }
-}
-
-async function forceReloadData() {
-  try {
-    debugLog("Recargando categorías...");
-    await categories.fetchAll(true);
-    syncRubroFromSubrubro();
-  } catch (e) {
-    debugLog("ERROR recargando categorías", e?.message || e);
-  }
-  await loadBranches();
-}
-
-// ✅ trae stock actual real
-async function refreshCurrentStock() {
-  const pid = toInt(model.value.id, 0);
-  const bid = toInt(effectiveBranchId.value, 0);
-  if (!pid || !bid) {
-    stock.value.current_qty = 0;
+// ✅ cargar imágenes reales
+async function loadImages(pid) {
+  imagesError.value = null;
+  if (!pid) {
+    images.value = [];
     return;
   }
-
+  imagesLoading.value = true;
   try {
-    const qty = await products.fetchStockQty(pid, bid);
-    stock.value.current_qty = Number(qty || 0);
-    debugLog("stock_qty refreshed", { product_id: pid, branch_id: bid, qty: stock.value.current_qty });
+    const arr = await products.fetchImages(pid);
+    images.value = Array.isArray(arr) ? arr : [];
   } catch (e) {
-    stock.value.current_qty = 0;
-    debugLog("ERROR refresh stock_qty", e?.message || e);
+    imagesError.value = products.error || e?.message || "No se pudieron cargar imágenes";
+    images.value = [];
+  } finally {
+    imagesLoading.value = false;
+  }
+}
+
+async function reloadFull() {
+  loading.value = true;
+  try {
+    if (props.mode === "edit" && productId.value) {
+      // ✅ producto + matriz (tu store tiene que exponer esto; si no, cambiás a fetchOne + fetchBranchesMatrix)
+      const p = typeof products.fetchOneWithStockMatrix === "function"
+        ? await products.fetchOneWithStockMatrix(productId.value)
+        : await products.fetchOne(productId.value, { force: true });
+
+      if (p) {
+        hydrateForm(p);
+        hydrateMatrix(p);
+      }
+      await loadImages(productId.value);
+      return;
+    }
+
+    // create: si viene item, hidratamos; imágenes vacío
+    if (props.item) hydrateForm(props.item);
+    await loadImages(productId.value);
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -692,113 +312,12 @@ watch(
   () => props.open,
   async (v) => {
     openLocal.value = v;
-    if (!v) return;
-
-    hydrating.value = true;
-    tab.value = "datos";
-    clearFieldErrors();
-    debugClear();
-    debugLog("OPEN", { mode: props.mode });
-
-    await categories.fetchAll(false);
-    await loadBranches();
-
-    const it = props.item ? JSON.parse(JSON.stringify(props.item)) : null;
-
-    // ✅ FIX: hidratar rubro/subrubro robusto
-    // - si viene category con parent => subrubro = category.id y rubro = parent.id
-    // - si no viene parent => rubro = category.id (o it.category_id) y subrubro null
-    const catObj = it?.category || null;
-    const catParent = catObj?.parent || null;
-
-    const rubroFromObj = catParent?.id ? toInt(catParent.id, 0) : (catObj?.id ? toInt(catObj.id, 0) : 0);
-    const subFromObj = catParent?.id ? (catObj?.id ? toInt(catObj.id, 0) : 0) : 0;
-
-    const rubroFromFields =
-      toInt(it?.parent_category_id, 0) ||
-      toInt(it?.category_id, 0) ||
-      0;
-
-    const subFromFields =
-      toInt(it?.subcategory_id, 0) ||
-      toInt(it?.sub_category_id, 0) ||
-      0;
-
-    model.value = {
-      id: it?.id ?? null,
-      name: it?.name ?? "",
-      sku: it?.sku ?? "",
-      code: it?.code ?? null,
-      barcode: it?.barcode ?? null,
-      description: it?.description ?? null,
-      brand: it?.brand ?? null,
-      model: it?.model ?? null,
-      is_active: !!(it?.is_active ?? true),
-      is_new: !!(it?.is_new ?? false),
-      is_promo: !!(it?.is_promo ?? false),
-      price_list: Number(it?.price_list ?? 0),
-      price_discount: Number(it?.price_discount ?? 0),
-      price_reseller: Number(it?.price_reseller ?? 0),
-
-      // UI fields:
-      parent_category_id: (rubroFromObj || rubroFromFields) || null,
-      category_id: (subFromObj || subFromFields) || null,
-    };
-
-    syncRubroFromSubrubro();
-
-    stock.value = { branch_id: null, current_qty: 0, assign_qty: 0 };
-    if (isAdmin.value) stock.value.branch_id = toInt(it?.branch_id, 0) || null;
-    else stock.value.branch_id = userBranchId.value;
-
-    if (model.value.id) {
-      await products.fetchOne(model.value.id, { force: true, branch_id: effectiveBranchId.value || undefined });
-      await refreshCurrentStock();
+    if (v) {
+      tab.value = "datos";
+      await reloadFull();
     }
-
-    existingImages.value = [];
-    newFiles.value = [];
-    if (model.value.id) await loadImages();
-
-    hydrating.value = false;
   },
   { immediate: true }
-);
-
-watch(
-  () => effectiveBranchId.value,
-  async () => {
-    if (hydrating.value) return;
-    await refreshCurrentStock();
-  }
-);
-
-watch(
-  () => model.value.parent_category_id,
-  (newVal, oldVal) => {
-    if (hydrating.value) return;
-    const newPid = toInt(newVal, 0);
-    const oldPid = toInt(oldVal, 0);
-    if (newPid === oldPid) return;
-
-    const currentCid = toInt(model.value.category_id, 0);
-    if (!currentCid) {
-      model.value.category_id = null;
-      return;
-    }
-
-    const allowed = categories.childrenByParent(newPid) || [];
-    const ok = allowed.some((c) => toInt(c?.id, 0) === currentCid);
-    if (!ok) model.value.category_id = null;
-  }
-);
-
-watch(
-  () => model.value.category_id,
-  () => {
-    if (hydrating.value) return;
-    syncRubroFromSubrubro();
-  }
 );
 
 watch(openLocal, (v) => emit("update:open", v));
@@ -807,306 +326,125 @@ function close() {
   openLocal.value = false;
 }
 
-function finalize() {
-  close();
+function buildPayload() {
+  return {
+    name: String(form.name || "").trim(),
+    sku: String(form.sku || "").trim(),
+    code: String(form.code || "").trim(),
+    brand: String(form.brand || "").trim(),
+    model: String(form.model || "").trim(),
+    description: String(form.description || "").trim(),
+    category_id: toInt(form.category_id, null),
+    track_stock: !!form.track_stock,
+
+    price_list: toNum(form.price_list, 0),
+    price_discount: toNum(form.price_discount, 0),
+    price_reseller: toNum(form.price_reseller, 0),
+
+    is_active: !!form.is_active,
+  };
 }
 
-function validateBeforeSave() {
-  clearFieldErrors();
+async function saveOnly() {
+  loading.value = true;
+  try {
+    const payload = buildPayload();
 
-  if (!String(model.value.name || "").trim()) fieldErrors.value.name = "El nombre es obligatorio.";
-  if (!String(model.value.sku || "").trim()) fieldErrors.value.sku = "El SKU es obligatorio.";
-  if (!model.value.parent_category_id) fieldErrors.value.parent_category_id = "Elegí un rubro.";
-
-  if (props.mode === "create" && isAdmin.value && !stock.value.branch_id) {
-    fieldErrors.value.branch_id = "Elegí una sucursal.";
+    if (props.mode === "edit" && productId.value) {
+      const res = await products.update(productId.value, payload);
+      emit("saved", res?.data ?? products.current ?? null);
+      await reloadFull();
+    } else {
+      const res = await products.create(payload);
+      emit("saved", res?.data ?? null);
+      await reloadFull();
+    }
+  } finally {
+    loading.value = false;
   }
-
-  return (
-    !fieldErrors.value.name &&
-    !fieldErrors.value.sku &&
-    !fieldErrors.value.branch_id &&
-    !fieldErrors.value.parent_category_id
-  );
 }
 
-const stockInfo = computed(() => {
-  const bid = Number(effectiveBranchId.value || 0);
-  const qty = Number(stock.value.assign_qty || 0);
-  if (!bid) return "";
-  if (!qty) return "Sin asignación pendiente (0). Podés asignar stock ahora o después.";
-  return `Se asignará ${qty} a la sucursal ID ${bid}. Stock actual: ${Number(stock.value.current_qty || 0)}.`;
-});
-
-/** imágenes */
-const existingImages = ref([]);
-const newFiles = ref([]);
-const uploading = ref(false);
-
-const deleteOpen = ref(false);
-const deleteImgOpen = ref(false);
-const deleteImg = ref(null);
-
-function normalizeImages(arr) {
-  const list = Array.isArray(arr) ? arr : [];
-  return list
-    .map((x) => ({
-      id: x?.id ?? x?.image_id ?? x?.product_image_id,
-      url: x?.url ?? x?.src ?? x?.path ?? x?.image_url,
-    }))
-    .filter((x) => !!x.id && !!x.url);
+// =====================
+// STOCK callback
+// =====================
+async function onStockApplied() {
+  const pid = productId.value;
+  if (!pid) return;
+  if (typeof products.fetchOneWithStockMatrix === "function") {
+    const p = await products.fetchOneWithStockMatrix(pid);
+    if (p) hydrateMatrix(p);
+  }
 }
 
-async function loadImages() {
-  if (!model.value.id) return;
-  debugLog("fetchImages()", { product_id: model.value.id });
-  const imgs = await products.fetchImages(model.value.id);
-  existingImages.value = normalizeImages(imgs);
-  debugLog("images loaded", { count: existingImages.value.length });
+// =====================
+// IMÁGENES actions
+// =====================
+async function onUploadImages(files) {
+  const pid = productId.value;
+  if (!pid) {
+    imagesError.value = "Guardá el producto primero para subir imágenes.";
+    return;
+  }
+  imagesError.value = null;
+  imagesLoading.value = true;
+  try {
+    const r = await products.uploadImages(pid, files);
+    if (!r) throw new Error(products.error || "No se pudieron subir imágenes");
+    await loadImages(pid);
+  } catch (e) {
+    imagesError.value = products.error || e?.message || "No se pudieron subir imágenes";
+  } finally {
+    imagesLoading.value = false;
+  }
 }
 
-function askRemoveImage(img) {
+function askRemoveOneImage(img) {
   deleteImg.value = img;
   deleteImgOpen.value = true;
 }
 
-async function doDeleteImage() {
-  const pid = model.value.id;
-  const img = deleteImg.value;
-  if (!pid || !img?.id) return;
+async function doRemoveOneImage() {
+  const pid = productId.value;
+  const iid = Number(deleteImg.value?.id || 0);
+  if (!pid || !iid) return;
 
-  uploading.value = true;
+  imagesError.value = null;
+  imagesLoading.value = true;
   try {
-    debugLog("removeImage()", { product_id: pid, image_id: img.id });
-    const ok = await products.removeImage(pid, img.id);
-    if (!ok) throw new Error(products.error || "DELETE_IMAGE_FAILED");
+    const ok = await products.removeImage(pid, iid);
+    if (!ok) throw new Error(products.error || "No se pudo eliminar");
     deleteImgOpen.value = false;
     deleteImg.value = null;
-    await loadImages();
-    snack.value = { show: true, text: "Imagen eliminada" };
+    await loadImages(pid);
   } catch (e) {
-    const { message, data } = normalizeApiError(e);
-    debugLog("ERROR removeImage", { message, data });
-    snack.value = { show: true, text: message || "No se pudo eliminar la imagen" };
+    imagesError.value = products.error || e?.message || "No se pudo eliminar";
   } finally {
-    uploading.value = false;
+    imagesLoading.value = false;
   }
 }
 
-async function uploadSelected() {
-  const pid = model.value.id;
-  if (!pid || !newFiles.value?.length) return;
-
-  const total = (existingImages.value?.length || 0) + (newFiles.value?.length || 0);
-  if (total > 3) {
-    snack.value = { show: true, text: "Máximo 3 imágenes por producto." };
-    tab.value = "imagenes";
-    return;
-  }
-
-  uploading.value = true;
-  try {
-    debugLog("uploadImages()", { product_id: pid, files: newFiles.value.length });
-    const res = await products.uploadImages(pid, newFiles.value);
-    debugLog("uploadImages result", res);
-
-    if (!res) throw new Error(products.error || "UPLOAD_IMAGES_FAILED");
-
-    newFiles.value = [];
-    await loadImages();
-    snack.value = { show: true, text: "Imágenes subidas OK" };
-  } catch (e) {
-    const { message, data } = normalizeApiError(e);
-    debugLog("ERROR uploadImages", { message, data });
-    snack.value = { show: true, text: message || "No se pudieron subir las imágenes" };
-  } finally {
-    uploading.value = false;
-  }
+function askRemoveAllImages() {
+  deleteAllOpen.value = true;
 }
 
-/** stock init */
-async function saveStockNow() {
-  const pid = model.value.id;
-  const bid = effectiveBranchId.value;
-  const qty = Number(stock.value.assign_qty || 0);
-
-  if (!pid) {
-    snack.value = { show: true, text: "Primero guardá el producto." };
-    return;
-  }
-  if (!bid) {
-    snack.value = { show: true, text: "No hay sucursal efectiva." };
-    return;
-  }
-
-  savingStock.value = true;
-  try {
-    debugLog("initStock()", { product_id: pid, branch_id: bid, qty });
-    const ok = await products.initStock({ product_id: pid, branch_id: bid, qty });
-    if (!ok) throw new Error(products.error || "INIT_STOCK_FAILED");
-
-    snack.value = { show: true, text: "Stock asignado OK" };
-    stock.value.assign_qty = 0;
-
-    await refreshCurrentStock();
-  } catch (e) {
-    const { message, data } = normalizeApiError(e);
-    debugLog("ERROR initStock", { message, data });
-    snack.value = { show: true, text: message || "No se pudo asignar stock" };
-  } finally {
-    savingStock.value = false;
-  }
-}
-
-async function doDeleteProduct() {
-  const pid = model.value.id;
+async function doRemoveAllImages() {
+  const pid = productId.value;
   if (!pid) return;
+
+  imagesError.value = null;
+  imagesLoading.value = true;
   try {
-    debugLog("remove(product)", { product_id: pid });
-    const r = await products.remove(pid);
-    if (!r?.ok) throw new Error(r?.message || products.error || "DELETE_PRODUCT_FAILED");
-    deleteOpen.value = false;
-    emit("deleted", { id: pid });
-    snack.value = { show: true, text: "Producto eliminado" };
-    close();
-  } catch (e) {
-    const { message, data } = normalizeApiError(e);
-    debugLog("ERROR delete product", { message, data });
-    snack.value = { show: true, text: message || "No se pudo eliminar el producto" };
-  }
-}
-
-function normalizeEntity(res) {
-  if (!res) return null;
-  if (res?.id) return res;
-  if (res?.data?.id) return res.data;
-  return null;
-}
-
-async function save() {
-  if (!auth.isAuthed) return;
-
-  syncRubroFromSubrubro();
-
-  if (!validateBeforeSave()) {
-    tab.value = fieldErrors.value.branch_id ? "stock" : "datos";
-    debugLog("VALIDATION FAIL", fieldErrors.value);
-    snack.value = { show: true, text: "Revisá los campos marcados en rojo." };
-    return;
-  }
-
-  // ✅ FIX: category_id final (lo que se guarda en products.category_id)
-  const finalCategoryId = resolveFinalCategoryId();
-
-  const payload = {
-    name: String(model.value.name || "").trim(),
-    sku: String(model.value.sku || "").trim(),
-    code: model.value.code || null,
-    barcode: model.value.barcode || null,
-    description: model.value.description || null,
-    brand: model.value.brand || null,
-    model: model.value.model || null,
-    is_active: !!model.value.is_active,
-    is_new: !!model.value.is_new,
-    is_promo: !!model.value.is_promo,
-    price_list: Number(model.value.price_list || 0),
-    price_discount: Number(model.value.price_discount || 0),
-    price_reseller: Number(model.value.price_reseller || 0),
-
-    // ✅ FIX REAL:
-    // - si hay subrubro => category_id = subrubro
-    // - si no => category_id = rubro
-    category_id: finalCategoryId,
-
-    // ✅ compat opcional (si tu backend lo soporta / lo ignora no pasa nada)
-    parent_category_id: model.value.parent_category_id ? toInt(model.value.parent_category_id, null) : null,
-    subcategory_id: model.value.category_id ? toInt(model.value.category_id, null) : null,
-  };
-
-  if (isAdmin.value) {
-    const bid = toInt(stock.value.branch_id, 0);
-    if (bid > 0) payload.branch_id = bid;
-  } else if (userBranchId.value) {
-    payload.branch_id = toInt(userBranchId.value, 0);
-  }
-
-  debugLog("SAVE start", {
-    mode: props.mode,
-    payload,
-    ui: { rubro: model.value.parent_category_id, subrubro: model.value.category_id, finalCategoryId },
-    stock: { branch_id: stock.value.branch_id, current_qty: stock.value.current_qty, assign_qty: stock.value.assign_qty },
-  });
-
-  try {
-    // EDIT
-    if (props.mode === "edit" && model.value.id) {
-      const res = await products.update(model.value.id, payload);
-      debugLog("UPDATE result", res);
-
-      const updated = normalizeEntity(res);
-      if (updated?.id) {
-        emit("saved", { id: updated.id });
-        snack.value = { show: true, text: "Producto actualizado" };
-        close();
-      } else {
-        const msg = products.error || "No se pudo actualizar.";
-        snack.value = { show: true, text: msg };
-        products.error = msg;
-      }
-      return;
+    // borrar una por una
+    for (const img of images.value) {
+      const iid = Number(img?.id || 0);
+      if (iid) await products.removeImage(pid, iid);
     }
-
-    // CREATE
-    const res = await products.create(payload);
-    debugLog("CREATE result", res);
-
-    const created = normalizeEntity(res);
-    if (created?.id) {
-      model.value.id = created.id;
-      emit("saved", { id: created.id });
-
-      snack.value = { show: true, text: "Producto creado OK" };
-
-      tab.value = "imagenes";
-      if (newFiles.value?.length) {
-        await uploadSelected();
-      } else {
-        await loadImages();
-      }
-    } else {
-      const msg = products.error || "No se pudo crear el producto.";
-      snack.value = { show: true, text: msg };
-      products.error = msg;
-    }
+    deleteAllOpen.value = false;
+    await loadImages(pid);
   } catch (e) {
-    const { data, message, errors } = normalizeApiError(e);
-    debugLog("SAVE ERROR", { message, data, errors });
-
-    const errMap = Array.isArray(errors) ? errorsArrayToMap(errors) : (errors && typeof errors === "object" ? errors : {});
-
-    if (errMap.name) fieldErrors.value.name = String(errMap.name);
-    if (errMap.sku) fieldErrors.value.sku = String(errMap.sku);
-    if (errMap.branch_id) fieldErrors.value.branch_id = String(errMap.branch_id);
-
-    // si backend valida category_id, lo mostramos como error de rubro (campo principal)
-    if (errMap.category_id) fieldErrors.value.parent_category_id = String(errMap.category_id);
-
-    snack.value = { show: true, text: message };
-    products.error = message;
-
-    if (errMap.branch_id) tab.value = "stock";
-    else if (errMap.category_id || errMap.name || errMap.sku) tab.value = "datos";
+    imagesError.value = products.error || e?.message || "No se pudieron eliminar todas";
+  } finally {
+    imagesLoading.value = false;
   }
 }
 </script>
-
-<style scoped>
-.json {
-  font-size: 12px;
-  background: rgba(0, 0, 0, 0.04);
-  padding: 12px;
-  border-radius: 12px;
-  overflow: auto;
-  max-height: 220px;
-}
-</style>

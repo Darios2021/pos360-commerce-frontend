@@ -52,6 +52,12 @@
               <div class="text-caption text-medium-emphasis">
                 SKU: {{ item?.sku || "—" }} · Código: {{ item?.code || "—" }}
               </div>
+
+              <!-- ✅ Stock resumen -->
+              <div class="text-caption text-medium-emphasis mt-1">
+                <span class="font-weight-bold">Stock total:</span>
+                <span class="ml-1">{{ totalStockLabel }}</span>
+              </div>
             </div>
 
             <div class="d-flex ga-2 align-center flex-wrap justify-end">
@@ -139,6 +145,76 @@
                   </div>
                 </div>
               </v-card>
+
+              <!-- ✅ STOCK POR SUCURSAL -->
+              <v-card rounded="xl" variant="flat" class="pd-card mt-4">
+                <div class="d-flex align-center justify-space-between">
+                  <div class="pd-card-title mb-0">
+                    <v-icon size="18">mdi-warehouse</v-icon>
+                    <span>Stock por sucursal</span>
+                  </div>
+
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-refresh"
+                    :disabled="!item?.id"
+                    :loading="stockLoading"
+                    @click="loadStockMatrix"
+                  >
+                    Refrescar
+                  </v-btn>
+                </div>
+
+                <v-divider class="my-3" />
+
+                <v-alert v-if="!item?.id" type="info" variant="tonal">
+                  Guardá el producto para ver stock por sucursal.
+                </v-alert>
+
+                <v-alert v-else-if="!stockRows.length && !stockLoading" type="info" variant="tonal">
+                  Sin datos de stock por sucursal todavía.
+                </v-alert>
+
+                <div v-else class="pd-stock-table">
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th>Sucursal</th>
+                        <th style="width: 110px" class="text-right">Stock</th>
+                        <th style="width: 110px" class="text-right">Habilitada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="r in stockRows" :key="r.branch_id">
+                        <td>
+                          <div class="d-flex flex-column">
+                            <div class="font-weight-bold">{{ r.branch_name }}</div>
+                            <div class="text-caption text-medium-emphasis">ID {{ r.branch_id }}</div>
+                          </div>
+                        </td>
+                        <td class="text-right font-weight-bold">{{ fmtQty(r.current_qty) }}</td>
+                        <td class="text-right">
+                          <v-chip size="small" variant="tonal" :color="r.enabled ? 'primary' : 'grey'">
+                            {{ r.enabled ? "Sí" : "No" }}
+                          </v-chip>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+
+                  <v-divider class="my-3" />
+
+                  <div class="d-flex align-center justify-space-between">
+                    <div class="text-caption text-medium-emphasis">
+                      Filas: <b>{{ stockRows.length }}</b>
+                    </div>
+                    <div class="font-weight-bold">
+                      Total: {{ fmtQty(totalStock) }}
+                    </div>
+                  </div>
+                </div>
+              </v-card>
             </v-col>
 
             <!-- RIGHT -->
@@ -171,7 +247,6 @@
                   Sin imágenes cargadas.
                 </v-alert>
 
-                <!-- ✅ Carousel cheto -->
                 <div v-else class="pd-carousel">
                   <v-carousel
                     v-model="activeSlide"
@@ -220,7 +295,6 @@
                     </v-carousel-item>
                   </v-carousel>
 
-                  <!-- thumbs -->
                   <div class="pd-thumbs">
                     <button
                       v-for="(img, i) in images"
@@ -259,32 +333,13 @@
           </div>
 
           <div class="d-flex align-center ga-2">
-            <v-btn
-              variant="tonal"
-              size="small"
-              prepend-icon="mdi-magnify-minus-outline"
-              @click="zoomOut"
-              :disabled="zoom <= 1"
-            >
+            <v-btn variant="tonal" size="small" prepend-icon="mdi-magnify-minus-outline" @click="zoomOut" :disabled="zoom <= 1">
               Zoom -
             </v-btn>
-            <v-btn
-              variant="tonal"
-              size="small"
-              prepend-icon="mdi-magnify-plus-outline"
-              @click="zoomIn"
-              :disabled="zoom >= 3"
-            >
+            <v-btn variant="tonal" size="small" prepend-icon="mdi-magnify-plus-outline" @click="zoomIn" :disabled="zoom >= 3">
               Zoom +
             </v-btn>
-            <v-btn
-              variant="tonal"
-              size="small"
-              prepend-icon="mdi-restart"
-              @click="resetZoom"
-            >
-              Reset
-            </v-btn>
+            <v-btn variant="tonal" size="small" prepend-icon="mdi-restart" @click="resetZoom">Reset</v-btn>
           </div>
         </div>
 
@@ -323,9 +378,7 @@
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteOpen = false">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDeleteProduct" :loading="products.loading">
-            Eliminar
-          </v-btn>
+          <v-btn color="red" variant="flat" @click="doDeleteProduct" :loading="products.loading">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -337,9 +390,7 @@
         <v-card-text>¿Eliminar imagen ID <b>#{{ deleteImg?.id }}</b>?</v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteImgOpen = false">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDeleteImage" :loading="products.loading">
-            Eliminar
-          </v-btn>
+          <v-btn color="red" variant="flat" @click="doDeleteImage" :loading="products.loading">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -375,18 +426,29 @@ const activeSlide = ref(0);
 const viewerOpen = ref(false);
 const zoom = ref(1);
 
+/* ✅ stock por sucursal */
+const stockLoading = ref(false);
+const stockRows = ref([]); // [{branch_id,branch_name,enabled,current_qty}]
+const totalStock = computed(() => (stockRows.value || []).reduce((a, r) => a + toNum(r.current_qty, 0), 0));
+const totalStockLabel = computed(() => fmtQty(totalStock.value));
+
 const isAdmin = computed(() => {
   const roles = auth.roles || [];
   return roles.includes("admin") || roles.includes("super_admin");
 });
 
-const rubro = computed(() => item.value?.category?.parent?.name || null);
-const subrubro = computed(() => item.value?.category?.name || null);
+const rubro = computed(() => item.value?.category?.parent?.name || (item.value?.category?.name || null));
+const subrubro = computed(() => item.value?.category?.parent ? item.value?.category?.name : null);
 
 function toNum(v, d = 0) {
   if (v === null || v === undefined || v === "") return d;
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
+}
+
+function fmtQty(v) {
+  const n = toNum(v, 0);
+  return n.toFixed(3);
 }
 
 function money(n) {
@@ -430,6 +492,32 @@ function normalizeUrl(u) {
   return base + (s.startsWith("/") ? s : `/${s}`);
 }
 
+function normalizeStockRows(arr) {
+  const list = Array.isArray(arr) ? arr : [];
+  return list
+    .map((x) => ({
+      branch_id: Number(x?.branch_id || x?.branchId || 0),
+      branch_name: String(x?.branch_name || x?.name || `Sucursal #${x?.branch_id || ""}`),
+      enabled: Number(x?.enabled || 0) === 1 || x?.enabled === true,
+      current_qty: toNum(x?.current_qty ?? x?.qty ?? x?.stock_qty ?? 0, 0),
+    }))
+    .filter((x) => x.branch_id > 0)
+    .sort((a, b) => a.branch_name.localeCompare(b.branch_name, "es"));
+}
+
+async function loadStockMatrix() {
+  const id = Number(props.productId);
+  if (!id) return;
+
+  stockLoading.value = true;
+  try {
+    const rows = await products.fetchBranchesMatrix(id);
+    stockRows.value = normalizeStockRows(rows);
+  } finally {
+    stockLoading.value = false;
+  }
+}
+
 async function load() {
   const id = Number(props.productId);
   if (!id) return;
@@ -441,6 +529,8 @@ async function load() {
 
     const imgs = await products.fetchImages(id);
     images.value = Array.isArray(imgs) ? imgs : [];
+
+    await loadStockMatrix();
 
     activeSlide.value = 0;
     zoom.value = 1;
@@ -512,13 +602,9 @@ function toggleZoom() {
 .pd-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; }
 .pd-actions { display:flex; align-items:center; gap:10px; }
 .pd-body { padding:18px 20px 22px; }
-
 .pd-summary { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
-
 .pd-card { border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 24px rgba(0,0,0,.05); padding:16px; }
-
 .pd-card-title { display:flex; align-items:center; gap:8px; font-weight:800; margin-bottom:10px; }
-
 .pd-kv { display:grid; gap:8px; }
 .pd-kv-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .pd-k { font-size:12px; opacity:.7; }
@@ -535,36 +621,22 @@ function toggleZoom() {
 .pd-slide { position:relative; width:100%; height:100%; }
 .pd-slide-img { width:100%; height:360px; }
 .pd-img-ph { height:360px; display:grid; place-items:center; background: rgba(0,0,0,.03); }
-
 .pd-slide-overlay {
   position:absolute;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  pointer-events: none;
+  left:12px; right:12px; bottom:12px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; pointer-events:none;
 }
 .pd-slide-overlay :deep(.v-btn),
-.pd-slide-overlay :deep(.v-chip) { pointer-events: auto; }
+.pd-slide-overlay :deep(.v-chip) { pointer-events:auto; }
 
-.pd-thumbs {
-  display:flex;
-  gap:10px;
-  overflow:auto;
-  padding: 2px 2px 6px;
-}
+.pd-thumbs { display:flex; gap:10px; overflow:auto; padding: 2px 2px 6px; }
 .pd-thumb {
-  width: 82px;
-  height: 54px;
-  border-radius: 12px;
-  overflow:hidden;
+  width: 82px; height: 54px;
+  border-radius: 12px; overflow:hidden;
   border: 1px solid rgba(0,0,0,.10);
   background: rgba(0,0,0,.03);
-  flex: 0 0 auto;
-  cursor: pointer;
+  flex: 0 0 auto; cursor: pointer;
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 .pd-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -572,19 +644,11 @@ function toggleZoom() {
 .pd-thumb.active { border-color: rgba(25,118,210,.6); box-shadow: 0 10px 18px rgba(25,118,210,.12); }
 
 .pd-viewer { background: rgb(var(--v-theme-background)); }
-.pd-viewer-top {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding: 12px 14px;
-}
+.pd-viewer-top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 12px 14px; }
 .pd-viewer-body { height: calc(100vh - 60px); }
-
 .pd-viewer-stage {
   height: calc(100vh - 120px);
-  display:grid;
-  place-items:center;
+  display:grid; place-items:center;
   background: rgba(0,0,0,.92);
   overflow:auto;
 }
@@ -595,5 +659,11 @@ function toggleZoom() {
   transition: transform 120ms ease;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.pd-stock-table {
+  border-radius: 14px;
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,.06);
 }
 </style>

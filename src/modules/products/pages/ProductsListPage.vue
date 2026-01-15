@@ -45,7 +45,6 @@
           />
         </v-col>
 
-        <!-- ✅ Sucursal (solo admin) => FILTRA POR STOCK EN ESA SUCURSAL (no por dueño) -->
         <v-col cols="12" md="4" v-if="isAdmin">
           <v-select
             v-model="branchId"
@@ -193,18 +192,24 @@
           {{ cleanTrail(item.subrubro) || "—" }}
         </template>
 
+        <!-- ✅ STOCK: admin sin sucursal => resumen por sucursal (lazy) -->
         <template #item.stock="{ item }">
-          <div class="text-right font-weight-bold">{{ stockLabel(item) }}</div>
+          <div class="text-right">
+            <div v-if="isAdmin && !branchId" class="text-caption font-weight-bold">
+              {{ stockSummaryLabel(item.id) }}
+            </div>
+            <div v-else class="font-weight-bold">
+              {{ stockLabel(item) }}
+            </div>
+          </div>
         </template>
 
-        <!-- ✅ NUEVO: creador -->
         <template #item.created_by="{ item }">
           <div class="text-caption">
             {{ creatorLabel(item) || "—" }}
           </div>
         </template>
 
-        <!-- ✅ NUEVO: fecha/hora -->
         <template #item.created_at="{ item }">
           <div class="text-caption">
             {{ fmtDateTime(item?.created_at || item?.createdAt || item?.created_on || item?.createdOn) || "—" }}
@@ -216,7 +221,6 @@
             <v-btn icon="mdi-eye-outline" variant="text" @click="openDetails(item.id)" />
             <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
 
-            <!-- Usuario: inactiva / Admin: elimina -->
             <v-btn
               v-if="!isAdmin"
               icon="mdi-eye-off-outline"
@@ -295,7 +299,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- SNACK -->
     <v-snackbar v-model="snack.show" :timeout="3500">
       {{ snack.text }}
     </v-snackbar>
@@ -323,7 +326,6 @@ const isAdmin = computed(() => {
   return r.includes("admin") || r.includes("super_admin");
 });
 
-/* ✅ branch del usuario (para scope) */
 const userBranchId = computed(() => {
   const u = auth?.user || {};
   const bid = Number(u?.branch_id || 0) || Number(auth?.branchId || 0) || 0;
@@ -498,7 +500,7 @@ function branchColor(id) {
 }
 
 /* =========================
-   ✅ CATEGORIES: cargar siempre del store (no inferir por products)
+   CATEGORIES
 ========================= */
 async function loadCategoriesSafe() {
   try {
@@ -547,9 +549,6 @@ function onCategoryChange() {
   subcategoryId.value = null;
 }
 
-/* =========================
-   BRANCH FILTER ITEMS (admin)
-========================= */
 const branchItems = computed(() => {
   const out = [{ title: "Todas", value: null }];
   const arr = (branches.value || [])
@@ -560,9 +559,7 @@ const branchItems = computed(() => {
 });
 
 /* =========================
-   ✅ ROWS NORMALIZADAS
-   FIX REAL: si no hay parent => rubro = category.name, subrubro = null
-   Además guardamos rubro_id y subrubro_id para filtrar perfecto.
+   ROWS NORMALIZADAS
 ========================= */
 const normalized = computed(() => {
   return (products.items || []).map((x) => {
@@ -606,11 +603,11 @@ const filteredAll = computed(() => {
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
+    // admin con branch => si querés, mostrás solo con stock en esa sucursal
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
 
-    // ✅ filtros correctos
     if (pid && Number(it?.rubro_id || 0) !== pid) return false;
     if (cid && Number(it?.subrubro_id || 0) !== cid) return false;
 
@@ -699,6 +696,93 @@ const imagesItems = [
   { title: "Con imágenes", value: "with" },
   { title: "Sin imágenes", value: "without" },
 ];
+
+/* =========================
+   ✅ STOCK SUMMARY (ADMIN SIN SUCURSAL)
+   Lazy por página (20 items) usando /products/:id/branches
+========================= */
+const stockSummaryCache = ref({}); // { [productId]: { label, total, rows, ts } }
+const stockSummaryLoading = ref({}); // { [productId]: true }
+
+function normalizeMatrixRows(arr) {
+  const list = Array.isArray(arr) ? arr : [];
+  return list
+    .map((x) => ({
+      branch_id: Number(x?.branch_id || 0),
+      name: String(x?.branch_name || x?.name || `Sucursal #${x?.branch_id || ""}`),
+      enabled: Number(x?.enabled || 0) === 1 || x?.enabled === true,
+      qty: toNum(x?.current_qty ?? x?.qty ?? x?.stock_qty ?? 0, 0),
+    }))
+    .filter((x) => x.branch_id > 0);
+}
+
+function buildSummaryLabel(rows) {
+  const enabled = rows.filter((r) => r.enabled);
+  const total = enabled.reduce((a, r) => a + r.qty, 0);
+
+  // si querés ver también las deshabilitadas, cambiá enabled por rows.
+  const parts = enabled
+    .filter((r) => r.qty !== 0)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .map((r) => `${r.name}: ${r.qty.toFixed(0)}`);
+
+  if (!parts.length) return `Sin stock (Total ${total.toFixed(0)})`;
+  return `${parts.join(" · ")} (Total ${total.toFixed(0)})`;
+}
+
+async function ensureStockSummaryForIds(ids = []) {
+  if (!isAdmin.value) return;
+  if (branchId.value) return; // si hay sucursal seleccionada, no necesitamos resumen
+
+  const uniq = [...new Set(ids.map((x) => Number(x)).filter((x) => x > 0))];
+  for (const id of uniq) {
+    if (stockSummaryCache.value[id]) continue;
+    if (stockSummaryLoading.value[id]) continue;
+
+    stockSummaryLoading.value = { ...stockSummaryLoading.value, [id]: true };
+    try {
+      const matrix = await products.fetchBranchesMatrix(id);
+      const rows = normalizeMatrixRows(matrix);
+      const label = buildSummaryLabel(rows);
+      const total = rows.filter((r) => r.enabled).reduce((a, r) => a + r.qty, 0);
+
+      stockSummaryCache.value = {
+        ...stockSummaryCache.value,
+        [id]: { label, total, rows, ts: Date.now() },
+      };
+    } catch {
+      stockSummaryCache.value = {
+        ...stockSummaryCache.value,
+        [id]: { label: "—", total: 0, rows: [], ts: Date.now() },
+      };
+    } finally {
+      const next = { ...stockSummaryLoading.value };
+      delete next[id];
+      stockSummaryLoading.value = next;
+    }
+  }
+}
+
+function stockSummaryLabel(productId) {
+  const id = Number(productId || 0);
+  if (!id) return "—";
+  const cached = stockSummaryCache.value[id];
+  if (cached?.label) return cached.label;
+  if (stockSummaryLoading.value[id]) return "Cargando…";
+  return "—";
+}
+
+watch(
+  () => [pagedRows.value.map((x) => x.id).join(","), isAdmin.value, branchId.value],
+  async () => {
+    if (!isAdmin.value) return;
+    if (branchId.value) return;
+
+    const ids = (pagedRows.value || []).map((x) => x.id);
+    await ensureStockSummaryForIds(ids);
+  },
+  { immediate: true }
+);
 
 /* =========================
    ACTIONS
@@ -855,6 +939,10 @@ async function reload() {
   const bid = isAdmin.value
     ? (branchId.value ? Number(branchId.value) : null)
     : (userBranchId.value ? Number(userBranchId.value) : null);
+
+  // ✅ cuando refrescás data, invalidamos cache de resumen porque puede haber cambiado stock
+  stockSummaryCache.value = {};
+  stockSummaryLoading.value = {};
 
   await loadCategoriesSafe();
   await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });

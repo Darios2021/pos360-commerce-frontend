@@ -28,7 +28,6 @@ function unwrapMeta(res) {
   return res.meta ?? res.pagination ?? res.data?.meta ?? {};
 }
 
-// ✅ Unwrap resultado OK genérico
 function unwrapOk(res) {
   if (!res) return { ok: false, code: "NO_RESPONSE", message: "Sin respuesta del servidor" };
   if (typeof res.ok === "boolean") {
@@ -37,14 +36,6 @@ function unwrapOk(res) {
   return { ok: true, code: null, message: null, data: res.data ?? null };
 }
 
-// Detecta si un error es 404 de ruta
-function is404(err) {
-  const code = err?.response?.status;
-  const msg = String(err?.response?.data?.message || err?.message || "");
-  return code === 404 || msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("ruta no encontrada");
-}
-
-// ✅ errors: [{field,message}] -> {field:message}
 function errorsArrayToMap(arr) {
   const out = {};
   const a = Array.isArray(arr) ? arr : [];
@@ -55,6 +46,12 @@ function errorsArrayToMap(arr) {
     if (!out[k]) out[k] = m;
   }
   return out;
+}
+
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
 }
 
 export const useProductsStore = defineStore("products", {
@@ -78,11 +75,8 @@ export const useProductsStore = defineStore("products", {
   actions: {
     setError(e) {
       const data = e?.response?.data || e?.raw || null;
-
-      // guarda el error entero para debug (dialog puede mostrarlo si querés)
       this.lastError = data || e || null;
 
-      // si el backend manda errors array (como tu controller)
       const errsArr = Array.isArray(data?.errors) ? data.errors : [];
       this.lastFieldErrors = errsArr.length ? errorsArrayToMap(errsArr) : null;
 
@@ -183,7 +177,51 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ POST /products  (DEVUELVE ENVELOPE COMPLETO)
+    // ✅ GET /products/:id/branches  (matriz enabled + current_qty)
+    async fetchBranchesMatrix(productId) {
+      const pid = toInt(productId, 0);
+      if (!pid) return [];
+
+      this.error = null;
+      try {
+        const { data } = await http.get(`/products/${pid}/branches`);
+        return unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
+      } catch (e) {
+        this.setError(e);
+        return [];
+      }
+    },
+
+    // ✅ ✅ NUEVO: traer producto + matriz (para EDITAR / DETALLE)
+    async fetchOneWithStockMatrix(id, { branch_id = null } = {}) {
+      const pid = toInt(id, 0);
+      if (!pid) return null;
+
+      const p = await this.fetchOne(pid, { force: true, branch_id });
+      if (!p?.id) return null;
+
+      const matrix = await this.fetchBranchesMatrix(pid);
+
+      // Normalizamos para que UI tenga algo consistente
+      const rows = (Array.isArray(matrix) ? matrix : []).map((x) => ({
+        branch_id: toInt(x.branch_id ?? x.id, 0),
+        branch_name: x.branch_name || x.name || "",
+        enabled: x.enabled === true || Number(x.enabled || 0) === 1,
+        current_qty: toNum(x.current_qty ?? x.qty ?? x.stock_qty ?? 0, 0),
+      })).filter((r) => r.branch_id > 0);
+
+      const total_qty = rows.reduce((acc, r) => acc + (Number(r.current_qty) || 0), 0);
+
+      // ✅ Se lo pegamos al objeto para que ProductForm/Details lo use directo
+      const enriched = { ...p, stock_matrix: rows, stock_total_qty: total_qty };
+
+      // Si current era este, lo actualizamos también
+      if (this.current?.id === pid) this.current = enriched;
+
+      return enriched;
+    },
+
+    // ✅ POST /products
     async create(payload) {
       this.loading = true;
       this.error = null;
@@ -199,8 +237,6 @@ export const useProductsStore = defineStore("products", {
           this.items = [created, ...(this.items || [])];
           this.total = toInt(this.total, 0) + 1;
         }
-
-        // ✅ IMPORTANTE: devolvemos data completo para que el Dialog lea res.data.id
         return data;
       } catch (e) {
         this.setError(e);
@@ -210,7 +246,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ PATCH /products/:id  (DEVUELVE ENVELOPE COMPLETO)
+    // ✅ PATCH /products/:id
     async update(id, payload, { branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) throw new Error("MISSING_ID");
@@ -240,7 +276,6 @@ export const useProductsStore = defineStore("products", {
           }
         }
 
-        // ✅ devolvemos envelope completo
         return data;
       } catch (e) {
         this.setError(e);
@@ -372,9 +407,10 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ==========================
-    // STOCK INIT
+    // ✅ STOCK INIT (RUTA REAL)
     // ==========================
     async initStock({ product_id, branch_id, qty }) {
+      // ✅ NO MÁS spam 404: usamos la ruta real que te funcionó en consola
       this.loading = true;
       this.error = null;
       this.lastError = null;
@@ -386,47 +422,15 @@ export const useProductsStore = defineStore("products", {
         qty: Number(qty || 0),
       };
 
-      const candidates = [
-        "pos/stock/init",
-        "pos/stocks/init",
-        "pos/stock",
-        "pos/stocks",
-        "stock/init",
-        "stocks/init",
-        "stock",
-        "stocks",
-        "inventory/stock/init",
-        "inventory/stock",
-      ];
-
-      let lastErr = null;
-
       try {
-        for (const path of candidates) {
-          try {
-            // eslint-disable-next-line no-console
-            console.log("[initStock] TRY:", path, payload);
+        // eslint-disable-next-line no-console
+        console.log("[initStock] POST stock/init", payload);
 
-            const { data } = await http.post(path, payload);
-            const r = unwrapOk(data);
-            if (r.ok === false) throw new Error(r.message || `INIT_STOCK_FAILED (${path})`);
+        const { data } = await http.post("stock/init", payload);
+        const r = unwrapOk(data);
+        if (r.ok === false) throw new Error(r.message || "INIT_STOCK_FAILED");
 
-            // eslint-disable-next-line no-console
-            console.log("[initStock] OK:", path, data);
-            return true;
-          } catch (e) {
-            lastErr = e;
-            const status = e?.response?.status;
-            const msg = String(e?.response?.data?.message || e?.message || "");
-            // eslint-disable-next-line no-console
-            console.warn("[initStock] FAIL:", path, "status=", status, "msg=", msg);
-
-            if (!is404(e)) throw e;
-          }
-        }
-
-        const msg = lastErr?.response?.data?.message || lastErr?.message || "INIT_STOCK_ROUTE_NOT_FOUND";
-        throw new Error(msg);
+        return true;
       } catch (e) {
         this.setError(e);
         return false;
