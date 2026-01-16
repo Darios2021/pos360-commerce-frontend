@@ -2,164 +2,130 @@
 <template>
   <v-dialog v-model="openLocal" max-width="1100" persistent>
     <v-card rounded="xl">
+      <!-- HEADER -->
       <v-card-title class="d-flex align-center justify-space-between">
         <div>
           <div class="text-h6 font-weight-bold">
-            {{ mode === "edit" ? "Editar producto" : "Nuevo producto" }}
+            {{ isEdit ? "Editar producto" : "Nuevo producto" }}
           </div>
           <div class="text-caption text-medium-emphasis">
-            Elegí Rubro y luego Sub rubro. Imágenes listas para MinIO.
+            Rubro/Subrubro · Stock por sucursal · Imágenes MinIO.
           </div>
         </div>
 
-        <v-btn icon="mdi-close" variant="text" @click="close" />
+        <v-btn icon variant="text" @click="onCancel" :disabled="busy">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pt-4">
-        <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3">
-          {{ products.error }}
-        </v-alert>
+      <!-- TABS -->
+      <v-tabs v-model="tab" grow>
+        <v-tab value="datos"><v-icon start>mdi-form-textbox</v-icon>DATOS</v-tab>
+        <v-tab value="precios"><v-icon start>mdi-currency-usd</v-icon>PRECIOS</v-tab>
+        <v-tab value="stock"><v-icon start>mdi-warehouse</v-icon>STOCK</v-tab>
+        <v-tab value="imagenes"><v-icon start>mdi-image-multiple</v-icon>IMÁGENES</v-tab>
+      </v-tabs>
 
-        <v-tabs v-model="tab" density="comfortable">
-          <v-tab value="datos">DATOS</v-tab>
-          <v-tab value="precios">PRECIOS</v-tab>
-          <v-tab value="estado">ESTADO</v-tab>
-          <v-tab value="stock">STOCK</v-tab>
-          <v-tab value="imagenes">IMÁGENES</v-tab>
-        </v-tabs>
+      <v-divider />
 
-        <v-divider class="my-3" />
-
+      <v-card-text class="pa-0">
         <v-window v-model="tab">
-          <!-- DATOS -->
           <v-window-item value="datos">
-            <ProductDataPanel
-              v-model="form"
-              :disabled="loading"
-              :product-id="productId"
-            />
+            <div class="pa-4">
+              <ProductDataPanel
+                v-model="draft"
+                :disabled="busy"
+                :product-id="draft?.id || null"
+              />
+
+              <div class="text-caption text-medium-emphasis mt-2 d-flex align-center flex-wrap ga-2">
+                <div>
+                  ID producto: <b>{{ draft?.id || "—" }}</b>
+                </div>
+                <div>
+                  · Código (auto): <b>{{ draft?.code || nextCodePreview || "—" }}</b>
+                  <span v-if="!draft?.id" class="ml-1">(preview)</span>
+                </div>
+
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  class="ml-auto"
+                  @click="reloadNextCode"
+                  :disabled="busy || isEdit"
+                >
+                  <v-icon start>mdi-refresh</v-icon>
+                  Recalcular código
+                </v-btn>
+              </div>
+
+              <div class="mt-4">
+                <ProductBarcodeCard
+                  :value="draft?.code || ''"
+                  :preview="nextCodePreview || ''"
+                  :label="draft?.id ? 'AUTO' : 'PREVIEW'"
+                />
+              </div>
+
+              <div v-if="products.error" class="mt-3">
+                <v-alert type="error" variant="tonal" density="comfortable">
+                  {{ products.error }}
+                </v-alert>
+
+                <div v-if="products.lastFieldErrors" class="mt-2 text-caption text-medium-emphasis">
+                  <div v-for="(msg, field) in products.lastFieldErrors" :key="field">
+                    • <b>{{ field }}</b>: {{ msg }}
+                  </div>
+                </div>
+              </div>
+            </div>
           </v-window-item>
 
-          <!-- PRECIOS -->
           <v-window-item value="precios">
-            <v-row dense>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="form.price_list"
-                  type="number"
-                  label="Precio lista"
-                  variant="outlined"
-                  density="comfortable"
-                  :disabled="loading"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="form.price_discount"
-                  type="number"
-                  label="Precio descuento"
-                  variant="outlined"
-                  density="comfortable"
-                  :disabled="loading"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="form.price_reseller"
-                  type="number"
-                  label="Precio revendedor"
-                  variant="outlined"
-                  density="comfortable"
-                  :disabled="loading"
-                />
-              </v-col>
-            </v-row>
+            <div class="pa-4">
+              <ProductPricesPanel v-model="draft" :disabled="busy" />
+            </div>
           </v-window-item>
 
-          <!-- ESTADO -->
-          <v-window-item value="estado">
-            <v-row dense>
-              <v-col cols="12" md="6">
-                <v-switch v-model="form.is_active" label="Activo" inset :disabled="loading" />
-              </v-col>
-            </v-row>
-          </v-window-item>
-
-          <!-- STOCK -->
           <v-window-item value="stock">
-            <ProductStockPanel
-              v-model="stockMatrix"
-              :product-id="productId"
-              @applied="onStockApplied"
-            />
+            <div class="pa-4">
+              <ProductStockPanel
+                :product-id="draft?.id || null"
+                v-model="stockMatrix"
+                :ensure-id="ensureProductId"
+                @applied="onStockApplied"
+              />
+            </div>
           </v-window-item>
 
-          <!-- ✅ IMÁGENES -->
           <v-window-item value="imagenes">
-            <ProductImagesPanel
-              :images="images"
-              :loading="imagesLoading || loading"
-              :error="imagesError"
-              :max="3"
-              @upload="onUploadImages"
-              @removeOne="askRemoveOneImage"
-              @removeAll="askRemoveAllImages"
-            />
-
-            <!-- confirm borrar 1 -->
-            <v-dialog v-model="deleteImgOpen" max-width="520">
-              <v-card rounded="xl">
-                <v-card-title class="font-weight-bold">Eliminar imagen</v-card-title>
-                <v-card-text>
-                  ¿Eliminar imagen ID <b>#{{ deleteImg?.id }}</b>?
-                </v-card-text>
-                <v-card-actions class="justify-end">
-                  <v-btn variant="tonal" @click="deleteImgOpen = false">Cancelar</v-btn>
-                  <v-btn color="red" variant="flat" @click="doRemoveOneImage" :loading="imagesLoading">
-                    Eliminar
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-            </v-dialog>
-
-            <!-- confirm borrar todas -->
-            <v-dialog v-model="deleteAllOpen" max-width="520">
-              <v-card rounded="xl">
-                <v-card-title class="font-weight-bold">Eliminar imágenes</v-card-title>
-                <v-card-text>
-                  ¿Eliminar <b>todas</b> las imágenes del producto?
-                  <div class="text-caption text-medium-emphasis mt-2">No se puede deshacer.</div>
-                </v-card-text>
-                <v-card-actions class="justify-end">
-                  <v-btn variant="tonal" @click="deleteAllOpen = false">Cancelar</v-btn>
-                  <v-btn color="red" variant="flat" @click="doRemoveAllImages" :loading="imagesLoading">
-                    Eliminar todas
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-            </v-dialog>
+            <div class="pa-4">
+              <ProductImagesPanel
+                :product-id="draft?.id || null"
+                :ensure-id="ensureProductId"
+              />
+            </div>
           </v-window-item>
         </v-window>
       </v-card-text>
 
       <v-divider />
 
-      <v-card-actions class="justify-space-between px-4 py-3">
-        <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="reloadFull" :loading="loading">
-          Recargar datos
+      <!-- FOOTER -->
+      <v-card-actions class="pa-4 d-flex align-center justify-space-between">
+        <v-btn variant="tonal" @click="emitReload" :disabled="busy">
+          <v-icon start>mdi-refresh</v-icon>
+          RECARGAR DATOS
         </v-btn>
 
         <div class="d-flex ga-2">
-          <v-btn variant="tonal" @click="close" :disabled="loading">Cancelar</v-btn>
+          <v-btn variant="tonal" @click="onCancel" :disabled="busy">CANCELAR</v-btn>
 
-          <v-btn color="primary" variant="flat" @click="saveOnly" :loading="loading">
-            Guardar
-          </v-btn>
-
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-check" @click="saveOnly" :loading="loading">
-            Guardar (seguir)
+          <v-btn color="primary" variant="flat" @click="onSave" :loading="busy" :disabled="busy">
+            <v-icon start>mdi-content-save</v-icon>
+            GUARDAR
           </v-btn>
         </div>
       </v-card-actions>
@@ -168,283 +134,264 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../app/store/products.store";
 
-import ProductDataPanel from "./ProductDataPanel.vue";
-import ProductStockPanel from "./ProductStockPanel.vue";
-import ProductImagesPanel from "./ProductImagesPanel.vue";
+import ProductDataPanel from "./form/ProductDataPanel.vue";
+import ProductPricesPanel from "./panels/ProductPricesPanel.vue";
+import ProductStockPanel from "./panels/ProductStockPanel.vue";
+import ProductImagesPanel from "./panels/ProductImagesPanel.vue";
+import ProductBarcodeCard from "./form/ProductBarcodeCard.vue";
 
 const props = defineProps({
-  open: { type: Boolean, default: false },
+  open: { type: Boolean, default: false },   // v-model:open
   mode: { type: String, default: "create" }, // create | edit
-  item: { type: Object, default: null },
+  item: { type: Object, default: null },     // :item="formItem"
 });
 
-const emit = defineEmits(["update:open", "saved", "deleted"]);
+const emit = defineEmits(["update:open", "saved", "deleted", "reload", "cancel"]);
 
 const products = useProductsStore();
 
-const openLocal = ref(false);
-const loading = ref(false);
 const tab = ref("datos");
+const busy = ref(false);
+const isEdit = computed(() => props.mode === "edit");
 
-const productId = computed(() => Number(props.item?.id || products.current?.id || 0) || null);
-
-// ✅ form COMPLETO
-const form = reactive({
-  name: "",
-  sku: "",
-  code: "",
-  brand: "",
-  model: "",
-  description: "",
-  category_id: null,
-  track_stock: true,
-
-  price_list: 0,
-  price_discount: 0,
-  price_reseller: 0,
-
-  is_active: true,
-
-  // opcional: para inferencia del panel
-  category: null,
+const openLocal = computed({
+  get: () => props.open,
+  set: (v) => emit("update:open", v),
 });
 
 const stockMatrix = ref([]);
 
+// ✅ SINGLE-FLIGHT: evita 10 POST /products en paralelo
+const ensureCreatePromise = ref(null);
+
+// preview code
+const nextCodePreview = ref(null);
+
 // =====================
-// IMÁGENES state
+// Draft producto
 // =====================
-const images = ref([]);
-const imagesLoading = ref(false);
-const imagesError = ref(null);
-
-const deleteImgOpen = ref(false);
-const deleteAllOpen = ref(false);
-const deleteImg = ref(null);
-
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
+function defaultDraft() {
+  return {
+    id: null,
+    name: "",
+    sku: "",
+    code: null,       // lo genera backend
+    barcode: null,
+    branch_id: null,
+    description: "",
+    category_id: null,
+    subcategory_id: null,
+    is_active: true,
+    track_stock: true,
+    brand: "",
+    model: "",
+    price_list: 0,
+    price_discount: 0,
+    price_reseller: 0,
+  };
 }
 
-function toInt(v, d = null) {
-  const n = parseInt(String(v ?? ""), 10);
-  return Number.isFinite(n) ? n : d;
-}
-
-function hydrateForm(p) {
-  form.name = p?.name || "";
-  form.sku = p?.sku || "";
-  form.code = p?.code || "";
-  form.brand = p?.brand || "";
-  form.model = p?.model || "";
-  form.description = p?.description || p?.desc || "";
-  form.category_id = toInt(p?.category_id ?? p?.categoryId ?? p?.category?.id, null);
-  form.track_stock = p?.track_stock === false || Number(p?.track_stock || 0) === 0 ? false : true;
-
-  form.price_list = toNum(p?.price_list, 0);
-  form.price_discount = toNum(p?.price_discount, 0);
-  form.price_reseller = toNum(p?.price_reseller, 0);
-  form.is_active = p?.is_active === false || Number(p?.is_active || 0) === 0 ? false : true;
-
-  form.category = p?.category || null;
-}
-
-function hydrateMatrix(p) {
-  const m = Array.isArray(p?.stock_matrix) ? p.stock_matrix : [];
-  stockMatrix.value = m.map((x) => ({
-    branch_id: Number(x.branch_id || 0),
-    branch_name: x.branch_name || "",
-    enabled: x.enabled === true || Number(x.enabled || 0) === 1,
-    current_qty: toNum(x.current_qty, 0),
-  }));
-}
-
-// ✅ cargar imágenes reales
-async function loadImages(pid) {
-  imagesError.value = null;
-  if (!pid) {
-    images.value = [];
-    return;
-  }
-  imagesLoading.value = true;
+function deepClone(obj) {
   try {
-    const arr = await products.fetchImages(pid);
-    images.value = Array.isArray(arr) ? arr : [];
-  } catch (e) {
-    imagesError.value = products.error || e?.message || "No se pudieron cargar imágenes";
-    images.value = [];
-  } finally {
-    imagesLoading.value = false;
+    return JSON.parse(JSON.stringify(obj || {}));
+  } catch {
+    return { ...(obj || {}) };
   }
 }
 
-async function reloadFull() {
-  loading.value = true;
-  try {
-    if (props.mode === "edit" && productId.value) {
-      // ✅ producto + matriz (tu store tiene que exponer esto; si no, cambiás a fetchOne + fetchBranchesMatrix)
-      const p = typeof products.fetchOneWithStockMatrix === "function"
-        ? await products.fetchOneWithStockMatrix(productId.value)
-        : await products.fetchOne(productId.value, { force: true });
+const draft = ref(defaultDraft());
 
-      if (p) {
-        hydrateForm(p);
-        hydrateMatrix(p);
-      }
-      await loadImages(productId.value);
-      return;
-    }
+async function reloadNextCode() {
+  // solo en create
+  if (isEdit.value) return;
+  const code = await products.fetchNextCode();
+  nextCodePreview.value = code || null;
+}
 
-    // create: si viene item, hidratamos; imágenes vacío
-    if (props.item) hydrateForm(props.item);
-    await loadImages(productId.value);
-  } finally {
-    loading.value = false;
+function hydrateDraft() {
+  if (isEdit.value && props.item && typeof props.item === "object") {
+    const base = defaultDraft();
+    const it = deepClone(props.item);
+    draft.value = { ...base, ...it };
+  } else {
+    draft.value = defaultDraft();
   }
+
+  stockMatrix.value = Array.isArray(draft.value?.stock_matrix)
+    ? deepClone(draft.value.stock_matrix)
+    : [];
+
+  // reset single-flight al abrir
+  ensureCreatePromise.value = null;
+  products.error = null;
+
+  // preview code
+  nextCodePreview.value = null;
+  if (!isEdit.value) reloadNextCode();
 }
 
 watch(
   () => props.open,
-  async (v) => {
-    openLocal.value = v;
-    if (v) {
-      tab.value = "datos";
-      await reloadFull();
-    }
+  (v) => {
+    if (!v) return;
+    tab.value = "datos";
+    hydrateDraft();
   },
   { immediate: true }
 );
 
-watch(openLocal, (v) => emit("update:open", v));
+watch(
+  () => props.item,
+  () => {
+    if (!props.open) return;
+    if (isEdit.value) hydrateDraft();
+  },
+  { deep: true }
+);
 
-function close() {
+function onCancel() {
+  emit("cancel");
   openLocal.value = false;
 }
 
-function buildPayload() {
-  return {
-    name: String(form.name || "").trim(),
-    sku: String(form.sku || "").trim(),
-    code: String(form.code || "").trim(),
-    brand: String(form.brand || "").trim(),
-    model: String(form.model || "").trim(),
-    description: String(form.description || "").trim(),
-    category_id: toInt(form.category_id, null),
-    track_stock: !!form.track_stock,
-
-    price_list: toNum(form.price_list, 0),
-    price_discount: toNum(form.price_discount, 0),
-    price_reseller: toNum(form.price_reseller, 0),
-
-    is_active: !!form.is_active,
-  };
+function emitReload() {
+  emit("reload");
 }
 
-async function saveOnly() {
-  loading.value = true;
+function onStockApplied() {
+  // hook opcional
+}
+
+// =====================
+// Validación mínima para permitir "auto-crear"
+// =====================
+function validateForCreate() {
+  const name = String(draft.value?.name || "").trim();
+  const sku = String(draft.value?.sku || "").trim();
+  if (!name) return "Falta Nombre";
+  if (!sku) return "Falta SKU";
+  return null;
+}
+
+function buildPayload() {
+  const payload = {
+    ...draft.value,
+    name: String(draft.value?.name || "").trim(),
+    sku: String(draft.value?.sku || "").trim(),
+    description: String(draft.value?.description || "").trim(),
+    brand: String(draft.value?.brand || "").trim(),
+    model: String(draft.value?.model || "").trim(),
+  };
+
+  // ✅ Seguridad: el cliente NO setea code
+  delete payload.code;
+
+  // ✅ normalizar vacíos
+  if (payload.barcode === "") payload.barcode = null;
+  if (payload.category_id === "") payload.category_id = null;
+  if (payload.subcategory_id === "") payload.subcategory_id = null;
+
+  return payload;
+}
+
+/**
+ * ✅ asegura que exista product_id.
+ * - Si ya existe, lo devuelve.
+ * - Si no existe, valida mínimo y CREA el producto.
+ * - ✅ FIX: single-flight (una sola creación en paralelo)
+ */
+async function ensureProductId() {
+  const currentId = Number(draft.value?.id || 0);
+  if (currentId > 0) return currentId;
+
+  // si ya hay una creación en curso, esperala
+  if (ensureCreatePromise.value) return ensureCreatePromise.value;
+
+  const err = validateForCreate();
+  if (err) throw new Error(err);
+
+  products.error = null;
+
+  ensureCreatePromise.value = (async () => {
+    busy.value = true;
+    try {
+      const payload = buildPayload();
+
+      const res = await products.create(payload);
+      if (!res) throw new Error(products.error || "No se pudo crear el producto");
+
+      const created = products.current;
+      const id = Number(created?.id || 0);
+      if (!id) throw new Error("La API no devolvió ID de producto");
+
+      // ✅ merge: backend devuelve code correcto
+      draft.value = { ...draft.value, ...deepClone(created) };
+      nextCodePreview.value = null; // ya tenemos el real
+      emit("saved");
+
+      return id;
+    } finally {
+      busy.value = false;
+      // liberar el lock SIEMPRE
+      ensureCreatePromise.value = null;
+    }
+  })();
+
+  return ensureCreatePromise.value;
+}
+
+// =====================
+// Save manual (botón Guardar)
+// =====================
+async function onSave() {
+  // si en paralelo se estaba creando por ensureProductId, evitamos doble create
+  if (!isEdit.value && ensureCreatePromise.value) {
+    try {
+      await ensureCreatePromise.value;
+      tab.value = "stock";
+      return;
+    } catch {
+      // sigue al flujo normal
+    }
+  }
+
+  busy.value = true;
+  products.error = null;
+
   try {
     const payload = buildPayload();
+    const isEditing = isEdit.value && Number(draft.value?.id || 0) > 0;
 
-    if (props.mode === "edit" && productId.value) {
-      const res = await products.update(productId.value, payload);
-      emit("saved", res?.data ?? products.current ?? null);
-      await reloadFull();
-    } else {
-      const res = await products.create(payload);
-      emit("saved", res?.data ?? null);
-      await reloadFull();
+    const res = isEditing
+      ? await products.update(Number(draft.value.id), payload)
+      : await products.create(payload);
+
+    if (!res) throw new Error(products.error || "No se pudo guardar");
+
+    if (products.current?.id) {
+      draft.value = { ...draft.value, ...deepClone(products.current) };
+      nextCodePreview.value = null;
     }
-  } finally {
-    loading.value = false;
-  }
-}
 
-// =====================
-// STOCK callback
-// =====================
-async function onStockApplied() {
-  const pid = productId.value;
-  if (!pid) return;
-  if (typeof products.fetchOneWithStockMatrix === "function") {
-    const p = await products.fetchOneWithStockMatrix(pid);
-    if (p) hydrateMatrix(p);
-  }
-}
+    emit("saved");
 
-// =====================
-// IMÁGENES actions
-// =====================
-async function onUploadImages(files) {
-  const pid = productId.value;
-  if (!pid) {
-    imagesError.value = "Guardá el producto primero para subir imágenes.";
-    return;
-  }
-  imagesError.value = null;
-  imagesLoading.value = true;
-  try {
-    const r = await products.uploadImages(pid, files);
-    if (!r) throw new Error(products.error || "No se pudieron subir imágenes");
-    await loadImages(pid);
-  } catch (e) {
-    imagesError.value = products.error || e?.message || "No se pudieron subir imágenes";
-  } finally {
-    imagesLoading.value = false;
-  }
-}
-
-function askRemoveOneImage(img) {
-  deleteImg.value = img;
-  deleteImgOpen.value = true;
-}
-
-async function doRemoveOneImage() {
-  const pid = productId.value;
-  const iid = Number(deleteImg.value?.id || 0);
-  if (!pid || !iid) return;
-
-  imagesError.value = null;
-  imagesLoading.value = true;
-  try {
-    const ok = await products.removeImage(pid, iid);
-    if (!ok) throw new Error(products.error || "No se pudo eliminar");
-    deleteImgOpen.value = false;
-    deleteImg.value = null;
-    await loadImages(pid);
-  } catch (e) {
-    imagesError.value = products.error || e?.message || "No se pudo eliminar";
-  } finally {
-    imagesLoading.value = false;
-  }
-}
-
-function askRemoveAllImages() {
-  deleteAllOpen.value = true;
-}
-
-async function doRemoveAllImages() {
-  const pid = productId.value;
-  if (!pid) return;
-
-  imagesError.value = null;
-  imagesLoading.value = true;
-  try {
-    // borrar una por una
-    for (const img of images.value) {
-      const iid = Number(img?.id || 0);
-      if (iid) await products.removeImage(pid, iid);
+    if (!isEditing) {
+      tab.value = "stock";
+      return;
     }
-    deleteAllOpen.value = false;
-    await loadImages(pid);
+
+    openLocal.value = false;
   } catch (e) {
-    imagesError.value = products.error || e?.message || "No se pudieron eliminar todas";
+    products.error = products.error || e?.message || "No se pudo guardar";
   } finally {
-    imagesLoading.value = false;
+    busy.value = false;
   }
 }
 </script>
+
+<style scoped>
+/* limpio */
+</style>

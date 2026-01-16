@@ -5,7 +5,7 @@
       <div>
         <div class="text-subtitle-1 font-weight-bold">Stock por sucursal (integral)</div>
         <div class="text-caption text-medium-emphasis">
-          Se hidrata desde DB (product_branches + stock_balances).
+          Se hidrata desde DB (stock_balances sumado por sucursal).
         </div>
       </div>
 
@@ -59,12 +59,7 @@
           <v-btn variant="tonal" prepend-icon="mdi-checkbox-multiple-marked" :disabled="loading" @click="enableAll">
             Habilitar todas
           </v-btn>
-          <v-btn
-            variant="tonal"
-            prepend-icon="mdi-checkbox-multiple-blank-outline"
-            :disabled="loading"
-            @click="disableAll"
-          >
+          <v-btn variant="tonal" prepend-icon="mdi-checkbox-multiple-blank-outline" :disabled="loading" @click="disableAll">
             Deshabilitar todas
           </v-btn>
         </div>
@@ -147,14 +142,6 @@ const applying = ref(false);
 const error = ref(null);
 const q = ref("");
 
-/**
- * rows:
- * { branch_id, branch_name, enabled, stock_qty, assign_qty }
- *
- * ✅ Persistencia UX en edición:
- * - assign_qty por defecto = stock_qty (lo que hay actualmente)
- * - si el usuario ya había escrito algo, refresh NO lo pisa
- */
 const rows = ref([]);
 
 const headers = [
@@ -205,12 +192,11 @@ function disableAll() {
 }
 
 function buildAssignMap() {
-  // ✅ guardamos lo que el usuario ya escribió para NO pisarlo con refresh()
   const map = new Map();
   for (const r of rows.value) {
     map.set(Number(r.branch_id), {
       enabled: !!r.enabled,
-      assign_qty: toNum(r.assign_qty, null), // null si no había
+      assign_qty: r.assign_qty === "" || r.assign_qty === null || r.assign_qty === undefined ? null : toNum(r.assign_qty, 0),
     });
   }
   return map;
@@ -223,77 +209,32 @@ async function refresh() {
   loading.value = true;
   error.value = null;
 
-  // ✅ antes de refrescar, guardo el estado actual (persistencia UI)
   const prev = buildAssignMap();
 
   try {
-    // ✅ 1) endpoint matriz
-    if (typeof products.fetchBranchesMatrix === "function") {
-      const matrix = await products.fetchBranchesMatrix(pid);
-      const arr = Array.isArray(matrix) ? matrix : [];
+    const matrix = await products.fetchBranchesMatrix(pid);
+    const arr = Array.isArray(matrix) ? matrix : [];
 
-      rows.value = arr
-        .map((x) => {
-          const bid = Number(x?.branch_id || x?.id || 0);
-          const stock = toNum(x?.stock_qty ?? x?.qty ?? x?.stock ?? 0, 0);
-
-          const prevRow = prev.get(bid) || null;
-
-          // ✅ assign_qty default = stock actual (persistente en edición)
-          // ✅ si el usuario ya escribió algo, se respeta
-          const assign =
-            prevRow && prevRow.assign_qty !== null
-              ? prevRow.assign_qty
-              : stock;
-
-          return {
-            branch_id: bid,
-            branch_name: x?.branch_name || x?.name || `Sucursal #${bid}`,
-            enabled:
-              prevRow ? prevRow.enabled : (x?.enabled !== false && Number(x?.enabled ?? 1) !== 0),
-            stock_qty: stock,
-            assign_qty: Math.max(0, toNum(assign, 0)),
-          };
-        })
-        .filter((r) => r.branch_id > 0)
-        .sort((a, b) => a.branch_id - b.branch_id);
-
-      return;
-    }
-
-    // ✅ 2) fallback branches + stockQty
-    const branches = typeof products.fetchBranches === "function" ? await products.fetchBranches() : [];
-    const bArr = Array.isArray(branches) ? branches : [];
-
-    const base = bArr
-      .map((b) => {
-        const bid = Number(b?.id || 0);
+    rows.value = arr
+      .map((x) => {
+        const bid = Number(x?.branch_id || 0);
+        const stock = toNum(x?.stock_qty ?? 0, 0);
         const prevRow = prev.get(bid) || null;
+
+        const assign = prevRow && prevRow.assign_qty !== null ? prevRow.assign_qty : stock;
 
         return {
           branch_id: bid,
-          branch_name: b?.name || `Sucursal #${bid}`,
+          branch_name: x?.branch_name || `Sucursal #${bid}`,
           enabled: prevRow ? prevRow.enabled : true,
-          stock_qty: 0,
-          assign_qty: prevRow && prevRow.assign_qty !== null ? prevRow.assign_qty : 0,
+          stock_qty: stock,
+          assign_qty: Math.max(0, toNum(assign, 0)),
         };
       })
-      .filter((x) => x.branch_id > 0)
+      .filter((r) => r.branch_id > 0)
       .sort((a, b) => a.branch_id - b.branch_id);
-
-    if (typeof products.fetchStockQty === "function") {
-      for (const r of base) {
-        r.stock_qty = await products.fetchStockQty(pid, r.branch_id);
-        // ✅ si no había valor escrito, default = stock actual
-        if (prev.get(r.branch_id)?.assign_qty === null) {
-          r.assign_qty = r.stock_qty;
-        }
-      }
-    }
-
-    rows.value = base;
   } catch (e) {
-    error.value = e?.message || "No se pudo cargar la matriz";
+    error.value = e?.message || products.error || "No se pudo cargar la matriz";
   } finally {
     loading.value = false;
   }
@@ -306,24 +247,18 @@ async function applyOne(row) {
   const bid = Number(row?.branch_id || 0);
   if (!bid) return;
 
-  const qty = toNum(row?.assign_qty, 0);
+  const qty = Math.max(0, toNum(row?.assign_qty, 0));
 
   applying.value = true;
   error.value = null;
 
   try {
-    // ✅ aplica (setea/ajusta) stock
     const ok = await products.initStock({ product_id: pid, branch_id: bid, qty });
     if (!ok) throw new Error(products.error || "No se pudo aplicar stock");
 
-    // ✅ refrescar stock visible
-    if (typeof products.fetchStockQty === "function") {
-      row.stock_qty = await products.fetchStockQty(pid, bid);
-    } else {
-      row.stock_qty = qty;
-    }
-
-    // ✅ persistencia UX: dejamos el input igual al stock actual
+    // refrescar “stock actual” del row
+    const newQty = await products.fetchStockQty(pid, bid);
+    row.stock_qty = toNum(newQty, qty);
     row.assign_qty = row.stock_qty;
   } catch (e) {
     error.value = e?.message || "No se pudo aplicar";
@@ -336,14 +271,24 @@ async function applyReparto() {
   const pid = Number(props.productId || 0);
   if (!pid) return;
 
+  const enabled = rows.value.filter((r) => !!r.enabled);
+  if (!enabled.length) return;
+
   applying.value = true;
   error.value = null;
 
   try {
-    const enabled = rows.value.filter((r) => !!r.enabled);
     for (const r of enabled) {
-      await applyOne(r);
+      // no reentrar applying dentro de applyOne: llamamos directo al store
+      const qty = Math.max(0, toNum(r.assign_qty, 0));
+      const ok = await products.initStock({ product_id: pid, branch_id: r.branch_id, qty });
+      if (!ok) throw new Error(products.error || `No se pudo aplicar en sucursal ${r.branch_id}`);
+      const newQty = await products.fetchStockQty(pid, r.branch_id);
+      r.stock_qty = toNum(newQty, qty);
+      r.assign_qty = r.stock_qty;
     }
+  } catch (e) {
+    error.value = e?.message || "No se pudo aplicar el reparto";
   } finally {
     applying.value = false;
   }

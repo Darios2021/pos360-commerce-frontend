@@ -1,4 +1,6 @@
 // src/app/store/products.store.js
+// ✅ COPY-PASTE FINAL COMPLETO (incluye fetchNextCode para preview barcode + errores robustos)
+
 import { defineStore } from "pinia";
 import http from "../api/http";
 
@@ -7,19 +9,35 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
+}
+
 // ✅ Unwrap helpers (soporta distintos formatos backend)
 function unwrapOne(res) {
   if (!res) return null;
   if (res.ok === false) return null;
-  return res.data ?? res.item ?? res.product ?? res.user ?? null;
+
+  const v = res.data ?? res.item ?? res.product ?? res.user ?? res.result ?? null;
+
+  // si data viene como {data:{...}}
+  if (v && typeof v === "object" && !Array.isArray(v) && v.data && typeof v.data === "object") {
+    return v.data;
+  }
+
+  return v;
 }
 
 function unwrapList(res) {
   if (!res) return [];
   if (res.ok === false) return [];
+
   const v = res.data ?? res.items ?? res.list ?? res.rows ?? res.result ?? null;
   if (Array.isArray(v)) return v;
   if (v && Array.isArray(v.items)) return v.items;
+  if (v && Array.isArray(v.rows)) return v.rows;
   return [];
 }
 
@@ -48,10 +66,10 @@ function errorsArrayToMap(arr) {
   return out;
 }
 
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
+function pickHttpError(e) {
+  const status = e?.response?.status ?? null;
+  const data = e?.response?.data ?? null;
+  return { status, data };
 }
 
 export const useProductsStore = defineStore("products", {
@@ -66,6 +84,9 @@ export const useProductsStore = defineStore("products", {
     error: null,
 
     current: null,
+
+    // ✅ preview code (P000000xxx)
+    nextCode: null,
 
     // ✅ debug
     lastError: null,
@@ -86,6 +107,26 @@ export const useProductsStore = defineStore("products", {
         e?.friendlyMessage ||
         e?.message ||
         String(e || "");
+    },
+
+    // ✅ GET /products/next-code (para preview de barcode en create)
+    async fetchNextCode() {
+      this.error = null;
+      try {
+        const { data } = await http.get("/products/next-code");
+
+        // soporta {ok:true,data:{code}} o {data:{code}} o directo
+        const one = unwrapOne(data) || data?.data || data || null;
+        const code = one?.code || null;
+
+        this.nextCode = code;
+        return code;
+      } catch (e) {
+        // no rompas la UI por esto
+        this.lastError = e?.response?.data || e || null;
+        this.nextCode = null;
+        return null;
+      }
     },
 
     // ✅ GET /products
@@ -161,7 +202,7 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ GET /products/:id/stock
+    // ✅ GET /products/:id/stock?branch_id=
     async fetchStockQty(productId, branch_id) {
       const pid = toInt(productId, 0);
       const bid = toInt(branch_id, 0);
@@ -169,56 +210,52 @@ export const useProductsStore = defineStore("products", {
 
       try {
         const { data } = await http.get(`/products/${pid}/stock`, { params: { branch_id: bid } });
-        const obj = unwrapOne(data) || data?.data || null;
-        const qty = Number(obj?.qty ?? 0);
-        return Number.isFinite(qty) ? qty : 0;
+        const obj = unwrapOne(data) || data?.data || data || null;
+        return toNum(obj?.qty ?? obj?.stock_qty ?? obj?.current_qty ?? 0, 0);
       } catch {
         return 0;
       }
     },
 
-    // ✅ GET /products/:id/branches  (matriz enabled + current_qty)
+    // ✅ GET /products/:id/branches
     async fetchBranchesMatrix(productId) {
       const pid = toInt(productId, 0);
       if (!pid) return [];
 
       this.error = null;
+
       try {
         const { data } = await http.get(`/products/${pid}/branches`);
-        return unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
+        const list = unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
+        return Array.isArray(list) ? list : [];
       } catch (e) {
         this.setError(e);
         return [];
       }
     },
 
-    // ✅ ✅ NUEVO: traer producto + matriz (para EDITAR / DETALLE)
-    async fetchOneWithStockMatrix(id, { branch_id = null } = {}) {
-      const pid = toInt(id, 0);
-      if (!pid) return null;
+    // ✅ PATCH /products/:id con branch_ids (admin)
+    async enableBranches(productId, branchIds = []) {
+      const pid = toInt(productId, 0);
+      const bids = Array.isArray(branchIds) ? branchIds.map((x) => toInt(x, 0)).filter(Boolean) : [];
+      if (!pid || !bids.length) return false;
 
-      const p = await this.fetchOne(pid, { force: true, branch_id });
-      if (!p?.id) return null;
+      this.loading = true;
+      this.error = null;
+      this.lastError = null;
+      this.lastFieldErrors = null;
 
-      const matrix = await this.fetchBranchesMatrix(pid);
-
-      // Normalizamos para que UI tenga algo consistente
-      const rows = (Array.isArray(matrix) ? matrix : []).map((x) => ({
-        branch_id: toInt(x.branch_id ?? x.id, 0),
-        branch_name: x.branch_name || x.name || "",
-        enabled: x.enabled === true || Number(x.enabled || 0) === 1,
-        current_qty: toNum(x.current_qty ?? x.qty ?? x.stock_qty ?? 0, 0),
-      })).filter((r) => r.branch_id > 0);
-
-      const total_qty = rows.reduce((acc, r) => acc + (Number(r.current_qty) || 0), 0);
-
-      // ✅ Se lo pegamos al objeto para que ProductForm/Details lo use directo
-      const enriched = { ...p, stock_matrix: rows, stock_total_qty: total_qty };
-
-      // Si current era este, lo actualizamos también
-      if (this.current?.id === pid) this.current = enriched;
-
-      return enriched;
+      try {
+        const { data } = await http.patch(`/products/${pid}`, { branch_ids: bids });
+        const r = unwrapOk(data);
+        if (r.ok === false) throw new Error(r.message || "ENABLE_BRANCHES_FAILED");
+        return true;
+      } catch (e) {
+        this.setError(e);
+        return false;
+      } finally {
+        this.loading = false;
+      }
     },
 
     // ✅ POST /products
@@ -234,11 +271,30 @@ export const useProductsStore = defineStore("products", {
         const created = unwrapOne(data);
         if (created?.id) {
           this.current = created;
-          this.items = [created, ...(this.items || [])];
-          this.total = toInt(this.total, 0) + 1;
+
+          // evitar duplicado en items si ya existe
+          const pid = toInt(created.id, 0);
+          const idx = (this.items || []).findIndex((x) => toInt(x.id, 0) === pid);
+          if (idx >= 0) this.items[idx] = { ...this.items[idx], ...created };
+          else this.items = [created, ...(this.items || [])];
+
+          this.total = toInt(this.total, 0) + (idx >= 0 ? 0 : 1);
         }
+
         return data;
       } catch (e) {
+        const { status, data } = pickHttpError(e);
+
+        if (status === 409) {
+          const msg =
+            data?.code === "DUPLICATE"
+              ? (data?.message || "Conflicto: SKU/Barcode/Code duplicado.")
+              : (data?.message || "Conflicto.");
+
+          this.setError({ response: { data: { ...data, message: msg } } });
+          return null;
+        }
+
         this.setError(e);
         return null;
       } finally {
@@ -286,9 +342,13 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ✅ DELETE /products/:id
+    // NOTA: backend puede devolver:
+    // - 200 ok true (borrado)
+    // - 200 ok true code=SOFT_DELETED
+    // - 409 ok false code=STOCK_NOT_ZERO
     async remove(id) {
       const pid = toInt(id, 0);
-      if (!pid) return { ok: false, code: "MISSING_ID", message: "ID inválido" };
+      if (!pid) return false;
 
       this.loading = true;
       this.error = null;
@@ -299,22 +359,17 @@ export const useProductsStore = defineStore("products", {
         const { data } = await http.delete(`/products/${pid}`);
         const r = unwrapOk(data);
 
-        if (r.ok === true) {
-          this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
-          this.total = Math.max(0, toInt(this.total, 0) - 1);
-          if (this.current?.id === pid) this.current = null;
+        if (r.ok === false) throw new Error(r.message || "DELETE_FAILED");
 
-          return { ok: true, code: null, message: r.message || "Producto eliminado" };
-        }
+        // si fue soft delete, lo sacamos igual del listado (para UX)
+        this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
+        this.total = Math.max(0, toInt(this.total, 0) - 1);
+        if (toInt(this.current?.id, 0) === pid) this.current = null;
 
-        return { ok: false, code: r.code || "DELETE_DENIED", message: r.message || "No se pudo eliminar" };
+        return true;
       } catch (e) {
         this.setError(e);
-        return {
-          ok: false,
-          code: `HTTP_${e?.response?.status || "ERR"}`,
-          message: e?.response?.data?.message || e?.message || "No se pudo eliminar",
-        };
+        return false;
       } finally {
         this.loading = false;
       }
@@ -407,10 +462,9 @@ export const useProductsStore = defineStore("products", {
     },
 
     // ==========================
-    // ✅ STOCK INIT (RUTA REAL)
+    // STOCK INIT
     // ==========================
     async initStock({ product_id, branch_id, qty }) {
-      // ✅ NO MÁS spam 404: usamos la ruta real que te funcionó en consola
       this.loading = true;
       this.error = null;
       this.lastError = null;
@@ -423,13 +477,9 @@ export const useProductsStore = defineStore("products", {
       };
 
       try {
-        // eslint-disable-next-line no-console
-        console.log("[initStock] POST stock/init", payload);
-
-        const { data } = await http.post("stock/init", payload);
+        const { data } = await http.post("/stock/init", payload);
         const r = unwrapOk(data);
         if (r.ok === false) throw new Error(r.message || "INIT_STOCK_FAILED");
-
         return true;
       } catch (e) {
         this.setError(e);
