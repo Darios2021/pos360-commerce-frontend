@@ -27,19 +27,35 @@
         :disabled="disabled"
         :error="skuTouched && !!skuError"
         :error-messages="skuTouched ? skuError : ''"
-        hint="Se normaliza automáticamente"
+        :hint="skuHint"
         persistent-hint
         @blur="onSkuBlur"
+        @keydown.enter.prevent
         clearable
-      />
+      >
+        <template #append-inner>
+          <v-btn
+            v-if="!disabled"
+            size="small"
+            variant="tonal"
+            class="ml-2"
+            @click="applySuggestedSku"
+            :disabled="!suggestedSku"
+            title="Generar SKU sugerido"
+          >
+            <v-icon start size="18">mdi-auto-fix</v-icon>
+            Sugerir
+          </v-btn>
+        </template>
+      </v-text-field>
     </div>
 
-    <!-- Row 2 -->
+    <!-- Row 2: Rubro/Subrubro -->
     <div class="d-flex flex-wrap ga-3">
       <!-- Rubro -->
       <v-select
         v-model="model.category_id"
-        :items="categories"
+        :items="rubros"
         item-title="name"
         item-value="id"
         label="Rubro"
@@ -57,15 +73,15 @@
       <!-- Subrubro -->
       <v-select
         v-model="model.subcategory_id"
-        :items="subcategoriesForSelected"
+        :items="subrubrosForSelected"
         item-title="name"
         item-value="id"
         label="Subrubro"
         variant="outlined"
         density="comfortable"
         class="flex-1 minw-260"
-        :disabled="disabled || !model.category_id || subsLoading"
-        :loading="subsLoading"
+        :disabled="disabled || !model.category_id || catsLoading"
+        :loading="catsLoading"
         :error="!!fieldErr('subcategory_id')"
         :error-messages="fieldErr('subcategory_id')"
         clearable
@@ -78,6 +94,7 @@
       <v-text-field
         v-model.trim="model.brand"
         label="Marca"
+        placeholder="Ej: HQ"
         variant="outlined"
         density="comfortable"
         class="flex-1 minw-240"
@@ -88,6 +105,7 @@
       <v-text-field
         v-model.trim="model.model"
         label="Modelo"
+        placeholder="Ej: Spirit Boost Pulse"
         variant="outlined"
         density="comfortable"
         class="flex-1 minw-240"
@@ -140,7 +158,7 @@ function fieldErr(field) {
 }
 
 // =====================
-// SKU
+// SKU PRO (normaliza + sugiere)
 // =====================
 const skuInput = ref(String(model.value?.sku || ""));
 const skuTouched = ref(false);
@@ -170,15 +188,44 @@ function normalizeSku(raw) {
     .replace(/^[-_]+|[-_]+$/g, "");
 }
 
+function suggestSkuFromName(name) {
+  const base = String(name || "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!base) return "";
+  const parts = base.split(" ").filter(Boolean).slice(0, 6);
+  return normalizeSku(parts.join("-"));
+}
+
+const suggestedSku = computed(() => {
+  const cur = normalizeSku(skuInput.value);
+  if (cur) return "";
+  return suggestSkuFromName(model.value?.name);
+});
+
 const skuError = computed(() => {
   const back = fieldErr("sku");
   if (back) return back;
 
   const s = normalizeSku(skuInput.value);
-  if (!s) return "SKU requerido";
+  if (!s) return "SKU requerido (ej: HQ-SPIRIT-BOOST-PULSE)";
   if (s.length < 3) return "SKU muy corto (mínimo 3)";
   if (s.length > 64) return "SKU muy largo (máximo 64)";
+  if (!/^[A-Z0-9][A-Z0-9\-_]*$/.test(s)) return "Solo letras/números/guion/underscore";
   return "";
+});
+
+const skuHint = computed(() => {
+  const s = normalizeSku(skuInput.value);
+  if (!s) return "Tip: usá guiones y mayúsculas. Ej: CABLE-ATHENEA-TIPO-C";
+  if (skuTouched.value && !skuError.value) return "OK ✅";
+  return "Se normaliza automáticamente al salir del campo.";
 });
 
 function onSkuBlur() {
@@ -187,151 +234,99 @@ function onSkuBlur() {
   if (norm !== skuInput.value) skuInput.value = norm;
 }
 
+function applySuggestedSku() {
+  if (!suggestedSku.value) return;
+  skuInput.value = suggestedSku.value;
+  skuTouched.value = true;
+  onSkuBlur();
+}
+
 // =====================
-// Normalizadores de items
+// CATEGORÍAS (RUBROS Y SUBRUBROS DESDE /categories)
+// Tu backend: Category { id, name, parent_id, is_active }
+// Rubro = parent_id == null
+// Subrubro = parent_id == rubro.id
 // =====================
+const catsLoading = ref(false);
+const allCategories = ref([]);
+
 function unwrapList(res) {
   if (!res) return [];
   if (Array.isArray(res)) return res;
   if (res.ok === false) return [];
-  const v = res.data ?? res.items ?? res.rows ?? res.list ?? res.result ?? null;
+  const v = res.items ?? res.data ?? res.rows ?? res.list ?? res.result ?? null;
   if (Array.isArray(v)) return v;
   if (v && Array.isArray(v.items)) return v.items;
   if (v && Array.isArray(v.rows)) return v.rows;
   return [];
 }
 
-function normalizeCategoryList(list) {
+function normalizeCats(list) {
   const arr = Array.isArray(list) ? list : [];
   return arr
     .map((x) => {
       if (!x) return null;
       const id = toInt(x.id ?? x.value ?? 0, 0);
       const name = String(x.name ?? x.label ?? x.title ?? "").trim();
+      const parent_id =
+        x.parent_id === null || x.parent_id === undefined || x.parent_id === ""
+          ? null
+          : toInt(x.parent_id, 0);
+
+      const is_active = x.is_active === undefined ? 1 : toInt(x.is_active, 1);
+
       if (!id || !name) return null;
-      return { ...x, id, name };
+      return { ...x, id, name, parent_id, is_active };
     })
     .filter(Boolean);
 }
-
-function normalizeSubcategoryList(list) {
-  const arr = Array.isArray(list) ? list : [];
-  return arr
-    .map((x) => {
-      if (!x) return null;
-      const id = toInt(x.id ?? x.value ?? x.subcategory_id ?? 0, 0);
-      const name = String(x.name ?? x.label ?? x.title ?? "").trim();
-      if (!id || !name) return null;
-
-      // mapear category_id venga como venga
-      const category_id =
-        toInt(x.category_id, 0) ||
-        toInt(x.categoryId, 0) ||
-        toInt(x.rubro_id, 0) ||
-        toInt(x.category?.id, 0) ||
-        toInt(x.category, 0) ||
-        null;
-
-      return { ...x, id, name, category_id };
-    })
-    .filter(Boolean);
-}
-
-// =====================
-// Rubros / Subrubros (POR RUBRO seleccionado)
-// =====================
-const catsLoading = ref(false);
-const subsLoading = ref(false);
-
-const categories = ref([]);
-const subsByCat = ref({}); // { [catId]: [subcats] }
 
 async function fetchCategories() {
   catsLoading.value = true;
   try {
     const { data } = await http.get("/categories");
-    categories.value = normalizeCategoryList(unwrapList(data));
+    allCategories.value = normalizeCats(unwrapList(data));
   } catch {
-    categories.value = [];
+    allCategories.value = [];
   } finally {
     catsLoading.value = false;
   }
 }
 
-/**
- * Carga subrubros SOLO para el rubro seleccionado.
- * Soporta múltiples rutas posibles.
- */
-async function fetchSubcategoriesForCategory(catId) {
-  const cid = toInt(catId, 0);
-  if (!cid) return;
-
-  if (Array.isArray(subsByCat.value[cid]) && subsByCat.value[cid].length) return;
-
-  subsLoading.value = true;
-
-  const tries = [
-    // 1) query param
-    () => http.get("/subcategories", { params: { category_id: cid } }),
-    () => http.get("/subcategories", { params: { categoryId: cid } }),
-    // 2) nested route
-    () => http.get(`/categories/${cid}/subcategories`),
-    () => http.get(`/categories/${cid}/subcategories/list`),
-  ];
-
-  try {
-    for (const fn of tries) {
-      try {
-        const { data } = await fn();
-        const list = normalizeSubcategoryList(unwrapList(data));
-
-        // si la ruta devuelve todos, filtramos por category_id
-        const filtered = list.filter((s) => toInt(s.category_id, 0) === cid);
-
-        // prioridad: si ya viene filtrado, usarlo; si no, usar el filtered
-        const finalList = (filtered.length ? filtered : list).filter((s) => toInt(s.category_id, 0) === cid);
-
-        subsByCat.value = { ...subsByCat.value, [cid]: finalList };
-        break;
-      } catch {
-        // intentar siguiente ruta
-      }
-    }
-
-    if (!Array.isArray(subsByCat.value[cid])) {
-      subsByCat.value = { ...subsByCat.value, [cid]: [] };
-    }
-  } finally {
-    subsLoading.value = false;
-  }
-}
-
-const subcategoriesForSelected = computed(() => {
-  const cid = toInt(model.value?.category_id, 0);
-  if (!cid) return [];
-  return subsByCat.value[cid] || [];
+const rubros = computed(() => {
+  // rubros = categorias sin parent (y activas)
+  return (allCategories.value || [])
+    .filter((c) => c.is_active === 1 && (c.parent_id === null || c.parent_id === 0))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 });
 
-// si cambia rubro -> cargar subrubros y limpiar subrubro si no corresponde
+const subrubrosForSelected = computed(() => {
+  const cid = toInt(model.value?.category_id, 0);
+  if (!cid) return [];
+  return (allCategories.value || [])
+    .filter((c) => c.is_active === 1 && toInt(c.parent_id, 0) === cid)
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+});
+
+// si cambia rubro -> limpiar subrubro si no corresponde
 watch(
   () => model.value?.category_id,
-  async (cid) => {
+  (cid) => {
     const catId = toInt(cid, 0);
-
-    // al cambiar rubro, limpiar selección previa
-    model.value = { ...model.value, subcategory_id: null };
-
-    if (!catId) return;
-    await fetchSubcategoriesForCategory(catId);
-  },
-  { immediate: true }
+    const sid = toInt(model.value?.subcategory_id, 0);
+    if (!sid) {
+      // nada
+    } else {
+      const ok = (allCategories.value || []).some(
+        (c) => toInt(c.id, 0) === sid && toInt(c.parent_id, 0) === catId
+      );
+      if (!ok) model.value = { ...model.value, subcategory_id: null };
+    }
+  }
 );
 
 onMounted(async () => {
   await fetchCategories();
-
-  const cid = toInt(model.value?.category_id, 0);
-  if (cid) await fetchSubcategoriesForCategory(cid);
 });
 </script>
 
