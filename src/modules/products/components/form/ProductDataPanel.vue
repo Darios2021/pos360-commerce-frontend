@@ -1,34 +1,32 @@
 <template>
-  <div class="d-flex flex-column ga-4">
-    <!-- Row 1 -->
-    <div class="d-flex flex-wrap ga-3">
-      <!-- Nombre -->
+  <div class="pf-data d-flex flex-column ga-3">
+    <div class="pf-grid">
       <v-text-field
         v-model.trim="model.name"
-        label="Nombre del producto"
+        label="Nombre"
         placeholder="Ej: Auriculares HQ Spirit Boost"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-320"
+        density="compact"
+        class="c7"
         :disabled="disabled"
         :error="!!fieldErr('name')"
         :error-messages="fieldErr('name')"
+        hide-details="auto"
         clearable
       />
 
-      <!-- SKU -->
       <v-text-field
         v-model="skuInput"
         label="SKU"
         placeholder="Ej: HQ-SPIRIT-BOOST-PULSE"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-260"
+        density="compact"
+        class="c5"
         :disabled="disabled"
         :error="skuTouched && !!skuError"
         :error-messages="skuTouched ? skuError : ''"
         :hint="skuHint"
-        persistent-hint
+        hide-details="auto"
         @blur="onSkuBlur"
         @keydown.enter.prevent
         clearable
@@ -50,9 +48,7 @@
       </v-text-field>
     </div>
 
-    <!-- Row 2: Rubro/Subrubro -->
-    <div class="d-flex flex-wrap ga-3">
-      <!-- Rubro -->
+    <div class="pf-grid">
       <v-select
         v-model="model.category_id"
         :items="rubros"
@@ -60,17 +56,17 @@
         item-value="id"
         label="Rubro"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-260"
+        density="compact"
+        class="c6"
         :disabled="disabled || catsLoading"
         :loading="catsLoading"
         :error="!!fieldErr('category_id')"
         :error-messages="fieldErr('category_id')"
+        hide-details="auto"
         clearable
-        no-data-text="No hay rubros cargados"
+        no-data-text="No hay rubros"
       />
 
-      <!-- Subrubro -->
       <v-select
         v-model="model.subcategory_id"
         :items="subrubrosForSelected"
@@ -78,52 +74,51 @@
         item-value="id"
         label="Subrubro"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-260"
+        density="compact"
+        class="c6"
         :disabled="disabled || !model.category_id || catsLoading"
         :loading="catsLoading"
         :error="!!fieldErr('subcategory_id')"
         :error-messages="fieldErr('subcategory_id')"
+        hide-details="auto"
         clearable
-        no-data-text="No hay subrubros para este rubro"
+        no-data-text="No hay subrubros"
       />
     </div>
 
-    <!-- Row 3 -->
-    <div class="d-flex flex-wrap ga-3">
+    <div class="pf-grid">
       <v-text-field
         v-model.trim="model.brand"
         label="Marca"
-        placeholder="Ej: HQ"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-240"
+        density="compact"
+        class="c6"
         :disabled="disabled"
+        hide-details="auto"
         clearable
       />
 
       <v-text-field
         v-model.trim="model.model"
         label="Modelo"
-        placeholder="Ej: Spirit Boost Pulse"
         variant="outlined"
-        density="comfortable"
-        class="flex-1 minw-240"
+        density="compact"
+        class="c6"
         :disabled="disabled"
+        hide-details="auto"
         clearable
       />
     </div>
 
-    <!-- Descripción -->
     <v-textarea
       v-model.trim="model.description"
       label="Descripción"
-      placeholder="Descripción clara para venta..."
       variant="outlined"
-      density="comfortable"
+      density="compact"
       :disabled="disabled"
-      rows="3"
+      rows="2"
       auto-grow
+      hide-details="auto"
       clearable
     />
   </div>
@@ -157,9 +152,7 @@ function fieldErr(field) {
   return productsStore?.lastFieldErrors?.[field] || "";
 }
 
-// =====================
-// SKU PRO (normaliza + sugiere)
-// =====================
+// SKU
 const skuInput = ref(String(model.value?.sku || ""));
 const skuTouched = ref(false);
 
@@ -215,17 +208,17 @@ const skuError = computed(() => {
 
   const s = normalizeSku(skuInput.value);
   if (!s) return "SKU requerido (ej: HQ-SPIRIT-BOOST-PULSE)";
-  if (s.length < 3) return "SKU muy corto (mínimo 3)";
-  if (s.length > 64) return "SKU muy largo (máximo 64)";
+  if (s.length < 3) return "SKU muy corto (mín 3)";
+  if (s.length > 64) return "SKU muy largo (máx 64)";
   if (!/^[A-Z0-9][A-Z0-9\-_]*$/.test(s)) return "Solo letras/números/guion/underscore";
   return "";
 });
 
 const skuHint = computed(() => {
   const s = normalizeSku(skuInput.value);
-  if (!s) return "Tip: usá guiones y mayúsculas. Ej: CABLE-ATHENEA-TIPO-C";
+  if (!s) return "Tip: CABLE-ATHENEA-TIPO-C";
   if (skuTouched.value && !skuError.value) return "OK ✅";
-  return "Se normaliza automáticamente al salir del campo.";
+  return "Se normaliza al salir.";
 });
 
 function onSkuBlur() {
@@ -241,12 +234,7 @@ function applySuggestedSku() {
   onSkuBlur();
 }
 
-// =====================
-// CATEGORÍAS (RUBROS Y SUBRUBROS DESDE /categories)
-// Tu backend: Category { id, name, parent_id, is_active }
-// Rubro = parent_id == null
-// Subrubro = parent_id == rubro.id
-// =====================
+// categorías
 const catsLoading = ref(false);
 const allCategories = ref([]);
 
@@ -272,9 +260,7 @@ function normalizeCats(list) {
         x.parent_id === null || x.parent_id === undefined || x.parent_id === ""
           ? null
           : toInt(x.parent_id, 0);
-
       const is_active = x.is_active === undefined ? 1 : toInt(x.is_active, 1);
-
       if (!id || !name) return null;
       return { ...x, id, name, parent_id, is_active };
     })
@@ -294,7 +280,6 @@ async function fetchCategories() {
 }
 
 const rubros = computed(() => {
-  // rubros = categorias sin parent (y activas)
   return (allCategories.value || [])
     .filter((c) => c.is_active === 1 && (c.parent_id === null || c.parent_id === 0))
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -308,30 +293,34 @@ const subrubrosForSelected = computed(() => {
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 });
 
-// si cambia rubro -> limpiar subrubro si no corresponde
 watch(
   () => model.value?.category_id,
   (cid) => {
     const catId = toInt(cid, 0);
     const sid = toInt(model.value?.subcategory_id, 0);
-    if (!sid) {
-      // nada
-    } else {
-      const ok = (allCategories.value || []).some(
-        (c) => toInt(c.id, 0) === sid && toInt(c.parent_id, 0) === catId
-      );
-      if (!ok) model.value = { ...model.value, subcategory_id: null };
-    }
+    if (!sid) return;
+
+    const ok = (allCategories.value || []).some(
+      (c) => toInt(c.id, 0) === sid && toInt(c.parent_id, 0) === catId
+    );
+    if (!ok) model.value = { ...model.value, subcategory_id: null };
   }
 );
 
-onMounted(async () => {
-  await fetchCategories();
-});
+onMounted(fetchCategories);
 </script>
 
 <style scoped>
-.minw-240 { min-width: 240px; }
-.minw-260 { min-width: 260px; }
-.minw-320 { min-width: 320px; }
+.pf-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 10px;
+}
+.c5 { grid-column: span 5; }
+.c6 { grid-column: span 6; }
+.c7 { grid-column: span 7; }
+
+@media (max-width: 960px) {
+  .c5, .c6, .c7 { grid-column: span 12; }
+}
 </style>
