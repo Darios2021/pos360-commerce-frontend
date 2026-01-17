@@ -69,9 +69,16 @@
 
         <template #bottom>
           <div class="text-caption text-medium-emphasis pa-3">
-            * Esto es <b>preview</b>. Se aplica recién al tocar <b>CREAR</b> en el Resumen.
-            <br />
-            * Tip: si dejás <b>0</b>, no se envía nada (no pisa stock).
+            <template v-if="!showCurrent">
+              * Esto es <b>preview</b>. Se aplica recién al tocar <b>CREAR</b> en el Resumen.
+              <br />
+              * Tip: si dejás <b>0</b>, no se envía nada (no pisa stock).
+            </template>
+            <template v-else>
+              * Esto es <b>preview</b>. Se aplica al tocar <b>GUARDAR</b> en el Resumen.
+              <br />
+              * En edición: se envía el cambio <b>solo si Cantidad != Actual</b> (incluye <b>0</b> si querés dejar stock en cero).
+            </template>
           </div>
         </template>
       </v-data-table>
@@ -163,9 +170,7 @@ async function fetchBranchesSafe() {
   if (products && typeof products.fetchBranches === "function") {
     return await products.fetchBranches();
   }
-  // fallback directo
   const { data } = await http.get("/branches");
-  // soporta {data:[]} o []
   const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
   return arr;
 }
@@ -180,6 +185,7 @@ async function refresh() {
     if (pid > 0) {
       const matrix = await products.fetchBranchesMatrix(pid);
 
+      // ✅ IMPORTANTE: preservamos current_qty REAL (para edición) y warehouse_id default
       const arr = (Array.isArray(matrix) ? matrix : []).map((x) => ({
         branch_id: toInt(x.branch_id ?? x.id, 0),
         branch_name: x.branch_name || x.name || "",
@@ -188,12 +194,13 @@ async function refresh() {
         qty: num(x.assign_qty ?? x.qty_to_set ?? 0, 0),
       }));
 
+      // ✅ mantenemos lo que el usuario ya tipeó (qty), pero actualizamos current_qty/warehouse_id/branch_name
       const local = Array.isArray(rows.value) ? rows.value : [];
-      const localMap = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
+      const localMapQty = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
 
       const merged = arr.map((r) => ({
         ...r,
-        qty: localMap.has(r.branch_id) ? localMap.get(r.branch_id) : num(r.qty, 0),
+        qty: localMapQty.has(r.branch_id) ? localMapQty.get(r.branch_id) : num(r.qty, 0),
       }));
 
       rows.value = merged.filter((r) => r.branch_id > 0 && r.branch_name);
@@ -209,10 +216,10 @@ async function refresh() {
       }));
 
       const local = Array.isArray(rows.value) ? rows.value : [];
-      const localMap = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
+      const localMapQty = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
 
       rows.value = arr
-        .map((r) => ({ ...r, qty: localMap.has(r.branch_id) ? localMap.get(r.branch_id) : 0 }))
+        .map((r) => ({ ...r, qty: localMapQty.has(r.branch_id) ? localMapQty.get(r.branch_id) : 0 }))
         .filter((r) => r.branch_id > 0 && r.branch_name);
     }
 

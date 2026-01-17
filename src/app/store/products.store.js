@@ -1,6 +1,8 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/products.store.js
-// FIX: initStock acepta warehouse_id + fetchBranches() existe (para ProductStockPanel con producto nuevo)
+// FIX BORRADO: DELETE devuelve 409 (Conflict) => ahora retornamos {ok:false, code, message}
+// para que el front pueda hacer fallback a "inactivar" cuando sea FK_CONSTRAINT / HAS_SALES.
+// (y seguimos devolviendo true si borró OK, para no romper compatibilidad)
 
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -59,6 +61,7 @@ function unwrapOk(res) {
   if (typeof res.ok === "boolean") {
     return { ok: res.ok, code: res.code || null, message: res.message || null, data: res.data ?? null };
   }
+  // si backend devuelve {success:true} o directamente data, lo consideramos ok
   return { ok: true, code: null, message: null, data: res.data ?? null };
 }
 
@@ -191,12 +194,7 @@ export const useProductsStore = defineStore("products", {
       const errsArr = Array.isArray(data?.errors) ? data.errors : [];
       this.lastFieldErrors = errsArr.length ? errorsArrayToMap(errsArr) : null;
 
-      this.error =
-        data?.message ||
-        data?.error ||
-        e?.friendlyMessage ||
-        e?.message ||
-        String(e || "");
+      this.error = data?.message || data?.error || e?.friendlyMessage || e?.message || String(e || "");
     },
 
     clearError() {
@@ -326,7 +324,6 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await http.get("/branches");
-        // soporta [] o {data:[]} o {items:[]} etc
         const list = unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
         return Array.isArray(list) ? list : [];
       } catch (e) {
@@ -369,8 +366,8 @@ export const useProductsStore = defineStore("products", {
         if (status === 409) {
           const msg =
             data?.code === "DUPLICATE"
-              ? (data?.message || "Conflicto: SKU/Barcode/Code duplicado.")
-              : (data?.message || "Conflicto.");
+              ? data?.message || "Conflicto: SKU/Barcode/Code duplicado."
+              : data?.message || "Conflicto.";
 
           this.setError({ response: { data: { ...data, message: msg } } });
           return null;
@@ -423,9 +420,16 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
+    /**
+     * ✅ BORRADO ROBUSTO
+     * - OK => true
+     * - 409 => retorna {ok:false, code, message} (NO rompe al front y permite fallback a inactivar)
+     * - 403/401 => retorna {ok:false,...} también
+     * - otros => retorna {ok:false,...}
+     */
     async remove(id) {
       const pid = toInt(id, 0);
-      if (!pid) return false;
+      if (!pid) return { ok: false, code: "MISSING_ID", message: "ID inválido" };
 
       this.loading = true;
       this.error = null;
@@ -435,16 +439,46 @@ export const useProductsStore = defineStore("products", {
       try {
         const { data } = await http.delete(`/products/${pid}`);
         const r = unwrapOk(data);
-        if (r.ok === false) throw new Error(r.message || "DELETE_FAILED");
 
+        if (r.ok === false) {
+          // backend respondió 200 pero ok:false
+          this.setError({ response: { data: { message: r.message || "No se pudo eliminar", code: r.code } } });
+          return { ok: false, code: r.code || "DELETE_FAILED", message: r.message || "No se pudo eliminar" };
+        }
+
+        // ✅ update local
         this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
         this.total = Math.max(0, toInt(this.total, 0) - 1);
         if (toInt(this.current?.id, 0) === pid) this.current = null;
 
         return true;
       } catch (e) {
+        const { status, data } = pickHttpError(e);
+
+        // ✅ 409 Conflict (FK / ventas / relaciones)
+        if (status === 409) {
+          const code = String(data?.code || "FK_CONSTRAINT");
+          const msg = data?.message || "No se pudo borrar: tiene relaciones (ventas/stock/etc).";
+          this.setError({ response: { data: { ...data, code, message: msg } } });
+          return { ok: false, code, message: msg };
+        }
+
+        // ✅ no autorizado / prohibido
+        if (status === 401) {
+          const msg = data?.message || "No autorizado.";
+          this.setError({ response: { data: { ...data, code: "UNAUTHORIZED", message: msg } } });
+          return { ok: false, code: "UNAUTHORIZED", message: msg };
+        }
+
+        if (status === 403) {
+          const msg = data?.message || "No tenés permisos para eliminar.";
+          this.setError({ response: { data: { ...data, code: "FORBIDDEN", message: msg } } });
+          return { ok: false, code: "FORBIDDEN", message: msg };
+        }
+
+        // ✅ otros
         this.setError(e);
-        return false;
+        return { ok: false, code: "DELETE_FAILED", message: this.error || "No se pudo eliminar" };
       } finally {
         this.loading = false;
       }

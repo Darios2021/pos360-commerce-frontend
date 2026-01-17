@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 <template>
   <div>
@@ -169,8 +170,8 @@
       >
         <!-- Nombre + estado inactivo -->
         <template #item.name="{ item }">
-          <div class="font-weight-bold d-flex align-center" :style="isInactive(item) ? 'opacity:.55' : ''">
-            {{ item.name }}
+          <div class="font-weight-bold d-flex align-center minw-0" :style="isInactive(item) ? 'opacity:.55' : ''">
+            <span class="text-truncate">{{ item.name }}</span>
             <v-chip v-if="isInactive(item)" class="ml-2" size="x-small" color="grey" variant="tonal">
               Inactivo
             </v-chip>
@@ -185,34 +186,25 @@
         </template>
 
         <template #item.rubro="{ item }">
-          {{ cleanTrail(item.rubro) || "—" }}
+          <span class="text-truncate d-inline-block" style="max-width: 260px">
+            {{ cleanTrail(item.rubro) || "—" }}
+          </span>
         </template>
 
         <template #item.subrubro="{ item }">
-          {{ cleanTrail(item.subrubro) || "—" }}
+          <span class="text-truncate d-inline-block" style="max-width: 260px">
+            {{ cleanTrail(item.subrubro) || "—" }}
+          </span>
         </template>
 
-        <!-- ✅ STOCK: admin sin sucursal => resumen por sucursal (lazy) -->
-        <template #item.stock="{ item }">
-          <div class="text-right">
-            <div v-if="isAdmin && !branchId" class="text-caption font-weight-bold">
-              {{ stockSummaryLabel(item.id) }}
-            </div>
-            <div v-else class="font-weight-bold">
-              {{ stockLabel(item) }}
-            </div>
-          </div>
-        </template>
-
-        <template #item.created_by="{ item }">
-          <div class="text-caption">
-            {{ creatorLabel(item) || "—" }}
-          </div>
-        </template>
-
-        <template #item.created_at="{ item }">
-          <div class="text-caption">
-            {{ fmtDateTime(item?.created_at || item?.createdAt || item?.created_on || item?.createdOn) || "—" }}
+        <!-- ✅ CREACIÓN COMPACTA (sin romper estética / sin "a. m.") -->
+        <template #item.created="{ item }">
+          <div class="created-compact">
+            <span class="created-user">{{ creatorLabel(item) || "—" }}</span>
+            <span class="created-sep">·</span>
+            <span class="created-date">
+              {{ fmtDateTimeShort(item?.created_at || item?.createdAt || item?.created_on || item?.createdOn) || "—" }}
+            </span>
           </div>
         </template>
 
@@ -235,7 +227,6 @@
               color="red"
               @click="askDelete(item)"
               :title="'Eliminar'"
-              :disabled="isInactive(item)"
             />
           </div>
         </template>
@@ -387,6 +378,11 @@ function toNum(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+function toInt(v, d = 0) {
+  const n = parseInt(String(v ?? ""), 10);
+  return Number.isFinite(n) ? n : d;
+}
+
 function priceListNumber(it) {
   return toNum(it?.price_list, 0);
 }
@@ -394,10 +390,6 @@ function priceListNumber(it) {
 function stockQtyNumber(it) {
   const v = it?.stock_qty ?? it?.stock ?? it?.qty ?? it?.quantity ?? 0;
   return toNum(v, 0);
-}
-
-function stockLabel(it) {
-  return stockQtyNumber(it).toFixed(3);
 }
 
 function cleanTrail(s) {
@@ -409,17 +401,18 @@ function isInactive(it) {
   return it?.is_active === false || Number(it?.is_active) === 0;
 }
 
-function fmtDateTime(v) {
+/** ✅ compacto y sin "a. m." (24h) */
+function fmtDateTimeShort(v) {
   if (!v) return "";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("es-AR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
+  // dd/mm/yy HH:MM
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
 }
 
 function creatorLabel(it) {
@@ -468,6 +461,28 @@ function normalizeRemoveResult(r) {
   return { ok: false, code: "DELETE_FAILED", message: "No se pudo eliminar" };
 }
 
+/** ✅ FIX BORRADO: soporta distintos nombres de método en el store */
+async function callRemoveProduct(id) {
+  const fn =
+    (products && typeof products.remove === "function" && products.remove) ||
+    (products && typeof products.delete === "function" && products.delete) ||
+    (products && typeof products.destroy === "function" && products.destroy) ||
+    null;
+
+  if (!fn) {
+    return { ok: false, code: "CLIENT_NO_METHOD", message: "Store: falta método remove/delete/destroy" };
+  }
+
+  try {
+    const out = await fn(id);
+    return normalizeRemoveResult(out);
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || "No se pudo eliminar";
+    const code = e?.response?.data?.code || e?.code || "DELETE_FAILED";
+    return { ok: false, code, message: msg };
+  }
+}
+
 /* =========================
    BRANCHES
 ========================= */
@@ -500,7 +515,7 @@ function branchColor(id) {
 }
 
 /* =========================
-   CATEGORIES
+   CATEGORIES (map robusto)
 ========================= */
 async function loadCategoriesSafe() {
   try {
@@ -513,16 +528,49 @@ async function loadCategoriesSafe() {
   }
 }
 
+const parentList = computed(() => (Array.isArray(categories.parents) ? categories.parents : []));
+
+const parentMap = computed(() => {
+  const m = new Map();
+  for (const c of parentList.value) {
+    const id = Number(c?.id || 0);
+    const name = String(c?.name || "").trim();
+    if (id > 0 && name) m.set(id, name);
+  }
+  return m;
+});
+
+const childMap = computed(() => {
+  const m = new Map();
+  const ps = parentList.value;
+  if (typeof categories.childrenByParent !== "function") return m;
+
+  for (const p of ps) {
+    const pid = Number(p?.id || 0);
+    if (!pid) continue;
+    const children = categories.childrenByParent(pid) || [];
+    for (const c of children) {
+      const id = Number(c?.id || 0);
+      const name = String(c?.name || "").trim();
+      if (id > 0 && name) m.set(id, name);
+    }
+  }
+  return m;
+});
+
+function categoryNameById(id) {
+  const cid = Number(id || 0);
+  if (!cid) return "";
+  return parentMap.value.get(cid) || childMap.value.get(cid) || "";
+}
+
 const categoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
-  const parents = Array.isArray(categories.parents) ? categories.parents : [];
-
-  parents
+  parentList.value
     .map((c) => ({ id: Number(c?.id || 0), name: String(c?.name || "").trim() }))
     .filter((x) => x.id > 0 && x.name)
     .sort((a, b) => a.name.localeCompare(b.name, "es"))
     .forEach((x) => out.push({ title: x.name, value: x.id }));
-
   return out;
 });
 
@@ -531,10 +579,7 @@ const subcategoryItems = computed(() => {
   if (!categoryId.value) return out;
 
   const pid = Number(categoryId.value);
-  const children =
-    typeof categories.childrenByParent === "function"
-      ? categories.childrenByParent(pid)
-      : [];
+  const children = typeof categories.childrenByParent === "function" ? categories.childrenByParent(pid) : [];
 
   children
     .map((c) => ({ id: Number(c?.id || 0), name: String(c?.name || "").trim() }))
@@ -559,18 +604,48 @@ const branchItems = computed(() => {
 });
 
 /* =========================
-   ROWS NORMALIZADAS
+   ROWS NORMALIZADAS (FIX SUBRUBRO)
 ========================= */
 const normalized = computed(() => {
   return (products.items || []).map((x) => {
-    const cat = x?.category || null;
-    const parent = cat?.parent || null;
+    const catObj = x?.category || null;
+    const parentObj = catObj?.parent || null;
 
-    const rubro = parent?.name || cat?.name || null;
-    const subrubro = parent?.name ? (cat?.name || null) : null;
+    const cid = toInt(x?.category_id, 0) || null;
+    const scid = toInt(x?.subcategory_id, 0) || null;
 
-    const rubro_id = parent?.id ? Number(parent.id) : (cat?.id ? Number(cat.id) : null);
-    const subrubro_id = parent?.id ? (cat?.id ? Number(cat.id) : null) : null;
+    let rubro_id = null;
+    let subrubro_id = null;
+
+    let rubro = null;
+    let subrubro = null;
+
+    if (parentObj?.id) {
+      rubro_id = Number(parentObj.id) || null;
+      subrubro_id = Number(catObj?.id || 0) || null;
+
+      rubro = parentObj?.name || null;
+      subrubro = catObj?.name || null;
+    } else {
+      rubro_id = cid;
+      subrubro_id = scid;
+
+      rubro =
+        x?.rubro ||
+        x?.category_name ||
+        x?.categoryName ||
+        (rubro_id ? categoryNameById(rubro_id) : null) ||
+        null;
+
+      subrubro =
+        x?.subrubro ||
+        x?.subcategory_name ||
+        x?.subcategoryName ||
+        (subrubro_id ? categoryNameById(subrubro_id) : null) ||
+        null;
+    }
+
+    if (!rubro && catObj?.name && !parentObj?.id) rubro = catObj.name;
 
     const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
 
@@ -603,7 +678,7 @@ const filteredAll = computed(() => {
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    // admin con branch => si querés, mostrás solo con stock en esa sucursal
+    // si elegís sucursal, sólo mostramos con stock en esa sucursal (backend ya debería filtrar, esto es extra)
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
@@ -656,16 +731,14 @@ watch(
 );
 
 /* =========================
-   HEADERS
+   HEADERS (✅ SIN STOCK, ✅ CREACIÓN COMPACTA)
 ========================= */
 const headers = computed(() => {
   const base = [
     { title: "Nombre", key: "name", sortable: false },
     { title: "Rubro", key: "rubro", sortable: false },
     { title: "Subrubro", key: "subrubro", sortable: false },
-    { title: "Stock", key: "stock", sortable: false, align: "end" },
-    { title: "Creado por", key: "created_by", sortable: false },
-    { title: "Creado", key: "created_at", sortable: false },
+    { title: "Creación", key: "created", sortable: false },
     { title: "", key: "actions", sortable: false, align: "end" },
   ];
 
@@ -698,93 +771,6 @@ const imagesItems = [
 ];
 
 /* =========================
-   ✅ STOCK SUMMARY (ADMIN SIN SUCURSAL)
-   Lazy por página (20 items) usando /products/:id/branches
-========================= */
-const stockSummaryCache = ref({}); // { [productId]: { label, total, rows, ts } }
-const stockSummaryLoading = ref({}); // { [productId]: true }
-
-function normalizeMatrixRows(arr) {
-  const list = Array.isArray(arr) ? arr : [];
-  return list
-    .map((x) => ({
-      branch_id: Number(x?.branch_id || 0),
-      name: String(x?.branch_name || x?.name || `Sucursal #${x?.branch_id || ""}`),
-      enabled: Number(x?.enabled || 0) === 1 || x?.enabled === true,
-      qty: toNum(x?.current_qty ?? x?.qty ?? x?.stock_qty ?? 0, 0),
-    }))
-    .filter((x) => x.branch_id > 0);
-}
-
-function buildSummaryLabel(rows) {
-  const enabled = rows.filter((r) => r.enabled);
-  const total = enabled.reduce((a, r) => a + r.qty, 0);
-
-  // si querés ver también las deshabilitadas, cambiá enabled por rows.
-  const parts = enabled
-    .filter((r) => r.qty !== 0)
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
-    .map((r) => `${r.name}: ${r.qty.toFixed(0)}`);
-
-  if (!parts.length) return `Sin stock (Total ${total.toFixed(0)})`;
-  return `${parts.join(" · ")} (Total ${total.toFixed(0)})`;
-}
-
-async function ensureStockSummaryForIds(ids = []) {
-  if (!isAdmin.value) return;
-  if (branchId.value) return; // si hay sucursal seleccionada, no necesitamos resumen
-
-  const uniq = [...new Set(ids.map((x) => Number(x)).filter((x) => x > 0))];
-  for (const id of uniq) {
-    if (stockSummaryCache.value[id]) continue;
-    if (stockSummaryLoading.value[id]) continue;
-
-    stockSummaryLoading.value = { ...stockSummaryLoading.value, [id]: true };
-    try {
-      const matrix = await products.fetchBranchesMatrix(id);
-      const rows = normalizeMatrixRows(matrix);
-      const label = buildSummaryLabel(rows);
-      const total = rows.filter((r) => r.enabled).reduce((a, r) => a + r.qty, 0);
-
-      stockSummaryCache.value = {
-        ...stockSummaryCache.value,
-        [id]: { label, total, rows, ts: Date.now() },
-      };
-    } catch {
-      stockSummaryCache.value = {
-        ...stockSummaryCache.value,
-        [id]: { label: "—", total: 0, rows: [], ts: Date.now() },
-      };
-    } finally {
-      const next = { ...stockSummaryLoading.value };
-      delete next[id];
-      stockSummaryLoading.value = next;
-    }
-  }
-}
-
-function stockSummaryLabel(productId) {
-  const id = Number(productId || 0);
-  if (!id) return "—";
-  const cached = stockSummaryCache.value[id];
-  if (cached?.label) return cached.label;
-  if (stockSummaryLoading.value[id]) return "Cargando…";
-  return "—";
-}
-
-watch(
-  () => [pagedRows.value.map((x) => x.id).join(","), isAdmin.value, branchId.value],
-  async () => {
-    if (!isAdmin.value) return;
-    if (branchId.value) return;
-
-    const ids = (pagedRows.value || []).map((x) => x.id);
-    await ensureStockSummaryForIds(ids);
-  },
-  { immediate: true }
-);
-
-/* =========================
    ACTIONS
 ========================= */
 function openDetails(id) {
@@ -795,9 +781,7 @@ function openDetails(id) {
 async function openEdit(id) {
   if (!auth.isAuthed) return;
 
-  const bid = isAdmin.value
-    ? (branchId.value ? Number(branchId.value) : null)
-    : (userBranchId.value ? Number(userBranchId.value) : null);
+  const bid = isAdmin.value ? (branchId.value ? Number(branchId.value) : null) : userBranchId.value ? Number(userBranchId.value) : null;
 
   const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
@@ -865,8 +849,8 @@ async function doDelete() {
   const id = Number(deleteItem.value.id);
 
   try {
-    const r0 = await products.remove(id);
-    const r = normalizeRemoveResult(r0);
+    // ✅ acá estaba el problema más común: store sin método remove o devuelve formatos distintos
+    const r = await callRemoveProduct(id);
 
     if (r.ok) {
       toast("Producto eliminado");
@@ -902,7 +886,7 @@ async function bulkDisableOrDelete() {
   for (const id of ids) {
     try {
       if (isAdmin.value) {
-        const r = normalizeRemoveResult(await products.remove(id));
+        const r = await callRemoveProduct(id);
         if (r.ok) {
           deleted++;
         } else if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
@@ -936,13 +920,7 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  const bid = isAdmin.value
-    ? (branchId.value ? Number(branchId.value) : null)
-    : (userBranchId.value ? Number(userBranchId.value) : null);
-
-  // ✅ cuando refrescás data, invalidamos cache de resumen porque puede haber cambiado stock
-  stockSummaryCache.value = {};
-  stockSummaryLoading.value = {};
+  const bid = isAdmin.value ? (branchId.value ? Number(branchId.value) : null) : userBranchId.value ? Number(userBranchId.value) : null;
 
   await loadCategoriesSafe();
   await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
@@ -963,5 +941,31 @@ watch(
 <style scoped>
 .pos-table :deep(th) {
   font-weight: 800;
+}
+
+/* ✅ evita que "Creación" rompa a 2 líneas */
+.created-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  max-width: 360px;
+}
+
+.created-user {
+  font-size: 12px;
+  opacity: 0.9;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.created-sep {
+  opacity: 0.5;
+}
+
+.created-date {
+  font-size: 12px;
+  opacity: 0.9;
 }
 </style>
