@@ -29,7 +29,7 @@
       {{ error }}
     </v-alert>
 
-    <v-card rounded="xl" variant="tonal" class="ps-card">
+    <v-card rounded="xl" variant="flat" class="ps-card">
       <v-data-table
         :headers="headers"
         :items="filteredRows"
@@ -55,32 +55,80 @@
         </template>
 
         <template #item.qty="{ item }">
-          <v-text-field
-            v-model="qtyMap[item.branch_id]"
-            type="number"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            :disabled="disabled || loading"
-            style="max-width: 180px"
-            @update:modelValue="(v) => onQty(item.branch_id, v)"
-          />
-        </template>
+          <div class="d-flex align-center ga-2">
+            <v-tooltip
+              v-if="!isEnabled(item)"
+              text="Habilitá la sucursal para poder cargar cantidad"
+              location="top"
+            >
+              <template #activator="{ props: tprops }">
+                <div v-bind="tprops" class="w-100">
+                  <v-text-field
+                    v-model="qtyMap[item.branch_id]"
+                    type="number"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    class="ps-qty"
+                    :disabled="true"
+                    :readonly="true"
+                    @update:modelValue="(v) => onQty(item.branch_id, v)"
+                  />
+                </div>
+              </template>
+            </v-tooltip>
 
-        <template #bottom>
-          <div class="text-caption text-medium-emphasis pa-3">
-            <template v-if="!showCurrent">
-              * Esto es <b>preview</b>. Se aplica recién al tocar <b>CREAR</b> en el Resumen.
-              <br />
-              * Tip: si dejás <b>0</b>, no se envía nada (no pisa stock).
-            </template>
-            <template v-else>
-              * Esto es <b>preview</b>. Se aplica al tocar <b>GUARDAR</b> en el Resumen.
-              <br />
-              * En edición: se envía el cambio <b>solo si Cantidad != Actual</b> (incluye <b>0</b> si querés dejar stock en cero).
-            </template>
+            <v-text-field
+              v-else
+              v-model="qtyMap[item.branch_id]"
+              type="number"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="ps-qty"
+              :disabled="disabled || loading"
+              @update:modelValue="(v) => onQty(item.branch_id, v)"
+            />
+
+            <!-- mini hint visual -->
+            <v-chip
+              size="x-small"
+              variant="tonal"
+              :color="isEnabled(item) ? 'green' : 'grey'"
+              class="ps-chip-mini"
+            >
+              {{ isEnabled(item) ? "editable" : "bloqueado" }}
+            </v-chip>
           </div>
         </template>
+
+        <!-- ✅ HABILITADA -->
+        <template #item.enabled="{ item }">
+          <div class="d-flex align-center justify-end ga-2">
+            <!-- Estado textual SI/NO para que el usuario no dependa del color -->
+            <v-chip
+              size="small"
+              :variant="isEnabled(item) ? 'flat' : 'tonal'"
+              :color="isEnabled(item) ? 'green' : 'grey'"
+              class="ps-chip"
+            >
+              {{ isEnabled(item) ? "Sí" : "No" }}
+            </v-chip>
+
+            <v-switch
+              :model-value="isEnabled(item)"
+              @update:modelValue="(v) => onEnabled(item.branch_id, v)"
+              :disabled="disabled || loading"
+              density="comfortable"
+              inset
+              hide-details
+              color="green"
+              class="ps-switch"
+            />
+          </div>
+        </template>
+
+
       </v-data-table>
     </v-card>
   </div>
@@ -89,11 +137,11 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../../app/store/products.store";
-import http from "../../../../app/api/http"; // ✅ fallback seguro si fetchBranches no existe
+import http from "../../../../app/api/http";
 
 const props = defineProps({
   productId: { type: [Number, String], default: null },
-  modelValue: { type: Array, default: () => [] }, // [{branch_id, branch_name, warehouse_id?, current_qty?, qty}]
+  modelValue: { type: Array, default: () => [] }, // [{branch_id, branch_name, warehouse_id?, current_qty?, qty, enabled}]
   disabled: { type: Boolean, default: false },
 });
 
@@ -116,6 +164,13 @@ function num(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
+function toBool(v, d = false) {
+  if (typeof v === "boolean") return v;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "true" || s === "1") return true;
+  if (s === "false" || s === "0") return false;
+  return d;
+}
 
 const showCurrent = computed(() => toInt(props.productId, 0) > 0);
 
@@ -125,10 +180,12 @@ const rows = computed({
 });
 
 const headers = computed(() => {
-  const base = [{ title: "Sucursal", key: "branch", sortable: false }];
-  base.push({ title: "Actual", key: "current_qty", sortable: false, align: "end", width: 130 });
-  base.push({ title: "Cantidad", key: "qty", sortable: false, width: 220 });
-  return base;
+  return [
+    { title: "Sucursal", key: "branch", sortable: false },
+    { title: "Stock", key: "current_qty", sortable: false, align: "end", width: 120 },
+    { title: "Cantidad", key: "qty", sortable: false, width: 320 },
+    { title: "Habilitada", key: "enabled", sortable: false, align: "end", width: 220 },
+  ];
 });
 
 const filteredRows = computed(() => {
@@ -136,6 +193,11 @@ const filteredRows = computed(() => {
   if (!qq) return rows.value;
   return rows.value.filter((r) => String(r.branch_name || "").toLowerCase().includes(qq));
 });
+
+function isEnabled(item) {
+  // backend manda enabled 0/1 en getBranchesMatrix, o el front lo setea
+  return toBool(item?.enabled, false);
+}
 
 function syncQtyMapFromRows() {
   const map = { ...(qtyMap.value || {}) };
@@ -165,7 +227,23 @@ function onQty(branchId, v) {
   writeRowsFromMap();
 }
 
-// ✅ fallback: si store no tiene fetchBranches, pega a /branches directamente
+function onEnabled(branchId, v) {
+  const bid = toInt(branchId, 0);
+  if (!bid) return;
+
+  const enabled = toBool(v, false);
+
+  // si deshabilita, por UX dejamos qty en 0 (pero NO pisa stock hasta guardar/crear)
+  const next = (rows.value || []).map((r) => {
+    if (toInt(r.branch_id, 0) !== bid) return r;
+    const qty = enabled ? num(r.qty, 0) : 0;
+    qtyMap.value = { ...qtyMap.value, [bid]: qty };
+    return { ...r, enabled, qty };
+  });
+
+  rows.value = next;
+}
+
 async function fetchBranchesSafe() {
   if (products && typeof products.fetchBranches === "function") {
     return await products.fetchBranches();
@@ -185,22 +263,23 @@ async function refresh() {
     if (pid > 0) {
       const matrix = await products.fetchBranchesMatrix(pid);
 
-      // ✅ IMPORTANTE: preservamos current_qty REAL (para edición) y warehouse_id default
       const arr = (Array.isArray(matrix) ? matrix : []).map((x) => ({
         branch_id: toInt(x.branch_id ?? x.id, 0),
         branch_name: x.branch_name || x.name || "",
         warehouse_id: toInt(x.warehouse_id ?? x.default_warehouse_id ?? x.wid, 0),
         current_qty: num(x.current_qty ?? x.qty ?? x.stock_qty ?? 0, 0),
         qty: num(x.assign_qty ?? x.qty_to_set ?? 0, 0),
+        enabled: toBool(x.enabled ?? x.is_active ?? 0, false),
       }));
 
-      // ✅ mantenemos lo que el usuario ya tipeó (qty), pero actualizamos current_qty/warehouse_id/branch_name
       const local = Array.isArray(rows.value) ? rows.value : [];
       const localMapQty = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
+      const localMapEnabled = new Map(local.map((r) => [toInt(r.branch_id, 0), toBool(r.enabled, false)]));
 
       const merged = arr.map((r) => ({
         ...r,
         qty: localMapQty.has(r.branch_id) ? localMapQty.get(r.branch_id) : num(r.qty, 0),
+        enabled: localMapEnabled.has(r.branch_id) ? localMapEnabled.get(r.branch_id) : toBool(r.enabled, false),
       }));
 
       rows.value = merged.filter((r) => r.branch_id > 0 && r.branch_name);
@@ -213,13 +292,19 @@ async function refresh() {
         warehouse_id: toInt(b.warehouse_id ?? b.default_warehouse_id ?? 0, 0),
         current_qty: 0,
         qty: 0,
+        enabled: false,
       }));
 
       const local = Array.isArray(rows.value) ? rows.value : [];
       const localMapQty = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
+      const localMapEnabled = new Map(local.map((r) => [toInt(r.branch_id, 0), toBool(r.enabled, false)]));
 
       rows.value = arr
-        .map((r) => ({ ...r, qty: localMapQty.has(r.branch_id) ? localMapQty.get(r.branch_id) : 0 }))
+        .map((r) => ({
+          ...r,
+          qty: localMapQty.has(r.branch_id) ? localMapQty.get(r.branch_id) : 0,
+          enabled: localMapEnabled.has(r.branch_id) ? localMapEnabled.get(r.branch_id) : false,
+        }))
         .filter((r) => r.branch_id > 0 && r.branch_name);
     }
 
@@ -258,12 +343,53 @@ watch(
   flex-wrap: wrap;
 }
 
+/* ✅ menos “gris lavado” en dark */
 .ps-card {
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
   padding: 8px;
 }
 
 .ps-table :deep(th) {
   font-weight: 900;
+}
+
+/* input ancho consistente */
+.ps-qty :deep(.v-field) {
+  border-radius: 12px;
+}
+
+/* mini chip editable/bloqueado */
+.ps-chip-mini {
+  opacity: 0.85;
+}
+
+/* ✅ Switch con contraste claro en dark */
+.ps-switch :deep(.v-switch__track) {
+  opacity: 1 !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.10);
+}
+.ps-switch :deep(.v-switch__thumb) {
+  opacity: 1 !important;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* cuando está ON, que se note fuerte */
+.ps-switch.v-input--is-dirty :deep(.v-switch__track),
+.ps-switch :deep(.v-selection-control--dirty .v-switch__track) {
+  border-color: rgba(0, 255, 140, 0.55);
+  background: rgba(0, 255, 140, 0.18);
+}
+
+/* bottom */
+.ps-bottom {
+  padding: 12px 14px;
+  opacity: 0.92;
+}
+.ps-bottom code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 }
 </style>

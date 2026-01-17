@@ -330,7 +330,9 @@ const dialogMaxWidth = computed(() => (isMobile.value ? "100%" : 980));
 const step = ref(1);
 const nextCodePreview = ref(null);
 
-const stockMatrix = ref([]); // [{branch_id, branch_name, warehouse_id, current_qty, qty}]
+// ✅ ahora stockMatrix puede traer enabled también
+// [{branch_id, branch_name, warehouse_id, enabled, current_qty, qty}]
+const stockMatrix = ref([]);
 const queuedImages = ref([]); // File[]
 
 const snack = ref({ open: false, text: "" });
@@ -359,6 +361,13 @@ function num(v, d = 0) {
 function safe(v) {
   const s = String(v ?? "").trim();
   return s ? s : "—";
+}
+function toBool(v, d = false) {
+  if (typeof v === "boolean") return v;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "true" || s === "1") return true;
+  if (s === "false" || s === "0") return false;
+  return d;
 }
 
 /**
@@ -444,6 +453,7 @@ const stockPreviewList = computed(() => {
       branch_id: toInt(r.branch_id, 0),
       branch_name: String(r.branch_name || "").trim(),
       qty: num(r.qty, 0),
+      enabled: toBool(r.enabled, false),
     }))
     .filter((x) => x.branch_id > 0 && x.branch_name && Number.isFinite(x.qty) && x.qty !== 0);
 });
@@ -548,6 +558,32 @@ function buildPayload() {
   return payload;
 }
 
+/**
+ * ✅ CLAVE: branch_ids para persistir product_branches.is_active
+ * - Si el usuario marcó enabled=true en una sucursal => entra
+ * - Si cargó qty != 0 => también entra (lo activa)
+ * - Incluimos owner branch_id si existe
+ */
+function buildBranchIdsFromStockMatrix() {
+  const arr = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
+  const bids = [];
+
+  for (const r of arr) {
+    const bid = toInt(r.branch_id, 0);
+    if (!bid) continue;
+
+    const enabled = toBool(r.enabled, false);
+    const qty = num(r.qty, 0);
+
+    if (enabled || qty !== 0) bids.push(bid);
+  }
+
+  const owner = toInt(draft.value?.branch_id, 0);
+  if (owner) bids.push(owner);
+
+  return Array.from(new Set(bids));
+}
+
 /* ====== Navegación ====== */
 function prevStep() {
   step.value = Math.max(1, step.value - 1);
@@ -584,8 +620,10 @@ async function createAll() {
   products.lastFieldErrors = null;
 
   try {
-    // 1) crear producto
+    // 1) crear producto (✅ incluir branch_ids para habilitar sucursales)
     const payload = buildPayload();
+    payload.branch_ids = buildBranchIdsFromStockMatrix();
+
     const res = await products.create(payload);
 
     if (!res) {
@@ -603,11 +641,14 @@ async function createAll() {
     draft.value = { ...draft.value, ...deepClone(created) };
     nextCodePreview.value = null;
 
-    // 2) aplicar stock (solo qty != 0)
+    // 2) aplicar stock (solo qty != 0 y SOLO si la sucursal está habilitada)
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
       const wid = toInt(r.warehouse_id, 0);
+
+      const enabled = toBool(r.enabled, false);
+      if (!enabled) continue;
 
       const qty = num(r.qty, NaN);
       if (!Number.isFinite(qty)) continue;
@@ -660,8 +701,10 @@ async function saveAll() {
   products.lastFieldErrors = null;
 
   try {
-    // 1) update producto
+    // 1) update producto (✅ incluir branch_ids para persistir habilitadas)
     const payload = buildPayload();
+    payload.branch_ids = buildBranchIdsFromStockMatrix();
+
     const res = await products.update(pid, payload);
 
     if (!res) {
@@ -670,10 +713,14 @@ async function saveAll() {
     }
 
     // 2) aplicar stock SET ABSOLUTO donde haya cambios (incluye 0)
+    // ✅ solo sobre sucursales habilitadas (enabled=true)
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
       const wid = toInt(r.warehouse_id, 0);
+
+      const enabled = toBool(r.enabled, false);
+      if (!enabled) continue;
 
       const qty = num(r.qty, NaN);
       const cur = num(r.current_qty, NaN);
@@ -681,7 +728,7 @@ async function saveAll() {
       if (!Number.isFinite(qty)) continue;
       if (!Number.isFinite(cur)) continue;
 
-      if (qty === cur) continue; // solo cambios reales
+      if (qty === cur) continue;
 
       const ok = await products.initStock({
         product_id: pid,
@@ -693,9 +740,6 @@ async function saveAll() {
       if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
-    // ⚠️ Imágenes en edit: lo dejo apagado para no tocar tu flujo actual.
-    // Si querés, lo habilitamos con un "replace/add" controlado.
-
     emit("saved");
     toast("✅ Cambios guardados");
     openLocal.value = false;
@@ -704,6 +748,7 @@ async function saveAll() {
   }
 }
 </script>
+
 
 <style>
 .pf-overlay .pf-card {
