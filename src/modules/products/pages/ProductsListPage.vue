@@ -76,7 +76,7 @@
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="subcategoryId"
+            v-model="subcategoryName"
             :items="subcategoryItems"
             item-title="title"
             item-value="value"
@@ -329,13 +329,14 @@ const userBranchId = computed(() => {
 const q = ref("");
 const branchId = ref(null);
 const categoryId = ref(null);
-const subcategoryId = ref(null);
+
+// ✅ Subrubro por NOMBRE (robusto, no depende de IDs cruzados)
+const subcategoryName = ref(null);
 
 const stockFilter = ref("all");
 const pricePresence = ref("all");
 const priceMin = ref(null);
 const priceMax = ref(null);
-
 const imagesFilter = ref("all");
 
 /* =========================
@@ -406,7 +407,6 @@ function fmtDateTimeShort(v) {
   if (!v) return "";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "";
-  // dd/mm/yy HH:MM
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
@@ -515,7 +515,7 @@ function branchColor(id) {
 }
 
 /* =========================
-   CATEGORIES (map robusto)
+   CATEGORIES
 ========================= */
 async function loadCategoriesSafe() {
   try {
@@ -530,40 +530,6 @@ async function loadCategoriesSafe() {
 
 const parentList = computed(() => (Array.isArray(categories.parents) ? categories.parents : []));
 
-const parentMap = computed(() => {
-  const m = new Map();
-  for (const c of parentList.value) {
-    const id = Number(c?.id || 0);
-    const name = String(c?.name || "").trim();
-    if (id > 0 && name) m.set(id, name);
-  }
-  return m;
-});
-
-const childMap = computed(() => {
-  const m = new Map();
-  const ps = parentList.value;
-  if (typeof categories.childrenByParent !== "function") return m;
-
-  for (const p of ps) {
-    const pid = Number(p?.id || 0);
-    if (!pid) continue;
-    const children = categories.childrenByParent(pid) || [];
-    for (const c of children) {
-      const id = Number(c?.id || 0);
-      const name = String(c?.name || "").trim();
-      if (id > 0 && name) m.set(id, name);
-    }
-  }
-  return m;
-});
-
-function categoryNameById(id) {
-  const cid = Number(id || 0);
-  if (!cid) return "";
-  return parentMap.value.get(cid) || childMap.value.get(cid) || "";
-}
-
 const categoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
   parentList.value
@@ -574,78 +540,32 @@ const categoryItems = computed(() => {
   return out;
 });
 
-const subcategoryItems = computed(() => {
-  const out = [{ title: "Todos", value: null }];
-  if (!categoryId.value) return out;
-
-  const pid = Number(categoryId.value);
-  const children = typeof categories.childrenByParent === "function" ? categories.childrenByParent(pid) : [];
-
-  children
-    .map((c) => ({ id: Number(c?.id || 0), name: String(c?.name || "").trim() }))
-    .filter((x) => x.id > 0 && x.name)
-    .sort((a, b) => a.name.localeCompare(b.name, "es"))
-    .forEach((x) => out.push({ title: x.name, value: x.id }));
-
-  return out;
-});
-
 function onCategoryChange() {
-  subcategoryId.value = null;
+  subcategoryName.value = null;
 }
 
-const branchItems = computed(() => {
-  const out = [{ title: "Todas", value: null }];
-  const arr = (branches.value || [])
-    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
-    .filter((x) => x.value > 0)
-    .sort((a, b) => a.value - b.value);
-  return out.concat(arr);
-});
-
 /* =========================
-   ROWS NORMALIZADAS (FIX SUBRUBRO)
+   ROWS NORMALIZADAS (✅ usa subcategory REAL si viene)
 ========================= */
 const normalized = computed(() => {
   return (products.items || []).map((x) => {
-    const catObj = x?.category || null;
-    const parentObj = catObj?.parent || null;
-
     const cid = toInt(x?.category_id, 0) || null;
-    const scid = toInt(x?.subcategory_id, 0) || null;
 
-    let rubro_id = null;
-    let subrubro_id = null;
+    // ✅ Rubro: preferimos category.name (es tu rubro real)
+    const rubro =
+      x?.category?.name ||
+      x?.rubro ||
+      x?.category_name ||
+      x?.categoryName ||
+      null;
 
-    let rubro = null;
-    let subrubro = null;
-
-    if (parentObj?.id) {
-      rubro_id = Number(parentObj.id) || null;
-      subrubro_id = Number(catObj?.id || 0) || null;
-
-      rubro = parentObj?.name || null;
-      subrubro = catObj?.name || null;
-    } else {
-      rubro_id = cid;
-      subrubro_id = scid;
-
-      rubro =
-        x?.rubro ||
-        x?.category_name ||
-        x?.categoryName ||
-        (rubro_id ? categoryNameById(rubro_id) : null) ||
-        null;
-
-      subrubro =
-        x?.subrubro ||
-        x?.subcategory_name ||
-        x?.subcategoryName ||
-        (subrubro_id ? categoryNameById(subrubro_id) : null) ||
-        null;
-    }
-
-    if (!rubro && catObj?.name && !parentObj?.id) rubro = catObj.name;
+    // ✅ Subrubro: preferimos subcategory.name (tabla subcategories)
+    const subrubro =
+      x?.subcategory?.name ||
+      x?.subrubro ||
+      x?.subcategory_name ||
+      x?.subcategoryName ||
+      null;
 
     const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
 
@@ -653,8 +573,8 @@ const normalized = computed(() => {
       ...x,
       rubro,
       subrubro,
-      rubro_id,
-      subrubro_id,
+      rubro_id: cid,
+      subrubro_key: String(subrubro || "").trim().toLowerCase() || null,
       imagesCount,
       _price_list_num: priceListNumber(x),
       _stock_num: stockQtyNumber(x),
@@ -663,12 +583,35 @@ const normalized = computed(() => {
 });
 
 /* =========================
+   SUBRUBROS (✅ del listado real)
+   - evita depender de IDs cruzados categories/subcategories
+========================= */
+const subcategoryItems = computed(() => {
+  const out = [{ title: "Todos", value: null }];
+  const pid = categoryId.value ? Number(categoryId.value) : 0;
+  if (!pid) return out;
+
+  const set = new Map(); // key lower -> label
+  for (const it of normalized.value) {
+    if (Number(it?.rubro_id || 0) !== pid) continue;
+    const name = String(it?.subrubro || "").trim();
+    if (!name) continue;
+    set.set(name.toLowerCase(), name);
+  }
+
+  const arr = Array.from(set.values()).sort((a, b) => a.localeCompare(b, "es"));
+  for (const name of arr) out.push({ title: name, value: name.toLowerCase() });
+
+  return out;
+});
+
+/* =========================
    FILTRADO
 ========================= */
 const filteredAll = computed(() => {
   const qq = String(q.value || "").trim().toLowerCase();
   const pid = categoryId.value ? Number(categoryId.value) : null;
-  const cid = subcategoryId.value ? Number(subcategoryId.value) : null;
+  const subKey = subcategoryName.value ? String(subcategoryName.value).toLowerCase() : null;
 
   const pmin = priceMin.value !== null && priceMin.value !== "" ? Number(priceMin.value) : null;
   const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
@@ -678,13 +621,15 @@ const filteredAll = computed(() => {
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    // si elegís sucursal, sólo mostramos con stock en esa sucursal (backend ya debería filtrar, esto es extra)
+    // si elegís sucursal, sólo mostramos con stock en esa sucursal (extra)
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
 
     if (pid && Number(it?.rubro_id || 0) !== pid) return false;
-    if (cid && Number(it?.subrubro_id || 0) !== cid) return false;
+
+    // ✅ subrubro por NOMBRE normalizado
+    if (subKey && String(it?.subrubro_key || "") !== subKey) return false;
 
     if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
     if (stockFilter.value === "without" && !(it._stock_num <= 0)) return false;
@@ -716,7 +661,7 @@ watch(
     q.value,
     branchId.value,
     categoryId.value,
-    subcategoryId.value,
+    subcategoryName.value,
     stockFilter.value,
     pricePresence.value,
     priceMin.value,
@@ -770,6 +715,15 @@ const imagesItems = [
   { title: "Sin imágenes", value: "without" },
 ];
 
+const branchItems = computed(() => {
+  const out = [{ title: "Todas", value: null }];
+  const arr = (branches.value || [])
+    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => a.value - b.value);
+  return out.concat(arr);
+});
+
 /* =========================
    ACTIONS
 ========================= */
@@ -781,7 +735,13 @@ function openDetails(id) {
 async function openEdit(id) {
   if (!auth.isAuthed) return;
 
-  const bid = isAdmin.value ? (branchId.value ? Number(branchId.value) : null) : userBranchId.value ? Number(userBranchId.value) : null;
+  const bid = isAdmin.value
+    ? branchId.value
+      ? Number(branchId.value)
+      : null
+    : userBranchId.value
+      ? Number(userBranchId.value)
+      : null;
 
   const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
@@ -806,7 +766,7 @@ async function clearFilters() {
   q.value = "";
   branchId.value = null;
   categoryId.value = null;
-  subcategoryId.value = null;
+  subcategoryName.value = null;
   stockFilter.value = "all";
   pricePresence.value = "all";
   priceMin.value = null;
@@ -849,7 +809,6 @@ async function doDelete() {
   const id = Number(deleteItem.value.id);
 
   try {
-    // ✅ acá estaba el problema más común: store sin método remove o devuelve formatos distintos
     const r = await callRemoveProduct(id);
 
     if (r.ok) {
@@ -920,7 +879,13 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  const bid = isAdmin.value ? (branchId.value ? Number(branchId.value) : null) : userBranchId.value ? Number(userBranchId.value) : null;
+  const bid = isAdmin.value
+    ? branchId.value
+      ? Number(branchId.value)
+      : null
+    : userBranchId.value
+      ? Number(userBranchId.value)
+      : null;
 
   await loadCategoriesSafe();
   await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });

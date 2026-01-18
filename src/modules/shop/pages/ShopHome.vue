@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopHome.vue -->
 <template>
   <v-container fluid class="shop-page pa-0">
@@ -48,29 +49,17 @@
 
         <div class="d-flex ga-2 align-center flex-wrap">
           <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
-
-          <v-btn variant="tonal" :loading="loading" @click="fetchCatalog({ append: false })">
-            Actualizar
-          </v-btn>
-
-          <v-btn to="/shop/cart" color="primary" variant="tonal">
-            Carrito ({{ cartCount }})
-          </v-btn>
+          <!-- ✅ Se sacan: Actualizar + Carrito -->
         </div>
       </div>
 
       <!-- ⚠️ ALERTA DE ERROR EN CATALOGO (visible también en navegador de Meta) -->
-      <v-alert
-        v-if="itemsError"
-        type="error"
-        variant="tonal"
-        class="mb-4"
-      >
+      <v-alert v-if="itemsError" type="error" variant="tonal" class="mb-4">
         Error al cargar el catálogo: {{ itemsError }}
         <template v-if="isMetaWebView">
           <br />
-          Estás usando el navegador interno de Instagram/Facebook. Si el problema continúa,
-          abrí esta web en el navegador del teléfono (tres puntos ··· → “Abrir en navegador”).
+          Estás usando el navegador interno de Instagram/Facebook. Si el problema continúa, abrí esta web en
+          el navegador del teléfono (tres puntos ··· → “Abrir en navegador”).
         </template>
       </v-alert>
 
@@ -88,10 +77,20 @@
         <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
+      <!-- ✅ CARGAR MÁS (append) -->
+      <div v-if="!itemsError && items.length" class="d-flex justify-center mt-6">
+        <v-btn v-if="hasMore" variant="tonal" size="large" :loading="loadingMore" @click="loadMore">
+          Cargar más
+        </v-btn>
+
+        <div v-else class="text-caption text-medium-emphasis">No hay más productos para mostrar.</div>
+      </div>
+
       <div class="after-products-banner" v-if="!loading && items.length && !itemsError">
         <PromoBannerParlantes />
       </div>
 
+      <!-- ✅ SLIDER AURICULARES -->
       <div class="mt-6">
         <PromoSliderAuriculares
           :loading="aurisLoading"
@@ -102,6 +101,15 @@
           iconUrl="https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg"
         />
       </div>
+
+      <!-- ✅ SLIDER CARGADORES (DESPUÉS DE AURICULARES) -->
+      <div class="mt-6">
+        <PromoSliderCargadores />
+      </div>
+      <div class="mt-6">
+  <PromoSliderHogarElectro />
+</div>
+
     </section>
 
     <ShopFooter />
@@ -114,27 +122,28 @@ import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
-import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
 import HomeCategoriesCarousel from "@/modules/shop/components/HomeCategoriesCarousel.vue";
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
 import PromoSliderAuriculares from "@/modules/shop/components/PromoSliderAuriculares.vue";
+import PromoSliderCargadores from "@/modules/shop/components/PromoSliderCargadores.vue";
+import PromoSliderHogarElectro from "@/modules/shop/components/PromoSliderHogarElectro.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 
 const route = useRoute();
 const router = useRouter();
-const cart = useShopCartStore();
 
 const loading = ref(false);
+const loadingMore = ref(false);
 const itemsError = ref(null);
 
 const items = ref([]);
 const page = ref(Number(route.query.page || 1));
-const limit = ref(24);
+const limit = ref(48); // ✅ más productos en el home
 const total = ref(0);
 const allCats = ref([]);
 
@@ -150,12 +159,8 @@ const subcategory_id = computed(() =>
   route.query.subcategory_id ? Number(route.query.subcategory_id) : null
 );
 
-const cartCount = computed(() => cart.count);
-
 // Detectar navegador interno de Meta (Instagram / FB / Messenger)
-const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(
-  navigator.userAgent || ""
-);
+const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -233,14 +238,24 @@ const promoItems = computed(() => {
   return base.slice(0, 18);
 });
 
+const hasMore = computed(() => {
+  const t = Number(total.value || 0);
+  return t > 0 && items.value.length < t;
+});
+
 async function fetchCatalog({ append = false } = {}) {
-  if (!append) loading.value = true;
+  // append => traemos la "siguiente página" y concatenamos
+  const targetPage = append ? Number(page.value || 1) + 1 : Number(page.value || 1);
+
+  if (append) loadingMore.value = true;
+  else loading.value = true;
+
   itemsError.value = null;
 
   try {
     const r = await getCatalog({
       search: q.value || "",
-      page: page.value,
+      page: targetPage,
       limit: limit.value,
       category_id: category_id.value,
       subcategory_id: subcategory_id.value,
@@ -248,22 +263,40 @@ async function fetchCatalog({ append = false } = {}) {
 
     const newItems = Array.isArray(r.items) ? r.items : [];
     total.value = Number(r.total || 0);
-    items.value = newItems;
+
+    if (append) {
+      // ✅ concatenar
+      items.value = [...items.value, ...newItems];
+      page.value = targetPage;
+    } else {
+      items.value = newItems;
+      // si venís sin query.page, mantenemos page actual
+      page.value = Number(route.query.page || 1);
+    }
   } catch (e) {
     console.error("❌ fetchCatalog(Home)", e);
 
-    // Mensaje visible para debug (especialmente en Meta WebView)
     const msg =
       e?.response?.status
         ? `${e.response.status} ${e.response.statusText || ""}`.trim()
         : e?.message || String(e);
 
     itemsError.value = msg;
-    items.value = [];
-    total.value = 0;
+
+    // si era append, NO borramos lo que ya está
+    if (!append) {
+      items.value = [];
+      total.value = 0;
+    }
   } finally {
     loading.value = false;
+    loadingMore.value = false;
   }
+}
+
+function loadMore() {
+  if (loading.value || loadingMore.value || !hasMore.value) return;
+  fetchCatalog({ append: true });
 }
 
 /* taxonomy helpers */
@@ -272,7 +305,6 @@ function norm(s) {
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    // fallo posible en engines viejos → try/catch de seguridad
     .replace(/\p{Diacritic}/gu, "");
 }
 function getCatSubs(cat) {
@@ -392,6 +424,7 @@ onMounted(async () => {
 watch(
   () => route.query,
   async () => {
+    // ✅ al cambiar filtros, reseteamos pagina local y traemos de cero
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
 
