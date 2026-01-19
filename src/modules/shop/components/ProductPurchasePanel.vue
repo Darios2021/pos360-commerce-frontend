@@ -1,6 +1,7 @@
 <!-- src/modules/shop/components/ProductPurchasePanel.vue -->
 <template>
-  <v-card class="ml-panel" variant="outlined">
+  <!-- ✅ IMPORTANTE: agregamos la clase info (la usa ShopProduct.vue para el layout) -->
+  <v-card class="ml-panel info" variant="outlined">
     <v-card-text class="ml-pad">
       <!-- =======================
            TOP: condición + vendidos
@@ -17,12 +18,6 @@
            ======================= -->
       <div class="ml-title">
         {{ product?.name || "—" }}
-      </div>
-
-      <!-- ✅ NUEVO: marca / modelo (misma exhibición principal) -->
-      <div v-if="brandModelLine" class="ml-brandmodel">
-        <v-icon size="16" class="mr-1">mdi-tag-outline</v-icon>
-        <span class="ml-muted">{{ brandModelLine }}</span>
       </div>
 
       <!-- =======================
@@ -62,64 +57,20 @@
         <span class="ml-strong">{{ colorLabel }}</span>
       </div>
 
-      <!-- ✅ NUEVO: descripción (colapsable, dentro del mismo panel) -->
-      <div v-if="descriptionText" class="ml-desc">
-        <div class="ml-desc-title">
-          <span class="ml-strong">Descripción</span>
-          <a
-            href="javascript:void(0)"
-            class="ml-link ml-desc-toggle"
-            @click="descOpen = !descOpen"
-          >
-            {{ descOpen ? "Ocultar" : "Ver más" }}
-          </a>
-        </div>
-
-        <div class="ml-desc-body" :class="{ open: descOpen }">
-          {{ descriptionText }}
-        </div>
-      </div>
-
       <!-- =======================
            HIGHLIGHTS
            ======================= -->
       <div class="ml-know">
         <div class="ml-know-title">Lo que tenés que saber de este producto</div>
-
         <ul class="ml-know-list">
-          <!-- Mantengo tus casos -->
           <li v-if="ramLabel">Memoria RAM: {{ ramLabel }}.</li>
           <li v-if="storageLabel">Memoria interna: {{ storageLabel }}.</li>
-
-          <!-- ✅ NUEVO: features genéricos (si vienen del backend) -->
-          <li v-for="(f, i) in featuresList" :key="i">{{ f }}</li>
-
           <li v-if="product?.track_stock" class="ml-know-stock">
             Stock disponible.
           </li>
         </ul>
 
-        <a
-          v-if="featuresList.length"
-          href="javascript:void(0)"
-          class="ml-link ml-know-link"
-          @click="featuresOpen = !featuresOpen"
-        >
-          {{ featuresOpen ? "Ocultar características" : "Ver características" }}
-        </a>
-
-        <div v-if="featuresOpen && featuresList.length" class="ml-features">
-          <v-chip-group column>
-            <v-chip
-              v-for="(f, i) in featuresList"
-              :key="'c' + i"
-              size="small"
-              variant="tonal"
-            >
-              {{ f }}
-            </v-chip>
-          </v-chip-group>
-        </div>
+        <a href="javascript:void(0)" class="ml-link ml-know-link">Ver características</a>
       </div>
 
       <!-- =======================
@@ -215,9 +166,7 @@
 
         <!-- SELLER -->
         <div v-if="sellerLabel" class="ml-seller">
-          <div class="ml-muted">
-            Vendido por <span class="ml-link">{{ sellerLabel }}</span>
-          </div>
+          <div class="ml-muted">Vendido por <span class="ml-link">{{ sellerLabel }}</span></div>
           <div v-if="sellerMeta" class="ml-muted">{{ sellerMeta }}</div>
         </div>
 
@@ -260,11 +209,6 @@ const props = defineProps({
 
 const emit = defineEmits(["add", "buy"]);
 
-// ✅ UI states
-const descOpen = ref(false);
-const featuresOpen = ref(false);
-
-// Helpers
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
@@ -283,48 +227,7 @@ function asText(v) {
   const s = String(v ?? "").trim();
   return s ? s : "";
 }
-function pickFirstNonEmpty(...vals) {
-  for (const v of vals) {
-    if (typeof v === "string" && v.trim()) return v.trim();
-    if (v !== null && v !== undefined && typeof v !== "object") {
-      const s = String(v).trim();
-      if (s) return s;
-    }
-  }
-  return "";
-}
-function normalizeFeatures(p) {
-  const raw =
-    p?.features ??
-    p?.characteristics ??
-    p?.specs ??
-    p?.attributes ??
-    p?.caracteristicas ??
-    null;
 
-  if (!raw) return [];
-
-  if (Array.isArray(raw)) {
-    return raw
-      .map((x) => {
-        if (typeof x === "string") return x.trim();
-        if (x && typeof x === "object") return (x.name || x.label || x.value || "").trim();
-        return "";
-      })
-      .filter(Boolean);
-  }
-
-  if (typeof raw === "string") {
-    return raw
-      .split(/\r?\n|,/g)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-// Price
 const price = computed(() => priceValue(props.product));
 const priceInt = computed(() => {
   const v = toNum(price.value, 0);
@@ -338,13 +241,11 @@ const priceDec = computed(() => {
   return dec === "00" ? "" : dec;
 });
 
-// Disabled add (stock)
 const disabledAdd = computed(() => {
   const p = props.product || {};
   return !!(p.track_stock && Number(p.stock_qty) <= 0);
 });
 
-// Installments
 function extractInstallments(p) {
   if (!p) return [];
 
@@ -390,7 +291,6 @@ function extractInstallments(p) {
 }
 const installments = computed(() => extractInstallments(props.product));
 
-// Metadata
 const conditionLabel = computed(() => {
   const p = props.product || {};
   const c = asText(p.condition || p.estado);
@@ -418,47 +318,6 @@ const showRating = computed(() => ratingValue.value > 0 && ratingCount.value > 0
 
 const colorLabel = computed(() => asText(props.product?.color || props.product?.color_name));
 
-// ✅ NUEVO: brand/model/description
-const brandLabel = computed(() =>
-  pickFirstNonEmpty(
-    props.product?.brand,
-    props.product?.marca,
-    props.product?.Brand?.name,
-    props.product?.brand_name,
-    props.product?.manufacturer
-  )
-);
-
-const modelLabel = computed(() =>
-  pickFirstNonEmpty(
-    props.product?.model,
-    props.product?.modelo,
-    props.product?.model_name,
-    props.product?.variant,
-    props.product?.version
-  )
-);
-
-const brandModelLine = computed(() => {
-  const b = brandLabel.value;
-  const m = modelLabel.value;
-  if (b && m) return `Marca: ${b} · Modelo: ${m}`;
-  if (b) return `Marca: ${b}`;
-  if (m) return `Modelo: ${m}`;
-  return "";
-});
-
-const descriptionText = computed(() =>
-  pickFirstNonEmpty(
-    props.product?.description,
-    props.product?.descripcion,
-    props.product?.long_description,
-    props.product?.longDescription,
-    props.product?.details,
-    props.product?.detail
-  )
-);
-
 const ramLabel = computed(() => {
   const p = props.product || {};
   const r = asText(p.ram || p.ram_gb || p.memory_ram);
@@ -471,23 +330,6 @@ const storageLabel = computed(() => {
   const s = asText(p.storage || p.storage_gb || p.memory_storage || p.rom);
   if (!s) return "";
   return /gb/i.test(s) ? s : `${s} GB`;
-});
-
-// ✅ NUEVO: features list (máx 6 bullets)
-const featuresList = computed(() => {
-  const p = props.product || {};
-  const list = normalizeFeatures(p);
-
-  // si el backend no trae features, intentamos armar 1-2 bullets útiles
-  const auto = [];
-  if (brandLabel.value && !list.length) auto.push(`Marca: ${brandLabel.value}`);
-  if (modelLabel.value && !list.length) auto.push(`Modelo: ${modelLabel.value}`);
-
-  const out = (list.length ? list : auto)
-    .map((x) => String(x || "").trim())
-    .filter(Boolean);
-
-  return out.slice(0, 6);
 });
 
 const isInternational = computed(() => {
@@ -535,15 +377,12 @@ const stockSubLabel = computed(() => {
   return "Listo para despachar";
 });
 
-// Cantidad
 const qty = ref(1);
 
 watch(
   () => props.product,
   () => {
     qty.value = 1;
-    descOpen.value = false;
-    featuresOpen.value = false;
   }
 );
 
@@ -574,7 +413,6 @@ const qtyHint = computed(() => {
   return `${extra ? extra + " · " : ""}${limTxt}`;
 });
 
-// Actions
 function onAddToCart() {
   if (disabledAdd.value) return;
   emit("add", props.product, qty.value);
@@ -899,3 +737,4 @@ function onBuyNow() {
   }
 }
 </style>
+
