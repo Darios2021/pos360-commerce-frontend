@@ -106,10 +106,11 @@
       <div class="mt-6">
         <PromoSliderCargadores />
       </div>
-      <div class="mt-6">
-  <PromoSliderHogarElectro />
-</div>
 
+      <!-- ✅ SLIDER AUDIO / MICROFONOS -->
+      <div class="mt-6">
+        <PromoSliderAudioMicrofonos :limitTotal="24" />
+      </div>
     </section>
 
     <ShopFooter />
@@ -129,7 +130,7 @@ import HomeCategoriesCarousel from "@/modules/shop/components/HomeCategoriesCaro
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
 import PromoSliderAuriculares from "@/modules/shop/components/PromoSliderAuriculares.vue";
 import PromoSliderCargadores from "@/modules/shop/components/PromoSliderCargadores.vue";
-import PromoSliderHogarElectro from "@/modules/shop/components/PromoSliderHogarElectro.vue";
+import PromoSliderAudioMicrofonos from "@/modules/shop/components/PromoSliderAudioMicrofonos.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
