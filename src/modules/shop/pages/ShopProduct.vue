@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
@@ -18,19 +19,11 @@
         <ProductGallery :product="product" />
 
         <!-- RIGHT: Compra -->
-        <ProductPurchasePanel
-          :product="product"
-          @add="onAddToCart"
-          @buy="onBuyNow"
-        />
+        <ProductPurchasePanel :product="product" @add="onAddToCart" @buy="onBuyNow" />
       </div>
 
       <!-- Similares abajo -->
-      <SimilarProductsRow
-        v-if="product"
-        :items="similar"
-        :loading="similarLoading"
-      />
+      <SimilarProductsRow v-if="product" :items="similar" :loading="similarLoading" />
 
       <v-container v-if="!product" class="text-center py-12 text-medium-emphasis">
         Cargando...
@@ -72,13 +65,7 @@ function onBuyNow(p, qty = 1) {
 }
 
 function resolveCategoryId(p) {
-  return (
-    p?.category_id ||
-    p?.Category?.id ||
-    p?.category?.id ||
-    p?.parent_category_id ||
-    null
-  );
+  return p?.category_id || p?.Category?.id || p?.category?.id || p?.parent_category_id || null;
 }
 
 async function load() {
@@ -130,10 +117,24 @@ watch(() => route.params.id, load);
 @media (max-width: 980px) {
   .product-layout {
     flex-direction: column;
+
+    /* ✅ CLAVE: centra los bloques (galería + panel) */
+    align-items: center;
   }
+
+  /* ✅ CLAVE: la galería ocupa el ancho disponible del layout
+     (evita que quede “pegada” a la izquierda) */
+  .product-layout > :deep(.pg-card) {
+    width: 100%;
+    max-width: 720px; /* podés subir/bajar */
+    margin: 0 auto;
+  }
+
   .product-layout > :deep(.info) {
     min-width: 0;
     width: 100%;
+    max-width: 720px; /* para que quede alineado con galería */
+    margin: 0 auto;
   }
 }
 </style>

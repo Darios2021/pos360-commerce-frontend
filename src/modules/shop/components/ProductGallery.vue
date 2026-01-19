@@ -1,6 +1,7 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/ProductGallery.vue -->
 <template>
-  <v-card class="pg-card rounded-xl" variant="outlined">
+  <v-card class="pg-card" variant="flat">
     <v-card-text class="pg-pad">
       <div class="gallery">
         <!-- Thumbs desktop -->
@@ -12,7 +13,6 @@
             :class="{ active: i === activeIdx }"
             type="button"
             @click="activeIdx = i"
-            :title="`Imagen ${i + 1}`"
           >
             <img :src="src" alt="" @error="onImgError(src)" />
           </button>
@@ -35,33 +35,33 @@
             />
             <div v-else class="main-empty">Sin imagen</div>
 
+            <!-- contador ML -->
+            <div v-if="images.length > 1" class="ml-count-pill">
+              {{ activeIdx + 1 }} / {{ images.length }}
+            </div>
+
+            <!-- ver -->
             <div v-if="images.length" class="open-hint">
               <v-icon size="18">mdi-magnify-plus-outline</v-icon>
               <span>Ver</span>
             </div>
           </div>
 
-          <div v-if="images.length > 1" class="count-hint">
-            {{ activeIdx + 1 }} / {{ images.length }}
+          <!-- Thumbs mobile -->
+          <div class="thumbs-mobile" v-if="images.length > 1">
+            <div class="thumbs-scroll">
+              <button
+                v-for="(src, i) in images"
+                :key="'m' + src + i"
+                class="thumb-m"
+                :class="{ active: i === activeIdx }"
+                type="button"
+                @click="activeIdx = i"
+              >
+                <img :src="src" alt="" @error="onImgError(src)" />
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- ✅ Mobile thumbs (SCROLLER PROPIO, sin slide-group) -->
-      <div class="thumbs-mobile" v-if="images.length > 1">
-        <div class="thumbs-scroll" role="list">
-          <button
-            v-for="(src, i) in images"
-            :key="'m' + src + i"
-            class="thumb-m"
-            :class="{ active: i === activeIdx }"
-            type="button"
-            @click="activeIdx = i"
-            :title="`Imagen ${i + 1}`"
-            role="listitem"
-          >
-            <img :src="src" alt="" @error="onImgError(src)" />
-          </button>
         </div>
       </div>
     </v-card-text>
@@ -69,7 +69,7 @@
 
   <!-- Viewer -->
   <v-dialog v-model="viewer" max-width="980">
-    <v-card class="rounded-xl">
+    <v-card class="pg-viewer-card" variant="flat">
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="text-subtitle-1 font-weight-bold">Imágenes</div>
         <v-btn icon variant="text" @click="viewer = false">
@@ -87,25 +87,10 @@
         >
           <v-carousel-item v-for="(src, i) in images" :key="'c' + src + i">
             <div class="viewer-frame">
-              <img :src="src" class="viewer-img" alt="" @error="onImgError(src)" />
+              <img :src="src" class="viewer-img" alt="" />
             </div>
           </v-carousel-item>
         </v-carousel>
-
-        <div v-else class="text-center text-medium-emphasis py-8">Sin imágenes</div>
-
-        <div v-if="images.length > 1" class="viewer-thumbs">
-          <button
-            v-for="(src, i) in images"
-            :key="'v' + src + i"
-            class="viewer-thumb"
-            :class="{ active: i === carouselIdx }"
-            type="button"
-            @click="carouselIdx = i"
-          >
-            <img :src="src" alt="" @error="onImgError(src)" />
-          </button>
-        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -121,87 +106,33 @@ const props = defineProps({
 const activeIdx = ref(0);
 const viewer = ref(false);
 const carouselIdx = ref(0);
-
-// ✅ URLs rotas
 const broken = ref(new Set());
 
 function onImgError(url) {
   const u = String(url || "").trim();
-  if (!u) return;
-  if (broken.value.has(u)) return;
-
-  const next = new Set(broken.value);
-  next.add(u);
-  broken.value = next;
-
-  if (activeImage.value === u) {
-    const idx = images.value.findIndex((x) => x && !broken.value.has(x));
-    activeIdx.value = idx >= 0 ? idx : 0;
-  }
+  if (!u || broken.value.has(u)) return;
+  broken.value.add(u);
 }
 
-function uniqUrls(list) {
-  const out = [];
-  const seen = new Set();
-  for (const u of list) {
-    const s = String(u || "").trim();
-    if (!s) continue;
-    if (seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
-
-/**
- * ✅ NO mezclar image_url con arrays si existen.
- * - p.images: [{url}] o strings
- * - p.image_urls: [url]
- * - fallback: p.image_url
- */
 function extractImages(p) {
   if (!p) return [];
-
   const acc = [];
-  const hasImagesArray = Array.isArray(p.images) && p.images.length > 0;
-  const hasUrlsArray = Array.isArray(p.image_urls) && p.image_urls.length > 0;
-
-  if (hasImagesArray) {
-    for (const it of p.images) {
-      const u =
-        typeof it === "string"
-          ? it
-          : it?.url || it?.image_url || it?.src || it?.path;
+  if (Array.isArray(p.images)) {
+    p.images.forEach(it => {
+      const u = typeof it === "string" ? it : it?.url;
       if (u) acc.push(u);
-    }
+    });
   }
-
-  if (hasUrlsArray) {
-    for (const u of p.image_urls) if (u) acc.push(u);
-  }
-
-  // legacy
-  if (p.image_url_2) acc.push(p.image_url_2);
-  if (p.image2_url) acc.push(p.image2_url);
-  if (p.image_url2) acc.push(p.image_url2);
-  if (p.image2) acc.push(p.image2);
-
-  if (!hasImagesArray && !hasUrlsArray) {
-    if (p.image_url) acc.push(p.image_url);
-  }
-
-  return uniqUrls(acc);
+  if (Array.isArray(p.image_urls)) acc.push(...p.image_urls);
+  if (!acc.length && p.image_url) acc.push(p.image_url);
+  return [...new Set(acc)];
 }
 
-const imagesRaw = computed(() => extractImages(props.product));
-const images = computed(() => imagesRaw.value.filter((u) => u && !broken.value.has(u)));
+const images = computed(() =>
+  extractImages(props.product).filter(u => !broken.value.has(u))
+);
 
-const activeImage = computed(() => {
-  const list = images.value;
-  if (!list.length) return "";
-  const idx = Math.min(Math.max(0, Number(activeIdx.value || 0)), list.length - 1);
-  return list[idx];
-});
+const activeImage = computed(() => images.value[activeIdx.value] || "");
 
 function openViewer() {
   if (!images.value.length) return;
@@ -218,209 +149,167 @@ watch(
     broken.value = new Set();
   }
 );
-
-watch(carouselIdx, (v) => {
-  const n = Number(v || 0);
-  if (Number.isFinite(n)) activeIdx.value = n;
-});
 </script>
 
 <style scoped>
+/* Card */
 .pg-card {
   border-radius: 18px;
-  overflow: visible;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
 .pg-pad {
-  padding: 16px;
+  padding: 14px;
 }
 
+/* 🔥 GALERÍA CENTRADA */
 .gallery {
-  display: flex;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
   gap: 14px;
-  align-items: flex-start;
+
+  max-width: 640px;   /* ML feel */
+  margin: 0 auto;     /* CENTRADO */
 }
 
 /* Thumbs desktop */
 .thumbs {
-  width: 78px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
 .thumb {
-  width: 78px;
-  height: 78px;
+  width: 86px;
+  aspect-ratio: 1/1;
   border-radius: 12px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0,0,0,.1);
   background: #fff;
-  padding: 0;
-  cursor: pointer;
   overflow: hidden;
+  cursor: pointer;
 }
 .thumb img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #fff;
-  display: block;
 }
 .thumb.active {
-  border-color: rgba(25, 118, 210, 0.55);
+  border-color: rgba(25,118,210,.6);
 }
 
 /* Main */
 .main {
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
+
+/* 🔥 IMAGEN GRANDE, OCUPA ANCHO */
 .main-frame {
   position: relative;
   width: 100%;
-  height: 460px;
+  max-width: 520px;
+  height: 520px;
+
   border-radius: 16px;
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
   background: #fff;
+
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  cursor: pointer;
 }
 .main-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  display: block;
-  background: #fff;
-}
-.main-empty {
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 14px;
-}
-.open-hint {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
-  font-size: 12px;
-}
-.count-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
-  text-align: center;
+  object-fit: cover;      /* DESKTOP: llena */
 }
 
-/* ✅ Mobile thumbs scroller */
+/* Contador ML */
+.ml-count-pill {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(0,0,0,.06);
+}
+
+/* Ver */
+.open-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(0,0,0,.06);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Thumbs mobile */
 .thumbs-mobile {
-  display: none;
   margin-top: 12px;
+  width: 100%;
 }
 .thumbs-scroll {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  overflow-y: visible;
-  padding: 6px 2px 2px;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x mandatory;
-}
-.thumbs-scroll::-webkit-scrollbar {
-  height: 8px;
 }
 .thumb-m {
-  width: 78px;
-  height: 78px;
-  border-radius: 14px;
-  border: 2px solid rgba(0, 0, 0, 0.08);
+  width: 64px;
+  aspect-ratio: 1/1;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.1);
   background: #fff;
-  padding: 0;
-  cursor: pointer;
-  overflow: hidden;
   flex: 0 0 auto;
-  scroll-snap-align: start;
 }
 .thumb-m img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #fff;
-  display: block;
 }
 .thumb-m.active {
-  border-color: rgba(25, 118, 210, 0.55);
+  border-color: rgba(25,118,210,.6);
 }
 
 /* Viewer */
 .viewer-frame {
-  width: 100%;
   height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  border-radius: 16px;
-  overflow: hidden;
 }
 .viewer-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  display: block;
-  background: #fff;
-}
-.viewer-thumbs {
-  margin-top: 12px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.viewer-thumb {
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
-  padding: 0;
-  cursor: pointer;
-  overflow: hidden;
-}
-.viewer-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #fff;
-}
-.viewer-thumb.active {
-  border-color: rgba(25, 118, 210, 0.55);
 }
 
+/* 🔥 MOBILE PERFECTO */
 @media (max-width: 980px) {
+  .gallery {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    justify-items: center;
+  }
   .thumbs {
     display: none;
   }
-  .thumbs-mobile {
-    display: block;
-  }
   .main-frame {
-    height: 360px;
+    height: min(92vw, 420px);
   }
-  .viewer-frame {
-    height: 420px;
-  }
-}
-
-@media (max-width: 420px) {
-  .pg-pad {
-    padding: 12px;
-  }
-  .main-frame {
-    height: 320px;
+  .main-img {
+    object-fit: contain;   /* MOBILE: sin recorte */
   }
 }
 </style>

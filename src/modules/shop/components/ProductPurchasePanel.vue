@@ -1,11 +1,9 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/ProductPurchasePanel.vue -->
 <template>
-  <!-- ✅ IMPORTANTE: agregamos la clase info (la usa ShopProduct.vue para el layout) -->
-  <v-card class="ml-panel info" variant="outlined">
+  <v-card class="ml-panel info" variant="flat">
     <v-card-text class="ml-pad">
-      <!-- =======================
-           TOP: condición + vendidos
-           ======================= -->
+      <!-- TOP -->
       <div class="ml-topline">
         <span class="ml-muted">
           {{ conditionLabel }}
@@ -13,16 +11,12 @@
         </span>
       </div>
 
-      <!-- =======================
-           TITLE
-           ======================= -->
+      <!-- TITLE -->
       <div class="ml-title">
         {{ product?.name || "—" }}
       </div>
 
-      <!-- =======================
-           RATING
-           ======================= -->
+      <!-- RATING -->
       <div v-if="showRating" class="ml-rating">
         <v-rating
           :model-value="ratingValue"
@@ -36,9 +30,7 @@
         <span class="ml-rating-count">({{ ratingCount }})</span>
       </div>
 
-      <!-- =======================
-           PRICE
-           ======================= -->
+      <!-- PRICE -->
       <div class="ml-price-wrap">
         <span class="ml-currency">$</span>
         <span class="ml-price-int">{{ priceInt }}</span>
@@ -49,17 +41,13 @@
         <a href="javascript:void(0)" class="ml-link">Ver los medios de pago</a>
       </div>
 
-      <!-- =======================
-           COLOR
-           ======================= -->
+      <!-- COLOR -->
       <div v-if="colorLabel" class="ml-color">
         <span class="ml-muted">Color: </span>
         <span class="ml-strong">{{ colorLabel }}</span>
       </div>
 
-      <!-- =======================
-           HIGHLIGHTS
-           ======================= -->
+      <!-- HIGHLIGHTS -->
       <div class="ml-know">
         <div class="ml-know-title">Lo que tenés que saber de este producto</div>
         <ul class="ml-know-list">
@@ -73,9 +61,7 @@
         <a href="javascript:void(0)" class="ml-link ml-know-link">Ver características</a>
       </div>
 
-      <!-- =======================
-           BOX: stock / cantidad / acciones
-           ======================= -->
+      <!-- SIDEBOX -->
       <div class="ml-sidebox">
         <div class="ml-sidebox-top">
           <v-chip
@@ -108,7 +94,7 @@
           </div>
         </div>
 
-        <v-divider class="my-4" />
+        <v-divider class="ml-divider my-4" />
 
         <!-- STOCK -->
         <div class="ml-stock">
@@ -166,7 +152,9 @@
 
         <!-- SELLER -->
         <div v-if="sellerLabel" class="ml-seller">
-          <div class="ml-muted">Vendido por <span class="ml-link">{{ sellerLabel }}</span></div>
+          <div class="ml-muted">
+            Vendido por <span class="ml-link">{{ sellerLabel }}</span>
+          </div>
           <div v-if="sellerMeta" class="ml-muted">{{ sellerMeta }}</div>
         </div>
 
@@ -178,9 +166,7 @@
         </div>
       </div>
 
-      <!-- =======================
-           CUOTAS
-           ======================= -->
+      <!-- CUOTAS -->
       <div v-if="installments.length" class="ml-installments">
         <div class="ml-installments-title">Cuotas</div>
 
@@ -425,9 +411,14 @@ function onBuyNow() {
 </script>
 
 <style scoped>
+/* ✅ mismo “feel” que el gallery: borde fino + sombra sutil */
 .ml-panel {
   border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
+
 .ml-pad {
   padding: 18px;
 }
@@ -454,13 +445,6 @@ function onBuyNow() {
   font-weight: 800;
   line-height: 1.15;
   margin-bottom: 6px;
-}
-
-.ml-brandmodel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
 }
 
 /* rating */
@@ -530,38 +514,6 @@ function onBuyNow() {
   margin-bottom: 12px;
 }
 
-/* ✅ descripción */
-.ml-desc {
-  margin: 6px 0 14px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(0,0,0,.03);
-  border: 1px solid rgba(0,0,0,.08);
-}
-.ml-desc-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.ml-desc-toggle {
-  font-size: 12px;
-}
-.ml-desc-body {
-  white-space: pre-line;
-  line-height: 1.5;
-  font-size: 13px;
-  color: rgba(0,0,0,.78);
-
-  /* colapsado */
-  max-height: 58px;
-  overflow: hidden;
-}
-.ml-desc-body.open {
-  max-height: 500px;
-}
-
 /* know section */
 .ml-know {
   margin-top: 4px;
@@ -586,13 +538,9 @@ function onBuyNow() {
   margin-top: 8px;
 }
 
-.ml-features {
-  margin-top: 10px;
-}
-
-/* sidebox */
+/* ✅ sidebox: más sutil */
 .ml-sidebox {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   padding: 14px;
   background: #fff;
@@ -607,6 +555,11 @@ function onBuyNow() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* ✅ divider suave */
+.ml-divider {
+  opacity: 0.5;
 }
 
 .ml-shipline {
@@ -698,7 +651,7 @@ function onBuyNow() {
   gap: 10px;
 }
 .inst-item {
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 14px;
   padding: 10px;
   background: rgba(0, 0, 0, 0.02);
@@ -737,4 +690,3 @@ function onBuyNow() {
   }
 }
 </style>
-
