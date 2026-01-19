@@ -19,6 +19,12 @@
         {{ product?.name || "—" }}
       </div>
 
+      <!-- ✅ NUEVO: marca / modelo (misma exhibición principal) -->
+      <div v-if="brandModelLine" class="ml-brandmodel">
+        <v-icon size="16" class="mr-1">mdi-tag-outline</v-icon>
+        <span class="ml-muted">{{ brandModelLine }}</span>
+      </div>
+
       <!-- =======================
            RATING
            ======================= -->
@@ -56,20 +62,64 @@
         <span class="ml-strong">{{ colorLabel }}</span>
       </div>
 
+      <!-- ✅ NUEVO: descripción (colapsable, dentro del mismo panel) -->
+      <div v-if="descriptionText" class="ml-desc">
+        <div class="ml-desc-title">
+          <span class="ml-strong">Descripción</span>
+          <a
+            href="javascript:void(0)"
+            class="ml-link ml-desc-toggle"
+            @click="descOpen = !descOpen"
+          >
+            {{ descOpen ? "Ocultar" : "Ver más" }}
+          </a>
+        </div>
+
+        <div class="ml-desc-body" :class="{ open: descOpen }">
+          {{ descriptionText }}
+        </div>
+      </div>
+
       <!-- =======================
            HIGHLIGHTS
            ======================= -->
       <div class="ml-know">
         <div class="ml-know-title">Lo que tenés que saber de este producto</div>
+
         <ul class="ml-know-list">
+          <!-- Mantengo tus casos -->
           <li v-if="ramLabel">Memoria RAM: {{ ramLabel }}.</li>
           <li v-if="storageLabel">Memoria interna: {{ storageLabel }}.</li>
+
+          <!-- ✅ NUEVO: features genéricos (si vienen del backend) -->
+          <li v-for="(f, i) in featuresList" :key="i">{{ f }}</li>
+
           <li v-if="product?.track_stock" class="ml-know-stock">
             Stock disponible.
           </li>
         </ul>
 
-        <a href="javascript:void(0)" class="ml-link ml-know-link">Ver características</a>
+        <a
+          v-if="featuresList.length"
+          href="javascript:void(0)"
+          class="ml-link ml-know-link"
+          @click="featuresOpen = !featuresOpen"
+        >
+          {{ featuresOpen ? "Ocultar características" : "Ver características" }}
+        </a>
+
+        <div v-if="featuresOpen && featuresList.length" class="ml-features">
+          <v-chip-group column>
+            <v-chip
+              v-for="(f, i) in featuresList"
+              :key="'c' + i"
+              size="small"
+              variant="tonal"
+            >
+              {{ f }}
+            </v-chip>
+          </v-chip-group>
+        </div>
       </div>
 
       <!-- =======================
@@ -165,7 +215,9 @@
 
         <!-- SELLER -->
         <div v-if="sellerLabel" class="ml-seller">
-          <div class="ml-muted">Vendido por <span class="ml-link">{{ sellerLabel }}</span></div>
+          <div class="ml-muted">
+            Vendido por <span class="ml-link">{{ sellerLabel }}</span>
+          </div>
           <div v-if="sellerMeta" class="ml-muted">{{ sellerMeta }}</div>
         </div>
 
@@ -208,6 +260,10 @@ const props = defineProps({
 
 const emit = defineEmits(["add", "buy"]);
 
+// ✅ UI states
+const descOpen = ref(false);
+const featuresOpen = ref(false);
+
 // Helpers
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
@@ -226,6 +282,46 @@ function toNum(v, d = 0) {
 function asText(v) {
   const s = String(v ?? "").trim();
   return s ? s : "";
+}
+function pickFirstNonEmpty(...vals) {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (v !== null && v !== undefined && typeof v !== "object") {
+      const s = String(v).trim();
+      if (s) return s;
+    }
+  }
+  return "";
+}
+function normalizeFeatures(p) {
+  const raw =
+    p?.features ??
+    p?.characteristics ??
+    p?.specs ??
+    p?.attributes ??
+    p?.caracteristicas ??
+    null;
+
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((x) => {
+        if (typeof x === "string") return x.trim();
+        if (x && typeof x === "object") return (x.name || x.label || x.value || "").trim();
+        return "";
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    return raw
+      .split(/\r?\n|,/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 // Price
@@ -248,7 +344,7 @@ const disabledAdd = computed(() => {
   return !!(p.track_stock && Number(p.stock_qty) <= 0);
 });
 
-// Installments (tu lógica)
+// Installments
 function extractInstallments(p) {
   if (!p) return [];
 
@@ -322,6 +418,47 @@ const showRating = computed(() => ratingValue.value > 0 && ratingCount.value > 0
 
 const colorLabel = computed(() => asText(props.product?.color || props.product?.color_name));
 
+// ✅ NUEVO: brand/model/description
+const brandLabel = computed(() =>
+  pickFirstNonEmpty(
+    props.product?.brand,
+    props.product?.marca,
+    props.product?.Brand?.name,
+    props.product?.brand_name,
+    props.product?.manufacturer
+  )
+);
+
+const modelLabel = computed(() =>
+  pickFirstNonEmpty(
+    props.product?.model,
+    props.product?.modelo,
+    props.product?.model_name,
+    props.product?.variant,
+    props.product?.version
+  )
+);
+
+const brandModelLine = computed(() => {
+  const b = brandLabel.value;
+  const m = modelLabel.value;
+  if (b && m) return `Marca: ${b} · Modelo: ${m}`;
+  if (b) return `Marca: ${b}`;
+  if (m) return `Modelo: ${m}`;
+  return "";
+});
+
+const descriptionText = computed(() =>
+  pickFirstNonEmpty(
+    props.product?.description,
+    props.product?.descripcion,
+    props.product?.long_description,
+    props.product?.longDescription,
+    props.product?.details,
+    props.product?.detail
+  )
+);
+
 const ramLabel = computed(() => {
   const p = props.product || {};
   const r = asText(p.ram || p.ram_gb || p.memory_ram);
@@ -334,6 +471,23 @@ const storageLabel = computed(() => {
   const s = asText(p.storage || p.storage_gb || p.memory_storage || p.rom);
   if (!s) return "";
   return /gb/i.test(s) ? s : `${s} GB`;
+});
+
+// ✅ NUEVO: features list (máx 6 bullets)
+const featuresList = computed(() => {
+  const p = props.product || {};
+  const list = normalizeFeatures(p);
+
+  // si el backend no trae features, intentamos armar 1-2 bullets útiles
+  const auto = [];
+  if (brandLabel.value && !list.length) auto.push(`Marca: ${brandLabel.value}`);
+  if (modelLabel.value && !list.length) auto.push(`Modelo: ${modelLabel.value}`);
+
+  const out = (list.length ? list : auto)
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+
+  return out.slice(0, 6);
 });
 
 const isInternational = computed(() => {
@@ -388,6 +542,8 @@ watch(
   () => props.product,
   () => {
     qty.value = 1;
+    descOpen.value = false;
+    featuresOpen.value = false;
   }
 );
 
@@ -431,18 +587,13 @@ function onBuyNow() {
 </script>
 
 <style scoped>
-/* =========================
-   MercadoLibre-like panel
-   ========================= */
 .ml-panel {
   border-radius: 18px;
 }
-
 .ml-pad {
   padding: 18px;
 }
 
-/* top line */
 .ml-topline {
   display: flex;
   gap: 8px;
@@ -465,6 +616,13 @@ function onBuyNow() {
   font-weight: 800;
   line-height: 1.15;
   margin-bottom: 6px;
+}
+
+.ml-brandmodel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 /* rating */
@@ -534,6 +692,38 @@ function onBuyNow() {
   margin-bottom: 12px;
 }
 
+/* ✅ descripción */
+.ml-desc {
+  margin: 6px 0 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.03);
+  border: 1px solid rgba(0,0,0,.08);
+}
+.ml-desc-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.ml-desc-toggle {
+  font-size: 12px;
+}
+.ml-desc-body {
+  white-space: pre-line;
+  line-height: 1.5;
+  font-size: 13px;
+  color: rgba(0,0,0,.78);
+
+  /* colapsado */
+  max-height: 58px;
+  overflow: hidden;
+}
+.ml-desc-body.open {
+  max-height: 500px;
+}
+
 /* know section */
 .ml-know {
   margin-top: 4px;
@@ -558,7 +748,11 @@ function onBuyNow() {
   margin-top: 8px;
 }
 
-/* sidebox (derecha ML) */
+.ml-features {
+  margin-top: 10px;
+}
+
+/* sidebox */
 .ml-sidebox {
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 14px;

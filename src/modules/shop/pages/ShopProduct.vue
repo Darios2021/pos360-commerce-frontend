@@ -62,14 +62,12 @@ const similar = ref([]);
 const similarLoading = ref(false);
 
 function onAddToCart(p, qty = 1) {
-  // ✅ esto debe abrir el drawer SI tu store.add() hace cart.openDrawer()
   cart.add(p, qty);
 }
 
 function onBuyNow(p, qty = 1) {
-  // ✅ comprar ahora = agregar y llevar al carrito
   cart.add(p, qty);
-  cart.closeDrawer?.(); // por si justo abre, cerramos para navegar limpio
+  cart.closeDrawer?.();
   router.push("/shop/cart");
 }
 

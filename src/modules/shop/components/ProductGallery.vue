@@ -14,14 +14,25 @@
             @click="activeIdx = i"
             :title="`Imagen ${i + 1}`"
           >
-            <img :src="src" alt="" />
+            <img :src="src" alt="" @error="onImgError(src)" />
           </button>
         </div>
 
         <!-- Main -->
         <div class="main">
-          <div class="main-frame" role="button" @click="openViewer" :title="images.length ? 'Ver imágenes' : ''">
-            <img v-if="activeImage" :src="activeImage" class="main-img" alt="" />
+          <div
+            class="main-frame"
+            role="button"
+            @click="openViewer"
+            :title="images.length ? 'Ver imágenes' : ''"
+          >
+            <img
+              v-if="activeImage"
+              :src="activeImage"
+              class="main-img"
+              alt=""
+              @error="onImgError(activeImage)"
+            />
             <div v-else class="main-empty">Sin imagen</div>
 
             <div v-if="images.length" class="open-hint">
@@ -42,7 +53,14 @@
               :class="{ active: i === activeIdx }"
               @click="activeIdx = i"
             >
-              <v-img :src="src" width="72" height="72" cover class="rounded-lg" />
+              <v-img
+                :src="src"
+                width="72"
+                height="72"
+                cover
+                class="rounded-lg"
+                @error="onImgError(src)"
+              />
             </v-btn>
           </v-slide-group-item>
         </v-slide-group>
@@ -70,7 +88,7 @@
         >
           <v-carousel-item v-for="(src, i) in images" :key="src + i">
             <div class="viewer-frame">
-              <img :src="src" class="viewer-img" alt="" />
+              <img :src="src" class="viewer-img" alt="" @error="onImgError(src)" />
             </div>
           </v-carousel-item>
         </v-carousel>
@@ -86,7 +104,7 @@
             type="button"
             @click="carouselIdx = i"
           >
-            <img :src="src" alt="" />
+            <img :src="src" alt="" @error="onImgError(src)" />
           </button>
         </div>
       </v-card-text>
@@ -105,6 +123,26 @@ const activeIdx = ref(0);
 const viewer = ref(false);
 const carouselIdx = ref(0);
 
+// ✅ URLs que fallaron (así no queda el cuadrito roto)
+const broken = ref(new Set());
+
+function onImgError(url) {
+  const u = String(url || "").trim();
+  if (!u) return;
+  // si ya estaba, no hacer nada
+  if (broken.value.has(u)) return;
+
+  const next = new Set(broken.value);
+  next.add(u);
+  broken.value = next;
+
+  // si la activa falló, saltar a la primera que sirva
+  if (activeImage.value === u) {
+    const idx = images.value.findIndex((x) => x && !broken.value.has(x));
+    activeIdx.value = idx >= 0 ? idx : 0;
+  }
+}
+
 function uniqUrls(list) {
   const out = [];
   const seen = new Set();
@@ -118,11 +156,20 @@ function uniqUrls(list) {
   return out;
 }
 
+/**
+ * ✅ FIX PRINCIPAL:
+ * - Si existen imágenes reales (p.images / p.image_urls), NO mezclar con p.image_url de v_public_catalog
+ * - p.image_url queda solo como fallback cuando NO hay arrays.
+ */
 function extractImages(p) {
   if (!p) return [];
+
   const acc = [];
 
-  if (Array.isArray(p.images)) {
+  const hasImagesArray = Array.isArray(p.images) && p.images.length > 0;
+  const hasUrlsArray = Array.isArray(p.image_urls) && p.image_urls.length > 0;
+
+  if (hasImagesArray) {
     for (const it of p.images) {
       const u =
         typeof it === "string"
@@ -132,25 +179,32 @@ function extractImages(p) {
     }
   }
 
-  if (Array.isArray(p.image_urls)) {
+  if (hasUrlsArray) {
     for (const u of p.image_urls) if (u) acc.push(u);
   }
 
+  // extras legacy (si los usás en algunos productos)
   if (p.image_url_2) acc.push(p.image_url_2);
   if (p.image2_url) acc.push(p.image2_url);
   if (p.image_url2) acc.push(p.image_url2);
   if (p.image2) acc.push(p.image2);
 
-  if (p.image_url) acc.push(p.image_url);
+  // ✅ SOLO fallback si no hay arrays
+  if (!hasImagesArray && !hasUrlsArray) {
+    if (p.image_url) acc.push(p.image_url);
+  }
 
   return uniqUrls(acc);
 }
 
-const images = computed(() => extractImages(props.product));
+const imagesRaw = computed(() => extractImages(props.product));
+
+// ✅ Filtrar rotas
+const images = computed(() => imagesRaw.value.filter((u) => u && !broken.value.has(u)));
 
 const activeImage = computed(() => {
   const list = images.value;
-  if (!list.length) return props.product?.image_url || "";
+  if (!list.length) return "";
   const idx = Math.min(Math.max(0, Number(activeIdx.value || 0)), list.length - 1);
   return list[idx];
 });
@@ -167,6 +221,7 @@ watch(
     activeIdx.value = 0;
     carouselIdx.value = 0;
     viewer.value = false;
+    broken.value = new Set(); // reset por producto
   }
 );
 </script>
