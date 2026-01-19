@@ -94,15 +94,21 @@ import { useRouter, useRoute } from "vue-router";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
+// ✅ NUEVO: para fallback por nombre de subcategoría (por si te pasan un id viejo)
+import { getPublicSubcategoriesByCategory } from "@/modules/shop/service/shop.taxonomy.api";
+
 const props = defineProps({
   title: { type: String, default: "Audio / Micrófonos" },
   subtitle: { type: String, default: "Micrófonos destacados y recomendados" },
 
   perPage: { type: Number, default: 5 },
 
-  // ✅ IDs REALES (según tu URL)
+  // ✅ IDs REALES (post-migración)
   categoryId: { type: Number, default: 2 }, // AUDIO
-  subcategoryId: { type: Number, default: 26 }, // MICROFONOS
+  subcategoryId: { type: Number, default: 11 }, // MICROFONOS (subcategories.id)
+
+  // ✅ fallback por nombre (por si viene un ID viejo)
+  subcategoryNameFallback: { type: String, default: "MICROFONOS" },
 
   // ✅ total a mostrar
   limitTotal: { type: Number, default: 24 },
@@ -226,6 +232,26 @@ const branchId = computed(() => {
 });
 
 /* =========================
+   Resolve subcategory_id (real)
+   - si props.subcategoryId viene mal (ej 26 legacy),
+     buscamos por nombre en subcategories de esa category
+========================= */
+async function resolveSubcategoryId() {
+  const cid = Number(props.categoryId || 0);
+  const sid = Number(props.subcategoryId || 0);
+
+  if (cid > 0 && sid > 0) return sid;
+
+  // fallback por nombre
+  const name = String(props.subcategoryNameFallback || "").trim().toLowerCase();
+  if (!cid || !name) return 0;
+
+  const subs = await getPublicSubcategoriesByCategory(cid);
+  const hit = (subs || []).find((x) => String(x?.name || "").trim().toLowerCase() === name);
+  return Number(hit?.id || 0) || 0;
+}
+
+/* =========================
    Fetch (STRICT: category_id + subcategory_id + branch_id)
 ========================= */
 async function fetchItems() {
@@ -234,7 +260,7 @@ async function fetchItems() {
 
   try {
     const catId = Number(props.categoryId || 0);
-    const subId = Number(props.subcategoryId || 0);
+    const subId = await resolveSubcategoryId();
     const bId = Number(branchId.value || 0);
 
     if (!catId || !subId) {
@@ -317,7 +343,15 @@ function jumpTo(pageIdx) {
 onMounted(fetchItems);
 
 watch(
-  () => [branchId.value, props.categoryId, props.subcategoryId, props.limitTotal, props.pageSize, props.maxPages],
+  () => [
+    branchId.value,
+    props.categoryId,
+    props.subcategoryId,
+    props.subcategoryNameFallback,
+    props.limitTotal,
+    props.pageSize,
+    props.maxPages,
+  ],
   () => fetchItems()
 );
 </script>

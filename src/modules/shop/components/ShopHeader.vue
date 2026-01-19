@@ -5,7 +5,6 @@
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
-          <!-- ✅ LOGO MÁS GRANDE (responsive) -->
           <v-avatar class="ml-brand-ico" :size="logoSize">
             <template v-if="branding.logo_url">
               <img :src="logoHeaderUrl" :alt="branding.name" class="ml-brand-img" />
@@ -13,11 +12,9 @@
             <v-icon v-else :size="iconSize">mdi-storefront</v-icon>
           </v-avatar>
 
-          <!-- ✅ En mobile ocultamos el texto para que el buscador NO quede anulado -->
           <span v-if="!isMobile" class="ml-brand-text">{{ branding.name || "San Juan Tecnología" }}</span>
         </router-link>
 
-        <!-- ✅ Buscador “protagonista” (en mobile ocupa el espacio real) -->
         <div class="ml-search">
           <ShopSearchBox
             :branchId="branchId"
@@ -26,7 +23,6 @@
           />
         </div>
 
-        <!-- RIGHT (desktop): Ingresá / Mis compras / Carrito -->
         <div v-if="!isMobile" class="ml-top-actions">
           <router-link class="ml-top-link" to="/auth/login">
             <v-icon size="18" class="ml-top-ico">mdi-account-outline</v-icon>
@@ -43,7 +39,6 @@
           </router-link>
         </div>
 
-        <!-- RIGHT (mobile): menu + carrito (compactos para no comer al search) -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
             <v-icon size="22">mdi-menu</v-icon>
@@ -62,7 +57,6 @@
     <!-- ================= ROW 2 (BOTTOM): desktop nav / mobile “ML-like” ================= -->
     <div class="ml-row ml-row-bottom">
       <div class="ml-container ml-bottom-grid" :class="{ 'is-mobile': isMobile }">
-        <!-- Desktop: ubicación opcional -->
         <button v-if="!isMobile" class="ml-loc" type="button">
           <v-icon size="16" class="ml-loc-ico">mdi-map-marker-outline</v-icon>
           <span class="ml-loc-text">
@@ -71,7 +65,6 @@
           </span>
         </button>
 
-        <!-- Desktop nav -->
         <nav v-if="!isMobile" class="ml-nav">
           <v-menu
             v-model="menu"
@@ -136,7 +129,6 @@
           <router-link class="ml-nav-link" to="/shop">Ayuda</router-link>
         </nav>
 
-        <!-- ✅ Mobile: estilo ML (categorías + hint) -->
         <div v-else class="ml-mobile-stack">
           <div class="ml-mobile-row2">
             <button class="ml-pill ml-cat-mobile-btn" type="button" @click="mobileCats = true">
@@ -242,8 +234,9 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-import { getPublicCategoriesAll } from "@/modules/shop/service/shop.taxonomy.api";
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
+
+import { getPublicParentCategories, getPublicSubcategoriesMap } from "@/modules/shop/service/shop.taxonomy.api";
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const router = useRouter();
@@ -257,13 +250,13 @@ const menu = ref(false);
 const mobileDrawer = ref(false);
 const mobileCats = ref(false);
 
-const allCats = ref([]);
 const hoverParentId = ref(null);
+const openParentId = ref(null);
 
 // ✅ branch fijo como venís usando
 const branchId = 3;
 
-// ✅ BRANDING (viene de shop_branding en BD)
+// ✅ BRANDING
 const branding = ref({
   name: "San Juan Tecnología",
   logo_url: "",
@@ -271,9 +264,6 @@ const branding = ref({
   updated_at: null,
 });
 
-/** ===============================
- * Helpers: cache bust + favicon
- * =============================== */
 function withVersion(url, v) {
   const u = String(url || "").trim();
   if (!u) return "";
@@ -335,68 +325,49 @@ function setFavicon(url, updatedAt) {
   }
 }
 
-/** ===============================
- * Branding responsive sizes
- * =============================== */
 const logoSize = computed(() => (isMobile.value ? 56 : 76));
 const iconSize = computed(() => (isMobile.value ? 24 : 30));
 const logoHeaderUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
 
-/** ===============================
- * Categorías
- * =============================== */
+// ✅ Ahora separamos rubros y subrubros REALES
+const parentsList = ref([]);
+const subMap = ref({});
+
+// rubros
 const parents = computed(() =>
-  (allCats.value || [])
-    .filter((x) => x && x.parent_id == null && Number(x.is_active ?? 1) === 1)
-    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"))
+  (parentsList.value || []).slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"))
 );
 
-const childrenByParent = computed(() => {
-  const map = {};
-  for (const c of allCats.value || []) {
-    if (!c) continue;
-    const pid = c.parent_id == null ? null : Number(c.parent_id);
-    if (pid != null) {
-      if (!map[pid]) map[pid] = [];
-      if (Number(c.is_active ?? 1) === 1) map[pid].push(c);
-    }
-  }
-  for (const k of Object.keys(map)) {
-    map[k].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
-  }
-  return map;
+// subrubros por rubro
+const childrenByParent = computed(() => subMap.value || {});
+
+const hoverParent = computed(() => parents.value.find((x) => Number(x.id) === Number(hoverParentId.value)) || null);
+
+const hoverChildren = computed(() => {
+  const pid = Number(hoverParentId.value || 0);
+  if (!pid) return [];
+  return (childrenByParent.value[pid] || []).slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
 });
-
-const hoverParent = computed(
-  () => parents.value.find((x) => Number(x.id) === Number(hoverParentId.value)) || null
-);
-
-const hoverChildren = computed(() =>
-  (childrenByParent.value[hoverParentId.value] || []).filter((x) => Number(x.is_active ?? 1) === 1)
-);
 
 // ===============================
 // Navegación catálogo (DESKTOP)
 // ===============================
 function pickParent(c) {
   const nq = { ...route.query };
-
-  // limpiamos filtros viejos
   delete nq.subcategory_id;
   delete nq.category_id;
   delete nq.page;
 
-  // dejamos category_id en query (útil para Home o para el backend)
   nq.category_id = String(c.id);
-
   router.push({ name: "shopCategory", params: { id: c.id }, query: nq });
 }
 
 function pickChild(s) {
-  const parentId = s.parent_id ? Number(s.parent_id) : null;
+  // ✅ subcategory real => category_id real
+  const parentId = Number(s.category_id || 0);
 
   const nq = { ...route.query, subcategory_id: String(s.id) };
-  delete nq.sub; // legacy
+  delete nq.sub;
   delete nq.page;
 
   if (parentId) {
@@ -414,8 +385,7 @@ function openCatsFromMenu() {
   mobileCats.value = true;
 }
 
-/* accordion (MOBILE) */
-const openParentId = ref(null);
+// accordion (MOBILE)
 function toggleParent(p) {
   const id = Number(p?.id || 0);
   if (!id) return;
@@ -434,7 +404,7 @@ async function pickParentMobile(p) {
 }
 
 async function pickChildMobile(s) {
-  const parentId = s.parent_id ? Number(s.parent_id) : null;
+  const parentId = Number(s.category_id || 0);
 
   const nq = { ...route.query, subcategory_id: String(s.id) };
   delete nq.sub;
@@ -451,22 +421,20 @@ async function pickChildMobile(s) {
 }
 
 onMounted(async () => {
-  // 1) branding (logo + favicon + name)
+  // 1) branding
   try {
     const b = await getShopBranding();
     if (b && typeof b === "object") {
       branding.value = { ...branding.value, ...b };
-
       if (branding.value?.name) document.title = branding.value.name;
-
-      if (branding.value?.favicon_url) {
-        setFavicon(branding.value.favicon_url, branding.value.updated_at);
-      }
+      if (branding.value?.favicon_url) setFavicon(branding.value.favicon_url, branding.value.updated_at);
     }
   } catch {}
 
-  // 2) categorías
-  allCats.value = await getPublicCategoriesAll();
+  // 2) rubros + subrubros reales
+  parentsList.value = await getPublicParentCategories();
+  subMap.value = await getPublicSubcategoriesMap(parentsList.value);
+
   const first = parents.value[0];
   if (first) {
     hoverParentId.value = first.id;
@@ -474,6 +442,9 @@ onMounted(async () => {
   }
 });
 </script>
+
+
+
 
 <style scoped>
 .ml-header {
