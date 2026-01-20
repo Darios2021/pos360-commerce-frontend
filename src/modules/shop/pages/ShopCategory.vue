@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopCategory.vue -->
 <template>
   <div class="category-page">
@@ -7,7 +8,7 @@
         <div class="head-left">
           <h1 class="section-title">{{ parent?.name || "Categoría" }}</h1>
 
-          <!-- ✅ CONTROLES: buscador + contador (componentizado) -->
+          <!-- BUSCADOR LOCAL (NO afecta header) -->
           <div class="controls-row">
             <ShopSearchBar
               v-model="searchText"
@@ -18,10 +19,11 @@
               :show-button="false"
               @search="applySearch"
               @clear="clearSearch"
+              class="search-fix"
             />
           </div>
 
-          <!-- ✅ SUBRUBROS -->
+          <!-- SUBCATEGORÍAS -->
           <div v-if="subcats.length" class="subcats-row">
             <v-chip
               size="small"
@@ -40,17 +42,10 @@
               color="primary"
               @click="selectSub(Number(s.id))"
               :title="s.name"
-              class="subchip"
             >
               {{ s.name }}
             </v-chip>
           </div>
-        </div>
-
-        <div class="head-right">
-          <!-- mantenemos el botón "Buscar" como acción manual -->
-          <v-btn variant="tonal" @click="applySearch" :loading="loading">Buscar</v-btn>
-          <v-btn variant="tonal" to="/shop">Volver</v-btn>
         </div>
       </div>
 
@@ -58,14 +53,6 @@
       <v-alert v-if="err" type="error" variant="tonal" class="mb-6">
         {{ err }}
       </v-alert>
-
-      <!-- PROMO -->
-      <PromoSlider
-        v-if="promoItems.length"
-        :items="promoItems"
-        class="mb-8"
-        @seeAll="fetchCatalog"
-      />
 
       <!-- LOADING -->
       <div v-if="loading" class="product-grid">
@@ -81,7 +68,12 @@
 
       <!-- PRODUCTOS -->
       <div v-else class="product-grid">
-        <ProductCard v-for="p in items" :key="p.product_id" :p="p" @add="addToCart" />
+        <ProductCard
+          v-for="p in items"
+          :key="p.product_id"
+          :p="p"
+          @add="addToCart"
+        />
       </div>
 
       <!-- PAGINACIÓN -->
@@ -94,6 +86,15 @@
           Siguiente
         </v-btn>
       </div>
+
+      <!-- PROMOS AL FINAL -->
+      <div class="promo-bottom">
+        <PromoSlider
+          v-if="promoItems.length"
+          :items="promoItems"
+          @seeAll="fetchCatalog"
+        />
+      </div>
     </section>
   </div>
 </template>
@@ -103,7 +104,10 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
-import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
+import {
+  getPublicCategoriesAll,
+  getPublicCategoryChildren,
+} from "@/modules/shop/service/shop.taxonomy.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
@@ -120,24 +124,24 @@ const err = ref("");
 const parentId = computed(() => Number(route.params.id || 0));
 
 const catsAll = ref([]);
-const parent = computed(() => (catsAll.value || []).find((c) => Number(c.id) === parentId.value));
+const parent = computed(
+  () => (catsAll.value || []).find((c) => Number(c.id) === parentId.value) || null
+);
 
-// ✅ subrubros (hijos) = categories.parent_id = parentId
 const subcats = ref([]);
-
-// ✅ selectedSubId = ID del HIJO. null => "Todos"
 const selectedSubId = ref(null);
 
-// buscador
-const searchText = ref(String(route.query.q || ""));
+/* 🔒 buscador LOCAL */
+const searchText = ref("");
 
-// paginación
 const page = ref(Number(route.query.page || 1));
 const limit = ref(24);
 const total = ref(0);
 
 const items = ref([]);
 const promoItems = ref([]);
+
+let searchTimer = null;
 
 const pages = computed(() => {
   const t = Number(total.value || 0);
@@ -159,6 +163,7 @@ function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
+
 function buildPromo(arr) {
   const a = Array.isArray(arr) ? arr : [];
   const promos = a.filter((p) => {
@@ -168,27 +173,21 @@ function buildPromo(arr) {
   return (promos.length ? promos : a).slice(0, 18);
 }
 
-/* =========================
-   SUBRUBROS
-   ========================= */
+/* SUBCATEGORÍAS */
 async function fetchSubcats() {
   try {
     const kids = await getPublicCategoryChildren(parentId.value);
     subcats.value = Array.isArray(kids) ? kids : [];
-  } catch (e) {
-    console.error("❌ fetchSubcats", e);
+  } catch {
     subcats.value = [];
   }
 }
 
-/* =========================
-   QUERY HELPERS
-   ========================= */
+/* QUERY (solo sub + page, NO q) */
 function setQuery(partial) {
   const q = { ...route.query, ...partial };
   Object.keys(q).forEach((k) => {
-    const v = q[k];
-    if (v === null || v === undefined || v === "") delete q[k];
+    if (!q[k]) delete q[k];
   });
   router.replace({ name: route.name, params: route.params, query: q });
 }
@@ -196,21 +195,16 @@ function setQuery(partial) {
 function selectSub(idOrNull) {
   selectedSubId.value = idOrNull == null ? null : Number(idOrNull);
   page.value = 1;
-
   setQuery({
     sub: selectedSubId.value == null ? null : String(selectedSubId.value),
     page: "1",
   });
-
   fetchCatalog();
 }
 
 function applySearch() {
   page.value = 1;
-  setQuery({
-    q: String(searchText.value || "").trim() || null,
-    page: "1",
-  });
+  setQuery({ page: "1" });
   fetchCatalog();
 }
 
@@ -219,11 +213,7 @@ function clearSearch() {
   applySearch();
 }
 
-/* =========================
-   CATALOG (CONTRATO CORRECTO)
-   - Todos: category_id = padre + include_children=1 + subcategory_id = null
-   - Chip:  category_id = padre + subcategory_id = hijo + include_children=0
-   ========================= */
+/* CATÁLOGO */
 async function fetchCatalog() {
   loading.value = true;
   err.value = "";
@@ -235,28 +225,19 @@ async function fetchCatalog() {
       page: page.value,
       limit: limit.value,
       search: qStr || "",
-
-      // ✅ padre SIEMPRE
       category_id: parentId.value,
-
-      // ✅ hijo SOLO cuando hay chip
       subcategory_id: isAll ? null : selectedSubId.value,
-
-      // ✅ "Todos" incluye hijos
       include_children: isAll ? 1 : 0,
-
-      // mostrar todo (sin filtrar por stock)
       in_stock: 0,
     };
 
     const r = await getCatalog(params);
 
-    items.value = Array.isArray(r.items) ? r.items : [];
-    total.value = Number(r.total || 0);
+    items.value = Array.isArray(r?.items) ? r.items : [];
+    total.value = Number(r?.total || 0);
     promoItems.value = buildPromo(items.value);
-  } catch (e) {
-    console.error("❌ fetchCatalog(ShopCategory)", e);
-    err.value = "No se pudo cargar el catálogo para esta categoría.";
+  } catch {
+    err.value = "No se pudo cargar el catálogo.";
     items.value = [];
     promoItems.value = [];
     total.value = 0;
@@ -265,147 +246,203 @@ async function fetchCatalog() {
   }
 }
 
-/* =========================
-   PAGER
-   ========================= */
+/* PAGINACIÓN */
 function nextPage() {
   if (page.value < pages.value) {
-    page.value += 1;
+    page.value++;
     setQuery({ page: String(page.value) });
     fetchCatalog();
   }
 }
 function prevPage() {
   if (page.value > 1) {
-    page.value -= 1;
+    page.value--;
     setQuery({ page: String(page.value) });
     fetchCatalog();
   }
 }
 
-/* =========================
-   BOOTSTRAP
-   ========================= */
+/* INIT */
 onMounted(async () => {
   catsAll.value = await getPublicCategoriesAll();
-
   selectedSubId.value = route.query.sub ? Number(route.query.sub) : null;
-  searchText.value = String(route.query.q || "");
-  page.value = Number(route.query.page || 1);
-
   await fetchSubcats();
   await fetchCatalog();
 });
 
+/* BUSCADOR con debounce */
 watch(
-  () => parentId.value,
-  async () => {
-    selectedSubId.value = null;
-    searchText.value = "";
+  () => searchText.value,
+  () => {
     page.value = 1;
+    setQuery({ page: "1" });
 
-    setQuery({ sub: null, q: null, page: "1" });
-
-    await fetchSubcats();
-    await fetchCatalog();
-  }
-);
-
-// back/forward / URL compartida
-watch(
-  () => route.query,
-  async () => {
-    selectedSubId.value = route.query.sub ? Number(route.query.sub) : null;
-    searchText.value = String(route.query.q || "");
-    page.value = Number(route.query.page || 1);
-    await fetchCatalog();
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(fetchCatalog, 350);
   }
 );
 </script>
 
 <style scoped>
-.category-page { background: #f5f5f5; }
+.category-page {
+  background: #f5f5f5;
+}
 
 .section {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 26px 16px 48px;
+  padding: 18px 14px 48px;
 }
 
 .section-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.head-left {
-  display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 0;
-}
-
-.head-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
 .section-title {
-  font-size: 30px;
-  font-weight: 950;
-  margin: 0;
-  letter-spacing: -0.4px;
-}
-
-.controls-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-/* ahora el ancho lo maneja ShopSearchBar internamente, pero lo dejamos por si querés mantener */
-.search { width: 420px; max-width: 100%; }
-
-.count {
-  font-size: 13px;
+  font-size: 28px;
   font-weight: 900;
+  margin: 0;
+}
+
+/* BUSCADOR */
+.controls-row {
+  width: 100%;
+}
+.search-fix {
+  width: 100%;
+  max-width: 560px;
+}
+:deep(.search-fix input) {
+  font-size: 13px;
+}
+:deep(.search-fix input::placeholder) {
+  font-size: 12.5px;
   opacity: 0.75;
 }
 
+/* =========================
+   SUBCATEGORÍAS (CHIPS)
+   ========================= */
 .subcats-row {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
   max-width: 100%;
 }
-.subchip { max-width: 260px; }
 
+.subcats-row :deep(.v-chip) {
+  font-size: 12.5px;
+  font-weight: 700;
+  height: 30px;
+  padding: 0 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* MOBILE → estilo Mercado Libre */
+@media (max-width: 960px) {
+  .subcats-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+
+  .subcats-row::-webkit-scrollbar {
+    height: 0;
+  }
+
+  .subcats-row :deep(.v-chip) {
+    height: 32px;
+    font-size: 12px;
+    border-radius: 999px;
+  }
+}
+
+/* GRID */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+}
+
+@media (max-width: 1400px) {
+  .product-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+@media (max-width: 1200px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 960px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
 }
 
 .pager {
   margin-top: 22px;
   display: flex;
   justify-content: center;
-  align-items: center;
   gap: 12px;
 }
-.pager-text {
-  font-size: 12px;
-  opacity: 0.75;
-  font-weight: 900;
+
+.promo-bottom {
+  margin-top: 26px;
+}
+/* =========================
+   AIRE GENERAL HEADER
+   ========================= */
+.section-head {
+  gap: 16px;               /* antes 12px */
 }
 
-@media (max-width: 1400px) { .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 960px)  { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* buscador + chips */
+.controls-row {
+  margin-bottom: 10px;     /* aire debajo del buscador */
+}
+
+/* =========================
+   SUBCATEGORÍAS (CHIPS)
+   ========================= */
+.subcats-row {
+  margin-top: 6px;         /* aire arriba */
+  margin-bottom: 14px;     /* aire abajo */
+  gap: 10px;               /* más separación entre chips */
+}
+
+/* chips un poco más cómodos */
+.subcats-row :deep(.v-chip) {
+  height: 32px;            /* + aire vertical */
+  padding: 0 14px;         /* + aire horizontal */
+  font-size: 12.5px;
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+@media (max-width: 960px) {
+  .controls-row {
+    margin-bottom: 12px;
+  }
+
+  .subcats-row {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;   /* aire visual + scroll */
+  }
+
+  .subcats-row :deep(.v-chip) {
+    height: 34px;
+    padding: 0 16px;
+    font-size: 12px;
+  }
+}
+
 </style>

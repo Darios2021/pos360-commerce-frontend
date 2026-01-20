@@ -1,12 +1,13 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO (sin v-else roto + mobile ML) -->
 <!-- src/modules/shop/components/SimilarProductsRow.vue -->
 <template>
   <section class="similar-wrap">
     <div class="head">
-      <div class="text-subtitle-1 font-weight-bold">Productos similares</div>
+      <div class="text-subtitle-1 font-weight-bold">{{ title }}</div>
 
       <v-btn
-        v-if="normalized.length"
-        to="/shop"
+        v-if="normalized.length && categoryId"
+        :to="moreLink"
         variant="tonal"
         size="small"
         class="more-btn"
@@ -35,22 +36,29 @@
           No encontramos productos similares.
         </div>
 
-        <!-- Horizontal row (ML style) -->
-        <v-slide-group
-          v-else
-          show-arrows
-          class="slide"
-        >
-          <v-slide-group-item
-            v-for="p in normalized"
-            :key="p.product_id"
-          >
-            <div class="item">
-              <!-- ✅ FIX: ProductCard espera prop "p" -->
+        <!-- ✅ Content (sin v-else duplicado) -->
+        <div v-else>
+          <!-- Desktop/tablet: slide-group con flechas -->
+          <v-slide-group class="slide desktop-only" show-arrows="hover">
+            <v-slide-group-item v-for="p in normalized" :key="p.product_id">
+              <div class="item desktop-item">
+                <ProductCard :p="p" />
+              </div>
+            </v-slide-group-item>
+          </v-slide-group>
+
+          <!-- Mobile: scroller nativo -->
+          <div class="mobile-only scroller" role="list">
+            <div
+              v-for="p in normalized"
+              :key="'m' + p.product_id"
+              class="item mobile-item"
+              role="listitem"
+            >
               <ProductCard :p="p" />
             </div>
-          </v-slide-group-item>
-        </v-slide-group>
+          </div>
+        </div>
       </v-card-text>
     </v-card>
   </section>
@@ -61,6 +69,9 @@ import { computed } from "vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 
 const props = defineProps({
+  title: { type: String, default: "Productos similares" },
+  categoryId: { type: [Number, String], default: null },
+  subcategoryId: { type: [Number, String], default: null },
   items: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 });
@@ -69,7 +80,6 @@ function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
-
 function toNum(v, d = 0) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : d;
@@ -90,7 +100,6 @@ function uniqUrls(list) {
 
 function normalizeImages(raw) {
   const acc = [];
-
   const main = raw?.image_url || raw?.image || raw?.url || raw?.src || raw?.path || null;
   if (main) acc.push(main);
 
@@ -129,26 +138,20 @@ function normalizeProduct(raw) {
   if (!name) return null;
 
   return {
-    // ✅ adaptado a tu UI (ProductCard / Shop)
     product_id: id,
     id,
     name,
     description: raw?.description ?? "",
     brand: raw?.brand ?? "",
     model: raw?.model ?? "",
-
     category_id: raw?.category_id ?? null,
     subcategory_id: raw?.subcategory_id ?? null,
-
     image_url,
     images,
-
     price_discount,
     price_list,
-
     track_stock,
     stock_qty,
-
     is_new: !!raw?.is_new,
     is_promo: !!raw?.is_promo,
     is_active: raw?.is_active ?? true,
@@ -166,13 +169,19 @@ const normalized = computed(() => {
     if (seen.has(p.product_id)) continue;
     seen.add(p.product_id);
 
-    // evita $0
     if (!p.price_list && !p.price_discount) continue;
-
     out.push(p);
   }
 
   return out.slice(0, 12);
+});
+
+const moreLink = computed(() => {
+  const cid = Number(props.categoryId || 0);
+  const sid = Number(props.subcategoryId || 0);
+  if (!cid) return "/shop";
+  if (sid) return `/shop/c/${cid}?sub=${sid}`;
+  return `/shop/c/${cid}`;
 });
 </script>
 
@@ -191,37 +200,84 @@ const normalized = computed(() => {
 
 .more-btn {
   text-transform: none;
-  border-radius: 12px;
+  border-radius: 999px;
+  font-weight: 800;
 }
 
 .similar-card {
   overflow: hidden;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
-/* Slide row */
+/* Desktop/tablet slide */
 .slide :deep(.v-slide-group__content) {
   padding: 6px 2px 12px;
-  scroll-snap-type: x mandatory; /* ✅ feel “ML” */
+  scroll-snap-type: x mandatory;
 }
-
 .slide :deep(.v-slide-group__content > *) {
   scroll-snap-align: start;
 }
 
-/* ✅ ancho responsive (desktop/tablet/mobile) */
+/* item base */
 .item {
   width: 260px;
   padding: 0 10px;
 }
 
 @media (max-width: 1200px) {
-  .item { width: 240px; }
+  .item {
+    width: 240px;
+  }
 }
 @media (max-width: 900px) {
-  .item { width: 220px; }
+  .item {
+    width: 220px;
+  }
 }
+
+/* Mobile scroller (ML) */
+.scroller {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 2px 12px;
+  scroll-snap-type: x mandatory;
+}
+.scroller::-webkit-scrollbar {
+  height: 0;
+}
+.mobile-item {
+  scroll-snap-align: start;
+}
+
+/* mobile: cards más angostas */
 @media (max-width: 520px) {
-  .item { width: 190px; padding: 0 8px; }
+  .item {
+    width: 178px;
+    padding: 0;
+  }
+  .scroller {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+/* toggles */
+.desktop-only {
+  display: block;
+}
+.mobile-only {
+  display: none;
+}
+@media (max-width: 600px) {
+  .desktop-only {
+    display: none;
+  }
+  .mobile-only {
+    display: flex;
+  }
 }
 
 .empty {
@@ -243,9 +299,21 @@ const normalized = computed(() => {
   padding: 12px;
   background: rgba(0, 0, 0, 0.02);
 }
-@media (max-width: 1200px) { .skel { width: 240px; } }
-@media (max-width: 900px)  { .skel { width: 220px; } }
-@media (max-width: 520px)  { .skel { width: 190px; } }
+@media (max-width: 1200px) {
+  .skel {
+    width: 240px;
+  }
+}
+@media (max-width: 900px) {
+  .skel {
+    width: 220px;
+  }
+}
+@media (max-width: 520px) {
+  .skel {
+    width: 178px;
+  }
+}
 
 .skel-img {
   height: 150px;
@@ -260,8 +328,12 @@ const normalized = computed(() => {
   margin-top: 12px;
   animation: pulse 1.2s ease-in-out infinite;
 }
-.w70 { width: 70%; }
-.w45 { width: 45%; }
+.w70 {
+  width: 70%;
+}
+.w45 {
+  width: 45%;
+}
 .skel-foot {
   display: flex;
   justify-content: flex-end;
@@ -274,10 +346,15 @@ const normalized = computed(() => {
   background: rgba(0, 0, 0, 0.08);
   animation: pulse 1.2s ease-in-out infinite;
 }
-
 @keyframes pulse {
-  0% { opacity: .55; }
-  50% { opacity: .95; }
-  100% { opacity: .55; }
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.55;
+  }
 }
 </style>
