@@ -174,8 +174,9 @@ const heroSlides = ref([
     pill: "OFERTAS",
     title: "Especial en Tecnología",
     subtitle: "Accesorios, audio, cables y más. Comprá online y elegí retiro al finalizar.",
+    // ✅ IMAGEN POSICION 1 (la que me pasaste)
     image:
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=2400&q=80",
+      "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp?v=1",
     action: { type: "scroll" },
   },
   {

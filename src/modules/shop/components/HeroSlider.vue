@@ -126,7 +126,8 @@ const FALLBACK_SLIDES = [
     pill: "NOVEDADES",
     title: "Gadgets y accesorios\nnuevos",
     subtitle: "Descubrí productos recién ingresados en el catálogo.",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=2400&q=80",
+    // ✅ IMAGEN POSICION 1 (tu webp)
+    image: "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp",
     primaryCta: "Ver más",
     secondaryCta: "Ir al catálogo",
     primaryAction: { type: "shop" }, // usa emit goShop si querés
