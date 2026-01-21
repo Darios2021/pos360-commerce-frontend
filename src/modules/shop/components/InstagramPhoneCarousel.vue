@@ -90,7 +90,6 @@
         No hay publicaciones configuradas todavía.
       </div>
 
-      <!-- ✅ Carousel real (NO se mueve el carrusel interno del post) -->
       <div v-else class="igs-wrap">
         <!-- Flechas -->
         <v-btn
@@ -115,25 +114,26 @@
           ref="stripEl"
           class="igs-strip"
           role="region"
-          aria-label="Publicaciones de redes"
+          aria-label="Publicaciones de Instagram"
           @scroll.passive="onStripScroll"
         >
           <div v-for="(u, i) in normalized" :key="u.key" class="igs-item">
-            <v-card class="igs-postCard" variant="outlined" rounded="xl">
-              <div class="igs-postFrame">
-                <!-- loader por item -->
+            <v-card class="igs-postCard" variant="flat" rounded="xl">
+              <!-- ✅ variables por item: ancho/escala/padding para que NUNCA corte -->
+              <div
+                class="igs-postFrame"
+                :style="{
+                  '--igs-cardw': cardW + 'px',
+                  '--igs-scale': String(scale),
+                  '--igs-pad': pad + 'px',
+                }"
+              >
                 <div class="igs-loader" v-if="!loaded[i]">
                   <v-progress-circular indeterminate size="24" />
                   <div class="igs-loaderText">Cargando…</div>
                 </div>
 
-                <!-- ✅ IMPORTANTE:
-                     - iframe en tamaño "post" (base 320x560)
-                     - se escala para que entren varios en desktop y no se rompa en mobile
-                     - pointer-events desactivado para que no haga swipe interno (se te “corre” la publicación)
-                     - para interactuar -> botón Abrir
-                -->
-                <div class="igs-embed" :style="{ '--igs-scale': String(scale) }">
+                <div class="igs-embed">
                   <iframe
                     class="igs-iframe"
                     :src="u.embedUrl"
@@ -146,6 +146,9 @@
                     @load="onLoad(i)"
                   ></iframe>
                 </div>
+
+                <!-- bloquea gestos dentro del iframe -->
+                <div class="igs-gestureBlock" aria-hidden="true"></div>
               </div>
 
               <div class="igs-postActions">
@@ -178,9 +181,9 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { publicListLinks } from "@/app/services/public.links.api.js";
 
 const props = defineProps({
-  kind: { type: String, default: "INSTAGRAM_POST" }, // shop_links.kind
+  kind: { type: String, default: "INSTAGRAM_POST" },
   title: { type: String, default: "Seguime en redes sociales" },
-  subtitle: { type: String, default: "Novedades, promos y sorteos." },
+  subtitle: { type: String, default: "Promos, novedades y sorteos." },
   profileUrl: { type: String, default: "" },
   limit: { type: Number, default: 20 },
   social: {
@@ -203,7 +206,15 @@ const hardBlocked = ref(false);
 const fetchedUrls = ref([]);
 const stripEl = ref(null);
 
-const scale = ref(0.78); // desktop default (entra + de uno)
+// ✅ medidas base del embed IG (constantes reales)
+const BASE_W = 320;
+const BASE_H = 560;
+
+// ✅ control visual del item
+const cardW = ref(290); // ancho visible del post dentro del carrusel
+const pad = ref(10); // padding interno del frame
+const scale = ref(0.84); // escala del iframe (derivada de cardW + pad)
+
 let ro = null;
 
 function stripIgParams(u) {
@@ -214,9 +225,7 @@ function stripIgParams(u) {
     url.search = "";
     url.hash = "";
     s = url.toString();
-  } catch {
-    // ok
-  }
+  } catch {}
   return s;
 }
 
@@ -230,10 +239,11 @@ function parseInstagramUrl(u) {
   const type = String(m[1] || "").toLowerCase();
   const code = String(m[2] || "");
 
+  // ✅ embed estable (sin captioned)
   const embedUrl =
     type === "reel"
-      ? `https://www.instagram.com/reel/${code}/embed/captioned/`
-      : `https://www.instagram.com/p/${code}/embed/captioned/`;
+      ? `https://www.instagram.com/reel/${code}/embed/`
+      : `https://www.instagram.com/p/${code}/embed/`;
 
   const originalUrl =
     type === "reel" ? `https://www.instagram.com/reel/${code}/` : `https://www.instagram.com/p/${code}/`;
@@ -255,32 +265,36 @@ function clamp(n, a, b) {
 }
 
 /**
- * Queremos “tamaño post” para que entren varios.
- * Ajustamos escala según ancho del contenedor:
- * - desktop: 0.78..0.9 (depende)
- * - mobile: 0.68..0.76
+ * ✅ FIX REAL:
+ * - en vez de aspect-ratio, calculamos:
+ *   scale = (cardW - 2*pad) / BASE_W
+ * - y el alto del frame será EXACTO para el embed: BASE_H * scale + 2*pad
+ * => así no se corta NUNCA ni 1px.
  */
-function updateScale() {
+function updateSizing() {
   const el = stripEl.value;
   if (!el) return;
   const w = el.clientWidth || 0;
 
-  // si hay mucho ancho, podemos subir un poco la escala
-  if (w >= 1100) scale.value = 0.9;
-  else if (w >= 900) scale.value = 0.84;
-  else if (w >= 700) scale.value = 0.78;
-  else scale.value = 0.72;
+  // ancho del "post" según ancho disponible (entra más de 1 en desktop)
+  if (w >= 1300) cardW.value = 320;
+  else if (w >= 1100) cardW.value = 305;
+  else if (w >= 900) cardW.value = 290;
+  else if (w >= 720) cardW.value = 275;
+  else cardW.value = 265;
 
-  // safety
-  scale.value = clamp(scale.value, 0.68, 0.92);
+  // padding interno (un poco más en desktop, menos en mobile)
+  pad.value = w < 600 ? 8 : 10;
+
+  // escala derivada + margen extra anti-corte (bajamos 1% por seguridad)
+  const s = (cardW.value - pad.value * 2) / BASE_W;
+  scale.value = clamp(s * 0.99, 0.70, 0.92);
 }
 
 function getStepPx() {
-  // ancho “real” del item aprox: (BASE_W * scale) + paddings/gap
-  const BASE_W = 320;
-  const gap = 14;
-  const cardPad = 18; // aprox bordes
-  return Math.round(BASE_W * scale.value + gap + cardPad);
+  // step: ancho del card + gap
+  const gap = 16;
+  return Math.round(cardW.value + gap);
 }
 
 function scrollNext() {
@@ -295,9 +309,7 @@ function scrollPrev() {
   el.scrollBy({ left: -getStepPx(), behavior: "smooth" });
 }
 
-function onStripScroll() {
-  // no-op: queda por si querés luego sincronizar dots/índice
-}
+function onStripScroll() {}
 
 async function fetchFromDb() {
   loading.value = true;
@@ -321,9 +333,9 @@ async function fetchFromDb() {
 onMounted(async () => {
   await fetchFromDb();
   await nextTick();
-  updateScale();
+  updateSizing();
 
-  ro = new ResizeObserver(() => updateScale());
+  ro = new ResizeObserver(() => updateSizing());
   if (stripEl.value) ro.observe(stripEl.value);
 
   setTimeout(() => {
@@ -346,19 +358,21 @@ watch(
     hardBlocked.value = false;
     await fetchFromDb();
     await nextTick();
-    updateScale();
+    updateSizing();
   }
 );
 </script>
 
 <style scoped>
+/* Card general (sutil) */
 .igs-card {
   overflow: hidden;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(250, 250, 250, 1), rgba(248, 248, 248, 1));
+  background: linear-gradient(180deg, rgba(252, 252, 252, 1), rgba(248, 248, 248, 1));
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-/* header sutil */
+/* Header sutil */
 .igs-head {
   display: flex;
   align-items: center;
@@ -420,18 +434,17 @@ watch(
 .igs-body {
   padding: 12px 12px 14px;
 }
-
 .igs-wrap {
   position: relative;
   padding: 2px 0 0;
 }
 
-/* strip carousel */
+/* Strip */
 .igs-strip {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   overflow-x: auto;
-  padding: 10px 8px 4px;
+  padding: 12px 10px 6px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
@@ -440,27 +453,30 @@ watch(
   scroll-snap-align: center;
 }
 
-/* post card */
+/* Post card */
 .igs-postCard {
   border-radius: 18px;
-  overflow: hidden;
-  background: #fff;
+  background: #fafafa;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-/* frame para embed */
+/* ✅ Frame SIN aspect-ratio (alto exacto para que no recorte) */
 .igs-postFrame {
   position: relative;
-  border-radius: 18px;
+  border-radius: 16px;
   overflow: hidden;
   background: #fff;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  /* proporción IG embed */
-  aspect-ratio: 9 / 16;
-  width: calc(320px * var(--igs-scale, 0.78));
-  max-width: 340px;
+
+  width: var(--igs-cardw, 290px);
+  padding: var(--igs-pad, 10px);
+
+  /* alto exacto del embed escalado + padding */
+  height: calc(560px * var(--igs-scale, 0.84) + (var(--igs-pad, 10px) * 2));
 }
 
-/* loader */
+/* Loader */
 .igs-loader {
   position: absolute;
   inset: 0;
@@ -468,31 +484,42 @@ watch(
   place-items: center;
   gap: 6px;
   background: rgba(255, 255, 255, 0.96);
-  z-index: 2;
+  z-index: 3;
 }
 .igs-loaderText {
   font-size: 12px;
   opacity: 0.7;
 }
 
-/* embed escalado */
+/* Embed centrado */
 .igs-embed {
-  --igs-scale: 0.78;
-  position: absolute;
-  inset: 0;
-  transform-origin: top left;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: start center;
 }
 
-/* IMPORTANT: bloquea interacción del iframe para que NO haga swipe interno */
+/* iframe base + escala con margen anti-corte */
 .igs-iframe {
   width: 320px;
   height: 560px;
   border: 0;
   display: block;
   background: #fff;
-  transform-origin: top left;
-  transform: scale(var(--igs-scale, 0.78));
-  pointer-events: none; /* <- clave */
+
+  transform-origin: top center;
+  transform: scale(var(--igs-scale, 0.84));
+
+  pointer-events: none; /* evita swipe interno */
+}
+
+/* overlay extra */
+.igs-gestureBlock {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: transparent;
 }
 
 /* acciones */
@@ -501,10 +528,10 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 12px 12px;
 }
 .igs-open {
-  border-radius: 12px;
+  border-radius: 999px;
 }
 .igs-count {
   font-size: 12px;
@@ -526,7 +553,7 @@ watch(
   transform: translateY(-50%);
   z-index: 5;
   border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
 }
 .igs-nav-left {
   left: 6px;
@@ -547,13 +574,12 @@ watch(
     justify-content: flex-start;
   }
 
-  /* en mobile oculto flechas (gesto horizontal + snap) */
   .igs-nav {
     display: none;
   }
 
   .igs-strip {
-    padding: 10px 4px 4px;
+    padding: 10px 6px 4px;
   }
 }
 </style>
