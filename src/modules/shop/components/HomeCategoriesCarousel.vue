@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/HomeCategoriesCarousel.vue -->
 <template>
   <section v-if="pages.length" class="hc-shell">
@@ -7,10 +8,10 @@
         <div class="hc-title">Categorías</div>
 
         <button class="hc-link" type="button" @click="goAll">
-          Mostrar todas
+          Mostrar todas las categorías
         </button>
 
-        <div class="hc-dots" v-if="pages.length > 1">
+        <div class="hc-dots" v-if="pages.length > 1" aria-label="Paginación de categorías">
           <span
             v-for="i in pages.length"
             :key="i"
@@ -21,7 +22,8 @@
       </div>
 
       <!-- Body -->
-      <div class="hc-body">
+      <div class="hc-body" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
+        <!-- Arrows -->
         <button
           v-if="pages.length > 1"
           class="hc-arrow left"
@@ -42,20 +44,21 @@
           <span class="hc-arrow-ico">›</span>
         </button>
 
-        <!-- ✅ grilla con altura estable (ghosts si faltan) -->
-        <div class="hc-grid">
+        <!-- Grid -->
+        <div class="hc-grid" role="list">
           <template v-for="c in currentPagePadded" :key="c.__empty ? c.__key : c.id">
-            <div v-if="c.__empty" class="hc-item hc-ghost" aria-hidden="true"></div>
+            <div v-if="c.__empty" class="hc-item hc-ghost" aria-hidden="true" />
 
             <button
               v-else
               class="hc-item"
               type="button"
+              role="listitem"
               @click="openCategory(c)"
               :title="c.name"
             >
               <div class="hc-img">
-                <img class="hc-img-img" :src="imgOf(c)" alt="" />
+                <img class="hc-img-img" :src="imgOf(c)" :alt="c.name" loading="lazy" />
               </div>
 
               <div class="hc-name">
@@ -81,6 +84,36 @@ const props = defineProps({
 const router = useRouter();
 const idx = ref(0);
 
+// ✅ cache-bust suave para que se actualicen iconos sin pegarle fuerte al CDN
+// Cambialo si subís nuevos PNGs (o dejalo, y se refresca por deploy)
+const ICON_VER = "2026-01-21-01";
+
+// --- swipe (mobile) ---
+const touch = ref({ x: 0, y: 0, t: 0 });
+function onTouchStart(e) {
+  const p = e?.changedTouches?.[0];
+  if (!p) return;
+  touch.value = { x: p.clientX, y: p.clientY, t: Date.now() };
+}
+function onTouchEnd(e) {
+  if (pages.value.length <= 1) return;
+
+  const p = e?.changedTouches?.[0];
+  if (!p) return;
+
+  const dx = p.clientX - touch.value.x;
+  const dy = p.clientY - touch.value.y;
+  const dt = Date.now() - touch.value.t;
+
+  // swipe horizontal claro, ignorar scroll vertical
+  if (dt > 650) return;
+  if (Math.abs(dx) < 45) return;
+  if (Math.abs(dy) > 70) return;
+
+  if (dx < 0) next();
+  else prev();
+}
+
 function norm(s) {
   return String(s || "")
     .trim()
@@ -94,54 +127,37 @@ function isRootCategory(c) {
   return p === null || p === undefined || Number(p) === 0;
 }
 
-const featuredExact = {
-  accesorios: "https://storage-files.cingulado.org/pos360/products/155/1767484866792-95f1028d.jpeg",
-  audio: "https://storage-files.cingulado.org/pos360/products/9/1766776617403-88e61e3c.jpeg",
-  automovil: "https://storage-files.cingulado.org/pos360/products/26/1766785541747-b2be56a0.jpg",
-  automóvil: "https://storage-files.cingulado.org/pos360/products/26/1766785541747-b2be56a0.jpg",
-  automotor: "https://storage-files.cingulado.org/pos360/products/26/1766785541747-b2be56a0.jpg",
-  cableado: "https://storage-files.cingulado.org/pos360/products/148/1767214103600-aa3aae94.jpeg",
-  energia: "https://storage-files.cingulado.org/pos360/products/31/1766787357298-e544ac0c.jpg",
-  energía: "https://storage-files.cingulado.org/pos360/products/31/1766787357298-e544ac0c.jpg",
-  entretenimiento: "https://storage-files.cingulado.org/pos360/products/130/1767207058363-c86a52e6.jpeg",
-  hogar: "https://storage-files.cingulado.org/pos360/products/68/1766793570645-acbcae20.jpg",
-  telefonia: "https://storage-files.cingulado.org/pos360/products/18/1766781457528-1cdca3a8.jpg",
-  telefonía: "https://storage-files.cingulado.org/pos360/products/18/1766781457528-1cdca3a8.jpg",
-};
+function withVer(url) {
+  if (!url) return url;
+  return url.includes("?") ? `${url}&v=${encodeURIComponent(ICON_VER)}` : `${url}?v=${encodeURIComponent(ICON_VER)}`;
+}
 
-const tvImg = "https://storage-files.cingulado.org/pos360/products/27/1766786134590-eacfb231.jpeg";
+/**
+ * ✅ ICONOS OFICIALES (SJT)
+ * - Matcheo por "contains" para cubrir variantes:
+ *   "SEGURIDAD ELECTRONICA", "SALUD / BELLEZA", "TV / IMAGEN", etc.
+ */
+const ICONS = [
+  { match: (k) => k.includes("accesor"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968306314-b418ee86fec0.png") },
+  { match: (k) => k.includes("audio"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968316038-54128c09d744.png") },
+  { match: (k) => k.includes("automot") || k.includes("automo") || k.includes("auto"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968321444-f9feaf72b2a6.png") },
+  { match: (k) => k.includes("cable"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968324835-48e6572f21ab.png") }, // ✅ sin espacios
+  { match: (k) => k.includes("computacion") || k.includes("computac") || k.includes("comput"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968328262-7f61417d370f.png") },
+  { match: (k) => k.includes("energia") || k.includes("energ"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968334049-6affec6a83ca.png") },
+  { match: (k) => k.includes("entreten"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968339902-02a488c66115.png") },
+  { match: (k) => k.includes("electro") || k.includes("hogar") || k.includes("aire") || k.includes("aires"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968347659-a7a8fa9d2fd6.png") },
+  { match: (k) => k.includes("ilumin") || k.includes("luz") || k.includes("lampara") || k.includes("led"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968352957-d12f2236aaff.png") },
+  { match: (k) => k.includes("informat"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968357748-5045d55d6e3b.png") },
+  {
+    match: (k) => k.includes("salud") || k.includes("belleza") || k.includes("cuidado") || k.includes("personal"),
+    img: withVer("https://storage-files.cingulado.org/pos360/media/1768968362467-59bc2286dbd2.png"),
+  },
+  { match: (k) => k.includes("seguridad") || k.includes("cctv") || k.includes("camara"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968366335-4e3a5a9ffe58.png") },
 
-const stockByKey = [
-  {
-    match: (k) => k.includes("tv") || k.includes("televisor") || k.includes("televis"),
-    img: tvImg,
-  },
-  {
-    match: (k) =>
-      k.includes("salud") || k.includes("belleza") || k.includes("cuidado") || k.includes("personal"),
-    img: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=256&q=70",
-  },
-  {
-    match: (k) => k.includes("ilumin") || k.includes("lampara") || k.includes("led") || k.includes("luz"),
-    img: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=256&q=70",
-  },
-  {
-    match: (k) =>
-      k.includes("informat") ||
-      k.includes("comput") ||
-      k.includes("pc") ||
-      k.includes("notebook") ||
-      k.includes("laptop"),
-    img: "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=256&q=70",
-  },
-  {
-    match: (k) => k.includes("camara") || k.includes("camaras") || k.includes("cctv") || k.includes("seguridad"),
-    img: "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=256&q=70",
-  },
-  {
-    match: (k) => k.includes("telefono") || k.includes("celular") || k.includes("smart"),
-    img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=256&q=70",
-  },
+  // ✅ faltaban (ya incluidos)
+  { match: (k) => k.includes("tecnolog") || k === "tecnologia", img: withVer("https://storage-files.cingulado.org/pos360/media/1768968885729-02373cf4ab39.png") },
+  { match: (k) => k.includes("telefon") || k.includes("celular"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968882310-1c678bd0ccc5.png") },
+  { match: (k) => k.includes("tv") || k.includes("imagen") || k.includes("televisor") || k.includes("televis"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968878573-ddeb76768fb1.png") },
 ];
 
 const genericStock = [
@@ -154,17 +170,18 @@ const genericStock = [
 function imgOf(c) {
   const key = norm(c?.name);
 
-  if (featuredExact[key]) return featuredExact[key];
-
+  // 1) si la categoría ya trae imagen desde API, respetarla (también cache-bust)
   const raw = c?.image_url || c?.icon_url || c?.img || c?.image || c?.url || c?.src || "";
-  if (raw) return raw;
+  if (raw) return withVer(raw);
 
-  for (const rule of stockByKey) {
+  // 2) map oficial por nombre
+  for (const rule of ICONS) {
     try {
       if (rule.match(key)) return rule.img;
     } catch {}
   }
 
+  // 3) fallback estable
   const id = Number(c?.id || 0);
   return genericStock[Math.abs(id) % genericStock.length];
 }
@@ -204,14 +221,12 @@ function clampIndex() {
   if (idx.value > max) idx.value = max;
   if (idx.value < 0) idx.value = 0;
 }
-
 watch(pages, clampIndex, { immediate: true });
 
 function prev() {
   if (pages.value.length <= 1) return;
   idx.value = (idx.value - 1 + pages.value.length) % pages.value.length;
 }
-
 function next() {
   if (pages.value.length <= 1) return;
   idx.value = (idx.value + 1) % pages.value.length;
@@ -229,167 +244,216 @@ function goAll() {
 </script>
 
 <style scoped>
+/* =======================
+   Contenedor general
+   ======================= */
 .hc-shell {
   width: 100%;
-}
-.hc-card {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  overflow: visible;
 }
 
-/* Header compacto */
+.hc-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: visible;
+  position: relative;
+}
+
+/* =======================
+   Header
+   ======================= */
 .hc-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 12px 6px;
-  position: relative;
+  gap: 10px;
+  padding: 14px 16px 10px;
 }
+
 .hc-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: -0.2px;
 }
+
 .hc-link {
   border: 0;
   background: transparent;
   cursor: pointer;
   color: #2d6cdf;
-  font-weight: 900;
-  font-size: 11px;
+  font-weight: 800;
+  font-size: 13px;
   padding: 0;
+  white-space: nowrap;
 }
+
 .hc-dots {
   margin-left: auto;
   display: inline-flex;
   gap: 6px;
   align-items: center;
 }
+
 .hc-dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.18);
 }
 .hc-dot.active {
   background: #2d6cdf;
 }
 
+/* =======================
+   Body
+   ======================= */
 .hc-body {
   position: relative;
-  padding: 8px 12px 12px;
+  padding: 10px 16px 16px;
+  overflow: visible;
 }
 
-/* ✅ Grilla estable */
+/* =======================
+   Grid desktop
+   ======================= */
 .hc-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
 
-  --hc-gap: 10px;
-  --hc-item-h: 78px;
+  --hc-gap: 14px;
+  --hc-item-h: 82px; /* ✅ más alto para icon grande + texto */
   --hc-rows: 3;
-  min-height: calc((var(--hc-rows) * var(--hc-item-h)) + ((var(--hc-rows) - 1) * var(--hc-gap)));
+
+  min-height: calc(
+    (var(--hc-rows) * var(--hc-item-h)) +
+    ((var(--hc-rows) - 1) * var(--hc-gap))
+  );
 }
 
+/* =======================
+   Item categoría
+   ======================= */
 .hc-item {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fff;
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #ffffff;
   border-radius: 12px;
   padding: 0;
+
   display: grid;
-
-  /* ✅ más espacio para texto */
-  grid-template-columns: 52px 1fr;
-
+  grid-template-columns: 92px 1fr; /* ✅ más ancho para icon */
   align-items: center;
-  gap: 8px;
+
   height: var(--hc-item-h);
   text-align: left;
   cursor: pointer;
+
+  overflow: hidden;
+
   transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .hc-item:hover {
-    border-color: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.14);
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
   }
 }
 
+/* =======================
+   Imagen (MUCHO más grande)
+   ======================= */
 .hc-img {
-  width: 52px;
+  width: 92px;
   height: var(--hc-item-h);
+  background: #f3f4f6;
   border-right: 1px solid rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  background: #fafafa;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
 .hc-img-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 70px; /* ✅ GRANDE (antes 56/62) */
+  height: 70px;
+  object-fit: contain;
   display: block;
 }
 
+/* =======================
+   Texto (no se come letras)
+   ======================= */
 .hc-name {
-  /* ✅ MUCHO más chico */
-  font-size: 10px;
-  font-weight: 1000;
-  line-height: 1.06;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.12;
+  color: rgba(0, 0, 0, 0.86);
 
-  padding-right: 8px;
-
-  /* ✅ permitir hasta 3 líneas para que NO se “coma” */
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 
-  /* ✅ no cortar palabras raras */
-  word-break: normal;
+  /* desktop: preferimos no partir palabras feo */
+  word-break: keep-all;
   overflow-wrap: anywhere;
-  hyphens: auto;
-
-  text-transform: uppercase;
-  letter-spacing: 0.2px;
 }
 
+/* Ghosts */
 .hc-ghost {
   visibility: hidden;
   pointer-events: none;
 }
 
-/* Flechas */
+/* =======================
+   Flechas (más agradables)
+   ======================= */
 .hc-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 42px;
-  height: 42px;
+
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  border: 0;
-  background: #fff;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+
   cursor: pointer;
   display: grid;
   place-items: center;
-  z-index: 5;
+  z-index: 15;
+
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
+
 .hc-arrow.left {
-  left: -14px;
+  left: -16px;
 }
 .hc-arrow.right {
-  right: -14px;
+  right: -16px;
 }
+
 .hc-arrow-ico {
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
   color: #2d6cdf;
   font-weight: 900;
+  transform: translateY(-1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hc-arrow:hover {
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    background: #ffffff;
+  }
 }
 
 /* =======================
@@ -402,55 +466,125 @@ function goAll() {
   }
 }
 
-/* ✅ MOBILE */
+/* =======================
+   Mobile (2 columnas, texto NO se corta, icons grandes)
+   ======================= */
 @media (max-width: 960px) {
+  .hc-head {
+    padding: 12px 12px 8px;
+    gap: 8px;
+  }
+
+  .hc-title {
+    font-size: 15px;
+  }
+
+  .hc-link {
+    font-size: 12px;
+  }
+
+  .hc-body {
+    padding: 10px 12px 12px;
+  }
+
   .hc-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
 
-    --hc-gap: 10px;
-    --hc-item-h: 64px;
+    --hc-gap: 12px;
+    --hc-item-h: 84px; /* ✅ más alto en mobile */
     --hc-rows: 6;
+
+    min-height: calc(
+      (var(--hc-rows) * var(--hc-item-h)) +
+      ((var(--hc-rows) - 1) * var(--hc-gap))
+    );
   }
 
   .hc-item {
-    grid-template-columns: 46px 1fr;
-    gap: 8px;
+    grid-template-columns: 88px 1fr; /* ✅ más ancho para icon */
     border-radius: 14px;
   }
 
   .hc-img {
-    width: 46px;
+    width: 88px;
+  }
+
+  .hc-img-img {
+    width: 68px; /* ✅ GRANDE en mobile también */
+    height: 68px;
   }
 
   .hc-name {
-    font-size: 9.6px;
-    line-height: 1.05;
-    -webkit-line-clamp: 3;
-    letter-spacing: 0.15px;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.10;
+
+    /* ✅ mobile: permitir partir si hace falta (no comerse letras) */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+
+    -webkit-line-clamp: 2;
+  }
+
+  /* ✅ flechas visibles en mobile (más chicas para no molestar) */
+  .hc-arrow {
+    width: 40px;
+    height: 40px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+  }
+
+  .hc-arrow.left {
+    left: -12px;
+  }
+  .hc-arrow.right {
+    right: -12px;
+  }
+
+  .hc-arrow-ico {
+    font-size: 22px;
   }
 }
 
-/* ✅ CELUS CHICOS */
+/* =======================
+   Celus chicos: 1 columna (evita que se “coman”)
+   ======================= */
 @media (max-width: 420px) {
   .hc-grid {
-    gap: 9px;
-    --hc-gap: 9px;
-    --hc-item-h: 60px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    --hc-gap: 10px;
+    --hc-item-h: 86px;
+    min-height: auto;
   }
 
   .hc-item {
-    grid-template-columns: 44px 1fr;
-    gap: 7px;
+    grid-template-columns: 92px 1fr;
   }
 
   .hc-img {
-    width: 44px;
+    width: 92px;
   }
 
-  .hc-name {
-    font-size: 9.2px;
-    -webkit-line-clamp: 3;
+  .hc-img-img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .hc-arrow {
+    width: 38px;
+    height: 38px;
+  }
+
+  .hc-arrow.left {
+    left: -10px;
+  }
+  .hc-arrow.right {
+    right: -10px;
+  }
+
+  .hc-arrow-ico {
+    font-size: 21px;
   }
 }
 </style>

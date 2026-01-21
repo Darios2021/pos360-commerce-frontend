@@ -6,7 +6,7 @@
         <div class="cat-title">Categorías</div>
 
         <button class="cat-link" type="button" @click="goAll">
-          Mostrar todas las categorías
+          Mostrar todas las categoríass
         </button>
       </div>
 

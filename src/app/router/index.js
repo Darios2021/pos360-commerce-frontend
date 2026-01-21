@@ -11,9 +11,8 @@ import AuthLayout from "@/app/layouts/AuthLayout.vue";
 // Shop routes (aislado)
 import { shopRoutes } from "@/modules/shop/router/shop.routes";
 
-// ✅ Admin Shop routes (Branding / Pedidos / Envíos / Retiros / Pagos / Notificaciones)
-// OJO: tu carpeta es /modules/admin/routes (no /router)
-import { shopAdminRoutes } from "@/modules/admin/routes/shopAdmin.routes";
+// ✅ IMPORT CORRECTO (archivo está en src/app/router)
+import { shopAdminRoutes } from "@/app/router/shopAdmin.routes";
 
 // Pages
 import LoginPage from "@/modules/auth/pages/LoginPage.vue";
@@ -44,12 +43,12 @@ import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
 const routes = [
   // =========================
-  // ✅ SHOP (aislado, público)
+  // SHOP (público)
   // =========================
   ...shopRoutes,
 
   // =========================
-  // AUTH (sin header/drawer)
+  // AUTH
   // =========================
   {
     path: "/auth",
@@ -61,7 +60,7 @@ const routes = [
   },
 
   // =========================
-  // APP (con header/drawer) - privado
+  // APP (privado)
   // =========================
   {
     path: "/",
@@ -75,11 +74,11 @@ const routes = [
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
-      // Products
+      // Productos
       { path: "products", name: "products", component: ProductsListPage },
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
-      // Import
+      // Importación
       { path: "products-import", name: "productsImport", component: ImportProductsPage },
 
       // Configuración
@@ -92,10 +91,10 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ TIENDA ADMIN (rutas /admin/shop/*) bajo el mismo layout
+      // ✅ TIENDA ADMIN + GALERÍA MULTIMEDIA
       ...shopAdminRoutes,
 
-      // Users
+      // Usuarios
       {
         path: "users",
         name: "users",
@@ -108,7 +107,7 @@ const routes = [
     ],
   },
 
-  // fallback -> Shop (público)
+  // fallback
   { path: "/:pathMatch(.*)*", redirect: { name: "shopHome" } },
 ];
 
@@ -119,23 +118,20 @@ const router = createRouter({
 });
 
 // =========================
-// ✅ Guard global
+// Guard global
 // =========================
 router.beforeEach((to) => {
   const auth = useAuthStore();
   if (auth.status === "idle") auth.hydrate?.();
 
-  // ✅ Público (incluye shop)
   if (to.meta?.public) return true;
-
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
 
   const roles = to.meta?.roles;
-  if (roles && roles.length) {
+  if (roles?.length) {
     const r = auth.roles || [];
-    const ok = roles.some((x) => r.includes(x));
-    if (!ok) return { name: "home" };
+    if (!roles.some((x) => r.includes(x))) return { name: "home" };
   }
 
   return true;

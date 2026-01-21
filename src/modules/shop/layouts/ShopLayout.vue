@@ -1,9 +1,9 @@
-<!-- src/modules/shop/layouts/ShopLayout.vue -->
 <template>
   <v-app class="shop-app">
     <ShopHeader />
     <v-main class="shop-main">
-      <router-view />
+      <!-- ✅ FIX: fuerza remount cuando cambia params/query -->
+      <router-view :key="$route.fullPath" />
     </v-main>
   </v-app>
 </template>

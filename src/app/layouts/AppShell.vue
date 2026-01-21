@@ -1,4 +1,5 @@
 <!-- src/app/layouts/AppShell.vue -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega Galería Multimedia en menú Tienda) -->
 <template>
   <v-app>
     <v-layout>
@@ -187,11 +188,7 @@
           </v-list-group>
 
           <!-- ✅ NUEVO MENÚ: TIENDA -->
-          <v-list-group
-            v-if="isAdmin && showShopMenu"
-            value="shopAdmin"
-            prepend-icon="mdi-storefront-outline"
-          >
+          <v-list-group v-if="isAdmin && showShopMenu" value="shopAdmin" prepend-icon="mdi-storefront-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Tienda">
                 <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
@@ -241,6 +238,16 @@
               :to="{ name: 'shopNotificationsSettings' }"
               prepend-icon="mdi-bell-outline"
               title="Notificaciones"
+              exact
+            />
+
+            <!-- ✅ NUEVO: Galería Multimedia -->
+            <v-divider class="my-2" />
+            <v-list-item
+              v-if="hasRoute('adminGaleriaMultimedia')"
+              :to="{ name: 'adminGaleriaMultimedia' }"
+              prepend-icon="mdi-image-multiple-outline"
+              title="Galería multimedia"
               exact
             />
           </v-list-group>
@@ -339,7 +346,8 @@ const showShopMenu = computed(() => {
     hasRoute("shopShippingSettings") ||
     hasRoute("shopPickupSettings") ||
     hasRoute("shopPaymentsSettings") ||
-    hasRoute("shopNotificationsSettings")
+    hasRoute("shopNotificationsSettings") ||
+    hasRoute("adminGaleriaMultimedia") // ✅ NUEVO
   );
 });
 

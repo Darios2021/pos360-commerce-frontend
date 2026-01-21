@@ -1,6 +1,5 @@
-<!-- src/modules/shop/components/ShopSearchBox.vue -->
 <template>
-  <div class="sb-wrap" @keydown.esc.prevent="close">
+  <div class="sb-wrap" @keydown.esc.prevent="close" ref="wrap">
     <v-text-field
       v-model="text"
       variant="solo"
@@ -14,56 +13,68 @@
       @keydown.up.prevent="move(-1)"
       @keydown.enter.prevent="onEnter"
       @focus="onFocus"
+      @blur="onBlur"
       @click:clear="clear"
       @input="onType"
     />
 
     <!-- Dropdown -->
-    <div v-if="open && suggestions.length" class="sb-dd">
-      <button
-        v-for="(s, i) in suggestions"
-        :key="String(s.product_id) + '-' + i"
-        class="sb-row"
-        :class="{ active: i === activeIdx }"
-        type="button"
-        @mouseenter="activeIdx = i"
-        @mousedown.prevent="pick(s)"
-      >
-        <!-- ✅ THUMB -->
-        <div class="sb-thumb" aria-hidden="true">
-          <img
-            v-if="thumbOf(s)"
-            :src="thumbOf(s)"
-            :alt="s.name || 'Producto'"
-            loading="lazy"
-            @error="onThumbErr"
-          />
-          <div v-else class="sb-thumb-ph">
-            <v-icon size="18">mdi-image-outline</v-icon>
+    <div v-if="open && (loading || showEmpty || suggestions.length)" class="sb-dd">
+      <div v-if="loading" class="sb-status">Buscando…</div>
+
+      <template v-else>
+        <div v-if="suggestions.length">
+          <button
+            v-for="(s, i) in suggestions"
+            :key="String(s.product_id) + '-' + i"
+            class="sb-row"
+            :class="{ active: i === activeIdx }"
+            type="button"
+            @mouseenter="activeIdx = i"
+            @mousedown.prevent="pick(s)"
+          >
+            <!-- ✅ THUMB -->
+            <div class="sb-thumb" aria-hidden="true">
+              <img
+                v-if="thumbOf(s)"
+                :src="thumbOf(s)"
+                :alt="s.name || 'Producto'"
+                loading="lazy"
+                @error="onThumbErr"
+              />
+              <div v-else class="sb-thumb-ph">
+                <v-icon size="18">mdi-image-outline</v-icon>
+              </div>
+            </div>
+
+            <!-- TEXT -->
+            <div class="sb-info">
+              <div class="sb-title">{{ s.name }}</div>
+              <div class="sb-meta">
+                <span v-if="s.brand">{{ s.brand }}</span>
+                <span v-if="s.model">· {{ s.model }}</span>
+                <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
+                <span v-else-if="s.category_name">· {{ s.category_name }}</span>
+              </div>
+            </div>
+          </button>
+
+          <div class="sb-foot">
+            <span class="sb-hint">Enter para buscar · Click para abrir</span>
           </div>
         </div>
 
-        <!-- TEXT -->
-        <div class="sb-info">
-          <div class="sb-title">{{ s.name }}</div>
-          <div class="sb-meta">
-            <span v-if="s.brand">{{ s.brand }}</span>
-            <span v-if="s.model">· {{ s.model }}</span>
-            <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
-            <span v-else-if="s.category_name">· {{ s.category_name }}</span>
-          </div>
+        <!-- ✅ Empty state -->
+        <div v-else-if="showEmpty" class="sb-empty">
+          No encontramos resultados para “{{ normalize(text) }}”.
         </div>
-      </button>
-
-      <div class="sb-foot">
-        <span class="sb-hint">Enter para buscar · Click para abrir</span>
-      </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getSuggestions } from "@/modules/shop/service/shop.public.api";
 
@@ -76,15 +87,24 @@ const props = defineProps({
 const router = useRouter();
 const route = useRoute();
 
+const wrap = ref(null);
+
 const text = ref(String(route.query.q || ""));
 const open = ref(false);
 const suggestions = ref([]);
 const activeIdx = ref(-1);
+const loading = ref(false);
+
 let tmr = null;
 
 function normalize(v) {
   return String(v || "").trim();
 }
+
+const showEmpty = computed(() => {
+  const q = normalize(text.value);
+  return open.value && !loading.value && q.length >= 2 && suggestions.value.length === 0;
+});
 
 function close() {
   open.value = false;
@@ -92,32 +112,64 @@ function close() {
 }
 
 function onFocus() {
-  if (suggestions.value.length) open.value = true;
+  open.value = true;
+  // si ya hay texto, refrescamos para que aparezca dropdown
+  const q = normalize(text.value);
+  if (q.length >= 2) {
+    clearTimeout(tmr);
+    tmr = setTimeout(fetchSuggestions, 0);
+  }
 }
 
-function setQueryQ(q) {
+function onBlur() {
+  // delay para permitir click en suggestions
+  setTimeout(() => close(), 130);
+}
+
+// cerrar si clic afuera
+function onDocClick(e) {
+  if (!wrap.value) return;
+  if (!wrap.value.contains(e.target)) close();
+}
+onMounted(() => document.addEventListener("click", onDocClick));
+onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
+
+/**
+ * ✅ IMPORTANTE:
+ * NO tocar la URL mientras tipeás.
+ * La URL se escribe SOLO en commit:
+ * - Enter (buscar)
+ * - pick (click sugerencia)
+ * - clear (limpia)
+ */
+function commitQueryQ(q) {
+  const qq = normalize(q);
   const nq = { ...route.query };
-  if (q) nq.q = q;
+
+  if (qq) nq.q = qq;
   else delete nq.q;
-  delete nq.page;
+
+  nq.page = "1"; // cuando se busca, siempre arranca en 1
   router.replace({ name: route.name, params: route.params, query: nq });
 }
 
 function clear() {
   text.value = "";
   suggestions.value = [];
+  loading.value = false;
   close();
-  setQueryQ(null);
+  commitQueryQ(null);
 }
 
 async function fetchSuggestions() {
   const q = normalize(text.value);
   if (q.length < 2) {
     suggestions.value = [];
-    close();
+    loading.value = false;
     return;
   }
 
+  loading.value = true;
   try {
     const r = await getSuggestions({
       branch_id: props.branchId,
@@ -132,16 +184,21 @@ async function fetchSuggestions() {
   } catch (e) {
     console.warn("❌ fetchSuggestions", e);
     suggestions.value = [];
-    close();
+  } finally {
+    loading.value = false;
   }
 }
 
 function onType() {
   const q = normalize(text.value);
-  setQueryQ(q || null);
+
+  // ✅ abrimos dropdown mientras escribe
+  open.value = true;
 
   clearTimeout(tmr);
-  tmr = setTimeout(fetchSuggestions, 220);
+  tmr = setTimeout(fetchSuggestions, 280);
+
+  // ✅ NO setQueryQ acá (antes te escribía la URL letra por letra)
 }
 
 function move(dir) {
@@ -154,6 +211,10 @@ function move(dir) {
 }
 
 function pick(s) {
+  // ✅ acá sí escribimos q (commit) si querés, pero opcional
+  const q = normalize(text.value);
+  if (q) commitQueryQ(q);
+
   close();
   router.push({
     name: "shopProduct",
@@ -170,6 +231,9 @@ function onEnter() {
 
   const q = normalize(text.value);
   close();
+
+  // ✅ commit a URL solo al Enter
+  commitQueryQ(q || null);
 
   if (props.mode === "category" && props.categoryId) {
     router.push({
@@ -204,15 +268,16 @@ function thumbOf(s) {
 }
 
 function onThumbErr(ev) {
-  // si falla la img, la ocultamos y queda el placeholder
   const img = ev?.target;
   if (img) img.style.display = "none";
 }
 
+// si cambian el q desde otro lado (ej: volver atrás), actualizamos input
 watch(
   () => route.query.q,
   (v) => {
-    text.value = String(v || "");
+    const nv = String(v || "");
+    if (nv !== String(text.value || "")) text.value = nv;
   }
 );
 </script>
@@ -241,6 +306,18 @@ watch(
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   z-index: 999;
+}
+
+.sb-status {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.sb-empty {
+  padding: 14px;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 /* Row layout */

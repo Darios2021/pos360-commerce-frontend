@@ -1,10 +1,9 @@
-<!-- src/modules/shop/components/HomeCategoryFloatRow.vue -->
 <template>
   <div class="float-row">
     <div class="float-inner">
       <div class="wrap">
         <!-- =========================
-             MOBILE/TABLET: PEL0TITAS (ML)
+             MOBILE/TABLET: BUBBLES
              ========================= -->
         <div v-if="isMobile" class="bubbles" ref="bubblesEl" aria-label="Accesos rápidos">
           <button
@@ -89,7 +88,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
@@ -97,6 +96,7 @@ const props = defineProps({
 });
 
 const router = useRouter();
+const route = useRoute();
 
 /* =========================
    Responsive
@@ -110,47 +110,11 @@ function onWinResize() {
 }
 
 /* =========================
-   Helpers
+   Imágenes
    ========================= */
-function norm(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-function toId(v) {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-function isRootCategory(c) {
-  const p = c?.parent_id;
-  const pn = Number(p);
-  return p === null || p === undefined || p === "" || p === 0 || p === "0" || pn === 0 || !Number.isFinite(pn);
-}
-function getChildren(cat) {
-  if (!cat) return [];
-  const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
-  return (candidates.find((x) => Array.isArray(x)) || []).filter(Boolean);
-}
-function findNodeDeep(list, predicate) {
-  const arr = Array.isArray(list) ? list : [];
-  for (const node of arr) {
-    if (!node) continue;
-    if (predicate(node)) return node;
-    const kids = getChildren(node);
-    const hit = findNodeDeep(kids, predicate);
-    if (hit) return hit;
-  }
-  return null;
-}
-
 const FALLBACK =
   "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1400&q=80";
 
-/* =========================
-   Imágenes
-   ========================= */
 const IMG_SUB = {
   parlantes: "https://storage-files.cingulado.org/pos360/products/17/1766780472298-78438395.jpeg",
   auriculares: "https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg",
@@ -160,93 +124,59 @@ const IMG_SUB = {
 
 const STOCK = {
   camaras: "https://storage-files.cingulado.org/pos360/products/156/1767564820325-624a77bd.jpg",
-  telefonos: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1400&q=80",
 };
-
-const targets = [
-  { key: "parlantes", label: "PARLANTES", img: IMG_SUB.parlantes },
-  { key: "auriculares", label: "AURICULARES", img: IMG_SUB.auriculares },
-  { key: "microfonos", label: "MICROFONOS", img: IMG_SUB.microfonos },
-  { key: "electro", label: "ELECTRO", img: IMG_SUB.electro },
-  { key: "camaras", label: "CAMARAS DE SEGURIDAD", img: STOCK.camaras },
-  { key: "telefonos", label: "TELEFONOS", img: STOCK.telefonos },
-];
-
-/* ✅ rutas fijas (si las tenés) */
-const FIXED_ROUTE = {
-  parlantes: { cat: 2, sub: 25, q: "PARLANTES" },
-  auriculares: { cat: 2, sub: 22 },
-  microfonos: { cat: 2, sub: 26 },
-  electro: { cat: 7, sub: 38 },
-  camaras: { cat: 11, sub: 58 },
-  // telefonos: si sabés cat/sub, lo ponés acá, pero ya lo resolvemos por taxonomy
-};
-
-function buildFeaturedFromTaxonomy() {
-  const cats = Array.isArray(props.categories) ? props.categories : [];
-  const roots = cats.filter(isRootCategory);
-  const space = roots.length ? roots : cats;
-
-  return targets.map((t) => {
-    const fixed = FIXED_ROUTE[t.key] || null;
-
-    const hit = findNodeDeep(space, (n) => {
-      const name = norm(n?.name);
-      const slug = norm(n?.slug);
-      if (t.key === "camaras") return name.includes("cam") || slug.includes("cam") || name.includes("seguridad");
-      if (t.key === "telefonos")
-        return name.includes("tel") || slug.includes("tel") || name.includes("cel") || slug.includes("cel");
-      return name.includes(t.key) || slug.includes(t.key);
-    });
-
-    return {
-      key: t.key,
-      name: t.label,
-      img: t.img || FALLBACK,
-      id: toId(hit?.id),
-      parentId: toId(hit?.parent_id),
-      fixed,
-    };
-  });
-}
-
-const featured = computed(() => buildFeaturedFromTaxonomy());
 
 /* =========================
-   ✅ Navegación (FIX TELÉFONOS)
+   ✅ IDS REALES (LOS QUE ME PASASTE)
+   - URL FINAL: /shop/c/:cat?branch_id=3&page=1&sub=:sub
+   - ✅ SIN category_id
+   - q es opcional (solo lo usamos donde pediste)
+   ========================= */
+const FIXED_ROUTE = {
+  // AUDIO
+  parlantes: { cat: 2, sub: 7, q: "PARLANTES" },
+  auriculares: { cat: 2, sub: 3, q: null },   // https://sanjuantecnologia.com/shop/c/2?branch_id=3&page=1&sub=3
+  microfonos: { cat: 2, sub: 11, q: null },   // https://sanjuantecnologia.com/shop/c/2?branch_id=3&page=1&sub=11
+
+  // ELECTRO
+  electro: { cat: 7, sub: 16, q: null },      // https://sanjuantecnologia.com/shop/c/7?branch_id=3&page=1&sub=16
+
+  // CÁMARAS
+  camaras: { cat: 11, sub: 23, q: "CAMARAS" }, // querías q=CAMARAS pero SIN category_id
+};
+
+const featured = computed(() => [
+  { key: "parlantes", name: "PARLANTES", img: IMG_SUB.parlantes || FALLBACK },
+  { key: "auriculares", name: "AURICULARES", img: IMG_SUB.auriculares || FALLBACK },
+  { key: "microfonos", name: "MICROFONOS", img: IMG_SUB.microfonos || FALLBACK },
+  { key: "electro", name: "ELECTRO", img: IMG_SUB.electro || FALLBACK },
+  { key: "camaras", name: "CAMARAS DE SEGURIDAD", img: STOCK.camaras || FALLBACK },
+]);
+
+/* =========================
+   ✅ Navegación: LINKS CORRECTOS
    ========================= */
 function go(item) {
-  // 1) Si tiene ruta fija, usamos esa
-  if (item?.fixed?.cat) {
-    const q = item.fixed.q;
-    router.push({
-      path: `/shop/c/${String(item.fixed.cat)}`,
-      query: {
-        branch_id: "3",
-        page: "1",
-        ...(item.fixed.sub ? { sub: String(item.fixed.sub) } : {}),
-        ...(q ? { q: String(q) } : {}),
-      },
-    });
+  const fixed = FIXED_ROUTE[item?.key] || null;
+  if (!fixed?.cat) {
+    router.push({ path: "/shop", query: { q: item?.name || "" } });
     return;
   }
 
-  // 2) ✅ Si la taxonomía nos dio ids, navegamos directo (esto arregla TELÉFONOS)
-  //    - si tiene parentId => es subcategoría => /shop/c/<parentId>?sub=<id>
-  //    - si no tiene parentId => es categoría raíz => /shop/c/<id>
-  if (item?.id) {
-    const catId = item.parentId || item.id;
-    const query = {
-      branch_id: "3",
-      page: "1",
-      ...(item.parentId ? { sub: String(item.id) } : {}),
-    };
-    router.push({ path: `/shop/c/${String(catId)}`, query });
-    return;
-  }
+  const branch_id = String(route.query.branch_id || "3");
 
-  // 3) fallback de búsqueda
-  router.push({ path: "/shop", query: { q: item?.name || "" } });
+  // ✅ query limpio, SIN category_id
+  const query = {
+    branch_id,
+    page: "1",
+    ...(fixed.sub ? { sub: String(fixed.sub) } : {}),
+    ...(fixed.q ? { q: String(fixed.q) } : {}),
+  };
+
+  router.push({
+    path: `/shop/c/${String(fixed.cat)}`,
+    query,
+  });
 }
 
 function onImgError(e) {
@@ -266,10 +196,8 @@ const cardW = ref(210);
 const gap = ref(14);
 const visibleCount = ref(1);
 
-// ✅ para evitar “asomar media card”
 const viewportMaxPx = ref(null);
 const viewportStyle = computed(() => {
-  // centrado y sin “peek”
   return viewportMaxPx.value ? { maxWidth: `${viewportMaxPx.value}px`, margin: "0 auto" } : { maxWidth: "100%" };
 });
 
@@ -280,19 +208,13 @@ function measure() {
   if (!vp) return;
 
   const w = window.innerWidth;
-
-  // tamaños desktop
   cardW.value = w <= 1200 ? 200 : 210;
   gap.value = 14;
 
-  // cuántas cards entran en el ancho disponible
   const available = vp.parentElement?.clientWidth || vp.clientWidth || 1;
-
-  // calculo “visibleCount” sobre el ancho disponible
   const count = Math.max(1, Math.floor((available + gap.value) / (cardW.value + gap.value)));
   visibleCount.value = count;
 
-  // ✅ ancho exacto del viewport para NO mostrar media card
   const exact = count * cardW.value + (count - 1) * gap.value;
   viewportMaxPx.value = Math.min(exact, available);
 
@@ -312,9 +234,7 @@ function prev() {
   index.value = Math.max(0, index.value - 1);
 }
 
-/* =========================
-   Drag FIX (no romper clicks)
-   ========================= */
+/* Drag FIX */
 let dragging = false;
 let moved = false;
 let startX = 0;
@@ -324,8 +244,6 @@ const DRAG_THRESHOLD_PX = 6;
 
 function onPointerDown(e) {
   if (e.button !== 0) return;
-
-  // ✅ si arranca sobre una card, NO hacemos drag (deja click perfecto)
   if (e.target?.closest?.(".card")) return;
 
   dragging = true;
@@ -379,7 +297,7 @@ watch(
   () => props.categories,
   async () => {
     await nextTick();
-    index.value = 0; // ✅ arranca siempre “bien” (no a mitad)
+    index.value = 0;
     if (!isMobile.value) measure();
   },
   { deep: true }
@@ -396,7 +314,6 @@ watch(
 </script>
 
 <style scoped>
-/* ✅ Bajamos un poco en desktop para que no choque con el hero */
 .float-row {
   width: 100%;
   display: flex;
@@ -408,7 +325,7 @@ watch(
 }
 @media (min-width: 901px) {
   .float-row {
-    margin-top: 34px; /* más abajo en desktop */
+    margin-top: 34px;
   }
 }
 
@@ -424,9 +341,7 @@ watch(
   padding-bottom: 14px;
 }
 
-/* =========================
-   MOBILE: BUBBLES
-   ========================= */
+/* MOBILE: BUBBLES */
 .bubbles {
   display: flex;
   gap: 14px;
@@ -436,8 +351,6 @@ watch(
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-
-  /* ✅ FIX 1: dejar scrollear para abajo con el dedo (NO bloquear pan-y) */
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
@@ -458,8 +371,6 @@ watch(
   border: 0;
   cursor: pointer;
   scroll-snap-align: start;
-
-  /* ✅ FIX 1 (extra): no “secuestrar” el gesto vertical */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -496,8 +407,6 @@ watch(
   font-size: 11px;
   line-height: 1.1;
   text-transform: uppercase;
-
-  /* ✅ FIX 2: que el texto se vea SIEMPRE sobre fondo claro */
   color: rgba(7, 28, 48, 0.96);
   text-shadow: none;
   background: rgba(255, 255, 255, 0.92);
@@ -512,9 +421,7 @@ watch(
   overflow: hidden;
 }
 
-/* =========================
-   DESKTOP: CARDS
-   ========================= */
+/* DESKTOP: CARDS */
 .cards-wrap {
   position: relative;
   pointer-events: auto;
@@ -664,7 +571,6 @@ watch(
   background: #2d6cdf;
 }
 
-/* Breakpoints */
 @media (max-width: 1200px) {
   .card {
     width: 200px;
