@@ -1,5 +1,5 @@
 <!-- src/app/layouts/AppShell.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega Galería Multimedia en menú Tienda) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega "Links Tienda" en menú Tienda + mantiene Galería multimedia) -->
 <template>
   <v-app>
     <v-layout>
@@ -137,7 +137,7 @@
 
           <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Sistema</div>
 
-          <!-- ✅ Configuración (queda igual, SOLO ocultamos el item “Tienda” cuando existe el nuevo menú Tienda) -->
+          <!-- ✅ Configuración -->
           <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Configuración">
@@ -203,7 +203,7 @@
               exact
             />
 
-            <!-- ✅ FIX ACÁ: Pedidos debe ir al LISTADO -->
+            <!-- ✅ Pedidos listado -->
             <v-list-item
               v-if="hasRoute('shopOrders')"
               :to="{ name: 'shopOrders' }"
@@ -241,8 +241,17 @@
               exact
             />
 
-            <!-- ✅ NUEVO: Galería Multimedia -->
+            <!-- ✅ NUEVO: Links Tienda -->
             <v-divider class="my-2" />
+            <v-list-item
+              v-if="hasRoute('shopLinks')"
+              :to="{ name: 'shopLinks' }"
+              prepend-icon="mdi-link-variant"
+              title="Links Tienda"
+              exact
+            />
+
+            <!-- ✅ Galería Multimedia -->
             <v-list-item
               v-if="hasRoute('adminGaleriaMultimedia')"
               :to="{ name: 'adminGaleriaMultimedia' }"
@@ -333,13 +342,12 @@ const showConfig = computed(() => {
     hasRoute("stock") ||
     hasRoute("inventory") ||
     hasRoute("categories") ||
-    hasRoute("shopBranding") || // existe
+    hasRoute("shopBranding") ||
     hasRoute("users")
   );
 });
 
 const showShopMenu = computed(() => {
-  // Si existe cualquiera de estas rutas, mostramos el menú nuevo “Tienda”
   return (
     hasRoute("shopOrders") ||
     hasRoute("shopOrdersSettings") ||
@@ -347,7 +355,8 @@ const showShopMenu = computed(() => {
     hasRoute("shopPickupSettings") ||
     hasRoute("shopPaymentsSettings") ||
     hasRoute("shopNotificationsSettings") ||
-    hasRoute("adminGaleriaMultimedia") // ✅ NUEVO
+    hasRoute("shopLinks") || // ✅ NUEVO
+    hasRoute("adminGaleriaMultimedia")
   );
 });
 

@@ -26,6 +26,16 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
+      <!-- ✅ INSTAGRAM “telefonitos” (CAROUSEL) -->
+      <div class="mb-6">
+        <InstagramPhoneCarousel
+          :urls="IG_POSTS"
+          title="🎁 Sorteos en Instagram"
+          subtitle="Deslizá y mirá los sorteos como en el celu."
+          profileUrl="https://www.instagram.com/sanjuan_tecnologia/"
+        />
+      </div>
+
       <div
         id="shop-products-top"
         ref="productsTop"
@@ -49,11 +59,9 @@
 
         <div class="d-flex ga-2 align-center flex-wrap">
           <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
-          <!-- ✅ Se sacan: Actualizar + Carrito -->
         </div>
       </div>
 
-      <!-- ⚠️ ALERTA DE ERROR EN CATALOGO (visible también en navegador de Meta) -->
       <v-alert v-if="itemsError" type="error" variant="tonal" class="mb-4">
         Error al cargar el catálogo: {{ itemsError }}
         <template v-if="isMetaWebView">
@@ -102,7 +110,7 @@
         />
       </div>
 
-      <!-- ✅ SLIDER CARGADORES (DESPUÉS DE AURICULARES) -->
+      <!-- ✅ SLIDER CARGADORES -->
       <div class="mt-6">
         <PromoSliderCargadores />
       </div>
@@ -135,6 +143,8 @@ import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 
+import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
+
 const route = useRoute();
 const router = useRouter();
 
@@ -144,7 +154,7 @@ const itemsError = ref(null);
 
 const items = ref([]);
 const page = ref(Number(route.query.page || 1));
-const limit = ref(48); // ✅ más productos en el home
+const limit = ref(48);
 const total = ref(0);
 const allCats = ref([]);
 
@@ -154,13 +164,19 @@ const aurisItems = ref([]);
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
+// ✅ TUS PUBLICACIONES (se sacan los utm, el componente igual los soporta)
+const IG_POSTS = [
+  "https://www.instagram.com/p/DTQ7O6KiXQl/",
+  "https://www.instagram.com/p/DS8foG-CRgg/",
+  "https://www.instagram.com/p/DTQhbfqiRRF/",
+  "https://www.instagram.com/p/DTlxrRRCdII/",
+  "https://www.instagram.com/p/DSpzzjUDYiA/",
+];
+
 const q = computed(() => String(route.query.q || "").trim());
 const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
-const subcategory_id = computed(() =>
-  route.query.subcategory_id ? Number(route.query.subcategory_id) : null
-);
+const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
 
-// Detectar navegador interno de Meta (Instagram / FB / Messenger)
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
 function toNum(v) {
@@ -174,17 +190,14 @@ const heroSlides = ref([
     pill: "OFERTAS",
     title: "Especial en Tecnología",
     subtitle: "Accesorios, audio, cables y más. Comprá online y elegí retiro al finalizar.",
-    // ✅ IMAGEN POSICION 1 (la que me pasaste)
-    image:
-      "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp?v=1",
+    image: "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp?v=1",
     action: { type: "scroll" },
   },
   {
     pill: "NOVEDADES",
     title: "Gadgets y accesorios nuevos",
     subtitle: "Descubrí productos recién ingresados en el catálogo.",
-    image:
-      "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=2400&q=80",
+    image: "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=2400&q=80",
     action: { type: "scroll" },
   },
 ]);
@@ -246,7 +259,6 @@ const hasMore = computed(() => {
 });
 
 async function fetchCatalog({ append = false } = {}) {
-  // append => traemos la "siguiente página" y concatenamos
   const targetPage = append ? Number(page.value || 1) + 1 : Number(page.value || 1);
 
   if (append) loadingMore.value = true;
@@ -267,17 +279,13 @@ async function fetchCatalog({ append = false } = {}) {
     total.value = Number(r.total || 0);
 
     if (append) {
-      // ✅ concatenar
       items.value = [...items.value, ...newItems];
       page.value = targetPage;
     } else {
       items.value = newItems;
-      // si venís sin query.page, mantenemos page actual
       page.value = Number(route.query.page || 1);
     }
   } catch (e) {
-    console.error("❌ fetchCatalog(Home)", e);
-
     const msg =
       e?.response?.status
         ? `${e.response.status} ${e.response.statusText || ""}`.trim()
@@ -285,7 +293,6 @@ async function fetchCatalog({ append = false } = {}) {
 
     itemsError.value = msg;
 
-    // si era append, NO borramos lo que ya está
     if (!append) {
       items.value = [];
       total.value = 0;
@@ -309,6 +316,7 @@ function norm(s) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 }
+
 function getCatSubs(cat) {
   if (!cat) return [];
   const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
@@ -372,34 +380,7 @@ async function fetchAuricularesSlider() {
             merged.push(it);
             seen.add(k);
           }
-        } catch (e2) {
-          console.error("❌ fetchAuricularesSlider sub:", sid, e2);
-        }
-      }
-    }
-
-    if (!merged.length) {
-      const tries = ["auriculares", "auricular", "headphones", "headset", "earbuds", "tws"];
-      const EXCLUDE = "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank";
-
-      for (const term of tries) {
-        try {
-          const r = await getCatalog({
-            search: term,
-            page: 1,
-            limit: 80,
-            strict_search: 1,
-            exclude_terms: EXCLUDE,
-          });
-
-          const list = Array.isArray(r?.items) ? r.items : [];
-          if (list.length) {
-            merged = list;
-            break;
-          }
-        } catch (e3) {
-          console.error("❌ fallback auris:", term, e3);
-        }
+        } catch {}
       }
     }
 
@@ -414,8 +395,7 @@ onMounted(async () => {
 
   try {
     allCats.value = await getPublicCategories();
-  } catch (e) {
-    console.error("❌ getPublicCategories(Home)", e);
+  } catch {
     allCats.value = [];
   }
 
@@ -426,7 +406,6 @@ onMounted(async () => {
 watch(
   () => route.query,
   async () => {
-    // ✅ al cambiar filtros, reseteamos pagina local y traemos de cero
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
 
@@ -445,6 +424,7 @@ watch(
 </script>
 
 <style scoped>
+/* (deja tus styles tal cual los tenías) */
 :global(html),
 :global(body) {
   margin: 0 !important;

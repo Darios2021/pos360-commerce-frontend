@@ -1,5 +1,5 @@
-// src/modules/admin/router/shopAdmin.routes.js
-// ✅ COPY-PASTE FINAL COMPLETO
+// src/app/router/shopAdmin.routes.js
+// ✅ COPY-PASTE FINAL COMPLETO (incluye Links Tienda + Galería multimedia)
 
 import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
 import ShopOrdersSettingsView from "@/modules/admin/pages/ShopOrdersSettingsView.vue";
@@ -8,7 +8,10 @@ import ShopPickupSettingsView from "@/modules/admin/pages/ShopPickupSettingsView
 import ShopPaymentsSettingsView from "@/modules/admin/pages/ShopPaymentsSettingsView.vue";
 import ShopNotificationsSettingsView from "@/modules/admin/pages/ShopNotificationsSettingsView.vue";
 
-// ✅ NUEVO: Galería Multimedia
+// ✅ NUEVO: Links Tienda
+import ShopLinksView from "@/modules/admin/pages/ShopLinksView.vue";
+
+// ✅ Galería Multimedia
 import GaleriaMultimediaView from "@/modules/admin/pages/GaleriaMultimediaView.vue";
 
 /**
@@ -53,7 +56,15 @@ export const shopAdminRoutes = [
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 
-  // ✅ NUEVO: Galería Multimedia (admin)
+  // ✅ NUEVO: Links Tienda
+  {
+    path: "/admin/shop/links",
+    name: "shopLinks",
+    component: ShopLinksView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
+  // ✅ Galería Multimedia (admin)
   {
     path: "/admin/galeria-multimedia",
     name: "adminGaleriaMultimedia",

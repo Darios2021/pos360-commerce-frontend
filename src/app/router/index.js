@@ -91,7 +91,7 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ TIENDA ADMIN + GALERÍA MULTIMEDIA
+      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA
       ...shopAdminRoutes,
 
       // Usuarios

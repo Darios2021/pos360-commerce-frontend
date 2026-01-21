@@ -5,13 +5,13 @@
     <div class="hc-card">
       <!-- Header -->
       <div class="hc-head">
-        <div class="hc-title">Categorías</div>
+        <div class="hc-title">Buscá por categoría</div>
 
-        <button class="hc-link" type="button" @click="goAll">
-          Mostrar todas las categorías
-        </button>
-
-        <div class="hc-dots" v-if="pages.length > 1" aria-label="Paginación de categorías">
+        <div
+          class="hc-dots"
+          v-if="pages.length > 1"
+          aria-label="Paginación de categorías"
+        >
           <span
             v-for="i in pages.length"
             :key="i"
@@ -44,28 +44,25 @@
           <span class="hc-arrow-ico">›</span>
         </button>
 
-        <!-- Grid -->
+        <!-- ✅ Grid (SIN ghosts) -->
         <div class="hc-grid" role="list">
-          <template v-for="c in currentPagePadded" :key="c.__empty ? c.__key : c.id">
-            <div v-if="c.__empty" class="hc-item hc-ghost" aria-hidden="true" />
+          <button
+            v-for="c in currentPage"
+            :key="c.id"
+            class="hc-item"
+            type="button"
+            role="listitem"
+            @click="openCategory(c)"
+            :title="c.name"
+          >
+            <div class="hc-img">
+              <img class="hc-img-img" :src="imgOf(c)" :alt="c.name" loading="lazy" />
+            </div>
 
-            <button
-              v-else
-              class="hc-item"
-              type="button"
-              role="listitem"
-              @click="openCategory(c)"
-              :title="c.name"
-            >
-              <div class="hc-img">
-                <img class="hc-img-img" :src="imgOf(c)" :alt="c.name" loading="lazy" />
-              </div>
-
-              <div class="hc-name">
-                {{ c.name }}
-              </div>
-            </button>
-          </template>
+            <div class="hc-name">
+              {{ c.name }}
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -78,15 +75,21 @@ import { useRouter } from "vue-router";
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
-  perPage: { type: Number, default: 12 }, // 4x3
+  perPage: { type: Number, default: 12 }, // desktop default 4x3
 });
 
 const router = useRouter();
 const idx = ref(0);
 
-// ✅ cache-bust suave para que se actualicen iconos sin pegarle fuerte al CDN
-// Cambialo si subís nuevos PNGs (o dejalo, y se refresca por deploy)
-const ICON_VER = "2026-01-21-01";
+// ✅ cache-bust suave para refrescar PNGs
+const ICON_VER = "2026-01-21-04";
+
+function withVer(url) {
+  if (!url) return url;
+  return url.includes("?")
+    ? `${url}&v=${encodeURIComponent(ICON_VER)}`
+    : `${url}?v=${encodeURIComponent(ICON_VER)}`;
+}
 
 // --- swipe (mobile) ---
 const touch = ref({ x: 0, y: 0, t: 0 });
@@ -105,7 +108,6 @@ function onTouchEnd(e) {
   const dy = p.clientY - touch.value.y;
   const dt = Date.now() - touch.value.t;
 
-  // swipe horizontal claro, ignorar scroll vertical
   if (dt > 650) return;
   if (Math.abs(dx) < 45) return;
   if (Math.abs(dy) > 70) return;
@@ -127,34 +129,22 @@ function isRootCategory(c) {
   return p === null || p === undefined || Number(p) === 0;
 }
 
-function withVer(url) {
-  if (!url) return url;
-  return url.includes("?") ? `${url}&v=${encodeURIComponent(ICON_VER)}` : `${url}?v=${encodeURIComponent(ICON_VER)}`;
-}
-
 /**
  * ✅ ICONOS OFICIALES (SJT)
- * - Matcheo por "contains" para cubrir variantes:
- *   "SEGURIDAD ELECTRONICA", "SALUD / BELLEZA", "TV / IMAGEN", etc.
  */
 const ICONS = [
   { match: (k) => k.includes("accesor"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968306314-b418ee86fec0.png") },
   { match: (k) => k.includes("audio"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968316038-54128c09d744.png") },
   { match: (k) => k.includes("automot") || k.includes("automo") || k.includes("auto"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968321444-f9feaf72b2a6.png") },
-  { match: (k) => k.includes("cable"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968324835-48e6572f21ab.png") }, // ✅ sin espacios
+  { match: (k) => k.includes("cable"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968324835-48e6572f21ab.png") },
   { match: (k) => k.includes("computacion") || k.includes("computac") || k.includes("comput"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968328262-7f61417d370f.png") },
   { match: (k) => k.includes("energia") || k.includes("energ"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968334049-6affec6a83ca.png") },
   { match: (k) => k.includes("entreten"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968339902-02a488c66115.png") },
   { match: (k) => k.includes("electro") || k.includes("hogar") || k.includes("aire") || k.includes("aires"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968347659-a7a8fa9d2fd6.png") },
   { match: (k) => k.includes("ilumin") || k.includes("luz") || k.includes("lampara") || k.includes("led"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968352957-d12f2236aaff.png") },
   { match: (k) => k.includes("informat"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968357748-5045d55d6e3b.png") },
-  {
-    match: (k) => k.includes("salud") || k.includes("belleza") || k.includes("cuidado") || k.includes("personal"),
-    img: withVer("https://storage-files.cingulado.org/pos360/media/1768968362467-59bc2286dbd2.png"),
-  },
+  { match: (k) => k.includes("salud") || k.includes("belleza") || k.includes("cuidado") || k.includes("personal"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968362467-59bc2286dbd2.png") },
   { match: (k) => k.includes("seguridad") || k.includes("cctv") || k.includes("camara"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968366335-4e3a5a9ffe58.png") },
-
-  // ✅ faltaban (ya incluidos)
   { match: (k) => k.includes("tecnolog") || k === "tecnologia", img: withVer("https://storage-files.cingulado.org/pos360/media/1768968885729-02373cf4ab39.png") },
   { match: (k) => k.includes("telefon") || k.includes("celular"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968882310-1c678bd0ccc5.png") },
   { match: (k) => k.includes("tv") || k.includes("imagen") || k.includes("televisor") || k.includes("televis"), img: withVer("https://storage-files.cingulado.org/pos360/media/1768968878573-ddeb76768fb1.png") },
@@ -170,18 +160,15 @@ const genericStock = [
 function imgOf(c) {
   const key = norm(c?.name);
 
-  // 1) si la categoría ya trae imagen desde API, respetarla (también cache-bust)
   const raw = c?.image_url || c?.icon_url || c?.img || c?.image || c?.url || c?.src || "";
   if (raw) return withVer(raw);
 
-  // 2) map oficial por nombre
   for (const rule of ICONS) {
     try {
       if (rule.match(key)) return rule.img;
     } catch {}
   }
 
-  // 3) fallback estable
   const id = Number(c?.id || 0);
   return genericStock[Math.abs(id) % genericStock.length];
 }
@@ -192,29 +179,24 @@ const roots = computed(() => {
   return onlyRoots.length ? onlyRoots : arr;
 });
 
+// ✅ MOBILE: 3x3 (9 por página). Desktop: props.perPage (12 default).
+const perPageEffective = computed(() => {
+  if (typeof window !== "undefined") {
+    const w = window.innerWidth || 1200;
+    if (w <= 960) return 9;
+  }
+  return Math.max(1, Number(props.perPage || 12));
+});
+
 const pages = computed(() => {
   const out = [];
   const arr = roots.value || [];
-  const n = Math.max(1, Number(props.perPage || 12));
+  const n = perPageEffective.value;
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
   return out;
 });
 
 const currentPage = computed(() => pages.value[idx.value] || []);
-
-const currentPagePadded = computed(() => {
-  const base = Array.isArray(currentPage.value) ? currentPage.value : [];
-  const n = Math.max(1, Number(props.perPage || 12));
-  if (base.length >= n) return base;
-
-  const missing = n - base.length;
-  const ghosts = Array.from({ length: missing }).map((_, i) => ({
-    __empty: true,
-    __key: `ghost-${idx.value}-${i}`,
-  }));
-
-  return [...base, ...ghosts];
-});
 
 function clampIndex() {
   const max = Math.max(0, pages.value.length - 1);
@@ -237,250 +219,195 @@ function openCategory(c) {
   if (!id) return;
   router.push({ name: "shopCategory", params: { id: String(id) } });
 }
-
-function goAll() {
-  router.push({ path: "/shop" });
-}
 </script>
 
 <style scoped>
 /* =======================
-   Contenedor general
+   CONTENEDOR GENERAL
    ======================= */
 .hc-shell {
   width: 100%;
   overflow: visible;
 }
-
 .hc-card {
   background: #ffffff;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  overflow: visible;
   position: relative;
+  overflow: visible;
 }
 
 /* =======================
-   Header
+   HEADER (sin botón)
    ======================= */
 .hc-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 14px 16px 10px;
 }
-
 .hc-title {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -0.2px;
 }
 
-.hc-link {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: #2d6cdf;
-  font-weight: 800;
-  font-size: 13px;
-  padding: 0;
-  white-space: nowrap;
-}
-
+/* dots a la derecha */
 .hc-dots {
   margin-left: auto;
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  flex-shrink: 0;
 }
-
 .hc-dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.22);
 }
 .hc-dot.active {
   background: #2d6cdf;
 }
 
 /* =======================
-   Body
+   BODY
    ======================= */
 .hc-body {
   position: relative;
   padding: 10px 16px 16px;
-  overflow: visible;
 }
 
 /* =======================
-   Grid desktop
+   ✅ GRID: ALTURA FIJA PARA QUE NO "SALTE"
+   - Desktop: 4 columnas x 3 filas = 3*82 + 2*14 = 274px
+   - Mobile: 3 columnas x 3 filas = 3*104 + 2*10 = 332px
    ======================= */
 .hc-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 
-  --hc-gap: 14px;
-  --hc-item-h: 82px; /* ✅ más alto para icon grande + texto */
-  --hc-rows: 3;
-
-  min-height: calc(
-    (var(--hc-rows) * var(--hc-item-h)) +
-    ((var(--hc-rows) - 1) * var(--hc-gap))
-  );
+  /* ✅ evita el achique cuando la página tiene menos items */
+  min-height: 274px;
+  align-content: start;
 }
 
 /* =======================
-   Item categoría
+   ITEM DESKTOP
    ======================= */
 .hc-item {
-  appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.10);
   background: #ffffff;
   border-radius: 12px;
   padding: 0;
 
   display: grid;
-  grid-template-columns: 92px 1fr; /* ✅ más ancho para icon */
+  grid-template-columns: 92px 1fr;
   align-items: center;
 
-  height: var(--hc-item-h);
-  text-align: left;
+  height: 82px;
   cursor: pointer;
-
   overflow: hidden;
 
-  transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
-
 @media (hover: hover) and (pointer: fine) {
   .hc-item:hover {
-    border-color: rgba(0, 0, 0, 0.14);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
   }
 }
 
-/* =======================
-   Imagen (MUCHO más grande)
-   ======================= */
 .hc-img {
   width: 92px;
-  height: var(--hc-item-h);
+  height: 82px;
   background: #f3f4f6;
   border-right: 1px solid rgba(0, 0, 0, 0.06);
-
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .hc-img-img {
-  width: 70px; /* ✅ GRANDE (antes 56/62) */
+  width: 70px;
   height: 70px;
   object-fit: contain;
-  display: block;
 }
-
-/* =======================
-   Texto (no se come letras)
-   ======================= */
 .hc-name {
   padding: 0 12px;
   font-size: 14px;
-  font-weight: 900;
-  line-height: 1.12;
-  color: rgba(0, 0, 0, 0.86);
+  font-weight: 600;
+  line-height: 1.15;
+  color: rgba(0, 0, 0, 0.85);
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-
-  /* desktop: preferimos no partir palabras feo */
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-/* Ghosts */
-.hc-ghost {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* =======================
-   Flechas (más agradables)
+   FLECHAS
    ======================= */
 .hc-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
 
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10);
 
-  cursor: pointer;
   display: grid;
   place-items: center;
-  z-index: 15;
-
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  z-index: 10;
 }
-
 .hc-arrow.left {
-  left: -16px;
+  left: -12px;
 }
 .hc-arrow.right {
-  right: -16px;
+  right: -12px;
 }
-
 .hc-arrow-ico {
-  font-size: 24px;
-  line-height: 1;
-  color: #2d6cdf;
-  font-weight: 900;
-  transform: translateY(-1px);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .hc-arrow:hover {
-    transform: translateY(-50%) scale(1.05);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-    background: #ffffff;
-  }
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(45, 108, 223, 0.9);
 }
 
 /* =======================
-   Breakpoints
+   BREAKPOINT TABLET
    ======================= */
 @media (max-width: 1200px) {
   .hc-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    --hc-rows: 4;
+    grid-template-columns: repeat(3, 1fr);
+    /* 3 col x 4 filas -> altura estable */
+    min-height: calc((4 * 82px) + (3 * 14px));
   }
 }
 
 /* =======================
-   Mobile (2 columnas, texto NO se corta, icons grandes)
+   ✅ MOBILE 3x3 (altura fija)
    ======================= */
 @media (max-width: 960px) {
   .hc-head {
-    padding: 12px 12px 8px;
-    gap: 8px;
+    padding: 10px 12px 8px;
+    gap: 6px;
   }
-
   .hc-title {
-    font-size: 15px;
+    font-size: 14px;
+    font-weight: 600;
   }
 
-  .hc-link {
-    font-size: 12px;
+  .hc-dots {
+    gap: 4px;
+  }
+  .hc-dot {
+    width: 5px;
+    height: 5px;
   }
 
   .hc-body {
@@ -488,103 +415,75 @@ function goAll() {
   }
 
   .hc-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
 
-    --hc-gap: 12px;
-    --hc-item-h: 84px; /* ✅ más alto en mobile */
-    --hc-rows: 6;
-
-    min-height: calc(
-      (var(--hc-rows) * var(--hc-item-h)) +
-      ((var(--hc-rows) - 1) * var(--hc-gap))
-    );
+    /* ✅ fija: 3 filas * 104 + 2 gaps * 10 = 332 */
+    min-height: 332px;
+    align-content: start;
   }
 
   .hc-item {
-    grid-template-columns: 88px 1fr; /* ✅ más ancho para icon */
-    border-radius: 14px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 68px 1fr;
+    height: 104px;
+    text-align: center;
   }
 
   .hc-img {
-    width: 88px;
-  }
-
-  .hc-img-img {
-    width: 68px; /* ✅ GRANDE en mobile también */
+    width: 100%;
     height: 68px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .hc-img-img {
+    width: 50px;
+    height: 50px;
   }
 
   .hc-name {
-    font-size: 13px;
-    font-weight: 900;
-    line-height: 1.10;
+    padding: 5px 6px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.05;
+    color: rgba(0, 0, 0, 0.72);
 
-    /* ✅ mobile: permitir partir si hace falta (no comerse letras) */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
     word-break: break-word;
     overflow-wrap: anywhere;
-
-    -webkit-line-clamp: 2;
+    hyphens: auto;
   }
 
-  /* ✅ flechas visibles en mobile (más chicas para no molestar) */
   .hc-arrow {
-    width: 40px;
-    height: 40px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+    width: 36px;
+    height: 36px;
   }
-
   .hc-arrow.left {
-    left: -12px;
+    left: -8px;
   }
   .hc-arrow.right {
-    right: -12px;
+    right: -8px;
   }
-
   .hc-arrow-ico {
-    font-size: 22px;
+    font-size: 18px;
   }
 }
 
-/* =======================
-   Celus chicos: 1 columna (evita que se “coman”)
-   ======================= */
 @media (max-width: 420px) {
-  .hc-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    --hc-gap: 10px;
-    --hc-item-h: 86px;
-    min-height: auto;
+  .hc-name {
+    font-size: 9.5px;
   }
-
-  .hc-item {
-    grid-template-columns: 92px 1fr;
-  }
-
-  .hc-img {
-    width: 92px;
-  }
-
   .hc-img-img {
-    width: 70px;
-    height: 70px;
+    width: 46px;
+    height: 46px;
   }
-
   .hc-arrow {
-    width: 38px;
-    height: 38px;
-  }
-
-  .hc-arrow.left {
-    left: -10px;
-  }
-  .hc-arrow.right {
-    right: -10px;
-  }
-
-  .hc-arrow-ico {
-    font-size: 21px;
+    width: 34px;
+    height: 34px;
   }
 }
 </style>
