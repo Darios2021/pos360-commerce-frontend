@@ -1,28 +1,54 @@
-# ===== Build =====
-FROM node:20-alpine AS build
+# ==========================
+# BUILD (Debian / glibc) ✅
+# ==========================
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
+# ✅ Chromium + deps para puppeteer/prerender
+RUN apt-get update && apt-get install -y \
+  chromium \
+  ca-certificates \
+  fonts-liberation \
+  libasound2 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libgbm1 \
+  libgtk-3-0 \
+  libnss3 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  xdg-utils \
+  --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+
+# ✅ Decirle a puppeteer que NO descargue chrome propio
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# deps
 COPY package*.json ./
 RUN npm ci
 
+# app
 COPY . .
+
+# ✅ build (incluye prerender:routes -> vite build -> prerender)
 RUN npm run build
 
-# ===== Serve (Node HTML injector) =====
-FROM node:20-alpine AS serve
-WORKDIR /app
+# ==========================
+# RUNTIME (Nginx) ✅
+# ==========================
+FROM nginx:stable-alpine AS runtime
 
-# deps del server solamente
-COPY server/package.json ./server/package.json
-RUN cd server && npm install --omit=dev
+# Nginx config para SPA + prerender estático
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# dist del build
-COPY --from=build /app/dist ./dist
+# Vite dist
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# server code
-COPY server/server.js ./server/server.js
-
-ENV NODE_ENV=production
 EXPOSE 80
-
-CMD ["node", "server/server.js"]
+CMD ["nginx", "-g", "daemon off;"]
