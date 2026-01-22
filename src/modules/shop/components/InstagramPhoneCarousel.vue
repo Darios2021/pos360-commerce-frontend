@@ -2,9 +2,16 @@
 <!-- src/modules/shop/components/InstagramPhoneCarousel.vue -->
 <template>
   <v-card class="igs-card" variant="flat" rounded="xl">
-    <!-- ✅ UNICO HEADER (sin “Sorteos…”, sin subtítulo, sin chips) -->
+    <!-- Header bonito -->
     <div class="igs-head">
-      <div class="igs-title-only">Seguinos en redes sociales</div>
+      <div class="igs-head-text">
+        <div class="igs-head-title">
+          Seguinos en nuestras redes sociales
+        </div>
+        <div class="igs-head-sub">
+          Participá en nuestros sorteos y ganá premios
+        </div>
+      </div>
     </div>
 
     <!-- Body -->
@@ -19,10 +26,16 @@
 
       <div v-if="loading" class="py-6 d-flex align-center justify-center ga-3">
         <v-progress-circular indeterminate />
-        <div class="text-caption" style="opacity:0.75">Cargando publicaciones…</div>
+        <div class="text-caption" style="opacity:0.75">
+          Cargando publicaciones…
+        </div>
       </div>
 
-      <div v-else-if="normalized.length === 0" class="py-6 text-center text-caption" style="opacity:0.75">
+      <div
+        v-else-if="normalized.length === 0"
+        class="py-6 text-center text-caption"
+        style="opacity:0.75"
+      >
         No hay publicaciones configuradas todavía.
       </div>
 
@@ -46,8 +59,17 @@
         />
 
         <!-- Strip -->
-        <div ref="stripEl" class="igs-strip" role="region" aria-label="Publicaciones de Instagram">
-          <div v-for="(u, i) in normalized" :key="u.key" class="igs-item">
+        <div
+          ref="stripEl"
+          class="igs-strip"
+          role="region"
+          aria-label="Publicaciones de Instagram"
+        >
+          <div
+            v-for="(u, i) in normalized"
+            :key="u.key"
+            class="igs-item"
+          >
             <div
               class="igs-frame"
               :style="{
@@ -77,7 +99,9 @@
           </div>
         </div>
 
-        <div class="igs-hint">Usá las flechas para cambiar de publicación.</div>
+        <div class="igs-hint">
+          Usá las flechas para cambiar de publicación.
+        </div>
       </div>
     </div>
   </v-card>
@@ -137,7 +161,9 @@ function parseInstagramUrl(u) {
   };
 }
 
-const normalized = computed(() => fetchedUrls.value.map(parseInstagramUrl).filter(Boolean));
+const normalized = computed(() =>
+  fetchedUrls.value.map(parseInstagramUrl).filter(Boolean)
+);
 
 function onLoad(i) {
   loaded.value = { ...loaded.value, [i]: true };
@@ -167,11 +193,17 @@ function currentIndex() {
 }
 
 function goNext() {
-  stripEl.value?.scrollTo({ left: (currentIndex() + 1) * stepPx(), behavior: "smooth" });
+  stripEl.value?.scrollTo({
+    left: (currentIndex() + 1) * stepPx(),
+    behavior: "smooth",
+  });
 }
 
 function goPrev() {
-  stripEl.value?.scrollTo({ left: (currentIndex() - 1) * stepPx(), behavior: "smooth" });
+  stripEl.value?.scrollTo({
+    left: (currentIndex() - 1) * stepPx(),
+    behavior: "smooth",
+  });
 }
 
 async function fetchFromDb() {
@@ -179,7 +211,11 @@ async function fetchFromDb() {
   error.value = "";
   try {
     const r = await publicListLinks({ kind: props.kind, limit: props.limit });
-    const items = Array.isArray(r?.items) ? r.items : Array.isArray(r?.data) ? r.data : [];
+    const items = Array.isArray(r?.items)
+      ? r.items
+      : Array.isArray(r?.data)
+      ? r.data
+      : [];
     fetchedUrls.value = items.map((x) => x?.url).filter(Boolean);
   } catch (e) {
     error.value = e?.message || "No se pudieron cargar las publicaciones";
@@ -232,23 +268,37 @@ watch(
   border-radius: 18px;
   background: #fbfbfb;
   border: 1px solid rgba(0, 0, 0, 0.04);
-  overflow: visible; /* ✅ NO recorta flechas externas */
+  overflow: visible;
 }
 
-/* ---------- Header ---------- */
+/* ---------- Header bonito ---------- */
 .igs-head {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.7);
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
+  padding: 14px 14px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(250, 250, 250, 0.9)
+  );
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.igs-title-only {
+.igs-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.igs-head-title {
+  font-size: 15px;
   font-weight: 800;
-  font-size: 14px;
-  line-height: 1.2;
-  opacity: 0.9;
+  letter-spacing: -0.2px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.igs-head-sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
 }
 
 /* ---------- Body ---------- */
@@ -258,7 +308,7 @@ watch(
 
 .igs-wrap {
   position: relative;
-  overflow: visible; /* ✅ NO recorta flechas */
+  overflow: visible;
 }
 
 /* ---------- Strip ---------- */
@@ -285,11 +335,11 @@ watch(
 .igs-frame {
   position: relative;
   width: var(--igs-cardw, 300px);
-  height: 520px; /* altura fija tipo feed IG */
+  height: 520px;
   border-radius: 18px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow: hidden; /* ✅ recorta comentarios (SOLO acá) */
+  overflow: hidden;
 }
 
 /* ---------- Loader ---------- */
@@ -318,19 +368,18 @@ watch(
   overflow: hidden;
 }
 
-/* ---------- Iframe Instagram ---------- */
+/* ---------- Iframe ---------- */
 .igs-iframe {
   width: 320px;
-  height: 780px; /* alto para reels */
+  height: 780px;
   transform-origin: top center;
   transform: scale(var(--igs-scale, 0.8));
   border: 0;
   display: block;
   background: #fff;
-  pointer-events: auto;
 }
 
-/* ---------- Flechas del carrusel ---------- */
+/* ---------- Flechas ---------- */
 .igs-nav {
   position: absolute;
   top: 50%;
@@ -343,11 +392,11 @@ watch(
 }
 
 .igs-nav-left {
-  left: -6px; /* afuera */
+  left: -6px;
 }
 
 .igs-nav-right {
-  right: -6px; /* afuera */
+  right: -6px;
 }
 
 /* ---------- Hint ---------- */
@@ -358,24 +407,22 @@ watch(
   text-align: center;
 }
 
-/* ===============================
-   MOBILE – ajuste fino FINAL
-   =============================== */
+/* ---------- Mobile ---------- */
 @media (max-width: 600px) {
   .igs-head {
-    padding: 8px 10px;
+    padding: 12px 12px 10px;
   }
 
-  .igs-title-only {
-    font-size: 13px;
+  .igs-head-title {
+    font-size: 14px;
   }
 
-  .igs-body {
-    padding: 8px;
+  .igs-head-sub {
+    font-size: 12px;
   }
 
   .igs-strip {
-    padding: 10px 44px 4px; /* un toque menos */
+    padding: 10px 44px 4px;
     gap: 10px;
   }
 
@@ -383,20 +430,17 @@ watch(
     height: 460px;
   }
 
-  /* Flechas: externas, visibles y sin superposición */
   .igs-nav {
     top: 60%;
     opacity: 0.85;
   }
 
   .igs-nav-left {
-    left: -18px; /* afuera pero visible */
+    left: -18px;
   }
 
   .igs-nav-right {
     right: -18px;
   }
 }
-
-
 </style>

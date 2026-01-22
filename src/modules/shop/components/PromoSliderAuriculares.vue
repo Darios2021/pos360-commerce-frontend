@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/PromoSliderAuriculares.vue -->
 <template>
   <section class="auris-shell">
@@ -91,11 +92,14 @@ import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 
 const props = defineProps({
-  /** ✅ modo presentacional (si vienen, NO auto-fetch) */
+  /** ✅ modo presentacional (si vienen, se usan; si vienen vacíos, se puede auto-fetchear igual) */
   items: { type: Array, default: null },
   loading: { type: Boolean, default: false },
 
-  /** contexto opcional (para VER TODO) */
+  /** ✅ si items viene vacío, auto-fetch igual (FIX “dejó de responder”) */
+  autoFetchWhenEmpty: { type: Boolean, default: true },
+
+  /** contexto opcional (para VER TODO y para auto-fetch dirigido) */
   categoryId: { type: [Number, String], default: null },
   subIds: { type: Array, default: () => [] },
 
@@ -118,9 +122,32 @@ const internalLoading = ref(false);
 const internalItems = ref([]);
 const model = ref(0);
 
+/**
+ * ✅ Controlado = el padre te pasa items (array), aunque sea vacío
+ * ✅ Pero si viene vacío y autoFetchWhenEmpty=true, hacemos auto-fetch igual
+ */
 const isControlled = computed(() => Array.isArray(props.items));
-const isLoading = computed(() => (isControlled.value ? !!props.loading : internalLoading.value));
-const safeItems = computed(() => (isControlled.value ? props.items || [] : internalItems.value || []));
+const canAutoFetchEvenIfControlled = computed(() => {
+  if (!props.autoFetchWhenEmpty) return false;
+  if (!isControlled.value) return true;
+  // si el padre está cargando, no hacemos nada todavía
+  if (props.loading) return false;
+  // si el padre pasó vacío, hacemos auto-fetch
+  return (props.items || []).length === 0;
+});
+
+const isLoading = computed(() => {
+  // si estamos auto-fetcheando, manda internalLoading
+  if (canAutoFetchEvenIfControlled.value) return internalLoading.value;
+  // si no, respeta modo controlado o auto normal
+  return isControlled.value ? !!props.loading : internalLoading.value;
+});
+
+const safeItems = computed(() => {
+  // si estamos auto-fetcheando, usamos internalItems aunque el padre sea controlado
+  if (canAutoFetchEvenIfControlled.value) return internalItems.value || [];
+  return isControlled.value ? props.items || [] : internalItems.value || [];
+});
 
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -182,10 +209,11 @@ function goSeeAll() {
     return;
   }
 
+  // fallback
   router.push({ path: "/shop" });
 }
 
-/* ===== auto-fetch (solo si NO viene props.items) ===== */
+/* ===== auto-fetch (fix + fallback robusto) ===== */
 function norm(s) {
   return String(s || "")
     .trim()
@@ -194,21 +222,11 @@ function norm(s) {
     .replace(/\p{Diacritic}/gu, "");
 }
 
-function findAudioCategory(cats) {
-  const arr = Array.isArray(cats) ? cats : [];
-  return (
-    arr.find((c) => norm(c?.slug) === "audio") ||
-    arr.find((c) => norm(c?.name) === "audio") ||
-    arr.find((c) => norm(c?.name).includes("audio")) ||
-    null
-  );
-}
-
 function getSubs(audioCat) {
   if (!audioCat) return [];
   const candidates = [audioCat.children, audioCat.subcategories, audioCat.subs, audioCat.items, audioCat.nodes];
   const subs = candidates.find((x) => Array.isArray(x)) || [];
-  return subs;
+  return subs.filter(Boolean);
 }
 
 function pickAuricularesSubIds(subs) {
@@ -216,7 +234,20 @@ function pickAuricularesSubIds(subs) {
     .filter((s) => {
       const n = norm(s?.name);
       const sl = norm(s?.slug);
-      return sl.includes("auricul") || n.includes("auricul") || n.includes("headphone");
+
+      return (
+        sl.includes("auricul") ||
+        n.includes("auricul") ||
+        n.includes("headphone") ||
+        n.includes("headset") ||
+        n.includes("earbud") ||
+        n.includes("earbuds") ||
+        n.includes("tws") ||
+        n.includes("in ear") ||
+        n.includes("inear") ||
+        n.includes("bluetooth") ||
+        n.includes("bt")
+      );
     })
     .map((s) => Number(s?.id))
     .filter((n) => Number.isFinite(n) && n > 0);
@@ -225,12 +256,28 @@ function pickAuricularesSubIds(subs) {
 async function fetchAurisAuto() {
   internalLoading.value = true;
   try {
-    const cats = await getPublicCategories();
-    const audio = findAudioCategory(cats);
-    const audioCatId = Number(audio?.id || 0);
+    // 1) si el padre pasa category/sub, lo usamos directo (más rápido y seguro)
+    const catFromProps = Number(props.categoryId || 0);
+    const subsFromProps = (Array.isArray(props.subIds) ? props.subIds : [])
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n) && n > 0);
 
-    const subs = getSubs(audio);
-    const auriSubIds = pickAuricularesSubIds(subs);
+    let audioCatId = catFromProps || 0;
+    let auriSubIds = subsFromProps;
+
+    // 2) si no hay contexto, lo resolvemos por taxonomy
+    if (!audioCatId) {
+      const cats = await getPublicCategories();
+      const audio =
+        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.slug) === "audio") ||
+        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.name) === "audio") ||
+        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.name).includes("audio")) ||
+        null;
+
+      audioCatId = Number(audio?.id || 0);
+      const subs = getSubs(audio);
+      auriSubIds = pickAuricularesSubIds(subs);
+    }
 
     lastCtx.value = {
       audioCatId: audioCatId || null,
@@ -241,6 +288,7 @@ async function fetchAurisAuto() {
     let merged = [];
     const seen = new Set();
 
+    // 3) fetch por subcategorías (ideal)
     if (audioCatId && auriSubIds.length) {
       for (const sid of auriSubIds) {
         let r;
@@ -248,7 +296,7 @@ async function fetchAurisAuto() {
           r = await getCatalog({
             search: "",
             page: 1,
-            limit: 60,
+            limit: 80,
             category_id: audioCatId,
             subcategory_id: sid,
           });
@@ -267,10 +315,27 @@ async function fetchAurisAuto() {
       }
     }
 
-    // fallback (evita energía/cargadores)
+    // 4) ✅ fallback por categoría Audio (si no encontramos subs o vino vacío)
+    if (!merged.length && audioCatId) {
+      try {
+        const r = await getCatalog({
+          search: "",
+          page: 1,
+          limit: 80,
+          category_id: audioCatId,
+        });
+
+        const list = Array.isArray(r?.items) ? r.items : [];
+        merged = list;
+      } catch (e4) {
+        console.error("❌ Auriculares fallback category error:", e4);
+      }
+    }
+
+    // 5) ✅ fallback por búsqueda, excluyendo cosas que no queremos
     if (!merged.length) {
-      const tries = ["auriculares", "auricular", "headphones", "headset", "earbuds", "tws"];
-      const EXCLUDE = "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank";
+      const tries = ["auriculares", "auricular", "headphones", "headset", "earbuds", "tws", "in ear"];
+      const EXCLUDE = "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank,charger";
 
       for (const term of tries) {
         try {
@@ -293,7 +358,7 @@ async function fetchAurisAuto() {
       }
     }
 
-    internalItems.value = merged.slice(0, Math.max(1, Number(props.maxItems || 60)));
+    internalItems.value = (merged || []).slice(0, Math.max(1, Number(props.maxItems || 60)));
     model.value = 0;
   } catch (e) {
     console.error("❌ PromoSliderAuriculares fetchAurisAuto", e);
@@ -304,14 +369,25 @@ async function fetchAurisAuto() {
 }
 
 onMounted(() => {
-  if (!isControlled.value) fetchAurisAuto();
+  // ✅ ahora auto-fetchea también cuando el padre pasó items vacío
+  if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
+  else if (!isControlled.value) fetchAurisAuto();
 });
 
-/* si cambia la ruta, refresca solo en modo auto */
+/* refresca en modo auto */
 watch(
   () => router.currentRoute.value.fullPath,
   () => {
-    if (!isControlled.value) fetchAurisAuto();
+    if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
+    else if (!isControlled.value) fetchAurisAuto();
+  }
+);
+
+/* refresca cuando el padre deja de cargar y sigue vacío (modo controlado vacío) */
+watch(
+  () => [props.loading, Array.isArray(props.items) ? props.items.length : -1, props.categoryId, (props.subIds || []).length],
+  () => {
+    if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
   }
 );
 

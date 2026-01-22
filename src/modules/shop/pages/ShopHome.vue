@@ -26,15 +26,12 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <!-- ✅ INSTAGRAM “telefonitos” (CAROUSEL) -->
-      <div class="mb-6">
-        <InstagramPhoneCarousel
-          :urls="IG_POSTS"
-          title="🎁 Sorteos en Instagram"
-          subtitle="Deslizá y mirá los sorteos como en el celu."
-          profileUrl="https://www.instagram.com/sanjuan_tecnologia/"
-        />
-      </div>
+     <!-- ✅ INSTAGRAM “telefonitos” (CAROUSEL) -->
+    <!-- ✅ INSTAGRAM (CAROUSEL) -->
+    <div class="mb-6">
+    <InstagramPhoneCarousel />
+    </div>
+
 
       <div
         id="shop-products-top"
