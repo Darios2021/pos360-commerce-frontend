@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (similares por categoría/sub con getCatalog) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (similares por categoría/sub con getCatalog + OG + prerender-ready) -->
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
@@ -49,6 +49,9 @@ import ShopCartDrawer from "@/modules/shop/components/ShopCartDrawer.vue";
 import { getProduct, getCatalog } from "@/modules/shop/service/shop.public.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
+// ✅ OG + prerender
+import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
+
 const route = useRoute();
 const router = useRouter();
 const cart = useShopCartStore();
@@ -89,6 +92,38 @@ function resolveSubcategoryId(p) {
 
 const resolvedCategoryId = computed(() => resolveCategoryId(product.value));
 const resolvedSubcategoryId = computed(() => resolveSubcategoryId(product.value));
+
+/**
+ * ✅ OG helpers
+ * Importante: og:image debe ser absoluta (WhatsApp lo necesita).
+ * Elegimos la "mejor candidata" según lo que venga en tu product.
+ */
+function pickOgImage(p) {
+  const candidate =
+    p?.cover_url ||
+    p?.image_url ||
+    p?.image ||
+    p?.main_image ||
+    p?.thumbnail ||
+    (Array.isArray(p?.images) ? (p.images[0]?.url || p.images[0]) : "") ||
+    "";
+
+  if (!candidate) return "https://sanjuantecnologia.com/og/og-product.jpg";
+
+  try {
+    // ya absoluta
+    return new URL(candidate).toString();
+  } catch {
+    // relativa -> absoluta contra el sitio
+    return absoluteUrlFromLocation(candidate);
+  }
+}
+
+const shareUrl = computed(() => {
+  const q = new URLSearchParams(route.query).toString();
+  const base = `/shop/product/${route.params.id}`;
+  return absoluteUrlFromLocation(q ? `${base}?${q}` : base);
+});
 
 async function fetchSimilar(p) {
   const productId = Number(p?.id || p?.product_id || 0);
@@ -146,6 +181,29 @@ async function fetchSimilar(p) {
   }
 }
 
+async function applyOgForProduct(p) {
+  if (!p) return;
+
+  const title = p?.name ? `${p.name} | San Juan Tecnología` : "Producto | San Juan Tecnología";
+
+  const descRaw =
+    p?.short_description ||
+    p?.description ||
+    p?.name ||
+    "Producto disponible en San Juan Tecnología.";
+
+  const description = String(descRaw).replace(/\s+/g, " ").trim();
+
+  const image = pickOgImage(p);
+
+  await setOgAndReady({
+    title,
+    description,
+    image,
+    url: shareUrl.value,
+  });
+}
+
 async function load() {
   product.value = null;
   similar.value = [];
@@ -154,11 +212,23 @@ async function load() {
   const p = await getProduct(route.params.id);
   product.value = p;
 
+  // ✅ set OG + libera prerender cuando el producto ya existe
+  await applyOgForProduct(p);
+
   await fetchSimilar(p);
 }
 
 onMounted(load);
 watch(() => route.params.id, load);
+
+// ✅ si cambia branch_id u otra query, actualiza og:url y libera igual
+watch(
+  () => route.query,
+  async () => {
+    if (!product.value) return;
+    await applyOgForProduct(product.value);
+  }
+);
 </script>
 
 <style scoped>

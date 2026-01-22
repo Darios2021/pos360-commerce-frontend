@@ -83,6 +83,8 @@
 // =============================
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import { createHead } from "@vueuse/head";
+
 import App from "./App.vue";
 import router from "./app/router";
 import vuetify from "./app/plugins/vuetify";
@@ -96,8 +98,12 @@ import VueApexCharts from "vue3-apexcharts";
 // =============================
 const app = createApp(App);
 
+// ✅ Head manager (para OG tags en páginas prerenderizadas)
+const head = createHead();
+
 app
   .use(createPinia())
+  .use(head)
   .use(router)
   .use(vuetify);
 

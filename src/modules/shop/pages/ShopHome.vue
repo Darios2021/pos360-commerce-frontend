@@ -26,12 +26,10 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-     <!-- ✅ INSTAGRAM “telefonitos” (CAROUSEL) -->
-    <!-- ✅ INSTAGRAM (CAROUSEL) -->
-    <div class="mb-6">
-    <InstagramPhoneCarousel />
-    </div>
-
+      <!-- ✅ INSTAGRAM (CAROUSEL) -->
+      <div class="mb-6">
+        <InstagramPhoneCarousel />
+      </div>
 
       <div
         id="shop-products-top"
@@ -141,6 +139,9 @@ import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 
 import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
+
+// ✅ OG + prerender
+import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
 
 const route = useRoute();
 const router = useRouter();
@@ -387,7 +388,21 @@ async function fetchAuricularesSlider() {
   }
 }
 
+let ogDone = false;
+
 onMounted(async () => {
+  // ✅ OG para home shop (prerender)
+  // Si querés, cambiá og-shop.jpg por una imagen real tuya (recomendado).
+  if (!ogDone) {
+    ogDone = true;
+    setOgAndReady({
+      title: "San Juan Tecnología | Tienda",
+      description: "Electrónica, ecommerce, sistemas POS y soluciones tecnológicas.",
+      image: "https://sanjuantecnologia.com/og/og-shop.jpg",
+      url: absoluteUrlFromLocation("/shop"),
+    });
+  }
+
   await fetchCatalog({ append: false });
 
   try {
