@@ -1,5 +1,5 @@
 <!-- src/modules/admin/pages/GaleriaMultimediaView.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO (overwrite REAL por key + filtros + fullscreen) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (thumb WEBP + copy WEBP + delete PACKAGE + overwrite por key/url/stem) -->
 
 <template>
   <v-container fluid class="mm-root pa-4">
@@ -48,32 +48,9 @@
           <v-checkbox v-model="compact" density="compact" hide-details label="Compacto" />
         </div>
 
-        <v-text-field
-          v-model="product_id"
-          label="Product ID"
-          variant="outlined"
-          density="comfortable"
-          type="number"
-          clearable
-        />
-
-        <v-text-field
-          v-model="category_id"
-          label="Category ID"
-          variant="outlined"
-          density="comfortable"
-          type="number"
-          clearable
-        />
-
-        <v-text-field
-          v-model="subcategory_id"
-          label="Subcategory ID"
-          variant="outlined"
-          density="comfortable"
-          type="number"
-          clearable
-        />
+        <v-text-field v-model="product_id" label="Product ID" variant="outlined" density="comfortable" type="number" clearable />
+        <v-text-field v-model="category_id" label="Category ID" variant="outlined" density="comfortable" type="number" clearable />
+        <v-text-field v-model="subcategory_id" label="Subcategory ID" variant="outlined" density="comfortable" type="number" clearable />
 
         <div class="d-flex align-center justify-space-between mm-stats">
           <div class="text-caption text-medium-emphasis">
@@ -99,7 +76,8 @@
     <div class="mm-grid" :class="{ 'mm-grid-compact': compact }">
       <v-card v-for="img in items" :key="img.key || img.url" class="mm-card" rounded="xl" variant="outlined">
         <button class="mm-thumb" type="button" @click="openViewer(img)" :aria-label="`Ver ${img.filename}`">
-          <img :src="img.url" :alt="img.filename" loading="lazy" />
+          <!-- ✅ Thumb SIEMPRE WEBP -->
+          <img :src="webpUrl(img)" :alt="img.filename" loading="lazy" />
           <div class="mm-badges">
             <v-chip size="small" :color="img.is_used ? 'green' : 'grey'" variant="tonal">
               {{ img.is_used ? `Usada (${img.used_count})` : "No usada" }}
@@ -124,8 +102,9 @@
         <v-card-actions class="mm-actions">
           <v-btn size="small" variant="tonal" prepend-icon="mdi-eye" @click="openViewer(img)">Ver</v-btn>
 
-          <v-btn size="small" variant="tonal" prepend-icon="mdi-content-copy" @click="copy(img.url)">
-            Copiar URL
+          <!-- ✅ Copiar WEBP (lo que va a product_images.url) -->
+          <v-btn size="small" variant="tonal" prepend-icon="mdi-content-copy" @click="copy(webpUrl(img))">
+            Copiar URL (WEBP)
           </v-btn>
 
           <v-spacer />
@@ -134,7 +113,7 @@
             size="small"
             color="red"
             variant="tonal"
-            prepend-icon="mdi-delete"
+            prepend-inner-icon="mdi-delete"
             :disabled="img.is_used"
             @click="remove(img)"
           >
@@ -154,12 +133,7 @@
           </div>
 
           <div class="d-flex align-center ga-2">
-            <v-chip
-              v-if="viewer?.filename"
-              size="small"
-              :color="viewer?.is_used ? 'green' : 'grey'"
-              variant="tonal"
-            >
+            <v-chip v-if="viewer?.filename" size="small" :color="viewer?.is_used ? 'green' : 'grey'" variant="tonal">
               {{ viewer?.is_used ? `Usada (${viewer?.used_count})` : "No usada" }}
             </v-chip>
 
@@ -181,7 +155,8 @@
             <v-window-item value="info">
               <div class="mm-info-grid">
                 <div class="mm-viewer-preview">
-                  <img :src="viewerUrlCacheBust" class="mm-viewer-img" :alt="viewer?.filename" />
+                  <!-- ✅ Preview grande WEBP -->
+                  <img :src="viewerWebpCacheBust" class="mm-viewer-img" :alt="viewer?.filename" />
                 </div>
 
                 <div class="mm-info-side">
@@ -190,20 +165,57 @@
                       <v-list-item-title>Archivo</v-list-item-title>
                       <v-list-item-subtitle class="text-truncate">{{ viewer?.filename }}</v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item>
-                      <v-list-item-title>Resumen</v-list-item-title>
-                      <v-list-item-subtitle class="text-truncate">{{ summaryLine(viewer) }}</v-list-item-subtitle>
-                    </v-list-item>
+
                     <v-list-item>
                       <v-list-item-title>Key (storage)</v-list-item-title>
                       <v-list-item-subtitle class="text-truncate">{{ viewer?.key || "—" }}</v-list-item-subtitle>
                     </v-list-item>
+
+                    <v-list-item>
+                      <v-list-item-title>Stem (paquete)</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ viewer ? stemKey(viewer) : "—" }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <v-list-item-title>WEBP</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ viewer ? webpUrl(viewer) : "—" }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <v-list-item-title>OG (1200×630)</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ viewer ? ogUrl(viewer) : "—" }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <v-list-item-title>Square (1080×1080)</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ viewer ? sqUrl(viewer) : "—" }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <v-list-item-title>Resumen</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ summaryLine(viewer) }}</v-list-item-subtitle>
+                    </v-list-item>
                   </v-list>
 
                   <div class="d-flex flex-wrap ga-2 mt-3">
-                    <v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copy(viewer?.url)">Copiar URL</v-btn>
-                    <v-btn variant="tonal" prepend-icon="mdi-open-in-new" :href="viewer?.url" target="_blank" rel="noreferrer">
-                      Abrir
+                    <v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copy(viewer ? webpUrl(viewer) : '')">
+                      Copiar WEBP
+                    </v-btn>
+                    <v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copy(viewer ? ogUrl(viewer) : '')">
+                      Copiar OG
+                    </v-btn>
+                    <v-btn variant="tonal" prepend-icon="mdi-content-copy" @click="copy(viewer ? sqUrl(viewer) : '')">
+                      Copiar Square
+                    </v-btn>
+
+                    <v-btn
+                      variant="tonal"
+                      prepend-icon="mdi-open-in-new"
+                      :href="viewer ? webpUrl(viewer) : '#'"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Abrir WEBP
                     </v-btn>
                   </div>
                 </div>
@@ -212,8 +224,8 @@
 
             <v-window-item value="editor">
               <ImageCropperEditor
-                v-if="viewer?.url && viewer?.filename"
-                :src="viewerUrlCacheBust"
+                v-if="viewer"
+                :src="viewerWebpCacheBust"
                 :filename="viewer.filename"
                 @overwrite="onOverwrite"
               />
@@ -233,13 +245,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import {
-  listMediaImages,
-  uploadMediaImage,
-  deleteMediaImage,
-  overwriteMediaImage,
-} from "@/app/services/media.service";
-
+import { listMediaImages, uploadMediaImage, deleteMediaImage, overwriteMediaImage } from "@/app/services/media.service";
 import ImageCropperEditor from "@/modules/admin/components/media/ImageCropperEditor.vue";
 
 const loading = ref(false);
@@ -259,9 +265,7 @@ const total = ref(0);
 const items = ref([]);
 const compact = ref(false);
 
-const pageCount = computed(() =>
-  Math.max(1, Math.ceil(Number(total.value || 0) / Number(limit.value || 1)))
-);
+const pageCount = computed(() => Math.max(1, Math.ceil(Number(total.value || 0) / Number(limit.value || 1))));
 
 // viewer
 const viewerOpen = ref(false);
@@ -269,12 +273,79 @@ const viewerTab = ref("info");
 const viewer = ref(null);
 const viewerCacheBust = ref(Date.now());
 
-const viewerUrlCacheBust = computed(() => {
-  const u = viewer.value?.url ? String(viewer.value.url) : "";
+// =======================
+// ✅ Variants helpers (front)
+// =======================
+function stripQuery(u) {
+  return String(u || "").split("?")[0].split("#")[0];
+}
+function stripExt(name) {
+  return String(name || "").replace(/\.[a-z0-9]+$/i, "");
+}
+function baseNoSuffix(nameNoExt) {
+  return String(nameNoExt || "").replace(/(_og|_sq)$/i, "");
+}
+function urlDir(u) {
+  const s = stripQuery(u);
+  const i = s.lastIndexOf("/");
+  return i >= 0 ? s.slice(0, i + 1) : "";
+}
+function fileNameFromAny(img) {
+  const k = img?.key || img?.url || "";
+  const s = stripQuery(String(k));
+  return s.substring(s.lastIndexOf("/") + 1) || s;
+}
+
+/**
+ * Stem key: preferimos img.key (porque trae path exacto en bucket),
+ * si no, derivamos del url.
+ */
+function stemKey(img) {
+  const key = String(img?.key || "");
+  if (key) {
+    const dir = key.includes("/") ? key.slice(0, key.lastIndexOf("/") + 1) : "";
+    const fn = key.substring(key.lastIndexOf("/") + 1) || key;
+    const base = baseNoSuffix(stripExt(fn));
+    return `${dir}${base}`;
+  }
+
+  const u = String(img?.url || "");
+  const dir = urlDir(u);
+  const fn = fileNameFromAny(img);
+  const base = baseNoSuffix(stripExt(fn));
+  return `${dir}${base}`; // es un "stem url", igual lo acepta el backend (resolveKeyForOverwrite)
+}
+
+function webpUrl(img) {
+  const u = String(img?.url || "");
+  if (!u) return "";
+  const dir = urlDir(u);
+  const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
+  return `${dir}${base}.webp`;
+}
+function ogUrl(img) {
+  const u = String(img?.url || "");
+  if (!u) return "";
+  const dir = urlDir(u);
+  const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
+  return `${dir}${base}_og.jpg`;
+}
+function sqUrl(img) {
+  const u = String(img?.url || "");
+  if (!u) return "";
+  const dir = urlDir(u);
+  const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
+  return `${dir}${base}_sq.jpg`;
+}
+
+const viewerWebpCacheBust = computed(() => {
+  const u = viewer.value ? webpUrl(viewer.value) : "";
   if (!u) return "";
   const sep = u.includes("?") ? "&" : "?";
   return `${u}${sep}v=${viewerCacheBust.value}`;
 });
+
+// =======================
 
 function openViewer(img) {
   viewer.value = img;
@@ -344,11 +415,13 @@ async function onPickFile(e) {
 }
 
 async function copy(text) {
+  const t = String(text || "");
+  if (!t) return;
   try {
-    await navigator.clipboard.writeText(String(text));
+    await navigator.clipboard.writeText(t);
   } catch {
     const ta = document.createElement("textarea");
-    ta.value = String(text);
+    ta.value = t;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand("copy");
@@ -359,11 +432,12 @@ async function copy(text) {
 async function remove(img) {
   if (img?.is_used) return;
 
-  const ok = confirm(`Eliminar imagen?\n\n${img?.filename}`);
+  const ok = confirm(`Eliminar imagen (paquete webp+og+sq)?\n\n${fileNameFromAny(img)}`);
   if (!ok) return;
 
   try {
-    await deleteMediaImage(img.key || img.filename);
+    // ✅ mandamos STEM (borra paquete)
+    await deleteMediaImage(stemKey(img));
     await reload(false);
   } catch (err) {
     error.value = err?.friendlyMessage || err?.message || "Error eliminando";
@@ -382,18 +456,17 @@ function summaryLine(img) {
 }
 
 /**
- * ✅ CLAVE: overwrite por key (no por filename)
+ * ✅ Overwrite: mandamos key/url/stem
+ * Con el backend nuevo acepta stem también, pero preferimos key si está.
  */
 async function onOverwrite({ file, filename }) {
   uploading.value = true;
   error.value = "";
   try {
-    const id = viewer.value?.key || viewer.value?.url || filename;
+    const id = viewer.value?.key || viewer.value?.url || (viewer.value ? stemKey(viewer.value) : filename);
     await overwriteMediaImage(id, file);
 
     await reload(false);
-
-    // refresca cache del preview
     viewerCacheBust.value = Date.now();
 
     alert("✅ Imagen reemplazada OK");
