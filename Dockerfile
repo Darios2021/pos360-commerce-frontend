@@ -25,9 +25,25 @@ RUN apt-get update && apt-get install -y \
   --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
-# ✅ Decirle a puppeteer que NO descargue chrome propio
+# ✅ Puppeteer usa chromium del sistema (no descarga)
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# ✅ CONSUMIR build args de CapRover (para que NO diga "not consumed")
+ARG PRERENDER_CATALOG_URL
+ARG VITE_API_BASE_URL
+ARG VITE_APP_NAME
+ARG VITE_ENV
+ARG CAPROVER_GIT_COMMIT_SHA
+
+# ✅ Exportarlas como env para el build (node scripts + vite build)
+ENV PRERENDER_CATALOG_URL=${PRERENDER_CATALOG_URL}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_APP_NAME=${VITE_APP_NAME}
+ENV VITE_ENV=${VITE_ENV}
+
+# ✅ Cache-bust opcional (si cambia el commit, cambia esta layer)
+ENV BUILD_SHA=${CAPROVER_GIT_COMMIT_SHA}
 
 # deps
 COPY package*.json ./
@@ -43,12 +59,7 @@ RUN npm run build
 # RUNTIME (Nginx) ✅
 # ==========================
 FROM nginx:stable-alpine AS runtime
-
-# Nginx config para SPA + prerender estático
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Vite dist
 COPY --from=build /app/dist /usr/share/nginx/html
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
