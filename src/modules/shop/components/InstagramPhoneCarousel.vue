@@ -232,14 +232,16 @@ watch(
   border-radius: 18px;
   background: #fbfbfb;
   border: 1px solid rgba(0, 0, 0, 0.04);
-  overflow: hidden;
+  overflow: visible; /* ✅ NO recorta flechas externas */
 }
 
-/* ✅ ÚNICO HEADER */
+/* ---------- Header ---------- */
 .igs-head {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   background: rgba(255, 255, 255, 0.7);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
 }
 
 .igs-title-only {
@@ -249,21 +251,22 @@ watch(
   opacity: 0.9;
 }
 
-/* Body */
+/* ---------- Body ---------- */
 .igs-body {
   padding: 8px 10px 10px;
 }
 
 .igs-wrap {
   position: relative;
+  overflow: visible; /* ✅ NO recorta flechas */
 }
 
-/* Strip */
+/* ---------- Strip ---------- */
 .igs-strip {
   display: flex;
   gap: 12px;
   overflow-x: auto;
-  padding: 10px 56px 4px;
+  padding: 10px 48px 4px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -278,18 +281,18 @@ watch(
   scroll-snap-align: center;
 }
 
-/* Frame IG (altura fija tipo feed) */
+/* ---------- Frame del post ---------- */
 .igs-frame {
   position: relative;
   width: var(--igs-cardw, 300px);
-  height: 520px;
+  height: 520px; /* altura fija tipo feed IG */
   border-radius: 18px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  overflow: hidden; /* ✅ recorta comentarios (SOLO acá) */
 }
 
-/* Loader */
+/* ---------- Loader ---------- */
 .igs-loader {
   position: absolute;
   inset: 0;
@@ -305,7 +308,7 @@ watch(
   opacity: 0.7;
 }
 
-/* Fit (pegado arriba como IG feed) */
+/* ---------- Fit ---------- */
 .igs-fit {
   width: 100%;
   height: 100%;
@@ -315,18 +318,19 @@ watch(
   overflow: hidden;
 }
 
-/* Iframe reels-friendly (sin scroll interno) */
+/* ---------- Iframe Instagram ---------- */
 .igs-iframe {
   width: 320px;
-  height: 780px;
+  height: 780px; /* alto para reels */
   transform-origin: top center;
   transform: scale(var(--igs-scale, 0.8));
   border: 0;
   display: block;
   background: #fff;
+  pointer-events: auto;
 }
 
-/* Flechas externas */
+/* ---------- Flechas del carrusel ---------- */
 .igs-nav {
   position: absolute;
   top: 50%;
@@ -339,13 +343,14 @@ watch(
 }
 
 .igs-nav-left {
-  left: -6px;
+  left: -6px; /* afuera */
 }
 
 .igs-nav-right {
-  right: -6px;
+  right: -6px; /* afuera */
 }
 
+/* ---------- Hint ---------- */
 .igs-hint {
   margin-top: 6px;
   font-size: 12px;
@@ -353,7 +358,9 @@ watch(
   text-align: center;
 }
 
-/* Mobile */
+/* ===============================
+   MOBILE – ajuste fino FINAL
+   =============================== */
 @media (max-width: 600px) {
   .igs-head {
     padding: 8px 10px;
@@ -368,7 +375,7 @@ watch(
   }
 
   .igs-strip {
-    padding: 10px 52px 4px;
+    padding: 10px 44px 4px; /* un toque menos */
     gap: 10px;
   }
 
@@ -376,11 +383,20 @@ watch(
     height: 460px;
   }
 
-  .igs-nav-left {
-    left: -4px;
+  /* Flechas: externas, visibles y sin superposición */
+  .igs-nav {
+    top: 60%;
+    opacity: 0.85;
   }
+
+  .igs-nav-left {
+    left: -18px; /* afuera pero visible */
+  }
+
   .igs-nav-right {
-    right: -4px;
+    right: -18px;
   }
 }
+
+
 </style>
