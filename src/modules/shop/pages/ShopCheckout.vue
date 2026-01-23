@@ -481,7 +481,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-import { getBranches, getShopPaymentConfig } from "@/modules/shop/service/shop.public.api";
+import { getBranches, getShopPaymentConfig } from "@/modules/shop/service/shop.public.api.js";
 import http from "@/app/api/http";
 
 const router = useRouter();

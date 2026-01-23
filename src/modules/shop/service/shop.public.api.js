@@ -103,6 +103,25 @@ export function getCatalogBranchId() {
 }
 
 /**
+ * ✅ BRANCHES (para checkout pickup)
+ * GET /api/v1/public/branches
+ * Si tu backend lo tiene en otro path, decime cuál y lo ajusto.
+ */
+export async function getBranches() {
+  const r = await api.get("/branches", { params: { branch_id: getCatalogBranchId() } }).catch(async () => {
+    // fallback sin params por si tu endpoint no acepta branch_id
+    const rr = await api.get("/branches");
+    return rr;
+  });
+
+  // soporta: {items: []} o [] o {data:{items:[]}}
+  if (Array.isArray(r.data)) return r.data;
+  if (Array.isArray(r.data?.items)) return r.data.items;
+  if (Array.isArray(r.data?.data?.items)) return r.data.data.items;
+  return [];
+}
+
+/**
  * ✅ BRANDING PÚBLICO
  * GET  /api/v1/public/shop/branding
  */
