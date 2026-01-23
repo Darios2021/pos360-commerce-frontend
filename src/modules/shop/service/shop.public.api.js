@@ -1,22 +1,31 @@
 // src/modules/shop/service/shop.public.api.js
+// ✅ COPY-PASTE FINAL COMPLETO
+
 import axios from "axios";
 
 const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
 const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
 
+// Ej: VITE_API_BASE_URL="https://sanjuantecnologia.com/api/v1" o "https://pos360-commerce-api.cingulado.org/api/v1"
 const defaultBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-// ✅ basePath puede ser absoluto o relativo
+// basePath puede ser absoluto (https://...) o relativo (/api/v1)
 let basePath = defaultBase;
 
-// ✅ en dominio público => SIEMPRE same-origin
 if (typeof window !== "undefined") {
   const host = String(window.location.hostname || "").toLowerCase();
-  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") basePath = "/api/v1";
-  if (FORCE_SAME_ORIGIN) basePath = "/api/v1";
+
+  // ✅ en el dominio real SIEMPRE same-origin
+  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
+    basePath = "/api/v1";
+  }
+
+  // ✅ override manual
+  if (FORCE_SAME_ORIGIN) {
+    basePath = "/api/v1";
+  }
 }
 
-// ✅ siempre apuntamos al PUBLIC
 function buildPublicBase(path) {
   const p = String(path || "").trim();
   if (!p) return "/api/v1/public";
@@ -26,9 +35,11 @@ function buildPublicBase(path) {
 
 const apiBaseURL = buildPublicBase(basePath);
 
-// ✅ assetBase: para absolutizar imágenes cuando vienen relativas
+// assetBase: para absolutizar imágenes si vienen relativas
 const assetBase = (() => {
-  if (typeof window !== "undefined" && basePath.startsWith("/")) return window.location.origin.replace(/\/+$/, "");
+  if (typeof window !== "undefined" && basePath.startsWith("/")) {
+    return window.location.origin.replace(/\/+$/, "");
+  }
   const b = String(basePath || "").replace(/\/+$/, "");
   const cut = b.replace(/\/api(\/v\d+)?$/i, "");
   return (cut || b).replace(/\/+$/, "");
@@ -39,7 +50,7 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// ✅ Anti-preflight por headers raros
+// ✅ Anti-preflight por headers “cache-control/pragma”
 api.interceptors.request.use((config) => {
   const h = config.headers || {};
   delete h["Cache-Control"];
@@ -50,7 +61,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ DEBUG fácil (te muestra a dónde está pegando)
+// ✅ Debug (solo browser)
 if (typeof window !== "undefined") {
   console.log("[SHOP API]", { basePath, apiBaseURL, assetBase });
 }
@@ -59,12 +70,10 @@ function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
-
 function toNum(v, d = 0) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
-
 function cleanParams(obj) {
   const p = { ...obj };
   Object.keys(p).forEach((k) => {
@@ -73,7 +82,6 @@ function cleanParams(obj) {
   });
   return p;
 }
-
 function uniqUrls(list) {
   const out = [];
   const seen = new Set();
@@ -86,7 +94,6 @@ function uniqUrls(list) {
   }
   return out;
 }
-
 function absUrl(u) {
   const s = String(u || "").trim();
   if (!s) return "";
@@ -102,23 +109,12 @@ export function getCatalogBranchId() {
   return CATALOG_BRANCH_ID;
 }
 
-/**
- * ✅ BRANCHES (para checkout pickup)
- * GET /api/v1/public/branches
- * Si tu backend lo tiene en otro path, decime cuál y lo ajusto.
- */
+// ✅ EXPORT FALTANTE (tu build rompe por esto)
 export async function getBranches() {
-  const r = await api.get("/branches", { params: { branch_id: getCatalogBranchId() } }).catch(async () => {
-    // fallback sin params por si tu endpoint no acepta branch_id
-    const rr = await api.get("/branches");
-    return rr;
-  });
-
-  // soporta: {items: []} o [] o {data:{items:[]}}
-  if (Array.isArray(r.data)) return r.data;
-  if (Array.isArray(r.data?.items)) return r.data.items;
-  if (Array.isArray(r.data?.data?.items)) return r.data.data.items;
-  return [];
+  // tu endpoint público según tu convención:
+  // GET /api/v1/public/branches
+  const r = await api.get("/branches");
+  return r.data?.items || [];
 }
 
 /**
