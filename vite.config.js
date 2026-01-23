@@ -20,7 +20,6 @@ function readRoutesFile() {
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
-  // ✅ SOLO si VITE_ENABLE_PRERENDER=1
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
     String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
@@ -41,9 +40,8 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ CLAVE: si lo servís bajo https://sanjuantecnologia.com/app
-    // los assets pasan a /app/assets/...
-    base: "/app/",
+    // ✅ IMPORTANTE: el sitio se sirve en /shop
+    base: "/shop/",
 
     plugins,
     resolve: {
