@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
@@ -34,18 +35,22 @@ export default defineConfig(async ({ command }) => {
       prerender({
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
-        rendererOptions: { renderAfterDocumentEvent: "prerender-ready" }
+        rendererOptions: { renderAfterDocumentEvent: "prerender-ready" },
       })
     );
   }
 
   return {
+    // ✅ CLAVE: si lo servís bajo https://sanjuantecnologia.com/app
+    // los assets pasan a /app/assets/...
+    base: "/app/",
+
     plugins,
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
-        vue: "vue/dist/vue.esm-bundler.js"
-      }
-    }
+        vue: "vue/dist/vue.esm-bundler.js",
+      },
+    },
   };
 });
