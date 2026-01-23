@@ -28,7 +28,8 @@ export default defineConfig(async ({ command }) => {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
-    const routes = fileRoutes && fileRoutes.length ? fileRoutes : ["/shop"];
+    // ✅ IMPORTANTE: /shop/ con slash final
+    const routes = fileRoutes && fileRoutes.length ? fileRoutes : ["/shop/"];
 
     plugins.push(
       prerender({
@@ -40,7 +41,7 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ IMPORTANTE: el sitio se sirve en /shop
+    // ✅ FUENTE DE VERDAD: se sirve en /shop/
     base: "/shop/",
 
     plugins,

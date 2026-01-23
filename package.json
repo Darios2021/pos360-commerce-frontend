@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "prerender:routes": "node scripts/prerender-generate-routes.mjs",
-    "build": "vite build",
-    "build:prerender": "npm run prerender:routes && vite build",
+
+    "build": "vite build --base=/shop/",
+    "build:prerender": "npm run prerender:routes && VITE_ENABLE_PRERENDER=1 vite build --base=/shop/",
+
     "preview": "vite preview"
   },
   "dependencies": {

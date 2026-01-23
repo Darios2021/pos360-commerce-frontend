@@ -17,7 +17,8 @@ function writeRoutes(routes) {
 }
 
 function writeFallback() {
-  writeRoutes(["/shop"]);
+  // ✅ IMPORTANTE: /shop/ con slash final
+  writeRoutes(["/shop/"]);
 }
 
 function normBase(raw) {
@@ -53,7 +54,7 @@ function extractItems(data) {
 
 (async () => {
   if (!API_BASE) {
-    console.warn("[prerender] ⚠️ Falta API_BASE_URL o VITE_API_BASE_URL. Uso fallback /shop");
+    console.warn("[prerender] ⚠️ Falta API_BASE_URL o VITE_API_BASE_URL. Uso fallback /shop/");
     writeFallback();
     return;
   }
@@ -86,7 +87,7 @@ function extractItems(data) {
       if (pages && page >= pages) break;
     }
   } catch (e) {
-    console.warn("[prerender] ⚠️ No pude leer catálogo, uso fallback /shop (no frena build).");
+    console.warn("[prerender] ⚠️ No pude leer catálogo, uso fallback /shop/ (no frena build).");
     console.warn("[prerender] detail:", e?.message || e);
     console.log(`[prerender] api_base: ${API_BASE}`);
     console.log(`[prerender] catalog: ${catalogUrl}`);
@@ -95,7 +96,9 @@ function extractItems(data) {
   }
 
   const productIds = uniq(ids).slice(0, MAX_PRODUCTS);
-  const routes = uniq(["/shop", ...productIds.map((id) => `/shop/product/${id}`)]);
+
+  // ✅ IMPORTANTE: /shop/ con slash final como raíz
+  const routes = uniq(["/shop/", ...productIds.map((id) => `/shop/product/${id}`)]);
 
   writeRoutes(routes);
 
