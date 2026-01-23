@@ -37,7 +37,8 @@ RUN npm ci
 COPY . .
 
 # ✅ build (incluye prerender:routes + vite build)
-RUN npm run build
+RUN npm run build:prerender
+
 
 # =========================
 # RUNTIME

@@ -1,25 +1,31 @@
+// scripts/prerender-generate-routes.mjs
 import fs from "node:fs";
 import path from "node:path";
 
 const OUT = path.join(process.cwd(), "scripts", "prerender.routes.json");
 
 const BRANCH_ID = Number(process.env.PRERENDER_BRANCH_ID || 3);
-const LIMIT = Number(process.env.PRERENDER_LIMIT || 100);
-const MAX_PAGES = Number(process.env.PRERENDER_MAX_PAGES || 50);
+const LIMIT = Number(process.env.PRERENDER_LIMIT || 50);
+const MAX_PAGES = Number(process.env.PRERENDER_MAX_PAGES || 10);
+const MAX_PRODUCTS = Number(process.env.PRERENDER_MAX_PRODUCTS || 300);
 
-function writeFallback() {
-  const routes = ["/shop"];
+function writeRoutes(routes) {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, JSON.stringify(routes, null, 2), "utf-8");
   console.log(`[prerender] routes: ${routes.length}`);
   console.log(`[prerender] wrote: ${OUT}`);
 }
 
+function writeFallback() {
+  writeRoutes(["/shop"]);
+}
+
 function normBase(raw) {
   return String(raw || "").trim().replace(/\/+$/, "");
 }
 
-const API_BASE = normBase(process.env.VITE_API_BASE_URL || "");
+// ✅ Permite setear explícito API_BASE_URL si no querés depender de VITE_*
+const API_BASE = normBase(process.env.API_BASE_URL || process.env.VITE_API_BASE_URL || "");
 
 async function fetchJson(url) {
   const res = await fetch(url, { headers: { accept: "application/json" } });
@@ -28,7 +34,7 @@ async function fetchJson(url) {
 }
 
 function toId(it) {
-  const v = it?.product_id ?? it?.id ?? it?.productId ?? null;
+  const v = it?.product_id ?? it?.id ?? it?.productId ?? it?.product?.id ?? null;
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -37,16 +43,22 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
+function extractItems(data) {
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.rows)) return data.rows;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
 (async () => {
   if (!API_BASE) {
-    console.warn("[prerender] ⚠️ Falta VITE_API_BASE_URL en el build. Uso fallback /shop");
+    console.warn("[prerender] ⚠️ Falta API_BASE_URL o VITE_API_BASE_URL. Uso fallback /shop");
     writeFallback();
-    console.log("[prerender] api_base: (empty)");
     return;
   }
 
-  // ✅ Endpoint REAL del frontend (lo que vos estás usando en runtime)
-  const catalogUrl = `${API_BASE.replace(/\/+$/, "")}/public/catalog`;
+  const catalogUrl = `${API_BASE}/public/catalog`;
 
   const ids = [];
   try {
@@ -58,40 +70,35 @@ function uniq(arr) {
       u.searchParams.set("in_stock", "1");
 
       const data = await fetchJson(u.toString());
-
-      const items =
-        Array.isArray(data?.items) ? data.items :
-        Array.isArray(data?.rows) ? data.rows :
-        Array.isArray(data) ? data :
-        [];
+      const items = extractItems(data);
 
       if (!items.length) break;
 
       for (const it of items) {
         const id = toId(it);
         if (id) ids.push(id);
+        if (ids.length >= MAX_PRODUCTS) break;
       }
+
+      if (ids.length >= MAX_PRODUCTS) break;
 
       const pages = Number(data?.pages || 0);
       if (pages && page >= pages) break;
     }
   } catch (e) {
-    console.warn("[prerender] ⚠️ No encontré endpoint catálogo. Uso fallback /shop (no frena build).");
+    console.warn("[prerender] ⚠️ No pude leer catálogo, uso fallback /shop (no frena build).");
     console.warn("[prerender] detail:", e?.message || e);
-    writeFallback();
     console.log(`[prerender] api_base: ${API_BASE}`);
     console.log(`[prerender] catalog: ${catalogUrl}`);
+    writeFallback();
     return;
   }
 
-  const productIds = uniq(ids);
+  const productIds = uniq(ids).slice(0, MAX_PRODUCTS);
   const routes = uniq(["/shop", ...productIds.map((id) => `/shop/product/${id}`)]);
 
-  fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify(routes, null, 2), "utf-8");
+  writeRoutes(routes);
 
-  console.log(`[prerender] routes: ${routes.length}`);
-  console.log(`[prerender] wrote: ${OUT}`);
   console.log(`[prerender] api_base: ${API_BASE}`);
   console.log(`[prerender] catalog: ${catalogUrl}`);
   console.log(`[prerender] branch_id: ${BRANCH_ID}`);
