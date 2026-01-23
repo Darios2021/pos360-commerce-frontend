@@ -1,60 +1,34 @@
 // src/modules/shop/service/shop.public.api.js
-// ✅ COPY-PASTE FINAL COMPLETO (ANTI-CORS + FORZAR SAME-ORIGIN + ABS URLS)
 import axios from "axios";
-
-/**
- * BASE de la API del shop
- *
- * Modos:
- * 1) ✅ SAME-ORIGIN (recomendado para Instagram WebView / cero CORS):
- *    - Si host es sanjuantecnologia.com => usa /api/v1
- *    - O si seteás VITE_SHOP_API_SAME_ORIGIN="1" => usa /api/v1 (en cualquier dominio)
- *
- * 2) ABSOLUTO (como siempre):
- *    - Usa VITE_API_BASE_URL, ej: https://pos360-commerce-api.cingulado.org/api/v1
- *
- * Además:
- * - ✅ Remueve headers "cache-control" / "pragma" para evitar preflight con CORS estricto
- * - ✅ absUrl() arma URLs absolutas para imágenes aunque vengan relativas
- */
 
 const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
 const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
 
-// Ej: VITE_API_BASE_URL="https://pos360-commerce-api.cingulado.org/api/v1"
 const defaultBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-// basePath puede ser absoluto (https://...) o relativo (/api/v1)
+// ✅ basePath puede ser absoluto o relativo
 let basePath = defaultBase;
 
+// ✅ en dominio público => SIEMPRE same-origin
 if (typeof window !== "undefined") {
   const host = String(window.location.hostname || "").toLowerCase();
-
-  // ✅ sanjuantecnologia.com => SIEMPRE same-origin
-  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
-    basePath = "/api/v1";
-  }
-
-  // ✅ override manual por env (sirve para WebView/embeds o pruebas)
-  if (FORCE_SAME_ORIGIN) {
-    basePath = "/api/v1";
-  }
+  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") basePath = "/api/v1";
+  if (FORCE_SAME_ORIGIN) basePath = "/api/v1";
 }
 
-function buildBaseURL(path) {
+// ✅ siempre apuntamos al PUBLIC
+function buildPublicBase(path) {
   const p = String(path || "").trim();
-  if (!p) return "";
-  if (p.startsWith("/")) return p.replace(/\/+$/, "") + "/public";
-  return p.replace(/\/+$/, "") + "/public";
+  if (!p) return "/api/v1/public";
+  if (p.startsWith("/")) return `${p.replace(/\/+$/, "")}/public`;
+  return `${p.replace(/\/+$/, "")}/public`;
 }
 
-const apiBaseURL = buildBaseURL(basePath);
+const apiBaseURL = buildPublicBase(basePath);
 
-// assetBase: base para convertir paths relativos en URLs absolutas
+// ✅ assetBase: para absolutizar imágenes cuando vienen relativas
 const assetBase = (() => {
-  if (typeof window !== "undefined" && basePath.startsWith("/")) {
-    return window.location.origin.replace(/\/+$/, "");
-  }
+  if (typeof window !== "undefined" && basePath.startsWith("/")) return window.location.origin.replace(/\/+$/, "");
   const b = String(basePath || "").replace(/\/+$/, "");
   const cut = b.replace(/\/api(\/v\d+)?$/i, "");
   return (cut || b).replace(/\/+$/, "");
@@ -62,16 +36,12 @@ const assetBase = (() => {
 
 const api = axios.create({
   baseURL: apiBaseURL,
-  timeout: 15000,
-  headers: {
-    // ✅ no seteamos cache-control acá
-  },
+  timeout: 20000,
 });
 
-// ✅ Anti-preflight por headers “cache-control/pragma” que a veces mete algún wrapper/interceptor
+// ✅ Anti-preflight por headers raros
 api.interceptors.request.use((config) => {
   const h = config.headers || {};
-  // axios puede poner headers en distintas “capas”
   delete h["Cache-Control"];
   delete h["cache-control"];
   delete h["Pragma"];
@@ -80,12 +50,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ✅ DEBUG fácil (te muestra a dónde está pegando)
 if (typeof window !== "undefined") {
-  console.log("[SHOP API] basePath =", basePath, "→ baseURL =", apiBaseURL, "assetBase =", assetBase);
-}
-
-export function getShopApiBase() {
-  return api.defaults.baseURL;
+  console.log("[SHOP API]", { basePath, apiBaseURL, assetBase });
 }
 
 function toInt(v, d = 0) {
@@ -129,78 +96,31 @@ function absUrl(u) {
   return `${assetBase}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
-/**
- * ✅ Tu backend exige branch_id
- */
+// ✅ tu backend exige branch_id (por ahora fijo)
 const CATALOG_BRANCH_ID = 3;
-
 export function getCatalogBranchId() {
   return CATALOG_BRANCH_ID;
 }
 
-export async function getBranches() {
-  const r = await api.get("/branches");
-  return r.data?.items || [];
-}
-
-function dedupeCatalogItems(items) {
-  const arr = Array.isArray(items) ? items : [];
-  const map = new Map();
-
-  for (const raw of arr) {
-    const pid = toInt(raw?.product_id ?? raw?.id, 0);
-    if (pid <= 0) continue;
-
-    const imgRaw = raw?.image_url || raw?.image || raw?.url || raw?.src || null;
-    const img = imgRaw ? absUrl(imgRaw) : null;
-
-    if (!map.has(pid)) {
-      const baseObj = { ...raw };
-      const images = [];
-
-      if (Array.isArray(baseObj.images)) {
-        for (const it of baseObj.images) {
-          const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src || it?.path;
-          if (u) images.push(absUrl(u));
-        }
-      }
-
-      if (img) images.unshift(img);
-
-      baseObj.images = Array.from(new Set(images.filter(Boolean)));
-      baseObj.image_url = baseObj.images[0] || absUrl(baseObj.image_url || "") || "";
-
-      map.set(pid, baseObj);
-      continue;
-    }
-
-    const cur = map.get(pid);
-    const list = Array.isArray(cur.images) ? cur.images : [];
-    if (img && !list.includes(img)) list.push(img);
-    cur.images = list;
-
-    if (!cur.image_url && list.length) cur.image_url = list[0];
-  }
-
-  return Array.from(map.values());
-}
-
 /**
  * ✅ BRANDING PÚBLICO
+ * GET  /api/v1/public/shop/branding
  */
 export async function getShopBranding() {
   const r = await api.get("/shop/branding");
   const it = r.data?.item || null;
+
   return {
     name: String(it?.name || "San Juan Tecnología"),
     logo_url: it?.logo_url ? absUrl(it.logo_url) : "",
     favicon_url: it?.favicon_url ? absUrl(it.favicon_url) : "",
+    og_image_url: it?.og_image_url ? absUrl(it.og_image_url) : "",
     updated_at: it?.updated_at || null,
   };
 }
 
 /**
- * ✅ PAYMENT CONFIG (real)
+ * ✅ PAYMENT CONFIG
  * GET /api/v1/public/shop/payment-config
  */
 export async function getShopPaymentConfig() {
@@ -216,18 +136,14 @@ export async function getShopPaymentConfig() {
       holder: String(d?.transfer?.holder || "").trim(),
       instructions: String(d?.transfer?.instructions || "").trim(),
     },
-    mercadopago: {
-      enabled: !!d?.mercadopago?.enabled,
-    },
-    cash: {
-      enabled: !!d?.cash?.enabled,
-      note: String(d?.cash?.note || "").trim(),
-    },
+    mercadopago: { enabled: !!d?.mercadopago?.enabled },
+    cash: { enabled: !!d?.cash?.enabled, note: String(d?.cash?.note || "").trim() },
   };
 }
 
 /**
  * ✅ CATÁLOGO
+ * GET /api/v1/public/catalog
  */
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
@@ -248,11 +164,11 @@ export async function getCatalog(params = {}) {
   const r = await api.get("/catalog", { params: q });
   const data = r.data || { items: [], total: 0, pages: 0, page: 1, limit: 24 };
 
-  data.items = dedupeCatalogItems(data.items);
-
-  data.items = (data.items || []).map((it) => {
-    const imgs = uniqUrls([...(it.images || []).map(absUrl), absUrl(it.image_url)]);
-    return { ...it, images: imgs, image_url: imgs[0] || absUrl(it.image_url) || "" };
+  const arr = Array.isArray(data.items) ? data.items : [];
+  data.items = arr.map((it) => {
+    const imgRaw = it?.image_url || it?.image || it?.url || it?.src || "";
+    const images = uniqUrls([...(Array.isArray(it.images) ? it.images : []).map(absUrl), absUrl(imgRaw)]);
+    return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 
   return data;
@@ -260,53 +176,46 @@ export async function getCatalog(params = {}) {
 
 /**
  * ✅ SUGERENCIAS
+ * GET /api/v1/public/suggestions
  */
 export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
   const qq = String(q || "").trim();
   if (!qq) return [];
 
-  const params = cleanParams({
-    branch_id: bid,
-    q: qq,
-    limit: toInt(limit, 8),
-  });
-
+  const params = cleanParams({ branch_id: bid, q: qq, limit: toInt(limit, 8) });
   const r = await api.get("/suggestions", { params });
-  const items = Array.isArray(r.data?.items) ? r.data.items : [];
 
+  const items = Array.isArray(r.data?.items) ? r.data.items : [];
   return items.map((it) => {
-    const imgs = uniqUrls([...(it.images || []).map(absUrl), absUrl(it.image_url)]);
-    return { ...it, images: imgs, image_url: imgs[0] || absUrl(it.image_url) || "" };
+    const images = uniqUrls([...(Array.isArray(it.images) ? it.images : []).map(absUrl), absUrl(it.image_url)]);
+    return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 }
 
 /**
  * ✅ PRODUCTO
+ * GET /api/v1/public/products/:id
  */
 export async function getProduct(id) {
   const pid = toInt(id, 0);
-  const r = await api.get(`/products/${pid}`, {
-    params: { branch_id: getCatalogBranchId() },
-  });
+  const r = await api.get(`/products/${pid}`, { params: { branch_id: getCatalogBranchId() } });
 
   const item = r.data?.item || null;
+  if (!item) return null;
 
-  if (item) {
-    const img = item?.image_url ? absUrl(item.image_url) : "";
-    const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
-    const merged = uniqUrls([...(img ? [img] : []), ...images.map(absUrl)]);
+  const img = item?.image_url ? absUrl(item.image_url) : "";
+  const images = uniqUrls([...(img ? [img] : []), ...(Array.isArray(item.images) ? item.images : []).map(absUrl)]);
+  item.images = images;
+  item.image_url = images[0] || img || "";
 
-    item.images = merged;
-    item.image_url = merged[0] || img || "";
-    if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
-  }
+  if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
 
   return item;
 }
 
 /**
- * ✅ SIMILARES
+ * ✅ SIMILARES (usa /catalog y luego hidrata)
  */
 export async function getSimilarProducts({
   productId,
@@ -332,8 +241,7 @@ export async function getSimilarProducts({
   let candidates = [];
   try {
     const r = await api.get("/catalog", { params: q });
-    const data = r.data || {};
-    candidates = dedupeCatalogItems(data.items || []);
+    candidates = Array.isArray(r.data?.items) ? r.data.items : [];
   } catch {
     candidates = [];
   }
@@ -349,27 +257,14 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  const hydrated = await Promise.all(
-    ids.map(async (id) => {
-      try {
-        return await getProduct(id);
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  return hydrated
-    .filter(Boolean)
-    .map((p) => {
-      const imgs = uniqUrls([...(p.images || []).map(absUrl), absUrl(p.image_url)]);
-      return {
-        ...p,
-        images: imgs,
-        image_url: imgs[0] || absUrl(p.image_url) || "",
-        price:
-          p.price ??
-          (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
-      };
-    });
+  const hydrated = await Promise.all(ids.map(async (id) => (await getProduct(id).catch(() => null))));
+  return hydrated.filter(Boolean).map((p) => {
+    const images = uniqUrls([...(Array.isArray(p.images) ? p.images : []).map(absUrl), absUrl(p.image_url)]);
+    return {
+      ...p,
+      images,
+      image_url: images[0] || absUrl(p.image_url) || "",
+      price: p.price ?? (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
+    };
+  });
 }

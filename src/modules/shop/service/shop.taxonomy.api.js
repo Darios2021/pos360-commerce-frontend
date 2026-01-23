@@ -1,29 +1,29 @@
 // src/modules/shop/service/shop.taxonomy.api.js
-// ✅ COPY-PASTE FINAL COMPLETO (ANTI-400 + COMPAT TOTAL)
-// FIX:
-// - /public/categories probablemente requiere branch_id => lo mandamos siempre
-// - /public/subcategories probablemente requiere category_id (y a veces branch_id) => lo pedimos por rubro
-//
-// Normaliza todo a:
-//   { id, name, parent_id, is_active }
-// parent_id null => rubro
-// parent_id = category_id => subrubro
-
 import axios from "axios";
 
-const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
-const api = axios.create({
-  baseURL: `${base}/public`,
-  timeout: 15000,
-});
+const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
+const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
 
-let _allCache = null;
-let _at = 0;
-const TTL = 60_000;
+const defaultBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+let basePath = defaultBase;
 
-function now() {
-  return Date.now();
+if (typeof window !== "undefined") {
+  const host = String(window.location.hostname || "").toLowerCase();
+  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") basePath = "/api/v1";
+  if (FORCE_SAME_ORIGIN) basePath = "/api/v1";
 }
+
+function buildPublicBase(path) {
+  const p = String(path || "").trim();
+  if (!p) return "/api/v1/public";
+  if (p.startsWith("/")) return `${p.replace(/\/+$/, "")}/public`;
+  return `${p.replace(/\/+$/, "")}/public`;
+}
+
+const api = axios.create({
+  baseURL: buildPublicBase(basePath),
+  timeout: 20000,
+});
 
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
@@ -39,9 +39,6 @@ function normIsActive(x) {
   return Number.isFinite(n) ? n : 1;
 }
 
-// ===============================
-// Branch resolver (para evitar 400)
-// ===============================
 function safeJsonParse(s) {
   try {
     return JSON.parse(s);
@@ -51,38 +48,28 @@ function safeJsonParse(s) {
 }
 
 function resolveBranchId(opts = {}) {
-  // 1) si viene explicitamente
   const ob = toInt(opts.branch_id, 0);
   if (ob > 0) return ob;
 
-  // 2) localStorage cart
-  const raw = localStorage.getItem("pos360_shop_cart_v1");
-  const obj = safeJsonParse(raw);
-  const bid = toInt(obj?.branch_id, 0);
-  if (bid > 0) return bid;
+  try {
+    const raw = localStorage.getItem("pos360_shop_cart_v1");
+    const obj = safeJsonParse(raw);
+    const bid = toInt(obj?.branch_id, 0);
+    if (bid > 0) return bid;
+  } catch {}
 
-  // 3) default
-  return 3; // tu default real
+  return 3;
 }
 
-// ===============================
-// HTTP helpers
-// ===============================
 async function getJson(path, params = {}) {
   const r = await api.get(path, { params });
-  // tu API a veces devuelve {items: []} o directo []
   if (Array.isArray(r.data)) return r.data;
   if (Array.isArray(r.data?.items)) return r.data.items;
   return [];
 }
 
-// ===============================
-// Fetch parents (rubros)
-// ===============================
 async function fetchParentsNormalized(opts = {}) {
   const branch_id = resolveBranchId(opts);
-
-  // ✅ mandamos branch_id (evita 400 si el backend lo exige)
   const list = await getJson("/categories", { branch_id });
 
   return (list || [])
@@ -91,21 +78,16 @@ async function fetchParentsNormalized(opts = {}) {
       name: normName(c.name),
       parent_id: null,
       is_active: normIsActive(c.is_active),
-      category_id: toInt(c.id, 0), // compat extra
+      category_id: toInt(c.id, 0),
     }))
     .filter((x) => x.id > 0 && x.name);
 }
 
-// ===============================
-// Fetch children (subrubros) por rubro
-// (evita 400 si /subcategories exige category_id)
-// ===============================
 async function fetchChildrenNormalizedByParent(parentCategoryId, opts = {}) {
   const branch_id = resolveBranchId(opts);
   const category_id = toInt(parentCategoryId, 0);
   if (!category_id) return [];
 
-  // ✅ mandamos category_id (y branch_id por si el backend lo pide)
   const list = await getJson("/subcategories", { category_id, branch_id });
 
   return (list || [])
@@ -114,49 +96,40 @@ async function fetchChildrenNormalizedByParent(parentCategoryId, opts = {}) {
       name: normName(s.name),
       parent_id: category_id,
       is_active: normIsActive(s.is_active),
-      category_id, // compat
+      category_id,
     }))
     .filter((x) => x.id > 0 && x.name);
 }
 
-// ===============================
-// ALL normalizado (padres + hijos)
-// ===============================
+let _allCache = null;
+let _at = 0;
+const TTL = 60_000;
+
 async function fetchAllNormalized(opts = {}) {
   const parents = await fetchParentsNormalized(opts);
-
-  // pedimos hijos por cada rubro (cache TTL evita martillar)
-  const childrenLists = await Promise.all(
-    parents.map((p) => fetchChildrenNormalizedByParent(p.id, opts))
-  );
-
-  const children = childrenLists.flat();
-
-  return [...parents, ...children];
+  const childrenLists = await Promise.all(parents.map((p) => fetchChildrenNormalizedByParent(p.id, opts)));
+  return [...parents, ...childrenLists.flat()];
 }
 
-// ✅ ALL (padres + hijos) normalizado
 export async function getPublicCategoriesAll({ force = false, branch_id } = {}) {
-  if (!force && _allCache && now() - _at < TTL) return _allCache;
+  const now = Date.now();
+  if (!force && _allCache && now - _at < TTL) return _allCache;
 
   const all = await fetchAllNormalized({ branch_id });
   _allCache = all;
-  _at = now();
+  _at = now;
   return all;
 }
 
-// ✅ Alias compat
 export async function getPublicCategories(opts = {}) {
   return await getPublicCategoriesAll(opts);
 }
 
-// ✅ Solo rubros (padres)
 export async function getPublicParentCategories(opts = {}) {
   const all = await getPublicCategoriesAll(opts);
-  return (all || []).filter((c) => c && (c.parent_id === null || c.parent_id === undefined));
+  return (all || []).filter((c) => c && (c.parent_id == null));
 }
 
-// ✅ Subrubros por rubro
 export async function getPublicSubcategoriesByCategory(category_id, opts = {}) {
   const pid = toInt(category_id, 0);
   if (!pid) return [];
@@ -166,7 +139,6 @@ export async function getPublicSubcategoriesByCategory(category_id, opts = {}) {
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
 }
 
-// ✅ COMPAT con componentes viejos
 export async function getPublicCategoryChildren(category_id, opts = {}) {
   return await getPublicSubcategoriesByCategory(category_id, opts);
 }
@@ -174,7 +146,6 @@ export async function getPublicCategorySubcategories(category_id, opts = {}) {
   return await getPublicSubcategoriesByCategory(category_id, opts);
 }
 
-// ✅ MAP: hijos agrupados por parent_id
 export async function getPublicSubcategoriesMap(opts = {}) {
   const all = await getPublicCategoriesAll(opts);
   const map = {};
@@ -190,12 +161,10 @@ export async function getPublicSubcategoriesMap(opts = {}) {
   return map;
 }
 
-// ✅ Alias por si otro componente lo llama distinto
 export async function getPublicChildrenByParentMap(opts = {}) {
   return await getPublicSubcategoriesMap(opts);
 }
 
-// ✅ Helper por ID
 export async function getPublicCategoryById(id, opts = {}) {
   const target = toInt(id, 0);
   if (!target) return null;

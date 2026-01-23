@@ -2,14 +2,11 @@
 import axios from "axios";
 import { loadAuth, clearAuth } from "../utils/storage";
 
+// ✅ App (admin) puede ir a same-origin /api/v1 si no hay env
 const raw = (import.meta.env.VITE_API_BASE_URL || "").trim();
-
-// ✅ Si NO hay env, asumimos same-origin y que el backend está en /api/v1
 const baseURL = raw || "/api/v1";
 
-if (!raw) {
-  console.warn("⚠️ VITE_API_BASE_URL no está definido. Usando:", baseURL);
-}
+if (!raw) console.warn("⚠️ VITE_API_BASE_URL no definido (APP). Usando:", baseURL);
 
 const http = axios.create({
   baseURL,
@@ -24,21 +21,11 @@ http.interceptors.request.use((config) => {
   if (token) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
-
-    // ✅ Debug útil (solo dev)
-    if (import.meta.env.DEV) {
-      console.log("[HTTP AUTH] ->", config.method?.toUpperCase(), config.url, "token: YES");
-    }
-  } else {
-    if (import.meta.env.DEV) {
-      console.log("[HTTP AUTH] ->", config.method?.toUpperCase(), config.url, "token: NO");
-    }
   }
 
   return config;
 });
 
-// Normalize errors + auto logout on 401
 http.interceptors.response.use(
   (r) => r,
   (err) => {

@@ -2,83 +2,40 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-
-    <!-- ===============================
-         TITLE & SEO (HOME)
-         =============================== -->
-    <title>San Juan Tecnología | Electrónica, ecommerce y sistemas POS</title>
-    <meta
-      name="description"
-      content="San Juan Tecnología · Electrónica, ecommerce, sistemas POS y soluciones tecnológicas para empresas."
-    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ===============================
-         FAVICONS
-         =============================== -->
-    <link
-      rel="icon"
-      href="https://storage-files.cingulado.org/pos360/shop/1767738876195-e4b85d0ad077fffe73fe5f128628beaa.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      href="https://storage-files.cingulado.org/pos360/shop/1767738876195-e4b85d0ad077fffe73fe5f128628beaa.png"
-    />
+    <!-- ===== DYNAMIC BRANDING (server injected) ===== -->
+    <title>__TITLE__</title>
+    <meta name="description" content="__DESCRIPTION__" />
+    <link rel="canonical" href="__CANONICAL__" />
 
-    <!-- ===============================
-         CANONICAL (HOME)
-         =============================== -->
-    <link rel="canonical" href="https://sanjuantecnologia.com/" />
+    <!-- FAVICON (browser) -->
+    <link rel="icon" type="image/png" href="__FAVICON__" />
+    <link rel="apple-touch-icon" href="__FAVICON__" />
 
-    <!-- ===============================
-         OPEN GRAPH (WhatsApp / Facebook / IG)
-         =============================== -->
+    <!-- OPEN GRAPH (WhatsApp / FB / IG) -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="San Juan Tecnología" />
-    <meta property="og:title" content="San Juan Tecnología" />
-    <meta
-      property="og:description"
-      content="Electrónica, ecommerce, sistemas POS y soluciones tecnológicas para empresas."
-    />
+    <meta property="og:site_name" content="__SITE_NAME__" />
+    <meta property="og:title" content="__OG_TITLE__" />
+    <meta property="og:description" content="__OG_DESCRIPTION__" />
+    <meta property="og:url" content="__OG_URL__" />
 
-    <!-- ✅ IMPORTANTE: HOME -->
-    <meta property="og:url" content="https://sanjuantecnologia.com/" />
-
-    <!-- ✅ RECOMENDADO: 1200x630 (horizontal) -->
-    <!-- 👉 subí una imagen 1200x630 a tu storage (banner/cover) y pegala acá -->
-    <meta
-      property="og:image"
-      content="https://storage-files.cingulado.org/pos360/shop/og-home-1200x630.jpg"
-    />
+    <!-- IMPORTANTE: 1 sola imagen (válida) -->
+    <meta property="og:image" content="__OG_IMAGE__" />
+    <meta property="og:image:secure_url" content="__OG_IMAGE__" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="San Juan Tecnología" />
+    <meta property="og:image:alt" content="__OG_IMAGE_ALT__" />
 
-    <!-- ✅ Fallback extra: logo cuadrado por si algún cliente prefiere thumbnail -->
-    <meta
-      property="og:image"
-      content="https://storage-files.cingulado.org/pos360/shop/1767738876195-e4b85d0ad077fffe73fe5f128628beaa.png"
-    />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
-
-    <!-- ===============================
-         TWITTER
-         =============================== -->
+    <!-- TWITTER -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="San Juan Tecnología" />
-    <meta
-      name="twitter:description"
-      content="Electrónica, ecommerce, sistemas POS y soluciones tecnológicas para empresas."
-    />
-    <meta
-      name="twitter:image"
-      content="https://storage-files.cingulado.org/pos360/shop/og-home-1200x630.jpg"
-    />
+    <meta name="twitter:title" content="__OG_TITLE__" />
+    <meta name="twitter:description" content="__OG_DESCRIPTION__" />
+    <meta name="twitter:image" content="__OG_IMAGE__" />
   </head>
 
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/assets/app.js"></script>
   </body>
 </html>
