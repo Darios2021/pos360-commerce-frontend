@@ -1,3 +1,4 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -17,6 +18,17 @@ function readRoutesFile() {
   }
 }
 
+function normalizeRoute(r) {
+  if (typeof r !== "string") return null;
+  const s = r.trim();
+  if (!s) return null;
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
+function uniq(arr) {
+  return Array.from(new Set(arr));
+}
+
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
@@ -29,16 +41,33 @@ export default defineConfig(async ({ command }) => {
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO SHOP (publico)
-    const routes =
-      fileRoutes && fileRoutes.length
-        ? fileRoutes.filter((r) => typeof r === "string" && r.startsWith("/shop"))
-        : ["/shop/"];
+    // ✅ SOLO SHOP (público) + ✅ EXCLUYE /shop/cart y /shop/checkout (no sirven para share/OG)
+    const routes = (() => {
+      const base =
+        fileRoutes && fileRoutes.length
+          ? fileRoutes.map(normalizeRoute).filter(Boolean)
+          : ["/shop/"];
 
-    const timeoutMs = Math.max(
-      30000,
-      parseInt(String(process.env.VITE_PRERENDER_TIMEOUT || "30000"), 10)
-    );
+      const onlyShop = base.filter((r) => r.startsWith("/shop"));
+
+      const excluded = new Set([
+        "/shop/cart",
+        "/shop/checkout",
+      ]);
+
+      // si tenés variantes con slash final, también las excluimos
+      const cleaned = onlyShop.filter((r) => {
+        const noSlash = r.endsWith("/") && r.length > 1 ? r.slice(0, -1) : r;
+        return !excluded.has(noSlash);
+      });
+
+      // fallback si quedó vacío
+      return uniq(cleaned.length ? cleaned : ["/shop/"]);
+    })();
+
+    // ✅ timeout REAL (ms). Default 120s.
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
+    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 120000;
 
     plugins.push(
       prerender({
@@ -53,7 +82,7 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ CLAVE para que funcione /shop y /app
+    // ✅ CLAVE para que convivan /shop y /app
     base: "/",
 
     plugins,

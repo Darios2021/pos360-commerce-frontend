@@ -96,9 +96,20 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+
+// ------------------------------------------------------
+// ✅ ANTI-TIMEOUT prerender (Cart no se comparte)
+// ------------------------------------------------------
+function dispatchPrerenderReadySafe() {
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("prerender-ready"));
+    }
+  } catch {}
+}
 
 const router = useRouter();
 const cart = useShopCartStore();
@@ -122,13 +133,17 @@ function fmtMoney(v) {
 }
 
 function goCheckout() {
-  // ✅ Tu router usa names tipo shopHome/shopCart/etc → usamos shopCheckout
   if (router.hasRoute("shopCheckout")) {
     router.push({ name: "shopCheckout" });
     return;
   }
-
   console.warn("⚠️ No existe la ruta 'shopCheckout'. Revisá shop.routes.js.");
   router.push("/shop/checkout");
 }
+
+onMounted(() => {
+  // ✅ nunca colgar prerender en rutas no-share
+  dispatchPrerenderReadySafe();
+});
 </script>
+

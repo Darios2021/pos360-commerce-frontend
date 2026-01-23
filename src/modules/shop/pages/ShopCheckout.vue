@@ -487,6 +487,17 @@ import http from "@/app/api/http";
 const router = useRouter();
 const cart = useShopCartStore();
 
+// ------------------------------------------------------
+// ✅ ANTI-TIMEOUT prerender (Checkout no se comparte)
+// ------------------------------------------------------
+function dispatchPrerenderReadySafe() {
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("prerender-ready"));
+    }
+  } catch {}
+}
+
 const step = ref(1);
 const submitting = ref(false);
 const submitError = ref("");
@@ -587,6 +598,19 @@ const pickupBranches = computed(() => {
   return all.filter((b) => ids.includes(Number(b.id)));
 });
 
+const delivery = ref({
+  mode: "pickup", // pickup | shipping
+  pickup_branch_id: null,
+
+  contact_name: "",
+  phone: "",
+  zip: "",
+  province: "San Juan",
+  city: "San Juan",
+  address1: "",
+  notes: "",
+});
+
 const selectedBranchName = computed(() => {
   const bid = Number(delivery.value.pickup_branch_id || 0);
   if (!bid) return "";
@@ -623,19 +647,6 @@ const provinces = [
   "Catamarca",
   "Santiago del Estero",
 ];
-
-const delivery = ref({
-  mode: "pickup", // pickup | shipping
-  pickup_branch_id: null,
-
-  contact_name: "",
-  phone: "",
-  zip: "",
-  province: "San Juan",
-  city: "San Juan",
-  address1: "",
-  notes: "",
-});
 
 const shippingQuote = ref({ status: "idle", amount: 0, eta: "" });
 
@@ -759,7 +770,6 @@ function normalizePayMethodForBackend() {
 function buildBackendPayload() {
   const isPickup = delivery.value.mode === "pickup";
 
-  // ✅ backend espera: pickup | delivery
   return {
     fulfillment_type: isPickup ? "pickup" : "delivery",
     pickup_branch_id: isPickup ? Number(delivery.value.pickup_branch_id || 0) || null : null,
@@ -816,7 +826,6 @@ function mapCheckoutErrorToHumanMessage(err) {
       ""
   ).trim();
 
-  // ✅ Si el backend aplica el fix sugerido: MP_POLICY_BLOCKED
   if (apiCode === "MP_POLICY_BLOCKED") {
     return (
       "Mercado Pago rechazó el pago por políticas. " +
@@ -824,7 +833,6 @@ function mapCheckoutErrorToHumanMessage(err) {
     );
   }
 
-  // ✅ Si el backend todavía devuelve 500 pero dentro viene info de MP
   if (status === 500 && apiCode.includes("UNAUTHORIZED_RESULT_FROM_POLICIES")) {
     return (
       "Mercado Pago rechazó el pago por políticas (PolicyAgent). " +
@@ -832,7 +840,6 @@ function mapCheckoutErrorToHumanMessage(err) {
     );
   }
 
-  // ✅ fallback decente
   if (apiMsg) return apiMsg;
   if (status >= 500) return "No se pudo crear la orden (error interno). Probá de nuevo en unos segundos.";
   return "No se pudo crear la orden. Revisá los datos e intentá nuevamente.";
@@ -844,7 +851,6 @@ async function submitOrder() {
 
   try {
     const payload = buildBackendPayload();
-
     const { data } = await http.post("/ecom/checkout", payload);
 
     const redirectUrl =
@@ -854,19 +860,18 @@ async function submitOrder() {
       data?.payment?.sandbox_init_point ||
       null;
 
-    // MP (redirect)
     if (redirectUrl) {
       window.location.href = redirectUrl;
       return;
     }
 
-    // No redirect => pedido creado
     cart.clear?.();
     router.push("/shop");
   } catch (err) {
     submitError.value = mapCheckoutErrorToHumanMessage(err);
   } finally {
     submitting.value = false;
+    dispatchPrerenderReadySafe();
   }
 }
 
@@ -891,47 +896,54 @@ watch(
 );
 
 onMounted(async () => {
+  // ✅ si puppeteer cae acá y no hay carrito, igual no queremos timeout
   if (!items.value.length) {
+    dispatchPrerenderReadySafe();
     router.push("/shop/cart");
     return;
   }
 
-  // 1) Config real de pagos (NUNCA mentimos: si falla => MP false)
   try {
-    const cfg = await getShopPaymentConfig();
+    // 1) Config real de pagos
+    try {
+      const cfg = await getShopPaymentConfig();
+      transferInfo.value = cfg?.transfer || transferInfo.value;
+      mpEnabled.value = !!cfg?.mercadopago?.enabled;
 
-    transferInfo.value = cfg?.transfer || transferInfo.value;
-    mpEnabled.value = !!cfg?.mercadopago?.enabled;
-
-    if (!mpEnabled.value && payment.value.method === "MERCADO_PAGO") {
-      payment.value.method = "TRANSFER";
+      if (!mpEnabled.value && payment.value.method === "MERCADO_PAGO") {
+        payment.value.method = "TRANSFER";
+      }
+    } catch {
+      mpEnabled.value = false;
+      if (payment.value.method === "MERCADO_PAGO") payment.value.method = "TRANSFER";
     }
-  } catch {
-    mpEnabled.value = false;
-    if (payment.value.method === "MERCADO_PAGO") payment.value.method = "TRANSFER";
-  }
 
-  // 2) Branches
-  loadingBranches.value = true;
-  try {
-    const res = await getBranches();
-    branches.value = Array.isArray(res) ? res : [];
+    // 2) Branches
+    loadingBranches.value = true;
+    try {
+      const res = await getBranches();
+      branches.value = Array.isArray(res) ? res : [];
+    } finally {
+      loadingBranches.value = false;
+    }
+
+    // 3) preselección pickup
+    if (pickupBranches.value.length) {
+      delivery.value.pickup_branch_id = pickupBranches.value[0].id;
+    } else {
+      delivery.value.mode = "shipping";
+    }
+
+    // defaults envío desde buyer
+    if (!delivery.value.contact_name) delivery.value.contact_name = buyer.value.name || "";
+    if (!delivery.value.phone) delivery.value.phone = buyer.value.phone || "";
   } finally {
-    loadingBranches.value = false;
+    // ✅ SIEMPRE liberar prerender
+    dispatchPrerenderReadySafe();
   }
-
-  // 3) preselección pickup
-  if (pickupBranches.value.length) {
-    delivery.value.pickup_branch_id = pickupBranches.value[0].id;
-  } else {
-    delivery.value.mode = "shipping";
-  }
-
-  // defaults envío desde buyer
-  if (!delivery.value.contact_name) delivery.value.contact_name = buyer.value.name || "";
-  if (!delivery.value.phone) delivery.value.phone = buyer.value.phone || "";
 });
 </script>
+
 
 <style scoped>
 .checkout-shell {

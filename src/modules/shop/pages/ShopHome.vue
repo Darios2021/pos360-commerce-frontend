@@ -162,19 +162,6 @@ const aurisItems = ref([]);
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
-// ✅ TUS PUBLICACIONES (se sacan los utm, el componente igual los soporta)
-const IG_POSTS = [
-  "https://www.instagram.com/p/DTQ7O6KiXQl/",
-  "https://www.instagram.com/p/DS8foG-CRgg/",
-  "https://www.instagram.com/p/DTQhbfqiRRF/",
-  "https://www.instagram.com/p/DTlxrRRCdII/",
-  "https://www.instagram.com/p/DSpzzjUDYiA/",
-];
-
-const q = computed(() => String(route.query.q || "").trim());
-const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
-const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
-
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
 function toNum(v) {
@@ -203,6 +190,10 @@ const heroSlides = ref([
 function onHeroClick() {
   scrollToProducts();
 }
+
+const q = computed(() => String(route.query.q || "").trim());
+const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
+const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
 
 const resultsTitle = computed(() => {
   if (q.value || category_id.value || subcategory_id.value) return "Resultados";
@@ -388,19 +379,32 @@ async function fetchAuricularesSlider() {
   }
 }
 
+// ✅ fallback: nunca dejar colgado el prerender
+function dispatchPrerenderReadySafe() {
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("prerender-ready"));
+    }
+  } catch {}
+}
+
 let ogDone = false;
 
 onMounted(async () => {
   // ✅ OG para home shop (prerender)
-  // Si querés, cambiá og-shop.jpg por una imagen real tuya (recomendado).
   if (!ogDone) {
     ogDone = true;
-    setOgAndReady({
+
+    // setOgAndReady suele disparar prerender-ready. Igual dejamos fallback.
+    await setOgAndReady({
       title: "San Juan Tecnología | Tienda",
       description: "Electrónica, ecommerce, sistemas POS y soluciones tecnológicas.",
       image: "https://sanjuantecnologia.com/og/og-shop.jpg",
       url: absoluteUrlFromLocation("/shop"),
     });
+
+    // fallback por si algo evita el dispatch interno
+    dispatchPrerenderReadySafe();
   }
 
   await fetchCatalog({ append: false });
@@ -413,6 +417,9 @@ onMounted(async () => {
 
   hydrateAudioAndAurisIds();
   await fetchAuricularesSlider();
+
+  // ✅ si la page terminó de cargar datos, liberamos igual
+  dispatchPrerenderReadySafe();
 });
 
 watch(
@@ -431,9 +438,12 @@ watch(
 
     hydrateAudioAndAurisIds();
     await fetchAuricularesSlider();
+
+    dispatchPrerenderReadySafe();
   }
 );
 </script>
+
 
 <style scoped>
 /* (deja tus styles tal cual los tenías) */

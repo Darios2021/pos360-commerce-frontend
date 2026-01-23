@@ -61,6 +61,20 @@ const product = ref(null);
 const similar = ref([]);
 const similarLoading = ref(false);
 
+// ------------------------------------------------------
+// ✅ ANTI-TIMEOUT: nunca dejar colgado puppeteer
+// ------------------------------------------------------
+function dispatchPrerenderReadySafe() {
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new Event("prerender-ready"));
+    }
+  } catch {}
+}
+
+// ------------------------------------------------------
+// Cart actions
+// ------------------------------------------------------
 function onAddToCart(p, qty = 1) {
   cart.add(p, qty);
 }
@@ -71,33 +85,23 @@ function onBuyNow(p, qty = 1) {
   router.push("/shop/cart");
 }
 
+// ------------------------------------------------------
+// Category/Subcategory resolvers (tolerante a shape)
+// ------------------------------------------------------
 function resolveCategoryId(p) {
-  return (
-    p?.category_id ||
-    p?.Category?.id ||
-    p?.category?.id ||
-    p?.parent_category_id ||
-    null
-  );
+  return p?.category_id || p?.Category?.id || p?.category?.id || p?.parent_category_id || null;
 }
 
 function resolveSubcategoryId(p) {
-  return (
-    p?.subcategory_id ||
-    p?.Subcategory?.id ||
-    p?.subcategory?.id ||
-    null
-  );
+  return p?.subcategory_id || p?.Subcategory?.id || p?.subcategory?.id || null;
 }
 
 const resolvedCategoryId = computed(() => resolveCategoryId(product.value));
 const resolvedSubcategoryId = computed(() => resolveSubcategoryId(product.value));
 
-/**
- * ✅ OG helpers
- * Importante: og:image debe ser absoluta (WhatsApp lo necesita).
- * Elegimos la "mejor candidata" según lo que venga en tu product.
- */
+// ------------------------------------------------------
+// ✅ OG helpers
+// ------------------------------------------------------
 function pickOgImage(p) {
   const candidate =
     p?.cover_url ||
@@ -111,11 +115,9 @@ function pickOgImage(p) {
   if (!candidate) return "https://sanjuantecnologia.com/og/og-product.jpg";
 
   try {
-    // ya absoluta
-    return new URL(candidate).toString();
+    return new URL(candidate).toString(); // ya absoluta
   } catch {
-    // relativa -> absoluta contra el sitio
-    return absoluteUrlFromLocation(candidate);
+    return absoluteUrlFromLocation(candidate); // relativa -> absoluta
   }
 }
 
@@ -125,6 +127,39 @@ const shareUrl = computed(() => {
   return absoluteUrlFromLocation(q ? `${base}?${q}` : base);
 });
 
+async function applyOgForProduct(p) {
+  if (!p) return;
+
+  const title = p?.name ? `${p.name} | San Juan Tecnología` : "Producto | San Juan Tecnología";
+
+  const descRaw =
+    p?.short_description ||
+    p?.description ||
+    p?.name ||
+    "Producto disponible en San Juan Tecnología.";
+
+  const description = String(descRaw).replace(/\s+/g, " ").trim();
+  const image = pickOgImage(p);
+
+  // ✅ setOgAndReady normalmente también dispara prerender-ready,
+  // pero dejamos fallback sí o sí para que nunca timeoutee.
+  try {
+    await setOgAndReady({
+      title,
+      description,
+      image,
+      url: shareUrl.value,
+    });
+  } catch (e) {
+    console.warn("⚠️ setOgAndReady failed:", e?.message || e);
+  } finally {
+    dispatchPrerenderReadySafe();
+  }
+}
+
+// ------------------------------------------------------
+// Similares
+// ------------------------------------------------------
 async function fetchSimilar(p) {
   const productId = Number(p?.id || p?.product_id || 0);
   const categoryId = Number(resolveCategoryId(p) || 0);
@@ -136,8 +171,9 @@ async function fetchSimilar(p) {
   }
 
   similarLoading.value = true;
+
   try {
-    // 1) Intento más cercano: misma subcategoría (si existe)
+    // 1) misma subcategoría
     if (subcategoryId) {
       const r1 = await getCatalog({
         page: 1,
@@ -158,7 +194,7 @@ async function fetchSimilar(p) {
       }
     }
 
-    // 2) Fallback: misma categoría (incluye hijos)
+    // 2) fallback categoría (incluye hijos)
     const r2 = await getCatalog({
       page: 1,
       limit: 24,
@@ -178,58 +214,53 @@ async function fetchSimilar(p) {
     similar.value = [];
   } finally {
     similarLoading.value = false;
+    dispatchPrerenderReadySafe(); // ✅ por si puppeteer justo está esperando
   }
 }
 
-async function applyOgForProduct(p) {
-  if (!p) return;
-
-  const title = p?.name ? `${p.name} | San Juan Tecnología` : "Producto | San Juan Tecnología";
-
-  const descRaw =
-    p?.short_description ||
-    p?.description ||
-    p?.name ||
-    "Producto disponible en San Juan Tecnología.";
-
-  const description = String(descRaw).replace(/\s+/g, " ").trim();
-
-  const image = pickOgImage(p);
-
-  await setOgAndReady({
-    title,
-    description,
-    image,
-    url: shareUrl.value,
-  });
-}
-
+// ------------------------------------------------------
+// Load principal
+// ------------------------------------------------------
 async function load() {
   product.value = null;
   similar.value = [];
   similarLoading.value = false;
 
-  const p = await getProduct(route.params.id);
-  product.value = p;
+  try {
+    const p = await getProduct(route.params.id);
+    product.value = p;
 
-  // ✅ set OG + libera prerender cuando el producto ya existe
-  await applyOgForProduct(p);
+    // ✅ set OG + libera prerender
+    await applyOgForProduct(p);
 
-  await fetchSimilar(p);
+    // ✅ similares
+    await fetchSimilar(p);
+  } catch (e) {
+    console.error("❌ ShopProduct load()", e);
+  } finally {
+    // ✅ pase lo que pase: nunca colgar prerender
+    dispatchPrerenderReadySafe();
+  }
 }
 
 onMounted(load);
 watch(() => route.params.id, load);
 
-// ✅ si cambia branch_id u otra query, actualiza og:url y libera igual
+// ✅ si cambia branch_id u otra query, actualiza og:url
 watch(
   () => route.query,
   async () => {
-    if (!product.value) return;
+    if (!product.value) {
+      dispatchPrerenderReadySafe();
+      return;
+    }
     await applyOgForProduct(product.value);
   }
 );
 </script>
+
+
+
 
 <style scoped>
 .product-shell {
