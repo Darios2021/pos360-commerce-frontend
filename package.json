@@ -1,35 +1,67 @@
-{
-  "name": "360pos-commerce-frontend",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "prerender:routes": "node scripts/prerender-generate-routes.mjs",
+// vite.config.js
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { fileURLToPath, URL } from "node:url";
+import fs from "node:fs";
+import path from "node:path";
 
-    "build": "vite build --base=/shop/",
-    "build:prerender": "npm run prerender:routes && VITE_ENABLE_PRERENDER=1 vite build --base=/shop/",
-
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@mdi/font": "^7.4.47",
-    "@vueuse/head": "^2.0.0",
-    "apexcharts": "^5.3.6",
-    "axios": "^1.13.2",
-    "cropperjs": "^1.5.13",
-    "jsbarcode": "^3.12.3",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.24",
-    "vue-router": "^4.6.4",
-    "vue3-apexcharts": "^1.10.0",
-    "vuetify": "^3.11.3"
-  },
-  "devDependencies": {
-    "@prerenderer/renderer-puppeteer": "^1.2.4",
-    "@prerenderer/rollup-plugin": "^0.3.12",
-    "@vitejs/plugin-vue": "^6.0.1",
-    "puppeteer": "^24.0.0",
-    "vite": "^7.2.4"
+function readRoutesFile() {
+  const p = path.resolve(process.cwd(), "scripts", "prerender.routes.json");
+  try {
+    if (!fs.existsSync(p)) return null;
+    const raw = fs.readFileSync(p, "utf-8");
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : null;
+  } catch {
+    return null;
   }
 }
+
+export default defineConfig(async ({ command }) => {
+  const plugins = [vue()];
+
+  const ENABLE_PRERENDER =
+    String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
+    String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
+
+  if (command === "build" && ENABLE_PRERENDER) {
+    const { default: prerender } = await import("@prerenderer/rollup-plugin");
+
+    const fileRoutes = readRoutesFile();
+
+    // ✅ SOLO SHOP (publico)
+    const routes =
+      fileRoutes && fileRoutes.length
+        ? fileRoutes.filter((r) => typeof r === "string" && r.startsWith("/shop"))
+        : ["/shop/"];
+
+    const timeoutMs = Math.max(
+      30000,
+      parseInt(String(process.env.VITE_PRERENDER_TIMEOUT || "30000"), 10)
+    );
+
+    plugins.push(
+      prerender({
+        routes,
+        renderer: "@prerenderer/renderer-puppeteer",
+        rendererOptions: {
+          renderAfterDocumentEvent: "prerender-ready",
+          timeout: timeoutMs,
+        },
+      })
+    );
+  }
+
+  return {
+    // ✅ CLAVE para que funcione /shop y /app
+    base: "/",
+
+    plugins,
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+        vue: "vue/dist/vue.esm-bundler.js",
+      },
+    },
+  };
+});
