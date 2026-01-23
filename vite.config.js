@@ -28,7 +28,7 @@ export default defineConfig(async ({ command }) => {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
-    // ✅ IMPORTANTE: /shop/ con slash final
+    // ✅ prerender del shop (y si querés, agregá algunas rutas públicas más)
     const routes = fileRoutes && fileRoutes.length ? fileRoutes : ["/shop/"];
 
     plugins.push(
@@ -41,8 +41,8 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ FUENTE DE VERDAD: se sirve en /shop/
-    base: "/shop/",
+    // ✅ CLAVE: el SPA ahora funciona en /shop y /app
+    base: "/",
 
     plugins,
     resolve: {

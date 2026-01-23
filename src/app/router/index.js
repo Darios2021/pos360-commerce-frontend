@@ -1,5 +1,5 @@
 // src/app/router/index.js
-// ✅ COPY-PASTE FINAL COMPLETO (Shop público + Admin + Tienda Admin)
+// ✅ COPY-PASTE FINAL COMPLETO (Shop público + Plataforma en /app + Auth en /app/auth)
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -8,10 +8,10 @@ import { useAuthStore } from "@/app/store/auth.store";
 import AppShell from "@/app/layouts/AppShell.vue";
 import AuthLayout from "@/app/layouts/AuthLayout.vue";
 
-// Shop routes (aislado)
+// Shop routes
 import { shopRoutes } from "@/modules/shop/router/shop.routes";
 
-// ✅ IMPORT CORRECTO (archivo está en src/app/router)
+// ✅ Admin tienda / configs (ahora RELATIVOS para colgar de /app)
 import { shopAdminRoutes } from "@/app/router/shopAdmin.routes";
 
 // Pages
@@ -43,15 +43,15 @@ import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
 const routes = [
   // =========================
-  // SHOP (público)
+  // SHOP (público) en /shop/*
   // =========================
   ...shopRoutes,
 
   // =========================
-  // AUTH
+  // AUTH (PLATAFORMA) en /app/auth/*
   // =========================
   {
-    path: "/auth",
+    path: "/app/auth",
     component: AuthLayout,
     children: [
       { path: "login", name: "login", component: LoginPage, meta: { public: true } },
@@ -60,10 +60,10 @@ const routes = [
   },
 
   // =========================
-  // APP (privado)
+  // APP (privado) en /app/*
   // =========================
   {
-    path: "/",
+    path: "/app",
     component: AppShell,
     meta: { requiresAuth: true },
     children: [
@@ -91,7 +91,7 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA
+      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA (cuelga bajo /app/...)
       ...shopAdminRoutes,
 
       // Usuarios
@@ -112,7 +112,8 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // ✅ IMPORTANTÍSIMO: base "/" para que funcione tanto /shop como /app
+  history: createWebHistory("/"),
   routes,
   scrollBehavior: (to, from, saved) => saved || { top: 0 },
 });
@@ -125,7 +126,11 @@ router.beforeEach((to) => {
   if (auth.status === "idle") auth.hydrate?.();
 
   if (to.meta?.public) return true;
+
+  // si ya está logueado y va al login, mandalo al home
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
+
+  // si requiere auth y no está logueado -> login (que ahora es /app/auth/login)
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
 
   const roles = to.meta?.roles;
