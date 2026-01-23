@@ -28,20 +28,32 @@ export default defineConfig(async ({ command }) => {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
-    // ✅ prerender del shop (y si querés, agregá algunas rutas públicas más)
-    const routes = fileRoutes && fileRoutes.length ? fileRoutes : ["/shop/"];
+
+    // ✅ SOLO SHOP (publico)
+    const routes =
+      fileRoutes && fileRoutes.length
+        ? fileRoutes.filter((r) => typeof r === "string" && r.startsWith("/shop"))
+        : ["/shop/"];
+
+    const timeoutMs = Math.max(
+      30000,
+      parseInt(String(process.env.VITE_PRERENDER_TIMEOUT || "30000"), 10)
+    );
 
     plugins.push(
       prerender({
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
-        rendererOptions: { renderAfterDocumentEvent: "prerender-ready" },
+        rendererOptions: {
+          renderAfterDocumentEvent: "prerender-ready",
+          timeout: timeoutMs,
+        },
       })
     );
   }
 
   return {
-    // ✅ CLAVE: el SPA ahora funciona en /shop y /app
+    // ✅ CLAVE para que funcione /shop y /app
     base: "/",
 
     plugins,
