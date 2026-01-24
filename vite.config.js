@@ -1,5 +1,6 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // vite.config.js
+
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
@@ -27,13 +28,9 @@ function readRoutesFile() {
 
 function normalizeRoute(r) {
   if (typeof r !== "string") return null;
-  let s = r.trim();
+  const s = r.trim();
   if (!s) return null;
-  if (!s.startsWith("/")) s = `/${s}`;
-
-  // ✅ normaliza: NO trailing slash excepto root "/shop/"
-  if (s !== "/shop/" && s.endsWith("/")) s = s.slice(0, -1);
-  return s;
+  return s.startsWith("/") ? s : `/${s}`;
 }
 
 function uniq(arr) {
@@ -43,10 +40,12 @@ function uniq(arr) {
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
-  // ✅ Fuente de verdad: base del sitio
-  // En CapRover setear: VITE_APP_BASE=/shop/
-  const APP_BASE = env("VITE_APP_BASE", "/shop/");
-  const base = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
+  // ✅ SHOP vive bajo /shop/
+  // Si querés parametrizar: VITE_APP_BASE=/shop/
+  // (con barra inicial y final)
+  const APP_BASE_RAW = env("VITE_APP_BASE", "/shop/");
+  const APP_BASE = APP_BASE_RAW.startsWith("/") ? APP_BASE_RAW : `/${APP_BASE_RAW}`;
+  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
 
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
@@ -57,28 +56,32 @@ export default defineConfig(async ({ command }) => {
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO /shop + SIN duplicados por slash
+    // ✅ SOLO /shop* y excluye páginas problemáticas (checkout/cart)
     const routes = (() => {
-      const baseRoutes =
+      const base =
         fileRoutes && fileRoutes.length
           ? fileRoutes.map(normalizeRoute).filter(Boolean)
           : ["/shop/"];
 
-      const onlyShop = baseRoutes
-        .filter((r) => r.startsWith("/shop"))
-        .map((r) => (r === "/shop" ? "/shop/" : r));
+      const onlyShop = base.filter((r) => r.startsWith("/shop"));
 
-      // ✅ excluye checkout/cart (si existen)
+      // si usás estas rutas en router, evitá prerender
       const excluded = new Set(["/shop/cart", "/shop/checkout"]);
-      const cleaned = onlyShop.filter((r) => !excluded.has(r));
+
+      const cleaned = onlyShop.filter((r) => {
+        const noSlash = r.endsWith("/") && r.length > 1 ? r.slice(0, -1) : r;
+        return !excluded.has(noSlash);
+      });
 
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    // ✅ timeout en MILISEGUNDOS (default 240s)
-    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT_MS || 240000);
+    // ✅ timeout REAL en ms (default: 120s)
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
     const timeoutMs =
-      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 240000;
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000
+        ? timeoutMsRaw
+        : 120000;
 
     plugins.push(
       prerender({
@@ -93,10 +96,11 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ CLAVE para que NO pida /shop/shop/assets ni /assets
-    base,
+    // ✅ CLAVE para que index.html genere /shop/assets/... (NO relativo)
+    base: normalizedBase,
 
     plugins,
+
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -104,10 +108,13 @@ export default defineConfig(async ({ command }) => {
       },
     },
 
-    // ✅ no tocar assetsDir/outDir
     build: {
-      outDir: "dist",
+      // ✅ ULTRA CLAVE: dejá assets SIEMPRE en "assets"
+      // Si esto queda como "shop/assets" terminás con /shop/shop/assets (404)
       assetsDir: "assets",
+
+      // opcional (default): outDir: "dist",
+      // opcional (default): emptyOutDir: true,
     },
   };
 });
