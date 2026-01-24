@@ -23,15 +23,26 @@ ARG VITE_API_BASE_URL
 ARG VITE_APP_NAME
 ARG VITE_ENV
 ARG API_BASE_URL
+ARG PRERENDER_BRANCH_ID
+ARG PRERENDER_LIMIT
+ARG PRERENDER_MAX_PAGES
+ARG PRERENDER_MAX_PRODUCTS
 ARG CAPROVER_GIT_COMMIT_SHA
 
 # =========================
 # BUILD ENVS
+# (✅ fallback a runtime ENV si ARG viene vacío)
 # =========================
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_APP_NAME=${VITE_APP_NAME}
 ENV VITE_ENV=${VITE_ENV}
 ENV API_BASE_URL=${API_BASE_URL}
+
+ENV PRERENDER_BRANCH_ID=${PRERENDER_BRANCH_ID}
+ENV PRERENDER_LIMIT=${PRERENDER_LIMIT}
+ENV PRERENDER_MAX_PAGES=${PRERENDER_MAX_PAGES}
+ENV PRERENDER_MAX_PRODUCTS=${PRERENDER_MAX_PRODUCTS}
+
 ENV BUILD_SHA=${CAPROVER_GIT_COMMIT_SHA}
 
 COPY package*.json ./
@@ -39,9 +50,10 @@ RUN npm ci
 
 COPY . .
 
-# build con prerender
-RUN npm run build:prerender
+# ✅ Si no vinieron por ARG, usa lo que tengas en App Configs (ENV)
+RUN node -e 'console.log("[build env] VITE_API_BASE_URL=",process.env.VITE_API_BASE_URL); console.log("[build env] API_BASE_URL=",process.env.API_BASE_URL); console.log("[build env] PRERENDER_BRANCH_ID=",process.env.PRERENDER_BRANCH_ID);'
 
+RUN npm run build:prerender
 
 # =========================
 # RUNTIME
