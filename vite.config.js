@@ -1,3 +1,4 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -35,59 +36,37 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
-function toMsTimeout(raw) {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return 180000; // 3min
-
-  // si es chico, asumimos segundos (ej: 120)
-  if (n > 0 && n < 10000) return n * 1000;
-  return n; // ya ms
-}
-
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
+
+  // ✅ Base única del proyecto (fuente de verdad)
+  // En CapRover: VITE_APP_BASE=/shop/
+  const APP_BASE = env("VITE_APP_BASE", "/shop/");
+  const base = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
 
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
     String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
 
-  // ✅ base del shop (default /shop/)
-  const APP_BASE = env("VITE_APP_BASE", "/shop/");
-  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
-
-  // ✅ IMPORTANTÍSIMO:
-  // con base "/shop/" el prerenderer pide "/shop/assets/...".
-  // Si los assets están en dist/assets => 404 en el server interno del prerenderer.
-  // Entonces los emitimos en dist/shop/assets para que exista físicamente.
-  const baseFolder = normalizedBase.replace(/^\/|\/$/g, ""); // "/shop/" -> "shop"
-  const assetsDir = baseFolder ? `${baseFolder}/assets` : "assets";
-
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
-
     const routes = (() => {
-      const base =
+      const baseRoutes =
         fileRoutes && fileRoutes.length
           ? fileRoutes.map(normalizeRoute).filter(Boolean)
           : ["/shop/"];
 
-      const onlyShop = base.filter((r) => r.startsWith("/shop"));
-
-      // excluye pantallas internas
-      const excluded = new Set(["/shop/cart", "/shop/checkout"]);
-
-      const cleaned = onlyShop.filter((r) => {
-        // normaliza para comparar
-        const noSlash = r.endsWith("/") && r.length > 1 ? r.slice(0, -1) : r;
-        return !excluded.has(noSlash);
-      });
-
-      return uniq(cleaned.length ? cleaned : ["/shop/"]);
+      // ✅ Solo rutas del shop
+      const onlyShop = baseRoutes.filter((r) => r.startsWith("/shop"));
+      return uniq(onlyShop.length ? onlyShop : ["/shop/"]);
     })();
 
-    const timeoutMs = toMsTimeout(process.env.VITE_PRERENDER_TIMEOUT || "180");
+    // ✅ timeout ms (default 120s)
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
+    const timeoutMs =
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 120000;
 
     plugins.push(
       prerender({
@@ -102,12 +81,8 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    base: normalizedBase,
-
-    // ✅ FIX para que el prerenderer encuentre /shop/assets/*
-    build: {
-      assetsDir,
-    },
+    // ✅ Esto SOLO debe ser /shop/ (no /shop/shop/)
+    base,
 
     plugins,
     resolve: {
@@ -115,6 +90,12 @@ export default defineConfig(async ({ command }) => {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
         vue: "vue/dist/vue.esm-bundler.js",
       },
+    },
+
+    // ✅ Dejamos defaults (NO mover assetsDir/outDir raro)
+    build: {
+      outDir: "dist",
+      assetsDir: "assets",
     },
   };
 });
