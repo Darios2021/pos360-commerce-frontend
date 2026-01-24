@@ -36,16 +36,12 @@ function uniq(arr) {
 }
 
 function toMsTimeout(raw) {
-  // Acepta:
-  // - "120" => lo tratamos como segundos (lo que vos estás seteando)
-  // - "120000" => ms
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return 180000; // default 3 min
+  if (!Number.isFinite(n) || n <= 0) return 180000; // 3min
 
-  // si es chico, asumimos segundos
+  // si es chico, asumimos segundos (ej: 120)
   if (n > 0 && n < 10000) return n * 1000;
-
-  return n; // ya es ms
+  return n; // ya ms
 }
 
 export default defineConfig(async ({ command }) => {
@@ -55,12 +51,22 @@ export default defineConfig(async ({ command }) => {
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
     String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
 
+  // ✅ base del shop (default /shop/)
+  const APP_BASE = env("VITE_APP_BASE", "/shop/");
+  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
+
+  // ✅ IMPORTANTÍSIMO:
+  // con base "/shop/" el prerenderer pide "/shop/assets/...".
+  // Si los assets están en dist/assets => 404 en el server interno del prerenderer.
+  // Entonces los emitimos en dist/shop/assets para que exista físicamente.
+  const baseFolder = normalizedBase.replace(/^\/|\/$/g, ""); // "/shop/" -> "shop"
+  const assetsDir = baseFolder ? `${baseFolder}/assets` : "assets";
+
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO SHOP público
     const routes = (() => {
       const base =
         fileRoutes && fileRoutes.length
@@ -69,10 +75,11 @@ export default defineConfig(async ({ command }) => {
 
       const onlyShop = base.filter((r) => r.startsWith("/shop"));
 
-      // Excluye pantallas que no querés prerender
+      // excluye pantallas internas
       const excluded = new Set(["/shop/cart", "/shop/checkout"]);
 
       const cleaned = onlyShop.filter((r) => {
+        // normaliza para comparar
         const noSlash = r.endsWith("/") && r.length > 1 ? r.slice(0, -1) : r;
         return !excluded.has(noSlash);
       });
@@ -80,7 +87,6 @@ export default defineConfig(async ({ command }) => {
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    // ✅ Timeout robusto (toma segundos si mandás 120)
     const timeoutMs = toMsTimeout(process.env.VITE_PRERENDER_TIMEOUT || "180");
 
     plugins.push(
@@ -88,7 +94,6 @@ export default defineConfig(async ({ command }) => {
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
         rendererOptions: {
-          // tu evento (pero ahora main.js lo garantiza sí o sí)
           renderAfterDocumentEvent: "prerender-ready",
           timeout: timeoutMs,
         },
@@ -96,12 +101,14 @@ export default defineConfig(async ({ command }) => {
     );
   }
 
-  // ✅ base del shop
-  const APP_BASE = env("VITE_APP_BASE", "/shop/");
-  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
-
   return {
     base: normalizedBase,
+
+    // ✅ FIX para que el prerenderer encuentre /shop/assets/*
+    build: {
+      assetsDir,
+    },
+
     plugins,
     resolve: {
       alias: {

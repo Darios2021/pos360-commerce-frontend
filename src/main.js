@@ -17,7 +17,7 @@
     window.localStorage.removeItem(testKey);
   } catch (_) {
     const noopLS = {
-      getItem() { return "null"; }, // JSON.parse("null") => null
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
@@ -25,10 +25,7 @@
       get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "localStorage", {
-        value: noopLS,
-        configurable: true,
-      });
+      Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
     } catch {
       window.localStorage = noopLS;
     }
@@ -49,10 +46,7 @@
       get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "sessionStorage", {
-        value: noopSS,
-        configurable: true,
-      });
+      Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
     } catch {
       window.sessionStorage = noopSS;
     }
@@ -93,7 +87,7 @@ import "./style.css";
 import VueApexCharts from "vue3-apexcharts";
 
 // =============================
-// ✅ Prerender signal ULTRA ROBUSTO
+// ✅ Prerender signal (GARANTIZADO)
 // =============================
 function signalPrerenderReady(routerInstance) {
   if (typeof document === "undefined") return;
@@ -105,39 +99,24 @@ function signalPrerenderReady(routerInstance) {
   if (!enabled) return;
 
   let fired = false;
-
   const fire = () => {
     if (fired) return;
     fired = true;
     try {
       document.dispatchEvent(new Event("prerender-ready"));
-      // opcional log
-      // console.log("[prerender] ready fired");
-    } catch {
-      // nada
-    }
+    } catch {}
   };
 
-  // ✅ 1) camino ideal: router listo + DOM estable
+  // camino ideal
   routerInstance
     .isReady()
     .then(async () => {
       await nextTick();
-
-      // 2 raf para asegurar que el layout terminó (cubre Vuetify)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          fire();
-        });
-      });
+      requestAnimationFrame(() => requestAnimationFrame(fire));
     })
-    .catch(() => {
-      // aunque falle, disparamos igual
-      setTimeout(fire, 0);
-    });
+    .catch(() => setTimeout(fire, 0));
 
-  // ✅ 2) fallback duro: NO dejes colgar el build (10s)
-  // (si tus OG dependen de fetch y tardan más, subilo a 15000/20000)
+  // fallback duro (no cuelga build)
   setTimeout(fire, 10000);
 }
 
