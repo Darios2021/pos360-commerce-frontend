@@ -29,19 +29,28 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
+function env(name, fallback = "") {
+  const v = process.env[name];
+  return v !== undefined && v !== null && String(v).trim() !== ""
+    ? String(v).trim()
+    : fallback;
+}
+
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
-    String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
+    String(process.env.VITE_ENABLE_PRERENDER || "")
+      .trim()
+      .toLowerCase() === "true";
 
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO SHOP (público) + ✅ EXCLUYE /shop/cart y /shop/checkout (no sirven para share/OG)
+    // ✅ SOLO SHOP (público) + ✅ EXCLUYE /shop/cart y /shop/checkout
     const routes = (() => {
       const base =
         fileRoutes && fileRoutes.length
@@ -50,24 +59,22 @@ export default defineConfig(async ({ command }) => {
 
       const onlyShop = base.filter((r) => r.startsWith("/shop"));
 
-      const excluded = new Set([
-        "/shop/cart",
-        "/shop/checkout",
-      ]);
+      const excluded = new Set(["/shop/cart", "/shop/checkout"]);
 
-      // si tenés variantes con slash final, también las excluimos
       const cleaned = onlyShop.filter((r) => {
         const noSlash = r.endsWith("/") && r.length > 1 ? r.slice(0, -1) : r;
         return !excluded.has(noSlash);
       });
 
-      // fallback si quedó vacío
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
     // ✅ timeout REAL (ms). Default 120s.
     const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
-    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 120000;
+    const timeoutMs =
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000
+        ? timeoutMsRaw
+        : 120000;
 
     plugins.push(
       prerender({
@@ -81,9 +88,15 @@ export default defineConfig(async ({ command }) => {
     );
   }
 
+  // ✅ CLAVE: el shop vive bajo /shop/
+  // Si querés cambiarlo por ENV, setea VITE_APP_BASE=/shop/
+  // (default: /shop/)
+  const APP_BASE = env("VITE_APP_BASE", "/shop/");
+  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
+
   return {
-    // ✅ CLAVE para que convivan /shop y /app
-    base: "/",
+    // ✅ FIX MIME / assets: ahora index.html apuntará a /shop/assets/...
+    base: normalizedBase,
 
     plugins,
     resolve: {
