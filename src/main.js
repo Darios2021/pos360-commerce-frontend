@@ -1,77 +1,64 @@
 // src/main.js
 
 // =============================
-// 🔐 PATCH GLOBAL para WebViews capados (Instagram / Facebook / iOS)
+// 🔐 PATCH GLOBAL para WebViews capados (Instagram / Facebook / iOS Private)
+// Debe ir antes de cualquier import
 // =============================
 (function () {
   if (typeof window === "undefined") return;
 
   const isMetaWebView =
-    /instagram|fb_iab|fbav|facebook|messenger/i.test(
-      navigator.userAgent || ""
-    );
+    /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
-  // --- localStorage ---
+  // --- PATCH localStorage ---
   try {
-    const k = "__ls_test__";
-    window.localStorage.setItem(k, "1");
-    window.localStorage.removeItem(k);
-  } catch {
-    const noop = {
-      getItem() {
-        return "null";
-      },
+    const testKey = "__ls_test__";
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+  } catch (_) {
+    const noopLS = {
+      getItem() { return "null"; }, // JSON.parse("null") => null
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
       Object.defineProperty(window, "localStorage", {
-        value: noop,
+        value: noopLS,
         configurable: true,
       });
     } catch {
-      window.localStorage = noop;
+      window.localStorage = noopLS;
     }
   }
 
-  // --- sessionStorage ---
+  // --- PATCH sessionStorage ---
   try {
-    const k = "__ss_test__";
-    window.sessionStorage.setItem(k, "1");
-    window.sessionStorage.removeItem(k);
-  } catch {
-    const noop = {
-      getItem() {
-        return "null";
-      },
+    const testKey = "__ss_test__";
+    window.sessionStorage.setItem(testKey, "1");
+    window.sessionStorage.removeItem(testKey);
+  } catch (_) {
+    const noopSS = {
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
       Object.defineProperty(window, "sessionStorage", {
-        value: noop,
+        value: noopSS,
         configurable: true,
       });
     } catch {
-      window.sessionStorage = noop;
+      window.sessionStorage = noopSS;
     }
   }
 
-  // --- IndexedDB ---
+  // --- PATCH IndexedDB ---
   try {
     if (!window.indexedDB && !window.webkitIndexedDB) {
       window.indexedDB = {
@@ -80,7 +67,7 @@
         },
       };
     }
-  } catch {
+  } catch (_) {
     window.indexedDB = {
       open() {
         return { onerror() {}, onsuccess() {}, onupgradeneeded() {} };
@@ -88,13 +75,11 @@
     };
   }
 
-  if (isMetaWebView) {
-    console.log("[META WEBVIEW]");
-  }
+  if (isMetaWebView) console.log("[META WEBVIEW DETECTADO]");
 })();
 
 // =============================
-// App imports
+// Imports del proyecto
 // =============================
 import { createApp } from "vue";
 import { createPinia } from "pinia";
@@ -108,14 +93,44 @@ import "./style.css";
 import VueApexCharts from "vue3-apexcharts";
 
 // =============================
+// ✅ Prerender signal (CRÍTICO)
+// =============================
+function signalPrerenderReady(routerInstance) {
+  if (typeof document === "undefined") return;
+
+  const enabled =
+    String(import.meta.env.VITE_ENABLE_PRERENDER || "") === "1" ||
+    String(import.meta.env.VITE_ENABLE_PRERENDER || "").toLowerCase() === "true";
+
+  if (!enabled) return;
+
+  routerInstance
+    .isReady()
+    .then(() => {
+      setTimeout(() => {
+        document.dispatchEvent(new Event("prerender-ready"));
+      }, 0);
+    })
+    .catch(() => {
+      setTimeout(() => {
+        document.dispatchEvent(new Event("prerender-ready"));
+      }, 0);
+    });
+}
+
+// =============================
 // Bootstrap
 // =============================
 const app = createApp(App);
+const head = createHead();
 
 app.use(createPinia());
-app.use(createHead());
+app.use(head);
 app.use(router);
 app.use(vuetify);
 app.use(VueApexCharts);
 
 app.mount("#app");
+
+// ✅ IMPORTANTÍSIMO
+signalPrerenderReady(router);

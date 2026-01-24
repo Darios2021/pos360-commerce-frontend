@@ -5,6 +5,13 @@ import { fileURLToPath, URL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 
+function env(name, fallback = "") {
+  const v = process.env[name];
+  return v !== undefined && v !== null && String(v).trim() !== ""
+    ? String(v).trim()
+    : fallback;
+}
+
 function readRoutesFile() {
   const p = path.resolve(process.cwd(), "scripts", "prerender.routes.json");
   try {
@@ -28,28 +35,19 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
-function env(name, fallback = "") {
-  const v = process.env[name];
-  return v !== undefined && v !== null && String(v).trim() !== ""
-    ? String(v).trim()
-    : fallback;
-}
-
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
-    String(process.env.VITE_ENABLE_PRERENDER || "")
-      .trim()
-      .toLowerCase() === "true";
+    String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
 
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO shop público
+    // ✅ SOLO SHOP público
     const routes = (() => {
       const base =
         fileRoutes && fileRoutes.length
@@ -58,6 +56,7 @@ export default defineConfig(async ({ command }) => {
 
       const onlyShop = base.filter((r) => r.startsWith("/shop"));
 
+      // Excluye pantallas dinámicas/privadas
       const excluded = new Set(["/shop/cart", "/shop/checkout"]);
 
       const cleaned = onlyShop.filter((r) => {
@@ -68,27 +67,26 @@ export default defineConfig(async ({ command }) => {
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 180000);
+    // ✅ timeout en ms
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
     const timeoutMs =
-      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 30000
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000
         ? timeoutMsRaw
-        : 180000;
+        : 120000;
 
     plugins.push(
       prerender({
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
         rendererOptions: {
-          // ✅ CLAVE: NO eventos
-          renderAfterTime: 3500,
+          renderAfterDocumentEvent: "prerender-ready",
           timeout: timeoutMs,
-          maxConcurrentRoutes: 2,
         },
       })
     );
   }
 
-  // ✅ La app vive bajo /shop/
+  // ✅ base del shop
   const APP_BASE = env("VITE_APP_BASE", "/shop/");
   const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
 
