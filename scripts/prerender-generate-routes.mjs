@@ -25,7 +25,7 @@ function normBase(raw) {
   return String(raw || "").trim().replace(/\/+$/, "");
 }
 
-// ✅ Permite setear explícito API_BASE_URL si no querés depender de VITE_*
+// ✅ API_BASE_URL tiene prioridad (ideal para build/prerender)
 const API_BASE = normBase(process.env.API_BASE_URL || process.env.VITE_API_BASE_URL || "");
 
 async function fetchJson(url) {
@@ -97,8 +97,14 @@ function extractItems(data) {
 
   const productIds = uniq(ids).slice(0, MAX_PRODUCTS);
 
-  // ✅ IMPORTANTE: /shop/ con slash final como raíz
-  const routes = uniq(["/shop/", ...productIds.map((id) => `/shop/product/${id}`)]);
+  // ✅ Genero ambas variantes: con y sin trailing slash
+  const productRoutes = productIds.flatMap((id) => [
+    `/shop/product/${id}`,
+    `/shop/product/${id}/`,
+  ]);
+
+  // ✅ Base /shop/ siempre
+  const routes = uniq(["/shop/", ...productRoutes]);
 
   writeRoutes(routes);
 
