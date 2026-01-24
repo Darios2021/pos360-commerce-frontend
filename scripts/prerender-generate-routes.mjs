@@ -17,7 +17,6 @@ function writeRoutes(routes) {
 }
 
 function writeFallback() {
-  // ✅ IMPORTANTE: /shop/ con slash final
   writeRoutes(["/shop/"]);
 }
 
@@ -97,13 +96,9 @@ function extractItems(data) {
 
   const productIds = uniq(ids).slice(0, MAX_PRODUCTS);
 
-  // ✅ Genero ambas variantes: con y sin trailing slash
-  const productRoutes = productIds.flatMap((id) => [
-    `/shop/product/${id}`,
-    `/shop/product/${id}/`,
-  ]);
+  // ✅ SOLO una variante (SIN slash final) => evita overwrite warnings
+  const productRoutes = productIds.map((id) => `/shop/product/${id}`);
 
-  // ✅ Base /shop/ siempre
   const routes = uniq(["/shop/", ...productRoutes]);
 
   writeRoutes(routes);
