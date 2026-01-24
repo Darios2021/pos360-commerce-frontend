@@ -81,7 +81,7 @@
 // =============================
 // Imports del proyecto
 // =============================
-import { createApp } from "vue";
+import { createApp, nextTick } from "vue";
 import { createPinia } from "pinia";
 import { createHead } from "@vueuse/head";
 
@@ -93,7 +93,7 @@ import "./style.css";
 import VueApexCharts from "vue3-apexcharts";
 
 // =============================
-// ✅ Prerender signal (CRÍTICO)
+// ✅ Prerender signal ULTRA ROBUSTO
 // =============================
 function signalPrerenderReady(routerInstance) {
   if (typeof document === "undefined") return;
@@ -104,18 +104,41 @@ function signalPrerenderReady(routerInstance) {
 
   if (!enabled) return;
 
+  let fired = false;
+
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    try {
+      document.dispatchEvent(new Event("prerender-ready"));
+      // opcional log
+      // console.log("[prerender] ready fired");
+    } catch {
+      // nada
+    }
+  };
+
+  // ✅ 1) camino ideal: router listo + DOM estable
   routerInstance
     .isReady()
-    .then(() => {
-      setTimeout(() => {
-        document.dispatchEvent(new Event("prerender-ready"));
-      }, 0);
+    .then(async () => {
+      await nextTick();
+
+      // 2 raf para asegurar que el layout terminó (cubre Vuetify)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          fire();
+        });
+      });
     })
     .catch(() => {
-      setTimeout(() => {
-        document.dispatchEvent(new Event("prerender-ready"));
-      }, 0);
+      // aunque falle, disparamos igual
+      setTimeout(fire, 0);
     });
+
+  // ✅ 2) fallback duro: NO dejes colgar el build (10s)
+  // (si tus OG dependen de fetch y tardan más, subilo a 15000/20000)
+  setTimeout(fire, 10000);
 }
 
 // =============================

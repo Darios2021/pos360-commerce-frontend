@@ -35,6 +35,19 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
+function toMsTimeout(raw) {
+  // Acepta:
+  // - "120" => lo tratamos como segundos (lo que vos estás seteando)
+  // - "120000" => ms
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 180000; // default 3 min
+
+  // si es chico, asumimos segundos
+  if (n > 0 && n < 10000) return n * 1000;
+
+  return n; // ya es ms
+}
+
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
@@ -56,7 +69,7 @@ export default defineConfig(async ({ command }) => {
 
       const onlyShop = base.filter((r) => r.startsWith("/shop"));
 
-      // Excluye pantallas dinámicas/privadas
+      // Excluye pantallas que no querés prerender
       const excluded = new Set(["/shop/cart", "/shop/checkout"]);
 
       const cleaned = onlyShop.filter((r) => {
@@ -67,18 +80,15 @@ export default defineConfig(async ({ command }) => {
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    // ✅ timeout en ms
-    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
-    const timeoutMs =
-      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000
-        ? timeoutMsRaw
-        : 120000;
+    // ✅ Timeout robusto (toma segundos si mandás 120)
+    const timeoutMs = toMsTimeout(process.env.VITE_PRERENDER_TIMEOUT || "180");
 
     plugins.push(
       prerender({
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
         rendererOptions: {
+          // tu evento (pero ahora main.js lo garantiza sí o sí)
           renderAfterDocumentEvent: "prerender-ready",
           timeout: timeoutMs,
         },
