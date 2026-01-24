@@ -77,6 +77,54 @@
 })();
 
 // =============================
+// ✅ Prerender watchdog (ANTES de imports)
+// Si la app crashea, igual dispara el evento.
+// =============================
+(function () {
+  if (typeof document === "undefined") return;
+
+  const enabled =
+    (typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      (String(import.meta.env.VITE_ENABLE_PRERENDER || "") === "1" ||
+        String(import.meta.env.VITE_ENABLE_PRERENDER || "").toLowerCase() === "true")) ||
+    false;
+
+  if (!enabled) return;
+
+  // ✅ fallback duro: a los 3s lo disparo sí o sí
+  const t = setTimeout(() => {
+    try {
+      document.dispatchEvent(new Event("prerender-ready"));
+      console.log("[prerender] watchdog fired");
+    } catch {}
+  }, 3000);
+
+  // ✅ si ocurre error, disparo y listo
+  window.addEventListener(
+    "error",
+    () => {
+      clearTimeout(t);
+      try {
+        document.dispatchEvent(new Event("prerender-ready"));
+      } catch {}
+    },
+    { once: true }
+  );
+
+  window.addEventListener(
+    "unhandledrejection",
+    () => {
+      clearTimeout(t);
+      try {
+        document.dispatchEvent(new Event("prerender-ready"));
+      } catch {}
+    },
+    { once: true }
+  );
+})();
+
+// =============================
 // Imports
 // =============================
 import { createApp } from "vue";
@@ -91,7 +139,7 @@ import "./style.css";
 import VueApexCharts from "vue3-apexcharts";
 
 // =============================
-// ✅ Prerender signal (CRÍTICO)
+// ✅ Prerender signal (normal)
 // =============================
 function signalPrerenderReady(routerInstance) {
   if (typeof document === "undefined") return;
@@ -102,7 +150,6 @@ function signalPrerenderReady(routerInstance) {
 
   if (!enabled) return;
 
-  // ✅ no depender de que el router "termine perfecto"
   Promise.resolve()
     .then(() => routerInstance.isReady())
     .catch(() => null)
@@ -110,6 +157,7 @@ function signalPrerenderReady(routerInstance) {
       setTimeout(() => {
         try {
           document.dispatchEvent(new Event("prerender-ready"));
+          console.log("[prerender] router ready fired");
         } catch {}
       }, 0);
     });
@@ -129,5 +177,4 @@ app.use(VueApexCharts);
 
 app.mount("#app");
 
-// ✅ IMPORTANTÍSIMO
 signalPrerenderReady(router);

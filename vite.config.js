@@ -27,9 +27,13 @@ function readRoutesFile() {
 
 function normalizeRoute(r) {
   if (typeof r !== "string") return null;
-  const s = r.trim();
+  let s = r.trim();
   if (!s) return null;
-  return s.startsWith("/") ? s : `/${s}`;
+  if (!s.startsWith("/")) s = `/${s}`;
+
+  // ✅ normaliza: NO trailing slash excepto root "/shop/"
+  if (s !== "/shop/" && s.endsWith("/")) s = s.slice(0, -1);
+  return s;
 }
 
 function uniq(arr) {
@@ -39,8 +43,8 @@ function uniq(arr) {
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
-  // ✅ Base única del proyecto (fuente de verdad)
-  // En CapRover: VITE_APP_BASE=/shop/
+  // ✅ Fuente de verdad: base del sitio
+  // En CapRover setear: VITE_APP_BASE=/shop/
   const APP_BASE = env("VITE_APP_BASE", "/shop/");
   const base = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
 
@@ -52,21 +56,29 @@ export default defineConfig(async ({ command }) => {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
+
+    // ✅ SOLO /shop + SIN duplicados por slash
     const routes = (() => {
       const baseRoutes =
         fileRoutes && fileRoutes.length
           ? fileRoutes.map(normalizeRoute).filter(Boolean)
           : ["/shop/"];
 
-      // ✅ Solo rutas del shop
-      const onlyShop = baseRoutes.filter((r) => r.startsWith("/shop"));
-      return uniq(onlyShop.length ? onlyShop : ["/shop/"]);
+      const onlyShop = baseRoutes
+        .filter((r) => r.startsWith("/shop"))
+        .map((r) => (r === "/shop" ? "/shop/" : r));
+
+      // ✅ excluye checkout/cart (si existen)
+      const excluded = new Set(["/shop/cart", "/shop/checkout"]);
+      const cleaned = onlyShop.filter((r) => !excluded.has(r));
+
+      return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    // ✅ timeout ms (default 120s)
-    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
+    // ✅ timeout en MILISEGUNDOS (default 240s)
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT_MS || 240000);
     const timeoutMs =
-      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 120000;
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000 ? timeoutMsRaw : 240000;
 
     plugins.push(
       prerender({
@@ -81,7 +93,7 @@ export default defineConfig(async ({ command }) => {
   }
 
   return {
-    // ✅ Esto SOLO debe ser /shop/ (no /shop/shop/)
+    // ✅ CLAVE para que NO pida /shop/shop/assets ni /assets
     base,
 
     plugins,
@@ -92,7 +104,7 @@ export default defineConfig(async ({ command }) => {
       },
     },
 
-    // ✅ Dejamos defaults (NO mover assetsDir/outDir raro)
+    // ✅ no tocar assetsDir/outDir
     build: {
       outDir: "dist",
       assetsDir: "assets",
