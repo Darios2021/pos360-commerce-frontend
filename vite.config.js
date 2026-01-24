@@ -1,4 +1,3 @@
-// ✅ COPY-PASTE FINAL COMPLETO
 // vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -50,7 +49,7 @@ export default defineConfig(async ({ command }) => {
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ SOLO SHOP (público) + ✅ EXCLUYE /shop/cart y /shop/checkout
+    // ✅ SOLO shop público
     const routes = (() => {
       const base =
         fileRoutes && fileRoutes.length
@@ -69,35 +68,32 @@ export default defineConfig(async ({ command }) => {
       return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
-    // ✅ timeout REAL (ms). Default 120s.
-    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 120000);
+    const timeoutMsRaw = Number(process.env.VITE_PRERENDER_TIMEOUT || 180000);
     const timeoutMs =
-      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 10000
+      Number.isFinite(timeoutMsRaw) && timeoutMsRaw >= 30000
         ? timeoutMsRaw
-        : 120000;
+        : 180000;
 
     plugins.push(
       prerender({
         routes,
         renderer: "@prerenderer/renderer-puppeteer",
         rendererOptions: {
-          renderAfterDocumentEvent: "prerender-ready",
+          // ✅ CLAVE: NO eventos
+          renderAfterTime: 3500,
           timeout: timeoutMs,
+          maxConcurrentRoutes: 2,
         },
       })
     );
   }
 
-  // ✅ CLAVE: el shop vive bajo /shop/
-  // Si querés cambiarlo por ENV, setea VITE_APP_BASE=/shop/
-  // (default: /shop/)
+  // ✅ La app vive bajo /shop/
   const APP_BASE = env("VITE_APP_BASE", "/shop/");
   const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
 
   return {
-    // ✅ FIX MIME / assets: ahora index.html apuntará a /shop/assets/...
     base: normalizedBase,
-
     plugins,
     resolve: {
       alias: {
