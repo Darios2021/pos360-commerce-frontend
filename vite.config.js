@@ -1,7 +1,7 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// vite.config.js (FIX LOOP 301)
-// - Frontend se buildea para "/" internamente
-// - Edge lo monta en "/shop" externamente
+// vite.config.js (FIX ASSETS 404 + /shop/)
+// - Frontend se buildea para "/shop/"
+// - Edge lo sirve en "/shop/"
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -39,25 +39,29 @@ function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
+// ✅ helpers para colgar todo de /shop
+function toShopPath(p) {
+  if (!p) return "/shop/";
+  if (p === "/") return "/shop/";
+  return p.startsWith("/shop/") ? p : `/shop${p}`;
+}
+
 export default defineConfig(async ({ command }) => {
   const plugins = [vue()];
 
   const ENABLE_PRERENDER =
     String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
-    String(process.env.VITE_ENABLE_PRERENDER || "")
-      .trim()
-      .toLowerCase() === "true";
+    String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
 
-  // ✅ FIX: el frontend se construye para root ("/")
-  const normalizedBase = "/";
+  // ✅ CLAVE: base real del deploy
+  const normalizedBase = "/shop/";
 
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ Rutas internas del frontend (root)
-    // - sin /shop
+    // ✅ Rutas que vas a prerenderizar (colgadas de /shop)
     // - excluye checkout/cart
     const routes = (() => {
       const base =
@@ -70,10 +74,17 @@ export default defineConfig(async ({ command }) => {
         "/checkout",
         "/cart/",
         "/checkout/",
+        "/shop/cart",
+        "/shop/checkout",
+        "/shop/cart/",
+        "/shop/checkout/",
       ]);
 
-      const cleaned = base.filter((r) => !excluded.has(r));
-      return uniq(cleaned.length ? cleaned : ["/"]);
+      const cleaned = base
+        .map((r) => toShopPath(r)) // ✅ ahora son /shop/...
+        .filter((r) => !excluded.has(r));
+
+      return uniq(cleaned.length ? cleaned : ["/shop/"]);
     })();
 
     const raw = env("VITE_PRERENDER_TIMEOUT", "120");
