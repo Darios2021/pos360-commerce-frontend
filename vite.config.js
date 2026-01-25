@@ -1,5 +1,8 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// vite.config.js
+// vite.config.js (FIX LOOP 301)
+// - Frontend se buildea para "/" internamente
+// - Edge lo monta en "/shop" externamente
+
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
@@ -45,51 +48,43 @@ export default defineConfig(async ({ command }) => {
       .trim()
       .toLowerCase() === "true";
 
-  // ✅ CLAVE: el shop vive bajo /shop/
-  // Default /shop/ (NO /shop sin slash)
-  const APP_BASE = env("VITE_APP_BASE", "/shop/");
-  const normalizedBase = APP_BASE.endsWith("/") ? APP_BASE : `${APP_BASE}/`;
+  // ✅ FIX: el frontend se construye para root ("/")
+  const normalizedBase = "/";
 
   if (command === "build" && ENABLE_PRERENDER) {
     const { default: prerender } = await import("@prerenderer/rollup-plugin");
 
     const fileRoutes = readRoutesFile();
 
-    // ✅ Solo /shop (público)
-    // ✅ sin duplicados
-    // ✅ excluye rutas que dependen de storage/checkout
+    // ✅ Rutas internas del frontend (root)
+    // - sin /shop
+    // - excluye checkout/cart
     const routes = (() => {
       const base =
         fileRoutes && fileRoutes.length
           ? fileRoutes.map(normalizeRoute).filter(Boolean)
-          : ["/shop/"];
-
-      const onlyShop = base.filter((r) => r.startsWith("/shop"));
+          : ["/"];
 
       const excluded = new Set([
-        "/shop/cart",
-        "/shop/checkout",
-        "/shop/cart/",
-        "/shop/checkout/",
+        "/cart",
+        "/checkout",
+        "/cart/",
+        "/checkout/",
       ]);
 
-      const cleaned = onlyShop.filter((r) => !excluded.has(r));
-      return uniq(cleaned.length ? cleaned : ["/shop/"]);
+      const cleaned = base.filter((r) => !excluded.has(r));
+      return uniq(cleaned.length ? cleaned : ["/"]);
     })();
 
-    // ✅ Timeout del prerenderer (ms)
-    // Si seteás VITE_PRERENDER_TIMEOUT=120 => lo tomamos como SEGUNDOS
     const raw = env("VITE_PRERENDER_TIMEOUT", "120");
     const n = Number(raw);
     const timeoutMs =
       Number.isFinite(n) && n > 0
         ? n < 1000
-          ? Math.max(10_000, Math.floor(n * 1000)) // si viene en segundos
-          : Math.max(10_000, Math.floor(n)) // si ya viene en ms
+          ? Math.max(10_000, Math.floor(n * 1000))
+          : Math.max(10_000, Math.floor(n))
         : 120_000;
 
-    // ✅ NO dependemos de "prerender-ready"
-    // Renderiza después de X ms y listo (no se cuelga)
     const renderAfterMsRaw = Number(env("VITE_PRERENDER_AFTER", "1500"));
     const renderAfterMs =
       Number.isFinite(renderAfterMsRaw) && renderAfterMsRaw >= 0
