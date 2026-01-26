@@ -1,13 +1,22 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// vite.config.js (FIX ASSETS 404 + /shop/)
-// - Frontend se buildea para "/shop/"
-// - Edge lo sirve en "/shop/"
+// vite.config.js (BACKOFFICE /app) — EXTENDIDO PERO LIMPIO
+// - Admin/backoffice se buildea para "/app/"
+// - Sin prerender (eso es solo para shop público)
+// - Dev friendly: podés levantar local y no romperte al entrar /app
+//
+// Recomendación de uso:
+// - En producción (CapRover): VITE_APP_BASE=/app/  (o dejalo default)
+// - En local: podés usar VITE_APP_BASE=/ para no “obligar” /app
+//
+// Ejemplo local:
+//   VITE_APP_BASE=/ vite
+//
+// Ejemplo prod:
+//   VITE_APP_BASE=/app/ npm run build
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
-import fs from "node:fs";
-import path from "node:path";
 
 function env(name, fallback = "") {
   const v = process.env[name];
@@ -16,112 +25,88 @@ function env(name, fallback = "") {
     : fallback;
 }
 
-function readRoutesFile() {
-  const p = path.resolve(process.cwd(), "scripts", "prerender.routes.json");
-  try {
-    if (!fs.existsSync(p)) return null;
-    const raw = fs.readFileSync(p, "utf-8");
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : null;
-  } catch {
-    return null;
-  }
+function normalizeBase(input, fallback) {
+  const raw = String(input ?? "").trim();
+  const b = raw || fallback;
+
+  // Debe empezar con "/" y terminar con "/"
+  let out = b.startsWith("/") ? b : `/${b}`;
+  if (!out.endsWith("/")) out += "/";
+  return out;
 }
 
-function normalizeRoute(r) {
-  if (typeof r !== "string") return null;
-  const s = r.trim();
-  if (!s) return null;
-  return s.startsWith("/") ? s : `/${s}`;
+function isTrue(v) {
+  return String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .match(/^(1|true|yes|y|on)$/);
 }
 
-function uniq(arr) {
-  return Array.from(new Set(arr));
-}
+export default defineConfig(({ command, mode }) => {
+  const isBuild = command === "build";
+  const isDev = command === "serve";
 
-// ✅ helpers para colgar todo de /shop
-function toShopPath(p) {
-  if (!p) return "/shop/";
-  if (p === "/") return "/shop/";
-  return p.startsWith("/shop/") ? p : `/shop${p}`;
-}
+  // ✅ Base del admin:
+  // - Prod: /app/
+  // - Local (opcional): /  (si seteás VITE_APP_BASE=/)
+  const BASE = normalizeBase(env("VITE_APP_BASE", "/app/"), "/app/");
 
-export default defineConfig(async ({ command }) => {
-  const plugins = [vue()];
+  // Opcional: forzar modo “app” aunque estés en dev
+  const FORCE_APP_BASE_IN_DEV = isTrue(env("VITE_FORCE_APP_BASE_IN_DEV", "0"));
 
-  const ENABLE_PRERENDER =
-    String(process.env.VITE_ENABLE_PRERENDER || "").trim() === "1" ||
-    String(process.env.VITE_ENABLE_PRERENDER || "").trim().toLowerCase() === "true";
+  // En dev, si no forzás, podés usar "/" para no depender de /app
+  const effectiveBase =
+    isDev && !FORCE_APP_BASE_IN_DEV ? normalizeBase(env("VITE_APP_BASE", "/"), "/") : BASE;
 
-  // ✅ CLAVE: base real del deploy
-  const normalizedBase = "/shop/";
-
-  if (command === "build" && ENABLE_PRERENDER) {
-    const { default: prerender } = await import("@prerenderer/rollup-plugin");
-
-    const fileRoutes = readRoutesFile();
-
-    // ✅ Rutas que vas a prerenderizar (colgadas de /shop)
-    // - excluye checkout/cart
-    const routes = (() => {
-      const base =
-        fileRoutes && fileRoutes.length
-          ? fileRoutes.map(normalizeRoute).filter(Boolean)
-          : ["/"];
-
-      const excluded = new Set([
-        "/cart",
-        "/checkout",
-        "/cart/",
-        "/checkout/",
-        "/shop/cart",
-        "/shop/checkout",
-        "/shop/cart/",
-        "/shop/checkout/",
-      ]);
-
-      const cleaned = base
-        .map((r) => toShopPath(r)) // ✅ ahora son /shop/...
-        .filter((r) => !excluded.has(r));
-
-      return uniq(cleaned.length ? cleaned : ["/shop/"]);
-    })();
-
-    const raw = env("VITE_PRERENDER_TIMEOUT", "120");
-    const n = Number(raw);
-    const timeoutMs =
-      Number.isFinite(n) && n > 0
-        ? n < 1000
-          ? Math.max(10_000, Math.floor(n * 1000))
-          : Math.max(10_000, Math.floor(n))
-        : 120_000;
-
-    const renderAfterMsRaw = Number(env("VITE_PRERENDER_AFTER", "1500"));
-    const renderAfterMs =
-      Number.isFinite(renderAfterMsRaw) && renderAfterMsRaw >= 0
-        ? renderAfterMsRaw
-        : 1500;
-
-    plugins.push(
-      prerender({
-        routes,
-        renderer: "@prerenderer/renderer-puppeteer",
-        rendererOptions: {
-          renderAfterTime: renderAfterMs,
-          timeout: timeoutMs,
-        },
-      })
-    );
+  // Logs de build útiles (aparecen en consola al buildear)
+  if (isBuild) {
+    console.log("🧩 [vite-admin] mode:", mode);
+    console.log("🧩 [vite-admin] base:", effectiveBase);
   }
 
   return {
-    base: normalizedBase,
-    plugins,
+    // ✅ CLAVE: assets y router base del admin
+    base: effectiveBase,
+
+    plugins: [vue()],
+
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
         vue: "vue/dist/vue.esm-bundler.js",
       },
+    },
+
+    // ✅ Dev server (solo afecta local)
+    server: {
+      host: true, // 0.0.0.0
+      port: Number(env("VITE_PORT", "5173")) || 5173,
+      strictPort: true,
+      // Si querés abrir directo el admin en local:
+      // open: "/app/",
+    },
+
+    // ✅ Preview (vite preview) — útil para probar build local
+    preview: {
+      host: true,
+      port: Number(env("VITE_PREVIEW_PORT", "4173")) || 4173,
+      strictPort: true,
+    },
+
+    // ✅ Build “sano” para backoffice
+    build: {
+      sourcemap: isTrue(env("VITE_SOURCEMAP", "0")),
+      outDir: env("VITE_OUT_DIR", "dist"),
+      assetsDir: env("VITE_ASSETS_DIR", "assets"),
+      chunkSizeWarningLimit: Number(env("VITE_CHUNK_WARN", "1500")) || 1500,
+      // Si tenés problemas con Terser / minify:
+      // minify: "esbuild",
+    },
+
+    // ✅ Define flags (opcionales) para tu app si te sirven
+    define: {
+      __APP_KIND__: JSON.stringify("admin"),
+      __APP_BASE__: JSON.stringify(effectiveBase),
     },
   };
 });
