@@ -1,15 +1,16 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// vite.config.js (BACKOFFICE /app) — EXTENDIDO PERO LIMPIO
-// - Admin/backoffice se buildea para "/app/"
-// - Sin prerender (eso es solo para shop público)
-// - Dev friendly: podés levantar local y no romperte al entrar /app
+// vite.config.js (BACKOFFICE /app) — EXTENDIDO PERO LIMPIO + DEV PROXY (CORS FIX)
 //
-// Recomendación de uso:
-// - En producción (CapRover): VITE_APP_BASE=/app/  (o dejalo default)
-// - En local: podés usar VITE_APP_BASE=/ para no “obligar” /app
+// Qué corrige:
+// - En DEV, evita CORS proxyando /api/* hacia tu API real.
+// - Tu frontend debe pegar a /api/v1/... (relative), NO a https://... directamente.
+//
+// Recomendación DEV:
+// - VITE_API_BASE_URL=/api/v1
+// - VITE_DEV_API_TARGET=https://pos360-commerce-api.cingulado.org   (o tu URL interna)
 //
 // Ejemplo local:
-//   VITE_APP_BASE=/ vite
+//   VITE_APP_BASE=/ VITE_API_BASE_URL=/api/v1 VITE_DEV_API_TARGET=https://pos360-commerce-api.cingulado.org vite
 //
 // Ejemplo prod:
 //   VITE_APP_BASE=/app/ npm run build
@@ -29,7 +30,6 @@ function normalizeBase(input, fallback) {
   const raw = String(input ?? "").trim();
   const b = raw || fallback;
 
-  // Debe empezar con "/" y terminar con "/"
   let out = b.startsWith("/") ? b : `/${b}`;
   if (!out.endsWith("/")) out += "/";
   return out;
@@ -46,28 +46,26 @@ export default defineConfig(({ command, mode }) => {
   const isBuild = command === "build";
   const isDev = command === "serve";
 
-  // ✅ Base del admin:
-  // - Prod: /app/
-  // - Local (opcional): /  (si seteás VITE_APP_BASE=/)
   const BASE = normalizeBase(env("VITE_APP_BASE", "/app/"), "/app/");
-
-  // Opcional: forzar modo “app” aunque estés en dev
   const FORCE_APP_BASE_IN_DEV = isTrue(env("VITE_FORCE_APP_BASE_IN_DEV", "0"));
 
-  // En dev, si no forzás, podés usar "/" para no depender de /app
   const effectiveBase =
     isDev && !FORCE_APP_BASE_IN_DEV ? normalizeBase(env("VITE_APP_BASE", "/"), "/") : BASE;
 
-  // Logs de build útiles (aparecen en consola al buildear)
+  // ✅ DEV proxy target (API real)
+  // - En LAN suele andar mejor pegarle al host interno / directo si lo tenés.
+  // - Si no, usá el dominio https público.
+  const DEV_API_TARGET = env("VITE_DEV_API_TARGET", "https://pos360-commerce-api.cingulado.org");
+
   if (isBuild) {
     console.log("🧩 [vite-admin] mode:", mode);
     console.log("🧩 [vite-admin] base:", effectiveBase);
+  } else {
+    console.log("🧩 [vite-admin] dev proxy target:", DEV_API_TARGET);
   }
 
   return {
-    // ✅ CLAVE: assets y router base del admin
     base: effectiveBase,
-
     plugins: [vue()],
 
     resolve: {
@@ -77,33 +75,49 @@ export default defineConfig(({ command, mode }) => {
       },
     },
 
-    // ✅ Dev server (solo afecta local)
     server: {
-      host: true, // 0.0.0.0
+      host: true,
       port: Number(env("VITE_PORT", "5173")) || 5173,
       strictPort: true,
-      // Si querés abrir directo el admin en local:
+
+      // ✅ CORS FIX: Proxy local -> API
+      // Si tu app llama a /api/v1/auth/login, esto lo manda a DEV_API_TARGET/api/v1/auth/login
+      proxy: {
+        "/api": {
+          target: DEV_API_TARGET,
+          changeOrigin: true,
+          secure: true, // si tu target es https con cert OK
+          // Si tu target tiene self-signed, poné secure:false
+          // secure: false,
+
+          // 👇 WebSockets (si los usaras)
+          ws: true,
+        },
+
+        // (Opcional) si querés servir assets del storage por la misma origin en dev:
+        // "/storage": {
+        //   target: "https://storage-files.cingulado.org",
+        //   changeOrigin: true,
+        //   secure: true,
+        // },
+      },
+
       // open: "/app/",
     },
 
-    // ✅ Preview (vite preview) — útil para probar build local
     preview: {
       host: true,
       port: Number(env("VITE_PREVIEW_PORT", "4173")) || 4173,
       strictPort: true,
     },
 
-    // ✅ Build “sano” para backoffice
     build: {
       sourcemap: isTrue(env("VITE_SOURCEMAP", "0")),
       outDir: env("VITE_OUT_DIR", "dist"),
       assetsDir: env("VITE_ASSETS_DIR", "assets"),
       chunkSizeWarningLimit: Number(env("VITE_CHUNK_WARN", "1500")) || 1500,
-      // Si tenés problemas con Terser / minify:
-      // minify: "esbuild",
     },
 
-    // ✅ Define flags (opcionales) para tu app si te sirven
     define: {
       __APP_KIND__: JSON.stringify("admin"),
       __APP_BASE__: JSON.stringify(effectiveBase),

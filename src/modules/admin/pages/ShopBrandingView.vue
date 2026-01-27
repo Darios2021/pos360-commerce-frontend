@@ -6,7 +6,7 @@
         <div>
           <div class="text-h6 font-weight-bold">Tienda · Branding</div>
           <div class="text-caption text-medium-emphasis">
-            Configurá nombre, logo y favicon que se ven en el ecommerce público.
+            Configurá nombre, logo, favicon y OG (preview WhatsApp) del ecommerce público.
           </div>
         </div>
 
@@ -34,6 +34,7 @@
           </div>
         </v-col>
 
+        <!-- Logo -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
@@ -63,6 +64,7 @@
           </v-card>
         </v-col>
 
+        <!-- Favicon -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
@@ -96,6 +98,42 @@
           </v-card>
         </v-col>
 
+        <!-- ✅ OG Image (WhatsApp preview) -->
+        <v-col cols="12" md="6">
+          <v-card rounded="xl" variant="tonal" class="pa-3">
+            <div class="d-flex align-center justify-space-between">
+              <div class="font-weight-bold">OG Image (preview WhatsApp)</div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                prepend-icon="mdi-upload"
+                @click="pickOg"
+                :loading="uploadingOg"
+              >
+                Subir OG
+              </v-btn>
+            </div>
+
+            <div class="mt-3 d-flex align-center ga-3">
+              <v-avatar size="56" rounded="lg" color="white" class="elevation-1">
+                <v-img v-if="branding.og_image_url" :src="abs(branding.og_image_url)" cover />
+                <v-icon v-else>mdi-image-outline</v-icon>
+              </v-avatar>
+
+              <div class="text-caption text-medium-emphasis" style="word-break: break-all;">
+                {{ branding.og_image_url || "Sin OG cargada" }}
+              </div>
+            </div>
+
+            <div class="text-caption text-medium-emphasis mt-2">
+              Recomendado: 1200×630 (JPG/PNG). El backend la normaliza y la guarda como <b>og-default.jpg</b>.
+            </div>
+
+            <input ref="ogInput" type="file" accept="image/*" class="d-none" @change="onOgFile" />
+          </v-card>
+        </v-col>
+
+        <!-- Updated at -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="font-weight-bold mb-1">Última actualización</div>
@@ -120,23 +158,25 @@ import {
   updateShopBranding,
   uploadShopLogo,
   uploadShopFavicon,
+  uploadShopOgImage, // ✅ nuevo
 } from "@/modules/shop/service/admin.shopBranding.api";
 
 const loading = ref(false);
 const saving = ref(false);
 const uploadingLogo = ref(false);
 const uploadingFav = ref(false);
+const uploadingOg = ref(false);
 const error = ref("");
 
 const branding = ref({
   name: "San Juan Tecnología",
   logo_url: "",
   favicon_url: "",
+  og_image_url: "", // ✅ nuevo
   updated_at: null,
 });
 
 const form = ref({ name: "San Juan Tecnología" });
-
 const snack = ref({ show: false, text: "" });
 
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
@@ -187,13 +227,11 @@ async function saveName() {
 /** uploads */
 const logoInput = ref(null);
 const favInput = ref(null);
+const ogInput = ref(null);
 
-function pickLogo() {
-  logoInput.value?.click();
-}
-function pickFavicon() {
-  favInput.value?.click();
-}
+function pickLogo() { logoInput.value?.click(); }
+function pickFavicon() { favInput.value?.click(); }
+function pickOg() { ogInput.value?.click(); }
 
 async function onLogoFile(ev) {
   const f = ev?.target?.files?.[0] || null;
@@ -228,6 +266,24 @@ async function onFavFile(ev) {
     error.value = e?.response?.data?.message || e?.message || "No se pudo subir el favicon.";
   } finally {
     uploadingFav.value = false;
+  }
+}
+
+async function onOgFile(ev) {
+  const f = ev?.target?.files?.[0] || null;
+  ev.target.value = "";
+  if (!f) return;
+
+  uploadingOg.value = true;
+  error.value = "";
+  try {
+    const it = await uploadShopOgImage(f);
+    if (it) branding.value = { ...branding.value, ...it };
+    snack.value = { show: true, text: "OG subida OK" };
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo subir la OG.";
+  } finally {
+    uploadingOg.value = false;
   }
 }
 
