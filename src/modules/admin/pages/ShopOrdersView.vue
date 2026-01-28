@@ -6,7 +6,7 @@
         <div>
           <div class="text-h6 font-weight-bold">Tienda · Pedidos</div>
           <div class="text-caption text-medium-emphasis">
-            Listado de pedidos del ecommerce (ecom_orders).
+            Bandeja de pedidos del ecommerce (ecom_orders).
           </div>
         </div>
 
@@ -37,8 +37,10 @@
 
         <v-select
           v-model="filters.status"
-          label="Estado"
+          label="Estado (pedido)"
           :items="statusItems"
+          item-title="title"
+          item-value="value"
           variant="outlined"
           density="comfortable"
           clearable
@@ -46,8 +48,10 @@
 
         <v-select
           v-model="filters.fulfillment_type"
-          label="Tipo"
+          label="Entrega"
           :items="fulfillmentItems"
+          item-title="title"
+          item-value="value"
           variant="outlined"
           density="comfortable"
           clearable
@@ -100,6 +104,8 @@
           <div class="cust">
             <div class="cust-name">{{ item.customer_name || "—" }}</div>
             <div class="cust-email">{{ item.customer_email || "—" }}</div>
+            <div class="muted" v-if="item.customer_phone">Tel: {{ item.customer_phone }}</div>
+            <div class="muted" v-if="item.customer_doc_number">Doc: {{ item.customer_doc_number }}</div>
           </div>
         </template>
 
@@ -110,28 +116,32 @@
           </v-chip>
         </template>
 
-        <!-- Tipo -->
+        <!-- Entrega -->
         <template #item.fulfillment_type="{ item }">
-          <v-chip
-            size="small"
-            label
-            :color="item.fulfillment_type === 'delivery' ? 'deep-purple' : 'teal'"
-            variant="tonal"
-          >
-            {{ item.fulfillment_type === "delivery" ? "Envío" : "Retiro" }}
+          <v-chip size="small" label :color="fulfillmentColor(item.fulfillment_type)" variant="tonal">
+            {{ fulfillmentLabel(item.fulfillment_type) }}
           </v-chip>
+
+          <div v-if="String(item.fulfillment_type||'').toLowerCase()==='delivery'" class="muted mt-1">
+            {{ shortShipLine(item) }}
+          </div>
         </template>
 
-        <!-- Estado -->
+        <!-- Estado pedido + pago -->
         <template #item.status="{ item }">
           <v-chip size="small" label :color="statusColor(item.status)" variant="tonal">
-            {{ item.status }}
+            {{ orderStatusLabel(item.status) }}
           </v-chip>
 
-          <div class="payline" v-if="item.payment_provider || item.payment_status">
+          <div class="payline" v-if="item.payment_provider || item.payment_status || item.order_payment_status">
             <span class="muted">
-              Pago: {{ item.payment_provider || "—" }} · {{ item.payment_status || "—" }}
+              {{ paymentSummaryLine(item) }}
             </span>
+          </div>
+
+          <div class="payline" v-if="isOrderPaid(item)">
+            <v-chip size="x-small" label color="green" variant="tonal">Pagado ✅</v-chip>
+            <span class="muted ml-2">→ Coordinar entrega</span>
           </div>
         </template>
 
@@ -196,38 +206,95 @@
           <template v-if="detail.data?.order">
             <div class="detail-grid">
               <div class="box">
-                <div class="box-title">Estado</div>
+                <div class="box-title">Estado del pedido</div>
                 <v-chip label size="small" :color="statusColor(detail.data.order.status)" variant="tonal">
-                  {{ detail.data.order.status }}
+                  {{ orderStatusLabel(detail.data.order.status) }}
                 </v-chip>
+
+                <div class="mt-3 box-title">Estado del pago</div>
+                <v-chip label size="small" :color="orderPayColor(detail.data.order.payment_status)" variant="tonal">
+                  {{ orderPayLabel(detail.data.order.payment_status) }}
+                </v-chip>
+                <div class="muted mt-1" v-if="detail.data.order.paid_at">
+                  Pagado el: {{ fmtDate(detail.data.order.paid_at, true) }}
+                </div>
 
                 <div class="mt-3 box-title">Sucursal</div>
                 <div class="muted">
                   {{ detail.data.order.branch_name || `Sucursal ${detail.data.order.branch_id}` }}
                 </div>
 
-                <div class="mt-3 box-title">Tipo</div>
+                <div class="mt-3 box-title">Entrega</div>
                 <div class="muted">
-                  {{ detail.data.order.fulfillment_type === "delivery" ? "Envío" : "Retiro" }}
+                  {{ fulfillmentLabel(detail.data.order.fulfillment_type) }}
                 </div>
               </div>
 
               <div class="box">
-                <div class="box-title">Cliente</div>
-                <div><b>{{ fullName(detail.data.order) || "—" }}</b></div>
-                <div class="muted">{{ detail.data.order.customer_email || "—" }}</div>
-                <div class="muted" v-if="detail.data.order.phone">Tel: {{ detail.data.order.phone }}</div>
+                <div class="box-title">Comprador</div>
+                <div><b>{{ fullName(detail.data.order) || detail.data.order.customer_name || detail.data.order.ship_name || "—" }}</b></div>
+                <div class="muted">{{ detail.data.order.customer_email || detail.data.order.email || "—" }}</div>
+                <div class="muted" v-if="detail.data.order.phone || detail.data.order.ship_phone">Tel: {{ detail.data.order.phone || detail.data.order.ship_phone }}</div>
                 <div class="muted" v-if="detail.data.order.doc_number">Doc: {{ detail.data.order.doc_number }}</div>
               </div>
 
               <div class="box">
                 <div class="box-title">Totales</div>
                 <div class="muted">Subtotal: <b>$ {{ fmtMoney(detail.data.order.subtotal) }}</b></div>
+                <div class="muted">Descuento: <b>$ {{ fmtMoney(detail.data.order.discount_total) }}</b></div>
                 <div class="muted">Envío: <b>$ {{ fmtMoney(detail.data.order.shipping_total) }}</b></div>
                 <div class="muted">Total: <b>$ {{ fmtMoney(detail.data.order.total) }}</b></div>
                 <div class="muted mt-2">Creado: {{ fmtDate(detail.data.order.created_at, true) }}</div>
               </div>
             </div>
+
+            <!-- Dirección / Entrega -->
+            <v-divider class="my-4" />
+            <div class="text-subtitle-2 font-weight-bold mb-2">Dirección / Datos de entrega</div>
+
+            <v-card variant="tonal" rounded="lg" class="pa-3">
+              <template v-if="String(detail.data.order.fulfillment_type||'').toLowerCase()==='delivery'">
+                <div class="d-flex flex-wrap ga-2">
+                  <v-chip size="small" label variant="tonal" color="deep-purple">Envío a domicilio</v-chip>
+                  <v-chip v-if="detail.data.order.ship_city" size="small" label variant="tonal">
+                    {{ detail.data.order.ship_city }}
+                  </v-chip>
+                  <v-chip v-if="detail.data.order.ship_province" size="small" label variant="tonal">
+                    {{ detail.data.order.ship_province }}
+                  </v-chip>
+                  <v-chip v-if="detail.data.order.ship_zip" size="small" label variant="tonal">
+                    CP {{ detail.data.order.ship_zip }}
+                  </v-chip>
+                </div>
+
+                <div class="mt-3">
+                  <div><b>{{ detail.data.order.ship_name || "—" }}</b></div>
+                  <div class="muted" v-if="detail.data.order.ship_phone">Tel: {{ detail.data.order.ship_phone }}</div>
+
+                  <div class="mt-2">
+                    <div>{{ detail.data.order.ship_address1 || "—" }}</div>
+                    <div class="muted" v-if="detail.data.order.ship_address2">{{ detail.data.order.ship_address2 }}</div>
+                  </div>
+
+                  <div class="muted mt-2" v-if="detail.data.order.notes">
+                    Nota: {{ detail.data.order.notes }}
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="d-flex flex-wrap ga-2">
+                  <v-chip size="small" label variant="tonal" color="teal">Retiro en sucursal</v-chip>
+                  <div class="muted">
+                    El cliente retira en la sucursal seleccionada. (No hay dirección de envío.)
+                  </div>
+                </div>
+
+                <div class="muted mt-2" v-if="detail.data.order.notes">
+                  Nota: {{ detail.data.order.notes }}
+                </div>
+              </template>
+            </v-card>
 
             <v-divider class="my-4" />
 
@@ -263,37 +330,74 @@
               <thead>
                 <tr>
                   <th style="width: 90px;">ID</th>
-                  <th>Provider</th>
-                  <th>Status</th>
-                  <th class="text-right">Amount</th>
-                  <th>External</th>
+                  <th>Método</th>
+                  <th>Estado</th>
+                  <th class="text-right">Monto</th>
+                  <th>Referencia</th>
                   <th style="width: 320px;">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="p in (detail.data.payments || [])" :key="p.id">
                   <td class="muted">#{{ p.id }}</td>
-                  <td><v-chip size="small" label variant="tonal">{{ p.provider }}</v-chip></td>
-                  <td><v-chip size="small" label variant="tonal">{{ p.status }}</v-chip></td>
+
+                  <td>
+                    <div class="d-flex align-center ga-2">
+                      <v-icon v-if="paymentMethodIcon(p)" size="18">{{ paymentMethodIcon(p) }}</v-icon>
+                      <v-chip size="small" label variant="tonal">
+                        {{ paymentMethodTitle(p) }}
+                      </v-chip>
+
+                      <v-chip
+                        v-if="paymentMethodBadgeText(p)"
+                        size="x-small"
+                        label
+                        variant="tonal"
+                        :color="badgeColor(paymentMethodBadgeVariant(p))"
+                      >
+                        {{ paymentMethodBadgeText(p) }}
+                      </v-chip>
+                    </div>
+
+                    <div class="muted mt-1" v-if="paymentMethodDesc(p)">
+                      {{ paymentMethodDesc(p) }}
+                    </div>
+                  </td>
+
+                  <td>
+                    <v-chip size="small" label variant="tonal" :color="paymentStatusColor(p.status)">
+                      {{ paymentStatusLabel(p.status) }}
+                    </v-chip>
+                    <div class="muted mt-1" v-if="p.paid_at">
+                      Pagado el: {{ fmtDate(p.paid_at, true) }}
+                    </div>
+                  </td>
+
                   <td class="text-right"><b>$ {{ fmtMoney(p.amount) }}</b></td>
 
                   <td class="muted">
                     <div v-if="p.external_id">id: {{ p.external_id }}</div>
                     <div v-if="p.external_status">st: {{ p.external_status }}</div>
+                    <div v-if="p.reference">ref: {{ p.reference }}</div>
+                    <div v-if="p.bank_reference">banco: {{ p.bank_reference }}</div>
+
                     <div v-if="proofUrlFromPayment(p)">
                       comp: <a :href="proofUrlFromPayment(p)" target="_blank" rel="noreferrer">ver</a>
                     </div>
+
                     <div v-if="mpInitPointFromPayment(p)">
                       mp: <a :href="mpInitPointFromPayment(p)" target="_blank" rel="noreferrer">pagar</a>
                     </div>
-                    <div v-if="!p.external_id && !p.external_status && !proofUrlFromPayment(p) && !mpInitPointFromPayment(p)">—</div>
+
+                    <div v-if="!p.external_id && !p.external_status && !p.reference && !p.bank_reference && !proofUrlFromPayment(p) && !mpInitPointFromPayment(p)">
+                      —
+                    </div>
                   </td>
 
                   <td>
                     <div class="d-flex flex-wrap ga-2">
-                      <!-- MercadoPago: crear link -->
                       <v-btn
-                        v-if="isMp(p)"
+                        v-if="canCreateMpLink(p)"
                         size="small"
                         variant="tonal"
                         prepend-icon="mdi-link-variant"
@@ -303,9 +407,8 @@
                         Crear link MP
                       </v-btn>
 
-                      <!-- Transfer: subir comprobante -->
                       <v-btn
-                        v-if="isTransfer(p)"
+                        v-if="canUploadProof(p)"
                         size="small"
                         variant="tonal"
                         prepend-icon="mdi-upload"
@@ -314,9 +417,8 @@
                         Subir comp.
                       </v-btn>
 
-                      <!-- Admin approve/reject transferencia -->
                       <v-btn
-                        v-if="isTransfer(p)"
+                        v-if="canReviewTransfer(p)"
                         size="small"
                         color="green"
                         variant="tonal"
@@ -328,7 +430,7 @@
                       </v-btn>
 
                       <v-btn
-                        v-if="isTransfer(p)"
+                        v-if="canReviewTransfer(p)"
                         size="small"
                         color="red"
                         variant="tonal"
@@ -372,7 +474,7 @@
           </v-alert>
 
           <div class="muted mb-2">
-            Pago #{{ uploadDlg.payment?.id }} · Order #{{ detail.data?.order?.id }}
+            Pago #{{ uploadDlg.payment?.id }} · Pedido #{{ detail.data?.order?.id }}
           </div>
 
           <v-text-field
@@ -534,26 +636,27 @@ const headers = [
   { title: "Código", key: "public_code", sortable: false, width: 220 },
   { title: "Cliente", key: "customer", sortable: false },
   { title: "Sucursal", key: "branch_name", sortable: false, width: 160 },
-  { title: "Tipo", key: "fulfillment_type", sortable: false, width: 120 },
-  { title: "Estado / Pago", key: "status", sortable: false, width: 190 },
+  { title: "Entrega", key: "fulfillment_type", sortable: false, width: 200 },
+  { title: "Estado / Pago", key: "status", sortable: false, width: 230 },
   { title: "Items", key: "items_qty", sortable: false, width: 120, align: "end" },
   { title: "Total", key: "total", sortable: false, width: 160, align: "end" },
   { title: "", key: "actions", sortable: false, width: 110 },
 ];
 
+// ✅ Ajustá a tus estados reales si difieren
 const statusItems = [
-  { title: "created", value: "created" },
-  { title: "confirmed", value: "confirmed" },
-  { title: "preparing", value: "preparing" },
-  { title: "ready_pickup", value: "ready_pickup" },
-  { title: "shipped", value: "shipped" },
-  { title: "delivered", value: "delivered" },
-  { title: "cancelled", value: "cancelled" },
+  { title: "Creado", value: "created" },
+  { title: "Confirmado", value: "confirmed" },
+  { title: "Preparando", value: "preparing" },
+  { title: "Listo para retirar", value: "ready_pickup" },
+  { title: "Enviado", value: "shipped" },
+  { title: "Entregado", value: "delivered" },
+  { title: "Cancelado", value: "cancelled" },
 ];
 
 const fulfillmentItems = [
-  { title: "Retiro", value: "pickup" },
-  { title: "Envío", value: "delivery" },
+  { title: "Retiro en sucursal", value: "pickup" },
+  { title: "Envío a domicilio", value: "delivery" },
 ];
 
 const branches = ref([]);
@@ -581,9 +684,10 @@ const uploadDlg = ref({
 });
 
 // =====================
-// Helpers
+// Helpers UI / Labels
 // =====================
 function fmtMoney(v) {
+  // ARS sin decimales en UI (si querés con decimales avisame)
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
 function fmtQty(v) {
@@ -604,6 +708,42 @@ function fullName(o) {
   const s = `${fn} ${ln}`.trim();
   return s || null;
 }
+
+function fulfillmentLabel(v) {
+  const x = String(v || "").toLowerCase();
+  if (x === "delivery") return "Envío a domicilio";
+  if (x === "pickup") return "Retiro en sucursal";
+  return v || "—";
+}
+function fulfillmentColor(v) {
+  const x = String(v || "").toLowerCase();
+  if (x === "delivery") return "deep-purple";
+  if (x === "pickup") return "teal";
+  return "grey";
+}
+
+function shortShipLine(o) {
+  const a1 = String(o?.ship_address1 || "").trim();
+  const city = String(o?.ship_city || "").trim();
+  const prov = String(o?.ship_province || "").trim();
+  const parts = [];
+  if (a1) parts.push(a1);
+  if (city) parts.push(city);
+  if (prov) parts.push(prov);
+  return parts.length ? parts.join(" · ") : "Dirección no informada";
+}
+
+function orderStatusLabel(s) {
+  const v = String(s || "").toLowerCase();
+  if (v === "created" || v === "pending") return "Creado";
+  if (v === "confirmed") return "Confirmado";
+  if (v === "preparing") return "Preparando";
+  if (v === "ready_pickup") return "Listo para retirar";
+  if (v === "shipped") return "Enviado";
+  if (v === "delivered") return "Entregado";
+  if (v === "cancelled") return "Cancelado";
+  return s || "—";
+}
 function statusColor(s) {
   const v = String(s || "").toLowerCase();
   if (v === "created" || v === "pending") return "grey";
@@ -616,8 +756,135 @@ function statusColor(s) {
   return "grey";
 }
 
+// order.payment_status
+function orderPayLabel(s) {
+  const v = String(s || "").toLowerCase();
+  if (v === "paid") return "Pagado";
+  if (v === "pending") return "Pendiente";
+  if (v === "unpaid") return "No pagado";
+  return s || "—";
+}
+function orderPayColor(s) {
+  const v = String(s || "").toLowerCase();
+  if (v === "paid") return "green";
+  if (v === "pending") return "amber";
+  if (v === "unpaid") return "grey";
+  return "grey";
+}
+
+function paymentStatusLabel(s) {
+  const v = String(s || "").toLowerCase();
+  if (["approved", "paid", "accredited", "success"].includes(v)) return "Pagado";
+  if (["pending", "in_process", "inprocess", "created"].includes(v)) return v === "created" ? "Creado" : "Pendiente";
+  if (["rejected", "cancelled", "canceled", "failed"].includes(v)) return "Rechazado";
+  if (["refunded"].includes(v)) return "Reintegrado";
+  return s || "—";
+}
+function paymentStatusColor(s) {
+  const v = String(s || "").toLowerCase();
+  if (["approved", "paid", "accredited", "success"].includes(v)) return "green";
+  if (["pending", "in_process", "inprocess"].includes(v)) return "amber";
+  if (["created"].includes(v)) return "grey";
+  if (["rejected", "cancelled", "canceled", "failed"].includes(v)) return "red";
+  if (["refunded"].includes(v)) return "blue";
+  return "grey";
+}
+
+function providerFallbackLabel(p) {
+  const v = String(p || "").toLowerCase();
+  if (v === "mercadopago" || v === "mp") return "Mercado Pago";
+  if (v === "transfer" || v === "transferencia") return "Transferencia";
+  if (v === "cash" || v === "efectivo") return "Efectivo";
+  if (v === "seller") return "Acordar con vendedor";
+  if (v === "credit_sjt") return "Crédito San Juan Tecnología";
+  if (v === "other" || v === "otro") return "Otro";
+  return p || "—";
+}
+
+function paymentSummaryLine(item) {
+  // listOrders trae payment_provider/payment_status (según tu controller)
+  const prov = providerFallbackLabel(item.payment_provider || item.provider);
+  const st = paymentStatusLabel(item.payment_status || item.order_payment_status);
+  return `Pago: ${prov} · ${st}`;
+}
+
+function isOrderPaid(orderRow) {
+  // Preferimos el estado del pedido payment_status si vino
+  const ps = String(orderRow?.payment_status || orderRow?.order_payment_status || "").toLowerCase();
+  if (ps === "paid") return true;
+
+  // fallback: por provider/status
+  const prov = String(orderRow?.payment_provider || "").toLowerCase();
+  const st = String(orderRow?.payment_status || "").toLowerCase();
+  if (prov === "mercadopago" || prov === "mp") {
+    return ["approved", "paid", "accredited", "success"].includes(st);
+  }
+  return false;
+}
+
+// ======= payment method “bonito” desde backend (ecom_payment_methods join) =======
+function pickAny(p, keys) {
+  for (const k of keys) {
+    if (p && p[k] !== undefined && p[k] !== null && String(p[k]).trim() !== "") return p[k];
+  }
+  return null;
+}
+function paymentMethodTitle(p) {
+  const t = pickAny(p, ["method_title", "payment_method_title", "pm_title", "title"]);
+  if (t) return String(t);
+  return providerFallbackLabel(p?.provider);
+}
+function paymentMethodDesc(p) {
+  const d = pickAny(p, ["method_description", "payment_method_description", "pm_description", "description"]);
+  return d ? String(d) : null;
+}
+function paymentMethodBadgeText(p) {
+  const t = pickAny(p, ["method_badge_text", "payment_method_badge_text", "pm_badge_text", "badge_text"]);
+  return t ? String(t) : null;
+}
+function paymentMethodBadgeVariant(p) {
+  const v = pickAny(p, ["method_badge_variant", "payment_method_badge_variant", "pm_badge_variant", "badge_variant"]);
+  return v ? String(v) : null;
+}
+function badgeColor(variant) {
+  const v = String(variant || "").toLowerCase();
+  if (v === "primary") return "primary";
+  if (v === "info") return "info";
+  if (v === "warning") return "warning";
+  if (v === "success") return "success";
+  return "grey";
+}
+function paymentMethodIcon(p) {
+  const ic = pickAny(p, ["method_icon", "payment_method_icon", "pm_icon", "icon"]);
+  // Vuetify v-icon con MDI: debe ser string tipo "mdi-bank-outline"
+  return ic ? String(ic) : null;
+}
+function flagFromPayment(p, key) {
+  const v = pickAny(p, [key, `method_${key}`, `payment_method_${key}`, `pm_${key}`]);
+  if (v === null) return null;
+  const n = Number(v);
+  if (Number.isFinite(n)) return n === 1;
+  return Boolean(v);
+}
+function canCreateMpLink(p) {
+  const prov = String(p?.provider || "").toLowerCase();
+  const rr = flagFromPayment(p, "requires_redirect");
+  if (rr === true) return true;
+  return prov === "mercadopago" || prov === "mp";
+}
+function canUploadProof(p) {
+  const prov = String(p?.provider || "").toLowerCase();
+  const ap = flagFromPayment(p, "allows_proof_upload");
+  if (ap === true) return true;
+  return prov === "transfer" || prov === "transferencia";
+}
+function canReviewTransfer(p) {
+  // mismo criterio que upload (es transferencia manual)
+  return canUploadProof(p);
+}
+
+// payload helpers
 function parsePayload(p) {
-  // puede venir como objeto o string
   const raw = p?.external_payload;
   if (!raw) return null;
   if (typeof raw === "object") return raw;
@@ -627,19 +894,13 @@ function parsePayload(p) {
     return null;
   }
 }
-
-function isMp(p) {
-  const prov = String(p?.provider || "").toLowerCase();
-  return prov === "mercadopago" || prov === "mp";
-}
-function isTransfer(p) {
-  const prov = String(p?.provider || "").toLowerCase();
-  return prov === "transfer" || prov === "transferencia";
-}
-
 function mpInitPointFromPayment(p) {
+  // si tu backend ya guarda init_point en un campo, preferilo
+  const direct = pickAny(p, ["mp_init_point", "init_point"]);
+  if (direct) return String(direct);
+
   const pl = parsePayload(p);
-  return pl?.mp_preference?.init_point || pl?.mp_payment?.transaction_details?.external_resource_url || null;
+  return pl?.mp_preference?.init_point || pl?.mp?.init_point || null;
 }
 function proofUrlFromPayment(p) {
   if (p?.proof_url) return p.proof_url;
@@ -800,9 +1061,17 @@ async function reviewTransfer(p, action) {
   payAction.value = { loading: true, paymentId: p.id, type: action };
 
   try {
-    const note = window.prompt(action === "approve" ? "Nota (opcional) para aprobar:" : "Motivo/nota (recomendado):", "") || "";
+    const note =
+      window.prompt(action === "approve" ? "Nota (opcional) para aprobar:" : "Motivo/nota (recomendado):", "") || "";
+
+    // Si tu backend usa /review (POST) como en el controller nuevo que te pasé antes:
+    // POST /api/v1/admin/shop/payments/:paymentId/review
     await http.post(`/admin/shop/payments/${p.id}/review`, { action, note });
-    snack.value = { show: true, text: action === "approve" ? "Transferencia aprobada ✅" : "Transferencia rechazada ✅" };
+
+    snack.value = {
+      show: true,
+      text: action === "approve" ? "Transferencia aprobada ✅" : "Transferencia rechazada ✅",
+    };
     await refreshDetail();
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || "No se pudo actualizar." };
@@ -820,7 +1089,7 @@ onMounted(async () => {
 <style scoped>
 .filters {
   display: grid;
-  grid-template-columns: 1.3fr 0.8fr 0.7fr 0.8fr auto;
+  grid-template-columns: 1.3fr 0.9fr 0.9fr 0.8fr auto;
   gap: 12px;
   align-items: center;
 }
@@ -861,7 +1130,7 @@ onMounted(async () => {
 .payline {
   margin-top: 4px;
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .right {
@@ -895,5 +1164,13 @@ onMounted(async () => {
 .box-title {
   font-weight: 900;
   margin-bottom: 6px;
+}
+
+.jsonbox {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  opacity: 0.9;
 }
 </style>

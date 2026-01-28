@@ -1,8 +1,9 @@
 <!-- src/modules/shop/components/checkout/CheckoutStepper.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO
-     - Step 1: Entrega + Comprador
-     - Step 2: Pago => USA CheckoutPaymentStep (cards + animaciones)
-     - Step 3: Revisión ✅ (productos + entrega + pago + totales) + Confirmar
+<!-- ✅ COPY-PASTE FINAL COMPLETO (DB-first + compat)
+     Garantiza:
+     - delivery.mode => 'pickup' | 'delivery'
+     - payment.method_code => 'mercadopago' | 'transfer' | 'cash' | 'credit_sjt' | 'seller'
+     - buyer => añade first_name/last_name derivados desde name
 -->
 
 <template>
@@ -25,15 +26,16 @@
             <div class="cs-title">Entrega</div>
             <div class="cs-sub">Elegí retiro en sucursal o envío a domicilio.</div>
 
-            <v-radio-group v-model="deliveryModel.mode" density="compact" class="mt-2">
+            <v-radio-group v-model="deliveryMode" density="compact" class="mt-2">
               <v-radio label="Retiro en sucursal" value="pickup" />
-              <v-radio label="Envío a domicilio" value="shipping" />
+              <!-- ✅ FIX: DB usa delivery (NO shipping) -->
+              <v-radio label="Envío a domicilio" value="delivery" />
             </v-radio-group>
 
             <v-divider class="my-4" />
 
             <!-- PICKUP -->
-            <div v-if="deliveryModel.mode === 'pickup'" class="cs-box">
+            <div v-if="deliveryMode === 'pickup'" class="cs-box">
               <div class="cs-box-title">Elegí sucursal</div>
               <div class="cs-box-sub">
                 Solo mostramos sucursales que pueden cumplir el carrito completo.
@@ -50,7 +52,7 @@
               </v-alert>
 
               <v-select
-                v-model="deliveryModel.pickup_branch_id"
+                v-model="deliveryPickupBranchId"
                 :items="pickupBranches"
                 item-title="name"
                 item-value="id"
@@ -61,19 +63,19 @@
                 :disabled="pickupBranches.length === 0"
               />
 
-              <div v-if="deliveryModel.pickup_branch_id" class="cs-hint">
+              <div v-if="deliveryPickupBranchId" class="cs-hint">
                 Retiro gratis. Te avisamos cuando esté listo.
               </div>
             </div>
 
-            <!-- SHIPPING -->
+            <!-- DELIVERY -->
             <div v-else class="cs-box">
               <div class="cs-box-title">Dirección de envío</div>
 
               <v-row class="mt-1">
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="deliveryModel.contact_name"
+                    v-model="deliveryContactName"
                     label="Nombre receptor"
                     variant="outlined"
                     density="comfortable"
@@ -81,7 +83,7 @@
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="deliveryModel.ship_phone"
+                    v-model="deliveryShipPhone"
                     label="Teléfono receptor"
                     variant="outlined"
                     density="comfortable"
@@ -90,7 +92,7 @@
 
                 <v-col cols="12">
                   <v-text-field
-                    v-model="deliveryModel.address1"
+                    v-model="deliveryAddress1"
                     label="Dirección (calle + número)"
                     variant="outlined"
                     density="comfortable"
@@ -99,7 +101,7 @@
 
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model="deliveryModel.zip"
+                    v-model="deliveryZip"
                     label="Código postal"
                     variant="outlined"
                     density="comfortable"
@@ -107,7 +109,7 @@
                 </v-col>
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model="deliveryModel.city"
+                    v-model="deliveryCity"
                     label="Ciudad"
                     variant="outlined"
                     density="comfortable"
@@ -115,7 +117,7 @@
                 </v-col>
                 <v-col cols="12" md="4">
                   <v-text-field
-                    v-model="deliveryModel.province"
+                    v-model="deliveryProvince"
                     label="Provincia"
                     variant="outlined"
                     density="comfortable"
@@ -151,7 +153,7 @@
               <v-row class="mt-1">
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="buyerModel.name"
+                    v-model="buyerName"
                     label="Nombre y apellido"
                     variant="outlined"
                     density="comfortable"
@@ -159,7 +161,7 @@
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="buyerModel.email"
+                    v-model="buyerEmail"
                     label="Email"
                     variant="outlined"
                     density="comfortable"
@@ -167,7 +169,7 @@
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="buyerModel.phone"
+                    v-model="buyerPhone"
                     label="Teléfono"
                     variant="outlined"
                     density="comfortable"
@@ -175,7 +177,7 @@
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
-                    v-model="buyerModel.doc_number"
+                    v-model="buyerDocNumber"
                     label="DNI / CUIT (opcional)"
                     variant="outlined"
                     density="comfortable"
@@ -201,7 +203,7 @@
           </v-stepper-window-item>
 
           <!-- =========================
-               STEP 2: PAGO (✅ NUEVO COMPONENTE)
+               STEP 2: PAGO
                ========================= -->
           <v-stepper-window-item :value="2">
             <CheckoutPaymentStep
@@ -218,7 +220,7 @@
           </v-stepper-window-item>
 
           <!-- =========================
-               STEP 3: REVISIÓN (✅ COMPLETA)
+               STEP 3: REVISIÓN
                ========================= -->
           <v-stepper-window-item :value="3">
             <div class="cs-title">Revisión</div>
@@ -300,16 +302,21 @@
                 <!-- PAGO -->
                 <div class="cs-box-title">Pago</div>
                 <div class="text-body-2">
+                  <!-- ✅ preferimos label que venga del padre (armado desde ecom_payment_methods) -->
                   Método: <b>{{ paymentLabel || paymentMethodFallback }}</b>
 
-                  <div v-if="payment?.method === 'TRANSFER' && payment?.reference" class="cs-muted mt-1">
+                  <!-- compat refs -->
+                  <div v-if="payment?.method_code === 'transfer' && payment?.reference" class="cs-muted mt-1">
                     Ref/Comp.: {{ payment.reference }}
                   </div>
-                  <div v-if="payment?.method === 'MERCADO_PAGO'" class="cs-muted mt-1">
+                  <div v-if="payment?.method_code === 'mercadopago'" class="cs-muted mt-1">
                     Se redirigirá a Mercado Pago al confirmar.
                   </div>
-                  <div v-if="payment?.method === 'AGREE'" class="cs-muted mt-1">
+                  <div v-if="payment?.method_code === 'seller'" class="cs-muted mt-1">
                     Se coordina el pago con el vendedor.
+                  </div>
+                  <div v-if="payment?.method_code === 'credit_sjt'" class="cs-muted mt-1">
+                    Reservás el pedido y finalizás el crédito en tienda.
                   </div>
                 </div>
 
@@ -368,7 +375,7 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import CheckoutPaymentStep from "@/modules/shop/components/checkout/CheckoutPaymentStep.vue";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
@@ -416,25 +423,192 @@ const localStep = computed({
   set: () => {}, // step lo maneja el padre
 });
 
-const buyerModel = computed({
-  get: () => props.buyer,
-  set: (v) => emit("update:buyer", v),
+// =========================
+// Normalizadores DB-first
+// =========================
+function toStr(v) {
+  return String(v ?? "").trim();
+}
+
+function splitName(full) {
+  const s = toStr(full).replace(/\s+/g, " ").trim();
+  if (!s) return { first_name: "", last_name: "" };
+  const parts = s.split(" ");
+  if (parts.length === 1) return { first_name: parts[0], last_name: "" };
+  return { first_name: parts[0], last_name: parts.slice(1).join(" ") };
+}
+
+function normalizeDelivery(d) {
+  const x = { ...(d || {}) };
+
+  // compat: shipping -> delivery
+  const m = toStr(x.mode).toLowerCase();
+  if (m === "shipping") x.mode = "delivery";
+  if (m !== "pickup" && m !== "delivery") x.mode = "pickup";
+
+  return x;
+}
+
+function normalizePayment(p) {
+  const x = { ...(p || {}) };
+
+  // ✅ Nuevo: method_code DB-first
+  let code = toStr(x.method_code).toLowerCase();
+
+  // compat: viejos enums
+  const legacy = toStr(x.method).toUpperCase();
+  if (!code) {
+    if (legacy === "MERCADO_PAGO") code = "mercadopago";
+    else if (legacy === "TRANSFER") code = "transfer";
+    else if (legacy === "CASH") code = "cash";
+    else if (legacy === "AGREE") code = "seller";
+    else if (legacy === "CREDIT_SJT") code = "credit_sjt";
+  }
+
+  // compat: provider suelto
+  const prov = toStr(x.provider).toLowerCase();
+  if (!code && prov) code = prov;
+
+  // whitelist final
+  const allowed = new Set(["mercadopago", "transfer", "cash", "credit_sjt", "seller"]);
+  if (!allowed.has(code)) code = "";
+
+  x.method_code = code;
+
+  return x;
+}
+
+function normalizeBuyer(b) {
+  const x = { ...(b || {}) };
+  const nm = toStr(x.name);
+
+  // deriva first/last
+  const { first_name, last_name } = splitName(nm);
+  if (!toStr(x.first_name)) x.first_name = first_name;
+  if (!toStr(x.last_name)) x.last_name = last_name;
+
+  // normaliza email a lower
+  if (x.email) x.email = toStr(x.email).toLowerCase();
+
+  return x;
+}
+
+// =========================
+// ✅ FIX CRÍTICO: v-model por campo (evita que se vacíen inputs)
+// =========================
+function setBuyerField(key, val) {
+  const next = normalizeBuyer({ ...(props.buyer || {}), [key]: val });
+  emit("update:buyer", next);
+}
+function setDeliveryField(key, val) {
+  const next = normalizeDelivery({ ...(props.delivery || {}), [key]: val });
+  emit("update:delivery", next);
+}
+
+const buyerName = computed({
+  get: () => toStr(props.buyer?.name),
+  set: (v) => setBuyerField("name", v),
+});
+const buyerEmail = computed({
+  get: () => toStr(props.buyer?.email),
+  set: (v) => setBuyerField("email", v),
+});
+const buyerPhone = computed({
+  get: () => toStr(props.buyer?.phone),
+  set: (v) => setBuyerField("phone", v),
+});
+const buyerDocNumber = computed({
+  get: () => toStr(props.buyer?.doc_number),
+  set: (v) => setBuyerField("doc_number", v),
 });
 
-const deliveryModel = computed({
-  get: () => props.delivery,
-  set: (v) => emit("update:delivery", v),
+const deliveryMode = computed({
+  get: () => {
+    const m = toStr(props.delivery?.mode).toLowerCase();
+    if (m === "shipping") return "delivery";
+    if (m !== "pickup" && m !== "delivery") return "pickup";
+    return m;
+  },
+  set: (v) => setDeliveryField("mode", v),
 });
 
+const deliveryPickupBranchId = computed({
+  get: () => props.delivery?.pickup_branch_id ?? null,
+  set: (v) => setDeliveryField("pickup_branch_id", v),
+});
+
+const deliveryContactName = computed({
+  get: () => toStr(props.delivery?.contact_name),
+  set: (v) => setDeliveryField("contact_name", v),
+});
+const deliveryShipPhone = computed({
+  get: () => toStr(props.delivery?.ship_phone),
+  set: (v) => setDeliveryField("ship_phone", v),
+});
+const deliveryAddress1 = computed({
+  get: () => toStr(props.delivery?.address1),
+  set: (v) => setDeliveryField("address1", v),
+});
+const deliveryZip = computed({
+  get: () => toStr(props.delivery?.zip),
+  set: (v) => setDeliveryField("zip", v),
+});
+const deliveryCity = computed({
+  get: () => toStr(props.delivery?.city),
+  set: (v) => setDeliveryField("city", v),
+});
+const deliveryProvince = computed({
+  get: () => toStr(props.delivery?.province),
+  set: (v) => setDeliveryField("province", v),
+});
+
+// =========================
+// payment v-model (objeto completo) OK
+// =========================
 const paymentModel = computed({
-  get: () => props.payment,
-  set: (v) => emit("update:payment", v),
+  get: () => normalizePayment(props.payment),
+  set: (v) => emit("update:payment", normalizePayment(v)),
 });
 
-/* =========================
-   REVISIÓN: items + totales
-   ========================= */
+// ✅ si el padre todavía manda shipping/method legacy, lo corregimos apenas monta/cambia
+watch(
+  () => props.delivery,
+  (d) => {
+    const nd = normalizeDelivery(d);
+    if (toStr(nd?.mode) !== toStr(d?.mode)) emit("update:delivery", nd);
+  },
+  { deep: true, immediate: true }
+);
 
+watch(
+  () => props.payment,
+  (p) => {
+    const np = normalizePayment(p);
+    if (toStr(np?.method_code) !== toStr(p?.method_code) || toStr(np?.method) !== toStr(p?.method)) {
+      emit("update:payment", np);
+    }
+  },
+  { deep: true, immediate: true }
+);
+
+watch(
+  () => props.buyer,
+  (b) => {
+    const nb = normalizeBuyer(b);
+    if (
+      toStr(nb?.first_name) !== toStr(b?.first_name) ||
+      toStr(nb?.last_name) !== toStr(b?.last_name) ||
+      toStr(nb?.email) !== toStr(b?.email)
+    ) {
+      emit("update:buyer", nb);
+    }
+  },
+  { deep: true, immediate: true }
+);
+
+// =========================
+// Revisión: items + totales
+// =========================
 const cartItems = computed(() => (Array.isArray(cart.items) ? cart.items : []));
 
 function toNum(v, d = 0) {
@@ -447,7 +621,6 @@ function itKey(it) {
 }
 
 function unitPrice(it) {
-  // Prioridad: descuento -> lista -> price -> unit_price
   const p =
     toNum(it.price_discount, NaN) ||
     toNum(it.price_list, NaN) ||
@@ -480,13 +653,20 @@ const pickupBranchName = computed(() => {
 });
 
 const paymentMethodFallback = computed(() => {
-  const m = props.payment?.method;
+  const code = toStr(props.payment?.method_code).toLowerCase();
+
+  if (code === "mercadopago") return "Mercado Pago";
+  if (code === "transfer") return "Transferencia";
+  if (code === "cash") return "Efectivo";
+  if (code === "credit_sjt") return "Crédito San Juan Tecnología";
+  if (code === "seller") return "Acordar pago con el vendedor";
+
+  const m = toStr(props.payment?.method).toUpperCase();
   if (m === "TRANSFER") return "Transferencia";
   if (m === "MERCADO_PAGO") return "Mercado Pago";
   if (m === "CASH") return "Efectivo";
-  if (m === "CARD") return "Tarjeta";
-  if (m === "QR") return "QR";
   if (m === "AGREE") return "A coordinar";
+
   return "—";
 });
 
@@ -499,7 +679,6 @@ function fmtMoney(v) {
 /* =========================
    CONTENEDOR GENERAL
    ========================= */
-
 .cs-card {
   border-radius: 12px;
   border: none !important;
@@ -509,18 +688,15 @@ function fmtMoney(v) {
 /* =========================
    TITULOS Y TEXTOS
    ========================= */
-
 .cs-title {
   font-weight: 900;
   font-size: 18px;
 }
-
 .cs-sub {
   margin-top: 2px;
   color: #737373;
   font-size: 13px;
 }
-
 .cs-muted {
   color: #737373;
   font-size: 12.5px;
@@ -529,7 +705,6 @@ function fmtMoney(v) {
 /* =========================
    CAJAS DE CONTENIDO
    ========================= */
-
 .cs-box {
   border: 1px solid #e6e6e6;
   background: #fff;
@@ -537,18 +712,15 @@ function fmtMoney(v) {
   padding: 12px;
   margin-top: 10px;
 }
-
 .cs-box-title {
   font-weight: 900;
   font-size: 14px;
 }
-
 .cs-box-sub {
   color: #737373;
   font-size: 12.5px;
   margin-top: 2px;
 }
-
 .cs-hint {
   margin-top: 8px;
   color: #737373;
@@ -558,7 +730,6 @@ function fmtMoney(v) {
 /* =========================
    ACCIONES
    ========================= */
-
 .cs-actions {
   display: flex;
   justify-content: space-between;
@@ -566,7 +737,6 @@ function fmtMoney(v) {
   margin-top: 16px;
   align-items: center;
 }
-
 .cs-cta {
   border-radius: 10px;
   text-transform: none;
@@ -574,37 +744,30 @@ function fmtMoney(v) {
 }
 
 /* =========================
-   🔥 FIX BORDES FANTASMA STEPPER
+   FIX BORDES FANTASMA STEPPER
    ========================= */
-
 :deep(.v-stepper) {
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
 }
-
 :deep(.v-stepper-header) {
   background: transparent !important;
   box-shadow: none !important;
   border-bottom: none !important;
 }
-
 :deep(.v-stepper-window) {
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
 }
-
 :deep(.v-stepper-item) {
   background: transparent !important;
 }
-
 :deep(.v-stepper__content),
 :deep(.v-stepper-window-item) {
   border: none !important;
 }
-
-/* Divider entre pasos (línea fina, limpia) */
 :deep(.v-stepper-header .v-divider) {
   border-color: #e6e6e6;
   opacity: 0.6;
@@ -613,18 +776,15 @@ function fmtMoney(v) {
 /* =========================
    REVISIÓN: LISTA + TOTALES
    ========================= */
-
 .cs-review-card {
   border: 1px solid #e6e6e6 !important;
   box-shadow: none !important;
 }
-
 .cs-lines {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
 .cs-line {
   display: flex;
   justify-content: space-between;
@@ -632,51 +792,42 @@ function fmtMoney(v) {
   padding: 10px 0;
   border-bottom: 1px dashed #eaeaea;
 }
-
 .cs-line:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
-
 .cs-line-left {
   min-width: 0;
 }
-
 .cs-line-title {
   font-weight: 900;
   font-size: 13.5px;
   line-height: 1.15;
   word-break: break-word;
 }
-
 .cs-line-right {
   text-align: right;
   flex: 0 0 auto;
 }
-
 .cs-line-price {
   font-weight: 900;
 }
-
 .cs-line-sub {
   color: #737373;
   font-size: 12.5px;
   margin-top: 2px;
 }
-
 .cs-totals {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .cs-total-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
 }
-
 .cs-grand {
   margin-top: 6px;
   padding-top: 10px;
@@ -688,18 +839,15 @@ function fmtMoney(v) {
 /* =========================
    MOBILE
    ========================= */
-
 @media (max-width: 600px) {
   .cs-actions {
     flex-direction: column;
     align-items: stretch;
   }
-
   .cs-line {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .cs-line-right {
     text-align: left;
   }

@@ -305,44 +305,57 @@ const canGoReview = computed(() => {
 const canSubmit = computed(() => canGoReview.value);
 
 // -------------------------
-// Submit
-function normalizePayMethodForBackend() {
-  const m = String(payment.value.method || "").toUpperCase();
-  if (m === "MERCADO_PAGO") return "MERCADOPAGO";
-  if (m === "TRANSFER") return "TRANSFER";
-  if (m === "CASH") return "CASH";
-  if (m === "CREDIT_SJT") return "CREDIT_SJT";
-  return "OTHER";
-}
-
+// Submit (✅ ALINEADO con ecomCheckout.controller.js DB-first)
 function buildBackendPayload() {
   const isPickup = delivery.value.mode === "pickup";
 
-  return {
-    fulfillment_type: isPickup ? "pickup" : "delivery",
-    pickup_branch_id: isPickup ? Number(delivery.value.pickup_branch_id || 0) || null : null,
+  // ✅ branch_id SIEMPRE requerido por el backend
+  // - pickup: branch_id = pickup_branch_id
+  // - delivery: intentamos sacar un branch actual del store/localStorage (fallback 0 si no existe)
+  const pickup_branch_id = isPickup ? Number(delivery.value.pickup_branch_id || 0) || 0 : 0;
 
-    contact: {
-      email: String(buyer.value.email || "").trim(),
+  const branch_id = isPickup
+    ? pickup_branch_id
+    : Number(cart?.branch_id || 0) ||
+      Number(cart?.selectedBranchId || 0) ||
+      Number(localStorage.getItem("shop_branch_id") || 0) ||
+      0;
+
+  // ✅ payment.method_code esperado por backend: cash|transfer|mercadopago|credit_sjt|seller
+  const m = String(payment.value.method || "").toUpperCase();
+  let method_code = "";
+  if (m === "MERCADO_PAGO") method_code = "mercadopago";
+  else if (m === "TRANSFER") method_code = "transfer";
+  else if (m === "CASH") method_code = "cash";
+  else if (m === "CREDIT_SJT") method_code = "credit_sjt";
+
+  return {
+    branch_id,
+    fulfillment_type: isPickup ? "pickup" : "delivery",
+    pickup_branch_id: isPickup ? pickup_branch_id : null,
+
+    buyer: {
       name: String(buyer.value.name || "").trim(),
+      email: String(buyer.value.email || "").trim().toLowerCase(),
       phone: String(buyer.value.phone || "").trim(),
-      doc_number: String(buyer.value.doc_number || "").trim() || null,
+      doc_number: String(buyer.value.doc_number || "").trim() || undefined,
     },
 
     shipping: !isPickup
       ? {
-          address1: String(delivery.value.address1 || "").trim() || null,
-          address2: null,
-          city: String(delivery.value.city || "").trim() || null,
-          province: String(delivery.value.province || "").trim() || null,
-          zip: String(delivery.value.zip || "").trim() || null,
-          name: String(delivery.value.contact_name || buyer.value.name || "").trim() || null,
-          phone: String(delivery.value.ship_phone || buyer.value.phone || "").trim() || null,
+          contact_name: String(delivery.value.contact_name || buyer.value.name || "").trim() || undefined,
+          ship_phone: String(delivery.value.ship_phone || buyer.value.phone || "").trim() || undefined,
+          address1: String(delivery.value.address1 || "").trim() || undefined,
+          address2: undefined,
+          city: String(delivery.value.city || "").trim() || undefined,
+          province: String(delivery.value.province || "").trim() || undefined,
+          zip: String(delivery.value.zip || "").trim() || undefined,
+          notes: String(delivery.value.notes || "").trim() || undefined,
+          amount: Number(shippingAmount.value || 0) || 0,
         }
       : null,
 
     shipping_total: !isPickup ? Number(shippingAmount.value || 0) : 0,
-    notes: String(delivery.value.notes || "").trim() || null,
 
     items: (items.value || []).map((it) => ({
       product_id: Number(it.product_id || it.id || 0),
@@ -350,9 +363,8 @@ function buildBackendPayload() {
     })),
 
     payment: {
-      method: normalizePayMethodForBackend(),
-      reference: String(payment.value.reference || "").trim() || null,
-      note: String(payment.value.note || "").trim() || null,
+      method_code,
+      reference: String(payment.value.reference || "").trim() || undefined,
     },
   };
 }
@@ -402,7 +414,7 @@ async function submitOrder() {
     const receipt = {
       created_at: data?.created_at || new Date().toISOString(),
       order_id: Number(data?.order_id || data?.id || data?.order?.id || 0) || null,
-      order_code: String(data?.code || data?.order_code || data?.order?.code || "").trim() || null,
+      order_code: String(data?.code || data?.order_code || data?.order?.code || data?.order?.public_code || "").trim() || null,
       payment_method_label: paymentLabel.value,
       payment_method: String(payment.value.method || ""),
       fulfillment_type: String(delivery.value.mode || "pickup"),

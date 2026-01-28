@@ -1,10 +1,11 @@
 <!-- src/modules/shop/pages/ShopCheckoutSuccess.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
-     - Comprobante REAL en PDF (jsPDF) ✅
-     - Mobile homogéneo ✅
-     - Botón "Compartir compra" ✅
-     - Botón WhatsApp ✅
-     - ✅ NUEVO: Ubicación Google Maps (botón + embed)
+     - PDF REAL (jsPDF) ✅
+     - Compartir compra (Web Share + fallback copiar) ✅
+     - WhatsApp ✅
+     - ✅ Maps: card limpia + botón con icono + mini preview (NO feo / no gigante)
+     - ✅ FIX: preview producto NO se estira en desktop
+     REQUIERE: npm i jspdf
 -->
 
 <template>
@@ -55,10 +56,7 @@
               <div class="sc-v">{{ receipt.order_id || "—" }}</div>
             </div>
 
-            <div class="sc-kv">
-              <div class="sc-k">Código</div>
-              <div class="sc-v">{{ receipt.code || "—" }}</div>
-            </div>
+         
 
             <div class="sc-kv">
               <div class="sc-k">Fecha</div>
@@ -97,51 +95,67 @@
               </div>
             </div>
 
-            <v-alert v-if="isPickup" type="info" variant="tonal" class="rounded-lg mt-3">
-              <div class="sc-alert-title">Dirección de retiro (Rivadavia)</div>
-              <div class="sc-addr">
-                Av. Ignacio de la Roza y Calle Los Jesuistas – Local 1<br />
-                Barrio CESAP, Dpto. Rivadavia<br />
-                Frente al supermercado Átomo
+            <!-- ✅ PICKUP -->
+            <div v-if="isPickup" class="sc-pickup">
+              <div class="sc-pickup-head">
+                <v-icon class="sc-pickup-ico">mdi-map-marker</v-icon>
+                <div class="sc-pickup-text">
+                  <div class="sc-pickup-title">Dirección de retiro (Rivadavia)</div>
+                  <div class="sc-addr">
+                    Av. Ignacio de la Roza y Calle Los Jesuistas – Local 1<br />
+                    Barrio CESAP, Dpto. Rivadavia<br />
+                    Frente al supermercado Átomo
+                  </div>
+                </div>
               </div>
 
-              <!-- ✅ MAPS -->
-              <div class="sc-map-actions">
+              <!-- ✅ CTA mapa: intuitivo, limpio -->
+              <div class="sc-map-cta">
                 <v-btn
                   class="sc-map-btn"
                   color="primary"
                   variant="tonal"
-                  prepend-icon="mdi-map-marker"
                   :href="pickupMapLink"
                   target="_blank"
                   rel="noopener"
                 >
-                  Ver en Google Maps
+                  <v-icon start>mdi-map-outline</v-icon>
+                  Ver ubicación
+                </v-btn>
+
+                <v-btn
+                  class="sc-map-icon"
+                  color="primary"
+                  variant="text"
+                  :href="pickupMapLink"
+                  target="_blank"
+                  rel="noopener"
+                  icon
+                >
+                  <v-icon>mdi-open-in-new</v-icon>
                 </v-btn>
               </div>
 
-              <!-- ✅ Embed (opcional) -->
-              <div class="sc-map-embed">
+              <!-- ✅ Mini preview (NO gigante / NO feo).
+                   Es clickeable => abre maps. -->
+              <a class="sc-map-preview" :href="pickupMapLink" target="_blank" rel="noopener">
                 <iframe
                   :src="pickupMapEmbedSrc"
                   loading="lazy"
                   referrerpolicy="no-referrer-when-downgrade"
-                  allowfullscreen
-                  title="Ubicación sucursal Rivadavia"
-                />
-              </div>
-            </v-alert>
+                  title="Mapa sucursal Rivadavia"
+                />              
+              </a>
 
+           
+            </div>
+
+            <!-- ✅ SHIPPING -->
             <v-alert v-else type="info" variant="tonal" class="rounded-lg mt-3">
               <div class="sc-alert-title">Dirección de envío</div>
-              <div class="sc-addr">
-                {{ receipt.shipping_address || "—" }}
-              </div>
+              <div class="sc-addr">{{ receipt.shipping_address || "—" }}</div>
             </v-alert>
-
-            <div class="sc-mini mt-2">
-              Te avisamos cuando esté listo / coordinamos la entrega.
-            </div>
+         
           </div>
         </div>
 
@@ -156,13 +170,27 @@
           <div v-else class="sc-items">
             <div v-for="(it, idx) in safeItems" :key="idx" class="sc-item">
               <div class="sc-item-left">
-                <v-img
-                  :src="it.image_url || it.image || it.cover_url || ''"
-                  width="44"
-                  height="44"
-                  cover
-                  class="rounded"
-                />
+                <!-- ✅ FIX: imagen NO se estira (desktop/mobile).
+                     Si no hay imagen, mostramos placeholder -->
+                <div class="sc-thumb">
+                  <v-img
+                    :src="it.image_url || it.image || it.cover_url || ''"
+                    cover
+                    class="sc-thumb-img"
+                  >
+                    <template #error>
+                      <div class="sc-thumb-ph">
+                        <v-icon size="18">mdi-image-off-outline</v-icon>
+                      </div>
+                    </template>
+                    <template #placeholder>
+                      <div class="sc-thumb-ph">
+                        <v-progress-circular indeterminate size="18" width="2" />
+                      </div>
+                    </template>
+                  </v-img>
+                </div>
+
                 <div class="sc-item-info">
                   <div class="sc-item-name">
                     <span class="sc-qty">{{ toNum(it.qty, 0) }}×</span>
@@ -224,17 +252,6 @@
           </v-btn>
         </div>
 
-        <!-- AVISO CREDITO -->
-        <v-alert
-          v-if="receipt.payment_method === 'CREDIT_SJT'"
-          type="warning"
-          variant="tonal"
-          class="rounded-lg mt-4"
-        >
-          <div class="sc-alert-title">Crédito San Juan Tecnología</div>
-          Presentate en tienda con <b>DNI</b>, <b>comprobante de ingresos</b> y un <b>servicio a tu nombre</b>.
-        </v-alert>
-
         <div class="sc-foot">
           <div class="sc-foot-note">
             Si no ves el pedido en tu historial, guardá el código y contactanos.
@@ -254,14 +271,10 @@ const router = useRouter();
 
 const pdfLoading = ref(false);
 
-/** ✅ Maps link (el que pasaste) */
+// ✅ tu link
 const pickupMapLink = "https://maps.app.goo.gl/Mm7Usiuk75bm9xym9";
 
-/**
- * ✅ Embed: ideal con link de "Compartir > Insertar un mapa" de Google Maps
- * Como acá nos diste un maps.app.goo.gl, usamos un embed por "search query" (robusto sin API key).
- * Si querés el embed 100% exacto del pin, después lo reemplazás por el src oficial de "Insertar mapa".
- */
+// ✅ embed liviano (sin API key). Si querés 100% exacto del pin: reemplazá por el src de "Insertar un mapa".
 const pickupMapEmbedSrc = computed(() => {
   const q = encodeURIComponent("Av. Ignacio de la Roza y Los Jesuistas, Rivadavia, San Juan, Argentina");
   return `https://www.google.com/maps?q=${q}&output=embed`;
@@ -397,7 +410,6 @@ async function sharePurchase() {
   const text = receipt.value.order_id
     ? `Pedido #${receipt.value.order_id}${receipt.value.code ? ` (código ${receipt.value.code})` : ""}`
     : "Compra confirmada";
-
   const url = shareLink.value;
 
   try {
@@ -424,7 +436,6 @@ async function downloadPdf() {
     const jsPDF = mod.jsPDF || mod.default;
 
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 14;
@@ -499,7 +510,6 @@ async function downloadPdf() {
     if (isPickup.value) {
       kv("Tipo", "Retiro en sucursal");
       kv("Sucursal", receipt.value.pickup_branch_name || "—");
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       const addrLines = wrapText(
@@ -609,7 +619,7 @@ async function downloadPdf() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const foot = wrapText(
-      `Link de compra: ${shareLink.value}\nSi necesitás ayuda, escribinos por WhatsApp.\nMapa: ${pickupMapLink}`,
+      `Link de compra: ${shareLink.value}\nMapa: ${pickupMapLink}\nSi necesitás ayuda, escribinos por WhatsApp.`,
       pageW - margin * 2
     );
     doc.text(foot, margin, pageH - margin);
@@ -633,10 +643,7 @@ function hydrateFromQueryOrStorage() {
   const stored = raw ? safeParseJSON(raw) : null;
 
   const src = stored || {};
-  const merged = {
-    ...receipt.value,
-    ...src,
-  };
+  const merged = { ...receipt.value, ...src };
 
   if (qOrderId) merged.order_id = qOrderId;
   if (qCode) merged.code = qCode;
@@ -659,6 +666,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ✅ Homogeneidad tipográfica */
 .sc-shell,
 .sc-card,
 .sc-panel,
@@ -785,47 +793,59 @@ onMounted(() => {
   word-break: break-word;
 }
 
-.sc-alert-title {
-  font-weight: 900;
-  font-size: 12.8px;
-  margin-bottom: 4px;
-}
-
 .sc-mini {
   color: #6b7280;
   font-size: 12px;
   word-break: break-word;
 }
 
+.sc-alert-title {
+  font-weight: 900;
+  font-size: 12.8px;
+  margin-bottom: 4px;
+}
+
+/* =========================
+   ✅ MAPS BLOQUE (más limpio)
+   ========================= */
+.sc-pickup {
+  margin-top: 10px;
+}
+
+.sc-pickup-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.15);
+}
+
+.sc-pickup-ico {
+  margin-top: 2px;
+  color: #0284c7;
+}
+
+.sc-pickup-title {
+  font-weight: 900;
+  font-size: 12.8px;
+  color: #0f172a;
+}
+
 .sc-addr {
   line-height: 1.35;
   font-size: 12.5px;
-  color: #111827;
+  color: #0f172a;
+  margin-top: 4px;
   word-break: break-word;
 }
 
-.sc-empty {
-  color: #6b7280;
-  font-size: 12.5px;
-}
-
-.sc-actions-row {
+.sc-map-cta {
+  margin-top: 10px;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
-  margin-top: 10px;
-}
-
-.sc-share {
-  text-transform: none;
-  font-weight: 900;
-  border-radius: 10px;
-}
-
-/* ✅ Maps */
-.sc-map-actions {
-  margin-top: 10px;
 }
 
 .sc-map-btn {
@@ -834,21 +854,48 @@ onMounted(() => {
   border-radius: 10px;
 }
 
-.sc-map-embed {
+.sc-map-icon {
+  border-radius: 10px;
+}
+
+/* ✅ mini preview clickeable */
+.sc-map-preview {
   margin-top: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+  display: block;
   border-radius: 12px;
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: #fff;
+  text-decoration: none;
 }
 
-.sc-map-embed iframe {
+.sc-map-preview iframe {
   width: 100%;
-  height: 220px;
+  height: 170px;
   border: 0;
   display: block;
+  pointer-events: none; /* ✅ el click lo maneja el <a> */
 }
 
+.sc-map-overlay {
+  position: absolute;
+  inset: auto 10px 10px 10px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+/* =========================
+   ✅ PRODUCTOS (fix estirado)
+   ========================= */
 .sc-items {
   display: grid;
   gap: 10px;
@@ -868,6 +915,30 @@ onMounted(() => {
   align-items: center;
   min-width: 0;
   flex: 1 1 auto;
+}
+
+/* ✅ thumb con tamaño fijo => nunca estira */
+.sc-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.sc-thumb-img {
+  width: 100%;
+  height: 100%;
+}
+
+.sc-thumb-ph {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .sc-item-info {
@@ -940,6 +1011,23 @@ onMounted(() => {
   text-align: right;
   white-space: nowrap;
   font-weight: 900;
+}
+
+/* =========================
+   SHARE / HELP
+   ========================= */
+.sc-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.sc-share {
+  text-transform: none;
+  font-weight: 900;
+  border-radius: 10px;
 }
 
 .sc-help {
@@ -1021,24 +1109,17 @@ onMounted(() => {
     padding: 7px 0;
   }
 
-  .sc-v {
-    font-weight: 900;
-  }
-
-  .sc-actions-row {
-    margin-top: 8px;
-  }
-
-  .sc-share {
-    width: 100%;
+  .sc-map-cta {
+    display: grid;
+    grid-template-columns: 1fr auto;
   }
 
   .sc-map-btn {
     width: 100%;
   }
 
-  .sc-map-embed iframe {
-    height: 200px;
+  .sc-map-preview iframe {
+    height: 160px;
   }
 
   .sc-help {
@@ -1050,6 +1131,10 @@ onMounted(() => {
   .sc-wa {
     width: 100%;
   }
+
+  .sc-share {
+    width: 100%;
+  }
 }
 
 @media (max-width: 360px) {
@@ -1059,8 +1144,8 @@ onMounted(() => {
   .sc-total {
     font-size: 14.5px;
   }
-  .sc-map-embed iframe {
-    height: 180px;
+  .sc-map-preview iframe {
+    height: 145px;
   }
 }
 </style>
