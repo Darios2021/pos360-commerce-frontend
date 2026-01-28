@@ -2,6 +2,9 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO
      - Checkout ML + Stepper (componentizado)
      - Summary SOLO DESKTOP (evita duplicado en mobile)
+     - ✅ Payload alineado con ecomCheckout.controller.js (DB-first)
+       Envía:
+         { branch_id, fulfillment_type, pickup_branch_id?, buyer, shipping?, payment{method_code}, items }
      - Submit: SIEMPRE navega a /shop/checkout/success si no hay redirect http(s)
 -->
 
@@ -39,10 +42,6 @@
             :can-submit="canSubmit"
             :submitting="submitting"
             :submit-error="submitError"
-            :items="items"
-            :subtotal="subtotal"
-            :shipping-amount="shippingAmount"
-            :total="totalWithShipping"
             @update:buyer="buyer = $event"
             @update:delivery="delivery = $event"
             @update:payment="payment = $event"
@@ -131,9 +130,9 @@ const buyerErrors = computed(() => {
 const buyerOk = computed(() => buyerErrors.value.length === 0);
 
 // -------------------------
-// Delivery
+// Delivery (✅ DB-first: pickup | delivery)
 let delivery = ref({
-  mode: "pickup", // pickup | shipping
+  mode: "pickup", // pickup | delivery
   pickup_branch_id: null,
 
   contact_name: "",
@@ -142,6 +141,7 @@ let delivery = ref({
   province: "San Juan",
   city: "San Juan",
   address1: "",
+  address2: "",
   notes: "",
 });
 
@@ -204,7 +204,7 @@ const selectedBranchName = computed(() => {
 const shippingQuote = ref({ status: "idle", amount: 0, eta: "" });
 
 const canQuoteShipping = computed(() => {
-  if (delivery.value.mode !== "shipping") return false;
+  if (delivery.value.mode !== "delivery") return false;
   return !!delivery.value.zip && !!delivery.value.province && !!delivery.value.city && !!delivery.value.address1;
 });
 
@@ -251,19 +251,20 @@ const transferInfo = ref({
   instructions: "",
 });
 
-// Métodos: MERCADO_PAGO | TRANSFER | CASH | CREDIT_SJT
+// ✅ DB-first: method_code (mercadopago | transfer | cash | credit_sjt | seller)
 let payment = ref({
-  method: "MERCADO_PAGO",
+  method_code: "mercadopago",
   reference: "",
-  note: "",
 });
 
+// Label para UI (y para receipt)
 const paymentLabel = computed(() => {
-  const m = payment.value.method;
-  if (m === "MERCADO_PAGO") return "Mercado Pago";
-  if (m === "TRANSFER") return "Transferencia";
-  if (m === "CASH") return "Efectivo";
-  if (m === "CREDIT_SJT") return "Crédito San Juan Tecnología";
+  const c = String(payment.value.method_code || "").toLowerCase();
+  if (c === "mercadopago") return "Mercado Pago";
+  if (c === "transfer") return "Transferencia";
+  if (c === "cash") return "Efectivo";
+  if (c === "credit_sjt") return "Crédito San Juan Tecnología";
+  if (c === "seller") return "Acordar pago con el vendedor";
   return "—";
 });
 
@@ -292,12 +293,13 @@ const canGoPayment = computed(() => buyerOk.value && deliveryOk.value);
 const canGoReview = computed(() => {
   if (!canGoPayment.value) return false;
 
-  const m = payment.value.method;
-  if (!m) return false;
-  if (m === "MERCADO_PAGO" && !mpEnabled.value) return false;
+  const c = String(payment.value.method_code || "").toLowerCase();
+  if (!c) return false;
 
-  // ✅ ya no existe "OTHER"
-  if (!["MERCADO_PAGO", "TRANSFER", "CASH", "CREDIT_SJT"].includes(m)) return false;
+  if (c === "mercadopago" && !mpEnabled.value) return false;
+
+  const allowed = new Set(["mercadopago", "transfer", "cash", "credit_sjt", "seller"]);
+  if (!allowed.has(c)) return false;
 
   return true;
 });
@@ -305,67 +307,67 @@ const canGoReview = computed(() => {
 const canSubmit = computed(() => canGoReview.value);
 
 // -------------------------
-// Submit (✅ ALINEADO con ecomCheckout.controller.js DB-first)
+// ✅ Branch_id (OBLIGATORIO para el controller)
+// Ajustá esto si ya tenés branch guardada en tu store.
+function getBranchId() {
+  const fromCart =
+    Number(cart?.branch_id || cart?.branchId || cart?.selected_branch_id || cart?.selectedBranchId || 0) || 0;
+
+  if (fromCart) return fromCart;
+
+  // fallback: localStorage (si lo usás)
+  try {
+    const ls = Number(localStorage.getItem("shop_branch_id") || 0) || 0;
+    if (ls) return ls;
+  } catch {}
+
+  // último recurso (tu shop suele usar branch 3)
+  return 3;
+}
+
 function buildBackendPayload() {
   const isPickup = delivery.value.mode === "pickup";
 
-  // ✅ branch_id SIEMPRE requerido por el backend
-  // - pickup: branch_id = pickup_branch_id
-  // - delivery: intentamos sacar un branch actual del store/localStorage (fallback 0 si no existe)
-  const pickup_branch_id = isPickup ? Number(delivery.value.pickup_branch_id || 0) || 0 : 0;
-
-  const branch_id = isPickup
-    ? pickup_branch_id
-    : Number(cart?.branch_id || 0) ||
-      Number(cart?.selectedBranchId || 0) ||
-      Number(localStorage.getItem("shop_branch_id") || 0) ||
-      0;
-
-  // ✅ payment.method_code esperado por backend: cash|transfer|mercadopago|credit_sjt|seller
-  const m = String(payment.value.method || "").toUpperCase();
-  let method_code = "";
-  if (m === "MERCADO_PAGO") method_code = "mercadopago";
-  else if (m === "TRANSFER") method_code = "transfer";
-  else if (m === "CASH") method_code = "cash";
-  else if (m === "CREDIT_SJT") method_code = "credit_sjt";
+  const branch_id = getBranchId();
 
   return {
     branch_id,
+
     fulfillment_type: isPickup ? "pickup" : "delivery",
-    pickup_branch_id: isPickup ? pickup_branch_id : null,
+    pickup_branch_id: isPickup ? Number(delivery.value.pickup_branch_id || 0) || null : null,
 
     buyer: {
       name: String(buyer.value.name || "").trim(),
-      email: String(buyer.value.email || "").trim().toLowerCase(),
+      email: String(buyer.value.email || "").trim(),
       phone: String(buyer.value.phone || "").trim(),
-      doc_number: String(buyer.value.doc_number || "").trim() || undefined,
+      doc_number: String(buyer.value.doc_number || "").trim() || null,
     },
 
     shipping: !isPickup
       ? {
-          contact_name: String(delivery.value.contact_name || buyer.value.name || "").trim() || undefined,
-          ship_phone: String(delivery.value.ship_phone || buyer.value.phone || "").trim() || undefined,
-          address1: String(delivery.value.address1 || "").trim() || undefined,
-          address2: undefined,
-          city: String(delivery.value.city || "").trim() || undefined,
-          province: String(delivery.value.province || "").trim() || undefined,
-          zip: String(delivery.value.zip || "").trim() || undefined,
-          notes: String(delivery.value.notes || "").trim() || undefined,
-          amount: Number(shippingAmount.value || 0) || 0,
+          contact_name: String(delivery.value.contact_name || buyer.value.name || "").trim() || null,
+          ship_phone: String(delivery.value.ship_phone || buyer.value.phone || "").trim() || null,
+          address1: String(delivery.value.address1 || "").trim() || null,
+          address2: String(delivery.value.address2 || "").trim() || null,
+          city: String(delivery.value.city || "").trim() || null,
+          province: String(delivery.value.province || "").trim() || null,
+          zip: String(delivery.value.zip || "").trim() || null,
+          notes: String(delivery.value.notes || "").trim() || null,
+          amount: Number(shippingAmount.value || 0) || 0, // compat para controller (shipping?.amount)
         }
       : null,
 
     shipping_total: !isPickup ? Number(shippingAmount.value || 0) : 0,
 
+    payment: {
+      method_code: String(payment.value.method_code || "").toLowerCase(),
+      reference: String(payment.value.reference || "").trim() || null,
+    },
+
     items: (items.value || []).map((it) => ({
       product_id: Number(it.product_id || it.id || 0),
       qty: Number(it.qty || 0),
     })),
-
-    payment: {
-      method_code,
-      reference: String(payment.value.reference || "").trim() || undefined,
-    },
   };
 }
 
@@ -373,6 +375,10 @@ function mapCheckoutErrorToHumanMessage(err) {
   const status = Number(err?.response?.status || err?.status || 0);
   const apiCode = String(err?.response?.data?.code || "").toUpperCase();
   const apiMsg = String(err?.response?.data?.message || "").trim();
+  const apiDetail = String(err?.response?.data?.detail || "").trim();
+
+  // ✅ si viene detalle SQL, mostrámelo (te sirve para arreglar la DB)
+  if (status >= 500 && apiDetail) return apiDetail;
 
   if (status === 409 && apiCode.includes("NO_STOCK")) return apiMsg || "No hay stock suficiente.";
   if (status === 400) return apiMsg || "Datos inválidos. Revisá el formulario.";
@@ -413,14 +419,20 @@ async function submitOrder() {
     // ✅ Guardar comprobante para success
     const receipt = {
       created_at: data?.created_at || new Date().toISOString(),
-      order_id: Number(data?.order_id || data?.id || data?.order?.id || 0) || null,
-      order_code: String(data?.code || data?.order_code || data?.order?.code || data?.order?.public_code || "").trim() || null,
-      payment_method_label: paymentLabel.value,
-      payment_method: String(payment.value.method || ""),
-      fulfillment_type: String(delivery.value.mode || "pickup"),
+      order_id: Number(data?.order?.id || data?.order_id || data?.id || 0) || null,
+      code: String(data?.order?.public_code || data?.public_code || data?.code || "").trim() || null,
+
+      payment_label: paymentLabel.value,
+      payment_method: String(payload?.payment?.method_code || ""),
+
+      fulfillment_type: String(payload?.fulfillment_type || "pickup"),
       pickup_branch_name: selectedBranchName.value || null,
-      shipping: delivery.value.mode === "shipping" ? { ...delivery.value } : null,
-      buyer: { ...buyer.value },
+
+      shipping_address:
+        payload.fulfillment_type === "delivery"
+          ? `${payload.shipping?.address1 || ""}, ${payload.shipping?.city || ""}, ${payload.shipping?.province || ""} (CP ${payload.shipping?.zip || ""})`
+          : null,
+
       items: (items.value || []).map((it) => ({
         product_id: Number(it.product_id || it.id || 0),
         name: it.name,
@@ -428,11 +440,10 @@ async function submitOrder() {
         unit_price: Number(unitPrice(it) || 0),
         image_url: it.image_url || it.image || it.cover_url || "",
       })),
-      totals: {
-        subtotal: Number(subtotal.value || 0),
-        shipping: Number(shippingAmount.value || 0),
-        total: Number(totalWithShipping.value || 0),
-      },
+
+      subtotal: Number(subtotal.value || 0),
+      shipping_total: Number(shippingAmount.value || 0),
+      total: Number(totalWithShipping.value || 0),
     };
 
     try {
@@ -465,7 +476,7 @@ watch(
 watch(
   () => ({ ...buyer.value }),
   () => {
-    if (delivery.value.mode !== "shipping") return;
+    if (delivery.value.mode !== "delivery") return;
     if (!delivery.value.contact_name) delivery.value.contact_name = buyer.value.name || "";
     if (!delivery.value.ship_phone) delivery.value.ship_phone = buyer.value.phone || "";
   },
@@ -487,12 +498,12 @@ onMounted(async () => {
     transferInfo.value = cfg?.transfer || transferInfo.value;
     mpEnabled.value = !!cfg?.mercadopago?.enabled;
 
-    if (!mpEnabled.value && payment.value.method === "MERCADO_PAGO") {
-      payment.value.method = "TRANSFER";
+    if (!mpEnabled.value && String(payment.value.method_code) === "mercadopago") {
+      payment.value.method_code = "transfer";
     }
   } catch (e) {
     mpEnabled.value = false;
-    if (payment.value.method === "MERCADO_PAGO") payment.value.method = "TRANSFER";
+    if (String(payment.value.method_code) === "mercadopago") payment.value.method_code = "transfer";
   }
 
   // 2) branches
@@ -508,7 +519,7 @@ onMounted(async () => {
   if (pickupBranches.value.length) {
     delivery.value.pickup_branch_id = pickupBranches.value[0].id;
   } else {
-    delivery.value.mode = "shipping";
+    delivery.value.mode = "delivery";
   }
 
   // defaults envío
