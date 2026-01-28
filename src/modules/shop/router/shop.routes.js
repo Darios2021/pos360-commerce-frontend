@@ -6,8 +6,11 @@ import ShopCategory from "@/modules/shop/pages/ShopCategory.vue";
 import ShopProduct from "@/modules/shop/pages/ShopProduct.vue";
 import ShopCart from "@/modules/shop/pages/ShopCart.vue";
 
-// ✅ NUEVO
+// ✅ Checkout
 import ShopCheckout from "@/modules/shop/pages/ShopCheckout.vue";
+
+// ✅ Comprobante / éxito de compra
+import ShopCheckoutSuccess from "@/modules/shop/pages/ShopCheckoutSuccess.vue";
 
 export const shopRoutes = [
   {
@@ -15,16 +18,53 @@ export const shopRoutes = [
     component: ShopLayout,
     meta: { public: true },
     children: [
-      { path: "", name: "shopHome", component: ShopHome, meta: { public: true } },
+      // Home
+      {
+        path: "",
+        name: "shopHome",
+        component: ShopHome,
+        meta: { public: true },
+      },
 
-      // ✅ Landing de categoría estilo MercadoLibre
-      { path: "c/:id", name: "shopCategory", component: ShopCategory, meta: { public: true } },
+      // Categoría (estilo Mercado Libre)
+      {
+        path: "c/:id",
+        name: "shopCategory",
+        component: ShopCategory,
+        meta: { public: true },
+      },
 
-      { path: "product/:id", name: "shopProduct", component: ShopProduct, meta: { public: true } },
-      { path: "cart", name: "shopCart", component: ShopCart, meta: { public: true } },
+      // Producto
+      {
+        path: "product/:id",
+        name: "shopProduct",
+        component: ShopProduct,
+        meta: { public: true },
+      },
 
-      // ✅ CHECKOUT (3 pasos)
-      { path: "checkout", name: "shopCheckout", component: ShopCheckout, meta: { public: true } },
+      // Carrito
+      {
+        path: "cart",
+        name: "shopCart",
+        component: ShopCart,
+        meta: { public: true },
+      },
+
+      // Checkout (Envío / Pago / Revisión)
+      {
+        path: "checkout",
+        name: "shopCheckout",
+        component: ShopCheckout,
+        meta: { public: true },
+      },
+
+      // ✅ ÉXITO / COMPROBANTE
+      {
+        path: "checkout/success",
+        name: "shopCheckoutSuccess",
+        component: ShopCheckoutSuccess,
+        meta: { public: true },
+      },
     ],
   },
 ];

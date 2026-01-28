@@ -1,5 +1,9 @@
 <!-- src/modules/shop/pages/ShopCart.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO · Carrito estilo Mercado Libre + control de stock -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO · Carrito estilo Mercado Libre + control de stock
+     FIX CLAVE:
+     - Usa actions REALES del store: cart.inc / cart.dec / cart.remove
+     - NO usa cart.removeItem / cart.increaseQty / cart.persist (no existen)
+-->
 
 <template>
   <v-container class="py-6">
@@ -185,7 +189,12 @@ const cart = useShopCartStore();
 const items = computed(() => cart.items || []);
 
 function itKey(it) {
-  return String(it?.product_id ?? it?.id ?? it?.sku ?? it?.code ?? Math.random());
+  // clave estable: NUNCA Math.random acá (te rompe selección + reactividad)
+  const pid = it?.product_id ?? it?.id ?? null;
+  if (pid) return String(pid);
+  if (it?.sku) return String(it.sku);
+  if (it?.code) return String(it.code);
+  return String(it?.name || "item");
 }
 
 function fmtMoney(v) {
@@ -210,17 +219,12 @@ function qty(it) {
 
 // -------------------------
 // ✅ Stock helpers
-// Regla:
-// - Si track_stock == 0 => ilimitado
-// - Si hay stock_qty / available_qty / stock => limite
-// - Si NO hay info => no bloquea (backend valida igual)
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
 
 function trackStock(it) {
-  // soporta variantes comunes
   const v = it?.track_stock ?? it?.trackStock ?? it?.track ?? 1;
   return String(v) === "0" ? 0 : 1;
 }
@@ -230,8 +234,7 @@ function hasStockInfo(it) {
     it?.stock_qty !== undefined ||
     it?.available_qty !== undefined ||
     it?.stock !== undefined ||
-    it?.qty_available !== undefined ||
-    it?.availability !== undefined
+    it?.qty_available !== undefined
   );
 }
 
@@ -240,7 +243,6 @@ function isUnlimitedStock(it) {
 }
 
 function rawStock(it) {
-  // prioriza campos típicos
   if (it?.stock_qty !== undefined) return toInt(it.stock_qty, 0);
   if (it?.available_qty !== undefined) return toInt(it.available_qty, 0);
   if (it?.qty_available !== undefined) return toInt(it.qty_available, 0);
@@ -250,19 +252,18 @@ function rawStock(it) {
 
 function maxQty(it) {
   if (isUnlimitedStock(it)) return 999999;
-  if (!hasStockInfo(it)) return 999999; // fallback
+  if (!hasStockInfo(it)) return 999999; // fallback (backend valida igual)
   return Math.max(0, rawStock(it));
 }
 
 function canInc(it) {
   if (isUnlimitedStock(it)) return true;
-  if (!hasStockInfo(it)) return true; // fallback: permitimos, backend valida
+  if (!hasStockInfo(it)) return true;
   return qty(it) < maxQty(it);
 }
 
 // Mensajito por item cuando intenta pasarse
 const stockBlockedMsg = reactive({});
-
 function flashStockMsg(it, msg) {
   const k = itKey(it);
   stockBlockedMsg[k] = msg;
@@ -281,6 +282,7 @@ const selectAll = ref(true);
 function syncSelectionDefaults() {
   const map = selectedMap;
   const keys = items.value.map(itKey);
+
   for (const k of keys) {
     if (map[k] === undefined) map[k] = true;
   }
@@ -303,52 +305,34 @@ const selectedItems = computed(() => {
 });
 
 const subtotalSelected = computed(() => {
-  return selectedItems.value.reduce((acc, it) => {
-    return acc + unitPrice(it) * qty(it);
-  }, 0);
+  return selectedItems.value.reduce((acc, it) => acc + unitPrice(it) * qty(it), 0);
 });
 
 const canCheckout = computed(() => selectedItems.value.length > 0);
 
 // -------------------------
-// qty actions con control stock
+// ✅ qty actions usando el STORE REAL
 function inc(it) {
   if (!canInc(it)) {
     flashStockMsg(it, `Máximo disponible: ${maxQty(it)}`);
     return;
   }
-
-  cart.increaseQty?.(it.product_id ?? it.id);
-
-  if (!cart.increaseQty) {
-    it.qty = qty(it) + 1;
-    cart.persist?.();
-  }
+  cart.inc(it.product_id ?? it.id);
 }
 
 function dec(it) {
   const q = qty(it);
   if (q <= 1) return;
-
-  cart.decreaseQty?.(it.product_id ?? it.id);
-
-  if (!cart.decreaseQty) {
-    it.qty = q - 1;
-    cart.persist?.();
-  }
+  cart.dec(it.product_id ?? it.id);
 }
 
 function removeItem(it) {
-  cart.removeItem?.(it.product_id ?? it.id);
-
-  if (!cart.removeItem) {
-    const pid = it.product_id ?? it.id;
-    cart.items = (cart.items || []).filter((x) => (x.product_id ?? x.id) !== pid);
-    cart.persist?.();
-  }
+  cart.remove(it.product_id ?? it.id);
 }
 
 function goCheckout() {
+  // Nota: hoy tu checkout toma cart.items completo (no “selectedItems”)
+  // Si querés checkout solo con seleccionados, se agrega una acción tipo cart.setItems(selectedItems)
   router.push("/shop/checkout");
 }
 </script>

@@ -1,35 +1,50 @@
 // src/modules/shop/service/checkout.api.js
-// ✅ COPY-PASTE FINAL
-//
-// Este service centraliza todo lo del checkout.
-// Usa httpPublic (como ya venís usando en shop).
+// ✅ COPY-PASTE FINAL COMPLETO (fix export getPublicOrderReceipt)
 //
 // Endpoints esperados:
-// - GET  /shop/public/payment-config            (o el que ya tengas en getShopPaymentConfig)
-// - GET  /shop/public/branches                  (o el que ya tengas en getBranches)
-// - POST /ecom/checkout                         (ya lo tenés)
+// - GET  /shop/public/payment-config
+// - GET  /shop/public/branches
+// - POST /ecom/checkout
+// - GET  /ecom/orders/:id/receipt   ✅ (comprobante)
 
 import httpPublic from "@/app/api/httpPublic";
 import { getBranches, getShopPaymentConfig } from "@/modules/shop/service/shop.public.api";
 
-// ---------- Config / Branches (reusa tu API existente)
+// =========================
+// Config / Branches (reusa tu API existente)
+// =========================
 export async function fetchShopPaymentConfig() {
-  // Usa tu función existente (si internamente pega a /shop/public/payment-config)
   return await getShopPaymentConfig();
 }
 
 export async function fetchShopBranches() {
-  // Usa tu función existente
   return await getBranches();
 }
 
-// ---------- Checkout submit
+// =========================
+// Checkout submit
+// =========================
 export async function submitCheckout(payload) {
-  // payload: lo que armás desde el frontend (items qty, contact, shipping, payment)
   return await httpPublic.post("/ecom/checkout", payload);
 }
 
-// ---------- Helpers
+// =========================
+// Receipt / comprobante
+// =========================
+export async function fetchOrderReceipt(orderId) {
+  if (!orderId) throw new Error("orderId es obligatorio");
+  const { data } = await httpPublic.get(`/ecom/orders/${encodeURIComponent(orderId)}/receipt`);
+  return data;
+}
+
+// ✅ Alias para compat con tu ShopCheckoutSuccess.vue
+export async function getPublicOrderReceipt(orderId) {
+  return await fetchOrderReceipt(orderId);
+}
+
+// =========================
+// Helpers
+// =========================
 export function extractRedirectUrl(data) {
   return (
     data?.redirect_url ||
@@ -38,6 +53,42 @@ export function extractRedirectUrl(data) {
     data?.payment?.sandbox_init_point ||
     null
   );
+}
+
+export function extractOrderMeta(data) {
+  const orderId =
+    data?.order_id ??
+    data?.order?.id ??
+    data?.orderId ??
+    data?.id ??
+    null;
+
+  const orderCode =
+    data?.order_code ??
+    data?.order?.code ??
+    data?.order?.number ??
+    data?.code ??
+    data?.number ??
+    "";
+
+  const status =
+    data?.status ??
+    data?.order?.status ??
+    data?.payment?.status ??
+    "";
+
+  const paymentMethod =
+    data?.payment_method ??
+    data?.payment?.method ??
+    data?.method ??
+    "";
+
+  return {
+    orderId: orderId ? String(orderId) : "",
+    orderCode: String(orderCode || ""),
+    status: String(status || ""),
+    paymentMethod: String(paymentMethod || ""),
+  };
 }
 
 export function mapCheckoutErrorToHumanMessage(err) {
@@ -54,4 +105,12 @@ export function mapCheckoutErrorToHumanMessage(err) {
   if (apiMsg) return apiMsg;
 
   return "No se pudo crear el pedido. Revisá los datos.";
+}
+
+export function unwrapOkPayload(data) {
+  if (!data) return null;
+  if (data?.item) return data.item;
+  if (data?.order) return data.order;
+  if (data?.receipt) return data.receipt;
+  return data;
 }

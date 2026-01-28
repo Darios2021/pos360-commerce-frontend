@@ -1,9 +1,14 @@
 <!-- src/modules/shop/pages/ShopCheckout.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO (Checkout ML + 1 solo CTA) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO
+     - Checkout ML + Stepper (componentizado)
+     - Summary SOLO DESKTOP (evita duplicado en mobile)
+     - Submit: SIEMPRE navega a /shop/checkout/success si no hay redirect http(s)
+-->
 
 <template>
   <v-container class="py-6">
     <div class="checkout-shell">
+      <!-- Header -->
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4">
         <div class="text-h5 font-weight-bold">Finalizar compra</div>
 
@@ -34,6 +39,10 @@
             :can-submit="canSubmit"
             :submitting="submitting"
             :submit-error="submitError"
+            :items="items"
+            :subtotal="subtotal"
+            :shipping-amount="shippingAmount"
+            :total="totalWithShipping"
             @update:buyer="buyer = $event"
             @update:delivery="delivery = $event"
             @update:payment="payment = $event"
@@ -45,8 +54,8 @@
           />
         </v-col>
 
-        <!-- RIGHT -->
-        <v-col cols="12" md="4">
+        <!-- RIGHT: Summary (SOLO DESKTOP para no duplicar en mobile) -->
+        <v-col cols="12" md="4" class="d-none d-md-block">
           <CheckoutSummary
             :items="items"
             :subtotal="subtotal"
@@ -86,13 +95,15 @@ const items = computed(() => cart.items || []);
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
+
 function unitPrice(p) {
-  const d = Number(p.price_discount || 0);
+  const d = Number(p?.price_discount || 0);
   if (d > 0) return d;
-  const l = Number(p.price_list || 0);
+  const l = Number(p?.price_list || 0);
   if (l > 0) return l;
-  return Number(p.price || 0);
+  return Number(p?.price || 0);
 }
+
 const subtotal = computed(() =>
   (items.value || []).reduce((a, it) => a + unitPrice(it) * Number(it.qty || 0), 0)
 );
@@ -108,6 +119,7 @@ function isEmail(v) {
 function cleanPhone(v) {
   return String(v || "").replace(/[^\d+]/g, "").trim();
 }
+
 const buyerErrors = computed(() => {
   const errs = [];
   if (!String(buyer.value.name || "").trim()) errs.push("Nombre y apellido");
@@ -115,6 +127,7 @@ const buyerErrors = computed(() => {
   if (cleanPhone(buyer.value.phone).length < 6) errs.push("Teléfono válido");
   return errs;
 });
+
 const buyerOk = computed(() => buyerErrors.value.length === 0);
 
 // -------------------------
@@ -143,6 +156,7 @@ function normalizeBranchStock(branchStock) {
   if (!bid) return null;
   return { branch_id: bid, qty };
 }
+
 function branchesForItem(it) {
   const list =
     it?.stock_by_branch ||
@@ -200,10 +214,19 @@ function quoteShipping() {
     shippingQuote.value = { status: "error", amount: 0, eta: "" };
     return;
   }
+
   if (isSJ) {
-    shippingQuote.value = { status: "ok", amount: subtotal.value >= 50000 ? 0 : 2500, eta: "Llega hoy o mañana" };
+    shippingQuote.value = {
+      status: "ok",
+      amount: subtotal.value >= 50000 ? 0 : 2500,
+      eta: "Llega hoy o mañana",
+    };
   } else {
-    shippingQuote.value = { status: "ok", amount: Math.max(4500, Math.round(subtotal.value * 0.04)), eta: "Llega en 3 a 7 días" };
+    shippingQuote.value = {
+      status: "ok",
+      amount: Math.max(4500, Math.round(subtotal.value * 0.04)),
+      eta: "Llega en 3 a 7 días",
+    };
   }
 }
 
@@ -212,6 +235,7 @@ const shippingAmount = computed(() => {
   if (shippingQuote.value.status === "ok") return Number(shippingQuote.value.amount || 0);
   return 0;
 });
+
 const totalWithShipping = computed(() => subtotal.value + shippingAmount.value);
 
 // -------------------------
@@ -227,6 +251,7 @@ const transferInfo = ref({
   instructions: "",
 });
 
+// Métodos: MERCADO_PAGO | TRANSFER | CASH | CREDIT_SJT
 let payment = ref({
   method: "MERCADO_PAGO",
   reference: "",
@@ -238,7 +263,8 @@ const paymentLabel = computed(() => {
   if (m === "MERCADO_PAGO") return "Mercado Pago";
   if (m === "TRANSFER") return "Transferencia";
   if (m === "CASH") return "Efectivo";
-  return "Otro";
+  if (m === "CREDIT_SJT") return "Crédito San Juan Tecnología";
+  return "—";
 });
 
 // -------------------------
@@ -265,8 +291,14 @@ const canGoPayment = computed(() => buyerOk.value && deliveryOk.value);
 
 const canGoReview = computed(() => {
   if (!canGoPayment.value) return false;
-  if (!payment.value.method) return false;
-  if (payment.value.method === "MERCADO_PAGO" && !mpEnabled.value) return false;
+
+  const m = payment.value.method;
+  if (!m) return false;
+  if (m === "MERCADO_PAGO" && !mpEnabled.value) return false;
+
+  // ✅ ya no existe "OTHER"
+  if (!["MERCADO_PAGO", "TRANSFER", "CASH", "CREDIT_SJT"].includes(m)) return false;
+
   return true;
 });
 
@@ -279,6 +311,7 @@ function normalizePayMethodForBackend() {
   if (m === "MERCADO_PAGO") return "MERCADOPAGO";
   if (m === "TRANSFER") return "TRANSFER";
   if (m === "CASH") return "CASH";
+  if (m === "CREDIT_SJT") return "CREDIT_SJT";
   return "OTHER";
 }
 
@@ -329,11 +362,11 @@ function mapCheckoutErrorToHumanMessage(err) {
   const apiCode = String(err?.response?.data?.code || "").toUpperCase();
   const apiMsg = String(err?.response?.data?.message || "").trim();
 
-  if (status === 409 && apiCode.includes("NO_STOCK")) {
-    return apiMsg || "No hay stock suficiente en la sucursal elegida.";
-  }
-  if (apiMsg) return apiMsg;
+  if (status === 409 && apiCode.includes("NO_STOCK")) return apiMsg || "No hay stock suficiente.";
+  if (status === 400) return apiMsg || "Datos inválidos. Revisá el formulario.";
+  if (status === 401 || status === 403) return "No autorizado. Revisá credenciales/servidor.";
   if (status >= 500) return "Error interno creando el pedido. Probá nuevamente.";
+  if (apiMsg) return apiMsg;
   return "No se pudo crear el pedido. Revisá los datos.";
 }
 
@@ -355,13 +388,51 @@ async function submitOrder() {
       data?.payment?.sandbox_init_point ||
       null;
 
-    if (redirectUrl) {
+    const isHttpUrl =
+      typeof redirectUrl === "string" &&
+      (redirectUrl.startsWith("https://") || redirectUrl.startsWith("http://"));
+
+    // ✅ Si es MP real, redirige
+    if (isHttpUrl) {
       window.location.href = redirectUrl;
       return;
     }
 
+    // ✅ Guardar comprobante para success
+    const receipt = {
+      created_at: data?.created_at || new Date().toISOString(),
+      order_id: Number(data?.order_id || data?.id || data?.order?.id || 0) || null,
+      order_code: String(data?.code || data?.order_code || data?.order?.code || "").trim() || null,
+      payment_method_label: paymentLabel.value,
+      payment_method: String(payment.value.method || ""),
+      fulfillment_type: String(delivery.value.mode || "pickup"),
+      pickup_branch_name: selectedBranchName.value || null,
+      shipping: delivery.value.mode === "shipping" ? { ...delivery.value } : null,
+      buyer: { ...buyer.value },
+      items: (items.value || []).map((it) => ({
+        product_id: Number(it.product_id || it.id || 0),
+        name: it.name,
+        qty: Number(it.qty || 0),
+        unit_price: Number(unitPrice(it) || 0),
+        image_url: it.image_url || it.image || it.cover_url || "",
+      })),
+      totals: {
+        subtotal: Number(subtotal.value || 0),
+        shipping: Number(shippingAmount.value || 0),
+        total: Number(totalWithShipping.value || 0),
+      },
+    };
+
+    try {
+      sessionStorage.setItem("shop_last_receipt", JSON.stringify(receipt));
+    } catch (e) {
+      console.warn("[CHECKOUT] sessionStorage failed", e);
+    }
+
     cart.clear?.();
-    router.push("/shop");
+
+    // ✅ SIEMPRE a success si no hay redirect
+    router.replace("/shop/checkout/success");
   } catch (err) {
     console.error("[CHECKOUT] error", err?.response?.data || err);
     submitError.value = mapCheckoutErrorToHumanMessage(err);
@@ -392,6 +463,7 @@ watch(
 // -------------------------
 // Init
 onMounted(async () => {
+  // si no hay carrito -> volver
   if (!items.value.length) {
     router.push("/shop/cart");
     return;

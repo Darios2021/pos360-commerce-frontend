@@ -1,7 +1,7 @@
 <!-- src/modules/shop/components/checkout/CheckoutPaymentStep.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
-     Cards ML + animaciones por método seleccionado
-     Métodos: MERCADO_PAGO | TRANSFER | CASH | AGREE | OTHER
+     Cards ML + animaciones
+     Métodos: MERCADO_PAGO | TRANSFER | CASH | AGREE | CREDIT_SJT
 -->
 <template>
   <div class="ml-step">
@@ -35,7 +35,12 @@
       </button>
 
       <!-- Transferencia -->
-      <button class="ml-pay-card" type="button" :class="{ 'is-active': local.method === 'TRANSFER' }" @click="setPay('TRANSFER')">
+      <button
+        class="ml-pay-card"
+        type="button"
+        :class="{ 'is-active': local.method === 'TRANSFER' }"
+        @click="setPay('TRANSFER')"
+      >
         <div class="ml-pay-left">
           <div class="ml-pay-ico bank" :class="{ 'is-anim bank': local.method === 'TRANSFER' }">
             <v-icon size="18">mdi-bank-outline</v-icon>
@@ -51,7 +56,12 @@
       </button>
 
       <!-- Efectivo -->
-      <button class="ml-pay-card" type="button" :class="{ 'is-active': local.method === 'CASH' }" @click="setPay('CASH')">
+      <button
+        class="ml-pay-card"
+        type="button"
+        :class="{ 'is-active': local.method === 'CASH' }"
+        @click="setPay('CASH')"
+      >
         <div class="ml-pay-left">
           <div class="ml-pay-ico cash" :class="{ 'is-anim cash': local.method === 'CASH' }">
             <v-icon size="18">mdi-cash-multiple</v-icon>
@@ -64,40 +74,55 @@
         <v-icon class="ml-pay-arrow" size="18">mdi-chevron-right</v-icon>
       </button>
 
+      <!-- Crédito San Juan Tecnología -->
+      <button
+        class="ml-pay-card"
+        type="button"
+        :class="{ 'is-active': local.method === 'CREDIT_SJT' }"
+        @click="setPay('CREDIT_SJT')"
+      >
+        <div class="ml-pay-left">
+          <div class="ml-pay-ico credit" :class="{ 'is-anim credit': local.method === 'CREDIT_SJT' }">
+            <v-icon size="18">mdi-file-document-outline</v-icon>
+          </div>
+          <div class="ml-pay-txt">
+            <div class="ml-pay-title">
+              Crédito San Juan Tecnología <span class="ml-chip ml-chip-amber">En tienda</span>
+            </div>
+            <div class="ml-pay-desc">
+              Reservás el pedido y finalizás el crédito presencialmente.
+            </div>
+          </div>
+        </div>
+        <v-icon class="ml-pay-arrow" size="18">mdi-chevron-right</v-icon>
+      </button>
+
       <!-- Acordar -->
-      <button class="ml-pay-card" type="button" :class="{ 'is-active': local.method === 'AGREE' }" @click="setPay('AGREE')">
+      <button
+        class="ml-pay-card"
+        type="button"
+        :class="{ 'is-active': local.method === 'AGREE' }"
+        @click="setPay('AGREE')"
+      >
         <div class="ml-pay-left">
           <div class="ml-pay-ico agree" :class="{ 'is-anim agree': local.method === 'AGREE' }">
             <v-icon size="18">mdi-handshake-outline</v-icon>
           </div>
           <div class="ml-pay-txt">
             <div class="ml-pay-title">
-              Acordar pago con el vendedor <span class="ml-chip ml-chip-amber">Coordinar</span>
+              Acordar pago con el vendedor <span class="ml-chip ml-chip-gray">Coordinar</span>
             </div>
             <div class="ml-pay-desc">Coordinamos el método (seña, contado, cuotas propias, etc.).</div>
           </div>
         </div>
         <v-icon class="ml-pay-arrow" size="18">mdi-chevron-right</v-icon>
       </button>
-
-      <!-- Otro -->
-      <button class="ml-pay-card" type="button" :class="{ 'is-active': local.method === 'OTHER' }" @click="setPay('OTHER')">
-        <div class="ml-pay-left">
-          <div class="ml-pay-ico other" :class="{ 'is-anim other': local.method === 'OTHER' }">
-            <v-icon size="18">mdi-dots-horizontal-circle-outline</v-icon>
-          </div>
-          <div class="ml-pay-txt">
-            <div class="ml-pay-title">Otro</div>
-            <div class="ml-pay-desc">Dejanos una nota (opcional).</div>
-          </div>
-        </div>
-        <v-icon class="ml-pay-arrow" size="18">mdi-chevron-right</v-icon>
-      </button>
     </div>
 
-    <!-- Panel contextual -->
+    <!-- Panel contextual: Transfer -->
     <div class="ml-pay-panel" v-if="local.method === 'TRANSFER'">
       <div class="ml-panel-title">Datos bancarios</div>
+
       <div class="ml-panel-grid">
         <div class="ml-kv">
           <div class="k">Alias</div>
@@ -122,9 +147,23 @@
       />
     </div>
 
-    <div class="ml-pay-panel" v-else-if="local.method === 'AGREE'">
-      <div class="ml-panel-title">Acordar con vendedor</div>
-      <div class="ml-panel-sub">Te vamos a contactar para coordinar. Podés dejar una nota si querés.</div>
+    <!-- Panel contextual: Crédito SJT -->
+    <div class="ml-pay-panel" v-else-if="local.method === 'CREDIT_SJT'">
+      <div class="ml-panel-title">Crédito San Juan Tecnología</div>
+      <div class="ml-panel-sub">
+        Para completar el crédito, debés presentarte en la tienda con:
+      </div>
+
+      <ul class="ml-req">
+        <li><b>DNI</b> (titular) + fotocopia</li>
+        <li><b>Comprobante de ingresos</b> (recibo de sueldo / monotributo / etc.)</li>
+        <li><b>Servicio a tu nombre</b> o constancia de domicilio</li>
+        <li><b>Teléfono de contacto</b> y email</li>
+      </ul>
+
+      <v-alert type="info" variant="tonal" class="rounded-lg mt-2">
+        Este pedido queda <b>reservado</b> y se confirma cuando se apruebe el crédito en tienda.
+      </v-alert>
 
       <v-textarea
         v-model="local.note"
@@ -136,21 +175,29 @@
       />
     </div>
 
-    <div class="ml-pay-panel" v-else-if="local.method === 'OTHER'">
-      <div class="ml-panel-title">Nota</div>
+    <!-- Panel contextual: Acordar -->
+    <div class="ml-pay-panel" v-else-if="local.method === 'AGREE'">
+      <div class="ml-panel-title">Acordar con vendedor</div>
+      <div class="ml-panel-sub">
+        Te vamos a contactar para coordinar. Podés dejar una nota si querés.
+      </div>
+
       <v-textarea
         v-model="local.note"
-        label="Contanos cómo querés pagar"
+        label="Nota (opcional)"
         variant="outlined"
         density="comfortable"
         rows="3"
-        class="mt-2"
+        class="mt-3"
       />
     </div>
 
+    <!-- Panel contextual: MP -->
     <div class="ml-pay-panel" v-else-if="local.method === 'MERCADO_PAGO'">
       <div class="ml-panel-title">Mercado Pago</div>
-      <div class="ml-panel-sub">Al confirmar te redirigimos a Mercado Pago para completar el pago de forma segura.</div>
+      <div class="ml-panel-sub">
+        Al confirmar te redirigimos a Mercado Pago para completar el pago de forma segura.
+      </div>
     </div>
 
     <div class="ml-actions">
@@ -213,7 +260,7 @@ function setPay(m) {
 
   // limpieza suave
   if (m !== "TRANSFER") local.reference = "";
-  if (m !== "OTHER" && m !== "AGREE") local.note = "";
+  if (m !== "AGREE" && m !== "CREDIT_SJT") local.note = "";
 }
 
 const canContinue = computed(() => {
@@ -224,23 +271,11 @@ const canContinue = computed(() => {
 </script>
 
 <style scoped>
-.ml-step-head {
-  margin-bottom: 14px;
-}
-.ml-step-title {
-  font-weight: 800;
-  font-size: 18px;
-}
-.ml-step-sub {
-  color: #737373;
-  font-size: 13px;
-  margin-top: 2px;
-}
+.ml-step-head { margin-bottom: 14px; }
+.ml-step-title { font-weight: 800; font-size: 18px; }
+.ml-step-sub { color: #737373; font-size: 13px; margin-top: 2px; }
 
-.ml-pay-grid {
-  display: grid;
-  gap: 10px;
-}
+.ml-pay-grid { display: grid; gap: 10px; }
 
 .ml-pay-card {
   width: 100%;
@@ -255,27 +290,15 @@ const canContinue = computed(() => {
   text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
-.ml-pay-card:hover {
-  border-color: #cfcfcf;
-  transform: translateY(-1px);
-}
+.ml-pay-card:hover { border-color: #cfcfcf; transform: translateY(-1px); }
 .ml-pay-card.is-active {
   border-color: #3483fa;
   box-shadow: 0 0 0 3px rgba(52, 131, 250, 0.15);
   transform: translateY(-1px);
 }
-.ml-pay-card.is-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
+.ml-pay-card.is-disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
-.ml-pay-left {
-  display: flex;
-  gap: 10px;
-  min-width: 0;
-  align-items: flex-start;
-}
+.ml-pay-left { display: flex; gap: 10px; min-width: 0; align-items: flex-start; }
 
 .ml-pay-ico {
   width: 34px;
@@ -286,55 +309,24 @@ const canContinue = computed(() => {
   flex: 0 0 auto;
 }
 
-.ml-pay-ico.mp {
-  background: rgba(52, 131, 250, 0.12);
-}
-.ml-pay-ico.bank {
-  background: rgba(0, 0, 0, 0.06);
-}
-.ml-pay-ico.cash {
-  background: rgba(0, 166, 80, 0.12);
-}
-.ml-pay-ico.agree {
-  background: rgba(255, 147, 0, 0.14);
-}
-.ml-pay-ico.other {
-  background: rgba(155, 155, 155, 0.12);
-}
+.ml-pay-ico.mp { background: rgba(52, 131, 250, 0.12); }
+.ml-pay-ico.bank { background: rgba(0, 0, 0, 0.06); }
+.ml-pay-ico.cash { background: rgba(0, 166, 80, 0.12); }
+.ml-pay-ico.agree { background: rgba(0, 0, 0, 0.06); }
+.ml-pay-ico.credit { background: rgba(255, 147, 0, 0.14); }
 
-/* Animaciones por método seleccionado */
+/* Animaciones */
 .is-anim.mp { animation: mpPulse 1.25s ease-in-out infinite; }
 .is-anim.bank { animation: bankWiggle 1.25s ease-in-out infinite; }
 .is-anim.cash { animation: cashBounce 1.15s ease-in-out infinite; }
 .is-anim.agree { animation: agreePop 1.35s ease-in-out infinite; }
-.is-anim.other { animation: otherSpin 1.8s ease-in-out infinite; }
+.is-anim.credit { animation: creditPulse 1.25s ease-in-out infinite; }
 
-@keyframes mpPulse {
-  0% { transform: scale(1); filter: none; }
-  50% { transform: scale(1.06); filter: brightness(1.05); }
-  100% { transform: scale(1); filter: none; }
-}
-@keyframes bankWiggle {
-  0% { transform: rotate(0deg); }
-  35% { transform: rotate(-6deg); }
-  70% { transform: rotate(6deg); }
-  100% { transform: rotate(0deg); }
-}
-@keyframes cashBounce {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-  100% { transform: translateY(0); }
-}
-@keyframes agreePop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
-@keyframes otherSpin {
-  0% { transform: rotate(0deg); }
-  55% { transform: rotate(10deg); }
-  100% { transform: rotate(0deg); }
-}
+@keyframes mpPulse { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+@keyframes bankWiggle { 0%{transform:rotate(0)} 35%{transform:rotate(-6deg)} 70%{transform:rotate(6deg)} 100%{transform:rotate(0)} }
+@keyframes cashBounce { 0%{transform:translateY(0)} 50%{transform:translateY(-2px)} 100%{transform:translateY(0)} }
+@keyframes agreePop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+@keyframes creditPulse { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
 
 .ml-pay-txt { min-width: 0; }
 .ml-pay-title {
@@ -346,21 +338,10 @@ const canContinue = computed(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
-.ml-pay-desc {
-  margin-top: 3px;
-  font-size: 12.5px;
-  color: #737373;
-  line-height: 1.25;
-}
-.ml-pay-warn {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #b45309;
-}
-.ml-pay-arrow {
-  color: #9b9b9b;
-  flex: 0 0 auto;
-}
+.ml-pay-desc { margin-top: 3px; font-size: 12.5px; color: #737373; line-height: 1.25; }
+.ml-pay-warn { margin-top: 6px; font-size: 12px; color: #b45309; }
+
+.ml-pay-arrow { color: #9b9b9b; flex: 0 0 auto; }
 
 .ml-chip {
   font-size: 11px;
@@ -392,6 +373,14 @@ const canContinue = computed(() => {
 .ml-kv .k { font-size: 12px; color: #737373; }
 .ml-kv .v { font-size: 13.5px; font-weight: 900; color: #111; word-break: break-word; }
 
+.ml-req {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #333;
+}
+.ml-req li { margin: 6px 0; }
+
 .ml-actions {
   margin-top: 16px;
   display: flex;
@@ -399,11 +388,7 @@ const canContinue = computed(() => {
   gap: 10px;
   align-items: center;
 }
-.ml-cta {
-  border-radius: 10px;
-  text-transform: none;
-  font-weight: 900;
-}
+.ml-cta { border-radius: 10px; text-transform: none; font-weight: 900; }
 
 @media (max-width: 600px) {
   .ml-panel-grid { grid-template-columns: 1fr; }
