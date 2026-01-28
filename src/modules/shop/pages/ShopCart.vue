@@ -1,5 +1,5 @@
 <!-- src/modules/shop/pages/ShopCart.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO · Carrito estilo Mercado Libre -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO · Carrito estilo Mercado Libre + control de stock -->
 
 <template>
   <v-container class="py-6">
@@ -50,11 +50,7 @@
           <!-- Items list -->
           <v-card v-else class="ml-card" elevation="0">
             <v-card-text class="pa-0">
-              <div
-                v-for="it in items"
-                :key="itKey(it)"
-                class="ml-item"
-              >
+              <div v-for="it in items" :key="itKey(it)" class="ml-item">
                 <div class="ml-item-row">
                   <!-- select -->
                   <v-checkbox
@@ -90,6 +86,10 @@
                         Eliminar
                       </button>
                     </div>
+
+                    <div v-if="stockBlockedMsg[itKey(it)]" class="ml-warn">
+                      {{ stockBlockedMsg[itKey(it)] }}
+                    </div>
                   </div>
 
                   <!-- qty control -->
@@ -98,31 +98,37 @@
                       <button
                         class="ml-qtybtn"
                         type="button"
-                        :disabled="Number(it.qty || 1) <= 1"
+                        :disabled="qty(it) <= 1"
                         @click="dec(it)"
                         aria-label="Disminuir"
                       >−</button>
 
-                      <div class="ml-qtyval">{{ Number(it.qty || 1) }}</div>
+                      <div class="ml-qtyval">{{ qty(it) }}</div>
 
                       <button
                         class="ml-qtybtn"
                         type="button"
+                        :disabled="!canInc(it)"
                         @click="inc(it)"
                         aria-label="Aumentar"
                       >+</button>
                     </div>
 
-                    <div class="ml-stock" v-if="typeof it.stock_qty !== 'undefined'">
-                      {{ it.stock_qty > 0 ? `+${it.stock_qty} disponibles` : "Sin stock" }}
+                    <div class="ml-stock" v-if="hasStockInfo(it)">
+                      <template v-if="isUnlimitedStock(it)">
+                        Stock sin límite
+                      </template>
+                      <template v-else>
+                        {{ Math.max(0, maxQty(it)) }} disponibles
+                      </template>
                     </div>
                   </div>
 
                   <!-- price -->
                   <div class="ml-price">
                     <div class="ml-price-main">$ {{ fmtMoney(unitPrice(it)) }}</div>
-                    <div class="ml-price-sub ml-muted" v-if="Number(it.qty || 1) > 1">
-                      $ {{ fmtMoney(unitPrice(it) * Number(it.qty || 1)) }} total
+                    <div class="ml-price-sub ml-muted" v-if="qty(it) > 1">
+                      $ {{ fmtMoney(unitPrice(it) * qty(it)) }} total
                     </div>
                   </div>
                 </div>
@@ -198,7 +204,77 @@ function imgSrc(it) {
   return it?.image_url || it?.image || it?.cover_url || "";
 }
 
-/** ✅ selección tipo ML (todos los productos) */
+function qty(it) {
+  return Math.max(1, Number(it?.qty || 1));
+}
+
+// -------------------------
+// ✅ Stock helpers
+// Regla:
+// - Si track_stock == 0 => ilimitado
+// - Si hay stock_qty / available_qty / stock => limite
+// - Si NO hay info => no bloquea (backend valida igual)
+function toInt(v, d = 0) {
+  const n = parseInt(String(v ?? ""), 10);
+  return Number.isFinite(n) ? n : d;
+}
+
+function trackStock(it) {
+  // soporta variantes comunes
+  const v = it?.track_stock ?? it?.trackStock ?? it?.track ?? 1;
+  return String(v) === "0" ? 0 : 1;
+}
+
+function hasStockInfo(it) {
+  return (
+    it?.stock_qty !== undefined ||
+    it?.available_qty !== undefined ||
+    it?.stock !== undefined ||
+    it?.qty_available !== undefined ||
+    it?.availability !== undefined
+  );
+}
+
+function isUnlimitedStock(it) {
+  return trackStock(it) === 0;
+}
+
+function rawStock(it) {
+  // prioriza campos típicos
+  if (it?.stock_qty !== undefined) return toInt(it.stock_qty, 0);
+  if (it?.available_qty !== undefined) return toInt(it.available_qty, 0);
+  if (it?.qty_available !== undefined) return toInt(it.qty_available, 0);
+  if (it?.stock !== undefined) return toInt(it.stock, 0);
+  return 0;
+}
+
+function maxQty(it) {
+  if (isUnlimitedStock(it)) return 999999;
+  if (!hasStockInfo(it)) return 999999; // fallback
+  return Math.max(0, rawStock(it));
+}
+
+function canInc(it) {
+  if (isUnlimitedStock(it)) return true;
+  if (!hasStockInfo(it)) return true; // fallback: permitimos, backend valida
+  return qty(it) < maxQty(it);
+}
+
+// Mensajito por item cuando intenta pasarse
+const stockBlockedMsg = reactive({});
+
+function flashStockMsg(it, msg) {
+  const k = itKey(it);
+  stockBlockedMsg[k] = msg;
+  window.clearTimeout(flashStockMsg._t?.[k]);
+  flashStockMsg._t = flashStockMsg._t || {};
+  flashStockMsg._t[k] = window.setTimeout(() => {
+    stockBlockedMsg[k] = "";
+  }, 1500);
+}
+
+// -------------------------
+// ✅ selección tipo ML
 const selectedMap = reactive({});
 const selectAll = ref(true);
 
@@ -208,11 +284,10 @@ function syncSelectionDefaults() {
   for (const k of keys) {
     if (map[k] === undefined) map[k] = true;
   }
-  // limpiar los que ya no existen
   for (const k of Object.keys(map)) {
     if (!keys.includes(k)) delete map[k];
   }
-  selectAll.value = keys.length ? keys.every(k => !!map[k]) : false;
+  selectAll.value = keys.length ? keys.every((k) => !!map[k]) : false;
 }
 
 watch(items, syncSelectionDefaults, { immediate: true });
@@ -224,29 +299,39 @@ function toggleAll(v) {
 }
 
 const selectedItems = computed(() => {
-  return (items.value || []).filter(it => !!selectedMap[itKey(it)]);
+  return (items.value || []).filter((it) => !!selectedMap[itKey(it)]);
 });
 
 const subtotalSelected = computed(() => {
   return selectedItems.value.reduce((acc, it) => {
-    return acc + unitPrice(it) * Number(it.qty || 1);
+    return acc + unitPrice(it) * qty(it);
   }, 0);
 });
 
 const canCheckout = computed(() => selectedItems.value.length > 0);
 
-/** qty actions */
+// -------------------------
+// qty actions con control stock
 function inc(it) {
+  if (!canInc(it)) {
+    flashStockMsg(it, `Máximo disponible: ${maxQty(it)}`);
+    return;
+  }
+
   cart.increaseQty?.(it.product_id ?? it.id);
+
   if (!cart.increaseQty) {
-    it.qty = Number(it.qty || 1) + 1;
+    it.qty = qty(it) + 1;
     cart.persist?.();
   }
 }
+
 function dec(it) {
-  const q = Number(it.qty || 1);
+  const q = qty(it);
   if (q <= 1) return;
+
   cart.decreaseQty?.(it.product_id ?? it.id);
+
   if (!cart.decreaseQty) {
     it.qty = q - 1;
     cart.persist?.();
@@ -255,16 +340,15 @@ function dec(it) {
 
 function removeItem(it) {
   cart.removeItem?.(it.product_id ?? it.id);
+
   if (!cart.removeItem) {
     const pid = it.product_id ?? it.id;
-    cart.items = (cart.items || []).filter(x => (x.product_id ?? x.id) !== pid);
+    cart.items = (cart.items || []).filter((x) => (x.product_id ?? x.id) !== pid);
     cart.persist?.();
   }
 }
 
 function goCheckout() {
-  // opcional: si querés pasar al checkout solo seleccionados,
-  // guardás la selección en store. Por ahora: checkout normal.
   router.push("/shop/checkout");
 }
 </script>
@@ -276,20 +360,17 @@ function goCheckout() {
   margin: 0 auto;
 }
 
-/* Card base ML */
 .ml-card {
   border-radius: 10px;
   border: 1px solid #e6e6e6;
   background: #fff;
 }
 
-/* Summary sticky */
 .ml-summary {
   position: sticky;
   top: 96px;
 }
 
-/* Text */
 .ml-muted {
   color: #737373;
 }
@@ -306,14 +387,12 @@ function goCheckout() {
   font-size: 14px;
 }
 
-/* CTA */
 .ml-cta {
   border-radius: 6px;
   text-transform: none;
   font-weight: 700;
 }
 
-/* Items list */
 .ml-item-row {
   display: grid;
   grid-template-columns: 32px 84px 1fr 170px 140px;
@@ -367,7 +446,12 @@ function goCheckout() {
   text-decoration: underline;
 }
 
-/* Qty box ML-like */
+.ml-warn {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: #b45309;
+}
+
 .ml-qty {
   display: flex;
   flex-direction: column;
@@ -410,7 +494,6 @@ function goCheckout() {
   color: #737373;
 }
 
-/* Price */
 .ml-price {
   text-align: right;
 }
@@ -424,19 +507,16 @@ function goCheckout() {
   margin-top: 4px;
 }
 
-/* Checkbox compact */
 .ml-check :deep(.v-selection-control__wrapper) {
   margin: 0;
 }
 
-/* Hint */
 .ml-hint {
   text-align: center;
   font-size: 12.5px;
   margin-top: 10px;
 }
 
-/* Responsive */
 @media (max-width: 960px) {
   .ml-summary {
     position: static;
