@@ -1,13 +1,15 @@
 <!-- src/modules/shop/pages/ShopCheckoutSuccess.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
      - Comprobante REAL en PDF (jsPDF) ✅
+     - Mobile homogéneo (tipos/tamaños consistentes) ✅
+     - Un solo botón: "Compartir compra" (share nativo + fallback copiar) ✅
+     - Sin “link” largo en pantalla ✅
      - Sin bordes negros (borde suave #e6e6e6)
-     - Link para compartir + copiar
      - Botón WhatsApp directo
      - Lee datos desde:
        1) query params (?order_id=&code=)
        2) sessionStorage: "shop_last_receipt"
-     
+
      REQUISITO:
        npm i jspdf
 -->
@@ -35,7 +37,13 @@
               Seguir comprando
             </v-btn>
 
-            <v-btn color="primary" class="sc-btn" prepend-icon="mdi-download" :loading="pdfLoading" @click="downloadPdf">
+            <v-btn
+              color="primary"
+              class="sc-btn"
+              prepend-icon="mdi-download"
+              :loading="pdfLoading"
+              @click="downloadPdf"
+            >
               Descargar PDF
             </v-btn>
           </div>
@@ -66,7 +74,7 @@
 
             <div class="sc-kv">
               <div class="sc-k">Método de pago</div>
-              <div class="sc-v"><b>{{ receipt.payment_label || "—" }}</b></div>
+              <div class="sc-v">{{ receipt.payment_label || "—" }}</div>
             </div>
 
             <div class="sc-kv" v-if="receipt.status_label">
@@ -78,26 +86,11 @@
               </div>
             </div>
 
+            <!-- ✅ SOLO UN BOTON: SHARE NATIVO + FALLBACK COPIAR -->
             <div class="sc-actions-row">
-              <v-btn variant="text" class="sc-link" @click="copyShareLink">
-                <v-icon start>mdi-link-variant</v-icon>
-                Copiar link de compra
+              <v-btn class="sc-share" variant="tonal" prepend-icon="mdi-share-variant" @click="sharePurchase">
+                Compartir compra
               </v-btn>
-
-              <v-btn
-                variant="text"
-                class="sc-link"
-                :href="shareLink"
-                target="_blank"
-                rel="noopener"
-              >
-                Abrir link
-                <v-icon end>mdi-open-in-new</v-icon>
-              </v-btn>
-            </div>
-
-            <div class="sc-mini" v-if="shareLink">
-              Link: <span class="sc-mono">{{ shareLink }}</span>
             </div>
           </div>
 
@@ -108,17 +101,12 @@
             <div class="sc-kv">
               <div class="sc-k">{{ isPickup ? "Retiro" : "Envío" }}</div>
               <div class="sc-v">
-                <b>{{ isPickup ? (receipt.pickup_branch_name || "—") : "A domicilio" }}</b>
+                {{ isPickup ? (receipt.pickup_branch_name || "—") : "A domicilio" }}
               </div>
             </div>
 
-            <v-alert
-              v-if="isPickup"
-              type="info"
-              variant="tonal"
-              class="rounded-lg mt-3"
-            >
-              <div class="font-weight-bold mb-1">Dirección de retiro (Rivadavia)</div>
+            <v-alert v-if="isPickup" type="info" variant="tonal" class="rounded-lg mt-3">
+              <div class="sc-alert-title">Dirección de retiro (Rivadavia)</div>
               <div class="sc-addr">
                 Av. Ignacio de la Roza y Calle Los Jesuistas – Local 1<br />
                 Barrio CESAP, Dpto. Rivadavia<br />
@@ -126,13 +114,8 @@
               </div>
             </v-alert>
 
-            <v-alert
-              v-else
-              type="info"
-              variant="tonal"
-              class="rounded-lg mt-3"
-            >
-              <div class="font-weight-bold mb-1">Dirección de envío</div>
+            <v-alert v-else type="info" variant="tonal" class="rounded-lg mt-3">
+              <div class="sc-alert-title">Dirección de envío</div>
               <div class="sc-addr">
                 {{ receipt.shipping_address || "—" }}
               </div>
@@ -164,7 +147,8 @@
                 />
                 <div class="sc-item-info">
                   <div class="sc-item-name">
-                    <b>{{ toNum(it.qty, 0) }} ×</b> {{ it.name || "Producto" }}
+                    <span class="sc-qty">{{ toNum(it.qty, 0) }}×</span>
+                    <span>{{ it.name || "Producto" }}</span>
                   </div>
                   <div class="sc-item-sub">
                     $ {{ fmtMoney(unitPrice(it)) }} c/u
@@ -229,7 +213,7 @@
           variant="tonal"
           class="rounded-lg mt-4"
         >
-          <div class="font-weight-bold mb-1">Crédito San Juan Tecnología</div>
+          <div class="sc-alert-title">Crédito San Juan Tecnología</div>
           Presentate en tienda con <b>DNI</b>, <b>comprobante de ingresos</b> y un <b>servicio a tu nombre</b>.
         </v-alert>
 
@@ -385,6 +369,27 @@ async function copyShareLink() {
   }
 }
 
+/** ✅ Share nativo (mobile) + fallback copiar */
+async function sharePurchase() {
+  const title = "Compra San Juan Tecnología";
+  const text = receipt.value.order_id
+    ? `Pedido #${receipt.value.order_id}${receipt.value.code ? ` (código ${receipt.value.code})` : ""}`
+    : "Compra confirmada";
+
+  const url = shareLink.value;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text, url });
+      return;
+    }
+  } catch (e) {
+    console.warn("[CHECKOUT_SUCCESS] share cancelled/failed", e);
+  }
+
+  await copyShareLink();
+}
+
 /* =========================
    ✅ PDF REAL (jsPDF)
    - requiere: npm i jspdf
@@ -394,18 +399,16 @@ async function downloadPdf() {
   pdfLoading.value = true;
 
   try {
-    // dynamic import => no rompe SSR y no pesa al inicio
     const mod = await import("jspdf");
     const jsPDF = mod.jsPDF || mod.default;
 
     const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-    // Layout
     const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
     const margin = 14;
     let y = 16;
 
-    // Helpers
     const line = (yy) => {
       doc.setDrawColor(230, 230, 230);
       doc.setLineWidth(0.3);
@@ -413,6 +416,13 @@ async function downloadPdf() {
     };
 
     const wrapText = (text, maxWidthMm) => doc.splitTextToSize(String(text || ""), maxWidthMm);
+
+    const ensureSpace = (needed = 12) => {
+      if (y + needed > pageH - margin) {
+        doc.addPage();
+        y = 16;
+      }
+    };
 
     const addTitle = (t) => {
       doc.setFont("helvetica", "bold");
@@ -439,22 +449,12 @@ async function downloadPdf() {
       y += 5.5;
     };
 
-    const ensureSpace = (needed = 12) => {
-      const pageH = doc.internal.pageSize.getHeight();
-      if (y + needed > pageH - margin) {
-        doc.addPage();
-        y = 16;
-      }
-    };
-
-    // Header
     addTitle("Comprobante de compra");
     addSmall("San Juan Tecnología · comprobante generado automáticamente.");
 
     line(y);
     y += 6;
 
-    // Datos del pedido
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Datos del pedido", margin, y);
@@ -470,7 +470,6 @@ async function downloadPdf() {
     line(y);
     y += 6;
 
-    // Entrega
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Entrega", margin, y);
@@ -501,19 +500,17 @@ async function downloadPdf() {
     line(y);
     y += 6;
 
-    // Productos (tabla simple)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Productos", margin, y);
     y += 7;
 
-    const colNameW = pageW - margin * 2 - 18 - 30 - 30; // qty + unit + total
+    const colNameW = pageW - margin * 2 - 18 - 30 - 30;
     const startX = margin;
     const xQty = startX + colNameW;
     const xUnit = xQty + 18;
     const xTot = xUnit + 30;
 
-    // Header tabla
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text("Producto", startX, y);
@@ -544,7 +541,6 @@ async function downloadPdf() {
         const rowH = Math.max(6, nameLines.length * 5);
 
         doc.text(nameLines, startX, y);
-
         doc.text(String(qty), xQty, y, { align: "right" });
         doc.text(`$ ${fmtMoney(unit)}`, xUnit, y, { align: "right" });
         doc.text(`$ ${fmtMoney(tot)}`, xTot, y, { align: "right" });
@@ -560,7 +556,6 @@ async function downloadPdf() {
     ensureSpace(20);
     y += 2;
 
-    // Totales
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Totales", margin, y);
@@ -590,22 +585,19 @@ async function downloadPdf() {
     doc.text(`$ ${fmtMoney(totalComputed.value)}`, pageW - margin, y, { align: "right" });
     y += 10;
 
-    // Footer
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const foot = wrapText(
       `Link de compra: ${shareLink.value}\nSi necesitás ayuda, escribinos por WhatsApp.`,
       pageW - margin * 2
     );
-    doc.text(foot, margin, doc.internal.pageSize.getHeight() - margin);
+    doc.text(foot, margin, pageH - margin);
 
-    // Descargar
     const oid = receipt.value.order_id || "pedido";
     const code = receipt.value.code ? `-${receipt.value.code}` : "";
     doc.save(`comprobante-${oid}${code}.pdf`);
   } catch (e) {
     console.error("[CHECKOUT_SUCCESS] PDF failed", e);
-    // fallback (no bloquea): si falla jsPDF, al menos imprime
     window.print();
   } finally {
     pdfLoading.value = false;
@@ -616,7 +608,6 @@ function hydrateFromQueryOrStorage() {
   const qOrderId = route.query.order_id ? Number(route.query.order_id) : null;
   const qCode = route.query.code ? String(route.query.code) : null;
 
-  // 1) storage
   const raw = sessionStorage.getItem("shop_last_receipt");
   const stored = raw ? safeParseJSON(raw) : null;
 
@@ -626,11 +617,9 @@ function hydrateFromQueryOrStorage() {
     ...src,
   };
 
-  // 2) query pisa storage si existe
   if (qOrderId) merged.order_id = qOrderId;
   if (qCode) merged.code = qCode;
 
-  // defaults labels
   if (!merged.payment_label) {
     if (merged.payment_method === "MERCADOPAGO") merged.payment_label = "Mercado Pago";
     else if (merged.payment_method === "TRANSFER") merged.payment_label = "Transferencia";
@@ -640,7 +629,6 @@ function hydrateFromQueryOrStorage() {
   }
 
   merged.created_at_fmt = formatDateTime(merged.created_at);
-
   receipt.value = merged;
 }
 
@@ -649,40 +637,48 @@ onMounted(() => {
 });
 </script>
 
-
-
 <style scoped>
 /* =========================
-   BASE / SHELL
+   NORMALIZACIÓN (homogéneo)
    ========================= */
+.sc-shell,
+.sc-card,
+.sc-panel,
+.sc-head,
+.sc-kv,
+.sc-items {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans",
+    sans-serif;
+}
 
+/* =========================
+   SHELL
+   ========================= */
 .sc-shell {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding-inline: 12px; /* ✅ evita que “toque” los bordes en mobile */
+  padding-inline: 12px;
   box-sizing: border-box;
 }
 
 /* =========================
    CARD PRINCIPAL
    ========================= */
-
 .sc-card {
   border: 1px solid #e6e6e6;
   border-radius: 14px;
   background: #fff;
-  padding: 18px;
+  padding: 16px;
   box-sizing: border-box;
 }
 
 /* =========================
    HEADER
    ========================= */
-
 .sc-head {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -690,14 +686,14 @@ onMounted(() => {
 
 .sc-head-left {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
   min-width: 0;
 }
 
 .sc-check {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -707,14 +703,15 @@ onMounted(() => {
 }
 
 .sc-title {
-  font-weight: 800;
-  font-size: 18px;
-  line-height: 1.2;
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1.25;
+  color: #111827;
 }
 
 .sc-sub {
   color: #6b7280;
-  font-size: 13px;
+  font-size: 12.5px;
   margin-top: 2px;
   max-width: 720px;
 }
@@ -728,50 +725,48 @@ onMounted(() => {
 
 .sc-btn {
   text-transform: none;
-  font-weight: 700;
+  font-weight: 900;
   border-radius: 10px;
 }
 
 /* =========================
    GRID PRINCIPAL
    ========================= */
-
 .sc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px;
 }
 
 /* =========================
    PANELS
    ========================= */
-
 .sc-panel {
   border: 1px solid #e6e6e6;
   border-radius: 12px;
   padding: 12px;
   background: #fff;
   box-sizing: border-box;
-  overflow: hidden; /* ✅ evita overflow raro en mobile */
+  overflow: hidden;
 }
 
 .sc-panel-wide {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .sc-panel-title {
-  font-weight: 800;
-  font-size: 13.5px;
-  margin-bottom: 10px;
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #111827;
 }
 
 /* =========================
-   KEY / VALUE
+   KV
    ========================= */
-
 .sc-kv {
   display: grid;
-  grid-template-columns: 160px 1fr;
+  grid-template-columns: 140px 1fr;
   gap: 10px;
   padding: 6px 0;
   align-items: start;
@@ -783,38 +778,63 @@ onMounted(() => {
 }
 
 .sc-v {
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 800;
   color: #111827;
   min-width: 0;
   word-break: break-word;
 }
 
 /* =========================
+   ALERT TITLES
+   ========================= */
+.sc-alert-title {
+  font-weight: 900;
+  font-size: 12.8px;
+  margin-bottom: 4px;
+}
+
+/* =========================
    TEXTOS AUX
    ========================= */
-
 .sc-mini {
   color: #6b7280;
   font-size: 12px;
   word-break: break-word;
 }
 
-.sc-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-  word-break: break-all; /* ✅ links largos no rompen layout */
-}
-
-/* (opcional, pero tu template lo usa) */
 .sc-addr {
   line-height: 1.35;
+  font-size: 12.5px;
+  color: #111827;
   word-break: break-word;
+}
+
+.sc-empty {
+  color: #6b7280;
+  font-size: 12.5px;
+}
+
+/* =========================
+   SHARE
+   ========================= */
+.sc-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.sc-share {
+  text-transform: none;
+  font-weight: 900;
+  border-radius: 10px;
 }
 
 /* =========================
    ITEMS
    ========================= */
-
 .sc-items {
   display: grid;
   gap: 10px;
@@ -824,7 +844,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -840,16 +860,19 @@ onMounted(() => {
   min-width: 0;
 }
 
+.sc-qty {
+  font-weight: 900;
+  margin-right: 6px;
+}
+
 .sc-item-name {
-  font-size: 13px;
+  font-size: 12.8px;
+  font-weight: 900;
   line-height: 1.25;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-
-  /* ✅ estándar + webkit */
   line-clamp: 2;
   -webkit-line-clamp: 2;
-
   overflow: hidden;
   word-break: break-word;
 }
@@ -857,11 +880,12 @@ onMounted(() => {
 .sc-item-sub {
   color: #6b7280;
   font-size: 12px;
+  margin-top: 1px;
 }
 
 .sc-item-right {
-  font-weight: 800;
-  font-size: 13px;
+  font-weight: 900;
+  font-size: 12.8px;
   white-space: nowrap;
   flex: 0 0 auto;
 }
@@ -869,7 +893,6 @@ onMounted(() => {
 /* =========================
    TOTALES
    ========================= */
-
 .sc-totals {
   display: grid;
   gap: 6px;
@@ -879,17 +902,18 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 12.8px;
 }
 
 .sc-row > span:last-child {
   text-align: right;
   white-space: nowrap;
+  font-weight: 900;
 }
 
 .sc-free {
   color: #00a650;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .sc-total {
@@ -898,20 +922,20 @@ onMounted(() => {
   gap: 12px;
   margin-top: 6px;
   font-weight: 900;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .sc-total > span:last-child {
   text-align: right;
   white-space: nowrap;
+  font-weight: 900;
 }
 
 /* =========================
-   HELP / WHATSAPP
+   HELP / WA
    ========================= */
-
 .sc-help {
-  margin-top: 14px;
+  margin-top: 12px;
   border: 1px solid #e6e6e6;
   border-radius: 12px;
   padding: 12px;
@@ -928,7 +952,7 @@ onMounted(() => {
 
 .sc-help-title {
   font-weight: 900;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .sc-help-sub {
@@ -944,23 +968,8 @@ onMounted(() => {
 }
 
 /* =========================
-   LINKS / ACTIONS
+   FOOT
    ========================= */
-
-.sc-link {
-  text-transform: none;
-  font-weight: 800;
-  padding-inline: 0;
-}
-
-.sc-actions-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: 10px;
-}
-
 .sc-foot {
   margin-top: 12px;
 }
@@ -973,14 +982,13 @@ onMounted(() => {
 /* =========================
    RESPONSIVE
    ========================= */
-
 @media (max-width: 960px) {
   .sc-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* ✅ MOBILE REAL (arregla “todo roto”) */
+/* ✅ MOBILE: compacto y proporcional */
 @media (max-width: 600px) {
   .sc-shell {
     padding-inline: 10px;
@@ -991,24 +999,6 @@ onMounted(() => {
     border-radius: 12px;
   }
 
-  .sc-head {
-    gap: 10px;
-  }
-
-  .sc-check {
-    width: 26px;
-    height: 26px;
-  }
-
-  .sc-title {
-    font-size: 16px;
-  }
-
-  .sc-sub {
-    font-size: 12.5px;
-  }
-
-  /* ✅ botones full-width y tocables */
   .sc-head-actions {
     width: 100%;
     display: grid;
@@ -1020,60 +1010,37 @@ onMounted(() => {
     width: 100%;
   }
 
-  /* ✅ panels con padding más compacto */
   .sc-panel {
     padding: 10px;
-    border-radius: 12px;
   }
 
-  .sc-panel-title {
-    font-size: 13px;
-    margin-bottom: 8px;
-  }
-
-  /* ✅ KV en 1 columna, evita desbordes */
   .sc-kv {
     grid-template-columns: 1fr;
     gap: 3px;
     padding: 7px 0;
   }
 
-  .sc-k {
-    font-size: 12px;
-  }
-
   .sc-v {
-    font-size: 13px;
-    font-weight: 700;
+    font-weight: 900;
   }
 
-  /* ✅ items: stack + precio alineado */
+  .sc-actions-row {
+    margin-top: 8px;
+  }
+
+  .sc-share {
+    width: 100%;
+  }
+
+  /* productos: mantener proporción */
   .sc-item {
-    flex-direction: row;
     align-items: flex-start;
   }
 
-  .sc-item-left {
-    flex: 1 1 auto;
-  }
-
   .sc-item-right {
-    font-size: 13px;
     padding-left: 6px;
   }
 
-  /* ✅ si el nombre es muy largo, no rompe */
-  .sc-item-name {
-    font-size: 13px;
-  }
-
-  /* ✅ totales con mejor lectura */
-  .sc-row,
-  .sc-total {
-    font-size: 14px;
-  }
-
-  /* ✅ help box stack + botón full */
   .sc-help {
     flex-direction: column;
     align-items: stretch;
@@ -1083,31 +1050,14 @@ onMounted(() => {
   .sc-wa {
     width: 100%;
   }
-
-  /* ✅ links en mobile no rompen */
-  .sc-actions-row {
-    gap: 8px;
-  }
 }
 
-/* ✅ MICRO MOBILE (teléfonos muy chicos) */
 @media (max-width: 360px) {
-  .sc-shell {
-    padding-inline: 8px;
-  }
-
   .sc-card {
     padding: 10px;
   }
-
-  .sc-item-right {
-    font-size: 12.5px;
-  }
-
   .sc-total {
-    font-size: 15px;
+    font-size: 14.5px;
   }
 }
 </style>
-
-
