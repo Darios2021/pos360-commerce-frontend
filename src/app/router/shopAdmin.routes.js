@@ -2,6 +2,13 @@
 // ✅ COPY-PASTE FINAL COMPLETO (cuelga bajo /app/*)
 
 import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
+
+// ✅ LISTADO / BANDEJA de pedidos (TU VISTA)
+import ShopOrdersView from "@/modules/admin/pages/ShopOrdersView.vue";
+// (si preferís la otra, cambiá ShopOrdersView por ShopOrdersInboxView)
+// import ShopOrdersInboxView from "@/modules/admin/pages/ShopOrdersInboxView.vue";
+
+// ✅ Settings (si existen)
 import ShopOrdersSettingsView from "@/modules/admin/pages/ShopOrdersSettingsView.vue";
 import ShopShippingSettingsView from "@/modules/admin/pages/ShopShippingSettingsView.vue";
 import ShopPickupSettingsView from "@/modules/admin/pages/ShopPickupSettingsView.vue";
@@ -14,13 +21,6 @@ import ShopLinksView from "@/modules/admin/pages/ShopLinksView.vue";
 // ✅ Galería Multimedia
 import GaleriaMultimediaView from "@/modules/admin/pages/GaleriaMultimediaView.vue";
 
-/**
- * ✅ Admin > Tienda
- * AHORA SON PATHS RELATIVOS (sin "/") para que queden así:
- * - /app/admin/shop/branding
- * - /app/admin/shop/orders
- * - etc
- */
 export const shopAdminRoutes = [
   {
     path: "admin/shop/branding",
@@ -28,12 +28,23 @@ export const shopAdminRoutes = [
     component: ShopBrandingView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
+
+  // ✅ PEDIDOS (LISTADO REAL)
   {
     path: "admin/shop/orders",
+    name: "shopOrders",
+    component: ShopOrdersView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
+  // ✅ (Opcional) Settings de pedidos
+  {
+    path: "admin/shop/orders-settings",
     name: "shopOrdersSettings",
     component: ShopOrdersSettingsView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
+
   {
     path: "admin/shop/shipping",
     name: "shopShippingSettings",
@@ -59,7 +70,6 @@ export const shopAdminRoutes = [
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 
-  // ✅ Links Tienda
   {
     path: "admin/shop/links",
     name: "shopLinks",
@@ -67,7 +77,6 @@ export const shopAdminRoutes = [
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 
-  // ✅ Galería Multimedia (admin)
   {
     path: "admin/galeria-multimedia",
     name: "adminGaleriaMultimedia",

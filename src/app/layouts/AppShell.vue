@@ -1,5 +1,5 @@
 <!-- src/app/layouts/AppShell.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega "Links Tienda" en menú Tienda + mantiene Galería multimedia) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega "Pedidos" real + opcional "Pedidos (Config)" + Links Tienda + Galería multimedia) -->
 <template>
   <v-app>
     <v-layout>
@@ -203,12 +203,21 @@
               exact
             />
 
-            <!-- ✅ Pedidos listado -->
+            <!-- ✅ Pedidos LISTADO REAL -->
             <v-list-item
               v-if="hasRoute('shopOrders')"
               :to="{ name: 'shopOrders' }"
               prepend-icon="mdi-receipt-text-outline"
               title="Pedidos"
+              exact
+            />
+
+            <!-- ✅ (Opcional) Pedidos - Config -->
+            <v-list-item
+              v-if="hasRoute('shopOrdersSettings')"
+              :to="{ name: 'shopOrdersSettings' }"
+              prepend-icon="mdi-tune-variant"
+              title="Pedidos (config)"
               exact
             />
 
@@ -355,7 +364,7 @@ const showShopMenu = computed(() => {
     hasRoute("shopPickupSettings") ||
     hasRoute("shopPaymentsSettings") ||
     hasRoute("shopNotificationsSettings") ||
-    hasRoute("shopLinks") || // ✅ NUEVO
+    hasRoute("shopLinks") ||
     hasRoute("adminGaleriaMultimedia")
   );
 });

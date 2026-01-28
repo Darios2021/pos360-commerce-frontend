@@ -1,17 +1,10 @@
 <!-- src/modules/shop/pages/ShopCheckoutSuccess.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
      - Comprobante REAL en PDF (jsPDF) ✅
-     - Mobile homogéneo (tipos/tamaños consistentes) ✅
-     - Un solo botón: "Compartir compra" (share nativo + fallback copiar) ✅
-     - Sin “link” largo en pantalla ✅
-     - Sin bordes negros (borde suave #e6e6e6)
-     - Botón WhatsApp directo
-     - Lee datos desde:
-       1) query params (?order_id=&code=)
-       2) sessionStorage: "shop_last_receipt"
-
-     REQUISITO:
-       npm i jspdf
+     - Mobile homogéneo ✅
+     - Botón "Compartir compra" ✅
+     - Botón WhatsApp ✅
+     - ✅ NUEVO: Ubicación Google Maps (botón + embed)
 -->
 
 <template>
@@ -86,7 +79,6 @@
               </div>
             </div>
 
-            <!-- ✅ SOLO UN BOTON: SHARE NATIVO + FALLBACK COPIAR -->
             <div class="sc-actions-row">
               <v-btn class="sc-share" variant="tonal" prepend-icon="mdi-share-variant" @click="sharePurchase">
                 Compartir compra
@@ -111,6 +103,32 @@
                 Av. Ignacio de la Roza y Calle Los Jesuistas – Local 1<br />
                 Barrio CESAP, Dpto. Rivadavia<br />
                 Frente al supermercado Átomo
+              </div>
+
+              <!-- ✅ MAPS -->
+              <div class="sc-map-actions">
+                <v-btn
+                  class="sc-map-btn"
+                  color="primary"
+                  variant="tonal"
+                  prepend-icon="mdi-map-marker"
+                  :href="pickupMapLink"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Ver en Google Maps
+                </v-btn>
+              </div>
+
+              <!-- ✅ Embed (opcional) -->
+              <div class="sc-map-embed">
+                <iframe
+                  :src="pickupMapEmbedSrc"
+                  loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  allowfullscreen
+                  title="Ubicación sucursal Rivadavia"
+                />
               </div>
             </v-alert>
 
@@ -236,6 +254,19 @@ const router = useRouter();
 
 const pdfLoading = ref(false);
 
+/** ✅ Maps link (el que pasaste) */
+const pickupMapLink = "https://maps.app.goo.gl/Mm7Usiuk75bm9xym9";
+
+/**
+ * ✅ Embed: ideal con link de "Compartir > Insertar un mapa" de Google Maps
+ * Como acá nos diste un maps.app.goo.gl, usamos un embed por "search query" (robusto sin API key).
+ * Si querés el embed 100% exacto del pin, después lo reemplazás por el src oficial de "Insertar mapa".
+ */
+const pickupMapEmbedSrc = computed(() => {
+  const q = encodeURIComponent("Av. Ignacio de la Roza y Los Jesuistas, Rivadavia, San Juan, Argentina");
+  return `https://www.google.com/maps?q=${q}&output=embed`;
+});
+
 const receipt = ref({
   order_id: null,
   code: null,
@@ -304,13 +335,8 @@ function formatDateTime(v) {
 }
 
 const isPickup = computed(() => String(receipt.value.fulfillment_type || "").toLowerCase() === "pickup");
-
 const safeItems = computed(() => (Array.isArray(receipt.value.items) ? receipt.value.items : []));
 
-/** ✅ Totales robustos:
- * - si receipt.subtotal/total vienen en 0 o null, se calculan desde items
- * - shipping_total viene de receipt.shipping_total (si existe), sino 0
- */
 const subtotalComputed = computed(() => {
   const s = toNum(receipt.value.subtotal, NaN);
   if (Number.isFinite(s) && s > 0) return s;
@@ -336,13 +362,12 @@ const shareLink = computed(() => {
   const q = new URLSearchParams();
   if (oid) q.set("order_id", String(oid));
   if (code) q.set("code", String(code));
-
   const qs = q.toString();
   return qs ? `${base}?${qs}` : base;
 });
 
 const whatsAppLink = computed(() => {
-  const phone = "5492644392150"; // +54 9 2644 39-2150
+  const phone = "5492644392150";
   const oid = receipt.value.order_id ? `Pedido #${receipt.value.order_id}` : "Pedido";
   const code = receipt.value.code ? ` (código ${receipt.value.code})` : "";
   const total = totalComputed.value ? ` Total $${fmtMoney(totalComputed.value)}.` : "";
@@ -357,9 +382,7 @@ function goHome() {
 async function copyShareLink() {
   try {
     await navigator.clipboard.writeText(shareLink.value);
-    console.log("[CHECKOUT_SUCCESS] share link copied");
-  } catch (e) {
-    console.warn("[CHECKOUT_SUCCESS] clipboard failed", e);
+  } catch {
     const ta = document.createElement("textarea");
     ta.value = shareLink.value;
     document.body.appendChild(ta);
@@ -369,7 +392,6 @@ async function copyShareLink() {
   }
 }
 
-/** ✅ Share nativo (mobile) + fallback copiar */
 async function sharePurchase() {
   const title = "Compra San Juan Tecnología";
   const text = receipt.value.order_id
@@ -383,8 +405,8 @@ async function sharePurchase() {
       await navigator.share({ title, text, url });
       return;
     }
-  } catch (e) {
-    console.warn("[CHECKOUT_SUCCESS] share cancelled/failed", e);
+  } catch {
+    // user cancel
   }
 
   await copyShareLink();
@@ -392,7 +414,6 @@ async function sharePurchase() {
 
 /* =========================
    ✅ PDF REAL (jsPDF)
-   - requiere: npm i jspdf
    ========================= */
 async function downloadPdf() {
   if (pdfLoading.value) return;
@@ -588,7 +609,7 @@ async function downloadPdf() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const foot = wrapText(
-      `Link de compra: ${shareLink.value}\nSi necesitás ayuda, escribinos por WhatsApp.`,
+      `Link de compra: ${shareLink.value}\nSi necesitás ayuda, escribinos por WhatsApp.\nMapa: ${pickupMapLink}`,
       pageW - margin * 2
     );
     doc.text(foot, margin, pageH - margin);
@@ -638,9 +659,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* =========================
-   NORMALIZACIÓN (homogéneo)
-   ========================= */
 .sc-shell,
 .sc-card,
 .sc-panel,
@@ -651,9 +669,6 @@ onMounted(() => {
     sans-serif;
 }
 
-/* =========================
-   SHELL
-   ========================= */
 .sc-shell {
   width: 100%;
   max-width: 1100px;
@@ -662,9 +677,6 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* =========================
-   CARD PRINCIPAL
-   ========================= */
 .sc-card {
   border: 1px solid #e6e6e6;
   border-radius: 14px;
@@ -673,9 +685,6 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* =========================
-   HEADER
-   ========================= */
 .sc-head {
   display: flex;
   gap: 12px;
@@ -729,18 +738,12 @@ onMounted(() => {
   border-radius: 10px;
 }
 
-/* =========================
-   GRID PRINCIPAL
-   ========================= */
 .sc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-/* =========================
-   PANELS
-   ========================= */
 .sc-panel {
   border: 1px solid #e6e6e6;
   border-radius: 12px;
@@ -761,9 +764,6 @@ onMounted(() => {
   color: #111827;
 }
 
-/* =========================
-   KV
-   ========================= */
 .sc-kv {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -785,18 +785,12 @@ onMounted(() => {
   word-break: break-word;
 }
 
-/* =========================
-   ALERT TITLES
-   ========================= */
 .sc-alert-title {
   font-weight: 900;
   font-size: 12.8px;
   margin-bottom: 4px;
 }
 
-/* =========================
-   TEXTOS AUX
-   ========================= */
 .sc-mini {
   color: #6b7280;
   font-size: 12px;
@@ -815,9 +809,6 @@ onMounted(() => {
   font-size: 12.5px;
 }
 
-/* =========================
-   SHARE
-   ========================= */
 .sc-actions-row {
   display: flex;
   gap: 10px;
@@ -832,9 +823,32 @@ onMounted(() => {
   border-radius: 10px;
 }
 
-/* =========================
-   ITEMS
-   ========================= */
+/* ✅ Maps */
+.sc-map-actions {
+  margin-top: 10px;
+}
+
+.sc-map-btn {
+  text-transform: none;
+  font-weight: 900;
+  border-radius: 10px;
+}
+
+.sc-map-embed {
+  margin-top: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sc-map-embed iframe {
+  width: 100%;
+  height: 220px;
+  border: 0;
+  display: block;
+}
+
 .sc-items {
   display: grid;
   gap: 10px;
@@ -890,9 +904,6 @@ onMounted(() => {
   flex: 0 0 auto;
 }
 
-/* =========================
-   TOTALES
-   ========================= */
 .sc-totals {
   display: grid;
   gap: 6px;
@@ -931,9 +942,6 @@ onMounted(() => {
   font-weight: 900;
 }
 
-/* =========================
-   HELP / WA
-   ========================= */
 .sc-help {
   margin-top: 12px;
   border: 1px solid #e6e6e6;
@@ -967,9 +975,6 @@ onMounted(() => {
   text-transform: none;
 }
 
-/* =========================
-   FOOT
-   ========================= */
 .sc-foot {
   margin-top: 12px;
 }
@@ -979,16 +984,12 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* =========================
-   RESPONSIVE
-   ========================= */
 @media (max-width: 960px) {
   .sc-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* ✅ MOBILE: compacto y proporcional */
 @media (max-width: 600px) {
   .sc-shell {
     padding-inline: 10px;
@@ -1032,13 +1033,12 @@ onMounted(() => {
     width: 100%;
   }
 
-  /* productos: mantener proporción */
-  .sc-item {
-    align-items: flex-start;
+  .sc-map-btn {
+    width: 100%;
   }
 
-  .sc-item-right {
-    padding-left: 6px;
+  .sc-map-embed iframe {
+    height: 200px;
   }
 
   .sc-help {
@@ -1058,6 +1058,9 @@ onMounted(() => {
   }
   .sc-total {
     font-size: 14.5px;
+  }
+  .sc-map-embed iframe {
+    height: 180px;
   }
 }
 </style>
