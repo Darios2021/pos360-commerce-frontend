@@ -1,12 +1,15 @@
 <!-- src/modules/shop/pages/ShopCheckoutSuccess.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
+     - Comprobante REAL en PDF (jsPDF) ✅
      - Sin bordes negros (borde suave #e6e6e6)
-     - Descargar PDF (window.print => Guardar como PDF)
      - Link para compartir + copiar
      - Botón WhatsApp directo
      - Lee datos desde:
        1) query params (?order_id=&code=)
-       2) sessionStorage: "shop_last_receipt" (si lo guardás desde checkout)
+       2) sessionStorage: "shop_last_receipt"
+     
+     REQUISITO:
+       npm i jspdf
 -->
 
 <template>
@@ -27,12 +30,12 @@
             </div>
           </div>
 
-          <div class="sc-head-actions no-print">
+          <div class="sc-head-actions">
             <v-btn variant="tonal" class="sc-btn" @click="goHome">
               Seguir comprando
             </v-btn>
 
-            <v-btn color="primary" class="sc-btn" prepend-icon="mdi-download" @click="downloadPdf">
+            <v-btn color="primary" class="sc-btn" prepend-icon="mdi-download" :loading="pdfLoading" @click="downloadPdf">
               Descargar PDF
             </v-btn>
           </div>
@@ -75,7 +78,7 @@
               </div>
             </div>
 
-            <div class="sc-actions-row no-print">
+            <div class="sc-actions-row">
               <v-btn variant="text" class="sc-link" @click="copyShareLink">
                 <v-icon start>mdi-link-variant</v-icon>
                 Copiar link de compra
@@ -93,7 +96,7 @@
               </v-btn>
             </div>
 
-            <div class="sc-mini no-print" v-if="shareLink">
+            <div class="sc-mini" v-if="shareLink">
               Link: <span class="sc-mono">{{ shareLink }}</span>
             </div>
           </div>
@@ -161,16 +164,16 @@
                 />
                 <div class="sc-item-info">
                   <div class="sc-item-name">
-                    <b>{{ it.qty }} ×</b> {{ it.name || "Producto" }}
+                    <b>{{ toNum(it.qty, 0) }} ×</b> {{ it.name || "Producto" }}
                   </div>
                   <div class="sc-item-sub">
-                    $ {{ fmtMoney(it.unit_price || it.price || 0) }} c/u
+                    $ {{ fmtMoney(unitPrice(it)) }} c/u
                   </div>
                 </div>
               </div>
 
               <div class="sc-item-right">
-                $ {{ fmtMoney((Number(it.unit_price || it.price || 0) * Number(it.qty || 0)) || 0) }}
+                $ {{ fmtMoney(lineTotal(it)) }}
               </div>
             </div>
 
@@ -179,27 +182,27 @@
             <div class="sc-totals">
               <div class="sc-row">
                 <span>Subtotal</span>
-                <span>$ {{ fmtMoney(receipt.subtotal || 0) }}</span>
+                <span>$ {{ fmtMoney(subtotalComputed) }}</span>
               </div>
 
               <div class="sc-row">
                 <span>Envío</span>
                 <span class="sc-free">
-                  <template v-if="Number(receipt.shipping_total || 0) === 0">Gratis</template>
-                  <template v-else>$ {{ fmtMoney(receipt.shipping_total || 0) }}</template>
+                  <template v-if="Number(shippingComputed) === 0">Gratis</template>
+                  <template v-else>$ {{ fmtMoney(shippingComputed) }}</template>
                 </span>
               </div>
 
               <div class="sc-total">
                 <span>Total</span>
-                <span>$ {{ fmtMoney(receipt.total || 0) }}</span>
+                <span>$ {{ fmtMoney(totalComputed) }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- AYUDA / WHATSAPP -->
-        <div class="sc-help no-print">
+        <div class="sc-help">
           <div class="sc-help-left">
             <div class="sc-help-title">¿Necesitás ayuda ahora?</div>
             <div class="sc-help-sub">
@@ -230,7 +233,7 @@
           Presentate en tienda con <b>DNI</b>, <b>comprobante de ingresos</b> y un <b>servicio a tu nombre</b>.
         </v-alert>
 
-        <div class="sc-foot no-print">
+        <div class="sc-foot">
           <div class="sc-foot-note">
             Si no ves el pedido en tu historial, guardá el código y contactanos.
           </div>
@@ -246,6 +249,8 @@ import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
 const router = useRouter();
+
+const pdfLoading = ref(false);
 
 const receipt = ref({
   order_id: null,
@@ -273,6 +278,25 @@ function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
 
+function toNum(v, d = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+
+function unitPrice(it) {
+  return (
+    toNum(it.unit_price, NaN) ||
+    toNum(it.price, NaN) ||
+    toNum(it.price_list, NaN) ||
+    toNum(it.price_discount, NaN) ||
+    0
+  );
+}
+
+function lineTotal(it) {
+  return unitPrice(it) * toNum(it.qty, 0);
+}
+
 function safeParseJSON(s) {
   try {
     return JSON.parse(s);
@@ -297,10 +321,30 @@ function formatDateTime(v) {
 
 const isPickup = computed(() => String(receipt.value.fulfillment_type || "").toLowerCase() === "pickup");
 
-const safeItems = computed(() => Array.isArray(receipt.value.items) ? receipt.value.items : []);
+const safeItems = computed(() => (Array.isArray(receipt.value.items) ? receipt.value.items : []));
+
+/** ✅ Totales robustos:
+ * - si receipt.subtotal/total vienen en 0 o null, se calculan desde items
+ * - shipping_total viene de receipt.shipping_total (si existe), sino 0
+ */
+const subtotalComputed = computed(() => {
+  const s = toNum(receipt.value.subtotal, NaN);
+  if (Number.isFinite(s) && s > 0) return s;
+  return safeItems.value.reduce((acc, it) => acc + lineTotal(it), 0);
+});
+
+const shippingComputed = computed(() => {
+  const sh = toNum(receipt.value.shipping_total, NaN);
+  return Number.isFinite(sh) ? sh : 0;
+});
+
+const totalComputed = computed(() => {
+  const t = toNum(receipt.value.total, NaN);
+  if (Number.isFinite(t) && t > 0) return t;
+  return subtotalComputed.value + shippingComputed.value;
+});
 
 const shareLink = computed(() => {
-  // No metas datos personales. Solo order_id y code si existe.
   const oid = receipt.value.order_id;
   const code = receipt.value.code;
 
@@ -317,7 +361,7 @@ const whatsAppLink = computed(() => {
   const phone = "5492644392150"; // +54 9 2644 39-2150
   const oid = receipt.value.order_id ? `Pedido #${receipt.value.order_id}` : "Pedido";
   const code = receipt.value.code ? ` (código ${receipt.value.code})` : "";
-  const total = receipt.value.total ? ` Total $${fmtMoney(receipt.value.total)}.` : "";
+  const total = totalComputed.value ? ` Total $${fmtMoney(totalComputed.value)}.` : "";
   const msg = encodeURIComponent(`Hola! ${oid}${code}.${total} ¿Me ayudan con mi compra?`);
   return `https://wa.me/${phone}?text=${msg}`;
 });
@@ -329,11 +373,9 @@ function goHome() {
 async function copyShareLink() {
   try {
     await navigator.clipboard.writeText(shareLink.value);
-    // Si querés toast/snackbar, lo enchufás acá
     console.log("[CHECKOUT_SUCCESS] share link copied");
   } catch (e) {
     console.warn("[CHECKOUT_SUCCESS] clipboard failed", e);
-    // fallback viejo
     const ta = document.createElement("textarea");
     ta.value = shareLink.value;
     document.body.appendChild(ta);
@@ -343,9 +385,231 @@ async function copyShareLink() {
   }
 }
 
-function downloadPdf() {
-  // "Descargar PDF" real sin backend = print => Guardar como PDF
-  window.print();
+/* =========================
+   ✅ PDF REAL (jsPDF)
+   - requiere: npm i jspdf
+   ========================= */
+async function downloadPdf() {
+  if (pdfLoading.value) return;
+  pdfLoading.value = true;
+
+  try {
+    // dynamic import => no rompe SSR y no pesa al inicio
+    const mod = await import("jspdf");
+    const jsPDF = mod.jsPDF || mod.default;
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+    // Layout
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 16;
+
+    // Helpers
+    const line = (yy) => {
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.3);
+      doc.line(margin, yy, pageW - margin, yy);
+    };
+
+    const wrapText = (text, maxWidthMm) => doc.splitTextToSize(String(text || ""), maxWidthMm);
+
+    const addTitle = (t) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(t, margin, y);
+      y += 7;
+    };
+
+    const addSmall = (t) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const lines = wrapText(t, pageW - margin * 2);
+      doc.text(lines, margin, y);
+      y += lines.length * 5;
+    };
+
+    const kv = (k, v) => {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(k), margin, y);
+      doc.setFont("helvetica", "bold");
+      doc.text(String(v ?? "—"), margin + 55, y);
+      doc.setFont("helvetica", "normal");
+      y += 5.5;
+    };
+
+    const ensureSpace = (needed = 12) => {
+      const pageH = doc.internal.pageSize.getHeight();
+      if (y + needed > pageH - margin) {
+        doc.addPage();
+        y = 16;
+      }
+    };
+
+    // Header
+    addTitle("Comprobante de compra");
+    addSmall("San Juan Tecnología · comprobante generado automáticamente.");
+
+    line(y);
+    y += 6;
+
+    // Datos del pedido
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Datos del pedido", margin, y);
+    y += 7;
+
+    kv("ID de pedido", receipt.value.order_id || "—");
+    kv("Código", receipt.value.code || "—");
+    kv("Fecha", receipt.value.created_at_fmt || "—");
+    kv("Método de pago", receipt.value.payment_label || "—");
+    if (receipt.value.status_label) kv("Estado", receipt.value.status_label);
+
+    y += 2;
+    line(y);
+    y += 6;
+
+    // Entrega
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Entrega", margin, y);
+    y += 7;
+
+    if (isPickup.value) {
+      kv("Tipo", "Retiro en sucursal");
+      kv("Sucursal", receipt.value.pickup_branch_name || "—");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const addrLines = wrapText(
+        "Dirección: Av. Ignacio de la Roza y Calle Los Jesuistas – Local 1 · Barrio CESAP, Dpto. Rivadavia · Frente al supermercado Átomo",
+        pageW - margin * 2
+      );
+      doc.text(addrLines, margin, y);
+      y += addrLines.length * 5;
+    } else {
+      kv("Tipo", "Envío a domicilio");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const addrLines = wrapText(`Dirección: ${receipt.value.shipping_address || "—"}`, pageW - margin * 2);
+      doc.text(addrLines, margin, y);
+      y += addrLines.length * 5;
+    }
+
+    y += 1;
+    line(y);
+    y += 6;
+
+    // Productos (tabla simple)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Productos", margin, y);
+    y += 7;
+
+    const colNameW = pageW - margin * 2 - 18 - 30 - 30; // qty + unit + total
+    const startX = margin;
+    const xQty = startX + colNameW;
+    const xUnit = xQty + 18;
+    const xTot = xUnit + 30;
+
+    // Header tabla
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto", startX, y);
+    doc.text("Cant.", xQty, y, { align: "right" });
+    doc.text("Unit.", xUnit, y, { align: "right" });
+    doc.text("Total", xTot, y, { align: "right" });
+    y += 4;
+    line(y);
+    y += 5;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const items = safeItems.value.length ? safeItems.value : [];
+    if (!items.length) {
+      doc.text("No hay productos para mostrar.", margin, y);
+      y += 6;
+    } else {
+      for (const it of items) {
+        ensureSpace(14);
+
+        const name = String(it.name || "Producto");
+        const qty = toNum(it.qty, 0);
+        const unit = unitPrice(it);
+        const tot = lineTotal(it);
+
+        const nameLines = wrapText(name, colNameW);
+        const rowH = Math.max(6, nameLines.length * 5);
+
+        doc.text(nameLines, startX, y);
+
+        doc.text(String(qty), xQty, y, { align: "right" });
+        doc.text(`$ ${fmtMoney(unit)}`, xUnit, y, { align: "right" });
+        doc.text(`$ ${fmtMoney(tot)}`, xTot, y, { align: "right" });
+
+        y += rowH;
+        doc.setDrawColor(240, 240, 240);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y - 1, pageW - margin, y - 1);
+      }
+      y += 2;
+    }
+
+    ensureSpace(20);
+    y += 2;
+
+    // Totales
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Totales", margin, y);
+    y += 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Subtotal", pageW - margin - 60, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(`$ ${fmtMoney(subtotalComputed.value)}`, pageW - margin, y, { align: "right" });
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.text("Envío", pageW - margin - 60, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      shippingComputed.value === 0 ? "Gratis" : `$ ${fmtMoney(shippingComputed.value)}`,
+      pageW - margin,
+      y,
+      { align: "right" }
+    );
+    y += 7;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("TOTAL", pageW - margin - 60, y);
+    doc.text(`$ ${fmtMoney(totalComputed.value)}`, pageW - margin, y, { align: "right" });
+    y += 10;
+
+    // Footer
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const foot = wrapText(
+      `Link de compra: ${shareLink.value}\nSi necesitás ayuda, escribinos por WhatsApp.`,
+      pageW - margin * 2
+    );
+    doc.text(foot, margin, doc.internal.pageSize.getHeight() - margin);
+
+    // Descargar
+    const oid = receipt.value.order_id || "pedido";
+    const code = receipt.value.code ? `-${receipt.value.code}` : "";
+    doc.save(`comprobante-${oid}${code}.pdf`);
+  } catch (e) {
+    console.error("[CHECKOUT_SUCCESS] PDF failed", e);
+    // fallback (no bloquea): si falla jsPDF, al menos imprime
+    window.print();
+  } finally {
+    pdfLoading.value = false;
+  }
 }
 
 function hydrateFromQueryOrStorage() {
@@ -385,22 +649,37 @@ onMounted(() => {
 });
 </script>
 
+
+
 <style scoped>
+/* =========================
+   BASE / SHELL
+   ========================= */
+
 .sc-shell {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
+  padding-inline: 12px; /* ✅ evita que “toque” los bordes en mobile */
+  box-sizing: border-box;
 }
 
-/* ✅ Sin bordes negros */
+/* =========================
+   CARD PRINCIPAL
+   ========================= */
+
 .sc-card {
   border: 1px solid #e6e6e6;
   border-radius: 14px;
   background: #fff;
   padding: 18px;
+  box-sizing: border-box;
 }
 
-/* Header */
+/* =========================
+   HEADER
+   ========================= */
+
 .sc-head {
   display: flex;
   gap: 14px;
@@ -413,7 +692,7 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  min-width: 280px;
+  min-width: 0;
 }
 
 .sc-check {
@@ -444,6 +723,7 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .sc-btn {
@@ -452,18 +732,27 @@ onMounted(() => {
   border-radius: 10px;
 }
 
-/* Panels */
+/* =========================
+   GRID PRINCIPAL
+   ========================= */
+
 .sc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
+/* =========================
+   PANELS
+   ========================= */
+
 .sc-panel {
   border: 1px solid #e6e6e6;
   border-radius: 12px;
   padding: 12px;
   background: #fff;
+  box-sizing: border-box;
+  overflow: hidden; /* ✅ evita overflow raro en mobile */
 }
 
 .sc-panel-wide {
@@ -476,11 +765,16 @@ onMounted(() => {
   margin-bottom: 10px;
 }
 
+/* =========================
+   KEY / VALUE
+   ========================= */
+
 .sc-kv {
   display: grid;
   grid-template-columns: 160px 1fr;
   gap: 10px;
   padding: 6px 0;
+  align-items: start;
 }
 
 .sc-k {
@@ -491,19 +785,36 @@ onMounted(() => {
 .sc-v {
   font-size: 13px;
   color: #111827;
+  min-width: 0;
+  word-break: break-word;
 }
+
+/* =========================
+   TEXTOS AUX
+   ========================= */
 
 .sc-mini {
   color: #6b7280;
   font-size: 12px;
+  word-break: break-word;
 }
 
 .sc-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
+  word-break: break-all; /* ✅ links largos no rompen layout */
 }
 
-/* Items */
+/* (opcional, pero tu template lo usa) */
+.sc-addr {
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* =========================
+   ITEMS
+   ========================= */
+
 .sc-items {
   display: grid;
   gap: 10px;
@@ -514,6 +825,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .sc-item-left {
@@ -521,6 +833,7 @@ onMounted(() => {
   gap: 10px;
   align-items: center;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .sc-item-info {
@@ -531,9 +844,14 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.25;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+
+  /* ✅ estándar + webkit */
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+
   overflow: hidden;
+  word-break: break-word;
 }
 
 .sc-item-sub {
@@ -545,7 +863,12 @@ onMounted(() => {
   font-weight: 800;
   font-size: 13px;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
+
+/* =========================
+   TOTALES
+   ========================= */
 
 .sc-totals {
   display: grid;
@@ -555,7 +878,13 @@ onMounted(() => {
 .sc-row {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   font-size: 13px;
+}
+
+.sc-row > span:last-child {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .sc-free {
@@ -566,17 +895,21 @@ onMounted(() => {
 .sc-total {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   margin-top: 6px;
   font-weight: 900;
   font-size: 16px;
 }
 
-.sc-empty {
-  color: #6b7280;
-  font-size: 13px;
+.sc-total > span:last-child {
+  text-align: right;
+  white-space: nowrap;
 }
 
-/* Help box */
+/* =========================
+   HELP / WHATSAPP
+   ========================= */
+
 .sc-help {
   margin-top: 14px;
   border: 1px solid #e6e6e6;
@@ -586,6 +919,11 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.sc-help-left {
+  min-width: 0;
 }
 
 .sc-help-title {
@@ -604,6 +942,10 @@ onMounted(() => {
   font-weight: 900;
   text-transform: none;
 }
+
+/* =========================
+   LINKS / ACTIONS
+   ========================= */
 
 .sc-link {
   text-transform: none;
@@ -628,24 +970,144 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* Print (PDF) */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  .sc-card {
-    border: none !important;
-    padding: 0 !important;
-  }
-  .sc-panel {
-    break-inside: avoid;
-  }
-}
+/* =========================
+   RESPONSIVE
+   ========================= */
 
-/* Responsive */
 @media (max-width: 960px) {
   .sc-grid {
     grid-template-columns: 1fr;
   }
 }
+
+/* ✅ MOBILE REAL (arregla “todo roto”) */
+@media (max-width: 600px) {
+  .sc-shell {
+    padding-inline: 10px;
+  }
+
+  .sc-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .sc-head {
+    gap: 10px;
+  }
+
+  .sc-check {
+    width: 26px;
+    height: 26px;
+  }
+
+  .sc-title {
+    font-size: 16px;
+  }
+
+  .sc-sub {
+    font-size: 12.5px;
+  }
+
+  /* ✅ botones full-width y tocables */
+  .sc-head-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .sc-btn {
+    width: 100%;
+  }
+
+  /* ✅ panels con padding más compacto */
+  .sc-panel {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .sc-panel-title {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  /* ✅ KV en 1 columna, evita desbordes */
+  .sc-kv {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    padding: 7px 0;
+  }
+
+  .sc-k {
+    font-size: 12px;
+  }
+
+  .sc-v {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ✅ items: stack + precio alineado */
+  .sc-item {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .sc-item-left {
+    flex: 1 1 auto;
+  }
+
+  .sc-item-right {
+    font-size: 13px;
+    padding-left: 6px;
+  }
+
+  /* ✅ si el nombre es muy largo, no rompe */
+  .sc-item-name {
+    font-size: 13px;
+  }
+
+  /* ✅ totales con mejor lectura */
+  .sc-row,
+  .sc-total {
+    font-size: 14px;
+  }
+
+  /* ✅ help box stack + botón full */
+  .sc-help {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .sc-wa {
+    width: 100%;
+  }
+
+  /* ✅ links en mobile no rompen */
+  .sc-actions-row {
+    gap: 8px;
+  }
+}
+
+/* ✅ MICRO MOBILE (teléfonos muy chicos) */
+@media (max-width: 360px) {
+  .sc-shell {
+    padding-inline: 8px;
+  }
+
+  .sc-card {
+    padding: 10px;
+  }
+
+  .sc-item-right {
+    font-size: 12.5px;
+  }
+
+  .sc-total {
+    font-size: 15px;
+  }
+}
 </style>
+
+
