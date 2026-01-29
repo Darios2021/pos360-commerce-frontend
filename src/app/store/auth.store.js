@@ -14,6 +14,39 @@ function adbg(...args) {
 }
 
 /**
+ * ✅ CLAVE DEL FIX:
+ * Tu Admin (useShopOrdersApi) busca el token en:
+ * - localStorage.token / access_token / jwt / auth_token
+ *
+ * Este store guardaba en storage "saveAuth()", pero NO garantizaba localStorage.token.
+ * Entonces: sync para que SIEMPRE exista localStorage.token cuando haya sesión.
+ */
+function syncLegacyTokenKeys(accessToken) {
+  const t = String(accessToken || "").trim();
+  if (!t) return;
+
+  try {
+    localStorage.setItem("token", t);        // ✅ principal (Admin lo usa)
+    localStorage.setItem("access_token", t); // compat
+    localStorage.setItem("jwt", t);          // compat
+    localStorage.setItem("auth_token", t);   // compat
+  } catch {
+    // noop
+  }
+}
+
+function clearLegacyTokenKeys() {
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("jwt");
+    localStorage.removeItem("auth_token");
+  } catch {
+    // noop
+  }
+}
+
+/**
  * Normaliza roles desde cualquier formato posible:
  * - user.roles = ["admin"]
  * - user.role = "admin"
@@ -100,6 +133,7 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     hydrate() {
       const saved = loadAuth();
+
       if (saved?.accessToken) {
         this.accessToken = saved.accessToken;
         this.refreshToken = saved.refreshToken || null;
@@ -109,6 +143,9 @@ export const useAuthStore = defineStore("auth", {
         this.user = savedUser ? mergeUserKeepAvatar(null, savedUser) : null;
 
         this.status = "authed";
+
+        // ✅ IMPORTANTÍSIMO: deja token en localStorage.token (para Admin)
+        syncLegacyTokenKeys(this.accessToken);
 
         adbg("hydrate", {
           branch_id: this.user?.branch_id,
@@ -134,6 +171,9 @@ export const useAuthStore = defineStore("auth", {
         refreshToken: this.refreshToken,
         user: this.user,
       });
+
+      // ✅ por las dudas, mantener token keys (si el user cambia no debería, pero ok)
+      syncLegacyTokenKeys(this.accessToken);
 
       adbg("setUser", {
         id: this.user?.id,
@@ -166,6 +206,9 @@ export const useAuthStore = defineStore("auth", {
         // ✅ MERGE (no pises avatar si /auth/me no lo manda)
         this.setUser(u);
         this.status = "authed";
+
+        // ✅ reafirma keys
+        syncLegacyTokenKeys(this.accessToken);
       } catch (e) {
         this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
         adbg("fetchMe ERROR", { status: e?.response?.status, data: e?.response?.data, msg: this.error });
@@ -187,6 +230,9 @@ export const useAuthStore = defineStore("auth", {
       this.user = normalizedUser;
       this.status = "authed";
 
+      // ✅ CLAVE: el Admin lee localStorage.token
+      syncLegacyTokenKeys(this.accessToken);
+
       adbg("login -> user", {
         id: this.user?.id,
         email: this.user?.email,
@@ -207,6 +253,7 @@ export const useAuthStore = defineStore("auth", {
 
     logout() {
       clearAuth();
+      clearLegacyTokenKeys(); // ✅ limpia token compat del admin
       this.status = "guest";
       this.user = null;
       this.accessToken = null;
@@ -217,6 +264,7 @@ export const useAuthStore = defineStore("auth", {
 
     hardResetAuth() {
       clearAuth();
+      clearLegacyTokenKeys(); // ✅
       this.status = "guest";
       this.user = null;
       this.accessToken = null;

@@ -27,6 +27,7 @@
       </v-alert>
 
       <v-row dense>
+        <!-- Transfer -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="font-weight-bold mb-2">Transferencia</div>
@@ -47,33 +48,87 @@
           </v-card>
         </v-col>
 
+        <!-- Mercado Pago -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
-            <div class="font-weight-bold mb-2">Mercado Pago</div>
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="font-weight-bold">Mercado Pago</div>
+              <v-chip
+                v-if="form.mp_enabled"
+                size="small"
+                label
+                :color="form.mp_mode === 'test' ? 'warning' : 'success'"
+                variant="tonal"
+              >
+                {{ form.mp_mode === "test" ? "MODO TEST" : "PRODUCCIÓN" }}
+              </v-chip>
+            </div>
 
             <v-switch v-model="form.mp_enabled" label="Habilitar Mercado Pago" inset />
-            <v-text-field
-              v-model="form.mp_public_key"
-              label="Public Key (opcional por ahora)"
+
+            <!-- Modo -->
+            <v-select
+              v-model="form.mp_mode"
+              :items="mpModes"
+              item-title="title"
+              item-value="value"
+              label="Modo Mercado Pago"
               variant="outlined"
               density="comfortable"
               class="mt-2"
+              :disabled="!form.mp_enabled"
             />
+
+            <!-- Public Keys opcionales por modo -->
+            <v-text-field
+              v-model="form.mp_public_key_test"
+              label="Public Key TEST (opcional)"
+              variant="outlined"
+              density="comfortable"
+              class="mt-2"
+              :disabled="!form.mp_enabled || form.mp_mode !== 'test'"
+              hint="Si tu front la necesita (por ahora normalmente NO)."
+              persistent-hint
+            />
+
+            <v-text-field
+              v-model="form.mp_public_key_prod"
+              label="Public Key PRODUCCIÓN (opcional)"
+              variant="outlined"
+              density="comfortable"
+              class="mt-2"
+              :disabled="!form.mp_enabled || form.mp_mode !== 'prod'"
+              hint="Si tu front la necesita (por ahora normalmente NO)."
+              persistent-hint
+            />
+
+            <!-- Token server: NO se configura acá -->
             <v-text-field
               v-model="form.mp_access_token"
-              label="Access Token (server)"
+              label="Access Token (server) — se toma del backend/.env"
               variant="outlined"
               density="comfortable"
               class="mt-2"
               type="password"
+              disabled
             />
 
-            <div class="text-caption text-medium-emphasis mt-2">
-              Nota: el token real debería estar en backend/.env; si lo guardás acá es config.
-            </div>
+            <v-alert
+              type="info"
+              variant="tonal"
+              class="mt-3"
+              density="comfortable"
+            >
+              <div class="text-body-2">
+                <b>Importante:</b> el <b>Access Token</b> real se configura en <b>CapRover (backend/.env)</b>.
+                Este panel solo define el <b>modo</b> (TEST/PROD) para que el backend elija
+                <code>MERCADOPAGO_ACCESS_TOKEN_TEST</code> o <code>MERCADOPAGO_ACCESS_TOKEN_PROD</code>.
+              </div>
+            </v-alert>
           </v-card>
         </v-col>
 
+        <!-- Otros -->
         <v-col cols="12">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="font-weight-bold mb-2">Otros</div>
@@ -118,6 +173,11 @@ const saving = ref(false);
 const error = ref("");
 const snack = ref({ show: false, text: "" });
 
+const mpModes = [
+  { title: "Test (Sandbox)", value: "test" },
+  { title: "Producción", value: "prod" },
+];
+
 const form = ref({
   transfer_enabled: true,
   transfer_bank: "",
@@ -127,7 +187,11 @@ const form = ref({
   transfer_instructions: "Realizá la transferencia y enviá el comprobante. El pedido se confirma al acreditarse.",
 
   mp_enabled: false,
-  mp_public_key: "",
+  mp_mode: "test", // ✅ NUEVO
+  mp_public_key_test: "", // ✅ NUEVO (opcional)
+  mp_public_key_prod: "", // ✅ NUEVO (opcional)
+
+  // ⚠️ NO se usa para operar (server token va en backend/.env)
   mp_access_token: "",
 
   cash_enabled: true,
@@ -139,7 +203,25 @@ const form = ref({
 
 function mergeIncoming(item) {
   const it = item && typeof item === "object" ? item : {};
-  form.value = { ...form.value, ...it };
+
+  // Backward compatibility: si venía mp_public_key viejo, lo mapeamos al modo actual
+  const patch = { ...it };
+
+  if (typeof patch.mp_public_key === "string" && patch.mp_public_key.trim()) {
+    if (form.value.mp_mode === "prod") patch.mp_public_key_prod = patch.mp_public_key;
+    else patch.mp_public_key_test = patch.mp_public_key;
+    delete patch.mp_public_key;
+  }
+
+  // Si venía mp_access_token guardado en DB, lo mostramos pero NO lo usamos
+  if (typeof patch.mp_access_token === "string") {
+    patch.mp_access_token = patch.mp_access_token;
+  }
+
+  // Defaults si faltan
+  if (!patch.mp_mode) patch.mp_mode = form.value.mp_mode || "test";
+
+  form.value = { ...form.value, ...patch };
 }
 
 async function load() {
@@ -160,6 +242,7 @@ async function save() {
   saving.value = true;
   error.value = "";
   try {
+    // Guardamos todo, pero recordá: mp_access_token queda solo “visual”
     await putShopSetting("payments", form.value);
     snack.value = { show: true, text: "Guardado OK" };
   } catch (e) {
