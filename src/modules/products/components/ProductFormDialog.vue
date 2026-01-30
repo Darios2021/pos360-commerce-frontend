@@ -859,6 +859,8 @@ function onVideosChanged() {
 
 /* ====== Subida videos ====== */
 /* ====== Subida videos (YouTube + Upload) ====== */
+
+/* ====== Subida videos (YouTube + Upload) ====== */
 async function commitVideos(productId) {
   const pid = toInt(productId, 0);
   if (!pid) return;
@@ -866,14 +868,14 @@ async function commitVideos(productId) {
   const yq = normalizeYoutubeQueue(queuedYoutubeVideos.value);
   const fq = normalizeFilesQueue(queuedVideoFiles.value);
 
-  // 1) YouTube
+  // 1) YouTube (ADMIN)
   for (const it of yq) {
     const url = String(it?.url || "").trim();
     if (!url) continue;
 
     try {
-      // ✅ OJO: SIN /api/v1 porque baseURL ya lo tiene
-      await http.post(`/products/${pid}/videos/youtube`, {
+      // ✅ FIX: ADMIN endpoint
+      await http.post(`/admin/products/${pid}/videos/youtube`, {
         url,
         title: it?.title || null,
       });
@@ -882,7 +884,7 @@ async function commitVideos(productId) {
     }
   }
 
-  // 2) Upload files (multipart)
+  // 2) Upload files (multipart) (ADMIN)
   for (const f of fq) {
     if (!f) continue;
 
@@ -890,8 +892,8 @@ async function commitVideos(productId) {
       const fd = new FormData();
       fd.append("file", f);
 
-      // ✅ OJO: SIN /api/v1 porque baseURL ya lo tiene
-      await http.post(`/products/${pid}/videos/upload`, fd, {
+      // ✅ FIX: ADMIN endpoint
+      await http.post(`/admin/products/${pid}/videos/upload`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
     } catch (e) {
@@ -905,6 +907,7 @@ async function commitVideos(productId) {
     toast("✅ Videos procesados");
   }
 }
+
 
 /* ====== Create ====== */
 async function createAll() {
