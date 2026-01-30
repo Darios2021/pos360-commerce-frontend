@@ -1,8 +1,9 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/products.store.js
-// FIX BORRADO: DELETE devuelve 409 (Conflict) => ahora retornamos {ok:false, code, message}
-// para que el front pueda hacer fallback a "inactivar" cuando sea FK_CONSTRAINT / HAS_SALES.
-// (y seguimos devolviendo true si borró OK, para no romper compatibilidad)
+// FIX:
+// - Si /products* devuelve 404 => fallback automático a /admin/products*
+// - Evita /api/v1 duplicado (axios ya usa baseURL="/api/v1")
+// - Mantiene compatibilidad con el front existente
 
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -61,7 +62,6 @@ function unwrapOk(res) {
   if (typeof res.ok === "boolean") {
     return { ok: res.ok, code: res.code || null, message: res.message || null, data: res.data ?? null };
   }
-  // si backend devuelve {success:true} o directamente data, lo consideramos ok
   return { ok: true, code: null, message: null, data: res.data ?? null };
 }
 
@@ -81,6 +81,38 @@ function pickHttpError(e) {
   const status = e?.response?.status ?? null;
   const data = e?.response?.data ?? null;
   return { status, data };
+}
+
+/* =========================================
+   ✅ FALLBACK /products -> /admin/products
+   - Solo si status=404
+   - NO toca otros endpoints (/branches, /stock/init, etc.)
+========================================= */
+function is404(e) {
+  return Number(e?.response?.status) === 404;
+}
+
+function toAdminProductsPath(path) {
+  const p = String(path || "");
+  // Solo si arranca con /products
+  // /products           -> /admin/products
+  // /products/123/images -> /admin/products/123/images
+  return p.replace(/^\/products(\/|$)/, "/admin/products$1");
+}
+
+async function req(method, path, ...args) {
+  // method: "get" | "post" | "patch" | "delete"
+  try {
+    return await http[method](path, ...args);
+  } catch (e) {
+    const p = String(path || "");
+    const canFallback = p.startsWith("/products");
+    if (canFallback && is404(e)) {
+      const adminPath = toAdminProductsPath(p);
+      return await http[method](adminPath, ...args);
+    }
+    throw e;
+  }
 }
 
 /**
@@ -206,7 +238,7 @@ export const useProductsStore = defineStore("products", {
     async fetchNextCode() {
       this.error = null;
       try {
-        const { data } = await http.get("/products/next-code");
+        const { data } = await req("get", "/products/next-code");
         const one = unwrapOne(data) || data?.data || data || null;
         const code = one?.code || null;
         this.nextCode = code;
@@ -229,7 +261,7 @@ export const useProductsStore = defineStore("products", {
         const bid = toInt(branch_id, 0);
         if (bid > 0) params.branch_id = bid;
 
-        const { data } = await http.get("/products", { params });
+        const { data } = await req("get", "/products", { params });
 
         const list = unwrapList(data);
         const meta = unwrapMeta(data);
@@ -265,7 +297,7 @@ export const useProductsStore = defineStore("products", {
         const bid = toInt(branch_id, 0);
         if (bid > 0) params.branch_id = bid;
 
-        const { data } = await http.get(`/products/${pid}`, { params });
+        const { data } = await req("get", `/products/${pid}`, { params });
         const one = unwrapOne(data);
 
         this.current = one || null;
@@ -295,7 +327,7 @@ export const useProductsStore = defineStore("products", {
       if (!pid || !bid) return 0;
 
       try {
-        const { data } = await http.get(`/products/${pid}/stock`, { params: { branch_id: bid } });
+        const { data } = await req("get", `/products/${pid}/stock`, { params: { branch_id: bid } });
         const obj = unwrapOne(data) || data?.data || data || null;
         return toNum(obj?.qty ?? obj?.stock_qty ?? obj?.current_qty ?? 0, 0);
       } catch {
@@ -310,7 +342,7 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
 
       try {
-        const { data } = await http.get(`/products/${pid}/branches`);
+        const { data } = await req("get", `/products/${pid}/branches`);
         const list = unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
         return Array.isArray(list) ? list : [];
       } catch (e) {
@@ -340,7 +372,7 @@ export const useProductsStore = defineStore("products", {
 
       try {
         const clean = sanitizeProductPayload(payload);
-        const { data } = await http.post("/products", clean);
+        const { data } = await req("post", "/products", clean);
 
         const created = unwrapOne(data);
         if (created?.id) {
@@ -396,7 +428,7 @@ export const useProductsStore = defineStore("products", {
         const bid = toInt(branch_id, 0);
         if (bid > 0) params.branch_id = bid;
 
-        const { data } = await http.patch(`/products/${pid}`, clean, { params });
+        const { data } = await req("patch", `/products/${pid}`, clean, { params });
 
         const updated = unwrapOne(data);
         this.current = updated || null;
@@ -423,9 +455,7 @@ export const useProductsStore = defineStore("products", {
     /**
      * ✅ BORRADO ROBUSTO
      * - OK => true
-     * - 409 => retorna {ok:false, code, message} (NO rompe al front y permite fallback a inactivar)
-     * - 403/401 => retorna {ok:false,...} también
-     * - otros => retorna {ok:false,...}
+     * - 409 => retorna {ok:false, code, message}
      */
     async remove(id) {
       const pid = toInt(id, 0);
@@ -437,16 +467,14 @@ export const useProductsStore = defineStore("products", {
       this.lastFieldErrors = null;
 
       try {
-        const { data } = await http.delete(`/products/${pid}`);
+        const { data } = await req("delete", `/products/${pid}`);
         const r = unwrapOk(data);
 
         if (r.ok === false) {
-          // backend respondió 200 pero ok:false
           this.setError({ response: { data: { message: r.message || "No se pudo eliminar", code: r.code } } });
           return { ok: false, code: r.code || "DELETE_FAILED", message: r.message || "No se pudo eliminar" };
         }
 
-        // ✅ update local
         this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
         this.total = Math.max(0, toInt(this.total, 0) - 1);
         if (toInt(this.current?.id, 0) === pid) this.current = null;
@@ -455,7 +483,6 @@ export const useProductsStore = defineStore("products", {
       } catch (e) {
         const { status, data } = pickHttpError(e);
 
-        // ✅ 409 Conflict (FK / ventas / relaciones)
         if (status === 409) {
           const code = String(data?.code || "FK_CONSTRAINT");
           const msg = data?.message || "No se pudo borrar: tiene relaciones (ventas/stock/etc).";
@@ -463,7 +490,6 @@ export const useProductsStore = defineStore("products", {
           return { ok: false, code, message: msg };
         }
 
-        // ✅ no autorizado / prohibido
         if (status === 401) {
           const msg = data?.message || "No autorizado.";
           this.setError({ response: { data: { ...data, code: "UNAUTHORIZED", message: msg } } });
@@ -476,7 +502,6 @@ export const useProductsStore = defineStore("products", {
           return { ok: false, code: "FORBIDDEN", message: msg };
         }
 
-        // ✅ otros
         this.setError(e);
         return { ok: false, code: "DELETE_FAILED", message: this.error || "No se pudo eliminar" };
       } finally {
@@ -490,7 +515,7 @@ export const useProductsStore = defineStore("products", {
 
       this.error = null;
       try {
-        const { data } = await http.get(`/products/${pid}/images`);
+        const { data } = await req("get", `/products/${pid}/images`);
         return unwrapList(data);
       } catch (e) {
         this.setError(e);
@@ -516,7 +541,7 @@ export const useProductsStore = defineStore("products", {
         for (const f of realFiles) fd.append("files", f);
         for (const f of realFiles) fd.append("images", f);
 
-        const { data } = await http.post(`/products/${pid}/images`, fd);
+        const { data } = await req("post", `/products/${pid}/images`, fd);
 
         const r = unwrapOk(data);
         if (r.ok === false) throw new Error(r.message || "UPLOAD_IMAGES_FAILED");
@@ -541,7 +566,7 @@ export const useProductsStore = defineStore("products", {
       this.lastFieldErrors = null;
 
       try {
-        const { data } = await http.delete(`/products/${pid}/images/${iid}`);
+        const { data } = await req("delete", `/products/${pid}/images/${iid}`);
         const r = unwrapOk(data);
         if (r.ok === false) throw new Error(r.message || "DELETE_IMAGE_FAILED");
         return true;
@@ -573,7 +598,6 @@ export const useProductsStore = defineStore("products", {
         qty: Number.isFinite(q) ? q : 0,
       };
 
-      // ✅ mandamos ambos (backend decide)
       if (bid > 0) payload.branch_id = bid;
       if (wid > 0) payload.warehouse_id = wid;
 

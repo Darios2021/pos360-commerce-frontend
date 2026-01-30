@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (similares por categoría/sub con getCatalog + OG + prerender-ready) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (ML: gallery grande + 1 SOLO panel derecho + tabs + medios de pago abajo) -->
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
@@ -9,14 +9,27 @@
         <ShopBreadcrumb v-if="product" :product="product" />
       </div>
 
-      <div v-if="product" class="product-layout">
+      <div v-if="product" class="product-grid">
+        <!-- LEFT: gallery grande -->
         <ProductGallery :product="product" />
 
-        <ProductPurchasePanel
+        <!-- RIGHT: 1 SOLO panel -->
+        <ProductRightPanel
           :product="product"
           @add="onAddToCart"
           @buy="onBuyNow"
+          @go-payments="scrollToPayments"
         />
+      </div>
+
+      <!-- ✅ Info / Detalles / Descripción (FULL WIDTH abajo, como ML) -->
+      <div v-if="product" class="below-block">
+        <ProductInfoTabs :product="product" />
+      </div>
+
+      <!-- ✅ Medios de pago FULL WIDTH abajo -->
+      <div v-if="product" ref="paymentsEl" id="payment-methods" class="below-block">
+        <PaymentMethodsCard />
       </div>
 
       <!-- ✅ SIMILARES -->
@@ -37,20 +50,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import ShopBreadcrumb from "@/modules/shop/components/ShopBreadcrumb.vue";
-import ProductGallery from "@/modules/shop/components/ProductGallery.vue";
-import ProductPurchasePanel from "@/modules/shop/components/ProductPurchasePanel.vue";
-import SimilarProductsRow from "@/modules/shop/components/SimilarProductsRow.vue";
-import ShopCartDrawer from "@/modules/shop/components/ShopCartDrawer.vue";
+// ✅ IMPORTS desde /components/shop (según tu estructura)
+import ShopBreadcrumb from "../components/shop/ShopBreadcrumb.vue";
+import ProductGallery from "../components/shop/ProductGallery.vue";
+import ProductRightPanel from "../components/shop/ProductRightPanel.vue";
+import ProductInfoTabs from "../components/shop/ProductInfoTabs.vue";
+import PaymentMethodsCard from "../components/shop/PaymentMethodsCard.vue";
+import SimilarProductsRow from "../components/shop/SimilarProductsRow.vue";
+import ShopCartDrawer from "../components/shop/ShopCartDrawer.vue";
 
-import { getProduct, getCatalog } from "@/modules/shop/service/shop.public.api";
-import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+import { getProduct, getCatalog } from "../service/shop.public.api";
+import { useShopCartStore } from "../store/shopCart.store";
 
 // ✅ OG + prerender
-import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
+import { setOgAndReady, absoluteUrlFromLocation } from "../utils/ogPrerender";
 
 const route = useRoute();
 const router = useRouter();
@@ -61,9 +77,8 @@ const product = ref(null);
 const similar = ref([]);
 const similarLoading = ref(false);
 
-// ------------------------------------------------------
-// ✅ ANTI-TIMEOUT: nunca dejar colgado puppeteer
-// ------------------------------------------------------
+const paymentsEl = ref(null);
+
 function dispatchPrerenderReadySafe() {
   try {
     if (typeof document !== "undefined") {
@@ -72,9 +87,7 @@ function dispatchPrerenderReadySafe() {
   } catch {}
 }
 
-// ------------------------------------------------------
 // Cart actions
-// ------------------------------------------------------
 function onAddToCart(p, qty = 1) {
   cart.add(p, qty);
 }
@@ -85,13 +98,18 @@ function onBuyNow(p, qty = 1) {
   router.push("/shop/cart");
 }
 
-// ------------------------------------------------------
-// Category/Subcategory resolvers (tolerante a shape)
-// ------------------------------------------------------
+async function scrollToPayments() {
+  await nextTick();
+  try {
+    const el = paymentsEl.value || document.getElementById("payment-methods");
+    if (el?.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch {}
+}
+
+// Category/Subcategory resolvers
 function resolveCategoryId(p) {
   return p?.category_id || p?.Category?.id || p?.category?.id || p?.parent_category_id || null;
 }
-
 function resolveSubcategoryId(p) {
   return p?.subcategory_id || p?.Subcategory?.id || p?.subcategory?.id || null;
 }
@@ -99,9 +117,7 @@ function resolveSubcategoryId(p) {
 const resolvedCategoryId = computed(() => resolveCategoryId(product.value));
 const resolvedSubcategoryId = computed(() => resolveSubcategoryId(product.value));
 
-// ------------------------------------------------------
-// ✅ OG helpers
-// ------------------------------------------------------
+// OG helpers
 function pickOgImage(p) {
   const candidate =
     p?.cover_url ||
@@ -115,9 +131,9 @@ function pickOgImage(p) {
   if (!candidate) return "https://sanjuantecnologia.com/og/og-product.jpg";
 
   try {
-    return new URL(candidate).toString(); // ya absoluta
+    return new URL(candidate).toString();
   } catch {
-    return absoluteUrlFromLocation(candidate); // relativa -> absoluta
+    return absoluteUrlFromLocation(candidate);
   }
 }
 
@@ -131,25 +147,12 @@ async function applyOgForProduct(p) {
   if (!p) return;
 
   const title = p?.name ? `${p.name} | San Juan Tecnología` : "Producto | San Juan Tecnología";
-
-  const descRaw =
-    p?.short_description ||
-    p?.description ||
-    p?.name ||
-    "Producto disponible en San Juan Tecnología.";
-
+  const descRaw = p?.short_description || p?.description || p?.name || "Producto disponible en San Juan Tecnología.";
   const description = String(descRaw).replace(/\s+/g, " ").trim();
   const image = pickOgImage(p);
 
-  // ✅ setOgAndReady normalmente también dispara prerender-ready,
-  // pero dejamos fallback sí o sí para que nunca timeoutee.
   try {
-    await setOgAndReady({
-      title,
-      description,
-      image,
-      url: shareUrl.value,
-    });
+    await setOgAndReady({ title, description, image, url: shareUrl.value });
   } catch (e) {
     console.warn("⚠️ setOgAndReady failed:", e?.message || e);
   } finally {
@@ -157,9 +160,7 @@ async function applyOgForProduct(p) {
   }
 }
 
-// ------------------------------------------------------
 // Similares
-// ------------------------------------------------------
 async function fetchSimilar(p) {
   const productId = Number(p?.id || p?.product_id || 0);
   const categoryId = Number(resolveCategoryId(p) || 0);
@@ -173,7 +174,6 @@ async function fetchSimilar(p) {
   similarLoading.value = true;
 
   try {
-    // 1) misma subcategoría
     if (subcategoryId) {
       const r1 = await getCatalog({
         page: 1,
@@ -194,7 +194,6 @@ async function fetchSimilar(p) {
       }
     }
 
-    // 2) fallback categoría (incluye hijos)
     const r2 = await getCatalog({
       page: 1,
       limit: 24,
@@ -206,21 +205,17 @@ async function fetchSimilar(p) {
     });
 
     const arr2 = Array.isArray(r2?.items) ? r2.items : [];
-    similar.value = arr2
-      .filter((x) => Number(x?.product_id ?? x?.id) !== productId)
-      .slice(0, 12);
+    similar.value = arr2.filter((x) => Number(x?.product_id ?? x?.id) !== productId).slice(0, 12);
   } catch (e) {
     console.error("❌ fetchSimilar(getCatalog)", e);
     similar.value = [];
   } finally {
     similarLoading.value = false;
-    dispatchPrerenderReadySafe(); // ✅ por si puppeteer justo está esperando
+    dispatchPrerenderReadySafe();
   }
 }
 
-// ------------------------------------------------------
-// Load principal
-// ------------------------------------------------------
+// Load
 async function load() {
   product.value = null;
   similar.value = [];
@@ -230,15 +225,11 @@ async function load() {
     const p = await getProduct(route.params.id);
     product.value = p;
 
-    // ✅ set OG + libera prerender
     await applyOgForProduct(p);
-
-    // ✅ similares
     await fetchSimilar(p);
   } catch (e) {
     console.error("❌ ShopProduct load()", e);
   } finally {
-    // ✅ pase lo que pase: nunca colgar prerender
     dispatchPrerenderReadySafe();
   }
 }
@@ -246,7 +237,6 @@ async function load() {
 onMounted(load);
 watch(() => route.params.id, load);
 
-// ✅ si cambia branch_id u otra query, actualiza og:url
 watch(
   () => route.query,
   async () => {
@@ -258,9 +248,6 @@ watch(
   }
 );
 </script>
-
-
-
 
 <style scoped>
 .product-shell {
@@ -275,44 +262,26 @@ watch(
   overflow: hidden;
 }
 
-.product-layout {
-  display: flex;
+/* ✅ ML: gallery grande + panel derecho fijo */
+.product-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
   gap: 18px;
-  align-items: flex-start;
-  margin-top: 6px;
-  flex-wrap: wrap;
+  align-items: start;
+  margin-top: 8px;
 }
 
-.product-layout > :deep(.pg-card),
-.product-layout > :deep(.v-card:first-child) {
-  flex: 1.2;
+.product-grid > * {
   min-width: 0;
 }
 
-.product-layout > :deep(.info) {
-  flex: 0.8;
-  min-width: 340px;
+.below-block {
+  margin-top: 16px;
 }
 
 @media (max-width: 1200px) {
-  .product-layout {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .product-layout > :deep(.pg-card) {
-    width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-  }
-
-  .product-layout > :deep(.info) {
-    width: 100%;
-    max-width: 720px;
-    min-width: 0;
-    margin: 0 auto;
-    position: static !important;
-    top: auto !important;
+  .product-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

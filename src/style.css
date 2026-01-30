@@ -1,8 +1,19 @@
 /* src/style.css */
 
-/* Base */
+/* ================================
+   MERCADO LIBRE FONT STACK (GLOBAL)
+   ✅ FIX REAL para Vuetify 3:
+   - setea variables --v-font-family / --v-body-font-family
+================================ */
 :root {
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --ml-font: "Proxima Nova",-apple-system,BlinkMacSystemFont,
+             "Segoe UI",Roboto,Arial,sans-serif;
+
+  /* ✅ Vuetify typography vars */
+  --v-font-family: var(--ml-font);
+  --v-body-font-family: var(--ml-font);
+
+  font-family: var(--ml-font);
   line-height: 1.5;
   font-weight: 400;
   text-rendering: optimizeLegibility;
@@ -10,11 +21,30 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ✅ cubre TODO lo renderizado por Vuetify */
+html,
+body,
+#app,
+.v-application,
+.v-application * {
+  font-family: var(--ml-font) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Links estilo ML */
+a {
+  color: #3483fa;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
 /* -----------------------------
    POS360 Theme helpers
    ----------------------------- */
 
-/* Fondo general siempre guiado por Vuetify theme */
 html,
 body {
   height: 100%;
@@ -26,7 +56,6 @@ body {
   color: rgb(var(--v-theme-on-background));
 }
 
-/* Helpers que podés usar en vistas */
 .pos-page {
   background: rgb(var(--v-theme-background)) !important;
   color: rgb(var(--v-theme-on-background)) !important;
@@ -47,7 +76,6 @@ body {
    FIX: Clases "lighten" rompen dark
    ----------------------------- */
 
-/* Si tu POS tiene bg-grey-lighten-4 o similares, en dark las pisamos */
 .v-theme--dark .bg-grey-lighten-5,
 .v-theme--dark .bg-grey-lighten-4,
 .v-theme--dark .bg-grey-lighten-3,
@@ -58,7 +86,6 @@ body {
   color: rgb(var(--v-theme-on-background)) !important;
 }
 
-/* A veces quedan contenedores con blanco fijo */
 .v-theme--dark .bg-white,
 .v-theme--dark .bg-light,
 .v-theme--dark .bg-grey {
@@ -70,20 +97,17 @@ body {
    Cards / panels: asegurar contraste
    ----------------------------- */
 
-/* Muchos layouts usan v-card con fondos raros. Forzamos a surface en dark */
 .v-theme--dark .v-card {
   background-color: rgb(var(--v-theme-surface)) !important;
   color: rgb(var(--v-theme-on-surface)) !important;
 }
 
-/* Inputs dentro de paneles oscuros */
 .v-theme--dark .v-field,
 .v-theme--dark .v-input__control,
 .v-theme--dark .v-field__input {
   color: rgb(var(--v-theme-on-surface)) !important;
 }
 
-/* Tip: bordes suaves en dark */
 .v-theme--dark .v-divider {
   opacity: 0.18;
 }

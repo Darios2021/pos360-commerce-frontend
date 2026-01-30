@@ -1,5 +1,12 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/ProductFormDialog.vue -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO
+     - Step 4 "Media": Imágenes + Videos (SIMULTÁNEO)
+     - ✅ En modo CREATE: permite cargar/encolar videos aunque el producto aún no exista
+       (YouTube/Shorts URL + archivos video/*) => se suben al tocar CREAR en Resumen
+     - En modo EDIT: mantiene ProductVideosPanel (y también soporta cola local si querés)
+     - Se suben SOLO al tocar CREAR/GUARDAR
+-->
+
 <template>
   <v-dialog
     v-model="openLocal"
@@ -38,7 +45,7 @@
               <v-divider />
               <v-stepper-item :value="3" title="Stock" subtitle="Sucursal" :disabled="!canGoAfterStep1" />
               <v-divider />
-              <v-stepper-item :value="4" title="Imágenes" subtitle="MinIO" :disabled="!canGoAfterStep1" />
+              <v-stepper-item :value="4" title="Media" subtitle="Imágenes + Videos" :disabled="!canGoAfterStep1" />
               <v-divider />
               <v-stepper-item :value="5" title="Resumen" subtitle="Preview" :disabled="!canGoAfterStep1" />
             </v-stepper-header>
@@ -119,22 +126,188 @@
           <div v-show="step === 4" class="pf-step">
             <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
               <div>
-                <div class="text-subtitle-1 font-weight-bold">Imágenes</div>
+                <div class="text-subtitle-1 font-weight-bold">Media</div>
                 <div class="text-caption text-medium-emphasis">
-                  Elegí imágenes ahora. Quedan en cola y se suben al tocar <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b>.
+                  Imágenes + Videos. Quedan en cola y se suben al tocar <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b>.
                 </div>
               </div>
 
-              <v-chip v-if="queuedImages.length" size="small" color="primary" variant="tonal">
-                {{ queuedImages.length }} en cola
-              </v-chip>
-              <v-chip v-else size="small" variant="tonal">Sin cola</v-chip>
+              <div class="d-flex align-center ga-2">
+                <v-chip v-if="queuedImages.length" size="small" color="primary" variant="tonal">
+                  {{ queuedImages.length }} img en cola
+                </v-chip>
+                <v-chip
+                  v-if="queuedYoutubeVideos.length || queuedVideoFiles.length"
+                  size="small"
+                  color="primary"
+                  variant="tonal"
+                >
+                  {{ queuedYoutubeVideos.length + queuedVideoFiles.length }} vid en cola
+                </v-chip>
+                <v-chip
+                  v-if="!queuedImages.length && !queuedYoutubeVideos.length && !queuedVideoFiles.length"
+                  size="small"
+                  variant="tonal"
+                >
+                  Sin cola
+                </v-chip>
+              </div>
             </div>
 
+            <!-- IMÁGENES (cola) -->
             <ProductImagesPanel
               :product-id="draft?.id || null"
               v-model="queuedImages"
               @changed="onQueuedChanged"
+            />
+
+            <!-- VIDEOS (cola) -->
+            <!-- ✅ CREATE: UI local para encolar videos sin necesitar product_id -->
+            <v-card class="pf-media-card mt-2" rounded="xl" variant="tonal">
+              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+                <div class="d-flex align-center ga-2">
+                  <v-icon size="20">mdi-play-circle</v-icon>
+                  <div class="font-weight-bold">Videos</div>
+                </div>
+
+                <div class="d-flex align-center ga-2">
+                  <v-btn size="small" variant="text" @click="clearVideosQueue" :disabled="busy">
+                    Limpiar cola
+                  </v-btn>
+                </div>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-1">
+                Agregá <b>YouTube/Shorts</b> por URL o subí un <b>archivo</b>. Se sube recién cuando toques
+                <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b>.
+              </div>
+
+              <v-divider class="my-3" />
+
+              <div class="pf-video-grid">
+                <!-- YouTube URL -->
+                <div>
+                  <div class="text-subtitle-2 font-weight-bold mb-2">YouTube / Shorts (URL)</div>
+
+                  <div class="d-flex flex-wrap ga-2">
+                    <v-text-field
+                      v-model="ytUrl"
+                      :disabled="busy"
+                      density="comfortable"
+                      label="Pegá URL (youtube.com / youtu.be / shorts)"
+                      prepend-inner-icon="mdi-youtube"
+                      variant="outlined"
+                      hide-details
+                      class="flex-1"
+                    />
+
+                    <v-btn color="primary" variant="flat" @click="addYoutubeUrl" :disabled="busy">
+                      <v-icon start size="18">mdi-plus</v-icon>
+                      Agregar
+                    </v-btn>
+                  </div>
+
+                  <v-alert
+                    v-if="ytError"
+                    type="error"
+                    variant="tonal"
+                    density="comfortable"
+                    class="mt-2"
+                  >
+                    {{ ytError }}
+                  </v-alert>
+
+                  <div v-if="queuedYoutubeVideos.length" class="pf-queue mt-3">
+                    <div class="text-caption text-medium-emphasis mb-1">
+                      En cola: <b>{{ queuedYoutubeVideos.length }}</b>
+                    </div>
+
+                    <div class="pf-queue-list">
+                      <div
+                        v-for="(v, idx) in queuedYoutubeVideos"
+                        :key="v.key"
+                        class="pf-queue-item"
+                      >
+                        <div class="minw-0">
+                          <div class="pf-queue-title text-truncate">
+                            <v-icon size="16" class="mr-1">mdi-youtube</v-icon>
+                            {{ v.title || "YouTube" }}
+                          </div>
+                          <div class="pf-queue-sub text-truncate">
+                            {{ v.url }}
+                          </div>
+                        </div>
+
+                        <v-btn
+                          size="small"
+                          variant="text"
+                          icon
+                          @click="removeYoutubeAt(idx)"
+                          :disabled="busy"
+                        >
+                          <v-icon>mdi-close</v-icon>
+                        </v-btn>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else class="text-caption text-medium-emphasis mt-2">
+                    No hay URLs en cola.
+                  </div>
+                </div>
+
+                <!-- Upload file -->
+                <div>
+                  <div class="text-subtitle-2 font-weight-bold mb-2">Subir archivo (video/*)</div>
+
+                  <v-file-input
+                    v-model="queuedVideoFiles"
+                    :disabled="busy"
+                    density="comfortable"
+                    variant="outlined"
+                    prepend-icon="mdi-upload"
+                    label="Elegí uno o varios videos"
+                    multiple
+                    accept="video/*"
+                    show-size
+                    chips
+                    hide-details
+                  />
+
+                  <div class="d-flex align-center justify-space-between mt-2">
+                    <div class="text-caption text-medium-emphasis">
+                      En cola: <b>{{ queuedVideoFiles.length }}</b>
+                    </div>
+
+                    <v-btn
+                      v-if="queuedVideoFiles.length"
+                      size="small"
+                      variant="text"
+                      @click="queuedVideoFiles = []"
+                      :disabled="busy"
+                    >
+                      Quitar archivos
+                    </v-btn>
+                  </div>
+
+                  <div class="text-caption text-medium-emphasis mt-2">
+                    Tip: si el archivo es pesado, tarda más; igual se sube recién al guardar/crear.
+                  </div>
+                </div>
+              </div>
+            </v-card>
+
+            <!-- ✅ EDIT: si querés mantener también el panel existente (opcional) -->
+            <ProductVideosPanel
+              v-if="isEdit"
+              class="mt-2"
+              :product-id="draft?.id || null"
+              :mode="'edit'"
+              :youtube-queue="queuedYoutubeVideos"
+              :files-queue="queuedVideoFiles"
+              @update:youtubeQueue="queuedYoutubeVideos = normalizeYoutubeQueue($event)"
+              @update:filesQueue="queuedVideoFiles = normalizeFilesQueue($event)"
+              @changed="onVideosChanged"
             />
           </div>
 
@@ -144,7 +317,7 @@
               <div>
                 <div class="text-subtitle-1 font-weight-bold">Resumen final</div>
                 <div class="text-caption text-medium-emphasis">
-                  Al tocar <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b> se registra el producto y se aplica stock.
+                  Al tocar <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b> se registra el producto y se aplica stock/media.
                 </div>
               </div>
 
@@ -202,11 +375,10 @@
 
                 <v-divider class="my-4" />
 
-                <div class="text-subtitle-2 font-weight-bold mb-2">Imágenes en cola</div>
-                <div v-if="queuedImages.length" class="text-caption">
-                  {{ queuedImages.length }} imagen(es) se subirán al {{ isEdit ? "guardar" : "crear" }}.
+                <div class="text-subtitle-2 font-weight-bold mb-2">Media en cola</div>
+                <div class="text-caption">
+                  Imágenes: <b>{{ queuedImages.length }}</b> · Videos: <b>{{ queuedYoutubeVideos.length + queuedVideoFiles.length }}</b>
                 </div>
-                <div v-else class="text-caption text-medium-emphasis">Sin imágenes.</div>
               </v-card>
 
               <v-card variant="tonal" rounded="xl" class="pf-summary-card">
@@ -298,12 +470,14 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
+import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
 
 import ProductDataPanel from "./form/ProductDataPanel.vue";
 import ProductPricesPanel from "./panels/ProductPricesPanel.vue";
 import ProductStockPanel from "./panels/ProductStockPanel.vue";
 import ProductImagesPanel from "./panels/ProductImagesPanel.vue";
+import ProductVideosPanel from "./panels/ProductVideosPanel.vue";
 import ProductBarcodeCard from "./form/ProductBarcodeCard.vue";
 
 const props = defineProps({
@@ -330,10 +504,15 @@ const dialogMaxWidth = computed(() => (isMobile.value ? "100%" : 980));
 const step = ref(1);
 const nextCodePreview = ref(null);
 
-// ✅ ahora stockMatrix puede traer enabled también
-// [{branch_id, branch_name, warehouse_id, enabled, current_qty, qty}]
+// stock + media queues
 const stockMatrix = ref([]);
 const queuedImages = ref([]); // File[]
+const queuedYoutubeVideos = ref([]); // [{key,url,title?}]
+const queuedVideoFiles = ref([]); // File[]
+
+// UI YouTube input
+const ytUrl = ref("");
+const ytError = ref("");
 
 const snack = ref({ open: false, text: "" });
 function toast(t) {
@@ -370,9 +549,6 @@ function toBool(v, d = false) {
   return d;
 }
 
-/**
- * ✅ NEW: lee IDs aunque vengan como objeto / variantes de nombre
- */
 function pickId(maybe) {
   if (maybe === null || maybe === undefined) return 0;
   if (typeof maybe === "number") return toInt(maybe, 0);
@@ -464,13 +640,31 @@ async function reloadNextCode() {
   nextCodePreview.value = code || null;
 }
 
+function normalizeYoutubeQueue(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  return a
+    .map((x) => ({
+      key: String(x?.key || `${Date.now()}-${Math.random()}`),
+      url: String(x?.url || "").trim(),
+      title: x?.title ? String(x.title).trim() : "",
+    }))
+    .filter((x) => !!x.url);
+}
+function normalizeFilesQueue(arr) {
+  return Array.isArray(arr) ? arr.filter(Boolean) : [];
+}
+
 function hydrateDraft() {
   products.error = null;
   products.lastFieldErrors = null;
 
   nextCodePreview.value = null;
   queuedImages.value = [];
+  queuedYoutubeVideos.value = [];
+  queuedVideoFiles.value = [];
   stockMatrix.value = [];
+  ytUrl.value = "";
+  ytError.value = "";
 
   if (isEdit.value && props.item && typeof props.item === "object") {
     draft.value = { ...defaultDraft(), ...deepClone(props.item) };
@@ -481,7 +675,6 @@ function hydrateDraft() {
     reloadNextCode();
   }
 
-  // si el item trae stock_matrix previo
   if (Array.isArray(draft.value?.stock_matrix)) {
     stockMatrix.value = deepClone(draft.value.stock_matrix);
   }
@@ -546,7 +739,6 @@ function buildPayload() {
   };
 
   delete payload.code;
-
   delete payload.category;
   delete payload.subcategory;
   delete payload.subCategory;
@@ -558,12 +750,6 @@ function buildPayload() {
   return payload;
 }
 
-/**
- * ✅ CLAVE: branch_ids para persistir product_branches.is_active
- * - Si el usuario marcó enabled=true en una sucursal => entra
- * - Si cargó qty != 0 => también entra (lo activa)
- * - Incluimos owner branch_id si existe
- */
 function buildBranchIdsFromStockMatrix() {
   const arr = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
   const bids = [];
@@ -604,6 +790,122 @@ function onQueuedChanged(files) {
   queuedImages.value = Array.isArray(files) ? files : [];
 }
 
+/* ====== Cola videos (YouTube) ====== */
+function parseYoutubeUrl(raw) {
+  const url = String(raw || "").trim();
+  if (!url) return { ok: false, url: "", reason: "Pegá una URL." };
+
+  // aceptamos youtube.com, youtu.be, m.youtube.com
+  const low = url.toLowerCase();
+  const looksYoutube =
+    low.includes("youtube.com/") ||
+    low.includes("youtu.be/") ||
+    low.includes("m.youtube.com/");
+
+  if (!looksYoutube) {
+    return { ok: false, url: "", reason: "La URL no parece de YouTube." };
+  }
+
+  // aceptar shorts, watch?v=, youtu.be/ID, embed/ID
+  // No necesitamos extraer ID acá: el backend lo puede procesar.
+  return { ok: true, url, reason: "" };
+}
+
+function addYoutubeUrl() {
+  ytError.value = "";
+  const raw = ytUrl.value;
+  const p = parseYoutubeUrl(raw);
+  if (!p.ok) {
+    ytError.value = p.reason || "URL inválida.";
+    return;
+  }
+
+  const already = queuedYoutubeVideos.value.some((x) => String(x.url).trim() === p.url);
+  if (already) {
+    ytError.value = "Esa URL ya está en la cola.";
+    return;
+  }
+
+  queuedYoutubeVideos.value = normalizeYoutubeQueue([
+    ...queuedYoutubeVideos.value,
+    {
+      key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      url: p.url,
+      title: "",
+    },
+  ]);
+
+  ytUrl.value = "";
+  toast("✅ YouTube agregado a la cola");
+}
+
+function removeYoutubeAt(idx) {
+  const a = Array.isArray(queuedYoutubeVideos.value) ? [...queuedYoutubeVideos.value] : [];
+  a.splice(idx, 1);
+  queuedYoutubeVideos.value = a;
+}
+
+function clearVideosQueue() {
+  queuedYoutubeVideos.value = [];
+  queuedVideoFiles.value = [];
+  ytUrl.value = "";
+  ytError.value = "";
+  toast("✅ Cola de videos limpia");
+}
+
+function onVideosChanged() {
+  // hook por si querés hacer algo después
+}
+
+/* ====== Subida videos ====== */
+/* ====== Subida videos (YouTube + Upload) ====== */
+async function commitVideos(productId) {
+  const pid = toInt(productId, 0);
+  if (!pid) return;
+
+  const yq = normalizeYoutubeQueue(queuedYoutubeVideos.value);
+  const fq = normalizeFilesQueue(queuedVideoFiles.value);
+
+  // 1) YouTube
+  for (const it of yq) {
+    const url = String(it?.url || "").trim();
+    if (!url) continue;
+
+    try {
+      // ✅ OJO: SIN /api/v1 porque baseURL ya lo tiene
+      await http.post(`/products/${pid}/videos/youtube`, {
+        url,
+        title: it?.title || null,
+      });
+    } catch (e) {
+      toast("⚠️ Video YouTube: " + (e?.friendlyMessage || e?.message || "Falló"));
+    }
+  }
+
+  // 2) Upload files (multipart)
+  for (const f of fq) {
+    if (!f) continue;
+
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+
+      // ✅ OJO: SIN /api/v1 porque baseURL ya lo tiene
+      await http.post(`/products/${pid}/videos/upload`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    } catch (e) {
+      toast("⚠️ Video upload: " + (e?.friendlyMessage || e?.message || "Falló"));
+    }
+  }
+
+  if (yq.length || fq.length) {
+    queuedYoutubeVideos.value = [];
+    queuedVideoFiles.value = [];
+    toast("✅ Videos procesados");
+  }
+}
+
 /* ====== Create ====== */
 async function createAll() {
   if (isEdit.value) return;
@@ -620,7 +922,6 @@ async function createAll() {
   products.lastFieldErrors = null;
 
   try {
-    // 1) crear producto (✅ incluir branch_ids para habilitar sucursales)
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
@@ -641,7 +942,7 @@ async function createAll() {
     draft.value = { ...draft.value, ...deepClone(created) };
     nextCodePreview.value = null;
 
-    // 2) aplicar stock (solo qty != 0 y SOLO si la sucursal está habilitada)
+    // stock
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
@@ -664,12 +965,15 @@ async function createAll() {
       if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
-    // 3) subir imágenes en cola (create)
+    // imágenes
     if (queuedImages.value.length) {
       const up = await products.uploadImages(pid, queuedImages.value);
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
       else toast("✅ Imágenes subidas");
     }
+
+    // ✅ videos (YouTube + Upload)
+    await commitVideos(pid);
 
     emit("saved");
     toast("✅ Producto creado");
@@ -679,7 +983,7 @@ async function createAll() {
   }
 }
 
-/* ====== Edit: update + stock real ====== */
+/* ====== Edit ====== */
 async function saveAll() {
   if (!isEdit.value) return;
 
@@ -701,7 +1005,6 @@ async function saveAll() {
   products.lastFieldErrors = null;
 
   try {
-    // 1) update producto (✅ incluir branch_ids para persistir habilitadas)
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
@@ -712,8 +1015,7 @@ async function saveAll() {
       return;
     }
 
-    // 2) aplicar stock SET ABSOLUTO donde haya cambios (incluye 0)
-    // ✅ solo sobre sucursales habilitadas (enabled=true)
+    // stock set absoluto
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
@@ -727,7 +1029,6 @@ async function saveAll() {
 
       if (!Number.isFinite(qty)) continue;
       if (!Number.isFinite(cur)) continue;
-
       if (qty === cur) continue;
 
       const ok = await products.initStock({
@@ -740,6 +1041,17 @@ async function saveAll() {
       if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
+    // ✅ imágenes también en EDIT (si hay cola)
+    if (queuedImages.value.length) {
+      const up = await products.uploadImages(pid, queuedImages.value);
+      if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
+      else toast("✅ Imágenes subidas");
+      queuedImages.value = [];
+    }
+
+    // ✅ videos
+    await commitVideos(pid);
+
     emit("saved");
     toast("✅ Cambios guardados");
     openLocal.value = false;
@@ -749,8 +1061,8 @@ async function saveAll() {
 }
 </script>
 
-
 <style>
+/* (tu style original intacto) */
 .pf-overlay .pf-card {
   height: 90vh;
   max-height: 90vh;
@@ -878,5 +1190,48 @@ async function saveAll() {
 .pf-ul {
   margin: 0;
   padding-left: 18px;
+}
+
+/* ✅ Media card (videos) */
+.pf-media-card {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-video-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .pf-video-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pf-queue {
+  display: grid;
+  gap: 8px;
+}
+.pf-queue-list {
+  display: grid;
+  gap: 8px;
+}
+.pf-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pf-queue-title {
+  font-weight: 800;
+  font-size: 12px;
+}
+.pf-queue-sub {
+  font-size: 12px;
+  opacity: 0.8;
 }
 </style>
