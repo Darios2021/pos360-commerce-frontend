@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (gallery ML-like + videos YouTube/File, estable) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (gallery ML-like + videos YouTube/File, SHORTS 9:16, estable) -->
 <!-- src/modules/shop/components/ProductGallery.vue -->
 <template>
   <v-card class="pg-card" variant="outlined">
@@ -16,12 +16,7 @@
             :title="m.type === 'image' ? `Imagen ${i + 1}` : `Video ${i + 1}`"
           >
             <div class="thumb-inner">
-              <img
-                v-if="m.type === 'image'"
-                :src="m.src"
-                alt=""
-                @error="onMediaError(m)"
-              />
+              <img v-if="m.type === 'image'" :src="m.src" alt="" @error="onMediaError(m)" />
 
               <div v-else class="thumb-video">
                 <img
@@ -65,33 +60,30 @@
               loading="eager"
             />
 
-            <!-- MAIN VIDEO -->
-            <div
-              v-else-if="activeItem && activeItem.type === 'video'"
-              class="main-video"
-              @click.stop
-              @keydown.stop
-            >
-              <!-- youtube -->
-              <iframe
-                v-if="activeItem.provider === 'youtube' && activeItem.embed"
-                class="main-iframe"
-                :src="activeItem.embed"
-                title="Video"
-                frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen
-                referrerpolicy="strict-origin-when-cross-origin"
-              />
-              <!-- file -->
-              <video
-                v-else
-                class="main-video-el"
-                :src="activeItem.src"
-                controls
-                playsinline
-                preload="metadata"
-              />
+            <!-- MAIN VIDEO (✅ SHORTS 9:16) -->
+            <div v-else-if="activeItem && activeItem.type === 'video'" class="main-video" @click.stop>
+              <div class="video-box">
+                <!-- youtube -->
+                <iframe
+                  v-if="activeItem.provider === 'youtube' && activeItem.embed"
+                  class="video-embed"
+                  :src="activeItem.embed"
+                  title="Video"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowfullscreen
+                  referrerpolicy="strict-origin-when-cross-origin"
+                />
+                <!-- file -->
+                <video
+                  v-else
+                  class="video-embed"
+                  :src="activeItem.src"
+                  controls
+                  playsinline
+                  preload="metadata"
+                />
+              </div>
 
               <div class="video-badge">
                 <v-icon size="16">mdi-play-circle</v-icon>
@@ -125,12 +117,7 @@
                 role="listitem"
               >
                 <div class="thumb-inner">
-                  <img
-                    v-if="m.type === 'image'"
-                    :src="m.src"
-                    alt=""
-                    @error="onMediaError(m)"
-                  />
+                  <img v-if="m.type === 'image'" :src="m.src" alt="" @error="onMediaError(m)" />
 
                   <div v-else class="thumb-video">
                     <img
@@ -150,7 +137,6 @@
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </v-card-text>
@@ -215,25 +201,28 @@
           draggable="false"
         />
 
+        <!-- ✅ VIDEO EN VISOR (SHORTS 9:16) -->
         <div v-else-if="viewerItem && viewerItem.type === 'video'" class="mlv-video">
-          <iframe
-            v-if="viewerItem.provider === 'youtube' && viewerItem.embed"
-            class="mlv-iframe"
-            :src="viewerItem.embed"
-            title="Video"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-            referrerpolicy="strict-origin-when-cross-origin"
-          />
-          <video
-            v-else
-            class="mlv-video-el"
-            :src="viewerItem.src"
-            controls
-            playsinline
-            preload="metadata"
-          />
+          <div class="video-box video-box--viewer">
+            <iframe
+              v-if="viewerItem.provider === 'youtube' && viewerItem.embed"
+              class="video-embed"
+              :src="viewerItem.embed"
+              title="Video"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"
+            />
+            <video
+              v-else
+              class="video-embed"
+              :src="viewerItem.src"
+              controls
+              playsinline
+              preload="metadata"
+            />
+          </div>
         </div>
 
         <div v-else class="mlv-empty">Sin media</div>
@@ -257,8 +246,8 @@ const viewer = ref(false);
 const viewerIdx = ref(0);
 const overlayEl = ref(null);
 
-const brokenSrc = ref(new Set());   // src fallidos (img/video/url)
-const brokenThumb = ref(new Set()); // thumbs de video fallidos
+const brokenSrc = ref(new Set());
+const brokenThumb = ref(new Set());
 
 function s(x) {
   return String(x || "").trim();
@@ -278,7 +267,7 @@ function uniqByKey(arr) {
 }
 
 /* =========================
-   YOUTUBE HELPERS (watch / shorts / youtu.be -> embed)
+   YOUTUBE HELPERS
 ========================= */
 function parseYoutube(url) {
   const u = s(url);
@@ -303,7 +292,6 @@ function youtubeEmbedFromAny(urlOrEmbed) {
   const u = s(urlOrEmbed);
   if (!u) return "";
 
-  // ya viene embed
   if (/youtube\.com\/embed\//i.test(u)) {
     const base = u.split("?")[0];
     return `${base}?rel=0&modestbranding=1&playsinline=1`;
@@ -349,7 +337,6 @@ function extractVideos(p) {
   if (!p) return [];
   const out = [];
 
-  // ✅ soporta: videos, product_videos, media.videos
   const list =
     (Array.isArray(p.videos) && p.videos) ||
     (Array.isArray(p.product_videos) && p.product_videos) ||
@@ -364,14 +351,13 @@ function extractVideos(p) {
     const storage = s(it.storage_key || it.storageKey || "");
     const title = s(it.title || "");
 
-    // ✅ youtube (acepta watch/shorts/youtu.be/ya embed)
     if (provider === "youtube" || /youtube|youtu\.be/i.test(rawUrl)) {
       const embed = youtubeEmbedFromAny(rawUrl);
       out.push({
         type: "video",
         provider: "youtube",
         src: embed || rawUrl,
-        embed: embed,
+        embed,
         title,
         thumb: youtubeThumbFromAny(rawUrl) || youtubeThumbFromAny(embed),
         key: `yt:${embed || rawUrl}`,
@@ -379,7 +365,6 @@ function extractVideos(p) {
       continue;
     }
 
-    // ✅ file
     const fileUrl = rawUrl || storage;
     if (fileUrl) {
       out.push({
@@ -394,7 +379,6 @@ function extractVideos(p) {
     }
   }
 
-  // ✅ soporta: video_urls / video_url
   if (Array.isArray(p.video_urls)) {
     for (const u of p.video_urls) {
       const url = s(u);
@@ -463,10 +447,8 @@ const mediaRaw = computed(() => {
   }));
 
   const vids = extractVideos(p);
-
   const merged = uniqByKey([...imgs, ...vids]);
 
-  // filtrar rotos
   const broken = brokenSrc.value;
   return merged.filter((m) => !broken.has(s(m.src)));
 });
@@ -599,7 +581,9 @@ watch(viewerIdx, (v) => {
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
-.pg-pad { padding: 14px; }
+.pg-pad {
+  padding: 14px;
+}
 
 .gallery {
   display: grid;
@@ -617,13 +601,15 @@ watch(viewerIdx, (v) => {
   width: 86px;
   height: 86px;
   border-radius: 12px;
-  border: 1px solid rgba(0,0,0,.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
   overflow: hidden;
   padding: 0;
   cursor: pointer;
 }
-.thumb.active { border-color: rgba(25,118,210,.7); }
+.thumb.active {
+  border-color: rgba(25, 118, 210, 0.7);
+}
 
 .thumb-inner {
   width: 100%;
@@ -640,14 +626,14 @@ watch(viewerIdx, (v) => {
   width: 100%;
   height: 100%;
   position: relative;
-  background: rgba(0,0,0,.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 .thumb-video-fallback {
   width: 100%;
   height: 100%;
   display: grid;
   place-items: center;
-  color: rgba(0,0,0,.55);
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .thumb-play {
@@ -656,27 +642,31 @@ watch(viewerIdx, (v) => {
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 16px rgba(0,0,0,.10);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
-.main { min-width: 0; }
+.main {
+  min-width: 0;
+}
 
+/* Marco general */
 .main-frame {
   position: relative;
   width: 100%;
   height: 520px;
   border-radius: 16px;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   cursor: pointer;
 }
 
+/* Imagen = full cover */
 .main-img {
   position: absolute;
   inset: 0;
@@ -687,17 +677,43 @@ watch(viewerIdx, (v) => {
   display: block !important;
 }
 
+/* Video area */
 .main-video {
   position: absolute;
   inset: 0;
-  background: #000;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 14px;
 }
 
-.main-iframe, .main-video-el {
+/* ✅ CONTENEDOR 9:16 (Shorts) */
+.video-box {
+  width: min(360px, 92%);
+  aspect-ratio: 9 / 16;
+  background: #000;
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* En viewer lo hacemos más grande */
+.video-box--viewer {
+  width: min(420px, 92vw);
+  aspect-ratio: 9 / 16;
+  border-radius: 20px;
+}
+
+/* iframe/video full size */
+.video-embed {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  display: block;
+  border: 0;
 }
 
 .video-badge {
@@ -706,14 +722,14 @@ watch(viewerIdx, (v) => {
   left: 10px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 12px;
   font-weight: 900;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgba(0,0,0,.82);
+  color: rgba(0, 0, 0, 0.82);
 }
 
 .main-empty {
@@ -721,7 +737,7 @@ watch(viewerIdx, (v) => {
   inset: 0;
   display: grid;
   place-items: center;
-  color: rgba(0,0,0,.55);
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .open-hint {
@@ -730,8 +746,8 @@ watch(viewerIdx, (v) => {
   right: 10px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.9);
-  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 12px;
   display: inline-flex;
   gap: 6px;
@@ -744,13 +760,16 @@ watch(viewerIdx, (v) => {
   left: 10px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 12px;
   font-weight: 900;
 }
 
-.thumbs-mobile { display: none; margin-top: 10px; }
+.thumbs-mobile {
+  display: none;
+  margin-top: 10px;
+}
 .thumbs-scroll {
   display: flex;
   gap: 10px;
@@ -759,13 +778,15 @@ watch(viewerIdx, (v) => {
   padding: 6px 6px 12px;
   scroll-snap-type: x mandatory;
 }
-.thumbs-scroll::-webkit-scrollbar { height: 8px; }
+.thumbs-scroll::-webkit-scrollbar {
+  height: 8px;
+}
 
 .thumb-m {
   width: 72px;
   height: 72px;
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
   overflow: hidden;
   flex: 0 0 auto;
@@ -773,8 +794,8 @@ watch(viewerIdx, (v) => {
   scroll-snap-align: start;
 }
 .thumb-m.active {
-  border-color: rgba(25,118,210,.7);
-  box-shadow: 0 0 0 2px rgba(25,118,210,.12);
+  border-color: rgba(25, 118, 210, 0.7);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.12);
 }
 
 /* overlay */
@@ -782,7 +803,7 @@ watch(viewerIdx, (v) => {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(0,0,0,.72);
+  background: rgba(0, 0, 0, 0.72);
   display: grid;
   grid-template-rows: auto 1fr;
   outline: none;
@@ -793,15 +814,25 @@ watch(viewerIdx, (v) => {
   padding: 14px 16px;
   color: #fff;
 }
-.mlv-title { font-weight: 900; }
-.mlv-right { display: inline-flex; align-items: center; gap: 10px; }
-.mlv-counter { font-weight: 900; opacity: .95; }
+.mlv-title {
+  font-weight: 900;
+}
+.mlv-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.mlv-counter {
+  font-weight: 900;
+  opacity: 0.95;
+}
 
 .mlv-close {
-  width: 40px; height: 40px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.16);
-  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.22);
   color: #fff;
   display: grid;
   place-items: center;
@@ -819,47 +850,60 @@ watch(viewerIdx, (v) => {
   max-height: 78vh;
   border-radius: 10px;
   background: #fff;
-  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   user-select: none;
   -webkit-user-drag: none;
 }
 
 .mlv-video {
-  width: min(980px, 92vw);
-  height: min(78vh, 560px);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #000;
-  box-shadow: 0 12px 30px rgba(0,0,0,.35);
-}
-.mlv-iframe, .mlv-video-el {
-  width: 100%;
-  height: 100%;
-  display: block;
+  display: grid;
+  place-items: center;
 }
 
-.mlv-empty { color: #fff; opacity: .85; }
+.mlv-empty {
+  color: #fff;
+  opacity: 0.85;
+}
 
 .mlv-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px; height: 44px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.18);
   color: #fff;
   display: grid;
   place-items: center;
   cursor: pointer;
 }
-.mlv-nav-left { left: 18px; }
-.mlv-nav-right { right: 18px; }
+.mlv-nav-left {
+  left: 18px;
+}
+.mlv-nav-right {
+  right: 18px;
+}
 
 @media (max-width: 980px) {
-  .gallery { grid-template-columns: 1fr; }
-  .thumbs { display: none; }
-  .thumbs-mobile { display: block; }
-  .main-frame { height: min(92vw, 520px); }
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+  .thumbs {
+    display: none;
+  }
+  .thumbs-mobile {
+    display: block;
+  }
+  .main-frame {
+    height: min(92vw, 520px);
+  }
+  .main-video {
+    padding: 10px;
+  }
+  .video-box {
+    width: min(360px, 96%);
+  }
 }
 </style>

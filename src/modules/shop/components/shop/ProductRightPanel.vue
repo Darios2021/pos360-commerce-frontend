@@ -2,23 +2,16 @@
 <!-- src/modules/shop/components/ProductRightPanel.vue -->
 <template>
   <div class="rp">
-    <ProductMainInfo
-      :product="product"
-      @go-payments="emit('go-payments')"
-    />
-
-    <div class="rp-gap" />
-
     <ProductPurchasePanel
       :product="product"
       @add="onAdd"
       @buy="onBuy"
+      @go-payments="emit('go-payments')"
     />
   </div>
 </template>
 
 <script setup>
-import ProductMainInfo from "./ProductMainInfo.vue";
 import ProductPurchasePanel from "./ProductPurchasePanel.vue";
 
 const props = defineProps({
@@ -41,10 +34,6 @@ function onBuy(p, qty = 1) {
   position: sticky;
   top: 92px; /* appbar */
   align-self: start;
-}
-
-.rp-gap {
-  height: 12px;
 }
 
 @media (max-width: 1200px) {

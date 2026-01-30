@@ -1,5 +1,9 @@
 // src/modules/shop/service/shop.public.api.js
 // ✅ COPY-PASTE FINAL COMPLETO
+//
+// Public API (base: /api/v1/public) + Core API (base: /api/v1)
+// ✅ FIX: getProductVideos usa PUBLIC: GET /api/v1/public/products/:id/videos (sin 401)
+// ✅ getProduct inyecta videos en item.videos / item.product_videos / item.media.videos
 
 import axios from "axios";
 
@@ -26,6 +30,12 @@ if (typeof window !== "undefined") {
   }
 }
 
+function stripApiSuffix(b) {
+  const s = String(b || "").replace(/\/+$/, "");
+  // corta /api o /api/v1
+  return s.replace(/\/api(\/v\d+)?$/i, "").replace(/\/+$/, "");
+}
+
 function buildPublicBase(path) {
   const p = String(path || "").trim();
   if (!p) return "/api/v1/public";
@@ -33,7 +43,14 @@ function buildPublicBase(path) {
   return `${p.replace(/\/+$/, "")}/public`;
 }
 
-const apiBaseURL = buildPublicBase(basePath);
+function buildCoreBase(path) {
+  const p = String(path || "").trim();
+  if (!p) return "/api/v1";
+  return p.replace(/\/+$/, "");
+}
+
+const apiBaseURL = buildPublicBase(basePath); // .../api/v1/public
+const coreBaseURL = buildCoreBase(basePath);  // .../api/v1
 
 // assetBase: para absolutizar imágenes si vienen relativas
 const assetBase = (() => {
@@ -41,7 +58,7 @@ const assetBase = (() => {
     return window.location.origin.replace(/\/+$/, "");
   }
   const b = String(basePath || "").replace(/\/+$/, "");
-  const cut = b.replace(/\/api(\/v\d+)?$/i, "");
+  const cut = stripApiSuffix(b);
   return (cut || b).replace(/\/+$/, "");
 })();
 
@@ -50,8 +67,14 @@ const api = axios.create({
   timeout: 20000,
 });
 
+// Core API (sin /public) para endpoints internos (si los necesitás)
+const coreApi = axios.create({
+  baseURL: coreBaseURL,
+  timeout: 20000,
+});
+
 // ✅ Anti-preflight por headers “cache-control/pragma”
-api.interceptors.request.use((config) => {
+function antiPreflight(config) {
   const h = config.headers || {};
   delete h["Cache-Control"];
   delete h["cache-control"];
@@ -59,11 +82,13 @@ api.interceptors.request.use((config) => {
   delete h["pragma"];
   config.headers = h;
   return config;
-});
+}
+api.interceptors.request.use(antiPreflight);
+coreApi.interceptors.request.use(antiPreflight);
 
 // ✅ Debug (solo browser)
 if (typeof window !== "undefined") {
-  console.log("[SHOP API]", { basePath, apiBaseURL, assetBase });
+  console.log("[SHOP API]", { basePath, apiBaseURL, coreBaseURL, assetBase });
 }
 
 function toInt(v, d = 0) {
@@ -111,7 +136,6 @@ export function getCatalogBranchId() {
 
 // ✅ EXPORT FALTANTE (tu build rompe por esto)
 export async function getBranches() {
-  // tu endpoint público según tu convención:
   // GET /api/v1/public/branches
   const r = await api.get("/branches");
   return r.data?.items || [];
@@ -209,8 +233,23 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 }
 
 /**
+ * ✅ VIDEOS DE PRODUCTO (PUBLIC)
+ * GET /api/v1/public/products/:id/videos
+ * Respuesta esperada: { ok:true, data:[...] }
+ */
+export async function getProductVideos(id) {
+  const pid = toInt(id, 0);
+  if (!pid) return [];
+
+  const r = await api.get(`/products/${pid}/videos`);
+  const arr = r.data?.data;
+  return Array.isArray(arr) ? arr : [];
+}
+
+/**
  * ✅ PRODUCTO
  * GET /api/v1/public/products/:id
+ * + inyecta videos (para que ProductGallery los vea)
  */
 export async function getProduct(id) {
   const pid = toInt(id, 0);
@@ -225,6 +264,18 @@ export async function getProduct(id) {
   item.image_url = images[0] || img || "";
 
   if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
+
+  // ✅ inject videos (public)
+  try {
+    const vids = await getProductVideos(pid);
+    const list = Array.isArray(vids) ? vids : [];
+    item.videos = list;
+    item.product_videos = list;
+    item.media = item.media || {};
+    item.media.videos = list;
+  } catch {
+    item.videos = item.videos || [];
+  }
 
   return item;
 }

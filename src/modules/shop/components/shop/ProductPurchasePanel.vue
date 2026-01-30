@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, NO aplasta, NO texto vertical) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, NO DUPLICA) -->
 <!-- src/modules/shop/components/ProductPurchasePanel.vue -->
 <template>
   <v-card class="ml-side info" variant="flat">
@@ -35,7 +35,10 @@
         <span v-if="priceDec" class="ml-price-dec">{{ priceDec }}</span>
       </div>
 
-      <a href="javascript:void(0)" class="ml-link mb-3">Ver los medios de pago</a>
+      <!-- ✅ Este link ahora hace scroll al bloque de medios de pago (ShopProduct.vue) -->
+      <a href="javascript:void(0)" class="ml-link mb-3" @click.prevent="emit('go-payments')">
+        Ver los medios de pago
+      </a>
 
       <!-- Bloque envío / retiro -->
       <div class="ship-box">
@@ -116,10 +119,7 @@
         <div class="ml-footnote">Elegís sucursal al finalizar si es retiro.</div>
       </div>
 
-      <!-- ✅ Card medios de pago (debajo) -->
-      <PaymentMethodsCard class="mt-4" @more="emit('more-payments')" />
-
-      <!-- Descripción (debajo, opcional, sin romper layout) -->
+      <!-- Descripción (debajo, opcional) -->
       <div v-if="descText" class="ml-desc">
         <div class="ml-desc-title">Descripción</div>
         <div class="ml-desc-text" :class="{ clamp: !descOpen }">
@@ -144,7 +144,7 @@ import { computed, ref, watch } from "vue";
 const props = defineProps({
   product: { type: Object, default: null },
 });
-const emit = defineEmits(["add", "buy", "more-payments"]);
+const emit = defineEmits(["add", "buy", "go-payments"]);
 
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
@@ -211,7 +211,11 @@ const showRating = computed(() => ratingValue.value > 0 && ratingCount.value > 0
 
 const shippingText = computed(() => {
   const p = props.product || {};
-  return asText(p.shipping_text || p.shippingTitle || (p.free_shipping ? "Llega gratis" : "Llega entre 24 y 72 hs"));
+  return asText(
+    p.shipping_text ||
+      p.shippingTitle ||
+      (p.free_shipping ? "Llega gratis" : "Llega entre 24 y 72 hs")
+  );
 });
 const shippingEtaText = computed(() => {
   const p = props.product || {};
@@ -227,6 +231,8 @@ const stockSubLabel = computed(() => {
 
 // qty
 const qty = ref(1);
+const descOpen = ref(false);
+
 watch(
   () => props.product,
   () => {
@@ -297,7 +303,6 @@ function extractInstallments(p) {
 const installments = computed(() => extractInstallments(props.product));
 
 // descripción
-const descOpen = ref(false);
 const descText = computed(() => {
   const p = props.product || {};
   const t = asText(p.description || p.long_description || p.detail || p.details || "");
