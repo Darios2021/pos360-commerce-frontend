@@ -2,7 +2,8 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 //
 // Public API (base: /api/v1/public) + Core API (base: /api/v1)
-// ✅ FIX: getProductVideos usa PUBLIC: GET /api/v1/public/products/:id/videos (sin 401)
+// ✅ FIX CLAVE: si VITE_API_BASE_URL viene como ".../api" o "/api", lo normaliza a "/api/v1"
+// ✅ getProductVideos usa CORE (NO /public)
 // ✅ getProduct inyecta videos en item.videos / item.product_videos / item.media.videos
 
 import axios from "axios";
@@ -10,16 +11,76 @@ import axios from "axios";
 const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
 const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
 
-// Ej: VITE_API_BASE_URL="https://sanjuantecnologia.com/api/v1" o "https://pos360-commerce-api.cingulado.org/api/v1"
-const defaultBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+// Ej:
+// VITE_API_BASE_URL="https://sanjuantecnologia.com/api/v1"
+// VITE_API_BASE_URL="https://sanjuantecnologia.com/api"          (✅ ahora lo arreglamos)
+// VITE_API_BASE_URL="/api/v1"
+// VITE_API_BASE_URL="/api"                                       (✅ ahora lo arreglamos)
+const defaultBaseRaw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
 
-// basePath puede ser absoluto (https://...) o relativo (/api/v1)
-let basePath = defaultBase;
+function trimSlashesEnd(s) {
+  return String(s || "").replace(/\/+$/, "");
+}
+
+/** ✅ Normaliza "/api" -> "/api/v1"  (y "https://x/api" -> "https://x/api/v1") */
+function normalizeApiV1Base(input) {
+  let s = trimSlashesEnd(input);
+
+  if (!s) return "/api/v1";
+
+  // Si es same-origin relativo
+  if (s.startsWith("/")) {
+    if (/^\/api$/i.test(s)) return "/api/v1";
+    if (/^\/api\/v\d+$/i.test(s)) return s; // ya tiene v
+    if (/^\/api\/v\d+\//i.test(s)) return trimSlashesEnd(s);
+    // si viene raro pero contiene /api/v1 en algún lado, lo dejamos
+    if (/\/api\/v\d+/i.test(s)) return trimSlashesEnd(s);
+    // fallback: si empieza con /api algo, dejamos como está
+    return s;
+  }
+
+  // Si es absoluto: https://dominio/api
+  try {
+    const u = new URL(s);
+    const p = trimSlashesEnd(u.pathname || "");
+    if (/^\/api$/i.test(p)) {
+      u.pathname = "/api/v1";
+      return trimSlashesEnd(u.toString());
+    }
+    if (/^\/api\/v\d+$/i.test(p)) return trimSlashesEnd(u.toString());
+    // Si pathname ya contiene /api/vX, ok
+    if (/\/api\/v\d+/i.test(p)) return trimSlashesEnd(u.toString());
+    // Si viene solo dominio sin /api, fallback a /api/v1
+    return trimSlashesEnd(u.origin + "/api/v1");
+  } catch {
+    // si no es URL válida, fallback seguro
+    return "/api/v1";
+  }
+}
+
+function stripApiSuffix(b) {
+  const s = trimSlashesEnd(b);
+  return s.replace(/\/api(\/v\d+)?$/i, "").replace(/\/+$/, "");
+}
+
+function buildPublicBase(apiV1Base) {
+  const p = trimSlashesEnd(apiV1Base);
+  return `${p}/public`;
+}
+
+function buildCoreBase(apiV1Base) {
+  return trimSlashesEnd(apiV1Base);
+}
+
+// =========================
+// basePath (normalizado)
+// =========================
+let basePath = normalizeApiV1Base(defaultBaseRaw);
 
 if (typeof window !== "undefined") {
   const host = String(window.location.hostname || "").toLowerCase();
 
-  // ✅ en el dominio real SIEMPRE same-origin
+  // ✅ en el dominio real SIEMPRE same-origin (pero SIEMPRE /api/v1)
   if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
     basePath = "/api/v1";
   }
@@ -28,25 +89,9 @@ if (typeof window !== "undefined") {
   if (FORCE_SAME_ORIGIN) {
     basePath = "/api/v1";
   }
-}
 
-function stripApiSuffix(b) {
-  const s = String(b || "").replace(/\/+$/, "");
-  // corta /api o /api/v1
-  return s.replace(/\/api(\/v\d+)?$/i, "").replace(/\/+$/, "");
-}
-
-function buildPublicBase(path) {
-  const p = String(path || "").trim();
-  if (!p) return "/api/v1/public";
-  if (p.startsWith("/")) return `${p.replace(/\/+$/, "")}/public`;
-  return `${p.replace(/\/+$/, "")}/public`;
-}
-
-function buildCoreBase(path) {
-  const p = String(path || "").trim();
-  if (!p) return "/api/v1";
-  return p.replace(/\/+$/, "");
+  // ✅ por las dudas: normalizamos lo que haya quedado
+  basePath = normalizeApiV1Base(basePath);
 }
 
 const apiBaseURL = buildPublicBase(basePath); // .../api/v1/public
@@ -57,7 +102,7 @@ const assetBase = (() => {
   if (typeof window !== "undefined" && basePath.startsWith("/")) {
     return window.location.origin.replace(/\/+$/, "");
   }
-  const b = String(basePath || "").replace(/\/+$/, "");
+  const b = trimSlashesEnd(basePath);
   const cut = stripApiSuffix(b);
   return (cut || b).replace(/\/+$/, "");
 })();
@@ -67,7 +112,8 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// Core API (sin /public) para endpoints internos (si los necesitás)
+// ✅ Core API (sin /public) para endpoints públicos “internos”
+// como /api/v1/products/:id/videos
 const coreApi = axios.create({
   baseURL: coreBaseURL,
   timeout: 20000,
@@ -134,9 +180,8 @@ export function getCatalogBranchId() {
   return CATALOG_BRANCH_ID;
 }
 
-// ✅ EXPORT FALTANTE (tu build rompe por esto)
+// ✅ branches público
 export async function getBranches() {
-  // GET /api/v1/public/branches
   const r = await api.get("/branches");
   return r.data?.items || [];
 }
@@ -233,15 +278,15 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 }
 
 /**
- * ✅ VIDEOS DE PRODUCTO (PUBLIC)
- * GET /api/v1/public/products/:id/videos
+ * ✅ VIDEOS DE PRODUCTO (CORE, NO /public)
+ * GET /api/v1/products/:id/videos
  * Respuesta esperada: { ok:true, data:[...] }
  */
 export async function getProductVideos(id) {
   const pid = toInt(id, 0);
   if (!pid) return [];
 
-  const r = await api.get(`/products/${pid}/videos`);
+  const r = await coreApi.get(`/products/${pid}/videos`);
   const arr = r.data?.data;
   return Array.isArray(arr) ? arr : [];
 }
@@ -265,7 +310,7 @@ export async function getProduct(id) {
 
   if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
 
-  // ✅ inject videos (public)
+  // ✅ inject videos (si endpoint existe)
   try {
     const vids = await getProductVideos(pid);
     const list = Array.isArray(vids) ? vids : [];
