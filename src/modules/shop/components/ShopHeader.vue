@@ -204,7 +204,7 @@ onMounted(async () => {
 }
 
 .ml-row-top {
-  border-bottom: none !important; /* 🔥 chau línea */
+  border-bottom: none !important;
 }
 
 .ml-row-bottom {
@@ -453,7 +453,7 @@ onMounted(async () => {
 }
 
 /* =========================================================
-   ✅ SOLO NUEVO: FAB carrito mobile (no toca lo demás)
+   🛒 FAB CARRITO MOBILE — sombra pro
    ========================================================= */
 .ml-cart-fab {
   position: fixed;
@@ -472,12 +472,28 @@ onMounted(async () => {
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
 
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
-  text-decoration: none;
-
   border: 1px solid rgba(255, 255, 255, 0.18);
+
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.35),
+    0 6px 12px rgba(0, 0, 0, 0.22);
+
+  filter: drop-shadow(0 0 6px rgba(var(--v-theme-on-primary), 0.25));
+
+  text-decoration: none;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
+
+.ml-cart-fab:hover {
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.42),
+    0 8px 16px rgba(0, 0, 0, 0.28);
+}
+
 .ml-cart-fab:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.3);
 }
+
 </style>

@@ -18,7 +18,7 @@
       :placeholder="placeholder"
       :menu-props="menuProps"
       @update:search="onTyping"
-      @keydown.enter.prevent="submitText()"
+      @keydown.enter.capture="onEnter"
       @click:clear="onClear"
     >
       <template #no-data>
@@ -28,7 +28,13 @@
       </template>
 
       <template #item="{ props: p, item }">
-        <v-list-item v-bind="p" class="ml-item">
+        <!-- ✅ Solo “aceptamos” selección si hubo click/tap real del usuario -->
+        <v-list-item
+          v-bind="p"
+          class="ml-item"
+          @mousedown="markClickSelect"
+          @touchstart="markClickSelect"
+        >
           <template #prepend>
             <v-avatar size="28" variant="tonal">
               <v-icon size="18">mdi-magnify</v-icon>
@@ -60,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -86,6 +92,12 @@ const items = ref([]);
 
 let tmr = null;
 
+// ✅ Guardamos lo último tipeado para restaurar si Vuetify intenta “autoseleccionar”
+const lastTyped = ref(text.value);
+
+// ✅ Flag: solo permitimos selección cuando hubo click/tap en un item
+const allowSelectFromClick = ref(false);
+
 const menuProps = computed(() => ({
   // ✅ FIX warning "Scroll target is not reachable"
   // fuerza render del menú en body y reposiciona con scroll
@@ -102,10 +114,15 @@ function normalize(s) {
   return String(s || "").trim();
 }
 
+function markClickSelect() {
+  allowSelectFromClick.value = true;
+}
+
 function onClear() {
   text.value = "";
   selected.value = null;
   items.value = [];
+  lastTyped.value = "";
   setModel("");
   emit("clear");
 }
@@ -132,6 +149,8 @@ async function loadSuggestions(q) {
 
 function onTyping(v) {
   const q = normalize(v);
+  text.value = q;
+  lastTyped.value = q;
   setModel(q);
 
   if (tmr) clearTimeout(tmr);
@@ -140,23 +159,63 @@ function onTyping(v) {
 
 function submitText() {
   const q = normalize(text.value);
+  lastTyped.value = q;
   setModel(q);
   emit("search", q);
 }
 
+// ✅ Enter = buscar SIEMPRE (no seleccionar sugerencia)
+async function onEnter(e) {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+
+  // si justo había un item “activo” por teclado, evitamos que eso dispare selección
+  allowSelectFromClick.value = false;
+
+  const q = normalize(text.value || lastTyped.value);
+  text.value = q;
+  lastTyped.value = q;
+
+  // por las dudas, anulamos cualquier selección que haya querido hacer Vuetify
+  selected.value = null;
+
+  submitText();
+
+  // si el componente llegó a pisar el texto por autoselección, lo restauramos
+  await nextTick();
+  if (text.value !== lastTyped.value) text.value = lastTyped.value;
+}
+
+// Sync externo -> input
 watch(
   () => props.modelValue,
   (v) => {
     const nv = String(v || "");
-    if (nv !== text.value) text.value = nv;
+    if (nv !== text.value) {
+      text.value = nv;
+      lastTyped.value = nv;
+    }
   }
 );
 
-// cuando elige una sugerencia
-watch(selected, (val) => {
+// ✅ Selección SOLO por click/tap en un item
+watch(selected, async (val) => {
   if (!val) return;
+
+  if (!allowSelectFromClick.value) {
+    // vino de teclado/enter/autoselect => lo ignoramos y restauramos búsqueda
+    selected.value = null;
+    await nextTick();
+    text.value = lastTyped.value;
+    return;
+  }
+
+  // click/tap confirmado
+  allowSelectFromClick.value = false;
+
   const q = normalize(val);
   text.value = q;
+  lastTyped.value = q;
   setModel(q);
   emit("search", q);
 });

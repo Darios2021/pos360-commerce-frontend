@@ -7,7 +7,7 @@
       hide-details
       clearable
       class="sb-input"
-      placeholder="Buscar productos, marcas y más..."
+      placeholder="Buscar productos..."
       prepend-inner-icon="mdi-magnify"
       @keydown.down.prevent="move(1)"
       @keydown.up.prevent="move(-1)"
