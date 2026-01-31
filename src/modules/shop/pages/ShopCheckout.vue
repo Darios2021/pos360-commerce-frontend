@@ -1,5 +1,6 @@
 <!-- src/modules/shop/pages/ShopCheckout.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
+     - ✅ FIX mobile “contraído”: container fluid + row no-gutters + padding controlado
      - Checkout ML + Stepper (componentizado)
      - Summary SOLO DESKTOP (evita duplicado en mobile)
      - ✅ Payload alineado con ecomCheckout.controller.js (DB-first)
@@ -9,21 +10,22 @@
 -->
 
 <template>
-  <v-container class="py-6">
+  <v-container fluid class="checkout-page py-6">
     <div class="checkout-shell">
       <!-- Header -->
-      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4">
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4 checkout-head">
         <div class="text-h5 font-weight-bold">Finalizar compra</div>
 
-        <v-btn to="/shop/cart" variant="tonal">
+        <v-btn to="/shop/cart" variant="tonal" class="checkout-back">
           <v-icon start>mdi-arrow-left</v-icon>
           Volver al carrito
         </v-btn>
       </div>
 
-      <v-row>
+      <!-- ✅ no-gutters: elimina el “contraído” lateral en mobile -->
+      <v-row no-gutters class="checkout-row">
         <!-- LEFT -->
-        <v-col cols="12" md="8">
+        <v-col cols="12" md="8" class="checkout-col checkout-col-left">
           <CheckoutStepper
             :step="step"
             :buyer="buyer"
@@ -54,7 +56,7 @@
         </v-col>
 
         <!-- RIGHT: Summary (SOLO DESKTOP para no duplicar en mobile) -->
-        <v-col cols="12" md="4" class="d-none d-md-block">
+        <v-col cols="12" md="4" class="checkout-col checkout-col-right d-none d-md-block">
           <CheckoutSummary
             :items="items"
             :subtotal="subtotal"
@@ -90,10 +92,6 @@ const submitError = ref("");
 // -------------------------
 // Items
 const items = computed(() => cart.items || []);
-
-function fmtMoney(v) {
-  return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
-}
 
 function unitPrice(p) {
   const d = Number(p?.price_discount || 0);
@@ -308,26 +306,22 @@ const canSubmit = computed(() => canGoReview.value);
 
 // -------------------------
 // ✅ Branch_id (OBLIGATORIO para el controller)
-// Ajustá esto si ya tenés branch guardada en tu store.
 function getBranchId() {
   const fromCart =
     Number(cart?.branch_id || cart?.branchId || cart?.selected_branch_id || cart?.selectedBranchId || 0) || 0;
 
   if (fromCart) return fromCart;
 
-  // fallback: localStorage (si lo usás)
   try {
     const ls = Number(localStorage.getItem("shop_branch_id") || 0) || 0;
     if (ls) return ls;
   } catch {}
 
-  // último recurso (tu shop suele usar branch 3)
   return 3;
 }
 
 function buildBackendPayload() {
   const isPickup = delivery.value.mode === "pickup";
-
   const branch_id = getBranchId();
 
   return {
@@ -353,7 +347,7 @@ function buildBackendPayload() {
           province: String(delivery.value.province || "").trim() || null,
           zip: String(delivery.value.zip || "").trim() || null,
           notes: String(delivery.value.notes || "").trim() || null,
-          amount: Number(shippingAmount.value || 0) || 0, // compat para controller (shipping?.amount)
+          amount: Number(shippingAmount.value || 0) || 0,
         }
       : null,
 
@@ -377,9 +371,7 @@ function mapCheckoutErrorToHumanMessage(err) {
   const apiMsg = String(err?.response?.data?.message || "").trim();
   const apiDetail = String(err?.response?.data?.detail || "").trim();
 
-  // ✅ si viene detalle SQL, mostrámelo (te sirve para arreglar la DB)
   if (status >= 500 && apiDetail) return apiDetail;
-
   if (status === 409 && apiCode.includes("NO_STOCK")) return apiMsg || "No hay stock suficiente.";
   if (status === 400) return apiMsg || "Datos inválidos. Revisá el formulario.";
   if (status === 401 || status === 403) return "No autorizado. Revisá credenciales/servidor.";
@@ -410,13 +402,11 @@ async function submitOrder() {
       typeof redirectUrl === "string" &&
       (redirectUrl.startsWith("https://") || redirectUrl.startsWith("http://"));
 
-    // ✅ Si es MP real, redirige
     if (isHttpUrl) {
       window.location.href = redirectUrl;
       return;
     }
 
-    // ✅ Guardar comprobante para success
     const receipt = {
       created_at: data?.created_at || new Date().toISOString(),
       order_id: Number(data?.order?.id || data?.order_id || data?.id || 0) || null,
@@ -453,8 +443,6 @@ async function submitOrder() {
     }
 
     cart.clear?.();
-
-    // ✅ SIEMPRE a success si no hay redirect
     router.replace("/shop/checkout/success");
   } catch (err) {
     console.error("[CHECKOUT] error", err?.response?.data || err);
@@ -486,13 +474,11 @@ watch(
 // -------------------------
 // Init
 onMounted(async () => {
-  // si no hay carrito -> volver
   if (!items.value.length) {
     router.push("/shop/cart");
     return;
   }
 
-  // 1) config pagos
   try {
     const cfg = await getShopPaymentConfig();
     transferInfo.value = cfg?.transfer || transferInfo.value;
@@ -506,7 +492,6 @@ onMounted(async () => {
     if (String(payment.value.method_code) === "mercadopago") payment.value.method_code = "transfer";
   }
 
-  // 2) branches
   loadingBranches.value = true;
   try {
     const res = await getBranches();
@@ -515,23 +500,56 @@ onMounted(async () => {
     loadingBranches.value = false;
   }
 
-  // 3) preselección pickup
   if (pickupBranches.value.length) {
     delivery.value.pickup_branch_id = pickupBranches.value[0].id;
   } else {
     delivery.value.mode = "delivery";
   }
 
-  // defaults envío
   if (!delivery.value.contact_name) delivery.value.contact_name = buyer.value.name || "";
   if (!delivery.value.ship_phone) delivery.value.ship_phone = buyer.value.phone || "";
 });
 </script>
 
 <style scoped>
+/* ✅ acá estaba el drama: en mobile Vuetify mete padding/gutters y te deja “angosto” */
+.checkout-page {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* contenedor real centrado */
 .checkout-shell {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 16px; /* desktop/tablet */
+}
+
+.checkout-row {
+  width: 100%;
+}
+
+/* columnas sin padding default (lo controlamos nosotros) */
+.checkout-col {
+  padding: 0 !important;
+}
+
+/* separacion desktop entre left y summary */
+@media (min-width: 960px) {
+  .checkout-col-left {
+    padding-right: 14px !important;
+  }
+  .checkout-col-right {
+    padding-left: 14px !important;
+  }
+}
+
+/* ✅ mobile: más ancho visual (menos padding lateral) */
+@media (max-width: 600px) {
+  .checkout-shell {
+    padding: 0 10px; /* antes era “mucho”, por eso lo veías contraído */
+  }
 }
 </style>
