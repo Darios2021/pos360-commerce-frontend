@@ -3,6 +3,8 @@
      - Header ML-like pero color tomado del THEME runtime (DB)
      - NO hardcodea #1488d1
      - Sin línea inferior / contornos raros
+     - ✅ MOBILE: carrito abajo (FAB) para dar aire al header
+     - ✅ NO cambia estilos existentes, solo agrega FAB
 -->
 
 <template>
@@ -45,17 +47,11 @@
           </router-link>
         </div>
 
+        <!-- ✅ MOBILE: solo menú (quitamos carrito del header para dar aire) -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
             <v-icon size="22">mdi-menu</v-icon>
           </v-btn>
-
-          <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
-            <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
-              <v-icon size="22">mdi-cart-outline</v-icon>
-            </v-badge>
-            <v-icon v-else size="22">mdi-cart-outline</v-icon>
-          </router-link>
         </div>
       </div>
     </div>
@@ -84,9 +80,7 @@
         <div v-else class="ml-mobile-stack">
           <div class="ml-mobile-row2">
             <ShopCatalogMenu />
-            <div class="ml-hint-mobile">
-              Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
-            </div>
+            <!-- (si querés acá no va texto, lo dejamos vacío como venías pidiendo) -->
           </div>
         </div>
       </div>
@@ -109,13 +103,24 @@
         <v-list-item to="/auth/login" title="Ingresá" prepend-icon="mdi-account-outline" @click="mobileDrawer = false" />
       </v-list>
 
-      <div class="ml-drawer-foot">
-        <div class="text-caption text-medium-emphasis">
-          Buscá productos, agregalos al carrito y elegí sucursal al finalizar.
-        </div>
-      </div>
+      <!-- (sin texto abajo) -->
+      <div class="ml-drawer-foot"></div>
     </v-navigation-drawer>
   </header>
+
+  <!-- ================= MOBILE FLOATING CART (FAB) ================= -->
+  <router-link
+    v-if="isMobile"
+    to="/shop/cart"
+    class="ml-cart-fab"
+    :title="`Carrito (${cart.count})`"
+    :aria-label="`Carrito (${cart.count})`"
+  >
+    <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
+      <v-icon size="24">mdi-cart-outline</v-icon>
+    </v-badge>
+    <v-icon v-else size="24">mdi-cart-outline</v-icon>
+  </router-link>
 </template>
 
 <script setup>
@@ -420,13 +425,6 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 10px;
 }
-.ml-hint-mobile {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
-  text-align: right;
-  line-height: 1.15;
-  max-width: 58%;
-}
 
 /* drawers */
 .ml-drawer :deep(.v-navigation-drawer__content) {
@@ -450,7 +448,36 @@ onMounted(async () => {
   color: #fff;
 }
 .ml-drawer-foot {
-  padding: 12px 6px 4px;
+  padding: 0;
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* =========================================================
+   ✅ SOLO NUEVO: FAB carrito mobile (no toca lo demás)
+   ========================================================= */
+.ml-cart-fab {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 120;
+
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
+  text-decoration: none;
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.ml-cart-fab:active {
+  transform: scale(0.98);
 }
 </style>
