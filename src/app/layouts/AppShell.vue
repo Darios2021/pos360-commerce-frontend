@@ -1,10 +1,21 @@
 <!-- src/app/layouts/AppShell.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO (agrega "Pedidos" real + opcional "Pedidos (Config)" + Links Tienda + Galería multimedia) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO
+     - Backoffice usa PRIMARY en header (100% del color elegido)
+     - Drawer opcional en PRIMARY (brand full)
+     - ✅ Quita la "línea" / contorno del header (border-bottom)
+     - Compatible con runtimeTheme.js (CSS vars Vuetify)
+-->
 <template>
   <v-app>
     <v-layout>
       <!-- ================= HEADER ================= -->
-      <v-app-bar elevation="0" color="surface" height="72" class="pos-appbar">
+      <v-app-bar
+        flat
+        elevation="0"
+        color="primary"
+        height="72"
+        class="pos-appbar"
+      >
         <template #prepend>
           <v-btn
             :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
@@ -15,13 +26,13 @@
         </template>
 
         <div class="d-flex align-center ga-3">
-          <v-avatar color="primary" variant="tonal" size="40">
+          <v-avatar color="secondary" variant="flat" size="40">
             <span class="font-weight-bold">360</span>
           </v-avatar>
 
           <div class="d-flex flex-column">
             <div class="font-weight-bold">POS360</div>
-            <div class="text-caption text-medium-emphasis">Inventario · Ecommerce · POS</div>
+            <div class="text-caption" style="opacity:.85">Inventario · Ecommerce · POS</div>
           </div>
         </div>
 
@@ -91,17 +102,19 @@
       </v-app-bar>
 
       <!-- ================= DRAWER ================= -->
+      <!-- ✅ Si NO querés drawer azul: cambiá color="primary" por color="surface" -->
       <v-navigation-drawer
         v-model="drawer"
         permanent
         :rail="rail"
         width="280"
         rail-width="72"
+        color="primary"
         class="pos-drawer"
       >
         <div class="pt-2"></div>
 
-        <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Navegación</div>
+        <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Navegación</div>
 
         <v-list nav density="comfortable">
           <v-list-item :to="{ name: 'home' }" prepend-icon="mdi-view-dashboard-outline" title="Dashboard" exact>
@@ -118,7 +131,7 @@
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Gestión</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Gestión</div>
 
           <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" exact>
             <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
@@ -135,7 +148,7 @@
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption text-medium-emphasis">Sistema</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Sistema</div>
 
           <!-- ✅ Configuración -->
           <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
@@ -203,7 +216,6 @@
               exact
             />
 
-            <!-- ✅ Pedidos LISTADO REAL -->
             <v-list-item
               v-if="hasRoute('shopOrders')"
               :to="{ name: 'shopOrders' }"
@@ -212,7 +224,6 @@
               exact
             />
 
-            <!-- ✅ (Opcional) Pedidos - Config -->
             <v-list-item
               v-if="hasRoute('shopOrdersSettings')"
               :to="{ name: 'shopOrdersSettings' }"
@@ -250,7 +261,6 @@
               exact
             />
 
-            <!-- ✅ NUEVO: Links Tienda -->
             <v-divider class="my-2" />
             <v-list-item
               v-if="hasRoute('shopLinks')"
@@ -260,7 +270,6 @@
               exact
             />
 
-            <!-- ✅ Galería Multimedia -->
             <v-list-item
               v-if="hasRoute('adminGaleriaMultimedia')"
               :to="{ name: 'adminGaleriaMultimedia' }"
@@ -273,8 +282,8 @@
 
         <v-spacer />
 
-        <div class="pa-4 text-caption text-medium-emphasis" v-if="!rail">v1 · 2025</div>
-        <div class="px-2 pb-4 text-caption text-medium-emphasis text-center" v-else>v1</div>
+        <div class="pa-4 text-caption" style="opacity:.85" v-if="!rail">v1 · 2025</div>
+        <div class="px-2 pb-4 text-caption text-center" style="opacity:.85" v-else>v1</div>
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
@@ -314,9 +323,7 @@ function applyVuetifyTheme(dark) {
   try {
     if (typeof theme?.change === "function") theme.change(name);
     else if (theme?.global?.name) theme.global.name.value = name;
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 function toggleDark() {
@@ -423,14 +430,18 @@ function onLogout() {
 </script>
 
 <style scoped>
+/* ✅ IMPORTANTE:
+   - si dejás border-bottom acá, vas a ver la "línea" / contorno que te molestaba
+*/
 .pos-appbar {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: none !important;
 }
 
 .pos-drawer {
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: none !important;
 }
 
+/* contenido main */
 .pos-main {
   background: rgb(var(--v-theme-background));
 }
@@ -441,8 +452,9 @@ function onLogout() {
   max-width: 1400px;
 }
 
+/* avatar cuenta */
 .pos-avatar-btn {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .pos-account-card {
@@ -450,6 +462,6 @@ function onLogout() {
 }
 
 .pos-account-avatar {
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(0, 0, 0, 0.08);
 }
 </style>

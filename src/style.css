@@ -13,6 +13,9 @@
   --v-font-family: var(--ml-font);
   --v-body-font-family: var(--ml-font);
 
+  /* ✅ TU COLOR PRINCIPAL (fallback) */
+  --pos-primary: #0e2134;
+
   font-family: var(--ml-font);
   line-height: 1.5;
   font-weight: 400;
@@ -110,4 +113,66 @@ body {
 
 .v-theme--dark .v-divider {
   opacity: 0.18;
+}
+
+/* =========================================================
+   ✅ FIX REAL: Header/Footer del SHOP (y topbars custom)
+   - Si son Vuetify: usa --v-theme-primary
+   - Si no: cae al fallback --pos-primary (#0e2134)
+   ========================================================= */
+
+:root {
+  --pos-primary-rgb: var(--v-theme-primary, 14 33 52); /* 0e2134 */
+  --pos-on-primary-rgb: var(--v-theme-on-primary, 255 255 255);
+}
+
+/* Targets típicos (Vuetify o custom) */
+.shop-header,
+.shop-topbar,
+.shop-navbar,
+.shop-footer,
+.pos-header,
+.pos-footer,
+header,
+footer,
+[data-pos="header"],
+[data-pos="footer"] {
+  background-color: rgb(var(--pos-primary-rgb)) !important;
+  color: rgb(var(--pos-on-primary-rgb)) !important;
+}
+
+/* Si tu header es un v-app-bar o v-footer */
+.v-app-bar,
+.v-footer {
+  background-color: rgb(var(--pos-primary-rgb)) !important;
+  color: rgb(var(--pos-on-primary-rgb)) !important;
+}
+
+/* Botones/iconos en barras oscuras */
+.shop-header .v-btn,
+.shop-topbar .v-btn,
+.shop-navbar .v-btn,
+.shop-footer .v-btn,
+.v-app-bar .v-btn,
+.v-footer .v-btn,
+.shop-header .v-icon,
+.shop-topbar .v-icon,
+.shop-navbar .v-icon,
+.shop-footer .v-icon,
+.v-app-bar .v-icon,
+.v-footer .v-icon {
+  color: rgb(var(--pos-on-primary-rgb)) !important;
+}
+
+/* Input del buscador sobre header oscuro (no queda gris apagado) */
+.shop-header .v-field,
+.shop-topbar .v-field,
+.v-app-bar .v-field {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+.shop-header .v-field__input,
+.shop-topbar .v-field__input,
+.v-app-bar .v-field__input {
+  color: #111 !important;
 }

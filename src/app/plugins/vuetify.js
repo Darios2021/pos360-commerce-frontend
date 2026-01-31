@@ -1,3 +1,4 @@
+// src/app/plugins/vuetify.js
 import "vuetify/styles";
 import "@mdi/font/css/materialdesignicons.css";
 
@@ -10,10 +11,32 @@ const vuetify = createVuetify({
   directives,
   theme: {
     defaultTheme: "light",
-  },
-  typography: {
-    fontFamily:
-      'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',
+    themes: {
+      light: {
+        dark: false,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#f5f6f8",
+          surface: "#ffffff",
+          error: "#d32f2f",
+          success: "#2e7d32",
+          warning: "#ed6c02",
+        },
+      },
+      dark: {
+        dark: true,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#0b1320",
+          surface: "#111a2e",
+          error: "#ef5350",
+          success: "#66bb6a",
+          warning: "#ffa726",
+        },
+      },
+    },
   },
 });
 

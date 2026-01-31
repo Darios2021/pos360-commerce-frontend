@@ -1,14 +1,12 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/ShopFooter.vue -->
 <template>
   <v-sheet tag="footer" class="shop-footer">
-    <div class="footer-top-glow" />
-
     <v-container fluid class="footer-inner">
       <v-row class="py-10" justify="space-between">
-        <!-- ================= BRAND ================= -->
+        <!-- BRAND -->
         <v-col cols="12" md="4">
           <div class="d-flex align-center ga-3 mb-4">
-            <!-- ✅ LOGO REAL GRANDE -->
             <v-avatar :size="isMobile ? 64 : 84" class="brand-badge">
               <template v-if="branding.logo_url">
                 <img :src="logoUrl" :alt="branding.name" class="brand-logo" />
@@ -40,7 +38,7 @@
           </div>
         </v-col>
 
-        <!-- ================= LINKS ================= -->
+        <!-- LINKS -->
         <v-col cols="12" sm="6" md="2">
           <div class="section-title">Tienda</div>
           <ul class="footer-list">
@@ -61,7 +59,7 @@
           </ul>
         </v-col>
 
-        <!-- ================= CONTACT + PAYMENTS ================= -->
+        <!-- CONTACT -->
         <v-col cols="12" md="4">
           <div class="section-title">Contacto</div>
 
@@ -166,26 +164,13 @@ onMounted(async () => {
   } catch {}
 });
 </script>
+
 <style scoped>
-:global(html),
-:global(body),
-:global(#app),
-:global(.v-application),
-:global(.v-application__wrap) {
-  margin: 0 !important;
-  padding: 0 !important;
-  background: #1488d1 !important;
-}
-
 .shop-footer {
-  --ml-blue: #1488d1;
-  --ml-white: #ffffff;
-  --ml-border: rgba(255, 255, 255, 0.14);
-
   width: 100%;
-  color: var(--ml-white);
-  background: var(--ml-blue) !important;
-  border-top: 1px solid var(--ml-border);
+  color: rgb(var(--v-theme-on-primary));
+  background: rgb(var(--v-theme-primary)) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .footer-inner {
@@ -193,9 +178,7 @@ onMounted(async () => {
   margin: 0 auto;
 }
 
-/* ===============================
-   LOGO FOOTER – sin avatar
-   =============================== */
+/* logo sin avatar */
 .brand-badge {
   background: transparent !important;
   border: none !important;
@@ -203,11 +186,9 @@ onMounted(async () => {
   border-radius: 0 !important;
   overflow: visible !important;
 }
-
 .brand-badge :deep(.v-avatar__underlay) {
   display: none !important;
 }
-
 .brand-logo {
   width: 100%;
   height: 100%;
@@ -217,7 +198,6 @@ onMounted(async () => {
   object-position: center;
 }
 
-/* texto marca */
 .brand-title {
   font-family: "Orbitron", sans-serif;
   font-weight: 900;
@@ -229,14 +209,17 @@ onMounted(async () => {
   opacity: 0.9;
   font-size: 0.85rem;
 }
-
 .brand-desc {
   opacity: 0.92;
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
-/* links */
+.section-title {
+  font-weight: 900;
+  margin-bottom: 12px;
+}
+
 .footer-list {
   list-style: none;
   padding: 0;
@@ -254,10 +237,39 @@ onMounted(async () => {
   text-underline-offset: 4px;
 }
 
-/* bottom */
+.contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.92;
+  margin-bottom: 10px;
+}
+
+.pay-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .copy {
   font-size: 0.86rem;
   color: rgba(255, 255, 255, 0.82);
 }
-</style>
 
+.social {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.to-top {
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
+</style>

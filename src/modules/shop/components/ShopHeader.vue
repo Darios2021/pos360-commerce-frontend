@@ -1,3 +1,10 @@
+<!-- src/modules/shop/components/ShopHeader.vue -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO
+     - Header ML-like pero color tomado del THEME runtime (DB)
+     - NO hardcodea #1488d1
+     - Sin línea inferior / contornos raros
+-->
+
 <template>
   <header class="ml-header">
     <!-- ================= ROW 1 (TOP): brand + search + actions ================= -->
@@ -65,7 +72,6 @@
         </button>
 
         <nav v-if="!isMobile" class="ml-nav">
-          <!-- ✅ ahora el mega menú vive en su componente -->
           <ShopCatalogMenu />
 
           <router-link class="ml-nav-soft" to="/shop">Ofertas</router-link>
@@ -86,7 +92,7 @@
       </div>
     </div>
 
-    <!-- ================= MOBILE DRAWER (menú general) ================= -->
+    <!-- ================= MOBILE DRAWER ================= -->
     <v-navigation-drawer v-model="mobileDrawer" location="right" temporary width="320" class="ml-drawer">
       <div class="ml-drawer-head">
         <div class="ml-drawer-title">Menú</div>
@@ -119,7 +125,6 @@ import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import ShopCatalogMenu from "@/modules/shop/components/ShopCatalogMenu.vue";
-
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const route = useRoute();
@@ -129,11 +134,8 @@ const { smAndDown } = useDisplay();
 const isMobile = computed(() => !!smAndDown.value);
 
 const mobileDrawer = ref(false);
-
-// ✅ branch fijo como venís usando
 const branchId = 3;
 
-// ✅ BRANDING
 const branding = ref({
   name: "San Juan Tecnología",
   logo_url: "",
@@ -156,52 +158,6 @@ function withVersion(url, v) {
   }
 }
 
-function ensureLink(rel) {
-  const head = document.head || document.getElementsByTagName("head")[0];
-  if (!head) return null;
-
-  let link = head.querySelector(`link[rel="${rel}"]`);
-  if (!link) {
-    link = document.createElement("link");
-    link.setAttribute("rel", rel);
-    head.appendChild(link);
-  }
-  return link;
-}
-
-function setFavicon(url, updatedAt) {
-  const u0 = String(url || "").trim();
-  if (!u0) return;
-
-  const u = withVersion(u0, updatedAt);
-
-  {
-    const link = ensureLink("icon");
-    if (link) {
-      link.setAttribute("href", u);
-      link.setAttribute("type", "image/png");
-      link.setAttribute("sizes", "64x64");
-    }
-  }
-
-  {
-    const link = ensureLink("shortcut icon");
-    if (link) {
-      link.setAttribute("href", u);
-      link.setAttribute("type", "image/png");
-      link.setAttribute("sizes", "64x64");
-    }
-  }
-
-  {
-    const link = ensureLink("apple-touch-icon");
-    if (link) {
-      link.setAttribute("href", u);
-      link.setAttribute("sizes", "180x180");
-    }
-  }
-}
-
 const logoSize = computed(() => (isMobile.value ? 56 : 76));
 const iconSize = computed(() => (isMobile.value ? 24 : 30));
 const logoHeaderUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
@@ -212,31 +168,40 @@ onMounted(async () => {
     if (b && typeof b === "object") {
       branding.value = { ...branding.value, ...b };
       if (branding.value?.name) document.title = branding.value.name;
-      if (branding.value?.favicon_url) setFavicon(branding.value.favicon_url, branding.value.updated_at);
     }
   } catch {}
 });
 </script>
 
 <style scoped>
+/* =========================================================
+   ✅ 100% THEME runtime (DB): usa --v-theme-primary
+   ========================================================= */
 .ml-header {
-  --ml-blue: #1488d1;
-  --ml-white: #ffffff;
-
   position: sticky;
   top: 0;
   z-index: 60;
-  background: var(--ml-blue);
+
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 
-.ml-row {
-  background: var(--ml-blue);
-  color: var(--ml-white);
+/* filas iguales, sin borde inferior */
+.ml-row,
+.ml-row-top,
+.ml-row-bottom {
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+  border: 0 !important;
+  outline: 0 !important;
 }
+
 .ml-row-top {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: none !important; /* 🔥 chau línea */
 }
+
 .ml-row-bottom {
   padding-bottom: 8px;
 }
@@ -274,11 +239,11 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   text-decoration: none;
-  color: var(--ml-white);
+  color: rgb(var(--v-theme-on-primary)) !important;
   min-width: 0;
 }
 
-/* FIX FINAL: logo SIN círculo/aro + texto Orbitron */
+/* logo sin aro */
 .ml-brand-ico {
   background: transparent !important;
   border: none !important;
@@ -349,7 +314,7 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   text-decoration: none;
   font-size: 13px;
   font-weight: 800;
@@ -426,8 +391,6 @@ onMounted(async () => {
   gap: 10px;
   min-width: 0;
 }
-
-/* ✅ LINKS SUAVES (como tu ejemplo) */
 .ml-nav-soft {
   color: rgba(255, 255, 255, 0.82);
   text-decoration: none;
@@ -468,8 +431,8 @@ onMounted(async () => {
 /* drawers */
 .ml-drawer :deep(.v-navigation-drawer__content) {
   padding: 12px;
-  background: #1488d1;
-  color: #fff;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
 }
 .ml-drawer :deep(.v-list) {
   background: transparent !important;

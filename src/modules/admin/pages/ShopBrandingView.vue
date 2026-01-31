@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/admin/pages/ShopBrandingView.vue -->
 <template>
   <v-container class="mx-auto" style="max-width: 1100px;">
@@ -15,7 +16,7 @@
             Recargar
           </v-btn>
           <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save" @click="saveName" :loading="saving">
-            Guardar
+            Guardar nombre
           </v-btn>
         </div>
       </v-card-title>
@@ -26,6 +27,7 @@
         {{ error }}
       </v-alert>
 
+      <!-- ====================== BRANDING ====================== -->
       <v-row dense>
         <v-col cols="12" md="6">
           <v-text-field v-model="form.name" label="Nombre de la tienda" variant="outlined" />
@@ -98,7 +100,7 @@
           </v-card>
         </v-col>
 
-        <!-- ✅ OG Image (WhatsApp preview) -->
+        <!-- OG Image -->
         <v-col cols="12" md="6">
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
@@ -143,6 +145,108 @@
           </v-card>
         </v-col>
       </v-row>
+
+      <v-divider class="my-6" />
+
+      <!-- ====================== THEME ====================== -->
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+        <div>
+          <div class="text-h6 font-weight-bold">Tema</div>
+          <div class="text-caption text-medium-emphasis">
+            Definí los colores principales. Se aplican al Shop (header/footer/botones) sin redeploy.
+          </div>
+        </div>
+
+        <div class="d-flex ga-2">
+          <v-btn variant="tonal" prepend-icon="mdi-restore" @click="resetTheme" :disabled="savingTheme">
+            Reset
+          </v-btn>
+          <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save" @click="saveTheme" :loading="savingTheme">
+            Guardar tema
+          </v-btn>
+        </div>
+      </div>
+
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <v-card rounded="xl" variant="tonal" class="pa-3">
+            <div class="d-flex align-center justify-space-between">
+              <div class="font-weight-bold">Primary</div>
+              <div class="text-caption text-medium-emphasis">Ej: #0e2134</div>
+            </div>
+
+            <div class="mt-3 d-flex flex-wrap ga-2 align-center">
+              <v-text-field
+                v-model="themeForm.primary"
+                label="Color primary"
+                variant="outlined"
+                density="comfortable"
+                style="max-width: 240px;"
+                hide-details
+              />
+              <v-chip size="small" variant="tonal">Header / Footer / Botones</v-chip>
+            </div>
+
+            <div class="mt-3">
+              <v-color-picker v-model="themeForm.primary" mode="hex" hide-inputs elevation="0" />
+            </div>
+          </v-card>
+        </v-col>
+
+        <v-col cols="12" md="6">
+          <v-card rounded="xl" variant="tonal" class="pa-3">
+            <div class="d-flex align-center justify-space-between">
+              <div class="font-weight-bold">Secondary</div>
+              <div class="text-caption text-medium-emphasis">Ej: #3483fa</div>
+            </div>
+
+            <div class="mt-3 d-flex flex-wrap ga-2 align-center">
+              <v-text-field
+                v-model="themeForm.secondary"
+                label="Color secondary"
+                variant="outlined"
+                density="comfortable"
+                style="max-width: 240px;"
+                hide-details
+              />
+              <v-chip size="small" variant="tonal">Accentos / Links</v-chip>
+            </div>
+
+            <div class="mt-3">
+              <v-color-picker v-model="themeForm.secondary" mode="hex" hide-inputs elevation="0" />
+            </div>
+          </v-card>
+        </v-col>
+
+        <v-col cols="12">
+          <v-card rounded="xl" variant="outlined" class="pa-3">
+            <div class="font-weight-bold mb-2">Preview</div>
+
+            <v-sheet rounded="xl" class="pa-4" :style="previewStyle">
+              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+                <div class="d-flex align-center ga-2">
+                  <v-avatar size="40" :style="{ background: themeForm.secondary }">
+                    <v-icon>mdi-storefront</v-icon>
+                  </v-avatar>
+                  <div>
+                    <div class="font-weight-black">San Juan Tecnología</div>
+                    <div class="text-caption" style="opacity:.85">Header / Footer con Primary</div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center ga-2">
+                  <v-btn variant="flat" color="primary">Primary</v-btn>
+                  <v-btn variant="tonal" color="secondary">Secondary</v-btn>
+                </div>
+              </div>
+            </v-sheet>
+
+            <div class="text-caption text-medium-emphasis mt-2">
+              Al guardar aplicamos el cambio también “en vivo” en esta sesión del backoffice.
+            </div>
+          </v-card>
+        </v-col>
+      </v-row>
     </v-card>
 
     <v-snackbar v-model="snack.show" :timeout="3000">
@@ -152,17 +256,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import {
   getShopBranding,
   updateShopBranding,
   uploadShopLogo,
   uploadShopFavicon,
-  uploadShopOgImage, // ✅ nuevo
+  uploadShopOgImage,
 } from "@/modules/shop/service/admin.shopBranding.api";
+
+import { getShopThemeAdmin, updateShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
+
+// ✅ IMPORT CORRECTO (según tu estructura)
+import { applyRuntimeTheme } from "@/modules/shop/utils/runtimeTheme";
 
 const loading = ref(false);
 const saving = ref(false);
+const savingTheme = ref(false);
 const uploadingLogo = ref(false);
 const uploadingFav = ref(false);
 const uploadingOg = ref(false);
@@ -172,12 +282,34 @@ const branding = ref({
   name: "San Juan Tecnología",
   logo_url: "",
   favicon_url: "",
-  og_image_url: "", // ✅ nuevo
+  og_image_url: "",
   updated_at: null,
 });
 
 const form = ref({ name: "San Juan Tecnología" });
 const snack = ref({ show: false, text: "" });
+
+// THEME
+const theme = ref({
+  primary: "#0e2134",
+  secondary: "#3483fa",
+});
+const themeForm = ref({
+  primary: "#0e2134",
+  secondary: "#3483fa",
+});
+
+const previewStyle = computed(() => ({
+  background: themeForm.value.primary,
+  color: "#fff",
+}));
+
+function normHex(v, fallback) {
+  const s = String(v || "").trim();
+  if (!s) return fallback;
+  const h = s.startsWith("#") ? s : `#${s}`;
+  return /^#[0-9a-fA-F]{6}$/.test(h) ? h.toLowerCase() : fallback;
+}
 
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 const assetBase = (() => {
@@ -198,13 +330,27 @@ async function load() {
   loading.value = true;
   error.value = "";
   try {
+    // branding
     const it = await getShopBranding();
     if (it) {
       branding.value = { ...branding.value, ...it };
       form.value.name = branding.value.name || "San Juan Tecnología";
     }
+
+    // theme
+    const th = await getShopThemeAdmin();
+    if (th) {
+      theme.value = {
+        primary: normHex(th.primary, "#0e2134"),
+        secondary: normHex(th.secondary, "#3483fa"),
+      };
+      themeForm.value = { ...theme.value };
+
+      // aplica en vivo en el backoffice para que lo veas ya
+      applyRuntimeTheme(theme.value);
+    }
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || "No se pudo cargar el branding.";
+    error.value = e?.response?.data?.message || e?.message || "No se pudo cargar la configuración.";
   } finally {
     loading.value = false;
   }
@@ -216,12 +362,44 @@ async function saveName() {
   try {
     const it = await updateShopBranding({ name: form.value.name });
     if (it) branding.value = { ...branding.value, ...it };
-    snack.value = { show: true, text: "Guardado OK" };
+    snack.value = { show: true, text: "Nombre guardado OK" };
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || "No se pudo guardar.";
   } finally {
     saving.value = false;
   }
+}
+
+async function saveTheme() {
+  savingTheme.value = true;
+  error.value = "";
+  try {
+    const payload = {
+      primary: normHex(themeForm.value.primary, "#0e2134"),
+      secondary: normHex(themeForm.value.secondary, "#3483fa"),
+    };
+
+    const saved = await updateShopThemeAdmin(payload);
+
+    // aunque el backend devuelva null, aplicamos payload igual
+    theme.value = { ...payload };
+    themeForm.value = { ...payload };
+
+    // ✅ aplica runtime (sin reload)
+    applyRuntimeTheme(payload);
+
+    snack.value = { show: true, text: "Tema guardado OK" };
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo guardar el tema.";
+  } finally {
+    savingTheme.value = false;
+  }
+}
+
+function resetTheme() {
+  themeForm.value = { primary: "#0e2134", secondary: "#3483fa" };
+  applyRuntimeTheme(themeForm.value);
+  snack.value = { show: true, text: "Preview reseteado (guardá para aplicar)" };
 }
 
 /** uploads */

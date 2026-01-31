@@ -1,5 +1,5 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// main.js
+// src/main.js
 
 // =============================
 // 🔐 PATCH GLOBAL para WebViews capados (Instagram / Facebook / iOS Private)
@@ -18,24 +18,15 @@
     window.localStorage.removeItem(testKey);
   } catch (_) {
     const noopLS = {
-      getItem() {
-        return "null";
-      },
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "localStorage", {
-        value: noopLS,
-        configurable: true,
-      });
+      Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
     } catch {
       window.localStorage = noopLS;
     }
@@ -48,24 +39,15 @@
     window.sessionStorage.removeItem(testKey);
   } catch (_) {
     const noopSS = {
-      getItem() {
-        return "null";
-      },
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "sessionStorage", {
-        value: noopSS,
-        configurable: true,
-      });
+      Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
     } catch {
       window.sessionStorage = noopSS;
     }
@@ -92,7 +74,7 @@
 })();
 
 // =============================
-// Imports originales del proyecto
+// Imports
 // =============================
 import { createApp } from "vue";
 import { createPinia } from "pinia";
@@ -105,17 +87,21 @@ import "./style.css";
 
 import VueApexCharts from "vue3-apexcharts";
 
+// ✅ Runtime theme (tu util actual)
+import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeTheme";
+
+// ✅ Theme endpoints
+import { getShopThemePublic } from "@/modules/shop/service/shopTheme.public.api";
+import { getShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
+
 // =============================
-// (Opcional) Señal de compatibilidad para prerender por evento
-// Ya NO es necesaria si usás renderAfterTime en vite.config.js,
-// pero no molesta dejarla.
+// (Opcional) Señal prerender
 // =============================
 function signalPrerenderReady(routerInstance) {
   try {
     const enabled =
       String(import.meta.env.VITE_ENABLE_PRERENDER || "") === "1" ||
-      String(import.meta.env.VITE_ENABLE_PRERENDER || "").toLowerCase() ===
-        "true";
+      String(import.meta.env.VITE_ENABLE_PRERENDER || "").toLowerCase() === "true";
 
     if (!enabled) return;
     if (typeof document === "undefined") return;
@@ -126,10 +112,8 @@ function signalPrerenderReady(routerInstance) {
       } catch {}
     };
 
-    // ✅ Fallback SIEMPRE dispara aunque algo se cuelgue
     setTimeout(fire, 1500);
 
-    // ✅ intenta esperar router (si llega)
     routerInstance
       .isReady()
       .then(() => setTimeout(fire, 0))
@@ -138,10 +122,49 @@ function signalPrerenderReady(routerInstance) {
 }
 
 // =============================
-// Bootstrap de la app
+// ✅ Bootstrap THEME (después del mount, porque tu runtimeTheme re-aplica scopes)
+// - /shop  => public theme
+// - /app   => admin theme (si hay token)
+// =============================
+function isBackofficePath() {
+  try {
+    const p = window.location.pathname || "";
+    return p.startsWith("/app");
+  } catch {
+    return false;
+  }
+}
+
+async function bootstrapThemeOnce() {
+  try {
+    if (typeof window === "undefined") return;
+
+    if (isBackofficePath()) {
+      // BACKOFFICE: requiere token (si todavía no hay, puede fallar y no pasa nada)
+      const th = await getShopThemeAdmin();
+      if (th) applyRuntimeTheme(normalizeTheme(th));
+      return;
+    }
+
+    // PUBLICO / SHOP
+    const th = await getShopThemePublic();
+    if (th) applyRuntimeTheme(normalizeTheme(th));
+  } catch {
+    // silencioso
+  }
+}
+
+// Reintentos cortos para el caso "acabo de loguearme y recién se guardó token"
+async function bootstrapThemeWithRetries() {
+  await bootstrapThemeOnce();
+  setTimeout(() => bootstrapThemeOnce(), 400);
+  setTimeout(() => bootstrapThemeOnce(), 1200);
+}
+
+// =============================
+// Bootstrap app
 // =============================
 const app = createApp(App);
-
 const head = createHead();
 
 app.use(createPinia());
@@ -151,6 +174,9 @@ app.use(vuetify);
 app.use(VueApexCharts);
 
 app.mount("#app");
+
+// ✅ aplica theme runtime (shop o backoffice)
+bootstrapThemeWithRetries();
 
 // ✅ compat prerender
 signalPrerenderReady(router);
