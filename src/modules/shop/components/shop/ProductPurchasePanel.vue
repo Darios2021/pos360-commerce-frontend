@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, NO DUPLICA) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, SOLO INFO REAL + precio ML + cuotas segun umbral) -->
 <!-- src/modules/shop/components/ProductPurchasePanel.vue -->
 <template>
   <v-card class="ml-side info" variant="flat">
@@ -12,6 +12,16 @@
       <!-- Título -->
       <div class="ml-title">
         {{ product?.name || "—" }}
+      </div>
+
+      <!-- Marca + Modelo -->
+      <div v-if="brandModelLine" class="ml-brandmodel">
+        {{ brandModelLine }}
+      </div>
+
+      <!-- ✅ Descripción (UNA SOLA: arriba) -->
+      <div v-if="shortDesc" class="ml-shortdesc">
+        {{ shortDesc }}
       </div>
 
       <!-- Rating (si viene) -->
@@ -28,28 +38,25 @@
         <span class="ml-rating-count">({{ ratingCount }})</span>
       </div>
 
-      <!-- Precio -->
-      <div class="ml-price-wrap">
-        <span class="ml-currency">$</span>
-        <span class="ml-price-int">{{ priceInt }}</span>
-        <span v-if="priceDec" class="ml-price-dec">{{ priceDec }}</span>
-      </div>
-
-      <!-- ✅ Este link ahora hace scroll al bloque de medios de pago (ShopProduct.vue) -->
-      <a href="javascript:void(0)" class="ml-link mb-3" @click.prevent="emit('go-payments')">
-        Ver los medios de pago
-      </a>
-
-      <!-- Bloque envío / retiro -->
-      <div class="ship-box">
-        <div class="ship-title">
-          <span class="ml-green">{{ shippingText }}</span>
-          <span v-if="shippingEtaText" class="ml-muted"> {{ shippingEtaText }}</span>
+      <!-- ✅ Precio estilo ML -->
+      <div class="ml-price-block">
+        <!-- Precio lista + OFF -->
+        <div v-if="hasDiscount" class="ml-price-top">
+          <span class="ml-price-list">$ {{ fmtMoney(priceList) }}</span>
+          <span class="ml-discount-badge">{{ discountPct }}% OFF</span>
         </div>
 
-        <a href="javascript:void(0)" class="ml-link">Más detalles y formas de entrega</a>
-        <div class="ml-muted mt-1">Retirá en sucursal al finalizar la compra</div>
-        <a href="javascript:void(0)" class="ml-link">Ver en el mapa</a>
+        <!-- Precio final -->
+        <div class="ml-price-wrap">
+          <span class="ml-currency">$</span>
+          <span class="ml-price-int">{{ priceInt }}</span>
+          <span v-if="priceDec" class="ml-price-dec">{{ priceDec }}</span>
+        </div>
+
+        <!-- ✅ Cuotas chicas: 3x < 400k | 6x >= 400k (desde precio LISTA) -->
+        <div v-if="installmentHint" class="ml-installment-hint">
+          {{ installmentHint }}
+        </div>
       </div>
 
       <v-divider class="my-4" />
@@ -57,7 +64,10 @@
       <!-- Stock -->
       <div class="ml-stock">
         <div class="ml-stock-title">Stock disponible</div>
-        <div class="ml-muted">{{ stockSubLabel }}</div>
+        <div class="ml-muted">
+          <span v-if="trackStock">{{ stockQtyLabel }}</span>
+          <span v-else>Disponible</span>
+        </div>
       </div>
 
       <!-- Cantidad -->
@@ -103,37 +113,6 @@
           Agregar al carrito
         </v-btn>
       </div>
-
-      <!-- Cuotas -->
-      <div v-if="installments.length" class="ml-installments">
-        <div class="ml-installments-title">Cuotas</div>
-
-        <div class="inst-grid">
-          <div v-for="it in installments" :key="it.n" class="inst-item">
-            <div class="inst-n">{{ it.n }}x</div>
-            <div class="inst-val">$ {{ fmtMoney(it.amount) }}</div>
-            <div class="inst-note">{{ it.label }}</div>
-          </div>
-        </div>
-
-        <div class="ml-footnote">Elegís sucursal al finalizar si es retiro.</div>
-      </div>
-
-      <!-- Descripción (debajo, opcional) -->
-      <div v-if="descText" class="ml-desc">
-        <div class="ml-desc-title">Descripción</div>
-        <div class="ml-desc-text" :class="{ clamp: !descOpen }">
-          {{ descText }}
-        </div>
-        <a
-          v-if="descCanToggle"
-          class="ml-link"
-          href="javascript:void(0)"
-          @click.prevent="descOpen = !descOpen"
-        >
-          {{ descOpen ? "Ver menos" : "Ver más" }}
-        </a>
-      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -144,8 +123,9 @@ import { computed, ref, watch } from "vue";
 const props = defineProps({
   product: { type: Object, default: null },
 });
-const emit = defineEmits(["add", "buy", "go-payments"]);
+const emit = defineEmits(["add", "buy"]);
 
+/* ================= utils ================= */
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
 }
@@ -157,33 +137,52 @@ function asText(v) {
   const s = String(v ?? "").trim();
   return s ? s : "";
 }
-
-function priceValue(p) {
-  const d = Number(p?.price_discount || 0);
-  if (d > 0) return d;
-  const l = Number(p?.price_list || 0);
-  if (l > 0) return l;
-  return Number(p?.price || 0);
+function cleanOneLine(s) {
+  return String(s || "").replace(/\s+/g, " ").trim();
 }
 
-const price = computed(() => priceValue(props.product));
+/* ================= precios =================
+   - priceList: lista (tachado)
+   - priceFinal: con descuento (grande)
+*/
+const priceList = computed(() =>
+  Math.max(toNum(props.product?.price_list, 0), toNum(props.product?.price, 0))
+);
+
+const priceFinal = computed(() =>
+  Math.max(toNum(props.product?.price_discount, 0), toNum(props.product?.price, 0))
+);
+
+const hasDiscount = computed(() => priceList.value > 0 && priceFinal.value < priceList.value);
+
+const discountPct = computed(() => {
+  if (!hasDiscount.value) return 0;
+  return Math.round(((priceList.value - priceFinal.value) / priceList.value) * 100);
+});
+
 const priceInt = computed(() => {
-  const v = toNum(price.value, 0);
-  const [i] = v.toFixed(2).split(".");
+  const [i] = priceFinal.value.toFixed(2).split(".");
   return fmtMoney(i);
 });
 const priceDec = computed(() => {
-  const v = toNum(price.value, 0);
-  const parts = v.toFixed(2).split(".");
-  const dec = parts?.[1] || "";
-  return dec === "00" ? "" : dec;
+  const d = priceFinal.value.toFixed(2).split(".")[1];
+  return d === "00" ? "" : d;
 });
 
-const disabledAdd = computed(() => {
-  const p = props.product || {};
-  return !!(p.track_stock && Number(p.stock_qty) <= 0);
+/* ✅ cuotas segun umbral (desde precio LISTA) */
+const INSTALLMENTS_THRESHOLD = 400000; // 400k
+
+const installmentHint = computed(() => {
+  const base = priceList.value;
+  if (!base || base <= 0) return "";
+
+  const n = base >= INSTALLMENTS_THRESHOLD ? 6 : 3;
+  const per = base / n;
+
+  return `En ${n}x $ ${fmtMoney(per)}`;
 });
 
+/* ================= labels ================= */
 const conditionLabel = computed(() => {
   const p = props.product || {};
   const c = asText(p.condition || p.estado);
@@ -199,6 +198,7 @@ const soldCountLabel = computed(() => {
   return v > 0 ? `+${v} vendidos` : "";
 });
 
+/* rating (si viene) */
 const ratingValue = computed(() => {
   const p = props.product || {};
   return Math.max(0, Math.min(5, toNum(p.rating ?? p.stars ?? 0, 0)));
@@ -209,45 +209,70 @@ const ratingCount = computed(() => {
 });
 const showRating = computed(() => ratingValue.value > 0 && ratingCount.value > 0);
 
-const shippingText = computed(() => {
+/* ================= marca / modelo / desc (BD) ================= */
+const brandText = computed(() => {
   const p = props.product || {};
-  return asText(
-    p.shipping_text ||
-      p.shippingTitle ||
-      (p.free_shipping ? "Llega gratis" : "Llega entre 24 y 72 hs")
-  );
+  return asText(p.brand_name || p.Brand?.name || p.brand || p.marca || "");
 });
-const shippingEtaText = computed(() => {
+const modelText = computed(() => {
   const p = props.product || {};
-  return asText(p.shipping_eta || p.shippingEta || p.eta_text || "");
+  return asText(p.model || p.model_name || p.modelo || p.model_code || "");
 });
-
-const stockSubLabel = computed(() => {
-  const p = props.product || {};
-  const shipBy = asText(p.fulfillment_label || p.shipped_by || "");
-  if (shipBy) return shipBy;
-  return "Listo para despachar";
+const brandModelLine = computed(() => {
+  const b = brandText.value;
+  const m = modelText.value;
+  if (b && m) return `${b} · ${m}`;
+  return b || m || "";
 });
 
-// qty
+/* ✅ única descripción (arriba) */
+const shortDesc = computed(() => {
+  const p = props.product || {};
+  const raw =
+    asText(p.short_description) ||
+    asText(p.short_desc) ||
+    asText(p.subtitle) ||
+    asText(p.description) ||
+    "";
+  return cleanOneLine(raw);
+});
+
+/* ================= stock / qty ================= */
+const trackStock = computed(() => !!props.product?.track_stock);
+const stockQty = computed(() => Math.max(0, Math.floor(toNum(props.product?.stock_qty ?? 0, 0))));
+
+const stockQtyLabel = computed(() => {
+  if (!trackStock.value) return "Disponible";
+  const s = stockQty.value;
+  if (s <= 0) return "Sin stock";
+  if (s === 1) return "Queda 1 unidad";
+  return `${s} unidades`;
+});
+
+const disabledAdd = computed(() => {
+  const p = props.product || {};
+  return !!(p.track_stock && Number(p.stock_qty) <= 0);
+});
+
+/* qty */
 const qty = ref(1);
-const descOpen = ref(false);
 
 watch(
   () => props.product,
   () => {
     qty.value = 1;
-    descOpen.value = false;
   }
 );
 
 const maxQty = computed(() => {
   const p = props.product || {};
   const limit = Math.max(1, Math.floor(toNum(p.max_qty ?? p.max_purchase_qty ?? 2, 2)));
+
   if (p.track_stock) {
     const stock = Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)));
     return Math.max(1, Math.min(limit, stock || 1));
   }
+
   return limit;
 });
 
@@ -260,56 +285,20 @@ const qtyItems = computed(() => {
 
 const qtyHint = computed(() => {
   const p = props.product || {};
-  const extra = p.track_stock
-    ? `(+${Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)) - 1)} disponibles)`
-    : "";
   const limit = maxQty.value;
-  const limTxt = limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
-  return `${extra ? extra + " · " : ""}${limTxt}`;
-});
 
-// cuotas
-function extractInstallments(p) {
-  if (!p) return [];
-  const list =
-    (Array.isArray(p.installments) && p.installments) ||
-    (Array.isArray(p.cuotas) && p.cuotas) ||
-    null;
+  if (p.track_stock) {
+    const s = Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)));
+    if (s <= 0) return "Sin stock";
 
-  if (list) {
-    const normalized = list
-      .map((it) => {
-        const n = Number(it?.n ?? it?.cuotas ?? it?.qty ?? it?.q ?? 0);
-        const amount = Number(it?.amount ?? it?.monto ?? it?.value ?? 0);
-        const label = String(it?.label ?? it?.detalle ?? it?.note ?? "—");
-        if (!n || !Number.isFinite(amount) || amount <= 0) return null;
-        return { n, amount, label };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.n - b.n);
-
-    const has1 = normalized.some((x) => x.n === 1);
-    if (!has1) normalized.unshift({ n: 1, amount: priceValue(p), label: "Pago único" });
-    return normalized;
+    const limTxt = limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
+    return s > limit ? `${s} disponibles · ${limTxt}` : `${s} disponibles`;
   }
 
-  const base = priceValue(p);
-  return [
-    { n: 1, amount: base, label: "Pago único" },
-    { n: 3, amount: base / 3, label: "Estimado" },
-    { n: 6, amount: base / 6, label: "Estimado" },
-  ];
-}
-const installments = computed(() => extractInstallments(props.product));
-
-// descripción
-const descText = computed(() => {
-  const p = props.product || {};
-  const t = asText(p.description || p.long_description || p.detail || p.details || "");
-  return t.replace(/\s+/g, " ").trim();
+  return limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
 });
-const descCanToggle = computed(() => descText.value.length > 180);
 
+/* ================= actions ================= */
 function onAddToCart() {
   if (disabledAdd.value) return;
   emit("add", props.product, qty.value);
@@ -329,7 +318,7 @@ function onBuyNow() {
 }
 .ml-pad { padding: 18px; }
 
-/* ✅ CLAVE anti “texto vertical” */
+/* ✅ anti “texto vertical” */
 .ml-side, .ml-side * {
   word-break: normal !important;
   overflow-wrap: normal !important;
@@ -343,12 +332,50 @@ function onBuyNow() {
   font-size: 22px;
   font-weight: 900;
   line-height: 1.15;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.ml-rating { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.ml-rating-num { font-size: 13px; font-weight: 900; color: rgba(0,0,0,.75); }
-.ml-rating-count { font-size: 13px; color: rgba(0,0,0,.55); }
+.ml-brandmodel{
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(0,0,0,.72);
+  margin-bottom: 6px;
+}
+
+.ml-shortdesc{
+  font-size: 13px;
+  color: rgba(0,0,0,.72);
+  line-height: 1.35;
+  margin-bottom: 10px;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== Precio estilo ML ===== */
+.ml-price-block { margin-bottom: 6px; }
+
+.ml-price-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.ml-price-list {
+  font-size: 14px;
+  color: rgba(0,0,0,.55);
+  text-decoration: line-through;
+  font-weight: 700;
+}
+
+.ml-discount-badge {
+  font-size: 13px;
+  font-weight: 900;
+  color: #00a650;
+}
 
 .ml-price-wrap {
   display: flex;
@@ -356,60 +383,31 @@ function onBuyNow() {
   gap: 6px;
   flex-wrap: nowrap;
   white-space: nowrap;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .ml-currency { font-size: 22px; font-weight: 900; }
 .ml-price-int { font-size: 46px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.05; }
 .ml-price-dec { font-size: 16px; font-weight: 900; margin-top: 10px; opacity: .9; }
 
-.ml-link {
-  color: #1a73e8;
-  text-decoration: none;
-  font-weight: 900;
-  cursor: pointer;
+.ml-installment-hint {
+  font-size: 13px;
+  font-weight: 700;
+  color: #00a650;
+  margin-top: 2px;
 }
-.ml-link:hover { text-decoration: underline; }
 
-.ship-box {
-  border: 1px solid rgba(0,0,0,.10);
-  border-radius: 14px;
-  padding: 12px;
-  background: rgba(0,0,0,.01);
-  margin-top: 10px;
-}
-.ship-title { font-size: 16px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; }
-.ml-green { color: #00a650; }
-
+/* Stock / qty */
 .ml-stock-title { font-size: 15px; font-weight: 900; margin-bottom: 2px; }
 .ml-qty { margin-top: 14px; }
 .ml-qty-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .ml-qty-hint { font-size: 12px; }
 .ml-qty-select { border-radius: 12px; }
 
+/* Botones */
 .ml-actions { margin-top: 14px; display: grid; gap: 10px; }
 .ml-btn { border-radius: 12px; font-weight: 900; text-transform: none; }
 
-.ml-installments { margin-top: 16px; }
-.ml-installments-title { font-size: 14px; font-weight: 900; margin-bottom: 8px; }
-.inst-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.inst-item { border: 1px solid rgba(0,0,0,.12); border-radius: 14px; padding: 10px; background: rgba(0,0,0,.02); }
-.inst-n { font-weight: 900; font-size: 12px; }
-.inst-val { font-weight: 900; font-size: 14px; margin-top: 2px; }
-.inst-note { font-size: 11px; opacity: .7; margin-top: 2px; }
-.ml-footnote { margin-top: 12px; font-size: 12px; color: rgba(0,0,0,.55); }
-
-.ml-desc { margin-top: 16px; }
-.ml-desc-title { font-size: 14px; font-weight: 900; margin-bottom: 6px; }
-.ml-desc-text { font-size: 13px; color: rgba(0,0,0,.78); line-height: 1.45; }
-.ml-desc-text.clamp {
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 @media (max-width: 980px) {
-  .inst-grid { grid-template-columns: 1fr; }
   .ml-price-int { font-size: 40px; }
 }
 </style>
