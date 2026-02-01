@@ -26,6 +26,17 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
+      <!-- ✅ SHORTS / VIDEOS (CAROUSEL desde BD) -->
+      <div class="mb-6">
+        <ShopShortsCarousel
+          title="Shorts"
+          subtitle="Novedades en video"
+          :items="shortsItems"
+          :loading="shortsLoading"
+          :error="shortsError"
+        />
+      </div>
+
       <!-- ✅ INSTAGRAM (CAROUSEL) -->
       <div class="mb-6">
         <InstagramPhoneCarousel />
@@ -127,6 +138,9 @@ import { useRoute, useRouter } from "vue-router";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 
+// ✅ NEW: videos feed (BD)
+import { getHomeShorts } from "@/modules/shop/service/shop.media.api";
+
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
 import HomeCategoriesCarousel from "@/modules/shop/components/HomeCategoriesCarousel.vue";
@@ -139,6 +153,9 @@ import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 
 import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
+
+// ✅ NEW: component (ubicado en shop/components/shop)
+import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
 // ✅ OG + prerender
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
@@ -155,6 +172,11 @@ const page = ref(Number(route.query.page || 1));
 const limit = ref(48);
 const total = ref(0);
 const allCats = ref([]);
+
+/* ✅ Shorts state */
+const shortsLoading = ref(false);
+const shortsError = ref(null);
+const shortsItems = ref([]);
 
 const aurisLoading = ref(false);
 const aurisItems = ref([]);
@@ -379,6 +401,27 @@ async function fetchAuricularesSlider() {
   }
 }
 
+/* ✅ Shorts fetch */
+async function fetchHomeShorts() {
+  shortsLoading.value = true;
+  shortsError.value = null;
+
+  try {
+    const list = await getHomeShorts({ limit: 18 });
+    shortsItems.value = Array.isArray(list) ? list : [];
+  } catch (e) {
+    const msg =
+      e?.response?.status
+        ? `${e.response.status} ${e.response.statusText || ""}`.trim()
+        : e?.message || String(e);
+
+    shortsError.value = msg;
+    shortsItems.value = [];
+  } finally {
+    shortsLoading.value = false;
+  }
+}
+
 // ✅ fallback: nunca dejar colgado el prerender
 function dispatchPrerenderReadySafe() {
   try {
@@ -418,6 +461,9 @@ onMounted(async () => {
   hydrateAudioAndAurisIds();
   await fetchAuricularesSlider();
 
+  // ✅ Shorts (no bloquea el home)
+  fetchHomeShorts();
+
   // ✅ si la page terminó de cargar datos, liberamos igual
   dispatchPrerenderReadySafe();
 });
@@ -439,11 +485,13 @@ watch(
     hydrateAudioAndAurisIds();
     await fetchAuricularesSlider();
 
+    // refrescamos shorts
+    fetchHomeShorts();
+
     dispatchPrerenderReadySafe();
   }
 );
 </script>
-
 
 <style scoped>
 /* (deja tus styles tal cual los tenías) */
