@@ -1,36 +1,54 @@
-<!-- ✅ COPY-PASTE FINAL (estilo Mercado Libre: secciones + grilla de logos, sin inventar) -->
-<!-- src/modules/shop/components/PaymentMethodsCard.vue -->
 <template>
   <v-card class="pm-card" rounded="xl" elevation="0" variant="outlined">
     <v-card-text class="pm-pad">
       <div class="pm-title">Medios de pago</div>
 
       <!-- Cuotas sin tarjeta -->
-      <div class="pm-section" v-if="showMercadoPago">
-        <div class="pm-sub">Cuotas sin Tarjeta</div>
-        <div class="pm-logos pm-logos-1">
-          <img class="pm-logo" :src="icons.mercadopago" alt="Mercado Pago" />
+      <section class="pm-section">
+        <div class="pm-sub">Cuotas sin tarjeta</div>
+        <div class="pm-row">
+          <img
+            class="pm-logo pm-logo-lg"
+            :src="icons.mercadopago"
+            alt="Mercado Pago"
+          />
+
+          <!-- 🔥 Crédito San Juan alineado y más grande -->
+          <img
+            class="pm-logo pm-logo-sjt"
+            :src="icons.creditoSjt"
+            alt="Crédito San Juan"
+          />
         </div>
-      </div>
+      </section>
 
-      <!-- Crédito -->
-      <div class="pm-section" v-if="showCredit">
+      <!-- Tarjetas de crédito -->
+      <section class="pm-section">
         <div class="pm-sub">Tarjetas de crédito</div>
+        <div class="pm-row">
+          <img class="pm-logo" :src="icons.visa" alt="Visa Crédito" />
+          <img class="pm-logo" :src="icons.naranja" alt="Naranja" />
+        </div>
+      </section>
 
-        <div class="pm-logos">
-          <img class="pm-logo" :src="icons.visa" alt="VISA" />
-          <img class="pm-logo" :src="icons.mastercard" alt="Mastercard" />
-          <img class="pm-logo" :src="icons.naranja" alt="Naranja X" />
+      <!-- Tarjetas de débito -->
+      <section class="pm-section">
+        <div class="pm-sub">Tarjetas de débito</div>
+        <div class="pm-row">
+          <img class="pm-logo" :src="icons.visa" alt="Visa Débito" />
+        </div>
+      </section>
 
-          <!-- ✅ Destacado sutil: Crédito SJT -->
-          <div class="pm-sjt-wrap" title="Crédito San Juan Tecnología">
-            <img class="pm-logo pm-logo-sjt" :src="icons.creditoSjt" alt="Crédito San Juan Tecnología" />
-            <span class="pm-sjt-badge">Crédito SJT</span>
+      <!-- Efectivo -->
+      <section class="pm-section">
+        <div class="pm-sub">Efectivo</div>
+        <div class="pm-row">
+          <div class="pm-cash">
+            Pago en tienda San Juan Tecnología
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Link al modal / scroll / lo que uses -->
       <a class="pm-more" href="javascript:void(0)" @click.prevent="emit('more')">
         Conocé otros medios de pago
       </a>
@@ -41,42 +59,24 @@
 <script setup>
 const emit = defineEmits(["more"]);
 
-/**
- * IMPORTANTE:
- * - No inventa medios.
- * - Solo muestra lo que efectivamente tenés disponible.
- *   Si todavía no estás trayendo config real, queda "true" por default para MP y Crédito.
- *
- * Si ya tenés config público:
- * - pasalo como prop y usalo acá (ej: props.config.mercadopago.enabled)
- */
-const props = defineProps({
-  // opcional: { mercadopago: { enabled }, cash: { enabled }, transfer... }
-  config: { type: Object, default: null },
-});
-
 const icons = {
-  // Los mismos que ya tenías
-  mastercard: "https://storage-files.cingulado.org/pos360/media/1769785611712-ef532460bf2a0059.webp",
-  mercadopago: "https://storage-files.cingulado.org/pos360/media/1769785611712-ef532460bf2a0059.webp",
-  visa: "https://storage-files.cingulado.org/pos360/media/1769785603289-8ef15a33274405c8.webp",
-  naranja: "https://storage-files.cingulado.org/pos360/media/1769785599197-627b0a0bac168cee.webp",
-  creditoSjt: "https://storage-files.cingulado.org/pos360/products/191/1768436764101-45978c9e355b.webp",
+  mercadopago:
+    "https://storage-files.cingulado.org/pos360/media/1769785611712-ef532460bf2a0059.webp",
+  visa:
+    "https://storage-files.cingulado.org/pos360/media/1769785603289-8ef15a33274405c8.webp",
+  naranja:
+    "https://storage-files.cingulado.org/pos360/media/1769785599197-627b0a0bac168cee.webp",
+
+  // ✅ Crédito San Juan (icono definitivo)
+  creditoSjt:
+    "https://storage-files.cingulado.org/pos360/media/1769958150069-55eff4121596f9f8.webp",
 };
-
-// ✅ sin inventar: si hay config, respeta enabled; si no hay, muestra por defecto
-const showMercadoPago = (() => {
-  if (!props.config) return true;
-  return !!props.config?.mercadopago?.enabled;
-})();
-
-const showCredit = true; // si querés hacerlo configurable, lo pasamos por config también
 </script>
 
 <style scoped>
 .pm-card {
-  border-color: rgba(0, 0, 0, 0.08);
   background: #fff;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 .pm-pad {
@@ -85,7 +85,7 @@ const showCredit = true; // si querés hacerlo configurable, lo pasamos por conf
 
 .pm-title {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 900;
   margin-bottom: 14px;
 }
 
@@ -97,72 +97,65 @@ const showCredit = true; // si querés hacerlo configurable, lo pasamos por conf
   font-size: 14px;
   font-weight: 800;
   margin-bottom: 10px;
+}
+
+/* fila */
+.pm-row {
+  display: flex;
+  align-items: center; /* base */
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+/* logos base */
+.pm-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Mercado Pago */
+.pm-logo-lg {
+  height: 48px;
+}
+
+/* 🔥 Crédito San Juan – MÁS GRANDE + ALINEADO */
+.pm-logo-sjt {
+  height: 82px;                /* ↑ más tamaño */
+  transform: translateY(-6px); /* ↑ sube ópticamente */
+}
+
+/* efectivo */
+.pm-cash {
+  font-size: 15px;
+  font-weight: 800;
   color: rgba(0, 0, 0, 0.85);
 }
 
-/* Grilla de logos como ML */
-.pm-logos {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 18px 22px;
-}
-
-.pm-logos-1 {
-  gap: 14px;
-}
-
-/* Logos: no “chips”, no cajas, solo logos como el screenshot */
-.pm-logo {
-  width: 64px;
-  height: 26px;
-  object-fit: contain;
-  display: block;
-}
-
-/* Destacado Crédito SJT sin cambiar el layout */
-.pm-sjt-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.pm-logo-sjt {
-  width: 72px;
-  height: 30px;
-}
-
-.pm-sjt-badge {
-  position: absolute;
-  left: 0;
-  bottom: -12px;
-  font-size: 10px;
-  font-weight: 800;
-  color: rgba(0, 0, 0, 0.62);
-  white-space: nowrap;
-}
-
-/* link inferior */
+/* link */
 .pm-more {
   display: inline-block;
   margin-top: 18px;
-  color: #1a73e8;
-  text-decoration: none;
   font-size: 14px;
   font-weight: 700;
+  color: #1a73e8;
+  text-decoration: none;
 }
 .pm-more:hover {
   text-decoration: underline;
 }
 
+/* responsive */
 @media (max-width: 600px) {
   .pm-logo {
-    width: 62px;
-    height: 26px;
+    height: 42px;
+  }
+  .pm-logo-lg {
+    height: 50px;
   }
   .pm-logo-sjt {
-    width: 70px;
-    height: 30px;
+    height: 88px;
+    transform: translateY(-6px);
   }
 }
 </style>
