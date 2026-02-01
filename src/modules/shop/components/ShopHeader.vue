@@ -3,8 +3,9 @@
      - Header ML-like pero color tomado del THEME runtime (DB)
      - NO hardcodea #1488d1
      - Sin línea inferior / contornos raros
-     - ✅ MOBILE: carrito abajo (FAB) para dar aire al header
-     - ✅ NO cambia estilos existentes, solo agrega FAB
+     - ✅ Carrito SOLO en header (desktop + mobile)
+     - ✅ WhatsApp ÚNICO flotante (desktop + mobile)
+     - ✅ NO reduce ni rompe estilos existentes
 -->
 
 <template>
@@ -31,6 +32,7 @@
           />
         </div>
 
+        <!-- ✅ ACTIONS DESKTOP -->
         <div v-if="!isMobile" class="ml-top-actions">
           <router-link class="ml-top-link" to="/auth/login">
             <v-icon size="18" class="ml-top-ico">mdi-account-outline</v-icon>
@@ -39,6 +41,7 @@
 
           <router-link class="ml-top-link" to="/shop">Mis compras</router-link>
 
+          <!-- 🛒 Carrito desktop -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22">mdi-cart-outline</v-icon>
@@ -47,8 +50,17 @@
           </router-link>
         </div>
 
-        <!-- ✅ MOBILE: solo menú (quitamos carrito del header para dar aire) -->
+        <!-- ✅ MOBILE: ahora mostramos carrito en header + menú -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
+          <!-- 🛒 Carrito mobile en header -->
+          <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
+            <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
+              <v-icon size="22">mdi-cart-outline</v-icon>
+            </v-badge>
+            <v-icon v-else size="22">mdi-cart-outline</v-icon>
+          </router-link>
+
+          <!-- ☰ Menú -->
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
             <v-icon size="22">mdi-menu</v-icon>
           </v-btn>
@@ -108,19 +120,17 @@
     </v-navigation-drawer>
   </header>
 
-  <!-- ================= MOBILE FLOATING CART (FAB) ================= -->
-  <router-link
-    v-if="isMobile"
-    to="/shop/cart"
-    class="ml-cart-fab"
-    :title="`Carrito (${cart.count})`"
-    :aria-label="`Carrito (${cart.count})`"
+  <!-- ✅ WhatsApp flotante ÚNICO (NO carrito flotante) -->
+  <a
+    class="ml-wa-fab"
+    :href="waHref"
+    target="_blank"
+    rel="noopener"
+    title="WhatsApp"
+    aria-label="WhatsApp"
   >
-    <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
-      <v-icon size="24">mdi-cart-outline</v-icon>
-    </v-badge>
-    <v-icon v-else size="24">mdi-cart-outline</v-icon>
-  </router-link>
+    <v-icon size="24">mdi-whatsapp</v-icon>
+  </a>
 </template>
 
 <script setup>
@@ -166,6 +176,22 @@ function withVersion(url, v) {
 const logoSize = computed(() => (isMobile.value ? 56 : 76));
 const iconSize = computed(() => (isMobile.value ? 24 : 30));
 const logoHeaderUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
+
+/* ================= WhatsApp FAB =================
+   Número en formato internacional SIN "+" y SIN espacios:
+   +54 9 2644 39-2150 => 5492644392150
+*/
+const WHATSAPP_NUMBER = "5492644392150";
+
+const waMessage = computed(() => {
+  const url = typeof window !== "undefined" ? window.location.href : "https://sanjuantecnologia.com/shop";
+  return `Hola! 👋 Quiero consultar por este producto/link: ${url}`;
+});
+
+const waHref = computed(() => {
+  const text = encodeURIComponent(waMessage.value);
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+});
 
 onMounted(async () => {
   try {
@@ -313,7 +339,7 @@ onMounted(async () => {
   gap: 14px;
 }
 .ml-top-actions-mobile {
-  gap: 8px;
+  gap: 10px; /* un poquito más para carrito + menú */
 }
 .ml-top-link {
   display: inline-flex;
@@ -453,13 +479,13 @@ onMounted(async () => {
 }
 
 /* =========================================================
-   🛒 FAB CARRITO MOBILE — sombra pro
+   ✅ WhatsApp flotante ÚNICO (desktop + mobile)
    ========================================================= */
-.ml-cart-fab {
+.ml-wa-fab {
   position: fixed;
   right: 14px;
   bottom: 14px;
-  z-index: 120;
+  z-index: 140;
 
   width: 56px;
   height: 56px;
@@ -469,31 +495,25 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
 
-  background: rgb(var(--v-theme-primary)) !important;
-  color: rgb(var(--v-theme-on-primary)) !important;
+  background: #25d366 !important;
+  color: #fff !important;
 
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.35),
     0 6px 12px rgba(0, 0, 0, 0.22);
 
-  filter: drop-shadow(0 0 6px rgba(var(--v-theme-on-primary), 0.25));
-
   text-decoration: none;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
-
-.ml-cart-fab:hover {
+.ml-wa-fab:hover {
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.42),
     0 8px 16px rgba(0, 0, 0, 0.28);
 }
-
-.ml-cart-fab:active {
+.ml-wa-fab:active {
   transform: scale(0.96);
-  box-shadow:
-    0 10px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
-
 </style>
