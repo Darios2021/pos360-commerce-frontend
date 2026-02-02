@@ -1,8 +1,7 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <template>
   <v-card class="shc-card" variant="flat" rounded="xl">
-    <div class="shc-head">      
-    
-    </div>
+    <div class="shc-head"></div>
 
     <div class="shc-body">
       <v-alert v-if="error" type="error" variant="tonal" density="comfortable" class="mb-3">
@@ -69,11 +68,12 @@
                   </div>
                 </button>
 
-                <!-- Iframe (✅ FIX mobile: stage relativo + absolute iframe) -->
+                <!-- Iframe -->
                 <div v-else class="shc-iframeWrap">
                   <div class="shc-ytStage">
                     <iframe
-                      class="shc-iframe shc-iframe--cover"
+                      class="shc-iframe"
+                      :class="{ 'shc-iframe--ytCover': shouldCoverYouTube(it.url) }"
                       :src="cleanAutoplayUrl(it.url)"
                       loading="lazy"
                       frameborder="0"
@@ -208,33 +208,81 @@ function play(key) {
   activePlayKey.value = key;
 }
 
+/* ===================== YOUTUBE: embed + cover ===================== */
+function s(x) {
+  return String(x || "").trim();
+}
+
 function isYouTube(u) {
-  const s = String(u || "");
-  return /youtube\.com|youtu\.be/i.test(s);
+  const t = s(u);
+  return /youtube\.com|youtu\.be/i.test(t);
+}
+
+/* ✅ En este carrusel son “shorts”: cubrimos cualquier YouTube
+   (porque el feed puede traer youtu.be o watch?v=...) */
+function shouldCoverYouTube(u) {
+  return isYouTube(u);
+}
+
+function extractYouTubeId(u) {
+  const url = s(u);
+  if (!url) return "";
+
+  let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/i);
+  if (m?.[1]) return m[1];
+
+  m = url.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/i);
+  if (m?.[1]) return m[1];
+
+  m = url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/i);
+  if (m?.[1]) return m[1];
+
+  try {
+    const U = new URL(url);
+    const v = U.searchParams.get("v");
+    if (v) return v;
+  } catch {}
+
+  m = url.match(/[?&]v=([A-Za-z0-9_-]{6,})/i);
+  if (m?.[1]) return m[1];
+
+  return "";
 }
 
 function addParams(url, paramsObj) {
-  const s = String(url || "").trim();
-  if (!s) return s;
+  const base = s(url);
+  if (!base) return base;
+
   try {
-    const u = new URL(s);
+    const u = new URL(base);
     for (const [k, v] of Object.entries(paramsObj)) u.searchParams.set(k, String(v));
     return u.toString();
   } catch {
-    const sep = s.includes("?") ? "&" : "?";
+    const sep = base.includes("?") ? "&" : "?";
     const q = Object.entries(paramsObj)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join("&");
-    return `${s}${sep}${q}`;
+    return `${base}${sep}${q}`;
   }
 }
 
+function toYouTubeEmbedUrl(raw) {
+  const base = s(raw);
+  if (!base) return base;
+
+  const id = extractYouTubeId(base);
+  if (!id) return base;
+
+  return `https://www.youtube-nocookie.com/embed/${id}`;
+}
+
 function cleanAutoplayUrl(u) {
-  const base = String(u || "");
+  const base = s(u);
   if (!base) return base;
 
   if (isYouTube(base)) {
-    return addParams(base, {
+    const embed = toYouTubeEmbedUrl(base);
+    return addParams(embed, {
       autoplay: 1,
       mute: 0,
       playsinline: 1,
@@ -284,9 +332,6 @@ function offPct(p) {
 }
 
 /* ===== url resolver (imágenes) ===== */
-function s(x) {
-  return String(x || "").trim();
-}
 function resolveUrl(raw) {
   let u = s(raw);
   if (!u) return "";
@@ -476,9 +521,6 @@ watch(
   justify-content: space-between;
   gap: 10px;
 }
-.shc-head-text { display: flex; flex-direction: column; gap: 3px; }
-.shc-head-title { font-size: 14px; font-weight: 800; letter-spacing: -0.2px; color: rgba(0,0,0,.88); text-transform: uppercase; }
-.shc-head-sub { font-size: 12px; font-weight: 500; color: rgba(0,0,0,.55); }
 
 .shc-body { padding: 6px 8px 10px; }
 .shc-wrap { position: relative; overflow: visible; }
@@ -511,11 +553,44 @@ watch(
 }
 
 /* ✅ Preview button */
-.shc-thumbBtn { border: 0; padding: 0; width: 100%; height: 100%; background: transparent; cursor: pointer; position: relative; }
-.shc-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
-.shc-thumbEmpty { height: 100%; display: grid; place-items: center; font-size: 12px; opacity: .6; color: #fff; }
+.shc-thumbBtn {
+  border: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000; /* ✅ nunca “mosaico” */
+  cursor: pointer;
+  position: relative;
+  overflow: hidden; /* ✅ recorta barras del thumb */
+}
 
-.shc-play { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.16)); }
+/* ✅ Preview SIN barras: cover + micro zoom */
+.shc-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;            /* ✅ clave: NO contain */
+  object-position: center;
+  display: block;
+  transform: scale(1.06);       /* ✅ mata líneas/barras finitas */
+  transform-origin: center;
+}
+
+.shc-thumbEmpty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  opacity: .6;
+  color: #fff;
+}
+
+.shc-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.16));
+}
 .shc-play-ring {
   width: 52px;
   height: 52px;
@@ -526,17 +601,16 @@ watch(
   box-shadow: 0 10px 18px rgba(0,0,0,.18);
 }
 
-/* ✅ FIX CLAVE: el wrap es relativo y NO deja que el iframe “expanda” el layout */
+/* ✅ IFRAME: estable */
 .shc-iframeWrap {
   position: relative;
   width: 100%;
   height: 100%;
   background: #000;
   overflow: hidden;
-  contain: layout paint size; /* ✅ evita reflow raro en mobile */
+  contain: layout paint size;
 }
 
-/* ✅ Stage relativo (para que absolute funcione bien) */
 .shc-ytStage {
   position: relative;
   width: 100%;
@@ -545,7 +619,6 @@ watch(
   background: #000;
 }
 
-/* ✅ iframe absoluto: no ocupa “alto” en el flujo */
 .shc-iframe {
   position: absolute;
   inset: 0;
@@ -556,10 +629,18 @@ watch(
   background: #000;
 }
 
-/* ✅ cover para comerse bordes laterales negros */
-.shc-iframe--cover {
-  transform: scale(1.08);
-  transform-origin: center center;
+/* ✅ COVER REAL (play) - zoom razonable */
+.shc-iframe--ytCover {
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform-origin: center center !important;
+
+  /* ✅ antes era demasiado (1.85 / 2.05). Ahora queda pro sin “comerse” todo */
+  transform: translate(-50%, -50%) scale(1.35) !important;
 }
 
 /* PRODUCT BAR */
@@ -626,11 +707,10 @@ watch(
   font-weight: 900 !important;
   font-size: 11px !important;
   line-height: 1.1 !important;
-  text-transform: none !important;
   cursor: pointer;
   color: #fff;
   background: #2680c2;
-  box-shadow: 0 3px 8px rgba(38, 128, 194, 0.12) !important;
+  box-shadow: 0 3px 8px rgba(38,128,194,.12) !important;
 }
 
 .ctaCart {
@@ -641,7 +721,6 @@ watch(
   font-weight: 900 !important;
   font-size: 11px !important;
   line-height: 1.1 !important;
-  text-transform: none !important;
   cursor: pointer;
   color: #111;
   background: #f3f3f3;
@@ -660,14 +739,12 @@ watch(
   transform: translateY(-50%);
   background: #fff;
   border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 18px rgba(0,0,0,.12);
   z-index: 10;
   opacity: 0.9;
 }
 .shc-nav-left { left: -6px; }
 .shc-nav-right { right: -6px; }
-
-.shc-hint { margin-top: 6px; font-size: 12px; opacity: 0.6; text-align: center; }
 
 /* mobile extra-compact */
 @media (max-width: 600px) {
@@ -678,6 +755,11 @@ watch(
 
   .prodInfo { grid-template-columns: 68px 1fr; gap: 10px; }
   .prodImg { width: 68px; height: 68px; border-radius: 14px; }
+
+  /* ✅ Mobile suele necesitar un pelín más de cover */
+  .shc-iframe--ytCover {
+    transform: translate(-50%, -50%) scale(1.45) !important;
+  }
 
   .ctaBuy, .ctaCart { font-size: 10.5px !important; padding: 6px 8px !important; }
 }
