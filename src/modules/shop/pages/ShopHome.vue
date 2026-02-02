@@ -27,8 +27,6 @@
       <!-- ✅ SHORTS / VIDEOS (CAROUSEL desde BD) -->
       <div class="mb-6">
         <ShopShortsCarousel
-          title="Shorts"
-          subtitle="Novedades en video"
           :items="shortsItems"
           :loading="shortsLoading"
           :error="shortsError"

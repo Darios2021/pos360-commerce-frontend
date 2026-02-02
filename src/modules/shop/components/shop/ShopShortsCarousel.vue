@@ -1,20 +1,7 @@
 <template>
   <v-card class="shc-card" variant="flat" rounded="xl">
-    <div class="shc-head">
-      <div class="shc-head-text">
-        <div class="shc-head-title">Shorts</div>
-        <div class="shc-head-sub">Novedades en video</div>
-      </div>
-
-      <v-btn
-        class="shc-reload"
-        icon="mdi-refresh"
-        variant="text"
-        size="small"
-        :loading="loading"
-        title="Recargar"
-        @click="fetchFeed"
-      />
+    <div class="shc-head">      
+    
     </div>
 
     <div class="shc-body">
@@ -154,7 +141,6 @@
           </div>
         </div>
 
-        <div class="shc-hint">Usá las flechas para cambiar de video.</div>
       </div>
     </div>
   </v-card>
