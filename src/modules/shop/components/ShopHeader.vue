@@ -5,6 +5,7 @@
      - Sin línea inferior / contornos raros
      - ✅ Carrito SOLO en header (desktop + mobile)
      - ✅ WhatsApp ÚNICO flotante (desktop + mobile)
+     - ✅ Spotify Play/Stop en HEADER (desktop + mobile) estilo WhatsApp
      - ✅ NO reduce ni rompe estilos existentes
 -->
 
@@ -41,6 +42,11 @@
 
           <router-link class="ml-top-link" to="/shop">Mis compras</router-link>
 
+          <!-- ✅ SJ Música (Play/Stop) en header -->
+          <div class="ml-top-spot">
+            <ShopSpotifyHeaderButton playlistId="2eeyIidJmozLsmoLiHkSDw" />
+          </div>
+
           <!-- 🛒 Carrito desktop -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -50,7 +56,7 @@
           </router-link>
         </div>
 
-        <!-- ✅ MOBILE: ahora mostramos carrito en header + menú -->
+        <!-- ✅ MOBILE: carrito + musica + menú -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <!-- 🛒 Carrito mobile en header -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
@@ -59,6 +65,11 @@
             </v-badge>
             <v-icon v-else size="22">mdi-cart-outline</v-icon>
           </router-link>
+
+          <!-- ✅ SJ Música (Play/Stop) en header -->
+          <div class="ml-top-spot">
+            <ShopSpotifyHeaderButton playlistId="2eeyIidJmozLsmoLiHkSDw" />
+          </div>
 
           <!-- ☰ Menú -->
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
@@ -141,6 +152,8 @@ import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import ShopCatalogMenu from "@/modules/shop/components/ShopCatalogMenu.vue";
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
+
+/* ✅ NEW: Play/Stop Spotify button en header */
 
 const route = useRoute();
 const cart = useShopCartStore();
@@ -339,7 +352,7 @@ onMounted(async () => {
   gap: 14px;
 }
 .ml-top-actions-mobile {
-  gap: 10px; /* un poquito más para carrito + menú */
+  gap: 10px; /* un poquito más para carrito + música + menú */
 }
 .ml-top-link {
   display: inline-flex;
@@ -374,6 +387,17 @@ onMounted(async () => {
 }
 .ml-top-icon:hover {
   opacity: 1;
+}
+
+/* ✅ contenedor del botón de música (solo alineación, no cambia estilos globales) */
+.ml-top-spot {
+  display: inline-flex;
+  align-items: center;
+}
+.ml-top-spot :deep(.sj-spot-btn) {
+  /* baja apenas el tamaño para que calce con header */
+  width: 40px !important;
+  height: 40px !important;
 }
 
 /* hamburger */

@@ -64,7 +64,7 @@
             >
               <!-- VIDEO -->
               <div class="shc-video">
-                <!-- Preview + Play (solo play visible) -->
+                <!-- Preview + Play -->
                 <button
                   v-if="activePlayKey !== it.key"
                   class="shc-thumbBtn"
@@ -82,7 +82,7 @@
                   </div>
                 </button>
 
-                <!-- Iframe (cover + params limpios) -->
+                <!-- Iframe (✅ FIX mobile: stage relativo + absolute iframe) -->
                 <div v-else class="shc-iframeWrap">
                   <div class="shc-ytStage">
                     <iframe
@@ -192,7 +192,6 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-/* sizing compacto (mobile primero) */
 function updateSizing() {
   const w = stripEl.value?.clientWidth || 0;
 
@@ -201,7 +200,6 @@ function updateSizing() {
   else if (w >= 700) cardW.value = 270;
   else cardW.value = Math.max(235, w - 64);
 
-  // 9:16 aprox, pero más bajo para mobile
   videoH.value = clamp(Math.round(cardW.value * 1.35), 300, 460);
 }
 
@@ -224,7 +222,6 @@ function play(key) {
   activePlayKey.value = key;
 }
 
-/* ✅ YouTube “más limpio” (no 100% posible, pero reduce overlays) */
 function isYouTube(u) {
   const s = String(u || "");
   return /youtube\.com|youtu\.be/i.test(s);
@@ -235,12 +232,9 @@ function addParams(url, paramsObj) {
   if (!s) return s;
   try {
     const u = new URL(s);
-    for (const [k, v] of Object.entries(paramsObj)) {
-      u.searchParams.set(k, String(v));
-    }
+    for (const [k, v] of Object.entries(paramsObj)) u.searchParams.set(k, String(v));
     return u.toString();
   } catch {
-    // fallback simple
     const sep = s.includes("?") ? "&" : "?";
     const q = Object.entries(paramsObj)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
@@ -253,9 +247,7 @@ function cleanAutoplayUrl(u) {
   const base = String(u || "");
   if (!base) return base;
 
-  // autoplay siempre, y para youtube lo dejamos “clean”
   if (isYouTube(base)) {
-    // Nota: mute=1 permite autoplay sin bloquear; si preferís con sonido, cambiá a 0.
     return addParams(base, {
       autoplay: 1,
       mute: 0,
@@ -269,7 +261,6 @@ function cleanAutoplayUrl(u) {
     });
   }
 
-  // no youtube
   return addParams(base, { autoplay: 1, mute: 0 });
 }
 
@@ -306,7 +297,7 @@ function offPct(p) {
   return pct > 0 ? pct : 0;
 }
 
-/* ===== url resolver (para imágenes) ===== */
+/* ===== url resolver (imágenes) ===== */
 function s(x) {
   return String(x || "").trim();
 }
@@ -529,9 +520,11 @@ watch(
 /* VIDEO */
 .shc-video {
   height: var(--shc-vh, 360px);
-  background: #000; /* ✅ evita “líneas” por anti-alias */
+  background: #000;
   position: relative;
 }
+
+/* ✅ Preview button */
 .shc-thumbBtn { border: 0; padding: 0; width: 100%; height: 100%; background: transparent; cursor: pointer; position: relative; }
 .shc-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
 .shc-thumbEmpty { height: 100%; display: grid; place-items: center; font-size: 12px; opacity: .6; color: #fff; }
@@ -547,18 +540,27 @@ watch(
   box-shadow: 0 10px 18px rgba(0,0,0,.18);
 }
 
-.shc-iframeWrap { width: 100%; height: 100%; background: #000; }
+/* ✅ FIX CLAVE: el wrap es relativo y NO deja que el iframe “expanda” el layout */
+.shc-iframeWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  contain: layout paint size; /* ✅ evita reflow raro en mobile */
+}
 
-/* ✅ STAGE 9:16 + overflow hidden */
-.shc-ytStage{
+/* ✅ Stage relativo (para que absolute funcione bien) */
+.shc-ytStage {
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #000;
 }
 
-/* ✅ “cover” para comerse bordes negros del player */
-.shc-iframe--cover{
+/* ✅ iframe absoluto: no ocupa “alto” en el flujo */
+.shc-iframe {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -566,8 +568,10 @@ watch(
   display: block;
   border: 0;
   background: #000;
+}
 
-  /* 👇 este scale tapa el pilarbox/bordes negros laterales */
+/* ✅ cover para comerse bordes laterales negros */
+.shc-iframe--cover {
   transform: scale(1.08);
   transform-origin: center center;
 }
@@ -590,6 +594,7 @@ watch(
   gap: 10px;
   align-items: center;
 }
+
 .prodImg {
   width: 72px;
   height: 72px;
@@ -614,6 +619,7 @@ watch(
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
 .prodPrices { margin-top: 4px; display: flex; justify-content: center; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .prodPrice { font-size: 14px; font-weight: 950; letter-spacing: -0.2px; color: #111; white-space: nowrap; }
 .prodOff { font-size: 10px; font-weight: 950; color: #00a650; white-space: nowrap; line-height: 1; }

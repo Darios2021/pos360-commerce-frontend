@@ -1,5 +1,3 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/ShopHome.vue -->
 <template>
   <v-container fluid class="shop-page pa-0">
     <!-- HERO FULL-BLEED -->
