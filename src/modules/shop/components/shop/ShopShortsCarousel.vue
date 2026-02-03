@@ -10,18 +10,15 @@
 
       <div v-if="loading" class="py-6 d-flex align-center justify-center ga-3">
         <v-progress-circular indeterminate />
-        <div class="text-caption" style="opacity:0.75">Cargando videos…</div>
+        <div class="text-caption" style="opacity: 0.75">Cargando videos…</div>
       </div>
 
-      <div
-        v-else-if="items.length === 0"
-        class="py-6 text-center text-caption"
-        style="opacity:0.75"
-      >
+      <div v-else-if="items.length === 0" class="py-6 text-center text-caption" style="opacity: 0.75">
         No hay videos configurados todavía.
       </div>
 
       <div v-else class="shc-wrap">
+        <!-- FLECHAS (más afuera, no se superponen con el video) -->
         <v-btn
           class="shc-nav shc-nav-left"
           icon="mdi-chevron-left"
@@ -39,6 +36,7 @@
           @click="goNext"
         />
 
+        <!-- STRIP -->
         <div ref="stripEl" class="shc-strip" role="region" aria-label="Videos cortos">
           <div v-for="it in items" :key="it.key" class="shc-item">
             <div
@@ -134,13 +132,13 @@
 
                 <div v-else class="prodEmpty">
                   <div class="prodTitle">Producto no disponible</div>
-                  <div class="text-caption" style="opacity:.65">—</div>
+                  <div class="text-caption" style="opacity: 0.65">—</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
+        <!-- /strip -->
       </div>
     </div>
   </v-card>
@@ -166,8 +164,8 @@ const error = ref("");
 const items = ref([]);
 const stripEl = ref(null);
 
-const cardW = ref(280);
-const videoH = ref(420);
+const cardW = ref(240);
+const videoH = ref(427);
 
 const activePlayKey = ref("");
 let ro = null;
@@ -181,16 +179,16 @@ function clamp(n, a, b) {
 function updateSizing() {
   const w = stripEl.value?.clientWidth || 0;
 
-  if (w >= 1200) cardW.value = 300;
-  else if (w >= 900) cardW.value = 290;
-  else if (w >= 700) cardW.value = 270;
-  else cardW.value = Math.max(235, w - 64);
+  if (w >= 1200) cardW.value = 240;
+  else if (w >= 900) cardW.value = 232;
+  else if (w >= 700) cardW.value = 224;
+  else cardW.value = clamp(w - 56, 210, 236);
 
-  videoH.value = clamp(Math.round(cardW.value * 1.35), 300, 460);
+  videoH.value = clamp(Math.round(cardW.value * (16 / 9)), 320, 480);
 }
 
 function stepPx() {
-  return cardW.value + 12;
+  return cardW.value + 10;
 }
 function currentIndex() {
   return Math.round((stripEl.value?.scrollLeft || 0) / stepPx());
@@ -212,14 +210,10 @@ function play(key) {
 function s(x) {
   return String(x || "").trim();
 }
-
 function isYouTube(u) {
   const t = s(u);
   return /youtube\.com|youtu\.be/i.test(t);
 }
-
-/* ✅ En este carrusel son “shorts”: cubrimos cualquier YouTube
-   (porque el feed puede traer youtu.be o watch?v=...) */
 function shouldCoverYouTube(u) {
   return isYouTube(u);
 }
@@ -394,7 +388,10 @@ function pickFirstImageCandidate(it) {
     Array.isArray(prod?.images) && prod.images.length
       ? typeof prod.images[0] === "string"
         ? prod.images[0]
-        : prod.images[0]?.url || prod.images[0]?.image_url || prod.images[0]?.src || prod.images[0]?.path
+        : prod.images[0]?.url ||
+          prod.images[0]?.image_url ||
+          prod.images[0]?.src ||
+          prod.images[0]?.path
       : "",
     Array.isArray(prod?.image_urls) && prod.image_urls.length ? prod.image_urls[0] : "",
   ]
@@ -505,6 +502,13 @@ watch(
 </script>
 
 <style scoped>
+/* =========================
+   Shorts Home Carousel
+   - Cards compactas
+   - Cover SUAVE
+   - Flechas MÁS AFUERA (no se pisan con el video)
+========================= */
+
 .shc-card {
   border-radius: 18px;
   background: #fbfbfb;
@@ -514,7 +518,7 @@ watch(
 
 .shc-head {
   padding: 12px 12px 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(250,250,250,.9));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 250, 0.9));
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: flex-start;
@@ -522,65 +526,81 @@ watch(
   gap: 10px;
 }
 
-.shc-body { padding: 6px 8px 10px; }
-.shc-wrap { position: relative; overflow: visible; }
+.shc-body {
+  padding: 6px 8px 10px;
+}
 
+/* ✅ IMPORTANTE:
+   dejamos espacio lateral para flechas afuera */
+.shc-wrap {
+  position: relative;
+  overflow: visible;
+  padding: 0 52px; /* ✅ espacio para flechas */
+}
+
+/* STRIP */
 .shc-strip {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 8px 40px 4px;
+  padding: 8px 0 4px; /* ✅ ahora el padding lateral lo maneja shc-wrap */
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.shc-strip::-webkit-scrollbar { display: none; }
-.shc-item { flex: 0 0 auto; scroll-snap-align: center; }
+.shc-strip::-webkit-scrollbar {
+  display: none;
+}
+.shc-item {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
 
+/* TARJETA UNIFICADA */
 .shc-frame {
-  width: var(--shc-cardw, 260px);
+  width: var(--shc-cardw, 240px);
   border-radius: 16px;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.05);
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.07);
+  outline: 1px solid rgba(255, 255, 255, 0.55);
+  outline-offset: -2px;
 }
 
 /* VIDEO */
 .shc-video {
-  height: var(--shc-vh, 360px);
+  height: var(--shc-vh, 427px);
   background: #000;
   position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ✅ Preview button */
+/* Preview */
 .shc-thumbBtn {
   border: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #000; /* ✅ nunca “mosaico” */
+  background: #000;
   cursor: pointer;
   position: relative;
-  overflow: hidden; /* ✅ recorta barras del thumb */
+  overflow: hidden;
 }
-
-/* ✅ Preview SIN barras: cover + micro zoom */
 .shc-thumb {
   width: 100%;
   height: 100%;
-  object-fit: cover;            /* ✅ clave: NO contain */
+  object-fit: cover;
   object-position: center;
   display: block;
-  transform: scale(1.06);       /* ✅ mata líneas/barras finitas */
-  transform-origin: center;
+  transform: scale(1.06);
 }
-
 .shc-thumbEmpty {
   height: 100%;
   display: grid;
   place-items: center;
   font-size: 12px;
-  opacity: .6;
+  opacity: 0.6;
   color: #fff;
 }
 
@@ -589,19 +609,19 @@ watch(
   inset: 0;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.16));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.16));
 }
 .shc-play-ring {
   width: 52px;
   height: 52px;
   border-radius: 999px;
-  background: rgba(255,255,255,.94);
+  background: rgba(255, 255, 255, 0.94);
   display: grid;
   place-items: center;
-  box-shadow: 0 10px 18px rgba(0,0,0,.18);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
 }
 
-/* ✅ IFRAME: estable */
+/* IFRAME */
 .shc-iframeWrap {
   position: relative;
   width: 100%;
@@ -610,7 +630,6 @@ watch(
   overflow: hidden;
   contain: layout paint size;
 }
-
 .shc-ytStage {
   position: relative;
   width: 100%;
@@ -618,18 +637,15 @@ watch(
   overflow: hidden;
   background: #000;
 }
-
 .shc-iframe {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  display: block;
   border: 0;
+  display: block;
   background: #000;
 }
-
-/* ✅ COVER REAL (play) - zoom razonable */
 .shc-iframe--ytCover {
   left: 50% !important;
   top: 50% !important;
@@ -638,16 +654,14 @@ watch(
   width: 100% !important;
   height: 100% !important;
   transform-origin: center center !important;
-
-  /* ✅ antes era demasiado (1.85 / 2.05). Ahora queda pro sin “comerse” todo */
-  transform: translate(-50%, -50%) scale(1.35) !important;
+  transform: translate(-50%, -50%) scale(1.30) !important;
 }
 
 /* PRODUCT BAR */
 .shc-prodBar {
-  background: #fff;
+  background: linear-gradient(180deg, #fff 0%, #fbfbfb 100%);
   padding: 8px 8px 10px;
-  border-top: 1px solid rgba(0,0,0,.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
 }
 
 .prodInfo {
@@ -657,27 +671,39 @@ watch(
   padding: 0;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 70px 1fr;
   gap: 10px;
   align-items: center;
 }
-
 .prodImg {
-  width: 72px;
-  height: 72px;
+  width: 70px;
+  height: 70px;
   border-radius: 14px;
   overflow: hidden;
   background: #f7f7f7;
-  border: 1px solid rgba(0,0,0,.06);
+  border: 1px solid rgba(0, 0, 0, 0.07);
 }
-.prodImg img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.prodImgEmpty { height: 100%; display: grid; place-items: center; font-size: 11px; opacity: .55; }
+.prodImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.prodImgEmpty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  opacity: 0.55;
+}
 
-.prodMid { text-align: center; min-width: 0; }
+.prodMid {
+  text-align: center;
+  min-width: 0;
+}
 .prodTitle {
   font-weight: 900;
   font-size: 11px;
-  letter-spacing: .18px;
+  letter-spacing: 0.18px;
   text-transform: uppercase;
   line-height: 1.12;
   color: #111;
@@ -686,11 +712,28 @@ watch(
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-.prodPrices { margin-top: 4px; display: flex; justify-content: center; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.prodPrice { font-size: 14px; font-weight: 950; letter-spacing: -0.2px; color: #111; white-space: nowrap; }
-.prodOff { font-size: 10px; font-weight: 950; color: #00a650; white-space: nowrap; line-height: 1; }
-.prodOld { margin-top: 2px; font-size: 10px; opacity: .6; text-decoration: line-through; }
+.prodPrices {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.prodPrice {
+  font-size: 14px;
+  font-weight: 950;
+}
+.prodOff {
+  font-size: 10px;
+  font-weight: 950;
+  color: #00a650;
+}
+.prodOld {
+  font-size: 10px;
+  opacity: 0.6;
+  text-decoration: line-through;
+}
 
 .prodCtas {
   display: grid;
@@ -698,10 +741,9 @@ watch(
   gap: 8px;
   margin-top: 8px;
 }
-
 .ctaBuy {
   width: 100%;
-  border: 1px solid rgba(0,0,0,.10) !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
   border-radius: 12px !important;
   padding: 6px 8px !important;
   font-weight: 900 !important;
@@ -710,12 +752,11 @@ watch(
   cursor: pointer;
   color: #fff;
   background: #2680c2;
-  box-shadow: 0 3px 8px rgba(38,128,194,.12) !important;
+  box-shadow: 0 3px 8px rgba(38, 128, 194, 0.12) !important;
 }
-
 .ctaCart {
   width: 100%;
-  border: 1px solid rgba(0,0,0,.12) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
   border-radius: 12px !important;
   padding: 6px 8px !important;
   font-weight: 900 !important;
@@ -730,37 +771,62 @@ watch(
   gap: 7px;
 }
 
-.prodEmpty { padding: 4px 2px; text-align: left; }
+.prodEmpty {
+  padding: 4px 2px;
+  text-align: left;
+}
 
-/* Arrows */
+/* ✅ FLECHAS MÁS AFUERA */
 .shc-nav {
   position: absolute;
-  top: 50%;
+  top: calc(var(--shc-vh, 427px) / 2);
   transform: translateY(-50%);
   background: #fff;
   border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(0,0,0,.12);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
   z-index: 10;
-  opacity: 0.9;
+  opacity: 0.92;
 }
-.shc-nav-left { left: -6px; }
-.shc-nav-right { right: -6px; }
+.shc-nav-left {
+  left: 10px; /* ✅ dentro del padding de shc-wrap, afuera del strip */
+}
+.shc-nav-right {
+  right: 10px;
+}
 
-/* mobile extra-compact */
+/* MOBILE */
 @media (max-width: 600px) {
-  .shc-strip { padding: 8px 36px 4px; gap: 10px; }
-  .shc-nav { top: 56%; opacity: 0.85; }
-  .shc-nav-left { left: -16px; }
-  .shc-nav-right { right: -16px; }
-
-  .prodInfo { grid-template-columns: 68px 1fr; gap: 10px; }
-  .prodImg { width: 68px; height: 68px; border-radius: 14px; }
-
-  /* ✅ Mobile suele necesitar un pelín más de cover */
-  .shc-iframe--ytCover {
-    transform: translate(-50%, -50%) scale(1.45) !important;
+  .shc-wrap {
+    padding: 0 44px; /* ✅ menos espacio en mobile */
   }
 
-  .ctaBuy, .ctaCart { font-size: 10.5px !important; padding: 6px 8px !important; }
+  .shc-strip {
+    padding: 8px 0 4px;
+  }
+
+  .shc-frame {
+    width: var(--shc-cardw, 224px);
+  }
+
+  .shc-iframe--ytCover {
+    transform: translate(-50%, -50%) scale(1.36) !important;
+  }
+
+  .shc-nav {
+    top: calc(var(--shc-vh, 427px) / 2);
+    opacity: 0.88;
+  }
+  .shc-nav-left {
+    left: 8px;
+  }
+  .shc-nav-right {
+    right: 8px;
+  }
+
+  .ctaBuy,
+  .ctaCart {
+    font-size: 10.5px !important;
+    padding: 6px 8px !important;
+  }
 }
 </style>

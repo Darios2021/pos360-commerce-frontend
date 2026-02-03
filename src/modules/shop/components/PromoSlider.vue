@@ -65,7 +65,7 @@
           </v-slide-group-item>
         </v-slide-group>
 
-        <!-- Puntitos (dinámicos por scroll real y centrado) -->
+        <!-- Puntitos -->
         <div class="promo-dots" v-if="dotsCount > 1">
           <button
             v-for="i in dotsCount"
@@ -101,8 +101,8 @@ let rootEl = null;
 let containerEl = null;
 let contentEl = null;
 
-let rafId = 0;
-let rafSizeId = 0;
+let rafScroll = 0;
+let rafResize = 0;
 
 const activeItemIdx = ref(0);
 
@@ -110,6 +110,7 @@ function open(p) {
   router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
 }
 
+/* ===== helpers money ===== */
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
@@ -151,59 +152,39 @@ function freeShip(p) {
   return Boolean(p.free_shipping) || Boolean(p.is_free_shipping);
 }
 
-/* ===============================
-   ✅ UTILIDADES
-   =============================== */
-function getPaddingPx(el, side /* 'Left'|'Right' */) {
-  try {
-    const cs = window.getComputedStyle(el);
-    const v = parseFloat(cs[`padding${side}`] || "0");
-    return Number.isFinite(v) ? v : 0;
-  } catch {
-    return 0;
-  }
+/* ===== responsive ===== */
+function isMobileNow() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia && window.matchMedia("(max-width: 600px)").matches;
 }
 
 function getFirstCardWidth() {
   if (!rootEl) return 0;
   const card = rootEl.querySelector(".promo-card");
-  const w = card?.offsetWidth || 0;
-  return Number.isFinite(w) ? w : 0;
+  return card?.offsetWidth || 0;
 }
 
-/* ===============================
-   ✅ CENTRADO REAL: padding lateral dinámico
-   =============================== */
-function applyCenterPaddingVars() {
+/**
+ * ✅ SOLO EN MOBILE: calculamos padding lateral para centrar snap.
+ * En desktop dejamos padding normal (chico) para que NO haya “vacío”.
+ */
+function applyMobileSidePad() {
   if (!shell.value || !containerEl) return;
 
-  // ancho visible real del carrusel (ya contempla flechas en desktop)
+  if (!isMobileNow()) {
+    shell.value.style.setProperty("--promo-side-pad", `6px`);
+    return;
+  }
+
   const cw = containerEl.clientWidth;
-
-  // medimos el ancho real de una card renderizada
   const cardW = getFirstCardWidth();
+  if (!cw || !cardW) return;
 
-  // si todavía no hay card, salimos y lo reintenta el resize/nextTick
-  if (!cardW || cardW < 50) return;
-
-  // padding para que el item pueda quedar centrado (primer/último incluidos)
   const sidePad = Math.max(0, Math.floor((cw - cardW) / 2));
-
   shell.value.style.setProperty("--promo-side-pad", `${sidePad}px`);
 }
 
-function scheduleApplySize() {
-  if (rafSizeId) return;
-  rafSizeId = requestAnimationFrame(() => {
-    rafSizeId = 0;
-    applyCenterPaddingVars();
-    recalcActiveFromScroll(); // por si cambió el tamaño
-  });
-}
-
-/* ===============================
-   ✅ DOTS DINÁMICOS: por centro del viewport
-   =============================== */
+/* ===== dots por centro (se siente bien en mobile y ok en desktop) ===== */
 function recalcActiveFromScroll() {
   if (!containerEl || !contentEl) return;
 
@@ -213,7 +194,6 @@ function recalcActiveFromScroll() {
     return;
   }
 
-  // punto central del viewport del carrusel
   const centerX = containerEl.scrollLeft + containerEl.clientWidth / 2;
 
   let bestIdx = 0;
@@ -233,9 +213,18 @@ function recalcActiveFromScroll() {
 }
 
 function onScroll() {
-  if (rafId) return;
-  rafId = requestAnimationFrame(() => {
-    rafId = 0;
+  if (rafScroll) return;
+  rafScroll = requestAnimationFrame(() => {
+    rafScroll = 0;
+    recalcActiveFromScroll();
+  });
+}
+
+function onResize() {
+  if (rafResize) return;
+  rafResize = requestAnimationFrame(() => {
+    rafResize = 0;
+    applyMobileSidePad();
     recalcActiveFromScroll();
   });
 }
@@ -247,41 +236,35 @@ function centerItem(idx, behavior = "smooth") {
   const it = kids?.[idx];
   if (!it) return;
 
-  const target =
-    it.offsetLeft + it.offsetWidth / 2 - containerEl.clientWidth / 2;
-
+  const target = it.offsetLeft + it.offsetWidth / 2 - containerEl.clientWidth / 2;
   containerEl.scrollTo({ left: Math.max(0, target), behavior });
 }
 
-/* ===============================
-   ✅ BIND / UNBIND
-   =============================== */
+/* ===== bind/unbind ===== */
 function bind() {
   rootEl = sg.value?.$el;
   if (!rootEl) return;
 
   containerEl = rootEl.querySelector(".v-slide-group__container");
   contentEl = rootEl.querySelector(".v-slide-group__content");
-
   if (!containerEl || !contentEl) return;
 
   containerEl.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", scheduleApplySize, { passive: true });
+  window.addEventListener("resize", onResize, { passive: true });
 
-  // sizing + active
-  applyCenterPaddingVars();
+  applyMobileSidePad();
   recalcActiveFromScroll();
 }
 
 function unbind() {
   if (containerEl) containerEl.removeEventListener("scroll", onScroll);
-  window.removeEventListener("resize", scheduleApplySize);
+  window.removeEventListener("resize", onResize);
 
-  if (rafId) cancelAnimationFrame(rafId);
-  if (rafSizeId) cancelAnimationFrame(rafSizeId);
+  if (rafScroll) cancelAnimationFrame(rafScroll);
+  if (rafResize) cancelAnimationFrame(rafResize);
 
-  rafId = 0;
-  rafSizeId = 0;
+  rafScroll = 0;
+  rafResize = 0;
 
   rootEl = null;
   containerEl = null;
@@ -292,9 +275,9 @@ onMounted(async () => {
   await nextTick();
   bind();
 
-  // segundo tick: asegura que ya midió bien el ancho de cards
+  // segundo tick: asegura medidas correctas en mobile
   await nextTick();
-  applyCenterPaddingVars();
+  applyMobileSidePad();
   recalcActiveFromScroll();
 });
 
@@ -302,9 +285,7 @@ onBeforeUnmount(() => {
   unbind();
 });
 
-/* ===============================
-   ✅ DOTS
-   =============================== */
+/* ===== dots ===== */
 const dotIndex = computed(() => {
   const idx = Number(activeItemIdx.value ?? 0);
   return Math.max(0, Math.floor(idx / props.perPage));
@@ -318,13 +299,10 @@ const dotsCount = computed(() => {
 
 function jumpTo(pageIdx) {
   const targetItem = pageIdx * props.perPage;
-
-  // centramos el primer item de esa "página"
-  centerItem(targetItem, "smooth");
-
-  // mantener model alineado (Vuetify) sin forzar scroll target raro
   model.value = targetItem;
-  activeItemIdx.value = targetItem;
+
+  // centramos el primer item de esa página (en desktop queda lindo igual)
+  centerItem(targetItem, "smooth");
 }
 
 watch(
@@ -338,9 +316,8 @@ watch(
     await nextTick();
     bind();
 
-    // centra el primero sin animación
     await nextTick();
-    applyCenterPaddingVars();
+    applyMobileSidePad();
     centerItem(0, "auto");
     recalcActiveFromScroll();
   }
@@ -350,11 +327,10 @@ watch(
 <style scoped>
 .promo-shell {
   width: 100%;
-  /* padding dinámico para centrar items (se setea por JS) */
-  --promo-side-pad: 18px;
+  /* ✅ en desktop debe ser chico para NO romper layout */
+  --promo-side-pad: 6px;
 }
 
-/* permitir scroll vertical en todo el bloque */
 .promo-shell,
 .promo-inner,
 .promo-body {
@@ -405,50 +381,39 @@ watch(
   padding: 10px 10px 10px;
 }
 
-/* ===============================
-   ✅ CARRUSEL: flechas normales + snap centrado
-   =============================== */
+/* carrusel */
 .promo-slide {
   touch-action: pan-x pan-y;
 }
 
-/* container scrolleable */
 .promo-slide :deep(.v-slide-group__container) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   touch-action: pan-x pan-y;
-
-  /* ✅ snap al centro */
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: var(--promo-side-pad);
-  scroll-padding-right: var(--promo-side-pad);
 }
 .promo-slide :deep(.v-slide-group__container::-webkit-scrollbar) {
   display: none;
 }
 
-/* quitar espacios fantasmas de Vuetify */
+/* quitar espacios fantasmas */
 .promo-slide :deep(.v-slide-group-item) {
   padding: 0 !important;
   margin: 0 !important;
 }
 
-/* content con padding dinámico para que el 1° y último puedan centrarse */
+/* ✅ DESKTOP: normal, sin empujar todo a la derecha */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
-  padding: 10px var(--promo-side-pad) 12px;
+  padding: 10px 6px 12px;
   white-space: nowrap;
 }
 
-/* cada item snap al centro */
 .promo-item {
   display: inline-flex;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
 }
 
-/* flechas: mantenidas */
+/* flechas (mantener) */
 .promo-slide :deep(.v-slide-group__prev),
 .promo-slide :deep(.v-slide-group__next) {
   opacity: 0.95;
@@ -482,7 +447,6 @@ watch(
   }
 }
 
-/* imagen */
 .promo-img {
   position: relative;
   width: 100%;
@@ -597,7 +561,7 @@ watch(
   background: rgba(0, 0, 0, 0.55);
 }
 
-/* MOBILE: card más grande (pero centrada) */
+/* ✅ MOBILE: centrado real + snap center, pero SOLO mobile */
 @media (max-width: 600px) {
   .promo-head {
     padding: 12px 14px;
@@ -615,9 +579,26 @@ watch(
     padding: 10px 8px 10px;
   }
 
-  /* card ocupa más en mobile, pero siempre centrada por side-pad dinámico */
   .promo-card {
     width: min(86vw, 380px);
+  }
+
+  /* snap centrado */
+  .promo-slide :deep(.v-slide-group__container) {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: var(--promo-side-pad);
+    scroll-padding-right: var(--promo-side-pad);
+  }
+
+  /* padding dinámico SOLO mobile (no rompe desktop) */
+  .promo-slide :deep(.v-slide-group__content) {
+    padding: 10px var(--promo-side-pad) 12px !important;
+    gap: 12px;
+  }
+
+  .promo-item {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
 
   .promo-img {
@@ -626,11 +607,6 @@ watch(
 
   .promo-off {
     font-size: 10px;
-  }
-
-  /* un toque más de aire */
-  .promo-slide :deep(.v-slide-group__content) {
-    gap: 12px;
   }
 }
 </style>
