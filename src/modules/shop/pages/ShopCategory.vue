@@ -1,14 +1,14 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopCategory.vue -->
 <template>
-  <div class="category-page">
+  <div class="category-page" data-page="shop-category-v2">
     <section class="section">
       <!-- HEADER -->
       <div class="section-head">
         <div class="head-left">
           <h1 class="section-title">{{ parent?.name || "Categoría" }}</h1>
 
-          <!-- BUSCADOR LOCAL (NO afecta header) -->
+          <!-- BUSCADOR LOCAL -->
           <div class="controls-row">
             <ShopSearchBar
               v-model="searchText"
@@ -68,12 +68,8 @@
 
       <!-- PRODUCTOS -->
       <div v-else class="product-grid">
-        <ProductCard
-          v-for="p in items"
-          :key="p.product_id"
-          :p="p"
-          @add="addToCart"
-        />
+        <!-- ✅ IMPORTANTE: usar el card de subcategorías (con flechas + fetch media público) -->
+        <ProductCardSubcat v-for="p in items" :key="p.product_id" :p="p" />
       </div>
 
       <!-- PAGINACIÓN -->
@@ -89,11 +85,7 @@
 
       <!-- PROMOS AL FINAL -->
       <div class="promo-bottom">
-        <PromoSlider
-          v-if="promoItems.length"
-          :items="promoItems"
-          @seeAll="fetchCatalog"
-        />
+        <PromoSlider v-if="promoItems.length" :items="promoItems" @seeAll="fetchCatalog" />
       </div>
     </section>
   </div>
@@ -104,14 +96,11 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
-import {
-  getPublicCategoriesAll,
-  getPublicCategoryChildren,
-} from "@/modules/shop/service/shop.taxonomy.api";
+import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
-import ProductCard from "@/modules/shop/components/ProductCard.vue";
+import ProductCardSubcat from "@/modules/shop/components/shop/ProductCardSubcat.vue"; // ✅ RUTA DEL COMPONENTE NUEVO
 import ShopSearchBar from "@/modules/shop/components/ShopSearchBar.vue";
 
 const route = useRoute();
@@ -124,14 +113,12 @@ const err = ref("");
 const parentId = computed(() => Number(route.params.id || 0));
 
 const catsAll = ref([]);
-const parent = computed(
-  () => (catsAll.value || []).find((c) => Number(c.id) === parentId.value) || null
-);
+const parent = computed(() => (catsAll.value || []).find((c) => Number(c.id) === parentId.value) || null);
 
 const subcats = ref([]);
 const selectedSubId = ref(null);
 
-/* 🔒 buscador LOCAL */
+/* buscador local */
 const searchText = ref("");
 
 const page = ref(Number(route.query.page || 1));
@@ -270,7 +257,7 @@ onMounted(async () => {
   await fetchCatalog();
 });
 
-/* BUSCADOR con debounce */
+/* debounce buscador */
 watch(
   () => searchText.value,
   () => {
@@ -297,7 +284,7 @@ watch(
 .section-head {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 14px;
 }
 
@@ -310,6 +297,7 @@ watch(
 /* BUSCADOR */
 .controls-row {
   width: 100%;
+  margin-bottom: 10px;
 }
 .search-fix {
   width: 100%;
@@ -323,66 +311,65 @@ watch(
   opacity: 0.75;
 }
 
-/* =========================
-   SUBCATEGORÍAS (CHIPS)
-   ========================= */
+/* CHIPS */
 .subcats-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   max-width: 100%;
+  margin-top: 6px;
+  margin-bottom: 14px;
 }
-
 .subcats-row :deep(.v-chip) {
+  height: 32px;
+  padding: 0 14px;
   font-size: 12.5px;
   font-weight: 700;
-  height: 30px;
-  padding: 0 12px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* MOBILE → estilo Mercado Libre */
+/* ✅ GRID FORZADO (por si algo global te pisa) */
+.category-page[data-page="shop-category-v2"] .product-grid {
+  display: grid !important;
+  gap: 16px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+@media (min-width: 1500px) {
+  .category-page[data-page="shop-category-v2"] .product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .category-page[data-page="shop-category-v2"] .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
 @media (max-width: 960px) {
   .subcats-row {
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
+    padding-bottom: 8px;
+    margin-top: 8px;
+    margin-bottom: 16px;
   }
-
   .subcats-row::-webkit-scrollbar {
     height: 0;
   }
-
   .subcats-row :deep(.v-chip) {
-    height: 32px;
+    height: 34px;
+    padding: 0 16px;
     font-size: 12px;
     border-radius: 999px;
   }
-}
 
-/* GRID */
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 1400px) {
-  .product-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-@media (max-width: 1200px) {
-  .product-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-@media (max-width: 960px) {
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+  .category-page[data-page="shop-category-v2"] .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
   }
 }
 
@@ -396,53 +383,4 @@ watch(
 .promo-bottom {
   margin-top: 26px;
 }
-/* =========================
-   AIRE GENERAL HEADER
-   ========================= */
-.section-head {
-  gap: 16px;               /* antes 12px */
-}
-
-/* buscador + chips */
-.controls-row {
-  margin-bottom: 10px;     /* aire debajo del buscador */
-}
-
-/* =========================
-   SUBCATEGORÍAS (CHIPS)
-   ========================= */
-.subcats-row {
-  margin-top: 6px;         /* aire arriba */
-  margin-bottom: 14px;     /* aire abajo */
-  gap: 10px;               /* más separación entre chips */
-}
-
-/* chips un poco más cómodos */
-.subcats-row :deep(.v-chip) {
-  height: 32px;            /* + aire vertical */
-  padding: 0 14px;         /* + aire horizontal */
-  font-size: 12.5px;
-}
-
-/* =========================
-   MOBILE
-   ========================= */
-@media (max-width: 960px) {
-  .controls-row {
-    margin-bottom: 12px;
-  }
-
-  .subcats-row {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;   /* aire visual + scroll */
-  }
-
-  .subcats-row :deep(.v-chip) {
-    height: 34px;
-    padding: 0 16px;
-    font-size: 12px;
-  }
-}
-
 </style>

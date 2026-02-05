@@ -5,6 +5,7 @@
 // ✅ FIX CLAVE: si VITE_API_BASE_URL viene como ".../api" o "/api", lo normaliza a "/api/v1"
 // ✅ getProductVideos usa CORE (NO /public)
 // ✅ getProduct inyecta videos en item.videos / item.product_videos / item.media.videos
+// ✅ NUEVO: getPublicProductMedia() -> /public/products/:id/media (SIN branch_id) para cards con flechas sin 401
 
 import axios from "axios";
 
@@ -95,7 +96,7 @@ if (typeof window !== "undefined") {
 }
 
 const apiBaseURL = buildPublicBase(basePath); // .../api/v1/public
-const coreBaseURL = buildCoreBase(basePath);  // .../api/v1
+const coreBaseURL = buildCoreBase(basePath); // .../api/v1
 
 // assetBase: para absolutizar imágenes si vienen relativas
 const assetBase = (() => {
@@ -251,7 +252,10 @@ export async function getCatalog(params = {}) {
   const arr = Array.isArray(data.items) ? data.items : [];
   data.items = arr.map((it) => {
     const imgRaw = it?.image_url || it?.image || it?.url || it?.src || "";
-    const images = uniqUrls([...(Array.isArray(it.images) ? it.images : []).map(absUrl), absUrl(imgRaw)]);
+    const images = uniqUrls([
+      ...(Array.isArray(it.images) ? it.images : []).map(absUrl),
+      absUrl(imgRaw),
+    ]);
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 
@@ -272,9 +276,41 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 
   const items = Array.isArray(r.data?.items) ? r.data.items : [];
   return items.map((it) => {
-    const images = uniqUrls([...(Array.isArray(it.images) ? it.images : []).map(absUrl), absUrl(it.image_url)]);
+    const images = uniqUrls([
+      ...(Array.isArray(it.images) ? it.images : []).map(absUrl),
+      absUrl(it.image_url),
+    ]);
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
+}
+
+/**
+ * ✅ MEDIA PÚBLICA PARA CARDS (SIN branch_id)
+ * GET /api/v1/public/products/:id/media
+ * Respuesta esperada: { ok:true, item:{ product_id, image_url, images[], image_urls[] } }
+ */
+export async function getPublicProductMedia(id) {
+  const pid = toInt(id, 0);
+  if (!pid) return null;
+
+  const r = await api.get(`/products/${pid}/media`);
+  const item = r.data?.item || r.data?.data || r.data?.result || null;
+  if (!item) return null;
+
+  const img = item?.image_url ? absUrl(item.image_url) : "";
+  const urls = Array.isArray(item?.image_urls) ? item.image_urls : [];
+  const listFromImages = Array.isArray(item?.images)
+    ? item.images.map((x) => (typeof x === "string" ? x : x?.url))
+    : [];
+
+  const images = uniqUrls([img, ...urls, ...listFromImages].map(absUrl));
+
+  return {
+    ...item,
+    images,
+    image_urls: images,
+    image_url: images[0] || "",
+  };
 }
 
 /**
@@ -304,7 +340,10 @@ export async function getProduct(id) {
   if (!item) return null;
 
   const img = item?.image_url ? absUrl(item.image_url) : "";
-  const images = uniqUrls([...(img ? [img] : []), ...(Array.isArray(item.images) ? item.images : []).map(absUrl)]);
+  const images = uniqUrls([
+    ...(img ? [img] : []),
+    ...(Array.isArray(item.images) ? item.images : []).map(absUrl),
+  ]);
   item.images = images;
   item.image_url = images[0] || img || "";
 
@@ -368,14 +407,24 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  const hydrated = await Promise.all(ids.map(async (id) => (await getProduct(id).catch(() => null))));
-  return hydrated.filter(Boolean).map((p) => {
-    const images = uniqUrls([...(Array.isArray(p.images) ? p.images : []).map(absUrl), absUrl(p.image_url)]);
-    return {
-      ...p,
-      images,
-      image_url: images[0] || absUrl(p.image_url) || "",
-      price: p.price ?? (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
-    };
-  });
+  const hydrated = await Promise.all(
+    ids.map(async (id) => (await getProduct(id).catch(() => null)))
+  );
+
+  return hydrated
+    .filter(Boolean)
+    .map((p) => {
+      const images = uniqUrls([
+        ...(Array.isArray(p.images) ? p.images : []).map(absUrl),
+        absUrl(p.image_url),
+      ]);
+      return {
+        ...p,
+        images,
+        image_url: images[0] || absUrl(p.image_url) || "",
+        price:
+          p.price ??
+          (toNum(p.price_discount, 0) > 0 ? toNum(p.price_discount, 0) : toNum(p.price_list, 0)),
+      };
+    });
 }
