@@ -372,24 +372,43 @@ watch(
 .category-page {
   background: #f5f5f5;
 }
+
 .section {
   max-width: 1300px;
   margin: 0 auto;
   padding: 18px 14px 48px;
 }
 
-/* layout */
+/* ===============================
+   LAYOUT GENERAL (FIX REAL)
+================================ */
 .cat-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 16px;
   align-items: start;
 }
+
+/* 🔴 CLAVE: evita overflow horizontal del grid */
+.cat-main {
+  min-width: 0 !important;
+}
+
 .cat-side {
   position: sticky;
   top: 12px;
   height: fit-content;
+  min-width: 0 !important;
 }
+
+/* red de seguridad */
+.section,
+.cat-layout,
+.cat-main {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 @media (max-width: 960px) {
   .cat-layout {
     grid-template-columns: 1fr;
@@ -399,7 +418,9 @@ watch(
   }
 }
 
-/* topbar */
+/* ===============================
+   TOPBAR
+================================ */
 .cat-topbar {
   display: flex;
   align-items: flex-end;
@@ -407,6 +428,7 @@ watch(
   gap: 14px;
   margin-bottom: 14px;
 }
+
 .cat-title {
   margin: 0;
   font-size: 22px;
@@ -414,11 +436,13 @@ watch(
   font-weight: 900;
   color: #0e2134;
 }
+
 .cat-count {
   margin-top: 4px;
   font-size: 12px;
   opacity: 0.7;
 }
+
 .cat-top-right {
   display: flex;
   align-items: center;
@@ -426,38 +450,41 @@ watch(
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
 .cat-search {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 420px;
 }
+
 .cat-search :deep(.v-field) {
   background: #fff;
 }
+
 @media (max-width: 960px) {
   .cat-topbar {
     display: none;
   }
 }
 
-/* ✅ GRID */
+/* ===============================
+   GRID DE PRODUCTOS
+================================ */
 .category-page[data-page="shop-category-v2"] .product-grid {
   display: grid !important;
-  gap: 16px !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  grid-auto-flow: row !important;
+  gap: 16px !important;
 }
 
-/* ✅ ESTA ES LA CLAVE: el ITEM del grid es el wrapper, NO el componente */
+/* wrapper REAL del grid */
 .category-page[data-page="shop-category-v2"] .product-grid .grid-item {
-  grid-column: span 1 !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
+  grid-column: span 1 !important;
 }
 
-/* además evita que el contenido interno empuje */
 .category-page[data-page="shop-category-v2"] .product-grid .grid-item > * {
   width: 100% !important;
   max-width: 100% !important;
@@ -469,11 +496,13 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
 }
+
 @media (max-width: 1100px) {
   .category-page[data-page="shop-category-v2"] .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
+
 @media (max-width: 960px) {
   .category-page[data-page="shop-category-v2"] .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -481,12 +510,16 @@ watch(
   }
 }
 
+/* ===============================
+   PAGINACIÓN / PROMO
+================================ */
 .pager {
   margin-top: 22px;
   display: flex;
   justify-content: center;
   gap: 12px;
 }
+
 .promo-bottom {
   margin-top: 26px;
 }
