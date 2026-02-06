@@ -1,40 +1,43 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/shop/ShopCategoryFilters.vue -->
 <template>
-  <div class="scf">
-    <div class="scf-panel">
-      <!-- Subcategorías -->
-      <div v-if="subcats?.length" class="scf-box">
-        <div class="scf-h">Subcategorías</div>
-        <div class="scf-list">
+  <aside class="mlf" aria-label="Filtros">
+    <div class="mlf-card">
+      <!-- SUBCATS -->
+      <section v-if="subcats?.length" class="mlf-sec">
+        <div class="mlf-title">Subcategorías</div>
+
+        <div class="mlf-list">
           <button
-            class="scf-item"
-            :class="{ 'is-active': selectedSubId == null }"
+            class="mlf-item"
+            :class="{ on: selectedSubId == null }"
             type="button"
             :disabled="loading"
             @click="$emit('selectSub', null)"
           >
-            <span>Ver todas</span>
+            <span class="mlf-name">Ver todas</span>
           </button>
 
           <button
             v-for="s in subcats"
-            :key="s?.id"
-            class="scf-item"
-            :class="{ 'is-active': String(selectedSubId) === String(s?.id) }"
+            :key="String(s?.id)"
+            class="mlf-item"
+            :class="{ on: String(selectedSubId) === String(s?.id) }"
             type="button"
             :disabled="loading"
             @click="$emit('selectSub', String(s?.id))"
+            :title="s?.name || ''"
           >
-            <span>{{ s?.name || "—" }}</span>
+            <span class="mlf-name">{{ s?.name || "—" }}</span>
           </button>
         </div>
-      </div>
+      </section>
 
-      <!-- Stock -->
-      <div class="scf-box">
-        <div class="scf-h">Disponibilidad</div>
-        <label class="scf-check">
+      <!-- STOCK -->
+      <section class="mlf-sec">
+        <div class="mlf-title">Disponibilidad</div>
+
+        <label class="mlf-check">
           <input
             type="checkbox"
             :checked="!!inStockOnly"
@@ -43,104 +46,137 @@
           />
           <span>Solo con stock</span>
         </label>
-      </div>
+      </section>
 
-      <!-- Marca (lista tipo ML) -->
-      <div v-if="brands?.length" class="scf-box">
-        <div class="scf-h">Marca</div>
-        <div class="scf-list">
+      <!-- MARCA (ML-like) -->
+      <section v-if="brands?.length" class="mlf-sec">
+        <div class="mlf-title">Marca</div>
+
+        <div class="mlf-list">
           <button
             v-for="b in visibleBrands"
             :key="String(b?.key)"
-            class="scf-row"
-            :class="{ 'is-on': isBrandOn(b?.key) }"
+            class="mlf-row"
+            :class="{ on: isBrandOn(b?.key) }"
             type="button"
             :disabled="loading"
             @click="toggleBrand(b?.key)"
             :title="b?.label || ''"
           >
-            <span class="scf-row-name">{{ b?.label || "—" }}</span>
-            <span class="scf-row-count">
-              {{ typeof b?.count === "number" ? b.count : "" }}
-            </span>
+            <span class="mlf-row-name">{{ b?.label || "—" }}</span>
+            <span class="mlf-row-count">{{ typeof b?.count === "number" ? b.count : "" }}</span>
           </button>
         </div>
 
         <button
-          v-if="brands.length > 9"
-          class="scf-more"
+          v-if="brands.length > brandFold"
+          class="mlf-more"
           type="button"
           :disabled="loading"
           @click="showMoreBrands = !showMoreBrands"
         >
           {{ showMoreBrands ? "Mostrar menos" : "Mostrar más" }}
         </button>
-      </div>
+      </section>
 
-      <!-- Modelo (texto) -->
-      <div class="scf-box">
-        <div class="scf-h">Modelo</div>
-        <div class="scf-model">
-          <input
-            class="scf-model-in"
-            :value="modelLocal"
+      <!-- ✅ MODELO (SELECT, NO INPUT) -->
+      <section v-if="models?.length" class="mlf-sec">
+        <div class="mlf-title">Modelo</div>
+
+        <div class="mlf-select-wrap">
+          <select
+            class="mlf-select"
             :disabled="loading"
-            placeholder="Ej: AirPods, G200, M6…"
-            @input="modelLocal = $event.target.value"
-            @keyup.enter="applyModel"
-          />
-          <button class="scf-model-go" type="button" :disabled="loading" @click="applyModel">
-            <span class="scf-go-ico">›</span>
+            :value="modelLocal"
+            @change="onModelChange($event.target.value)"
+          >
+            <option value="">Ver todos</option>
+            <option v-for="m in modelsVisible" :key="String(m?.key)" :value="String(m?.key)">
+              {{ m?.label || m?.key }}
+              {{ typeof m?.count === "number" ? `(${m.count})` : "" }}
+            </option>
+          </select>
+
+          <button
+            v-if="modelLocal"
+            class="mlf-clear"
+            type="button"
+            :disabled="loading"
+            @click="clearModel"
+            aria-label="Limpiar modelo"
+          >
+            ✕
           </button>
         </div>
+
         <button
-          v-if="modelLocal"
-          class="scf-link"
+          v-if="models.length > modelFold"
+          class="mlf-more"
           type="button"
           :disabled="loading"
-          @click="clearModel"
+          @click="showMoreModels = !showMoreModels"
         >
-          Limpiar modelo
+          {{ showMoreModels ? "Mostrar menos" : "Mostrar más" }}
         </button>
-      </div>
+      </section>
 
-      <!-- Capacidad -->
-      <div class="scf-box">
-        <div class="scf-h">Capacidad en volumen</div>
+      <!-- ✅ COLOR (opcional, estilo ML) -->
+      <section v-if="colors?.length" class="mlf-sec">
+        <div class="mlf-title">Color</div>
 
-        <div class="scf-minmax">
+        <div class="mlf-colors">
+          <button
+            v-for="c in colors"
+            :key="String(c?.key)"
+            class="mlf-color"
+            type="button"
+            :disabled="loading"
+            :class="{ on: isColorOn(c?.key) }"
+            :title="c?.label || String(c?.key)"
+            @click="toggleColor(c?.key)"
+          >
+            <span class="mlf-swatch" :style="{ background: String(c?.hex || c?.key || '#ddd') }" />
+          </button>
+        </div>
+      </section>
+
+      <!-- CAPACIDAD -->
+      <section class="mlf-sec">
+        <div class="mlf-title">Capacidad en volumen</div>
+
+        <div class="mlf-minmax">
           <input
-            class="scf-mm"
+            class="mlf-mm"
             inputmode="numeric"
             placeholder="Mínimo"
             :value="String(volumeMinLocal ?? '')"
             :disabled="loading"
             @input="volumeMinLocal = $event.target.value"
           />
-          <span class="scf-sep">–</span>
+          <span class="mlf-sep">–</span>
           <input
-            class="scf-mm"
+            class="mlf-mm"
             inputmode="numeric"
             placeholder="Máximo"
             :value="String(volumeMaxLocal ?? '')"
             :disabled="loading"
             @input="volumeMaxLocal = $event.target.value"
           />
-          <button class="scf-go" type="button" :disabled="loading" @click="applyVolume">
-            <span class="scf-go-ico">›</span>
+          <button class="mlf-go" type="button" :disabled="loading" @click="applyVolume" aria-label="Aplicar">
+            <span class="mlf-go-ico">›</span>
           </button>
         </div>
 
-        <div class="scf-muted">Ej: 600</div>
-      </div>
+        <div class="mlf-muted">Ej: 600</div>
+      </section>
 
-      <div class="scf-bottom">
-        <v-btn block rounded="lg" variant="text" :disabled="loading" @click="$emit('clearAll')">
-          Limpiar filtros
-        </v-btn>
+      <div class="mlf-bottom">
+        <button class="mlf-reset" type="button" :disabled="loading" @click="$emit('clearAll')">
+          LIMPIAR FILTROS
+        </button>
       </div>
     </div>
-  </div>
+  </aside>
 </template>
 
 <script setup>
@@ -153,13 +189,17 @@ const props = defineProps({
   selectedSubId: { type: [Number, String, null], default: null },
   inStockOnly: { type: Boolean, default: false },
 
-  // ✅ facets de marca que le pasa la página
-  // [{ key:'XAEA', label:'XAEA', count: 12 }]
+  // Marca facets: [{ key:'XAEA', label:'XAEA', count: 12 }]
   brands: { type: Array, default: () => [] },
-  selectedBrands: { type: Array, default: () => [] }, // ['XAEA','Sony']
+  selectedBrands: { type: Array, default: () => [] },
 
-  // ✅ modelo (texto)
-  model: { type: String, default: "" },
+  // ✅ Modelo facets: [{ key:'M6', label:'M6', count: 4 }]
+  models: { type: Array, default: () => [] },
+  model: { type: String, default: "" }, // selected model key
+
+  // ✅ Color facets opcional: [{ key:'black', hex:'#000', label:'Negro', count: 10 }]
+  colors: { type: Array, default: () => [] },
+  selectedColors: { type: Array, default: () => [] },
 
   volumeMin: { type: [Number, String, null], default: null },
   volumeMax: { type: [Number, String, null], default: null },
@@ -169,17 +209,18 @@ const emit = defineEmits([
   "selectSub",
   "update:inStockOnly",
   "clearAll",
-
   "update:selectedBrands",
   "update:model",
-
+  "update:selectedColors",
   "update:volume",
 ]);
 
+/* ===== Marca ===== */
+const brandFold = 9;
 const showMoreBrands = ref(false);
 const visibleBrands = computed(() => {
   const arr = Array.isArray(props.brands) ? props.brands : [];
-  return showMoreBrands.value ? arr : arr.slice(0, 9);
+  return showMoreBrands.value ? arr : arr.slice(0, brandFold);
 });
 
 function isBrandOn(key) {
@@ -194,8 +235,15 @@ function toggleBrand(key) {
   emit("update:selectedBrands", Array.from(set));
 }
 
-/* modelo */
-const modelLocal = ref(props.model || "");
+/* ===== Modelo (SELECT) ===== */
+const modelFold = 12;
+const showMoreModels = ref(false);
+const modelsVisible = computed(() => {
+  const arr = Array.isArray(props.models) ? props.models : [];
+  return showMoreModels.value ? arr : arr.slice(0, modelFold);
+});
+
+const modelLocal = ref(String(props.model || ""));
 watch(
   () => props.model,
   (v) => {
@@ -204,15 +252,29 @@ watch(
   }
 );
 
-function applyModel() {
-  emit("update:model", String(modelLocal.value || "").trim());
+function onModelChange(v) {
+  modelLocal.value = String(v || "");
+  emit("update:model", modelLocal.value);
 }
 function clearModel() {
   modelLocal.value = "";
   emit("update:model", "");
 }
 
-/* volumen */
+/* ===== Color (chips) ===== */
+function isColorOn(key) {
+  const k = String(key ?? "");
+  return (props.selectedColors || []).map(String).includes(k);
+}
+function toggleColor(key) {
+  const k = String(key ?? "");
+  const set = new Set((props.selectedColors || []).map(String));
+  if (set.has(k)) set.delete(k);
+  else set.add(k);
+  emit("update:selectedColors", Array.from(set));
+}
+
+/* ===== Volumen ===== */
 const volumeMinLocal = ref(props.volumeMin ?? "");
 const volumeMaxLocal = ref(props.volumeMax ?? "");
 
@@ -240,165 +302,203 @@ function applyVolume() {
 </script>
 
 <style scoped>
-.scf {
+/* ML-like: clean + airy + no “form vibes” */
+.mlf {
   width: 100%;
 }
 
-.scf-panel {
-  background: #ffffff;
+.mlf-card {
+  background: #fff;
   border-radius: 14px;
-  padding: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  padding: 14px 12px;
 }
 
-.scf-box + .scf-box {
-  margin-top: 14px;
+.mlf-sec + .mlf-sec {
+  margin-top: 16px;
 }
 
-.scf-h {
+.mlf-title {
   font-weight: 900;
   font-size: 14px;
   color: #111;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.scf-list {
+.mlf-list {
   display: grid;
   gap: 6px;
 }
 
-.scf-item {
-  width: 100%;
-  text-align: left;
+/* subcat items */
+.mlf-item {
   border: 0;
   background: transparent;
-  padding: 8px 10px;
+  text-align: left;
+  padding: 9px 10px;
   border-radius: 10px;
   cursor: pointer;
-  color: #1a1a1a;
   font-size: 13px;
+  color: #222;
 }
-.scf-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+
+.mlf-item:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
-.scf-item.is-active {
-  background: #f5f5f5;
+
+.mlf-item.on {
+  background: rgba(0, 0, 0, 0.06);
   font-weight: 900;
 }
 
-.scf-row {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 7px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: #1a1a1a;
-  font-size: 13px;
-}
-.scf-row:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-.scf-row.is-on {
-  background: #f5f5f5;
-  font-weight: 900;
-}
-.scf-row-name {
+.mlf-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.scf-row-count {
+
+/* rows like ML (name + count) */
+.mlf-row {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  font-size: 13px;
+  color: #222;
+}
+
+.mlf-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.mlf-row.on {
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 900;
+}
+
+.mlf-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mlf-row-count {
   opacity: 0.7;
   flex: 0 0 auto;
 }
 
-.scf-more {
-  margin-top: 8px;
+/* ML “mostrar más” link */
+.mlf-more {
+  margin-top: 10px;
   border: 0;
   background: transparent;
-  color: #1976d2;
+  color: #3483fa;
   font-weight: 800;
   cursor: pointer;
-  padding: 6px 2px;
+  padding: 2px 2px;
   text-align: left;
 }
 
-.scf-check {
+/* checkbox ML-ish */
+.mlf-check {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
   font-size: 13px;
-  color: #1a1a1a;
+  color: #222;
   user-select: none;
 }
-.scf-check input {
+.mlf-check input {
   width: 16px;
   height: 16px;
 }
 
-/* Modelo */
-.scf-model {
+/* select modelo */
+.mlf-select-wrap {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
 }
-.scf-model-in {
+
+.mlf-select {
   width: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #fff;
+  border: 1px solid rgba(0,0,0,.18);
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 10px 12px;
   font-size: 13px;
+  background: #fff;
   outline: none;
+  appearance: none;
 }
-.scf-model-go {
+
+.mlf-clear {
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0,0,0,.18);
   background: #fff;
   cursor: pointer;
   display: grid;
   place-items: center;
-}
-.scf-link {
-  margin-top: 8px;
-  border: 0;
-  background: transparent;
-  color: #1976d2;
-  font-weight: 800;
-  cursor: pointer;
-  padding: 4px 2px;
-  text-align: left;
+  color: rgba(0,0,0,.55);
 }
 
-/* Min/Max */
-.scf-minmax {
+/* colors ML */
+.mlf-colors {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mlf-color {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.mlf-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.18);
+  display: inline-block;
+}
+.mlf-color.on .mlf-swatch {
+  outline: 2px solid #3483fa;
+  outline-offset: 2px;
+}
+
+/* min/max */
+.mlf-minmax {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto;
   gap: 8px;
   align-items: center;
 }
-.scf-mm {
+.mlf-mm {
   width: 100%;
   border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 10px 12px;
   font-size: 13px;
   outline: none;
 }
-.scf-sep {
+.mlf-sep {
   opacity: 0.6;
   font-weight: 900;
 }
-.scf-go {
+.mlf-go {
   width: 34px;
   height: 34px;
   border-radius: 999px;
@@ -408,19 +508,32 @@ function applyVolume() {
   display: grid;
   place-items: center;
 }
-.scf-go-ico {
+.mlf-go-ico {
   font-size: 20px;
   line-height: 1;
   margin-top: -1px;
 }
 
-.scf-muted {
-  margin-top: 6px;
+.mlf-muted {
+  margin-top: 8px;
   font-size: 11px;
   opacity: 0.55;
 }
 
-.scf-bottom {
-  margin-top: 14px;
+/* bottom reset like ML */
+.mlf-bottom {
+  margin-top: 16px;
+}
+
+.mlf-reset {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: #111;
+  text-transform: uppercase;
 }
 </style>

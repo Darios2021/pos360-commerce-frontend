@@ -13,7 +13,8 @@
             :in-stock-only="inStockOnly"
             :brands="brandsFacet"
             :selected-brands="selectedBrands"
-            :model="modelText"
+            :models="modelsFacet"
+            :model="modelSelected"
             :volume-min="volumeMin"
             :volume-max="volumeMax"
             @update:inStockOnly="onToggleStock"
@@ -81,7 +82,7 @@
             No hay productos para mostrar con estos criterios.
           </v-alert>
 
-          <!-- ✅ PRODUCTOS (WRAPPER QUE CLAVA 1 COLUMNA) -->
+          <!-- ✅ PRODUCTOS -->
           <div v-else class="product-grid">
             <div v-for="p in filteredItems" :key="p.product_id" class="grid-item">
               <ProductCardSubcat :p="p" />
@@ -139,7 +140,7 @@ const inStockOnly = ref(route.query.stock === "1");
 
 /* marca + modelo */
 const selectedBrands = ref(route.query.brands ? String(route.query.brands).split(",").filter(Boolean) : []);
-const modelText = ref(route.query.model ? String(route.query.model) : "");
+const modelSelected = ref(route.query.model ? String(route.query.model) : "");
 
 /* volumen */
 const volumeMin = ref(route.query.vmin ? Number(route.query.vmin) : null);
@@ -184,7 +185,7 @@ async function fetchSubcats() {
   }
 }
 
-/* facets marca (fallback) */
+/* facets marca */
 function pickBrandName(p) {
   return p?.brand_name || p?.brand || p?.brandName || p?.marca || p?.manufacturer || "";
 }
@@ -200,13 +201,23 @@ const brandsFacet = computed(() => {
     .sort((a, b) => (b.count || 0) - (a.count || 0));
 });
 
-/* filtro client-side */
-function includesLoose(hay, needle) {
-  const a = String(hay || "").toLowerCase();
-  const b = String(needle || "").toLowerCase().trim();
-  if (!b) return true;
-  return a.includes(b);
+/* ✅ facets modelo (para el SELECT) */
+function pickModelName(p) {
+  return p?.model_name || p?.model || p?.modelo || "";
 }
+const modelsFacet = computed(() => {
+  const map = new Map();
+  for (const p of items.value || []) {
+    const m = String(pickModelName(p) || "").trim();
+    if (!m) continue;
+    map.set(m, (map.get(m) || 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([k, c]) => ({ key: k, label: k, count: c }))
+    .sort((a, b) => (b.count || 0) - (a.count || 0));
+});
+
+/* filtro client-side */
 const filteredItems = computed(() => {
   let arr = Array.isArray(items.value) ? items.value : [];
 
@@ -215,14 +226,9 @@ const filteredItems = computed(() => {
     arr = arr.filter((p) => set.has(String(pickBrandName(p) || "")));
   }
 
-  if (String(modelText.value || "").trim()) {
-    const q = String(modelText.value || "").trim();
-    arr = arr.filter((p) => {
-      const name = p?.name || p?.title || "";
-      const model = p?.model || p?.model_name || p?.modelo || "";
-      const sku = p?.sku || p?.code || "";
-      return includesLoose(name, q) || includesLoose(model, q) || includesLoose(sku, q);
-    });
+  if (String(modelSelected.value || "").trim()) {
+    const mk = String(modelSelected.value || "").trim();
+    arr = arr.filter((p) => String(pickModelName(p) || "").trim() === mk);
   }
 
   return arr;
@@ -259,9 +265,9 @@ function onBrands(arr) {
   fetchCatalog();
 }
 function onModel(v) {
-  modelText.value = String(v || "");
+  modelSelected.value = String(v || "");
   page.value = 1;
-  setQuery({ model: modelText.value ? modelText.value : null, page: "1" });
+  setQuery({ model: modelSelected.value ? modelSelected.value : null, page: "1" });
   fetchCatalog();
 }
 function onVolume({ min, max }) {
@@ -289,7 +295,7 @@ function clearAllFilters() {
   selectedSubId.value = null;
   inStockOnly.value = false;
   selectedBrands.value = [];
-  modelText.value = "";
+  modelSelected.value = "";
   volumeMin.value = null;
   volumeMax.value = null;
   page.value = 1;
@@ -315,7 +321,7 @@ async function fetchCatalog() {
       in_stock: inStockOnly.value ? 1 : 0,
 
       brand: selectedBrands.value?.length ? selectedBrands.value.join(",") : "",
-      model: String(modelText.value || "").trim(),
+      model: String(modelSelected.value || "").trim(),
       volume_min: volumeMin.value == null ? "" : Number(volumeMin.value),
       volume_max: volumeMax.value == null ? "" : Number(volumeMax.value),
     };
@@ -372,36 +378,28 @@ watch(
 .category-page {
   background: #f5f5f5;
 }
-
 .section {
   max-width: 1300px;
   margin: 0 auto;
   padding: 18px 14px 48px;
 }
 
-/* ===============================
-   LAYOUT GENERAL (FIX REAL)
-================================ */
+/* layout */
 .cat-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 16px;
   align-items: start;
 }
-
-/* 🔴 CLAVE: evita overflow horizontal del grid */
-.cat-main {
-  min-width: 0 !important;
-}
-
 .cat-side {
   position: sticky;
   top: 12px;
   height: fit-content;
   min-width: 0 !important;
 }
-
-/* red de seguridad */
+.cat-main {
+  min-width: 0 !important; /* ✅ FIX “tira a la derecha” */
+}
 .section,
 .cat-layout,
 .cat-main {
@@ -418,9 +416,7 @@ watch(
   }
 }
 
-/* ===============================
-   TOPBAR
-================================ */
+/* topbar */
 .cat-topbar {
   display: flex;
   align-items: flex-end;
@@ -428,7 +424,6 @@ watch(
   gap: 14px;
   margin-bottom: 14px;
 }
-
 .cat-title {
   margin: 0;
   font-size: 22px;
@@ -436,13 +431,11 @@ watch(
   font-weight: 900;
   color: #0e2134;
 }
-
 .cat-count {
   margin-top: 4px;
   font-size: 12px;
   opacity: 0.7;
 }
-
 .cat-top-right {
   display: flex;
   align-items: center;
@@ -450,41 +443,33 @@ watch(
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-
 .cat-search {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 420px;
 }
-
 .cat-search :deep(.v-field) {
   background: #fff;
 }
-
 @media (max-width: 960px) {
   .cat-topbar {
     display: none;
   }
 }
 
-/* ===============================
-   GRID DE PRODUCTOS
-================================ */
+/* GRID */
 .category-page[data-page="shop-category-v2"] .product-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 16px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
-
-/* wrapper REAL del grid */
 .category-page[data-page="shop-category-v2"] .product-grid .grid-item {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
   grid-column: span 1 !important;
 }
-
 .category-page[data-page="shop-category-v2"] .product-grid .grid-item > * {
   width: 100% !important;
   max-width: 100% !important;
@@ -496,13 +481,11 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
 }
-
 @media (max-width: 1100px) {
   .category-page[data-page="shop-category-v2"] .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
-
 @media (max-width: 960px) {
   .category-page[data-page="shop-category-v2"] .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -510,9 +493,6 @@ watch(
   }
 }
 
-/* ===============================
-   PAGINACIÓN / PROMO
-================================ */
 .pager {
   margin-top: 22px;
   display: flex;
