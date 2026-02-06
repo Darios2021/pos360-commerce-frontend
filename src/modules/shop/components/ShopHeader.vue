@@ -5,7 +5,7 @@
      - Sin línea inferior / contornos raros
      - ✅ Carrito SOLO en header (desktop + mobile)
      - ✅ WhatsApp ÚNICO flotante (desktop + mobile)
-     - ✅ Spotify Play/Stop en HEADER (desktop + mobile) estilo WhatsApp
+     - ✅ Spotify REMOVIDO (desktop + mobile)
      - ✅ NO reduce ni rompe estilos existentes
 -->
 
@@ -42,11 +42,6 @@
 
           <router-link class="ml-top-link" to="/shop">Mis compras</router-link>
 
-          <!-- ✅ SJ Música (Play/Stop) en header -->
-          <div class="ml-top-spot">
-            <ShopSpotifyHeaderButton playlistId="2eeyIidJmozLsmoLiHkSDw" />
-          </div>
-
           <!-- 🛒 Carrito desktop -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -56,7 +51,7 @@
           </router-link>
         </div>
 
-        <!-- ✅ MOBILE: carrito + musica + menú -->
+        <!-- ✅ MOBILE: carrito + menú -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <!-- 🛒 Carrito mobile en header -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
@@ -65,11 +60,6 @@
             </v-badge>
             <v-icon v-else size="22">mdi-cart-outline</v-icon>
           </router-link>
-
-          <!-- ✅ SJ Música (Play/Stop) en header -->
-          <div class="ml-top-spot">
-            <ShopSpotifyHeaderButton playlistId="2eeyIidJmozLsmoLiHkSDw" />
-          </div>
 
           <!-- ☰ Menú -->
           <v-btn icon variant="text" class="ml-icon-btn" @click="mobileDrawer = true" aria-label="Menú">
@@ -103,7 +93,6 @@
         <div v-else class="ml-mobile-stack">
           <div class="ml-mobile-row2">
             <ShopCatalogMenu />
-            <!-- (si querés acá no va texto, lo dejamos vacío como venías pidiendo) -->
           </div>
         </div>
       </div>
@@ -126,7 +115,6 @@
         <v-list-item to="/auth/login" title="Ingresá" prepend-icon="mdi-account-outline" @click="mobileDrawer = false" />
       </v-list>
 
-      <!-- (sin texto abajo) -->
       <div class="ml-drawer-foot"></div>
     </v-navigation-drawer>
   </header>
@@ -149,11 +137,11 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import ShopCatalogMenu from "@/modules/shop/components/ShopCatalogMenu.vue";
-import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
-/* ✅ NEW: Play/Stop Spotify button en header */
+import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const route = useRoute();
 const cart = useShopCartStore();
@@ -218,9 +206,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* =========================================================
-   ✅ 100% THEME runtime (DB): usa --v-theme-primary
-   ========================================================= */
 .ml-header {
   position: sticky;
   top: 0;
@@ -352,7 +337,7 @@ onMounted(async () => {
   gap: 14px;
 }
 .ml-top-actions-mobile {
-  gap: 10px; /* un poquito más para carrito + música + menú */
+  gap: 10px;
 }
 .ml-top-link {
   display: inline-flex;
@@ -387,17 +372,6 @@ onMounted(async () => {
 }
 .ml-top-icon:hover {
   opacity: 1;
-}
-
-/* ✅ contenedor del botón de música (solo alineación, no cambia estilos globales) */
-.ml-top-spot {
-  display: inline-flex;
-  align-items: center;
-}
-.ml-top-spot :deep(.sj-spot-btn) {
-  /* baja apenas el tamaño para que calce con header */
-  width: 40px !important;
-  height: 40px !important;
 }
 
 /* hamburger */
@@ -502,9 +476,7 @@ onMounted(async () => {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* =========================================================
-   ✅ WhatsApp flotante ÚNICO (desktop + mobile)
-   ========================================================= */
+/* WhatsApp flotante */
 .ml-wa-fab {
   position: fixed;
   right: 14px;

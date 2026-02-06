@@ -2,12 +2,11 @@
 <!-- src/modules/shop/components/shop/ProductCardSubcat.vue -->
 <template>
   <v-card class="ml-card" variant="flat" rounded="xl">
-    <!-- ✅ CAMBIO CLAVE: wrapper DIV (no button) para poder tener botones internos -->
     <div class="ml-media" role="button" tabindex="0" @click="openProduct" @keydown.enter.prevent="openProduct">
       <img v-if="activeImg" :src="activeImg" alt="" loading="lazy" @error="onImgErr" />
       <div v-else class="ml-media-empty">Sin imagen</div>
 
-      <!-- Flechas: SOLO si hay +1 y NO está loading -->
+      <!-- Flechas -->
       <button
         v-if="imgs.length > 1 && !loadingMedia"
         class="ml-navpill ml-nav-left"
@@ -30,19 +29,17 @@
 
       <!-- Puntitos -->
       <div v-if="imgs.length > 1 && !loadingMedia" class="ml-dots" @click.stop>
-        <span
-          v-for="(x, i) in dotsCount"
-          :key="i"
-          class="ml-dot"
-          :class="{ active: i === dotActive }"
-        />
+        <span v-for="(x, i) in dotsCount" :key="i" class="ml-dot" :class="{ active: i === dotActive }" />
       </div>
 
-      <!-- Badge descuento -->
-      <div v-if="offPct" class="ml-badge">DESCUENTO</div>
-
-      <!-- ❤️ opcional (si querés el corazon como la captura, dejalo) -->
-      <button class="ml-fav" type="button" aria-label="Favorito" @click.stop.prevent="toggleFav">
+      <!-- ❤️ Favorito (hover desktop / visible mobile) -->
+      <button
+        class="ml-fav"
+        :class="{ on: fav }"
+        type="button"
+        aria-label="Favorito"
+        @click.stop.prevent="toggleFav"
+      >
         <v-icon size="18">{{ fav ? "mdi-heart" : "mdi-heart-outline" }}</v-icon>
       </button>
     </div>
@@ -66,9 +63,7 @@ import { computed, ref, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getPublicProductMedia } from "@/modules/shop/service/shop.public.api";
 
-const props = defineProps({
-  p: { type: Object, required: true },
-});
+const props = defineProps({ p: { type: Object, required: true } });
 
 const router = useRouter();
 const route = useRoute();
@@ -121,23 +116,19 @@ const offPct = computed(() => {
   return pct > 0 ? pct : 0;
 });
 
-// =========================
-// ✅ GALERÍA
-// =========================
+/* ===== Galería ===== */
 function extractLocalImgs(p) {
   const out = [];
 
   if (Array.isArray(p?.image_urls) && p.image_urls.length) {
     for (const u of p.image_urls) if (s(u)) out.push(s(u));
   }
-
   if (Array.isArray(p?.images) && p.images.length) {
     for (const it of p.images) {
       const u = typeof it === "string" ? it : it?.url || it?.image_url || it?.src;
       if (s(u)) out.push(s(u));
     }
   }
-
   if (s(p?.image_url)) out.push(s(p.image_url));
 
   const seen = new Set();
@@ -167,13 +158,11 @@ function prevImg() {
   if (list.length <= 1) return;
   idx.value = (idx.value - 1 + list.length) % list.length;
 }
-
 function nextImg() {
   const list = imgs.value.filter((u) => !broken.value.has(u));
   if (list.length <= 1) return;
   idx.value = (idx.value + 1) % list.length;
 }
-
 function onImgErr() {
   const u = activeImg.value;
   if (!u) return;
@@ -183,7 +172,6 @@ function onImgErr() {
   idx.value = 0;
 }
 
-// puntitos tipo ML (máx 6)
 const dotsCount = computed(() => Math.min(6, imgs.value.length));
 const dotActive = computed(() => {
   const n = imgs.value.length;
@@ -193,7 +181,6 @@ const dotActive = computed(() => {
   return Math.round(t * 5);
 });
 
-// ✅ si no hay varias imágenes locales, pedimos media pública (SIN 401)
 async function ensureMedia() {
   const pid = props.p?.product_id ?? props.p?.id;
   if (!pid) return;
@@ -218,11 +205,7 @@ async function ensureMedia() {
 }
 
 onMounted(ensureMedia);
-
-watch(
-  () => props.p?.product_id ?? props.p?.id,
-  () => ensureMedia()
-);
+watch(() => props.p?.product_id ?? props.p?.id, () => ensureMedia());
 
 function openProduct() {
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
@@ -233,7 +216,7 @@ function openProduct() {
   });
 }
 
-/* ❤️ opcional */
+/* ❤️ favorito */
 const fav = ref(false);
 function toggleFav() {
   fav.value = !fav.value;
@@ -251,7 +234,6 @@ function toggleFav() {
   overflow: hidden;
 }
 
-/* ✅ ahora es DIV */
 .ml-media {
   width: 100%;
   height: var(--media-h);
@@ -261,14 +243,12 @@ function toggleFav() {
   position: relative;
   overflow: hidden;
 }
-
 .ml-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
 .ml-media-empty {
   height: 100%;
   display: grid;
@@ -277,7 +257,7 @@ function toggleFav() {
   opacity: 0.55;
 }
 
-/* ===== Flechas estilo captura (pill grande) ===== */
+/* ===== Flechas (como te gustan) ===== */
 .ml-navpill {
   position: absolute;
   top: 50%;
@@ -292,23 +272,27 @@ function toggleFav() {
   box-shadow: 0 14px 26px rgba(0, 0, 0, 0.14);
   cursor: pointer;
   z-index: 3;
+
+  /* ✅ desktop: aparecen al hover */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
 }
 
-.ml-nav-left {
-  left: -18px; /* medio afuera */
-}
-.ml-nav-right {
-  right: -18px; /* medio afuera */
+.ml-nav-left { left: -18px; }
+.ml-nav-right { right: -18px; }
+
+.ml-nav-left :deep(.v-icon) { color: rgba(0, 0, 0, 0.65); }
+.ml-nav-right :deep(.v-icon) { color: #1e66ff; }
+
+/* ✅ HOVER REAL: sobre la media (más confiable que hover del card) */
+.ml-media:hover .ml-navpill,
+.ml-media:focus-within .ml-navpill {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.ml-nav-left :deep(.v-icon) {
-  color: rgba(0, 0, 0, 0.65);
-}
-.ml-nav-right :deep(.v-icon) {
-  color: #1e66ff;
-}
-
-/* Puntitos */
+/* dots */
 .ml-dots {
   position: absolute;
   left: 0;
@@ -317,7 +301,7 @@ function toggleFav() {
   display: flex;
   justify-content: center;
   gap: 6px;
-  pointer-events: none; /* no bloquea clicks */
+  pointer-events: none;
   z-index: 2;
 }
 .ml-dot {
@@ -334,20 +318,7 @@ function toggleFav() {
   background: rgba(255, 255, 255, 0.95);
 }
 
-.ml-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: #00a650;
-  color: #fff;
-  font-weight: 900;
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  z-index: 3;
-}
-
-/* ❤️ (opcional) */
+/* ❤️ favorito: aparece hover desktop, azul cuando está on */
 .ml-fav {
   position: absolute;
   top: 10px;
@@ -362,8 +333,22 @@ function toggleFav() {
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
   cursor: pointer;
   z-index: 3;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
 }
+
+.ml-media:hover .ml-fav,
+.ml-media:focus-within .ml-fav {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .ml-fav :deep(.v-icon) {
+  color: rgba(0, 0, 0, 0.55);
+}
+.ml-fav.on :deep(.v-icon) {
   color: #1e66ff;
 }
 
@@ -382,50 +367,35 @@ function toggleFav() {
   justify-content: space-between;
   gap: 10px;
 }
-
 .ml-price {
   font-size: 20px;
   font-weight: 950;
-  letter-spacing: -0.2px;
   color: #111;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
 .ml-off {
   font-size: 11px;
   font-weight: 950;
   color: #00a650;
   white-space: nowrap;
-  line-height: 1;
-  flex: 0 0 auto;
 }
-
 .ml-old {
   margin-top: -2px;
   font-size: 12px;
   opacity: 0.6;
   text-decoration: line-through;
 }
-
 .ml-title {
   margin-top: 4px;
   font-weight: 950;
   font-size: 13px;
-  letter-spacing: 0.2px;
   text-transform: uppercase;
   line-height: 1.15;
-
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: #111;
 }
-
 .ml-meta {
   font-size: 11px;
   opacity: 0.65;
@@ -435,41 +405,17 @@ function toggleFav() {
   text-overflow: ellipsis;
 }
 
-/* responsive */
-.ml-card {
-  --media-h: 180px;
+/* sizes */
+.ml-card { --media-h: 180px; }
+
+@media (hover: none) and (pointer: coarse) {
+  .ml-navpill,
+  .ml-fav {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
 }
 
-@media (max-width: 960px) {
-  .ml-card {
-    --media-h: 160px;
-  }
-}
-
-@media (max-width: 600px) {
-  .ml-card {
-    --media-h: 150px;
-  }
-
-  .ml-price-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .ml-off {
-    font-size: 10px;
-  }
-
-  .ml-navpill {
-    width: 44px;
-    height: 52px;
-  }
-  .ml-nav-left {
-    left: -16px;
-  }
-  .ml-nav-right {
-    right: -16px;
-  }
-}
+@media (max-width: 960px) { .ml-card { --media-h: 160px; } }
+@media (max-width: 600px) { .ml-card { --media-h: 150px; } }
 </style>

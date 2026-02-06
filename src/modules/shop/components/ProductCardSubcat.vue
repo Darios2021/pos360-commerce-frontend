@@ -1,4 +1,3 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <template>
   <v-card class="ml-card" variant="flat" rounded="xl">
     <div
@@ -11,24 +10,29 @@
       <img v-if="activeImg" :src="activeImg" alt="" loading="lazy" @error="onImgErr" />
       <div v-else class="ml-media-empty">Sin imagen</div>
 
+      <!-- FLECHA IZQ -->
       <button
         v-if="imgs.length > 1 && !loadingMedia"
         class="ml-navpill ml-nav-left"
         type="button"
         @click.stop.prevent="prevImg"
+        aria-label="Imagen anterior"
       >
         ‹
       </button>
 
+      <!-- FLECHA DER -->
       <button
         v-if="imgs.length > 1 && !loadingMedia"
         class="ml-navpill ml-nav-right"
         type="button"
         @click.stop.prevent="nextImg"
+        aria-label="Imagen siguiente"
       >
         ›
       </button>
 
+      <!-- DOTS -->
       <div v-if="imgs.length > 1" class="ml-dots">
         <span
           v-for="(x, i) in dotsCount"
@@ -137,21 +141,15 @@ function openProduct() {
 
 <style scoped>
 .ml-card {
-  display: flex;
-  flex-direction: column;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  grid-column: span 1 !important;
   background: #fff;
   border: 1px solid rgba(0,0,0,.08);
   overflow: hidden;
 }
 
 .ml-media {
+  position: relative;
   height: 180px;
   background: #f4f4f4;
-  position: relative;
   overflow: hidden;
 }
 
@@ -161,31 +159,105 @@ function openProduct() {
   object-fit: cover;
 }
 
-.ml-body {
-  padding: 12px 14px;
-  min-width: 0;
+/* ========================= */
+/* 🔥 FLECHAS ML-LIKE 🔥 */
+/* ========================= */
+
+.ml-navpill {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #333;
+
+  /* 👇 CLAVE */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease;
 }
 
+.ml-nav-left { left: 8px; }
+.ml-nav-right { right: 8px; }
+
+/* 👉 SOLO EN HOVER (DESKTOP) */
+@media (hover: hover) {
+  .ml-media:hover .ml-navpill {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* 👉 EN MOBILE SIEMPRE VISIBLES */
+@media (hover: none) {
+  .ml-navpill {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* dots */
+.ml-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+.ml-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.6);
+}
+.ml-dot.active {
+  background: #fff;
+}
+
+/* badge */
+.ml-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #00a650;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+/* body */
+.ml-body {
+  padding: 12px 14px;
+}
 .ml-price {
   font-size: 20px;
   font-weight: 900;
 }
-
 .ml-title {
   font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
-  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-
 .ml-meta {
   font-size: 11px;
   opacity: .6;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 </style>

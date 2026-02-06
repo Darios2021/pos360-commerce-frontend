@@ -10,14 +10,12 @@
             :loading="loading"
             :subcats="subcats"
             :selected-sub-id="selectedSubId"
-            :in-stock-only="inStockOnly"
             :brands="brandsFacet"
             :selected-brands="selectedBrands"
             :models="modelsFacet"
             :model="modelSelected"
             :volume-min="volumeMin"
             :volume-max="volumeMax"
-            @update:inStockOnly="onToggleStock"
             @selectSub="selectSub"
             @update:selectedBrands="onBrands"
             @update:model="onModel"
@@ -28,6 +26,7 @@
 
         <!-- RIGHT -->
         <main class="cat-main">
+          <!-- ✅ TOPBAR: título + ordenar -->
           <div class="cat-topbar">
             <div class="cat-top-left">
               <h1 class="cat-title">{{ parent?.name || "Categoría" }}</h1>
@@ -35,34 +34,7 @@
             </div>
 
             <div class="cat-top-right">
-              <div class="cat-search">
-                <v-text-field
-                  v-model="searchText"
-                  density="compact"
-                  variant="outlined"
-                  rounded="lg"
-                  placeholder="Buscar en la categoría…"
-                  hide-details
-                  :disabled="loading"
-                  @keyup.enter="applySearch"
-                />
-                <v-btn icon variant="tonal" rounded="lg" :disabled="loading" @click="applySearch">
-                  <v-icon icon="mdi-magnify" />
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  rounded="lg"
-                  :disabled="loading || !searchText"
-                  @click="clearSearch"
-                >
-                  <v-icon icon="mdi-close" />
-                </v-btn>
-              </div>
-
-              <v-btn variant="text" rounded="lg" :disabled="loading" @click="clearAllFilters">
-                Limpiar todo
-              </v-btn>
+              <ShopSortSelect v-model="sortSelected" :disabled="loading" />
             </div>
           </div>
 
@@ -78,30 +50,22 @@
           </div>
 
           <!-- EMPTY -->
-          <v-alert v-else-if="!filteredItems.length" type="info" variant="tonal">
+          <v-alert v-else-if="!items.length" type="info" variant="tonal">
             No hay productos para mostrar con estos criterios.
           </v-alert>
 
-          <!-- ✅ PRODUCTOS -->
+          <!-- PRODUCTS -->
           <div v-else class="product-grid">
-            <div v-for="p in filteredItems" :key="p.product_id" class="grid-item">
+            <div v-for="p in items" :key="p.product_id" class="grid-item">
               <ProductCardSubcat :p="p" />
             </div>
           </div>
 
           <!-- PAGINACIÓN -->
           <div v-if="pages > 1" class="pager">
-            <v-btn variant="tonal" :disabled="page <= 1 || loading" @click="prevPage">
-              Anterior
-            </v-btn>
+            <v-btn variant="tonal" :disabled="page <= 1 || loading" @click="prevPage">Anterior</v-btn>
             <div class="pager-text">Página {{ page }} / {{ pages }}</div>
-            <v-btn variant="tonal" :disabled="page >= pages || loading" @click="nextPage">
-              Siguiente
-            </v-btn>
-          </div>
-
-          <div class="promo-bottom">
-            <PromoSlider v-if="promoItems.length" :items="promoItems" @seeAll="fetchCatalog" />
+            <v-btn variant="tonal" :disabled="page >= pages || loading" @click="nextPage">Siguiente</v-btn>
           </div>
         </main>
       </div>
@@ -116,9 +80,9 @@ import { useRoute, useRouter } from "vue-router";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
 
-import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
 import ProductCardSubcat from "@/modules/shop/components/shop/ProductCardSubcat.vue";
 import ShopCategoryFilters from "@/modules/shop/components/shop/ShopCategoryFilters.vue";
+import ShopSortSelect from "@/modules/shop/components/shop/ShopSortSelect.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -135,12 +99,11 @@ const subcats = ref([]);
 const selectedSubId = ref(null);
 
 /* filtros */
-const searchText = ref("");
-const inStockOnly = ref(route.query.stock === "1");
-
-/* marca + modelo */
 const selectedBrands = ref(route.query.brands ? String(route.query.brands).split(",").filter(Boolean) : []);
 const modelSelected = ref(route.query.model ? String(route.query.model) : "");
+
+/* ✅ sort */
+const sortSelected = ref(route.query.sort ? String(route.query.sort) : "relevance");
 
 /* volumen */
 const volumeMin = ref(route.query.vmin ? Number(route.query.vmin) : null);
@@ -152,9 +115,6 @@ const limit = ref(24);
 const total = ref(0);
 
 const items = ref([]);
-const promoItems = ref([]);
-
-let searchTimer = null;
 
 const pages = computed(() => {
   const t = Number(total.value || 0);
@@ -162,18 +122,7 @@ const pages = computed(() => {
   return t ? Math.max(1, Math.ceil(t / l)) : 1;
 });
 
-function toNum(v) {
-  const n = Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
-function buildPromo(arr) {
-  const a = Array.isArray(arr) ? arr : [];
-  const promos = a.filter((p) => {
-    const disc = toNum(p.price_discount);
-    return Boolean(p.is_promo) || Boolean(p.is_new) || disc > 0;
-  });
-  return (promos.length ? promos : a).slice(0, 18);
-}
+const resultsLabelComputed = computed(() => `Productos (${Number(total.value || 0)})`);
 
 /* subcats */
 async function fetchSubcats() {
@@ -185,10 +134,14 @@ async function fetchSubcats() {
   }
 }
 
-/* facets marca */
+/* facets desde items */
 function pickBrandName(p) {
   return p?.brand_name || p?.brand || p?.brandName || p?.marca || p?.manufacturer || "";
 }
+function pickModelName(p) {
+  return p?.model_name || p?.model || p?.modelo || "";
+}
+
 const brandsFacet = computed(() => {
   const map = new Map();
   for (const p of items.value || []) {
@@ -201,10 +154,6 @@ const brandsFacet = computed(() => {
     .sort((a, b) => (b.count || 0) - (a.count || 0));
 });
 
-/* ✅ facets modelo (para el SELECT) */
-function pickModelName(p) {
-  return p?.model_name || p?.model || p?.modelo || "";
-}
 const modelsFacet = computed(() => {
   const map = new Map();
   for (const p of items.value || []) {
@@ -216,25 +165,6 @@ const modelsFacet = computed(() => {
     .map(([k, c]) => ({ key: k, label: k, count: c }))
     .sort((a, b) => (b.count || 0) - (a.count || 0));
 });
-
-/* filtro client-side */
-const filteredItems = computed(() => {
-  let arr = Array.isArray(items.value) ? items.value : [];
-
-  if (selectedBrands.value?.length) {
-    const set = new Set(selectedBrands.value.map((x) => String(x)));
-    arr = arr.filter((p) => set.has(String(pickBrandName(p) || "")));
-  }
-
-  if (String(modelSelected.value || "").trim()) {
-    const mk = String(modelSelected.value || "").trim();
-    arr = arr.filter((p) => String(pickModelName(p) || "").trim() === mk);
-  }
-
-  return arr;
-});
-
-const resultsLabelComputed = computed(() => `Productos (${filteredItems.value.length || 0})`);
 
 /* query helper */
 function setQuery(partial) {
@@ -252,24 +182,21 @@ function selectSub(idOrNull) {
   setQuery({ sub: selectedSubId.value == null ? null : String(selectedSubId.value), page: "1" });
   fetchCatalog();
 }
-function onToggleStock(v) {
-  inStockOnly.value = !!v;
-  page.value = 1;
-  setQuery({ stock: inStockOnly.value ? "1" : null, page: "1" });
-  fetchCatalog();
-}
+
 function onBrands(arr) {
   selectedBrands.value = Array.isArray(arr) ? arr.map(String) : [];
   page.value = 1;
   setQuery({ brands: selectedBrands.value.length ? selectedBrands.value.join(",") : null, page: "1" });
   fetchCatalog();
 }
+
 function onModel(v) {
   modelSelected.value = String(v || "");
   page.value = 1;
   setQuery({ model: modelSelected.value ? modelSelected.value : null, page: "1" });
   fetchCatalog();
 }
+
 function onVolume({ min, max }) {
   volumeMin.value = min ?? null;
   volumeMax.value = max ?? null;
@@ -281,25 +208,17 @@ function onVolume({ min, max }) {
   });
   fetchCatalog();
 }
-function applySearch() {
-  page.value = 1;
-  setQuery({ page: "1" });
-  fetchCatalog();
-}
-function clearSearch() {
-  searchText.value = "";
-  applySearch();
-}
+
 function clearAllFilters() {
-  searchText.value = "";
   selectedSubId.value = null;
-  inStockOnly.value = false;
   selectedBrands.value = [];
   modelSelected.value = "";
   volumeMin.value = null;
   volumeMax.value = null;
+  sortSelected.value = "relevance";
   page.value = 1;
-  setQuery({ sub: null, stock: null, brands: null, model: null, vmin: null, vmax: null, page: "1" });
+
+  setQuery({ sub: null, brands: null, model: null, vmin: null, vmax: null, sort: null, page: "1" });
   fetchCatalog();
 }
 
@@ -308,32 +227,31 @@ async function fetchCatalog() {
   loading.value = true;
   err.value = "";
   try {
-    const qStr = String(searchText.value || "").trim();
     const isAll = selectedSubId.value == null;
 
     const params = {
       page: page.value,
       limit: limit.value,
-      search: qStr || "",
       category_id: parentId.value,
       subcategory_id: isAll ? null : selectedSubId.value,
       include_children: isAll ? 1 : 0,
-      in_stock: inStockOnly.value ? 1 : 0,
 
-      brand: selectedBrands.value?.length ? selectedBrands.value.join(",") : "",
+      // ✅ server-side filtros
+      brands: selectedBrands.value?.length ? selectedBrands.value.join(",") : "",
       model: String(modelSelected.value || "").trim(),
       volume_min: volumeMin.value == null ? "" : Number(volumeMin.value),
       volume_max: volumeMax.value == null ? "" : Number(volumeMax.value),
+
+      // ✅ sort
+      sort: String(sortSelected.value || "relevance"),
     };
 
     const r = await getCatalog(params);
     items.value = Array.isArray(r?.items) ? r.items : [];
     total.value = Number(r?.total || 0);
-    promoItems.value = buildPromo(items.value);
   } catch {
     err.value = "No se pudo cargar el catálogo.";
     items.value = [];
-    promoItems.value = [];
     total.value = 0;
   } finally {
     loading.value = false;
@@ -363,144 +281,96 @@ onMounted(async () => {
   await fetchCatalog();
 });
 
+/* ✅ cuando cambia el sort, actualiza URL y recarga */
 watch(
-  () => searchText.value,
-  () => {
+  () => sortSelected.value,
+  (v) => {
     page.value = 1;
-    setQuery({ page: "1" });
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(fetchCatalog, 350);
+    setQuery({ sort: v === "relevance" ? null : String(v), page: "1" });
+    fetchCatalog();
   }
 );
 </script>
 
 <style scoped>
-.category-page {
-  background: #f5f5f5;
-}
+.category-page { background: #f5f5f5; }
+
 .section {
-  max-width: 1300px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 18px 14px 48px;
+  padding: 16px 12px 44px;
 }
 
-/* layout */
-.cat-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
-  align-items: start;
+.cat-layout{
+  display:grid;
+  grid-template-columns: 300px 1fr;
+  gap:14px;
+  align-items:start;
 }
-.cat-side {
+
+.cat-side{
   position: sticky;
   top: 12px;
   height: fit-content;
   min-width: 0 !important;
 }
-.cat-main {
-  min-width: 0 !important; /* ✅ FIX “tira a la derecha” */
-}
-.section,
-.cat-layout,
-.cat-main {
-  max-width: 100%;
-  overflow-x: hidden;
+
+.cat-main{ min-width:0 !important; }
+
+@media (max-width: 960px){
+  .cat-layout{ grid-template-columns: 1fr; }
+  .cat-side{ display:none; }
 }
 
-@media (max-width: 960px) {
-  .cat-layout {
-    grid-template-columns: 1fr;
-  }
-  .cat-side {
-    display: none;
-  }
+.cat-topbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
 }
 
-/* topbar */
-.cat-topbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.cat-title {
-  margin: 0;
-  font-size: 22px;
+.cat-title{
+  margin:0;
+  font-size: 20px;
   line-height: 1.15;
   font-weight: 900;
-  color: #0e2134;
+  color:#0e2134;
 }
-.cat-count {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-.cat-top-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.cat-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 420px;
-}
-.cat-search :deep(.v-field) {
-  background: #fff;
-}
-@media (max-width: 960px) {
-  .cat-topbar {
-    display: none;
-  }
+.cat-count{
+  margin-top:4px;
+  font-size:12px;
+  opacity:.7;
 }
 
-/* GRID */
-.category-page[data-page="shop-category-v2"] .product-grid {
-  display: grid !important;
-  gap: 16px !important;
+.product-grid{
+  display:grid !important;
+  gap:12px !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  max-width: 1060px;
+  margin: 0 auto !important;
 }
-.category-page[data-page="shop-category-v2"] .product-grid .grid-item {
+
+.product-grid .grid-item,
+.product-grid .grid-item > *{
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
-  grid-column: span 1 !important;
-}
-.category-page[data-page="shop-category-v2"] .product-grid .grid-item > * {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
 }
 
-@media (min-width: 1500px) {
-  .category-page[data-page="shop-category-v2"] .product-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  }
+@media (max-width: 1100px){
+  .product-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; max-width: 900px; }
 }
-@media (max-width: 1100px) {
-  .category-page[data-page="shop-category-v2"] .product-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-}
-@media (max-width: 960px) {
-  .category-page[data-page="shop-category-v2"] .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
+@media (max-width: 960px){
+  .cat-topbar{ display:none; }
+  .product-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)) !important; max-width: 640px; }
 }
 
-.pager {
-  margin-top: 22px;
-  display: flex;
-  justify-content: center;
-  gap: 12px;
+.pager{
+  margin-top:18px;
+  display:flex;
+  justify-content:center;
+  gap:12px;
 }
-
-.promo-bottom {
-  margin-top: 26px;
-}
+.pager-text{ font-size:13px; opacity:.85; }
 </style>
