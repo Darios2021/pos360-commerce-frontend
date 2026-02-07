@@ -26,7 +26,7 @@
 
         <!-- RIGHT -->
         <main class="cat-main">
-          <!-- ✅ TOPBAR: título + ordenar -->
+          <!-- TOPBAR -->
           <div class="cat-topbar">
             <div class="cat-top-left">
               <h1 class="cat-title">{{ parent?.name || "Categoría" }}</h1>
@@ -102,7 +102,7 @@ const selectedSubId = ref(null);
 const selectedBrands = ref(route.query.brands ? String(route.query.brands).split(",").filter(Boolean) : []);
 const modelSelected = ref(route.query.model ? String(route.query.model) : "");
 
-/* ✅ sort */
+/* sort */
 const sortSelected = ref(route.query.sort ? String(route.query.sort) : "relevance");
 
 /* volumen */
@@ -169,31 +169,55 @@ const modelsFacet = computed(() => {
 /* query helper */
 function setQuery(partial) {
   const q = { ...route.query, ...partial };
+
+  // ✅ mata basura que se te está “propagando”
+  delete q.category_id;
+
   Object.keys(q).forEach((k) => {
     if (q[k] === null || q[k] === undefined || q[k] === "") delete q[k];
   });
+
   router.replace({ name: route.name, params: route.params, query: q });
 }
 
 /* handlers */
 function selectSub(idOrNull) {
   selectedSubId.value = idOrNull == null ? null : String(idOrNull);
+
+  // ✅ CLAVE: al cambiar subcat, limpiar modelo viejo (es lo que te rompe todo)
+  modelSelected.value = "";
   page.value = 1;
-  setQuery({ sub: selectedSubId.value == null ? null : String(selectedSubId.value), page: "1" });
+
+  setQuery({
+    sub: selectedSubId.value == null ? null : String(selectedSubId.value),
+    model: null, // ✅ evita “Microfono Profesional” quedándose en Auriculares
+    page: "1",
+  });
+
   fetchCatalog();
 }
 
 function onBrands(arr) {
   selectedBrands.value = Array.isArray(arr) ? arr.map(String) : [];
   page.value = 1;
-  setQuery({ brands: selectedBrands.value.length ? selectedBrands.value.join(",") : null, page: "1" });
+
+  setQuery({
+    brands: selectedBrands.value.length ? selectedBrands.value.join(",") : null,
+    page: "1",
+  });
+
   fetchCatalog();
 }
 
 function onModel(v) {
   modelSelected.value = String(v || "");
   page.value = 1;
-  setQuery({ model: modelSelected.value ? modelSelected.value : null, page: "1" });
+
+  setQuery({
+    model: modelSelected.value ? modelSelected.value : null,
+    page: "1",
+  });
+
   fetchCatalog();
 }
 
@@ -201,11 +225,13 @@ function onVolume({ min, max }) {
   volumeMin.value = min ?? null;
   volumeMax.value = max ?? null;
   page.value = 1;
+
   setQuery({
     vmin: volumeMin.value == null ? null : String(volumeMin.value),
     vmax: volumeMax.value == null ? null : String(volumeMax.value),
     page: "1",
   });
+
   fetchCatalog();
 }
 
@@ -218,7 +244,16 @@ function clearAllFilters() {
   sortSelected.value = "relevance";
   page.value = 1;
 
-  setQuery({ sub: null, brands: null, model: null, vmin: null, vmax: null, sort: null, page: "1" });
+  setQuery({
+    sub: null,
+    brands: null,
+    model: null,
+    vmin: null,
+    vmax: null,
+    sort: null,
+    page: "1",
+  });
+
   fetchCatalog();
 }
 
@@ -236,13 +271,13 @@ async function fetchCatalog() {
       subcategory_id: isAll ? null : selectedSubId.value,
       include_children: isAll ? 1 : 0,
 
-      // ✅ server-side filtros
+      // filtros server-side
       brands: selectedBrands.value?.length ? selectedBrands.value.join(",") : "",
       model: String(modelSelected.value || "").trim(),
       volume_min: volumeMin.value == null ? "" : Number(volumeMin.value),
       volume_max: volumeMax.value == null ? "" : Number(volumeMax.value),
 
-      // ✅ sort
+      // sort
       sort: String(sortSelected.value || "relevance"),
     };
 
@@ -274,14 +309,45 @@ function prevPage() {
   }
 }
 
+/* init */
 onMounted(async () => {
   catsAll.value = await getPublicCategoriesAll();
+
   selectedSubId.value = route.query.sub ? String(route.query.sub) : null;
   await fetchSubcats();
   await fetchCatalog();
 });
 
-/* ✅ cuando cambia el sort, actualiza URL y recarga */
+/* ✅ si cambia la categoría (/shop/c/:id), reset TOTAL para evitar query “pegada” */
+watch(
+  () => parentId.value,
+  async () => {
+    // reset estado
+    selectedSubId.value = null;
+    selectedBrands.value = [];
+    modelSelected.value = "";
+    volumeMin.value = null;
+    volumeMax.value = null;
+    sortSelected.value = "relevance";
+    page.value = 1;
+
+    // limpia query “propagada”
+    setQuery({
+      sub: null,
+      brands: null,
+      model: null,
+      vmin: null,
+      vmax: null,
+      sort: null,
+      page: "1",
+    });
+
+    await fetchSubcats();
+    await fetchCatalog();
+  }
+);
+
+/* ✅ cuando cambia sort, actualiza URL y recarga */
 watch(
   () => sortSelected.value,
   (v) => {

@@ -1,13 +1,26 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/shop/service/shop.videos.public.api.js
 //
-// Feed: GET /api/v1/public/videos/feed?limit=12
-// Problema: el feed trae el video pero NO siempre trae imágenes del producto.
-// Solución correcta: hidratar usando el MISMO getProduct() que usa ShopProduct.vue (ya probado).
+// ✅ FIX CRÍTICO + OPTIMIZACIÓN:
+// - NO usar "/public/..." (con slash) porque con Axios puede romper baseURL si baseURL incluye /api/v1
+// - Usar "public/..." (sin slash) para que SIEMPRE concatene con VITE_API_BASE_URL
 //
-// Importante:
-// - Nunca sobreescribe it.product con null
-// - Cachea productos por id
+// ✅ Mantiene hidratación (getProduct) pero evita 404 spam:
+// - Cachea productos OK
+// - Cachea "missing" (404) para NO reintentar mil veces
+// - Permite apagar hidratación por ENV si querés (sin redeploy de código)
+//
+// Extras:
+// - Respeta limit alto (cap por ENV VITE_PUBLIC_VIDEOS_FEED_MAX)
+// - Soporta offset para paginar (si el backend lo soporta)
+// - Debug opcional VITE_DEBUG_VIDEOS_FEED=1
+// - Concurrencia de hidratación limitada (para no matar red)
+//
+// ENV opcionales:
+// - VITE_PUBLIC_VIDEOS_FEED_MAX=200
+// - VITE_DEBUG_VIDEOS_FEED=1
+// - VITE_VIDEOS_HYDRATE_PRODUCTS=1   (default 1)
+// - VITE_VIDEOS_HYDRATE_CONCURRENCY=6 (default 6)
 
 import http from "@/app/api/http";
 import { getProduct } from "@/modules/shop/service/shop.public.api"; // ✅ el mismo que usa ShopProduct.vue
@@ -49,24 +62,49 @@ function hasAnyImage(p) {
 ========================= */
 const _prodCache = new Map(); // id -> product
 const _inflight = new Map(); // id -> Promise
+const _missing = new Set(); // ids que dieron 404 (no reintentar)
+
+/**
+ * getProduct seguro:
+ * - Si 404 => marca missing y devuelve null
+ * - Si otro error => devuelve null (sin romper feed)
+ */
+async function safeGetProduct(pid) {
+  try {
+    const p = await getProduct(pid);
+    if (p && typeof p === "object") return p;
+    return null;
+  } catch (e) {
+    // axios style: e.response.status
+    const st = e?.response?.status;
+    if (st === 404) {
+      _missing.add(pid);
+      return null;
+    }
+    return null;
+  }
+}
 
 async function hydrateProductById(productId) {
   const pid = toInt(productId, 0);
   if (!pid) return null;
+
+  // si ya sabemos que no existe, no reintentar
+  if (_missing.has(pid)) return null;
 
   if (_prodCache.has(pid)) return _prodCache.get(pid);
   if (_inflight.has(pid)) return _inflight.get(pid);
 
   const prom = (async () => {
     try {
-      // ✅ este llamado ya funciona en ShopProduct.vue
-      const p = await getProduct(pid);
+      const p = await safeGetProduct(pid);
+
       if (p && typeof p === "object") {
         _prodCache.set(pid, p);
         return p;
       }
-      return null;
-    } catch {
+
+      // si safeGetProduct marcó missing, listo.
       return null;
     } finally {
       _inflight.delete(pid);
@@ -94,14 +132,41 @@ async function mapLimit(arr, limit, fn) {
 
 /**
  * Devuelve: { ok:true, data:[...] }
+ * Soporta offset (si tu backend lo soporta): public/videos/feed?limit=16&offset=16
  */
-export async function publicVideosFeed({ limit = 12 } = {}) {
+export async function publicVideosFeed({ limit = 12, offset = 0 } = {}) {
+  const HARD_MAX = toInt(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_MAX, 200);
+  const DEBUG = String(import.meta?.env?.VITE_DEBUG_VIDEOS_FEED) === "1";
+
+  const HYDRATE_ENABLED =
+    String(import.meta?.env?.VITE_VIDEOS_HYDRATE_PRODUCTS ?? "1") !== "0";
+
+  const HYDRATE_CONCURRENCY = Math.max(
+    1,
+    toInt(import.meta?.env?.VITE_VIDEOS_HYDRATE_CONCURRENCY, 6)
+  );
+
   let lim = toInt(limit, 12);
   if (!lim || lim < 1) lim = 12;
-  if (lim > 60) lim = 60;
+  if (lim > HARD_MAX) lim = HARD_MAX;
 
-  const { data } = await http.get(`/public/videos/feed`, {
-    params: { limit: lim },
+  let off = toInt(offset, 0);
+  if (!Number.isFinite(off) || off < 0) off = 0;
+
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log("[publicVideosFeed] requesting:", {
+      lim,
+      off,
+      HARD_MAX,
+      HYDRATE_ENABLED,
+      HYDRATE_CONCURRENCY,
+    });
+  }
+
+  // ✅ CLAVE: SIN "/" inicial
+  const { data } = await http.get(`public/videos/feed`, {
+    params: { limit: lim, offset: off },
   });
 
   // normalizar lista
@@ -113,30 +178,38 @@ export async function publicVideosFeed({ limit = 12 } = {}) {
         ? data
         : [];
 
+  // Si no queremos hidratar, devolvemos tal cual
+  if (!HYDRATE_ENABLED) {
+    if (data && typeof data === "object" && "ok" in data) return { ...data, data: list };
+    return { ok: true, data: list };
+  }
+
   // Hidratar solo los que:
   // - tienen productId
   // - y NO traen imagen
-  const hydrated = await mapLimit(list, 6, async (it) => {
+  const hydrated = await mapLimit(list, HYDRATE_CONCURRENCY, async (it) => {
     const prod = it?.product && typeof it.product === "object" ? it.product : null;
-    const pid = it?.product_id ?? prod?.id ?? null;
+    const pid = toInt(it?.product_id ?? prod?.id ?? 0, 0);
 
-    // Si no hay producto id, NO tocamos nada
     if (!pid) return it;
 
-    // Si ya hay producto con imagen, NO tocamos nada
+    // Si ya viene producto con imagen, no tocamos
     if (prod && hasAnyImage(prod)) return it;
 
-    // Intentar hidratar usando el getProduct real
+    // Si ya sabemos que no existe, no tocamos
+    if (_missing.has(pid)) return it;
+
     const full = await hydrateProductById(pid);
+    if (full && typeof full === "object") return { ...it, product: full };
 
-    // Si conseguimos producto completo, lo pegamos
-    if (full && typeof full === "object") {
-      return { ...it, product: full };
-    }
-
-    // Si no se pudo, devolvemos el item original SIN romperlo
     return it;
   });
+
+  if (DEBUG) {
+    const missingCount = _missing.size;
+    // eslint-disable-next-line no-console
+    console.log("[publicVideosFeed] received:", list.length, "hydrated:", hydrated.length, "missing:", missingCount);
+  }
 
   // devolver manteniendo formato
   if (data && typeof data === "object" && "ok" in data) {

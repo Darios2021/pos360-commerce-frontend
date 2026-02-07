@@ -13,7 +13,7 @@
             :class="{ on: selectedSubId == null }"
             type="button"
             :disabled="loading"
-            @click="$emit('selectSub', null)"
+            @click="emit('selectSub', null)"
           >
             <span class="mlf-name">Ver todas</span>
           </button>
@@ -25,7 +25,7 @@
             :class="{ on: String(selectedSubId) === String(s?.id) }"
             type="button"
             :disabled="loading"
-            @click="$emit('selectSub', String(s?.id))"
+            @click="emit('selectSub', String(s?.id))"
             :title="s?.name || ''"
           >
             <span class="mlf-name">{{ s?.name || "—" }}</span>
@@ -53,12 +53,18 @@
           </button>
         </div>
 
-        <button v-if="brands.length > brandFold" class="mlf-more" type="button" :disabled="loading" @click="showMoreBrands = !showMoreBrands">
+        <button
+          v-if="brands.length > brandFold"
+          class="mlf-more"
+          type="button"
+          :disabled="loading"
+          @click="showMoreBrands = !showMoreBrands"
+        >
           {{ showMoreBrands ? "Mostrar menos" : "Mostrar más" }}
         </button>
       </section>
 
-      <!-- ✅ MODELO (LISTA COMO ML, NO SELECT) -->
+      <!-- ✅ MODELO (LISTA COMO ML) -->
       <section v-if="models?.length" class="mlf-sec">
         <div class="mlf-title">Modelo</div>
 
@@ -89,7 +95,13 @@
           </button>
         </div>
 
-        <button v-if="models.length > modelFold" class="mlf-more" type="button" :disabled="loading" @click="showMoreModels = !showMoreModels">
+        <button
+          v-if="models.length > modelFold"
+          class="mlf-more"
+          type="button"
+          :disabled="loading"
+          @click="showMoreModels = !showMoreModels"
+        >
           {{ showMoreModels ? "Mostrar menos" : "Mostrar más" }}
         </button>
       </section>
@@ -125,7 +137,7 @@
       </section>
 
       <div class="mlf-bottom">
-        <button class="mlf-reset" type="button" :disabled="loading" @click="$emit('clearAll')">
+        <button class="mlf-reset" type="button" :disabled="loading" @click="emit('clearAll')">
           LIMPIAR FILTROS
         </button>
       </div>
@@ -152,11 +164,23 @@ const props = defineProps({
   volumeMax: { type: [Number, String, null], default: null },
 });
 
-const emit = defineEmits(["selectSub", "clearAll", "update:selectedBrands", "update:model", "update:volume"]);
+/**
+ * ✅ IMPORTANTÍSIMO:
+ * Estos nombres coinciden con tu ShopCategory.vue:
+ * @selectSub, @clearAll, @update:selectedBrands, @update:model, @update:volume
+ */
+const emit = defineEmits([
+  "selectSub",
+  "clearAll",
+  "update:selectedBrands",
+  "update:model",
+  "update:volume",
+]);
 
-/* Marca */
+/* ===== Marca ===== */
 const brandFold = 9;
 const showMoreBrands = ref(false);
+
 const visibleBrands = computed(() => {
   const arr = Array.isArray(props.brands) ? props.brands : [];
   return showMoreBrands.value ? arr : arr.slice(0, brandFold);
@@ -166,6 +190,7 @@ function isBrandOn(key) {
   const k = String(key ?? "");
   return (props.selectedBrands || []).map(String).includes(k);
 }
+
 function toggleBrand(key) {
   const k = String(key ?? "");
   const set = new Set((props.selectedBrands || []).map(String));
@@ -174,7 +199,7 @@ function toggleBrand(key) {
   emit("update:selectedBrands", Array.from(set));
 }
 
-/* ✅ Modelo (lista) */
+/* ===== Modelo (lista) ===== */
 const modelFold = 9;
 const showMoreModels = ref(false);
 
@@ -196,6 +221,7 @@ function isModelOn(key) {
   const k = String(key ?? "");
   return String(modelLocal.value || "") === k;
 }
+
 function setModel(v) {
   modelLocal.value = String(v || "");
   emit("update:model", modelLocal.value);
@@ -208,18 +234,12 @@ const modelsCountTotal = computed(() => {
   return sum > 0 ? sum : "";
 });
 
-/* Volumen */
+/* ===== Volumen ===== */
 const volumeMinLocal = ref(props.volumeMin ?? "");
 const volumeMaxLocal = ref(props.volumeMax ?? "");
 
-watch(
-  () => props.volumeMin,
-  (v) => (volumeMinLocal.value = v ?? "")
-);
-watch(
-  () => props.volumeMax,
-  (v) => (volumeMaxLocal.value = v ?? "")
-);
+watch(() => props.volumeMin, (v) => (volumeMinLocal.value = v ?? ""));
+watch(() => props.volumeMax, (v) => (volumeMaxLocal.value = v ?? ""));
 
 function applyVolume() {
   const minStr = String(volumeMinLocal.value ?? "").trim();

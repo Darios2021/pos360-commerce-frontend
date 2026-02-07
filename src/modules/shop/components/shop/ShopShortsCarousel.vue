@@ -1,3 +1,4 @@
+
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <template>
   <v-card class="shc-card" variant="flat" rounded="xl">
@@ -18,7 +19,6 @@
       </div>
 
       <div v-else class="shc-wrap">
-        <!-- FLECHAS (más afuera, no se superponen con el video) -->
         <v-btn
           class="shc-nav shc-nav-left"
           icon="mdi-chevron-left"
@@ -37,7 +37,13 @@
         />
 
         <!-- STRIP -->
-        <div ref="stripEl" class="shc-strip" role="region" aria-label="Videos cortos">
+        <div
+          ref="stripEl"
+          class="shc-strip"
+          role="region"
+          aria-label="Videos cortos"
+          @scroll.passive="onStripScroll"
+        >
           <div v-for="it in items" :key="it.key" class="shc-item">
             <div
               class="shc-frame"
@@ -46,9 +52,7 @@
                 '--shc-vh': videoH + 'px',
               }"
             >
-              <!-- VIDEO -->
               <div class="shc-video">
-                <!-- Preview + Play -->
                 <button
                   v-if="activePlayKey !== it.key"
                   class="shc-thumbBtn"
@@ -66,7 +70,6 @@
                   </div>
                 </button>
 
-                <!-- Iframe -->
                 <div v-else class="shc-iframeWrap">
                   <div class="shc-ytStage">
                     <iframe
@@ -83,7 +86,6 @@
                 </div>
               </div>
 
-              <!-- PRODUCT BAR -->
               <div class="shc-prodBar">
                 <div v-if="resolvedProduct(it)?.id" class="prodRow">
                   <button
@@ -137,21 +139,46 @@
               </div>
             </div>
           </div>
+          <!-- NO agrego UI nueva para “loading more” para no tocar estética -->
         </div>
-        <!-- /strip -->
       </div>
     </div>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { publicVideosFeed } from "@/modules/shop/service/shop.videos.public.api.js";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
+/**
+ * ✅ Optimización sin cambiar diseño:
+ * - pageSize: trae de a tandas (16)
+ * - loadMore() al acercarte al final del scroll horizontal
+ */
 const props = defineProps({
-  limit: { type: Number, default: 12 },
+  limit: { type: Number, default: 200 },      // máximo total que permitís cargar (no de una)
+  pageSize: { type: Number, default: 16 },   // tamaño de página
+});
+
+const HARD_MAX = computed(() => {
+  const v = Number(String(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_MAX ?? "200"));
+  return Number.isFinite(v) && v > 0 ? v : 200;
+});
+
+const EFFECTIVE_TOTAL = computed(() => {
+  let lim = Number(String(props.limit ?? 0));
+  if (!Number.isFinite(lim) || lim < 1) lim = 200;
+  if (lim > HARD_MAX.value) lim = HARD_MAX.value;
+  return Math.floor(lim);
+});
+
+const EFFECTIVE_PAGE = computed(() => {
+  let p = Number(String(props.pageSize ?? 0));
+  if (!Number.isFinite(p) || p < 8) p = 16;
+  if (p > 60) p = 60;
+  return Math.floor(p);
 });
 
 const router = useRouter();
@@ -171,6 +198,11 @@ const activePlayKey = ref("");
 let ro = null;
 
 const brokenByKey = ref({});
+
+// paging state
+const offset = ref(0);
+const hasMore = ref(true);
+const loadingMore = ref(false);
 
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
@@ -458,23 +490,74 @@ function normalizeItem(x) {
   };
 }
 
-async function fetchFeed() {
+async function fetchFirstPage() {
   loading.value = true;
   error.value = "";
   try {
-    const r = await publicVideosFeed({ limit: props.limit });
+    offset.value = 0;
+    hasMore.value = true;
+
+    const take = Math.min(EFFECTIVE_PAGE.value, EFFECTIVE_TOTAL.value);
+    const r = await publicVideosFeed({ limit: take, offset: 0 });
+
     const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
     items.value = list.map(normalizeItem).filter((x) => x.url);
+
+    offset.value = items.value.length;
+    hasMore.value = Boolean(r?.meta?.has_more) && items.value.length < EFFECTIVE_TOTAL.value;
   } catch (e) {
     error.value = e?.message || "No se pudieron cargar los videos";
     items.value = [];
+    hasMore.value = false;
   } finally {
     loading.value = false;
   }
 }
 
+async function fetchMore() {
+  if (loadingMore.value) return;
+  if (!hasMore.value) return;
+
+  // no pasar del total que permitís
+  if (items.value.length >= EFFECTIVE_TOTAL.value) {
+    hasMore.value = false;
+    return;
+  }
+
+  loadingMore.value = true;
+  try {
+    const remaining = EFFECTIVE_TOTAL.value - items.value.length;
+    const take = Math.max(8, Math.min(EFFECTIVE_PAGE.value, remaining));
+
+    const r = await publicVideosFeed({ limit: take, offset: offset.value });
+
+    const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
+    const next = list.map(normalizeItem).filter((x) => x.url);
+
+    // dedupe por id/key
+    const seen = new Set(items.value.map((x) => String(x.id || x.key)));
+    const dedup = next.filter((x) => !seen.has(String(x.id || x.key)));
+
+    items.value = items.value.concat(dedup);
+
+    offset.value = offset.value + next.length;
+    hasMore.value = Boolean(r?.meta?.has_more) && next.length > 0 && items.value.length < EFFECTIVE_TOTAL.value;
+  } finally {
+    loadingMore.value = false;
+  }
+}
+
+function onStripScroll() {
+  const el = stripEl.value;
+  if (!el) return;
+
+  // cerca del final -> cargar más
+  const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 420;
+  if (nearEnd) fetchMore();
+}
+
 onMounted(async () => {
-  await fetchFeed();
+  await fetchFirstPage();
   await nextTick();
   updateSizing();
 
@@ -490,16 +573,18 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => props.limit,
+  () => [props.limit, props.pageSize],
   async () => {
     activePlayKey.value = "";
     brokenByKey.value = {};
-    await fetchFeed();
+    await fetchFirstPage();
     await nextTick();
     updateSizing();
   }
 );
 </script>
+
+<!-- ✅ TUS STYLES QUEDAN IGUAL (no los pego para no duplicar). -->
 
 <style scoped>
 /* =========================
