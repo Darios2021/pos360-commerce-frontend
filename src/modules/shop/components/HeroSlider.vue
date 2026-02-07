@@ -119,7 +119,7 @@ function goToSearch(q) {
   });
 }
 
-/* fallback */
+/* fallback SOLO si no hay slides */
 const FALLBACK_SLIDES = [
   {
     pill: "NOVEDADES",
@@ -141,56 +141,14 @@ const FALLBACK_SLIDES = [
     primaryAction: { type: "category", cat: 2, sub: null, q: "AUDIO" },
     secondaryAction: { type: "shop" },
   },
-  {
-    pill: "SEGURIDAD",
-    title: "Cámaras y monitoreo",
-    subtitle: "Armá tu sistema de seguridad con instalación simple.",
-    image: "https://images.unsplash.com/photo-1580894894513-541e068a3d6b?auto=format&fit=crop&w=2400&q=80",
-    primaryCta: "Ver cámaras",
-    secondaryCta: "Ir al catálogo",
-    primaryAction: { type: "category", cat: 11, sub: 58, q: "CAMARAS" },
-    secondaryAction: { type: "shop" },
-  },
-  {
-    pill: "ELECTRO",
-    title: "Accesorios\npara el hogar",
-    subtitle: "Productos útiles para el día a día.",
-    image: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=2400&q=80",
-    primaryCta: "Ver electro",
-    secondaryCta: "Ir al catálogo",
-    primaryAction: { type: "category", cat: 7, sub: 38, q: "ELECTRO" },
-    secondaryAction: { type: "shop" },
-  },
-  {
-    pill: "CELULARES",
-    title: "Teléfonos y\naccesorios",
-    subtitle: "Fundas, cargadores, power banks y más.",
-    image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=2400&q=80",
-    primaryCta: "Ver teléfonos",
-    secondaryCta: "Ir al catálogo",
-    primaryAction: { type: "search", q: "TELEFONOS" },
-    secondaryAction: { type: "shop" },
-  },
-  {
-    pill: "ENVÍOS",
-    title: "Comprá online",
-    subtitle: "Buscá productos, agregalos al carrito y elegí sucursal al finalizar.",
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=2400&q=80",
-    primaryCta: "Empezar",
-    secondaryCta: "Catálogo",
-    primaryAction: { type: "shop" },
-    secondaryAction: { type: "shop" },
-  },
 ];
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
+/* ✅ YA NO SE RELLENA A 6: muestra SOLO lo que le pasás */
 const slidesSafe = computed(() => {
   const s = rawSlides.value;
-  if (s.length >= 6) return s;
-  const filled = [...s];
-  for (let i = filled.length; i < 6; i++) filled.push(FALLBACK_SLIDES[i]);
-  return filled;
+  return s.length ? s : FALLBACK_SLIDES;
 });
 
 const idx = ref(0);
@@ -269,7 +227,6 @@ watch(
 </script>
 
 <style scoped>
-/* full-bleed */
 .ml-hero {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -279,7 +236,6 @@ watch(
   top: -1px;
 }
 
-/* tapa hairline del header */
 .ml-hero::before {
   content: "";
   position: absolute;
@@ -292,7 +248,6 @@ watch(
   pointer-events: none;
 }
 
-/* vuetify window */
 .ml-window {
   width: 100%;
   overflow: hidden;
@@ -301,7 +256,6 @@ watch(
   display: block;
 }
 
-/* Vuetify internals: evitamos alto extra */
 .ml-window :deep(.v-window__container),
 .ml-window :deep(.v-window-item),
 .ml-window :deep(.v-window-item__content) {
@@ -309,29 +263,24 @@ watch(
   min-height: 0 !important;
 }
 
-/* slide */
 .ml-slide {
   position: relative;
   width: 100%;
   height: 380px;
   cursor: pointer;
-
-  /* ✅ NO agregamos relleno/colores en los costados */
   background: transparent;
 }
 
-/* ✅ Imagen sin zoom artificial, full-bleed */
 .ml-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;      /* ✅ llena sin “bandas” */
+  object-fit: cover;
   object-position: center;
-  transform: none;        /* ✅ nada de scale */
+  transform: none;
 }
 
-/* overlay opcional */
 .ml-overlay {
   position: absolute;
   inset: 0;
@@ -343,7 +292,6 @@ watch(
   );
 }
 
-/* contenido (si se usa) */
 .ml-content {
   position: absolute;
   top: 50%;
@@ -355,7 +303,6 @@ watch(
   max-width: 860px;
 }
 
-/* flechas ML */
 .ml-mlarrow {
   position: absolute;
   top: 50%;
@@ -385,7 +332,6 @@ watch(
   fill: #1e6bd6;
 }
 
-/* dots */
 .ml-dots {
   position: absolute;
   left: 0;
@@ -410,7 +356,6 @@ watch(
   background: rgba(255, 255, 255, 0.95);
 }
 
-/* responsive */
 @media (max-width: 960px) {
   .ml-slide {
     height: 330px;
