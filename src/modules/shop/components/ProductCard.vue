@@ -1,34 +1,54 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/ProductCard.vue -->
 <template>
-  <v-card class="ml-card" variant="flat" rounded="xl">
-    <!-- ✅ Media FULL-WIDTH (cover) -->
-    <button class="ml-media" type="button" @click="openProduct" :title="p?.name || ''">
+  <v-card class="mlx" variant="flat" rounded="lg">
+    <!-- MEDIA -->
+    <button class="mlx-media" type="button" @click="openProduct" :title="p?.name || ''">
       <img v-if="img" :src="img" alt="" loading="lazy" />
-      <div v-else class="ml-media-empty">Sin imagen</div>
+      <div v-else class="mlx-media-empty">Sin imagen</div>
     </button>
 
-    <div class="ml-body">
-      <!-- ✅ Precio row (como ML) -->
-      <div class="ml-price-row">
-        <div class="ml-price">$ {{ fmtMoney(finalPrice) }}</div>
+    <div class="mlx-body">
+      <!-- TÍTULO (2 líneas fijas) -->
+      <div class="mlx-title" :title="p?.name || ''">
+        {{ capFirst(p?.name || "—") }}
+      </div>
 
-        <div class="ml-off" v-if="offPct">
-          {{ offPct }}% OFF
+      <!-- MARCA + MODELO (1 línea fija) -->
+      <div class="mlx-subtitle" :title="brandModel || ''">
+        {{ brandModel || " " }}
+      </div>
+
+      <!-- ✅ BLOQUE PRECIOS (ALTURA HOMOGÉNEA) -->
+      <div class="mlx-price-block">
+        <!-- old price (1 línea fija, invisible si no aplica) -->
+        <div class="mlx-old" :class="{ 'is-empty': !showOldPrice }">
+          {{ showOldPrice ? `$ ${fmtMoney(oldPrice)}` : " " }}
+        </div>
+
+        <!-- price + off (1 línea fija) -->
+        <div class="mlx-price-row">
+          <div class="mlx-price">$ {{ fmtMoney(displayPrice) }}</div>
+          <div class="mlx-off" v-if="offPct">{{ offPct }}% OFF</div>
+        </div>
+
+        <!-- installments (1 línea fija, invisible si no aplica) -->
+        <div class="mlx-installments" :class="{ 'is-empty': !show3Installments }">
+          <template v-if="show3Installments">
+            En 3 cuotas de <b>$ {{ fmtMoney(installment3) }}</b>
+          </template>
+          <template v-else> </template>
         </div>
       </div>
 
-      <div v-if="showOldPrice" class="ml-old">
-        $ {{ fmtMoney(oldPrice) }}
-      </div>
-
-      <!-- ✅ Título -->
-      <div class="ml-title" :title="p?.name || ''">
-        {{ p?.name || "—" }}
-      </div>
-
-      <!-- ✅ Meta (categoría/sub) -->
-      <div class="ml-meta" :title="metaText">
-        {{ metaText }}
+      <!-- ✅ shipping (1 línea fija para homogeneidad, pero sin aire extra) -->
+      <div class="mlx-ship" :class="{ 'is-empty': !shipText }">
+        <template v-if="shipText">
+          <span class="mlx-ship-free">Envío gratis</span>
+          <span class="mlx-ship-bolt" v-if="shipBolt">⚡</span>
+          <span class="mlx-ship-full" v-if="shipFull">FULL</span>
+        </template>
+        <template v-else> </template>
       </div>
     </div>
   </v-card>
@@ -45,45 +65,45 @@ const props = defineProps({
 const router = useRouter();
 const route = useRoute();
 
+/* helpers */
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
-
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(toNum(v)));
 }
+function capFirst(s) {
+  const str = String(s ?? "").trim();
+  if (!str) return "—";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 
+/* media */
 const img = computed(() => String(props.p?.image_url || "").trim());
 
-const metaText = computed(() => {
-  const cat = String(props.p?.category_name || "").trim();
-  const sub = String(props.p?.subcategory_name || "").trim();
-  const parts = [];
-  if (cat) parts.push(cat);
-  if (sub) parts.push(sub);
-  return parts.length ? parts.join(" · ") : "—";
+/* brand + model */
+const brandModel = computed(() => {
+  const brand = props.p?.brand || props.p?.brand_name || props.p?.marca || "";
+  const model = props.p?.model || props.p?.model_name || props.p?.modelo || "";
+  return [String(brand).trim(), String(model).trim()].filter(Boolean).join(" · ");
 });
 
-/* ✅ precios como ML */
-const finalPrice = computed(() => {
-  const d = toNum(props.p?.price_discount);
-  if (d > 0) return d;
+/* prices */
+const priceList = computed(() => toNum(props.p?.price_list));
+const priceDiscount = computed(() => toNum(props.p?.price_discount));
+const priceBase = computed(() => toNum(props.p?.price));
 
-  const l = toNum(props.p?.price_list);
-  if (l > 0) return l;
-
-  return toNum(props.p?.price);
+const displayPrice = computed(() => {
+  if (priceDiscount.value > 0) return priceDiscount.value;
+  if (priceList.value > 0) return priceList.value;
+  return priceBase.value;
 });
 
-const oldPrice = computed(() => {
-  const l = toNum(props.p?.price_list);
-  const base = l > 0 ? l : toNum(props.p?.price);
-  return base;
-});
+const oldPrice = computed(() => (priceList.value > 0 ? priceList.value : priceBase.value));
 
 const showOldPrice = computed(() => {
-  const d = toNum(props.p?.price_discount);
+  const d = priceDiscount.value;
   const o = oldPrice.value;
   return d > 0 && o > d;
 });
@@ -91,11 +111,24 @@ const showOldPrice = computed(() => {
 const offPct = computed(() => {
   if (!showOldPrice.value) return 0;
   const o = oldPrice.value;
-  const d = toNum(props.p?.price_discount);
+  const d = priceDiscount.value;
   const pct = Math.round(((o - d) / o) * 100);
   return pct > 0 ? pct : 0;
 });
 
+/* installments */
+const INSTALLMENTS_MIN = 150000;
+const installmentsBase = computed(() => (priceList.value > 0 ? priceList.value : oldPrice.value));
+const show3Installments = computed(() => installmentsBase.value >= INSTALLMENTS_MIN);
+const installment3 = computed(() => installmentsBase.value / 3);
+
+/* shipping */
+const shipFull = computed(() => Boolean(props.p?.is_full || props.p?.full || props.p?.shipping_full));
+const shipFree = computed(() => Boolean(props.p?.free_shipping || props.p?.shipping_free || props.p?.is_free_shipping));
+const shipBolt = computed(() => Boolean(props.p?.shipping_fast || props.p?.bolt || shipFull.value));
+const shipText = computed(() => (shipFree.value || shipFull.value ? "ok" : ""));
+
+/* nav */
 function openProduct() {
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
   router.push({
@@ -105,46 +138,38 @@ function openProduct() {
   });
 }
 </script>
-
 <style scoped>
-.ml-card {
+/* =========================
+   ML CARD – homogeneous + compact
+   ========================= */
+.mlx {
   height: 100%;
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .ml-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(0,0,0,.12);
-    box-shadow: 0 10px 22px rgba(0,0,0,.10);
-  }
-}
-
-.ml-media {
+/* media */
+.mlx-media {
+  width: 100%;
+  height: 230px;
+  background: #f4f4f4;
+  cursor: pointer;
   border: 0;
   padding: 0;
-  width: 100%;
-  height: var(--media-h);
-  background: #f7f7f7;
-  cursor: pointer;
   display: block;
-  position: relative;
 }
-
-.ml-media img {
+.mlx-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
-.ml-media-empty {
+.mlx-media-empty {
   height: 100%;
   display: grid;
   place-items: center;
@@ -152,109 +177,133 @@ function openProduct() {
   opacity: .55;
 }
 
-.ml-body {
-  padding: 12px 14px 14px;
+/* body */
+.mlx-body {
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
-.ml-price-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ml-price {
-  font-size: 20px;
-  font-weight: 950;
-  letter-spacing: -0.2px;
+/* title */
+.mlx-title {
+  font-size: 14px;
+  line-height: 1.18;
+  font-weight: 400;
   color: #111;
-  white-space: nowrap;
-
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ml-off {
-  font-size: 11px;
-  font-weight: 950;
-  color: #00a650;
-  white-space: nowrap;
-  line-height: 1;
-  flex: 0 0 auto;
-}
-
-.ml-old {
-  margin-top: -2px;
-  font-size: 12px;
-  opacity: .6;
-  text-decoration: line-through;
-}
-
-.ml-title {
-  margin-top: 4px;
-  font-weight: 950;
-  font-size: 13px;
-  letter-spacing: .2px;
-  text-transform: uppercase;
-  line-height: 1.15;
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  color: #111;
+
+  min-height: calc(1.18em * 2);
 }
 
-.ml-meta {
+/* subtitle */
+.mlx-subtitle {
+  font-size: 12px;
+  line-height: 1.1;
+  color: rgba(0,0,0,.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 1.1em;
+}
+
+/* price block */
+.mlx-price-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* old price */
+.mlx-old {
+  font-size: 12px;
+  color: rgba(0,0,0,.55);
+  text-decoration: line-through;
+  min-height: 1.1em;
+}
+.mlx-old.is-empty { opacity: 0; }
+
+/* price row */
+.mlx-price-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 10px;
+}
+
+/* ✅ precio: 1px más chico para que nunca choque */
+.mlx-price {
+  font-size: clamp(18px, 1.55vw, 21px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: #111;
+  line-height: 1;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ✅ OFF: bajalo un toque más */
+.mlx-off {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
-  opacity: .65;
-  text-transform: uppercase;
+  font-weight: 600;
+  line-height: 1;
+  color: #00a650;
+  background: rgba(0,166,80,.10);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+
+  margin-top: 4px; /* 👈 antes 2px */
+}
+
+/* installments */
+.mlx-installments {
+  font-size: 13px;
+  color: #00a650;
+  line-height: 1.12;
+  min-height: 1.12em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.mlx-installments.is-empty { opacity: 0; }
 
-/* responsive media height */
-.ml-card { --media-h: 180px; }
+/* shipping */
+.mlx-ship {
+  font-size: 13px;
+  color: #00a650;
+  line-height: 1.12;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-height: 1.12em;
+}
+.mlx-ship.is-empty { opacity: 0; }
+.mlx-ship-free { font-weight: 700; }
+.mlx-ship-bolt { font-weight: 800; }
+.mlx-ship-full { font-weight: 900; letter-spacing: 0.02em; }
 
-@media (max-width: 1200px) {
-  .ml-card { --media-h: 170px; }
-  .ml-price { font-size: 19px; }
+/* ✅ Si la card está angosta, OFF abajo */
+@media (max-width: 420px) {
+  .mlx-price-row { grid-template-columns: 1fr; row-gap: 4px; }
+  .mlx-off { justify-self: start; margin-top: 0; }
 }
 
-@media (max-width: 960px) {
-  .ml-card { --media-h: 160px; }
-  .ml-price { font-size: 18px; }
-  .ml-off { font-size: 11px; }
-}
-
-/* ✅ FIX MOBILE: precio en 1 línea completa, OFF abajo (no tapa nunca) */
-@media (max-width: 600px) {
-  .ml-card { --media-h: 150px; }
-  .ml-body { padding: 12px 12px 14px; }
-
-  .ml-price-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .ml-price {
-    flex: 0 0 auto;
-    min-width: auto;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  .ml-off {
-    font-size: 10px;
-    line-height: 1;
-  }
+/* responsive media */
+@media (max-width: 1200px) { .mlx-media { height: 215px; } }
+@media (max-width: 960px)  { .mlx-media { height: 205px; } }
+@media (max-width: 600px)  {
+  .mlx-media { height: 190px; }
+  .mlx-installments { white-space: normal; }
 }
 </style>
+

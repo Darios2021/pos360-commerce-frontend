@@ -1,11 +1,23 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/shop/pages/ShopHome.vue -->
+
 <template>
   <v-container fluid class="shop-page pa-0">
     <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
         <div class="hero-wrap">
-          <HeroSlider :slides="heroSlides" @goShop="scrollToProducts" @clickSlide="onHeroClick" />
+          <!-- ✅ HERO LIMPIO (estilo Mercado Libre) -->
+          <HeroSlider
+            :slides="heroSlides"
+            :show-text="false"
+            :show-ctas="false"
+            :show-overlay="false"
+            @goShop="scrollToProducts"
+            @clickSlide="onHeroClick"
+          />
 
+          <!-- ✅ Categorías DEBAJO del hero (no flotan) -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" mode="subcategories" />
           </div>
@@ -24,20 +36,17 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <!-- ✅ SHORTS / VIDEOS (CAROUSEL desde BD) -->
+      <!-- SHORTS -->
       <div class="mb-6">
-        <ShopShortsCarousel
-          :items="shortsItems"
-          :loading="shortsLoading"
-          :error="shortsError"
-        />
+        <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <!-- ✅ INSTAGRAM (CAROUSEL) -->
+      <!-- INSTAGRAM -->
       <div class="mb-6">
         <InstagramPhoneCarousel />
       </div>
 
+      <!-- PRODUCTOS -->
       <div
         id="shop-products-top"
         ref="productsTop"
@@ -47,29 +56,20 @@
           <div class="text-h6 font-weight-black">{{ resultsTitle }}</div>
           <span class="text-caption text-medium-emphasis" v-if="total">({{ total }})</span>
 
-          <v-chip
-            v-if="activeChip"
-            size="small"
-            variant="tonal"
-            color="primary"
-            class="ml-2"
-            :title="activeChip"
-          >
+          <v-chip v-if="activeChip" size="small" variant="tonal" color="primary" class="ml-2">
             {{ activeChip }}
           </v-chip>
         </div>
 
-        <div class="d-flex ga-2 align-center flex-wrap">
-          <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
-        </div>
+        <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
       </div>
 
       <v-alert v-if="itemsError" type="error" variant="tonal" class="mb-4">
         Error al cargar el catálogo: {{ itemsError }}
         <template v-if="isMetaWebView">
           <br />
-          Estás usando el navegador interno de Instagram/Facebook. Si el problema continúa, abrí esta web en
-          el navegador del teléfono (tres puntos ··· → “Abrir en navegador”).
+          Estás usando el navegador interno de Instagram/Facebook. Si el problema continúa, abrí esta web en el
+          navegador del teléfono (tres puntos ··· → “Abrir en navegador”).
         </template>
       </v-alert>
 
@@ -87,12 +87,11 @@
         <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
-      <!-- ✅ CARGAR MÁS (append) -->
+      <!-- CARGAR MÁS -->
       <div v-if="!itemsError && items.length" class="d-flex justify-center mt-6">
         <v-btn v-if="hasMore" variant="tonal" size="large" :loading="loadingMore" @click="loadMore">
           Cargar más
         </v-btn>
-
         <div v-else class="text-caption text-medium-emphasis">No hay más productos para mostrar.</div>
       </div>
 
@@ -100,7 +99,7 @@
         <PromoBannerParlantes />
       </div>
 
-      <!-- ✅ SLIDER AURICULARES -->
+      <!-- AURICULARES -->
       <div class="mt-6">
         <PromoSliderAuriculares
           :loading="aurisLoading"
@@ -112,12 +111,12 @@
         />
       </div>
 
-      <!-- ✅ SLIDER CARGADORES -->
+      <!-- CARGADORES -->
       <div class="mt-6">
         <PromoSliderCargadores />
       </div>
 
-      <!-- ✅ SLIDER AUDIO / MICROFONOS -->
+      <!-- AUDIO/MICROFONOS -->
       <div class="mt-6">
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
@@ -133,8 +132,6 @@ import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
-
-// ✅ NEW: videos feed (BD)
 import { getHomeShorts } from "@/modules/shop/service/shop.media.api";
 
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
@@ -147,13 +144,9 @@ import PromoSliderAudioMicrofonos from "@/modules/shop/components/PromoSliderAud
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
-
 import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
-
-// ✅ NEW: component (ubicado en shop/components/shop)
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
-// ✅ OG + prerender
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
 
 const route = useRoute();
@@ -169,17 +162,18 @@ const limit = ref(48);
 const total = ref(0);
 const allCats = ref([]);
 
-/* ✅ Shorts state */
+/* Shorts */
 const shortsLoading = ref(false);
 const shortsError = ref(null);
 const shortsItems = ref([]);
 
+/* Auriculares */
 const aurisLoading = ref(false);
 const aurisItems = ref([]);
-
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
+/* Meta webview */
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
 function toNum(v) {
@@ -187,22 +181,32 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/* HERO */
+/* =========================================
+   ✅ HERO SLIDES (pos 1,2,3)
+   ========================================= */
+
+/* Posición 1 */
+const HERO1_DESKTOP =
+  "https://storage-files.cingulado.org/pos360/media/1770500265997-04c9718403a56578.webp";
+const HERO1_MOBILE =
+  "https://storage-files.cingulado.org/pos360/media/1770500533409-c649a209a22bc072.webp";
+
+/* Posición 2 */
+const HERO2_DESKTOP =
+  "https://storage-files.cingulado.org/pos360/media/1770502900950-b92a3b33b9449e71.webp";
+const HERO2_MOBILE =
+  "https://storage-files.cingulado.org/pos360/media/1770502919144-a99270ed268a1238.webp";
+
+/* ✅ Posición 3 (NUEVO) */
+const HERO3_DESKTOP =
+  "https://storage-files.cingulado.org/pos360/media/1770504901619-2bcd6132da5390be.webp";
+const HERO3_MOBILE =
+  "https://storage-files.cingulado.org/pos360/media/1770504906987-92319e41713d0b0f.webp";
+
 const heroSlides = ref([
-  {
-    pill: "OFERTAS",
-    title: "Especial en Tecnología",
-    subtitle: "Accesorios, audio, cables y más. Comprá online y elegí retiro al finalizar.",
-    image: "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp?v=1",
-    action: { type: "scroll" },
-  },
-  {
-    pill: "NOVEDADES",
-    title: "Gadgets y accesorios nuevos",
-    subtitle: "Descubrí productos recién ingresados en el catálogo.",
-    image: "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=2400&q=80",
-    action: { type: "scroll" },
-  },
+  { image: HERO1_DESKTOP, imageMobile: HERO1_MOBILE, action: { type: "scroll" } },
+  { image: HERO2_DESKTOP, imageMobile: HERO2_MOBILE, action: { type: "scroll" } },
+  { image: HERO3_DESKTOP, imageMobile: HERO3_MOBILE, action: { type: "scroll" } },
 ]);
 
 function onHeroClick() {
@@ -211,7 +215,9 @@ function onHeroClick() {
 
 const q = computed(() => String(route.query.q || "").trim());
 const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
-const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
+const subcategory_id = computed(() =>
+  route.query.subcategory_id ? Number(route.query.subcategory_id) : null
+);
 
 const resultsTitle = computed(() => {
   if (q.value || category_id.value || subcategory_id.value) return "Resultados";
@@ -315,7 +321,7 @@ function loadMore() {
   fetchCatalog({ append: true });
 }
 
-/* taxonomy helpers */
+/* taxonomy */
 function norm(s) {
   return String(s || "")
     .trim()
@@ -397,7 +403,7 @@ async function fetchAuricularesSlider() {
   }
 }
 
-/* ✅ Shorts fetch */
+/* shorts */
 async function fetchHomeShorts() {
   shortsLoading.value = true;
   shortsError.value = null;
@@ -418,7 +424,6 @@ async function fetchHomeShorts() {
   }
 }
 
-// ✅ fallback: nunca dejar colgado el prerender
 function dispatchPrerenderReadySafe() {
   try {
     if (typeof document !== "undefined") {
@@ -430,11 +435,9 @@ function dispatchPrerenderReadySafe() {
 let ogDone = false;
 
 onMounted(async () => {
-  // ✅ OG para home shop (prerender)
   if (!ogDone) {
     ogDone = true;
 
-    // setOgAndReady suele disparar prerender-ready. Igual dejamos fallback.
     await setOgAndReady({
       title: "San Juan Tecnología | Tienda",
       description: "Electrónica, ecommerce, sistemas POS y soluciones tecnológicas.",
@@ -442,7 +445,6 @@ onMounted(async () => {
       url: absoluteUrlFromLocation("/shop"),
     });
 
-    // fallback por si algo evita el dispatch interno
     dispatchPrerenderReadySafe();
   }
 
@@ -457,10 +459,7 @@ onMounted(async () => {
   hydrateAudioAndAurisIds();
   await fetchAuricularesSlider();
 
-  // ✅ Shorts (no bloquea el home)
   fetchHomeShorts();
-
-  // ✅ si la page terminó de cargar datos, liberamos igual
   dispatchPrerenderReadySafe();
 });
 
@@ -481,16 +480,13 @@ watch(
     hydrateAudioAndAurisIds();
     await fetchAuricularesSlider();
 
-    // refrescamos shorts
     fetchHomeShorts();
-
     dispatchPrerenderReadySafe();
   }
 );
 </script>
 
 <style scoped>
-/* (deja tus styles tal cual los tenías) */
 :global(html),
 :global(body) {
   margin: 0 !important;
@@ -518,23 +514,21 @@ watch(
   isolation: isolate;
 }
 
+/* debajo del hero */
 .hero-float {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -165px;
-  z-index: 999;
-  pointer-events: none;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  margin-top: 14px;
 }
 
 .hero-float :deep(.float-inner) {
-  pointer-events: auto;
   width: min(var(--shop-max), calc(100% - 24px));
   margin: 0 auto;
 }
 
 .after-hero-spacer {
-  height: 205px;
+  height: 16px;
 }
 
 .content {
@@ -566,21 +560,10 @@ watch(
   .product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .hero-float {
-    bottom: -150px;
-  }
-  .after-hero-spacer {
-    height: 190px;
-  }
 }
 @media (max-width: 960px) {
-  .hero-float {
-    position: static;
-    margin-top: 10px;
-    pointer-events: auto;
-  }
   .after-hero-spacer {
-    height: 16px;
+    height: 12px;
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -591,7 +574,7 @@ watch(
     margin-top: 14px;
   }
   .after-hero-spacer {
-    height: 14px;
+    height: 10px;
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
