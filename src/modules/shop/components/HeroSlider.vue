@@ -81,7 +81,9 @@ import { useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 
 const router = useRouter();
-const { smAndDown } = useDisplay();
+
+/* ✅ CLAVE: SOLO XS usa mobileImage (no smAndDown) */
+const { xs } = useDisplay();
 
 const props = defineProps({
   slides: { type: Array, default: () => [] },
@@ -204,10 +206,11 @@ function emitClick(slide) {
   emit("clickSlide", slide);
 }
 
+/* ✅ Desktop SIEMPRE image, Mobile SOLO XS usa imageMobile */
 function getSlideImage(slide) {
   const base = slide?.image || "";
   const mobile = slide?.imageMobile || slide?.mobileImage || "";
-  return smAndDown.value ? mobile || base : base;
+  return xs.value ? mobile || base : base;
 }
 
 /* acciones */
@@ -289,7 +292,7 @@ watch(
   pointer-events: none;
 }
 
-/* ✅ FIX ESPACIO/ALTO (Vuetify v-window): forzamos alturas */
+/* vuetify window */
 .ml-window {
   width: 100%;
   overflow: hidden;
@@ -298,38 +301,34 @@ watch(
   display: block;
 }
 
-/* Vuetify internals: evitamos que el contenedor agregue alto extra */
-.ml-window :deep(.v-window__container) {
-  height: 100% !important;
-  min-height: 0 !important;
-}
-.ml-window :deep(.v-window-item) {
-  height: 100% !important;
-  min-height: 0 !important;
-}
+/* Vuetify internals: evitamos alto extra */
+.ml-window :deep(.v-window__container),
+.ml-window :deep(.v-window-item),
 .ml-window :deep(.v-window-item__content) {
   height: 100% !important;
   min-height: 0 !important;
 }
 
-/* banner */
+/* slide */
 .ml-slide {
   position: relative;
   width: 100%;
   height: 380px;
   cursor: pointer;
-  background: #0e2134; /* por si en mobile usamos contain */
+
+  /* ✅ NO agregamos relleno/colores en los costados */
+  background: transparent;
 }
 
-/* imagen */
+/* ✅ Imagen sin zoom artificial, full-bleed */
 .ml-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;     /* desktop OK */
+  object-fit: cover;      /* ✅ llena sin “bandas” */
   object-position: center;
-  transform: none;       /* ✅ sin zoom artificial */
+  transform: none;        /* ✅ nada de scale */
 }
 
 /* overlay opcional */
@@ -430,18 +429,10 @@ watch(
   }
 }
 
-/* ✅ MOBILE: sacamos “zoom” cambiando cover -> contain */
 @media (max-width: 600px) {
   .ml-slide {
     height: 300px;
   }
-
-  /* 👇 esto evita recorte/zoom en banners diseñados para ML */
-  .ml-bg {
-    object-fit: contain;
-    object-position: center;
-  }
-
   .ml-mlarrow {
     width: 48px;
     height: 78px;

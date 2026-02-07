@@ -1,13 +1,12 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopHome.vue -->
-
 <template>
   <v-container fluid class="shop-page pa-0">
     <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
         <div class="hero-wrap">
-          <!-- ✅ HERO LIMPIO (estilo Mercado Libre) -->
+          <!-- ✅ HERO LIMPIO: sin texto, sin CTA, sin overlay -->
           <HeroSlider
             :slides="heroSlides"
             :show-text="false"
@@ -17,7 +16,7 @@
             @clickSlide="onHeroClick"
           />
 
-          <!-- ✅ Categorías DEBAJO del hero (no flotan) -->
+          <!-- ✅ Categorías abajo (no flotan sobre el hero) -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" mode="subcategories" />
           </div>
@@ -36,17 +35,16 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <!-- SHORTS -->
+      <!-- ✅ SHORTS / VIDEOS (CAROUSEL desde BD) -->
       <div class="mb-6">
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <!-- INSTAGRAM -->
+      <!-- ✅ INSTAGRAM (CAROUSEL) -->
       <div class="mb-6">
         <InstagramPhoneCarousel />
       </div>
 
-      <!-- PRODUCTOS -->
       <div
         id="shop-products-top"
         ref="productsTop"
@@ -56,12 +54,21 @@
           <div class="text-h6 font-weight-black">{{ resultsTitle }}</div>
           <span class="text-caption text-medium-emphasis" v-if="total">({{ total }})</span>
 
-          <v-chip v-if="activeChip" size="small" variant="tonal" color="primary" class="ml-2">
+          <v-chip
+            v-if="activeChip"
+            size="small"
+            variant="tonal"
+            color="primary"
+            class="ml-2"
+            :title="activeChip"
+          >
             {{ activeChip }}
           </v-chip>
         </div>
 
-        <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
+        <div class="d-flex ga-2 align-center flex-wrap">
+          <v-btn v-if="hasAnyFilter" variant="tonal" @click="clearAllFilters">Limpiar</v-btn>
+        </div>
       </div>
 
       <v-alert v-if="itemsError" type="error" variant="tonal" class="mb-4">
@@ -87,11 +94,12 @@
         <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
-      <!-- CARGAR MÁS -->
+      <!-- ✅ CARGAR MÁS (append) -->
       <div v-if="!itemsError && items.length" class="d-flex justify-center mt-6">
         <v-btn v-if="hasMore" variant="tonal" size="large" :loading="loadingMore" @click="loadMore">
           Cargar más
         </v-btn>
+
         <div v-else class="text-caption text-medium-emphasis">No hay más productos para mostrar.</div>
       </div>
 
@@ -99,7 +107,7 @@
         <PromoBannerParlantes />
       </div>
 
-      <!-- AURICULARES -->
+      <!-- ✅ SLIDER AURICULARES -->
       <div class="mt-6">
         <PromoSliderAuriculares
           :loading="aurisLoading"
@@ -111,12 +119,12 @@
         />
       </div>
 
-      <!-- CARGADORES -->
+      <!-- ✅ SLIDER CARGADORES -->
       <div class="mt-6">
         <PromoSliderCargadores />
       </div>
 
-      <!-- AUDIO/MICROFONOS -->
+      <!-- ✅ SLIDER AUDIO / MICROFONOS -->
       <div class="mt-6">
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
@@ -162,18 +170,17 @@ const limit = ref(48);
 const total = ref(0);
 const allCats = ref([]);
 
-/* Shorts */
+/* ✅ Shorts state */
 const shortsLoading = ref(false);
 const shortsError = ref(null);
 const shortsItems = ref([]);
 
-/* Auriculares */
+/* auriculares slider */
 const aurisLoading = ref(false);
 const aurisItems = ref([]);
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
-/* Meta webview */
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
 function toNum(v) {
@@ -182,31 +189,33 @@ function toNum(v) {
 }
 
 /* =========================================
-   ✅ HERO SLIDES (pos 1,2,3)
+   ✅ HERO (4 slides exactos)
    ========================================= */
-
-/* Posición 1 */
 const HERO1_DESKTOP =
   "https://storage-files.cingulado.org/pos360/media/1770500265997-04c9718403a56578.webp";
 const HERO1_MOBILE =
   "https://storage-files.cingulado.org/pos360/media/1770500533409-c649a209a22bc072.webp";
 
-/* Posición 2 */
 const HERO2_DESKTOP =
   "https://storage-files.cingulado.org/pos360/media/1770502900950-b92a3b33b9449e71.webp";
 const HERO2_MOBILE =
   "https://storage-files.cingulado.org/pos360/media/1770502919144-a99270ed268a1238.webp";
 
-/* ✅ Posición 3 (NUEVO) */
 const HERO3_DESKTOP =
   "https://storage-files.cingulado.org/pos360/media/1770504901619-2bcd6132da5390be.webp";
 const HERO3_MOBILE =
   "https://storage-files.cingulado.org/pos360/media/1770504906987-92319e41713d0b0f.webp";
 
+const HERO4_DESKTOP =
+  "https://storage-files.cingulado.org/pos360/media/1770505676091-aaef96481b331750.webp";
+const HERO4_MOBILE =
+  "https://storage-files.cingulado.org/pos360/media/1770505672865-f71f99f90b3188a6.webp";
+
 const heroSlides = ref([
   { image: HERO1_DESKTOP, imageMobile: HERO1_MOBILE, action: { type: "scroll" } },
   { image: HERO2_DESKTOP, imageMobile: HERO2_MOBILE, action: { type: "scroll" } },
   { image: HERO3_DESKTOP, imageMobile: HERO3_MOBILE, action: { type: "scroll" } },
+  { image: HERO4_DESKTOP, imageMobile: HERO4_MOBILE, action: { type: "scroll" } },
 ]);
 
 function onHeroClick() {
@@ -321,7 +330,7 @@ function loadMore() {
   fetchCatalog({ append: true });
 }
 
-/* taxonomy */
+/* taxonomy helpers */
 function norm(s) {
   return String(s || "")
     .trim()
@@ -403,7 +412,7 @@ async function fetchAuricularesSlider() {
   }
 }
 
-/* shorts */
+/* ✅ Shorts fetch */
 async function fetchHomeShorts() {
   shortsLoading.value = true;
   shortsError.value = null;
@@ -514,7 +523,6 @@ watch(
   isolation: isolate;
 }
 
-/* debajo del hero */
 .hero-float {
   position: relative;
   z-index: 1;
