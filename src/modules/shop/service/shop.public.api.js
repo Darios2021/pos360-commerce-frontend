@@ -6,6 +6,11 @@
 // ✅ getProductVideos usa CORE (NO /public)
 // ✅ getProduct inyecta videos en item.videos / item.product_videos / item.media.videos
 // ✅ NUEVO: getPublicProductMedia() -> /public/products/:id/media (SIN branch_id) para cards con flechas sin 401
+//
+// ✅ FIX FILTROS CATÁLOGO (CRÍTICO):
+// - getCatalog ahora incluye: brands, model, volume_min, volume_max, sort
+// - Normaliza brands para soportar array o string "A,B"
+// - Mantiene compat total con backend actual
 
 import axios from "axios";
 
@@ -175,6 +180,17 @@ function absUrl(u) {
   return `${assetBase}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
+/** Normaliza brands:
+ * - si viene array -> "A,B"
+ * - si viene string -> trim
+ */
+function normalizeBrands(brands) {
+  if (Array.isArray(brands)) {
+    return brands.map((x) => String(x || "").trim()).filter(Boolean).join(",");
+  }
+  return String(brands || "").trim();
+}
+
 // ✅ tu backend exige branch_id (por ahora fijo)
 const CATALOG_BRANCH_ID = 3;
 export function getCatalogBranchId() {
@@ -233,6 +249,22 @@ export async function getShopPaymentConfig() {
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
 
+  // ✅ FIX: incluir filtros que el frontend ya está mandando desde ShopCategory.vue
+  const brands = normalizeBrands(params.brands);
+  const model = String(params.model || "").trim();
+
+  const volume_min =
+    params.volume_min === null || params.volume_min === undefined || params.volume_min === ""
+      ? null
+      : toNum(params.volume_min, NaN);
+
+  const volume_max =
+    params.volume_max === null || params.volume_max === undefined || params.volume_max === ""
+      ? null
+      : toNum(params.volume_max, NaN);
+
+  const sort = String(params.sort || "").trim();
+
   const q = cleanParams({
     branch_id,
     search: params.search || "",
@@ -244,6 +276,15 @@ export async function getCatalog(params = {}) {
     limit: params.limit ?? 24,
     strict_search: params.strict_search ?? null,
     exclude_terms: params.exclude_terms ?? null,
+
+    // ✅ filtros server-side
+    brands: brands || "",
+    model: model || "",
+    volume_min: Number.isFinite(volume_min) ? volume_min : null,
+    volume_max: Number.isFinite(volume_max) ? volume_max : null,
+
+    // ✅ sort (si tu backend lo soporta)
+    sort: sort || "",
   });
 
   const r = await api.get("/catalog", { params: q });
@@ -407,9 +448,7 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  const hydrated = await Promise.all(
-    ids.map(async (id) => (await getProduct(id).catch(() => null)))
-  );
+  const hydrated = await Promise.all(ids.map(async (id) => (await getProduct(id).catch(() => null))));
 
   return hydrated
     .filter(Boolean)

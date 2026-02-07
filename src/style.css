@@ -1,178 +1,31 @@
-/* src/style.css */
-
 /* ================================
-   MERCADO LIBRE FONT STACK (GLOBAL)
-   ✅ FIX REAL para Vuetify 3:
-   - setea variables --v-font-family / --v-body-font-family
+   INTER – MERCADO LIBRE REAL
 ================================ */
 :root {
-  --ml-font: "Proxima Nova",-apple-system,BlinkMacSystemFont,
-             "Segoe UI",Roboto,Arial,sans-serif;
+  --ml-font: "Inter", -apple-system, BlinkMacSystemFont,
+             "Segoe UI", Roboto, Arial, sans-serif;
 
-  /* ✅ Vuetify typography vars */
   --v-font-family: var(--ml-font);
   --v-body-font-family: var(--ml-font);
 
-  /* ✅ TU COLOR PRINCIPAL (fallback) */
   --pos-primary: #0e2134;
 
   font-family: var(--ml-font);
-  line-height: 1.5;
-  font-weight: 400;
+  font-weight: 300;              /* 👈 CLAVE */
+  line-height: 1.32;
+  letter-spacing: -0.015em;      /* 👈 CLAVE */
+
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ✅ cubre TODO lo renderizado por Vuetify */
+/* 🔒 Reset global real */
 html,
 body,
 #app,
 .v-application,
 .v-application * {
   font-family: var(--ml-font) !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Links estilo ML */
-a {
-  color: #3483fa;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-/* -----------------------------
-   POS360 Theme helpers
-   ----------------------------- */
-
-html,
-body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: rgb(var(--v-theme-background));
-  color: rgb(var(--v-theme-on-background));
-}
-
-.pos-page {
-  background: rgb(var(--v-theme-background)) !important;
-  color: rgb(var(--v-theme-on-background)) !important;
-  min-height: calc(100vh - 72px); /* appbar */
-}
-
-.pos-surface {
-  background: rgb(var(--v-theme-surface)) !important;
-  color: rgb(var(--v-theme-on-surface)) !important;
-}
-
-.pos-surface-variant {
-  background: rgb(var(--v-theme-surface-variant)) !important;
-  color: rgb(var(--v-theme-on-surface-variant)) !important;
-}
-
-/* -----------------------------
-   FIX: Clases "lighten" rompen dark
-   ----------------------------- */
-
-.v-theme--dark .bg-grey-lighten-5,
-.v-theme--dark .bg-grey-lighten-4,
-.v-theme--dark .bg-grey-lighten-3,
-.v-theme--dark .bg-grey-lighten-2,
-.v-theme--dark .bg-grey-lighten-1,
-.v-theme--dark .bg-grey-lighten-0 {
-  background-color: rgb(var(--v-theme-background)) !important;
-  color: rgb(var(--v-theme-on-background)) !important;
-}
-
-.v-theme--dark .bg-white,
-.v-theme--dark .bg-light,
-.v-theme--dark .bg-grey {
-  background-color: rgb(var(--v-theme-background)) !important;
-  color: rgb(var(--v-theme-on-background)) !important;
-}
-
-/* -----------------------------
-   Cards / panels: asegurar contraste
-   ----------------------------- */
-
-.v-theme--dark .v-card {
-  background-color: rgb(var(--v-theme-surface)) !important;
-  color: rgb(var(--v-theme-on-surface)) !important;
-}
-
-.v-theme--dark .v-field,
-.v-theme--dark .v-input__control,
-.v-theme--dark .v-field__input {
-  color: rgb(var(--v-theme-on-surface)) !important;
-}
-
-.v-theme--dark .v-divider {
-  opacity: 0.18;
-}
-
-/* =========================================================
-   ✅ FIX REAL: Header/Footer del SHOP (y topbars custom)
-   - Si son Vuetify: usa --v-theme-primary
-   - Si no: cae al fallback --pos-primary (#0e2134)
-   ========================================================= */
-
-:root {
-  --pos-primary-rgb: var(--v-theme-primary, 14 33 52); /* 0e2134 */
-  --pos-on-primary-rgb: var(--v-theme-on-primary, 255 255 255);
-}
-
-/* Targets típicos (Vuetify o custom) */
-.shop-header,
-.shop-topbar,
-.shop-navbar,
-.shop-footer,
-.pos-header,
-.pos-footer,
-header,
-footer,
-[data-pos="header"],
-[data-pos="footer"] {
-  background-color: rgb(var(--pos-primary-rgb)) !important;
-  color: rgb(var(--pos-on-primary-rgb)) !important;
-}
-
-/* Si tu header es un v-app-bar o v-footer */
-.v-app-bar,
-.v-footer {
-  background-color: rgb(var(--pos-primary-rgb)) !important;
-  color: rgb(var(--pos-on-primary-rgb)) !important;
-}
-
-/* Botones/iconos en barras oscuras */
-.shop-header .v-btn,
-.shop-topbar .v-btn,
-.shop-navbar .v-btn,
-.shop-footer .v-btn,
-.v-app-bar .v-btn,
-.v-footer .v-btn,
-.shop-header .v-icon,
-.shop-topbar .v-icon,
-.shop-navbar .v-icon,
-.shop-footer .v-icon,
-.v-app-bar .v-icon,
-.v-footer .v-icon {
-  color: rgb(var(--pos-on-primary-rgb)) !important;
-}
-
-/* Input del buscador sobre header oscuro (no queda gris apagado) */
-.shop-header .v-field,
-.shop-topbar .v-field,
-.v-app-bar .v-field {
-  background: rgba(255, 255, 255, 0.92) !important;
-}
-
-.shop-header .v-field__input,
-.shop-topbar .v-field__input,
-.v-app-bar .v-field__input {
-  color: #111 !important;
+  font-weight: 300;
 }

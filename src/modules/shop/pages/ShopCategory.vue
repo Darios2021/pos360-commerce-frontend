@@ -99,18 +99,18 @@ const subcats = ref([]);
 const selectedSubId = ref(null);
 
 /* filtros */
-const selectedBrands = ref(route.query.brands ? String(route.query.brands).split(",").filter(Boolean) : []);
-const modelSelected = ref(route.query.model ? String(route.query.model) : "");
+const selectedBrands = ref([]);
+const modelSelected = ref("");
 
 /* sort */
-const sortSelected = ref(route.query.sort ? String(route.query.sort) : "relevance");
+const sortSelected = ref("relevance");
 
 /* volumen */
-const volumeMin = ref(route.query.vmin ? Number(route.query.vmin) : null);
-const volumeMax = ref(route.query.vmax ? Number(route.query.vmax) : null);
+const volumeMin = ref(null);
+const volumeMax = ref(null);
 
 /* pag */
-const page = ref(Number(route.query.page || 1));
+const page = ref(1);
 const limit = ref(24);
 const total = ref(0);
 
@@ -134,7 +134,7 @@ async function fetchSubcats() {
   }
 }
 
-/* facets desde items */
+/* facets desde items (OJO: esto es SOLO de la página actual) */
 function pickBrandName(p) {
   return p?.brand_name || p?.brand || p?.brandName || p?.marca || p?.manufacturer || "";
 }
@@ -166,31 +166,71 @@ const modelsFacet = computed(() => {
     .sort((a, b) => (b.count || 0) - (a.count || 0));
 });
 
-/* query helper */
+/* ====== QUERY SYNC (anti-propagación) ====== */
+function normStr(v) {
+  const s = String(v ?? "").trim();
+  return s ? s : "";
+}
+function normNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function normArrCsv(v) {
+  const s = normStr(v);
+  return s ? s.split(",").map((x) => x.trim()).filter(Boolean) : [];
+}
+
+function readStateFromQuery() {
+  // ✅ subcat
+  selectedSubId.value = route.query.sub ? String(route.query.sub) : null;
+
+  // ✅ brands/model
+  selectedBrands.value = normArrCsv(route.query.brands);
+  modelSelected.value = normStr(route.query.model);
+
+  // ✅ volumen
+  volumeMin.value = normNum(route.query.vmin);
+  volumeMax.value = normNum(route.query.vmax);
+
+  // ✅ sort/page
+  sortSelected.value = normStr(route.query.sort) || "relevance";
+  page.value = normNum(route.query.page) || 1;
+}
+
+/* helper para escribir query SIN basura */
+let syncingQuery = false;
+
 function setQuery(partial) {
   const q = { ...route.query, ...partial };
 
-  // ✅ mata basura que se te está “propagando”
+  // ✅ mata basura que se te “propaga”
   delete q.category_id;
 
   Object.keys(q).forEach((k) => {
     if (q[k] === null || q[k] === undefined || q[k] === "") delete q[k];
   });
 
-  router.replace({ name: route.name, params: route.params, query: q });
+  syncingQuery = true;
+  router
+    .replace({ name: route.name, params: route.params, query: q })
+    .finally(() => {
+      // deja que el watcher de route.query corra una vez
+      setTimeout(() => (syncingQuery = false), 0);
+    });
 }
 
 /* handlers */
 function selectSub(idOrNull) {
   selectedSubId.value = idOrNull == null ? null : String(idOrNull);
 
-  // ✅ CLAVE: al cambiar subcat, limpiar modelo viejo (es lo que te rompe todo)
+  // ✅ al cambiar subcat, limpiar modelo viejo
   modelSelected.value = "";
   page.value = 1;
 
   setQuery({
     sub: selectedSubId.value == null ? null : String(selectedSubId.value),
-    model: null, // ✅ evita “Microfono Profesional” quedándose en Auriculares
+    model: null,
     page: "1",
   });
 
@@ -198,7 +238,7 @@ function selectSub(idOrNull) {
 }
 
 function onBrands(arr) {
-  selectedBrands.value = Array.isArray(arr) ? arr.map(String) : [];
+  selectedBrands.value = Array.isArray(arr) ? arr.map((x) => String(x)) : [];
   page.value = 1;
 
   setQuery({
@@ -261,12 +301,14 @@ function clearAllFilters() {
 async function fetchCatalog() {
   loading.value = true;
   err.value = "";
+
   try {
     const isAll = selectedSubId.value == null;
 
     const params = {
       page: page.value,
       limit: limit.value,
+
       category_id: parentId.value,
       subcategory_id: isAll ? null : selectedSubId.value,
       include_children: isAll ? 1 : 0,
@@ -282,6 +324,7 @@ async function fetchCatalog() {
     };
 
     const r = await getCatalog(params);
+
     items.value = Array.isArray(r?.items) ? r.items : [];
     total.value = Number(r?.total || 0);
   } catch {
@@ -312,13 +355,12 @@ function prevPage() {
 /* init */
 onMounted(async () => {
   catsAll.value = await getPublicCategoriesAll();
-
-  selectedSubId.value = route.query.sub ? String(route.query.sub) : null;
+  readStateFromQuery();
   await fetchSubcats();
   await fetchCatalog();
 });
 
-/* ✅ si cambia la categoría (/shop/c/:id), reset TOTAL para evitar query “pegada” */
+/* ✅ cuando cambia la categoría (/shop/c/:id), reset TOTAL para evitar query “pegada” */
 watch(
   () => parentId.value,
   async () => {
@@ -345,6 +387,17 @@ watch(
     await fetchSubcats();
     await fetchCatalog();
   }
+);
+
+/* ✅ si cambia route.query (back/forward / navegación), sincroniza estado y recarga */
+watch(
+  () => route.query,
+  () => {
+    if (syncingQuery) return; // evita doble-fetch por nuestro replace
+    readStateFromQuery();
+    fetchCatalog();
+  },
+  { deep: true }
 );
 
 /* ✅ cuando cambia sort, actualiza URL y recarga */
