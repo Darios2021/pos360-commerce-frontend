@@ -269,6 +269,7 @@ watch(
 </script>
 
 <style scoped>
+
 /* =========================
    HERO FULL BLEED
    ========================= */
@@ -314,11 +315,12 @@ watch(
 
 /* =========================
    SLIDE
+   👉 MÁS AIRE REAL
    ========================= */
 .ml-slide {
   position: relative;
   width: 100%;
-  height: 380px;
+  height: 420px;              /* ⬅️ MÁS AIRE DESKTOP */
   cursor: pointer;
   background: transparent;
   overflow: hidden;
@@ -326,20 +328,21 @@ watch(
 
 /* =========================
    IMAGEN
+   Desktop: SIN zoom
    ========================= */
 .ml-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;        /* llena sin inventar fondo */
+  object-fit: cover;
   object-position: center;
-  transform: scale(1.06);   /* aire lateral desktop */
+  transform: none;            /* ✅ respeta aire original */
   transform-origin: center;
 }
 
 /* =========================
-   OVERLAY (si se usa)
+   OVERLAY
    ========================= */
 .ml-overlay {
   position: absolute;
@@ -367,7 +370,7 @@ watch(
 }
 
 /* =========================
-   FLECHAS MERCADO LIBRE
+   FLECHAS ML
    ========================= */
 .ml-mlarrow {
   position: absolute;
@@ -408,7 +411,7 @@ watch(
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 12px;
+  bottom: 14px;
   display: flex;
   justify-content: center;
   gap: 7px;
@@ -422,7 +425,6 @@ watch(
   border: 0;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.45);
-  transition: width 0.15s ease, background 0.15s ease;
 }
 
 .ml-dot.active {
@@ -435,11 +437,11 @@ watch(
    ========================= */
 @media (max-width: 960px) {
   .ml-slide {
-    height: 330px;
+    height: 360px;            /* ⬅️ más aire */
   }
 
   .ml-bg {
-    transform: scale(1.1);
+    transform: scale(1.05);   /* leve */
   }
 
   .ml-mlarrow {
@@ -459,16 +461,15 @@ watch(
 }
 
 /* =========================
-   MOBILE (AJUSTE FINO)
+   MOBILE
    ========================= */
 @media (max-width: 600px) {
   .ml-slide {
-    height: 300px;
+    height: 320px;            /* ⬅️ más aire arriba/abajo */
   }
 
-  /* zoom suave para dar presencia sin romper imagen */
   .ml-bg {
-    transform: scale(1.22);
+    transform: scale(1.14);   /* 👌 grande pero respirado */
   }
 
   .ml-mlarrow {
@@ -486,6 +487,7 @@ watch(
     padding-right: 14px;
   }
 }
+
 
 </style>
 
