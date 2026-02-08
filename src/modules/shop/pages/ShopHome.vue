@@ -1,12 +1,12 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/ShopHome.vue -->
+<!-- src/modules/shop/pages/ShopHome.vue (o el archivo donde tenés este template) -->
 <template>
   <v-container fluid class="shop-page pa-0">
     <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
         <div class="hero-wrap">
-          <!-- ✅ HERO LIMPIO: sin texto, sin CTA, sin overlay -->
+          <!-- ✅ HERO LIMPIO -->
           <HeroSlider
             :slides="heroSlides"
             :show-text="false"
@@ -16,7 +16,7 @@
             @clickSlide="onHeroClick"
           />
 
-          <!-- ✅ Categorías abajo (no flotan sobre el hero) -->
+          <!-- ✅ debajo del hero -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" mode="subcategories" />
           </div>
@@ -35,12 +35,10 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <!-- ✅ SHORTS / VIDEOS (CAROUSEL desde BD) -->
       <div class="mb-6">
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <!-- ✅ INSTAGRAM (CAROUSEL) -->
       <div class="mb-6">
         <InstagramPhoneCarousel />
       </div>
@@ -94,7 +92,6 @@
         <ProductCard v-for="p in items" :key="p.product_id ?? p.id" :p="p" />
       </div>
 
-      <!-- ✅ CARGAR MÁS (append) -->
       <div v-if="!itemsError && items.length" class="d-flex justify-center mt-6">
         <v-btn v-if="hasMore" variant="tonal" size="large" :loading="loadingMore" @click="loadMore">
           Cargar más
@@ -107,7 +104,6 @@
         <PromoBannerParlantes />
       </div>
 
-      <!-- ✅ SLIDER AURICULARES -->
       <div class="mt-6">
         <PromoSliderAuriculares
           :loading="aurisLoading"
@@ -119,12 +115,10 @@
         />
       </div>
 
-      <!-- ✅ SLIDER CARGADORES -->
       <div class="mt-6">
         <PromoSliderCargadores />
       </div>
 
-      <!-- ✅ SLIDER AUDIO / MICROFONOS -->
       <div class="mt-6">
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
@@ -175,9 +169,9 @@ const shortsLoading = ref(false);
 const shortsError = ref(null);
 const shortsItems = ref([]);
 
-/* auriculares slider */
 const aurisLoading = ref(false);
 const aurisItems = ref([]);
+
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
@@ -188,34 +182,28 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/* =========================================
-   ✅ HERO (4 slides exactos)
-   ========================================= */
-const HERO1_DESKTOP =
-  "https://storage-files.cingulado.org/pos360/media/1770500265997-04c9718403a56578.webp";
-const HERO1_MOBILE =
-  "https://storage-files.cingulado.org/pos360/media/1770500533409-c649a209a22bc072.webp";
-
-const HERO2_DESKTOP =
-  "https://storage-files.cingulado.org/pos360/media/1770502900950-b92a3b33b9449e71.webp";
-const HERO2_MOBILE =
-  "https://storage-files.cingulado.org/pos360/media/1770502919144-a99270ed268a1238.webp";
-
-const HERO3_DESKTOP =
-  "https://storage-files.cingulado.org/pos360/media/1770504901619-2bcd6132da5390be.webp";
-const HERO3_MOBILE =
-  "https://storage-files.cingulado.org/pos360/media/1770504906987-92319e41713d0b0f.webp";
-
-const HERO4_DESKTOP =
-  "https://storage-files.cingulado.org/pos360/media/1770505676091-aaef96481b331750.webp";
-const HERO4_MOBILE =
-  "https://storage-files.cingulado.org/pos360/media/1770505672865-f71f99f90b3188a6.webp";
-
+/* ✅ HERO: SOLO 4 SLIDES (desktop+mobile) */
 const heroSlides = ref([
-  { image: HERO1_DESKTOP, imageMobile: HERO1_MOBILE, action: { type: "scroll" } },
-  { image: HERO2_DESKTOP, imageMobile: HERO2_MOBILE, action: { type: "scroll" } },
-  { image: HERO3_DESKTOP, imageMobile: HERO3_MOBILE, action: { type: "scroll" } },
-  { image: HERO4_DESKTOP, imageMobile: HERO4_MOBILE, action: { type: "scroll" } },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770511525480-861cc0b6b5fde1fc.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770511521269-6aa5cc7baca225a2.webp",
+    action: { type: "scroll" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770511651259-83e48dc3a42f896d.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770511641858-ee120d9d969807a9.webp",
+    action: { type: "scroll" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770511779214-cb2a6e9804b3a584.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770512079660-52d8be3a1d432a64.webp",
+    action: { type: "scroll" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770512128948-757fa8576009f758.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770512124530-cbc09745ba04c9f9.webp",
+    action: { type: "scroll" },
+  },
 ]);
 
 function onHeroClick() {
@@ -224,9 +212,7 @@ function onHeroClick() {
 
 const q = computed(() => String(route.query.q || "").trim());
 const category_id = computed(() => (route.query.category_id ? Number(route.query.category_id) : null));
-const subcategory_id = computed(() =>
-  route.query.subcategory_id ? Number(route.query.subcategory_id) : null
-);
+const subcategory_id = computed(() => (route.query.subcategory_id ? Number(route.query.subcategory_id) : null));
 
 const resultsTitle = computed(() => {
   if (q.value || category_id.value || subcategory_id.value) return "Resultados";
@@ -433,6 +419,7 @@ async function fetchHomeShorts() {
   }
 }
 
+// ✅ fallback: nunca dejar colgado el prerender
 function dispatchPrerenderReadySafe() {
   try {
     if (typeof document !== "undefined") {
@@ -525,7 +512,6 @@ watch(
 
 .hero-float {
   position: relative;
-  z-index: 1;
   pointer-events: auto;
   margin-top: 14px;
 }

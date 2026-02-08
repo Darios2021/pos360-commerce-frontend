@@ -5,7 +5,7 @@
     <div class="ml-hero-inner">
       <v-window v-model="idx" class="ml-window" :show-arrows="false" :touch="true">
         <v-window-item v-for="(s, i) in slidesSafe" :key="i">
-          <div class="ml-slide" @click="emitClick(s)">
+          <div class="ml-slide" :style="slideRatioStyle(i, s)" @click="emitClick(s)">
             <img class="ml-bg" :src="getSlideImage(s)" :alt="s.title || 'slide'" />
             <div v-if="showOverlay" class="ml-overlay" />
 
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 
@@ -131,21 +131,11 @@ const FALLBACK_SLIDES = [
     primaryAction: { type: "shop" },
     secondaryAction: { type: "shop" },
   },
-  {
-    pill: "AUDIO",
-    title: "Parlantes, auriculares\ny micrófonos",
-    subtitle: "Equipá tu setup con lo mejor en sonido.",
-    image: "https://images.unsplash.com/photo-1518441902117-f0aee7d1b04c?auto=format&fit=crop&w=2400&q=80",
-    primaryCta: "Ver audio",
-    secondaryCta: "Ir al catálogo",
-    primaryAction: { type: "category", cat: 2, sub: null, q: "AUDIO" },
-    secondaryAction: { type: "shop" },
-  },
 ];
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
-/* ✅ YA NO SE RELLENA A 6: muestra SOLO lo que le pasás */
+/* ✅ muestra SOLO lo que le pasás */
 const slidesSafe = computed(() => {
   const s = rawSlides.value;
   return s.length ? s : FALLBACK_SLIDES;
@@ -169,6 +159,59 @@ function getSlideImage(slide) {
   const base = slide?.image || "";
   const mobile = slide?.imageMobile || slide?.mobileImage || "";
   return xs.value ? mobile || base : base;
+}
+
+/* ===========================
+   ✅ Aspect Ratio REAL por slide
+   =========================== */
+const ratios = ref({}); // key: `${i}|${mode}` => ratioNumber
+
+function ratioKey(i, mode) {
+  return `${i}|${mode}`;
+}
+function currentMode() {
+  return xs.value ? "m" : "d";
+}
+
+function ensureRatio(i, url, mode) {
+  if (!url) return;
+  const key = ratioKey(i, mode);
+  if (ratios.value[key]) return;
+
+  const img = new Image();
+  img.decoding = "async";
+  img.loading = "eager";
+  img.onload = () => {
+    const w = Number(img.naturalWidth || 0);
+    const h = Number(img.naturalHeight || 0);
+    if (w > 0 && h > 0) {
+      ratios.value = { ...ratios.value, [key]: w / h };
+    }
+  };
+  img.src = url;
+}
+
+watchEffect(() => {
+  const mode = currentMode(); // "d" o "m"
+  slidesSafe.value.forEach((s, i) => {
+    const url = mode === "m" ? (s?.imageMobile || s?.mobileImage || s?.image || "") : (s?.image || "");
+    ensureRatio(i, url, mode);
+  });
+});
+
+function slideRatioStyle(i, slide) {
+  const mode = currentMode();
+  const url = getSlideImage(slide);
+
+  const fallback = mode === "m" ? 1.6 : 4.0;
+  const key = ratioKey(i, mode);
+  const r = Number(ratios.value[key] || 0) || fallback;
+
+  ensureRatio(i, url, mode);
+
+  return {
+    "--ml-ar": String(r),
+  };
 }
 
 /* acciones */
@@ -227,16 +270,30 @@ watch(
 </script>
 
 <style scoped>
+/* ✅ wrapper normal (sin 100vw acá) */
 .ml-hero {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.ml-hero-inner {
+  width: 100%;
+}
+
+/* ✅ FULL-BLEED REAL ACÁ (es lo que faltaba) */
+.ml-window {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
+  overflow: hidden;
+  border-radius: 0 0 22px 22px;
   position: relative;
-  z-index: 1;
-  top: -1px;
+  display: block;
 }
 
-.ml-hero::before {
+/* tapa hairline del header */
+.ml-window::before {
   content: "";
   position: absolute;
   left: 0;
@@ -248,27 +305,19 @@ watch(
   pointer-events: none;
 }
 
-.ml-window {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 0 0 22px 22px;
-  position: relative;
-  display: block;
-}
-
 .ml-window :deep(.v-window__container),
 .ml-window :deep(.v-window-item),
 .ml-window :deep(.v-window-item__content) {
-  height: 100% !important;
+  height: auto !important;
   min-height: 0 !important;
 }
 
 .ml-slide {
   position: relative;
   width: 100%;
-  height: 380px;
+  aspect-ratio: var(--ml-ar, 4 / 1);
   cursor: pointer;
-  background: transparent;
+  background: transparent; /* ✅ no inventamos fondo */
 }
 
 .ml-bg {
@@ -303,6 +352,7 @@ watch(
   max-width: 860px;
 }
 
+/* flechas ML */
 .ml-mlarrow {
   position: absolute;
   top: 50%;
@@ -332,6 +382,7 @@ watch(
   fill: #1e6bd6;
 }
 
+/* dots */
 .ml-dots {
   position: absolute;
   left: 0;
@@ -357,9 +408,6 @@ watch(
 }
 
 @media (max-width: 960px) {
-  .ml-slide {
-    height: 330px;
-  }
   .ml-mlarrow {
     width: 52px;
     height: 84px;
@@ -375,9 +423,6 @@ watch(
 }
 
 @media (max-width: 600px) {
-  .ml-slide {
-    height: 300px;
-  }
   .ml-mlarrow {
     width: 48px;
     height: 78px;
