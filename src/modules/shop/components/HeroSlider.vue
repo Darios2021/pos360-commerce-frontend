@@ -82,7 +82,7 @@ import { useDisplay } from "vuetify";
 
 const router = useRouter();
 
-/* ✅ CLAVE: SOLO XS usa mobileImage (no smAndDown) */
+/* ✅ CLAVE: SOLO XS usa mobileImage */
 const { xs } = useDisplay();
 
 const props = defineProps({
@@ -135,7 +135,6 @@ const FALLBACK_SLIDES = [
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
-/* ✅ muestra SOLO lo que le pasás */
 const slidesSafe = computed(() => {
   const s = rawSlides.value;
   return s.length ? s : FALLBACK_SLIDES;
@@ -192,7 +191,7 @@ function ensureRatio(i, url, mode) {
 }
 
 watchEffect(() => {
-  const mode = currentMode(); // "d" o "m"
+  const mode = currentMode();
   slidesSafe.value.forEach((s, i) => {
     const url = mode === "m" ? (s?.imageMobile || s?.mobileImage || s?.image || "") : (s?.image || "");
     ensureRatio(i, url, mode);
@@ -270,30 +269,20 @@ watch(
 </script>
 
 <style scoped>
-/* ✅ wrapper normal (sin 100vw acá) */
+/* =========================
+   HERO FULL BLEED
+   ========================= */
 .ml-hero {
-  width: 100%;
-  position: relative;
-  z-index: 1;
-}
-
-.ml-hero-inner {
-  width: 100%;
-}
-
-/* ✅ FULL-BLEED REAL ACÁ (es lo que faltaba) */
-.ml-window {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  overflow: hidden;
-  border-radius: 0 0 22px 22px;
   position: relative;
-  display: block;
+  z-index: 1;
+  top: -1px;
 }
 
 /* tapa hairline del header */
-.ml-window::before {
+.ml-hero::before {
   content: "";
   position: absolute;
   left: 0;
@@ -305,31 +294,53 @@ watch(
   pointer-events: none;
 }
 
+/* =========================
+   V-WINDOW FIX (Vuetify)
+   ========================= */
+.ml-window {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0 0 22px 22px;
+  position: relative;
+  display: block;
+}
+
 .ml-window :deep(.v-window__container),
 .ml-window :deep(.v-window-item),
 .ml-window :deep(.v-window-item__content) {
-  height: auto !important;
+  height: 100% !important;
   min-height: 0 !important;
 }
 
+/* =========================
+   SLIDE
+   ========================= */
 .ml-slide {
   position: relative;
   width: 100%;
-  aspect-ratio: var(--ml-ar, 4 / 1);
+  height: 380px;
   cursor: pointer;
-  background: transparent; /* ✅ no inventamos fondo */
+  background: transparent;
+  overflow: hidden;
 }
 
+/* =========================
+   IMAGEN
+   ========================= */
 .ml-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover;        /* llena sin inventar fondo */
   object-position: center;
-  transform: none;
+  transform: scale(1.06);   /* aire lateral desktop */
+  transform-origin: center;
 }
 
+/* =========================
+   OVERLAY (si se usa)
+   ========================= */
 .ml-overlay {
   position: absolute;
   inset: 0;
@@ -341,6 +352,9 @@ watch(
   );
 }
 
+/* =========================
+   CONTENIDO
+   ========================= */
 .ml-content {
   position: absolute;
   top: 50%;
@@ -352,7 +366,9 @@ watch(
   max-width: 860px;
 }
 
-/* flechas ML */
+/* =========================
+   FLECHAS MERCADO LIBRE
+   ========================= */
 .ml-mlarrow {
   position: absolute;
   top: 50%;
@@ -363,26 +379,31 @@ watch(
   cursor: pointer;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-  z-index: 6;
+  z-index: 20;
   display: grid;
   place-items: center;
   border-radius: 999px;
 }
+
 .ml-mlarrow.left {
   left: -18px;
   padding-left: 18px;
 }
+
 .ml-mlarrow.right {
   right: -18px;
   padding-right: 18px;
 }
+
 .ml-mlarrow-svg {
   width: 22px;
   height: 22px;
   fill: #1e6bd6;
 }
 
-/* dots */
+/* =========================
+   DOTS
+   ========================= */
 .ml-dots {
   position: absolute;
   left: 0;
@@ -393,6 +414,7 @@ watch(
   gap: 7px;
   z-index: 6;
 }
+
 .ml-dot {
   width: 6px;
   height: 6px;
@@ -402,38 +424,68 @@ watch(
   background: rgba(255, 255, 255, 0.45);
   transition: width 0.15s ease, background 0.15s ease;
 }
+
 .ml-dot.active {
   width: 20px;
   background: rgba(255, 255, 255, 0.95);
 }
 
+/* =========================
+   TABLET
+   ========================= */
 @media (max-width: 960px) {
+  .ml-slide {
+    height: 330px;
+  }
+
+  .ml-bg {
+    transform: scale(1.1);
+  }
+
   .ml-mlarrow {
     width: 52px;
     height: 84px;
   }
+
   .ml-mlarrow.left {
     left: -16px;
     padding-left: 16px;
   }
+
   .ml-mlarrow.right {
     right: -16px;
     padding-right: 16px;
   }
 }
 
+/* =========================
+   MOBILE (AJUSTE FINO)
+   ========================= */
 @media (max-width: 600px) {
+  .ml-slide {
+    height: 300px;
+  }
+
+  /* zoom suave para dar presencia sin romper imagen */
+  .ml-bg {
+    transform: scale(1.22);
+  }
+
   .ml-mlarrow {
     width: 48px;
     height: 78px;
   }
+
   .ml-mlarrow.left {
     left: -14px;
     padding-left: 14px;
   }
+
   .ml-mlarrow.right {
     right: -14px;
     padding-right: 14px;
   }
 }
+
 </style>
+
