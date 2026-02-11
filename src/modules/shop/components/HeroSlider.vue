@@ -7,11 +7,15 @@
         <v-window-item v-for="(s, i) in slidesSafe" :key="i">
           <div class="ml-slide" :style="slideRatioStyle(i, s)" @click="emitClick(s)">
             <img class="ml-bg" :src="getSlideImage(s)" :alt="s.title || 'slide'" />
-            <div v-if="showOverlay" class="ml-overlay" />
 
-            <div v-if="showText" class="ml-content">
+            <!-- ✅ overlay por slide -->
+            <div v-if="showOverlay && !s.noOverlay" class="ml-overlay" />
+
+            <!-- ✅ texto por slide -->
+            <div v-if="showText && !s.noText" class="ml-content">
               <div class="ml-pill" v-if="s.pill">{{ s.pill }}</div>
-              <h1 class="ml-title">{{ s.title || "" }}</h1>
+              <h1 v-if="s.title" class="ml-title">{{ s.title }}</h1>
+
               <p class="ml-subtitle" v-if="s.subtitle">
                 {{ s.subtitle }}
               </p>
@@ -98,6 +102,25 @@ const props = defineProps({
 
 const emit = defineEmits(["goShop", "clickSlide"]);
 
+/* ✅ MOBILE: SOLO ESTOS 2 SLIDES */
+const MOBILE_ONLY_SLIDES = [
+  {
+    imageMobile:
+      "https://storage-files.cingulado.org/pos360/media/1770832986182-4fde29ff0d46728d.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    imageMobile:
+      "https://storage-files.cingulado.org/pos360/media/1770833315750-9981b710d7186de3.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+];
+
+
 /* rutas */
 function goToShopCategory(catId, subId = null, q = null) {
   if (!catId) return;
@@ -135,10 +158,18 @@ const FALLBACK_SLIDES = [
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
+/* ✅ Inserta 1 slide solo-en-mobile al inicio SOLO cuando xs */
 const slidesSafe = computed(() => {
-  const s = rawSlides.value;
-  return s.length ? s : FALLBACK_SLIDES;
+  const base = rawSlides.value.length ? rawSlides.value : FALLBACK_SLIDES;
+
+  if (xs.value) {
+    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos 2 en mobile
+  }
+
+  return base;
 });
+
+
 
 const idx = ref(0);
 
@@ -149,8 +180,17 @@ watch(
   }
 );
 
+watch(
+  () => xs.value,
+  () => {
+    // ✅ cuando cambia modo (desktop<->mobile), volvemos al primer slide
+    idx.value = 0;
+  }
+);
+
 function emitClick(slide) {
   emit("clickSlide", slide);
+  if (slide?.action) runAction(slide.action);
 }
 
 /* ✅ Desktop SIEMPRE image, Mobile SOLO XS usa imageMobile */
@@ -267,7 +307,6 @@ watch(
   () => startAuto()
 );
 </script>
-
 <style scoped>
 /* =========================
    HERO FULL BLEED
@@ -294,7 +333,6 @@ watch(
   pointer-events: none;
 }
 
-/* Wrapper para hover */
 .ml-hero-inner {
   position: relative;
 }
@@ -318,13 +356,12 @@ watch(
 }
 
 /* =========================
-   SLIDE
-   👉 MÁS AIRE REAL
+   SLIDE (Desktop)
    ========================= */
 .ml-slide {
   position: relative;
   width: 100%;
-  height: 420px; /* ⬅️ MÁS AIRE DESKTOP */
+  height: 420px;
   cursor: pointer;
   background: transparent;
   overflow: hidden;
@@ -332,7 +369,6 @@ watch(
 
 /* =========================
    IMAGEN
-   Desktop: SIN zoom
    ========================= */
 .ml-bg {
   position: absolute;
@@ -341,8 +377,7 @@ watch(
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transform: none; /* ✅ respeta aire original */
-  transform-origin: center;
+  transform: none;
 }
 
 /* =========================
@@ -374,8 +409,7 @@ watch(
 }
 
 /* =========================
-   FLECHAS ML
-   ✅ SOLO APARECEN AL HOVER (DESKTOP)
+   FLECHAS ML (hover desktop)
    ========================= */
 .ml-mlarrow {
   position: absolute;
@@ -392,14 +426,12 @@ watch(
   place-items: center;
   border-radius: 999px;
 
-  /* ✅ hidden by default */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease, visibility 0ms linear 160ms;
 }
 
-/* un mini “slide in” */
 .ml-mlarrow.left {
   left: -18px;
   padding-left: 18px;
@@ -412,7 +444,6 @@ watch(
   transform: translateY(-50%) translateX(6px);
 }
 
-/* ✅ show on hover del contenedor */
 .ml-hero-inner:hover .ml-mlarrow,
 .ml-window:hover .ml-mlarrow {
   opacity: 1;
@@ -474,11 +505,11 @@ watch(
    ========================= */
 @media (max-width: 960px) {
   .ml-slide {
-    height: 360px; /* ⬅️ más aire */
+    height: 360px;
   }
 
   .ml-bg {
-    transform: scale(1.05); /* leve */
+    transform: none;
   }
 
   .ml-mlarrow {
@@ -499,22 +530,24 @@ watch(
 
 /* =========================
    MOBILE
-   ✅ SIN HOVER -> NO MOSTRAR FLECHAS
+   ✅ 4:5 REAL (1080x1350)
+   ✅ SIN VH (no se va a la mierda de alto)
    ========================= */
 @media (max-width: 600px) {
   .ml-slide {
-    height: 320px; /* ⬅️ más aire arriba/abajo */
+    height: auto;          /* ✅ que lo defina el ratio */
+    aspect-ratio: 4 / 5;   /* ✅ 1080x1350 */
+    max-height: 560px;     /* ✅ “tope” suave (ajustable) */
   }
 
   .ml-bg {
-    transform: scale(1.14); /* 👌 grande pero respirado */
+    object-fit: cover;
+    object-position: center;
+    transform: none;
   }
 
-  /* ✅ oculta flechas en mobile */
   .ml-mlarrow {
     display: none;
   }
 }
 </style>
-
-
