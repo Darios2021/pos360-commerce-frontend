@@ -1,5 +1,3 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/components/HeroSlider.vue -->
 <template>
   <section class="ml-hero">
     <div class="ml-hero-inner">
@@ -102,18 +100,32 @@ const props = defineProps({
 
 const emit = defineEmits(["goShop", "clickSlide"]);
 
-/* ✅ MOBILE: SOLO ESTOS 2 SLIDES (orden fijo) */
+/* ✅ MOBILE: SOLO ESTOS 4 SLIDES (orden fijo) */
 const MOBILE_ONLY_SLIDES = [
   {
     imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770849506173-66bbf9b62be7c8c1.webp",
+      "https://storage-files.cingulado.org/pos360/media/1770851850675-a66b8cdbd92fe257.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
     imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770850727797-f91f75c0e0f5b8dd.webp",
+      "https://storage-files.cingulado.org/pos360/media/1770851846722-bb486e8809960eb9.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    imageMobile:
+      "https://storage-files.cingulado.org/pos360/media/1770851842305-255b4c4db9654e1e.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    imageMobile:
+      "https://storage-files.cingulado.org/pos360/media/1770851836938-0c4e2cf8be1a52b6.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
@@ -157,17 +169,16 @@ const FALLBACK_SLIDES = [
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
-/* ✅ Desktop = props/fallback | Mobile(XS) = SOLO el slide fijo */
+/* ✅ Desktop = props/fallback | Mobile(XS) = SOLO los 4 fijos */
 const slidesSafe = computed(() => {
   const base = rawSlides.value.length ? rawSlides.value : FALLBACK_SLIDES;
 
   if (xs.value) {
-    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos en mobile
+    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos 4 en mobile
   }
 
   return base; // ✅ desktop normal
 });
-
 
 const idx = ref(0);
 
@@ -231,7 +242,10 @@ function ensureRatio(i, url, mode) {
 watchEffect(() => {
   const mode = currentMode();
   slidesSafe.value.forEach((s, i) => {
-    const url = mode === "m" ? (s?.imageMobile || s?.mobileImage || s?.image || "") : (s?.image || "");
+    const url =
+      mode === "m"
+        ? (s?.imageMobile || s?.mobileImage || s?.image || "")
+        : (s?.image || "");
     ensureRatio(i, url, mode);
   });
 });
@@ -305,6 +319,7 @@ watch(
   () => startAuto()
 );
 </script>
+
 <style scoped>
 /* =========================
    HERO FULL BLEED
@@ -542,6 +557,7 @@ watch(
     object-fit: contain; /* ✅ NO recorta */
     object-position: center;
     transform: none;
+    background: transparent;
   }
 
   .ml-mlarrow {
@@ -549,8 +565,3 @@ watch(
   }
 }
 </style>
-
-
-
-
-
