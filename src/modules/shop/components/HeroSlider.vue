@@ -269,7 +269,6 @@ watch(
 </script>
 
 <style scoped>
-
 /* =========================
    HERO FULL BLEED
    ========================= */
@@ -293,6 +292,11 @@ watch(
   background: #1488d1;
   z-index: 2;
   pointer-events: none;
+}
+
+/* Wrapper para hover */
+.ml-hero-inner {
+  position: relative;
 }
 
 /* =========================
@@ -320,7 +324,7 @@ watch(
 .ml-slide {
   position: relative;
   width: 100%;
-  height: 420px;              /* ⬅️ MÁS AIRE DESKTOP */
+  height: 420px; /* ⬅️ MÁS AIRE DESKTOP */
   cursor: pointer;
   background: transparent;
   overflow: hidden;
@@ -337,7 +341,7 @@ watch(
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transform: none;            /* ✅ respeta aire original */
+  transform: none; /* ✅ respeta aire original */
   transform-origin: center;
 }
 
@@ -371,6 +375,7 @@ watch(
 
 /* =========================
    FLECHAS ML
+   ✅ SOLO APARECEN AL HOVER (DESKTOP)
    ========================= */
 .ml-mlarrow {
   position: absolute;
@@ -386,16 +391,48 @@ watch(
   display: grid;
   place-items: center;
   border-radius: 999px;
+
+  /* ✅ hidden by default */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 0ms linear 160ms;
 }
 
+/* un mini “slide in” */
 .ml-mlarrow.left {
   left: -18px;
   padding-left: 18px;
+  transform: translateY(-50%) translateX(-6px);
 }
 
 .ml-mlarrow.right {
   right: -18px;
   padding-right: 18px;
+  transform: translateY(-50%) translateX(6px);
+}
+
+/* ✅ show on hover del contenedor */
+.ml-hero-inner:hover .ml-mlarrow,
+.ml-window:hover .ml-mlarrow {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 0ms;
+}
+
+.ml-hero-inner:hover .ml-mlarrow.left,
+.ml-window:hover .ml-mlarrow.left {
+  transform: translateY(-50%) translateX(0);
+}
+
+.ml-hero-inner:hover .ml-mlarrow.right,
+.ml-window:hover .ml-mlarrow.right {
+  transform: translateY(-50%) translateX(0);
+}
+
+.ml-mlarrow:active {
+  transform: translateY(-50%) scale(0.98);
 }
 
 .ml-mlarrow-svg {
@@ -437,11 +474,11 @@ watch(
    ========================= */
 @media (max-width: 960px) {
   .ml-slide {
-    height: 360px;            /* ⬅️ más aire */
+    height: 360px; /* ⬅️ más aire */
   }
 
   .ml-bg {
-    transform: scale(1.05);   /* leve */
+    transform: scale(1.05); /* leve */
   }
 
   .ml-mlarrow {
@@ -462,32 +499,22 @@ watch(
 
 /* =========================
    MOBILE
+   ✅ SIN HOVER -> NO MOSTRAR FLECHAS
    ========================= */
 @media (max-width: 600px) {
   .ml-slide {
-    height: 320px;            /* ⬅️ más aire arriba/abajo */
+    height: 320px; /* ⬅️ más aire arriba/abajo */
   }
 
   .ml-bg {
-    transform: scale(1.14);   /* 👌 grande pero respirado */
+    transform: scale(1.14); /* 👌 grande pero respirado */
   }
 
+  /* ✅ oculta flechas en mobile */
   .ml-mlarrow {
-    width: 48px;
-    height: 78px;
-  }
-
-  .ml-mlarrow.left {
-    left: -14px;
-    padding-left: 14px;
-  }
-
-  .ml-mlarrow.right {
-    right: -14px;
-    padding-right: 14px;
+    display: none;
   }
 }
-
-
 </style>
+
 
