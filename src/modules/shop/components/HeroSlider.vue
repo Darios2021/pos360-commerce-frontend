@@ -102,24 +102,23 @@ const props = defineProps({
 
 const emit = defineEmits(["goShop", "clickSlide"]);
 
-/* ✅ MOBILE: SOLO ESTOS 2 SLIDES */
+/* ✅ MOBILE: SOLO ESTOS 2 SLIDES (orden fijo) */
 const MOBILE_ONLY_SLIDES = [
   {
     imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770832986182-4fde29ff0d46728d.webp",
+      "https://storage-files.cingulado.org/pos360/media/1770849506173-66bbf9b62be7c8c1.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
     imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770833315750-9981b710d7186de3.webp",
+      "https://storage-files.cingulado.org/pos360/media/1770850727797-f91f75c0e0f5b8dd.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
 ];
-
 
 /* rutas */
 function goToShopCategory(catId, subId = null, q = null) {
@@ -158,17 +157,16 @@ const FALLBACK_SLIDES = [
 
 const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
 
-/* ✅ Inserta 1 slide solo-en-mobile al inicio SOLO cuando xs */
+/* ✅ Desktop = props/fallback | Mobile(XS) = SOLO el slide fijo */
 const slidesSafe = computed(() => {
   const base = rawSlides.value.length ? rawSlides.value : FALLBACK_SLIDES;
 
   if (xs.value) {
-    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos 2 en mobile
+    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos en mobile
   }
 
-  return base;
+  return base; // ✅ desktop normal
 });
-
 
 
 const idx = ref(0);
@@ -317,20 +315,14 @@ watch(
   margin-right: calc(50% - 50vw);
   position: relative;
   z-index: 1;
-  top: -1px;
+  top: -1px; /* ✅ vuelve a tu valor original */
+  background: transparent; /* ✅ NO mete celeste */
 }
 
-/* tapa hairline del header */
+/* ✅ si tenías esa línea, la apagamos para que no “pintee” */
 .ml-hero::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 3px;
-  background: #1488d1;
-  z-index: 2;
-  pointer-events: none;
+  display: none !important;
+  content: none !important;
 }
 
 .ml-hero-inner {
@@ -346,6 +338,7 @@ watch(
   border-radius: 0 0 22px 22px;
   position: relative;
   display: block;
+  background: transparent; /* ✅ evita fondo visible */
 }
 
 .ml-window :deep(.v-window__container),
@@ -368,7 +361,7 @@ watch(
 }
 
 /* =========================
-   IMAGEN
+   IMAGEN (Desktop)
    ========================= */
 .ml-bg {
   position: absolute;
@@ -529,19 +522,24 @@ watch(
 }
 
 /* =========================
-   MOBILE
-   ✅ 4:5 REAL (1080x1350)
-   ✅ SIN VH (no se va a la mierda de alto)
+   MOBILE (banner entero, sin recorte)
    ========================= */
 @media (max-width: 600px) {
+  .ml-window :deep(.v-window-item__content) {
+    height: auto !important;
+  }
+
   .ml-slide {
-    height: auto;          /* ✅ que lo defina el ratio */
-    aspect-ratio: 4 / 5;   /* ✅ 1080x1350 */
-    max-height: 560px;     /* ✅ “tope” suave (ajustable) */
+    height: auto;
+    background: transparent; /* ✅ no fondo raro */
   }
 
   .ml-bg {
-    object-fit: cover;
+    position: relative;
+    display: block; /* ✅ elimina gap inline */
+    width: 100%;
+    height: auto;
+    object-fit: contain; /* ✅ NO recorta */
     object-position: center;
     transform: none;
   }
@@ -551,3 +549,8 @@ watch(
   }
 }
 </style>
+
+
+
+
+
