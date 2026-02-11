@@ -1,5 +1,5 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, SOLO INFO REAL + precio ML + cuotas segun umbral) -->
-<!-- src/modules/shop/components/ProductPurchasePanel.vue -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (SIDEBAR ML, 1 COLUMNA, SOLO INFO REAL + precio ML + cuotas segun regla 150/300 y base LISTA) -->
+<!-- src/modules/shop/components/shop/ProductPurchasePanel.vue -->
 <template>
   <v-card class="ml-side info" variant="flat">
     <v-card-text class="ml-pad">
@@ -53,7 +53,7 @@
           <span v-if="priceDec" class="ml-price-dec">{{ priceDec }}</span>
         </div>
 
-        <!-- ✅ Cuotas chicas: 3x < 400k | 6x >= 400k (desde precio LISTA) -->
+        <!-- ✅ Cuotas: 6x si display > 300 | 3x si 150..300 | base de cálculo: LISTA -->
         <div v-if="installmentHint" class="ml-installment-hint">
           {{ installmentHint }}
         </div>
@@ -123,7 +123,7 @@ import { computed, ref, watch } from "vue";
 const props = defineProps({
   product: { type: Object, default: null },
 });
-const emit = defineEmits(["add", "buy"]);
+const emit = defineEmits(["add", "buy", "go-payments"]);
 
 /* ================= utils ================= */
 function fmtMoney(v) {
@@ -144,14 +144,19 @@ function cleanOneLine(s) {
 /* ================= precios =================
    - priceList: lista (tachado)
    - priceFinal: con descuento (grande)
+   Regla: siempre mostrar descuento si existe; cuotas se calculan sobre lista.
 */
 const priceList = computed(() =>
   Math.max(toNum(props.product?.price_list, 0), toNum(props.product?.price, 0))
 );
 
-const priceFinal = computed(() =>
-  Math.max(toNum(props.product?.price_discount, 0), toNum(props.product?.price, 0))
-);
+const priceFinal = computed(() => {
+  const d = toNum(props.product?.price_discount, 0);
+  if (d > 0) return d;
+  const l = toNum(props.product?.price_list, 0);
+  if (l > 0) return l;
+  return toNum(props.product?.price, 0);
+});
 
 const hasDiscount = computed(() => priceList.value > 0 && priceFinal.value < priceList.value);
 
@@ -169,14 +174,25 @@ const priceDec = computed(() => {
   return d === "00" ? "" : d;
 });
 
-/* ✅ cuotas segun umbral (desde precio LISTA) */
-const INSTALLMENTS_THRESHOLD = 400000; // 400k
+/* ✅ cuotas segun regla:
+   - display > 300 => 6x
+   - 150..300 => 3x
+   - si no => sin cuotas
+   - cálculo SIEMPRE sobre LISTA (si hay), sino sobre display
+*/
+const installmentsCount = computed(() => {
+  const display = priceFinal.value; // lo que el usuario ve grande (descuento)
+  if (!display || display <= 0) return 0;
+  if (display > 300) return 6;
+  if (display >= 150 && display <= 300) return 3;
+  return 0;
+});
 
 const installmentHint = computed(() => {
-  const base = priceList.value;
-  if (!base || base <= 0) return "";
+  const n = installmentsCount.value;
+  if (!n) return "";
 
-  const n = base >= INSTALLMENTS_THRESHOLD ? 6 : 3;
+  const base = priceList.value > 0 ? priceList.value : priceFinal.value; // ✅ base lista
   const per = base / n;
 
   return `En ${n}x $ ${fmtMoney(per)}`;
