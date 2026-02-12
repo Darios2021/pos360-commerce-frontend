@@ -79,6 +79,8 @@
   </section>
 </template>
 
+
+
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
@@ -105,25 +107,25 @@ const emit = defineEmits(["goShop", "clickSlide"]);
 /* ✅ MOBILE: SOLO ESTOS 4 SLIDES (orden fijo) */
 const MOBILE_ONLY_SLIDES = [
   {
-    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851850675-a66b8cdbd92fe257.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770903361128-e181e4da4c3a662d.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851846722-bb486e8809960eb9.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770903354672-fc7932f140df70df.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851842305-255b4c4db9654e1e.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770903349299-716cc26c9ef934fa.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851836938-0c4e2cf8be1a52b6.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770903342999-ce655b383b8f5793.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
@@ -133,25 +135,25 @@ const MOBILE_ONLY_SLIDES = [
 /* ✅ DESKTOP: SOLO ESTOS 4 SLIDES (1920x600) */
 const DESKTOP_ONLY_SLIDES = [
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770853690188-c31a8918392f4137.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1770903212732-17f2ec4cdd3b9ac5.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770853695043-90ae8c44e6168014.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1770903207736-3260b8240fb94ad2.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770853699736-7fa924f027cf8f55.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1770903202552-dbb0ad80d3d1516a.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770853705277-c467541068221c3d.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1770903121441-47eeccec2eb306f2.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },

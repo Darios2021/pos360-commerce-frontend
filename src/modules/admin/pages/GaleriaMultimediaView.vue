@@ -316,26 +316,40 @@ function stemKey(img) {
   return `${dir}${base}`; // es un "stem url", igual lo acepta el backend (resolveKeyForOverwrite)
 }
 
-function webpUrl(img) {
+/**
+ * ✅ FIX IMPORTANTE:
+ * - Para armar URLs de variantes, preferimos img.key (source of truth),
+ *   y solo usamos img.url para sacar el "base" público (bucket+path).
+ * - Esto evita rutas “rotas” cuando url no coincide con key/filename.
+ */
+function buildPublicFromKeyLike(img, filename) {
   const u = String(img?.url || "");
-  if (!u) return "";
-  const dir = urlDir(u);
+  const baseUrlDir = u ? urlDir(u) : "";
+
+  const key = String(img?.key || "");
+  if (key) {
+    const keyDir = key.includes("/") ? key.slice(0, key.lastIndexOf("/") + 1) : "";
+    // Si tenemos url, ya incluye el prefijo público y bucket.
+    // Si no, devolvemos solo path relativo (igual te sirve para debug).
+    const prefix = baseUrlDir || keyDir;
+    return `${prefix}${filename}`;
+  }
+
+  if (!baseUrlDir) return filename;
+  return `${baseUrlDir}${filename}`;
+}
+
+function webpUrl(img) {
   const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
-  return `${dir}${base}.webp`;
+  return buildPublicFromKeyLike(img, `${base}.webp`);
 }
 function ogUrl(img) {
-  const u = String(img?.url || "");
-  if (!u) return "";
-  const dir = urlDir(u);
   const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
-  return `${dir}${base}_og.jpg`;
+  return buildPublicFromKeyLike(img, `${base}_og.jpg`);
 }
 function sqUrl(img) {
-  const u = String(img?.url || "");
-  if (!u) return "";
-  const dir = urlDir(u);
   const base = baseNoSuffix(stripExt(fileNameFromAny(img)));
-  return `${dir}${base}_sq.jpg`;
+  return buildPublicFromKeyLike(img, `${base}_sq.jpg`);
 }
 
 const viewerWebpCacheBust = computed(() => {
