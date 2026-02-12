@@ -1,10 +1,12 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/shop/components/HeroSlider.vue -->
 <template>
   <section class="ml-hero">
     <div class="ml-hero-inner">
       <v-window v-model="idx" class="ml-window" :show-arrows="false" :touch="true">
         <v-window-item v-for="(s, i) in slidesSafe" :key="i">
           <div class="ml-slide" :style="slideRatioStyle(i, s)" @click="emitClick(s)">
-            <img class="ml-bg" :src="getSlideImage(s)" :alt="s.title || 'slide'" />
+            <img class="ml-bg" :src="getSlideImage(s)" :alt="s.title || 'slide'" loading="eager" />
 
             <!-- ✅ overlay por slide -->
             <div v-if="showOverlay && !s.noOverlay" class="ml-overlay" />
@@ -88,7 +90,7 @@ const router = useRouter();
 const { xs } = useDisplay();
 
 const props = defineProps({
-  slides: { type: Array, default: () => [] },
+  slides: { type: Array, default: () => [] }, // (no se usa en desktop en esta versión)
   autoplay: { type: Boolean, default: true },
   interval: { type: Number, default: 6500 },
   branchId: { type: [Number, String], default: 3 },
@@ -103,29 +105,53 @@ const emit = defineEmits(["goShop", "clickSlide"]);
 /* ✅ MOBILE: SOLO ESTOS 4 SLIDES (orden fijo) */
 const MOBILE_ONLY_SLIDES = [
   {
-    imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770851850675-a66b8cdbd92fe257.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851850675-a66b8cdbd92fe257.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770851846722-bb486e8809960eb9.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851846722-bb486e8809960eb9.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770851842305-255b4c4db9654e1e.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851842305-255b4c4db9654e1e.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    imageMobile:
-      "https://storage-files.cingulado.org/pos360/media/1770851836938-0c4e2cf8be1a52b6.webp",
+    imageMobile: "https://storage-files.cingulado.org/pos360/media/1770851836938-0c4e2cf8be1a52b6.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+];
+
+/* ✅ DESKTOP: SOLO ESTOS 4 SLIDES (1920x600) */
+const DESKTOP_ONLY_SLIDES = [
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770853690188-c31a8918392f4137.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770853695043-90ae8c44e6168014.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770853699736-7fa924f027cf8f55.webp",
+    noText: true,
+    noOverlay: true,
+    action: { type: "shop" },
+  },
+  {
+    image: "https://storage-files.cingulado.org/pos360/media/1770853705277-c467541068221c3d.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
@@ -153,32 +179,20 @@ function goToSearch(q) {
   });
 }
 
-/* fallback SOLO si no hay slides */
-const FALLBACK_SLIDES = [
-  {
-    pill: "NOVEDADES",
-    title: "Gadgets y accesorios\nnuevos",
-    subtitle: "Descubrí productos recién ingresados en el catálogo.",
-    image: "https://storage-files.cingulado.org/pos360/products/296/1768880552898-f845ccb64617.webp",
-    primaryCta: "Ver más",
-    secondaryCta: "Ir al catálogo",
-    primaryAction: { type: "shop" },
-    secondaryAction: { type: "shop" },
-  },
-];
+function emitClick(slide) {
+  emit("clickSlide", slide);
+  if (slide?.action) runAction(slide.action);
+}
 
-const rawSlides = computed(() => (Array.isArray(props.slides) ? props.slides : []).filter(Boolean));
+/* ✅ Desktop SIEMPRE image, Mobile SOLO XS usa imageMobile */
+function getSlideImage(slide) {
+  const base = slide?.image || "";
+  const mobile = slide?.imageMobile || slide?.mobileImage || "";
+  return xs.value ? mobile || base : base;
+}
 
-/* ✅ Desktop = props/fallback | Mobile(XS) = SOLO los 4 fijos */
-const slidesSafe = computed(() => {
-  const base = rawSlides.value.length ? rawSlides.value : FALLBACK_SLIDES;
-
-  if (xs.value) {
-    return MOBILE_ONLY_SLIDES; // ✅ SOLO estos 4 en mobile
-  }
-
-  return base; // ✅ desktop normal
-});
+/* ✅ Fuente de slides: Mobile(XS)=4 fijos | Desktop=4 fijos */
+const slidesSafe = computed(() => (xs.value ? MOBILE_ONLY_SLIDES : DESKTOP_ONLY_SLIDES));
 
 const idx = ref(0);
 
@@ -192,22 +206,9 @@ watch(
 watch(
   () => xs.value,
   () => {
-    // ✅ cuando cambia modo (desktop<->mobile), volvemos al primer slide
     idx.value = 0;
   }
 );
-
-function emitClick(slide) {
-  emit("clickSlide", slide);
-  if (slide?.action) runAction(slide.action);
-}
-
-/* ✅ Desktop SIEMPRE image, Mobile SOLO XS usa imageMobile */
-function getSlideImage(slide) {
-  const base = slide?.image || "";
-  const mobile = slide?.imageMobile || slide?.mobileImage || "";
-  return xs.value ? mobile || base : base;
-}
 
 /* ===========================
    ✅ Aspect Ratio REAL por slide
@@ -232,9 +233,7 @@ function ensureRatio(i, url, mode) {
   img.onload = () => {
     const w = Number(img.naturalWidth || 0);
     const h = Number(img.naturalHeight || 0);
-    if (w > 0 && h > 0) {
-      ratios.value = { ...ratios.value, [key]: w / h };
-    }
+    if (w > 0 && h > 0) ratios.value = { ...ratios.value, [key]: w / h };
   };
   img.src = url;
 }
@@ -242,10 +241,7 @@ function ensureRatio(i, url, mode) {
 watchEffect(() => {
   const mode = currentMode();
   slidesSafe.value.forEach((s, i) => {
-    const url =
-      mode === "m"
-        ? (s?.imageMobile || s?.mobileImage || s?.image || "")
-        : (s?.image || "");
+    const url = mode === "m" ? (s?.imageMobile || s?.mobileImage || s?.image || "") : (s?.image || "");
     ensureRatio(i, url, mode);
   });
 });
@@ -254,7 +250,8 @@ function slideRatioStyle(i, slide) {
   const mode = currentMode();
   const url = getSlideImage(slide);
 
-  const fallback = mode === "m" ? 1.6 : 4.0;
+  // fallbacks: mobile 4:5 (0.8) | desktop 1920x600 (3.2)
+  const fallback = mode === "m" ? 0.8 : 3.2;
   const key = ratioKey(i, mode);
   const r = Number(ratios.value[key] || 0) || fallback;
 
@@ -330,11 +327,10 @@ watch(
   margin-right: calc(50% - 50vw);
   position: relative;
   z-index: 1;
-  top: -1px; /* ✅ vuelve a tu valor original */
-  background: transparent; /* ✅ NO mete celeste */
+  top: -1px;
+  background: transparent;
 }
 
-/* ✅ si tenías esa línea, la apagamos para que no “pintee” */
 .ml-hero::before {
   display: none !important;
   content: none !important;
@@ -353,39 +349,44 @@ watch(
   border-radius: 0 0 22px 22px;
   position: relative;
   display: block;
-  background: transparent; /* ✅ evita fondo visible */
+  background: transparent;
 }
 
 .ml-window :deep(.v-window__container),
 .ml-window :deep(.v-window-item),
 .ml-window :deep(.v-window-item__content) {
-  height: 100% !important;
+  height: auto !important;
   min-height: 0 !important;
 }
 
 /* =========================
-   SLIDE (Desktop)
+   SLIDE
+   ✅ SIN RECORTE (usa ratio real)
    ========================= */
 .ml-slide {
   position: relative;
   width: 100%;
-  height: 420px;
+  height: auto;                 /* ✅ nada fijo */
+  aspect-ratio: var(--ml-ar);   /* ✅ ratio real por slide */
   cursor: pointer;
   background: transparent;
   overflow: hidden;
 }
 
 /* =========================
-   IMAGEN (Desktop)
+   IMAGEN
+   ✅ PROHIBIDO RECORTAR => contain
    ========================= */
 .ml-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  display: block;       /* ✅ sin “bordecitos” por baseline */
+  object-fit: contain;  /* ✅ NO recorta */
   object-position: center;
   transform: none;
+  background: transparent;
 }
 
 /* =========================
@@ -510,16 +511,9 @@ watch(
 
 /* =========================
    TABLET
+   (mantiene ratio, sin recortar)
    ========================= */
 @media (max-width: 960px) {
-  .ml-slide {
-    height: 360px;
-  }
-
-  .ml-bg {
-    transform: none;
-  }
-
   .ml-mlarrow {
     width: 52px;
     height: 84px;
@@ -537,29 +531,10 @@ watch(
 }
 
 /* =========================
-   MOBILE (banner entero, sin recorte)
+   MOBILE
+   ✅ sin hover => no flechas
    ========================= */
 @media (max-width: 600px) {
-  .ml-window :deep(.v-window-item__content) {
-    height: auto !important;
-  }
-
-  .ml-slide {
-    height: auto;
-    background: transparent; /* ✅ no fondo raro */
-  }
-
-  .ml-bg {
-    position: relative;
-    display: block; /* ✅ elimina gap inline */
-    width: 100%;
-    height: auto;
-    object-fit: contain; /* ✅ NO recorta */
-    object-position: center;
-    transform: none;
-    background: transparent;
-  }
-
   .ml-mlarrow {
     display: none;
   }
