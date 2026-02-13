@@ -119,11 +119,14 @@
             </div>
           </button>
 
+          <!-- ✅ CTA: iconos (comprar = lightning / agregar = cart) -->
           <div class="pbar-ctas">
-            <button class="pbar-buy" type="button" @click="buyNow(it)">Comprar</button>
-            <button class="pbar-add" type="button" @click="addToCart(it)">
-              <v-icon size="16">mdi-cart-outline</v-icon>
-              Agregar
+            <button class="pbar-buyIcon" type="button" @click="buyNow(it)" title="Comprar">
+              <v-icon size="20">mdi-lightning-bolt</v-icon>
+            </button>
+
+            <button class="pbar-addIcon" type="button" @click="addToCart(it)" title="Agregar al carrito">
+              <v-icon size="20">mdi-cart-outline</v-icon>
             </button>
           </div>
         </div>
@@ -184,7 +187,6 @@ function s(x) {
 }
 
 function goBack() {
-  // si venís de otra ruta, back; si no, a /shop
   if (window.history.length > 1) router.back();
   else router.push("/shop");
 }
@@ -515,7 +517,6 @@ function setupIntersectionAutoplay() {
 
   io = new IntersectionObserver(
     (entries) => {
-      // elegir el más visible
       const visible = entries
         .filter((e) => e.isIntersecting)
         .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0))[0];
@@ -553,6 +554,11 @@ watch(
 </script>
 
 <style scoped>
+/* ✅ altura del mini footer */
+:global(:root) {
+  --shop-bottom-nav-h: 64px;
+}
+
 /* Layout base full screen */
 .clips {
   background: #0b0f16;
@@ -594,9 +600,7 @@ watch(
 
 .clips-spacer { width: 44px; height: 44px; }
 
-.clips-alert {
-  margin: 12px;
-}
+.clips-alert { margin: 12px; }
 
 .clips-loading {
   min-height: calc(100dvh - 54px);
@@ -605,18 +609,19 @@ watch(
   gap: 10px;
 }
 
-/* Feed: scroll vertical + snap */
+/* ✅ Feed: descuenta TOP + bottom nav fijo */
 .clips-feed {
-  height: calc(100dvh - (54px + env(safe-area-inset-top)));
+  height: calc(100dvh - (54px + env(safe-area-inset-top)) - var(--shop-bottom-nav-h));
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
+  padding-bottom: calc(var(--shop-bottom-nav-h) + env(safe-area-inset-bottom));
 }
 .clips-feed::-webkit-scrollbar { display: none; }
 
 .clip {
-  height: calc(100dvh - (54px + env(safe-area-inset-top)));
+  height: calc(100dvh - (54px + env(safe-area-inset-top)) - var(--shop-bottom-nav-h));
   scroll-snap-align: start;
   position: relative;
   display: grid;
@@ -699,11 +704,11 @@ watch(
   transform: translate(-50%, -50%) scale(1.32) !important;
 }
 
-/* actions right */
+/* actions right (subidas para no chocar con barra + bottom nav) */
 .clip-actions {
   position: absolute;
   right: 10px;
-  bottom: 110px; /* arriba del product bar */
+  bottom: calc(110px + var(--shop-bottom-nav-h));
   display: grid;
   gap: 10px;
   z-index: 5;
@@ -723,7 +728,7 @@ watch(
 .clip-hint {
   position: absolute;
   left: 50%;
-  bottom: 120px;
+  bottom: calc(120px + var(--shop-bottom-nav-h));
   transform: translateX(-50%);
   font-size: 12px;
   padding: 8px 12px;
@@ -733,20 +738,18 @@ watch(
   z-index: 6;
 }
 
-/* product bar bottom (sticky per clip) */
+/* product bar bottom */
 .clip-productBar {
   background: rgba(255,255,255,0.94);
   color: #111;
   border-top: 1px solid rgba(0,0,0,0.08);
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom) + var(--shop-bottom-nav-h));
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
 }
 
-.clip-productBar--empty {
-  grid-template-columns: 1fr;
-}
+.clip-productBar--empty { grid-template-columns: 1fr; }
 
 .pbar-left {
   border: 0;
@@ -800,36 +803,39 @@ watch(
 .pbar-off { font-weight: 950; font-size: 11px; color: #00a650; }
 .pbar-old { margin-top: 2px; font-size: 11px; opacity: .65; text-decoration: line-through; }
 
+/* ✅ CTAs como iconos */
 .pbar-ctas {
   display: grid;
-  grid-template-columns: 116px;
-  gap: 8px;
+  gap: 10px;
   align-content: center;
 }
-.pbar-buy {
+
+.pbar-buyIcon {
+  width: 46px;
+  height: 46px;
   border: 0;
-  border-radius: 12px;
-  padding: 10px 10px;
-  font-weight: 900;
+  border-radius: 999px;
   background: #2680c2;
   color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.18);
 }
-.pbar-add {
+
+.pbar-addIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.14);
-  border-radius: 12px;
-  padding: 10px 10px;
-  font-weight: 900;
   background: #f3f3f3;
   color: #111;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  display: grid;
+  place-items: center;
 }
 
 /* loader more */
 .clips-more {
-  padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom) + var(--shop-bottom-nav-h));
   display: flex;
   gap: 10px;
   align-items: center;

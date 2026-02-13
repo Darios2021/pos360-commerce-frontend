@@ -3,16 +3,16 @@
 
 <template>
   <header class="ml-header">
-    <!-- ROW 1 -->
+    <!-- ================= ROW 1 (TOP): brand + search + actions ================= -->
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
-          <!-- Desktop: logo largo -->
+          <!-- ✅ Desktop: logo largo -->
           <div v-if="!isMobile" class="ml-logo-wide">
             <img :src="logoDesktopUrl" :alt="branding.name" class="ml-logo-wide-img" />
           </div>
 
-          <!-- Mobile: icono -->
+          <!-- ✅ Mobile: solo icono -->
           <div v-else class="ml-logo-icon" aria-hidden="true">
             <img :src="logoMobileUrl" :alt="branding.name" class="ml-logo-icon-img" />
           </div>
@@ -26,10 +26,10 @@
           />
         </div>
 
-        <!-- Desktop actions -->
+        <!-- ✅ ACTIONS DESKTOP -->
         <div v-if="!isMobile" class="ml-top-actions">
-          <router-link class="ml-top-link" to="/app/auth/login">
-            <v-icon size="18" class="ml-icon-white">mdi-account-outline</v-icon>
+          <router-link class="ml-top-link" to="/auth/login">
+            <v-icon size="18" class="ml-top-ico ml-icon-white">mdi-account-outline</v-icon>
             <span>Ingresá</span>
           </router-link>
 
@@ -43,7 +43,7 @@
           </router-link>
         </div>
 
-        <!-- Mobile: SOLO carrito -->
+        <!-- ✅ MOBILE: SOLO carrito (menu se mueve al footer) -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -55,18 +55,18 @@
       </div>
     </div>
 
-    <!-- ROW 2 -->
+    <!-- ================= ROW 2 (BOTTOM): links ================= -->
     <div class="ml-row ml-row-bottom">
       <div class="ml-container ml-bottom-grid" :class="{ 'is-mobile': isMobile }">
         <button v-if="!isMobile" class="ml-loc" type="button">
-          <v-icon size="16" class="ml-icon-white">mdi-map-marker-outline</v-icon>
+          <v-icon size="16" class="ml-loc-ico ml-icon-white">mdi-map-marker-outline</v-icon>
           <span class="ml-loc-text">
             <span class="ml-loc-top">Enviar a</span>
             <span class="ml-loc-bottom">San Juan</span>
           </span>
         </button>
 
-        <!-- Desktop nav (NO tocar) -->
+        <!-- ✅ DESKTOP NAV (no tocar) -->
         <nav v-if="!isMobile" class="ml-nav">
           <ShopCatalogMenu />
           <span class="ml-nav-sep" aria-hidden="true">|</span>
@@ -75,7 +75,7 @@
           <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Servicio Técnico</router-link>
         </nav>
 
-        <!-- Mobile chips only -->
+        <!-- ✅ MOBILE: SOLO chips (sin ShopCatalogMenu) -->
         <div v-else class="ml-mobile-row2">
           <div class="ml-mobile-links" aria-label="Links">
             <router-link class="ml-m-link" to="/shop">San Juan Seguridad</router-link>
@@ -87,8 +87,16 @@
     </div>
   </header>
 
-  <!-- WhatsApp -->
-  <a class="ml-wa-fab" :href="waHref" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">
+  <!-- ✅ WhatsApp flotante ÚNICO (OCULTO EN CLIPS) -->
+  <a
+    v-if="showWaFab"
+    class="ml-wa-fab"
+    :href="waHref"
+    target="_blank"
+    rel="noopener"
+    title="WhatsApp"
+    aria-label="WhatsApp"
+  >
     <v-icon size="24">mdi-whatsapp</v-icon>
   </a>
 </template>
@@ -135,11 +143,22 @@ const logoDesktopUrl = computed(() => withVersion(DESKTOP_LOGO, branding.value?.
 const logoMobileUrl = computed(() => withVersion(MOBILE_LOGO_ICON, branding.value?.updated_at));
 
 const WHATSAPP_NUMBER = "5492644392150";
+
 const waMessage = computed(() => {
   const url = typeof window !== "undefined" ? window.location.href : "https://sanjuantecnologia.com/shop";
   return `Hola! 👋 Quiero consultar por este producto/link: ${url}`;
 });
+
 const waHref = computed(() => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage.value)}`);
+
+/* ✅ OCULTAR WA EN CLIPS (y si querés también en categories) */
+const showWaFab = computed(() => {
+  const n = String(route.name || "");
+  if (n === "shopClips") return false;
+  // opcional: si querés ocultarlo en la pantalla de categorías full-screen:
+  // if (n === "shopCategories") return false;
+  return true;
+});
 
 onMounted(async () => {
   try {
@@ -172,9 +191,7 @@ onMounted(async () => {
   outline: 0 !important;
 }
 
-.ml-row-bottom {
-  padding-bottom: 8px;
-}
+.ml-row-bottom { padding-bottom: 8px; }
 
 .ml-container {
   width: min(var(--shop-max, 1200px), calc(100% - 24px));
@@ -185,10 +202,10 @@ onMounted(async () => {
   min-width: 0;
 }
 
-/* TOP */
 .ml-top-grid {
   grid-template-columns: auto minmax(320px, 1fr) auto;
   padding: 10px 0;
+  align-items: center;
   min-width: 0;
 }
 .ml-top-grid.is-mobile {
@@ -197,7 +214,6 @@ onMounted(async () => {
   padding: 8px 0;
 }
 
-/* BRAND */
 .ml-brand {
   display: inline-flex;
   align-items: center;
@@ -206,6 +222,7 @@ onMounted(async () => {
   min-width: 0;
   line-height: 0;
 }
+
 .ml-logo-wide {
   width: 360px;
   height: 76px;
@@ -221,6 +238,7 @@ onMounted(async () => {
   object-fit: contain;
   object-position: left center;
 }
+
 .ml-logo-icon {
   width: 40px;
   height: 40px;
@@ -236,12 +254,10 @@ onMounted(async () => {
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: center;
 }
 
-/* SEARCH */
-.ml-search {
-  min-width: 0;
-}
+.ml-search { min-width: 0; }
 .ml-search :deep(.v-field) {
   width: 100%;
   background: rgba(255, 255, 255, 0.96);
@@ -260,16 +276,13 @@ onMounted(async () => {
   padding-bottom: 6px;
 }
 
-/* ACTIONS */
 .ml-top-actions {
   display: flex;
   align-items: center;
   gap: 16px;
   justify-content: flex-end;
 }
-.ml-top-actions-mobile {
-  gap: 10px;
-}
+.ml-top-actions-mobile { gap: 10px; }
 .ml-top-link {
   display: inline-flex;
   align-items: center;
@@ -288,14 +301,12 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
 }
-.ml-icon-white {
-  color: #fff !important;
-}
+.ml-icon-white { color: #fff !important; }
 
-/* BOTTOM */
 .ml-bottom-grid {
   grid-template-columns: auto 1fr;
   padding: 4px 0;
+  align-items: center;
   min-width: 0;
 }
 .ml-bottom-grid.is-mobile {
@@ -319,19 +330,10 @@ onMounted(async () => {
   border-radius: 10px;
   white-space: nowrap;
 }
-.ml-nav-sep {
-  color: rgba(255, 255, 255, 0.55);
-  margin: 0 2px;
-}
-.ml-nav-strong {
-  font-weight: 900;
-}
+.ml-nav-sep { color: rgba(255, 255, 255, 0.55); margin: 0 2px; }
+.ml-nav-strong { font-weight: 900; }
 
-/* ✅ MOBILE CHIPS: NO ROMPEN */
-.ml-mobile-row2 {
-  width: 100%;
-  overflow: hidden;
-}
+.ml-mobile-row2 { width: 100%; overflow: hidden; }
 .ml-mobile-links {
   width: 100%;
   display: flex;
@@ -342,9 +344,8 @@ onMounted(async () => {
   padding: 2px 0 6px;
   min-width: 0;
 }
-.ml-mobile-links::-webkit-scrollbar {
-  display: none;
-}
+.ml-mobile-links::-webkit-scrollbar { display: none; }
+
 .ml-m-link {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -358,7 +359,6 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-/* WhatsApp */
 .ml-wa-fab {
   position: fixed;
   right: 14px;
@@ -378,15 +378,8 @@ onMounted(async () => {
 }
 
 @media (max-width: 600px) {
-  .ml-container {
-    gap: 10px;
-  }
-  .ml-row-bottom {
-    padding-bottom: 6px;
-  }
-  .ml-logo-icon {
-    width: 38px;
-    height: 38px;
-  }
+  .ml-container { gap: 10px; }
+  .ml-row-bottom { padding-bottom: 6px; }
+  .ml-logo-icon { width: 38px; height: 38px; }
 }
 </style>
