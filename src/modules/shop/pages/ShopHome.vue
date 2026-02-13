@@ -1,12 +1,12 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/ShopHome.vue (o el archivo donde tenés este template) -->
+<!-- src/modules/shop/pages/ShopHome.vue -->
+
 <template>
   <v-container fluid class="shop-page pa-0">
     <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
         <div class="hero-wrap">
-          <!-- ✅ HERO LIMPIO -->
           <HeroSlider
             :slides="heroSlides"
             :show-text="false"
@@ -16,7 +16,6 @@
             @clickSlide="onHeroClick"
           />
 
-          <!-- ✅ debajo del hero -->
           <div class="hero-float" v-if="allCats.length">
             <HomeCategoryFloatRow :categories="allCats" mode="subcategories" />
           </div>
@@ -52,14 +51,7 @@
           <div class="text-h6 font-weight-black">{{ resultsTitle }}</div>
           <span class="text-caption text-medium-emphasis" v-if="total">({{ total }})</span>
 
-          <v-chip
-            v-if="activeChip"
-            size="small"
-            variant="tonal"
-            color="primary"
-            class="ml-2"
-            :title="activeChip"
-          >
+          <v-chip v-if="activeChip" size="small" variant="tonal" color="primary" class="ml-2" :title="activeChip">
             {{ activeChip }}
           </v-chip>
         </div>
@@ -125,12 +117,16 @@
     </section>
 
     <ShopFooter />
+
+    <!-- ✅ Bottom Nav SOLO mobile -->
+    <ShopBottomNav v-if="isMobile" />
   </v-container>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
@@ -149,7 +145,12 @@ import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
+import ShopBottomNav from "@/modules/shop/components/ShopBottomNav.vue";
+
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
+
+const { xs } = useDisplay();
+const isMobile = computed(() => !!xs.value);
 
 const route = useRoute();
 const router = useRouter();
@@ -164,7 +165,6 @@ const limit = ref(48);
 const total = ref(0);
 const allCats = ref([]);
 
-/* ✅ Shorts state */
 const shortsLoading = ref(false);
 const shortsError = ref(null);
 const shortsItems = ref([]);
@@ -182,7 +182,6 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-/* ✅ HERO: SOLO 4 SLIDES (desktop+mobile) */
 const heroSlides = ref([
   {
     image: "https://storage-files.cingulado.org/pos360/media/1770511525480-861cc0b6b5fde1fc.webp",
@@ -316,89 +315,6 @@ function loadMore() {
   fetchCatalog({ append: true });
 }
 
-/* taxonomy helpers */
-function norm(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function getCatSubs(cat) {
-  if (!cat) return [];
-  const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
-  return (candidates.find((x) => Array.isArray(x)) || []).filter(Boolean);
-}
-
-function hydrateAudioAndAurisIds() {
-  const cats = Array.isArray(allCats.value) ? allCats.value : [];
-
-  const audio =
-    cats.find((c) => norm(c?.slug) === "audio") ||
-    cats.find((c) => norm(c?.name) === "audio") ||
-    cats.find((c) => norm(c?.name).includes("audio")) ||
-    null;
-
-  if (!audio) {
-    audioCatId.value = null;
-    aurisSubIds.value = [];
-    return;
-  }
-
-  audioCatId.value = Number(audio.id) || null;
-
-  const subs = getCatSubs(audio);
-  const ids = subs
-    .filter((s) => {
-      const n = norm(s?.name);
-      const sl = norm(s?.slug);
-      return sl.includes("auricul") || n.includes("auricul") || n.includes("headphone");
-    })
-    .map((s) => Number(s?.id))
-    .filter((n) => Number.isFinite(n) && n > 0);
-
-  aurisSubIds.value = ids;
-}
-
-async function fetchAuricularesSlider() {
-  aurisLoading.value = true;
-  try {
-    const catId = Number(audioCatId.value || 0);
-    const subs = Array.isArray(aurisSubIds.value) ? aurisSubIds.value.filter(Boolean) : [];
-
-    let merged = [];
-    const seen = new Set();
-
-    if (catId && subs.length) {
-      for (const sid of subs) {
-        try {
-          const r = await getCatalog({
-            search: "",
-            page: 1,
-            limit: 60,
-            category_id: catId,
-            subcategory_id: Number(sid),
-          });
-
-          const list = Array.isArray(r?.items) ? r.items : [];
-          for (const it of list) {
-            const k = String(it?.product_id ?? it?.id ?? "");
-            if (!k || seen.has(k)) continue;
-            merged.push(it);
-            seen.add(k);
-          }
-        } catch {}
-      }
-    }
-
-    aurisItems.value = merged;
-  } finally {
-    aurisLoading.value = false;
-  }
-}
-
-/* ✅ Shorts fetch */
 async function fetchHomeShorts() {
   shortsLoading.value = true;
   shortsError.value = null;
@@ -419,12 +335,9 @@ async function fetchHomeShorts() {
   }
 }
 
-// ✅ fallback: nunca dejar colgado el prerender
 function dispatchPrerenderReadySafe() {
   try {
-    if (typeof document !== "undefined") {
-      document.dispatchEvent(new Event("prerender-ready"));
-    }
+    if (typeof document !== "undefined") document.dispatchEvent(new Event("prerender-ready"));
   } catch {}
 }
 
@@ -452,9 +365,6 @@ onMounted(async () => {
     allCats.value = [];
   }
 
-  hydrateAudioAndAurisIds();
-  await fetchAuricularesSlider();
-
   fetchHomeShorts();
   dispatchPrerenderReadySafe();
 });
@@ -464,18 +374,6 @@ watch(
   async () => {
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
-
-    if (!allCats.value?.length) {
-      try {
-        allCats.value = await getPublicCategories();
-      } catch {
-        allCats.value = [];
-      }
-    }
-
-    hydrateAudioAndAurisIds();
-    await fetchAuricularesSlider();
-
     fetchHomeShorts();
     dispatchPrerenderReadySafe();
   }
@@ -572,6 +470,11 @@ watch(
   }
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ✅ CLAVE: deja espacio para el bottom nav fijo */
+  .content {
+    padding-bottom: 92px;
   }
 }
 </style>
