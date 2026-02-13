@@ -1,18 +1,16 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/layouts/ShopLayout.vue -->
-
 <template>
-  <div class="shop-layout" data-layout="shop">
+  <div class="shop-shell" data-layout="shop">
+    <!-- Header (tu ShopHeader actual) -->
     <ShopHeader />
 
-    <!-- ✅ main: deja espacio para bottom nav en mobile -->
-    <main class="shop-main" :class="{ 'has-bottom-nav': isMobile }">
+    <!-- Contenido de rutas -->
+    <main class="shop-main">
       <router-view />
     </main>
 
-    <ShopFooter />
-
-    <!-- ✅ Bottom Nav SIEMPRE (solo mobile) -->
+    <!-- ✅ Bottom nav SIEMPRE fijo en mobile (para TODAS las pantallas) -->
     <ShopMobileBottomNav v-if="isMobile" />
   </div>
 </template>
@@ -22,7 +20,6 @@ import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
 import ShopHeader from "@/modules/shop/components/ShopHeader.vue";
-import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 import ShopMobileBottomNav from "@/modules/shop/components/ShopMobileBottomNav.vue";
 
 const { xs } = useDisplay();
@@ -30,19 +27,20 @@ const isMobile = computed(() => !!xs.value);
 </script>
 
 <style scoped>
-.shop-layout {
+/* Shell base */
+.shop-shell {
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  background: #fff;
 }
 
+/* ✅ Dejamos espacio abajo SIEMPRE en mobile para el bottom nav fijo */
 .shop-main {
-  flex: 1 1 auto;
-  min-height: 0; /* ✅ clave para layouts con scroll */
+  min-height: calc(100dvh - 1px);
 }
 
-/* ✅ deja espacio para el nav fijo */
-.shop-main.has-bottom-nav {
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+@media (max-width: 600px) {
+  .shop-main {
+    padding-bottom: calc(var(--ml-bottom-nav-h, 64px) + env(safe-area-inset-bottom));
+  }
 }
 </style>

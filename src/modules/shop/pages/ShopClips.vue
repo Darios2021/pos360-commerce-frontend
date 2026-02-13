@@ -2,13 +2,11 @@
 <!-- src/modules/shop/pages/ShopClips.vue -->
 <template>
   <div class="clips" data-page="shop-clips">
-    <!-- Topbar (tipo ML / reels) -->
-    <header class="clips-top">
+    <!-- ✅ Top minimal (solo flecha, sin barra alta) -->
+    <header class="clips-top" aria-label="Clips topbar">
       <button class="clips-back" type="button" @click="goBack" aria-label="Volver">
         <v-icon size="22">mdi-arrow-left</v-icon>
       </button>
-      <div class="clips-title">Clips</div>
-      <div class="clips-spacer" />
     </header>
 
     <!-- estados -->
@@ -18,10 +16,10 @@
 
     <div v-if="loading" class="clips-loading">
       <v-progress-circular indeterminate />
-      <div class="text-caption" style="opacity:.8">Cargando clips…</div>
+      <div class="text-caption" style="opacity: 0.8">Cargando clips…</div>
     </div>
 
-    <!-- FEED vertical -->
+    <!-- FEED vertical (snap 1x1 tipo IG) -->
     <main
       v-else
       ref="feedEl"
@@ -29,21 +27,19 @@
       role="region"
       aria-label="Clips"
       @scroll.passive="onFeedScroll"
+      @wheel.prevent="onWheel"
+      @touchstart.passive="onTouchStart"
+      @touchend.passive="onTouchEnd"
     >
-      <section
-        v-for="it in items"
-        :key="it.key"
-        class="clip"
-        :data-key="it.key"
-      >
-        <!-- VIDEO AREA (full) -->
+      <section v-for="it in items" :key="it.key" class="clip" :data-key="it.key">
+        <!-- VIDEO AREA -->
         <div class="clip-stage">
-          <!-- thumb -> play -->
+          <!-- ✅ SOLO 1 IFRAME (el activo). El resto queda en thumb -->
           <button
             v-if="activePlayKey !== it.key"
             class="clip-thumbBtn"
             type="button"
-            @click="play(it.key)"
+            @click="activateByKey(it.key)"
             :title="it.title || 'Reproducir'"
           >
             <img v-if="it.thumb" class="clip-thumb" :src="it.thumb" alt="" loading="lazy" />
@@ -56,8 +52,7 @@
             </div>
           </button>
 
-          <!-- iframe -->
-          <div v-else class="clip-iframeWrap">
+          <div v-else class="clip-iframeWrap" @click="toggleMute" :title="muted ? 'Activar sonido' : 'Silenciar'">
             <iframe
               class="clip-iframe"
               :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(it.url) }"
@@ -68,88 +63,85 @@
               allowfullscreen
               title="Video"
             ></iframe>
+
+            <!-- hint sonido (como referencia) -->
+            <div class="clip-hint" v-if="muted">
+              Tocá para activar el sonido
+            </div>
           </div>
 
-          <!-- overlay derecha (acciones) -->
-          <div class="clip-actions">
-            <button class="clip-action" type="button" @click="toggleMute" :title="muted ? 'Activar sonido' : 'Silenciar'">
+          <!-- ✅ acciones derecha: SOLO sonido + compartir (NO carrito, NO comprar acá) -->
+          <div class="clip-actions" aria-label="Acciones">
+            <button
+              class="clip-action"
+              type="button"
+              @click="toggleMute"
+              :title="muted ? 'Activar sonido' : 'Silenciar'"
+              aria-label="Sonido"
+            >
               <v-icon size="22">{{ muted ? "mdi-volume-off" : "mdi-volume-high" }}</v-icon>
             </button>
 
-            <button class="clip-action" type="button" @click="share(it)" title="Compartir">
+            <button class="clip-action" type="button" @click="share(it)" title="Compartir" aria-label="Compartir">
               <v-icon size="22">mdi-share-variant</v-icon>
             </button>
-
-            <button class="clip-action" type="button" @click="goProduct(resolvedProduct(it)?.id)" title="Ver producto">
-              <v-icon size="22">mdi-open-in-new</v-icon>
-            </button>
           </div>
 
-          <!-- hint sonido -->
-          <div class="clip-hint" v-if="activePlayKey === it.key && muted">
-            Tocá para activar el sonido
-          </div>
-        </div>
+          <!-- ✅ Card sutil tipo ML (ÚNICA compra) -->
+          <div v-if="resolvedProduct(it)?.id" class="pbar" aria-label="Producto">
+            <button class="pbar-left" type="button" @click="goProduct(resolvedProduct(it).id)">
+              <div class="pbar-img">
+                <img
+                  v-if="productImgFromItem(it)"
+                  :src="productImgFromItem(it)"
+                  alt=""
+                  loading="lazy"
+                  @error="onItemImgError(it)"
+                />
+                <div v-else class="pbar-imgEmpty">Sin</div>
+              </div>
 
-        <!-- PRODUCT BAR (abajo) -->
-        <div class="clip-productBar" v-if="resolvedProduct(it)?.id">
-          <button class="pbar-left" type="button" @click="goProduct(resolvedProduct(it).id)">
-            <div class="pbar-img">
-              <img
-                v-if="productImgFromItem(it)"
-                :src="productImgFromItem(it)"
-                alt=""
-                loading="lazy"
-                @error="onItemImgError(it)"
-              />
-              <div v-else class="pbar-imgEmpty">Sin</div>
-            </div>
+              <div class="pbar-mid">
+                <div class="pbar-title">{{ resolvedProduct(it).name || "Producto" }}</div>
 
-            <div class="pbar-mid">
-              <div class="pbar-title">{{ resolvedProduct(it).name || "Producto" }}</div>
-              <div class="pbar-priceRow">
-                <div class="pbar-price">$ {{ fmtMoney(finalPrice(resolvedProduct(it))) }}</div>
-                <div v-if="offPct(resolvedProduct(it))" class="pbar-off">
-                  {{ offPct(resolvedProduct(it)) }}% OFF
+                <div class="pbar-priceRow">
+                  <div class="pbar-price">$ {{ fmtMoney(finalPrice(resolvedProduct(it))) }}</div>
+                  <div v-if="offPct(resolvedProduct(it))" class="pbar-off">
+                    {{ offPct(resolvedProduct(it)) }}% OFF
+                  </div>
+                </div>
+
+                <div v-if="showOldPrice(resolvedProduct(it))" class="pbar-old">
+                  $ {{ fmtMoney(oldPrice(resolvedProduct(it))) }}
                 </div>
               </div>
-              <div v-if="showOldPrice(resolvedProduct(it))" class="pbar-old">
-                $ {{ fmtMoney(oldPrice(resolvedProduct(it))) }}
-              </div>
-            </div>
-          </button>
-
-          <!-- ✅ CTA: iconos (comprar = lightning / agregar = cart) -->
-          <div class="pbar-ctas">
-            <button class="pbar-buyIcon" type="button" @click="buyNow(it)" title="Comprar">
-              <v-icon size="20">mdi-lightning-bolt</v-icon>
             </button>
 
-            <button class="pbar-addIcon" type="button" @click="addToCart(it)" title="Agregar al carrito">
-              <v-icon size="20">mdi-cart-outline</v-icon>
+            <!-- ✅ CTA: icono comprar (como ML sutil) -->
+            <button class="pbar-go" type="button" @click="buyNow(it)" title="Comprar" aria-label="Comprar">
+              <v-icon size="18">mdi-lightning-bolt</v-icon>
             </button>
           </div>
-        </div>
 
-        <div class="clip-productBar clip-productBar--empty" v-else>
-          <div class="pbar-mid">
-            <div class="pbar-title">Producto no disponible</div>
-            <div class="text-caption" style="opacity:.7">—</div>
+          <div v-else class="pbar pbar--empty">
+            <div class="pbar-mid">
+              <div class="pbar-title">Producto no disponible</div>
+              <div class="text-caption" style="opacity: 0.7">—</div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- loader more -->
       <div v-if="loadingMore" class="clips-more">
         <v-progress-circular indeterminate size="18" />
-        <span class="text-caption" style="opacity:.75">Cargando más…</span>
+        <span class="text-caption" style="opacity: 0.75">Cargando más…</span>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { publicVideosFeed } from "@/modules/shop/service/shop.videos.public.api.js";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
@@ -180,8 +172,6 @@ const HARD_MAX = computed(() => {
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
-
-/* ====== helpers ====== */
 function s(x) {
   return String(x || "").trim();
 }
@@ -191,15 +181,130 @@ function goBack() {
   else router.push("/shop");
 }
 
-function play(key) {
-  activePlayKey.value = key;
+/* =========================
+   ✅ SNAP 1x1 (tipo IG)
+========================= */
+const snapping = ref(false);
+let snapUnlockT = null;
+
+function viewportH() {
+  return Math.max(1, window.innerHeight || 1);
+}
+function currentIndex() {
+  const el = feedEl.value;
+  if (!el) return 0;
+  return Math.round(el.scrollTop / viewportH());
+}
+function maxIndex() {
+  return Math.max(0, (items.value?.length || 1) - 1);
+}
+function scrollToIndex(i) {
+  const el = feedEl.value;
+  if (!el) return;
+
+  const idx = clamp(i, 0, maxIndex());
+  snapping.value = true;
+
+  // scroll exact 1 clip
+  el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
+
+  // unlock (evita que “pase de largo” por inercia)
+  clearTimeout(snapUnlockT);
+  snapUnlockT = setTimeout(() => {
+    snapping.value = false;
+    // fija el activo al terminar el snap
+    activateByIndex(idx);
+  }, 260);
 }
 
+function activateByIndex(idx) {
+  const it = items.value?.[idx];
+  if (!it?.key) return;
+  activePlayKey.value = it.key;
+}
+
+function activateByKey(key) {
+  activePlayKey.value = key;
+  // si clickean un thumb de otro clip visible, ajusta index al lugar
+  const idx = items.value.findIndex((x) => x?.key === key);
+  if (idx >= 0) scrollToIndex(idx);
+}
+
+/* wheel: 1 por 1 */
+let wheelLock = false;
+let wheelT = null;
+function onWheel(e) {
+  if (wheelLock || snapping.value) return;
+  wheelLock = true;
+
+  const dy = e?.deltaY || 0;
+  const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+  if (dir !== 0) scrollToIndex(currentIndex() + dir);
+
+  clearTimeout(wheelT);
+  wheelT = setTimeout(() => (wheelLock = false), 240);
+}
+
+/* touch swipe: 1 por 1 */
+let touchY = 0;
+function onTouchStart(ev) {
+  touchY = ev?.changedTouches?.[0]?.clientY ?? 0;
+}
+function onTouchEnd(ev) {
+  if (snapping.value) return;
+  const endY = ev?.changedTouches?.[0]?.clientY ?? 0;
+  const dy = touchY - endY;
+
+  if (Math.abs(dy) < 35) return; // umbral
+  const dir = dy > 0 ? 1 : -1;
+  scrollToIndex(currentIndex() + dir);
+}
+
+/* scroll: corregimos al index más cercano (por si el usuario “frena” a mitad) */
+let settleT = null;
+function onFeedScroll() {
+  const el = feedEl.value;
+  if (!el) return;
+
+  // paging
+  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 900;
+  if (nearBottom) fetchMore();
+
+  // snap settle (sin IO pesado)
+  if (snapping.value) return;
+
+  clearTimeout(settleT);
+  settleT = setTimeout(() => {
+    const idx = currentIndex();
+    // si quedó entre clips, lo alineamos
+    el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
+    activateByIndex(idx);
+  }, 140);
+}
+
+/* =========================
+   Sonido / Share
+========================= */
 function toggleMute() {
   muted.value = !muted.value;
 }
 
-/* ===== YouTube embed ===== */
+async function share(it) {
+  try {
+    const p = resolvedProduct(it);
+    const url = p?.id ? `${window.location.origin}/shop/product/${p.id}` : window.location.href;
+
+    if (navigator.share) {
+      await navigator.share({ title: "San Juan Tecnología", text: p?.name || "Producto", url });
+      return;
+    }
+    await navigator.clipboard?.writeText?.(url);
+  } catch {}
+}
+
+/* =========================
+   YouTube embed
+========================= */
 function isYouTube(u) {
   return /youtube\.com|youtu\.be/i.test(s(u));
 }
@@ -274,7 +379,9 @@ function cleanAutoplayUrl(u) {
   return addParams(base, { autoplay: 1, mute: muted.value ? 1 : 0 });
 }
 
-/* ===== precios ===== */
+/* =========================
+   Precios
+========================= */
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
@@ -307,7 +414,9 @@ function offPct(p) {
   return pct > 0 ? pct : 0;
 }
 
-/* ===== url resolver img ===== */
+/* =========================
+   Imagen producto
+========================= */
 function resolveUrl(raw) {
   let u = s(raw);
   if (!u) return "";
@@ -390,12 +499,9 @@ function onItemImgError(it) {
   brokenByKey.value = { ...brokenByKey.value, [key]: true };
 }
 
-/* ===== cart actions ===== */
-function addToCart(it) {
-  const p = resolvedProduct(it);
-  if (!p?.id) return;
-  cart.add(p, 1);
-}
+/* =========================
+   Cart / Comprar (solo desde card)
+========================= */
 function buyNow(it) {
   const p = resolvedProduct(it);
   if (!p?.id) return;
@@ -409,20 +515,9 @@ function goProduct(productId) {
   router.push({ name: "shopProduct", params: { id: String(productId) }, query: { branch_id } });
 }
 
-async function share(it) {
-  try {
-    const p = resolvedProduct(it);
-    const url = p?.id ? `${window.location.origin}/shop/product/${p.id}` : window.location.href;
-
-    if (navigator.share) {
-      await navigator.share({ title: "San Juan Tecnología", text: p?.name || "Producto", url });
-      return;
-    }
-    await navigator.clipboard?.writeText?.(url);
-  } catch {}
-}
-
-/* ===== normalize + fetch ===== */
+/* =========================
+   Fetch clips (más liviano)
+========================= */
 function normalizeItem(x) {
   const id = Number(x?.id || 0);
   const key = `v_${id || Math.random().toString(36).slice(2)}`;
@@ -454,7 +549,7 @@ async function fetchFirstPage() {
     offset.value = 0;
     hasMore.value = true;
 
-    const take = clamp(Number(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_PAGE_SIZE || 8), 6, 18);
+    const take = clamp(Number(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_PAGE_SIZE || 7), 5, 12);
     const r = await publicVideosFeed({ limit: take, offset: 0 });
 
     const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
@@ -481,7 +576,7 @@ async function fetchMore() {
 
   loadingMore.value = true;
   try {
-    const take = clamp(Number(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_PAGE_SIZE || 8), 6, 18);
+    const take = clamp(Number(import.meta?.env?.VITE_PUBLIC_VIDEOS_FEED_PAGE_SIZE || 7), 5, 12);
 
     const r = await publicVideosFeed({ limit: take, offset: offset.value });
     const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
@@ -499,142 +594,93 @@ async function fetchMore() {
   }
 }
 
-function onFeedScroll() {
-  const el = feedEl.value;
-  if (!el) return;
-
-  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 600;
-  if (nearBottom) fetchMore();
-}
-
-/* ✅ auto-play del clip visible (simple) */
-let io = null;
-function setupIntersectionAutoplay() {
-  const root = feedEl.value;
-  if (!root) return;
-
-  if (io) io.disconnect();
-
-  io = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((e) => e.isIntersecting)
-        .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0))[0];
-
-      const key = visible?.target?.getAttribute?.("data-key") || "";
-      if (key && key !== activePlayKey.value) activePlayKey.value = key;
-    },
-    { root, threshold: [0.6, 0.75, 0.9] }
-  );
-
-  const cards = root.querySelectorAll(".clip");
-  cards.forEach((c) => io.observe(c));
-}
-
 onMounted(async () => {
   await fetchFirstPage();
   await nextTick();
-  setupIntersectionAutoplay();
+  // ✅ arranca en el primer clip, y lo activa (1 iframe)
+  scrollToIndex(0);
 });
 
 onBeforeUnmount(() => {
-  try {
-    if (io) io.disconnect();
-  } catch {}
-  io = null;
+  clearTimeout(settleT);
+  clearTimeout(wheelT);
+  clearTimeout(snapUnlockT);
 });
-
-watch(
-  () => items.value.length,
-  async () => {
-    await nextTick();
-    setupIntersectionAutoplay();
-  }
-);
 </script>
 
 <style scoped>
-/* ✅ altura del mini footer */
-:global(:root) {
-  --shop-bottom-nav-h: 64px;
-}
-
-/* Layout base full screen */
+/* Base full screen */
 .clips {
+  --ml-bottom-nav-h: 64px;
   background: #0b0f16;
   color: #fff;
   min-height: 100dvh;
 }
 
-/* Topbar: sticky, safe area */
+/* Top minimal */
 .clips-top {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 50;
-  height: calc(54px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  height: calc(10px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  align-items: center;
-  background: rgba(11, 15, 22, 0.88);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  z-index: 60;
+  pointer-events: none;
 }
-
 .clips-back {
-  width: 44px;
-  height: 44px;
+  pointer-events: auto;
+  position: absolute;
+  left: 10px;
+  top: calc(6px + env(safe-area-inset-top));
+  width: 38px;
+  height: 38px;
   border: 0;
-  background: transparent;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
   color: #fff;
   display: grid;
   place-items: center;
-  cursor: pointer;
+  backdrop-filter: blur(8px);
 }
 
-.clips-title {
-  text-align: center;
-  font-weight: 900;
-  letter-spacing: 0.2px;
+/* alerts/loading */
+.clips-alert {
+  margin: calc(12px + 44px + env(safe-area-inset-top)) 12px 12px;
 }
-
-.clips-spacer { width: 44px; height: 44px; }
-
-.clips-alert { margin: 12px; }
-
 .clips-loading {
-  min-height: calc(100dvh - 54px);
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   gap: 10px;
 }
 
-/* ✅ Feed: descuenta TOP + bottom nav fijo */
+/* ✅ feed snap 1x1 */
 .clips-feed {
-  height: calc(100dvh - (54px + env(safe-area-inset-top)) - var(--shop-bottom-nav-h));
+  height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
-  padding-bottom: calc(var(--shop-bottom-nav-h) + env(safe-area-inset-bottom));
 }
-.clips-feed::-webkit-scrollbar { display: none; }
+.clips-feed::-webkit-scrollbar {
+  display: none;
+}
 
 .clip {
-  height: calc(100dvh - (54px + env(safe-area-inset-top)) - var(--shop-bottom-nav-h));
+  height: 100dvh;
   scroll-snap-align: start;
+  scroll-snap-stop: always; /* ✅ clave: no “salta” de a muchos */
   position: relative;
-  display: grid;
-  grid-template-rows: 1fr auto;
 }
 
-/* Stage video full */
 .clip-stage {
-  position: relative;
+  position: absolute;
+  inset: 0;
   background: #000;
 }
 
-/* thumb/play */
+/* thumb */
 .clip-thumbBtn {
   width: 100%;
   height: 100%;
@@ -649,7 +695,7 @@ watch(
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.04);
+  transform: scale(1.03);
   display: block;
 }
 .clip-thumbEmpty {
@@ -657,7 +703,7 @@ watch(
   height: 100%;
   display: grid;
   place-items: center;
-  opacity: .7;
+  opacity: 0.7;
 }
 
 .clip-play {
@@ -665,17 +711,17 @@ watch(
   inset: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at center, rgba(0,0,0,0.12), rgba(0,0,0,0.35));
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.32));
 }
 .clip-play-ring {
-  width: 64px;
-  height: 64px;
+  width: 62px;
+  height: 62px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.95);
+  background: rgba(255, 255, 255, 0.95);
   display: grid;
   place-items: center;
   color: #111;
-  box-shadow: 0 14px 28px rgba(0,0,0,0.35);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
 }
 
 /* iframe */
@@ -704,21 +750,21 @@ watch(
   transform: translate(-50%, -50%) scale(1.32) !important;
 }
 
-/* actions right (subidas para no chocar con barra + bottom nav) */
+/* actions right */
 .clip-actions {
   position: absolute;
   right: 10px;
-  bottom: calc(110px + var(--shop-bottom-nav-h));
+  bottom: calc(var(--ml-bottom-nav-h) + 130px + env(safe-area-inset-bottom));
   display: grid;
   gap: 10px;
-  z-index: 5;
+  z-index: 7;
 }
 .clip-action {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.34);
   color: #fff;
   display: grid;
   place-items: center;
@@ -728,35 +774,46 @@ watch(
 .clip-hint {
   position: absolute;
   left: 50%;
-  bottom: calc(120px + var(--shop-bottom-nav-h));
+  bottom: calc(var(--ml-bottom-nav-h) + 160px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   font-size: 12px;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(255,255,255,0.12);
-  z-index: 6;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 8;
 }
 
-/* product bar bottom */
-.clip-productBar {
-  background: rgba(255,255,255,0.94);
+/* ✅ Card ML (sutil y baja) */
+.pbar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--ml-bottom-nav-h) + 8px + env(safe-area-inset-bottom));
+  z-index: 10;
+
+  background: rgba(255, 255, 255, 0.96);
   color: #111;
-  border-top: 1px solid rgba(0,0,0,0.08);
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom) + var(--shop-bottom-nav-h));
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 14px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.20);
+
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
+  gap: 8px;
+  padding: 8px 8px;
 }
 
-.clip-productBar--empty { grid-template-columns: 1fr; }
+.pbar--empty {
+  grid-template-columns: 1fr;
+}
 
 .pbar-left {
   border: 0;
   background: transparent;
   padding: 0;
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 48px 1fr;
   gap: 10px;
   align-items: center;
   text-align: left;
@@ -765,80 +822,84 @@ watch(
 }
 
 .pbar-img {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   overflow: hidden;
   background: #f2f2f2;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
-.pbar-img img { width:100%; height:100%; object-fit: cover; display:block; }
+.pbar-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .pbar-imgEmpty {
   width: 100%;
   height: 100%;
   display: grid;
   place-items: center;
   font-size: 11px;
-  opacity: .6;
+  opacity: 0.6;
 }
 
-.pbar-mid { min-width: 0; }
+.pbar-mid {
+  min-width: 0;
+}
 .pbar-title {
   font-weight: 900;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .pbar-priceRow {
-  margin-top: 4px;
+  margin-top: 3px;
   display: flex;
   gap: 8px;
   align-items: baseline;
   flex-wrap: wrap;
 }
-.pbar-price { font-weight: 950; font-size: 16px; }
-.pbar-off { font-weight: 950; font-size: 11px; color: #00a650; }
-.pbar-old { margin-top: 2px; font-size: 11px; opacity: .65; text-decoration: line-through; }
-
-/* ✅ CTAs como iconos */
-.pbar-ctas {
-  display: grid;
-  gap: 10px;
-  align-content: center;
+.pbar-price {
+  font-weight: 950;
+  font-size: 15px;
+}
+.pbar-off {
+  font-weight: 950;
+  font-size: 11px;
+  color: #00a650;
+}
+.pbar-old {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.65;
+  text-decoration: line-through;
 }
 
-.pbar-buyIcon {
-  width: 46px;
-  height: 46px;
-  border: 0;
+.pbar-go {
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  background: #2680c2;
+  border: 0;
+  cursor: pointer;
+  background: #2d7ff9;
   color: #fff;
   display: grid;
   place-items: center;
-  box-shadow: 0 10px 18px rgba(0,0,0,0.18);
-}
-
-.pbar-addIcon {
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.14);
-  background: #f3f3f3;
-  color: #111;
-  display: grid;
-  place-items: center;
+  box-shadow: 0 10px 18px rgba(45, 127, 249, 0.22);
 }
 
 /* loader more */
 .clips-more {
-  padding: 14px 12px calc(14px + env(safe-area-inset-bottom) + var(--shop-bottom-nav-h));
+  padding: 14px 12px calc(14px + var(--ml-bottom-nav-h) + env(safe-area-inset-bottom));
   display: flex;
   gap: 10px;
   align-items: center;
   justify-content: center;
+  background: #0b0f16;
+  color: #fff;
 }
 </style>
