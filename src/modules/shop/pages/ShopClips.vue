@@ -1,7 +1,7 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/ShopClips.vue -->
 <template>
-  <div class="clips" data-page="shop-clips">
+  <div class="clips" data-page="shop-clips" :style="rootStyle">
     <!-- ✅ Top minimal (solo flecha, sin barra alta) -->
     <header class="clips-top" aria-label="Clips topbar">
       <button class="clips-back" type="button" @click="goBack" aria-label="Volver">
@@ -70,7 +70,7 @@
             </div>
           </div>
 
-          <!-- ✅ acciones derecha: SOLO sonido + compartir (NO carrito, NO comprar acá) -->
+          <!-- ✅ acciones derecha: SOLO sonido + compartir -->
           <div class="clip-actions" aria-label="Acciones">
             <button
               class="clip-action"
@@ -117,7 +117,7 @@
               </div>
             </button>
 
-            <!-- ✅ CTA: icono comprar (como ML sutil) -->
+            <!-- ✅ CTA: icono comprar -->
             <button class="pbar-go" type="button" @click="buyNow(it)" title="Comprar" aria-label="Comprar">
               <v-icon size="18">mdi-lightning-bolt</v-icon>
             </button>
@@ -182,6 +182,50 @@ function goBack() {
 }
 
 /* =========================
+   ✅ medir el mini footer real
+========================= */
+const bottomNavH = ref(76); // fallback más real que 64
+const rootStyle = computed(() => ({
+  "--ml-bottom-nav-h": `${bottomNavH.value}px`,
+}));
+
+let ro = null;
+
+function findBottomNavEl() {
+  // probamos varios selectores típicos
+  return (
+    document.querySelector("[data-shop-bottom-nav]") ||
+    document.querySelector(".shop-bottom-nav") ||
+    document.querySelector(".ml-bottomnav") ||
+    document.querySelector(".ml-bottom-nav") ||
+    document.querySelector("footer .v-bottom-navigation") ||
+    document.querySelector(".v-bottom-navigation") ||
+    null
+  );
+}
+
+function measureBottomNav() {
+  const el = findBottomNavEl();
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const h = Math.round(rect.height || 0);
+  if (h >= 48 && h <= 140) bottomNavH.value = h;
+}
+
+function setupBottomNavObserver() {
+  const el = findBottomNavEl();
+  if (!el) return;
+
+  try {
+    ro?.disconnect?.();
+  } catch {}
+
+  ro = new ResizeObserver(() => measureBottomNav());
+  ro.observe(el);
+}
+
+/* =========================
    ✅ SNAP 1x1 (tipo IG)
 ========================= */
 const snapping = ref(false);
@@ -205,14 +249,11 @@ function scrollToIndex(i) {
   const idx = clamp(i, 0, maxIndex());
   snapping.value = true;
 
-  // scroll exact 1 clip
   el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
 
-  // unlock (evita que “pase de largo” por inercia)
   clearTimeout(snapUnlockT);
   snapUnlockT = setTimeout(() => {
     snapping.value = false;
-    // fija el activo al terminar el snap
     activateByIndex(idx);
   }, 260);
 }
@@ -225,7 +266,6 @@ function activateByIndex(idx) {
 
 function activateByKey(key) {
   activePlayKey.value = key;
-  // si clickean un thumb de otro clip visible, ajusta index al lugar
   const idx = items.value.findIndex((x) => x?.key === key);
   if (idx >= 0) scrollToIndex(idx);
 }
@@ -255,28 +295,25 @@ function onTouchEnd(ev) {
   const endY = ev?.changedTouches?.[0]?.clientY ?? 0;
   const dy = touchY - endY;
 
-  if (Math.abs(dy) < 35) return; // umbral
+  if (Math.abs(dy) < 35) return;
   const dir = dy > 0 ? 1 : -1;
   scrollToIndex(currentIndex() + dir);
 }
 
-/* scroll: corregimos al index más cercano (por si el usuario “frena” a mitad) */
+/* scroll settle */
 let settleT = null;
 function onFeedScroll() {
   const el = feedEl.value;
   if (!el) return;
 
-  // paging
   const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 900;
   if (nearBottom) fetchMore();
 
-  // snap settle (sin IO pesado)
   if (snapping.value) return;
 
   clearTimeout(settleT);
   settleT = setTimeout(() => {
     const idx = currentIndex();
-    // si quedó entre clips, lo alineamos
     el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
     activateByIndex(idx);
   }, 140);
@@ -500,7 +537,7 @@ function onItemImgError(it) {
 }
 
 /* =========================
-   Cart / Comprar (solo desde card)
+   Comprar
 ========================= */
 function buyNow(it) {
   const p = resolvedProduct(it);
@@ -516,7 +553,7 @@ function goProduct(productId) {
 }
 
 /* =========================
-   Fetch clips (más liviano)
+   Fetch clips
 ========================= */
 function normalizeItem(x) {
   const id = Number(x?.id || 0);
@@ -597,7 +634,14 @@ async function fetchMore() {
 onMounted(async () => {
   await fetchFirstPage();
   await nextTick();
-  // ✅ arranca en el primer clip, y lo activa (1 iframe)
+
+  // ✅ medimos bottom nav (y lo seguimos)
+  measureBottomNav();
+  setupBottomNavObserver();
+
+  window.addEventListener("resize", measureBottomNav, { passive: true });
+
+  // ✅ arranca en el primer clip
   scrollToIndex(0);
 });
 
@@ -605,13 +649,19 @@ onBeforeUnmount(() => {
   clearTimeout(settleT);
   clearTimeout(wheelT);
   clearTimeout(snapUnlockT);
+
+  window.removeEventListener("resize", measureBottomNav);
+
+  try {
+    ro?.disconnect?.();
+  } catch {}
+  ro = null;
 });
 </script>
 
 <style scoped>
 /* Base full screen */
 .clips {
-  --ml-bottom-nav-h: 64px;
   background: #0b0f16;
   color: #fff;
   min-height: 100dvh;
@@ -655,13 +705,15 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-/* ✅ feed snap 1x1 */
+/* ✅ feed snap 1x1
+   ✅ padding-bottom para que nunca “pise” la card/footer */
 .clips-feed {
   height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
+  padding-bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom));
 }
 .clips-feed::-webkit-scrollbar {
   display: none;
@@ -670,7 +722,7 @@ onBeforeUnmount(() => {
 .clip {
   height: 100dvh;
   scroll-snap-align: start;
-  scroll-snap-stop: always; /* ✅ clave: no “salta” de a muchos */
+  scroll-snap-stop: always;
   position: relative;
 }
 
@@ -711,7 +763,7 @@ onBeforeUnmount(() => {
   inset: 0;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.32));
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.32));
 }
 .clip-play-ring {
   width: 62px;
@@ -750,11 +802,11 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%) scale(1.32) !important;
 }
 
-/* actions right */
+/* actions right (siempre arriba de card + footer) */
 .clip-actions {
   position: absolute;
   right: 10px;
-  bottom: calc(var(--ml-bottom-nav-h) + 130px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + 126px + env(safe-area-inset-bottom));
   display: grid;
   gap: 10px;
   z-index: 7;
@@ -770,11 +822,11 @@ onBeforeUnmount(() => {
   place-items: center;
 }
 
-/* hint sound */
+/* hint sound (sube con el footer) */
 .clip-hint {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--ml-bottom-nav-h) + 160px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + 150px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   font-size: 12px;
   padding: 8px 12px;
@@ -784,19 +836,19 @@ onBeforeUnmount(() => {
   z-index: 8;
 }
 
-/* ✅ Card ML (sutil y baja) */
+/* ✅ Card ML (NUNCA tapa el footer) */
 .pbar {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(var(--ml-bottom-nav-h) + 8px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + 10px + env(safe-area-inset-bottom));
   z-index: 10;
 
   background: rgba(255, 255, 255, 0.96);
   color: #111;
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 14px;
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.20);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
 
   display: grid;
   grid-template-columns: 1fr auto;
@@ -894,7 +946,7 @@ onBeforeUnmount(() => {
 
 /* loader more */
 .clips-more {
-  padding: 14px 12px calc(14px + var(--ml-bottom-nav-h) + env(safe-area-inset-bottom));
+  padding: 14px 12px calc(14px + var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom));
   display: flex;
   gap: 10px;
   align-items: center;
