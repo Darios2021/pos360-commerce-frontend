@@ -26,9 +26,10 @@
       class="clips-feed"
       role="region"
       aria-label="Clips"
-      @scroll.passive="onFeedScroll"
+      @scroll.passive="onScroll"
       @wheel.prevent="onWheel"
       @touchstart.passive="onTouchStart"
+      @touchmove.passive="onTouchMove"
       @touchend.passive="onTouchEnd"
     >
       <section v-for="it in items" :key="it.key" class="clip" :data-key="it.key">
@@ -52,8 +53,16 @@
             </div>
           </button>
 
-          <div v-else class="clip-iframeWrap" @click="toggleMute" :title="muted ? 'Activar sonido' : 'Silenciar'">
+          <!-- ✅ iframe activo -->
+          <div
+            v-else
+            class="clip-iframeWrap"
+            @click="toggleMute"
+            :title="muted ? 'Activar sonido' : 'Silenciar'"
+          >
+            <!-- ✅ key para forzar destroy real entre cambios (reduce jank) -->
             <iframe
+              :key="iframeKey"
               class="clip-iframe"
               :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(it.url) }"
               :src="cleanAutoplayUrl(it.url)"
@@ -75,14 +84,20 @@
             <button
               class="clip-action"
               type="button"
-              @click="toggleMute"
+              @click.stop="toggleMute"
               :title="muted ? 'Activar sonido' : 'Silenciar'"
               aria-label="Sonido"
             >
               <v-icon size="22">{{ muted ? "mdi-volume-off" : "mdi-volume-high" }}</v-icon>
             </button>
 
-            <button class="clip-action" type="button" @click="share(it)" title="Compartir" aria-label="Compartir">
+            <button
+              class="clip-action"
+              type="button"
+              @click.stop="share(it)"
+              title="Compartir"
+              aria-label="Compartir"
+            >
               <v-icon size="22">mdi-share-variant</v-icon>
             </button>
           </div>
@@ -117,7 +132,7 @@
               </div>
             </button>
 
-            <!-- ✅ CTA: icono comprar -->
+            <!-- ✅ CTA: icono comprar (rayo) -->
             <button class="pbar-go" type="button" @click="buyNow(it)" title="Comprar" aria-label="Comprar">
               <v-icon size="18">mdi-lightning-bolt</v-icon>
             </button>
@@ -141,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { publicVideosFeed } from "@/modules/shop/service/shop.videos.public.api.js";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
@@ -159,6 +174,7 @@ const feedEl = ref(null);
 
 const activePlayKey = ref("");
 const muted = ref(true);
+const iframeKey = ref("if_0");
 
 // paging
 const offset = ref(0);
@@ -182,9 +198,9 @@ function goBack() {
 }
 
 /* =========================
-   ✅ medir el mini footer real
+   ✅ medir el mini footer real (para que NO tape card)
 ========================= */
-const bottomNavH = ref(76); // fallback más real que 64
+const bottomNavH = ref(76); // fallback realista
 const rootStyle = computed(() => ({
   "--ml-bottom-nav-h": `${bottomNavH.value}px`,
 }));
@@ -192,7 +208,6 @@ const rootStyle = computed(() => ({
 let ro = null;
 
 function findBottomNavEl() {
-  // probamos varios selectores típicos
   return (
     document.querySelector("[data-shop-bottom-nav]") ||
     document.querySelector(".shop-bottom-nav") ||
@@ -207,7 +222,6 @@ function findBottomNavEl() {
 function measureBottomNav() {
   const el = findBottomNavEl();
   if (!el) return;
-
   const rect = el.getBoundingClientRect();
   const h = Math.round(rect.height || 0);
   if (h >= 48 && h <= 140) bottomNavH.value = h;
@@ -226,10 +240,20 @@ function setupBottomNavObserver() {
 }
 
 /* =========================
-   ✅ SNAP 1x1 (tipo IG)
+   ✅ SNAP 1x1 (tipo Instagram / Shorts)
+   - sin smooth (reduce tildes)
+   - lock de gesto
+   - setActive SOLO al finalizar
 ========================= */
 const snapping = ref(false);
-let snapUnlockT = null;
+const gestureLock = ref(false);
+
+const touchStartY = ref(0);
+const touchLastY = ref(0);
+const touchStartT = ref(0);
+
+let rafId = 0;
+let settleId = 0;
 
 function viewportH() {
   return Math.max(1, window.innerHeight || 1);
@@ -242,81 +266,115 @@ function currentIndex() {
 function maxIndex() {
   return Math.max(0, (items.value?.length || 1) - 1);
 }
-function scrollToIndex(i) {
+
+function activateByIndex(idx) {
+  const it = items.value?.[idx];
+  if (!it?.key) return;
+
+  if (activePlayKey.value !== it.key) {
+    activePlayKey.value = it.key;
+    // ✅ fuerza “destroy” real del iframe anterior (reduce lag al swippear rápido)
+    iframeKey.value = `if_${Date.now()}`;
+  }
+}
+
+function hardScrollToIndex(i) {
   const el = feedEl.value;
   if (!el) return;
 
   const idx = clamp(i, 0, maxIndex());
   snapping.value = true;
 
-  el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
+  // ✅ clave: sin smooth
+  el.scrollTop = idx * viewportH();
 
-  clearTimeout(snapUnlockT);
-  snapUnlockT = setTimeout(() => {
+  window.clearTimeout(settleId);
+  settleId = window.setTimeout(() => {
     snapping.value = false;
+    gestureLock.value = false;
     activateByIndex(idx);
-  }, 260);
-}
-
-function activateByIndex(idx) {
-  const it = items.value?.[idx];
-  if (!it?.key) return;
-  activePlayKey.value = it.key;
+  }, 90);
 }
 
 function activateByKey(key) {
-  activePlayKey.value = key;
   const idx = items.value.findIndex((x) => x?.key === key);
-  if (idx >= 0) scrollToIndex(idx);
+  if (idx >= 0) hardScrollToIndex(idx);
+  else activePlayKey.value = key;
+}
+
+/* scroll listener liviano (RAF + settle) */
+function onScroll() {
+  if (snapping.value) return;
+
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = 0;
+
+    // ✅ infinite load (solo si estás cerca del final)
+    const el = feedEl.value;
+    if (el) {
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 900;
+      if (nearBottom) fetchMore();
+    }
+
+    // ✅ settle: al parar, clava al índice exacto
+    window.clearTimeout(settleId);
+    settleId = window.setTimeout(() => {
+      if (gestureLock.value) return;
+      hardScrollToIndex(currentIndex());
+    }, 95);
+  });
 }
 
 /* wheel: 1 por 1 */
 let wheelLock = false;
-let wheelT = null;
+let wheelT = 0;
 function onWheel(e) {
   if (wheelLock || snapping.value) return;
-  wheelLock = true;
 
+  wheelLock = true;
   const dy = e?.deltaY || 0;
   const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0;
-  if (dir !== 0) scrollToIndex(currentIndex() + dir);
+  if (dir) {
+    gestureLock.value = true;
+    hardScrollToIndex(currentIndex() + dir);
+  }
 
-  clearTimeout(wheelT);
-  wheelT = setTimeout(() => (wheelLock = false), 240);
+  window.clearTimeout(wheelT);
+  wheelT = window.setTimeout(() => (wheelLock = false), 220);
 }
 
-/* touch swipe: 1 por 1 */
-let touchY = 0;
+/* touch swipe: 1 por 1 (tipo IG) */
 function onTouchStart(ev) {
-  touchY = ev?.changedTouches?.[0]?.clientY ?? 0;
-}
-function onTouchEnd(ev) {
   if (snapping.value) return;
-  const endY = ev?.changedTouches?.[0]?.clientY ?? 0;
-  const dy = touchY - endY;
+  gestureLock.value = true;
 
-  if (Math.abs(dy) < 35) return;
-  const dir = dy > 0 ? 1 : -1;
-  scrollToIndex(currentIndex() + dir);
+  touchStartT.value = Date.now();
+  const y = ev?.touches?.[0]?.clientY ?? 0;
+  touchStartY.value = y;
+  touchLastY.value = y;
 }
-
-/* scroll settle */
-let settleT = null;
-function onFeedScroll() {
-  const el = feedEl.value;
-  if (!el) return;
-
-  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 900;
-  if (nearBottom) fetchMore();
-
+function onTouchMove(ev) {
+  if (!gestureLock.value || snapping.value) return;
+  const y = ev?.touches?.[0]?.clientY ?? 0;
+  touchLastY.value = y;
+}
+function onTouchEnd() {
   if (snapping.value) return;
 
-  clearTimeout(settleT);
-  settleT = setTimeout(() => {
-    const idx = currentIndex();
-    el.scrollTo({ top: idx * viewportH(), behavior: "smooth" });
-    activateByIndex(idx);
-  }, 140);
+  const elapsed = Date.now() - (touchStartT.value || Date.now());
+  const dy = (touchStartY.value || 0) - (touchLastY.value || 0); // swipe up => +
+  const abs = Math.abs(dy);
+
+  const SWIPE_MIN = 40;
+  const SWIPE_FAST = 140;
+  const FAST_TIME = 220;
+
+  let dir = 0;
+  if (abs >= SWIPE_FAST || (abs >= SWIPE_MIN && elapsed <= FAST_TIME)) dir = dy > 0 ? 1 : -1;
+  else if (abs >= SWIPE_MIN) dir = dy > 0 ? 1 : -1;
+
+  hardScrollToIndex(currentIndex() + dir);
 }
 
 /* =========================
@@ -537,7 +595,7 @@ function onItemImgError(it) {
 }
 
 /* =========================
-   Comprar
+   Comprar / navegación
 ========================= */
 function buyNow(it) {
   const p = resolvedProduct(it);
@@ -594,6 +652,9 @@ async function fetchFirstPage() {
 
     offset.value = items.value.length;
     hasMore.value = Boolean(r?.meta?.has_more) && items.value.length < HARD_MAX.value;
+
+    // ✅ set activo inicial
+    if (items.value?.[0]?.key) activePlayKey.value = items.value[0].key;
   } catch (e) {
     error.value = e?.message || "No se pudieron cargar los clips";
     items.value = [];
@@ -631,6 +692,14 @@ async function fetchMore() {
   }
 }
 
+/* ✅ cuando cambia el active, recreamos iframe (menos “delay”) */
+watch(
+  () => activePlayKey.value,
+  () => {
+    iframeKey.value = `if_${Date.now()}`;
+  }
+);
+
 onMounted(async () => {
   await fetchFirstPage();
   await nextTick();
@@ -641,14 +710,16 @@ onMounted(async () => {
 
   window.addEventListener("resize", measureBottomNav, { passive: true });
 
-  // ✅ arranca en el primer clip
-  scrollToIndex(0);
+  // ✅ clava a 0 sin smooth
+  hardScrollToIndex(0);
 });
 
 onBeforeUnmount(() => {
-  clearTimeout(settleT);
-  clearTimeout(wheelT);
-  clearTimeout(snapUnlockT);
+  window.clearTimeout(settleId);
+  window.clearTimeout(wheelT);
+
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = 0;
 
   window.removeEventListener("resize", measureBottomNav);
 
@@ -667,13 +738,13 @@ onBeforeUnmount(() => {
   min-height: 100dvh;
 }
 
-/* Top minimal */
+/* Top minimal (solo botón, sin banda) */
 .clips-top {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: calc(10px + env(safe-area-inset-top));
+  height: calc(8px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
   z-index: 60;
   pointer-events: none;
@@ -714,6 +785,9 @@ onBeforeUnmount(() => {
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
   padding-bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom));
+  /* ✅ rendimiento */
+  contain: paint layout size;
+  -webkit-overflow-scrolling: touch;
 }
 .clips-feed::-webkit-scrollbar {
   display: none;
@@ -806,7 +880,7 @@ onBeforeUnmount(() => {
 .clip-actions {
   position: absolute;
   right: 10px;
-  bottom: calc(var(--ml-bottom-nav-h, 76px) + 126px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + 120px + env(safe-area-inset-bottom));
   display: grid;
   gap: 10px;
   z-index: 7;
@@ -826,7 +900,7 @@ onBeforeUnmount(() => {
 .clip-hint {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--ml-bottom-nav-h, 76px) + 150px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + 140px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   font-size: 12px;
   padding: 8px 12px;
