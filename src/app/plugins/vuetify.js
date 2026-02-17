@@ -1,3 +1,4 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/app/plugins/vuetify.js
 import "vuetify/styles";
 import "@mdi/font/css/materialdesignicons.css";
@@ -17,7 +18,7 @@ const vuetify = createVuetify({
         colors: {
           primary: "#0e2134",
           secondary: "#3483fa",
-          background: "#f5f6f8",
+          background: "#ebebeb", // ✅ ML real
           surface: "#ffffff",
           error: "#d32f2f",
           success: "#2e7d32",

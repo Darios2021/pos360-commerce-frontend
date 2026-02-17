@@ -18,12 +18,18 @@
     window.localStorage.removeItem(testKey);
   } catch (_) {
     const noopLS = {
-      getItem() { return "null"; },
+      getItem() {
+        return "null";
+      },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() { return null; },
-      get length() { return 0; },
+      key() {
+        return null;
+      },
+      get length() {
+        return 0;
+      },
     };
     try {
       Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
@@ -39,12 +45,18 @@
     window.sessionStorage.removeItem(testKey);
   } catch (_) {
     const noopSS = {
-      getItem() { return "null"; },
+      getItem() {
+        return "null";
+      },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() { return null; },
-      get length() { return 0; },
+      key() {
+        return null;
+      },
+      get length() {
+        return 0;
+      },
     };
     try {
       Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
@@ -83,6 +95,8 @@ import { createHead } from "@vueuse/head";
 import App from "./App.vue";
 import router from "./app/router";
 import vuetify from "./app/plugins/vuetify";
+
+// ✅ GLOBAL CSS (ML look en toda la app)
 import "./style.css";
 
 import VueApexCharts from "vue3-apexcharts";
@@ -122,7 +136,7 @@ function signalPrerenderReady(routerInstance) {
 }
 
 // =============================
-// ✅ Bootstrap THEME (después del mount, porque tu runtimeTheme re-aplica scopes)
+// ✅ Bootstrap THEME
 // - /shop  => public theme
 // - /app   => admin theme (si hay token)
 // =============================
@@ -140,13 +154,11 @@ async function bootstrapThemeOnce() {
     if (typeof window === "undefined") return;
 
     if (isBackofficePath()) {
-      // BACKOFFICE: requiere token (si todavía no hay, puede fallar y no pasa nada)
       const th = await getShopThemeAdmin();
       if (th) applyRuntimeTheme(normalizeTheme(th));
       return;
     }
 
-    // PUBLICO / SHOP
     const th = await getShopThemePublic();
     if (th) applyRuntimeTheme(normalizeTheme(th));
   } catch {
@@ -154,7 +166,6 @@ async function bootstrapThemeOnce() {
   }
 }
 
-// Reintentos cortos para el caso "acabo de loguearme y recién se guardó token"
 async function bootstrapThemeWithRetries() {
   await bootstrapThemeOnce();
   setTimeout(() => bootstrapThemeOnce(), 400);

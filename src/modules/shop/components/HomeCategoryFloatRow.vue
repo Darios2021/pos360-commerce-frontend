@@ -1,25 +1,25 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/shop/components/HomeCategoryFloatRow.vue -->
 <template>
   <div class="float-row">
     <div class="float-inner">
       <div class="wrap">
         <!-- =========================
-             MOBILE/TABLET: BUBBLES
+             MOBILE/TABLET: ML BUBBLES
              ========================= -->
-        <div v-if="isMobile" class="bubbles" ref="bubblesEl" aria-label="Accesos rápidos">
+        <div v-if="isMobile" class="ml-bubbles" ref="bubblesEl" aria-label="Accesos rápidos">
           <button
             v-for="c in featured"
             :key="c.key"
-            class="bubble"
+            class="ml-bubble"
             type="button"
             @click.stop="go(c)"
             :title="c.name"
           >
-            <span class="ring">
-              <span class="avatar">
-                <img :src="c.img" :alt="c.name" @error="onImgError" loading="lazy" />
-              </span>
+            <span class="ml-bubble-avatar" aria-hidden="true">
+              <img :src="c.img" :alt="c.name" @error="onImgError" loading="lazy" />
             </span>
-            <span class="label">{{ c.name }}</span>
+            <span class="ml-bubble-label">{{ c.shortLabel || c.name }}</span>
           </button>
         </div>
 
@@ -62,24 +62,25 @@
             </div>
           </div>
 
-          <!-- Flechas -->
-          <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
-            ‹
-          </button>
-          <button
-            class="arrow right"
-            type="button"
-            aria-label="Siguiente"
-            @click="next"
-            :disabled="index >= maxIndex"
-          >
-            ›
-          </button>
+          <!-- ✅ Flechas + dots SOLO si hay scroll -->
+          <template v-if="maxIndex > 0">
+            <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
+              ‹
+            </button>
+            <button
+              class="arrow right"
+              type="button"
+              aria-label="Siguiente"
+              @click="next"
+              :disabled="index >= maxIndex"
+            >
+              ›
+            </button>
 
-          <!-- Dots -->
-          <div class="dots" v-if="maxIndex > 0">
-            <span v-for="i in maxIndex + 1" :key="i" class="dot" :class="{ active: i - 1 === index }" />
-          </div>
+            <div class="dots">
+              <span v-for="i in maxIndex + 1" :key="i" class="dot" :class="{ active: i - 1 === index }" />
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -127,34 +128,31 @@ const STOCK = {
 };
 
 /* =========================
-   ✅ IDS REALES (LOS QUE ME PASASTE)
+   ✅ IDS REALES
    - URL FINAL: /shop/c/:cat?branch_id=3&page=1&sub=:sub
    - ✅ SIN category_id
-   - q es opcional (solo lo usamos donde pediste)
    ========================= */
 const FIXED_ROUTE = {
-  // AUDIO
   parlantes: { cat: 2, sub: 7, q: "PARLANTES" },
-  auriculares: { cat: 2, sub: 3, q: null },   // https://sanjuantecnologia.com/shop/c/2?branch_id=3&page=1&sub=3
-  microfonos: { cat: 2, sub: 11, q: null },   // https://sanjuantecnologia.com/shop/c/2?branch_id=3&page=1&sub=11
-
-  // ELECTRO
-  electro: { cat: 7, sub: 16, q: null },      // https://sanjuantecnologia.com/shop/c/7?branch_id=3&page=1&sub=16
-
-  // CÁMARAS
-  camaras: { cat: 11, sub: 23, q: "CAMARAS" }, // querías q=CAMARAS pero SIN category_id
+  auriculares: { cat: 2, sub: 3, q: null },
+  microfonos: { cat: 2, sub: 11, q: null },
+  electro: { cat: 7, sub: 16, q: null },
+  camaras: { cat: 11, sub: 23, q: "CAMARAS" },
 };
 
+/* =========================
+   Featured (con labels cortos mobile)
+   ========================= */
 const featured = computed(() => [
-  { key: "parlantes", name: "PARLANTES", img: IMG_SUB.parlantes || FALLBACK },
-  { key: "auriculares", name: "AURICULARES", img: IMG_SUB.auriculares || FALLBACK },
-  { key: "microfonos", name: "MICROFONOS", img: IMG_SUB.microfonos || FALLBACK },
-  { key: "electro", name: "ELECTRO", img: IMG_SUB.electro || FALLBACK },
-  { key: "camaras", name: "CAMARAS DE SEGURIDAD", img: STOCK.camaras || FALLBACK },
+  { key: "parlantes", name: "PARLANTES", shortLabel: "Parlantes", img: IMG_SUB.parlantes || FALLBACK },
+  { key: "auriculares", name: "AURICULARES", shortLabel: "Auriculares", img: IMG_SUB.auriculares || FALLBACK },
+  { key: "microfonos", name: "MICROFONOS", shortLabel: "Micrófonos", img: IMG_SUB.microfonos || FALLBACK },
+  { key: "electro", name: "ELECTRO", shortLabel: "Electro", img: IMG_SUB.electro || FALLBACK },
+  { key: "camaras", name: "CAMARAS DE SEGURIDAD", shortLabel: "Cámaras", img: STOCK.camaras || FALLBACK },
 ]);
 
 /* =========================
-   ✅ Navegación: LINKS CORRECTOS
+   Navegación
    ========================= */
 function go(item) {
   const fixed = FIXED_ROUTE[item?.key] || null;
@@ -165,7 +163,6 @@ function go(item) {
 
   const branch_id = String(route.query.branch_id || "3");
 
-  // ✅ query limpio, SIN category_id
   const query = {
     branch_id,
     page: "1",
@@ -193,7 +190,7 @@ const bubblesEl = ref(null);
 
 const index = ref(0);
 const cardW = ref(210);
-const gap = ref(14);
+const gap = ref(16);
 const visibleCount = ref(1);
 
 const viewportMaxPx = ref(null);
@@ -209,7 +206,7 @@ function measure() {
 
   const w = window.innerWidth;
   cardW.value = w <= 1200 ? 200 : 210;
-  gap.value = 14;
+  gap.value = 16;
 
   const available = vp.parentElement?.clientWidth || vp.clientWidth || 1;
   const count = Math.max(1, Math.floor((available + gap.value) / (cardW.value + gap.value)));
@@ -234,7 +231,7 @@ function prev() {
   index.value = Math.max(0, index.value - 1);
 }
 
-/* Drag FIX */
+/* Drag */
 let dragging = false;
 let moved = false;
 let startX = 0;
@@ -244,6 +241,7 @@ const DRAG_THRESHOLD_PX = 6;
 
 function onPointerDown(e) {
   if (e.button !== 0) return;
+  if (maxIndex.value <= 0) return; // ✅ si no hay scroll, no hay drag
   if (e.target?.closest?.(".card")) return;
 
   dragging = true;
@@ -281,7 +279,6 @@ function onPointerUp(e) {
   pointerId = null;
 }
 
-/* lifecycle */
 onMounted(async () => {
   await nextTick();
   index.value = 0;
@@ -314,6 +311,9 @@ watch(
 </script>
 
 <style scoped>
+/* =========================
+   WRAPPER
+========================= */
 .float-row {
   width: 100%;
   display: flex;
@@ -338,90 +338,74 @@ watch(
 .wrap {
   position: relative;
   width: 100%;
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 
-/* MOBILE: BUBBLES */
-.bubbles {
+/* =========================
+   MOBILE: ML BUBBLES
+========================= */
+.ml-bubbles {
   display: flex;
   gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px 4px 10px;
-  scroll-snap-type: x mandatory;
+  padding: 8px 4px 10px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  touch-action: pan-x pan-y;
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: auto;
+  scroll-snap-type: x mandatory;
 }
-.bubbles::-webkit-scrollbar {
+.ml-bubbles::-webkit-scrollbar {
   display: none;
 }
 
-.bubble {
+.ml-bubble {
   flex: 0 0 auto;
-  width: 110px;
+  width: 82px;                 /* ✅ ML: angosto */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 0;
-  background: transparent;
   border: 0;
+  background: transparent;
   cursor: pointer;
   scroll-snap-align: start;
-  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.ring {
-  width: 74px;
-  height: 74px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(20, 136, 209, 0.22), rgba(7, 28, 48, 0.14));
-  display: grid;
-  place-items: center;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
-}
-
-.avatar {
-  width: 64px;
-  height: 64px;
+.ml-bubble-avatar {
+  width: 54px;                 /* ✅ ML: círculo chico */
+  height: 54px;
   border-radius: 999px;
   background: #fff;
+  border: 1px solid #e6e6e6;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
 }
-.avatar img {
+
+.ml-bubble-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.label {
+.ml-bubble-label {
   width: 100%;
   text-align: center;
-  font-weight: 900;
-  font-size: 11px;
-  line-height: 1.1;
-  text-transform: uppercase;
-  color: rgba(7, 28, 48, 0.96);
-  text-shadow: none;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(7, 28, 48, 0.1);
-  border-radius: 10px;
-  padding: 4px 6px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  font-size: 12px;
+  line-height: 1.05;
+  font-weight: 500;            /* ✅ ML: nada de bold pesado */
+  color: #7a7a7a;              /* ✅ ML: gris */
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* DESKTOP: CARDS */
+/* =========================
+   DESKTOP: CARDS
+========================= */
 .cards-wrap {
   position: relative;
   pointer-events: auto;
@@ -429,40 +413,38 @@ watch(
 
 .viewport {
   overflow: hidden;
-  border-radius: 12px;
-  padding: 0 6px 10px;
+  padding: 0;
+  border-radius: 0;
   touch-action: pan-y;
-  pointer-events: auto;
 }
 
 .track {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   will-change: transform;
   transition: transform 180ms ease;
-  pointer-events: auto;
 }
 
+/* Card ML (limpio) */
 .card {
   flex: 0 0 auto;
   width: 210px;
   height: 280px;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid #e6e6e6;
   background: #fff;
   display: flex;
   flex-direction: column;
   text-align: left;
   padding: 0;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: none;
+  transition: border-color 0.12s ease;
 }
 @media (hover: hover) {
   .card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
+    border-color: #d4d4d4;
   }
 }
 
@@ -472,23 +454,25 @@ watch(
   display: flex;
   align-items: center;
 }
+
 .title {
   width: 100%;
-  font-weight: 900;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 14px;
   text-transform: uppercase;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.1;
+  line-height: 1.2;
+  color: #333;
 }
 
 .media {
   height: 130px;
-  background: #f2f2f2;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: #f5f5f5;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 .media img {
   width: 100%;
@@ -501,43 +485,45 @@ watch(
   padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   justify-content: space-between;
 }
+
 .desc {
-  font-size: 12.5px;
-  color: rgba(0, 0, 0, 0.72);
-  line-height: 1.2;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
 .cta {
   display: inline-flex;
   width: fit-content;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: rgba(45, 108, 223, 0.12);
-  color: #2d6cdf;
-  font-weight: 900;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #e7f0ff;
+  color: #2968c8;
+  font-weight: 600;
+  font-size: 13px;
 }
 
-/* Flechas */
+/* Flechas (solo si hay scroll) */
 .arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
-  border: 0;
+  border: 1px solid #e6e6e6;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
-  font-size: 28px;
-  font-weight: 900;
+  background: #fff;
+  font-size: 22px;
+  font-weight: 600;
   line-height: 1;
   display: grid;
   place-items: center;
@@ -548,27 +534,27 @@ watch(
   cursor: default;
 }
 .arrow.left {
-  left: 10px;
+  left: 8px;
 }
 .arrow.right {
-  right: 10px;
+  right: 8px;
 }
 
 /* Dots */
 .dots {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 6px;
+  padding-top: 8px;
 }
 .dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
+  background: #d0d0d0;
 }
 .dot.active {
-  background: #2d6cdf;
+  background: #2968c8;
 }
 
 @media (max-width: 1200px) {
