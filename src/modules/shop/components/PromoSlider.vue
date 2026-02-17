@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/PromoSlider.vue -->
 <template>
   <section class="promo-shell" ref="shell">
@@ -14,18 +15,8 @@
 
       <!-- Slider -->
       <div class="promo-body">
-        <v-slide-group
-          ref="sg"
-          v-model="model"
-          show-arrows
-          class="promo-slide"
-          :mandatory="false"
-        >
-          <v-slide-group-item
-            v-for="(p, idx) in items"
-            :key="p.product_id ?? p.id ?? idx"
-            :value="idx"
-          >
+        <v-slide-group ref="sg" v-model="model" show-arrows class="promo-slide" :mandatory="false">
+          <v-slide-group-item v-for="(p, idx) in items" :key="p.product_id ?? p.id ?? idx" :value="idx">
             <div class="promo-item">
               <button class="promo-card" type="button" @click="open(p)">
                 <div class="promo-img">
@@ -38,27 +29,19 @@
                 <div class="promo-info">
                   <div class="promo-price-row">
                     <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
-                    <div class="promo-off" v-if="offPct(p)">
-                      {{ offPct(p) }}% OFF
-                    </div>
+                    <div class="promo-off" v-if="offPct(p)">{{ offPct(p) }}% OFF</div>
                   </div>
 
-                  <div v-if="showOldPrice(p)" class="promo-old">
-                    $ {{ fmtMoney(oldPrice(p)) }}
-                  </div>
+                  <div v-if="showOldPrice(p)" class="promo-old">$ {{ fmtMoney(oldPrice(p)) }}</div>
 
-                  <div class="promo-name">
-                    {{ p.name }}
-                  </div>
+                  <div class="promo-name">{{ p.name }}</div>
 
                   <div class="promo-meta">
                     {{ p.category_name || "—" }}
                     <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
                   </div>
 
-                  <div class="promo-free" v-if="freeShip(p)">
-                    Envío gratis
-                  </div>
+                  <div class="promo-free" v-if="freeShip(p)">Envío gratis</div>
                 </div>
               </button>
             </div>
@@ -184,7 +167,7 @@ function applyMobileSidePad() {
   shell.value.style.setProperty("--promo-side-pad", `${sidePad}px`);
 }
 
-/* ===== dots por centro (se siente bien en mobile y ok en desktop) ===== */
+/* ===== dots por centro ===== */
 function recalcActiveFromScroll() {
   if (!containerEl || !contentEl) return;
 
@@ -275,7 +258,6 @@ onMounted(async () => {
   await nextTick();
   bind();
 
-  // segundo tick: asegura medidas correctas en mobile
   await nextTick();
   applyMobileSidePad();
   recalcActiveFromScroll();
@@ -300,8 +282,6 @@ const dotsCount = computed(() => {
 function jumpTo(pageIdx) {
   const targetItem = pageIdx * props.perPage;
   model.value = targetItem;
-
-  // centramos el primer item de esa página (en desktop queda lindo igual)
   centerItem(targetItem, "smooth");
 }
 
@@ -325,9 +305,11 @@ watch(
 </script>
 
 <style scoped>
+/* ✅ ESTE COMPONENTE YA NO “DIBUJA” UNA TARJETA BLANCA GRANDE.
+   La tarjeta/blanco/padding lo pone ShopHome (.content > .mb-6). */
+
 .promo-shell {
   width: 100%;
-  /* ✅ en desktop debe ser chico para NO romper layout */
   --promo-side-pad: 6px;
 }
 
@@ -337,17 +319,18 @@ watch(
   touch-action: pan-y;
 }
 
+/* ✅ antes era la caja blanca grande (doble card). Ahora queda FLAT */
 .promo-inner {
-  background: #fff;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
-/* header */
+/* header (sin padding gigante, porque afuera ya hay padding) */
 .promo-head {
-  padding: 16px 18px 14px;
+  padding: 0 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -374,11 +357,12 @@ watch(
 
 .promo-divider {
   opacity: 0.65;
+  margin: 0 0 8px;
 }
 
 /* body */
 .promo-body {
-  padding: 10px 10px 10px;
+  padding: 0; /* ✅ afuera ya hay padding */
 }
 
 /* carrusel */
@@ -396,16 +380,15 @@ watch(
   display: none;
 }
 
-/* quitar espacios fantasmas */
 .promo-slide :deep(.v-slide-group-item) {
   padding: 0 !important;
   margin: 0 !important;
 }
 
-/* ✅ DESKTOP: normal, sin empujar todo a la derecha */
+/* desktop spacing */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
-  padding: 10px 6px 12px;
+  padding: 6px 0 10px; /* ✅ sin “segunda caja”, queda limpio */
   white-space: nowrap;
 }
 
@@ -413,7 +396,7 @@ watch(
   display: inline-flex;
 }
 
-/* flechas (mantener) */
+/* flechas */
 .promo-slide :deep(.v-slide-group__prev),
 .promo-slide :deep(.v-slide-group__next) {
   opacity: 0.95;
@@ -425,7 +408,7 @@ watch(
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
 
-/* card */
+/* cards internas (se mantienen) */
 .promo-card {
   width: 210px;
   border-radius: 16px;
@@ -540,7 +523,7 @@ watch(
   display: flex;
   justify-content: center;
   gap: 8px;
-  padding: 8px 0 6px;
+  padding: 10px 0 2px;
 }
 
 .dot {
@@ -561,12 +544,8 @@ watch(
   background: rgba(0, 0, 0, 0.55);
 }
 
-/* ✅ MOBILE: centrado real + snap center, pero SOLO mobile */
+/* mobile */
 @media (max-width: 600px) {
-  .promo-head {
-    padding: 12px 14px;
-  }
-
   .promo-title {
     font-size: 14px;
   }
@@ -575,24 +554,18 @@ watch(
     display: none;
   }
 
-  .promo-body {
-    padding: 10px 8px 10px;
-  }
-
   .promo-card {
     width: min(86vw, 380px);
   }
 
-  /* snap centrado */
   .promo-slide :deep(.v-slide-group__container) {
     scroll-snap-type: x mandatory;
     scroll-padding-left: var(--promo-side-pad);
     scroll-padding-right: var(--promo-side-pad);
   }
 
-  /* padding dinámico SOLO mobile (no rompe desktop) */
   .promo-slide :deep(.v-slide-group__content) {
-    padding: 10px var(--promo-side-pad) 12px !important;
+    padding: 6px var(--promo-side-pad) 10px !important;
     gap: 12px;
   }
 

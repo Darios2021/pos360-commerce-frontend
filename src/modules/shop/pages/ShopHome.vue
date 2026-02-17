@@ -117,16 +117,12 @@
     </section>
 
     <ShopFooter />
-
-    <!-- ✅ Bottom Nav SOLO mobile -->
-    <ShopBottomNav v-if="isMobile" />
   </v-container>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useDisplay } from "vuetify";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
@@ -145,12 +141,7 @@ import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
-import ShopBottomNav from "@/modules/shop/components/ShopBottomNav.vue";
-
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
-
-const { xs } = useDisplay();
-const isMobile = computed(() => !!xs.value);
 
 const route = useRoute();
 const router = useRouter();
@@ -381,21 +372,12 @@ watch(
 </script>
 
 <style scoped>
-
-/* ================================
-   PAGE BASE
-================================ */
-
 .shop-page {
   --shop-max: 1200px;
   padding: 0 !important;
   margin: 0 !important;
-  background: transparent; /* el gris lo da style.css */
+  background: transparent;
 }
-
-/* ================================
-   HERO FULL BLEED
-================================ */
 
 .hero-fullbleed {
   width: 100vw;
@@ -423,14 +405,9 @@ watch(
   margin: 0 auto;
 }
 
-/* Separador visual ML */
 .after-hero-spacer {
   height: 18px;
 }
-
-/* ================================
-   CONTENT WRAPPER (ML look)
-================================ */
 
 .content {
   width: min(var(--shop-max), calc(100% - 24px));
@@ -438,23 +415,6 @@ watch(
   padding-bottom: 40px;
 }
 
-/* ================================
-   BLOQUES BLANCOS ML
-================================ */
-
-/* Cada sección principal se vuelve tarjeta blanca */
-.content > .mb-6,
-.content > .mt-6,
-#shop-products-top,
-.after-products-banner,
-.product-grid,
-.v-alert {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-/* Ajuste especial para grid */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -462,68 +422,43 @@ watch(
   align-items: start;
 }
 
-/* Banner spacing */
 .after-products-banner {
   margin-top: 18px;
 }
-
-/* ================================
-   RESPONSIVE
-================================ */
 
 @media (max-width: 1400px) {
   .product-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
-
 @media (max-width: 1200px) {
   .shop-page {
     --shop-max: 1100px;
   }
-
   .product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-
 @media (max-width: 960px) {
   .after-hero-spacer {
     height: 14px;
   }
-
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
 @media (max-width: 600px) {
-
   .after-hero-spacer {
     height: 12px;
   }
-
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
-  /* más compacto mobile */
-  .content > .mb-6,
-  .content > .mt-6,
-  #shop-products-top,
-  .after-products-banner,
-  .product-grid,
-  .v-alert {
-    border-radius: 10px;
-    padding: 12px;
-  }
-
-  /* espacio para bottom nav */
+  /* espacio para bottom nav (lo pone el layout también, pero esto ayuda en home) */
   .content {
     padding-bottom: 92px;
   }
 }
-
 </style>
-

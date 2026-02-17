@@ -1,3 +1,6 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/shop/components/ShopMobileBottomNav.vue -->
+
 <template>
   <nav class="ml-bottom-nav" aria-label="Navegación inferior">
     <!-- Inicio -->
@@ -17,19 +20,20 @@
       <span>Categorías</span>
     </router-link>
 
-    <!-- Carrito (CENTRAL estilo ML) -->
+    <!-- Carrito (CENTRAL ML) -->
     <router-link
       to="/shop/cart"
-      class="ml-nav-item ml-nav-item-cart"
+      class="ml-nav-item is-cart"
       :class="{ active: isActive('/shop/cart') }"
+      aria-label="Carrito"
     >
-      <div class="ml-cart-bubble">
+      <div class="ml-cart-bubble" aria-hidden="true">
         <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
           <v-icon>mdi-cart-outline</v-icon>
         </v-badge>
         <v-icon v-else>mdi-cart-outline</v-icon>
       </div>
-      <span>Carrito</span>
+      <span class="ml-cart-label">Carrito</span>
     </router-link>
 
     <!-- Clips -->
@@ -62,94 +66,115 @@ function isActive(path, exactShopHome = false) {
 
 const isCategoriesActive = computed(() => {
   const p = route.path || "";
-  return (
-    p.startsWith("/shop/categories") ||
-    p.startsWith("/shop/c/") ||
-    p.startsWith("/shop/category/")
-  );
+  return p.startsWith("/shop/categories") || p.startsWith("/shop/c/") || p.startsWith("/shop/category/");
 });
 </script>
 
 <style scoped>
 /* ================================
-   ML Bottom Nav – versión reforzada
+   Bottom Nav base
 ================================ */
 
-.ml-bottom-nav {
+.ml-bottom-nav{
+  --ml-nav-h: 64px;
+  --ml-safe: env(safe-area-inset-bottom);
+
   position: fixed;
-  bottom: 0;
   left: 0;
-  width: 100%;
-  height: 64px;
+  right: 0;
+  bottom: 0;
 
-  /* 🔥 Fondo un poco más marcado */
-  background: #f3f4f6;
-
-  /* 🔥 Línea superior más visible */
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-
-  /* 🔥 Sombra tipo ML */
-  box-shadow:
-    0 -2px 6px rgba(0, 0, 0, 0.06),
-    0 -8px 20px rgba(0, 0, 0, 0.04);
+  height: calc(var(--ml-nav-h) + var(--ml-safe));
+  padding-bottom: var(--ml-safe);
 
   display: flex;
-  justify-content: space-around;
   align-items: center;
+  justify-content: space-around;
+
+  background: #ffffff;
+  border-top: 1px solid rgba(0,0,0,.12);
+
+  box-shadow: 0 -4px 12px rgba(0,0,0,.08);
 
   z-index: 250;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Items */
-.ml-nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  text-decoration: none;
-  color: #6f6f6f;
-  min-width: 64px;
-  transition: color 0.2s ease;
-}
-
-/* Iconos */
-.ml-nav-item :deep(.v-icon) {
-  font-size: 22px;
-}
-
-/* Activo */
-.ml-nav-item.active {
-  color: #1976d2;
-  font-weight: 600;
 }
 
 /* ================================
-   Carrito central estilo ML
+   Items normales
 ================================ */
 
-.ml-nav-item:nth-child(3) {
+.ml-nav-item{
+  flex: 1 1 0;
+  min-width: 64px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 3px;
+
+  text-decoration: none;
+  color: #6f6f6f;
+
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ml-nav-item :deep(.v-icon){
+  font-size: 22px;
+}
+
+.ml-nav-item.active{
+  color: #1976d2;
+  font-weight: 700;
+}
+
+/* ================================
+   Carrito central estilo ML (LIMPIO)
+================================ */
+
+.ml-nav-item.is-cart{
   position: relative;
-  transform: translateY(-8px);
+  transform: translateY(-14px);
+  z-index: 5;
 }
 
-.ml-nav-item:nth-child(3)::before {
-  content: "";
-  position: absolute;
-  width: 56px;
-  height: 56px;
-  background: #ffffff;
+/* círculo flotante real */
+.ml-cart-bubble{
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.12),
-    0 0 0 4px #f3f4f6; /* aro del mismo color del footer */
-  top: -14px;
-  z-index: -1;
+
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,.10);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* UNA sola sombra suave */
+  box-shadow: 0 12px 20px rgba(0,0,0,.18);
 }
 
-/* Texto carrito centrado */
-.ml-nav-item:nth-child(3) span {
+/* icono más grande */
+.ml-cart-bubble :deep(.v-icon){
+  font-size: 26px;
+}
+
+/* badge bien posicionado */
+.ml-cart-bubble :deep(.v-badge__badge){
+  top: 6px;
+  right: 6px;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+}
+
+/* texto debajo */
+.ml-cart-label{
   margin-top: 4px;
 }
 </style>
+
+

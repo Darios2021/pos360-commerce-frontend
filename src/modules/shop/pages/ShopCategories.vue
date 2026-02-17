@@ -89,11 +89,12 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 
 const router = useRouter();
+const route = useRoute();
 
 const loadingParents = ref(false);
 const loadingChildren = ref(false);
@@ -132,6 +133,14 @@ function initials(name) {
   return (a + b) || a || "•";
 }
 
+/* ✅ branchId para catálogo (CLAVE) */
+const branchId = computed(() => {
+  const v = route.query.branch_id ?? route.query.branchId ?? 3;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 3;
+});
+
+/* ✅ thumb super-robusto */
 function thumbFromProduct(p) {
   const cands = [
     p?.thumbnail_url,
@@ -144,13 +153,25 @@ function thumbFromProduct(p) {
     p?.image,
     p?.img,
     p?.cover_url,
+
+    // ✅ comunes en APIs
+    p?.media?.thumbnail,
+    p?.media?.cover,
+    p?.media?.image,
+    p?.media?.images?.[0]?.url,
+    p?.media?.images?.[0]?.src,
+    p?.images?.[0]?.url,
+    p?.images?.[0]?.src,
+    p?.pictures?.[0]?.url,
+    p?.pictures?.[0]?.src,
   ];
+
   const u = cands.find((x) => typeof x === "string" && x.trim().length > 0);
   return u ? u.trim() : "";
 }
 
 function cacheKey(parentId, subId) {
-  return `p:${Number(parentId || 0)}|s:${Number(subId || 0)}`;
+  return `p:${Number(parentId || 0)}|s:${Number(subId || 0)}|b:${Number(branchId.value || 0)}`;
 }
 
 /* =========================
@@ -167,17 +188,28 @@ async function fetchRepImageForSub(parentId, subId) {
 
   repLoading[k] = true;
   try {
+    // ✅ pedimos varios y elegimos el primero con thumb real
     const r = await getCatalog({
+      branch_id: branchId.value,           // ✅ CLAVE
       page: 1,
-      limit: 1,
+      limit: 6,                            // ✅ no 1
       category_id: Number(parentId),
       subcategory_id: Number(subId),
       include_children: 0,
       sort: "relevance",
     });
 
-    const item = Array.isArray(r?.items) ? r.items[0] : null;
-    const url = item ? thumbFromProduct(item) : "";
+    const items = Array.isArray(r?.items) ? r.items : [];
+    let url = "";
+
+    for (const it of items) {
+      const u = thumbFromProduct(it);
+      if (u) {
+        url = u;
+        break;
+      }
+    }
+
     if (url) repImg[k] = url;
     return url || "";
   } catch {
@@ -201,11 +233,7 @@ async function mapLimit(arr, limit, fn) {
   return res;
 }
 
-/**
- * ✅ FIX CLAVE:
- * - PRIORIZA imagen real de producto (repImg)
- * - NO usamos image_url de la taxonomía porque suele venir “rota”
- */
+/* ✅ icon por subcat (cache) */
 function iconForSub(s) {
   const k = cacheKey(activeParentId.value, s?.id);
   return repImg[k] || "";
@@ -248,7 +276,7 @@ async function fetchParents() {
   }
 }
 
-const PREFETCH_MAX = 18; // ✅ no matar backend
+const PREFETCH_MAX = 18;
 const PREFETCH_CONCURRENCY = 4;
 
 async function fetchChildren(parentId) {
@@ -293,7 +321,7 @@ function openParentAll() {
   router.push({
     name: "shopCategory",
     params: { id: String(pid) },
-    query: { page: "1" },
+    query: { page: "1", branch_id: String(branchId.value) },
   });
 }
 
@@ -305,7 +333,7 @@ function openSubcategory(subId) {
   router.push({
     name: "shopCategory",
     params: { id: String(pid) },
-    query: { sub: String(sid), page: "1" },
+    query: { sub: String(sid), page: "1", branch_id: String(branchId.value) },
   });
 }
 
@@ -485,7 +513,7 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-/* ✅ icon ML: foto real dentro del círculo */
+/* icon */
 .mlc-icon {
   width: 58px;
   height: 58px;
@@ -516,7 +544,7 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;        /* ✅ cover para que NO se vea “rota” */
+  object-fit: cover;
   object-position: center;
 }
 
@@ -547,7 +575,7 @@ onMounted(async () => {
   .mlc-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    padding-bottom: 92px; /* bottom nav */
+    padding-bottom: 92px;
   }
   .mlc-icon {
     width: 54px;
