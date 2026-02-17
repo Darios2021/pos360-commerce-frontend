@@ -1,5 +1,6 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/app/router/index.js
-// ✅ COPY-PASTE FINAL COMPLETO (Shop público + Plataforma en /app + Auth en /app/auth)
+// ✅ Shop público + Plataforma en /app + Auth en /app/auth
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -11,7 +12,7 @@ import AuthLayout from "@/app/layouts/AuthLayout.vue";
 // Shop routes
 import { shopRoutes } from "@/modules/shop/router/shop.routes";
 
-// ✅ Admin tienda / configs (ahora RELATIVOS para colgar de /app)
+// ✅ Admin tienda / configs (relativos para colgar de /app)
 import { shopAdminRoutes } from "@/app/router/shopAdmin.routes";
 
 // Pages
@@ -107,12 +108,13 @@ const routes = [
     ],
   },
 
-  // fallback
-  { path: "/:pathMatch(.*)*", redirect: { name: "shopHome" } },
+  // ✅ fallback / catch-all (SIEMPRE al final)
+  // 🔥 FIX: redirigir por PATH (string) evita que Vue Router arrastre params pathMatch y tire warning
+  { path: "/:pathMatch(.*)*", redirect: "/shop" },
 ];
 
 const router = createRouter({
-  // ✅ IMPORTANTÍSIMO: base "/" para que funcione tanto /shop como /app
+  // ✅ base "/" para que funcione tanto /shop como /app
   history: createWebHistory("/"),
   routes,
   scrollBehavior: (to, from, saved) => saved || { top: 0 },
@@ -130,7 +132,7 @@ router.beforeEach((to) => {
   // si ya está logueado y va al login, mandalo al home
   if (to.name === "login" && auth.isAuthed) return { name: "home" };
 
-  // si requiere auth y no está logueado -> login (que ahora es /app/auth/login)
+  // si requiere auth y no está logueado -> login (/app/auth/login)
   if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
 
   const roles = to.meta?.roles;

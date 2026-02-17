@@ -1,19 +1,19 @@
 // ✅ COPY-PASTE FINAL COMPLETO
-// vite.config.js (BACKOFFICE /app) — EXTENDIDO PERO LIMPIO + DEV PROXY (CORS FIX)
+// vite.config.js (SHOP /shop) — EXTENDIDO PERO LIMPIO + DEV PROXY (CORS FIX)
 //
 // Qué corrige:
-// - En DEV, evita CORS proxyando /api/* hacia tu API real.
-// - Tu frontend debe pegar a /api/v1/... (relative), NO a https://... directamente.
+// - En DEV, evita CORS y evita perder sesión (cookies) usando proxy same-origin:
+//   El browser ve /api/... como mismo host (localhost), y Vite lo manda a tu API real.
 //
-// Recomendación DEV:
+// Recomendación DEV (SHOP):
+// - VITE_SHOP_BASE=/shop/
 // - VITE_API_BASE_URL=/api/v1
-// - VITE_DEV_API_TARGET=https://pos360-commerce-api.cingulado.org   (o tu URL interna)
+// - VITE_DEV_API_TARGET=https://pos360-commerce-api.cingulado.org
 //
-// Ejemplo local:
-//   VITE_APP_BASE=/ VITE_API_BASE_URL=/api/v1 VITE_DEV_API_TARGET=https://pos360-commerce-api.cingulado.org vite
-//
-// Ejemplo prod:
-//   VITE_APP_BASE=/app/ npm run build
+// Recomendación PROD (SHOP):
+// - VITE_SHOP_BASE=/shop/   (o "/" si deployás shop en root)
+// - VITE_API_BASE_URL=/api/v1  (ideal si tu edge/proxy sirve /api)
+//   o tu URL absoluta si no tenés proxy en prod
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -46,22 +46,23 @@ export default defineConfig(({ command, mode }) => {
   const isBuild = command === "build";
   const isDev = command === "serve";
 
-  const BASE = normalizeBase(env("VITE_APP_BASE", "/app/"), "/app/");
-  const FORCE_APP_BASE_IN_DEV = isTrue(env("VITE_FORCE_APP_BASE_IN_DEV", "0"));
+  // ✅ base del shop en build
+  const BASE = normalizeBase(env("VITE_SHOP_BASE", "/shop/"), "/shop/");
+  const FORCE_SHOP_BASE_IN_DEV = isTrue(env("VITE_FORCE_SHOP_BASE_IN_DEV", "0"));
 
+  // ✅ en DEV casi siempre conviene base "/" para que HMR no se vuelva loco,
+  // salvo que explícitamente quieras servir con /shop/ también en DEV.
   const effectiveBase =
-    isDev && !FORCE_APP_BASE_IN_DEV ? normalizeBase(env("VITE_APP_BASE", "/"), "/") : BASE;
+    isDev && !FORCE_SHOP_BASE_IN_DEV ? normalizeBase(env("VITE_SHOP_BASE", "/"), "/") : BASE;
 
   // ✅ DEV proxy target (API real)
-  // - En LAN suele andar mejor pegarle al host interno / directo si lo tenés.
-  // - Si no, usá el dominio https público.
   const DEV_API_TARGET = env("VITE_DEV_API_TARGET", "https://pos360-commerce-api.cingulado.org");
 
   if (isBuild) {
-    console.log("🧩 [vite-admin] mode:", mode);
-    console.log("🧩 [vite-admin] base:", effectiveBase);
+    console.log("🧩 [vite-shop] mode:", mode);
+    console.log("🧩 [vite-shop] base:", effectiveBase);
   } else {
-    console.log("🧩 [vite-admin] dev proxy target:", DEV_API_TARGET);
+    console.log("🧩 [vite-shop] dev proxy target:", DEV_API_TARGET);
   }
 
   return {
@@ -80,29 +81,15 @@ export default defineConfig(({ command, mode }) => {
       port: Number(env("VITE_PORT", "5173")) || 5173,
       strictPort: true,
 
-      // ✅ CORS FIX: Proxy local -> API
-      // Si tu app llama a /api/v1/auth/login, esto lo manda a DEV_API_TARGET/api/v1/auth/login
+      // ✅ CLAVE: proxy /api -> API real (same-origin en el browser)
       proxy: {
         "/api": {
           target: DEV_API_TARGET,
           changeOrigin: true,
-          secure: true, // si tu target es https con cert OK
-          // Si tu target tiene self-signed, poné secure:false
-          // secure: false,
-
-          // 👇 WebSockets (si los usaras)
+          secure: true, // si tu target usa cert válido
           ws: true,
         },
-
-        // (Opcional) si querés servir assets del storage por la misma origin en dev:
-        // "/storage": {
-        //   target: "https://storage-files.cingulado.org",
-        //   changeOrigin: true,
-        //   secure: true,
-        // },
       },
-
-      // open: "/app/",
     },
 
     preview: {
@@ -119,8 +106,8 @@ export default defineConfig(({ command, mode }) => {
     },
 
     define: {
-      __APP_KIND__: JSON.stringify("admin"),
-      __APP_BASE__: JSON.stringify(effectiveBase),
+      __APP_KIND__: JSON.stringify("shop"),
+      __SHOP_BASE__: JSON.stringify(effectiveBase),
     },
   };
 });

@@ -27,13 +27,81 @@
 
         <!-- ✅ ACTIONS DESKTOP -->
         <div v-if="!isMobile" class="ml-top-actions">
-          <router-link class="ml-top-link" to="/auth/login">
+          <!-- AUTH: logged out -->
+          <button
+            v-if="!auth.isLogged"
+            class="ml-top-link ml-top-link-btn"
+            type="button"
+            @click.stop.prevent="goLogin"
+            aria-label="Ingresá"
+          >
             <v-icon size="18" class="ml-top-ico ml-icon-white">mdi-account-outline</v-icon>
             <span>Ingresá</span>
-          </router-link>
+          </button>
 
-          <router-link class="ml-top-link" to="/shop">Mis compras</router-link>
+          <!-- AUTH: logged in -->
+          <v-menu v-else location="bottom end" offset="10" :close-on-content-click="true">
+            <template #activator="{ props }">
+              <button class="ml-account-btn" type="button" v-bind="props" :title="auth.fullName">
+                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
+                <span class="ml-account-name">{{ auth.fullName }}</span>
+                <v-icon size="18" class="ml-icon-white">mdi-chevron-down</v-icon>
+              </button>
+            </template>
 
+            <v-card class="ml-account-menu" rounded="xl" elevation="12">
+              <div class="ml-account-head">
+                <div class="ml-account-title">Mi cuenta</div>
+                <div class="ml-account-sub">
+                  {{ auth.customer?.email || "" }}
+                </div>
+              </div>
+
+              <v-divider />
+
+              <v-list class="ml-account-list" density="comfortable">
+                <v-list-item
+                  title="Mis compras"
+                  subtitle="Historial de pedidos"
+                  prepend-icon="mdi-receipt-text-outline"
+                  @click="goMyOrders"
+                />
+                <v-list-item
+                  title="Favoritos"
+                  subtitle="Guardados para después"
+                  prepend-icon="mdi-heart-outline"
+                  @click="goMyFavorites"
+                />
+                <v-list-item
+                  title="Cerrar sesión"
+                  subtitle="Salir de esta cuenta"
+                  prepend-icon="mdi-logout"
+                  @click="doLogout"
+                />
+              </v-list>
+            </v-card>
+          </v-menu>
+
+          <!-- Accesos rápidos desktop -->
+          <button
+            v-if="auth.isLogged"
+            class="ml-top-link ml-top-link-ghost"
+            type="button"
+            @click="goMyOrders"
+          >
+            Mis compras
+          </button>
+
+          <button
+            v-if="auth.isLogged"
+            class="ml-top-link ml-top-link-ghost"
+            type="button"
+            @click="goMyFavorites"
+          >
+            Favoritos
+          </button>
+
+          <!-- Carrito -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
@@ -42,8 +110,60 @@
           </router-link>
         </div>
 
-        <!-- ✅ MOBILE: SOLO carrito -->
+        <!-- ✅ MOBILE: carrito + cuenta -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
+          <!-- Cuenta (mobile) -->
+          <button
+            v-if="!auth.isLogged"
+            class="ml-top-icon ml-top-icon-btn"
+            type="button"
+            @click.stop.prevent="goLogin"
+            aria-label="Ingresá"
+          >
+            <v-icon size="22" class="ml-icon-white">mdi-account-outline</v-icon>
+          </button>
+
+          <v-menu v-else location="bottom end" offset="10">
+            <template #activator="{ props }">
+              <button class="ml-account-btn ml-account-btn-mobile" type="button" v-bind="props" :title="auth.fullName">
+                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
+              </button>
+            </template>
+
+            <v-card class="ml-account-menu" rounded="xl" elevation="12">
+              <div class="ml-account-head">
+                <div class="ml-account-title">Mi cuenta</div>
+                <div class="ml-account-sub">
+                  {{ auth.customer?.email || "" }}
+                </div>
+              </div>
+
+              <v-divider />
+
+              <v-list class="ml-account-list" density="comfortable">
+                <v-list-item
+                  title="Mis compras"
+                  subtitle="Historial de pedidos"
+                  prepend-icon="mdi-receipt-text-outline"
+                  @click="goMyOrders"
+                />
+                <v-list-item
+                  title="Favoritos"
+                  subtitle="Guardados para después"
+                  prepend-icon="mdi-heart-outline"
+                  @click="goMyFavorites"
+                />
+                <v-list-item
+                  title="Cerrar sesión"
+                  subtitle="Salir de esta cuenta"
+                  prepend-icon="mdi-logout"
+                  @click="doLogout"
+                />
+              </v-list>
+            </v-card>
+          </v-menu>
+
+          <!-- Carrito -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
@@ -55,7 +175,6 @@
     </div>
 
     <!-- ================= ROW 2 (BOTTOM): links ================= -->
-    <!-- ✅ Solo en DESKTOP. En mobile NO se renderiza. -->
     <div v-if="!isMobile" class="ml-row ml-row-bottom">
       <div class="ml-container ml-bottom-grid">
         <button class="ml-loc" type="button">
@@ -66,7 +185,6 @@
           </span>
         </button>
 
-        <!-- ✅ DESKTOP NAV (no tocar) -->
         <nav class="ml-nav">
           <ShopCatalogMenu />
           <span class="ml-nav-sep" aria-hidden="true">|</span>
@@ -93,17 +211,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+
+/**
+ * ✅ IMPORT FIX (tu proyecto):
+ * En tu árbol aparece en: src/modules/shop/service/shopAuth.store.js
+ * (NO en /store/)
+ */
+import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import ShopCatalogMenu from "@/modules/shop/components/ShopCatalogMenu.vue";
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const route = useRoute();
+const router = useRouter();
 const cart = useShopCartStore();
+const auth = useShopAuthStore();
 
 const { xs } = useDisplay();
 const isMobile = computed(() => !!xs.value);
@@ -148,6 +275,32 @@ const showWaFab = computed(() => {
   return true;
 });
 
+/** ✅ LOGIN DEL SHOP (NO ADMIN /app) */
+function goLogin() {
+  router
+    .push({ name: "shopLogin", query: { redirect: route.fullPath || "/shop" } })
+    .catch((e) => console.error("❌ goLogin failed:", e?.message || e));
+}
+
+function goMyOrders() {
+  router.push({ path: "/shop/account/orders" }).catch(() => {});
+}
+
+function goMyFavorites() {
+  router.push({ path: "/shop/account/favorites" }).catch(() => {});
+}
+
+async function doLogout() {
+  try {
+    await auth.logout?.();
+  } catch {}
+
+  // si estaba en "mi cuenta", vuelve al home
+  if (String(route.path || "").startsWith("/shop/account")) {
+    router.replace({ path: "/shop" }).catch(() => {});
+  }
+}
+
 onMounted(async () => {
   try {
     const b = await getShopBranding();
@@ -156,10 +309,24 @@ onMounted(async () => {
       if (branding.value?.name) document.title = branding.value.name;
     }
   } catch {}
+
+  try {
+    auth.fetchMe?.({ force: false });
+  } catch {}
 });
+
+watch(
+  () => route.fullPath,
+  () => {
+    try {
+      auth.fetchMe?.({ force: false });
+    } catch {}
+  }
+);
 </script>
 
 <style scoped>
+/* (TU CSS ORIGINAL — SIN CAMBIOS) */
 /* ================================
    HEADER BASE + Z-INDEX
 ================================ */
@@ -367,11 +534,29 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+.ml-top-link-btn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ml-top-link-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
 .ml-top-icon {
   color: #fff !important;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+}
+
+.ml-top-icon-btn {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .ml-icon-white {
@@ -406,6 +591,66 @@ onMounted(async () => {
 
 .ml-nav-strong {
   font-weight: 900;
+}
+
+/* ================================
+   ACCOUNT MENU
+================================ */
+.ml-account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  max-width: 260px;
+}
+.ml-account-btn-mobile {
+  padding: 4px;
+  border-radius: 999px;
+}
+.ml-account-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 12px;
+  color: #0b1b2b;
+  background: rgba(255, 255, 255, 0.92);
+}
+.ml-account-name {
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.ml-account-menu {
+  width: 320px;
+  overflow: hidden;
+}
+.ml-account-head {
+  padding: 14px 16px 10px;
+}
+.ml-account-title {
+  font-weight: 900;
+  font-size: 14px;
+}
+.ml-account-sub {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+.ml-account-list {
+  padding: 6px !important;
 }
 
 /* ================================
@@ -470,6 +715,10 @@ onMounted(async () => {
 
   .ml-search :deep(.v-list-item-subtitle) {
     font-size: 11px !important;
+  }
+
+  .ml-account-name {
+    display: none;
   }
 }
 </style>

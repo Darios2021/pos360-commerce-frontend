@@ -21,6 +21,9 @@ import ShopCategories from "@/modules/shop/pages/ShopCategories.vue";
 import ShopClips from "@/modules/shop/pages/ShopClips.vue";
 import ShopMore from "@/modules/shop/pages/ShopMore.vue";
 
+// ✅ Mi cuenta
+import shopAccountRoutes from "@/modules/shop/router/shop.account.routes";
+
 export const shopRoutes = [
   {
     path: "/shop",
@@ -35,6 +38,14 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
+      // ✅ SHOP LOGIN
+      {
+        path: "login",
+        name: "shopLogin",
+        component: () => import("@/modules/shop/pages/ShopLogin.vue"),
+        meta: { public: true },
+      },
+
       // ✅ CATEGORÍAS (FULL SCREEN)
       {
         path: "categories",
@@ -43,7 +54,7 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
-      // ✅ compat: si quedó /shop/category (singular) por el footer viejo, redirigimos
+      // ✅ compat: /shop/category -> /shop/categories
       {
         path: "category",
         redirect: "/shop/categories",
@@ -57,7 +68,7 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
-      // ✅ compat opcional: si alguna vez tuviste /shop/category/:id
+      // ✅ compat opcional: /shop/category/:id -> /shop/c/:id
       {
         path: "category/:id",
         redirect: (to) => `/shop/c/${to.params.id}`,
@@ -79,7 +90,7 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
-      // Checkout (Envío / Pago / Revisión)
+      // Checkout
       {
         path: "checkout",
         name: "shopCheckout",
@@ -95,7 +106,7 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
-      // ✅ CLIPS (pantalla reels)
+      // ✅ CLIPS
       {
         path: "clips",
         name: "shopClips",
@@ -103,13 +114,16 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
-      // ✅ MÁS (menú que antes estaba arriba)
+      // ✅ MÁS
       {
         path: "more",
         name: "shopMore",
         component: ShopMore,
         meta: { public: true },
       },
+
+      // ✅ MI CUENTA (MIS COMPRAS / FAVORITOS)
+      ...shopAccountRoutes,
     ],
   },
 ];
