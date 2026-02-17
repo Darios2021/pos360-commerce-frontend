@@ -1,8 +1,5 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/ShopCategories.vue -->
 <template>
   <div class="mlc" data-page="shop-categories">
-    <!-- barra interna (debajo del header sticky) -->
     <div class="mlc-topbar">
       <button class="mlc-back" type="button" @click="goBack" aria-label="Volver">
         <v-icon size="22">mdi-arrow-left</v-icon>
@@ -15,9 +12,7 @@
       {{ err }}
     </v-alert>
 
-    <!-- Layout ML: lista izq + grilla der -->
     <div class="mlc-body">
-      <!-- LEFT: CATEGORÍAS PADRE -->
       <aside class="mlc-left" aria-label="Listado de categorías">
         <div v-if="loadingParents" class="mlc-left-loading">
           <v-progress-circular indeterminate size="18" />
@@ -36,14 +31,10 @@
         </button>
       </aside>
 
-      <!-- RIGHT: SUBCATEGORÍAS -->
       <main class="mlc-right" aria-label="Subcategorías">
         <div class="mlc-right-head">
-          <div class="mlc-right-title">
-            {{ activeParent?.name || "Categorías" }}
-          </div>
+          <div class="mlc-right-title">{{ activeParent?.name || "Categorías" }}</div>
 
-          <!-- ✅ botón “Ver todo” (abre /shop/c/:parentId) -->
           <button
             v-if="activeParentId"
             type="button"
@@ -58,11 +49,10 @@
 
         <div v-if="loadingChildren" class="mlc-right-loading">
           <v-progress-circular indeterminate />
-          <div class="text-caption" style="opacity:.75">Cargando categorías…</div>
+          <div class="text-caption" style="opacity: 0.75">Cargando categorías…</div>
         </div>
 
         <div v-else class="mlc-grid">
-          <!-- ✅ SUBCATS -> navega a /shop/c/:parentId?sub=:subId -->
           <button
             v-for="s in children"
             :key="s.id"
@@ -72,9 +62,19 @@
             :title="s.name"
           >
             <div class="mlc-icon">
-              <img v-if="pickImage(s._raw)" :src="pickImage(s._raw)" alt="" loading="lazy" />
-              <span v-else>{{ initials(s.name) }}</span>
+              <span class="mlc-icon-ph" :class="{ off: !!iconForSub(s) }">
+                {{ initials(s.name) }}
+              </span>
+
+              <img
+                v-if="iconForSub(s)"
+                :src="iconForSub(s)"
+                alt=""
+                loading="lazy"
+                @error="onIconErr(s)"
+              />
             </div>
+
             <div class="mlc-name">{{ s.name }}</div>
           </button>
 
@@ -88,9 +88,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
+import { getCatalog } from "@/modules/shop/service/shop.public.api";
 
 const router = useRouter();
 
@@ -104,6 +105,9 @@ const activeParentId = ref(null);
 
 const children = ref([]);
 
+/* =========================
+   Helpers
+========================= */
 function norm(s) {
   return String(s || "")
     .trim()
@@ -113,15 +117,10 @@ function norm(s) {
 }
 
 function isTopLevel(c) {
-  // soporta distintos formatos de API
   const pid = c?.parent_id ?? c?.parentId ?? c?.parent ?? null;
   const level = c?.level ?? c?.depth ?? null;
   if (level != null) return Number(level) === 0;
   return pid == null || pid === 0 || pid === "0" || pid === "";
-}
-
-function pickImage(c) {
-  return c?.image_url || c?.image || c?.icon_url || c?.icon || c?.media?.image || "";
 }
 
 function initials(name) {
@@ -133,6 +132,93 @@ function initials(name) {
   return (a + b) || a || "•";
 }
 
+function thumbFromProduct(p) {
+  const cands = [
+    p?.thumbnail_url,
+    p?.thumb_url,
+    p?.image_thumb,
+    p?.main_image_url,
+    p?.product_image_url,
+    p?.image_url,
+    p?.photo_url,
+    p?.image,
+    p?.img,
+    p?.cover_url,
+  ];
+  const u = cands.find((x) => typeof x === "string" && x.trim().length > 0);
+  return u ? u.trim() : "";
+}
+
+function cacheKey(parentId, subId) {
+  return `p:${Number(parentId || 0)}|s:${Number(subId || 0)}`;
+}
+
+/* =========================
+   ✅ CACHE REACTIVO (img por subcat)
+========================= */
+const repImg = reactive({}); // key -> url
+const repLoading = reactive({}); // key -> boolean
+
+async function fetchRepImageForSub(parentId, subId) {
+  const k = cacheKey(parentId, subId);
+
+  if (repImg[k]) return repImg[k];
+  if (repLoading[k]) return "";
+
+  repLoading[k] = true;
+  try {
+    const r = await getCatalog({
+      page: 1,
+      limit: 1,
+      category_id: Number(parentId),
+      subcategory_id: Number(subId),
+      include_children: 0,
+      sort: "relevance",
+    });
+
+    const item = Array.isArray(r?.items) ? r.items[0] : null;
+    const url = item ? thumbFromProduct(item) : "";
+    if (url) repImg[k] = url;
+    return url || "";
+  } catch {
+    return "";
+  } finally {
+    repLoading[k] = false;
+  }
+}
+
+/* limitador simple de concurrencia */
+async function mapLimit(arr, limit, fn) {
+  const res = [];
+  let i = 0;
+  const workers = new Array(Math.max(1, limit)).fill(0).map(async () => {
+    while (i < arr.length) {
+      const idx = i++;
+      res[idx] = await fn(arr[idx], idx);
+    }
+  });
+  await Promise.all(workers);
+  return res;
+}
+
+/**
+ * ✅ FIX CLAVE:
+ * - PRIORIZA imagen real de producto (repImg)
+ * - NO usamos image_url de la taxonomía porque suele venir “rota”
+ */
+function iconForSub(s) {
+  const k = cacheKey(activeParentId.value, s?.id);
+  return repImg[k] || "";
+}
+
+function onIconErr(s) {
+  const k = cacheKey(activeParentId.value, s?.id);
+  if (repImg[k]) repImg[k] = "";
+}
+
+/* =========================
+   Fetch parents/children
+========================= */
 async function fetchParents() {
   loadingParents.value = true;
   err.value = "";
@@ -143,18 +229,17 @@ async function fetchParents() {
     const tops = catsAll.value.filter(isTopLevel);
 
     parents.value = tops
-      .map((c) => ({ id: Number(c.id), name: String(c.name || "").trim() }))
+      .map((c) => ({ id: Number(c.id), name: String(c.name || "").trim(), _raw: c }))
       .filter((x) => x.id && x.name)
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
-    // default: Tecnología si existe, sino el primero
     const tech =
       parents.value.find((p) => norm(p.name) === "tecnologia") ||
       parents.value.find((p) => norm(p.name).includes("tecnolog")) ||
       null;
 
     activeParentId.value = tech?.id || parents.value?.[0]?.id || null;
-  } catch (e) {
+  } catch {
     err.value = "No se pudieron cargar las categorías.";
     parents.value = [];
     activeParentId.value = null;
@@ -162,6 +247,9 @@ async function fetchParents() {
     loadingParents.value = false;
   }
 }
+
+const PREFETCH_MAX = 18; // ✅ no matar backend
+const PREFETCH_CONCURRENCY = 4;
 
 async function fetchChildren(parentId) {
   loadingChildren.value = true;
@@ -179,7 +267,11 @@ async function fetchChildren(parentId) {
         _raw: c,
       }))
       .filter((x) => x.id && x.name);
-  } catch (e) {
+
+    // ✅ precarga fotos (solo primeras N)
+    const slice = children.value.slice(0, PREFETCH_MAX);
+    await mapLimit(slice, PREFETCH_CONCURRENCY, async (s) => fetchRepImageForSub(parentId, s.id));
+  } catch {
     err.value = "No se pudieron cargar las subcategorías.";
     children.value = [];
   } finally {
@@ -194,10 +286,6 @@ function selectParent(id) {
   fetchChildren(pid);
 }
 
-/**
- * ✅ VER TODO (padre completo)
- * /shop/c/:parentId
- */
 function openParentAll() {
   const pid = Number(activeParentId.value);
   if (!pid) return;
@@ -209,11 +297,6 @@ function openParentAll() {
   });
 }
 
-/**
- * ✅ SUBCATEGORÍA:
- * /shop/c/:parentId?sub=:subId
- * (así lo entiende tu ShopCategory.vue)
- */
 function openSubcategory(subId) {
   const pid = Number(activeParentId.value);
   const sid = Number(subId);
@@ -249,14 +332,14 @@ onMounted(async () => {
   min-height: calc(100vh - 0px);
 }
 
-/* topbar (NO amarillo) */
+/* topbar */
 .mlc-topbar {
   position: sticky;
   top: 0;
   z-index: 5;
   height: 46px;
   background: #ffffff;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   display: grid;
   grid-template-columns: 46px 1fr 46px;
   align-items: center;
@@ -275,9 +358,10 @@ onMounted(async () => {
 }
 
 .mlc-title {
-  font-weight: 900;
+  font-weight: 800;
   color: #0e2134;
-  font-size: 15px;
+  font-size: 14px;
+  letter-spacing: -0.01em;
 }
 
 .mlc-topbar-spacer {
@@ -288,7 +372,7 @@ onMounted(async () => {
   margin: 12px 12px 0;
 }
 
-/* body ML */
+/* body */
 .mlc-body {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -296,10 +380,10 @@ onMounted(async () => {
   min-height: calc(100vh - 46px);
 }
 
-/* left list */
+/* left */
 .mlc-left {
   background: #ffffff;
-  border-right: 1px solid rgba(0,0,0,0.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -310,7 +394,7 @@ onMounted(async () => {
   gap: 8px;
   padding: 12px;
   font-size: 12px;
-  opacity: .8;
+  opacity: 0.8;
 }
 
 .mlc-left-item {
@@ -318,24 +402,25 @@ onMounted(async () => {
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 12px 10px;
+  padding: 10px 10px;
   cursor: pointer;
   border-left: 3px solid transparent;
   color: #0e2134;
-  font-weight: 750;
-  font-size: 12px;
-  line-height: 1.1;
+  font-weight: 700;
+  font-size: 11.5px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .mlc-left-item.active {
   background: #f3f7ff;
   border-left-color: rgb(var(--v-theme-primary));
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .mlc-left-text {
   display: block;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* right */
@@ -350,7 +435,7 @@ onMounted(async () => {
   top: 0;
   z-index: 2;
   background: #ffffff;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   padding: 10px 12px;
   display: flex;
   align-items: center;
@@ -359,7 +444,7 @@ onMounted(async () => {
 }
 
 .mlc-right-title {
-  font-weight: 900;
+  font-weight: 800;
   color: #0e2134;
   font-size: 13px;
 }
@@ -368,7 +453,7 @@ onMounted(async () => {
   border: 0;
   background: transparent;
   color: rgb(var(--v-theme-primary));
-  font-weight: 900;
+  font-weight: 800;
   font-size: 12px;
   display: inline-flex;
   align-items: center;
@@ -400,25 +485,39 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+/* ✅ icon ML: foto real dentro del círculo */
 .mlc-icon {
   width: 58px;
   height: 58px;
   border-radius: 999px;
   margin: 0 auto;
   background: #f4f6f8;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: grid;
   place-items: center;
   overflow: hidden;
+  position: relative;
+}
+
+.mlc-icon-ph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   color: #0e2134;
-  font-weight: 900;
-  font-size: 14px;
+  font-weight: 800;
+  font-size: 13px;
+}
+.mlc-icon-ph.off {
+  opacity: 0;
 }
 
 .mlc-icon img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  display: block;
+  object-fit: cover;        /* ✅ cover para que NO se vea “rota” */
+  object-position: center;
 }
 
 .mlc-name {
@@ -426,7 +525,11 @@ onMounted(async () => {
   font-size: 11px;
   line-height: 1.1;
   color: #0e2134;
-  font-weight: 700;
+  font-weight: 650;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .mlc-empty {
@@ -434,17 +537,25 @@ onMounted(async () => {
   padding: 18px 6px;
   text-align: center;
   font-size: 12px;
-  opacity: .7;
+  opacity: 0.7;
 }
 
 @media (max-width: 600px) {
-  .mlc-body { grid-template-columns: 120px 1fr; }
+  .mlc-body {
+    grid-template-columns: 120px 1fr;
+  }
   .mlc-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     padding-bottom: 92px; /* bottom nav */
   }
-  .mlc-icon { width: 54px; height: 54px; }
-  .mlc-left-item { padding: 12px 8px; font-size: 12px; }
+  .mlc-icon {
+    width: 54px;
+    height: 54px;
+  }
+  .mlc-left-item {
+    padding: 10px 8px;
+    font-size: 11.5px;
+  }
 }
 </style>
