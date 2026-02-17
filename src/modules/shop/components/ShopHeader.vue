@@ -172,49 +172,88 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.ml-header {
+/* ================================
+   HEADER BASE + Z-INDEX
+================================ */
+
+.ml-header{
   position: sticky;
   top: 0;
   z-index: 60;
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-  overflow-x: hidden;
+  box-shadow: 0 10px 24px rgba(0,0,0,.16);
+  overflow: visible;
+}
+
+/* La fila del buscador siempre arriba */
+.ml-row-top{
+  position: relative;
+  z-index: 3;
+  overflow: visible;
+}
+
+/* La fila de links abajo del buscador */
+.ml-row-bottom{
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  padding-bottom: 8px;
 }
 
 .ml-row,
 .ml-row-top,
-.ml-row-bottom {
+.ml-row-bottom{
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
   border: 0 !important;
   outline: 0 !important;
 }
 
-.ml-row-bottom { padding-bottom: 8px; }
+/* ================================
+   CONTAINER / GRIDS
+================================ */
 
-.ml-container {
+.ml-container{
   width: min(var(--shop-max, 1200px), calc(100% - 24px));
   margin: 0 auto;
   display: grid;
   align-items: center;
   gap: 14px;
   min-width: 0;
+  overflow: visible;
 }
 
-.ml-top-grid {
+.ml-top-grid{
   grid-template-columns: auto minmax(320px, 1fr) auto;
   padding: 10px 0;
   align-items: center;
   min-width: 0;
 }
-.ml-top-grid.is-mobile {
+
+.ml-top-grid.is-mobile{
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 8px 0;
 }
 
-.ml-brand {
+.ml-bottom-grid{
+  grid-template-columns: auto 1fr;
+  padding: 4px 0;
+  align-items: center;
+  min-width: 0;
+}
+
+.ml-bottom-grid.is-mobile{
+  grid-template-columns: 1fr;
+  padding: 4px 0 0;
+}
+
+/* ================================
+   BRAND
+================================ */
+
+.ml-brand{
   display: inline-flex;
   align-items: center;
   text-decoration: none;
@@ -223,7 +262,7 @@ onMounted(async () => {
   line-height: 0;
 }
 
-.ml-logo-wide {
+.ml-logo-wide{
   width: 360px;
   height: 76px;
   display: flex;
@@ -231,7 +270,8 @@ onMounted(async () => {
   justify-content: flex-start;
   overflow: visible;
 }
-.ml-logo-wide-img {
+
+.ml-logo-wide-img{
   width: 100%;
   height: 100%;
   display: block;
@@ -239,7 +279,7 @@ onMounted(async () => {
   object-position: left center;
 }
 
-.ml-logo-icon {
+.ml-logo-icon{
   width: 40px;
   height: 40px;
   border-radius: 999px;
@@ -249,7 +289,8 @@ onMounted(async () => {
   justify-content: center;
   flex: 0 0 auto;
 }
-.ml-logo-icon-img {
+
+.ml-logo-icon-img{
   width: 100%;
   height: 100%;
   display: block;
@@ -257,37 +298,96 @@ onMounted(async () => {
   object-position: center;
 }
 
-.ml-search { min-width: 0; }
-.ml-search :deep(.v-field) {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+/* ================================
+   SEARCH (campo)
+================================ */
+
+.ml-search{
+  min-width: 0;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
 }
-.ml-search :deep(.v-field__input) {
+
+.ml-search :deep(.v-field){
+  width: 100%;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 999px;
+  box-shadow: 0 10px 18px rgba(0,0,0,.12);
+}
+
+.ml-search :deep(.v-field__input){
   min-height: 46px;
   padding-top: 10px;
   padding-bottom: 10px;
 }
-.ml-top-grid.is-mobile .ml-search :deep(.v-field__input) {
-  min-height: 36px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+
+/* ================================
+   SEARCH DROPDOWN (si es Vuetify overlay)
+   OJO: el popup negro NO es esto, es autocomplete del navegador.
+================================ */
+
+.ml-search :deep(.v-overlay__content){
+  margin-top: 6px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,.18) !important;
+  z-index: 9999 !important;
 }
 
-.ml-top-actions {
+.ml-search :deep(.v-card),
+.ml-search :deep(.v-sheet){
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.ml-search :deep(.v-list){
+  padding: 8px !important;
+}
+
+.ml-search :deep(.v-list-item){
+  min-height: 64px !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+}
+
+.ml-search :deep(.v-avatar),
+.ml-search :deep(.v-list-item__prepend img){
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 14px !important;
+}
+
+.ml-search :deep(.v-list-item-title){
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  line-height: 1.2;
+}
+
+.ml-search :deep(.v-list-item-subtitle){
+  font-size: 12px !important;
+  opacity: .75 !important;
+  margin-top: 3px;
+}
+
+/* ================================
+   ACTIONS
+================================ */
+
+.ml-top-actions{
   display: flex;
   align-items: center;
   gap: 16px;
   justify-content: flex-end;
 }
-.ml-top-actions-mobile { gap: 10px; }
-.ml-top-link {
+
+.ml-top-actions-mobile{ gap: 10px; }
+
+.ml-top-link{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255,255,255,.92);
   text-decoration: none;
   font-size: 13px;
   font-weight: 800;
@@ -295,34 +395,30 @@ onMounted(async () => {
   border-radius: 10px;
   white-space: nowrap;
 }
-.ml-top-icon {
+
+.ml-top-icon{
   color: #fff !important;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
 }
-.ml-icon-white { color: #fff !important; }
 
-.ml-bottom-grid {
-  grid-template-columns: auto 1fr;
-  padding: 4px 0;
-  align-items: center;
-  min-width: 0;
-}
-.ml-bottom-grid.is-mobile {
-  grid-template-columns: 1fr;
-  padding: 4px 0 0;
-}
+.ml-icon-white{ color: #fff !important; }
 
-.ml-nav {
+/* ================================
+   NAV DESKTOP
+================================ */
+
+.ml-nav{
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
   overflow: hidden;
 }
-.ml-nav-soft {
-  color: rgba(255, 255, 255, 0.86);
+
+.ml-nav-soft{
+  color: rgba(255,255,255,.86);
   text-decoration: none;
   font-size: 13px;
   font-weight: 750;
@@ -330,11 +426,24 @@ onMounted(async () => {
   border-radius: 10px;
   white-space: nowrap;
 }
-.ml-nav-sep { color: rgba(255, 255, 255, 0.55); margin: 0 2px; }
-.ml-nav-strong { font-weight: 900; }
 
-.ml-mobile-row2 { width: 100%; overflow: hidden; }
-.ml-mobile-links {
+.ml-nav-sep{
+  color: rgba(255,255,255,.55);
+  margin: 0 2px;
+}
+
+.ml-nav-strong{ font-weight: 900; }
+
+/* ================================
+   MOBILE LINKS (✅ ESTO TE FALTABA)
+================================ */
+
+.ml-mobile-row2{
+  width: 100%;
+  overflow: hidden;
+}
+
+.ml-mobile-links{
   width: 100%;
   display: flex;
   gap: 8px;
@@ -344,22 +453,31 @@ onMounted(async () => {
   padding: 2px 0 6px;
   min-width: 0;
 }
-.ml-mobile-links::-webkit-scrollbar { display: none; }
 
-.ml-m-link {
+.ml-mobile-links::-webkit-scrollbar{ display: none; }
+
+.ml-m-link{
   flex: 0 0 auto;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
+  color: rgba(255,255,255,.92) !important;
+  text-decoration: none !important;
   font-weight: 900;
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
 }
 
-.ml-wa-fab {
+.ml-m-link:active{
+  transform: translateY(0.5px);
+}
+
+/* ================================
+   WHATSAPP
+================================ */
+
+.ml-wa-fab{
   position: fixed;
   right: 14px;
   bottom: 14px;
@@ -372,14 +490,52 @@ onMounted(async () => {
   justify-content: center;
   background: #25d366 !important;
   color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35), 0 6px 12px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: 0 14px 28px rgba(0,0,0,.35), 0 6px 12px rgba(0,0,0,.22);
   text-decoration: none;
 }
 
-@media (max-width: 600px) {
-  .ml-container { gap: 10px; }
-  .ml-row-bottom { padding-bottom: 6px; }
-  .ml-logo-icon { width: 38px; height: 38px; }
+/* ================================
+   MOBILE TUNING
+================================ */
+
+@media (max-width: 600px){
+  .ml-container{ gap: 10px; }
+  .ml-row-bottom{ padding-bottom: 6px; }
+  .ml-logo-icon{ width: 38px; height: 38px; }
+
+  .ml-search :deep(.v-field__input){
+    min-height: 38px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  /* Dropdown más sutil */
+  .ml-search :deep(.v-overlay__content){
+    max-width: calc(100vw - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  .ml-search :deep(.v-list-item){
+    min-height: 58px !important;
+    padding: 8px 10px !important;
+  }
+
+  .ml-search :deep(.v-avatar),
+  .ml-search :deep(.v-list-item__prepend img){
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+
+  .ml-search :deep(.v-list-item-title){
+    font-size: 14px !important;
+  }
+
+  .ml-search :deep(.v-list-item-subtitle){
+    font-size: 11px !important;
+  }
 }
 </style>
+
+

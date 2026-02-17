@@ -1,18 +1,21 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/layouts/ShopLayout.vue -->
 <template>
-  <div class="shop-shell" data-layout="shop">
-    <!-- Header (tu ShopHeader actual) -->
-    <ShopHeader />
+  <!-- ✅ Layout provider (arregla injection) + ✅ columna (arregla que no se vaya a la derecha) -->
+  <v-layout class="shop-shell d-flex flex-column" data-layout="shop">
+    <!-- Header -->
+    <div class="shop-header">
+      <ShopHeader />
+    </div>
 
-    <!-- Contenido de rutas -->
-    <main class="shop-main">
+    <!-- Contenido -->
+    <v-main class="shop-main">
       <router-view />
-    </main>
+    </v-main>
 
-    <!-- ✅ Bottom nav SIEMPRE fijo en mobile (para TODAS las pantallas) -->
+    <!-- ✅ Bottom nav fijo en mobile -->
     <ShopMobileBottomNav v-if="isMobile" />
-  </div>
+  </v-layout>
 </template>
 
 <script setup>
@@ -31,11 +34,20 @@ const isMobile = computed(() => !!xs.value);
 .shop-shell {
   min-height: 100dvh;
   background: #fff;
+  width: 100%;
 }
 
-/* ✅ Dejamos espacio abajo SIEMPRE en mobile para el bottom nav fijo */
+/* Header wrapper */
+.shop-header {
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+/* Main */
 .shop-main {
-  min-height: calc(100dvh - 1px);
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0; /* importante para layouts flex */
 }
 
 @media (max-width: 600px) {

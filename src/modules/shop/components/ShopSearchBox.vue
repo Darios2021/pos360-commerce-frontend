@@ -1,3 +1,6 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/shop/components/ShopSearchBox.vue -->
+
 <template>
   <div class="sb-wrap" @keydown.esc.prevent="close" ref="wrap">
     <v-text-field
@@ -9,6 +12,10 @@
       class="sb-input"
       placeholder="Buscar productos..."
       prepend-inner-icon="mdi-magnify"
+      autocomplete="new-password"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
       @keydown.down.prevent="move(1)"
       @keydown.up.prevent="move(-1)"
       @keydown.enter.prevent="onEnter"
@@ -23,7 +30,7 @@
       <div v-if="loading" class="sb-status">Buscando…</div>
 
       <template v-else>
-        <div v-if="suggestions.length">
+        <div v-if="suggestions.length" class="sb-list">
           <button
             v-for="(s, i) in suggestions"
             :key="String(s.product_id) + '-' + i"
@@ -113,7 +120,6 @@ function close() {
 
 function onFocus() {
   open.value = true;
-  // si ya hay texto, refrescamos para que aparezca dropdown
   const q = normalize(text.value);
   if (q.length >= 2) {
     clearTimeout(tmr);
@@ -122,11 +128,9 @@ function onFocus() {
 }
 
 function onBlur() {
-  // delay para permitir click en suggestions
   setTimeout(() => close(), 130);
 }
 
-// cerrar si clic afuera
 function onDocClick(e) {
   if (!wrap.value) return;
   if (!wrap.value.contains(e.target)) close();
@@ -134,14 +138,6 @@ function onDocClick(e) {
 onMounted(() => document.addEventListener("click", onDocClick));
 onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
-/**
- * ✅ IMPORTANTE:
- * NO tocar la URL mientras tipeás.
- * La URL se escribe SOLO en commit:
- * - Enter (buscar)
- * - pick (click sugerencia)
- * - clear (limpia)
- */
 function commitQueryQ(q) {
   const qq = normalize(q);
   const nq = { ...route.query };
@@ -149,7 +145,7 @@ function commitQueryQ(q) {
   if (qq) nq.q = qq;
   else delete nq.q;
 
-  nq.page = "1"; // cuando se busca, siempre arranca en 1
+  nq.page = "1";
   router.replace({ name: route.name, params: route.params, query: nq });
 }
 
@@ -190,15 +186,9 @@ async function fetchSuggestions() {
 }
 
 function onType() {
-  const q = normalize(text.value);
-
-  // ✅ abrimos dropdown mientras escribe
   open.value = true;
-
   clearTimeout(tmr);
   tmr = setTimeout(fetchSuggestions, 280);
-
-  // ✅ NO setQueryQ acá (antes te escribía la URL letra por letra)
 }
 
 function move(dir) {
@@ -211,7 +201,6 @@ function move(dir) {
 }
 
 function pick(s) {
-  // ✅ acá sí escribimos q (commit) si querés, pero opcional
   const q = normalize(text.value);
   if (q) commitQueryQ(q);
 
@@ -231,8 +220,6 @@ function onEnter() {
 
   const q = normalize(text.value);
   close();
-
-  // ✅ commit a URL solo al Enter
   commitQueryQ(q || null);
 
   if (props.mode === "category" && props.categoryId) {
@@ -249,7 +236,6 @@ function onEnter() {
   }
 }
 
-/* ✅ toma miniatura desde cualquier key común */
 function thumbOf(s) {
   const cands = [
     s?.thumbnail_url,
@@ -272,7 +258,6 @@ function onThumbErr(ev) {
   if (img) img.style.display = "none";
 }
 
-// si cambian el q desde otro lado (ej: volver atrás), actualizamos input
 watch(
   () => route.query.q,
   (v) => {
@@ -283,118 +268,166 @@ watch(
 </script>
 
 <style scoped>
-.sb-wrap {
+.sb-wrap{
   position: relative;
   width: 100%;
 }
 
-.sb-input :deep(.v-field) {
-  border-radius: 14px;
+/* input */
+.sb-input :deep(.v-field){
+  border-radius: 999px;
 }
 
-/* Dropdown theme-safe */
-.sb-dd {
+/* Dropdown */
+.sb-dd{
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
 
-  background: rgba(var(--v-theme-surface), 0.98);
+  background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
   overflow: hidden;
-  z-index: 999;
+  z-index: 9999;
 }
 
-.sb-status {
-  padding: 12px 14px;
-  font-size: 13px;
-  color: rgba(var(--v-theme-on-surface), 0.65);
+/* scroll control */
+.sb-list{
+  max-height: min(50vh, 360px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.sb-empty {
-  padding: 14px;
-  font-size: 13px;
-  color: rgba(var(--v-theme-on-surface), 0.65);
+/* Status / empty */
+.sb-status,
+.sb-empty{
+  padding: 10px 12px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
-/* Row layout */
-.sb-row {
+/* Row */
+.sb-row{
   width: 100%;
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 10px 12px;
   cursor: pointer;
 
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 
+  padding: 7px 9px;
   color: rgb(var(--v-theme-on-surface));
 }
 
-.sb-row:hover {
-  background: rgba(var(--v-theme-on-surface), 0.06);
+.sb-row:hover{
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
-.sb-row.active {
-  background: rgba(var(--v-theme-primary), 0.12);
+
+.sb-row.active{
+  background: rgba(var(--v-theme-primary), 0.08);
 }
 
 /* Thumb */
-.sb-thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.sb-thumb{
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   overflow: hidden;
   flex: 0 0 auto;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.03);
+
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   display: grid;
   place-items: center;
 }
 
-.sb-thumb img {
+.sb-thumb img{
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.sb-thumb-ph {
-  color: rgba(var(--v-theme-on-surface), 0.55);
+.sb-thumb-ph{
+  color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-/* Text block */
-.sb-info {
+/* Text */
+.sb-info{
   min-width: 0;
   flex: 1 1 auto;
 }
 
-.sb-title {
-  font-weight: 900;
+.sb-title{
+  font-size: 13.5px;
+  font-weight: 600; /* 🔥 más sutil */
+  line-height: 1.2;
+  color: rgba(var(--v-theme-on-surface), 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-meta{
+  margin-top: 2px;
+  font-size: 10.8px;
   line-height: 1.15;
-  color: rgb(var(--v-theme-on-surface));
+  color: rgba(var(--v-theme-on-surface), 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sb-meta {
-  margin-top: 3px;
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.72);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Footer */
+.sb-foot{
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding: 7px 10px;
+  font-size: 10.5px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-.sb-foot {
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding: 10px 14px;
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.65);
+/* MOBILE más liviano aún */
+@media (max-width: 600px){
+
+  .sb-dd{
+    border-radius: 12px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+  }
+
+  .sb-list{
+    max-height: min(45vh, 300px);
+  }
+
+  .sb-row{
+    padding: 6px 8px;
+    gap: 7px;
+  }
+
+  .sb-thumb{
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .sb-title{
+    font-size: 12.8px;
+    font-weight: 600;
+  }
+
+  .sb-meta{
+    font-size: 10px;
+  }
+
+  .sb-foot{
+    font-size: 10px;
+    padding: 6px 8px;
+  }
 }
 </style>
+
