@@ -1,6 +1,7 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/PromoSlider.vue -->
 <template>
+  <!-- ✅ VUELVE el “cuadro blanco” contenedor (como en tu screenshot) -->
   <section class="promo-shell" ref="shell">
     <div class="promo-inner">
       <!-- Header -->
@@ -155,7 +156,7 @@ function applyMobileSidePad() {
   if (!shell.value || !containerEl) return;
 
   if (!isMobileNow()) {
-    shell.value.style.setProperty("--promo-side-pad", `6px`);
+    shell.value.style.setProperty("--promo-side-pad", `10px`);
     return;
   }
 
@@ -305,12 +306,10 @@ watch(
 </script>
 
 <style scoped>
-/* ✅ ESTE COMPONENTE YA NO “DIBUJA” UNA TARJETA BLANCA GRANDE.
-   La tarjeta/blanco/padding lo pone ShopHome (.content > .mb-6). */
-
+/* ✅ VUELVE EL CONTENEDOR BLANCO (como Mercado Libre) */
 .promo-shell {
   width: 100%;
-  --promo-side-pad: 6px;
+  --promo-side-pad: 10px;
 }
 
 .promo-shell,
@@ -319,18 +318,21 @@ watch(
   touch-action: pan-y;
 }
 
-/* ✅ antes era la caja blanca grande (doble card). Ahora queda FLAT */
+/* ✅ cuadro blanco */
 .promo-inner {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  border-radius: 0;
-  overflow: visible;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
+  overflow: hidden;
+
+  /* padding “ML” */
+  padding: 16px 14px 12px;
 }
 
-/* header (sin padding gigante, porque afuera ya hay padding) */
+/* header */
 .promo-head {
-  padding: 0 0 12px;
+  padding: 0 2px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -344,7 +346,7 @@ watch(
 }
 
 .promo-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 950;
   letter-spacing: -0.2px;
   line-height: 1.1;
@@ -362,7 +364,7 @@ watch(
 
 /* body */
 .promo-body {
-  padding: 0; /* ✅ afuera ya hay padding */
+  padding: 0;
 }
 
 /* carrusel */
@@ -370,11 +372,15 @@ watch(
   touch-action: pan-x pan-y;
 }
 
+/* container scroller */
 .promo-slide :deep(.v-slide-group__container) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   touch-action: pan-x pan-y;
+
+  /* ✅ evita que las flechas “muerdan” contenido */
+  padding: 0 2px;
 }
 .promo-slide :deep(.v-slide-group__container::-webkit-scrollbar) {
   display: none;
@@ -385,10 +391,10 @@ watch(
   margin: 0 !important;
 }
 
-/* desktop spacing */
+/* spacing content */
 .promo-slide :deep(.v-slide-group__content) {
   gap: 14px;
-  padding: 6px 0 10px; /* ✅ sin “segunda caja”, queda limpio */
+  padding: 6px 0 10px;
   white-space: nowrap;
 }
 
@@ -404,11 +410,11 @@ watch(
 .promo-slide :deep(.v-slide-group__prev .v-btn),
 .promo-slide :deep(.v-slide-group__next .v-btn) {
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
 }
 
-/* cards internas (se mantienen) */
+/* cards internas */
 .promo-card {
   width: 210px;
   border-radius: 16px;
@@ -546,8 +552,13 @@ watch(
 
 /* mobile */
 @media (max-width: 600px) {
+  .promo-inner {
+    border-radius: 16px;
+    padding: 12px 10px 10px;
+  }
+
   .promo-title {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .promo-sub {

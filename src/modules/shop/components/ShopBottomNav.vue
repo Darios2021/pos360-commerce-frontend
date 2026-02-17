@@ -178,3 +178,4 @@ const isCategoriesActive = computed(() => {
 </style>
 
 
+
