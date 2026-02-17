@@ -49,7 +49,7 @@
               </button>
             </template>
 
-            <v-card class="ml-account-menu" rounded="xl" elevation="12">
+            <v-card class="ml-account-menu" rounded="lg" elevation="10">
               <div class="ml-account-head">
                 <div class="ml-account-title">Mi cuenta</div>
                 <div class="ml-account-sub">
@@ -110,7 +110,7 @@
           </router-link>
         </div>
 
-        <!-- ✅ MOBILE: carrito + cuenta -->
+        <!-- ✅ MOBILE: carrito + cuenta + pills (si logueado) -->
         <div v-else class="ml-top-actions ml-top-actions-mobile">
           <!-- Cuenta (mobile) -->
           <button
@@ -130,7 +130,7 @@
               </button>
             </template>
 
-            <v-card class="ml-account-menu" rounded="xl" elevation="12">
+            <v-card class="ml-account-menu" rounded="lg" elevation="10">
               <div class="ml-account-head">
                 <div class="ml-account-title">Mi cuenta</div>
                 <div class="ml-account-sub">
@@ -163,6 +163,25 @@
             </v-card>
           </v-menu>
 
+          <!-- ✅ pills en mobile SOLO si logueado -->
+          <button
+            v-if="auth.isLogged"
+            class="ml-top-link ml-top-link-ghost"
+            type="button"
+            @click="goMyOrders"
+          >
+            Mis compras
+          </button>
+
+          <button
+            v-if="auth.isLogged"
+            class="ml-top-link ml-top-link-ghost"
+            type="button"
+            @click="goMyFavorites"
+          >
+            Favoritos
+          </button>
+
           <!-- Carrito -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -185,7 +204,7 @@
           </span>
         </button>
 
-        <nav class="ml-nav">
+        <nav class="ml-nav" aria-label="Secciones">
           <ShopCatalogMenu />
           <span class="ml-nav-sep" aria-hidden="true">|</span>
           <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Seguridad</router-link>
@@ -326,31 +345,33 @@ watch(
 </script>
 
 <style scoped>
-/* (TU CSS ORIGINAL — SIN CAMBIOS) */
-/* ================================
-   HEADER BASE + Z-INDEX
-================================ */
+/* =====================================================
+   HEADER BASE
+===================================================== */
 .ml-header {
   position: sticky;
   top: 0;
   z-index: 60;
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
   overflow: visible;
 }
 
+/* =====================================================
+   ROWS
+===================================================== */
 .ml-row-top {
-  position: relative;
-  z-index: 3;
-  overflow: visible;
+  display: flex;
+  align-items: center;
+  height: 64px;
 }
 
 .ml-row-bottom {
-  position: relative;
-  z-index: 2;
-  overflow: visible;
-  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .ml-row,
@@ -358,67 +379,53 @@ watch(
 .ml-row-bottom {
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
-  border: 0 !important;
-  outline: 0 !important;
 }
 
-/* ================================
-   CONTAINER / GRIDS
-================================ */
+/* =====================================================
+   CONTAINER
+===================================================== */
 .ml-container {
-  width: min(var(--shop-max, 1200px), calc(100% - 24px));
+  width: min(1240px, calc(100% - 24px));
   margin: 0 auto;
-  display: grid;
+  min-width: 0;
+}
+
+/* =====================================================
+   TOP LAYOUT (FLEX)
+===================================================== */
+.ml-top-grid {
+  display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 0;
-  overflow: visible;
-}
-
-.ml-top-grid {
-  grid-template-columns: auto minmax(320px, 1fr) auto;
-  padding: 10px 0;
-  align-items: center;
   min-width: 0;
 }
 
 .ml-top-grid.is-mobile {
-  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
-  padding: 8px 0;
 }
 
-.ml-bottom-grid {
-  grid-template-columns: auto 1fr;
-  padding: 4px 0;
-  align-items: center;
-  min-width: 0;
-}
-
-/* ================================
+/* =====================================================
    BRAND
-================================ */
+===================================================== */
 .ml-brand {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
   color: rgb(var(--v-theme-on-primary)) !important;
-  min-width: 0;
-  line-height: 0;
+  flex: 0 0 auto;
 }
 
 .ml-logo-wide {
-  width: 360px;
-  height: 76px;
+  width: 200px;
+  height: 40px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  overflow: visible;
+  overflow: hidden;
 }
+
 .ml-logo-wide-img {
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: contain;
   object-position: left center;
 }
@@ -431,110 +438,78 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
 }
+
 .ml-logo-icon-img {
   width: 100%;
   height: 100%;
-  display: block;
   object-fit: cover;
-  object-position: center;
 }
 
-/* ================================
-   SEARCH
-================================ */
+/* =====================================================
+   SEARCH (estable SIEMPRE)
+===================================================== */
 .ml-search {
+  flex: 1 1 auto;
   min-width: 0;
-  position: relative;
-  z-index: 10;
-  overflow: visible;
+  display: flex;
+  justify-content: center;
+}
+
+.ml-search > * {
+  width: min(760px, 100%);
+  max-width: 100%;
 }
 
 .ml-search :deep(.v-field) {
   width: 100%;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.10);
   border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
 }
 
 .ml-search :deep(.v-field__input) {
-  min-height: 46px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
-/* Dropdown Vuetify overlay */
 .ml-search :deep(.v-overlay__content) {
   margin-top: 6px !important;
-  border-radius: 16px !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.18) !important;
   z-index: 9999 !important;
 }
 
-.ml-search :deep(.v-card),
-.ml-search :deep(.v-sheet) {
-  border-radius: 16px !important;
-  overflow: hidden;
-}
-
-.ml-search :deep(.v-list) {
-  padding: 8px !important;
-}
-
-.ml-search :deep(.v-list-item) {
-  min-height: 64px !important;
-  padding: 10px 12px !important;
-  border-radius: 14px !important;
-}
-
-.ml-search :deep(.v-avatar),
-.ml-search :deep(.v-list-item__prepend img) {
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 14px !important;
-}
-
-.ml-search :deep(.v-list-item-title) {
-  font-size: 15px !important;
-  font-weight: 800 !important;
-  line-height: 1.2;
-}
-
-.ml-search :deep(.v-list-item-subtitle) {
-  font-size: 12px !important;
-  opacity: 0.75 !important;
-  margin-top: 3px;
-}
-
-/* ================================
+/* =====================================================
    ACTIONS
-================================ */
+===================================================== */
 .ml-top-actions {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
-  justify-content: flex-end;
-}
-.ml-top-actions-mobile {
   gap: 10px;
+  white-space: nowrap;
+}
+
+.ml-top-actions-mobile {
+  gap: 8px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
 
 .ml-top-link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
+  gap: 6px;
   font-size: 13px;
   font-weight: 800;
-  padding: 6px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-}
-
-.ml-top-link-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -542,7 +517,7 @@ watch(
 
 .ml-top-link-ghost {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .ml-top-icon {
@@ -550,22 +525,102 @@ watch(
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
-.ml-top-icon-btn {
-  padding: 0;
-  background: transparent;
-  border: 0;
+/* =====================================================
+   ACCOUNT BUTTON
+===================================================== */
+.ml-account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.10);
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fff;
   cursor: pointer;
+  max-width: 260px;
 }
 
-.ml-icon-white {
-  color: #fff !important;
+.ml-account-btn:hover {
+  background: rgba(0, 0, 0, 0.16);
 }
 
-/* ================================
-   NAV DESKTOP
-================================ */
+.ml-account-btn-mobile {
+  padding: 4px 8px;
+}
+
+.ml-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0b1b2b;
+}
+
+.ml-account-name {
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.ml-account-menu {
+  width: 320px;
+}
+
+/* =====================================================
+   BOTTOM NAV
+===================================================== */
+.ml-bottom-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  min-width: 0;
+}
+
+.ml-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.ml-loc:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ml-loc-text {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.ml-loc-top {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 700;
+}
+
+.ml-loc-bottom {
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
 .ml-nav {
   display: flex;
   align-items: center;
@@ -575,13 +630,17 @@ watch(
 }
 
 .ml-nav-soft {
-  color: rgba(255, 255, 255, 0.86);
-  text-decoration: none;
   font-size: 13px;
   font-weight: 750;
   padding: 6px 8px;
   border-radius: 10px;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
   white-space: nowrap;
+}
+
+.ml-nav-soft:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .ml-nav-sep {
@@ -593,69 +652,9 @@ watch(
   font-weight: 900;
 }
 
-/* ================================
-   ACCOUNT MENU
-================================ */
-.ml-account-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: #fff;
-  cursor: pointer;
-  max-width: 260px;
-}
-.ml-account-btn-mobile {
-  padding: 4px;
-  border-radius: 999px;
-}
-.ml-account-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 12px;
-  color: #0b1b2b;
-  background: rgba(255, 255, 255, 0.92);
-}
-.ml-account-name {
-  font-size: 13px;
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
-}
-.ml-account-menu {
-  width: 320px;
-  overflow: hidden;
-}
-.ml-account-head {
-  padding: 14px 16px 10px;
-}
-.ml-account-title {
-  font-weight: 900;
-  font-size: 14px;
-}
-.ml-account-sub {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-.ml-account-list {
-  padding: 6px !important;
-}
-
-/* ================================
+/* =====================================================
    WHATSAPP
-================================ */
+===================================================== */
 .ml-wa-fab {
   position: fixed;
   right: 14px;
@@ -674,51 +673,78 @@ watch(
   text-decoration: none;
 }
 
-/* ================================
-   MOBILE TUNING
-================================ */
+/* =====================================================
+   ✅ MOBILE: acciones ABAJO + buscador FULL (no cambia nunca)
+===================================================== */
 @media (max-width: 600px) {
-  .ml-container {
-    gap: 10px;
-  }
-  .ml-logo-icon {
-    width: 38px;
-    height: 38px;
+  .ml-row-top {
+    height: auto;
+    padding: 8px 0;
   }
 
-  .ml-search :deep(.v-field__input) {
-    min-height: 38px;
-    padding-top: 6px;
-    padding-bottom: 6px;
+  /* wrap SOLO en mobile */
+  .ml-top-grid.is-mobile {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    row-gap: 10px;
   }
 
-  .ml-search :deep(.v-overlay__content) {
-    max-width: calc(100vw - 16px) !important;
-    border-radius: 16px !important;
+  .ml-brand {
+    order: 1;
   }
 
-  .ml-search :deep(.v-list-item) {
-    min-height: 58px !important;
-    padding: 8px 10px !important;
+  /* buscador: siempre 100% */
+  .ml-search {
+    order: 2;
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: stretch;
   }
 
-  .ml-search :deep(.v-avatar),
-  .ml-search :deep(.v-list-item__prepend img) {
-    width: 42px !important;
-    height: 42px !important;
-    border-radius: 12px !important;
+  .ml-search > * {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
-  .ml-search :deep(.v-list-item-title) {
-    font-size: 14px !important;
+  /* acciones: fila abajo */
+  .ml-top-actions-mobile {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-bottom: 2px;
+    overflow-x: auto; /* por si entra justo */
+    -webkit-overflow-scrolling: touch;
   }
 
-  .ml-search :deep(.v-list-item-subtitle) {
-    font-size: 11px !important;
+  /* scrollbar sutil */
+  .ml-top-actions-mobile::-webkit-scrollbar {
+    height: 6px;
+  }
+  .ml-top-actions-mobile::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+  }
+
+  /* compact */
+  .ml-account-btn.ml-account-btn-mobile {
+    height: 36px;
+    padding: 4px 8px;
   }
 
   .ml-account-name {
     display: none;
+  }
+
+  .ml-top-link {
+    font-size: 12.5px;
+    padding: 6px 10px;
+  }
+
+  .ml-top-icon {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>
