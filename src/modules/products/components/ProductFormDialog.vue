@@ -1,10 +1,10 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/ProductFormDialog.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO
-     - Step 4 "Media": Imágenes + Videos (SIMULTÁNEO)
-     - ✅ En modo CREATE: permite cargar/encolar videos aunque el producto aún no exista
-       (YouTube/Shorts URL + archivos video/*) => se suben al tocar CREAR en Resumen
-     - En modo EDIT: mantiene ProductVideosPanel (y también soporta cola local si querés)
-     - Se suben SOLO al tocar CREAR/GUARDAR
+<!-- FIXES:
+  ✅ Stock UPDATE (EDIT): actualiza aunque NO venga current_qty (no bloquea)
+  ✅ Stock EDIT: si deshabilitás una sucursal => fuerza qty=0 (limpia stock viejo)
+  ✅ Stock CREATE: permite setear qty=0 si está habilitada
+  ✅ Mantiene tu flujo: stock/media se aplican recién al tocar CREAR/GUARDAR
 -->
 
 <template>
@@ -162,7 +162,6 @@
             />
 
             <!-- VIDEOS (cola) -->
-            <!-- ✅ CREATE: UI local para encolar videos sin necesitar product_id -->
             <v-card class="pf-media-card mt-2" rounded="xl" variant="tonal">
               <div class="d-flex align-center justify-space-between flex-wrap ga-2">
                 <div class="d-flex align-center ga-2">
@@ -207,13 +206,7 @@
                     </v-btn>
                   </div>
 
-                  <v-alert
-                    v-if="ytError"
-                    type="error"
-                    variant="tonal"
-                    density="comfortable"
-                    class="mt-2"
-                  >
+                  <v-alert v-if="ytError" type="error" variant="tonal" density="comfortable" class="mt-2">
                     {{ ytError }}
                   </v-alert>
 
@@ -223,28 +216,16 @@
                     </div>
 
                     <div class="pf-queue-list">
-                      <div
-                        v-for="(v, idx) in queuedYoutubeVideos"
-                        :key="v.key"
-                        class="pf-queue-item"
-                      >
+                      <div v-for="(v, idx) in queuedYoutubeVideos" :key="v.key" class="pf-queue-item">
                         <div class="minw-0">
                           <div class="pf-queue-title text-truncate">
                             <v-icon size="16" class="mr-1">mdi-youtube</v-icon>
                             {{ v.title || "YouTube" }}
                           </div>
-                          <div class="pf-queue-sub text-truncate">
-                            {{ v.url }}
-                          </div>
+                          <div class="pf-queue-sub text-truncate">{{ v.url }}</div>
                         </div>
 
-                        <v-btn
-                          size="small"
-                          variant="text"
-                          icon
-                          @click="removeYoutubeAt(idx)"
-                          :disabled="busy"
-                        >
+                        <v-btn size="small" variant="text" icon @click="removeYoutubeAt(idx)" :disabled="busy">
                           <v-icon>mdi-close</v-icon>
                         </v-btn>
                       </div>
@@ -297,7 +278,6 @@
               </div>
             </v-card>
 
-            <!-- ✅ EDIT: si querés mantener también el panel existente (opcional) -->
             <ProductVideosPanel
               v-if="isEdit"
               class="mt-2"
@@ -377,7 +357,8 @@
 
                 <div class="text-subtitle-2 font-weight-bold mb-2">Media en cola</div>
                 <div class="text-caption">
-                  Imágenes: <b>{{ queuedImages.length }}</b> · Videos: <b>{{ queuedYoutubeVideos.length + queuedVideoFiles.length }}</b>
+                  Imágenes: <b>{{ queuedImages.length }}</b> · Videos:
+                  <b>{{ queuedYoutubeVideos.length + queuedVideoFiles.length }}</b>
                 </div>
               </v-card>
 
@@ -795,19 +776,14 @@ function parseYoutubeUrl(raw) {
   const url = String(raw || "").trim();
   if (!url) return { ok: false, url: "", reason: "Pegá una URL." };
 
-  // aceptamos youtube.com, youtu.be, m.youtube.com
   const low = url.toLowerCase();
   const looksYoutube =
-    low.includes("youtube.com/") ||
-    low.includes("youtu.be/") ||
-    low.includes("m.youtube.com/");
+    low.includes("youtube.com/") || low.includes("youtu.be/") || low.includes("m.youtube.com/");
 
   if (!looksYoutube) {
     return { ok: false, url: "", reason: "La URL no parece de YouTube." };
   }
 
-  // aceptar shorts, watch?v=, youtu.be/ID, embed/ID
-  // No necesitamos extraer ID acá: el backend lo puede procesar.
   return { ok: true, url, reason: "" };
 }
 
@@ -853,12 +829,7 @@ function clearVideosQueue() {
   toast("✅ Cola de videos limpia");
 }
 
-function onVideosChanged() {
-  // hook por si querés hacer algo después
-}
-
-/* ====== Subida videos ====== */
-/* ====== Subida videos (YouTube + Upload) ====== */
+function onVideosChanged() {}
 
 /* ====== Subida videos (YouTube + Upload) ====== */
 async function commitVideos(productId) {
@@ -874,7 +845,6 @@ async function commitVideos(productId) {
     if (!url) continue;
 
     try {
-      // ✅ FIX: ADMIN endpoint
       await http.post(`/admin/products/${pid}/videos/youtube`, {
         url,
         title: it?.title || null,
@@ -892,7 +862,6 @@ async function commitVideos(productId) {
       const fd = new FormData();
       fd.append("file", f);
 
-      // ✅ FIX: ADMIN endpoint
       await http.post(`/admin/products/${pid}/videos/upload`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -907,7 +876,6 @@ async function commitVideos(productId) {
     toast("✅ Videos procesados");
   }
 }
-
 
 /* ====== Create ====== */
 async function createAll() {
@@ -945,18 +913,20 @@ async function createAll() {
     draft.value = { ...draft.value, ...deepClone(created) };
     nextCodePreview.value = null;
 
-    // stock
+    // ✅ stock (FIX: permite enviar qty=0 si está habilitada)
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
       const wid = toInt(r.warehouse_id, 0);
 
       const enabled = toBool(r.enabled, false);
-      if (!enabled) continue;
 
+      // si está habilitada => usamos qty (puede ser 0)
+      // si NO está habilitada => si qty=0 no mandamos (en create no hace falta limpiar)
       const qty = num(r.qty, NaN);
       if (!Number.isFinite(qty)) continue;
-      if (qty === 0) continue;
+
+      if (!enabled && qty === 0) continue;
 
       const ok = await products.initStock({
         product_id: pid,
@@ -975,7 +945,7 @@ async function createAll() {
       else toast("✅ Imágenes subidas");
     }
 
-    // ✅ videos (YouTube + Upload)
+    // videos
     await commitVideos(pid);
 
     emit("saved");
@@ -1018,33 +988,39 @@ async function saveAll() {
       return;
     }
 
-    // stock set absoluto
+    // ✅ stock set absoluto (FIX FINAL):
+    // - si enabled=false => fuerza qty=0 (limpia stock viejo)
+    // - si current_qty no viene => igual manda update
     const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
       const wid = toInt(r.warehouse_id, 0);
 
       const enabled = toBool(r.enabled, false);
-      if (!enabled) continue;
 
-      const qty = num(r.qty, NaN);
+      // ✅ si está deshabilitada => SIEMPRE 0
+      const desiredQty = enabled ? num(r.qty, NaN) : 0;
+
+      // si está habilitada y no hay qty válido => no hacemos nada
+      if (enabled && !Number.isFinite(desiredQty)) continue;
+
+      // current puede venir null/undefined
       const cur = num(r.current_qty, NaN);
 
-      if (!Number.isFinite(qty)) continue;
-      if (!Number.isFinite(cur)) continue;
-      if (qty === cur) continue;
+      // si cur es número y ya está igual, salteamos
+      if (Number.isFinite(cur) && desiredQty === cur) continue;
 
       const ok = await products.initStock({
         product_id: pid,
         branch_id: bid || null,
         warehouse_id: wid || null,
-        qty,
+        qty: desiredQty,
       });
 
       if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
-    // ✅ imágenes también en EDIT (si hay cola)
+    // imágenes también en EDIT
     if (queuedImages.value.length) {
       const up = await products.uploadImages(pid, queuedImages.value);
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
@@ -1052,7 +1028,7 @@ async function saveAll() {
       queuedImages.value = [];
     }
 
-    // ✅ videos
+    // videos
     await commitVideos(pid);
 
     emit("saved");
@@ -1065,7 +1041,6 @@ async function saveAll() {
 </script>
 
 <style>
-/* (tu style original intacto) */
 .pf-overlay .pf-card {
   height: 90vh;
   max-height: 90vh;

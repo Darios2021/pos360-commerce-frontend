@@ -11,17 +11,18 @@
 // - getCatalog ahora incluye: brands, model, volume_min, volume_max, sort
 // - Normaliza brands para soportar array o string "A,B"
 // - Mantiene compat total con backend actual
+//
+// ✅ FIX SUCURSAL SHOP (CRÍTICO):
+// - ANTES: branch_id estaba hardcodeado a 3 (Rivadavia) => Casa Central nunca se veía
+// - AHORA: default = Casa Central (1) y se puede persistir en localStorage
+//   - VITE_SHOP_DEFAULT_BRANCH_ID opcional
+//   - localStorage key: "shop_branch_id"
 
 import axios from "axios";
 
 const ENV_SAME_ORIGIN = String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim();
 const FORCE_SAME_ORIGIN = ENV_SAME_ORIGIN === "1" || ENV_SAME_ORIGIN.toLowerCase() === "true";
 
-// Ej:
-// VITE_API_BASE_URL="https://sanjuantecnologia.com/api/v1"
-// VITE_API_BASE_URL="https://sanjuantecnologia.com/api"          (✅ ahora lo arreglamos)
-// VITE_API_BASE_URL="/api/v1"
-// VITE_API_BASE_URL="/api"                                       (✅ ahora lo arreglamos)
 const defaultBaseRaw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
 
 function trimSlashesEnd(s) {
@@ -34,18 +35,14 @@ function normalizeApiV1Base(input) {
 
   if (!s) return "/api/v1";
 
-  // Si es same-origin relativo
   if (s.startsWith("/")) {
     if (/^\/api$/i.test(s)) return "/api/v1";
-    if (/^\/api\/v\d+$/i.test(s)) return s; // ya tiene v
+    if (/^\/api\/v\d+$/i.test(s)) return s;
     if (/^\/api\/v\d+\//i.test(s)) return trimSlashesEnd(s);
-    // si viene raro pero contiene /api/v1 en algún lado, lo dejamos
     if (/\/api\/v\d+/i.test(s)) return trimSlashesEnd(s);
-    // fallback: si empieza con /api algo, dejamos como está
     return s;
   }
 
-  // Si es absoluto: https://dominio/api
   try {
     const u = new URL(s);
     const p = trimSlashesEnd(u.pathname || "");
@@ -54,12 +51,9 @@ function normalizeApiV1Base(input) {
       return trimSlashesEnd(u.toString());
     }
     if (/^\/api\/v\d+$/i.test(p)) return trimSlashesEnd(u.toString());
-    // Si pathname ya contiene /api/vX, ok
     if (/\/api\/v\d+/i.test(p)) return trimSlashesEnd(u.toString());
-    // Si viene solo dominio sin /api, fallback a /api/v1
     return trimSlashesEnd(u.origin + "/api/v1");
   } catch {
-    // si no es URL válida, fallback seguro
     return "/api/v1";
   }
 }
@@ -86,17 +80,14 @@ let basePath = normalizeApiV1Base(defaultBaseRaw);
 if (typeof window !== "undefined") {
   const host = String(window.location.hostname || "").toLowerCase();
 
-  // ✅ en el dominio real SIEMPRE same-origin (pero SIEMPRE /api/v1)
   if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com") {
     basePath = "/api/v1";
   }
 
-  // ✅ override manual
   if (FORCE_SAME_ORIGIN) {
     basePath = "/api/v1";
   }
 
-  // ✅ por las dudas: normalizamos lo que haya quedado
   basePath = normalizeApiV1Base(basePath);
 }
 
@@ -118,8 +109,6 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// ✅ Core API (sin /public) para endpoints públicos “internos”
-// como /api/v1/products/:id/videos
 const coreApi = axios.create({
   baseURL: coreBaseURL,
   timeout: 20000,
@@ -186,15 +175,49 @@ function absUrl(u) {
  */
 function normalizeBrands(brands) {
   if (Array.isArray(brands)) {
-    return brands.map((x) => String(x || "").trim()).filter(Boolean).join(",");
+    return brands
+      .map((x) => String(x || "").trim())
+      .filter(Boolean)
+      .join(",");
   }
   return String(brands || "").trim();
 }
 
-// ✅ tu backend exige branch_id (por ahora fijo)
-const CATALOG_BRANCH_ID = 3;
+// ========================================
+// ✅ FIX: Branch ID dinámico (NO hardcode)
+// ========================================
+const LS_BRANCH_KEY = "shop_branch_id";
+
+// default por ENV o Casa Central (1)
+const ENV_DEFAULT_BRANCH_ID = toInt(import.meta.env.VITE_SHOP_DEFAULT_BRANCH_ID, 0);
+const FALLBACK_DEFAULT_BRANCH_ID = ENV_DEFAULT_BRANCH_ID > 0 ? ENV_DEFAULT_BRANCH_ID : 1;
+
+// lee localStorage si existe
 export function getCatalogBranchId() {
-  return CATALOG_BRANCH_ID;
+  try {
+    if (typeof window !== "undefined") {
+      const raw = window.localStorage.getItem(LS_BRANCH_KEY);
+      const bid = toInt(raw, 0);
+      if (bid > 0) return bid;
+    }
+  } catch {
+    // ignore
+  }
+  return FALLBACK_DEFAULT_BRANCH_ID;
+}
+
+// permite setear branch desde cualquier UI futura (sin romper nada)
+export function setCatalogBranchId(branchId) {
+  const bid = toInt(branchId, 0);
+  const final = bid > 0 ? bid : FALLBACK_DEFAULT_BRANCH_ID;
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LS_BRANCH_KEY, String(final));
+    }
+  } catch {
+    // ignore
+  }
+  return final;
 }
 
 // ✅ branches público
@@ -247,9 +270,9 @@ export async function getShopPaymentConfig() {
  * GET /api/v1/public/catalog
  */
 export async function getCatalog(params = {}) {
+  // ✅ si no mandan branch_id, toma el seleccionado (default Casa Central)
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
 
-  // ✅ FIX: incluir filtros que el frontend ya está mandando desde ShopCategory.vue
   const brands = normalizeBrands(params.brands);
   const model = String(params.model || "").trim();
 
@@ -277,13 +300,10 @@ export async function getCatalog(params = {}) {
     strict_search: params.strict_search ?? null,
     exclude_terms: params.exclude_terms ?? null,
 
-    // ✅ filtros server-side
     brands: brands || "",
     model: model || "",
     volume_min: Number.isFinite(volume_min) ? volume_min : null,
     volume_max: Number.isFinite(volume_max) ? volume_max : null,
-
-    // ✅ sort (si tu backend lo soporta)
     sort: sort || "",
   });
 
@@ -328,7 +348,6 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 /**
  * ✅ MEDIA PÚBLICA PARA CARDS (SIN branch_id)
  * GET /api/v1/public/products/:id/media
- * Respuesta esperada: { ok:true, item:{ product_id, image_url, images[], image_urls[] } }
  */
 export async function getPublicProductMedia(id) {
   const pid = toInt(id, 0);
@@ -357,7 +376,6 @@ export async function getPublicProductMedia(id) {
 /**
  * ✅ VIDEOS DE PRODUCTO (CORE, NO /public)
  * GET /api/v1/products/:id/videos
- * Respuesta esperada: { ok:true, data:[...] }
  */
 export async function getProductVideos(id) {
   const pid = toInt(id, 0);
@@ -371,11 +389,13 @@ export async function getProductVideos(id) {
 /**
  * ✅ PRODUCTO
  * GET /api/v1/public/products/:id
- * + inyecta videos (para que ProductGallery los vea)
+ * ✅ FIX: branch_id ahora es el seleccionado (no fijo)
  */
-export async function getProduct(id) {
+export async function getProduct(id, { branch_id } = {}) {
   const pid = toInt(id, 0);
-  const r = await api.get(`/products/${pid}`, { params: { branch_id: getCatalogBranchId() } });
+  const bid = toInt(branch_id, getCatalogBranchId());
+
+  const r = await api.get(`/products/${pid}`, { params: { branch_id: bid } });
 
   const item = r.data?.item || null;
   if (!item) return null;
@@ -390,7 +410,6 @@ export async function getProduct(id) {
 
   if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
 
-  // ✅ inject videos (si endpoint existe)
   try {
     const vids = await getProductVideos(pid);
     const list = Array.isArray(vids) ? vids : [];
@@ -448,7 +467,9 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  const hydrated = await Promise.all(ids.map(async (id) => (await getProduct(id).catch(() => null))));
+  const hydrated = await Promise.all(
+    ids.map(async (id) => await getProduct(id, { branch_id: bid }).catch(() => null))
+  );
 
   return hydrated
     .filter(Boolean)
