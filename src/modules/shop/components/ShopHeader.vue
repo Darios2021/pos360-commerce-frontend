@@ -2,7 +2,7 @@
 <!-- src/modules/shop/components/ShopHeader.vue -->
 <template>
   <header class="ml-header">
-    <!-- ================= ROW 1 (TOP): brand + search + actions ================= -->
+    <!-- ================= ROW 1 (TOP): brand + search ================= -->
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
@@ -25,94 +25,8 @@
           />
         </div>
 
-        <!-- ✅ ACTIONS DESKTOP -->
-        <div v-if="!isMobile" class="ml-top-actions">
-          <!-- AUTH: logged out -->
-          <button
-            v-if="!auth.isLogged"
-            class="ml-top-link ml-top-link-btn"
-            type="button"
-            @click.stop.prevent="goLogin"
-            aria-label="Ingresá"
-          >
-            <v-icon size="18" class="ml-top-ico ml-icon-white">mdi-account-outline</v-icon>
-            <span>Ingresá</span>
-          </button>
-
-          <!-- AUTH: logged in -->
-          <v-menu v-else location="bottom end" offset="10" :close-on-content-click="true">
-            <template #activator="{ props }">
-              <button class="ml-account-btn" type="button" v-bind="props" :title="auth.fullName">
-                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
-                <span class="ml-account-name">{{ auth.fullName }}</span>
-                <v-icon size="18" class="ml-icon-white">mdi-chevron-down</v-icon>
-              </button>
-            </template>
-
-            <v-card class="ml-account-menu" rounded="lg" elevation="10">
-              <div class="ml-account-head">
-                <div class="ml-account-title">Mi cuenta</div>
-                <div class="ml-account-sub">
-                  {{ auth.customer?.email || "" }}
-                </div>
-              </div>
-
-              <v-divider />
-
-              <v-list class="ml-account-list" density="comfortable">
-                <v-list-item
-                  title="Mis compras"
-                  subtitle="Historial de pedidos"
-                  prepend-icon="mdi-receipt-text-outline"
-                  @click="goMyOrders"
-                />
-                <v-list-item
-                  title="Favoritos"
-                  subtitle="Guardados para después"
-                  prepend-icon="mdi-heart-outline"
-                  @click="goMyFavorites"
-                />
-                <v-list-item
-                  title="Cerrar sesión"
-                  subtitle="Salir de esta cuenta"
-                  prepend-icon="mdi-logout"
-                  @click="doLogout"
-                />
-              </v-list>
-            </v-card>
-          </v-menu>
-
-          <!-- Accesos rápidos desktop -->
-          <button
-            v-if="auth.isLogged"
-            class="ml-top-link ml-top-link-ghost"
-            type="button"
-            @click="goMyOrders"
-          >
-            Mis compras
-          </button>
-
-          <button
-            v-if="auth.isLogged"
-            class="ml-top-link ml-top-link-ghost"
-            type="button"
-            @click="goMyFavorites"
-          >
-            Favoritos
-          </button>
-
-          <!-- Carrito -->
-          <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
-            <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
-              <v-icon size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
-            </v-badge>
-            <v-icon v-else size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
-          </router-link>
-        </div>
-
-        <!-- ✅ MOBILE: carrito + cuenta + pills (si logueado) -->
-        <div v-else class="ml-top-actions ml-top-actions-mobile">
-          <!-- Cuenta (mobile) -->
+        <!-- ✅ MOBILE: SOLO LOGIN / CUENTA (SIN CARRITO) -->
+        <div v-if="isMobile" class="ml-top-actions ml-top-actions-mobile">
           <button
             v-if="!auth.isLogged"
             class="ml-top-icon ml-top-icon-btn"
@@ -130,12 +44,10 @@
               </button>
             </template>
 
-            <v-card class="ml-account-menu" rounded="lg" elevation="10">
+            <v-card class="ml-account-menu" rounded="xl" elevation="12">
               <div class="ml-account-head">
                 <div class="ml-account-title">Mi cuenta</div>
-                <div class="ml-account-sub">
-                  {{ auth.customer?.email || "" }}
-                </div>
+                <div class="ml-account-sub">{{ auth.customer?.email || "" }}</div>
               </div>
 
               <v-divider />
@@ -163,7 +75,85 @@
             </v-card>
           </v-menu>
 
-          <!-- ✅ pills en mobile SOLO si logueado -->
+          <!-- ❌ carrito removido en mobile a pedido -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ROW 2 (BOTTOM): links + actions (DESKTOP) ================= -->
+    <div class="ml-row ml-row-bottom">
+      <div class="ml-container ml-bottom-grid">
+        <button class="ml-loc" type="button">
+          <v-icon size="16" class="ml-loc-ico ml-icon-white">mdi-map-marker-outline</v-icon>
+          <span class="ml-loc-text">
+            <span class="ml-loc-top">Enviar a</span>
+            <span class="ml-loc-bottom">San Juan</span>
+          </span>
+        </button>
+
+        <nav class="ml-nav" aria-label="Secciones">
+          <ShopCatalogMenu />
+          <span class="ml-nav-sep" aria-hidden="true">|</span>
+          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Seguridad</router-link>
+          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Sistemas</router-link>
+          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Servicio Técnico</router-link>
+        </nav>
+
+        <!-- ✅ DESKTOP: acciones abajo (estilo Mercado Libre) -->
+        <div v-if="!isMobile" class="ml-bottom-actions">
+          <!-- logged out -->
+          <button
+            v-if="!auth.isLogged"
+            class="ml-top-link ml-top-link-btn"
+            type="button"
+            @click.stop.prevent="goLogin"
+            aria-label="Ingresá"
+          >
+            <v-icon size="18" class="ml-top-ico ml-icon-white">mdi-account-outline</v-icon>
+            <span>Ingresá</span>
+          </button>
+
+          <!-- logged in -->
+          <v-menu v-else location="bottom end" offset="10" :close-on-content-click="true">
+            <template #activator="{ props }">
+              <button class="ml-account-btn" type="button" v-bind="props" :title="auth.fullName">
+                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
+                <span class="ml-account-name">{{ auth.fullName }}</span>
+                <v-icon size="18" class="ml-icon-white">mdi-chevron-down</v-icon>
+              </button>
+            </template>
+
+            <v-card class="ml-account-menu" rounded="xl" elevation="12">
+              <div class="ml-account-head">
+                <div class="ml-account-title">Mi cuenta</div>
+                <div class="ml-account-sub">{{ auth.customer?.email || "" }}</div>
+              </div>
+
+              <v-divider />
+
+              <v-list class="ml-account-list" density="comfortable">
+                <v-list-item
+                  title="Mis compras"
+                  subtitle="Historial de pedidos"
+                  prepend-icon="mdi-receipt-text-outline"
+                  @click="goMyOrders"
+                />
+                <v-list-item
+                  title="Favoritos"
+                  subtitle="Guardados para después"
+                  prepend-icon="mdi-heart-outline"
+                  @click="goMyFavorites"
+                />
+                <v-list-item
+                  title="Cerrar sesión"
+                  subtitle="Salir de esta cuenta"
+                  prepend-icon="mdi-logout"
+                  @click="doLogout"
+                />
+              </v-list>
+            </v-card>
+          </v-menu>
+
           <button
             v-if="auth.isLogged"
             class="ml-top-link ml-top-link-ghost"
@@ -182,7 +172,7 @@
             Favoritos
           </button>
 
-          <!-- Carrito -->
+          <!-- ✅ carrito SOLO desktop -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
               <v-icon size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
@@ -190,27 +180,6 @@
             <v-icon v-else size="22" class="ml-icon-white">mdi-cart-outline</v-icon>
           </router-link>
         </div>
-      </div>
-    </div>
-
-    <!-- ================= ROW 2 (BOTTOM): links ================= -->
-    <div v-if="!isMobile" class="ml-row ml-row-bottom">
-      <div class="ml-container ml-bottom-grid">
-        <button class="ml-loc" type="button">
-          <v-icon size="16" class="ml-loc-ico ml-icon-white">mdi-map-marker-outline</v-icon>
-          <span class="ml-loc-text">
-            <span class="ml-loc-top">Enviar a</span>
-            <span class="ml-loc-bottom">San Juan</span>
-          </span>
-        </button>
-
-        <nav class="ml-nav" aria-label="Secciones">
-          <ShopCatalogMenu />
-          <span class="ml-nav-sep" aria-hidden="true">|</span>
-          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Seguridad</router-link>
-          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Sistemas</router-link>
-          <router-link class="ml-nav-soft ml-nav-strong" to="/shop">San Juan Servicio Técnico</router-link>
-        </nav>
       </div>
     </div>
   </header>
@@ -234,12 +203,6 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-
-/**
- * ✅ IMPORT FIX (tu proyecto):
- * En tu árbol aparece en: src/modules/shop/service/shopAuth.store.js
- * (NO en /store/)
- */
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
@@ -288,17 +251,12 @@ const waMessage = computed(() => {
 
 const waHref = computed(() => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage.value)}`);
 
-const showWaFab = computed(() => {
-  const n = String(route.name || "");
-  if (n === "shopClips") return false;
-  return true;
-});
+const showWaFab = computed(() => String(route.name || "") !== "shopClips");
 
-/** ✅ LOGIN DEL SHOP (NO ADMIN /app) */
 function goLogin() {
   router
     .push({ name: "shopLogin", query: { redirect: route.fullPath || "/shop" } })
-    .catch((e) => console.error("❌ goLogin failed:", e?.message || e));
+    .catch(() => {});
 }
 
 function goMyOrders() {
@@ -314,7 +272,6 @@ async function doLogout() {
     await auth.logout?.();
   } catch {}
 
-  // si estaba en "mi cuenta", vuelve al home
   if (String(route.path || "").startsWith("/shop/account")) {
     router.replace({ path: "/shop" }).catch(() => {});
   }
@@ -345,323 +302,301 @@ watch(
 </script>
 
 <style scoped>
-/* =====================================================
+/* ================================
    HEADER BASE
-===================================================== */
+================================ */
 .ml-header {
   position: sticky;
   top: 0;
   z-index: 60;
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
-  overflow: visible;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* =====================================================
+/* ================================
    ROWS
-===================================================== */
+================================ */
 .ml-row-top {
-  display: flex;
-  align-items: center;
-  height: 64px;
+  padding: 10px 0 6px;
 }
 
 .ml-row-bottom {
-  display: flex;
-  align-items: center;
-  height: 44px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 0 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
 }
 
-.ml-row,
-.ml-row-top,
-.ml-row-bottom {
-  background: rgb(var(--v-theme-primary)) !important;
-  color: rgb(var(--v-theme-on-primary)) !important;
-}
-
-/* =====================================================
-   CONTAINER
-===================================================== */
 .ml-container {
-  width: min(1240px, calc(100% - 24px));
+  width: min(var(--shop-max, 1240px), calc(100% - 24px));
   margin: 0 auto;
   min-width: 0;
 }
 
-/* =====================================================
-   TOP LAYOUT (FLEX)
-===================================================== */
+/* ================================
+   TOP GRID
+================================ */
 .ml-top-grid {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
 }
 
-.ml-top-grid.is-mobile {
-  gap: 10px;
-}
-
-/* =====================================================
-   BRAND
-===================================================== */
+/* ================================
+   LOGO
+================================ */
 .ml-brand {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   text-decoration: none;
-  color: rgb(var(--v-theme-on-primary)) !important;
-  flex: 0 0 auto;
 }
 
 .ml-logo-wide {
-  width: 200px;
-  height: 40px;
+  height: 56px;
   display: flex;
   align-items: center;
-  overflow: hidden;
 }
-
 .ml-logo-wide-img {
-  width: 100%;
   height: 100%;
+  width: auto;
   object-fit: contain;
-  object-position: left center;
 }
 
 .ml-logo-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  overflow: hidden;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .ml-logo-icon-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
-/* =====================================================
-   SEARCH (estable SIEMPRE)
-===================================================== */
+/* ================================
+   SEARCH (menos ancho)
+================================ */
 .ml-search {
   flex: 1 1 auto;
-  min-width: 0;
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
 
 .ml-search > * {
-  width: min(760px, 100%);
+  width: min(720px, 100%);
   max-width: 100%;
 }
 
 .ml-search :deep(.v-field) {
   width: 100%;
   background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  border-radius: 999px;
-  box-shadow: none;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
 }
 
 .ml-search :deep(.v-field__input) {
-  min-height: 42px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  min-height: 40px;
+  font-size: 14px;
 }
 
-.ml-search :deep(.v-overlay__content) {
-  margin-top: 6px !important;
-  border-radius: 14px !important;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.18) !important;
-  z-index: 9999 !important;
-}
-
-/* =====================================================
-   ACTIONS
-===================================================== */
-.ml-top-actions {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
+/* ================================
+   MOBILE TOP ACTIONS (solo login/cuenta)
+================================ */
 .ml-top-actions-mobile {
-  gap: 8px;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-}
-
-.ml-top-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 800;
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.ml-top-icon-btn {
   border: 0;
   background: transparent;
+  padding: 0;
   cursor: pointer;
 }
 
-.ml-top-link-ghost {
+.ml-icon-white {
+  color: #fff !important;
+}
+
+/* ================================
+   BOTTOM GRID
+================================ */
+.ml-bottom-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ================================
+   LOCATION
+================================ */
+.ml-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+.ml-loc:hover {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.ml-loc-top {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.ml-loc-bottom {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ================================
+   NAV
+================================ */
+.ml-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+.ml-nav-soft {
+  font-size: 13px;
+  font-weight: 650;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ml-nav-soft:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.ml-nav-sep {
+  opacity: 0.4;
+}
+
+/* ================================
+   ACTIONS (DESKTOP bottom)
+================================ */
+.ml-bottom-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ml-top-link {
+  font-size: 13px;
+  font-weight: 750;
+  padding: 4px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+}
+
+.ml-top-link-ghost {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .ml-top-icon {
-  color: #fff !important;
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  color: #fff !important;
+  text-decoration: none;
 }
 
-/* =====================================================
-   ACCOUNT BUTTON
-===================================================== */
+/* ================================
+   ACCOUNT
+================================ */
 .ml-account-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.10);
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.08);
   color: #fff;
   cursor: pointer;
-  max-width: 260px;
 }
-
-.ml-account-btn:hover {
-  background: rgba(0, 0, 0, 0.16);
-}
-
 .ml-account-btn-mobile {
-  padding: 4px 8px;
+  padding: 3px 6px;
 }
 
 .ml-account-avatar {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: #fff;
   color: #0b1b2b;
 }
 
 .ml-account-name {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
 }
 
 .ml-account-menu {
   width: 320px;
-}
-
-/* =====================================================
-   BOTTOM NAV
-===================================================== */
-.ml-bottom-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  min-width: 0;
-}
-
-.ml-loc {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.92);
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 10px;
-}
-
-.ml-loc:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.ml-loc-text {
-  display: inline-flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-
-.ml-loc-top {
-  font-size: 11px;
-  opacity: 0.85;
-  font-weight: 700;
-}
-
-.ml-loc-bottom {
-  font-size: 12.5px;
-  font-weight: 900;
-}
-
-.ml-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
   overflow: hidden;
+  border-radius: 14px;
 }
 
-.ml-nav-soft {
-  font-size: 13px;
-  font-weight: 750;
-  padding: 6px 8px;
-  border-radius: 10px;
-  color: rgba(255, 255, 255, 0.88);
-  text-decoration: none;
-  white-space: nowrap;
+.ml-account-head {
+  padding: 12px 14px 8px;
 }
-
-.ml-nav-soft:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.ml-nav-sep {
-  color: rgba(255, 255, 255, 0.55);
-  margin: 0 2px;
-}
-
-.ml-nav-strong {
+.ml-account-title {
   font-weight: 900;
+  font-size: 13.5px;
+}
+.ml-account-sub {
+  font-size: 11.5px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+.ml-account-list {
+  padding: 6px !important;
 }
 
-/* =====================================================
-   WHATSAPP
-===================================================== */
+/* ================================
+   ICON SIZE CONTROL
+================================ */
+.ml-header :deep(.v-icon) {
+  font-size: 18px;
+}
+
+/* ================================
+   WHATSAPP FAB
+================================ */
 .ml-wa-fab {
   position: fixed;
   right: 14px;
   bottom: 14px;
   z-index: 140;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -669,82 +604,37 @@ watch(
   background: #25d366 !important;
   color: #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35), 0 6px 12px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
   text-decoration: none;
 }
 
-/* =====================================================
-   ✅ MOBILE: acciones ABAJO + buscador FULL (no cambia nunca)
-===================================================== */
+/* ================================
+   MOBILE
+================================ */
 @media (max-width: 600px) {
-  .ml-row-top {
-    height: auto;
-    padding: 8px 0;
-  }
-
-  /* wrap SOLO en mobile */
-  .ml-top-grid.is-mobile {
-    flex-wrap: wrap;
-    align-content: flex-start;
-    row-gap: 10px;
-  }
-
-  .ml-brand {
-    order: 1;
-  }
-
-  /* buscador: siempre 100% */
   .ml-search {
-    order: 2;
-    flex: 1 1 100%;
-    width: 100%;
     justify-content: stretch;
   }
-
   .ml-search > * {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  /* acciones: fila abajo */
-  .ml-top-actions-mobile {
-    order: 3;
-    flex: 1 1 100%;
     width: 100%;
-    justify-content: flex-start;
-    gap: 8px;
-    padding-bottom: 2px;
-    overflow-x: auto; /* por si entra justo */
-    -webkit-overflow-scrolling: touch;
   }
 
-  /* scrollbar sutil */
-  .ml-top-actions-mobile::-webkit-scrollbar {
-    height: 6px;
-  }
-  .ml-top-actions-mobile::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
-  }
-
-  /* compact */
-  .ml-account-btn.ml-account-btn-mobile {
-    height: 36px;
-    padding: 4px 8px;
+  /* mobile: ocultamos la barra inferior */
+  .ml-row-bottom {
+    display: none;
   }
 
   .ml-account-name {
     display: none;
   }
 
-  .ml-top-link {
-    font-size: 12.5px;
-    padding: 6px 10px;
+  .ml-logo-icon {
+    width: 46px;
+    height: 46px;
   }
 
-  .ml-top-icon {
-    width: 36px;
-    height: 36px;
+  .ml-header :deep(.v-icon) {
+    font-size: 20px;
   }
 }
 </style>
