@@ -1,8 +1,9 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosPage.vue -->
 <template>
-  <v-container fluid class="pos-wrap">
+  <v-container fluid class="pos-wrap pos-page">
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-3">
+    <div class="pos-top d-flex align-center justify-space-between flex-wrap ga-3 mb-3">
       <div>
         <div class="text-h5 font-weight-bold">Punto de Venta</div>
         <div class="text-caption text-medium-emphasis">Productos · Carrito · Cobro</div>
@@ -23,6 +24,19 @@
           <v-chip v-if="ctxError" size="small" variant="tonal" color="red">
             {{ ctxError }}
           </v-chip>
+        </div>
+
+        <!-- ✅ Mini panel de caja / cajero (tipo POS) -->
+        <div class="pos-cashier mt-2">
+          <v-icon size="16">mdi-account-badge</v-icon>
+          <span class="pos-cashier-txt">
+            Cajero: <b>{{ cashierName }}</b>
+          </span>
+          <span class="pos-dot">·</span>
+          <v-icon size="16">mdi-clock-outline</v-icon>
+          <span class="pos-cashier-txt">
+            Inicio caja: <b>{{ shiftStartText }}</b>
+          </span>
         </div>
       </div>
 
@@ -54,7 +68,7 @@
                 <v-text-field
                   v-model="q"
                   label="Buscar productos"
-                  placeholder="Nombre / SKU / Código / Barcode / Marca / Modelo / Rubro / Subrubro"
+                  placeholder="Nombre / SKU / Código / Barcode / Marca / Modelo"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   density="comfortable"
@@ -93,7 +107,7 @@
                   density="comfortable"
                   hide-details
                   clearable
-                  :disabled="!rubroId"
+                  :disabled="!rubroId || subrubroItems.length === 0"
                   no-data-text="No hay subrubros"
                 />
               </v-col>
@@ -125,7 +139,8 @@
           </div>
 
           <v-row v-else dense>
-            <v-col v-for="p in pagedItems" :key="p.id" cols="12" sm="6" md="4" lg="3" xl="2">
+            <!-- ✅ Más densidad: en desktop entran más -->
+            <v-col v-for="p in pagedItems" :key="p.id" cols="6" sm="4" md="3" lg="2" xl="2">
               <PosProductCard
                 :item="p"
                 :image="productImage(p) || ''"
@@ -308,7 +323,7 @@
       </v-col>
     </v-row>
 
-    <!-- ✅ DETALLE CON OPCIONES DE PAGO -->
+    <!-- dialogs (sin cambios) -->
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
       :can-sell="canSell"
@@ -322,7 +337,6 @@
       @add="addFromDetails"
     />
 
-    <!-- ✅ COBRO COMPLETO -->
     <CheckoutDialog
       v-model:open="checkoutDialog"
       :total="checkoutTotal"
@@ -348,7 +362,6 @@
       @confirm="confirmPayment"
     />
 
-    <!-- ✅ TICKET / COMPROBANTE -->
     <ReceiptDialog
       v-model:open="receiptOpen"
       :sale="receiptSale"
@@ -444,11 +457,7 @@ const roles = computed(() => {
 });
 
 const isSuperAdmin = computed(() => roles.value.includes("super_admin"));
-
-// ✅ Admin = admin o super_admin (para "ver todo")
 const isAdmin = computed(() => roles.value.includes("admin") || roles.value.includes("super_admin"));
-
-// ✅ Bloquea venta solo al admin "puro"
 const canSell = computed(() => !roles.value.includes("admin"));
 
 const branchName = computed(() => {
@@ -457,6 +466,14 @@ const branchName = computed(() => {
   const bs = Array.isArray(u?.branches) ? u.branches : [];
   const found = bid ? bs.find((b) => Number(b?.id) === bid) : null;
   return found?.name || null;
+});
+
+/* ✅ Caja / cajero */
+const cashierName = computed(() => auth?.user?.name || auth?.user?.full_name || auth?.user?.email || "—");
+const shiftStart = ref(new Date());
+const shiftStartText = computed(() => {
+  const d = shiftStart.value || new Date();
+  return new Date(d).toLocaleString("es-AR", { hour: "2-digit", minute: "2-digit" });
 });
 
 function money(val) {
@@ -579,7 +596,7 @@ async function prefetchImagesForVisible(items) {
     .map((x) => Number(x?.id || 0))
     .filter((x) => x > 0 && imageById.value[x] === undefined);
 
-  await Promise.all(ids.slice(0, 24).map((id) => fetchFirstImageViaStore(id)));
+  await Promise.all(ids.slice(0, 36).map((id) => fetchFirstImageViaStore(id)));
 }
 
 /* =========================
@@ -642,7 +659,6 @@ async function loadCategoriesSafe() {
       if (categories.value.length) return;
     } catch {}
   }
-
   categories.value = [];
 }
 
@@ -658,20 +674,15 @@ const rubroItems = computed(() => {
   return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
+/* ✅ FIX: subrubros desde categories (no desde productos) */
 const subrubroItems = computed(() => {
   const rid = Number(rubroId.value || 0);
   if (!rid) return [];
 
-  const map = new Map();
-  for (const p of allSellable.value || []) {
-    const d = deriveRubroSub(p);
-    if (Number(d.rubroId || 0) !== rid) continue;
-    if (!d.subId) continue;
-    const name = catById.value.get(Number(d.subId))?.name;
-    if (!name) continue;
-    if (!map.has(d.subId)) map.set(d.subId, { title: String(name), value: Number(d.subId) });
-  }
-  return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
+  const arr = (categories.value || []).filter((c) => Number(c?.parent_id || 0) === rid);
+  return arr
+    .map((c) => ({ title: String(c?.name || "—"), value: Number(c?.id) }))
+    .sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
 function onRubroChange() {
@@ -739,9 +750,7 @@ const filteredItems = computed(() => {
         String(p?.code || "").toLowerCase().includes(qq) ||
         String(p?.barcode || "").toLowerCase().includes(qq) ||
         String(p?.brand || "").toLowerCase().includes(qq) ||
-        String(p?.model || "").toLowerCase().includes(qq) ||
-        String(rubroName(p) || "").toLowerCase().includes(qq) ||
-        String(subrubroName(p) || "").toLowerCase().includes(qq);
+        String(p?.model || "").toLowerCase().includes(qq);
 
       if (!hay) return false;
     }
@@ -793,7 +802,7 @@ function nextPage() {
 }
 
 /* =========================
-   ✅ DETALLE / ADD
+   ✅ DETALLE / ADD (sin cambios)
 ========================= */
 function openDetails(p) {
   detailsItem.value = p || null;
@@ -822,10 +831,8 @@ function add(p) {
     product_id: p.id,
     image: productImage(p),
     available_qty: toNum(p.qty),
-
     price: unit,
     price_label: "Descuento",
-
     price_list: toNum(p.price_list),
     price_discount: toNum(p.price_discount),
     price_reseller: toNum(p.price_reseller),
@@ -857,15 +864,12 @@ function addFromDetails(payload) {
     product_id: p.id,
     image: productImage(p),
     available_qty: toNum(p.qty),
-
     price: unit,
     price_label: payload?.price_label || pricePolicyLabel(pol),
-
     price_list: toNum(p.price_list),
     price_discount: toNum(p.price_discount),
     price_reseller: toNum(p.price_reseller),
     effective_price: toNum(p.effective_price),
-
     chosen_payment_method: payload?.paymentMethod || null,
     chosen_installments: Number(payload?.installments || 1),
     chosen_price_policy: pol,
@@ -876,14 +880,13 @@ function addFromDetails(payload) {
 }
 
 /* =========================
-   ✅ CONTEXTO POS + FETCH PRODUCTS
+   ✅ CONTEXTO POS + FETCH PRODUCTS (sin cambios)
 ========================= */
 async function hardSyncPosContextWithAuth() {
   try {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
   } catch {}
 
-  // ✅ SOLO admin (no super_admin)
   if (roles.value.includes("admin")) {
     if (typeof posStore.ensureContext === "function") {
       await posStore.ensureContext({ force: true, isAdmin: true });
@@ -924,7 +927,6 @@ async function fetchSellablePool() {
     const bid = Number(posStore.branch_id || 0) || null;
     const wid = Number(posStore.warehouse_id || 0) || null;
 
-    // ✅ admin/super_admin: ver TODO sin filtros
     if (isAdmin.value) {
       const params = { q: "", page: 1, limit: 5000, in_stock: 1, sellable: 1, include_images: 1 };
       const { data } = await http.get("/pos/products", { params });
@@ -973,7 +975,7 @@ function refresh() {
 }
 
 /* =========================
-   ✅ CHECKOUT
+   ✅ CHECKOUT (sin cambios)
 ========================= */
 const productById = computed(() => {
   const m = new Map();
@@ -1148,24 +1150,45 @@ async function confirmPayment() {
 }
 
 onMounted(async () => {
-  // ✅ solo admin resetea contexto
   if (roles.value.includes("admin")) {
     posStore.resetContext?.();
   }
-
+  shiftStart.value = new Date();
   await loadCategoriesSafe();
   await fetchSellablePool();
 });
 </script>
 
 <style scoped>
-.pos-wrap {
-  background: rgb(var(--v-theme-background));
+/* ✅ SOLO POS. No toca /shop. */
+
+/* fondo del área POS (suave) */
+.pos-page.pos-wrap {
+  background: rgba(var(--v-theme-on-surface), 0.03);
   color: rgb(var(--v-theme-on-background));
   min-height: calc(100vh - 24px);
   padding: 16px;
 }
 
+.pos-cashier {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  width: fit-content;
+}
+.pos-cashier-txt {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+.pos-dot {
+  opacity: 0.55;
+}
+
+/* layout */
 .pos-grid {
   align-items: flex-start;
 }
@@ -1175,18 +1198,21 @@ onMounted(async () => {
   flex-direction: column;
 }
 
+/* superficies */
 .pos-surface {
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
 }
 
+/* bordes */
 .pos-surface,
 .cart-item,
 .empty,
 .border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
+/* panel productos */
 .pos-left {
   min-height: calc(100vh - 110px);
 }
@@ -1195,19 +1221,21 @@ onMounted(async () => {
   flex: 1 1 auto;
   min-height: 0;
   border-radius: 16px;
-  padding: 12px;
+  padding: 10px;
   max-height: calc(100vh - 190px);
   overflow: auto;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
   scrollbar-gutter: stable;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
 }
 
+/* toolbar sticky */
 .pos-toolbar {
   position: sticky;
   top: 12px;
   z-index: 2;
 }
 
+/* carrito */
 .cart-card {
   position: sticky;
   top: 12px;
@@ -1219,9 +1247,6 @@ onMounted(async () => {
   max-height: calc(100vh - 110px);
 }
 
-.cart-head {
-  flex: 0 0 auto;
-}
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1233,17 +1258,20 @@ onMounted(async () => {
 .cart-foot {
   flex: 0 0 auto;
   z-index: 2;
-  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.06);
+  background: rgb(var(--v-theme-surface));
+  box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.06);
 }
 
 .cart-item {
-  background: rgba(var(--v-theme-surface), 0.9);
+  background: rgba(var(--v-theme-surface), 0.95);
 }
+
 .cart-title {
   font-weight: 900;
   font-size: 13px;
   line-height: 1.2;
 }
+
 .border {
   border-radius: 10px;
 }
@@ -1253,7 +1281,7 @@ onMounted(async () => {
   border-radius: 14px;
   padding: 18px;
   text-align: center;
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .totals .row {
@@ -1266,12 +1294,13 @@ onMounted(async () => {
 .totals .row.total {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.14);
 }
 
 .muted {
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
+
 .cart-actions {
   flex-wrap: nowrap;
 }
@@ -1280,8 +1309,9 @@ onMounted(async () => {
   min-width: 0;
 }
 
+/* mobile */
 @media (max-width: 960px) {
-  .pos-wrap {
+  .pos-page.pos-wrap {
     padding: 10px;
   }
   .pos-toolbar {
@@ -1294,7 +1324,7 @@ onMounted(async () => {
   .pos-products {
     max-height: none;
     overflow: visible;
-    padding: 10px;
+    box-shadow: none;
   }
   .cart-card {
     position: relative;

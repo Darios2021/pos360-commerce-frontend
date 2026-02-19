@@ -1,105 +1,77 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/pos/components/PosProductCard.vue -->
 <template>
-  <v-card class="ppc-card" rounded="xl" elevation="1">
-    <!-- Imagen + badges -->
+  <v-card class="ppc" rounded="lg" elevation="1">
+    <!-- Thumb -->
     <div class="ppc-thumb">
-      <v-img :src="image || undefined" cover class="ppc-img" height="150">
+      <v-img :src="image || undefined" cover class="ppc-img">
         <template #placeholder>
-          <div class="ppc-thumb-empty">
-            <v-progress-circular indeterminate size="24" />
+          <div class="ppc-ph">
+            <v-progress-circular indeterminate size="18" />
           </div>
         </template>
         <template #error>
-          <div class="ppc-thumb-empty">
-            <v-icon size="34">mdi-image-off-outline</v-icon>
+          <div class="ppc-ph">
+            <v-icon size="26">mdi-image-off-outline</v-icon>
           </div>
         </template>
       </v-img>
 
-      <!-- ✅ Barra badges (SIEMPRE visible) -->
-      <div class="ppc-badges-bar">
-        <v-chip size="x-small" variant="flat" class="ppc-chip">
-          SKU: <b class="ml-1">{{ item?.sku || item?.code || "—" }}</b>
-        </v-chip>
-
-        <v-chip size="x-small" variant="flat" class="ppc-chip">
-          Stock: <b class="ml-1">{{ qty3(item?.qty ?? 0) }}</b>
-        </v-chip>
-
-        <v-chip v-if="hasDiscount" size="x-small" variant="flat" class="ppc-chip-off">
-          <v-icon start size="14">mdi-tag-outline</v-icon>
-          {{ offPct }}% OFF
-        </v-chip>
+      <!-- badges (compactos) -->
+      <div class="ppc-badges">
+        <span class="ppc-badge">SKU {{ item?.sku || item?.code || "—" }}</span>
+        <span class="ppc-badge">STK {{ qtyPretty(item?.qty ?? 0) }}</span>
+        <span v-if="hasDiscount" class="ppc-badge ppc-badge-off">{{ offPct }}% OFF</span>
       </div>
     </div>
 
-    <!-- Info -->
-    <v-card-text class="ppc-body">
-      <div class="ppc-title line-clamp-2" :title="item?.name || ''">
-        {{ item?.name || "—" }}
+    <!-- Body -->
+    <div class="ppc-body">
+      <div class="ppc-title" :title="item?.name || ''">{{ item?.name || "—" }}</div>
+
+      <div class="ppc-sub">
+        <span class="ppc-subtxt">{{ item?.brand || "—" }}</span>
+        <span class="dot">·</span>
+        <span class="ppc-subtxt">{{ item?.model || "—" }}</span>
       </div>
 
-      <div class="ppc-meta">
-        <div class="ppc-row">
-          <span class="muted">Marca:</span> <b>{{ item?.brand || "—" }}</b>
-          <span class="dot">·</span>
-          <span class="muted">Modelo:</span> <b>{{ item?.model || "—" }}</b>
+      <div class="ppc-price">
+        <div class="ppc-price-main">{{ money(priceDiscount) }}</div>
+        <div class="ppc-price-sub" v-if="hasDiscount">
+          <span class="muted">Lista</span>
+          <span class="strike">{{ money(priceList) }}</span>
         </div>
-
-        <div class="ppc-row">
-          <span class="muted">Rubro:</span> <b>{{ rubro || "—" }}</b>
-          <span class="dot">·</span>
-          <span class="muted">Subrubro:</span> <b>{{ subrubro || "—" }}</b>
+        <div class="ppc-price-sub" v-else>
+          <span class="muted">{{ priceLabel }}</span>
         </div>
       </div>
+    </div>
 
-      <!-- ✅ PRECIOS: principal = descuento -->
-      <div class="ppc-price-row">
-        <div class="d-flex flex-column">
-          <div class="ppc-price">{{ money(priceDiscount) }}</div>
-
-          <div v-if="hasDiscount" class="ppc-price-sub">
-            <span class="muted">Lista:</span>
-            <span class="ppc-strike">{{ money(priceList) }}</span>
-          </div>
-          <div v-else class="ppc-price-sub">
-            <span class="muted">Precio:</span>
-            <span class="muted">{{ priceLabel }}</span>
-          </div>
-        </div>
-
-        <v-chip size="small" variant="tonal">
-          {{ hasDiscount ? "Descuento" : priceLabel }}
-        </v-chip>
-      </div>
-    </v-card-text>
-
-    <!-- Acciones (icono) -->
-    <v-card-actions class="ppc-actions">
+    <!-- Actions -->
+    <div class="ppc-actions">
       <v-btn
         icon
-        size="large"
+        size="small"
         variant="tonal"
         color="primary"
-        class="ppc-action-btn"
+        class="ppc-btn"
         title="Agregar"
         @click.stop="emit('add', item)"
       >
-        <v-icon>mdi-plus</v-icon>
+        <v-icon size="18">mdi-plus</v-icon>
       </v-btn>
-
-      <v-spacer />
 
       <v-btn
         icon
-        size="large"
+        size="small"
         variant="tonal"
-        class="ppc-action-btn"
-        title="Ver detalle"
+        class="ppc-btn"
+        title="Detalle"
         @click.stop="emit('details', item)"
       >
-        <v-icon>mdi-eye-outline</v-icon>
+        <v-icon size="18">mdi-eye-outline</v-icon>
       </v-btn>
-    </v-card-actions>
+    </div>
   </v-card>
 </template>
 
@@ -111,8 +83,6 @@ const props = defineProps({
   image: { type: String, default: "" },
   rubroLabel: { type: String, default: "" },
   subrubroLabel: { type: String, default: "" },
-
-  // ✅ ahora la card recibe descuento + lista (y muestra descuento como principal)
   priceDiscount: { type: [Number, String], default: 0 },
   priceList: { type: [Number, String], default: 0 },
   priceLabel: { type: String, default: "Precio" },
@@ -120,19 +90,19 @@ const props = defineProps({
 
 const emit = defineEmits(["add", "details"]);
 
-function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
-}
-function qty3(n) {
-  return Number(n || 0).toFixed(3);
-}
 function toNum(v) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
 }
 
-const rubro = computed(() => String(props.rubroLabel || "").trim());
-const subrubro = computed(() => String(props.subrubroLabel || "").trim());
+function money(val) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+}
+
+function qtyPretty(n) {
+  const x = toNum(n);
+  return Number.isInteger(x) ? String(x) : x.toFixed(3);
+}
 
 const hasDiscount = computed(() => {
   const l = toNum(props.priceList);
@@ -149,149 +119,123 @@ const offPct = computed(() => {
 </script>
 
 <style scoped>
-.ppc-card {
+/* ✅ Compact POS card (safe en claro/oscuro) */
+.ppc {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   overflow: hidden;
-  border-radius: 18px;
-
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-}
-
-.ppc-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--v-theme-primary), 0.35);
+  display: flex;
+  flex-direction: column;
 }
 
 .ppc-thumb {
   position: relative;
-  height: 150px;
-  background: rgba(0, 0, 0, 0.25);
+  height: 92px; /* ✅ chico para ver muchas cards */
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
-
 .ppc-img {
-  height: 150px;
+  height: 92px;
 }
-
-.ppc-badges-bar {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-
+.ppc-ph {
+  height: 92px;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.ppc-badges {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
   flex-wrap: wrap;
-
-  padding: 8px 10px;
-  border-radius: 999px;
-
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  z-index: 5;
+  align-items: center;
 }
 
-.ppc-chip {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.14) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  font-weight: 600;
-}
-
-.ppc-chip-off {
-  color: #fff !important;
-  background: rgba(0, 200, 83, 0.18) !important;
-  border: 1px solid rgba(0, 200, 83, 0.35) !important;
+.ppc-badge {
+  font-size: 10px;
   font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-surface), 0.92);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.ppc-badge-off {
+  background: rgba(var(--v-theme-success), 0.14);
+  border-color: rgba(var(--v-theme-success), 0.28);
 }
 
 .ppc-body {
-  padding-top: 14px !important;
-  padding-bottom: 12px !important;
+  padding: 10px 10px 8px;
+  display: grid;
+  gap: 4px;
 }
 
 .ppc-title {
-  font-weight: 900;
-  font-size: 13.5px;
-  line-height: 1.25;
-  min-height: 34px;
-  color: #fff;
+  font-weight: 950;
+  font-size: 12px;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 28px;
 }
 
-.ppc-meta {
-  margin-top: 10px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.ppc-row {
+.ppc-sub {
+  font-size: 10.5px;
+  color: rgba(var(--v-theme-on-surface), 0.72);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.muted {
-  color: rgba(255, 255, 255, 0.55);
+.ppc-subtxt {
+  font-weight: 700;
 }
-
 .dot {
   margin: 0 6px;
   opacity: 0.5;
 }
 
-.ppc-price-row {
-  margin-top: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .ppc-price {
-  font-weight: 900;
-  font-size: 17px;
-  color: #fff;
-}
-
-.ppc-price-sub {
-  font-size: 11px;
+  display: grid;
+  gap: 2px;
   margin-top: 2px;
+}
+.ppc-price-main {
+  font-weight: 950;
+  font-size: 14px;
+}
+.ppc-price-sub {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
   display: flex;
   gap: 6px;
   align-items: center;
 }
-
-.ppc-strike {
-  text-decoration: line-through;
+.muted {
   opacity: 0.85;
+}
+.strike {
+  text-decoration: line-through;
+  opacity: 0.8;
 }
 
 .ppc-actions {
-  padding: 12px;
-  gap: 12px;
+  padding: 8px 10px 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
 }
-
-.ppc-action-btn {
-  min-width: 52px;
-  min-height: 52px;
-
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-}
-
-.ppc-action-btn:hover {
-  background: rgba(var(--v-theme-primary), 0.25) !important;
-  border-color: rgba(var(--v-theme-primary), 0.6) !important;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.ppc-btn {
+  min-width: 36px;
+  min-height: 36px;
 }
 </style>

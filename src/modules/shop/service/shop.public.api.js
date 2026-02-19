@@ -17,6 +17,12 @@
 // - AHORA: default = Casa Central (1) y se puede persistir en localStorage
 //   - VITE_SHOP_DEFAULT_BRANCH_ID opcional
 //   - localStorage key: "shop_branch_id"
+//
+// ✅ FIX PRODUCTOS “SOLO 13” EN PROD (CRÍTICO):
+// - ANTES: in_stock default = 1 (si no se manda nada, filtra SOLO con stock)
+// - AHORA: in_stock default configurable por ENV y por defecto = 0 (muestra TODOS)
+//   - VITE_SHOP_DEFAULT_IN_STOCK=0 (default)
+//   - VITE_SHOP_DEFAULT_IN_STOCK=1 (si querés “solo con stock” por defecto)
 
 import axios from "axios";
 
@@ -265,6 +271,14 @@ export async function getShopPaymentConfig() {
   };
 }
 
+// ========================================
+// ✅ FIX: default in_stock configurable (por defecto muestra TODOS)
+// ========================================
+const ENV_DEFAULT_IN_STOCK_RAW = String(import.meta.env.VITE_SHOP_DEFAULT_IN_STOCK ?? "").trim();
+// "1" => solo stock, "0" => todos, vacío => todos
+const DEFAULT_IN_STOCK =
+  ENV_DEFAULT_IN_STOCK_RAW === "1" || ENV_DEFAULT_IN_STOCK_RAW.toLowerCase() === "true" ? 1 : 0;
+
 /**
  * ✅ CATÁLOGO
  * GET /api/v1/public/catalog
@@ -288,13 +302,19 @@ export async function getCatalog(params = {}) {
 
   const sort = String(params.sort || "").trim();
 
+  // ✅ CLAVE: NO forzar in_stock=1 si no lo mandan
+  const in_stock =
+    params.in_stock === null || params.in_stock === undefined || params.in_stock === ""
+      ? DEFAULT_IN_STOCK
+      : toInt(params.in_stock, DEFAULT_IN_STOCK);
+
   const q = cleanParams({
     branch_id,
     search: params.search || "",
     category_id: params.category_id ?? null,
     subcategory_id: params.subcategory_id ?? null,
     include_children: params.include_children ?? null,
-    in_stock: params.in_stock ?? 1,
+    in_stock,
     page: params.page ?? 1,
     limit: params.limit ?? 24,
     strict_search: params.strict_search ?? null,
