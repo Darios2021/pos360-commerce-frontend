@@ -1,13 +1,14 @@
 // src/modules/shop/service/shop.public.api.js
-// ✅ COPY-PASTE FINAL COMPLETO
+// ✅ COPY-PASTE FINAL COMPLETO (FIX STOCK + FIX BRANCH FROM URL)
 //
 // Public API (base: /api/v1/public) + Core API (base: /api/v1)
 // ✅ Normaliza "/api" -> "/api/v1"
-// ✅ Branch dinámico (localStorage + ENV default)
+// ✅ Branch dinámico (URL query -> localStorage -> ENV default)
 // ✅ in_stock default configurable (por defecto TODOS)
 // ✅ FIX: payment-config endpoint compat (/payment-config o /shop/payment-config)
 // ✅ FIX: similares no fuerza in_stock=1
 // ✅ FIX: normaliza it.images si viene [{url}] o ["url"]
+// ✅ FIX CRÍTICO: stock_qty siempre numérico y consistente en getProduct()
 
 import axios from "axios";
 
@@ -122,10 +123,17 @@ function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
+
+// ⚠️ IMPORTANTE:
+// - "1.000" debe ser 1 (decimal). Tu DB usa DECIMAL con 3 decimales.
+// - soporta también coma decimal.
 function toNum(v, d = 0) {
-  const n = Number(String(v ?? "").replace(",", "."));
+  const s = String(v ?? "").trim();
+  if (!s) return d;
+  const n = Number(s.replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
+
 function cleanParams(obj) {
   const p = { ...obj };
   Object.keys(p).forEach((k) => {
@@ -134,6 +142,7 @@ function cleanParams(obj) {
   });
   return p;
 }
+
 function uniqUrls(list) {
   const out = [];
   const seen = new Set();
@@ -146,6 +155,7 @@ function uniqUrls(list) {
   }
   return out;
 }
+
 function absUrl(u) {
   const s = String(u || "").trim();
   if (!s) return "";
@@ -177,13 +187,41 @@ function normalizeBrands(brands) {
 
 // ========================================
 // Branch ID dinámico
+// ✅ FIX: toma branch_id desde URL (?branch_id=3) y lo persiste
 // ========================================
 const LS_BRANCH_KEY = "shop_branch_id";
 
 const ENV_DEFAULT_BRANCH_ID = toInt(import.meta.env.VITE_SHOP_DEFAULT_BRANCH_ID, 0);
 const FALLBACK_DEFAULT_BRANCH_ID = ENV_DEFAULT_BRANCH_ID > 0 ? ENV_DEFAULT_BRANCH_ID : 1;
 
+function getBranchIdFromUrl() {
+  try {
+    if (typeof window === "undefined") return 0;
+    const qs = new URLSearchParams(window.location.search || "");
+    const b1 = toInt(qs.get("branch_id"), 0);
+    if (b1 > 0) return b1;
+    const b2 = toInt(qs.get("branchId"), 0);
+    if (b2 > 0) return b2;
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function getCatalogBranchId() {
+  // 1) URL manda (si existe)
+  const fromUrl = getBranchIdFromUrl();
+  if (fromUrl > 0) {
+    // persistir para que TODA la tienda use la misma branch
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(LS_BRANCH_KEY, String(fromUrl));
+      }
+    } catch {}
+    return fromUrl;
+  }
+
+  // 2) localStorage
   try {
     if (typeof window !== "undefined") {
       const raw = window.localStorage.getItem(LS_BRANCH_KEY);
@@ -191,6 +229,8 @@ export function getCatalogBranchId() {
       if (bid > 0) return bid;
     }
   } catch {}
+
+  // 3) ENV/default
   return FALLBACK_DEFAULT_BRANCH_ID;
 }
 
@@ -205,6 +245,43 @@ export function setCatalogBranchId(branchId) {
   return final;
 }
 
+// ========================================
+// Stock normalization (CRÍTICO)
+// ========================================
+function normalizeStockQty(item, branchId) {
+  if (!item) return item;
+
+  // stock_qty directo
+  let qty = toNum(item.stock_qty, NaN);
+
+  // fallback: otros nombres comunes
+  if (!Number.isFinite(qty)) qty = toNum(item.qty, NaN);
+  if (!Number.isFinite(qty)) qty = toNum(item.stock, NaN);
+  if (!Number.isFinite(qty)) qty = toNum(item.stock_total, NaN);
+  if (!Number.isFinite(qty)) qty = toNum(item.total_stock, NaN);
+
+  // fallback: stock_by_branch (si existiera)
+  const bid = toInt(branchId, 0);
+  if ((!Number.isFinite(qty) || qty <= 0) && Array.isArray(item.stock_by_branch) && bid > 0) {
+    const row =
+      item.stock_by_branch.find((x) => toInt(x.branch_id ?? x.branchId, 0) === bid) || null;
+    if (row) {
+      const q2 = toNum(row.qty ?? row.stock_qty ?? row.stock ?? row.quantity, 0);
+      if (q2 > 0) qty = q2;
+    }
+  }
+
+  if (!Number.isFinite(qty) || qty < 0) qty = 0;
+
+  item.stock_qty = qty;
+  item.is_in_stock = qty > 0;
+
+  return item;
+}
+
+// ========================================
+// API funcs
+// ========================================
 export async function getBranches() {
   const r = await api.get("/branches");
   return r.data?.items || [];
@@ -239,7 +316,6 @@ export async function getShopPaymentConfig() {
   try {
     r = await api.get("/payment-config");
   } catch {
-    // fallback (si backend lo montó así)
     r = await api.get("/shop/payment-config");
   }
 
@@ -272,6 +348,8 @@ const DEFAULT_IN_STOCK =
  */
 export async function getCatalog(params = {}) {
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
+  // (opcional) persistir cuando el caller manda branch explícito
+  setCatalogBranchId(branch_id);
 
   const brands = normalizeBrands(params.brands);
   const model = String(params.model || "").trim();
@@ -320,6 +398,10 @@ export async function getCatalog(params = {}) {
     const imgRaw = it?.image_url || it?.image || it?.url || it?.src || "";
     const list = normalizeImageList(it?.images);
     const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
+
+    // ✅ también normalizamos stock si viene en items del catálogo
+    normalizeStockQty(it, branch_id);
+
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 
@@ -332,6 +414,8 @@ export async function getCatalog(params = {}) {
  */
 export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
+  setCatalogBranchId(bid);
+
   const qq = String(q || "").trim();
   if (!qq) return [];
 
@@ -343,6 +427,7 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
     const imgRaw = it?.image_url || "";
     const list = normalizeImageList(it?.images);
     const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
+    normalizeStockQty(it, bid);
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 }
@@ -392,7 +477,10 @@ export async function getProductVideos(id) {
  */
 export async function getProduct(id, { branch_id } = {}) {
   const pid = toInt(id, 0);
+
+  // ✅ branch desde arg OR URL/localStorage/default
   const bid = toInt(branch_id, getCatalogBranchId());
+  setCatalogBranchId(bid);
 
   const r = await api.get(`/products/${pid}`, { params: { branch_id: bid } });
 
@@ -406,6 +494,9 @@ export async function getProduct(id, { branch_id } = {}) {
   item.image_url = images[0] || img || "";
 
   if (item.price == null) item.price = item.price_list ?? item.price_discount ?? 0;
+
+  // ✅ FIX CRÍTICO: stock numérico y coherente
+  normalizeStockQty(item, bid);
 
   try {
     const vids = await getProductVideos(pid);
@@ -434,11 +525,15 @@ export async function getSimilarProducts({
   in_stock,
 } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
+  setCatalogBranchId(bid);
+
   const pid = toInt(productId, 0);
   const lim = Math.max(1, toInt(limit, 8));
 
   const inStockFinal =
-    in_stock === null || in_stock === undefined || in_stock === "" ? DEFAULT_IN_STOCK : toInt(in_stock, DEFAULT_IN_STOCK);
+    in_stock === null || in_stock === undefined || in_stock === ""
+      ? DEFAULT_IN_STOCK
+      : toInt(in_stock, DEFAULT_IN_STOCK);
 
   const q = cleanParams({
     branch_id: bid,
@@ -468,9 +563,7 @@ export async function getSimilarProducts({
     if (ids.length >= lim) break;
   }
 
-  const hydrated = await Promise.all(
-    ids.map(async (id) => await getProduct(id, { branch_id: bid }).catch(() => null))
-  );
+  const hydrated = await Promise.all(ids.map(async (id) => await getProduct(id, { branch_id: bid }).catch(() => null)));
 
   return hydrated
     .filter(Boolean)
@@ -478,6 +571,9 @@ export async function getSimilarProducts({
       const imgRaw = p?.image_url || "";
       const list = normalizeImageList(p?.images);
       const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
+
+      normalizeStockQty(p, bid);
+
       return {
         ...p,
         images,
