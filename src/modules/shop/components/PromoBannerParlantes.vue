@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/PromoBannerParlantes.vue -->
 <template>
   <v-card
@@ -21,50 +22,36 @@
           PARLANTES
         </div>
 
-        <div class="pb-sub">
-          Descubrí parlantes y audio para tu setup.
-        </div>
+        <div class="pb-sub">Descubrí parlantes y audio para tu setup.</div>
 
         <button class="pb-link" type="button" @click.stop="go">
           Ver ofertas
           <v-icon size="18" class="pb-link-ic">mdi-chevron-right</v-icon>
         </button>
 
-        <div v-if="!ready" class="pb-note">Cargando categoría…</div>
+        <!-- ✅ ya no dependemos de taxonomy -->
+        <div class="pb-note">Ver ofertas</div>
       </div>
 
       <!-- RIGHT -->
       <div class="pb-right" aria-hidden="true">
-        <img
-          class="pb-img"
-          :src="imgSrc"
-          alt="Promoción Parlantes"
-          loading="lazy"
-          @error="onImgError"
-        />
+        <img class="pb-img" :src="imgSrc" alt="Promoción Parlantes" loading="lazy" @error="onImgError" />
       </div>
     </div>
   </v-card>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 
 const router = useRouter();
-
 const title = "Promoción de Parlantes";
 
-/**
- * ✅ Tu imagen (principal)
- */
-const PRIMARY_IMG =
-  "https://storage-files.cingulado.org/pos360/products/14/1766778670423-5fba6ded.jpeg";
+/** ✅ Tu imagen (principal) */
+const PRIMARY_IMG = "https://storage-files.cingulado.org/pos360/products/14/1766778670423-5fba6ded.jpeg";
 
-/**
- * ✅ Fallback (si tu storage no responde / 403 / etc.)
- */
+/** ✅ Fallback */
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1518441984357-749f0f4a53b1?auto=format&fit=crop&w=1200&q=80";
 
@@ -73,74 +60,13 @@ function onImgError() {
   if (imgSrc.value !== FALLBACK_IMG) imgSrc.value = FALLBACK_IMG;
 }
 
-/* ========= resolver IDs reales ========= */
-const audioId = ref(null);
-const parlantesId = ref(null);
-
-const ready = computed(() => Number(audioId.value) > 0 && Number(parlantesId.value) > 0);
-
-function norm(s) {
-  return String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function isParent(c) {
-  return (
-    c &&
-    (c.parent_id === null ||
-      c.parent_id === undefined ||
-      c.parent_id === 0 ||
-      c.parent_id === "0")
-  );
-}
-
-function pickAudioParent(all) {
-  return (
-    (all || []).find((c) => isParent(c) && norm(c.name) === "audio") ||
-    (all || []).find((c) => isParent(c) && norm(c.name).includes("audio")) ||
-    null
-  );
-}
-
-function pickParlantesChild(all, pid) {
-  const p = Number(pid);
-  if (!p) return null;
-  const childs = (all || []).filter((c) => Number(c?.parent_id) === p);
-  return childs.find((c) => norm(c.name).includes("parlant")) || null;
-}
-
-async function resolveIds() {
-  try {
-    const all = await getPublicCategories();
-    const audio = pickAudioParent(all);
-    if (audio?.id) audioId.value = Number(audio.id);
-
-    const parl = pickParlantesChild(all, audioId.value);
-    if (parl?.id) parlantesId.value = Number(parl.id);
-  } catch (e) {
-    console.error("❌ PromoBannerParlantes.resolveIds", e);
-  }
-}
-
+/**
+ * ✅ Ultra-robusto: NO depende de IDs ni taxonomy
+ * Te lleva a Home con búsqueda
+ */
 function go() {
-  // ✅ /shop/c/:id?sub=XX (como tu captura)
-  if (ready.value) {
-    router.push({
-      name: "shopCategory",
-      params: { id: String(audioId.value) },
-      query: { sub: String(parlantesId.value) },
-    });
-    return;
-  }
-
-  // fallback
   router.push({ name: "shopHome", query: { q: "parlantes" } });
 }
-
-onMounted(resolveIds);
 </script>
 
 <style scoped>
@@ -218,15 +144,14 @@ onMounted(resolveIds);
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  min-width: 220px; /* evita colapso */
+  min-width: 220px;
 }
 
-/* ✅ “banner style”: que se vea bien con tu imagen real */
 .pb-img {
   width: 100%;
   max-width: 320px;
   height: 130px;
-  object-fit: cover; /* 🔥 para tu imagen de producto queda mejor que contain */
+  object-fit: cover;
   border-radius: 12px;
   display: block;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);

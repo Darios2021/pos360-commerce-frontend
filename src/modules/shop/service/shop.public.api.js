@@ -2,27 +2,12 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 //
 // Public API (base: /api/v1/public) + Core API (base: /api/v1)
-// ✅ FIX CLAVE: si VITE_API_BASE_URL viene como ".../api" o "/api", lo normaliza a "/api/v1"
-// ✅ getProductVideos usa CORE (NO /public)
-// ✅ getProduct inyecta videos en item.videos / item.product_videos / item.media.videos
-// ✅ NUEVO: getPublicProductMedia() -> /public/products/:id/media (SIN branch_id) para cards con flechas sin 401
-//
-// ✅ FIX FILTROS CATÁLOGO (CRÍTICO):
-// - getCatalog ahora incluye: brands, model, volume_min, volume_max, sort
-// - Normaliza brands para soportar array o string "A,B"
-// - Mantiene compat total con backend actual
-//
-// ✅ FIX SUCURSAL SHOP (CRÍTICO):
-// - ANTES: branch_id estaba hardcodeado a 3 (Rivadavia) => Casa Central nunca se veía
-// - AHORA: default = Casa Central (1) y se puede persistir en localStorage
-//   - VITE_SHOP_DEFAULT_BRANCH_ID opcional
-//   - localStorage key: "shop_branch_id"
-//
-// ✅ FIX PRODUCTOS “SOLO 13” EN PROD (CRÍTICO):
-// - ANTES: in_stock default = 1 (si no se manda nada, filtra SOLO con stock)
-// - AHORA: in_stock default configurable por ENV y por defecto = 0 (muestra TODOS)
-//   - VITE_SHOP_DEFAULT_IN_STOCK=0 (default)
-//   - VITE_SHOP_DEFAULT_IN_STOCK=1 (si querés “solo con stock” por defecto)
+// ✅ Normaliza "/api" -> "/api/v1"
+// ✅ Branch dinámico (localStorage + ENV default)
+// ✅ in_stock default configurable (por defecto TODOS)
+// ✅ FIX: payment-config endpoint compat (/payment-config o /shop/payment-config)
+// ✅ FIX: similares no fuerza in_stock=1
+// ✅ FIX: normaliza it.images si viene [{url}] o ["url"]
 
 import axios from "axios";
 
@@ -35,10 +20,8 @@ function trimSlashesEnd(s) {
   return String(s || "").replace(/\/+$/, "");
 }
 
-/** ✅ Normaliza "/api" -> "/api/v1"  (y "https://x/api" -> "https://x/api/v1") */
 function normalizeApiV1Base(input) {
   let s = trimSlashesEnd(input);
-
   if (!s) return "/api/v1";
 
   if (s.startsWith("/")) {
@@ -100,7 +83,6 @@ if (typeof window !== "undefined") {
 const apiBaseURL = buildPublicBase(basePath); // .../api/v1/public
 const coreBaseURL = buildCoreBase(basePath); // .../api/v1
 
-// assetBase: para absolutizar imágenes si vienen relativas
 const assetBase = (() => {
   if (typeof window !== "undefined" && basePath.startsWith("/")) {
     return window.location.origin.replace(/\/+$/, "");
@@ -120,7 +102,6 @@ const coreApi = axios.create({
   timeout: 20000,
 });
 
-// ✅ Anti-preflight por headers “cache-control/pragma”
 function antiPreflight(config) {
   const h = config.headers || {};
   delete h["Cache-Control"];
@@ -133,7 +114,6 @@ function antiPreflight(config) {
 api.interceptors.request.use(antiPreflight);
 coreApi.interceptors.request.use(antiPreflight);
 
-// ✅ Debug (solo browser)
 if (typeof window !== "undefined") {
   console.log("[SHOP API]", { basePath, apiBaseURL, coreBaseURL, assetBase });
 }
@@ -175,10 +155,16 @@ function absUrl(u) {
   return `${assetBase}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
-/** Normaliza brands:
- * - si viene array -> "A,B"
- * - si viene string -> trim
- */
+// ✅ acepta ["url"] o [{url}] o mezcla
+function normalizeImageList(images) {
+  if (!Array.isArray(images)) return [];
+  const raw = images
+    .map((x) => (typeof x === "string" ? x : x?.url))
+    .map((x) => absUrl(x))
+    .filter(Boolean);
+  return uniqUrls(raw);
+}
+
 function normalizeBrands(brands) {
   if (Array.isArray(brands)) {
     return brands
@@ -190,15 +176,13 @@ function normalizeBrands(brands) {
 }
 
 // ========================================
-// ✅ FIX: Branch ID dinámico (NO hardcode)
+// Branch ID dinámico
 // ========================================
 const LS_BRANCH_KEY = "shop_branch_id";
 
-// default por ENV o Casa Central (1)
 const ENV_DEFAULT_BRANCH_ID = toInt(import.meta.env.VITE_SHOP_DEFAULT_BRANCH_ID, 0);
 const FALLBACK_DEFAULT_BRANCH_ID = ENV_DEFAULT_BRANCH_ID > 0 ? ENV_DEFAULT_BRANCH_ID : 1;
 
-// lee localStorage si existe
 export function getCatalogBranchId() {
   try {
     if (typeof window !== "undefined") {
@@ -206,13 +190,10 @@ export function getCatalogBranchId() {
       const bid = toInt(raw, 0);
       if (bid > 0) return bid;
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
   return FALLBACK_DEFAULT_BRANCH_ID;
 }
 
-// permite setear branch desde cualquier UI futura (sin romper nada)
 export function setCatalogBranchId(branchId) {
   const bid = toInt(branchId, 0);
   const final = bid > 0 ? bid : FALLBACK_DEFAULT_BRANCH_ID;
@@ -220,21 +201,18 @@ export function setCatalogBranchId(branchId) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LS_BRANCH_KEY, String(final));
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
   return final;
 }
 
-// ✅ branches público
 export async function getBranches() {
   const r = await api.get("/branches");
   return r.data?.items || [];
 }
 
 /**
- * ✅ BRANDING PÚBLICO
- * GET  /api/v1/public/shop/branding
+ * BRANDING
+ * GET /api/v1/public/shop/branding
  */
 export async function getShopBranding() {
   const r = await api.get("/shop/branding");
@@ -250,12 +228,22 @@ export async function getShopBranding() {
 }
 
 /**
- * ✅ PAYMENT CONFIG
- * GET /api/v1/public/shop/payment-config
+ * PAYMENT CONFIG
+ * ✅ FIX: compat
+ * - /payment-config (canonical)
+ * - /shop/payment-config (legacy/alternativo)
  */
 export async function getShopPaymentConfig() {
-  const r = await api.get("/shop/payment-config");
-  const d = r.data || {};
+  let r = null;
+
+  try {
+    r = await api.get("/payment-config");
+  } catch {
+    // fallback (si backend lo montó así)
+    r = await api.get("/shop/payment-config");
+  }
+
+  const d = r?.data || {};
 
   return {
     transfer: {
@@ -272,19 +260,17 @@ export async function getShopPaymentConfig() {
 }
 
 // ========================================
-// ✅ FIX: default in_stock configurable (por defecto muestra TODOS)
+// default in_stock configurable (por defecto TODOS)
 // ========================================
 const ENV_DEFAULT_IN_STOCK_RAW = String(import.meta.env.VITE_SHOP_DEFAULT_IN_STOCK ?? "").trim();
-// "1" => solo stock, "0" => todos, vacío => todos
 const DEFAULT_IN_STOCK =
   ENV_DEFAULT_IN_STOCK_RAW === "1" || ENV_DEFAULT_IN_STOCK_RAW.toLowerCase() === "true" ? 1 : 0;
 
 /**
- * ✅ CATÁLOGO
+ * CATÁLOGO
  * GET /api/v1/public/catalog
  */
 export async function getCatalog(params = {}) {
-  // ✅ si no mandan branch_id, toma el seleccionado (default Casa Central)
   const branch_id = toInt(params.branch_id, getCatalogBranchId());
 
   const brands = normalizeBrands(params.brands);
@@ -302,7 +288,6 @@ export async function getCatalog(params = {}) {
 
   const sort = String(params.sort || "").trim();
 
-  // ✅ CLAVE: NO forzar in_stock=1 si no lo mandan
   const in_stock =
     params.in_stock === null || params.in_stock === undefined || params.in_stock === ""
       ? DEFAULT_IN_STOCK
@@ -333,10 +318,8 @@ export async function getCatalog(params = {}) {
   const arr = Array.isArray(data.items) ? data.items : [];
   data.items = arr.map((it) => {
     const imgRaw = it?.image_url || it?.image || it?.url || it?.src || "";
-    const images = uniqUrls([
-      ...(Array.isArray(it.images) ? it.images : []).map(absUrl),
-      absUrl(imgRaw),
-    ]);
+    const list = normalizeImageList(it?.images);
+    const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 
@@ -344,7 +327,7 @@ export async function getCatalog(params = {}) {
 }
 
 /**
- * ✅ SUGERENCIAS
+ * SUGERENCIAS
  * GET /api/v1/public/suggestions
  */
 export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
@@ -357,16 +340,15 @@ export async function getSuggestions({ q = "", limit = 8, branch_id } = {}) {
 
   const items = Array.isArray(r.data?.items) ? r.data.items : [];
   return items.map((it) => {
-    const images = uniqUrls([
-      ...(Array.isArray(it.images) ? it.images : []).map(absUrl),
-      absUrl(it.image_url),
-    ]);
+    const imgRaw = it?.image_url || "";
+    const list = normalizeImageList(it?.images);
+    const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
     return { ...it, images, image_url: images[0] || absUrl(it.image_url) || "" };
   });
 }
 
 /**
- * ✅ MEDIA PÚBLICA PARA CARDS (SIN branch_id)
+ * MEDIA PÚBLICA PARA CARDS (SIN branch_id)
  * GET /api/v1/public/products/:id/media
  */
 export async function getPublicProductMedia(id) {
@@ -379,11 +361,9 @@ export async function getPublicProductMedia(id) {
 
   const img = item?.image_url ? absUrl(item.image_url) : "";
   const urls = Array.isArray(item?.image_urls) ? item.image_urls : [];
-  const listFromImages = Array.isArray(item?.images)
-    ? item.images.map((x) => (typeof x === "string" ? x : x?.url))
-    : [];
+  const listFromImages = normalizeImageList(item?.images);
 
-  const images = uniqUrls([img, ...urls, ...listFromImages].map(absUrl));
+  const images = uniqUrls([img, ...urls.map(absUrl), ...listFromImages].filter(Boolean));
 
   return {
     ...item,
@@ -394,7 +374,7 @@ export async function getPublicProductMedia(id) {
 }
 
 /**
- * ✅ VIDEOS DE PRODUCTO (CORE, NO /public)
+ * VIDEOS DE PRODUCTO (CORE, NO /public)
  * GET /api/v1/products/:id/videos
  */
 export async function getProductVideos(id) {
@@ -407,9 +387,8 @@ export async function getProductVideos(id) {
 }
 
 /**
- * ✅ PRODUCTO
+ * PRODUCTO
  * GET /api/v1/public/products/:id
- * ✅ FIX: branch_id ahora es el seleccionado (no fijo)
  */
 export async function getProduct(id, { branch_id } = {}) {
   const pid = toInt(id, 0);
@@ -421,10 +400,8 @@ export async function getProduct(id, { branch_id } = {}) {
   if (!item) return null;
 
   const img = item?.image_url ? absUrl(item.image_url) : "";
-  const images = uniqUrls([
-    ...(img ? [img] : []),
-    ...(Array.isArray(item.images) ? item.images : []).map(absUrl),
-  ]);
+  const list = normalizeImageList(item?.images);
+  const images = uniqUrls([img, ...list].filter(Boolean));
   item.images = images;
   item.image_url = images[0] || img || "";
 
@@ -432,11 +409,11 @@ export async function getProduct(id, { branch_id } = {}) {
 
   try {
     const vids = await getProductVideos(pid);
-    const list = Array.isArray(vids) ? vids : [];
-    item.videos = list;
-    item.product_videos = list;
+    const listV = Array.isArray(vids) ? vids : [];
+    item.videos = listV;
+    item.product_videos = listV;
     item.media = item.media || {};
-    item.media.videos = list;
+    item.media.videos = listV;
   } catch {
     item.videos = item.videos || [];
   }
@@ -445,7 +422,8 @@ export async function getProduct(id, { branch_id } = {}) {
 }
 
 /**
- * ✅ SIMILARES (usa /catalog y luego hidrata)
+ * SIMILARES
+ * ✅ FIX: no fuerza in_stock=1 (usa default global)
  */
 export async function getSimilarProducts({
   productId,
@@ -453,17 +431,20 @@ export async function getSimilarProducts({
   subcategory_id = null,
   limit = 8,
   branch_id,
-  in_stock = 1,
+  in_stock,
 } = {}) {
   const bid = toInt(branch_id, getCatalogBranchId());
   const pid = toInt(productId, 0);
   const lim = Math.max(1, toInt(limit, 8));
 
+  const inStockFinal =
+    in_stock === null || in_stock === undefined || in_stock === "" ? DEFAULT_IN_STOCK : toInt(in_stock, DEFAULT_IN_STOCK);
+
   const q = cleanParams({
     branch_id: bid,
     category_id: category_id ?? null,
     subcategory_id: subcategory_id ?? null,
-    in_stock,
+    in_stock: inStockFinal,
     page: 1,
     limit: lim * 3,
   });
@@ -494,10 +475,9 @@ export async function getSimilarProducts({
   return hydrated
     .filter(Boolean)
     .map((p) => {
-      const images = uniqUrls([
-        ...(Array.isArray(p.images) ? p.images : []).map(absUrl),
-        absUrl(p.image_url),
-      ]);
+      const imgRaw = p?.image_url || "";
+      const list = normalizeImageList(p?.images);
+      const images = uniqUrls([absUrl(imgRaw), ...list].filter(Boolean));
       return {
         ...p,
         images,

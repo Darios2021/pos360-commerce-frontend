@@ -10,7 +10,7 @@
           <div class="promo-sub">{{ subtitle }}</div>
         </div>
 
-        <v-btn v-if="showSeeAll" variant="text" class="promo-more" @click="$emit('seeAll')">
+        <v-btn v-if="showSeeAll" variant="text" class="promo-more" @click="goSeeAll">
           Ver todos
         </v-btn>
       </div>
@@ -33,13 +33,7 @@
           No hay cargadores para mostrar.
         </v-alert>
 
-        <v-slide-group
-          v-else
-          v-model="model"
-          show-arrows
-          class="promo-slide"
-          :mandatory="false"
-        >
+        <v-slide-group v-else v-model="model" show-arrows class="promo-slide" :mandatory="false">
           <v-slide-group-item
             v-for="(p, idx) in items"
             :key="p.product_id ?? p.id ?? idx"
@@ -48,7 +42,7 @@
             <div class="promo-item">
               <button class="promo-card" type="button" @click="toggle(); open(p)">
                 <div class="promo-img">
-                  <img :src="imgOf(p)" alt="" />
+                  <img :src="imgOf(p)" alt="" loading="lazy" @error="onImgError($event)" />
                   <div v-if="badgeText(p)" class="promo-badge">
                     {{ badgeText(p) }}
                   </div>
@@ -67,18 +61,14 @@
                     $ {{ fmtMoney(oldPrice(p)) }}
                   </div>
 
-                  <div class="promo-name">
-                    {{ p.name }}
-                  </div>
+                  <div class="promo-name">{{ p.name }}</div>
 
                   <div class="promo-meta">
                     {{ p.category_name || "—" }}
                     <span v-if="p.subcategory_name"> · {{ p.subcategory_name }}</span>
                   </div>
 
-                  <div class="promo-free" v-if="freeShip(p)">
-                    Envío gratis
-                  </div>
+                  <div class="promo-free" v-if="freeShip(p)">Envío gratis</div>
                 </div>
               </button>
             </div>
@@ -105,9 +95,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
-
-import { getCatalog } from "@/modules/shop/service/shop.public.api";
-import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
+import axios from "axios";
 
 const props = defineProps({
   // textos
@@ -118,12 +106,20 @@ const props = defineProps({
   perPage: { type: Number, default: 5 },
   showSeeAll: { type: Boolean, default: false },
 
-  // búsqueda por categoría/subcategoría (por nombre/slug)
-  categoryKey: { type: String, default: "energia" },     // ✅ ENERGIA
-  subcategoryKey: { type: String, default: "cargadores" },// ✅ CARGADORES
+  // búsqueda robusta
+  search: { type: String, default: "cargador" },
+  strict: { type: [Number, String, Boolean], default: 1 },
+  excludeTerms: {
+    type: String,
+    default: "auriculares,parlantes,audio,televisor,tv,mouse,teclado",
+  },
 
   // control de cantidad
   limit: { type: Number, default: 40 },
+
+  // timeout+retry (para evitar ECONNABORTED)
+  timeoutMs: { type: Number, default: 45000 },
+  retries: { type: Number, default: 1 },
 
   // fallback imagen
   fallbackImg: {
@@ -133,184 +129,221 @@ const props = defineProps({
   },
 });
 
-defineEmits(["seeAll"]);
-
 const router = useRouter();
 
 const model = ref(0);
 const loading = ref(false);
-const error = ref(null);
+const error = ref("");
 const items = ref([]);
 
-const categoryId = ref(null);
-const subcategoryId = ref(null);
+/** ✅ axios local (no depende del timeout 20000 del api global) */
+function trimSlashesEnd(s) {
+  return String(s || "").replace(/\/+$/, "");
+}
+function normalizeApiV1Base(input) {
+  let s = trimSlashesEnd(input);
+  if (!s) return "/api/v1";
 
-function open(p) {
-  router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
+  if (s.startsWith("/")) {
+    if (/^\/api$/i.test(s)) return "/api/v1";
+    if (/^\/api\/v\d+$/i.test(s)) return s;
+    if (/\/api\/v\d+/i.test(s)) return s;
+    return s;
+  }
+
+  try {
+    const u = new URL(s);
+    const p = trimSlashesEnd(u.pathname || "");
+    if (/^\/api$/i.test(p)) {
+      u.pathname = "/api/v1";
+      return trimSlashesEnd(u.toString());
+    }
+    if (/\/api\/v\d+/i.test(p)) return trimSlashesEnd(u.toString());
+    return trimSlashesEnd(u.origin + "/api/v1");
+  } catch {
+    return "/api/v1";
+  }
+}
+function buildPublicBase(apiV1Base) {
+  return `${trimSlashesEnd(apiV1Base)}/public`;
 }
 
+const baseRaw = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+let basePath = normalizeApiV1Base(baseRaw);
+if (typeof window !== "undefined") {
+  const host = String(window.location.hostname || "").toLowerCase();
+  const sameOrigin =
+    String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim() === "1" ||
+    String(import.meta.env.VITE_SHOP_API_SAME_ORIGIN || "").trim().toLowerCase() === "true";
+
+  if (host === "sanjuantecnologia.com" || host === "www.sanjuantecnologia.com" || sameOrigin) {
+    basePath = "/api/v1";
+  }
+  basePath = normalizeApiV1Base(basePath);
+}
+
+const api = axios.create({
+  baseURL: buildPublicBase(basePath), // .../api/v1/public
+  timeout: Math.max(5000, Number(props.timeoutMs || 45000)),
+});
+
+// anti-preflight headers
+api.interceptors.request.use((config) => {
+  const h = config.headers || {};
+  delete h["Cache-Control"];
+  delete h["cache-control"];
+  delete h["Pragma"];
+  delete h["pragma"];
+  config.headers = h;
+  return config;
+});
+
+/* ===== utils ===== */
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
-
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(toNum(v)));
 }
-
 function finalPrice(p) {
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   if (d > 0) return d;
-  const l = toNum(p.price_list);
+  const l = toNum(p?.price_list);
   if (l > 0) return l;
-  return toNum(p.price);
+  return toNum(p?.price);
 }
-
 function oldPrice(p) {
-  const l = toNum(p.price_list);
-  const base = l > 0 ? l : toNum(p.price);
+  const l = toNum(p?.price_list);
+  const base = l > 0 ? l : toNum(p?.price);
   return base;
 }
-
 function showOldPrice(p) {
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   const o = oldPrice(p);
   return d > 0 && o > d;
 }
-
 function offPct(p) {
   if (!showOldPrice(p)) return 0;
   const o = oldPrice(p);
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   const pct = Math.round(((o - d) / o) * 100);
   return pct > 0 ? pct : 0;
 }
-
 function badgeText(p) {
-  if (p.is_promo) return "OFERTA";
-  if (toNum(p.price_discount) > 0) return "DESCUENTO";
-  if (p.is_new) return "NUEVO";
+  if (p?.is_promo) return "OFERTA";
+  if (toNum(p?.price_discount) > 0) return "DESCUENTO";
+  if (p?.is_new) return "NUEVO";
   return "";
 }
-
 function freeShip(p) {
-  return Boolean(p.free_shipping) || Boolean(p.is_free_shipping);
+  return Boolean(p?.free_shipping) || Boolean(p?.is_free_shipping);
 }
-
 function imgOf(p) {
-  return (
+  const first =
     p?.image_url ||
     p?.image ||
     p?.thumbnail_url ||
-    (Array.isArray(p?.images) && p.images[0]?.url) ||
-    props.fallbackImg
-  );
+    (Array.isArray(p?.images)
+      ? typeof p.images[0] === "string"
+        ? p.images[0]
+        : p.images[0]?.url
+      : "") ||
+    "";
+  return first || props.fallbackImg;
 }
-
-/* =========================
-   Taxonomy: resolver IDs
-========================= */
-function norm(s) {
-  // robusto: sin depender de \p{Diacritic} si el engine no soporta
-  const x = String(s || "").trim().toLowerCase().normalize("NFD");
+function onImgError(e) {
   try {
-    return x.replace(/\p{Diacritic}/gu, "");
-  } catch {
-    return x.replace(/[\u0300-\u036f]/g, "");
-  }
+    const el = e?.target;
+    if (el && el.src !== props.fallbackImg) el.src = props.fallbackImg;
+  } catch {}
 }
 
-function getCatSubs(cat) {
-  if (!cat) return [];
-  const candidates = [cat.children, cat.subcategories, cat.subs, cat.items, cat.nodes];
-  return (candidates.find((x) => Array.isArray(x)) || []).filter(Boolean);
+function open(p) {
+  const id = p?.product_id ?? p?.id;
+  if (!id) return;
+  router.push({ name: "shopProduct", params: { id: String(id) } });
 }
 
-async function resolveEnergyChargersIds() {
-  const cats = await getPublicCategories();
-  const list = Array.isArray(cats) ? cats : [];
-
-  // buscar categoria ENERGIA por slug o name
-  const cKey = norm(props.categoryKey);
-  const cat =
-    list.find((c) => norm(c?.slug) === cKey) ||
-    list.find((c) => norm(c?.name) === cKey) ||
-    list.find((c) => norm(c?.name).includes(cKey)) ||
-    null;
-
-  if (!cat) {
-    categoryId.value = null;
-    subcategoryId.value = null;
-    return;
-  }
-
-  categoryId.value = Number(cat?.id) || null;
-
-  // buscar subcategoria CARGADORES dentro de ENERGIA
-  const subs = getCatSubs(cat);
-  const sKey = norm(props.subcategoryKey);
-  const sub =
-    subs.find((s) => norm(s?.slug) === sKey) ||
-    subs.find((s) => norm(s?.name) === sKey) ||
-    subs.find((s) => norm(s?.name).includes(sKey)) ||
-    null;
-
-  subcategoryId.value = Number(sub?.id) || null;
+function goSeeAll() {
+  router.push({ name: "shopHome", query: { q: String(props.search || "cargador") } });
 }
 
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function parseAxiosErr(e) {
+  if (e?.code === "ECONNABORTED") return "Timeout (API lenta). Probá de nuevo.";
+  if (e?.response?.status) return `${e.response.status} ${e.response.statusText || ""}`.trim();
+  return e?.message || String(e);
+}
+
+/** ✅ Fetch robusto por texto (no taxonomy) */
 async function fetchChargers() {
   loading.value = true;
-  error.value = null;
+  error.value = "";
+  items.value = [];
+
+  const limit = Math.max(1, Math.min(120, Number(props.limit || 40)));
+  const strict_search =
+    props.strict === true || String(props.strict) === "1" || String(props.strict).toLowerCase() === "true" ? 1 : 0;
+
+  const tries = [
+    { search: String(props.search || "cargador"), strict_search },
+    { search: "cargadores", strict_search: 1 },
+    { search: "charger", strict_search: 1 },
+    { search: "cargador usb", strict_search: 1 },
+  ];
+
+  const exclude_terms = String(props.excludeTerms || "").trim();
+
+  let lastErr = "";
 
   try {
-    await resolveEnergyChargersIds();
+    for (let t = 0; t < tries.length; t++) {
+      const q = tries[t];
 
-    const catId = Number(categoryId.value || 0);
-    const subId = Number(subcategoryId.value || 0);
+      for (let attempt = 0; attempt <= Math.max(0, Number(props.retries || 0)); attempt++) {
+        try {
+          const r = await api.get("/catalog", {
+            params: {
+              page: 1,
+              limit,
+              search: q.search,
+              strict_search: q.strict_search,
+              exclude_terms: exclude_terms || undefined,
+            },
+          });
 
-    let r = null;
+          const list = Array.isArray(r.data?.items) ? r.data.items : [];
+          if (list.length) {
+            items.value = list;
+            model.value = 0;
+            return;
+          }
 
-    // ✅ ideal: por categoria/subcategoria exacta
-    if (catId && subId) {
-      r = await getCatalog({
-        search: "",
-        page: 1,
-        limit: props.limit,
-        category_id: catId,
-        subcategory_id: subId,
-      });
-    } else if (catId) {
-      // fallback: solo categoria energia (por si no encuentra la sub)
-      r = await getCatalog({
-        search: "cargador",
-        page: 1,
-        limit: props.limit,
-        category_id: catId,
-        strict_search: 1,
-      });
-    } else {
-      // fallback final: texto
-      r = await getCatalog({
-        search: "cargador",
-        page: 1,
-        limit: props.limit,
-        strict_search: 1,
-      });
+          // si no hay resultados, probamos siguiente búsqueda
+          break;
+        } catch (e) {
+          lastErr = parseAxiosErr(e);
+
+          // retry con backoff
+          if (attempt < Math.max(0, Number(props.retries || 0))) {
+            await sleep(450 + attempt * 350);
+            continue;
+          }
+
+          // si fue timeout o red, probamos la próxima "query" también
+          break;
+        }
+      }
     }
 
-    const list = Array.isArray(r?.items) ? r.items : [];
-    items.value = list;
-  } catch (e) {
-    const msg =
-      e?.response?.status
-        ? `${e.response.status} ${e.response.statusText || ""}`.trim()
-        : e?.message || String(e);
-
-    error.value = msg;
-    items.value = [];
+    // si llegamos acá, no encontramos nada
+    if (lastErr) error.value = lastErr;
   } finally {
     loading.value = false;
-    model.value = 0;
   }
 }
 
@@ -332,9 +365,8 @@ function jumpTo(pageIdx) {
 
 onMounted(fetchChargers);
 
-// si cambian keys/limit desde props (por si lo ajustas)
 watch(
-  () => [props.categoryKey, props.subcategoryKey, props.limit],
+  () => [props.search, props.strict, props.excludeTerms, props.limit, props.timeoutMs, props.retries],
   () => fetchChargers()
 );
 </script>

@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (ML: gallery grande + 1 SOLO panel derecho + tabs + medios de pago abajo) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (ANTI-TIMEOUT + ANTI-DOBLE LOAD + CANCEL + RETRY UI) -->
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
@@ -9,7 +9,27 @@
         <ShopBreadcrumb v-if="product" :product="product" />
       </div>
 
-      <div v-if="product" class="product-grid">
+      <!-- ✅ Estados -->
+      <div v-if="loading" class="loading-wrap">
+        <v-progress-circular indeterminate />
+        <div class="text-medium-emphasis mt-3">Cargando producto…</div>
+        <div class="text-caption text-medium-emphasis mt-1" style="opacity: 0.8">
+          Si tu conexión está lenta, puede tardar un poco.
+        </div>
+      </div>
+
+      <v-alert v-else-if="error" type="error" variant="tonal" class="mt-4">
+        <div style="font-weight: 700">No pudimos cargar el producto</div>
+        <div class="mt-1" style="white-space: pre-wrap">{{ error }}</div>
+
+        <div class="mt-3 d-flex" style="gap: 10px; flex-wrap: wrap">
+          <v-btn color="primary" variant="flat" @click="retry">Reintentar</v-btn>
+          <v-btn variant="tonal" @click="goBack">Volver</v-btn>
+        </div>
+      </v-alert>
+
+      <!-- ✅ Contenido -->
+      <div v-else-if="product" class="product-grid">
         <!-- LEFT: gallery grande -->
         <ProductGallery :product="product" />
 
@@ -41,16 +61,12 @@
         :items="similar"
         :loading="similarLoading"
       />
-
-      <v-container v-if="!product" class="text-center py-12 text-medium-emphasis">
-        Cargando...
-      </v-container>
     </div>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 // ✅ IMPORTS desde /components/shop (según tu estructura)
@@ -74,10 +90,17 @@ const cart = useShopCartStore();
 
 const product = ref(null);
 
+const loading = ref(false);
+const error = ref("");
+
 const similar = ref([]);
 const similarLoading = ref(false);
 
 const paymentsEl = ref(null);
+
+// ✅ cancelar/deduplicar cargas
+let activeLoadId = 0;
+let abortCtrl = null;
 
 function dispatchPrerenderReadySafe() {
   try {
@@ -96,6 +119,14 @@ function onBuyNow(p, qty = 1) {
   cart.add(p, qty);
   cart.closeDrawer?.();
   router.push("/shop/cart");
+}
+
+function goBack() {
+  try {
+    router.back();
+  } catch {
+    router.push("/shop");
+  }
 }
 
 async function scrollToPayments() {
@@ -160,8 +191,19 @@ async function applyOgForProduct(p) {
   }
 }
 
-// Similares
-async function fetchSimilar(p) {
+// --- helpers retry/timeout ---
+function isTimeoutErr(e) {
+  const msg = String(e?.message || "");
+  const code = String(e?.code || "");
+  return code === "ECONNABORTED" || msg.toLowerCase().includes("timeout");
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ✅ Similares (no frena la carga del producto si falla)
+async function fetchSimilar(p, loadId) {
   const productId = Number(p?.id || p?.product_id || 0);
   const categoryId = Number(resolveCategoryId(p) || 0);
   const subcategoryId = Number(resolveSubcategoryId(p) || 0);
@@ -185,6 +227,9 @@ async function fetchSimilar(p) {
         in_stock: 0,
       });
 
+      // si cambió el producto mientras tanto, no pisar estado
+      if (loadId !== activeLoadId) return;
+
       const arr1 = Array.isArray(r1?.items) ? r1.items : [];
       const filtered1 = arr1.filter((x) => Number(x?.product_id ?? x?.id) !== productId);
 
@@ -204,39 +249,120 @@ async function fetchSimilar(p) {
       in_stock: 0,
     });
 
+    if (loadId !== activeLoadId) return;
+
     const arr2 = Array.isArray(r2?.items) ? r2.items : [];
     similar.value = arr2.filter((x) => Number(x?.product_id ?? x?.id) !== productId).slice(0, 12);
   } catch (e) {
     console.error("❌ fetchSimilar(getCatalog)", e);
-    similar.value = [];
+    if (loadId === activeLoadId) similar.value = [];
   } finally {
-    similarLoading.value = false;
+    if (loadId === activeLoadId) similarLoading.value = false;
     dispatchPrerenderReadySafe();
   }
 }
 
-// Load
+// ✅ Load robusto: cancela anterior + retry si timeout
+async function loadProductWithRetry(productId, loadId) {
+  // 🔥 cancel request anterior
+  try {
+    abortCtrl?.abort?.();
+  } catch {}
+  abortCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+
+  // OJO: esto asume que tu getProduct acepta 2do param opcional (axios config)
+  // Si no lo acepta, igual funciona sin signal/timeout extendido, pero sin cancel real.
+  const axiosCfg = {
+    timeout: 45000, // 👈 subimos a 45s solo en detalle
+    signal: abortCtrl?.signal,
+  };
+
+  const MAX_TRIES = 3;
+  let lastErr = null;
+
+  for (let i = 1; i <= MAX_TRIES; i++) {
+    try {
+      // si cambió la ruta mientras reintentamos
+      if (loadId !== activeLoadId) return null;
+
+      const p = await getProduct(productId, axiosCfg);
+      return p;
+    } catch (e) {
+      lastErr = e;
+
+      // cancelado / navegación => salir silencioso
+      const aborted =
+        e?.name === "CanceledError" ||
+        String(e?.message || "").toLowerCase().includes("canceled") ||
+        String(e?.message || "").toLowerCase().includes("aborted");
+
+      if (aborted || loadId !== activeLoadId) return null;
+
+      // reintentar solo si timeout
+      if (isTimeoutErr(e) && i < MAX_TRIES) {
+        await sleep(i === 1 ? 450 : i === 2 ? 900 : 1200);
+        continue;
+      }
+
+      throw e;
+    }
+  }
+
+  throw lastErr;
+}
+
 async function load() {
+  const loadId = ++activeLoadId;
+
   product.value = null;
   similar.value = [];
   similarLoading.value = false;
 
+  error.value = "";
+  loading.value = true;
+
   try {
-    const p = await getProduct(route.params.id);
+    const id = route.params.id;
+    const p = await loadProductWithRetry(id, loadId);
+
+    if (!p || loadId !== activeLoadId) return;
+
     product.value = p;
 
     await applyOgForProduct(p);
-    await fetchSimilar(p);
+
+    // similares en paralelo (sin bloquear UI)
+    fetchSimilar(p, loadId);
   } catch (e) {
     console.error("❌ ShopProduct load()", e);
+
+    if (loadId !== activeLoadId) return;
+
+    if (isTimeoutErr(e)) {
+      error.value =
+        "La petición tardó demasiado y se cortó.\n" +
+        "Probá Reintentar. Si persiste, el servidor está lento o tu conexión está inestable.";
+    } else {
+      error.value = String(e?.response?.data?.message || e?.message || e || "Error desconocido");
+    }
   } finally {
+    if (loadId === activeLoadId) loading.value = false;
     dispatchPrerenderReadySafe();
   }
 }
 
-onMounted(load);
-watch(() => route.params.id, load);
+function retry() {
+  load();
+}
 
+// ✅ 1 sola fuente de verdad: watch immediate (evita doble load con onMounted)
+watch(
+  () => route.params.id,
+  () => load(),
+  { immediate: true }
+);
+
+// OG si cambian query params (no vuelve a pedir producto)
 watch(
   () => route.query,
   async () => {
@@ -247,6 +373,12 @@ watch(
     await applyOgForProduct(product.value);
   }
 );
+
+onBeforeUnmount(() => {
+  try {
+    abortCtrl?.abort?.();
+  } catch {}
+});
 </script>
 
 <style scoped>
@@ -277,6 +409,15 @@ watch(
 
 .below-block {
   margin-top: 16px;
+}
+
+/* Loading */
+.loading-wrap {
+  width: 100%;
+  padding: 42px 12px;
+  display: grid;
+  place-items: center;
+  text-align: center;
 }
 
 @media (max-width: 1200px) {

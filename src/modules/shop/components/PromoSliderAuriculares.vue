@@ -8,9 +8,9 @@
         <div class="auris-head-left">
           <div class="auris-title">
             <img v-if="iconUrl" class="auris-icon" :src="iconUrl" alt="" />
-            <span>Auriculares</span>
+            <span>{{ title }}</span>
           </div>
-          <div class="auris-sub">Selección destacada</div>
+          <div class="auris-sub">{{ subtitle }}</div>
         </div>
 
         <button class="auris-more" type="button" @click="goSeeAll">
@@ -22,9 +22,13 @@
 
       <!-- Body -->
       <div class="auris-body">
-        <div v-if="isLoading" class="auris-skel">
+        <div v-if="loading" class="auris-skel">
           <v-skeleton-loader type="image, article" />
         </div>
+
+        <v-alert v-else-if="error" type="error" variant="tonal" class="mt-2">
+          No se pudieron cargar: {{ error }}
+        </v-alert>
 
         <v-alert v-else-if="!safeItems.length" type="info" variant="tonal" class="mt-2">
           No hay productos para mostrar.
@@ -40,7 +44,7 @@
               <div class="auris-item">
                 <button class="auris-card" type="button" @click="toggle(); open(p)">
                   <div class="auris-img">
-                    <img :src="p.image_url" alt="" />
+                    <img :src="imgOf(p)" alt="" loading="lazy" @error="onImgError($event)" />
                     <div v-if="badgeText(p)" class="auris-badge">{{ badgeText(p) }}</div>
                   </div>
 
@@ -87,21 +91,20 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
-
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
-import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 
 const props = defineProps({
-  /** ✅ modo presentacional (si vienen, se usan; si vienen vacíos, se puede auto-fetchear igual) */
+  title: { type: String, default: "Auriculares" },
+  subtitle: { type: String, default: "Selección destacada" },
+
+  /** ✅ si el padre pasa items, se usan */
   items: { type: Array, default: null },
+
+  /** ✅ si el padre pasa loading, se respeta */
   loading: { type: Boolean, default: false },
 
-  /** ✅ si items viene vacío, auto-fetch igual (FIX “dejó de responder”) */
+  /** ✅ si items viene vacío, auto-fetch igual */
   autoFetchWhenEmpty: { type: Boolean, default: true },
-
-  /** contexto opcional (para VER TODO y para auto-fetch dirigido) */
-  categoryId: { type: [Number, String], default: null },
-  subIds: { type: Array, default: () => [] },
 
   /** imagen chica en el título */
   iconUrl: {
@@ -109,42 +112,59 @@ const props = defineProps({
     default: "https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg",
   },
 
-  /** cuántos items máx mostrar (cuando auto-fetch) */
+  /** cuantos items máximo mostrar */
   maxItems: { type: Number, default: 60 },
 
-  /** perPage para dots (desktop) */
+  /** perPage para dots */
   perPage: { type: Number, default: 5 },
+
+  /** ✅ query de búsqueda (robusto) */
+  search: { type: String, default: "auriculares" },
+
+  /** ✅ excluir cosas que ensucian resultados */
+  excludeTerms: {
+    type: String,
+    default: "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank,charger",
+  },
+
+  /** límite de request al catálogo */
+  limit: { type: Number, default: 60 },
+
+  /** fallback imagen */
+  fallbackImg: {
+    type: String,
+    default:
+      "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=80",
+  },
 });
 
 const router = useRouter();
 
 const internalLoading = ref(false);
 const internalItems = ref([]);
+const internalError = ref("");
+
 const model = ref(0);
 
-/**
- * ✅ Controlado = el padre te pasa items (array), aunque sea vacío
- * ✅ Pero si viene vacío y autoFetchWhenEmpty=true, hacemos auto-fetch igual
- */
 const isControlled = computed(() => Array.isArray(props.items));
 const canAutoFetchEvenIfControlled = computed(() => {
   if (!props.autoFetchWhenEmpty) return false;
   if (!isControlled.value) return true;
-  // si el padre está cargando, no hacemos nada todavía
   if (props.loading) return false;
-  // si el padre pasó vacío, hacemos auto-fetch
   return (props.items || []).length === 0;
 });
 
-const isLoading = computed(() => {
-  // si estamos auto-fetcheando, manda internalLoading
+const loading = computed(() => {
   if (canAutoFetchEvenIfControlled.value) return internalLoading.value;
-  // si no, respeta modo controlado o auto normal
   return isControlled.value ? !!props.loading : internalLoading.value;
 });
 
+const error = computed(() => {
+  if (canAutoFetchEvenIfControlled.value) return internalError.value;
+  return internalError.value;
+});
+
 const safeItems = computed(() => {
-  // si estamos auto-fetcheando, usamos internalItems aunque el padre sea controlado
   if (canAutoFetchEvenIfControlled.value) return internalItems.value || [];
   return isControlled.value ? props.items || [] : internalItems.value || [];
 });
@@ -158,210 +178,86 @@ function fmtMoney(v) {
 }
 
 function finalPrice(p) {
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   if (d > 0) return d;
-  const l = toNum(p.price_list);
+  const l = toNum(p?.price_list);
   if (l > 0) return l;
-  return toNum(p.price);
+  return toNum(p?.price);
 }
 function oldPrice(p) {
-  const l = toNum(p.price_list);
-  const base = l > 0 ? l : toNum(p.price);
+  const l = toNum(p?.price_list);
+  const base = l > 0 ? l : toNum(p?.price);
   return base;
 }
 function showOldPrice(p) {
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   const o = oldPrice(p);
   return d > 0 && o > d;
 }
 function offPct(p) {
   if (!showOldPrice(p)) return 0;
   const o = oldPrice(p);
-  const d = toNum(p.price_discount);
+  const d = toNum(p?.price_discount);
   const pct = Math.round(((o - d) / o) * 100);
   return pct > 0 ? pct : 0;
 }
 function badgeText(p) {
-  if (p.is_promo) return "OFERTA";
-  if (toNum(p.price_discount) > 0) return "DESCUENTO";
-  if (p.is_new) return "NUEVO";
+  if (p?.is_promo) return "OFERTA";
+  if (toNum(p?.price_discount) > 0) return "DESCUENTO";
+  if (p?.is_new) return "NUEVO";
   return "";
 }
 
-function open(p) {
-  router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
+function imgOf(p) {
+  return (
+    p?.image_url ||
+    p?.image ||
+    p?.thumbnail_url ||
+    (Array.isArray(p?.images) ? (typeof p.images[0] === "string" ? p.images[0] : p.images[0]?.url) : "") ||
+    props.fallbackImg
+  );
 }
 
-/** ✅ VER TODO: usa props.categoryId/subIds si existen, si no usa contexto interno */
-const lastCtx = ref({ audioCatId: null, auriSubIds: [], firstAuriSubId: null });
+function onImgError(e) {
+  try {
+    const el = e?.target;
+    if (el && el.src !== props.fallbackImg) el.src = props.fallbackImg;
+  } catch {}
+}
+
+function open(p) {
+  const id = p?.product_id ?? p?.id;
+  if (!id) return;
+  router.push({ name: "shopProduct", params: { id: String(id) } });
+}
 
 function goSeeAll() {
-  const cat = Number(props.categoryId || lastCtx.value.audioCatId || 0);
-  const firstSub =
-    Number((Array.isArray(props.subIds) && props.subIds[0]) || lastCtx.value.firstAuriSubId || 0);
-
-  if (cat && firstSub) {
-    router.push({
-      name: "shopCategory",
-      params: { id: String(cat) },
-      query: { sub: String(firstSub) },
-    });
-    return;
-  }
-
-  // fallback
-  router.push({ path: "/shop" });
+  // ✅ ultra-robusto: búsqueda directa
+  router.push({ name: "shopHome", query: { q: String(props.search || "auriculares") } });
 }
 
-/* ===== auto-fetch (fix + fallback robusto) ===== */
-function norm(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function getSubs(audioCat) {
-  if (!audioCat) return [];
-  const candidates = [audioCat.children, audioCat.subcategories, audioCat.subs, audioCat.items, audioCat.nodes];
-  const subs = candidates.find((x) => Array.isArray(x)) || [];
-  return subs.filter(Boolean);
-}
-
-function pickAuricularesSubIds(subs) {
-  return (Array.isArray(subs) ? subs : [])
-    .filter((s) => {
-      const n = norm(s?.name);
-      const sl = norm(s?.slug);
-
-      return (
-        sl.includes("auricul") ||
-        n.includes("auricul") ||
-        n.includes("headphone") ||
-        n.includes("headset") ||
-        n.includes("earbud") ||
-        n.includes("earbuds") ||
-        n.includes("tws") ||
-        n.includes("in ear") ||
-        n.includes("inear") ||
-        n.includes("bluetooth") ||
-        n.includes("bt")
-      );
-    })
-    .map((s) => Number(s?.id))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
-
-async function fetchAurisAuto() {
+async function fetchAuto() {
   internalLoading.value = true;
+  internalError.value = "";
   try {
-    // 1) si el padre pasa category/sub, lo usamos directo (más rápido y seguro)
-    const catFromProps = Number(props.categoryId || 0);
-    const subsFromProps = (Array.isArray(props.subIds) ? props.subIds : [])
-      .map((x) => Number(x))
-      .filter((n) => Number.isFinite(n) && n > 0);
+    const r = await getCatalog({
+      search: String(props.search || "auriculares"),
+      page: 1,
+      limit: Math.max(1, Number(props.limit || 60)),
+      strict_search: 1,
+      exclude_terms: String(props.excludeTerms || ""),
+    });
 
-    let audioCatId = catFromProps || 0;
-    let auriSubIds = subsFromProps;
-
-    // 2) si no hay contexto, lo resolvemos por taxonomy
-    if (!audioCatId) {
-      const cats = await getPublicCategories();
-      const audio =
-        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.slug) === "audio") ||
-        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.name) === "audio") ||
-        (Array.isArray(cats) ? cats : []).find((c) => norm(c?.name).includes("audio")) ||
-        null;
-
-      audioCatId = Number(audio?.id || 0);
-      const subs = getSubs(audio);
-      auriSubIds = pickAuricularesSubIds(subs);
-    }
-
-    lastCtx.value = {
-      audioCatId: audioCatId || null,
-      auriSubIds,
-      firstAuriSubId: auriSubIds[0] || null,
-    };
-
-    let merged = [];
-    const seen = new Set();
-
-    // 3) fetch por subcategorías (ideal)
-    if (audioCatId && auriSubIds.length) {
-      for (const sid of auriSubIds) {
-        let r;
-        try {
-          r = await getCatalog({
-            search: "",
-            page: 1,
-            limit: 80,
-            category_id: audioCatId,
-            subcategory_id: sid,
-          });
-        } catch (e2) {
-          console.error("❌ Auriculares auto sub fetch error:", sid, e2);
-          continue;
-        }
-
-        const list = Array.isArray(r?.items) ? r.items : [];
-        for (const it of list) {
-          const k = String(it?.product_id ?? it?.id ?? "");
-          if (!k || seen.has(k)) continue;
-          merged.push(it);
-          seen.add(k);
-        }
-      }
-    }
-
-    // 4) ✅ fallback por categoría Audio (si no encontramos subs o vino vacío)
-    if (!merged.length && audioCatId) {
-      try {
-        const r = await getCatalog({
-          search: "",
-          page: 1,
-          limit: 80,
-          category_id: audioCatId,
-        });
-
-        const list = Array.isArray(r?.items) ? r.items : [];
-        merged = list;
-      } catch (e4) {
-        console.error("❌ Auriculares fallback category error:", e4);
-      }
-    }
-
-    // 5) ✅ fallback por búsqueda, excluyendo cosas que no queremos
-    if (!merged.length) {
-      const tries = ["auriculares", "auricular", "headphones", "headset", "earbuds", "tws", "in ear"];
-      const EXCLUDE = "cargador,cable,energia,energía,usb,adaptador,fuente,powerbank,power bank,charger";
-
-      for (const term of tries) {
-        try {
-          const r = await getCatalog({
-            search: term,
-            page: 1,
-            limit: 80,
-            strict_search: 1,
-            exclude_terms: EXCLUDE,
-          });
-
-          const list = Array.isArray(r?.items) ? r.items : [];
-          if (list.length) {
-            merged = list;
-            break;
-          }
-        } catch (e3) {
-          console.error("❌ Auriculares auto fallback error:", term, e3);
-        }
-      }
-    }
-
-    internalItems.value = (merged || []).slice(0, Math.max(1, Number(props.maxItems || 60)));
+    const list = Array.isArray(r?.items) ? r.items : [];
+    internalItems.value = list.slice(0, Math.max(1, Number(props.maxItems || 60)));
     model.value = 0;
   } catch (e) {
-    console.error("❌ PromoSliderAuriculares fetchAurisAuto", e);
+    const msg =
+      e?.response?.status
+        ? `${e.response.status} ${e.response.statusText || ""}`.trim()
+        : e?.message || String(e);
+
+    internalError.value = msg;
     internalItems.value = [];
   } finally {
     internalLoading.value = false;
@@ -369,25 +265,15 @@ async function fetchAurisAuto() {
 }
 
 onMounted(() => {
-  // ✅ ahora auto-fetchea también cuando el padre pasó items vacío
-  if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
-  else if (!isControlled.value) fetchAurisAuto();
+  if (canAutoFetchEvenIfControlled.value) fetchAuto();
+  else if (!isControlled.value) fetchAuto();
 });
 
-/* refresca en modo auto */
 watch(
-  () => router.currentRoute.value.fullPath,
+  () => [props.search, props.excludeTerms, props.limit, props.maxItems],
   () => {
-    if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
-    else if (!isControlled.value) fetchAurisAuto();
-  }
-);
-
-/* refresca cuando el padre deja de cargar y sigue vacío (modo controlado vacío) */
-watch(
-  () => [props.loading, Array.isArray(props.items) ? props.items.length : -1, props.categoryId, (props.subIds || []).length],
-  () => {
-    if (canAutoFetchEvenIfControlled.value) fetchAurisAuto();
+    if (canAutoFetchEvenIfControlled.value) fetchAuto();
+    else if (!isControlled.value) fetchAuto();
   }
 );
 
@@ -478,6 +364,10 @@ function jumpTo(pageIdx) {
   padding: 10px 10px 10px;
 }
 
+.auris-skel {
+  padding: 8px 6px;
+}
+
 .auris-slide {
   touch-action: pan-x;
 }
@@ -489,12 +379,10 @@ function jumpTo(pageIdx) {
 .auris-slide :deep(.v-slide-group__container::-webkit-scrollbar) {
   display: none;
 }
-
 .auris-slide :deep(.v-slide-group__content) {
   gap: 14px;
   padding: 10px 6px 12px;
 }
-
 .auris-slide :deep(.v-slide-group__prev .v-btn),
 .auris-slide :deep(.v-slide-group__next .v-btn) {
   background: rgba(255, 255, 255, 0.92);

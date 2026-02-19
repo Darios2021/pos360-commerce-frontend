@@ -1,4 +1,3 @@
-
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <template>
   <v-card class="shc-card" variant="flat" rounded="xl">
@@ -36,7 +35,6 @@
           @click="goNext"
         />
 
-        <!-- STRIP -->
         <div
           ref="stripEl"
           class="shc-strip"
@@ -139,7 +137,7 @@
               </div>
             </div>
           </div>
-          <!-- NO agrego UI nueva para “loading more” para no tocar estética -->
+          <!-- NO agrego UI nueva para “loading more” -->
         </div>
       </div>
     </div>
@@ -152,14 +150,9 @@ import { useRouter, useRoute } from "vue-router";
 import { publicVideosFeed } from "@/modules/shop/service/shop.videos.public.api.js";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
-/**
- * ✅ Optimización sin cambiar diseño:
- * - pageSize: trae de a tandas (16)
- * - loadMore() al acercarte al final del scroll horizontal
- */
 const props = defineProps({
-  limit: { type: Number, default: 200 },      // máximo total que permitís cargar (no de una)
-  pageSize: { type: Number, default: 16 },   // tamaño de página
+  limit: { type: Number, default: 200 },
+  pageSize: { type: Number, default: 16 },
 });
 
 const HARD_MAX = computed(() => {
@@ -204,6 +197,9 @@ const offset = ref(0);
 const hasMore = ref(true);
 const loadingMore = ref(false);
 
+// ✅ Abort/timeout para que NUNCA quede “loading” eterno
+let aborter = null;
+
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -238,7 +234,7 @@ function play(key) {
   activePlayKey.value = key;
 }
 
-/* ===================== YOUTUBE: embed + cover ===================== */
+/* ===================== YOUTUBE ===================== */
 function s(x) {
   return String(x || "").trim();
 }
@@ -249,7 +245,6 @@ function isYouTube(u) {
 function shouldCoverYouTube(u) {
   return isYouTube(u);
 }
-
 function extractYouTubeId(u) {
   const url = s(u);
   if (!url) return "";
@@ -274,7 +269,6 @@ function extractYouTubeId(u) {
 
   return "";
 }
-
 function addParams(url, paramsObj) {
   const base = s(url);
   if (!base) return base;
@@ -291,17 +285,13 @@ function addParams(url, paramsObj) {
     return `${base}${sep}${q}`;
   }
 }
-
 function toYouTubeEmbedUrl(raw) {
   const base = s(raw);
   if (!base) return base;
-
   const id = extractYouTubeId(base);
   if (!id) return base;
-
   return `https://www.youtube-nocookie.com/embed/${id}`;
 }
-
 function cleanAutoplayUrl(u) {
   const base = s(u);
   if (!base) return base;
@@ -320,7 +310,6 @@ function cleanAutoplayUrl(u) {
       fs: 0,
     });
   }
-
   return addParams(base, { autoplay: 1, mute: 0 });
 }
 
@@ -459,9 +448,26 @@ function buyNow(it) {
   router.push("/shop/cart");
 }
 
-/* ===== go product ===== */
+/* ===== branch resolver (✅ NO hardcode 3) ===== */
+function getBranchIdForLinks() {
+  // 1) query actual
+  const q = s(route.query.branch_id);
+  const qn = Number(q);
+  if (Number.isFinite(qn) && qn > 0) return String(qn);
+
+  // 2) localStorage (misma key que tu shop.public.api.js)
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem("shop_branch_id") : "";
+    const bid = Number(String(raw || "").trim());
+    if (Number.isFinite(bid) && bid > 0) return String(bid);
+  } catch {}
+
+  // 3) fallback Casa Central
+  return "1";
+}
+
 function goProduct(productId) {
-  const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
+  const branch_id = getBranchIdForLinks();
   router.push({ name: "shopProduct", params: { id: String(productId) }, query: { branch_id } });
 }
 
@@ -490,6 +496,50 @@ function normalizeItem(x) {
   };
 }
 
+/* =========================
+   ✅ SAFE REQUEST (timeout + abort + retry + fallback sin offset)
+========================= */
+function abortInFlight() {
+  try {
+    if (aborter) aborter.abort();
+  } catch {}
+  aborter = null;
+}
+
+async function safeFeedRequest({ limit, offset }) {
+  abortInFlight();
+  aborter = new AbortController();
+
+  // timeout real
+  const TIMEOUT_MS = 8000;
+  const t = setTimeout(() => {
+    try {
+      aborter?.abort();
+    } catch {}
+  }, TIMEOUT_MS);
+
+  try {
+    // 1) intento con offset
+    return await publicVideosFeed({ limit, offset, signal: aborter.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function parseFeedPayload(r) {
+  // soporta {items}, {data}, {ok:true,items}, etc.
+  const list =
+    Array.isArray(r?.data) ? r.data :
+    Array.isArray(r?.items) ? r.items :
+    Array.isArray(r?.data?.items) ? r.data.items :
+    Array.isArray(r?.data?.data) ? r.data.data :
+    Array.isArray(r?.data?.items) ? r.data.items :
+    [];
+
+  const meta = r?.meta || r?.data?.meta || r?.data?.pagination || null;
+  return { list, meta };
+}
+
 async function fetchFirstPage() {
   loading.value = true;
   error.value = "";
@@ -498,15 +548,34 @@ async function fetchFirstPage() {
     hasMore.value = true;
 
     const take = Math.min(EFFECTIVE_PAGE.value, EFFECTIVE_TOTAL.value);
-    const r = await publicVideosFeed({ limit: take, offset: 0 });
 
-    const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
-    items.value = list.map(normalizeItem).filter((x) => x.url);
+    let r = null;
+
+    // intento 1
+    try {
+      r = await safeFeedRequest({ limit: take, offset: 0 });
+    } catch (e) {
+      // fallback: si el backend no soporta offset, reintento sin offset
+      try {
+        abortInFlight();
+        r = await publicVideosFeed({ limit: take });
+      } catch (e2) {
+        throw e2 || e;
+      }
+    }
+
+    const { list, meta } = parseFeedPayload(r);
+
+    items.value = (list || []).map(normalizeItem).filter((x) => x.url);
 
     offset.value = items.value.length;
-    hasMore.value = Boolean(r?.meta?.has_more) && items.value.length < EFFECTIVE_TOTAL.value;
+    hasMore.value = Boolean(meta?.has_more) && items.value.length < EFFECTIVE_TOTAL.value;
   } catch (e) {
-    error.value = e?.message || "No se pudieron cargar los videos";
+    const msg =
+      e?.name === "AbortError"
+        ? "Timeout cargando videos (revisar proxy/edge)."
+        : e?.message || "No se pudieron cargar los videos";
+    error.value = msg;
     items.value = [];
     hasMore.value = false;
   } finally {
@@ -518,7 +587,6 @@ async function fetchMore() {
   if (loadingMore.value) return;
   if (!hasMore.value) return;
 
-  // no pasar del total que permitís
   if (items.value.length >= EFFECTIVE_TOTAL.value) {
     hasMore.value = false;
     return;
@@ -529,19 +597,24 @@ async function fetchMore() {
     const remaining = EFFECTIVE_TOTAL.value - items.value.length;
     const take = Math.max(8, Math.min(EFFECTIVE_PAGE.value, remaining));
 
-    const r = await publicVideosFeed({ limit: take, offset: offset.value });
+    let r = null;
+    try {
+      r = await safeFeedRequest({ limit: take, offset: offset.value });
+    } catch {
+      abortInFlight();
+      r = await publicVideosFeed({ limit: take }); // fallback sin offset
+    }
 
-    const list = Array.isArray(r?.data) ? r.data : Array.isArray(r?.items) ? r.items : [];
-    const next = list.map(normalizeItem).filter((x) => x.url);
+    const { list, meta } = parseFeedPayload(r);
+    const next = (list || []).map(normalizeItem).filter((x) => x.url);
 
-    // dedupe por id/key
     const seen = new Set(items.value.map((x) => String(x.id || x.key)));
     const dedup = next.filter((x) => !seen.has(String(x.id || x.key)));
 
     items.value = items.value.concat(dedup);
 
     offset.value = offset.value + next.length;
-    hasMore.value = Boolean(r?.meta?.has_more) && next.length > 0 && items.value.length < EFFECTIVE_TOTAL.value;
+    hasMore.value = Boolean(meta?.has_more) && next.length > 0 && items.value.length < EFFECTIVE_TOTAL.value;
   } finally {
     loadingMore.value = false;
   }
@@ -550,8 +623,6 @@ async function fetchMore() {
 function onStripScroll() {
   const el = stripEl.value;
   if (!el) return;
-
-  // cerca del final -> cargar más
   const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 420;
   if (nearEnd) fetchMore();
 }
@@ -566,6 +637,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  abortInFlight();
   try {
     if (ro && stripEl.value) ro.unobserve(stripEl.value);
   } catch {}
@@ -584,334 +656,52 @@ watch(
 );
 </script>
 
-<!-- ✅ TUS STYLES QUEDAN IGUAL (no los pego para no duplicar). -->
-
 <style scoped>
-/* =========================
-   Shorts Home Carousel
-   - Cards compactas
-   - Cover SUAVE
-   - Flechas MÁS AFUERA (no se pisan con el video)
-========================= */
-
-.shc-card {
-  border-radius: 18px;
-  background: #fbfbfb;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  overflow: visible;
-}
-
-.shc-head {
-  padding: 12px 12px 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 250, 0.9));
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.shc-body {
-  padding: 6px 8px 10px;
-}
-
-/* ✅ IMPORTANTE:
-   dejamos espacio lateral para flechas afuera */
-.shc-wrap {
-  position: relative;
-  overflow: visible;
-  padding: 0 52px; /* ✅ espacio para flechas */
-}
-
-/* STRIP */
-.shc-strip {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 8px 0 4px; /* ✅ ahora el padding lateral lo maneja shc-wrap */
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.shc-strip::-webkit-scrollbar {
-  display: none;
-}
-.shc-item {
-  flex: 0 0 auto;
-  scroll-snap-align: center;
-}
-
-/* TARJETA UNIFICADA */
-.shc-frame {
-  width: var(--shc-cardw, 240px);
-  border-radius: 16px;
-  background: #fff;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.07);
-  outline: 1px solid rgba(255, 255, 255, 0.55);
-  outline-offset: -2px;
-}
-
-/* VIDEO */
-.shc-video {
-  height: var(--shc-vh, 427px);
-  background: #000;
-  position: relative;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* Preview */
-.shc-thumbBtn {
-  border: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-.shc-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  transform: scale(1.06);
-}
-.shc-thumbEmpty {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  opacity: 0.6;
-  color: #fff;
-}
-
-.shc-play {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.16));
-}
-.shc-play-ring {
-  width: 52px;
-  height: 52px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
-}
-
-/* IFRAME */
-.shc-iframeWrap {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
-  contain: layout paint size;
-}
-.shc-ytStage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-}
-.shc-iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-  background: #000;
-}
-.shc-iframe--ytCover {
-  left: 50% !important;
-  top: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  width: 100% !important;
-  height: 100% !important;
-  transform-origin: center center !important;
-  transform: translate(-50%, -50%) scale(1.30) !important;
-}
-
-/* PRODUCT BAR */
-.shc-prodBar {
-  background: linear-gradient(180deg, #fff 0%, #fbfbfb 100%);
-  padding: 8px 8px 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.07);
-}
-
-.prodInfo {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 10px;
-  align-items: center;
-}
-.prodImg {
-  width: 70px;
-  height: 70px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #f7f7f7;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-}
-.prodImg img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.prodImgEmpty {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  opacity: 0.55;
-}
-
-.prodMid {
-  text-align: center;
-  min-width: 0;
-}
-.prodTitle {
-  font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 0.18px;
-  text-transform: uppercase;
-  line-height: 1.12;
-  color: #111;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.prodPrices {
-  margin-top: 4px;
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.prodPrice {
-  font-size: 14px;
-  font-weight: 950;
-}
-.prodOff {
-  font-size: 10px;
-  font-weight: 950;
-  color: #00a650;
-}
-.prodOld {
-  font-size: 10px;
-  opacity: 0.6;
-  text-decoration: line-through;
-}
-
-.prodCtas {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 8px;
-}
-.ctaBuy {
-  width: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.10) !important;
-  border-radius: 12px !important;
-  padding: 6px 8px !important;
-  font-weight: 900 !important;
-  font-size: 11px !important;
-  line-height: 1.1 !important;
-  cursor: pointer;
-  color: #fff;
-  background: #2680c2;
-  box-shadow: 0 3px 8px rgba(38, 128, 194, 0.12) !important;
-}
-.ctaCart {
-  width: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  border-radius: 12px !important;
-  padding: 6px 8px !important;
-  font-weight: 900 !important;
-  font-size: 11px !important;
-  line-height: 1.1 !important;
-  cursor: pointer;
-  color: #111;
-  background: #f3f3f3;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-}
-
-.prodEmpty {
-  padding: 4px 2px;
-  text-align: left;
-}
-
-/* ✅ FLECHAS MÁS AFUERA */
-.shc-nav {
-  position: absolute;
-  top: calc(var(--shc-vh, 427px) / 2);
-  transform: translateY(-50%);
-  background: #fff;
-  border-radius: 999px;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
-  z-index: 10;
-  opacity: 0.92;
-}
-.shc-nav-left {
-  left: 10px; /* ✅ dentro del padding de shc-wrap, afuera del strip */
-}
-.shc-nav-right {
-  right: 10px;
-}
-
-/* MOBILE */
+/* ✅ tus estilos: tal cual los pegaste (sin cambios) */
+.shc-card { border-radius: 18px; background: #fbfbfb; border: 1px solid rgba(0, 0, 0, 0.04); overflow: visible; }
+.shc-head { padding: 12px 12px 10px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 250, 0.9)); border-bottom: 1px solid rgba(0, 0, 0, 0.05); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.shc-body { padding: 6px 8px 10px; }
+.shc-wrap { position: relative; overflow: visible; padding: 0 52px; }
+.shc-strip { display: flex; gap: 10px; overflow-x: auto; padding: 8px 0 4px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.shc-strip::-webkit-scrollbar { display: none; }
+.shc-item { flex: 0 0 auto; scroll-snap-align: center; }
+.shc-frame { width: var(--shc-cardw, 240px); border-radius: 16px; background: #fff; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.10); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.07); outline: 1px solid rgba(255, 255, 255, 0.55); outline-offset: -2px; }
+.shc-video { height: var(--shc-vh, 427px); background: #000; position: relative; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.shc-thumbBtn { border: 0; padding: 0; width: 100%; height: 100%; background: #000; cursor: pointer; position: relative; overflow: hidden; }
+.shc-thumb { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transform: scale(1.06); }
+.shc-thumbEmpty { height: 100%; display: grid; place-items: center; font-size: 12px; opacity: 0.6; color: #fff; }
+.shc-play { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.16)); }
+.shc-play-ring { width: 52px; height: 52px; border-radius: 999px; background: rgba(255, 255, 255, 0.94); display: grid; place-items: center; box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18); }
+.shc-iframeWrap { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; contain: layout paint size; }
+.shc-ytStage { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+.shc-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+.shc-iframe--ytCover { left: 50% !important; top: 50% !important; right: auto !important; bottom: auto !important; width: 100% !important; height: 100% !important; transform-origin: center center !important; transform: translate(-50%, -50%) scale(1.30) !important; }
+.shc-prodBar { background: linear-gradient(180deg, #fff 0%, #fbfbfb 100%); padding: 8px 8px 10px; border-top: 1px solid rgba(0, 0, 0, 0.07); }
+.prodInfo { width: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; }
+.prodImg { width: 70px; height: 70px; border-radius: 14px; overflow: hidden; background: #f7f7f7; border: 1px solid rgba(0, 0, 0, 0.07); }
+.prodImg img { width: 100%; height: 100%; object-fit: cover; }
+.prodImgEmpty { height: 100%; display: grid; place-items: center; font-size: 11px; opacity: 0.55; }
+.prodMid { text-align: center; min-width: 0; }
+.prodTitle { font-weight: 900; font-size: 11px; letter-spacing: 0.18px; text-transform: uppercase; line-height: 1.12; color: #111; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.prodPrices { margin-top: 4px; display: flex; justify-content: center; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.prodPrice { font-size: 14px; font-weight: 950; }
+.prodOff { font-size: 10px; font-weight: 950; color: #00a650; }
+.prodOld { font-size: 10px; opacity: 0.6; text-decoration: line-through; }
+.prodCtas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.ctaBuy { width: 100%; border: 1px solid rgba(0, 0, 0, 0.10) !important; border-radius: 12px !important; padding: 6px 8px !important; font-weight: 900 !important; font-size: 11px !important; line-height: 1.1 !important; cursor: pointer; color: #fff; background: #2680c2; box-shadow: 0 3px 8px rgba(38, 128, 194, 0.12) !important; }
+.ctaCart { width: 100%; border: 1px solid rgba(0, 0, 0, 0.12) !important; border-radius: 12px !important; padding: 6px 8px !important; font-weight: 900 !important; font-size: 11px !important; line-height: 1.1 !important; cursor: pointer; color: #111; background: #f3f3f3; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.prodEmpty { padding: 4px 2px; text-align: left; }
+.shc-nav { position: absolute; top: calc(var(--shc-vh, 427px) / 2); transform: translateY(-50%); background: #fff; border-radius: 999px; box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12); z-index: 10; opacity: 0.92; }
+.shc-nav-left { left: 10px; }
+.shc-nav-right { right: 10px; }
 @media (max-width: 600px) {
-  .shc-wrap {
-    padding: 0 44px; /* ✅ menos espacio en mobile */
-  }
-
-  .shc-strip {
-    padding: 8px 0 4px;
-  }
-
-  .shc-frame {
-    width: var(--shc-cardw, 224px);
-  }
-
-  .shc-iframe--ytCover {
-    transform: translate(-50%, -50%) scale(1.36) !important;
-  }
-
-  .shc-nav {
-    top: calc(var(--shc-vh, 427px) / 2);
-    opacity: 0.88;
-  }
-  .shc-nav-left {
-    left: 8px;
-  }
-  .shc-nav-right {
-    right: 8px;
-  }
-
-  .ctaBuy,
-  .ctaCart {
-    font-size: 10.5px !important;
-    padding: 6px 8px !important;
-  }
+  .shc-wrap { padding: 0 44px; }
+  .shc-strip { padding: 8px 0 4px; }
+  .shc-frame { width: var(--shc-cardw, 224px); }
+  .shc-iframe--ytCover { transform: translate(-50%, -50%) scale(1.36) !important; }
+  .shc-nav { top: calc(var(--shc-vh, 427px) / 2); opacity: 0.88; }
+  .shc-nav-left { left: 8px; }
+  .shc-nav-right { right: 8px; }
+  .ctaBuy, .ctaCart { font-size: 10.5px !important; padding: 6px 8px !important; }
 }
 </style>
