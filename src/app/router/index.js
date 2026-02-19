@@ -30,6 +30,7 @@ import PosSaleDetailPage from "@/modules/pos/pages/PosSaleDetailPage.vue";
 // Products
 import ProductsListPage from "@/modules/products/pages/ProductsListPage.vue";
 import ProductProfilePage from "@/modules/products/pages/ProductProfilePage.vue";
+import ProductDetailViewPage from "@/modules/products/pages/ProductDetailViewPage.vue";
 
 // Import
 import ImportProductsPage from "@/modules/import/pages/ImportProductsPage.vue";
@@ -77,6 +78,11 @@ const routes = [
 
       // Productos
       { path: "products", name: "products", component: ProductsListPage },
+
+      // ✅ NUEVA VISTA "VER" (ADMIN)
+      { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
+
+      // (tu vista existente, la dejo)
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
       // Importación
@@ -92,7 +98,7 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA (cuelga bajo /app/...)
+      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA (cuelga bajo /app/...):
       ...shopAdminRoutes,
 
       // Usuarios
@@ -109,12 +115,10 @@ const routes = [
   },
 
   // ✅ fallback / catch-all (SIEMPRE al final)
-  // 🔥 FIX: redirigir por PATH (string) evita que Vue Router arrastre params pathMatch y tire warning
   { path: "/:pathMatch(.*)*", redirect: "/shop" },
 ];
 
 const router = createRouter({
-  // ✅ base "/" para que funcione tanto /shop como /app
   history: createWebHistory("/"),
   routes,
   scrollBehavior: (to, from, saved) => saved || { top: 0 },

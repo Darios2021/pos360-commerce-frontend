@@ -1,5 +1,6 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
+
 <template>
   <div>
     <!-- HEADER -->
@@ -197,7 +198,7 @@
           </span>
         </template>
 
-        <!-- ✅ CREACIÓN COMPACTA (sin romper estética / sin "a. m.") -->
+        <!-- ✅ CREACIÓN COMPACTA -->
         <template #item.created="{ item }">
           <div class="created-compact">
             <span class="created-user">{{ creatorLabel(item) || "—" }}</span>
@@ -208,9 +209,11 @@
           </div>
         </template>
 
+        <!-- ✅ ACCIONES -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-end ga-1">
-            <v-btn icon="mdi-eye-outline" variant="text" @click="openDetails(item.id)" />
+            <!-- ✅ VER: ahora navega a la vista nueva -->
+            <v-btn icon="mdi-eye-outline" variant="text" @click="openView(item.id)" />
             <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
 
             <v-btn
@@ -242,14 +245,7 @@
       </v-data-table>
     </v-card>
 
-    <!-- DETAILS / FORM -->
-    <ProductDetailsDialog
-      v-model:open="detailsOpen"
-      :product-id="selectedId"
-      @edit="({ id }) => openEdit(id)"
-      @deleted="reload"
-    />
-
+    <!-- FORM -->
     <ProductFormDialog
       v-model:open="formOpen"
       :mode="formMode"
@@ -298,13 +294,14 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { useProductsStore } from "../../../app/store/products.store";
-import { useAuthStore } from "../../../app/store/auth.store";
-import { useCategoriesStore } from "../../../app/store/categories.store";
+import { useRouter } from "vue-router";
+import { useProductsStore } from "@/app/store/products.store";
+import { useAuthStore } from "@/app/store/auth.store";
+import { useCategoriesStore } from "@/app/store/categories.store";
 
-import ProductDetailsDialog from "../components/ProductDetailsDialog.vue";
 import ProductFormDialog from "../components/ProductFormDialog.vue";
 
+const router = useRouter();
 const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
@@ -329,10 +326,7 @@ const userBranchId = computed(() => {
 const q = ref("");
 const branchId = ref(null);
 const categoryId = ref(null);
-
-// ✅ Subrubro por NOMBRE (robusto, no depende de IDs cruzados)
-const subcategoryName = ref(null);
-
+const subcategoryName = ref(null); // ✅ por NOMBRE
 const stockFilter = ref("all");
 const pricePresence = ref("all");
 const priceMin = ref(null);
@@ -347,15 +341,15 @@ const limit = ref(20);
 const selectedIds = ref([]);
 
 /* =========================
-   DIALOGS
+   FORM
 ========================= */
-const detailsOpen = ref(false);
-const selectedId = ref(null);
-
 const formOpen = ref(false);
 const formMode = ref("create");
 const formItem = ref(null);
 
+/* =========================
+   CONFIRMS
+========================= */
 const deleteOpen = ref(false);
 const deleteItem = ref(null);
 
@@ -378,31 +372,24 @@ function toNum(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
-
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
-
 function priceListNumber(it) {
   return toNum(it?.price_list, 0);
 }
-
 function stockQtyNumber(it) {
   const v = it?.stock_qty ?? it?.stock ?? it?.qty ?? it?.quantity ?? 0;
   return toNum(v, 0);
 }
-
 function cleanTrail(s) {
   if (!s) return "";
   return String(s).replace(/\s*>\s*/g, " / ").trim();
 }
-
 function isInactive(it) {
   return it?.is_active === false || Number(it?.is_active) === 0;
 }
-
-/** ✅ compacto y sin "a. m." (24h) */
 function fmtDateTimeShort(v) {
   if (!v) return "";
   const d = new Date(v);
@@ -414,7 +401,6 @@ function fmtDateTimeShort(v) {
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${dd}/${mm}/${yy} ${hh}:${mi}`;
 }
-
 function creatorLabel(it) {
   const x =
     it?.created_by_user ||
@@ -545,13 +531,12 @@ function onCategoryChange() {
 }
 
 /* =========================
-   ROWS NORMALIZADAS (✅ usa subcategory REAL si viene)
+   ROWS NORMALIZADAS
 ========================= */
 const normalized = computed(() => {
   return (products.items || []).map((x) => {
     const cid = toInt(x?.category_id, 0) || null;
 
-    // ✅ Rubro: preferimos category.name (es tu rubro real)
     const rubro =
       x?.category?.name ||
       x?.rubro ||
@@ -559,7 +544,6 @@ const normalized = computed(() => {
       x?.categoryName ||
       null;
 
-    // ✅ Subrubro: preferimos subcategory.name (tabla subcategories)
     const subrubro =
       x?.subcategory?.name ||
       x?.subrubro ||
@@ -583,15 +567,14 @@ const normalized = computed(() => {
 });
 
 /* =========================
-   SUBRUBROS (✅ del listado real)
-   - evita depender de IDs cruzados categories/subcategories
+   SUBRUBROS (del listado real)
 ========================= */
 const subcategoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
   const pid = categoryId.value ? Number(categoryId.value) : 0;
   if (!pid) return out;
 
-  const set = new Map(); // key lower -> label
+  const set = new Map();
   for (const it of normalized.value) {
     if (Number(it?.rubro_id || 0) !== pid) continue;
     const name = String(it?.subrubro || "").trim();
@@ -621,14 +604,12 @@ const filteredAll = computed(() => {
 
     if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
 
-    // si elegís sucursal, sólo mostramos con stock en esa sucursal (extra)
     if (isAdmin.value && branchId.value) {
       if (!(it._stock_num > 0)) return false;
     }
 
     if (pid && Number(it?.rubro_id || 0) !== pid) return false;
 
-    // ✅ subrubro por NOMBRE normalizado
     if (subKey && String(it?.subrubro_key || "") !== subKey) return false;
 
     if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
@@ -676,7 +657,7 @@ watch(
 );
 
 /* =========================
-   HEADERS (✅ SIN STOCK, ✅ CREACIÓN COMPACTA)
+   HEADERS
 ========================= */
 const headers = computed(() => {
   const base = [
@@ -727,9 +708,10 @@ const branchItems = computed(() => {
 /* =========================
    ACTIONS
 ========================= */
-function openDetails(id) {
-  selectedId.value = id;
-  detailsOpen.value = true;
+function openView(id) {
+  const pid = Number(id || 0);
+  if (!pid) return;
+  router.push({ name: "productView", params: { id: pid } });
 }
 
 async function openEdit(id) {
