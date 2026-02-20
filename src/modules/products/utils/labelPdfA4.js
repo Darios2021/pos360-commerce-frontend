@@ -1,11 +1,11 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/products/utils/labelPdfA4.js
 //
-// ✅ FIX FINAL “LOGOS CHICOS / ESTIRADOS”
-// - Los logos ahora se dibujan con “fit dentro de caja” (contain) usando el aspect REAL
-// - Cada logo tiene una caja (slot) de ancho fijo, y adentro se centra sin deformar
-// - Aumenté el alto de logos (payLogoH) y el ancho de slot para que se vean GRANDES
-// - “Medios:” y URL bajan a un tamaño razonable (no gigantes)
+// ✅ FIX “58×40 EXPLOTADAS” (grilla A4):
+// - Recalibré TODAS las fuentes/espacios para 58×40 (antes heredaban escalas del 100×60)
+// - QR más chico y más alto (no pisa el precio)
+// - Precio baja 2pt y se limita el layout para que NO invada meta/footer
+// - Footer (medios + url) compacto y con logos en slots “contain”
 //
 // Requiere: npm i jspdf qrcode
 
@@ -102,10 +102,9 @@ function computeInstallments(priceList) {
 }
 
 /* =========================
-   WEBP -> PNG dataURL + aspect real
+   WEBP -> PNG + aspect
 ========================= */
 const _imgCache = new Map();
-
 /**
  * @returns {Promise<{png:string, w:number, h:number, aspect:number} | null>}
  */
@@ -177,6 +176,7 @@ function computeBig100Layout() {
 function computeGrid58Layout() {
   const A4 = getA4Portrait();
 
+  // ✅ grilla realista (no tan apretada) para que no “explote” visualmente
   const CELL_W = 58;
   const CELL_H = 40;
   const COLS = 3;
@@ -198,54 +198,17 @@ function computeGrid58Layout() {
       marginL: Math.max(6, (A4.W - gridW) / 2),
       marginT: Math.max(8, (A4.H - gridH) / 2),
     },
-    pad: 3.0,
-    qr: 18,
+    pad: 2.6,
+    qr: 15.5, // ✅ más chico que antes
   };
 }
 
 /* =========================
-   Drawing
+   Drawing utils
 ========================= */
-function drawHeader(doc, { x, y, w, headerH, pad }, data) {
-  doc.setFillColor(248, 248, 248);
-  doc.rect(x, y, w, headerH, "F");
-
-  doc.setDrawColor(220);
-  doc.setLineWidth(0.3);
-  doc.line(x, y + headerH, x + w, y + headerH);
-
-  const xL = x + pad;
-
-  // ✅ SOLO LOGO tienda (sin texto)
-  if (data.storeLogo?.png) {
-    const logoH = data.storeLogoH;
-    // fit por ancho máximo, manteniendo aspect
-    const naturalW = logoH * data.storeLogo.aspect;
-    const logoW = Math.min(data.storeLogoWMax, naturalW);
-    const logoY = y + (headerH - logoH) / 2;
-    doc.addImage(data.storeLogo.png, "PNG", xL, logoY, logoW, logoH);
-  }
-
-  // Sucursal derecha
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(data.fsBranch);
-  doc.setTextColor(40);
-
-  const brTxt = ellipsize(doc, data.branchName, w * 0.38);
-  const brW = doc.getTextWidth(brTxt);
-  const yText = y + headerH - data.headerTextDrop;
-  doc.text(brTxt, x + w - pad - brW, yText);
-}
-
-/**
- * ✅ Dibuja un logo dentro de un “slot” sin deformar (contain).
- * slotW fijo, slotH fijo.
- */
 function drawLogoContain(doc, png, aspect, x, y, slotW, slotH) {
   if (!png || !aspect || slotW <= 0 || slotH <= 0) return;
 
-  // Queremos encajar manteniendo aspect:
-  // si el logo es ancho, limitamos por slotW; si es alto, por slotH
   let drawW = slotW;
   let drawH = drawW / aspect;
 
@@ -260,9 +223,6 @@ function drawLogoContain(doc, png, aspect, x, y, slotW, slotH) {
   doc.addImage(png, "PNG", dx, dy, drawW, drawH);
 }
 
-/**
- * ✅ Row de logos: cada uno en su slot (sin estirar)
- */
 function drawPayLogosRow(doc, x, yTop, maxW, logosMeta, cfg) {
   const slotH = cfg.payLogoH;
   const slotW = cfg.paySlotW;
@@ -279,32 +239,68 @@ function drawPayLogosRow(doc, x, yTop, maxW, logosMeta, cfg) {
   return xx;
 }
 
-function drawLabel(doc, { x, y, w, h, pad, qrSize }, data) {
+function drawHeader(doc, { x, y, w, headerH, pad }, data) {
+  doc.setFillColor(248, 248, 248);
+  doc.rect(x, y, w, headerH, "F");
+
   doc.setDrawColor(220);
   doc.setLineWidth(0.25);
+  doc.line(x, y + headerH, x + w, y + headerH);
+
+  const xL = x + pad;
+
+  // ✅ SOLO LOGO (sin texto)
+  if (data.storeLogo?.png) {
+    const logoH = data.storeLogoH;
+    const naturalW = logoH * data.storeLogo.aspect;
+    const logoW = Math.min(data.storeLogoWMax, naturalW);
+    const logoY = y + (headerH - logoH) / 2;
+    doc.addImage(data.storeLogo.png, "PNG", xL, logoY, logoW, logoH);
+  }
+
+  // sucursal derecha
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(data.fsBranch);
+  doc.setTextColor(40);
+
+  const brTxt = ellipsize(doc, data.branchName, w * 0.42);
+  const brW = doc.getTextWidth(brTxt);
+  const yText = y + headerH - data.headerTextDrop;
+  doc.text(brTxt, x + w - pad - brW, yText);
+}
+
+function drawLabel(doc, { x, y, w, h, pad, qrSize }, data) {
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.22);
   doc.rect(x, y, w, h);
 
   drawHeader(doc, { x, y, w, headerH: data.headerH, pad }, data);
 
   const xL = x + pad;
-  const contentTop = y + data.headerH + pad * 0.8;
+  const top = y + data.headerH + pad * 0.6;
 
+  // ✅ reservar zona footer
+  const footerH = data.footerReserveH;
+  const safeBottom = y + h - pad - footerH;
+
+  // QR
   const xQR = x + w - pad - qrSize;
-  const yQR = contentTop;
+  const yQR = top;
 
-  const leftW = w - pad * 2 - qrSize - 4;
+  const leftW = w - pad * 2 - qrSize - data.qrGap;
 
   if (data.qrDataUrl) doc.addImage(data.qrDataUrl, "PNG", xQR, yQR, qrSize, qrSize);
 
-  // Nombre
+  // Nombre (máx 2 líneas)
   doc.setTextColor(0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsName);
   const nameLines = doc.splitTextToSize(data.name, leftW).slice(0, 2);
-  doc.text(nameLines, xL, contentTop + data.nameTop);
-  let yy = contentTop + data.nameTop + nameLines.length * data.nameLine;
+  doc.text(nameLines, xL, top + data.nameTop);
 
-  // Precio lista tachado
+  let yy = top + data.nameTop + nameLines.length * data.nameLine;
+
+  // Old + OFF
   if (data.priceList > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(data.fsOld);
@@ -315,64 +311,62 @@ function drawLabel(doc, { x, y, w, h, pad, qrSize }, data) {
 
     const ww = doc.getTextWidth(oldTxt);
     doc.setDrawColor(90);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.35);
     doc.line(xL, yy + data.oldStrike, xL + ww, yy + data.oldStrike);
 
     if (data.hasDiscount && data.offPct > 0) {
       doc.setTextColor(0);
-      doc.text(`${data.offPct}% OFF`, xL + ww + 3, yy + data.oldTop);
+      doc.text(`${data.offPct}% OFF`, xL + ww + 2.2, yy + data.oldTop);
     }
+
     yy += data.oldAdvance;
   } else {
     yy += data.noOldAdvance;
   }
 
-  // Precio final grande
+  // Precio final (limitado para NO invadir footer)
   doc.setTextColor(0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsPrice);
-  doc.text(money(data.finalPrice), xL, yy + data.priceTop);
-  yy += data.priceAdvance;
 
-  // Cuotas
-  if (data.installment) {
+  const priceY = Math.min(yy + data.priceTop, safeBottom - 7.0);
+  doc.text(money(data.finalPrice), xL, priceY);
+
+  yy = priceY + data.priceAdvance;
+
+  // Cuotas (si entra)
+  if (data.installment && yy + 3.6 < safeBottom) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(data.fsInstall);
-    doc.setTextColor(0);
     doc.text(`${data.installment.label}: ${money(data.installment.amount)}`, xL, yy + data.installTop);
     yy += data.installAdvance;
   }
 
-  // SKU / COD
+  // Meta (si entra)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsMeta);
-  doc.setTextColor(0);
 
-  if (data.sku) {
+  if (data.sku && yy + 3.4 < safeBottom) {
     doc.text(ellipsize(doc, `SKU: ${data.sku}`, leftW), xL, yy + data.metaTop);
     yy += data.metaAdvance;
   }
-  if (data.code) {
+  if (data.code && yy + 3.4 < safeBottom) {
     doc.text(ellipsize(doc, `COD: ${data.code}`, leftW), xL, yy + data.metaTop);
     yy += data.metaAdvance;
   }
 
-  // Footer
-  const footerY2 = y + h - pad - data.footerLine2;
+  // Footer compacto abajo
   const footerY1 = y + h - pad - data.footerLine1;
+  const footerY2 = y + h - pad - data.footerLine2;
 
-  // ✅ “Medios:” NO gigante
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsFooter1);
   doc.setTextColor(0);
   doc.text("Medios:", xL, footerY1);
 
-  // Logos: en slots sin estirar
   const labelW = doc.getTextWidth("Medios:");
-  const logosX = xL + labelW + 4;
-
-  // yTop del row (porque ahora es caja)
-  const logosYTop = footerY1 - data.payLogoH + 1.0;
+  const logosX = xL + labelW + 2.8;
+  const logosYTop = footerY1 - data.payLogoH + 0.8;
 
   drawPayLogosRow(
     doc,
@@ -383,10 +377,9 @@ function drawLabel(doc, { x, y, w, h, pad, qrSize }, data) {
     data
   );
 
-  // URL más chica
   doc.setFont("helvetica", "normal");
   doc.setFontSize(data.fsFooter2);
-  doc.setTextColor(60);
+  doc.setTextColor(70);
   doc.text(ellipsize(doc, data.shortUrl, w - pad * 2), xL, footerY2);
 }
 
@@ -484,16 +477,17 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       metaTop: 5.0,
       metaAdvance: 6.2,
 
-      // ✅ Footer más prolijo
-      fsFooter1: 10.0,  // antes gigante
+      fsFooter1: 10.0,
       fsFooter2: 8.2,
       footerLine1: 8.3,
       footerLine2: 3.8,
 
-      // ✅ LOGOS GRANDES SIN ESTIRAR
-      payLogoH: 9.0,        // más alto => más grande
-      paySlotW: 24.0,       // slot ancho fijo
-      payLogoGap: 4.0,      // separación
+      payLogoH: 9.0,
+      paySlotW: 24.0,
+      payLogoGap: 4.0,
+
+      footerReserveH: 14, // no usado en 100 (pero ok)
+      qrGap: 4,
     };
 
     for (let i = 0; i < totalCopies; i++) {
@@ -505,7 +499,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     return doc;
   }
 
-  // 58×40 grilla A4 vertical
+  // ✅ 58×40: TODO REESCALADO
   const G = computeGrid58Layout();
   const capacity = G.grid.cols * G.grid.rows;
   const pages = Math.ceil(totalCopies / capacity);
@@ -520,11 +514,11 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
   const data58 = {
     branchName: branchTxt,
     storeLogo,
-    headerH: 8.4,
-    fsBranch: 6.6,
-    headerTextDrop: 2.7,
-    storeLogoH: 5.3,
-    storeLogoWMax: 22.0,
+    headerH: 6.9,
+    fsBranch: 5.4,
+    headerTextDrop: 2.2,
+    storeLogoH: 4.6,
+    storeLogoWMax: 16.5,
 
     name,
     sku,
@@ -538,37 +532,44 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     shortUrl,
     payLogosMeta,
 
-    fsName: 10.4,
-    nameTop: 4.0,
-    nameLine: 3.9,
+    // ✅ Texto compacto
+    fsName: 8.8,
+    nameTop: 3.4,
+    nameLine: 3.4,
 
-    fsOld: 7.2,
-    oldTop: 2.8,
-    oldStrike: 2.2,
-    oldAdvance: 4.0,
-    noOldAdvance: 2.0,
+    fsOld: 6.1,
+    oldTop: 2.4,
+    oldStrike: 1.9,
+    oldAdvance: 3.1,
+    noOldAdvance: 1.2,
 
-    fsPrice: 20.6,
-    priceTop: 6.8,
-    priceAdvance: 7.6,
+    // ✅ precio NO explota
+    fsPrice: 14.8,
+    priceTop: 5.4,
+    priceAdvance: 5.6,
 
-    fsInstall: 6.9,
-    installTop: 3.4,
-    installAdvance: 4.0,
+    fsInstall: 5.5,
+    installTop: 2.4,
+    installAdvance: 2.9,
 
-    fsMeta: 8.0,
-    metaTop: 3.0,
-    metaAdvance: 3.8,
+    fsMeta: 6.1,
+    metaTop: 2.5,
+    metaAdvance: 2.9,
 
-    fsFooter1: 6.4,
-    fsFooter2: 6.0,
-    footerLine1: 4.9,
-    footerLine2: 1.6,
+    // ✅ footer mínimo (pero prolijo)
+    fsFooter1: 5.8,
+    fsFooter2: 5.2,
+    footerLine1: 6.2,
+    footerLine2: 1.7,
 
-    // ✅ en 58×40 no entran enormes, pero SIN estirar igual
-    payLogoH: 4.3,
-    paySlotW: 11.2,
-    payLogoGap: 1.4,
+    // ✅ logos mini sin estirar
+    payLogoH: 3.2,
+    paySlotW: 8.8,
+    payLogoGap: 1.0,
+
+    // ✅ reservas para que nada pise
+    footerReserveH: 9.8,
+    qrGap: 2.6,
   };
 
   let printed = 0;
