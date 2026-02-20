@@ -1,26 +1,15 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
+<!-- ✅ CAMBIO:
+     - Se ELIMINAN los botones de imprimir / PDF / ecommerce del header chico
+     - Se agregan como barra de acciones dentro de la columna derecha
+     - Mantiene toda la normalización de producto (precio / stock / marca / sucursal)
+-->
 
 <template>
   <div class="pd" data-page="product-detail-view">
-    <ProductHeader v-if="raw" :product="ui.product" @back="goBack">
-      <template #actions>
-        <v-btn color="primary" variant="flat" :disabled="loading || !raw" @click="printDlg = true">
-          <v-icon start>mdi-printer</v-icon>
-          Imprimir etiqueta
-        </v-btn>
-
-        <v-btn color="primary" variant="tonal" :disabled="loading || !raw" @click="downloadPdf">
-          <v-icon start>mdi-file-pdf-box</v-icon>
-          Descargar PDF
-        </v-btn>
-
-        <v-btn variant="tonal" :disabled="loading || !raw" @click="openEcommerce">
-          <v-icon start>mdi-open-in-new</v-icon>
-          Ver eCommerce
-        </v-btn>
-      </template>
-    </ProductHeader>
+    <!-- 🔹 HEADER SIN BOTONES -->
+    <ProductHeader v-if="raw" :product="productForUI" @back="goBack" />
 
     <v-alert v-if="error" type="error" variant="tonal" class="mt-3">
       {{ error }}
@@ -32,11 +21,11 @@
     </div>
 
     <div v-else-if="raw" class="pd-grid">
-      <!-- Izq -->
+      <!-- ================= LEFT ================= -->
       <div class="pd-left">
-        <ProductPriceBlock :product="ui.product" class="mb-3" />
-        <ProductStockBlock :product="ui.product" class="mb-3" />
-        <ProductInfoCard :product="ui.product" class="mb-3" />
+        <ProductPriceBlock :product="productForUI" class="mb-3" />
+        <ProductStockBlock :product="productForUI" class="mb-3" />
+        <ProductInfoCard :product="productForUI" class="mb-3" />
 
         <v-card rounded="xl" elevation="1" class="pd-card">
           <div class="pd-card-head">
@@ -46,9 +35,29 @@
         </v-card>
       </div>
 
-      <!-- Der -->
+      <!-- ================= RIGHT ================= -->
       <div class="pd-right">
-        <ProductLabelPreview :product="ui.product" :size="labelSize" :qrValue="ui.qrValue">
+        <!-- 🔹 NUEVA BARRA DE ACCIONES -->
+        <v-card rounded="xl" elevation="1" class="pd-actions mb-3">
+          <div class="pd-actions-row">
+            <v-btn color="primary" variant="flat" :disabled="loading || !raw" @click="printDlg = true">
+              <v-icon start>mdi-printer</v-icon>
+              Imprimir etiqueta
+            </v-btn>
+
+            <v-btn color="primary" variant="tonal" :disabled="loading || !raw" @click="downloadPdf">
+              <v-icon start>mdi-file-pdf-box</v-icon>
+              Descargar PDF
+            </v-btn>
+
+            <v-btn variant="tonal" :disabled="loading || !raw" @click="openEcommerce">
+              <v-icon start>mdi-open-in-new</v-icon>
+              Ver eCommerce
+            </v-btn>
+          </div>
+        </v-card>
+
+        <ProductLabelPreview :product="productForUI" :size="labelSize" :qrValue="ui.qrValue">
           <template #actions="{ printEl }">
             <div class="mt-3">
               <ProductPrintActions
@@ -57,7 +66,7 @@
                 :printEl="printEl"
                 :sheetEl="sheetEl"
                 :title="printTitle"
-                :product="ui.product"
+                :product="productForUI"
                 :qrValue="ui.qrValue"
               />
             </div>
@@ -66,14 +75,19 @@
       </div>
     </div>
 
-    <!-- ✅ Render oculto SOLO para A4 -->
+    <!-- 🔹 Render oculto SOLO para A4 -->
     <div class="pd-hidden">
       <div ref="sheetEl" class="pd-a4-shell">
-        <ProductLabelSheetA4 :product="ui.product" :size="labelSize" :copies="copies" :qrValue="ui.qrValue" />
+        <ProductLabelSheetA4
+          :product="productForUI"
+          :size="labelSize"
+          :copies="copies"
+          :qrValue="ui.qrValue"
+        />
       </div>
     </div>
 
-    <!-- Modal preview -->
+    <!-- 🔹 Modal preview -->
     <v-dialog v-model="printDlg" max-width="820">
       <v-card rounded="xl">
         <v-card-title class="d-flex align-center ga-2">
@@ -82,11 +96,15 @@
         </v-card-title>
 
         <v-card-text>
-          <ProductLabelPreview :product="ui.product" :size="labelSize" :qrValue="ui.qrValue" />
+          <ProductLabelPreview
+            :product="productForUI"
+            :size="labelSize"
+            :qrValue="ui.qrValue"
+          />
         </v-card-text>
 
         <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="printDlg=false">Cerrar</v-btn>
+          <v-btn variant="text" @click="printDlg = false">Cerrar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -104,7 +122,6 @@ import ProductHeader from "@/modules/products/components/detail/ProductHeader.vu
 import ProductPriceBlock from "@/modules/products/components/detail/ProductPriceBlock.vue";
 import ProductStockBlock from "@/modules/products/components/detail/ProductStockBlock.vue";
 import ProductInfoCard from "@/modules/products/components/detail/ProductInfoCard.vue";
-
 import ProductPhotoGallery from "@/modules/products/components/ProductPhotoGallery.vue";
 
 import ProductLabelPreview from "@/modules/products/components/label/ProductLabelPreview.vue";
@@ -125,8 +142,6 @@ const error = ref("");
 const raw = ref(null);
 
 const printDlg = ref(false);
-
-// ✅ tamaños dentro de A4: "100" = 100x60 / "58" = 58x40
 const labelSize = ref("100");
 const copies = ref(8);
 const sheetEl = ref(null);
@@ -139,11 +154,15 @@ const branchId = computed(() => {
   return bid > 0 ? bid : ls > 0 ? ls : null;
 });
 
-const ui = computed(() => buildProductUI(raw.value, { productId: productId.value }));
+const ui = computed(() =>
+  buildProductUI(raw.value, { productId: productId.value, branchId: branchId.value })
+);
+
+const productForUI = computed(() => ui.value?.product || {});
 
 const printTitle = computed(() => {
-  const nm = ui.value.product?.name || "Producto";
-  const cd = ui.value.product?.code || ui.value.product?.id || "";
+  const nm = productForUI.value?.name || "Producto";
+  const cd = productForUI.value?.code || productForUI.value?.id || "";
   return `Etiquetas A4 - ${nm}${cd ? " (" + cd + ")" : ""}`;
 });
 
@@ -166,21 +185,24 @@ async function fetchProduct() {
 
   loading.value = true;
   try {
-    const full = await products.fetchOne(Number(id), { force: true, branch_id: branchId.value });
+    const full = await products.fetchOne(Number(id), {
+      force: true,
+      branch_id: branchId.value,
+    });
     if (!full) throw new Error(products.error || "No se pudo obtener el producto.");
     raw.value = full;
   } catch (e) {
-    error.value = e?.friendlyMessage || e?.message || "No se pudo obtener el producto.";
+    error.value =
+      e?.friendlyMessage || e?.message || "No se pudo obtener el producto.";
   } finally {
     loading.value = false;
   }
 }
 
-// ✅ PDF A4 (NO 58 suelta)
 async function downloadPdf() {
   if (!raw.value) return;
   await downloadLabelPdfA4({
-    product: ui.value.product,
+    product: productForUI.value,
     size: labelSize.value,
     copies: copies.value,
     qrValue: ui.value.qrValue,
@@ -193,17 +215,19 @@ watch(productId, fetchProduct);
 </script>
 
 <style scoped>
-.pd{ padding: 14px; }
-
-.pd-loading{
-  margin-top: 16px;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  opacity:.8;
+.pd {
+  padding: 14px;
 }
 
-.pd-grid{
+.pd-loading {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.pd-grid {
   margin-top: 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
@@ -211,31 +235,66 @@ watch(productId, fetchProduct);
   align-items: start;
 }
 
-.pd-left{ min-width:0; }
-.pd-right{ position: sticky; top: 12px; }
-
-.pd-card{ padding: 14px; }
-.pd-card-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.pd-card-title{ font-weight:900; }
-
-@media (max-width: 1200px){
-  .pd-grid{ grid-template-columns: 1fr 380px; }
-}
-@media (max-width: 980px){
-  .pd-grid{ grid-template-columns: 1fr; }
-  .pd-right{ position: static; }
+.pd-left {
+  min-width: 0;
 }
 
-/* ✅ Oculto, pero con tamaño REAL para que no salga "blanco" si algún util mide el DOM */
-.pd-hidden{
+.pd-right {
+  position: sticky;
+  top: 12px;
+}
+
+.pd-actions {
+  padding: 14px;
+}
+
+.pd-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pd-card {
+  padding: 14px;
+}
+
+.pd-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pd-card-title {
+  font-weight: 900;
+}
+
+@media (max-width: 1200px) {
+  .pd-grid {
+    grid-template-columns: 1fr 380px;
+  }
+}
+
+@media (max-width: 980px) {
+  .pd-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-right {
+    position: static;
+  }
+}
+
+.pd-hidden {
   position: fixed;
   left: -99999px;
   top: 0;
   visibility: hidden;
   pointer-events: none;
 }
-.pd-a4-shell{
-  width: 210mm;   /* ✅ tamaño real A4 */
+
+.pd-a4-shell {
+  width: 210mm;
   min-height: 297mm;
   background: #fff;
 }
