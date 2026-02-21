@@ -1,60 +1,61 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/PosProductCard.vue -->
 <template>
-  <v-card class="ppc" rounded="lg" elevation="1">
-    <!-- Thumb -->
-    <div class="ppc-thumb">
-      <v-img :src="image || undefined" cover class="ppc-img">
+  <v-card class="pc" rounded="xl" elevation="1">
+    <!-- THUMB -->
+    <div class="pc-thumb" @click.stop="emit('details', item)">
+      <v-img :src="image || undefined" cover class="pc-img" height="92">
         <template #placeholder>
-          <div class="ppc-ph">
+          <div class="pc-ph">
             <v-progress-circular indeterminate size="18" />
           </div>
         </template>
         <template #error>
-          <div class="ppc-ph">
-            <v-icon size="26">mdi-image-off-outline</v-icon>
+          <div class="pc-ph">
+            <v-icon size="22">mdi-image-off-outline</v-icon>
           </div>
         </template>
       </v-img>
 
-      <!-- badges (compactos) -->
-      <div class="ppc-badges">
-        <span class="ppc-badge">SKU {{ item?.sku || item?.code || "—" }}</span>
-        <span class="ppc-badge">STK {{ qtyPretty(item?.qty ?? 0) }}</span>
-        <span v-if="hasDiscount" class="ppc-badge ppc-badge-off">{{ offPct }}% OFF</span>
+      <!-- TOP BAR: SKU + STK (una sola barra) -->
+      <div class="pc-topbar">
+        <span class="pc-pill">{{ skuText }}</span>
+        <span class="pc-pill">{{ stockText }}</span>
+
+        <span v-if="offPct > 0" class="pc-pill pc-off">{{ offPct }}% OFF</span>
       </div>
     </div>
 
-    <!-- Body -->
-    <div class="ppc-body">
-      <div class="ppc-title" :title="item?.name || ''">{{ item?.name || "—" }}</div>
+    <!-- BODY -->
+    <div class="pc-body">
+      <div class="pc-title" :title="item?.name || ''">{{ item?.name || "—" }}</div>
 
-      <div class="ppc-sub">
-        <span class="ppc-subtxt">{{ item?.brand || "—" }}</span>
-        <span class="dot">·</span>
-        <span class="ppc-subtxt">{{ item?.model || "—" }}</span>
+      <div class="pc-sub" v-if="brandModel">
+        {{ brandModel }}
       </div>
 
-      <div class="ppc-price">
-        <div class="ppc-price-main">{{ money(priceDiscount) }}</div>
-        <div class="ppc-price-sub" v-if="hasDiscount">
-          <span class="muted">Lista</span>
-          <span class="strike">{{ money(priceList) }}</span>
+      <!-- PRICE -->
+      <div class="pc-price">
+        <div class="pc-price-main">
+          {{ money(priceDiscount) }}
         </div>
-        <div class="ppc-price-sub" v-else>
-          <span class="muted">{{ priceLabel }}</span>
+
+        <div class="pc-price-meta">
+          <span v-if="hasDiscount" class="pc-list">
+            {{ money(priceList) }}
+          </span>
+          <span v-else class="pc-muted">{{ priceLabel || "Precio" }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="ppc-actions">
+    <!-- ACTIONS (compact vertical) -->
+    <div class="pc-actions">
       <v-btn
-        icon
-        size="small"
-        variant="tonal"
+        class="pc-add"
         color="primary"
-        class="ppc-btn"
+        variant="flat"
+        size="small"
         title="Agregar"
         @click.stop="emit('add', item)"
       >
@@ -62,10 +63,9 @@
       </v-btn>
 
       <v-btn
-        icon
-        size="small"
+        class="pc-eye"
         variant="tonal"
-        class="ppc-btn"
+        size="small"
         title="Detalle"
         @click.stop="emit('details', item)"
       >
@@ -85,7 +85,7 @@ const props = defineProps({
   subrubroLabel: { type: String, default: "" },
   priceDiscount: { type: [Number, String], default: 0 },
   priceList: { type: [Number, String], default: 0 },
-  priceLabel: { type: String, default: "Precio" },
+  priceLabel: { type: String, default: "Descuento" },
 });
 
 const emit = defineEmits(["add", "details"]);
@@ -96,13 +96,18 @@ function toNum(v) {
 }
 
 function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(val));
 }
 
-function qtyPretty(n) {
-  const x = toNum(n);
-  return Number.isInteger(x) ? String(x) : x.toFixed(3);
-}
+const skuText = computed(() => {
+  const sku = props.item?.sku || props.item?.code || "—";
+  return `SKU ${String(sku).slice(0, 12)}`;
+});
+
+const stockText = computed(() => {
+  const q = toNum(props.item?.qty ?? 0);
+  return `STK ${Number.isInteger(q) ? q : q.toFixed(0)}`;
+});
 
 const hasDiscount = computed(() => {
   const l = toNum(props.priceList);
@@ -116,69 +121,75 @@ const offPct = computed(() => {
   if (!(l > 0 && d > 0 && d < l)) return 0;
   return Math.round(((l - d) / l) * 100);
 });
+
+const brandModel = computed(() => {
+  const b = String(props.item?.brand || "").trim();
+  const m = String(props.item?.model || "").trim();
+  if (!b && !m) return "";
+  if (b && m) return `${b} · ${m}`;
+  return b || m;
+});
 </script>
 
 <style scoped>
-/* ✅ Compact POS card (safe en claro/oscuro) */
-.ppc {
+/* ✅ POS card: legible, sin romper precios */
+.pc {
+  display: grid;
+  grid-template-columns: 1fr 46px; /* acciones a la derecha */
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-.ppc-thumb {
+/* thumb */
+.pc-thumb {
+  grid-column: 1 / -1;
   position: relative;
-  height: 92px; /* ✅ chico para ver muchas cards */
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  cursor: pointer;
 }
-.ppc-img {
-  height: 92px;
+.pc-img {
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
 }
-.ppc-ph {
+.pc-ph {
   height: 92px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  display: grid;
+  place-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
-.ppc-badges {
+/* top bar pills (una sola fila) */
+.pc-topbar {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
+  left: 6px;
+  right: 6px;
+  top: 6px;
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
-
-.ppc-badge {
+.pc-pill {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 900;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(var(--v-theme-surface), 0.92);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+.pc-off {
+  background: rgba(16, 185, 129, 0.85);
 }
 
-.ppc-badge-off {
-  background: rgba(var(--v-theme-success), 0.14);
-  border-color: rgba(var(--v-theme-success), 0.28);
+/* body */
+.pc-body {
+  grid-column: 1 / 2;
+  padding: 8px 8px 10px;
+  min-width: 0;
 }
 
-.ppc-body {
-  padding: 10px 10px 8px;
-  display: grid;
-  gap: 4px;
-}
-
-.ppc-title {
+.pc-title {
   font-weight: 950;
   font-size: 12px;
   line-height: 1.15;
@@ -189,53 +200,60 @@ const offPct = computed(() => {
   min-height: 28px;
 }
 
-.ppc-sub {
+.pc-sub {
+  margin-top: 2px;
   font-size: 10.5px;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  color: rgba(var(--v-theme-on-surface), 0.62);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ppc-subtxt {
-  font-weight: 700;
-}
-.dot {
-  margin: 0 6px;
-  opacity: 0.5;
-}
 
-.ppc-price {
-  display: grid;
-  gap: 2px;
-  margin-top: 2px;
+.pc-price {
+  margin-top: 6px;
 }
-.ppc-price-main {
-  font-weight: 950;
+.pc-price-main {
+  font-weight: 1000;
   font-size: 14px;
+  line-height: 1;
+  white-space: nowrap; /* ✅ NO se corta */
 }
-.ppc-price-sub {
+.pc-price-meta {
+  margin-top: 3px;
   font-size: 10px;
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  display: flex;
-  gap: 6px;
-  align-items: center;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  white-space: nowrap;
 }
-.muted {
+.pc-list {
+  text-decoration: line-through;
   opacity: 0.85;
 }
-.strike {
-  text-decoration: line-through;
-  opacity: 0.8;
+.pc-muted {
+  opacity: 0.85;
 }
 
-.ppc-actions {
-  padding: 8px 10px 10px;
+/* actions */
+.pc-actions {
+  grid-column: 2 / 3;
   display: flex;
-  gap: 8px;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 10px 0;
+  align-items: stretch;
+  justify-content: flex-end;
 }
-.ppc-btn {
-  min-width: 36px;
-  min-height: 36px;
+.pc-add,
+.pc-eye {
+  min-width: 38px;
+  min-height: 34px;
+  padding: 0;
+}
+
+/* ultra compact: reduce thumb */
+@media (max-width: 600px) {
+  .pc-img,
+  .pc-ph {
+    height: 86px;
+  }
 }
 </style>
