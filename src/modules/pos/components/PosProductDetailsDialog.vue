@@ -1,10 +1,10 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/PosProductDetailsDialog.vue -->
+<!-- ✅ FIX: fallbacks extendidos para marca/modelo (attributes/specs/meta/extras) -->
 
 <template>
   <v-dialog v-model="openLocal" max-width="980">
     <v-card rounded="xl" class="pdd-root">
-      <!-- HEADER -->
       <div class="pdd-head">
         <div>
           <div class="text-h6 font-weight-black">Detalle producto</div>
@@ -25,7 +25,6 @@
 
       <v-card-text class="pdd-body">
         <v-row dense>
-          <!-- LEFT -->
           <v-col cols="12" md="5">
             <v-card class="rounded-xl pa-3 pdd-panel" elevation="0">
               <v-avatar rounded="xl" size="220" class="border mb-3">
@@ -55,9 +54,20 @@
                 </div>
               </div>
 
+              <div v-if="DEBUG" class="mt-3 pdd-debug">
+                <div><b>DEBUG item:</b></div>
+                <div>category_id: {{ toNum(item?.category_id) }}</div>
+                <div>subcategory_id: {{ toNum(item?.subcategory_id) }}</div>
+                <div>resolved rubroId: {{ ids.rubroId ?? "—" }}</div>
+                <div>resolved subId: {{ ids.subId ?? "—" }}</div>
+                <div>item.brand: {{ String(item?.brand ?? "") }}</div>
+                <div>item.model: {{ String(item?.model ?? "") }}</div>
+                <div>fallback brand: {{ String(brandComputed ?? "") }}</div>
+                <div>fallback model: {{ String(modelComputed ?? "") }}</div>
+              </div>
+
               <v-divider class="my-3" />
 
-              <!-- Precio rápido -->
               <div class="d-flex align-center justify-space-between">
                 <div>
                   <div class="text-caption text-medium-emphasis">
@@ -69,9 +79,7 @@
                 </div>
 
                 <div v-if="hasDiscount" class="text-right">
-                  <div class="text-caption text-medium-emphasis">
-                    Precio lista
-                  </div>
+                  <div class="text-caption text-medium-emphasis">Precio lista</div>
                   <div class="text-subtitle-1 font-weight-bold">
                     <span class="strike">{{ money(priceListComputed) }}</span>
                     <span class="ml-2 off">{{ offPct }}% OFF</span>
@@ -90,21 +98,17 @@
             </v-card>
           </v-col>
 
-          <!-- RIGHT -->
           <v-col cols="12" md="7">
             <v-card class="rounded-xl pa-4 pdd-panel" elevation="0">
               <div class="d-flex align-center justify-space-between">
-                <div class="text-subtitle-1 font-weight-black">
-                  Opciones de pago
-                </div>
+                <div class="text-subtitle-1 font-weight-black">Opciones de pago</div>
                 <v-chip size="small" variant="tonal">
                   {{ pricePolicyLabel(currentPolicyComputed) }}
                 </v-chip>
               </div>
 
               <div class="text-caption text-medium-emphasis mt-1">
-                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista ·
-                Revendedor (si existe) pisa todo.
+                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista · Revendedor (si existe) pisa todo.
               </div>
 
               <v-divider class="my-4" />
@@ -126,16 +130,11 @@
                     hide-details
                   />
                   <div class="text-caption text-medium-emphasis">
-                    Si no existe revendedor (&gt; 0), cae a descuento/lista
-                    según corresponda.
+                    Si no existe revendedor (&gt; 0), cae a descuento/lista según corresponda.
                   </div>
                 </v-col>
 
-                <v-col
-                  cols="12"
-                  md="6"
-                  v-if="paymentMethod === 'CARD' && !applyReseller"
-                >
+                <v-col cols="12" md="6" v-if="paymentMethod === 'CARD' && !applyReseller">
                   <v-select
                     v-model="installments"
                     :items="installmentsItems"
@@ -155,37 +154,23 @@
               <v-alert type="info" variant="tonal">
                 <div class="d-flex flex-wrap align-center justify-space-between ga-3">
                   <div>
-                    <div class="text-caption text-medium-emphasis">
-                      Precio unitario
-                    </div>
-                    <div class="text-h6 font-weight-black">
-                      {{ money(unitPrice) }}
-                    </div>
+                    <div class="text-caption text-medium-emphasis">Precio unitario</div>
+                    <div class="text-h6 font-weight-black">{{ money(unitPrice) }}</div>
                   </div>
 
                   <div v-if="showInstallmentBreakdown" class="text-right">
-                    <div class="text-caption text-medium-emphasis">
-                      {{ installments }} cuotas de
-                    </div>
-                    <div class="text-h6 font-weight-black">
-                      {{ money(perInstallment) }}
-                    </div>
+                    <div class="text-caption text-medium-emphasis">{{ installments }} cuotas de</div>
+                    <div class="text-h6 font-weight-black">{{ money(perInstallment) }}</div>
                   </div>
                 </div>
               </v-alert>
 
               <div class="text-caption text-medium-emphasis mt-3">
-                Política aplicada:
-                <b>{{ pricePolicyLabel(currentPolicyComputed) }}</b>
+                Política aplicada: <b>{{ pricePolicyLabel(currentPolicyComputed) }}</b>
               </div>
 
-              <v-alert
-                v-if="unitPrice <= 0"
-                type="warning"
-                variant="tonal"
-                class="mt-3"
-              >
-                Este producto no tiene precio válido (lista/descuento/base). No se puede agregar.
+              <v-alert v-if="unitPrice <= 0" type="warning" variant="tonal" class="mt-3">
+                Este producto no tiene precio válido. No se puede agregar.
               </v-alert>
             </v-card>
           </v-col>
@@ -195,18 +180,9 @@
       <v-divider />
 
       <v-card-actions class="pa-4">
-        <v-btn variant="tonal" @click="openLocal = false">
-          Cerrar
-        </v-btn>
+        <v-btn variant="tonal" @click="openLocal = false">Cerrar</v-btn>
         <v-spacer />
-
-        <v-btn
-          color="primary"
-          variant="flat"
-          :disabled="!canSell || unitPrice <= 0"
-          :title="!canSell ? 'El usuario admin no puede vender' : unitPrice <= 0 ? 'Producto sin precio' : ''"
-          @click="onAdd"
-        >
+        <v-btn color="primary" variant="flat" :disabled="!canSell || unitPrice <= 0" @click="onAdd">
           <v-icon start>mdi-plus</v-icon>
           Agregar con este precio
         </v-btn>
@@ -219,15 +195,15 @@
 import { computed, ref, watch } from "vue";
 import http from "@/app/api/http";
 
+const DEBUG = true;
+
 const props = defineProps({
   open: { type: Boolean, default: false },
   canSell: { type: Boolean, default: true },
-
   item: { type: Object, default: null },
   image: { type: String, default: "" },
   rubroLabel: { type: String, default: "" },
   subrubroLabel: { type: String, default: "" },
-
   priceList: { type: [Number, String], default: 0 },
   priceDiscount: { type: [Number, String], default: 0 },
   priceReseller: { type: [Number, String], default: 0 },
@@ -253,45 +229,26 @@ const paymentMethod = ref("CASH");
 const installments = ref(1);
 const applyReseller = ref(false);
 
-/* =========================
-   Numbers (AR)
-========================= */
 function toNum(v) {
   if (v === null || v === undefined) return 0;
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-
   const s = String(v).trim();
   if (!s) return 0;
-
-  if (s.includes(".") && s.includes(",")) {
-    const norm = s.replace(/\./g, "").replace(",", ".");
-    const n = Number(norm);
-    return Number.isFinite(n) ? n : 0;
-  }
-  if (s.includes(",") && !s.includes(".")) {
-    const n = Number(s.replace(",", "."));
-    return Number.isFinite(n) ? n : 0;
-  }
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
+  if (s.includes(".") && s.includes(",")) return Number(s.replace(/\./g, "").replace(",", ".")) || 0;
+  if (s.includes(",") && !s.includes(".")) return Number(s.replace(",", ".")) || 0;
+  return Number(s) || 0;
 }
 
 function money(val) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-  }).format(toNum(val));
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(val));
 }
-
 function qty3(n) {
   return toNum(n).toFixed(3);
 }
 
-/* =========================
-   Categories local
-========================= */
+/* categories */
 const cats = ref([]);
-const catsStatus = ref("idle"); // idle|loading|ok|error
+const catsStatus = ref("idle");
 
 async function loadCategoriesSafe() {
   if (catsStatus.value === "loading") return;
@@ -333,133 +290,116 @@ const catById = computed(() => {
   return m;
 });
 
-/**
- * ✅ Derivación:
- * - Si category_id es una SUBCAT (tiene parent_id): rubro=parent, subrubro=category_id
- * - Si category_id es rubro (sin parent): rubro=category_id
- * - Si subcategory_id existe: subrubro=subcategory_id y rubro=parent(subcat)
- */
 function deriveRubroSub(p) {
-  const subId = toNum(p?.subcategory_id || p?.subcategory?.id);
-  if (subId) {
-    const sub = catById.value.get(subId) || null;
-    const rubroId = toNum(sub?.parent_id || sub?.parentId || sub?.parent?.id) || null;
-    return { rubroId, subId: sub ? toNum(sub.id) : subId };
+  const cid = toNum(p?.category_id || p?.category?.id);
+  const sid = toNum(p?.subcategory_id || p?.subcategory?.id);
+
+  if (cid && sid) return { rubroId: cid, subId: sid };
+
+  if (!cid && sid) {
+    const sub = catById.value.get(sid) || null;
+    const rid = toNum(sub?.parent_id || sub?.parentId || sub?.parent?.id) || null;
+    return { rubroId: rid, subId: sid };
   }
 
-  const catId = toNum(p?.category_id || p?.category?.id);
-  if (!catId) return { rubroId: null, subId: null };
+  if (cid && !sid) {
+    const c = catById.value.get(cid) || null;
+    if (!c) return { rubroId: null, subId: null };
+    const pid = toNum(c?.parent_id || c?.parentId || c?.parent?.id) || null;
+    if (pid) return { rubroId: pid, subId: cid };
+    return { rubroId: cid, subId: null };
+  }
 
-  const c = catById.value.get(catId) || null;
-  if (!c) return { rubroId: null, subId: null };
-
-  const parentId = toNum(c?.parent_id || c?.parentId || c?.parent?.id) || null;
-  if (parentId) return { rubroId: parentId, subId: toNum(c.id) };
-
-  return { rubroId: toNum(c.id), subId: null };
+  return { rubroId: null, subId: null };
 }
 
 const ids = computed(() => deriveRubroSub(props.item));
 
-const rubroLabelComputed = computed(() => {
+const rubroName = computed(() => {
   if (props.rubroLabel) return props.rubroLabel;
   const rid = ids.value.rubroId;
-  if (!rid) return "";
-  return catById.value.get(rid)?.name || "";
+  return rid ? catById.value.get(rid)?.name || "" : "";
 });
 
-const subrubroLabelComputed = computed(() => {
+const subrubroName = computed(() => {
   if (props.subrubroLabel) return props.subrubroLabel;
   const sid = ids.value.subId;
-  if (!sid) return "";
-  return catById.value.get(sid)?.name || "";
+  return sid ? catById.value.get(sid)?.name || "" : "";
 });
 
-/**
- * ✅ FIX VISUAL: si falta rubro (padre) pero hay subrubro,
- * mostramos rubro = subrubro y subrubro vacío (no “—”)
- */
 const rubroLabelFinal = computed(() => {
-  const r = String(rubroLabelComputed.value || "").trim();
-  const s = String(subrubroLabelComputed.value || "").trim();
+  const r = String(rubroName.value || "").trim();
+  const s = String(subrubroName.value || "").trim();
   if (r) return r;
-  if (s) return s; // fallback
+  if (s) return s;
   return "";
 });
 
 const subrubroLabelFinal = computed(() => {
-  const r = String(rubroLabelComputed.value || "").trim();
-  const s = String(subrubroLabelComputed.value || "").trim();
-  if (!r && s) return ""; // evitamos duplicar
+  const r = String(rubroName.value || "").trim();
+  const s = String(subrubroName.value || "").trim();
+  if (!s) return "";
+  if (!r && s) return "";
+  if (r && s && r.toLowerCase() === s.toLowerCase()) return "";
   return s;
 });
 
-/* =========================
-   Marca / Modelo fallbacks
-========================= */
+/* ✅ marca/modelo: fallbacks extendidos */
 const brandComputed = computed(() => {
   const it = props.item || {};
-  return (
-    it.brand ||
-    it.brand_name ||
-    it.marca ||
-    it.Brand ||
-    it?.attributes?.brand ||
-    it?.attributes?.marca ||
-    it?.specs?.brand ||
-    it?.specs?.marca ||
-    it?.meta?.brand ||
-    ""
-  );
+  const pick =
+    it.brand ??
+    it.brand_name ??
+    it.marca ??
+    it.Brand ??
+    it?.attributes?.brand ??
+    it?.attributes?.marca ??
+    it?.specs?.brand ??
+    it?.specs?.marca ??
+    it?.meta?.brand ??
+    it?.extra?.brand ??
+    it?.extra?.marca ??
+    it?.details?.brand ??
+    it?.details?.marca ??
+    it?.product?.brand ??
+    it?.product?.marca ??
+    "";
+  return String(pick || "").trim();
 });
 
 const modelComputed = computed(() => {
   const it = props.item || {};
-  return (
-    it.model ||
-    it.model_name ||
-    it.modelo ||
-    it.Model ||
-    it?.attributes?.model ||
-    it?.attributes?.modelo ||
-    it?.specs?.model ||
-    it?.specs?.modelo ||
-    it?.meta?.model ||
-    ""
-  );
+  const pick =
+    it.model ??
+    it.model_name ??
+    it.modelo ??
+    it.Model ??
+    it?.attributes?.model ??
+    it?.attributes?.modelo ??
+    it?.specs?.model ??
+    it?.specs?.modelo ??
+    it?.meta?.model ??
+    it?.extra?.model ??
+    it?.extra?.modelo ??
+    it?.details?.model ??
+    it?.details?.modelo ??
+    it?.product?.model ??
+    it?.product?.modelo ??
+    "";
+  return String(pick || "").trim();
 });
 
-/* =========================
-   Pricing
-========================= */
-const priceListComputed = computed(() => {
-  const fromProps = toNum(props.priceList);
-  if (fromProps > 0) return fromProps;
-  return toNum(props.item?.price_list) || toNum(props.item?.list_price) || toNum(props.item?.priceList) || 0;
-});
-
-const priceDiscountComputed = computed(() => {
-  const fromProps = toNum(props.priceDiscount);
-  if (fromProps > 0) return fromProps;
-  return toNum(props.item?.price_discount) || toNum(props.item?.discount_price) || toNum(props.item?.priceDiscount) || 0;
-});
-
-const priceResellerComputed = computed(() => {
-  const fromProps = toNum(props.priceReseller);
-  if (fromProps > 0) return fromProps;
-  return toNum(props.item?.price_reseller) || toNum(props.item?.reseller_price) || toNum(props.item?.priceReseller) || 0;
-});
-
-const priceBaseComputed = computed(() => {
-  return toNum(props.item?.price) || toNum(props.item?.base_price) || toNum(props.item?.effective_price) || 0;
-});
+/* prices */
+const priceListComputed = computed(() => toNum(props.priceList) || toNum(props.item?.price_list) || 0);
+const priceDiscountComputed = computed(() => toNum(props.priceDiscount) || toNum(props.item?.price_discount) || 0);
+const priceResellerComputed = computed(() => toNum(props.priceReseller) || toNum(props.item?.price_reseller) || 0);
+const priceBaseComputed = computed(() => toNum(props.item?.price) || toNum(props.item?.effective_price) || 0);
 
 const hasDiscount = computed(() => {
   const l = priceListComputed.value;
   const d = priceDiscountComputed.value;
   return l > 0 && d > 0 && d < l;
 });
-
 const offPct = computed(() => {
   const l = priceListComputed.value;
   const d = priceDiscountComputed.value;
@@ -470,19 +410,14 @@ const offPct = computed(() => {
 function currentPolicy() {
   const res = priceResellerComputed.value;
   if (applyReseller.value && res > 0) return "RESELLER";
-  if (paymentMethod.value === "CARD") {
-    const k = Number(installments.value || 1);
-    return k > 1 ? "LIST" : "DISCOUNT";
-  }
+  if (paymentMethod.value === "CARD") return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
   return "DISCOUNT";
 }
-
 function pricePolicyLabel(pol) {
   if (pol === "RESELLER") return "Revendedor";
   if (pol === "LIST") return "Lista";
   return "Descuento";
 }
-
 function resolveUnitPrice(policy) {
   const list = priceListComputed.value;
   const disc = priceDiscountComputed.value;
@@ -496,32 +431,21 @@ function resolveUnitPrice(policy) {
 
 const currentPolicyComputed = computed(() => currentPolicy());
 const unitPrice = computed(() => resolveUnitPrice(currentPolicyComputed.value));
-
-const showInstallmentBreakdown = computed(() => {
-  return paymentMethod.value === "CARD" && !applyReseller.value && Number(installments.value || 1) > 1;
-});
-
+const showInstallmentBreakdown = computed(() => paymentMethod.value === "CARD" && !applyReseller.value && Number(installments.value || 1) > 1);
 const perInstallment = computed(() => {
   const k = Number(installments.value || 1);
   if (!(k > 1)) return 0;
   return toNum(unitPrice.value) / k;
 });
 
-/* =========================
-   On open
-========================= */
 watch(
   () => props.open,
   async (v) => {
     if (!v) return;
-
     paymentMethod.value = "CASH";
     installments.value = 1;
     applyReseller.value = false;
-
-    if (!props.rubroLabel && !props.subrubroLabel && !(cats.value || []).length) {
-      await loadCategoriesSafe();
-    }
+    if (!(cats.value || []).length) await loadCategoriesSafe();
   }
 );
 
@@ -538,32 +462,19 @@ function onAdd() {
 </script>
 
 <style scoped>
-.pdd-root {
-  overflow: hidden;
-}
-.pdd-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-.pdd-body {
-  padding: 16px;
-}
-.pdd-panel {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-surface), 0.92);
-}
-.border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 14px;
-}
-.strike {
-  text-decoration: line-through;
-  opacity: 0.8;
-}
-.off {
-  color: rgb(var(--v-theme-success));
-  font-weight: 900;
+.pdd-root { overflow: hidden; }
+.pdd-head { display:flex; align-items:center; gap:12px; padding:16px; }
+.pdd-body { padding:16px; }
+.pdd-panel { border:1px solid rgba(var(--v-theme-on-surface),0.08); background:rgba(var(--v-theme-surface),0.92); }
+.border { border:1px solid rgba(var(--v-theme-on-surface),0.08); border-radius:14px; }
+.strike { text-decoration: line-through; opacity:0.8; }
+.off { color: rgb(var(--v-theme-success)); font-weight:900; }
+.pdd-debug {
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 </style>
