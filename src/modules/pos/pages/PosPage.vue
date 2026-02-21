@@ -1,6 +1,5 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosPage.vue -->
-
 <template>
   <v-container fluid class="pos-root">
     <!-- ================= HEADER ================= -->
@@ -22,12 +21,7 @@
               Productos listos para vender: {{ filteredTotal }}
             </v-chip>
 
-            <v-chip
-              v-if="isAdmin"
-              size="small"
-              variant="tonal"
-              color="amber-darken-2"
-            >
+            <v-chip v-if="isAdmin" size="small" variant="tonal" color="amber-darken-2">
               Admin: solo vista (no puede vender)
             </v-chip>
 
@@ -135,22 +129,12 @@
                 </div>
 
                 <div class="d-flex ga-2">
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    @click="prevPage"
-                    :disabled="page <= 1"
-                  >
+                  <v-btn size="small" variant="tonal" @click="prevPage" :disabled="page <= 1">
                     <v-icon start>mdi-chevron-left</v-icon>
                     Anterior
                   </v-btn>
 
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    @click="nextPage"
-                    :disabled="page >= pages"
-                  >
+                  <v-btn size="small" variant="tonal" @click="nextPage" :disabled="page >= pages">
                     Siguiente
                     <v-icon end>mdi-chevron-right</v-icon>
                   </v-btn>
@@ -175,14 +159,8 @@
                 :sku="p.sku || p.code"
                 :stkLabel="`STK ${Number(p.qty || 0)}`"
                 :offLabel="
-                  resolveUnitPrice(p, 'LIST') >
-                  resolveUnitPrice(p, 'DISCOUNT')
-                    ? `${Math.round(
-                        (1 -
-                          resolveUnitPrice(p, 'DISCOUNT') /
-                            resolveUnitPrice(p, 'LIST')) *
-                          100
-                      )}% OFF`
+                  resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
+                    ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
                     : ''
                 "
                 :rubro-label="rubroName(p) || ''"
@@ -209,7 +187,7 @@
           </div>
         </v-col>
 
-        <!-- RIGHT ================= CARRITO (COMPONENTE) -->
+        <!-- RIGHT ================= CARRITO -->
         <v-col cols="12" md="4">
           <PosCartPanel
             :cart="posStore.cart"
@@ -262,7 +240,7 @@ import PosProductRow from "../components/PosProductRow.vue";
 import CheckoutDialog from "../components/CheckoutDialog.vue";
 import PosProductDetailsDialog from "../components/PosProductDetailsDialog.vue";
 import ReceiptDialog from "../components/ReceiptDialog.vue";
-import PosCartPanel from "../components/PosCartPanel.vue"; // ✅ NUEVO
+import PosCartPanel from "../components/PosCartPanel.vue";
 
 const posStore = usePosStore();
 const auth = useAuthStore();
@@ -317,84 +295,107 @@ const branchName = computed(() => {
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
-function qty3(n) {
-  return Number(n || 0).toFixed(3);
-}
 function toNum(v) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
 }
 
 /* =========================
-   Categories
+   ✅ RUBROS y SUBRUBROS (según tu DB real)
+   - rubros: tabla categories (id, name, parent_id)
+   - subrubros: tabla subcategories (id, category_id, name)
 ========================= */
-const categories = ref([]);
-const catById = computed(() => {
+const rubros = ref([]);        // categories
+const subrubros = ref([]);     // subcategories
+
+const rubroById = computed(() => {
   const m = new Map();
-  for (const c of categories.value || []) m.set(Number(c.id), c);
+  for (const c of rubros.value || []) m.set(Number(c.id), c);
+  return m;
+});
+const subrubroById = computed(() => {
+  const m = new Map();
+  for (const s of subrubros.value || []) m.set(Number(s.id), s);
   return m;
 });
 
-function getCatIdFromProduct(p) {
-  return Number(p?.category_id || 0) || Number(p?.subcategory_id || 0) || Number(p?.category?.id || 0) || null;
+function normalizeList(data) {
+  const arr = data?.data?.items || data?.items || data?.data || data || [];
+  return Array.isArray(arr) ? arr : [];
 }
 
-function deriveRubroSub(p) {
-  const cid = getCatIdFromProduct(p);
-  if (!cid) return { rubroId: null, subId: null };
-
-  const c = catById.value.get(Number(cid)) || null;
-  if (!c) return { rubroId: null, subId: null };
-
-  const pid = Number(c.parent_id || c.parentId || c.parent?.id || 0) || null;
-  if (pid) return { rubroId: pid, subId: Number(c.id) };
-  return { rubroId: Number(c.id), subId: null };
-}
-
-function productRubroId(p) {
-  return deriveRubroSub(p).rubroId;
-}
-function productSubId(p) {
-  return deriveRubroSub(p).subId;
-}
-function rubroName(p) {
-  const { rubroId } = deriveRubroSub(p);
-  if (!rubroId) return null;
-  return catById.value.get(Number(rubroId))?.name || null;
-}
-function subrubroName(p) {
-  const { subId } = deriveRubroSub(p);
-  if (!subId) return null;
-  return catById.value.get(Number(subId))?.name || null;
-}
-
-async function loadCategoriesSafe() {
+async function loadRubrosSafe() {
   const candidates = [
     { url: "/categories", params: { limit: 5000 } },
     { url: "/categories", params: { page: 1, limit: 5000 } },
+  ];
+  for (const c of candidates) {
+    try {
+      const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
+      const out = normalizeList(data);
+      if (out.length) {
+        rubros.value = out;
+        return;
+      }
+    } catch {}
+  }
+  rubros.value = [];
+}
+
+async function loadSubrubrosSafe() {
+  // ✅ endpoints candidatos (según cómo lo tengas expuesto)
+  const candidates = [
+    { url: "/subcategories", params: { limit: 5000 } },
+    { url: "/subcategories", params: { page: 1, limit: 5000 } },
+    { url: "/admin/subcategories", params: { limit: 5000 } },
+    { url: "/admin/subcategories", params: { page: 1, limit: 5000 } },
   ];
 
   for (const c of candidates) {
     try {
       const { data } = await http.get(c.url, c.params ? { params: c.params } : undefined);
-      const arr = data?.data?.items || data?.items || data?.data || data || [];
-      categories.value = Array.isArray(arr) ? arr : [];
-      if (categories.value.length) return;
+      const out = normalizeList(data);
+      if (out.length) {
+        subrubros.value = out;
+        return;
+      }
     } catch {}
   }
-  categories.value = [];
+  subrubros.value = [];
 }
 
-const allSellable = ref([]); // ✅ definido antes porque rubroItems lo usa
+/* IDs correctos desde producto */
+function productRubroId(p) {
+  return Number(p?.category_id || p?.category?.id || 0) || null;
+}
+function productSubId(p) {
+  return Number(p?.subcategory_id || p?.subcategory?.id || 0) || null;
+}
+
+/* nombres correctos */
+function rubroName(p) {
+  const rid = productRubroId(p);
+  if (!rid) return null;
+  return rubroById.value.get(Number(rid))?.name || null;
+}
+function subrubroName(p) {
+  const sid = productSubId(p);
+  if (!sid) return null;
+  return subrubroById.value.get(Number(sid))?.name || null;
+}
+
+/* items para selects */
+const allSellable = ref([]); // pool
 
 const rubroItems = computed(() => {
+  // rubros realmente usados por el pool
   const map = new Map();
   for (const p of allSellable.value || []) {
-    const d = deriveRubroSub(p);
-    if (!d.rubroId) continue;
-    const name = catById.value.get(Number(d.rubroId))?.name;
+    const rid = productRubroId(p);
+    if (!rid) continue;
+    const name = rubroById.value.get(Number(rid))?.name;
     if (!name) continue;
-    if (!map.has(d.rubroId)) map.set(d.rubroId, { title: String(name), value: Number(d.rubroId) });
+    if (!map.has(rid)) map.set(rid, { title: String(name), value: Number(rid) });
   }
   return Array.from(map.values()).sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
@@ -402,9 +403,9 @@ const rubroItems = computed(() => {
 const subrubroItems = computed(() => {
   const rid = Number(rubroId.value || 0);
   if (!rid) return [];
-  const arr = (categories.value || []).filter((c) => Number(c?.parent_id || 0) === rid);
-  return arr
-    .map((c) => ({ title: String(c?.name || "—"), value: Number(c?.id) }))
+  return (subrubros.value || [])
+    .filter((s) => Number(s?.category_id || 0) === rid)
+    .map((s) => ({ title: String(s?.name || "—"), value: Number(s?.id) }))
     .sort((a, b) => String(a.title).localeCompare(String(b.title)));
 });
 
@@ -701,14 +702,6 @@ function addFromDetails(payload) {
 const checkoutDialog = ref(false);
 const paymentMethod = ref("CASH");
 const installments = ref(1);
-const installmentsItems = [
-  { title: "1 pago", value: 1 },
-  { title: "2 cuotas", value: 2 },
-  { title: "3 cuotas", value: 3 },
-  { title: "4 cuotas", value: 4 },
-  { title: "5 cuotas", value: 5 },
-  { title: "6 cuotas", value: 6 },
-];
 const applyReseller = ref(false);
 const paymentProof = ref("");
 const cashInput = ref("");
@@ -727,13 +720,6 @@ function currentPricePolicy() {
   if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") return "DISCOUNT";
   return "DISCOUNT";
 }
-
-const checkoutPriceHint = computed(() => {
-  const pol = currentPricePolicy();
-  if (pol === "RESELLER") return "Se cobrará con precio REVENDEDOR (si existe).";
-  if (pol === "LIST") return `Se cobrará con precio LISTA (${installments.value} cuotas).`;
-  return "Se cobrará con precio DESCUENTO (1 pago).";
-});
 
 const checkoutTotal = computed(() => {
   const pol = currentPricePolicy();
@@ -780,18 +766,6 @@ const paidAmount = computed(() => {
   return parseCash(cashInput.value);
 });
 
-const cannotConfirm = computed(() => {
-  if (posStore.loading) return true;
-  if ((posStore.cart || []).length === 0) return true;
-
-  if (paymentMethod.value === "CASH") {
-    const totalAmt = Number(checkoutTotal.value || 0);
-    if (!cashInput.value) return true;
-    return paidAmount.value < totalAmt;
-  }
-  return false;
-});
-
 watch([paymentMethod, installments, applyReseller, cashInput], () => {
   if (paymentMethod.value !== "CASH") {
     cashError.value = false;
@@ -836,8 +810,6 @@ function applyCheckoutPricesIntoStore() {
 const receiptOpen = ref(false);
 const receiptSale = ref(null);
 const receiptCompanyName = ref("POS360");
-const receiptCompanyTagline = ref("Inventario · Ecommerce · POS");
-const receiptBranchAddress = ref("");
 
 async function confirmPayment() {
   if (!canSell.value) {
@@ -1036,7 +1008,9 @@ onMounted(async () => {
   if (roles.value.includes("admin")) posStore.resetContext?.();
   shiftStart.value = new Date();
   window.addEventListener("keydown", onKeydown, { passive: false });
-  await loadCategoriesSafe();
+
+  // ✅ cargar ambos (rubros + subrubros) antes del pool
+  await Promise.all([loadRubrosSafe(), loadSubrubrosSafe()]);
   await fetchSellablePool();
 });
 

@@ -1,6 +1,9 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 
+
+
+
 <template>
   <div>
     <!-- HEADER -->
@@ -39,7 +42,7 @@
         <v-col cols="12" md="4">
           <v-text-field
             v-model="q"
-            label="Buscar por nombre"
+            label="Buscar (nombre / sku / barcode / code / marca / modelo)"
             variant="outlined"
             density="comfortable"
             clearable
@@ -71,13 +74,13 @@
             variant="outlined"
             density="comfortable"
             clearable
-            @update:modelValue="onCategoryChange"
+            @update:modelValue="() => { onCategoryChange(); applyFilters(); }"
           />
         </v-col>
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="subcategoryName"
+            v-model="subcategoryValue"
             :items="subcategoryItems"
             item-title="title"
             item-value="value"
@@ -86,6 +89,7 @@
             density="comfortable"
             clearable
             :disabled="!categoryId"
+            @update:modelValue="applyFilters"
           />
         </v-col>
 
@@ -98,6 +102,7 @@
             label="Stock"
             variant="outlined"
             density="comfortable"
+            @update:modelValue="applyFilters"
           />
         </v-col>
 
@@ -110,6 +115,7 @@
             label="Precio (lista)"
             variant="outlined"
             density="comfortable"
+            @update:modelValue="applyFilters"
           />
         </v-col>
 
@@ -121,6 +127,8 @@
             density="comfortable"
             type="number"
             clearable
+            @keyup.enter="applyFilters"
+            @blur="applyFilters"
           />
         </v-col>
 
@@ -132,6 +140,8 @@
             density="comfortable"
             type="number"
             clearable
+            @keyup.enter="applyFilters"
+            @blur="applyFilters"
           />
         </v-col>
 
@@ -144,6 +154,7 @@
             label="Imágenes"
             variant="outlined"
             density="comfortable"
+            @update:modelValue="applyFilters"
           />
         </v-col>
 
@@ -166,7 +177,7 @@
         item-key="id"
         show-select
         v-model:selected="selectedIds"
-        :loading="products.loading"
+        :loading="loadingAll || products.loading"
         class="pos-table"
       >
         <!-- Nombre + estado inactivo -->
@@ -212,7 +223,7 @@
         <!-- ✅ ACCIONES -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-end ga-1">
-            <!-- ✅ VER: ahora navega a la vista nueva -->
+            <!-- ✅ VER -->
             <v-btn icon="mdi-eye-outline" variant="text" @click="openView(item.id)" />
             <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
 
@@ -292,6 +303,9 @@
   </div>
 </template>
 
+
+
+
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -326,7 +340,14 @@ const userBranchId = computed(() => {
 const q = ref("");
 const branchId = ref(null);
 const categoryId = ref(null);
-const subcategoryName = ref(null); // ✅ por NOMBRE
+
+/**
+ * ✅ subcategoryValue puede ser:
+ * - number (subcategory_id)
+ * - string (name lower) si no hay id
+ */
+const subcategoryValue = ref(null);
+
 const stockFilter = ref("all");
 const pricePresence = ref("all");
 const priceMin = ref(null);
@@ -401,6 +422,7 @@ function fmtDateTimeShort(v) {
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${dd}/${mm}/${yy} ${hh}:${mi}`;
 }
+
 function creatorLabel(it) {
   const x =
     it?.created_by_user ||
@@ -435,6 +457,32 @@ function creatorLabel(it) {
     null;
 
   return alt ? String(alt) : "";
+}
+
+function pickStr(...vals) {
+  for (const v of vals) {
+    const s = String(v ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+function matchText(it, needle) {
+  if (!needle) return true;
+  const n = String(needle).toLowerCase();
+
+  const hay = [
+    pickStr(it?.name),
+    pickStr(it?.sku),
+    pickStr(it?.barcode),
+    pickStr(it?.code),
+    pickStr(it?.brand),
+    pickStr(it?.model),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return hay.includes(n);
 }
 
 function normalizeRemoveResult(r) {
@@ -500,6 +548,15 @@ function branchColor(id) {
   return "blue-grey";
 }
 
+const branchItems = computed(() => {
+  const out = [{ title: "Todas", value: null }];
+  const arr = (branches.value || [])
+    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => a.value - b.value);
+  return out.concat(arr);
+});
+
 /* =========================
    CATEGORIES
 ========================= */
@@ -527,15 +584,111 @@ const categoryItems = computed(() => {
 });
 
 function onCategoryChange() {
-  subcategoryName.value = null;
+  subcategoryValue.value = null;
+  page.value = 1;
 }
 
 /* =========================
-   ROWS NORMALIZADAS
+   DATASET LOCAL (FIX: traer TODO cuando hay filtros)
+========================= */
+const loadingAll = ref(false);
+const allItems = ref([]);
+
+/** detecta filtros activos */
+const hasActiveFilters = computed(() => {
+  const qq = String(q.value || "").trim();
+  const pmin = priceMin.value !== null && priceMin.value !== "" ? Number(priceMin.value) : null;
+  const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
+
+  return !!(
+    qq ||
+    branchId.value ||
+    categoryId.value ||
+    subcategoryValue.value ||
+    stockFilter.value !== "all" ||
+    pricePresence.value !== "all" ||
+    imagesFilter.value !== "all" ||
+    pmin !== null ||
+    pmax !== null
+  );
+});
+
+/**
+ * ✅ Carga lista:
+ * - Si NO hay filtros => trae 1000 (rápido)
+ * - Si HAY filtros => pagina y acumula TODO (cap seguro)
+ * - branch_id se usa para stock por sucursal
+ * - category_id / subcategory_id se mandan “si el backend los soporta”
+ */
+async function loadAll() {
+  if (!auth.isAuthed) return;
+  if (loadingAll.value) return;
+
+  loadingAll.value = true;
+  try {
+    const qq = String(q.value || "").trim();
+
+    const bid = isAdmin.value
+      ? branchId.value
+        ? Number(branchId.value)
+        : null
+      : userBranchId.value
+        ? Number(userBranchId.value)
+        : null;
+
+    const subVal = subcategoryValue.value;
+    const subId = typeof subVal === "number" && Number.isFinite(subVal) ? Number(subVal) : null;
+
+    const serverParams = {
+      q: qq || "",
+      category_id: categoryId.value ? Number(categoryId.value) : null,
+      subcategory_id: subId,
+      branch_id: bid,
+    };
+
+    allItems.value = [];
+
+    // ✅ sin filtros => rápido
+    if (!hasActiveFilters.value) {
+      await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
+      allItems.value = Array.isArray(products.items) ? products.items : [];
+      return;
+    }
+
+    // ✅ con filtros => trae TODO paginado
+    const LIMIT = 200;
+    let p = 1;
+    let pagesServer = 1;
+
+    const MAX_PAGES = 80; // 80*200 = 16k
+    const MAX_ITEMS = 16000;
+
+    do {
+      await products.fetchList({ ...serverParams, page: p, limit: LIMIT });
+
+      const items = Array.isArray(products.items) ? products.items : [];
+      const totalPages = Number(products.pages || 1) || 1;
+
+      if (p === 1) pagesServer = totalPages;
+
+      allItems.value = allItems.value.concat(items);
+
+      if (allItems.value.length >= MAX_ITEMS) break;
+
+      p++;
+    } while (p <= pagesServer && p <= MAX_PAGES);
+  } finally {
+    loadingAll.value = false;
+  }
+}
+
+/* =========================
+   NORMALIZADAS
 ========================= */
 const normalized = computed(() => {
-  return (products.items || []).map((x) => {
+  return (allItems.value || []).map((x) => {
     const cid = toInt(x?.category_id, 0) || null;
+    const sid = toInt(x?.subcategory_id, 0) || null;
 
     const rubro =
       x?.category?.name ||
@@ -551,13 +704,14 @@ const normalized = computed(() => {
       x?.subcategoryName ||
       null;
 
-    const imagesCount = Number(x?.images_count ?? x?.images?.length ?? 0);
+    const imagesCount = Number(x?.images_count ?? x?.images?.length ?? x?.media?.images?.length ?? 0);
 
     return {
       ...x,
       rubro,
       subrubro,
       rubro_id: cid,
+      subrubro_id: sid,
       subrubro_key: String(subrubro || "").trim().toLowerCase() || null,
       imagesCount,
       _price_list_num: priceListNumber(x),
@@ -567,23 +721,37 @@ const normalized = computed(() => {
 });
 
 /* =========================
-   SUBRUBROS (del listado real)
+   SUBRUBROS (items para select)
 ========================= */
 const subcategoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
   const pid = categoryId.value ? Number(categoryId.value) : 0;
   if (!pid) return out;
 
-  const set = new Map();
+  const map = new Map(); // key -> { id?, name }
   for (const it of normalized.value) {
     if (Number(it?.rubro_id || 0) !== pid) continue;
+
     const name = String(it?.subrubro || "").trim();
+    const sid = Number(it?.subrubro_id || 0) || 0;
+
+    if (sid > 0) {
+      if (!map.has(`id:${sid}`)) map.set(`id:${sid}`, { id: sid, name: name || `Subrubro #${sid}` });
+      continue;
+    }
+
     if (!name) continue;
-    set.set(name.toLowerCase(), name);
+    const key = `name:${name.toLowerCase()}`;
+    if (!map.has(key)) map.set(key, { id: null, name });
   }
 
-  const arr = Array.from(set.values()).sort((a, b) => a.localeCompare(b, "es"));
-  for (const name of arr) out.push({ title: name, value: name.toLowerCase() });
+  const arr = Array.from(map.values()).sort((a, b) => String(a.name).localeCompare(String(b.name), "es"));
+  for (const x of arr) {
+    out.push({
+      title: x.name,
+      value: x.id ? x.id : String(x.name).trim().toLowerCase(),
+    });
+  }
 
   return out;
 });
@@ -592,9 +760,13 @@ const subcategoryItems = computed(() => {
    FILTRADO
 ========================= */
 const filteredAll = computed(() => {
-  const qq = String(q.value || "").trim().toLowerCase();
+  const qq = String(q.value || "").trim();
   const pid = categoryId.value ? Number(categoryId.value) : null;
-  const subKey = subcategoryName.value ? String(subcategoryName.value).toLowerCase() : null;
+
+  const subVal = subcategoryValue.value;
+  const subIsId = typeof subVal === "number" && Number.isFinite(subVal);
+  const subId = subIsId ? Number(subVal) : null;
+  const subKey = !subIsId && subVal ? String(subVal).toLowerCase() : null;
 
   const pmin = priceMin.value !== null && priceMin.value !== "" ? Number(priceMin.value) : null;
   const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
@@ -602,14 +774,12 @@ const filteredAll = computed(() => {
   return normalized.value.filter((it) => {
     if (isInactive(it)) return false;
 
-    if (qq && !String(it.name || "").toLowerCase().includes(qq)) return false;
-
-    if (isAdmin.value && branchId.value) {
-      if (!(it._stock_num > 0)) return false;
-    }
+    // ✅ busca en múltiples campos
+    if (qq && !matchText(it, qq)) return false;
 
     if (pid && Number(it?.rubro_id || 0) !== pid) return false;
 
+    if (subId && Number(it?.subrubro_id || 0) !== subId) return false;
     if (subKey && String(it?.subrubro_key || "") !== subKey) return false;
 
     if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
@@ -642,7 +812,7 @@ watch(
     q.value,
     branchId.value,
     categoryId.value,
-    subcategoryName.value,
+    subcategoryValue.value,
     stockFilter.value,
     pricePresence.value,
     priceMin.value,
@@ -696,15 +866,6 @@ const imagesItems = [
   { title: "Sin imágenes", value: "without" },
 ];
 
-const branchItems = computed(() => {
-  const out = [{ title: "Todas", value: null }];
-  const arr = (branches.value || [])
-    .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
-    .filter((x) => x.value > 0)
-    .sort((a, b) => a.value - b.value);
-  return out.concat(arr);
-});
-
 /* =========================
    ACTIONS
 ========================= */
@@ -741,14 +902,14 @@ function openCreate() {
 
 async function applyFilters() {
   page.value = 1;
-  await reload();
+  await loadAll();
 }
 
 async function clearFilters() {
   q.value = "";
   branchId.value = null;
   categoryId.value = null;
-  subcategoryName.value = null;
+  subcategoryValue.value = null;
   stockFilter.value = "all";
   pricePresence.value = "all";
   priceMin.value = null;
@@ -756,6 +917,12 @@ async function clearFilters() {
   imagesFilter.value = "all";
   selectedIds.value = [];
   page.value = 1;
+  await reload();
+}
+
+async function onBranchChange() {
+  page.value = 1;
+  selectedIds.value = [];
   await reload();
 }
 
@@ -861,17 +1028,9 @@ async function bulkDisableOrDelete() {
 async function reload() {
   if (!auth.isAuthed) return;
 
-  const bid = isAdmin.value
-    ? branchId.value
-      ? Number(branchId.value)
-      : null
-    : userBranchId.value
-      ? Number(userBranchId.value)
-      : null;
-
   await loadCategoriesSafe();
-  await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
   await loadBranchesSafe();
+  await loadAll();
 }
 
 onMounted(reload);
@@ -884,6 +1043,8 @@ watch(
   { immediate: true }
 );
 </script>
+
+
 
 <style scoped>
 .pos-table :deep(th) {
