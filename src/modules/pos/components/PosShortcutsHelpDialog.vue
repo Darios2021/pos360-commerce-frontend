@@ -1,14 +1,16 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/PosShortcutsHelpDialog.vue -->
+
 <template>
-  <v-dialog :model-value="open" @update:model-value="$emit('update:open', $event)" max-width="760">
-    <v-card class="rounded-xl">
+  <v-dialog v-model="openLocal" max-width="560" persistent>
+    <v-card rounded="xl">
       <v-card-title class="d-flex align-center justify-space-between">
-        <div class="font-weight-black">
-          <v-icon class="mr-2">mdi-keyboard</v-icon>
-          Ayuda y atajos
+        <div class="d-flex align-center ga-2">
+          <v-icon>mdi-keyboard</v-icon>
+          <span class="font-weight-bold">Atajos del POS</span>
         </div>
-        <v-btn icon variant="text" @click="$emit('update:open', false)">
+
+        <v-btn icon variant="text" @click="close">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -16,47 +18,85 @@
       <v-divider />
 
       <v-card-text>
-        <div class="text-caption text-medium-emphasis mb-3">
-          Tip: no capturo teclas mientras estás escribiendo, salvo teclas de función.
+        <div class="text-body-2 text-medium-emphasis mb-4">
+          Estos atajos funcionan en toda la pantalla (no dependés del foco).
         </div>
 
-        <v-table density="compact">
-          <thead>
-            <tr>
-              <th style="width: 220px;">Tecla</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><b>F1</b></td><td>Abrir/cerrar ayuda</td></tr>
-            <tr><td><b>F2</b></td><td>Enfocar búsqueda</td></tr>
-            <tr><td><b>F3</b></td><td>Limpiar búsqueda</td></tr>
-            <tr><td><b>F5</b></td><td>Actualizar listado</td></tr>
-            <tr><td><b>PgUp / PgDn</b></td><td>Página anterior / siguiente</td></tr>
-            <tr><td><b>Ctrl + ← / Ctrl + →</b></td><td>Página anterior / siguiente</td></tr>
-            <tr><td><b>F8</b></td><td>Abrir Cobrar</td></tr>
-            <tr><td><b>Ctrl + Supr</b></td><td>Vaciar carrito</td></tr>
-            <tr><td><b>+</b></td><td>Sumar 1 al último ítem del carrito</td></tr>
-            <tr><td><b>-</b></td><td>Restar 1 al último ítem del carrito</td></tr>
-            <tr><td><b>Alt + N</b></td><td>Enfocar “Nombre” cliente</td></tr>
-            <tr><td><b>Alt + A</b></td><td>Enfocar “Apellido” cliente</td></tr>
-            <tr><td><b>Alt + W</b></td><td>Enfocar “WhatsApp” cliente</td></tr>
-            <tr><td><b>Alt + E</b></td><td>Enfocar “Email” cliente</td></tr>
-          </tbody>
-        </v-table>
+        <v-list density="compact" class="pa-0">
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">F1</v-chip>
+            </template>
+            <v-list-item-title>Abrir esta ayuda</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">F2</v-chip>
+            </template>
+            <v-list-item-title>Ir al buscador</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">F8</v-chip>
+            </template>
+            <v-list-item-title>Cobrar</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">PgUp</v-chip>
+            </template>
+            <v-list-item-title>Página anterior</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">PgDn</v-chip>
+            </template>
+            <v-list-item-title>Página siguiente</v-list-item-title>
+          </v-list-item>
+
+          <v-list-item>
+            <template #prepend>
+              <v-chip size="small" variant="tonal" class="mr-3">Ctrl + K</v-chip>
+            </template>
+            <v-list-item-title>Ir al buscador (alternativo)</v-list-item-title>
+          </v-list-item>
+        </v-list>
+
+        <v-alert type="info" variant="tonal" class="mt-4" density="compact">
+          Tip: si el navegador te abría su ayuda con F1, ahora queda bloqueado para el POS.
+        </v-alert>
       </v-card-text>
 
       <v-divider />
 
-      <v-card-actions class="px-4 py-3">
-        <v-spacer />
-        <v-btn variant="tonal" @click="$emit('update:open', false)">Cerrar</v-btn>
+      <v-card-actions class="justify-end">
+        <v-btn variant="flat" color="primary" @click="close">
+          Entendido
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-defineProps({ open: { type: Boolean, default: false } });
-defineEmits(["update:open"]);
+import { computed } from "vue";
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+});
+
+const emit = defineEmits(["update:modelValue"]);
+
+const openLocal = computed({
+  get: () => !!props.modelValue,
+  set: (v) => emit("update:modelValue", !!v),
+});
+
+function close() {
+  openLocal.value = false;
+}
 </script>

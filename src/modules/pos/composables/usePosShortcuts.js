@@ -1,150 +1,136 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/pos/composables/usePosShortcuts.js
 //
-// Atajos POS centralizados (sin acoplar a la UI).
-// - No captura teclas mientras escribís (salvo F-keys).
-// - Bloquea atajos cuando hay dialogs abiertos (excepto F1).
+// FIX:
+// - Ataja F1/F2/F8/PgUp/PgDn con capture para que NO lo coma el navegador
+// - preventDefault/stopPropagation solo en las teclas que usamos
+// - Permite deshabilitar por flag (enabled)
+// - Evita disparos repetidos (e.repeat)
+// - No rompe cuando estás escribiendo en inputs (pero F-keys igual funcionan)
 
-import { onMounted, onBeforeUnmount } from "vue";
+import { onBeforeUnmount, onMounted } from "vue";
 
-function isTypingTarget(evt) {
-  const t = evt?.target;
-  if (!t) return false;
-  const tag = String(t.tagName || "").toLowerCase();
+function isEditableTarget(el) {
+  if (!el) return false;
+  const tag = String(el.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || tag === "select") return true;
-  if (t.isContentEditable) return true;
+  if (el.isContentEditable) return true;
   return false;
 }
 
-export function usePosShortcuts(handlers) {
-  const {
-    canUseShortcuts, // () => boolean  (ej: true si no hay dialogs o si querés permitir)
-    isDialogOpen, // () => boolean
-    onHelpToggle, // () => void
-    onFocusSearch, // () => void
-    onClearSearch, // () => void
-    onRefresh, // () => void
-    onNextPage, // () => void
-    onPrevPage, // () => void
-    onOpenCheckout, // () => void
-    onCartClear, // () => void
-    onCartIncLast, // () => void
-    onCartDecLast, // () => void
-    onFocusCustomerFirst, // () => void
-    onFocusCustomerLast, // () => void
-    onFocusCustomerWa, // () => void
-    onFocusCustomerEmail, // () => void
-  } = handlers || {};
+function keyIs(e, k) {
+  const kk = String(e.key || "").toLowerCase();
+  const cc = String(e.code || "").toLowerCase();
+  return kk === String(k).toLowerCase() || cc === String(k).toLowerCase();
+}
 
-  function onKeydown(e) {
-    if (e.defaultPrevented) return;
-    if (typeof canUseShortcuts === "function" && !canUseShortcuts()) return;
+/**
+ * usePosShortcuts({
+ *   enabled: () => true,
+ *   onHelp: () => {},
+ *   onFocusSearch: () => {},
+ *   onCharge: () => {},
+ *   onPrevPage: () => {},
+ *   onNextPage: () => {},
+ *   onEscape: () => {}, // opcional
+ * })
+ */
+export function usePosShortcuts(opts = {}) {
+  const enabledFn = typeof opts.enabled === "function" ? opts.enabled : () => opts.enabled !== false;
 
-    const key = String(e.key || "");
-    const code = String(e.code || "");
-    const ctrl = !!e.ctrlKey || !!e.metaKey;
-    const alt = !!e.altKey;
+  const onHelp = typeof opts.onHelp === "function" ? opts.onHelp : null;
+  const onFocusSearch = typeof opts.onFocusSearch === "function" ? opts.onFocusSearch : null;
+  const onCharge = typeof opts.onCharge === "function" ? opts.onCharge : null;
+  const onPrevPage = typeof opts.onPrevPage === "function" ? opts.onPrevPage : null;
+  const onNextPage = typeof opts.onNextPage === "function" ? opts.onNextPage : null;
+  const onEscape = typeof opts.onEscape === "function" ? opts.onEscape : null;
 
-    const typing = isTypingTarget(e);
-    const isFn =
-      key === "F1" || key === "F2" || key === "F3" || key === "F5" || key === "F8" ||
-      code === "F1" || code === "F2" || code === "F3" || code === "F5" || code === "F8";
+  function handler(e) {
+    try {
+      if (!enabledFn()) return;
+      if (!e) return;
+      if (e.repeat) return; // evita mantener apretado
 
-    if (typing && !isFn) return;
+      // Si hay modal del navegador / OS, no jodemos
+      // (igual esto es best-effort)
+      const target = e.target;
 
-    // HELP (siempre)
-    if (key === "F1" || code === "F1") {
-      e.preventDefault();
-      onHelpToggle?.();
-      return;
-    }
+      // ====== F1 AYUDA ======
+      if (keyIs(e, "F1")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onHelp && onHelp();
+        return;
+      }
 
-    // si hay dialog abierto: no hacemos nada más
-    if (typeof isDialogOpen === "function" && isDialogOpen()) return;
+      // ====== F2 BUSCAR ======
+      // Aunque estés en un input, lo dejamos funcionar (así el cajero puede saltar al buscador siempre)
+      if (keyIs(e, "F2")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onFocusSearch && onFocusSearch();
+        return;
+      }
 
-    // FOCUS SEARCH
-    if (key === "F2" || code === "F2") {
-      e.preventDefault();
-      onFocusSearch?.();
-      return;
-    }
+      // ====== F8 COBRAR ======
+      if (keyIs(e, "F8")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onCharge && onCharge();
+        return;
+      }
 
-    // CLEAR SEARCH
-    if (key === "F3" || code === "F3") {
-      e.preventDefault();
-      onClearSearch?.();
-      onFocusSearch?.();
-      return;
-    }
+      // ====== PAGINADO ======
+      // Si estás tipeando en un input, PgUp/PgDn lo dejamos en paz (evita comportamiento raro en campos)
+      const editable = isEditableTarget(target);
 
-    // REFRESH
-    if (key === "F5" || code === "F5") {
-      e.preventDefault();
-      onRefresh?.();
-      return;
-    }
+      if (!editable && (keyIs(e, "PageUp") || keyIs(e, "pgup"))) {
+        e.preventDefault();
+        e.stopPropagation();
+        onPrevPage && onPrevPage();
+        return;
+      }
 
-    // PAGINATION
-    if (key === "PageDown" || code === "PageDown" || (ctrl && (key === "ArrowRight" || code === "ArrowRight"))) {
-      e.preventDefault();
-      onNextPage?.();
-      return;
-    }
-    if (key === "PageUp" || code === "PageUp" || (ctrl && (key === "ArrowLeft" || code === "ArrowLeft"))) {
-      e.preventDefault();
-      onPrevPage?.();
-      return;
-    }
+      if (!editable && (keyIs(e, "PageDown") || keyIs(e, "pgdn"))) {
+        e.preventDefault();
+        e.stopPropagation();
+        onNextPage && onNextPage();
+        return;
+      }
 
-    // CHECKOUT
-    if (key === "F8" || code === "F8") {
-      e.preventDefault();
-      onOpenCheckout?.();
-      return;
-    }
+      // ====== ESC ======
+      if (keyIs(e, "Escape") || keyIs(e, "Esc")) {
+        // No frenamos Esc global salvo que el caller quiera
+        onEscape && onEscape();
+        return;
+      }
 
-    // CART CLEAR
-    if (ctrl && (key === "Delete" || key === "Del" || code === "Delete")) {
-      e.preventDefault();
-      onCartClear?.();
-      return;
-    }
-
-    // CART +/- last item
-    if (key === "+" || key === "=") {
-      e.preventDefault();
-      onCartIncLast?.();
-      return;
-    }
-    if (key === "-" || key === "_") {
-      e.preventDefault();
-      onCartDecLast?.();
-      return;
-    }
-
-    // CUSTOMER QUICK FOCUS
-    if (alt && key.toLowerCase() === "n") {
-      e.preventDefault();
-      onFocusCustomerFirst?.();
-      return;
-    }
-    if (alt && key.toLowerCase() === "a") {
-      e.preventDefault();
-      onFocusCustomerLast?.();
-      return;
-    }
-    if (alt && key.toLowerCase() === "w") {
-      e.preventDefault();
-      onFocusCustomerWa?.();
-      return;
-    }
-    if (alt && key.toLowerCase() === "e") {
-      e.preventDefault();
-      onFocusCustomerEmail?.();
-      return;
+      // BONUS: Ctrl+K / Cmd+K => buscar (muy cómodo)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && keyIs(e, "k")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onFocusSearch && onFocusSearch();
+      }
+    } catch {
+      // noop
     }
   }
 
-  onMounted(() => window.addEventListener("keydown", onKeydown, { passive: false }));
-  onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+  onMounted(() => {
+    // CAPTURE: clave para ganarle al browser (sobre todo F1)
+    window.addEventListener("keydown", handler, { capture: true });
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener("keydown", handler, { capture: true });
+  });
+
+  return {
+    // por si querés invocar manualmente desde UI
+    triggerHelp: () => onHelp && onHelp(),
+    triggerFocusSearch: () => onFocusSearch && onFocusSearch(),
+    triggerCharge: () => onCharge && onCharge(),
+    triggerPrevPage: () => onPrevPage && onPrevPage(),
+    triggerNextPage: () => onNextPage && onNextPage(),
+  };
 }

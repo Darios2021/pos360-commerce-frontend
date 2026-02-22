@@ -9,30 +9,22 @@ const AUTH_DEBUG =
 
 function adbg(...args) {
   if (!AUTH_DEBUG) return;
-  // eslint-disable-next-line no-console
   console.log("[AUTH]", ...args);
 }
 
-/**
- * ✅ CLAVE DEL FIX:
- * Tu Admin (useShopOrdersApi) busca el token en:
- * - localStorage.token / access_token / jwt / auth_token
- *
- * Este store guardaba en storage "saveAuth()", pero NO garantizaba localStorage.token.
- * Entonces: sync para que SIEMPRE exista localStorage.token cuando haya sesión.
- */
+/* ============================================================
+   TOKEN SYNC (Admin compat)
+============================================================ */
 function syncLegacyTokenKeys(accessToken) {
   const t = String(accessToken || "").trim();
   if (!t) return;
 
   try {
-    localStorage.setItem("token", t);        // ✅ principal (Admin lo usa)
-    localStorage.setItem("access_token", t); // compat
-    localStorage.setItem("jwt", t);          // compat
-    localStorage.setItem("auth_token", t);   // compat
-  } catch {
-    // noop
-  }
+    localStorage.setItem("token", t);
+    localStorage.setItem("access_token", t);
+    localStorage.setItem("jwt", t);
+    localStorage.setItem("auth_token", t);
+  } catch {}
 }
 
 function clearLegacyTokenKeys() {
@@ -41,17 +33,12 @@ function clearLegacyTokenKeys() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("jwt");
     localStorage.removeItem("auth_token");
-  } catch {
-    // noop
-  }
+  } catch {}
 }
 
-/**
- * Normaliza roles desde cualquier formato posible:
- * - user.roles = ["admin"]
- * - user.role = "admin"
- * - user.rol = "admin"
- */
+/* ============================================================
+   ROLES
+============================================================ */
 function normalizeRoles(user) {
   const raw =
     user?.roles ??
@@ -70,14 +57,45 @@ function normalizeRoles(user) {
     })
     .filter(Boolean);
 
-  // admin siempre incluye user
-  if (roles.includes("admin") && !roles.includes("user")) roles.push("user");
+  if (roles.includes("admin") && !roles.includes("user")) {
+    roles.push("user");
+  }
+
   return roles;
 }
 
-// ----------
-// Avatar helpers
-// ----------
+/* ============================================================
+   BRANCHES (FIX REAL)
+============================================================ */
+function normalizeBranches(raw) {
+  let branches = Array.isArray(raw) ? raw : [];
+
+  // [1,2,3]
+  if (branches.length && typeof branches[0] !== "object") {
+    branches = branches
+      .map((x) => Number(x || 0) || null)
+      .filter(Boolean)
+      .map((id) => ({ id, name: `Sucursal #${id}` }));
+  } else {
+    // [{id,name}] o variantes
+    branches = branches
+      .map((b) => ({
+        id: Number(b?.id || b?.branch_id || b?.branchId || 0) || null,
+        name: String(b?.name || b?.title || b?.label || "").trim() || null,
+      }))
+      .filter((b) => b.id)
+      .map((b) => ({ id: b.id, name: b.name || `Sucursal #${b.id}` }));
+  }
+
+  const map = new Map();
+  for (const b of branches) map.set(b.id, b);
+
+  return Array.from(map.values());
+}
+
+/* ============================================================
+   AVATAR
+============================================================ */
 function pickAvatar(u) {
   if (!u) return "";
   return (
@@ -91,29 +109,44 @@ function pickAvatar(u) {
   );
 }
 
-/**
- * ✅ MERGE: si el user nuevo NO trae avatar, conservar el actual
- */
-function mergeUserKeepAvatar(prev, next) {
+/* ============================================================
+   MERGE USER (PROTEGE AVATAR + BRANCHES)
+============================================================ */
+function mergeUser(prev, next) {
   const p = prev || {};
   const n = next || {};
 
   const prevAvatar = pickAvatar(p);
   const nextAvatar = pickAvatar(n);
 
+  const prevBranches = normalizeBranches(p?.branches);
+  const nextBranches = normalizeBranches(n?.branches);
+
   const merged = { ...p, ...n };
 
-  // si el nuevo no trae avatar, no lo pises
+  // Avatar
   if (!nextAvatar && prevAvatar) {
-    // guardamos en avatar_url para estandarizar
     merged.avatar_url = prevAvatar;
   }
 
-  // roles siempre normalizados
+  // Branches (NO se pisan si vienen vacías en fetchMe)
+  if (nextBranches.length) {
+    merged.branches = nextBranches;
+  } else if (prevBranches.length) {
+    merged.branches = prevBranches;
+  } else {
+    merged.branches = [];
+  }
+
+  // Roles normalizados
   merged.roles = normalizeRoles(merged);
+
   return merged;
 }
 
+/* ============================================================
+   STORE
+============================================================ */
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     status: "idle", // idle | authed | guest
@@ -126,6 +159,7 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthed: (s) => !!s.accessToken && s.status === "authed",
     branchId: (s) => Number(s.user?.branch_id || 0) || null,
+    branches: (s) => normalizeBranches(s.user?.branches),
     roles: (s) => normalizeRoles(s.user),
     isAdmin: (s) => normalizeRoles(s.user).includes("admin"),
   },
@@ -137,34 +171,23 @@ export const useAuthStore = defineStore("auth", {
       if (saved?.accessToken) {
         this.accessToken = saved.accessToken;
         this.refreshToken = saved.refreshToken || null;
-
-        // ✅ conserva avatar del storage y normaliza roles
-        const savedUser = saved.user || null;
-        this.user = savedUser ? mergeUserKeepAvatar(null, savedUser) : null;
-
+        this.user = mergeUser(null, saved.user || {});
         this.status = "authed";
 
-        // ✅ IMPORTANTÍSIMO: deja token en localStorage.token (para Admin)
         syncLegacyTokenKeys(this.accessToken);
 
         adbg("hydrate", {
-          branch_id: this.user?.branch_id,
           email: this.user?.email,
-          roles: normalizeRoles(this.user),
-          avatar: pickAvatar(this.user),
+          branch_id: this.user?.branch_id,
+          branches_len: this.branches.length,
         });
       } else {
         this.status = "guest";
-        adbg("hydrate guest");
       }
     },
 
-    /**
-     * ✅ setUser persistente
-     * y NO pisa avatar si viene vacío
-     */
     setUser(user) {
-      this.user = mergeUserKeepAvatar(this.user, user);
+      this.user = mergeUser(this.user, user);
 
       saveAuth({
         accessToken: this.accessToken,
@@ -172,24 +195,12 @@ export const useAuthStore = defineStore("auth", {
         user: this.user,
       });
 
-      // ✅ por las dudas, mantener token keys (si el user cambia no debería, pero ok)
       syncLegacyTokenKeys(this.accessToken);
 
       adbg("setUser", {
-        id: this.user?.id,
         email: this.user?.email,
-        roles: this.user?.roles,
-        avatar: pickAvatar(this.user),
+        branches_len: this.branches.length,
       });
-    },
-
-    /**
-     * ✅ helper por si tu endpoint devuelve solo la url
-     */
-    setAvatar(avatar_url) {
-      const next = { ...(this.user || {}), avatar_url };
-      this.setUser(next);
-      adbg("setAvatar", { avatar_url });
     },
 
     async fetchMe() {
@@ -197,49 +208,38 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const { data } = await http.get("/auth/me");
-        adbg("GET /auth/me raw", data);
-
-        // soporta: { ok:true, user:{...} } o { user:{...} }
         const u = data?.user || data?.data?.user || null;
         if (!u) return;
 
-        // ✅ MERGE (no pises avatar si /auth/me no lo manda)
+        adbg("fetchMe raw branches", u?.branches);
+
         this.setUser(u);
         this.status = "authed";
-
-        // ✅ reafirma keys
-        syncLegacyTokenKeys(this.accessToken);
       } catch (e) {
-        this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
-        adbg("fetchMe ERROR", { status: e?.response?.status, data: e?.response?.data, msg: this.error });
+        this.error =
+          e?.response?.data?.message ||
+          e?.message ||
+          "FETCH_ME_FAILED";
+        adbg("fetchMe ERROR", this.error);
       }
     },
 
     async login({ identifier, password }) {
       this.error = null;
 
-      const { data } = await http.post("/auth/login", { identifier, password });
-      adbg("POST /auth/login raw", data);
+      const { data } = await http.post("/auth/login", {
+        identifier,
+        password,
+      });
 
       if (!data?.ok) throw new Error(data?.message || "LOGIN_FAILED");
 
-      const normalizedUser = mergeUserKeepAvatar(null, data.user);
-
       this.accessToken = data.accessToken;
       this.refreshToken = data.refreshToken || null;
-      this.user = normalizedUser;
+      this.user = mergeUser(null, data.user || {});
       this.status = "authed";
 
-      // ✅ CLAVE: el Admin lee localStorage.token
       syncLegacyTokenKeys(this.accessToken);
-
-      adbg("login -> user", {
-        id: this.user?.id,
-        email: this.user?.email,
-        branch_id: this.user?.branch_id,
-        roles: this.user?.roles,
-        avatar: pickAvatar(this.user),
-      });
 
       saveAuth({
         accessToken: this.accessToken,
@@ -247,30 +247,38 @@ export const useAuthStore = defineStore("auth", {
         user: this.user,
       });
 
-      // si /auth/me no trae avatar, NO lo borra gracias al merge
+      adbg("login OK", {
+        email: this.user?.email,
+        branches_len: this.branches.length,
+      });
+
       await this.fetchMe();
     },
 
     logout() {
       clearAuth();
-      clearLegacyTokenKeys(); // ✅ limpia token compat del admin
+      clearLegacyTokenKeys();
+
       this.status = "guest";
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
       this.error = null;
+
       adbg("logout");
     },
 
     hardResetAuth() {
       clearAuth();
-      clearLegacyTokenKeys(); // ✅
+      clearLegacyTokenKeys();
+
       this.status = "guest";
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
       this.error = null;
-      adbg("hardResetAuth (cleared storage)");
+
+      adbg("hardResetAuth");
     },
   },
 });

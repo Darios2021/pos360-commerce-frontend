@@ -1,6 +1,6 @@
 <!-- src/modules/dashboard/components/DashboardCharts.vue -->
 <template>
-  <v-card class="dash-card" rounded="xl" elevation="0">
+  <v-card class="dash-card dash-surface" rounded="xl" elevation="0">
     <div class="d-flex align-center justify-space-between px-4 pt-4 pb-2">
       <div class="text-subtitle-1 font-weight-bold">{{ titleLeft }}</div>
       <div class="d-flex align-center ga-2">
@@ -34,8 +34,6 @@ const props = defineProps({
   type: { type: String, default: "line" },
   height: { type: [Number, String], default: 320 },
 
-  // Apex:
-  // - series: [{ name, data: [] }] o [number] si donut/pie
   series: { type: Array, default: () => [] },
   options: { type: Object, default: () => ({}) },
 
@@ -54,8 +52,8 @@ const chartKey = computed(() => {
 </script>
 
 <style scoped>
-.dash-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.dash-surface {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
 }
 </style>

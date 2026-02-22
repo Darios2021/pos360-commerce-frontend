@@ -1,28 +1,31 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/dashboard/components/DashboardSalesTab.vue -->
 <template>
   <!-- KPIs -->
   <v-row dense class="mb-3">
     <v-col cols="12" md="3">
-      <KpiCard title="Ventas hoy" :value="sales.todayCount" :loading="loading" icon="mdi-receipt-text-outline" tone="primary" />
+      <KpiCard title="Ventas hoy" :value="num(today.count)" :loading="loading" icon="mdi-receipt-text-outline" tone="primary" />
     </v-col>
     <v-col cols="12" md="3">
-      <KpiCard title="Total hoy" :value="money(sales.todayTotal)" :loading="loading" icon="mdi-cash-multiple" tone="success" />
+      <KpiCard title="Total hoy" :value="money(today.total)" :loading="loading" icon="mdi-cash-multiple" tone="success" />
     </v-col>
     <v-col cols="12" md="3">
-      <KpiCard title="Ticket promedio" :value="money(sales.avgTicket)" :loading="loading" icon="mdi-calculator" tone="info" />
+      <KpiCard title="Ticket promedio" :value="money(today.avgTicket)" :loading="loading" icon="mdi-calculator" tone="info" />
     </v-col>
     <v-col cols="12" md="3">
-      <KpiCard title="Método principal" :value="sales.topPaymentLabel || '—'" :loading="loading" icon="mdi-credit-card-outline" tone="indigo" />
+      <KpiCard title="Top método" :value="topMethodLabel" :loading="loading" icon="mdi-credit-card-outline" tone="indigo" />
     </v-col>
   </v-row>
 
   <v-row dense>
-    <!-- LINE + tabla -->
+    <!-- LINE -->
     <v-col cols="12" lg="8">
-      <v-card class="rounded-xl" elevation="0" style="background:rgba(0,0,0,.02); border:1px solid rgba(0,0,0,.06);">
+      <v-card class="dash-surface rounded-xl" elevation="0">
         <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
           <div class="text-subtitle-1 font-weight-bold">Ventas últimos 7 días</div>
-          <v-chip size="small" variant="tonal">Scope: <b class="ml-1">{{ scopeLabel }}</b></v-chip>
+          <v-chip size="small" variant="tonal">
+            Scope: <b class="ml-1">{{ scopeLabel }}</b>
+          </v-chip>
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -30,18 +33,18 @@
             <v-progress-circular indeterminate />
           </div>
           <div v-else>
-            <LineChart :points="sales.salesByDay || []" :height="170" />
+            <LineChart :points="salesByDay" :height="170" />
           </div>
         </v-card-text>
       </v-card>
     </v-col>
 
-    <!-- PIE: ventas por sucursal -->
+    <!-- PIE: pagos por método (hoy) -->
     <v-col cols="12" lg="4">
-      <v-card class="rounded-xl" elevation="0" style="background:rgba(0,0,0,.02); border:1px solid rgba(0,0,0,.06);">
+      <v-card class="dash-surface rounded-xl" elevation="0">
         <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
-          <div class="text-subtitle-1 font-weight-bold">Ventas por sucursal</div>
-          <v-chip v-if="!isAdmin" size="small" variant="tonal">Solo tu sucursal</v-chip>
+          <div class="text-subtitle-1 font-weight-bold">Pagos por método (hoy)</div>
+          <v-chip size="small" variant="tonal">{{ paymentsToday.length ? "Hoy" : "Sin pagos" }}</v-chip>
         </v-card-title>
         <v-divider />
         <v-card-text>
@@ -50,15 +53,15 @@
           </div>
 
           <div v-else>
-            <div v-if="!pieItems.length" class="text-caption text-medium-emphasis">
-              No hay datos (falta <code>salesByBranch</code> en backend).
+            <div v-if="!paymentsToday.length" class="text-caption text-medium-emphasis">
+              Sin datos para graficar.
             </div>
 
             <div v-else class="d-flex flex-column align-center">
-              <PieChart :items="pieItems" :size="180" />
+              <PieChart :items="paymentPieItems" :size="180" />
 
               <div class="mt-3 w-100">
-                <div v-for="it in pieItems" :key="it.key" class="d-flex align-center justify-space-between py-1">
+                <div v-for="it in paymentPieItems" :key="it.key" class="d-flex align-center justify-space-between py-1">
                   <div class="d-flex align-center ga-2">
                     <span class="dot" :style="{ background: it.color }"></span>
                     <div class="text-body-2 font-weight-medium">{{ it.label }}</div>
@@ -74,11 +77,52 @@
     </v-col>
   </v-row>
 
+  <!-- Ventas por sucursal -->
+  <v-row dense class="mt-2">
+    <v-col cols="12">
+      <v-card class="dash-surface rounded-xl" elevation="0">
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
+          <div class="text-subtitle-1 font-weight-bold">Ventas por sucursal (últimos 30 días)</div>
+          <v-chip size="small" variant="tonal">
+            {{ branchPieItems.length ? "Últimos 30 días" : "Sin datos" }}
+          </v-chip>
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <div v-if="loading" class="py-8 d-flex justify-center">
+            <v-progress-circular indeterminate />
+          </div>
+
+          <div v-else>
+            <div v-if="!branchPieItems.length" class="text-caption text-medium-emphasis">
+              Sin datos para graficar.
+            </div>
+
+            <div v-else class="d-flex flex-column align-center">
+              <PieChart :items="branchPieItems" :size="210" />
+
+              <div class="mt-3 w-100">
+                <div v-for="it in branchPieItems" :key="it.key" class="d-flex align-center justify-space-between py-1">
+                  <div class="d-flex align-center ga-2">
+                    <span class="dot" :style="{ background: it.color }"></span>
+                    <div class="text-body-2 font-weight-medium">{{ it.label }}</div>
+                  </div>
+                  <div class="text-body-2 font-weight-bold">{{ money(it.value) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
+
   <!-- Últimas ventas -->
   <v-row dense class="mt-2">
     <v-col cols="12">
-      <v-card class="rounded-xl" elevation="0" style="background:#fff; border:1px solid rgba(0,0,0,.06);">
-        <v-card-title class="text-subtitle-1 font-weight-bold">Últimas ventas</v-card-title>
+      <v-card class="dash-surface rounded-xl" elevation="0">
+        <v-card-title class="text-subtitle-1 font-weight-bold">Últimas ventas (pagadas)</v-card-title>
         <v-divider />
         <v-card-text>
           <div v-if="loading" class="py-8 d-flex justify-center">
@@ -88,14 +132,29 @@
           <div v-else>
             <v-data-table
               :headers="headers"
-              :items="sales.lastSales || []"
+              :items="lastSales"
               item-key="id"
               density="comfortable"
-              class="elevation-0 rounded-xl"
+              class="elevation-0 rounded-xl dash-table"
             >
+              <template #item.id="{ item }">
+                <div class="font-weight-bold">#{{ item.id }}</div>
+              </template>
+
               <template #item.sold_at="{ item }">
                 <div class="font-weight-medium">{{ dt(item.sold_at) }}</div>
-                <div class="text-caption text-medium-emphasis">#{{ item.id }}</div>
+              </template>
+
+              <template #item.branch="{ item }">
+                <div class="text-body-2 font-weight-medium">
+                  {{ item?.branch?.name || (item.branch_id ? `Sucursal #${item.branch_id}` : "—") }}
+                </div>
+              </template>
+
+              <template #item.user="{ item }">
+                <div class="text-body-2">
+                  {{ item?.user?.label || item?.user?.name || item?.user?.username || "—" }}
+                </div>
               </template>
 
               <template #item.total="{ item }">
@@ -108,7 +167,7 @@
               <template #bottom />
             </v-data-table>
 
-            <div v-if="!(sales.lastSales || []).length" class="text-caption text-medium-emphasis">
+            <div v-if="!lastSales.length" class="text-caption text-medium-emphasis mt-2">
               Sin ventas.
             </div>
           </div>
@@ -129,6 +188,10 @@ const props = defineProps({
   sales: { type: Object, default: () => ({}) },
 });
 
+function num(v) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
@@ -146,27 +209,68 @@ function methodLabel(m) {
   return x || "—";
 }
 
+const today = computed(() => {
+  // backend nuevo: today = {count,total,avgTicket...}
+  const t = props.sales?.today;
+  if (t && typeof t === "object") return t;
+  // compat viejo: todayCount/todayTotal/avgTicket
+  return {
+    count: props.sales?.todayCount ?? 0,
+    total: props.sales?.todayTotal ?? 0,
+    avgTicket: props.sales?.avgTicket ?? 0,
+  };
+});
+
+const paymentsToday = computed(() => (Array.isArray(props.sales?.paymentsToday) ? props.sales.paymentsToday : []));
+const salesByDay = computed(() => (Array.isArray(props.sales?.salesByDay) ? props.sales.salesByDay : []));
+
+// ✅ BLINDAJE: agarra cualquiera de los 3 nombres
+const salesByBranch = computed(() => {
+  const a = props.sales?.salesByBranch;
+  const b = props.sales?.byBranch;
+  const c = props.sales?.salesByBranchPie;
+  return Array.isArray(a) ? a : Array.isArray(b) ? b : Array.isArray(c) ? c : [];
+});
+
 const headers = [
+  { title: "ID", key: "id", sortable: false, width: 90 },
   { title: "Fecha", key: "sold_at", sortable: false, width: 200 },
-  { title: "Cliente", key: "customer_name", sortable: false },
+  { title: "Sucursal", key: "branch", sortable: false, width: 180 },
+  { title: "Usuario", key: "user", sortable: false, width: 200 },
   { title: "Total", key: "total", sortable: false, width: 180 },
-  { title: "Estado", key: "status", sortable: false, width: 130 },
 ];
 
-// ✅ Pie items desde backend: salesByBranch: [{branch_id, branch_name, total, count}]
-const pieItems = computed(() => {
-  const rows = Array.isArray(props.sales?.salesByBranch) ? props.sales.salesByBranch : [];
-  const palette = [
-    "rgb(var(--v-theme-primary))",
-    "rgb(var(--v-theme-success))",
-    "rgb(var(--v-theme-info))",
-    "rgb(var(--v-theme-warning))",
-    "rgb(var(--v-theme-indigo))",
-    "rgb(var(--v-theme-purple))",
-    "rgb(var(--v-theme-teal))",
-  ];
+const lastSales = computed(() => (Array.isArray(props.sales?.lastSales) ? props.sales.lastSales : []));
 
-  return rows
+const palette = [
+  "rgb(var(--v-theme-primary))",
+  "rgb(var(--v-theme-success))",
+  "rgb(var(--v-theme-info))",
+  "rgb(var(--v-theme-warning))",
+  "rgb(var(--v-theme-indigo))",
+  "rgb(var(--v-theme-purple))",
+  "rgb(var(--v-theme-teal))",
+];
+
+const paymentPieItems = computed(() => {
+  return paymentsToday.value
+    .map((r, i) => ({
+      key: String(r.method ?? i),
+      label: r.label || methodLabel(r.method),
+      value: Number(r.total || 0),
+      color: palette[i % palette.length],
+    }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value);
+});
+
+const topMethodLabel = computed(() => {
+  const it = paymentPieItems.value[0];
+  return it?.label || props.sales?.topPaymentLabel || "—";
+});
+
+const branchPieItems = computed(() => {
+  return salesByBranch.value
     .map((r, i) => ({
       key: String(r.branch_id ?? i),
       label: r.branch_name || `Sucursal #${r.branch_id}`,
@@ -224,10 +328,10 @@ const LineChart = {
   template: `
     <svg class="chart" :viewBox="\`0 0 \${w} \${height}\`" preserveAspectRatio="none">
       <line v-for="(y,i) in gridY" :key="'gy'+i" :x1="pad" :x2="w-pad" :y1="y" :y2="y"
-        stroke="rgba(0,0,0,.10)" stroke-width="1" />
+        stroke="rgba(var(--v-theme-on-surface), .12)" stroke-width="1" />
       <polygon v-if="poly"
         :points="\`\${poly} \${w-pad},\${height-pad} \${pad},\${height-pad}\`"
-        fill="rgba(0,0,0,.05)" />
+        fill="rgba(var(--v-theme-primary), .10)" />
       <polyline :points="poly" fill="none" stroke="rgb(var(--v-theme-primary))"
         stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
@@ -245,7 +349,7 @@ const PieChart = {
     c() { return Math.floor(this.size / 2); },
     arcs() {
       const res = [];
-      let a0 = -Math.PI / 2; // start at top
+      let a0 = -Math.PI / 2;
       for (const it of (this.items || [])) {
         const frac = Number(it.value || 0) / this.total;
         const a1 = a0 + frac * Math.PI * 2;
@@ -269,7 +373,7 @@ const PieChart = {
   },
   template: `
     <svg :width="size" :height="size" :viewBox="\`0 0 \${size} \${size}\`">
-      <circle :cx="c" :cy="c" :r="r" fill="rgba(0,0,0,.06)" />
+      <circle :cx="c" :cy="c" :r="r" fill="rgba(var(--v-theme-on-surface), .06)" />
       <path
         v-for="(a,i) in arcs"
         :key="a.key || i"
@@ -277,9 +381,9 @@ const PieChart = {
         :fill="a.color"
         opacity="0.95"
       />
-      <circle :cx="c" :cy="c" :r="Math.max(0, r*0.55)" fill="#fff" opacity="0.95" />
-      <text :x="c" :y="c-2" text-anchor="middle" font-size="12" fill="rgba(0,0,0,.6)">Total</text>
-      <text :x="c" :y="c+16" text-anchor="middle" font-size="14" font-weight="700" fill="rgba(0,0,0,.85)">
+      <circle :cx="c" :cy="c" :r="Math.max(0, r*0.55)" fill="rgb(var(--v-theme-surface))" opacity="0.95" />
+      <text :x="c" :y="c-2" text-anchor="middle" font-size="12" fill="rgba(var(--v-theme-on-surface), .65)">Total</text>
+      <text :x="c" :y="c+16" text-anchor="middle" font-size="14" font-weight="700" fill="rgba(var(--v-theme-on-surface), .90)">
         {{ total.toLocaleString("es-AR") }}
       </text>
     </svg>
@@ -288,7 +392,19 @@ const PieChart = {
 </script>
 
 <style scoped>
+.dash-surface {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+}
+
 .chart { width: 100%; height: 170px; display:block; }
 .w-100 { width: 100%; }
 .dot { width: 10px; height: 10px; border-radius: 999px; display:inline-block; }
+
+/* Tablas en dark: evita “caja blanca” */
+.dash-table :deep(.v-table__wrapper),
+.dash-table :deep(table),
+.dash-table :deep(.v-data-table__wrapper) {
+  background: transparent !important;
+}
 </style>

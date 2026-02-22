@@ -1,7 +1,10 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/products.store.js
-// FIX:
-// - Si /products* devuelve 404 => fallback automático a /admin/products*
+//
+// FIX REAL:
+// - Fallback /products -> /admin/products SOLO para endpoints permitidos (whitelist)
+// - ✅ NO fallback para /products/:id/images (porque /admin/products/:id/images NO existe => 404 spam)
+// - fetchImages: si 403/404 => devuelve [] SIN setError (para que POS no se rompa)
 // - Evita /api/v1 duplicado (axios ya usa baseURL="/api/v1")
 // - Mantiene compatibilidad con el front existente
 
@@ -84,33 +87,74 @@ function pickHttpError(e) {
 }
 
 /* =========================================
-   ✅ FALLBACK /products -> /admin/products
-   - Solo si status=404
-   - NO toca otros endpoints (/branches, /stock/init, etc.)
+   ✅ FALLBACK /products -> /admin/products (WHITELIST)
+   - Solo para endpoints de PRODUCTS "core"
+   - ✅ NO aplica para /products/:id/images (porque admin route no existe)
+   - ✅ NO aplica para /products/:id/stock, /branches, etc.
 ========================================= */
+function statusOf(e) {
+  return Number(e?.response?.status || 0);
+}
+
 function is404(e) {
-  return Number(e?.response?.status) === 404;
+  return statusOf(e) === 404;
+}
+
+// ⚠️ OJO: 403 NO se usa para fallback global, porque en tu caso te manda a rutas admin que no existen.
+// Si querés fallback por 403 SOLO para list/one, lo controlamos en whitelist más abajo.
+function is403(e) {
+  return statusOf(e) === 403;
 }
 
 function toAdminProductsPath(path) {
   const p = String(path || "");
-  // Solo si arranca con /products
-  // /products           -> /admin/products
-  // /products/123/images -> /admin/products/123/images
   return p.replace(/^\/products(\/|$)/, "/admin/products$1");
 }
 
+// ✅ endpoints permitidos para fallback a /admin/products
+function canFallbackPath(path) {
+  const p = String(path || "");
+
+  if (!p.startsWith("/products")) return false;
+  if (p.startsWith("/admin/products")) return false;
+
+  // ❌ NUNCA fallback para imágenes (tu problema actual)
+  if (/^\/products\/\d+\/images(\/|$)/.test(p)) return false;
+
+  // ❌ otros endpoints que NO son "admin products" en tu backend
+  if (/^\/products\/\d+\/stock(\/|$)/.test(p)) return false;
+  if (/^\/products\/\d+\/branches(\/|$)/.test(p)) return false;
+
+  // ✅ whitelist:
+  // /products
+  // /products/:id
+  // /products/next-code
+  // /products (POST)
+  // /products/:id (PATCH/DELETE)
+  if (p === "/products") return true;
+  if (p === "/products/next-code") return true;
+  if (/^\/products\/\d+$/.test(p)) return true;
+
+  return false;
+}
+
 async function req(method, path, ...args) {
-  // method: "get" | "post" | "patch" | "delete"
   try {
     return await http[method](path, ...args);
   } catch (e) {
     const p = String(path || "");
-    const canFallback = p.startsWith("/products");
-    if (canFallback && is404(e)) {
+
+    // ✅ fallback SOLO si el path está permitido
+    if (canFallbackPath(p) && (is404(e) || is403(e))) {
       const adminPath = toAdminProductsPath(p);
-      return await http[method](adminPath, ...args);
+      try {
+        return await http[method](adminPath, ...args);
+      } catch {
+        // si falla el fallback, devolvemos el error original
+        throw e;
+      }
     }
+
     throw e;
   }
 }
@@ -509,15 +553,22 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
+    /**
+     * ✅ IMÁGENES (POS friendly)
+     * - NO fallback a /admin/products/:id/images (no existe en tu API => 404 spam)
+     * - Si 403/404 => [] SIN setError (porque un user "solo vista" NO debe romper el POS)
+     */
     async fetchImages(productId) {
       const pid = toInt(productId, 0);
       if (!pid) return [];
 
-      this.error = null;
       try {
-        const { data } = await req("get", `/products/${pid}/images`);
+        const { data } = await http.get(`/products/${pid}/images`);
         return unwrapList(data);
       } catch (e) {
+        const s = Number(e?.response?.status || 0);
+        if (s === 403 || s === 404) return [];
+        // otros errores sí los mostramos
         this.setError(e);
         return [];
       }
@@ -541,6 +592,7 @@ export const useProductsStore = defineStore("products", {
         for (const f of realFiles) fd.append("files", f);
         for (const f of realFiles) fd.append("images", f);
 
+        // ✅ upload sí puede ir por req (si tu admin/products soporta upload por admin)
         const { data } = await req("post", `/products/${pid}/images`, fd);
 
         const r = unwrapOk(data);

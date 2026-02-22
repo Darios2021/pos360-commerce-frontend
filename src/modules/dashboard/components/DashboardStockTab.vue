@@ -1,42 +1,23 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/dashboard/components/DashboardStockTab.vue -->
 <template>
   <v-row dense class="mb-3">
     <v-col cols="12" md="4">
-      <KpiCard
-        title="Sin stock"
-        :value="stock.outOfStockCount"
-        :loading="loading"
-        icon="mdi-close-octagon-outline"
-        tone="error"
-      />
+      <KpiCard title="Sin stock" :value="num(stock.outOfStockCount)" :loading="loading" icon="mdi-close-octagon-outline" tone="error" />
     </v-col>
     <v-col cols="12" md="4">
-      <KpiCard
-        title="Stock bajo"
-        :value="stock.lowStockCount"
-        :loading="loading"
-        icon="mdi-alert-outline"
-        tone="warning"
-      />
+      <KpiCard title="Stock bajo" :value="num(stock.lowStockCount)" :loading="loading" icon="mdi-alert-outline" tone="warning" />
     </v-col>
     <v-col cols="12" md="4">
-      <KpiCard
-        title="Productos con stock (track)"
-        :value="stock.trackedProducts"
-        :loading="loading"
-        icon="mdi-radar"
-        tone="primary"
-      />
+      <KpiCard title="Productos con stock (track)" :value="num(stock.trackedProducts)" :loading="loading" icon="mdi-radar" tone="primary" />
     </v-col>
   </v-row>
 
   <v-row dense>
-    <!-- Stock por sucursal (barras simples) -->
+    <!-- Stock por sucursal -->
     <v-col cols="12" lg="5">
-      <v-card class="rounded-xl" elevation="0" style="background:rgba(0,0,0,.02); border:1px solid rgba(0,0,0,.06);">
-        <v-card-title class="text-subtitle-1 font-weight-bold">
-          Estado de stock por sucursal
-        </v-card-title>
+      <v-card class="dash-surface rounded-xl" elevation="0">
+        <v-card-title class="text-subtitle-1 font-weight-bold">Estado de stock por sucursal</v-card-title>
         <v-divider />
         <v-card-text>
           <div v-if="loading" class="py-8 d-flex justify-center">
@@ -45,7 +26,7 @@
 
           <div v-else>
             <div v-if="!rows.length" class="text-caption text-medium-emphasis">
-              Sin datos (falta <code>/dashboard/stock</code>).
+              Sin datos para graficar.
             </div>
 
             <div v-else class="d-flex flex-column ga-3">
@@ -73,7 +54,7 @@
 
     <!-- Tabla stock bajo -->
     <v-col cols="12" lg="7">
-      <v-card class="rounded-xl" elevation="0" style="background:#fff; border:1px solid rgba(0,0,0,.06);">
+      <v-card class="dash-surface rounded-xl" elevation="0">
         <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
           <div class="text-subtitle-1 font-weight-bold">Productos críticos (stock bajo / 0)</div>
           <v-chip size="small" variant="tonal">Scope: <b class="ml-1">{{ scopeLabel }}</b></v-chip>
@@ -87,10 +68,10 @@
           <div v-else>
             <v-data-table
               :headers="headers"
-              :items="stock.lowStockItems || []"
+              :items="lowItems"
               item-key="product_id"
               density="comfortable"
-              class="elevation-0 rounded-xl"
+              class="elevation-0 rounded-xl dash-table"
             >
               <template #item.product="{ item }">
                 <div class="font-weight-bold">{{ item.name || `Producto #${item.product_id}` }}</div>
@@ -111,14 +92,14 @@
                   {{ Number(item.stock || 0) }}
                 </v-chip>
                 <div class="text-caption text-medium-emphasis">
-                  Mín: {{ Number(item.min_stock || 0) }}
+                  Umbral: {{ Number(item.min_stock || stock.lowThreshold || 3) }}
                 </div>
               </template>
 
               <template #bottom />
             </v-data-table>
 
-            <div v-if="!(stock.lowStockItems || []).length" class="text-caption text-medium-emphasis">
+            <div v-if="!lowItems.length" class="text-caption text-medium-emphasis mt-2">
               Sin críticos (bien ahí).
             </div>
           </div>
@@ -138,6 +119,11 @@ const props = defineProps({
   scopeLabel: { type: String, default: "" },
   stock: { type: Object, default: () => ({}) },
 });
+
+function num(v) {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 const headers = [
   { title: "Producto", key: "product", sortable: false },
@@ -166,4 +152,18 @@ const rows = computed(() => {
     };
   });
 });
+
+const lowItems = computed(() => (Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []));
 </script>
+
+<style scoped>
+.dash-surface {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+}
+.dash-table :deep(.v-table__wrapper),
+.dash-table :deep(table),
+.dash-table :deep(.v-data-table__wrapper) {
+  background: transparent !important;
+}
+</style>
