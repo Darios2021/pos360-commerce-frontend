@@ -8,6 +8,16 @@ function toInt(v, def = 0) {
   return Number.isFinite(n) ? n : def;
 }
 
+function isPlaceholderName(name, id) {
+  const s = String(name || "").trim();
+  if (!s) return true;
+  // "Sucursal #3"
+  if (id && s === `Sucursal #${id}`) return true;
+  // por las dudas
+  if (/^sucursal\s*#\s*\d+$/i.test(s)) return true;
+  return false;
+}
+
 function normalizeBranches(raw) {
   // raw puede ser:
   // - [{id,name}, ...]
@@ -28,8 +38,8 @@ function normalizeBranches(raw) {
   // caso objetos
   const out = arr
     .map((b) => ({
-      id: toInt(b?.id ?? b?.branch_id ?? b?.branchId, 0),
-      name: String(b?.name || b?.title || b?.label || "").trim() || null,
+      id: toInt(b?.id ?? b?.branch_id ?? b?.branchId ?? b?.value, 0),
+      name: String(b?.name || b?.title || b?.label || b?.branch_name || "").trim() || null,
     }))
     .filter((b) => b.id > 0)
     .map((b) => ({ id: b.id, name: b.name || `Sucursal #${b.id}` }));
@@ -58,21 +68,98 @@ export function usePosBranch({ auth, posStore }) {
   // ✅ cache interno de sucursales (por si las traemos desde API)
   const fetchedBranches = ref([]);
 
-  const isAdmin = computed(() => {
-    const u = auth?.user || {};
-    const role = String(u.role || u.user_role || "").toLowerCase();
-    const roles = Array.isArray(u.roles) ? u.roles.map((x) => String(x || "").toLowerCase()) : [];
-    return u.is_admin === true || role.includes("admin") || roles.includes("admin") || roles.includes("superadmin") || roles.includes("super_admin");
+  // ✅ debug flags (sin rebuild)
+  const debug = computed(() => {
+    try {
+      return localStorage.getItem("debug_pos_branch") === "1" || localStorage.getItem("debug_pos") === "1";
+    } catch {
+      return false;
+    }
   });
 
-  // ✅ userBranches robusto: primero auth.user.branches, sino fetchedBranches, sino fallback a branch_id
+  function dlog(...args) {
+    if (!debug.value) return;
+    // eslint-disable-next-line no-console
+    console.log("[POS_BRANCH]", ...args);
+  }
+
+  // ✅ Detecta si hay que buscar nombres reales
+  const needsRealNames = computed(() => {
+    const fromUser = normalizeBranches(auth?.user?.branches);
+    if (!fromUser.length) return false;
+    return fromUser.some((b) => isPlaceholderName(b?.name, b?.id));
+  });
+
+  // ✅ Trae nombres reales desde backend (sirve para admin y NO admin)
+  async function ensureBranchesLoadedForNames() {
+    // si ya tenemos nombres reales en fetchedBranches, ok
+    const already = normalizeBranches(fetchedBranches.value);
+    if (already.length && already.some((b) => !isPlaceholderName(b?.name, b?.id))) return;
+
+    // si el user no necesita reemplazo (ya trae nombres), no hace falta
+    if (!needsRealNames.value) return;
+
+    const candidates = ["/branches", "/admin/branches"];
+    for (const url of candidates) {
+      try {
+        dlog("GET", url);
+        const { data } = await http.get(url, { params: { limit: 5000 } });
+        dlog("RESP body =", data);
+
+        const list = normalizeList(data);
+        dlog("LIST len =", list.length, "sample =", list?.[0]);
+
+        const norm = normalizeBranches(list);
+        dlog("NORM len =", norm.length, "sample =", norm?.[0]);
+
+        if (norm.length) {
+          fetchedBranches.value = norm;
+          return;
+        }
+      } catch (e) {
+        // probar siguiente
+        dlog("GET failed", url, e?.message || e);
+      }
+    }
+  }
+
+  // ✅ userBranches robusto:
+  // - si auth.user.branches viene como [1,2,3], lo usamos como "ids permitidos"
+  // - pero si fetchedBranches trae nombres reales, los pisamos
   const userBranches = computed(() => {
     const fromUser = normalizeBranches(auth?.user?.branches);
-    if (fromUser.length) return fromUser;
-
     const fromFetch = normalizeBranches(fetchedBranches.value);
+
+    // Mapa id -> nombre real (del backend)
+    const realNameById = new Map();
+    for (const b of fromFetch) {
+      const id = toInt(b?.id, 0);
+      const name = String(b?.name || "").trim();
+      if (id > 0 && name && !isPlaceholderName(name, id)) {
+        realNameById.set(id, name);
+      }
+    }
+
+    // 1) Si el user ya trae branches, devolvemos esas PERO con nombres reales si existen
+    if (fromUser.length) {
+      const merged = fromUser.map((b) => {
+        const id = toInt(b?.id, 0);
+        const real = realNameById.get(id);
+        const currentName = String(b?.name || "").trim();
+        const name = real ? real : currentName || `Sucursal #${id}`;
+        return { id, name };
+      });
+
+      // uniq
+      const map = new Map();
+      for (const b of merged) if (b.id > 0) map.set(b.id, b);
+      return Array.from(map.values());
+    }
+
+    // 2) Si no hay fromUser, usamos fetched
     if (fromFetch.length) return fromFetch;
 
+    // 3) fallback branch_id
     const main = toInt(auth?.user?.branch_id, 0);
     return main ? [{ id: main, name: `Sucursal #${main}` }] : [];
   });
@@ -156,33 +243,10 @@ export function usePosBranch({ auth, posStore }) {
     branchPickOpen.value = false;
   }
 
-  // ✅ si es admin y no vienen branches, intentamos traerlas del backend
-  async function ensureBranchesLoadedForAdmin() {
-    if (!isAdmin.value) return;
-
-    // si ya tenemos más de 1, no hace falta
-    if (normalizeBranches(auth?.user?.branches).length > 1) return;
-    if (normalizeBranches(fetchedBranches.value).length > 1) return;
-
-    const candidates = ["/branches", "/admin/branches"];
-    for (const url of candidates) {
-      try {
-        const { data } = await http.get(url, { params: { limit: 5000 } });
-        const list = normalizeList(data);
-        const norm = normalizeBranches(list);
-        if (norm.length) {
-          fetchedBranches.value = norm;
-          return;
-        }
-      } catch {
-        // probar siguiente
-      }
-    }
-  }
-
   // ✅ asegura una sucursal elegida al entrar (onMounted)
   async function ensureBranchSelected() {
-    await ensureBranchesLoadedForAdmin();
+    // 🔥 clave: si el user trae [1,2,3], buscamos nombres reales
+    await ensureBranchesLoadedForNames();
 
     const multi = branchItems.value.length > 1;
 
@@ -226,8 +290,6 @@ export function usePosBranch({ auth, posStore }) {
     pickDefaultBranch,
     confirmBranchPick,
     ensureBranchSelected,
-    // útil para debug si querés ver si cargó del backend
     fetchedBranches,
-    isAdmin,
   };
 }

@@ -3,7 +3,7 @@
 <template>
   <v-card class="pf-root" rounded="xl" elevation="0">
     <v-card-text class="pf-inner">
-      <v-row dense>
+      <v-row dense class="pf-row">
         <v-col cols="12" md="6">
           <v-text-field
             ref="searchRef"
@@ -11,11 +11,14 @@
             label="Buscar productos"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             clearable
             :disabled="disabledAll"
+            placeholder="SKU, nombre, código…"
+            class="pf-field pf-search"
             @keyup.enter="$emit('enter')"
+            @keyup.esc="onEsc"
             @click:clear="onClear"
             @update:model-value="onTyping"
           />
@@ -29,10 +32,11 @@
             item-value="value"
             label="Rubro"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             clearable
             :disabled="disabledAll"
+            class="pf-field"
             @update:model-value="onRubroChangeLocal"
           />
         </v-col>
@@ -45,9 +49,10 @@
             item-value="value"
             label="Subrubro"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             clearable
+            class="pf-field"
             :disabled="disabledAll || !rubroLocal || (subrubroItems?.length || 0) === 0"
             :no-data-text="subrubroNoDataText"
           />
@@ -56,18 +61,30 @@
 
       <div class="pf-bottom">
         <div class="pf-stats text-caption text-medium-emphasis">
-          Mostrando {{ showingText }}
+          Mostrando <b>{{ showingText }}</b>
           <span class="pf-dot">·</span>
-          Stock total (incluye sin precio): {{ stockOnlyTotal }}
+          Stock total (incluye sin precio): <b>{{ stockOnlyTotal }}</b>
         </div>
 
         <div class="pf-actions">
-          <v-btn size="small" variant="tonal" @click="$emit('prev')" :disabled="disabledAll || page <= 1">
+          <v-btn
+            size="small"
+            variant="tonal"
+            class="pf-btn"
+            @click="$emit('prev')"
+            :disabled="disabledAll || page <= 1"
+          >
             <v-icon start>mdi-chevron-left</v-icon>
             Anterior
           </v-btn>
 
-          <v-btn size="small" variant="tonal" @click="$emit('next')" :disabled="disabledAll || page >= pages">
+          <v-btn
+            size="small"
+            variant="tonal"
+            class="pf-btn"
+            @click="$emit('next')"
+            :disabled="disabledAll || page >= pages"
+          >
             Siguiente
             <v-icon end>mdi-chevron-right</v-icon>
           </v-btn>
@@ -85,21 +102,18 @@
 import { ref, computed, watch } from "vue";
 
 const props = defineProps({
-  // v-models
   q: { type: String, default: "" },
   rubroId: { type: [Number, String, null], default: null },
   subrubroId: { type: [Number, String, null], default: null },
 
-  // items
   rubroItems: { type: Array, default: () => [] },
   subrubroItems: { type: Array, default: () => [] },
   subrubroNoDataText: { type: String, default: "Elegí un rubro primero" },
 
-  // pagination / counts
   page: { type: Number, default: 1 },
   pages: { type: Number, default: 1 },
-  shownCount: { type: Number, default: 0 }, // pagedItems.length
-  totalCount: { type: Number, default: 0 }, // total filtrado
+  shownCount: { type: Number, default: 0 },
+  totalCount: { type: Number, default: 0 },
 
   stockOnlyTotal: { type: Number, default: 0 },
 
@@ -108,11 +122,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  // v-model updates
   "update:q",
   "update:rubro-id",
   "update:subrubro-id",
-  // events
   "typing",
   "enter",
   "clear",
@@ -123,7 +135,6 @@ const emit = defineEmits([
 
 const searchRef = ref(null);
 
-/* locals (NO mutar props) */
 const qLocal = ref(props.q || "");
 const rubroLocal = ref(props.rubroId ?? null);
 const subrubroLocal = ref(props.subrubroId ?? null);
@@ -165,12 +176,17 @@ function onClear() {
   emit("clear");
 }
 
+function onEsc() {
+  if (props.disabledAll) return;
+  if (!String(qLocal.value || "").trim()) return;
+  onClear();
+}
+
 function onRubroChangeLocal() {
   subrubroLocal.value = null;
   emit("rubro-change");
 }
 
-/* ✅ texto POS clásico */
 const showingText = computed(() => {
   const shown = Math.max(0, Number(props.shownCount || 0));
   const total = Math.max(0, Number(props.totalCount || 0));
@@ -196,6 +212,16 @@ defineExpose({ focusSearch });
 .pf-inner {
   padding: 14px;
 }
+
+/* inputs más “firmes” */
+.pf-field :deep(.v-field) {
+  border-radius: 14px;
+}
+.pf-field :deep(.v-field--focused) {
+  box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.12);
+}
+
+/* bottom */
 .pf-bottom {
   display: flex;
   align-items: center;
@@ -207,6 +233,9 @@ defineExpose({ focusSearch });
 .pf-actions {
   display: flex;
   gap: 10px;
+}
+.pf-btn {
+  border-radius: 12px;
 }
 .pf-dot {
   opacity: 0.55;

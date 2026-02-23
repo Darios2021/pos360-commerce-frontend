@@ -1,86 +1,31 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosPage.vue -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- TEMPLATE para src/modules/pos/pages/PosPage.vue (header ya usa PosTopBar) -->
 <template>
   <v-container fluid class="pos-root">
     <!-- ================= HEADER ================= -->
     <div class="pos-header">
-      <div class="pos-top">
-        <div class="pos-top-left">
-          <div class="text-h5 font-weight-bold">Punto de Venta</div>
-          <div class="text-caption text-medium-emphasis">Productos · Carrito · Cobro</div>
-
-          <div class="pos-chips mt-2">
-            <v-chip size="small" variant="tonal" color="primary">
-              Sucursal activa: {{ branchChipLabel }}
-            </v-chip>
-
-            <v-chip size="small" variant="tonal" color="primary">
-              Vendibles con stock: {{ sellableStockTotal }}
-            </v-chip>
-
-            <v-chip size="small" variant="tonal" color="surface-variant">
-              Con stock (incluye sin precio): {{ stockOnlyTotal }}
-            </v-chip>
-
-            <v-chip v-if="isViewOnly" size="small" variant="tonal" color="amber-darken-2">
-              Solo vista (sin permiso POS)
-            </v-chip>
-
-            <v-chip v-if="needsBranchPick" size="small" variant="tonal" color="deep-purple-darken-1">
-              Elegí sucursal activa para operar
-            </v-chip>
-
-            <v-chip size="small" variant="tonal" color="surface-variant">
-              F1 Ayuda · F2 Buscar · F8 Cobrar · PgUp/PgDn · Ctrl+K
-            </v-chip>
-          </div>
-
-          <div class="pos-cashier mt-2">
-            <v-icon size="16">mdi-account-badge</v-icon>
-            <span class="pos-cashier-txt">Cajero: <b>{{ cashierName }}</b></span>
-            <span class="pos-dot">·</span>
-            <v-icon size="16">mdi-clock-outline</v-icon>
-            <span class="pos-cashier-txt">Inicio caja: <b>{{ shiftStartText }}</b></span>
-          </div>
-        </div>
-
-        <div class="pos-top-actions">
-          <v-btn class="pos-action" variant="tonal" @click="refresh" :loading="loadingGlobal">
-            <v-icon start>mdi-refresh</v-icon>
-            Actualizar
-          </v-btn>
-
-          <v-btn
-            class="pos-action"
-            variant="tonal"
-            @click="branchPickOpen = true"
-            :disabled="branchItems.length <= 1"
-          >
-            <v-icon start>mdi-store</v-icon>
-            Cambiar sucursal
-          </v-btn>
-
-          <!-- ✅ AYUDA -->
-          <v-btn class="pos-action" variant="tonal" @click="helpOpen = true">
-            <v-icon start>mdi-help-circle-outline</v-icon>
-            Ayuda
-          </v-btn>
-
-          <v-btn
-            class="pos-action"
-            color="primary"
-            variant="flat"
-            @click="openCheckoutSafe"
-            :disabled="(posStore.cart || []).length === 0 || !canSell || needsBranchPick"
-          >
-            <v-icon start>mdi-cash-register</v-icon>
-            Cobrar
-          </v-btn>
-        </div>
-      </div>
+      <PosTopBar
+        :branch-chip-label="branchChipLabel"
+        :sellable-stock-total="sellableStockTotal"
+        :stock-only-total="stockOnlyTotal"
+        :cashier-name="cashierName"
+        :shift-start-text="shiftStartText"
+        :is-view-only="isViewOnly"
+        :needs-branch-pick="needsBranchPick"
+        :has-multi-branches="hasMultiBranches"
+        :loading-global="loadingGlobal"
+        :cart-count="(posStore.cart || []).length"
+        :checkout-disabled="(posStore.cart || []).length === 0 || !canSell || needsBranchPick"
+        @refresh="refresh"
+        @open-branch-switch="openBranchSwitch"
+        @help="helpOpen = true"
+        @checkout="openCheckoutSafe"
+      />
     </div>
 
-    <!-- ================= BODY (✅ sin v-row/v-col, grid propio) ================= -->
+    <!-- ================= BODY ================= -->
     <div class="pos-body">
       <div class="pos-layout">
         <!-- LEFT -->
@@ -194,11 +139,62 @@
       :branch-name="branchName || ''"
     />
 
-    <PosPickBranchDialog v-model:open="pickBranchOpen" :branches="pickBranchOptions" @confirm="onPickBranchConfirm" />
+    <PosPickBranchDialog
+      v-model:open="pickBranchOpen"
+      :branches="pickBranchOptions"
+      @confirm="onPickBranchConfirm"
+    />
 
-    <!-- ✅ AYUDA / COMANDOS -->
+    <!-- ✅ CAMBIAR SUCURSAL ACTIVA -->
+    <v-dialog v-model="branchPickOpen" max-width="560">
+      <v-card class="rounded-xl overflow-hidden">
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon>mdi-store</v-icon>
+          <span class="font-weight-bold">Cambiar sucursal activa</span>
+        </v-card-title>
+
+        <v-card-text class="pt-2">
+          <div class="text-caption text-medium-emphasis mb-3">
+            La sucursal activa define desde dónde operás (stock / venta).
+          </div>
+
+          <v-alert v-if="(posStore.cart || []).length" type="warning" variant="tonal" class="mb-3">
+            Tenés un carrito en curso. Terminá la venta o vaciá el carrito antes de cambiar sucursal.
+          </v-alert>
+
+          <v-select
+            v-model="branchPickSelected"
+            :items="uiBranchesForSelect"
+            item-title="title"
+            item-value="value"
+            :return-object="false"
+            label="Sucursal"
+            variant="outlined"
+            density="comfortable"
+            :disabled="(posStore.cart || []).length > 0"
+            hint="Elegí la sucursal donde vas a operar"
+            persistent-hint
+          />
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4">
+          <v-btn variant="tonal" @click="branchPickOpen = false">Cancelar</v-btn>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!branchPickSelected || (posStore.cart || []).length > 0"
+            @click="confirmActiveBranchChange"
+          >
+            Aplicar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <PosShortcutsHelpDialog v-model="helpOpen" />
-
     <v-snackbar v-model="snack.show" :timeout="3200">{{ snack.text }}</v-snackbar>
   </v-container>
 </template>
@@ -206,6 +202,9 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { usePosStore } from "../../../app/store/pos.store";
+
+/* ✅ NEW: Top bar component */
+import PosTopBar from "../components/PosTopBar.vue";
 
 import PosFiltersBar from "../components/PosFiltersBar.vue";
 import { usePosFilters } from "../composables/usePosFilters";
@@ -256,10 +255,105 @@ const {
   branchChipLabel,
   needsBranchPick,
   ensureBranchSelected,
+  fetchedBranches, // ✅ CLAVE: acá están los nombres reales del /branches (Rawson, etc)
 } = usePosBranch({ auth, posStore });
 
-/* branch scope */
+/* ✅ branch scope */
 const branchScope = usePosBranchScope({ auth, userBranches, branchItems });
+
+/* =========================================================
+   ✅ FIX DEFINITIVO NOMBRES EN SELECT
+   - Primero usa fetchedBranches (vienen con name real)
+   - Si está vacío, cae a branchItems (fallback)
+========================================================= */
+const uiBranchesForSelect = computed(() => {
+  const fb = Array.isArray(fetchedBranches?.value) ? fetchedBranches.value : [];
+
+  // 1) ✅ si fetchedBranches trae nombres reales -> usar eso
+  if (fb.length) {
+    return fb
+      .map((b) => {
+        const value = Number(b?.id ?? b?.branch_id ?? 0) || null;
+        if (!value) return null;
+        const title = String(b?.name ?? b?.branch_name ?? "").trim() || `Sucursal #${value}`;
+        return { title, value };
+      })
+      .filter(Boolean);
+  }
+
+  // 2) fallback: branchItems
+  const raw = Array.isArray(branchItems?.value) ? branchItems.value : [];
+  return raw
+    .map((it) => {
+      const value = Number(it?.value ?? it?.id ?? 0) || null;
+      if (!value) return null;
+      const title = String(it?.title ?? it?.name ?? "").trim() || `Sucursal #${value}`;
+      return { title, value };
+    })
+    .filter(Boolean);
+});
+
+const hasMultiBranches = computed(() => uiBranchesForSelect.value.length > 1);
+
+/* dialog selection (SIEMPRE number) */
+const branchPickSelected = ref(null);
+
+function getActiveBranchIdSafe() {
+  const v = activeBranchId?.value;
+  return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
+}
+
+function openBranchSwitch() {
+  if (!hasMultiBranches.value) return;
+
+  if ((posStore.cart || []).length) {
+    toast("🧠 Terminá la venta o vaciá el carrito antes de cambiar sucursal.");
+    return;
+  }
+
+  branchPickSelected.value = getActiveBranchIdSafe();
+  branchPickOpen.value = true;
+}
+
+async function confirmActiveBranchChange() {
+  if ((posStore.cart || []).length) {
+    toast("🧠 Terminá la venta o vaciá el carrito antes de cambiar sucursal.");
+    branchPickOpen.value = false;
+    return;
+  }
+
+  const nextId = Number(branchPickSelected.value || 0) || null;
+  if (!nextId) return;
+
+  try {
+    if (typeof posStore.setBranchId === "function") posStore.setBranchId(nextId);
+    else if (typeof posStore.setActiveBranch === "function") posStore.setActiveBranch(nextId);
+    else if (typeof posStore.$patch === "function") posStore.$patch({ branch_id: nextId });
+    else posStore.branch_id = nextId;
+  } catch {}
+
+  try {
+    localStorage.setItem("pos_branch_id", String(nextId));
+    localStorage.setItem("active_branch_id", String(nextId));
+    localStorage.setItem("branch_id", String(nextId));
+  } catch {}
+
+  try {
+    activeBranchId.value = nextId;
+  } catch {}
+
+  try {
+    await ensureBranchSelected?.();
+  } catch {}
+
+  branchPickOpen.value = false;
+
+  try {
+    await fetchGlobalPool({ in_stock: 0 });
+  } catch {}
+
+  toast("✅ Sucursal activa actualizada");
+}
 
 /* pricing */
 const { resolveUnitPrice, isSellable, toNum } = usePosPricing();
@@ -273,7 +367,7 @@ const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool, branchesWithSt
 
 /* helpers stock */
 function getActiveBranchId() {
-  return Number(activeBranchId.value || 0) || null;
+  return getActiveBranchIdSafe();
 }
 function qtyForActive(p) {
   const ab = getActiveBranchId();
@@ -286,7 +380,6 @@ function activeHasStock(p) {
 
 /* ✅ filtros + taxonomy */
 const filters = usePosFilters({ globalItems, isSellable, qtyForActive });
-
 const {
   q,
   page,
@@ -347,7 +440,7 @@ async function confirmPaymentSafe() {
   await fetchGlobalPool({ in_stock: 0 });
 }
 
-/* pick branch */
+/* pick branch (producto) */
 const pickBranchOpen = ref(false);
 const pickBranchProduct = ref(null);
 const pickBranchOptions = ref([]);
@@ -356,6 +449,7 @@ function cartBranchId() {
   const it = (posStore.cart || []).find((x) => Number(x?.chosen_branch_id || 0) > 0);
   return it ? Number(it.chosen_branch_id) : null;
 }
+
 const cartBranchLabel = computed(() => {
   const bid = cartBranchId();
   if (!bid) return null;
@@ -485,35 +579,31 @@ function refresh() {
   fetchGlobalPool({ in_stock: 0 });
 }
 
-/* hotkeys ✅ (F1/F2/F8/PgUp/PgDn/Ctrl+K) */
+/* hotkeys */
 function onKeydown(e) {
   if (!e || e.repeat) return;
 
   const key = String(e.key || "");
   const lower = key.toLowerCase();
 
-  // F1 ayuda
   if (lower === "f1") {
     e.preventDefault();
     helpOpen.value = true;
     return;
   }
 
-  // F2 / Ctrl+K buscar
   if (lower === "f2" || (e.ctrlKey && lower === "k")) {
     e.preventDefault();
     filtersRef.value?.focusSearch?.();
     return;
   }
 
-  // F8 cobrar
   if (lower === "f8") {
     e.preventDefault();
     openCheckoutSafe();
     return;
   }
 
-  // PgUp/PgDn paginado
   if (lower === "pageup") {
     e.preventDefault();
     prevPage();
@@ -557,128 +647,101 @@ watch(
     await prefetchImagesForVisible?.(pagedItems.value);
   }
 );
+
+/* sync selection when dialog opens */
+watch(
+  () => branchPickOpen.value,
+  (open) => {
+    if (open) branchPickSelected.value = getActiveBranchIdSafe();
+  }
+);
 </script>
 
+
 <style scoped>
-
-
-/* ✅ COPY-PASTE FINAL COMPLETO */
-/* src/modules/pos/pages/PosPage.vue */
-
 :global(html),
 :global(body) {
   height: 100%;
 }
-
 :global(body.pos-noscroll) {
   overflow: hidden !important;
 }
-
-/* =========================
-   PAGE ROOT
-========================= */
 .pos-root {
   height: calc(100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
   min-height: 0;
-
   overflow: hidden;
   padding: 14px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
-
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
-
-  /* ✅ “aire” general abajo (sensación de corte) */
   --pos-bottom-gap: 18px;
 }
-
-/* ================= HEADER ================= */
 .pos-header {
   flex: 0 0 auto;
 }
-
 .pos-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
-
   padding: 14px;
   border-radius: 18px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
-
 .pos-top-left {
   min-width: 320px;
 }
-
 .pos-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-
 .pos-top-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-
 .pos-action {
   border-radius: 12px;
 }
-
 .pos-cashier {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-
   padding: 8px 12px;
   border-radius: 999px;
-
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   width: fit-content;
 }
-
 .pos-cashier-txt {
   font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.85);
 }
-
 .pos-dot {
   opacity: 0.55;
 }
-
-/* ================= BODY ================= */
 .pos-body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-
-  /* ✅ aire al borde inferior del “body” */
   padding-bottom: var(--pos-bottom-gap);
   box-sizing: border-box;
 }
-
-/* ✅ Layout determinístico (no dependemos del grid Vuetify) */
 .pos-layout {
   height: 100%;
   min-height: 0;
-
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
   gap: 12px;
 }
-
-/* LEFT */
 .pos-left {
   min-height: 0;
   min-width: 0;
@@ -686,97 +749,71 @@ watch(
   flex-direction: column;
   gap: 12px;
 }
-
-/* ✅ acá scrollea la lista y “cierra” donde corresponde */
 .pos-products {
   flex: 1 1 0;
   min-height: 0;
   overflow: auto;
-
   border-radius: 16px;
   padding: 10px;
-
-  /* ✅ aire real abajo dentro del contenedor scrolleable */
   padding-bottom: calc(16px + var(--pos-bottom-gap));
-
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   background: rgb(var(--v-theme-surface));
   scrollbar-gutter: stable;
   box-sizing: border-box;
 }
-
-/* ✅ “colchón” visual extra al final del scroll (no rompe nada) */
 .pos-products::after {
   content: "";
   display: block;
   height: var(--pos-bottom-gap);
 }
-
 .pos-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
-/* RIGHT */
 .pos-right {
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-
-  /* ✅ aire abajo para que el carrito no “pegue” al borde */
   padding-bottom: var(--pos-bottom-gap);
   box-sizing: border-box;
 }
-
 .pos-right-spacer {
   flex: 1 1 0;
   min-height: 0;
 }
-
-/* Ajuste opcional en pantallas medianas */
 @media (max-width: 1280px) {
   .pos-layout {
     grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   }
 }
-
-/* mobile */
 @media (max-width: 960px) {
   :global(body.pos-noscroll) {
     overflow: auto !important;
   }
-
   .pos-root {
     height: auto;
     overflow: visible;
   }
-
   .pos-body {
     overflow: visible;
     padding-bottom: 0;
   }
-
   .pos-layout {
     height: auto;
     display: block;
   }
-
   .pos-products {
     height: auto;
     overflow: visible;
     padding-bottom: 16px;
   }
-
   .pos-products::after {
     display: none;
   }
-
   .pos-right {
     padding-bottom: 0;
   }
 }
-
-
 </style>
