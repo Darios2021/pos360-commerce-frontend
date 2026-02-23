@@ -80,100 +80,96 @@
       </div>
     </div>
 
-    <!-- ================= BODY ================= -->
+    <!-- ================= BODY (✅ sin v-row/v-col, grid propio) ================= -->
     <div class="pos-body">
-      <v-row dense class="pos-grid ma-0">
+      <div class="pos-layout">
         <!-- LEFT -->
-        <v-col cols="12" md="8" class="pa-0">
-          <div class="pos-col">
-            <PosFiltersBar
-              ref="filtersRef"
-              v-model:q="q"
-              v-model:rubro-id="rubroId"
-              v-model:subrubro-id="subrubroId"
-              :rubro-items="rubroItems"
-              :subrubro-items="subrubroItems"
-              :subrubro-no-data-text="subrubroNoDataText"
-              :page="page"
-              :pages="pages"
-              :limit="limit"
-              :shown-count="pagedItems.length"
-              :total-count="sellableStockTotal"
-              :stock-only-total="stockOnlyTotal"
-              :error="errorGlobal"
-              :disabled-all="loadingGlobal"
-              @typing="debounceSearch"
-              @enter="doSearch"
-              @clear="clearSearch"
-              @rubro-change="onRubroChange"
-              @prev="prevPage"
-              @next="nextPage"
-            />
+        <div class="pos-left">
+          <PosFiltersBar
+            ref="filtersRef"
+            v-model:q="q"
+            v-model:rubro-id="rubroId"
+            v-model:subrubro-id="subrubroId"
+            :rubro-items="rubroItems"
+            :subrubro-items="subrubroItems"
+            :subrubro-no-data-text="subrubroNoDataText"
+            :page="page"
+            :pages="pages"
+            :limit="limit"
+            :shown-count="pagedItems.length"
+            :total-count="sellableStockTotal"
+            :stock-only-total="stockOnlyTotal"
+            :error="errorGlobal"
+            :disabled-all="loadingGlobal"
+            @typing="debounceSearch"
+            @enter="doSearch"
+            @clear="clearSearch"
+            @rubro-change="onRubroChange"
+            @prev="prevPage"
+            @next="nextPage"
+          />
 
-            <div class="pos-products mt-3">
-              <div v-if="loadingGlobal" class="d-flex justify-center align-center py-12">
-                <v-progress-circular indeterminate />
+          <div class="pos-products">
+            <div v-if="loadingGlobal" class="d-flex justify-center align-center py-12">
+              <v-progress-circular indeterminate />
+            </div>
+
+            <div v-else class="pos-list">
+              <PosProductRow
+                v-for="p in pagedItems"
+                :key="p.id"
+                :item="p"
+                :image="productImage(p)"
+                :name="p.name"
+                :sku="p.sku || p.code"
+                :stkLabel="`STK ${qtyForActive(p)}`"
+                :offLabel="
+                  resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
+                    ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
+                    : ''
+                "
+                :rubro-label="rubroTitleFromProduct(p) || ''"
+                :subrubro-label="subrubroTitleFromProduct(p) || ''"
+                :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
+                :price-list="resolveUnitPrice(p, 'LIST')"
+                :disabled="!canSell || needsBranchPick"
+                @add="add"
+                @details="openDetails"
+              />
+
+              <div v-if="pagedItems.length" class="mt-2 text-caption text-medium-emphasis">
+                Tip: al tocar “+”, si el producto no tiene stock en la sucursal activa, te pregunta de cuál sale.
               </div>
+            </div>
 
-              <div v-else class="pos-list">
-                <PosProductRow
-                  v-for="p in pagedItems"
-                  :key="p.id"
-                  :item="p"
-                  :image="productImage(p)"
-                  :name="p.name"
-                  :sku="p.sku || p.code"
-                  :stkLabel="`STK ${qtyForActive(p)}`"
-                  :offLabel="
-                    resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
-                      ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
-                      : ''
-                  "
-                  :rubro-label="rubroTitleFromProduct(p) || ''"
-                  :subrubro-label="subrubroTitleFromProduct(p) || ''"
-                  :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
-                  :price-list="resolveUnitPrice(p, 'LIST')"
-                  :disabled="!canSell || needsBranchPick"
-                  @add="add"
-                  @details="openDetails"
-                />
-
-                <div v-if="pagedItems.length" class="mt-2 text-caption text-medium-emphasis">
-                  Tip: al tocar “+”, si el producto no tiene stock en la sucursal activa, te pregunta de cuál sale.
-                </div>
-              </div>
-
-              <div v-if="!loadingGlobal && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
-                <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
-                <div class="text-h6">No se encontraron productos vendibles con stock</div>
-                <div class="text-caption mt-1">
-                  Nota: hay {{ stockOnlyTotal }} con stock total, pero algunos pueden estar sin precio.
-                </div>
+            <div v-if="!loadingGlobal && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
+              <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
+              <div class="text-h6">No se encontraron productos vendibles con stock</div>
+              <div class="text-caption mt-1">
+                Nota: hay {{ stockOnlyTotal }} con stock total, pero algunos pueden estar sin precio.
               </div>
             </div>
           </div>
-        </v-col>
+        </div>
 
         <!-- RIGHT -->
-        <v-col cols="12" md="4" class="pa-0">
-          <div class="pos-col pos-col-right">
-            <PosCartPanel
-              :cart="posStore.cart"
-              :total-items="posStore.totalItems"
-              :total="checkoutTotalPreview"
-              :can-edit="canSell && !needsBranchPick"
-              :pos-store="posStore"
-              @checkout="openCheckoutSafe"
-            />
+        <div class="pos-right">
+          <PosCartPanel
+            :cart="posStore.cart"
+            :total-items="posStore.totalItems"
+            :total="checkoutTotalPreview"
+            :can-edit="canSell && !needsBranchPick"
+            :pos-store="posStore"
+            @checkout="openCheckoutSafe"
+          />
 
-            <div v-if="cartBranchLabel" class="mt-2 text-caption text-medium-emphasis">
-              Carrito: <b>{{ cartBranchLabel }}</b>
-            </div>
-
-            <div class="pos-right-spacer" />
+          <div v-if="cartBranchLabel" class="mt-2 text-caption text-medium-emphasis">
+            Carrito: <b>{{ cartBranchLabel }}</b>
           </div>
-        </v-col>
-      </v-row>
+
+          <div class="pos-right-spacer" />
+        </div>
+      </div>
     </div>
 
     <!-- ================= DIALOGS ================= -->
@@ -198,11 +194,7 @@
       :branch-name="branchName || ''"
     />
 
-    <PosPickBranchDialog
-      v-model:open="pickBranchOpen"
-      :branches="pickBranchOptions"
-      @confirm="onPickBranchConfirm"
-    />
+    <PosPickBranchDialog v-model:open="pickBranchOpen" :branches="pickBranchOptions" @confirm="onPickBranchConfirm" />
 
     <!-- ✅ AYUDA / COMANDOS -->
     <PosShortcutsHelpDialog v-model="helpOpen" />
@@ -521,7 +513,7 @@ function onKeydown(e) {
     return;
   }
 
-  // PgUp/PgDn paginado (también Home/End por si querés)
+  // PgUp/PgDn paginado
   if (lower === "pageup") {
     e.preventDefault();
     prevPage();
@@ -568,20 +560,43 @@ watch(
 </script>
 
 <style scoped>
+
+
+/* ✅ COPY-PASTE FINAL COMPLETO */
+/* src/modules/pos/pages/PosPage.vue */
+
+:global(html),
+:global(body) {
+  height: 100%;
+}
+
+:global(body.pos-noscroll) {
+  overflow: hidden !important;
+}
+
+/* =========================
+   PAGE ROOT
+========================= */
 .pos-root {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
+  min-height: 0;
+
   overflow: hidden;
   padding: 14px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
+
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
+
+  /* ✅ “aire” general abajo (sensación de corte) */
+  --pos-bottom-gap: 18px;
 }
 
+/* ================= HEADER ================= */
 .pos-header {
   flex: 0 0 auto;
 }
@@ -592,6 +607,7 @@ watch(
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+
   padding: 14px;
   border-radius: 18px;
   background: rgb(var(--v-theme-surface));
@@ -619,61 +635,14 @@ watch(
   border-radius: 12px;
 }
 
-.pos-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.pos-grid {
-  height: 100%;
-  margin: 0 !important;
-}
-
-.pos-grid :deep(.v-col) {
-  min-height: 0;
-}
-
-.pos-col {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pos-col-right {
-  padding-left: 12px;
-}
-
-.pos-right-spacer {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.pos-products {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  border-radius: 16px;
-  padding: 10px;
-  padding-bottom: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgb(var(--v-theme-surface));
-  scrollbar-gutter: stable;
-}
-
-.pos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .pos-cashier {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+
   padding: 8px 12px;
   border-radius: 999px;
+
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   width: fit-content;
@@ -688,19 +657,126 @@ watch(
   opacity: 0.55;
 }
 
+/* ================= BODY ================= */
+.pos-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+
+  /* ✅ aire al borde inferior del “body” */
+  padding-bottom: var(--pos-bottom-gap);
+  box-sizing: border-box;
+}
+
+/* ✅ Layout determinístico (no dependemos del grid Vuetify) */
+.pos-layout {
+  height: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 12px;
+}
+
+/* LEFT */
+.pos-left {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ✅ acá scrollea la lista y “cierra” donde corresponde */
+.pos-products {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+
+  border-radius: 16px;
+  padding: 10px;
+
+  /* ✅ aire real abajo dentro del contenedor scrolleable */
+  padding-bottom: calc(16px + var(--pos-bottom-gap));
+
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgb(var(--v-theme-surface));
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+}
+
+/* ✅ “colchón” visual extra al final del scroll (no rompe nada) */
+.pos-products::after {
+  content: "";
+  display: block;
+  height: var(--pos-bottom-gap);
+}
+
+.pos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* RIGHT */
+.pos-right {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  /* ✅ aire abajo para que el carrito no “pegue” al borde */
+  padding-bottom: var(--pos-bottom-gap);
+  box-sizing: border-box;
+}
+
+.pos-right-spacer {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* Ajuste opcional en pantallas medianas */
+@media (max-width: 1280px) {
+  .pos-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  }
+}
+
 /* mobile */
 @media (max-width: 960px) {
+  :global(body.pos-noscroll) {
+    overflow: auto !important;
+  }
+
   .pos-root {
     height: auto;
     overflow: visible;
   }
-  .pos-body,
-  .pos-products {
+
+  .pos-body {
     overflow: visible;
-    height: auto;
+    padding-bottom: 0;
   }
-  .pos-col-right {
-    padding-left: 0;
+
+  .pos-layout {
+    height: auto;
+    display: block;
+  }
+
+  .pos-products {
+    height: auto;
+    overflow: visible;
+    padding-bottom: 16px;
+  }
+
+  .pos-products::after {
+    display: none;
+  }
+
+  .pos-right {
+    padding-bottom: 0;
   }
 }
+
+
 </style>
