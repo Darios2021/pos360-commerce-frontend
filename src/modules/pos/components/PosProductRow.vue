@@ -95,32 +95,38 @@ function money(v) {
 <style scoped>
 /* ===========================
    ✅ ULTRA COMPACT (más filas)
+   ✅ + SOMBRA “CARD” VISIBLE
 =========================== */
 .prow {
   display: grid;
-  grid-template-columns: 64px 1fr auto auto; /* 🔽 antes 72 */
+  grid-template-columns: 64px 1fr auto auto;
   align-items: center;
-  gap: 10px; /* 🔽 antes 14 */
+  gap: 10px;
 
-  padding: 7px 10px; /* 🔽 antes 10 12 */
-  border-radius: 12px; /* 🔽 */
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding: 7px 10px;
+  border-radius: 12px;
+
+  /* ✅ diferencia clara contra el fondo */
   background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 
-  /* ✅ sombra más liviana (sigue “card” pero no infla) */
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.055);
+  /* ✅ sombra más notoria (sin inflar demasiado) */
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04);
 
-  transition: all 120ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
   cursor: pointer;
   position: relative;
 }
 
 .prow:hover {
-  border-color: rgba(var(--v-theme-primary), 0.24);
+  border-color: rgba(var(--v-theme-primary), 0.28);
   background: rgba(var(--v-theme-primary), 0.03);
   transform: translateY(-1px);
   box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.075),
+    0 16px 32px rgba(0, 0, 0, 0.08),
+    0 3px 10px rgba(0, 0, 0, 0.05),
     0 0 0 1px rgba(var(--v-theme-primary), 0.10);
 }
 
@@ -128,20 +134,23 @@ function money(v) {
   outline: none;
   box-shadow:
     0 0 0 4px rgba(var(--v-theme-primary), 0.16),
-    0 10px 22px rgba(0, 0, 0, 0.075);
+    0 16px 32px rgba(0, 0, 0, 0.08),
+    0 3px 10px rgba(0, 0, 0, 0.05);
 }
 
 .prow.disabled {
   opacity: 0.6;
   pointer-events: none;
   transform: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.04),
+    0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 /* IMAGE */
 .prow-img {
-  width: 64px;   /* 🔽 */
-  height: 48px;  /* 🔽 antes 56 */
+  width: 64px;
+  height: 48px;
   border-radius: 10px;
   overflow: hidden;
   background: rgba(var(--v-theme-on-surface), 0.04);
@@ -167,7 +176,7 @@ function money(v) {
 }
 
 .prow-title {
-  font-size: 13px; /* 🔽 */
+  font-size: 13px;
   font-weight: 800;
   line-height: 1.15;
   white-space: nowrap;
@@ -177,15 +186,15 @@ function money(v) {
 
 /* ✅ CLAVE: meta 1 línea para que NO suba la altura */
 .prow-meta {
-  margin-top: 2px; /* 🔽 antes 4 */
+  margin-top: 2px;
   display: flex;
-  flex-wrap: nowrap;          /* ✅ antes wrap */
+  flex-wrap: nowrap;
   gap: 6px;
   align-items: center;
 
-  white-space: nowrap;        /* ✅ */
-  overflow: hidden;           /* ✅ */
-  text-overflow: ellipsis;    /* ✅ */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
@@ -198,11 +207,11 @@ function money(v) {
 
 /* CHIPS */
 .pill {
-  font-size: 10.25px; /* 🔽 */
-  padding: 2px 7px;   /* 🔽 */
+  font-size: 10.25px;
+  padding: 2px 7px;
   border-radius: 999px;
   font-weight: 700;
-  flex: 0 0 auto; /* ✅ no se rompen */
+  flex: 0 0 auto;
 }
 
 .pill.dark {
@@ -222,17 +231,17 @@ function money(v) {
 /* PRICE */
 .prow-price {
   text-align: right;
-  min-width: 96px; /* 🔽 antes 110 */
+  min-width: 96px;
 }
 
 .price-discount {
-  font-size: 14px; /* 🔽 antes 15 */
+  font-size: 14px;
   font-weight: 900;
   line-height: 1.05;
 }
 
 .price-list {
-  font-size: 11px; /* 🔽 */
+  font-size: 11px;
   opacity: 0.6;
   text-decoration: line-through;
   margin-top: 1px;
@@ -241,11 +250,11 @@ function money(v) {
 /* ACTIONS */
 .prow-actions {
   display: flex;
-  gap: 6px; /* 🔽 antes 8 */
+  gap: 6px;
 }
 
 .btn-action {
-  width: 34px !important; /* 🔽 antes 38 */
+  width: 34px !important;
   height: 34px !important;
   border-radius: 12px !important;
 }

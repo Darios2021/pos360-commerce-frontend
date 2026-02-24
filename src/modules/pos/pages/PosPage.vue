@@ -4,6 +4,7 @@
   <v-container fluid class="pos-root">
     <div class="pos-header">
       <PosTopBar
+        class="pos-surface"
         :branch-chip-label="branchChipLabel"
         :sellable-stock-total="sellableStockTotal"
         :stock-only-total="stockOnlyTotal"
@@ -28,6 +29,7 @@
         <div class="pos-left">
           <PosFiltersBar
             ref="filtersRef"
+            class="pos-surface"
             v-model:q="q"
             v-model:rubro-id="rubroId"
             v-model:subrubro-id="subrubroId"
@@ -52,7 +54,7 @@
 
           <!-- ✅ PRODUCTS PANEL -->
           <PosProductsPanel
-            class="pos-products-panel"
+            class="pos-products-panel pos-surface"
             :loading="loadingGlobal"
             :disabled="loadingGlobal"
             :items="pagedItems"
@@ -92,6 +94,7 @@
         <div class="pos-right">
           <div class="pos-cart-wrap">
             <PosCartPanel
+              class="pos-surface"
               :cart="posStore.cart"
               :total-items="posStore.totalItems"
               :total="checkoutTotalPreview"
@@ -354,8 +357,6 @@ const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMulti
 
 /* ======================================================
    ✅ CART ENRICH: inyecta imagen en items del carrito
-   - Porque posStore.cart suele venir sin image/image_url
-   - CheckoutDialog busca it.image / it.image_url / it.product.image...
 ====================================================== */
 function cartKey(it) {
   const pid = Number(it?.product_id ?? it?.productId ?? it?.product?.id ?? it?.id ?? 0) || null;
@@ -383,7 +384,6 @@ function findProductInPool(it) {
 const cartForCheckout = computed(() => {
   const cart = Array.isArray(posStore?.cart) ? posStore.cart : [];
   return cart.map((it) => {
-    // Si ya trae imagen, respetamos
     const already = String(it?.image || it?.image_url || it?.imageUrl || it?.thumb || it?.thumbnail || "").trim();
     if (already) return it;
 
@@ -393,7 +393,6 @@ const cartForCheckout = computed(() => {
     const img = productImage(p);
     if (!img) return it;
 
-    // Inyectamos en campos que CheckoutDialog sabe leer
     return {
       ...it,
       image: img,
@@ -525,7 +524,6 @@ function addFromDetails(payload) {
     return;
   }
 
-  // 1) si tu store tiene métodos “priced”
   const pricedCandidates = [
     ["addToCartWithPrice", (s) => s.addToCartWithPrice(product, unitPrice, meta)],
     ["addWithPrice", (s) => s.addWithPrice(product, unitPrice, meta)],
@@ -546,7 +544,6 @@ function addFromDetails(payload) {
     }
   }
 
-  // 2) fallback universal: clonamos el producto con pricing
   const cloned = {
     ...product,
     unit_price: unitPrice,
@@ -737,6 +734,44 @@ watch(
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: var(--pos-gap);
+}
+
+/* =========================================================
+   ✅ SOMBRAS / SURFACE PARA SEPARAR DEL FONDO
+   - aplica a TopBar, Filters, ProductsPanel y CartPanel
+========================================================= */
+.pos-surface {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+
+  /* sombra suave tipo “card” */
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* evita “cortes” raros en shadow por overflow internos */
+  overflow: hidden;
+}
+
+/* hover/active leve (no molesto) */
+.pos-surface:hover {
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* en dark, el borde negro queda duro -> lo suavizamos */
+:global(.v-theme--dark) .pos-surface {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+}
+:global(.v-theme--dark) .pos-surface:hover {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 /* LEFT */
