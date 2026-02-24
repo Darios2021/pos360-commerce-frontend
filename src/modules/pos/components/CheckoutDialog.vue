@@ -1,255 +1,303 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/components/ConfirmChargeDialog.vue -->
-<!-- ✅ FIX EXTRA (PEDIDO):
-  - Input EFECTIVO con separador de miles en vivo (50.000) sin romper cálculo/vuelto
-  - Internamente guarda número limpio (solo dígitos) para backend/cálculo
+<!-- src/modules/pos/components/CheckoutDialog.vue -->
+<!-- ✅ UI CLONADA del estilo de PosProductDetailsDialog (brand #2a85c4):
+  - Hero con gradiente suave
+  - Panels con fondo suave + bordes brand
+  - Métodos de pago en “paycards”
+  - Revendedor sutil abajo
+  - Resumen con thumbnails
+  - Footer sticky
+  - Hotkey F8/ESC cierra (sin flicker dentro del dialog)
+  - ✅ FIX PEDIDO: cuotas muestran valor calculado con PRECIO LISTA (cuando installments > 1)
+  - ✅ FIX: el componente NO crashea (faltaba itemImage())
+  - ✅ FIX: imágenes relativas "/pos360/media/..." ahora se convierten a URL absoluta del storage
 -->
 
 <template>
-  <v-dialog v-model="openLocal" max-width="720" persistent class="cd-dialog">
-    <v-card class="cd-root rounded-xl overflow-hidden">
-      <!-- HEADER -->
-      <div class="cd-hero bg-primary">
-        <div class="cd-hero-inner">
-          <div class="cd-hero-top">
-            <div class="cd-overline">Confirmar cobro</div>
+  <v-dialog v-model="openLocal" max-width="980" persistent class="cod-dialog">
+    <v-card rounded="xl" class="cod-root">
+      <!-- HERO -->
+      <div class="cod-hero">
+        <div class="cod-hero-left">
+          <div class="cod-title-row">
+            <div class="cod-title text-h6 font-weight-black">Cobro</div>
 
-            <v-chip v-if="showInstallments" size="small" variant="flat" class="cd-pill">
-              {{ installmentsLocal }} cuotas de <b class="ml-1">{{ money(perInstallment) }}</b>
-              <span class="ml-1">(lista)</span>
+            <v-chip size="small" variant="tonal" class="cod-chip">
+              <v-icon start size="16">mdi-cart</v-icon>
+              Ítems: <b class="ml-1">{{ cartUi.length }}</b>
+            </v-chip>
+
+            <v-chip size="small" variant="tonal" class="cod-chip">
+              <v-icon start size="16">mdi-eye-outline</v-icon>
+              Preview: <b class="ml-1">{{ money(previewSafe) }}</b>
+            </v-chip>
+
+            <!-- ✅ cuota calculada con TOTAL LISTA cuando corresponde -->
+            <v-chip v-if="ui.showInstallmentsChip" size="small" variant="tonal" class="cod-chip cod-chip-soft">
+              <v-icon start size="16">mdi-credit-card-outline</v-icon>
+              {{ state.installments }} cuotas de <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
             </v-chip>
           </div>
 
-          <div class="cd-total">
-            {{ money(totalLocal) }}
-          </div>
-
-          <div class="cd-subline">
-            <span class="opacity-85">El precio se define según método / cuotas / revendedor.</span>
+          <div class="cod-sub text-caption text-medium-emphasis">
+            Elegí método y política: tarjeta en cuotas usa lista · revendedor pisa todo (si existe).
           </div>
         </div>
+
+        <div class="cod-hero-right">
+          <div class="cod-total-label text-caption text-medium-emphasis">Total</div>
+          <div class="cod-total">{{ money(totalSafe) }}</div>
+        </div>
+
+        <v-btn icon variant="text" class="cod-close" @click="closeNow" title="Cerrar">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
       </div>
 
-      <!-- BODY SCROLLABLE -->
-      <div class="cd-body-scroll">
-        <v-card-text class="cd-body">
-          <!-- Resumen -->
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="text-subtitle-2 font-weight-bold">Resumen</div>
-            <div class="text-caption text-medium-emphasis">Preview: {{ money(previewSafe) }}</div>
-          </div>
-
-          <v-list density="compact" class="pa-0" bg-color="transparent">
-            <v-list-item v-for="it in cartLocal" :key="it.id" class="rounded-lg mb-2 cd-item">
-              <template #prepend>
-                <v-avatar rounded="lg" size="44" class="cd-border">
-                  <v-img v-if="it.image" :src="it.image" cover />
-                  <v-icon v-else>mdi-package-variant</v-icon>
-                </v-avatar>
-              </template>
-
-              <v-list-item-title class="font-weight-bold">{{ it.name }}</v-list-item-title>
-
-              <v-list-item-subtitle class="text-caption text-medium-emphasis">
-                {{ qty3(it.qty) }} × {{ money(it.price) }}
-                <span class="cd-dot">·</span>
-                <span class="cd-muted">{{ it.price_label || "Precio" }}</span>
-              </v-list-item-subtitle>
-
-              <template #append>
-                <div class="font-weight-bold">{{ money(it.subtotal) }}</div>
-              </template>
-            </v-list-item>
-          </v-list>
-
-          <v-divider class="my-4" />
-
-          <!-- Método de pago + configuración -->
-          <div class="text-subtitle-2 font-weight-bold mb-3">Método de pago</div>
-
-          <v-row dense class="align-stretch">
-            <!-- LEFT: métodos -->
-            <v-col cols="12" md="6">
-              <v-card class="rounded-xl cd-panel pa-3" elevation="0">
-                <v-radio-group
-                  v-model="paymentMethodLocal"
-                  color="primary"
-                  class="mt-1"
-                  @update:modelValue="onPaymentMethodChange"
-                >
-                  <v-radio value="CASH" label="Efectivo" />
-                  <v-radio value="CARD" label="Tarjeta / Débito" />
-                  <v-radio value="TRANSFER" label="Transferencia" />
-                  <v-radio value="QR" label="Mercado Pago (QR)" />
-                </v-radio-group>
-              </v-card>
-            </v-col>
-
-            <!-- RIGHT: opciones -->
-            <v-col cols="12" md="6">
-              <v-card class="rounded-xl cd-panel pa-3" elevation="0">
-                <div class="text-caption text-medium-emphasis mb-2">Configuración</div>
-
-                <v-switch
-                  v-model="applyResellerLocal"
-                  @update:modelValue="onApplyResellerChange"
-                  inset
-                  color="primary"
-                  label="Aplicar precio revendedor"
-                  hide-details
-                  class="mb-2"
-                />
-                <div class="text-caption text-medium-emphasis mb-2">
-                  Si no existe revendedor (&gt; 0), cae a descuento/lista.
-                </div>
-
-                <div v-if="applyResellerLocal" class="cd-note">
-                  Revendedor activo: se ignoran cuotas y se usa precio revendedor si existe.
-                </div>
-
-                <!-- Cuotas (solo tarjeta y NO revendedor) -->
-                <v-expand-transition>
-                  <div v-if="paymentMethodLocal === 'CARD' && !applyResellerLocal" class="mt-2">
-                    <v-select
-                      v-model="installmentsLocal"
-                      @update:modelValue="onInstallmentsChange"
-                      :items="installmentsItemsSafe"
-                      item-title="title"
-                      item-value="value"
-                      label="Cuotas"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                    />
-
-                    <v-alert v-if="showInstallments" type="info" variant="tonal" class="mt-3">
-                      <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-                        <div>
-                          <div class="text-caption text-medium-emphasis">Total en tarjeta</div>
-                          <div class="font-weight-black">{{ money(totalLocal) }}</div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-caption text-medium-emphasis">{{ installmentsLocal }} cuotas de</div>
-                          <div class="font-weight-black">{{ money(perInstallment) }}</div>
-                        </div>
-                      </div>
-                      <div class="text-caption text-medium-emphasis mt-2">
-                        1 pago = descuento · 2 a 6 cuotas = lista
-                      </div>
-                    </v-alert>
-
-                    <div v-else class="text-caption text-medium-emphasis mt-2">
-                      1 pago = descuento · 2 a 6 cuotas = lista
-                    </div>
-                  </div>
-                </v-expand-transition>
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <v-divider class="my-4" />
-
-          <!-- Datos comprobante según método -->
-          <v-row dense>
-            <v-col cols="12" v-if="paymentMethodLocal === 'TRANSFER'">
-              <v-text-field
-                v-model="paymentProofLocal"
-                @update:modelValue="onPaymentProofChange"
-                label="Comprobante / N° operación"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-receipt-text-outline"
-                hide-details
-              />
-              <div class="text-caption text-medium-emphasis mt-1">
-                Guardalo para trazabilidad (transferencia).
-              </div>
-            </v-col>
-
-            <v-col cols="12" v-if="paymentMethodLocal === 'QR'">
-              <v-text-field
-                v-model="paymentProofLocal"
-                @update:modelValue="onPaymentProofChange"
-                label="ID operación / Comprobante"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-qrcode-scan"
-                hide-details
-              />
-            </v-col>
-
-            <!-- ✅ CASH: input formateado con miles -->
-            <v-col cols="12" v-if="paymentMethodLocal === 'CASH'">
-              <v-text-field
-                class="cd-cash-input"
-                :model-value="cashDisplay"
-                @update:modelValue="onCashFormattedInput"
-                label="Efectivo recibido"
-                variant="outlined"
-                density="comfortable"
-                prepend-inner-icon="mdi-cash"
-                inputmode="numeric"
-                autocomplete="off"
-                :error="cashError || cashShort"
-                :error-messages="cashError ? cashErrorMsg : (cashShort ? `Faltan ${money(Math.abs(change))}` : '')"
-                @keyup.enter="onConfirm"
-              />
-
-              <!-- ✅ VUELTO / FALTANTE -->
-              <div class="cd-change-wrap">
-                <v-chip
-                  v-if="cashReceived > 0 && !cashShort"
-                  size="small"
-                  variant="flat"
-                  class="cd-chip cd-chip-ok"
-                >
-                  <v-icon start size="16">mdi-cash-refund</v-icon>
-                  Vuelto: <b class="ml-1">{{ money(change) }}</b>
-                </v-chip>
-
-                <v-chip
-                  v-else-if="cashReceived > 0 && cashShort"
-                  size="small"
-                  variant="flat"
-                  class="cd-chip cd-chip-bad"
-                >
-                  <v-icon start size="16">mdi-alert-circle</v-icon>
-                  Faltan: <b class="ml-1">{{ money(Math.abs(change)) }}</b>
-                </v-chip>
-
-                <div class="cd-quick">
-                  <v-btn size="small" variant="tonal" @click="quickCash(totalLocal)">Exacto</v-btn>
-                  <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalLocal, 5000))">+$5k</v-btn>
-                  <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalLocal, 10000))">+$10k</v-btn>
-                  <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalLocal, 20000))">+$20k</v-btn>
-                </div>
-              </div>
-            </v-col>
-          </v-row>
-
-          <v-alert v-if="String(priceHintLocal || '').trim()" type="info" variant="tonal" class="mt-3">
-            {{ priceHintLocal }}
-          </v-alert>
-        </v-card-text>
-      </div>
-
-      <!-- FOOTER STICKY -->
       <v-divider />
 
-      <v-card-actions class="cd-actions">
-        <v-btn size="large" variant="text" color="grey" @click="onCancel" :disabled="loading">
-          Cancelar
-        </v-btn>
+      <!-- BODY -->
+      <v-card-text class="cod-body">
+        <v-row dense class="cod-grid">
+          <!-- LEFT: PAYMENT -->
+          <v-col cols="12" md="7">
+            <v-card class="cod-panel cod-panel-left" elevation="0" rounded="xl">
+              <div class="cod-sec-head">
+                <div class="text-subtitle-1 font-weight-black">Opciones de pago</div>
+
+                <!-- ✅ Política en chip -->
+                <v-chip size="small" variant="tonal" class="cod-chip cod-chip-soft">
+                  {{ policyLabel }}
+                </v-chip>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-1">
+                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista · Revendedor (si existe) pisa todo.
+              </div>
+
+              <v-divider class="my-4" />
+
+              <!-- Payment method as selectable cards -->
+              <div class="cod-paygrid">
+                <button
+                  type="button"
+                  class="cod-paycard"
+                  :class="{ active: state.paymentMethod === 'CASH' }"
+                  @click="onPaymentMethodChange('CASH')"
+                >
+                  <div class="ic"><v-icon>mdi-cash</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Efectivo</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="state.paymentMethod === 'CASH'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  class="cod-paycard"
+                  :class="{ active: state.paymentMethod === 'CARD' }"
+                  @click="onPaymentMethodChange('CARD')"
+                >
+                  <div class="ic"><v-icon>mdi-credit-card-outline</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Tarjeta / Débito</div>
+                    <div class="s">Cuotas usan lista</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="state.paymentMethod === 'CARD'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  class="cod-paycard"
+                  :class="{ active: state.paymentMethod === 'TRANSFER' }"
+                  @click="onPaymentMethodChange('TRANSFER')"
+                >
+                  <div class="ic"><v-icon>mdi-bank-transfer</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Transferencia</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="state.paymentMethod === 'TRANSFER'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  class="cod-paycard"
+                  :class="{ active: state.paymentMethod === 'QR' }"
+                  @click="onPaymentMethodChange('QR')"
+                >
+                  <div class="ic"><v-icon>mdi-qrcode-scan</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Mercado Pago (QR)</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="state.paymentMethod === 'QR'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+              </div>
+
+              <v-row dense class="mt-3">
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="state.applyReseller"
+                    inset
+                    color="primary"
+                    density="comfortable"
+                    label="Aplicar precio revendedor"
+                    hide-details
+                    class="cod-reseller"
+                    @update:modelValue="onApplyResellerChange"
+                  />
+                  <div class="text-caption text-medium-emphasis">
+                    Si no existe revendedor (&gt; 0), cae a descuento/lista según corresponda.
+                  </div>
+                </v-col>
+
+                <!-- ✅ Cuotas: valor por cuota (LISTA) -->
+                <v-col cols="12" md="6" v-if="state.paymentMethod === 'CARD' && !state.applyReseller">
+                  <v-select
+                    v-model="state.installments"
+                    :items="installmentsItemsSafe"
+                    item-title="title"
+                    item-value="value"
+                    label="Cuotas"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    class="cod-select"
+                    @update:modelValue="onInstallmentsChange"
+                  />
+
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    En cuotas se usa precio lista. Se calcula valor por cuota.
+                  </div>
+
+                  <div v-if="Number(state.installments || 1) > 1" class="cod-installment-chip">
+                    <v-chip size="small" variant="tonal" class="cod-chip cod-chip-soft">
+                      {{ state.installments }} × <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
+                      <span class="ml-1">(lista)</span>
+                    </v-chip>
+                  </div>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <!-- CASH -->
+              <v-expand-transition>
+                <div v-if="ui.isCash" class="cod-cashbox">
+                  <div class="cod-cash-head">
+                    <div class="text-subtitle-2 font-weight-black">Efectivo</div>
+                    <v-chip
+                      size="small"
+                      variant="tonal"
+                      class="cod-chip"
+                      :class="cashShort ? 'cod-chip-bad' : cashReceived > 0 ? 'cod-chip-ok' : ''"
+                    >
+                      <v-icon start size="16">{{ cashShort ? "mdi-alert-circle" : "mdi-cash-refund" }}</v-icon>
+                      {{ cashShort ? "Faltan" : "Vuelto" }}:
+                      <b class="ml-1">{{ money(Math.abs(change)) }}</b>
+                    </v-chip>
+                  </div>
+
+                  <v-text-field
+                    class="cod-cash-input"
+                    :model-value="cashDisplay"
+                    @update:modelValue="onCashFormattedInput"
+                    label="Recibido"
+                    variant="outlined"
+                    density="comfortable"
+                    prepend-inner-icon="mdi-cash"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    :error="cashShort"
+                    :error-messages="cashShort ? `Faltan ${money(Math.abs(change))}` : ''"
+                    @keyup.enter="onConfirm"
+                  />
+
+                  <div class="cod-quick">
+                    <v-btn size="small" variant="tonal" @click="quickCash(totalSafe)">Exacto</v-btn>
+                    <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalSafe, 5000))">+5k</v-btn>
+                    <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalSafe, 10000))">+10k</v-btn>
+                    <v-btn size="small" variant="tonal" @click="quickCash(roundUp(totalSafe, 20000))">+20k</v-btn>
+                  </div>
+                </div>
+              </v-expand-transition>
+            </v-card>
+          </v-col>
+
+          <!-- RIGHT: SUMMARY -->
+          <v-col cols="12" md="5">
+            <v-card class="cod-panel cod-panel-right" elevation="0" rounded="xl">
+              <div class="cod-sec-head">
+                <div class="text-subtitle-1 font-weight-black">Resumen</div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ cartUi.length }} ítems
+                </div>
+              </div>
+
+              <v-divider class="my-3" />
+
+              <v-list density="compact" bg-color="transparent" class="pa-0">
+                <v-list-item v-for="it in cartUi" :key="it._key" class="rounded-lg mb-2 cod-item">
+                  <template #prepend>
+                    <v-avatar rounded="lg" size="44" class="cod-border">
+                      <v-img v-if="it._img" :src="it._img" cover />
+                      <div v-else class="cod-noimg">
+                        <v-icon size="20">mdi-package-variant</v-icon>
+                      </div>
+                    </v-avatar>
+                  </template>
+
+                  <v-list-item-title class="cod-item-title" :title="it.name || ''">
+                    {{ it.name }}
+                  </v-list-item-title>
+
+                  <v-list-item-subtitle class="cod-item-sub">
+                    {{ qty3(it.qty) }} × {{ money(it._unit) }}
+                  </v-list-item-subtitle>
+
+                  <template #append>
+                    <div class="cod-item-amt">{{ money(it._subtotal) }}</div>
+                  </template>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-3" />
+
+              <div class="cod-sum-row">
+                <span class="text-caption text-medium-emphasis">Total</span>
+                <b>{{ money(totalSafe) }}</b>
+              </div>
+
+              <div class="cod-sum-row mt-1">
+                <span class="text-caption text-medium-emphasis">Preview</span>
+                <b>{{ money(previewSafe) }}</b>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-card-text>
+
+      <v-divider />
+
+      <!-- FOOTER -->
+      <v-card-actions class="cod-actions">
+        <v-btn variant="tonal" @click="closeNow">Cancelar</v-btn>
         <v-spacer />
-        <v-btn
-          size="large"
-          color="green-darken-1"
-          variant="flat"
-          class="px-6"
-          :loading="loading"
-          :disabled="cannotConfirmFinal"
-          @click="onConfirm"
-        >
+        <v-btn color="primary" variant="flat" class="cod-confirm" :disabled="cannotConfirmFinal" @click="onConfirm">
           <v-icon start>mdi-check</v-icon>
           Confirmar venta
         </v-btn>
@@ -259,29 +307,19 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-
   total: { type: Number, default: 0 },
   totalPreview: { type: Number, default: 0 },
   cart: { type: Array, default: () => [] },
-
-  loading: { type: Boolean, default: false },
-  cannotConfirm: { type: Boolean, default: false },
-
-  cashError: { type: Boolean, default: false },
-  cashErrorMsg: { type: String, default: "" },
 
   paymentMethod: { type: String, default: "CASH" },
   installments: { type: Number, default: 1 },
   installmentsItems: { type: Array, default: () => [] },
   applyReseller: { type: Boolean, default: false },
-  paymentProof: { type: String, default: "" },
   cashInput: { type: String, default: "" },
-
-  priceHint: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -289,420 +327,610 @@ const emit = defineEmits([
   "update:paymentMethod",
   "update:installments",
   "update:applyReseller",
-  "update:paymentProof",
   "update:cashInput",
   "confirm",
   "cancel",
 ]);
 
-/* STATE LOCAL */
-const paymentMethodLocal = ref(props.paymentMethod || "CASH");
-const installmentsLocal = ref(Number(props.installments || 1));
-const applyResellerLocal = ref(!!props.applyReseller);
-const paymentProofLocal = ref(String(props.paymentProof || ""));
-// ✅ internamente guardamos SOLO dígitos (ej: "50000")
-const cashInputLocal = ref(String(props.cashInput || ""));
+const MEDIA_BASE =
+  (import.meta?.env?.VITE_MEDIA_BASE || import.meta?.env?.VITE_STORAGE_BASE || "").trim() ||
+  "https://storage-files.cingulado.org/pos360/media";
+
+const STORAGE_ORIGIN = computed(() => {
+  // https://storage-files.cingulado.org/pos360/media  -> https://storage-files.cingulado.org
+  try {
+    const u = new URL(MEDIA_BASE);
+    return u.origin;
+  } catch {
+    return "https://storage-files.cingulado.org";
+  }
+}).value;
+
+const state = reactive({
+  paymentMethod: props.paymentMethod || "CASH",
+  installments: Number(props.installments || 1),
+  applyReseller: !!props.applyReseller,
+  cashDigits: toDigitsOnly(props.cashInput),
+});
 
 const openLocal = computed({
   get: () => props.open,
   set: (v) => emit("update:open", v),
 });
 
-/* DERIVADOS */
-const totalLocal = computed(() => Number(props.total || 0));
-const totalPreviewLocal = computed(() => Number(props.totalPreview || 0));
-const cartLocal = computed(() => (Array.isArray(props.cart) ? props.cart : []));
-const priceHintLocal = computed(() => String(props.priceHint || ""));
-const previewSafe = computed(() => (totalPreviewLocal.value > 0 ? totalPreviewLocal.value : totalLocal.value));
-
-/* MONEY */
-function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
-}
-function qty3(n) {
-  return Number(n || 0).toFixed(3);
-}
+/* helpers */
 function toDigitsOnly(v) {
   return String(v ?? "").replace(/[^\d]/g, "");
 }
-function toCashNumber(v) {
-  const digits = toDigitsOnly(v);
-  const n = Number(digits || 0);
+function toNum(v) {
+  const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+function money(v) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(v));
+}
+function qty3(n) {
+  return toNum(n).toFixed(3);
 }
 function formatMiles(n) {
   if (!n) return "";
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Number(n));
 }
 
-/* ✅ EFECTIVO (display con puntos, valor limpio) */
-const cashReceived = computed(() => toCashNumber(cashInputLocal.value));
-const cashDisplay = computed(() => (cashReceived.value ? formatMiles(cashReceived.value) : ""));
+/* =========================
+   IMAGES
+========================= */
+function normalizeUrl(u) {
+  const s0 = String(u || "").trim();
+  if (!s0) return "";
 
-function onCashFormattedInput(val) {
-  const digits = toDigitsOnly(val);
-  cashInputLocal.value = digits;
-  emit("update:cashInput", digits);
+  // data url
+  if (s0.startsWith("data:image")) return s0;
+
+  // absolute http(s)
+  if (/^https?:\/\//i.test(s0)) return s0.replace(/^http:\/\//i, "https://");
+
+  // protocol-relative
+  if (s0.startsWith("//")) return `https:${s0}`;
+
+  // ✅ FIX: rutas absolutas del servidor ("/pos360/media/..", "/media/..") -> al ORIGIN del storage
+  if (s0.startsWith("/")) {
+    // /pos360/media/...  (ya trae el path completo)
+    if (s0.startsWith("/pos360/media/")) return `${STORAGE_ORIGIN}${s0}`;
+
+    // /media/xxxx  (si alguna vez te llega así)
+    if (s0.startsWith("/media/")) return `${STORAGE_ORIGIN}/pos360${s0}`;
+
+    // si es otra ruta (no media), la dejamos relativa (por compatibilidad)
+    return s0;
+  }
+
+  // sin slash inicial, limpiamos
+  const s = s0.replace(/^\/+/, "");
+
+  // si ya viene con "pos360/media/..." armamos directo al origin
+  if (s.includes("pos360/media/")) return `https://storage-files.cingulado.org/${s}`;
+
+  const looksLikePath =
+    s.includes("/") || /\.[a-z0-9]{2,5}($|\?|\#)/i.test(s) || s.includes("?") || s.includes("#");
+
+  if (looksLikePath) return `${MEDIA_BASE.replace(/\/+$/, "")}/${s}`;
+
+  return `${MEDIA_BASE.replace(/\/+$/, "")}/${encodeURIComponent(s)}`;
 }
 
-/* VUELTO */
-const change = computed(() => cashReceived.value - totalLocal.value);
-const cashShort = computed(() => change.value < 0);
+function itemImageRaw(it) {
+  const x = it || {};
+  const p = x.product || x.Product || x.prod || x.item || {};
 
-/* QUICK CASH */
-function roundUp(n, step) {
-  const x = Number(n || 0);
-  const s = Number(step || 1);
-  if (!(s > 0)) return x;
-  return Math.ceil(x / s) * s;
-}
-function quickCash(val) {
-  const v = Number(val || 0);
-  const digits = String(Math.max(0, Math.trunc(v)));
-  cashInputLocal.value = digits;
-  emit("update:cashInput", digits);
+  const pickFromArray = (arr) => {
+    const a = Array.isArray(arr) ? arr : [];
+    const first = a[0] || null;
+    if (!first) return "";
+    if (typeof first === "string") return first;
+    return (
+      first.url ||
+      first.src ||
+      first.path ||
+      first.key ||
+      first.file_key ||
+      first.image_key ||
+      first.image_id ||
+      first.id ||
+      ""
+    );
+  };
+
+  return (
+    x.image ||
+    x.image_url ||
+    x.imageUrl ||
+    x.product_image ||
+    x.productImage ||
+    x.thumb ||
+    x.thumbnail ||
+    x.photo ||
+    x.picture ||
+    x.cover ||
+    x.media_url ||
+    x.mediaUrl ||
+    x.file_url ||
+    x.fileUrl ||
+    x.path ||
+    x.key ||
+    x.file_key ||
+    x.fileKey ||
+    x.image_key ||
+    x.imageKey ||
+    x.image_id ||
+    x.imageId ||
+    x.main_image ||
+    x.mainImage ||
+    x.preview ||
+    x.preview_url ||
+    x.previewUrl ||
+    pickFromArray(x.images) ||
+    pickFromArray(x.media) ||
+    pickFromArray(x.files) ||
+    pickFromArray(x.photos) ||
+    p.image ||
+    p.image_url ||
+    p.imageUrl ||
+    p.product_image ||
+    p.productImage ||
+    p.thumb ||
+    p.thumbnail ||
+    p.photo ||
+    p.picture ||
+    p.cover ||
+    p.media_url ||
+    p.mediaUrl ||
+    p.file_url ||
+    p.fileUrl ||
+    p.path ||
+    p.key ||
+    p.file_key ||
+    p.fileKey ||
+    p.image_key ||
+    p.imageKey ||
+    p.image_id ||
+    p.imageId ||
+    p.main_image ||
+    p.mainImage ||
+    p.preview ||
+    p.preview_url ||
+    p.previewUrl ||
+    pickFromArray(p.images) ||
+    pickFromArray(p.media) ||
+    pickFromArray(p.files) ||
+    pickFromArray(p.photos) ||
+    ""
+  );
 }
 
-/* CUOTAS SAFE */
+/* ✅ FIX CLAVE: faltaba esta función (si no, el componente crashea y no abre) */
+function itemImage(it) {
+  const raw = itemImageRaw(it);
+  return normalizeUrl(raw);
+}
+
+/* =========================
+   PRICING
+========================= */
+function pickPrice(it) {
+  const x = it || {};
+  const qty = toNum(x.qty || 0);
+
+  const reseller = toNum(x.price_reseller ?? x.reseller_price ?? x.priceReseller ?? x.resellerPrice);
+  const list = toNum(x.price_list ?? x.list_price ?? x.priceList ?? x.listPrice);
+  const discount = toNum(x.price_discount ?? x.discount_price ?? x.priceDiscount ?? x.discountPrice);
+  const base = toNum(x.price ?? x.unit_price ?? x.unitPrice);
+
+  const isCard = state.paymentMethod === "CARD";
+  const inst = Number(state.installments || 1);
+  const isListMode = isCard && inst > 1 && !state.applyReseller;
+
+  // unit según política actual
+  let unit = 0;
+  if (state.applyReseller && reseller > 0) unit = reseller;
+  else if (isListMode && list > 0) unit = list;
+  else if (discount > 0) unit = discount;
+  else if (list > 0) unit = list;
+  else unit = base;
+
+  // unit LISTA (para cuotas)
+  const unitList = list > 0 ? list : discount > 0 ? discount : base;
+
+  return { unit, unitList, subtotal: unit * qty, subtotalList: unitList * qty };
+}
+
+const cartUi = computed(() =>
+  (Array.isArray(props.cart) ? props.cart : []).map((it, i) => {
+    const p = pickPrice(it);
+    const key = it?.id ?? it?.product_id ?? it?.sku ?? `${it?.name ?? "item"}_${i}`;
+    return {
+      ...it,
+      _key: key,
+      _img: itemImage(it),
+      _unit: p.unit,
+      _subtotal: p.subtotal,
+      _unitList: p.unitList,
+      _subtotalList: p.subtotalList,
+    };
+  })
+);
+
+const totalSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotal), 0) || toNum(props.total));
+const previewSafe = computed(() => totalSafe.value || toNum(props.totalPreview) || toNum(props.total));
+const totalListSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotalList), 0) || totalSafe.value);
+
+const policyLabel = computed(() => {
+  if (state.applyReseller) return "Revendedor";
+  if (state.paymentMethod === "CARD") return Number(state.installments || 1) > 1 ? "Lista" : "Descuento";
+  return "Descuento";
+});
+
+/* installments */
 const installmentsItemsSafe = computed(() => {
   const raw = Array.isArray(props.installmentsItems) ? props.installmentsItems : [];
-
-  if (raw.length && typeof raw[0] === "object" && raw[0]) {
-    return raw.map((x) => ({
-      title: String(x.title ?? x.text ?? x.label ?? `${x.value ?? 1} cuota(s)`),
-      value: Number(x.value ?? x.id ?? 1),
-    }));
-  }
-
-  const nums = raw.filter((n) => Number.isFinite(Number(n))).map((n) => Number(n));
-  if (nums.length) {
-    return nums.map((n) => ({
-      title: n === 1 ? "1 cuota (descuento)" : `${n} cuotas (lista)`,
-      value: n,
-    }));
-  }
+  if (raw.length && typeof raw[0] === "object") return raw;
 
   return [
-    { title: "1 cuota (descuento)", value: 1 },
-    { title: "3 cuotas (lista)", value: 3 },
-    { title: "6 cuotas (lista)", value: 6 },
+    { title: "1 pago", value: 1 },
+    { title: "2 cuotas", value: 2 },
+    { title: "3 cuotas", value: 3 },
+    { title: "4 cuotas", value: 4 },
+    { title: "5 cuotas", value: 5 },
+    { title: "6 cuotas", value: 6 },
   ];
 });
 
-/* COMPUTED UI */
-const showInstallments = computed(() => {
-  return paymentMethodLocal.value === "CARD" && !applyResellerLocal.value && Number(installmentsLocal.value || 1) > 1;
-});
-const perInstallment = computed(() => {
-  const k = Number(installmentsLocal.value || 1);
-  if (!(k > 1)) return 0;
-  return totalLocal.value / k;
-});
+const ui = computed(() => {
+  const isCash = state.paymentMethod === "CASH";
+  const isCard = state.paymentMethod === "CARD";
+  const showInstallmentsChip = isCard && !state.applyReseller && Number(state.installments || 1) > 1;
 
-/* VALIDACIÓN FINAL */
-const cannotConfirmFinal = computed(() => {
-  if (props.loading) return true;
-  if (props.cannotConfirm) return true;
+  const k = Number(state.installments || 1);
+  const perInstallmentList = k > 1 ? totalListSafe.value / k : 0;
 
-  if (paymentMethodLocal.value === "CASH") {
-    if (cashReceived.value < totalLocal.value) return true;
-  }
-
-  if (paymentMethodLocal.value === "CARD" && !applyResellerLocal.value) {
-    const inst = Number(installmentsLocal.value || 1);
-    if (!(inst >= 1 && inst <= 24)) return true;
-  }
-
-  return false;
+  return { isCash, showInstallmentsChip, perInstallmentList };
 });
 
-/* SYNC props -> local */
-watch(
-  () => props.paymentMethod,
-  (v) => {
-    if (v && v !== paymentMethodLocal.value) paymentMethodLocal.value = v;
-  }
-);
-watch(
-  () => props.installments,
-  (v) => {
-    const n = Number(v || 1);
-    if (n !== Number(installmentsLocal.value || 1)) installmentsLocal.value = n;
-  }
-);
-watch(
-  () => props.applyReseller,
-  (v) => {
-    const b = !!v;
-    if (b !== !!applyResellerLocal.value) applyResellerLocal.value = b;
-  }
-);
-watch(
-  () => props.paymentProof,
-  (v) => {
-    const s = String(v || "");
-    if (s !== paymentProofLocal.value) paymentProofLocal.value = s;
-  }
-);
-watch(
-  () => props.cashInput,
-  (v) => {
-    const digits = toDigitsOnly(v);
-    if (digits !== cashInputLocal.value) cashInputLocal.value = digits;
-  }
-);
+/* cash */
+const cashReceived = computed(() => toNum(state.cashDigits));
+const cashDisplay = computed(() => (cashReceived.value ? formatMiles(cashReceived.value) : ""));
+const change = computed(() => cashReceived.value - totalSafe.value);
+const cashShort = computed(() => change.value < 0);
 
-/* HANDLERS */
+function onCashFormattedInput(v) {
+  const digits = toDigitsOnly(v);
+  state.cashDigits = digits;
+  emit("update:cashInput", digits);
+}
+function roundUp(n, step) {
+  const x = Number(n || 0);
+  const s = Number(step || 1);
+  return s > 0 ? Math.ceil(x / s) * s : x;
+}
+function quickCash(v) {
+  const digits = String(Math.max(0, Math.trunc(Number(v || 0))));
+  state.cashDigits = digits;
+  emit("update:cashInput", digits);
+}
+
+/* actions */
 function onPaymentMethodChange(v) {
-  paymentMethodLocal.value = v;
+  state.paymentMethod = v;
   emit("update:paymentMethod", v);
 
-  // reset coherente por método
-  if (v !== "CASH" && cashInputLocal.value) {
-    cashInputLocal.value = "";
+  if (v !== "CASH" && state.cashDigits) {
+    state.cashDigits = "";
     emit("update:cashInput", "");
   }
-  if (v !== "TRANSFER" && v !== "QR" && paymentProofLocal.value) {
-    paymentProofLocal.value = "";
-    emit("update:paymentProof", "");
-  }
-
-  // tarjeta + revendedor => cuotas=1
-  if (v === "CARD" && applyResellerLocal.value) {
-    installmentsLocal.value = 1;
-    emit("update:installments", 1);
-  }
-
-  // tarjeta sin revendedor => asegurar cuotas válidas
-  if (v === "CARD" && !applyResellerLocal.value) {
-    const allowed = installmentsItemsSafe.value.map((x) => Number(x.value));
-    const current = Number(installmentsLocal.value || 1);
-    if (!allowed.includes(current)) {
-      installmentsLocal.value = allowed.includes(1) ? 1 : allowed[0] || 1;
-      emit("update:installments", installmentsLocal.value);
-    }
-  }
 }
-
 function onInstallmentsChange(v) {
-  const n = Number(v || 1);
-  installmentsLocal.value = n;
-  emit("update:installments", n);
+  state.installments = Number(v || 1);
+  emit("update:installments", state.installments);
 }
-
 function onApplyResellerChange(v) {
-  const b = !!v;
-  applyResellerLocal.value = b;
-  emit("update:applyReseller", b);
-
-  // revendedor => cuotas=1 siempre
-  if (b) {
-    installmentsLocal.value = 1;
+  state.applyReseller = !!v;
+  emit("update:applyReseller", state.applyReseller);
+  if (state.applyReseller) {
+    state.installments = 1;
     emit("update:installments", 1);
-  } else {
-    // vuelve a NO revendedor y es tarjeta => asegurar cuotas válidas
-    if (paymentMethodLocal.value === "CARD") {
-      const allowed = installmentsItemsSafe.value.map((x) => Number(x.value));
-      const current = Number(installmentsLocal.value || 1);
-      if (!allowed.includes(current)) {
-        installmentsLocal.value = allowed.includes(1) ? 1 : allowed[0] || 1;
-        emit("update:installments", installmentsLocal.value);
-      }
-    }
   }
 }
 
-function onPaymentProofChange(v) {
-  const s = String(v || "");
-  paymentProofLocal.value = s;
-  emit("update:paymentProof", s);
-}
+const cannotConfirmFinal = computed(() => ui.value.isCash && cashReceived.value < totalSafe.value);
 
-function onCancel() {
+function closeNow() {
   emit("update:open", false);
-  emit("cancel", { reason: "user_cancel" });
+  emit("cancel");
 }
 
 function onConfirm() {
-  const payload = {
-    payment_method: paymentMethodLocal.value,
-    installments: Number(installmentsLocal.value || 1),
-    apply_reseller: !!applyResellerLocal.value,
-    payment_proof: String(paymentProofLocal.value || "").trim() || null,
+  emit("confirm", {
+    payment_method: state.paymentMethod,
+    installments: Number(state.installments || 1),
+    apply_reseller: !!state.applyReseller,
     cash_received: cashReceived.value,
     change: change.value > 0 ? change.value : 0,
-    total: totalLocal.value,
+    total: totalSafe.value,
     total_preview: previewSafe.value,
-  };
-
-  emit("confirm", payload);
+    total_list: totalListSafe.value,
+    per_installment_list: ui.value.perInstallmentList,
+  });
 }
+
+/* hotkey: F8/ESC close (solo cuando está abierto) */
+function onKeydownDialog(e) {
+  if (!openLocal.value) return;
+  const k = String(e.key || "").toLowerCase();
+  if (k === "f8" || k === "escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+    closeNow();
+  }
+}
+onMounted(() => window.addEventListener("keydown", onKeydownDialog, { capture: true }));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKeydownDialog, { capture: true }));
+
+/* sync props -> local */
+watch(() => props.paymentMethod, (v) => (state.paymentMethod = v || "CASH"));
+watch(() => props.installments, (v) => (state.installments = Number(v || 1)));
+watch(() => props.applyReseller, (v) => (state.applyReseller = !!v));
+watch(() => props.cashInput, (v) => (state.cashDigits = toDigitsOnly(v)));
 </script>
 
 <style scoped>
-/* CARD root */
-.cd-root {
-  background: rgb(var(--v-theme-surface));
-  max-height: 90vh;
+/* Brand */
+.cod-root {
+  overflow: hidden;
+  --cod-brand: 42, 133, 196; /* #2a85c4 */
+}
+
+/* HERO */
+.cod-hero {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--cod-brand), 0.18),
+    rgba(var(--cod-brand), 0.06),
+    rgba(var(--v-theme-surface), 0.92)
+  );
 }
-
-/* body scroll only */
-.cd-body-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
+.cod-hero-left {
+  min-width: 0;
 }
-
-/* sticky footer */
-.cd-actions {
-  padding: 14px 16px;
-  flex: 0 0 auto;
-  background: rgb(var(--v-theme-surface));
+.cod-hero-right {
+  text-align: right;
+  padding-top: 2px;
 }
-
-/* HEADER */
-.cd-hero {
-  padding: 18px 18px 14px;
-  flex: 0 0 auto;
-}
-.cd-hero-inner {
-  max-width: 920px;
-  margin: 0 auto;
-}
-.cd-hero-top {
+.cod-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 8px;
 }
-.cd-overline {
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 12px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.92);
+.cod-title {
+  margin-right: 6px;
 }
-.cd-pill {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.16) !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  font-weight: 800;
+.cod-chip {
+  border: 1px solid rgba(var(--cod-brand), 0.18);
+  background: rgba(var(--cod-brand), 0.08) !important;
 }
-.cd-total {
-  margin-top: 8px;
-  font-size: 42px;
-  line-height: 1.05;
-  font-weight: 900;
-  color: #fff;
+.cod-chip-soft {
+  border-color: rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--cod-brand), 0.06) !important;
 }
-.cd-subline {
+.cod-sub {
   margin-top: 6px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.92);
+}
+.cod-total-label {
+  opacity: 0.85;
+}
+.cod-total {
+  font-weight: 950;
+  font-size: 34px;
+  line-height: 1.05;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+.cod-close {
+  position: absolute;
+  right: 10px;
+  top: 8px;
 }
 
 /* BODY */
-.cd-body {
-  padding: 18px;
+.cod-body {
+  padding: 16px;
+  background: rgba(var(--cod-brand), 0.02);
 }
-
-.cd-panel {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-surface), 0.94);
+.cod-panel {
+  border: 1px solid rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--v-theme-surface), 0.86);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  padding: 14px;
 }
-
-.cd-item {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-surface), 0.92);
-}
-
-.cd-border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 10px;
-}
-
-.cd-dot {
-  margin: 0 6px;
-  opacity: 0.5;
-}
-.cd-muted {
-  color: rgba(var(--v-theme-on-surface), 0.62);
-}
-
-.cd-note {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.72);
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
-  border-radius: 10px;
-  padding: 10px 10px;
-}
-
-/* CASH */
-.cd-cash-input :deep(input) {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.6px;
-}
-
-.cd-change-wrap {
+.cod-sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+/* paycards */
+.cod-paygrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 959px) {
+  .cod-paygrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cod-paycard {
+  appearance: none;
+  border: 1px solid rgba(var(--cod-brand), 0.16);
+  background: rgba(var(--cod-brand), 0.04);
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 40px 1fr 26px;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.08s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.cod-paycard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--cod-brand), 0.35);
+  background: rgba(var(--cod-brand), 0.06);
+}
+.cod-paycard.active {
+  border-color: rgba(var(--cod-brand), 0.55);
+  background: rgba(var(--cod-brand), 0.12);
+}
+.cod-paycard .ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--cod-brand), 0.14);
+  color: rgba(var(--cod-brand), 0.95);
+}
+.cod-paycard.active .ic {
+  background: rgba(var(--cod-brand), 0.18);
+  border-color: rgba(var(--cod-brand), 0.28);
+}
+.cod-paycard .tx .t {
+  font-weight: 950;
+  line-height: 1.1;
+}
+.cod-paycard .tx .s {
+  font-size: 0.78rem;
+  opacity: 0.78;
+  margin-top: 2px;
+}
+.cod-paycard .chk {
+  opacity: 0.9;
+  color: rgba(var(--cod-brand), 0.95);
+}
+
+.cod-select :deep(.v-field) {
+  border-radius: 12px;
+}
+.cod-installment-chip {
+  margin-top: 8px;
+}
+
+/* cash box */
+.cod-cashbox {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--cod-brand), 0.18);
+  background: rgba(var(--cod-brand), 0.04);
+}
+.cod-cash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cod-cash-input :deep(input) {
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: 0.5px;
+}
+.cod-chip-ok {
+  border-color: rgba(76, 175, 80, 0.35) !important;
+  background: rgba(76, 175, 80, 0.14) !important;
+}
+.cod-chip-bad {
+  border-color: rgba(244, 67, 54, 0.35) !important;
+  background: rgba(244, 67, 54, 0.12) !important;
+}
+.cod-quick {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
   margin-top: 10px;
 }
 
-.cd-chip {
-  font-weight: 900;
-  letter-spacing: 0.01em;
+/* summary items */
+.cod-item {
+  border: 1px solid rgba(var(--cod-brand), 0.12);
+  background: rgba(var(--v-theme-surface), 0.92);
 }
-.cd-chip-ok {
-  color: rgba(0, 0, 0, 0.86) !important;
-  background: rgba(76, 175, 80, 0.22) !important;
-  border: 1px solid rgba(76, 175, 80, 0.35) !important;
+.cod-border {
+  border: 1px solid rgba(var(--cod-brand), 0.18);
+  border-radius: 10px;
 }
-.cd-chip-bad {
-  color: rgba(0, 0, 0, 0.86) !important;
-  background: rgba(244, 67, 54, 0.18) !important;
-  border: 1px solid rgba(244, 67, 54, 0.35) !important;
+.cod-noimg {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--cod-brand), 0.06);
 }
-
-.cd-quick {
+.cod-item-title {
+  font-weight: 950;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cod-item-sub {
+  font-size: 0.78rem;
+  opacity: 0.82;
+}
+.cod-item-amt {
+  font-weight: 950;
+}
+.cod-sum-row {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-/* compact for low height screens */
-@media (max-height: 760px) {
-  .cd-hero {
-    padding: 12px 14px 10px;
-  }
-  .cd-total {
-    font-size: 34px;
-  }
-  .cd-body {
-    padding: 14px;
-  }
-  .cd-actions {
-    padding: 12px 14px;
-  }
+/* footer sticky */
+.cod-actions {
+  padding: 14px 16px;
+  position: sticky;
+  bottom: 0;
+  background: rgba(var(--v-theme-surface), 0.92);
+  border-top: 1px solid rgba(var(--cod-brand), 0.14);
+  backdrop-filter: blur(10px);
+}
+.cod-confirm {
+  font-weight: 950;
 }
 
-@media (max-height: 680px) {
-  .cd-hero-top {
-    gap: 8px;
+/* mobile */
+@media (max-width: 520px) {
+  .cod-body {
+    padding: 12px;
   }
-  .cd-total {
-    font-size: 30px;
+  .cod-panel {
+    padding: 12px;
   }
-  .cd-subline {
-    font-size: 11px;
+  .cod-hero {
+    padding: 14px 14px 12px;
+  }
+  .cod-total {
+    font-size: 28px;
   }
 }
 </style>

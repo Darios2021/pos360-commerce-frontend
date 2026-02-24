@@ -3,33 +3,24 @@
 
 <template>
   <div class="ptb">
-    <!-- ROW 1: título + pills -->
+    <!-- ROW 1: título + pills (solo lo esencial) -->
     <div class="ptb-row ptb-row1">
       <div class="ptb-title">
-        <div class="ptb-h">Punto de Venta</div>
-        <div class="ptb-sub">Productos · Carrito · Cobro</div>
+        <div class="ptb-h">
+          Punto de Venta
+          <span class="ptb-badge" v-if="isViewOnly">Solo vista</span>
+          <span class="ptb-badge warn" v-else-if="needsBranchPick">Elegí sucursal</span>
+        </div>
       </div>
 
       <div class="ptb-pills" aria-label="Indicadores">
-        <v-chip class="ptb-chip" size="small" variant="tonal" color="primary">
+        <!-- ✅ este está OK -->
+        <v-chip class="ptb-chip ptb-chip-branch" size="small" variant="tonal" color="primary">
+          <v-icon start size="16">mdi-store</v-icon>
           Sucursal: <b class="ml-1">{{ branchChipLabel }}</b>
         </v-chip>
 
-        <v-chip class="ptb-chip" size="small" variant="tonal" color="primary">
-          Vendibles: <b class="ml-1">{{ sellableStockTotal }}</b>
-        </v-chip>
-
-        <v-chip class="ptb-chip" size="small" variant="tonal" color="surface-variant">
-          Stock: <b class="ml-1">{{ stockOnlyTotal }}</b>
-        </v-chip>
-
-        <v-chip v-if="isViewOnly" class="ptb-chip" size="small" variant="tonal" color="amber-darken-2">
-          Solo vista
-        </v-chip>
-
-        <v-chip v-if="needsBranchPick" class="ptb-chip" size="small" variant="tonal" color="deep-purple-darken-1">
-          Elegí sucursal
-        </v-chip>
+        <!-- ❌ sacamos “Vendibles/Stock” porque confunde -->
       </div>
     </div>
 
@@ -72,17 +63,7 @@
           Cambiar sucursal
         </v-btn>
 
-        <v-btn
-          class="ptb-btn ptb-pay"
-          density="compact"
-          color="primary"
-          variant="flat"
-          @click="$emit('checkout')"
-          :disabled="checkoutDisabled"
-        >
-          <v-icon start>mdi-cash-register</v-icon>
-          Cobrar <span class="ptb-fkey">(F8)</span>
-        </v-btn>
+        <!-- ✅ COBRAR: lo sacamos (ya está abajo) -->
       </div>
     </div>
   </div>
@@ -91,6 +72,8 @@
 <script setup>
 defineProps({
   branchChipLabel: { type: String, default: "—" },
+
+  // (se mantienen por compatibilidad aunque ya no se muestran)
   sellableStockTotal: { type: [Number, String], default: 0 },
   stockOnlyTotal: { type: [Number, String], default: 0 },
 
@@ -103,6 +86,8 @@ defineProps({
   loadingGlobal: { type: Boolean, default: false },
 
   cartCount: { type: Number, default: 0 },
+
+  // (se mantiene por compatibilidad aunque ya no hay botón)
   checkoutDisabled: { type: Boolean, default: false },
 });
 
@@ -111,14 +96,14 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
 
 <style scoped>
 .ptb {
-  padding: 10px 12px; /* ✅ más bajo */
+  padding: 10px 12px;
   border-radius: 16px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 
   display: flex;
   flex-direction: column;
-  gap: 8px; /* ✅ menos alto total */
+  gap: 8px;
   min-width: 0;
 }
 
@@ -134,43 +119,61 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
    ROW 1
 ========================= */
 .ptb-row1 {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .ptb-title {
   min-width: 220px;
-  line-height: 1.05;
+  min-width: 0;
 }
 
 .ptb-h {
-  font-size: 18px; /* ✅ antes 22 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
   line-height: 1.05;
   font-weight: 950;
   margin: 0;
-}
-.ptb-sub {
-  font-size: 11px; /* ✅ más chico */
-  line-height: 1.1;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ✅ Pills: una sola línea con scroll (NO WRAP) */
+/* badge tipo “pill” */
+.ptb-badge {
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  flex: 0 0 auto;
+}
+
+.ptb-badge.warn {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.22);
+  color: rgb(var(--v-theme-primary));
+}
+
+/* Pills: limpio, sin “vendibles/stock” */
 .ptb-pills {
   display: flex;
-  flex-wrap: nowrap;          /* ✅ clave */
+  flex-wrap: nowrap;
   gap: 8px;
   justify-content: flex-end;
   align-items: center;
 
   min-width: 0;
   max-width: 62%;
-  overflow-x: auto;           /* ✅ clave */
+  overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 2px;        /* evita corte del scroll */
+  padding-bottom: 2px;
   scrollbar-width: thin;
 }
 
-/* scrollbar suave (webkit) */
 .ptb-pills::-webkit-scrollbar {
   height: 6px;
 }
@@ -180,12 +183,16 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
 }
 
 .ptb-chip {
-  height: 24px !important; /* ✅ más bajo */
+  height: 26px !important;
   flex: 0 0 auto;
 }
 .ptb-chip :deep(.v-chip__content) {
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1;
+}
+
+.ptb-chip-branch {
+  border-radius: 999px !important;
 }
 
 /* =========================
@@ -200,7 +207,7 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
   align-items: center;
   gap: 8px;
 
-  padding: 5px 10px; /* ✅ más bajito */
+  padding: 6px 12px;
   border-radius: 999px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
@@ -211,8 +218,9 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
 .ptb-cashier-txt {
-  font-size: 12px;
+  font-size: 12.5px;
   color: rgba(var(--v-theme-on-surface), 0.85);
 }
 .ptb-dot {
@@ -224,13 +232,13 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: nowrap;       /* ✅ no aumenta altura */
+  flex-wrap: nowrap;
   min-width: 0;
 }
 
 .ptb-btn {
   border-radius: 14px !important;
-  height: 34px !important; /* ✅ antes 38 */
+  height: 34px !important;
   padding: 0 12px !important;
   font-size: 12.5px !important;
   flex: 0 0 auto;
@@ -238,17 +246,6 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
 
 .ptb-help {
   border-radius: 999px !important;
-}
-
-.ptb-pay {
-  height: 34px !important;
-  font-weight: 900;
-}
-
-.ptb-fkey {
-  margin-left: 6px;
-  font-weight: 800;
-  opacity: 0.85;
 }
 
 /* =========================
@@ -264,10 +261,6 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
 }
 
 @media (max-width: 960px) {
-  .ptb {
-    padding: 10px 12px;
-  }
-
   .ptb-row {
     flex-wrap: wrap;
   }
@@ -285,16 +278,12 @@ defineEmits(["refresh", "open-branch-switch", "help", "checkout"]);
 
   .ptb-actions {
     width: 100%;
-    flex-wrap: wrap; /* en mobile sí, pero controlado */
+    flex-wrap: wrap;
     justify-content: stretch;
   }
 
   .ptb-btn {
     flex: 1 1 auto;
-  }
-
-  .ptb-pay {
-    flex: 1 1 100%;
   }
 }
 </style>

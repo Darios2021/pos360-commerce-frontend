@@ -1,21 +1,18 @@
 <!-- src/app/layouts/AppShell.vue -->
 <!-- ✅ COPY-PASTE FINAL COMPLETO
-     - Backoffice usa PRIMARY en header (100% del color elegido)
-     - Drawer opcional en PRIMARY (brand full)
-     - ✅ Quita la "línea" / contorno del header (border-bottom)
+     FIXES:
+     - ✅ Línea sutil estilo ChatGPT: ahora SIEMPRE visible en Drawer (rail y normal)
+       usando :deep(.v-navigation-drawer__content) + inset shadow (no pseudo-element)
+     - ✅ Avatar persistente: reactividad con authTick + storage/focus + cache-bust
+       (si el backend devuelve misma URL, igual refresca)
+     - Header sigue PRIMARY, con línea sutil abajo
      - Compatible con runtimeTheme.js (CSS vars Vuetify)
 -->
 <template>
   <v-app>
     <v-layout>
       <!-- ================= HEADER ================= -->
-      <v-app-bar
-        flat
-        elevation="0"
-        color="primary"
-        height="72"
-        class="pos-appbar"
-      >
+      <v-app-bar flat elevation="0" color="primary" height="72" class="pos-appbar">
         <template #prepend>
           <v-btn
             :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
@@ -26,7 +23,7 @@
         </template>
 
         <div class="d-flex align-center ga-3">
-          <v-avatar color="secondary" variant="flat" size="40">
+          <v-avatar color="secondary" variant="flat" size="40" class="brand-avatar">
             <span class="font-weight-bold">360</span>
           </v-avatar>
 
@@ -49,13 +46,19 @@
           <v-icon>{{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}</v-icon>
         </v-btn>
 
-        <!-- ===== Cuenta (Google-like) ===== -->
+        <!-- ===== Cuenta ===== -->
         <v-menu v-model="accountMenu" :close-on-content-click="false" location="bottom end" offset="12">
           <template #activator="{ props }">
             <v-btn v-bind="props" icon variant="text" class="ml-1" title="Cuenta">
               <v-avatar size="34" class="pos-avatar-btn">
-                <v-img v-if="userAvatar" :key="userAvatar" :src="userAvatar" cover />
-                <span v-else class="text-caption font-weight-bold">{{ userInitials }}</span>
+                <v-img
+                  v-if="userAvatarFinal"
+                  :key="userAvatarKey"
+                  :src="userAvatarFinal"
+                  class="avatar-img"
+                  cover
+                />
+                <span v-else class="avatar-fallback">{{ userInitials }}</span>
               </v-avatar>
             </v-btn>
           </template>
@@ -68,7 +71,13 @@
 
             <div class="px-4 pt-3 pb-2 text-center">
               <v-avatar size="84" class="mx-auto mb-3 pos-account-avatar">
-                <v-img v-if="userAvatar" :key="userAvatar + '-big'" :src="userAvatar" cover />
+                <v-img
+                  v-if="userAvatarFinal"
+                  :key="userAvatarKey + '-big'"
+                  :src="userAvatarFinal"
+                  class="avatar-img"
+                  cover
+                />
                 <span v-else class="text-h6 font-weight-bold">{{ userInitials }}</span>
               </v-avatar>
 
@@ -102,7 +111,6 @@
       </v-app-bar>
 
       <!-- ================= DRAWER ================= -->
-      <!-- ✅ Si NO querés drawer azul: cambiá color="primary" por color="surface" -->
       <v-navigation-drawer
         v-model="drawer"
         permanent
@@ -137,12 +145,7 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
           </v-list-item>
 
-          <v-list-item
-            :to="{ name: 'productsImport' }"
-            prepend-icon="mdi-database-import-outline"
-            title="Importar CSV"
-            exact
-          >
+          <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" exact>
             <v-tooltip v-if="rail" activator="parent" location="right">Importar CSV</v-tooltip>
           </v-list-item>
 
@@ -150,7 +153,6 @@
 
           <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Sistema</div>
 
-          <!-- ✅ Configuración -->
           <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Configuración">
@@ -158,14 +160,7 @@
               </v-list-item>
             </template>
 
-            <v-list-item
-              v-if="hasRoute('stock')"
-              :to="{ name: 'stock' }"
-              prepend-icon="mdi-warehouse"
-              title="Stock"
-              exact
-            />
-
+            <v-list-item v-if="hasRoute('stock')" :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" exact />
             <v-list-item
               v-if="isAdmin && hasRoute('inventory')"
               :to="{ name: 'inventory' }"
@@ -173,16 +168,8 @@
               title="Gestión de inventario"
               exact
             />
+            <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" exact />
 
-            <v-list-item
-              v-if="hasRoute('categories')"
-              :to="{ name: 'categories' }"
-              prepend-icon="mdi-shape-outline"
-              title="Categorías"
-              exact
-            />
-
-            <!-- ✅ LEGACY: Tienda dentro de Configuración (solo si NO existe el nuevo menú Tienda) -->
             <v-list-item
               v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
               :to="{ name: 'shopBranding' }"
@@ -200,7 +187,6 @@
             />
           </v-list-group>
 
-          <!-- ✅ NUEVO MENÚ: TIENDA -->
           <v-list-group v-if="isAdmin && showShopMenu" value="shopAdmin" prepend-icon="mdi-storefront-outline">
             <template #activator="{ props }">
               <v-list-item v-bind="props" title="Tienda">
@@ -208,22 +194,8 @@
               </v-list-item>
             </template>
 
-            <v-list-item
-              v-if="hasRoute('shopBranding')"
-              :to="{ name: 'shopBranding' }"
-              prepend-icon="mdi-palette-outline"
-              title="Branding"
-              exact
-            />
-
-            <v-list-item
-              v-if="hasRoute('shopOrders')"
-              :to="{ name: 'shopOrders' }"
-              prepend-icon="mdi-receipt-text-outline"
-              title="Pedidos"
-              exact
-            />
-
+            <v-list-item v-if="hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" prepend-icon="mdi-palette-outline" title="Branding" exact />
+            <v-list-item v-if="hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" prepend-icon="mdi-receipt-text-outline" title="Pedidos" exact />
             <v-list-item
               v-if="hasRoute('shopOrdersSettings')"
               :to="{ name: 'shopOrdersSettings' }"
@@ -231,7 +203,6 @@
               title="Pedidos (config)"
               exact
             />
-
             <v-list-item
               v-if="hasRoute('shopShippingSettings')"
               :to="{ name: 'shopShippingSettings' }"
@@ -262,14 +233,7 @@
             />
 
             <v-divider class="my-2" />
-            <v-list-item
-              v-if="hasRoute('shopLinks')"
-              :to="{ name: 'shopLinks' }"
-              prepend-icon="mdi-link-variant"
-              title="Links Tienda"
-              exact
-            />
-
+            <v-list-item v-if="hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" prepend-icon="mdi-link-variant" title="Links Tienda" exact />
             <v-list-item
               v-if="hasRoute('adminGaleriaMultimedia')"
               :to="{ name: 'adminGaleriaMultimedia' }"
@@ -297,7 +261,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useTheme } from "vuetify";
 
@@ -376,33 +340,71 @@ const showShopMenu = computed(() => {
   );
 });
 
-/* ===== User menu ===== */
-const userAvatar = computed(() => {
+/* =========================
+   ✅ Avatar persistente (reactivo)
+   - authTick fuerza recompute cuando cambia storage o foco
+   - avatarVer fuerza refresh aunque la URL sea la misma (cache-bust)
+========================= */
+const authTick = ref(0);
+const avatarVer = ref(Date.now());
+
+function bumpAuthTick() {
+  authTick.value++;
+}
+function bumpAvatarVer() {
+  avatarVer.value = Date.now();
+}
+
+/* cuando cambia avatar en store (si tu store se actualiza) */
+watch(
+  () => auth.user?.avatar_url || auth.user?.avatarUrl || "",
+  () => {
+    bumpAuthTick();
+    bumpAvatarVer();
+  }
+);
+
+function pickUser() {
+  // 👇 authTick hace que esto se re-evalúe aunque loadAuth() no sea reactivo
+  authTick.value;
   const u = auth.user || {};
   const stored = loadAuth?.() || {};
   const su = stored.user || stored.profile || {};
-  return u.avatar_url || u.avatarUrl || su.avatar_url || su.avatarUrl || "";
+  return { u, su };
+}
+
+const userAvatarRaw = computed(() => {
+  const { u, su } = pickUser();
+  const v = u.avatar_url || u.avatarUrl || su.avatar_url || su.avatarUrl || "";
+  return String(v || "").trim();
 });
 
+const userAvatarFinal = computed(() => {
+  const raw = userAvatarRaw.value;
+  if (!raw) return "";
+  const join = raw.includes("?") ? "&" : "?";
+  // ✅ SIEMPRE refresca cuando bumpAvatarVer() corre (por ejemplo al volver al foco)
+  return `${raw}${join}v=${avatarVer.value}`;
+});
+
+const userAvatarKey = computed(() => userAvatarFinal.value || "no-avatar");
+
 const userEmailOrUsername = computed(() => {
-  const u = auth.user || {};
-  const stored = loadAuth?.() || {};
-  const su = stored.user || stored.profile || {};
+  const { u, su } = pickUser();
   return u.email || u.username || su.email || su.username || "";
 });
 
 const userFullName = computed(() => {
-  const u = auth.user || {};
-  const stored = loadAuth?.() || {};
-  const su = stored.user || stored.profile || {};
+  const { u, su } = pickUser();
   const first = u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "";
   const last = u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "";
   return [first, last].filter(Boolean).join(" ").trim();
 });
 
 const userInitials = computed(() => {
-  const first = String(auth.user?.first_name ?? "").trim();
-  const last = String(auth.user?.last_name ?? "").trim();
+  const { u, su } = pickUser();
+  const first = String(u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "").trim();
+  const last = String(u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "").trim();
   const i1 = first ? first[0].toUpperCase() : "";
   const i2 = last ? last[0].toUpperCase() : "";
   return (i1 + i2) || "U";
@@ -415,6 +417,34 @@ const userRoleLabel = computed(() => {
   if (roles.includes("manager")) return "Supervisor";
   if (roles.includes("seller")) return "Vendedor";
   return roles?.[0] || "Usuario";
+});
+
+/* listeners: storage + focus/visibility (para que se actualice al volver de profile) */
+function onStorage() {
+  bumpAuthTick();
+  bumpAvatarVer();
+}
+function onFocus() {
+  bumpAuthTick();
+  bumpAvatarVer();
+}
+function onVisibility() {
+  if (document.visibilityState === "visible") {
+    bumpAuthTick();
+    bumpAvatarVer();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("storage", onStorage);
+  window.addEventListener("focus", onFocus);
+  document.addEventListener("visibilitychange", onVisibility);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("storage", onStorage);
+  window.removeEventListener("focus", onFocus);
+  document.removeEventListener("visibilitychange", onVisibility);
 });
 
 /* ===== UI actions ===== */
@@ -430,15 +460,53 @@ function onLogout() {
 </script>
 
 <style scoped>
-/* ✅ IMPORTANTE:
-   - si dejás border-bottom acá, vas a ver la "línea" / contorno que te molestaba
-*/
+/* =========================
+   Header: línea sutil abajo (tipo ChatGPT)
+========================= */
 .pos-appbar {
   border-bottom: none !important;
+  position: relative;
 }
 
+.pos-appbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* =========================
+   Drawer: ✅ Línea sutil SIEMPRE visible
+   (rail y normal) con inset shadow en el CONTENT real
+========================= */
 .pos-drawer {
   border-right: none !important;
+}
+
+/* ESTA ES LA CLAVE: el content interno es el que “manda” */
+.pos-drawer :deep(.v-navigation-drawer__content) {
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+/* si algún tema deja el blanco muy suave, esto le da un micro degradé */
+.pos-drawer :deep(.v-navigation-drawer__content)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.06)
+  );
 }
 
 /* contenido main */
@@ -452,16 +520,45 @@ function onLogout() {
   max-width: 1400px;
 }
 
-/* avatar cuenta */
+/* =========================
+   Avatar: cover + ring sutil
+========================= */
 .pos-avatar-btn {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.pos-account-card {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
   overflow: hidden;
 }
 
 .pos-account-avatar {
   border: 3px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+/* fuerza object-fit cover real */
+.avatar-img :deep(img) {
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+/* fallback iniciales */
+.avatar-fallback {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.92);
+  text-transform: uppercase;
+}
+
+/* branding */
+.brand-avatar {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+
+.pos-account-card {
+  overflow: hidden;
 }
 </style>

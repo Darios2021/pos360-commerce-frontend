@@ -96,9 +96,6 @@ import App from "./App.vue";
 import router from "./app/router";
 import vuetify from "./app/plugins/vuetify";
 
-// ✅ GLOBAL CSS (ML look en toda la app)
-import "./style.css";
-
 import VueApexCharts from "vue3-apexcharts";
 
 // ✅ Runtime theme (tu util actual)
@@ -107,6 +104,14 @@ import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeT
 // ✅ Theme endpoints
 import { getShopThemePublic } from "@/modules/shop/service/shopTheme.public.api";
 import { getShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
+
+// =============================
+// ✅ CSS
+// - style.css = NEUTRO (global mínimo)
+// - shop.css  = SOLO SHOP (scopeado por .scope-shop)
+// =============================
+import "./style.css";
+import "@/modules/shop/styles/shop.css";
 
 // =============================
 // (Opcional) Señal prerender

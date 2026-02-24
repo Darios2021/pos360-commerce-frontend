@@ -1,61 +1,13 @@
 /* ✅ COPY-PASTE FINAL COMPLETO */
 /* src/style.css */
+/* Global mínimo y seguro (App + Shop) */
 
-/* ================================
-   MERCADO LIBRE GLOBAL (REAL)
-   Fondo gris #ebebeb + Vuetify override
-================================ */
-
-:root {
-  --ml-bg: #ebebeb;
-}
-
-/* Fondo del documento */
 html,
 body {
-  margin: 0 !important;
-  padding: 0 !important;
-  background: var(--ml-bg) !important;
+  margin: 0;
+  padding: 0;
 }
 
-/* ✅ Vuetify pinta el fondo acá, hay que pisarlo */
-.v-application {
-  background: var(--ml-bg) !important;
-}
-
-/* ✅ En Vuetify 3, a veces el fondo vive en v-main / v-application__wrap */
-.v-application__wrap,
-.v-main,
-.v-main__wrap {
-  background: var(--ml-bg) !important;
-}
-
-/* ✅ Si algún layout te lo pone en blanco, esto lo fuerza igual */
-[data-layout],
-[data-page] {
-  background: transparent;
-}
-
-/* Tipografía (si ya lo tenés, podés dejarlo) */
-:root {
-  --ml-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  --v-font-family: var(--ml-font);
-  --v-body-font-family: var(--ml-font);
-  font-family: var(--ml-font);
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-html,
-body,
-#app,
-.v-application,
-.v-application * {
-  font-family: var(--ml-font) !important;
-}
-
-/* Cards más ML */
-.v-card {
-  border-radius: 12px !important;
+#app {
+  min-height: 100vh;
 }

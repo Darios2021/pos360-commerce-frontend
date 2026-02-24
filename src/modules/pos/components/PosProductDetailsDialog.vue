@@ -2,21 +2,40 @@
 <!-- src/modules/pos/components/PosProductDetailsDialog.vue -->
 
 <template>
-  <v-dialog v-model="openLocal" max-width="980">
+  <v-dialog v-model="openLocal" max-width="980" class="pdd-dialog">
     <v-card rounded="xl" class="pdd-root">
-      <!-- HEADER -->
-      <div class="pdd-head">
-        <div>
-          <div class="text-h6 font-weight-black">Detalle producto</div>
-          <div class="text-caption text-medium-emphasis">
-            SKU: {{ item?.sku || item?.code || "—" }} · Stock:
-            <b>{{ qty3(item?.qty ?? 0) }}</b>
+      <!-- HEADER / HERO -->
+      <div class="pdd-hero">
+        <div class="pdd-hero-left">
+          <div class="pdd-title-row">
+            <div class="pdd-title text-h6 font-weight-black">Detalle de producto</div>
+
+            <v-chip size="small" variant="tonal" class="pdd-chip">
+              <v-icon start size="16">mdi-barcode</v-icon>
+              SKU: {{ item?.sku || item?.code || "—" }}
+            </v-chip>
+
+            <v-chip size="small" variant="tonal" class="pdd-chip">
+              <v-icon start size="16">mdi-database</v-icon>
+              Stock: <b class="ml-1">{{ qty3(item?.qty ?? 0) }}</b>
+            </v-chip>
+
+            <v-chip v-if="rubroLabelFinal" size="small" variant="tonal" class="pdd-chip">
+              <v-icon start size="16">mdi-shape</v-icon>
+              {{ rubroLabelFinal }}
+              <span v-if="subrubroLabelFinal" class="mx-1">·</span>
+              <span v-if="subrubroLabelFinal">{{ subrubroLabelFinal }}</span>
+            </v-chip>
+          </div>
+
+          <div class="pdd-sub text-caption text-medium-emphasis">
+            Elegí método y política: tarjeta en cuotas usa lista · revendedor pisa todo (si existe).
           </div>
         </div>
 
         <v-spacer />
 
-        <v-btn icon variant="text" @click="openLocal = false" title="Cerrar">
+        <v-btn icon variant="text" class="pdd-close" @click="openLocal = false" title="Cerrar">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </div>
@@ -24,89 +43,73 @@
       <v-divider />
 
       <v-card-text class="pdd-body">
-        <v-row dense>
-          <!-- LEFT -->
+        <v-row dense class="pdd-grid">
+          <!-- LEFT: PRODUCT -->
           <v-col cols="12" md="5">
-            <v-card class="rounded-xl pa-3 pdd-panel" elevation="0">
-              <v-avatar rounded="xl" size="220" class="border mb-3">
-                <v-img v-if="image" :src="image" cover />
-                <v-icon v-else size="56">mdi-package-variant</v-icon>
-              </v-avatar>
-
-              <div class="text-h6 font-weight-black">
-                {{ item?.name || "—" }}
-              </div>
-
-              <div class="mt-2">
-                <div class="text-caption text-medium-emphasis">
-                  Rubro: <b>{{ rubroLabelFinal || "—" }}</b>
+            <v-card class="pdd-panel pdd-panel-left" elevation="0" rounded="xl">
+              <div class="pdd-media">
+                <div class="pdd-img">
+                  <v-img v-if="image" :src="image" cover />
+                  <div v-else class="pdd-noimg">
+                    <v-icon size="56">mdi-package-variant</v-icon>
+                  </div>
                 </div>
-                <div class="text-caption text-medium-emphasis">
-                  Subrubro: <b>{{ subrubroLabelFinal || "—" }}</b>
-                </div>
-              </div>
 
-              <div class="mt-2">
-                <div class="text-caption text-medium-emphasis">
-                  Marca: <b>{{ brandComputed || "—" }}</b>
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  Modelo: <b>{{ modelComputed || "—" }}</b>
+                <div class="pdd-namewrap">
+                  <div class="pdd-name" :title="item?.name || ''">
+                    {{ item?.name || "—" }}
+                  </div>
+
+                  <div class="pdd-meta">
+                    <div class="pdd-kv">
+                      <span class="k">Marca</span>
+                      <span class="v" :title="brandComputed || ''">{{ brandComputed || "—" }}</span>
+                    </div>
+
+                    <div class="pdd-kv">
+                      <span class="k">Modelo</span>
+                      <span class="v" :title="modelComputed || ''">{{ modelComputed || "—" }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <v-divider class="my-3" />
 
               <!-- Precio rápido -->
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-caption text-medium-emphasis">
-                    Precio descuento (1 pago)
-                  </div>
-                  <div class="text-h6 font-weight-black">
+              <div class="pdd-quick">
+                <div class="pdd-quick-main">
+                  <div class="text-caption text-medium-emphasis">Precio descuento (1 pago)</div>
+                  <div class="text-h5 font-weight-black">
                     {{ money(priceDiscountComputed) }}
                   </div>
                 </div>
 
-                <div v-if="hasDiscount" class="text-right">
-                  <div class="text-caption text-medium-emphasis">
-                    Precio lista
-                  </div>
-                  <div class="text-subtitle-1 font-weight-bold">
+                <div v-if="hasDiscount" class="pdd-quick-side">
+                  <div class="text-caption text-medium-emphasis">Precio lista</div>
+                  <div class="pdd-listline">
                     <span class="strike">{{ money(priceListComputed) }}</span>
-                    <span class="ml-2 off">{{ offPct }}% OFF</span>
+                    <span class="off">{{ offPct }}% OFF</span>
                   </div>
                 </div>
               </div>
 
-              <v-alert
-                v-if="catsStatus === 'error'"
-                type="warning"
-                variant="tonal"
-                class="mt-3"
-              >
+              <v-alert v-if="catsStatus === 'error'" type="warning" variant="tonal" class="mt-3">
                 No pude cargar categorías para mostrar Rubro/Subrubro.
               </v-alert>
 
-              <v-alert
-                v-if="legacyStatus === 'error'"
-                type="warning"
-                variant="tonal"
-                class="mt-2"
-              >
+              <v-alert v-if="legacyStatus === 'error'" type="warning" variant="tonal" class="mt-2">
                 No pude cargar subcategorías legacy (tabla subcategories).
               </v-alert>
             </v-card>
           </v-col>
 
-          <!-- RIGHT -->
+          <!-- RIGHT: PAYMENT -->
           <v-col cols="12" md="7">
-            <v-card class="rounded-xl pa-4 pdd-panel" elevation="0">
-              <div class="d-flex align-center justify-space-between">
-                <div class="text-subtitle-1 font-weight-black">
-                  Opciones de pago
-                </div>
-                <v-chip size="small" variant="tonal">
+            <v-card class="pdd-panel pdd-panel-right" elevation="0" rounded="xl">
+              <div class="pdd-sec-head">
+                <div class="text-subtitle-1 font-weight-black">Opciones de pago</div>
+                <v-chip size="small" variant="tonal" class="pdd-chip pdd-chip-soft">
                   {{ pricePolicyLabel(currentPolicyComputed) }}
                 </v-chip>
               </div>
@@ -117,14 +120,78 @@
 
               <v-divider class="my-4" />
 
-              <v-radio-group v-model="paymentMethod" color="primary">
-                <v-radio value="CASH" label="Efectivo" />
-                <v-radio value="CARD" label="Tarjeta / Débito" />
-                <v-radio value="TRANSFER" label="Transferencia" />
-                <v-radio value="QR" label="Mercado Pago (QR)" />
-              </v-radio-group>
+              <!-- Payment cards -->
+              <div class="pdd-paygrid">
+                <button
+                  type="button"
+                  class="pdd-paycard"
+                  :class="{ active: paymentMethod === 'CASH' }"
+                  @click="paymentMethod = 'CASH'"
+                >
+                  <div class="ic"><v-icon>mdi-cash</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Efectivo</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="paymentMethod === 'CASH'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
 
-              <v-row dense class="mt-2">
+                <button
+                  type="button"
+                  class="pdd-paycard"
+                  :class="{ active: paymentMethod === 'CARD' }"
+                  @click="paymentMethod = 'CARD'"
+                >
+                  <div class="ic"><v-icon>mdi-credit-card-outline</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Tarjeta / Débito</div>
+                    <div class="s">Cuotas usan lista</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="paymentMethod === 'CARD'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  class="pdd-paycard"
+                  :class="{ active: paymentMethod === 'TRANSFER' }"
+                  @click="paymentMethod = 'TRANSFER'"
+                >
+                  <div class="ic"><v-icon>mdi-bank-transfer</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Transferencia</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="paymentMethod === 'TRANSFER'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  class="pdd-paycard"
+                  :class="{ active: paymentMethod === 'QR' }"
+                  @click="paymentMethod = 'QR'"
+                >
+                  <div class="ic"><v-icon>mdi-qrcode-scan</v-icon></div>
+                  <div class="tx">
+                    <div class="t">Mercado Pago (QR)</div>
+                    <div class="s">Usa descuento</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="paymentMethod === 'QR'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+              </div>
+
+              <v-row dense class="mt-3">
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="applyReseller"
@@ -155,29 +222,25 @@
 
               <v-divider class="my-4" />
 
-              <v-alert type="info" variant="tonal">
-                <div class="d-flex flex-wrap align-center justify-space-between ga-3">
-                  <div>
-                    <div class="text-caption text-medium-emphasis">Precio unitario</div>
-                    <div class="text-h6 font-weight-black">
-                      {{ money(unitPrice) }}
-                    </div>
+              <!-- PRICE SUMMARY -->
+              <div class="pdd-pricebox">
+                <div class="pdd-price-main">
+                  <div class="text-caption text-medium-emphasis">Precio unitario</div>
+                  <div class="text-h5 font-weight-black">
+                    {{ money(unitPrice) }}
                   </div>
-
-                  <div v-if="showInstallmentBreakdown" class="text-right">
-                    <div class="text-caption text-medium-emphasis">
-                      {{ installments }} cuotas de
-                    </div>
-                    <div class="text-h6 font-weight-black">
-                      {{ money(perInstallment) }}
-                    </div>
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    Política aplicada:
+                    <b>{{ pricePolicyLabel(currentPolicyComputed) }}</b>
                   </div>
                 </div>
-              </v-alert>
 
-              <div class="text-caption text-medium-emphasis mt-3">
-                Política aplicada:
-                <b>{{ pricePolicyLabel(currentPolicyComputed) }}</b>
+                <div v-if="showInstallmentBreakdown" class="pdd-price-side">
+                  <div class="text-caption text-medium-emphasis">{{ installments }} cuotas de</div>
+                  <div class="text-h5 font-weight-black">
+                    {{ money(perInstallment) }}
+                  </div>
+                </div>
               </div>
 
               <v-alert v-if="unitPrice <= 0" type="warning" variant="tonal" class="mt-3">
@@ -190,19 +253,22 @@
 
       <v-divider />
 
-      <v-card-actions class="pa-4">
+      <!-- FOOTER -->
+      <v-card-actions class="pdd-actions">
         <v-btn variant="tonal" @click="openLocal = false">Cerrar</v-btn>
         <v-spacer />
 
         <v-btn
           color="primary"
           variant="flat"
+          size="large"
+          class="pdd-add-btn"
           :disabled="!canSell || unitPrice <= 0"
           :title="!canSell ? 'El usuario admin no puede vender' : unitPrice <= 0 ? 'Producto sin precio' : ''"
           @click="onAdd"
         >
-          <v-icon start>mdi-plus</v-icon>
-          Agregar con este precio
+          <v-icon start>mdi-cart-plus</v-icon>
+          AGREGAR
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -210,7 +276,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import http from "@/app/api/http";
 
 const props = defineProps({
@@ -231,6 +297,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:open", "add"]);
 
+/* ✅ v-model interno del dialog */
 const openLocal = computed({
   get: () => props.open,
   set: (v) => emit("update:open", v),
@@ -358,8 +425,7 @@ const catById = computed(() => {
 });
 
 /* =========================
-   SUBCATEGORIES LEGACY (tabla subcategories)
-   ✅ solo se usa si detectamos legacy IDs como 47/48
+   SUBCATEGORIES LEGACY
 ========================= */
 const legacySubs = ref([]); // [{id, category_id, name, is_active}]
 const legacyStatus = ref("idle"); // idle|loading|ok|error
@@ -389,10 +455,10 @@ async function loadLegacySubcategoriesSafe() {
   legacyStatus.value = "loading";
 
   const candidates = [
-    { url: "/subcategories", params: { limit: 5000 } },      // ✅ si existe
+    { url: "/subcategories", params: { limit: 5000 } },
     { url: "/subcategories", params: { page: 1, limit: 5000 } },
     { url: "/subcategories", params: undefined },
-    { url: "/admin/subcategories", params: { limit: 5000 } }, // ✅ fallback típico
+    { url: "/admin/subcategories", params: { limit: 5000 } },
     { url: "/admin/subcategories", params: undefined },
   ];
 
@@ -422,14 +488,8 @@ const legacyById = computed(() => {
   return m;
 });
 
-function isLegacySubId(id) {
-  if (!id) return false;
-  // si no existe en categories pero existe en legacy => legacy
-  return !catById.value.get(id) && !!legacyById.value.get(id);
-}
-
 /* =========================
-   Derivación rubro/subrubro (compat)
+   Derivación rubro/subrubro
 ========================= */
 const derived = computed(() => {
   const p = props.item || {};
@@ -439,7 +499,7 @@ const derived = computed(() => {
   // Caso normal: subId apunta a categories (nuevo)
   if (subId && catById.value.get(subId)) {
     const sub = catById.value.get(subId);
-    const rubroId = toInt(sub?.parent_id, 0) || catId || null; // parent manda, sino category_id
+    const rubroId = toInt(sub?.parent_id, 0) || catId || null;
     return {
       rubroId,
       subId,
@@ -448,7 +508,7 @@ const derived = computed(() => {
     };
   }
 
-  // Caso legacy: subId apunta a subcategories (viejo)
+  // Caso legacy
   if (subId && legacyById.value.get(subId)) {
     const legacy = legacyById.value.get(subId);
     const rubroId = toInt(legacy?.category_id, 0) || catId || null;
@@ -482,14 +542,14 @@ const rubroLabelFinal = computed(() => {
   const r = String(rubroLabelComputed.value || "").trim();
   const s = String(subrubroLabelComputed.value || "").trim();
   if (r) return r;
-  if (s) return s; // fallback visual
+  if (s) return s;
   return "";
 });
 
 const subrubroLabelFinal = computed(() => {
   const r = String(rubroLabelComputed.value || "").trim();
   const s = String(subrubroLabelComputed.value || "").trim();
-  if (!r && s) return ""; // evitamos duplicar
+  if (!r && s) return "";
   return s;
 });
 
@@ -569,6 +629,7 @@ const offPct = computed(() => {
 function currentPolicy() {
   const res = priceResellerComputed.value;
   if (applyReseller.value && res > 0) return "RESELLER";
+
   if (paymentMethod.value === "CARD") {
     const k = Number(installments.value || 1);
     return k > 1 ? "LIST" : "DISCOUNT";
@@ -607,7 +668,7 @@ const perInstallment = computed(() => {
 });
 
 /* =========================
-   On open: carga cats + legacy si hace falta
+   On open: reset + carga cats + legacy
 ========================= */
 watch(
   () => props.open,
@@ -618,10 +679,8 @@ watch(
     installments.value = 1;
     applyReseller.value = false;
 
-    // siempre intentamos categories (nuevo)
     if (!(cats.value || []).length) await loadCategoriesSafe();
 
-    // si subcategory_id no existe en categories, intentamos legacy
     const subId = toInt(props.item?.subcategory_id || props.item?.subcategory?.id, 0) || null;
     if (subId && !catById.value.get(subId)) {
       await loadLegacySubcategoriesSafe();
@@ -629,6 +688,9 @@ watch(
   }
 );
 
+/* =========================
+   Add
+========================= */
 function onAdd() {
   emit("add", {
     paymentMethod: paymentMethod.value,
@@ -639,35 +701,308 @@ function onAdd() {
     price_label: pricePolicyLabel(currentPolicyComputed.value),
   });
 }
+
+/* =========================
+   F9 → Abrir/Cerrar (global)
+========================= */
+function handleKeydown(e) {
+  if (e.key === "F9") {
+    e.preventDefault();
+    openLocal.value = !openLocal.value;
+  }
+}
+
+onMounted(() => window.addEventListener("keydown", handleKeydown));
+onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 </script>
 
 <style scoped>
 .pdd-root {
   overflow: hidden;
+  --pdd-brand: 42, 133, 196; /* #2a85c4 */
 }
-.pdd-head {
+
+/* HERO */
+.pdd-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--pdd-brand), 0.18),
+    rgba(var(--pdd-brand), 0.06),
+    rgba(var(--v-theme-surface), 0.92)
+  );
+}
+.pdd-hero-left {
+  min-width: 0;
+}
+.pdd-title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
+.pdd-title {
+  margin-right: 6px;
+}
+.pdd-chip {
+  border: 1px solid rgba(var(--pdd-brand), 0.18);
+  background: rgba(var(--pdd-brand), 0.08) !important;
+}
+.pdd-chip-soft {
+  border-color: rgba(var(--pdd-brand), 0.14);
+  background: rgba(var(--pdd-brand), 0.06) !important;
+}
+.pdd-sub {
+  margin-top: 6px;
+}
+.pdd-close {
+  margin-top: -2px;
+}
+
+/* BODY */
 .pdd-body {
   padding: 16px;
+  background: rgba(var(--pdd-brand), 0.02);
 }
 .pdd-panel {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-surface), 0.92);
+  border: 1px solid rgba(var(--pdd-brand), 0.14);
+  background: rgba(var(--v-theme-surface), 0.86);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
-.border {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 14px;
+.pdd-panel-left,
+.pdd-panel-right {
+  padding: 14px;
+}
+
+/* LEFT: MEDIA */
+.pdd-media {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+.pdd-img {
+  width: 112px;
+  height: 112px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--pdd-brand), 0.18);
+  background: rgba(var(--pdd-brand), 0.06);
+}
+.pdd-noimg {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+.pdd-namewrap {
+  min-width: 0;
+}
+.pdd-name {
+  font-weight: 900;
+  font-size: 1.02rem;
+  line-height: 1.15;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pdd-meta {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.pdd-kv {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(var(--pdd-brand), 0.04);
+  border: 1px solid rgba(var(--pdd-brand), 0.12);
+  min-width: 0;
+}
+.pdd-kv .k {
+  font-size: 0.78rem;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+.pdd-kv .v {
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* QUICK PRICE */
+.pdd-quick {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pdd-quick-side {
+  text-align: right;
+}
+.pdd-listline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  justify-content: flex-end;
 }
 .strike {
   text-decoration: line-through;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 .off {
   color: rgb(var(--v-theme-success));
   font-weight: 900;
+}
+
+/* RIGHT */
+.pdd-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* PAY CARDS */
+.pdd-paygrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 959px) {
+  .pdd-paygrid {
+    grid-template-columns: 1fr;
+  }
+}
+.pdd-paycard {
+  appearance: none;
+  border: 1px solid rgba(var(--pdd-brand), 0.16);
+  background: rgba(var(--pdd-brand), 0.04);
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 40px 1fr 26px;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.08s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.pdd-paycard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--pdd-brand), 0.35);
+  background: rgba(var(--pdd-brand), 0.06);
+}
+.pdd-paycard.active {
+  border-color: rgba(var(--pdd-brand), 0.55);
+  background: rgba(var(--pdd-brand), 0.12);
+}
+.pdd-paycard .ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--pdd-brand), 0.14);
+  color: rgba(var(--pdd-brand), 0.95);
+}
+.pdd-paycard .tx .t {
+  font-weight: 950;
+  line-height: 1.1;
+}
+.pdd-paycard .tx .s {
+  font-size: 0.78rem;
+  opacity: 0.78;
+  margin-top: 2px;
+}
+.pdd-paycard .chk {
+  opacity: 0.9;
+  color: rgba(var(--pdd-brand), 0.95);
+}
+
+/* PRICE BOX */
+.pdd-pricebox {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--pdd-brand), 0.18);
+  background: rgba(var(--pdd-brand), 0.04);
+}
+.pdd-price-side {
+  text-align: right;
+  min-width: 160px;
+}
+@media (max-width: 600px) {
+  .pdd-pricebox {
+    flex-direction: column;
+  }
+  .pdd-price-side {
+    text-align: left;
+    min-width: 0;
+  }
+}
+
+/* FOOTER */
+.pdd-actions {
+  padding: 14px 16px;
+  position: sticky;
+  bottom: 0;
+  background: rgba(var(--v-theme-surface), 0.92);
+  border-top: 1px solid rgba(var(--pdd-brand), 0.14);
+  backdrop-filter: blur(10px);
+}
+.pdd-add-btn {
+  font-weight: 950;
+  letter-spacing: 0.5px;
+  padding-inline: 28px;
+  box-shadow: 0 8px 20px rgba(42, 133, 196, 0.25);
+}
+.pdd-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(42, 133, 196, 0.35);
+}
+
+/* MOBILE FIX */
+@media (max-width: 520px) {
+  .pdd-body {
+    padding: 12px;
+  }
+  .pdd-panel-left,
+  .pdd-panel-right {
+    padding: 12px;
+  }
+  .pdd-hero {
+    padding: 14px 14px 12px;
+  }
+  .pdd-media {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .pdd-img {
+    width: 100%;
+    height: 180px;
+  }
+  .pdd-kv {
+    grid-template-columns: 76px 1fr;
+  }
 }
 </style>

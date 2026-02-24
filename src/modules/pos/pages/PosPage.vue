@@ -14,7 +14,7 @@
         :has-multi-branches="hasMultiBranches"
         :loading-global="loadingGlobal"
         :cart-count="(posStore.cart || []).length"
-        :checkout-disabled="(posStore.cart || []).length === 0 || !canSell || needsBranchPick"
+        :checkout-disabled="(posStore.cart || []).length === 0 || !canSell.value || needsBranchPick.value"
         @refresh="refresh"
         @open-branch-switch="openBranchSwitch"
         @help="helpOpen = true"
@@ -113,6 +113,7 @@
     <!-- dialogs -->
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
+      :can-sell="canSell && !needsBranchPick"
       :item="detailsItem"
       :image="detailsItem ? productImage(detailsItem) : ''"
       @add="addFromDetails"
@@ -121,7 +122,7 @@
     <CheckoutDialog
       v-model:open="checkoutDialog"
       :total="checkoutTotal"
-      :cart="posStore.cart"
+      :cart="cartForCheckout"
       @confirm="confirmPaymentSafe"
     />
 
@@ -132,11 +133,7 @@
       :branch-name="branchName || ''"
     />
 
-    <PosPickBranchDialog
-      v-model:open="pickBranchOpen"
-      :branches="pickBranchOptions"
-      @confirm="onPickBranchConfirm"
-    />
+    <PosPickBranchDialog v-model:open="pickBranchOpen" :branches="pickBranchOptions" @confirm="onPickBranchConfirm" />
 
     <v-dialog v-model="branchPickOpen" max-width="560">
       <v-card class="rounded-xl overflow-hidden">
@@ -146,9 +143,7 @@
         </v-card-title>
 
         <v-card-text class="pt-2">
-          <div class="text-caption text-medium-emphasis mb-3">
-            La sucursal activa define desde dónde operás (stock / venta).
-          </div>
+          <div class="text-caption text-medium-emphasis mb-3">La sucursal activa define desde dónde operás (stock / venta).</div>
 
           <v-alert v-if="(posStore.cart || []).length" type="warning" variant="tonal" class="mb-3">
             Tenés un carrito en curso. Terminá la venta o vaciá el carrito antes de cambiar sucursal.
@@ -284,7 +279,7 @@ function getActiveBranchIdSafe() {
   return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
 }
 
-/* ✅ label informativo del carrito (si tu store maneja branch del carrito, lo mostramos; si no, fallback) */
+/* ✅ label informativo del carrito */
 const cartBranchLabel = computed(() => {
   const id = Number(posStore?.cart_branch_id ?? posStore?.cartBranchId ?? 0) || null;
   if (!id) return "";
@@ -352,8 +347,61 @@ const { resolveUnitPrice, isSellable, toNum } = usePosPricing();
 const { productImage, prefetchImagesForVisible } = usePosImages();
 
 /* catálogo global */
-const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } =
-  usePosMultiBranchCatalog({ branchScope, isSellable });
+const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMultiBranchCatalog({
+  branchScope,
+  isSellable,
+});
+
+/* ======================================================
+   ✅ CART ENRICH: inyecta imagen en items del carrito
+   - Porque posStore.cart suele venir sin image/image_url
+   - CheckoutDialog busca it.image / it.image_url / it.product.image...
+====================================================== */
+function cartKey(it) {
+  const pid = Number(it?.product_id ?? it?.productId ?? it?.product?.id ?? it?.id ?? 0) || null;
+  const sku = String(it?.sku ?? it?.code ?? it?.product?.sku ?? it?.product?.code ?? "").trim();
+  return { pid, sku };
+}
+
+function findProductInPool(it) {
+  const { pid, sku } = cartKey(it);
+  const pool = Array.isArray(globalItems?.value) ? globalItems.value : [];
+
+  if (pid) {
+    const byId = pool.find((p) => Number(p?.id ?? p?.product_id ?? 0) === pid);
+    if (byId) return byId;
+  }
+
+  if (sku) {
+    const bySku = pool.find((p) => String(p?.sku ?? p?.code ?? "").trim() === sku);
+    if (bySku) return bySku;
+  }
+
+  return null;
+}
+
+const cartForCheckout = computed(() => {
+  const cart = Array.isArray(posStore?.cart) ? posStore.cart : [];
+  return cart.map((it) => {
+    // Si ya trae imagen, respetamos
+    const already = String(it?.image || it?.image_url || it?.imageUrl || it?.thumb || it?.thumbnail || "").trim();
+    if (already) return it;
+
+    const p = findProductInPool(it);
+    if (!p) return it;
+
+    const img = productImage(p);
+    if (!img) return it;
+
+    // Inyectamos en campos que CheckoutDialog sabe leer
+    return {
+      ...it,
+      image: img,
+      image_url: img,
+      product: it?.product ? { ...it.product, image: img, image_url: img } : it?.product,
+    };
+  });
+});
 
 /* helpers stock */
 function getActiveBranchId() {
@@ -399,11 +447,12 @@ function openDetails(p) {
   detailsOpen.value = true;
 }
 
-/* ✅ FIX CLAVE: volver a tener add() para el botón + */
+/* =========================
+   ✅ ADD SAFE (store-agnostic)
+========================= */
 function addToCartSafe(product, qty = 1) {
   if (!product) return false;
 
-  // intentamos métodos típicos del store sin asumir uno solo
   const candidates = [
     ["addToCart", (s) => s.addToCart(product, qty)],
     ["add", (s) => s.add(product, qty)],
@@ -421,15 +470,15 @@ function addToCartSafe(product, qty = 1) {
       }
     } catch (e) {
       console.warn("[POS] addToCart method failed:", name, e);
-      // seguimos probando
     }
   }
 
   return false;
 }
 
-function add(p) {
-  if (!p) return;
+/* ✅ ADD (row) */
+function add(product) {
+  if (!product) return;
 
   if (!canSell?.value) {
     toast("⛔ No tenés permiso para vender.");
@@ -441,16 +490,83 @@ function add(p) {
     return;
   }
 
-  const ok = addToCartSafe(p, 1);
+  const ok = addToCartSafe(product, 1);
   if (!ok) {
-    toast("⚠️ No encontré el método para agregar al carrito en posStore.");
+    toast("⚠️ No encontré el método para agregar al carrito (posStore).");
     console.warn("[POS] No add method found in posStore. Revisá pos.store:", posStore);
-    return;
   }
 }
 
-function addFromDetails(p) {
-  add(p);
+/* ✅ FIX REAL: ADD (details) recibe payload, usa detailsItem como producto */
+function addFromDetails(payload) {
+  const product = detailsItem.value;
+  const meta = payload || {};
+  const unitPrice = Number(meta.unit_price || 0) || 0;
+
+  console.log("[POS] addFromDetails payload:", meta, "product:", product);
+
+  if (!product) {
+    toast("⚠️ No hay producto seleccionado (detailsItem null).");
+    return;
+  }
+
+  if (!canSell?.value) {
+    toast("⛔ No tenés permiso para vender.");
+    return;
+  }
+
+  if (needsBranchPick?.value) {
+    toast("🏬 Elegí una sucursal antes de agregar productos.");
+    return;
+  }
+
+  if (unitPrice <= 0) {
+    toast("⚠️ Producto sin precio válido.");
+    return;
+  }
+
+  // 1) si tu store tiene métodos “priced”
+  const pricedCandidates = [
+    ["addToCartWithPrice", (s) => s.addToCartWithPrice(product, unitPrice, meta)],
+    ["addWithPrice", (s) => s.addWithPrice(product, unitPrice, meta)],
+    ["addPriced", (s) => s.addPriced(product, unitPrice, meta)],
+    ["addFromDetails", (s) => s.addFromDetails(product, meta)],
+  ];
+
+  for (const [name, fn] of pricedCandidates) {
+    try {
+      if (typeof posStore?.[name] === "function") {
+        fn(posStore);
+        toast("✅ Agregado al carrito");
+        detailsOpen.value = false;
+        return;
+      }
+    } catch (e) {
+      console.warn("[POS] priced add method failed:", name, e);
+    }
+  }
+
+  // 2) fallback universal: clonamos el producto con pricing
+  const cloned = {
+    ...product,
+    unit_price: unitPrice,
+    price_policy: meta.price_policy || null,
+    price_label: meta.price_label || null,
+    paymentMethod: meta.paymentMethod || null,
+    installments: Number(meta.installments || 1) || 1,
+    applyReseller: Boolean(meta.applyReseller),
+    __pos_pricing: { ...meta, unit_price: unitPrice },
+  };
+
+  const ok = addToCartSafe(cloned, 1);
+  if (!ok) {
+    toast("⚠️ No encontré el método para agregar al carrito (posStore).");
+    console.warn("[POS] No add method found in posStore. Revisá pos.store:", posStore);
+    return;
+  }
+
+  toast("✅ Agregado al carrito");
+  detailsOpen.value = false;
 }
 
 /* pick branch (producto) - si tu dialog lo usa */
@@ -459,8 +575,6 @@ const pickBranchProduct = ref(null);
 const pickBranchOptions = ref([]);
 
 function onPickBranchConfirm(payload) {
-  // placeholder: si tu PosPickBranchDialog emite otra estructura, lo ajustamos
-  // lo dejamos para no romper imports/eventos
   pickBranchOpen.value = false;
   pickBranchProduct.value = null;
   pickBranchOptions.value = [];

@@ -11,21 +11,54 @@ const vuetify = createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: "light",
+    // ✅ Por defecto: backoffice (porque tu app “principal” es /app)
+    defaultTheme: "adminLight",
+
     themes: {
-      light: {
+      // =======================
+      // ✅ BACKOFFICE (ADMIN)
+      // =======================
+      adminLight: {
         dark: false,
         colors: {
           primary: "#0e2134",
           secondary: "#3483fa",
-          background: "#ebebeb", // ✅ ML real
+          background: "#f6f7fb", // ✅ admin suave (NO ML)
           surface: "#ffffff",
           error: "#d32f2f",
           success: "#2e7d32",
           warning: "#ed6c02",
         },
       },
-      dark: {
+      adminDark: {
+        dark: true,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#0b1320",
+          surface: "#111a2e",
+          error: "#ef5350",
+          success: "#66bb6a",
+          warning: "#ffa726",
+        },
+      },
+
+      // =======================
+      // ✅ ECOMMERCE (SHOP)
+      // =======================
+      shopLight: {
+        dark: false,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#ebebeb", // ✅ ML real (solo shop)
+          surface: "#ffffff",
+          error: "#d32f2f",
+          success: "#2e7d32",
+          warning: "#ed6c02",
+        },
+      },
+      shopDark: {
         dark: true,
         colors: {
           primary: "#0e2134",

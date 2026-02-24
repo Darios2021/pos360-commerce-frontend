@@ -1,6 +1,6 @@
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
 <template>
-  <v-container fluid class="pa-4 bg-grey-lighten-4" style="min-height: 100vh">
+  <v-container fluid class="pa-4 pos-sales-page">
     <!-- HEADER -->
     <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4">
       <div>
@@ -1631,4 +1631,10 @@ const KpiCard = {
 </script>
 
 <style scoped>
+
+.pos-sales-page {
+  min-height: 100vh;
+  background: rgb(var(--v-theme-background));
+}
+
 </style>

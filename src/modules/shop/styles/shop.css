@@ -1,0 +1,46 @@
+/* ✅ COPY-PASTE FINAL COMPLETO */
+/* src/modules/shop/styles/shop.css */
+/* ================================
+   MERCADO LIBRE (SÓLO SHOP)
+   Scopeado para NO afectar backoffice
+================================ */
+
+/* Variables solo shop */
+.scope-shop {
+  --ml-bg: #ebebeb;
+  --ml-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Fondo del documento SOLO cuando estás en shop */
+.scope-shop,
+.scope-shop :where(.v-application) {
+  background: var(--ml-bg) !important;
+}
+
+/* ✅ Vuetify pinta el fondo acá, lo pisamos SOLO en shop */
+.scope-shop :where(.v-application__wrap),
+.scope-shop :where(.v-main),
+.scope-shop :where(.v-main__wrap) {
+  background: var(--ml-bg) !important;
+}
+
+/* Forzar transparente en wrappers tuyos */
+.scope-shop :where([data-layout]),
+.scope-shop :where([data-page]) {
+  background: transparent;
+}
+
+/* Tipografía SOLO shop */
+.scope-shop,
+.scope-shop :where(.v-application),
+.scope-shop :where(.v-application *) {
+  font-family: var(--ml-font) !important;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cards más ML SOLO shop */
+.scope-shop :where(.v-card) {
+  border-radius: 12px !important;
+}
