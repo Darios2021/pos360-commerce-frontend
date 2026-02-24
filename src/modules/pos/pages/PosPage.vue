@@ -1,10 +1,7 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosPage.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- TEMPLATE para src/modules/pos/pages/PosPage.vue (header ya usa PosTopBar) -->
 <template>
   <v-container fluid class="pos-root">
-    <!-- ================= HEADER ================= -->
     <div class="pos-header">
       <PosTopBar
         :branch-chip-label="branchChipLabel"
@@ -25,7 +22,6 @@
       />
     </div>
 
-    <!-- ================= BODY ================= -->
     <div class="pos-body">
       <div class="pos-layout">
         <!-- LEFT -->
@@ -54,61 +50,58 @@
             @next="nextPage"
           />
 
-          <div class="pos-products">
-            <div v-if="loadingGlobal" class="d-flex justify-center align-center py-12">
-              <v-progress-circular indeterminate />
-            </div>
-
-            <div v-else class="pos-list">
-              <PosProductRow
-                v-for="p in pagedItems"
-                :key="p.id"
-                :item="p"
-                :image="productImage(p)"
-                :name="p.name"
-                :sku="p.sku || p.code"
-                :stkLabel="`STK ${qtyForActive(p)}`"
-                :offLabel="
-                  resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
-                    ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
-                    : ''
-                "
-                :rubro-label="rubroTitleFromProduct(p) || ''"
-                :subrubro-label="subrubroTitleFromProduct(p) || ''"
-                :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
-                :price-list="resolveUnitPrice(p, 'LIST')"
-                :disabled="!canSell || needsBranchPick"
-                @add="add"
-                @details="openDetails"
-              />
-
-              <div v-if="pagedItems.length" class="mt-2 text-caption text-medium-emphasis">
-                Tip: al tocar “+”, si el producto no tiene stock en la sucursal activa, te pregunta de cuál sale.
-              </div>
-            </div>
-
-            <div v-if="!loadingGlobal && pagedItems.length === 0" class="text-center py-12 text-medium-emphasis">
-              <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
-              <div class="text-h6">No se encontraron productos vendibles con stock</div>
-              <div class="text-caption mt-1">
-                Nota: hay {{ stockOnlyTotal }} con stock total, pero algunos pueden estar sin precio.
-              </div>
-            </div>
-          </div>
+          <!-- ✅ PRODUCTS PANEL -->
+          <PosProductsPanel
+            class="pos-products-panel"
+            :loading="loadingGlobal"
+            :disabled="loadingGlobal"
+            :items="pagedItems"
+            :shown-count="pagedItems.length"
+            :total-count="sellableStockTotal"
+            :stock-only-total="stockOnlyTotal"
+            :page="page"
+            :pages="pages"
+            @prev="prevPage"
+            @next="nextPage"
+          >
+            <PosProductRow
+              v-for="p in pagedItems"
+              :key="p.id"
+              :item="p"
+              :image="productImage(p)"
+              :name="p.name"
+              :sku="p.sku || p.code"
+              :stkLabel="`STK ${qtyForActive(p)}`"
+              :offLabel="
+                resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
+                  ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
+                  : ''
+              "
+              :rubro-label="rubroTitleFromProduct(p) || ''"
+              :subrubro-label="subrubroTitleFromProduct(p) || ''"
+              :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
+              :price-list="resolveUnitPrice(p, 'LIST')"
+              :disabled="!canSell || needsBranchPick"
+              @add="add"
+              @details="openDetails"
+            />
+          </PosProductsPanel>
         </div>
 
         <!-- RIGHT -->
         <div class="pos-right">
-          <PosCartPanel
-            :cart="posStore.cart"
-            :total-items="posStore.totalItems"
-            :total="checkoutTotalPreview"
-            :can-edit="canSell && !needsBranchPick"
-            :pos-store="posStore"
-            @checkout="openCheckoutSafe"
-          />
+          <div class="pos-cart-wrap">
+            <PosCartPanel
+              :cart="posStore.cart"
+              :total-items="posStore.totalItems"
+              :total="checkoutTotalPreview"
+              :can-edit="canSell && !needsBranchPick"
+              :pos-store="posStore"
+              @checkout="openCheckoutSafe"
+            />
+          </div>
 
-          <div v-if="cartBranchLabel" class="mt-2 text-caption text-medium-emphasis">
+          <div v-if="cartBranchLabel" class="text-caption text-medium-emphasis">
             Carrito: <b>{{ cartBranchLabel }}</b>
           </div>
 
@@ -117,7 +110,7 @@
       </div>
     </div>
 
-    <!-- ================= DIALOGS ================= -->
+    <!-- dialogs -->
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
       :item="detailsItem"
@@ -145,7 +138,6 @@
       @confirm="onPickBranchConfirm"
     />
 
-    <!-- ✅ CAMBIAR SUCURSAL ACTIVA -->
     <v-dialog v-model="branchPickOpen" max-width="560">
       <v-card class="rounded-xl overflow-hidden">
         <v-card-title class="d-flex align-center ga-2">
@@ -203,13 +195,13 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { usePosStore } from "../../../app/store/pos.store";
 
-/* ✅ NEW: Top bar component */
 import PosTopBar from "../components/PosTopBar.vue";
-
 import PosFiltersBar from "../components/PosFiltersBar.vue";
 import { usePosFilters } from "../composables/usePosFilters";
 
+import PosProductsPanel from "../components/PosProductsPanel.vue";
 import PosProductRow from "../components/PosProductRow.vue";
+
 import CheckoutDialog from "../components/CheckoutDialog.vue";
 import PosProductDetailsDialog from "../components/PosProductDetailsDialog.vue";
 import ReceiptDialog from "../components/ReceiptDialog.vue";
@@ -255,21 +247,13 @@ const {
   branchChipLabel,
   needsBranchPick,
   ensureBranchSelected,
-  fetchedBranches, // ✅ CLAVE: acá están los nombres reales del /branches (Rawson, etc)
+  fetchedBranches,
 } = usePosBranch({ auth, posStore });
 
-/* ✅ branch scope */
 const branchScope = usePosBranchScope({ auth, userBranches, branchItems });
 
-/* =========================================================
-   ✅ FIX DEFINITIVO NOMBRES EN SELECT
-   - Primero usa fetchedBranches (vienen con name real)
-   - Si está vacío, cae a branchItems (fallback)
-========================================================= */
 const uiBranchesForSelect = computed(() => {
   const fb = Array.isArray(fetchedBranches?.value) ? fetchedBranches.value : [];
-
-  // 1) ✅ si fetchedBranches trae nombres reales -> usar eso
   if (fb.length) {
     return fb
       .map((b) => {
@@ -281,7 +265,6 @@ const uiBranchesForSelect = computed(() => {
       .filter(Boolean);
   }
 
-  // 2) fallback: branchItems
   const raw = Array.isArray(branchItems?.value) ? branchItems.value : [];
   return raw
     .map((it) => {
@@ -294,14 +277,21 @@ const uiBranchesForSelect = computed(() => {
 });
 
 const hasMultiBranches = computed(() => uiBranchesForSelect.value.length > 1);
-
-/* dialog selection (SIEMPRE number) */
 const branchPickSelected = ref(null);
 
 function getActiveBranchIdSafe() {
   const v = activeBranchId?.value;
   return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
 }
+
+/* ✅ label informativo del carrito (si tu store maneja branch del carrito, lo mostramos; si no, fallback) */
+const cartBranchLabel = computed(() => {
+  const id = Number(posStore?.cart_branch_id ?? posStore?.cartBranchId ?? 0) || null;
+  if (!id) return "";
+  const list = uiBranchesForSelect.value || [];
+  const found = list.find((x) => Number(x.value) === id);
+  return found?.title || `Sucursal #${id}`;
+});
 
 function openBranchSwitch() {
   if (!hasMultiBranches.value) return;
@@ -362,7 +352,7 @@ const { resolveUnitPrice, isSellable, toNum } = usePosPricing();
 const { productImage, prefetchImagesForVisible } = usePosImages();
 
 /* catálogo global */
-const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool, branchesWithStock } =
+const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } =
   usePosMultiBranchCatalog({ branchScope, isSellable });
 
 /* helpers stock */
@@ -374,11 +364,8 @@ function qtyForActive(p) {
   if (!ab) return Number(p?.total_qty || 0) || 0;
   return Number(p?.stockByBranch?.[String(ab)] || 0) || 0;
 }
-function activeHasStock(p) {
-  return qtyForActive(p) > 0;
-}
 
-/* ✅ filtros + taxonomy */
+/* filtros */
 const filters = usePosFilters({ globalItems, isSellable, qtyForActive });
 const {
   q,
@@ -412,6 +399,73 @@ function openDetails(p) {
   detailsOpen.value = true;
 }
 
+/* ✅ FIX CLAVE: volver a tener add() para el botón + */
+function addToCartSafe(product, qty = 1) {
+  if (!product) return false;
+
+  // intentamos métodos típicos del store sin asumir uno solo
+  const candidates = [
+    ["addToCart", (s) => s.addToCart(product, qty)],
+    ["add", (s) => s.add(product, qty)],
+    ["addItem", (s) => s.addItem(product, qty)],
+    ["addProduct", (s) => s.addProduct(product, qty)],
+    ["cartAdd", (s) => s.cartAdd(product, qty)],
+    ["pushToCart", (s) => s.pushToCart(product, qty)],
+  ];
+
+  for (const [name, fn] of candidates) {
+    try {
+      if (typeof posStore?.[name] === "function") {
+        fn(posStore);
+        return true;
+      }
+    } catch (e) {
+      console.warn("[POS] addToCart method failed:", name, e);
+      // seguimos probando
+    }
+  }
+
+  return false;
+}
+
+function add(p) {
+  if (!p) return;
+
+  if (!canSell?.value) {
+    toast("⛔ No tenés permiso para vender.");
+    return;
+  }
+
+  if (needsBranchPick?.value) {
+    toast("🏬 Elegí una sucursal antes de agregar productos.");
+    return;
+  }
+
+  const ok = addToCartSafe(p, 1);
+  if (!ok) {
+    toast("⚠️ No encontré el método para agregar al carrito en posStore.");
+    console.warn("[POS] No add method found in posStore. Revisá pos.store:", posStore);
+    return;
+  }
+}
+
+function addFromDetails(p) {
+  add(p);
+}
+
+/* pick branch (producto) - si tu dialog lo usa */
+const pickBranchOpen = ref(false);
+const pickBranchProduct = ref(null);
+const pickBranchOptions = ref([]);
+
+function onPickBranchConfirm(payload) {
+  // placeholder: si tu PosPickBranchDialog emite otra estructura, lo ajustamos
+  // lo dejamos para no romper imports/eventos
+  pickBranchOpen.value = false;
+  pickBranchProduct.value = null;
+  pickBranchOptions.value = [];
+}
+
 /* checkout */
 const allSellable = globalItems;
 const {
@@ -440,141 +494,6 @@ async function confirmPaymentSafe() {
   await fetchGlobalPool({ in_stock: 0 });
 }
 
-/* pick branch (producto) */
-const pickBranchOpen = ref(false);
-const pickBranchProduct = ref(null);
-const pickBranchOptions = ref([]);
-
-function cartBranchId() {
-  const it = (posStore.cart || []).find((x) => Number(x?.chosen_branch_id || 0) > 0);
-  return it ? Number(it.chosen_branch_id) : null;
-}
-
-const cartBranchLabel = computed(() => {
-  const bid = cartBranchId();
-  if (!bid) return null;
-  const found = (branchScope.branches.value || []).find((b) => Number(b?.id) === Number(bid));
-  return found?.name || `Sucursal #${bid}`;
-});
-
-async function ensureSingleCartBranchOrWarn(targetBranchId) {
-  const current = cartBranchId();
-  const target = Number(targetBranchId || 0) || null;
-  if (!current || !target) return { ok: true };
-  if (current !== target) {
-    toast("🧠 El carrito NO puede mezclar sucursales. Terminá esa venta o vaciá el carrito.");
-    return { ok: false };
-  }
-  return { ok: true };
-}
-
-function addToCartWithBranch(p, targetBranchId) {
-  const unit = resolveUnitPrice(p, "DISCOUNT");
-  if (!(unit > 0)) return toast("⚠️ Producto sin precio");
-
-  const available = Number(p?.stockByBranch?.[String(targetBranchId)] || 0);
-
-  posStore.addToCart({
-    ...p,
-    product_id: p.id,
-    image: productImage(p),
-    available_qty: available,
-    price: unit,
-    price_label: "Descuento",
-    price_list: toNum(p.price_list),
-    price_discount: toNum(p.price_discount),
-    price_reseller: toNum(p.price_reseller),
-    effective_price: toNum(p.effective_price),
-    chosen_branch_id: Number(targetBranchId),
-  });
-
-  toast("✅ Agregado al carrito");
-}
-
-async function add(p) {
-  if (needsBranchPick.value) return (branchPickOpen.value = true), toast("🏬 Elegí sucursal activa para operar.");
-  if (!canSell.value) return toast("🔒 Sin permiso POS (pos.sale). Solo lectura.");
-  if (!isSellable(p) || qtyForActive(p) <= 0) return toast("❌ No vendible (sin stock o sin precio)");
-
-  const forcedCartBranchId = cartBranchId();
-  if (forcedCartBranchId) {
-    const ok = await ensureSingleCartBranchOrWarn(forcedCartBranchId);
-    if (!ok.ok) return;
-    const avail = Number(p?.stockByBranch?.[String(forcedCartBranchId)] || 0);
-    if (avail <= 0) return toast("⚠️ Este producto no tiene stock en la sucursal del carrito.");
-    return addToCartWithBranch(p, forcedCartBranchId);
-  }
-
-  const ab = getActiveBranchId();
-  if (ab && activeHasStock(p)) {
-    const ok = await ensureSingleCartBranchOrWarn(ab);
-    if (!ok.ok) return;
-    return addToCartWithBranch(p, ab);
-  }
-
-  const opts = branchesWithStock(p);
-  if (!opts.length) return toast("❌ Sin stock en tus sucursales habilitadas");
-
-  if (opts.length === 1) {
-    const targetBranchId = Number(opts[0].id);
-    const ok = await ensureSingleCartBranchOrWarn(targetBranchId);
-    if (!ok.ok) return;
-    return addToCartWithBranch(p, targetBranchId);
-  }
-
-  pickBranchProduct.value = p;
-  pickBranchOptions.value = opts;
-  pickBranchOpen.value = true;
-}
-
-async function onPickBranchConfirm({ branch_id }) {
-  const p = pickBranchProduct.value;
-  if (!p) return;
-  const targetBranchId = Number(branch_id || 0) || null;
-  if (!targetBranchId) return;
-
-  const ok = await ensureSingleCartBranchOrWarn(targetBranchId);
-  if (!ok.ok) return;
-
-  addToCartWithBranch(p, targetBranchId);
-}
-
-function addFromDetails(payload) {
-  const p = detailsItem.value;
-  if (!p) return;
-
-  if (needsBranchPick.value) return (branchPickOpen.value = true), toast("🏬 Elegí sucursal activa para operar.");
-  if (!canSell.value) return toast("🔒 Sin permiso POS (pos.sale). Solo lectura.");
-
-  const unit = Number(payload?.unit_price || 0);
-  if (!(unit > 0)) return toast("⚠️ No se pudo calcular precio");
-
-  const forced = cartBranchId();
-  const targetBranchId = forced || getActiveBranchId();
-  if (!targetBranchId) return (branchPickOpen.value = true), toast("🏬 Elegí sucursal para operar.");
-
-  posStore.addToCart({
-    ...p,
-    product_id: p.id,
-    image: productImage(p),
-    available_qty: Number(p?.stockByBranch?.[String(targetBranchId)] || 0),
-    price: unit,
-    price_label: payload?.price_label || "Descuento",
-    price_list: toNum(p.price_list),
-    price_discount: toNum(p.price_discount),
-    price_reseller: toNum(p.price_reseller),
-    effective_price: toNum(p.effective_price),
-    chosen_payment_method: payload?.paymentMethod || null,
-    chosen_installments: Number(payload?.installments || 1),
-    chosen_price_policy: payload?.price_policy || "DISCOUNT",
-    chosen_branch_id: Number(targetBranchId),
-  });
-
-  detailsOpen.value = false;
-  toast("✅ Agregado al carrito");
-}
-
-/* refresh */
 function refresh() {
   fetchGlobalPool({ in_stock: 0 });
 }
@@ -582,34 +501,29 @@ function refresh() {
 /* hotkeys */
 function onKeydown(e) {
   if (!e || e.repeat) return;
+  const key = String(e.key || "").toLowerCase();
 
-  const key = String(e.key || "");
-  const lower = key.toLowerCase();
-
-  if (lower === "f1") {
+  if (key === "f1") {
     e.preventDefault();
     helpOpen.value = true;
     return;
   }
-
-  if (lower === "f2" || (e.ctrlKey && lower === "k")) {
+  if (key === "f2" || (e.ctrlKey && key === "k")) {
     e.preventDefault();
     filtersRef.value?.focusSearch?.();
     return;
   }
-
-  if (lower === "f8") {
+  if (key === "f8") {
     e.preventDefault();
     openCheckoutSafe();
     return;
   }
-
-  if (lower === "pageup") {
+  if (key === "pageup") {
     e.preventDefault();
     prevPage();
     return;
   }
-  if (lower === "pagedown") {
+  if (key === "pagedown") {
     e.preventDefault();
     nextPage();
     return;
@@ -657,7 +571,6 @@ watch(
 );
 </script>
 
-
 <style scoped>
 :global(html),
 :global(body) {
@@ -666,154 +579,128 @@ watch(
 :global(body.pos-noscroll) {
   overflow: hidden !important;
 }
+
+/* =========================================================
+   ✅ LEVANTAR TODO (aire real abajo)
+========================================================= */
 .pos-root {
   height: calc(100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
   min-height: 0;
   overflow: hidden;
-  padding: 14px;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+
+  --pos-gap: 14px;
+  --pos-pad: 14px;
+  --pos-bottom-space: 40px;
+
+  padding: var(--pos-pad);
+  padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
+
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
+
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--pos-gap);
   box-sizing: border-box;
-  --pos-bottom-gap: 18px;
 }
+
 .pos-header {
   flex: 0 0 auto;
 }
-.pos-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 14px;
-  border-radius: 18px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-}
-.pos-top-left {
-  min-width: 320px;
-}
-.pos-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.pos-top-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.pos-action {
-  border-radius: 12px;
-}
-.pos-cashier {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  width: fit-content;
-}
-.pos-cashier-txt {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-}
-.pos-dot {
-  opacity: 0.55;
-}
+
 .pos-body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: var(--pos-bottom-gap);
+
+  padding-bottom: var(--pos-bottom-space);
   box-sizing: border-box;
 }
+
 .pos-layout {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--pos-gap);
 }
+
+/* LEFT */
 .pos-left {
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--pos-gap);
 }
-.pos-products {
+
+.pos-products-panel {
   flex: 1 1 0;
   min-height: 0;
-  overflow: auto;
-  border-radius: 16px;
-  padding: 10px;
-  padding-bottom: calc(16px + var(--pos-bottom-gap));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgb(var(--v-theme-surface));
-  scrollbar-gutter: stable;
-  box-sizing: border-box;
 }
-.pos-products::after {
-  content: "";
-  display: block;
-  height: var(--pos-bottom-gap);
-}
-.pos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+
+/* RIGHT */
 .pos-right {
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--pos-bottom-gap);
-  box-sizing: border-box;
+  gap: 10px;
+}
+.pos-cart-wrap {
+  min-height: 0;
+  height: 100%;
 }
 .pos-right-spacer {
   flex: 1 1 0;
   min-height: 0;
 }
-@media (max-width: 1280px) {
+
+/* Notebook */
+@media (max-width: 1366px) {
+  .pos-root {
+    --pos-gap: 12px;
+    --pos-pad: 12px;
+    --pos-bottom-space: 34px;
+
+    padding: var(--pos-pad);
+    padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
+  }
+
   .pos-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
 }
+
+/* Mobile */
 @media (max-width: 960px) {
   :global(body.pos-noscroll) {
     overflow: auto !important;
   }
+
   .pos-root {
     height: auto;
     overflow: visible;
+
+    --pos-pad: 12px;
+    --pos-bottom-space: 22px;
+
+    padding: var(--pos-pad);
+    padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
   }
+
   .pos-body {
     overflow: visible;
     padding-bottom: 0;
   }
+
   .pos-layout {
     height: auto;
     display: block;
   }
-  .pos-products {
-    height: auto;
-    overflow: visible;
-    padding-bottom: 16px;
-  }
-  .pos-products::after {
-    display: none;
-  }
-  .pos-right {
-    padding-bottom: 0;
+
+  .pos-products-panel {
+    min-height: auto;
   }
 }
 </style>

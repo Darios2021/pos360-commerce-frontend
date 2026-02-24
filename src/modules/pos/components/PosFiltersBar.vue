@@ -11,7 +11,7 @@
             label="Buscar productos"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
-            density="comfortable"
+            density="compact"
             hide-details
             clearable
             :disabled="disabledAll"
@@ -32,7 +32,7 @@
             item-value="value"
             label="Rubro"
             variant="outlined"
-            density="comfortable"
+            density="compact"
             hide-details
             clearable
             :disabled="disabledAll"
@@ -49,7 +49,7 @@
             item-value="value"
             label="Subrubro"
             variant="outlined"
-            density="comfortable"
+            density="compact"
             hide-details
             clearable
             class="pf-field"
@@ -69,6 +69,7 @@
         <div class="pf-actions">
           <v-btn
             size="small"
+            density="compact"
             variant="tonal"
             class="pf-btn"
             @click="$emit('prev')"
@@ -80,6 +81,7 @@
 
           <v-btn
             size="small"
+            density="compact"
             variant="tonal"
             class="pf-btn"
             @click="$emit('next')"
@@ -209,14 +211,34 @@ defineExpose({ focusSearch });
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
+
+/* ✅ menos padding del card (antes 14px) */
 .pf-inner {
-  padding: 14px;
+  padding: 10px 12px;
 }
 
-/* inputs más “firmes” */
+/* ✅ menos aire vertical de la grilla */
+.pf-row {
+  margin: 0 !important;
+}
+.pf-row :deep(.v-col) {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+/* inputs compact firmes */
 .pf-field :deep(.v-field) {
   border-radius: 14px;
 }
+
+/* ✅ achica altura visual del campo */
+.pf-field :deep(.v-field__input) {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  min-height: 38px;
+  font-size: 13px;
+}
+
 .pf-field :deep(.v-field--focused) {
   box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.12);
 }
@@ -227,16 +249,23 @@ defineExpose({ focusSearch });
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 8px; /* ✅ menos alto */
   flex-wrap: wrap;
 }
+
 .pf-actions {
   display: flex;
   gap: 10px;
 }
+
+/* ✅ botones más compactos */
 .pf-btn {
   border-radius: 12px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12.5px;
 }
+
 .pf-dot {
   opacity: 0.55;
   margin: 0 6px;

@@ -3,13 +3,13 @@
 <template>
   <v-card class="cart-card" elevation="0">
     <!-- Header -->
-    <div class="cart-head px-4 py-3 d-flex justify-space-between align-center">
+    <div class="cart-head px-3 py-2 d-flex justify-space-between align-center">
       <div class="d-flex align-center ga-2">
-        <v-icon>mdi-cart</v-icon>
+        <v-icon size="18">mdi-cart</v-icon>
         <span class="cart-title">Carrito</span>
       </div>
 
-      <v-chip size="small" variant="tonal">
+      <v-chip class="cart-chip" size="small" variant="tonal">
         {{ totalItems }} ítems
       </v-chip>
     </div>
@@ -17,10 +17,10 @@
     <v-divider />
 
     <!-- Body -->
-    <div class="cart-body px-4 pt-3">
+    <div class="cart-body px-3 pt-2">
       <div v-if="(cart || []).length === 0" class="empty">
         <div class="empty-box">
-          <v-icon size="58" class="mb-2">mdi-cart-off</v-icon>
+          <v-icon size="46" class="mb-1">mdi-cart-off</v-icon>
           <div class="empty-title">Carrito vacío</div>
           <div class="empty-sub">Agregá productos desde la lista (doble click o “+”).</div>
         </div>
@@ -28,7 +28,6 @@
 
       <div v-else class="cart-items">
         <div v-for="it in cart" :key="itKey(it)" class="cart-item">
-          <!-- TOP: name + line total -->
           <div class="item-top">
             <div class="item-name" :title="it?.name || ''">
               {{ it?.name || "—" }}
@@ -39,18 +38,17 @@
             </div>
           </div>
 
-          <!-- MID: unit + stock -->
           <div class="item-mid">
             <span class="unit-price">{{ money(it.price) }}</span>
             <span class="unit-suffix">c/u</span>
             <span v-if="stockText(it)" class="stock-hint">· {{ stockText(it) }}</span>
           </div>
 
-          <!-- BOT: qty controls -->
           <div class="item-bot">
             <v-btn
               class="qty-btn"
               size="small"
+              density="compact"
               variant="tonal"
               icon="mdi-minus"
               :disabled="!canEdit"
@@ -72,6 +70,7 @@
             <v-btn
               class="qty-btn"
               size="small"
+              density="compact"
               variant="tonal"
               icon="mdi-plus"
               :disabled="!canEdit || isIncDisabled(it)"
@@ -83,6 +82,7 @@
             <v-btn
               class="trash-btn"
               size="small"
+              density="compact"
               variant="tonal"
               icon="mdi-trash-can-outline"
               color="red"
@@ -92,13 +92,12 @@
           </div>
         </div>
 
-        <!-- aire abajo para que no parezca cortado con el sticky footer -->
         <div class="cart-bottom-gap" />
       </div>
     </div>
 
-    <!-- Footer (sticky visual) -->
-    <div class="cart-foot px-4 py-3">
+    <!-- Footer -->
+    <div class="cart-foot px-3 py-2">
       <div class="total-row">
         <span class="total-label">Total</span>
         <span class="total-amt">{{ money(total) }}</span>
@@ -107,7 +106,7 @@
       <v-btn
         block
         color="primary"
-        class="mt-3 pay-btn"
+        class="mt-2 pay-btn"
         :disabled="(cart || []).length === 0 || !canEdit"
         @click="$emit('checkout')"
       >
@@ -119,7 +118,6 @@
       </div>
     </div>
 
-    <!-- Snack -->
     <v-snackbar v-model="snack.show" :timeout="2400">
       {{ snack.text }}
     </v-snackbar>
@@ -139,9 +137,6 @@ const props = defineProps({
 
 defineEmits(["checkout"]);
 
-/* =========================
-   Helpers
-========================= */
 function toNum(v) {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -175,9 +170,7 @@ function lineTotal(it) {
   return round3(toNum(it?.qty) * toNum(it?.price));
 }
 
-/* =========================
-   Stock helpers (MAX)
-========================= */
+/* stock helpers */
 function maxQtyForItem(it) {
   const candidates = [
     it?.available_qty,
@@ -212,9 +205,7 @@ function isIncDisabled(it) {
   return toNum(it?.qty) >= m - 0.0005;
 }
 
-/* =========================
-   Draft qty state
-========================= */
+/* Draft qty */
 const qtyDraft = reactive({});
 
 function syncDraftFromCart() {
@@ -235,9 +226,7 @@ watch(
   { deep: true, immediate: true }
 );
 
-/* =========================
-   Mutations (store or fallback)
-========================= */
+/* store mutations */
 function setQtyInStore(it, qty) {
   const store = props.posStore;
   const candidates = ["setQty", "updateQty", "setItemQty", "updateItemQty", "changeQty"];
@@ -271,18 +260,14 @@ function removeFromStore(it) {
   return true;
 }
 
-/* =========================
-   Snack
-========================= */
+/* snack */
 const snack = reactive({ show: false, text: "" });
 function toast(text) {
   snack.text = text;
   snack.show = true;
 }
 
-/* =========================
-   UI actions
-========================= */
+/* UI actions */
 function commit(it) {
   const k = itKey(it);
   let q = clampQtyMin(round3(parseQty(qtyDraft[k])));
@@ -336,92 +321,79 @@ function remove(it) {
 </script>
 
 <style scoped>
-/* =========================
-   CARD LAYOUT (llenar altura)
-========================= */
 .cart-card {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border-radius: 18px;
 
+  border-radius: 16px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgb(var(--v-theme-surface));
 
   display: flex;
   flex-direction: column;
 
-  /* 🔥 más sombra para destacar del fondo */
+  /* ✅ sombra más suave (menos “inflado”) */
   box-shadow:
-    0 10px 26px rgba(0,0,0,0.06),
-    0 26px 64px rgba(0,0,0,0.08);
+    0 6px 16px rgba(0,0,0,0.05),
+    0 16px 34px rgba(0,0,0,0.06);
 }
 
 .cart-title {
   font-weight: 950;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.2;
 }
 
-/* =========================
-   BODY SCROLL
-========================= */
+.cart-chip {
+  height: 26px !important;
+}
+
+/* BODY SCROLL */
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   scrollbar-gutter: stable;
 
-  padding-top: 14px !important;
-
-  /* Firefox */
+  padding-top: 10px !important;
   scrollbar-width: auto;
   scrollbar-color: rgba(0, 0, 0, 0.35) rgba(0, 0, 0, 0.06);
 }
-
-/* ✅ Scrollbar estándar (Webkit: Chrome/Edge) */
 .cart-body::-webkit-scrollbar {
-  width: 14px;
+  width: 12px;
 }
-
 .cart-body::-webkit-scrollbar-track {
   background: rgba(0,0,0,0.06);
   border-radius: 999px;
 }
-
 .cart-body::-webkit-scrollbar-thumb {
-  /* ✅ FIX CLAVE: Vuetify usa rgb(var(--v-theme-primary)) */
   background: rgba(var(--v-theme-primary), 0.55);
   border-radius: 999px;
   border: 3px solid rgba(0,0,0,0.06);
 }
-
 .cart-body::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--v-theme-primary), 0.85);
 }
 
-/* =========================
-   ITEMS
-========================= */
+/* ITEMS */
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px; /* ✅ menos separación */
 }
 
 .cart-item {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 16px;
-  padding: 12px 12px;
+  border-radius: 14px;
+  padding: 10px 10px; /* ✅ menos padding */
   background: rgba(var(--v-theme-on-surface), 0.02);
-
   transition: all 160ms ease;
 }
-
 .cart-item:hover {
-  border-color: rgba(var(--v-theme-primary), 0.30);
-  background: rgba(var(--v-theme-primary), 0.05);
-  box-shadow: 0 10px 24px rgba(var(--v-theme-primary), 0.14);
+  border-color: rgba(var(--v-theme-primary), 0.26);
+  background: rgba(var(--v-theme-primary), 0.04);
+  box-shadow: 0 10px 20px rgba(var(--v-theme-primary), 0.10);
 }
 
 .item-top {
@@ -430,18 +402,15 @@ function remove(it) {
   justify-content: space-between;
   gap: 10px;
 }
-
 .item-name {
   min-width: 0;
   font-weight: 950;
   font-size: 12.5px;
   line-height: 1.2;
-
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .item-total {
   flex: 0 0 auto;
   font-weight: 1000;
@@ -450,78 +419,69 @@ function remove(it) {
 }
 
 .item-mid {
-  margin-top: 6px;
+  margin-top: 5px;
   display: flex;
   gap: 6px;
   align-items: baseline;
   flex-wrap: wrap;
   color: rgba(var(--v-theme-on-surface), 0.70);
 }
-
 .unit-price {
   font-size: 12px;
   font-weight: 800;
 }
-.unit-suffix {
-  font-size: 11px;
-  opacity: 0.75;
-}
+.unit-suffix,
 .stock-hint {
   font-size: 11px;
   opacity: 0.75;
 }
 
-/* BOT controls: grid para que nunca “se rompa” */
+/* BOT controls */
 .item-bot {
-  margin-top: 10px;
+  margin-top: 8px;
   display: grid;
-  grid-template-columns: 40px 96px 40px 1fr 40px;
+  grid-template-columns: 36px 90px 36px 1fr 36px; /* ✅ más chico */
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-
 .bot-spacer {
   min-width: 0;
 }
 
-/* botones más “tocables” */
+/* botones más chicos */
 .qty-btn {
   border-radius: 999px !important;
-  width: 40px !important;
-  height: 40px !important;
+  width: 36px !important;
+  height: 36px !important;
+}
+.trash-btn {
+  border-radius: 12px !important;
+  width: 36px !important;
+  height: 36px !important;
 }
 
 .qty-input {
-  width: 96px;
+  width: 90px;
 }
 .qty-input :deep(.v-field__input) {
   padding-top: 6px;
   padding-bottom: 6px;
-  min-height: 40px;
+  min-height: 36px;
   text-align: center;
   font-weight: 1000;
   font-size: 13px;
 }
 
-.trash-btn {
-  border-radius: 12px !important;
-  width: 40px !important;
-  height: 40px !important;
-}
-
 .cart-bottom-gap {
-  height: 18px;
+  height: 12px;
 }
 
-/* =========================
-   FOOTER (siempre visible)
-========================= */
+/* FOOTER */
 .cart-foot {
   flex: 0 0 auto;
   background: rgb(var(--v-theme-surface));
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-
-  box-shadow: 0 -10px 24px rgba(0,0,0,0.06);
+  box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
 }
 
 .total-row {
@@ -530,34 +490,31 @@ function remove(it) {
   align-items: baseline;
   gap: 12px;
 }
-
 .total-label {
   font-weight: 950;
-  font-size: 15px;
+  font-size: 14px; /* ✅ menos */
 }
 .total-amt {
-  font-size: 20px;
+  font-size: 18px; /* ✅ menos */
   font-weight: 1000;
   white-space: nowrap;
 }
 
 .pay-btn {
-  height: 44px;
+  height: 38px; /* ✅ menos */
   border-radius: 14px;
   font-weight: 950;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
 }
 
-/* =========================
-   EMPTY
-========================= */
+/* EMPTY */
 .empty {
-  padding: 8px 0 14px;
+  padding: 6px 0 10px;
 }
 .empty-box {
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: 14px;
+  padding: 12px; /* ✅ menos */
   background: rgba(var(--v-theme-on-surface), 0.02);
   text-align: center;
 }
@@ -574,7 +531,7 @@ function remove(it) {
 /* responsive */
 @media (max-width: 420px) {
   .item-bot {
-    grid-template-columns: 40px 1fr 40px;
+    grid-template-columns: 36px 1fr 36px;
     grid-auto-rows: auto;
   }
   .qty-input {

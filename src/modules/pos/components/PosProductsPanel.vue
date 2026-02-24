@@ -1,222 +1,147 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/PosProductsPanel.vue -->
 <template>
-  <div class="pos-products-panel">
-    <v-card class="rounded-xl pos-toolbar pos-surface" elevation="1">
-      <v-card-text class="py-3">
-        <v-row dense class="align-center">
-          <v-col cols="12" md="6">
-            <v-text-field
-              ref="searchRef"
-              :model-value="q"
-              @update:model-value="$emit('update:q', $event)"
-              label="Buscar productos"
-              placeholder="Nombre / SKU / Código / Barcode / Marca / Modelo"
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              @keyup.enter="$emit('search')"
-              @click:clear="$emit('clear')"
-            />
-          </v-col>
+  <v-card class="pp-card" elevation="0">
+    <!-- HEADER (súper sutil, SIN texto, SIN botones) -->
+    <div class="pp-head" />
 
-          <v-col cols="12" sm="6" md="3">
-            <v-select
-              ref="rubroRef"
-              :model-value="rubroId"
-              @update:model-value="$emit('update:rubroId', $event)"
-              :items="rubroItems"
-              item-title="title"
-              item-value="value"
-              label="Rubro"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              no-data-text="No hay rubros"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" md="3">
-            <v-select
-              ref="subrubroRef"
-              :model-value="subrubroId"
-              @update:model-value="$emit('update:subrubroId', $event)"
-              :items="subrubroItems"
-              item-title="title"
-              item-value="value"
-              label="Subrubro"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              :disabled="!rubroId || subrubroItems.length === 0"
-              no-data-text="No hay subrubros"
-            />
-          </v-col>
-        </v-row>
-
-        <div class="d-flex justify-space-between flex-wrap ga-2 mt-2">
-          <div class="text-caption text-medium-emphasis">
-            Mostrando {{ shown }} de {{ total }}
-          </div>
-
-          <div class="d-flex ga-2">
-            <v-btn size="small" variant="tonal" @click="$emit('prev')" :disabled="page <= 1">
-              <v-icon start>mdi-chevron-left</v-icon>
-              Anterior
-            </v-btn>
-            <v-btn size="small" variant="tonal" @click="$emit('next')" :disabled="page >= pages">
-              Siguiente
-              <v-icon end>mdi-chevron-right</v-icon>
-            </v-btn>
-          </div>
-        </div>
-      </v-card-text>
-    </v-card>
-
-    <!-- ✅ LISTA: ocupa el resto del alto y scrollea adentro -->
-    <div class="pos-products mt-3 pos-surface">
-      <div v-if="loading" class="d-flex justify-center align-center py-12">
+    <!-- BODY (scrollea adentro) -->
+    <div class="pp-body">
+      <div v-if="loading" class="d-flex justify-center align-center py-10">
         <v-progress-circular indeterminate />
       </div>
 
-      <v-row v-else dense class="pos-grid">
-        <!-- ✅ Más columnas + cards compactas -->
-        <v-col
-          v-for="p in items"
-          :key="p.id"
-          cols="4"
-          sm="3"
-          md="2"
-          lg="2"
-          xl="1"
-          class="pos-col"
-        >
-          <PosProductCard
-            :item="p"
-            :image="productImage(p) || ''"
-            :rubro-label="rubroName(p) || ''"
-            :subrubro-label="subrubroName(p) || ''"
-            :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
-            :price-list="resolveUnitPrice(p, 'LIST')"
-            price-label="Descuento"
-            @add="$emit('add', p)"
-            @details="$emit('details', p)"
-          />
-        </v-col>
-      </v-row>
+      <div v-else>
+        <div v-if="items.length" class="pp-items">
+          <!-- acá adentro renderizás tus PosProductRow desde el padre -->
+          <slot />
 
-      <div v-if="!loading && items.length === 0" class="text-center py-12 text-medium-emphasis">
-        <v-icon size="56" class="mb-2">mdi-text-box-search-outline</v-icon>
-        <div class="text-h6">No se encontraron productos listos para vender</div>
-        <div class="text-caption">Solo se muestran productos con stock y precio &gt; 0.</div>
+          <!-- ✅ GAP REAL para que el último row no se pegue al footer -->
+          <div class="pp-bottom-gap" />
+        </div>
+
+        <div v-else class="pp-empty text-center py-10 text-medium-emphasis">
+          <v-icon size="52" class="mb-2">mdi-text-box-search-outline</v-icon>
+          <div class="text-h6">No se encontraron productos</div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- FOOTER (súper sutil, SIN texto, pero con AIRE real abajo) -->
+    <div class="pp-foot" />
+  </v-card>
 </template>
 
 <script setup>
-import { ref, defineExpose } from "vue";
-import PosProductCard from "./PosProductCard.vue";
-
 defineProps({
-  q: { type: String, default: "" },
-  rubroId: { type: [Number, String], default: null },
-  subrubroId: { type: [Number, String], default: null },
-  rubroItems: { type: Array, default: () => [] },
-  subrubroItems: { type: Array, default: () => [] },
-  items: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  shown: { type: Number, default: 0 },
-  total: { type: Number, default: 0 },
-  page: { type: Number, default: 1 },
-  pages: { type: Number, default: 1 },
-
-  productImage: { type: Function, required: true },
-  resolveUnitPrice: { type: Function, required: true },
-  rubroName: { type: Function, required: true },
-  subrubroName: { type: Function, required: true },
+  items: { type: Array, default: () => [] },
 });
-
-defineEmits([
-  "update:q",
-  "update:rubroId",
-  "update:subrubroId",
-  "search",
-  "clear",
-  "prev",
-  "next",
-  "add",
-  "details",
-]);
-
-const searchRef = ref(null);
-const rubroRef = ref(null);
-const subrubroRef = ref(null);
-
-function focusSearch() {
-  const comp = searchRef.value;
-  if (!comp) return;
-  if (typeof comp.focus === "function") return comp.focus();
-  const el = comp?.$el || comp;
-  el?.querySelector?.("input")?.focus?.();
-}
-
-defineExpose({ focusSearch, searchRef, rubroRef, subrubroRef });
 </script>
 
 <style scoped>
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-}
+/* =========================
+   Base: header fijo + body scroll + footer fijo
+========================= */
+.pp-card {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 
-/* ✅ CRÍTICO: hace que el panel sea "alto fijo" y el scroll quede adentro */
-.pos-products-panel {
+  border-radius: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  background: rgb(var(--v-theme-surface));
+
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  height: calc(100vh - 160px); /* ajusta si tu top ocupa más/menos */
+
+  box-shadow:
+    0 6px 16px rgba(0,0,0,0.05),
+    0 16px 34px rgba(0,0,0,0.06);
 }
 
-/* toolbar no scrollea */
-.pos-toolbar {
+/* =========================
+   HEADER ultra sutil (sin texto)
+========================= */
+.pp-head {
   flex: 0 0 auto;
-  position: sticky;
-  top: 12px;
-  z-index: 3;
+  height: 10px;
+
+  background: rgba(var(--v-theme-on-surface), 0.01);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-/* lista ocupa el resto */
-.pos-products {
+/* =========================
+   BODY scroll
+========================= */
+.pp-body {
   flex: 1 1 auto;
   min-height: 0;
-  border-radius: 16px;
-  padding: 8px;
   overflow: auto;
   scrollbar-gutter: stable;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+
+  padding: 10px 10px 0 10px;
+
+  /* Firefox */
+  scrollbar-width: auto;
+  scrollbar-color: rgba(0, 0, 0, 0.35) rgba(0, 0, 0, 0.06);
 }
 
-/* más compacto */
-.pos-col {
-  padding: 4px !important;
+/* Webkit */
+.pp-body::-webkit-scrollbar {
+  width: 12px;
+}
+.pp-body::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.06);
+  border-radius: 999px;
+}
+.pp-body::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-primary), 0.55);
+  border-radius: 999px;
+  border: 3px solid rgba(0,0,0,0.06);
+}
+.pp-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-primary), 0.85);
 }
 
+.pp-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ✅ ESTE es el aire final “real” (suma: footer + safe-area) */
+.pp-bottom-gap {
+  height: calc(var(--pp-foot-h, 28px) + env(safe-area-inset-bottom, 0px) + 20px);
+}
+
+.pp-empty {
+  padding-bottom: 24px;
+}
+
+/* =========================
+   FOOTER sutil (sin texto) + aire abajo (safe-area)
+========================= */
+.pp-foot {
+  --pp-foot-h: 28px;
+
+  flex: 0 0 auto;
+  height: calc(var(--pp-foot-h) + env(safe-area-inset-bottom, 0px));
+
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+
+  /* sombra hacia arriba MUY suave */
+  box-shadow: 0 -14px 22px rgba(0,0,0,0.05);
+}
+
+/* Mobile: un poquito más de aire */
 @media (max-width: 960px) {
-  .pos-products-panel {
-    height: auto;
-    min-height: auto;
+  .pp-foot {
+    --pp-foot-h: 32px;
   }
-  .pos-toolbar {
-    position: relative;
-    top: auto;
-  }
-  .pos-products {
-    overflow: visible;
+  .pp-head {
+    height: 8px;
   }
 }
 </style>
