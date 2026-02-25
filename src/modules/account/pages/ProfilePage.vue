@@ -348,10 +348,24 @@ async function uploadAvatar() {
     const data = r?.data?.data || r?.data || {};
     Object.assign(me, data);
 
-    // IMPORTANTÍSIMO: guardar en auth store para que el menú lo vea
-    auth.setUser?.(data);
+    // ✅ 1) No pises el user con un objeto incompleto: merge con el actual
+    const currentUser = auth.user || {};
+    const mergedUser = { ...currentUser, ...data };
 
-    // cache-bust + reset file
+    // ✅ 2) Actualiza store
+    auth.setUser?.(mergedUser);
+
+    // ✅ 3) Persistí en localStorage (AppShell lee loadAuth() con KEY pos360_auth)
+    try {
+      const stored = loadAuth() || {};
+      const storedUser = stored.user || stored.profile || {};
+      saveAuth({
+        ...stored,
+        user: { ...storedUser, ...data, ...mergedUser },
+      });
+    } catch {}
+
+    // ✅ cache-bust + reset file
     avatarBuster.value = Date.now();
     avatarFile.value = null;
     avatarHint.value = "";

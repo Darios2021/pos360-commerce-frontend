@@ -1,7 +1,11 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/auth.store.js
 import { defineStore } from "pinia";
 import http from "../api/http";
 import { loadAuth, saveAuth, clearAuth } from "../utils/storage";
+
+// ✅ para hidratar avatar (y datos completos) post-login
+import { MeService } from "../services/me.service";
 
 const AUTH_DEBUG =
   String(import.meta?.env?.VITE_AUTH_DEBUG ?? "").toLowerCase() === "true" ||
@@ -216,11 +220,28 @@ export const useAuthStore = defineStore("auth", {
         this.setUser(u);
         this.status = "authed";
       } catch (e) {
-        this.error =
-          e?.response?.data?.message ||
-          e?.message ||
-          "FETCH_ME_FAILED";
+        this.error = e?.response?.data?.message || e?.message || "FETCH_ME_FAILED";
         adbg("fetchMe ERROR", this.error);
+      }
+    },
+
+    // ✅ NUEVO: hidrata "me" (incluye avatar_url) al loguear
+    async hydrateMeAfterLogin() {
+      try {
+        const r = await MeService.getMe();
+        const me = r?.data?.data || r?.data || {};
+        if (!me || typeof me !== "object") return;
+
+        // merge seguro (protege branches + avatar)
+        this.setUser(me);
+
+        adbg("hydrateMeAfterLogin OK", {
+          email: this.user?.email,
+          avatar: pickAvatar(this.user),
+        });
+      } catch (e) {
+        // no rompe login
+        adbg("hydrateMeAfterLogin FAIL (ignored)", e?.message || e);
       }
     },
 
@@ -252,6 +273,10 @@ export const useAuthStore = defineStore("auth", {
         branches_len: this.branches.length,
       });
 
+      // ✅ FIX: al iniciar sesión, traer /me real (avatar_url) y persistir
+      await this.hydrateMeAfterLogin();
+
+      // ✅ mantener tu fetchMe (admin compat) sin romper nada
       await this.fetchMe();
     },
 
