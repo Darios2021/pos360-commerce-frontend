@@ -1,11 +1,13 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
-<!-- ✅ FIX DEFINITIVO:
-     - Stock por sucursal usa el MISMO flujo que tu ProductStockBranchesPanel:
-       products.fetchBranchesMatrix(productId)
-     - Elimina tryGet / endpoints inventados (evita 404 en consola)
-     - Muestra tabla con stock_qty por sucursal
-     - Si total stock == 0, muestra aviso “sin stock en ninguna sucursal”
+<!-- ✅ FIX DEFINITIVO + DARK MODE (PROLIJO):
+     - Mantiene TODO el flujo (fetchBranchesMatrix) tal cual
+     - ✅ Mejora visual en modo oscuro:
+       * Fondo + cards con “surface” real (Vuetify vars)
+       * Bordes sutiles, separación, sombras suaves
+       * Tabla legible (thead, hover, divisores)
+       * Acciones a la derecha con mejor contraste
+       * Preview/label en “panel” con marco (sin romper el blanco de la etiqueta)
 -->
 
 <template>
@@ -335,14 +337,22 @@ watch(branchId, fetchProduct);
 </script>
 
 <style scoped>
-.pd { padding: 14px; }
+/* =========================
+   Base layout
+========================= */
+.pd {
+  padding: 14px;
+  min-height: calc(100vh - 72px);
+  color: rgb(var(--v-theme-on-background));
+  background: rgb(var(--v-theme-background));
+}
 
 .pd-loading {
   margin-top: 16px;
   display: flex;
   gap: 10px;
   align-items: center;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .pd-grid {
@@ -358,17 +368,19 @@ watch(branchId, fetchProduct);
 .pd-right {
   position: sticky;
   top: 12px;
+  min-width: 0;
 }
 
-.pd-actions { padding: 14px; }
-
-.pd-actions-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* =========================
+   Cards look (light + dark)
+========================= */
+.pd-card,
+.pd-actions {
+  padding: 14px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
 }
-
-.pd-card { padding: 14px; }
 
 .pd-card-head {
   display: flex;
@@ -377,7 +389,7 @@ watch(branchId, fetchProduct);
   margin-bottom: 10px;
 }
 
-.pd-card-title { font-weight: 900; }
+.pd-card-title { font-weight: 900; letter-spacing: .2px; }
 
 .pd-muted {
   opacity: 0.85;
@@ -385,14 +397,78 @@ watch(branchId, fetchProduct);
   line-height: 1.35;
 }
 
+/* =========================
+   Actions panel (right)
+========================= */
+.pd-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* botones full width prolijos */
+.pd-actions :deep(.v-btn) {
+  width: 100%;
+  justify-content: center;
+}
+
+/* =========================
+   Table styling (key en dark)
+========================= */
 .pd-table {
   border-radius: 12px;
   overflow: hidden;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
 }
 
-.pd-branch-name { font-weight: 900; }
-.pd-branch-meta { font-size: 12px; opacity: 0.7; }
+/* header */
+.pd-table :deep(thead tr) {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+.pd-table :deep(th) {
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
 
+/* rows */
+.pd-table :deep(tbody tr) {
+  background: transparent;
+}
+.pd-table :deep(tbody tr:hover) {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+.pd-table :deep(td) {
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+/* Branch cell */
+.pd-branch-name { font-weight: 900; }
+.pd-branch-meta { font-size: 12px; opacity: 0.72; }
+
+/* =========================
+   Preview panel fix (se vea “panel” y no pegado)
+   OJO: NO tocamos el blanco de la etiqueta, solo el contenedor
+========================= */
+.pd-right :deep(.plp-root),
+.pd-right :deep([data-comp="product-label-preview"]) {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+}
+
+/* si el componente no tiene wrapper identificable, al menos el primer v-card adentro */
+.pd-right :deep(.v-card) {
+  background: rgb(var(--v-theme-surface));
+}
+
+/* =========================
+   Responsive
+========================= */
 @media (max-width: 1200px) {
   .pd-grid { grid-template-columns: 1fr 380px; }
 }
@@ -402,6 +478,9 @@ watch(branchId, fetchProduct);
   .pd-right { position: static; }
 }
 
+/* =========================
+   Hidden A4 render
+========================= */
 .pd-hidden {
   position: fixed;
   left: -99999px;
@@ -413,6 +492,6 @@ watch(branchId, fetchProduct);
 .pd-a4-shell {
   width: 210mm;
   min-height: 297mm;
-  background: #fff;
+  background: #fff; /* A4 SIEMPRE blanco */
 }
 </style>

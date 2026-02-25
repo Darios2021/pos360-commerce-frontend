@@ -1,13 +1,5 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/app/layouts/AppShell.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO
-     FIXES:
-     - ✅ Línea sutil estilo ChatGPT: ahora SIEMPRE visible en Drawer (rail y normal)
-       usando :deep(.v-navigation-drawer__content) + inset shadow (no pseudo-element)
-     - ✅ Avatar persistente: reactividad con authTick + storage/focus + cache-bust
-       (si el backend devuelve misma URL, igual refresca)
-     - Header sigue PRIMARY, con línea sutil abajo
-     - Compatible con runtimeTheme.js (CSS vars Vuetify)
--->
 <template>
   <v-app>
     <v-layout>
@@ -125,15 +117,28 @@
         <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Navegación</div>
 
         <v-list nav density="comfortable">
-          <v-list-item :to="{ name: 'home' }" prepend-icon="mdi-view-dashboard-outline" title="Dashboard" exact>
+          <!-- ✅ NO prepend-icon: usamos #prepend para que el icono NO desaparezca -->
+          <v-list-item :to="{ name: 'home' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-view-dashboard-outline</v-icon>
+            </template>
+            <v-list-item-title>Dashboard</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'pos' }" prepend-icon="mdi-point-of-sale" title="Punto de Venta" exact>
+          <v-list-item :to="{ name: 'pos' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-point-of-sale</v-icon>
+            </template>
+            <v-list-item-title>Punto de Venta</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'posSales' }" prepend-icon="mdi-receipt-text-outline" title="Ventas" exact>
+          <v-list-item :to="{ name: 'posSales' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-receipt-text-outline</v-icon>
+            </template>
+            <v-list-item-title>Ventas</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
           </v-list-item>
 
@@ -141,11 +146,19 @@
 
           <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Gestión</div>
 
-          <v-list-item :to="{ name: 'products' }" prepend-icon="mdi-package-variant-closed" title="Productos" exact>
+          <v-list-item :to="{ name: 'products' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-package-variant-closed</v-icon>
+            </template>
+            <v-list-item-title>Productos</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'productsImport' }" prepend-icon="mdi-database-import-outline" title="Importar CSV" exact>
+          <v-list-item :to="{ name: 'productsImport' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-database-import-outline</v-icon>
+            </template>
+            <v-list-item-title>Importar CSV</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Importar CSV</v-tooltip>
           </v-list-item>
 
@@ -153,94 +166,133 @@
 
           <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Sistema</div>
 
-          <v-list-group v-if="showConfig" value="config" prepend-icon="mdi-cog-outline">
+          <!-- ✅ List group con icon manual -->
+          <v-list-group v-if="showConfig" value="config">
             <template #activator="{ props }">
-              <v-list-item v-bind="props" title="Configuración">
+              <v-list-item v-bind="props">
+                <template #prepend>
+                  <v-icon size="20">mdi-cog-outline</v-icon>
+                </template>
+                <v-list-item-title>Configuración</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Configuración</v-tooltip>
               </v-list-item>
             </template>
 
-            <v-list-item v-if="hasRoute('stock')" :to="{ name: 'stock' }" prepend-icon="mdi-warehouse" title="Stock" exact />
-            <v-list-item
-              v-if="isAdmin && hasRoute('inventory')"
-              :to="{ name: 'inventory' }"
-              prepend-icon="mdi-clipboard-list-outline"
-              title="Gestión de inventario"
-              exact
-            />
-            <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" prepend-icon="mdi-shape-outline" title="Categorías" exact />
+            <v-list-item v-if="hasRoute('stock')" :to="{ name: 'stock' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-warehouse</v-icon>
+              </template>
+              <v-list-item-title>Stock</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="isAdmin && hasRoute('inventory')" :to="{ name: 'inventory' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-clipboard-list-outline</v-icon>
+              </template>
+              <v-list-item-title>Gestión de inventario</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-shape-outline</v-icon>
+              </template>
+              <v-list-item-title>Categorías</v-list-item-title>
+            </v-list-item>
 
             <v-list-item
               v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
               :to="{ name: 'shopBranding' }"
-              prepend-icon="mdi-storefront-outline"
-              title="Tienda"
               exact
-            />
+            >
+              <template #prepend>
+                <v-icon size="20">mdi-storefront-outline</v-icon>
+              </template>
+              <v-list-item-title>Tienda</v-list-item-title>
+            </v-list-item>
 
-            <v-list-item
-              v-if="isAdmin && hasRoute('users')"
-              :to="{ name: 'users' }"
-              prepend-icon="mdi-account-multiple-outline"
-              title="Usuarios"
-              exact
-            />
+            <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-account-multiple-outline</v-icon>
+              </template>
+              <v-list-item-title>Usuarios</v-list-item-title>
+            </v-list-item>
           </v-list-group>
 
-          <v-list-group v-if="isAdmin && showShopMenu" value="shopAdmin" prepend-icon="mdi-storefront-outline">
+          <v-list-group v-if="isAdmin && showShopMenu" value="shopAdmin">
             <template #activator="{ props }">
-              <v-list-item v-bind="props" title="Tienda">
+              <v-list-item v-bind="props">
+                <template #prepend>
+                  <v-icon size="20">mdi-storefront-outline</v-icon>
+                </template>
+                <v-list-item-title>Tienda</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
               </v-list-item>
             </template>
 
-            <v-list-item v-if="hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" prepend-icon="mdi-palette-outline" title="Branding" exact />
-            <v-list-item v-if="hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" prepend-icon="mdi-receipt-text-outline" title="Pedidos" exact />
-            <v-list-item
-              v-if="hasRoute('shopOrdersSettings')"
-              :to="{ name: 'shopOrdersSettings' }"
-              prepend-icon="mdi-tune-variant"
-              title="Pedidos (config)"
-              exact
-            />
-            <v-list-item
-              v-if="hasRoute('shopShippingSettings')"
-              :to="{ name: 'shopShippingSettings' }"
-              prepend-icon="mdi-truck-delivery-outline"
-              title="Envíos"
-              exact
-            />
-            <v-list-item
-              v-if="hasRoute('shopPickupSettings')"
-              :to="{ name: 'shopPickupSettings' }"
-              prepend-icon="mdi-store-marker-outline"
-              title="Retiros"
-              exact
-            />
-            <v-list-item
-              v-if="hasRoute('shopPaymentsSettings')"
-              :to="{ name: 'shopPaymentsSettings' }"
-              prepend-icon="mdi-credit-card-outline"
-              title="Pagos"
-              exact
-            />
-            <v-list-item
-              v-if="hasRoute('shopNotificationsSettings')"
-              :to="{ name: 'shopNotificationsSettings' }"
-              prepend-icon="mdi-bell-outline"
-              title="Notificaciones"
-              exact
-            />
+            <v-list-item v-if="hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-palette-outline</v-icon>
+              </template>
+              <v-list-item-title>Branding</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-receipt-text-outline</v-icon>
+              </template>
+              <v-list-item-title>Pedidos</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopOrdersSettings')" :to="{ name: 'shopOrdersSettings' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-tune-variant</v-icon>
+              </template>
+              <v-list-item-title>Pedidos (config)</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopShippingSettings')" :to="{ name: 'shopShippingSettings' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-truck-delivery-outline</v-icon>
+              </template>
+              <v-list-item-title>Envíos</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopPickupSettings')" :to="{ name: 'shopPickupSettings' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-store-marker-outline</v-icon>
+              </template>
+              <v-list-item-title>Retiros</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-credit-card-outline</v-icon>
+              </template>
+              <v-list-item-title>Pagos</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('shopNotificationsSettings')" :to="{ name: 'shopNotificationsSettings' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-bell-outline</v-icon>
+              </template>
+              <v-list-item-title>Notificaciones</v-list-item-title>
+            </v-list-item>
 
             <v-divider class="my-2" />
-            <v-list-item v-if="hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" prepend-icon="mdi-link-variant" title="Links Tienda" exact />
-            <v-list-item
-              v-if="hasRoute('adminGaleriaMultimedia')"
-              :to="{ name: 'adminGaleriaMultimedia' }"
-              prepend-icon="mdi-image-multiple-outline"
-              title="Galería multimedia"
-              exact
-            />
+
+            <v-list-item v-if="hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-link-variant</v-icon>
+              </template>
+              <v-list-item-title>Links Tienda</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item v-if="hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-image-multiple-outline</v-icon>
+              </template>
+              <v-list-item-title>Galería multimedia</v-list-item-title>
+            </v-list-item>
           </v-list-group>
         </v-list>
 
@@ -342,8 +394,6 @@ const showShopMenu = computed(() => {
 
 /* =========================
    ✅ Avatar persistente (reactivo)
-   - authTick fuerza recompute cuando cambia storage o foco
-   - avatarVer fuerza refresh aunque la URL sea la misma (cache-bust)
 ========================= */
 const authTick = ref(0);
 const avatarVer = ref(Date.now());
@@ -355,7 +405,6 @@ function bumpAvatarVer() {
   avatarVer.value = Date.now();
 }
 
-/* cuando cambia avatar en store (si tu store se actualiza) */
 watch(
   () => auth.user?.avatar_url || auth.user?.avatarUrl || "",
   () => {
@@ -365,7 +414,6 @@ watch(
 );
 
 function pickUser() {
-  // 👇 authTick hace que esto se re-evalúe aunque loadAuth() no sea reactivo
   authTick.value;
   const u = auth.user || {};
   const stored = loadAuth?.() || {};
@@ -383,7 +431,6 @@ const userAvatarFinal = computed(() => {
   const raw = userAvatarRaw.value;
   if (!raw) return "";
   const join = raw.includes("?") ? "&" : "?";
-  // ✅ SIEMPRE refresca cuando bumpAvatarVer() corre (por ejemplo al volver al foco)
   return `${raw}${join}v=${avatarVer.value}`;
 });
 
@@ -419,7 +466,6 @@ const userRoleLabel = computed(() => {
   return roles?.[0] || "Usuario";
 });
 
-/* listeners: storage + focus/visibility (para que se actualice al volver de profile) */
 function onStorage() {
   bumpAuthTick();
   bumpAvatarVer();
@@ -447,7 +493,6 @@ onBeforeUnmount(() => {
   document.removeEventListener("visibilitychange", onVisibility);
 });
 
-/* ===== UI actions ===== */
 function toggleRail() {
   rail.value = !rail.value;
 }
@@ -480,19 +525,17 @@ function onLogout() {
 }
 
 /* =========================
-   Drawer: ✅ Línea sutil SIEMPRE visible
-   (rail y normal) con inset shadow en el CONTENT real
+   Drawer: línea sutil lateral SIEMPRE visible
 ========================= */
 .pos-drawer {
   border-right: none !important;
 }
 
-/* ESTA ES LA CLAVE: el content interno es el que “manda” */
 .pos-drawer :deep(.v-navigation-drawer__content) {
+  position: relative;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
 }
 
-/* si algún tema deja el blanco muy suave, esto le da un micro degradé */
 .pos-drawer :deep(.v-navigation-drawer__content)::after {
   content: "";
   position: absolute;
@@ -509,7 +552,143 @@ function onLogout() {
   );
 }
 
-/* contenido main */
+/* =========================
+   ✅ Drawer SIN cajas / SIN relieve / SIN focus ring
+========================= */
+.pos-drawer :deep(.v-list),
+.pos-drawer :deep(.v-list-item),
+.pos-drawer :deep(.v-list-item__content),
+.pos-drawer :deep(.v-list-item__overlay),
+.pos-drawer :deep(.v-list-item__underlay) {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.pos-drawer :deep(.v-list-item) {
+  position: relative;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.pos-drawer :deep(.v-list-item__overlay),
+.pos-drawer :deep(.v-list-item__underlay) {
+  opacity: 0 !important;
+}
+
+.pos-drawer :deep(.v-list-item:hover) {
+  background: transparent !important;
+}
+
+.pos-drawer :deep(.v-list-item--active),
+.pos-drawer :deep(.v-list-item--active:hover) {
+  background: transparent !important;
+}
+
+.pos-drawer :deep(.v-list-item--active)::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.pos-drawer :deep(.v-list-item--active .v-list-item-title),
+.pos-drawer :deep(.v-list-item--active .v-list-item__content) {
+  font-weight: 800 !important;
+}
+
+/* =========================
+   ✅ FIX: eliminar FOCUS RING rectangular
+========================= */
+.pos-drawer :deep(.v-list-item:focus),
+.pos-drawer :deep(.v-list-item:focus-visible),
+.pos-drawer :deep(.v-list-item--link:focus),
+.pos-drawer :deep(.v-list-item--link:focus-visible),
+.pos-drawer :deep(.v-list-group__header:focus),
+.pos-drawer :deep(.v-list-group__header:focus-visible),
+.pos-drawer :deep(a:focus),
+.pos-drawer :deep(a:focus-visible),
+.pos-drawer :deep(button:focus),
+.pos-drawer :deep(button:focus-visible),
+.pos-drawer :deep(.v-btn:focus),
+.pos-drawer :deep(.v-btn:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* =========================
+   ✅ ICONS: espacio correcto del prepend
+========================= */
+.pos-drawer :deep(.v-list-item__prepend) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 44px !important;
+  width: 44px !important;
+  margin-inline-end: 12px !important;
+}
+
+.pos-drawer :deep(.v-list-item__prepend > .v-icon) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* =========================
+   ✅ FIX: flechitas del v-list-group (append)
+========================= */
+.pos-drawer :deep(.v-list-group__header__append),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append),
+.pos-drawer :deep(.v-list-group__header .v-list-item-action),
+.pos-drawer :deep(.v-list-group__header .v-list-item-action__content) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  filter: none !important;
+}
+
+.pos-drawer :deep(.v-list-group__header__append .v-icon),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append .v-icon) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  filter: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.pos-drawer :deep(.v-list-group__header__append .v-btn__overlay),
+.pos-drawer :deep(.v-list-group__header__append .v-btn__underlay),
+.pos-drawer :deep(.v-list-group__header__append .v-list-item__overlay),
+.pos-drawer :deep(.v-list-group__header__append .v-list-item__underlay),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append .v-list-item__overlay),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append .v-list-item__underlay) {
+  opacity: 0 !important;
+}
+
+.pos-drawer :deep(.v-list-group__header__append::before),
+.pos-drawer :deep(.v-list-group__header__append::after),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append::before),
+.pos-drawer :deep(.v-list-group__header .v-list-item__append::after) {
+  content: none !important;
+  display: none !important;
+}
+
+/* =========================
+   Main
+========================= */
 .pos-main {
   background: rgb(var(--v-theme-background));
 }
@@ -521,7 +700,7 @@ function onLogout() {
 }
 
 /* =========================
-   Avatar: cover + ring sutil
+   Avatar
 ========================= */
 .pos-avatar-btn {
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -534,13 +713,11 @@ function onLogout() {
   overflow: hidden;
 }
 
-/* fuerza object-fit cover real */
 .avatar-img :deep(img) {
   object-fit: cover !important;
   object-position: center !important;
 }
 
-/* fallback iniciales */
 .avatar-fallback {
   display: inline-flex;
   width: 100%;
@@ -553,12 +730,51 @@ function onLogout() {
   text-transform: uppercase;
 }
 
-/* branding */
 .brand-avatar {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
 }
 
 .pos-account-card {
   overflow: hidden;
+}
+
+/* =========================
+   ✅ HEADER: sacar “cajita/sombra” SIN romper los iconos
+   - NO tocamos .v-icon global
+   - Solo aplastamos overlay/underlay/background del botón
+========================= */
+.pos-appbar :deep(.v-btn--icon),
+.pos-appbar :deep(.v-btn--icon .v-btn__content) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  filter: none !important;
+}
+
+/* mata overlays que pintan la cajita */
+.pos-appbar :deep(.v-btn--icon .v-btn__overlay),
+.pos-appbar :deep(.v-btn--icon .v-btn__underlay) {
+  opacity: 0 !important;
+}
+
+/* foco del navegador */
+.pos-appbar :deep(.v-btn--icon:focus),
+.pos-appbar :deep(.v-btn--icon:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ✅ Asegura que el icono SIEMPRE se vea */
+.pos-appbar :deep(.v-btn--icon .v-icon),
+.pos-appbar :deep(.v-btn--icon i),
+.pos-appbar :deep(.v-btn--icon svg) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-flex !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 </style>

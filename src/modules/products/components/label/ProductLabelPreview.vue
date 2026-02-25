@@ -7,12 +7,10 @@
       <v-chip size="small" variant="tonal" class="plp-chip">(sin foto)</v-chip>
     </div>
 
-    <!-- ✅ Preview grande -->
+    <!-- ✅ Preview -->
     <div class="plp-stage">
-      <div class="plp-sheet" :class="sheetClass">
-        <!-- contenedor que escala -->
+      <div class="plp-paper" :class="paperClass">
         <div class="plp-scale">
-          <!-- el contenido real (etiqueta) -->
           <component
             :is="labelComp"
             ref="printEl"
@@ -47,15 +45,17 @@ const printEl = ref(null);
 const printElRef = computed(() => printEl.value);
 
 const is58 = computed(() => String(props.size) === "58");
-
 const labelComp = computed(() => (is58.value ? ProductLabel58 : ProductLabel100));
-
-const sheetClass = computed(() => (is58.value ? "is-58" : "is-100"));
+const paperClass = computed(() => (is58.value ? "is-58" : "is-100"));
 </script>
 
 <style scoped>
+/* Card */
 .plp{
   padding: 12px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
 }
 
 .plp-head{
@@ -69,57 +69,48 @@ const sheetClass = computed(() => (is58.value ? "is-58" : "is-100"));
 .plp-title{
   font-weight: 900;
   font-size: 14px;
+  letter-spacing: .2px;
 }
 
 .plp-chip{ opacity:.9; }
 
-/* =========================
-   ✅ PREVIEW GRANDE PRO
-========================= */
+/* Fondo “stage” dark-friendly */
 .plp-stage{
   padding: 10px;
   border-radius: 14px;
-  background: rgba(0,0,0,.03);
+  background: rgba(var(--v-theme-on-surface), .06);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
-/* “hoja” blanca grande */
-.plp-sheet{
+/* “Papel” de etiqueta */
+.plp-paper{
   width: 100%;
+  aspect-ratio: 100 / 60;
   background: #fff;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid rgba(0,0,0,.10);
-  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+  box-shadow: 0 10px 22px rgba(0,0,0,.08);
   overflow: hidden;
 
-  /* ✅ alto grande (desktop) */
-  min-height: 340px;
-  max-height: 520px;
-
-  /* centra */
   display:flex;
   align-items:center;
   justify-content:center;
-  padding: 14px;
+
+  padding: 10px;
+  max-height: 320px;
 }
 
-/* mobile: un poco menos alto */
-@media (max-width: 900px){
-  .plp-sheet{
-    min-height: 260px;
-    max-height: 420px;
-    padding: 12px;
-  }
-}
-
-/* ✅ Mantener proporción real de etiqueta “canvas” */
-.plp-sheet.is-100{
-  aspect-ratio: 100 / 60;
-}
-.plp-sheet.is-58{
+.plp-paper.is-58{
   aspect-ratio: 58 / 40;
 }
 
-/* el wrapper escala el componente sin scrolls */
+@media (max-width: 900px){
+  .plp-paper{
+    padding: 8px;
+    max-height: 260px;
+  }
+}
+
 .plp-scale{
   width: 100%;
   height: 100%;
@@ -128,25 +119,45 @@ const sheetClass = computed(() => (is58.value ? "is-58" : "is-100"));
   justify-content:center;
 }
 
-/* La etiqueta se dibuja a “tamaño natural”,
-   y la hacemos entrar con transform si el label ya trae medidas fijas */
+/* el componente debe ocupar el “papel” */
 .plp-label{
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   transform-origin: center center;
-  max-width: 100%;
-  max-height: 100%;
 }
 
-/* ✅ si tus ProductLabelXX traen width/height fijos en px/mm,
-      los “encerramos” para que NO se desborde */
-.plp-scale :deep(.label),
-.plp-scale :deep([data-label]),
-.plp-scale :deep(.pl),
-.plp-scale :deep(.lbl){
-  max-width: 100%;
-  max-height: 100%;
+/* =========================================================
+   ✅ FIX CLAVE: EN DARK MODE el “on-surface” es claro (blanco)
+   y sobre papel blanco desaparece el texto.
+   => Forzamos “tinta” oscura SOLO dentro del papel.
+========================================================= */
+.plp-paper :deep(*){ 
+  color: #111 !important;
 }
 
-/* acciones abajo */
+/* si hay elementos que usan opacity baja, los levantamos un toque */
+.plp-paper :deep(.muted),
+.plp-paper :deep(.meta),
+.plp-paper :deep(.sub),
+.plp-paper :deep(small){
+  color: rgba(17,17,17,.78) !important;
+}
+
+/* SVG/iconos dentro de la etiqueta */
+.plp-paper :deep(svg){
+  fill: #111 !important;
+  stroke: #111 !important;
+}
+
+/* por las dudas: backgrounds internos del label */
+.plp-paper :deep(.bg),
+.plp-paper :deep([data-bg]){
+  background: transparent !important;
+}
+
+/* acciones */
 .plp-actions{
   margin-top: 10px;
 }
