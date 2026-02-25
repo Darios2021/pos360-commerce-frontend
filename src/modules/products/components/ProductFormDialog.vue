@@ -1,25 +1,27 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/ProductFormDialog.vue -->
-<!-- FIXES:
-  ✅ Stock UPDATE (EDIT): actualiza aunque NO venga current_qty (no bloquea)
-  ✅ Stock EDIT: si deshabilitás una sucursal => fuerza qty=0 (limpia stock viejo)
-  ✅ Stock CREATE: permite setear qty=0 si está habilitada
-  ✅ Mantiene tu flujo: stock/media se aplican recién al tocar CREAR/GUARDAR
+<!-- SKU AUTO (FIX “COMO DEBE SER”):
+  ✅ SKU se calcula “en serio” AL FINAL (Paso 5 / Resumen) porque ahí tiene sentido fijarlo:
+     - En CREATE todavía NO hay ID real → solo preview
+     - Al CREAR: se fija SKU definitivo con el ID real y se persiste con update
+  ✅ Mientras tanto, mostramos un preview (no lo “grabamos” en draft hasta el final)
+  ✅ Prefijo = iniciales (2 + 2) de Rubro + Subrubro (por nombre)
+  ✅ Sufijo = ID real (cuando existe) o nextCodePreview (preview)
 -->
 
 <template>
   <v-dialog
     v-model="openLocal"
-    :max-width="dialogMaxWidth"
-    :fullscreen="isMobile"
+    fullscreen
     persistent
     content-class="pf-overlay"
+    transition="dialog-bottom-transition"
   >
-    <v-card class="pf-card" rounded="xl">
+    <v-card class="pf-card" :rounded="mdAndUp ? '0' : '0'">
       <!-- HEADER -->
       <div class="pf-top">
-        <v-card-title class="pf-title d-flex align-center justify-space-between">
-          <div class="minw-0">
+        <div class="pf-appbar">
+          <div class="pf-appbar-left minw-0">
             <div class="pf-h1 text-truncate">
               {{ isEdit ? "Editar producto" : "Nuevo producto" }}
             </div>
@@ -28,15 +30,37 @@
             </div>
           </div>
 
-          <v-btn icon variant="text" @click="onCancel" :disabled="busy">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-card-title>
+          <div class="pf-appbar-right d-flex align-center ga-2">
+            <v-chip
+              v-if="step === 5"
+              :color="isReadyToCreate ? 'green' : 'grey'"
+              variant="tonal"
+              size="small"
+              class="pf-ready-chip"
+            >
+              {{ isReadyToCreate ? "Listo" : "Faltan datos" }}
+            </v-chip>
+
+            <v-btn icon variant="text" @click="onCancel" :disabled="busy" class="pf-close">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </div>
+        </div>
+
+        <div class="pf-progress">
+          <v-progress-linear
+            :model-value="(step / 5) * 100"
+            height="6"
+            rounded
+            color="primary"
+            bg-color="surface-variant"
+          />
+        </div>
 
         <v-divider />
 
         <!-- STEPPER -->
-        <div class="pf-stepper-head">
+        <div v-if="mdAndUp" class="pf-stepper-head">
           <v-stepper v-model="step" alt-labels class="pf-stepper" density="comfortable">
             <v-stepper-header>
               <v-stepper-item :value="1" title="Datos" subtitle="Obligatorio" />
@@ -52,6 +76,29 @@
           </v-stepper>
         </div>
 
+        <div v-else class="pf-stepper-mobile">
+          <v-slide-group show-arrows center-active class="pf-slide">
+            <v-slide-group-item v-for="s in steps" :key="s.value">
+              <v-chip
+                class="pf-stepchip"
+                :color="step === s.value ? 'primary' : undefined"
+                :variant="step === s.value ? 'flat' : 'tonal'"
+                size="small"
+                :disabled="!canGoTo(s.value)"
+                @click="goToStep(s.value)"
+              >
+                <span class="pf-stepchip-n">{{ s.value }}</span>
+                <span class="pf-stepchip-t">{{ s.title }}</span>
+              </v-chip>
+            </v-slide-group-item>
+          </v-slide-group>
+
+          <div class="pf-stephint text-caption text-medium-emphasis">
+            Paso <b>{{ step }}</b> de <b>5</b>
+            <span v-if="draft?.id"> · Producto <b>#{{ draft.id }}</b></span>
+          </div>
+        </div>
+
         <v-divider />
       </div>
 
@@ -60,6 +107,11 @@
         <div class="pf-pad">
           <!-- STEP 1 -->
           <div v-show="step === 1" class="pf-step">
+            <!-- ProductDataPanel debe renderizar SKU readonly, pero OJO:
+                 - El valor “oficial” se fija al final (Paso 5)
+                 - Igual podés mostrar el preview en el input (si ProductDataPanel usa draft.sku)
+                 👉 Por eso: acá NO pisamos draft.sku todavía, solo mostramos preview abajo
+            -->
             <ProductDataPanel v-model="draft" :disabled="busy" :product-id="draft?.id || null" />
 
             <div class="pf-meta mt-3 d-flex align-center flex-wrap ga-2">
@@ -68,6 +120,13 @@
                 · Código:
                 <b>{{ draft?.code || nextCodePreview || "—" }}</b>
                 <span v-if="!draft?.id && nextCodePreview" class="ml-1">(preview)</span>
+              </div>
+
+              <div>
+                · SKU auto (preview):
+                <b>{{ skuPreview || "—" }}</b>
+                <span v-if="skuPreviewHint" class="ml-1">({{ skuPreviewHint }})</span>
+                <span class="ml-2 text-medium-emphasis">(se fija al final)</span>
               </div>
 
               <v-btn
@@ -154,14 +213,12 @@
               </div>
             </div>
 
-            <!-- IMÁGENES (cola) -->
             <ProductImagesPanel
               :product-id="draft?.id || null"
               v-model="queuedImages"
               @changed="onQueuedChanged"
             />
 
-            <!-- VIDEOS (cola) -->
             <v-card class="pf-media-card mt-2" rounded="xl" variant="tonal">
               <div class="d-flex align-center justify-space-between flex-wrap ga-2">
                 <div class="d-flex align-center ga-2">
@@ -184,7 +241,6 @@
               <v-divider class="my-3" />
 
               <div class="pf-video-grid">
-                <!-- YouTube URL -->
                 <div>
                   <div class="text-subtitle-2 font-weight-bold mb-2">YouTube / Shorts (URL)</div>
 
@@ -237,7 +293,6 @@
                   </div>
                 </div>
 
-                <!-- Upload file -->
                 <div>
                   <div class="text-subtitle-2 font-weight-bold mb-2">Subir archivo (video/*)</div>
 
@@ -298,6 +353,8 @@
                 <div class="text-subtitle-1 font-weight-bold">Resumen final</div>
                 <div class="text-caption text-medium-emphasis">
                   Al tocar <b>{{ isEdit ? "GUARDAR" : "CREAR" }}</b> se registra el producto y se aplica stock/media.
+                  <br />
+                  El <b>SKU</b> se fija acá con el <b>ID real</b> cuando existe.
                 </div>
               </div>
 
@@ -321,7 +378,7 @@
 
                 <div class="pf-kv">
                   <div class="k">Nombre</div><div class="v">{{ safe(draft.name) }}</div>
-                  <div class="k">SKU</div><div class="v">{{ safe(draft.sku) }}</div>
+                  <div class="k">SKU</div><div class="v">{{ safe(finalSku) }}</div>
                   <div class="k">Rubro</div><div class="v">{{ safe(draft.category_id) }}</div>
                   <div class="k">Subrubro</div><div class="v">{{ safe(draft.subcategory_id) }}</div>
                   <div class="k">Marca</div><div class="v">{{ safe(draft.brand) }}</div>
@@ -384,24 +441,25 @@
       <div class="pf-footer">
         <v-divider />
         <v-card-actions class="pf-actions d-flex align-center justify-space-between">
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-caption text-medium-emphasis pf-footer-left">
             Paso <b>{{ step }}</b> de <b>5</b>
             <span v-if="draft?.id"> · Producto <b>#{{ draft.id }}</b></span>
           </div>
 
-          <div class="d-flex ga-2">
-            <v-btn variant="tonal" @click="prevStep" :disabled="busy || step === 1">
+          <div class="pf-footer-right d-flex ga-2">
+            <v-btn class="pf-btn" variant="tonal" @click="prevStep" :disabled="busy || step === 1">
               <v-icon start size="18">mdi-chevron-left</v-icon>
               ANTERIOR
             </v-btn>
 
-            <v-btn v-if="step < 5" color="primary" variant="flat" @click="nextStep" :disabled="busy">
+            <v-btn v-if="step < 5" class="pf-btn" color="primary" variant="flat" @click="nextStep" :disabled="busy">
               SIGUIENTE
               <v-icon end size="18">mdi-chevron-right</v-icon>
             </v-btn>
 
             <v-btn
               v-else
+              class="pf-btn"
               color="primary"
               variant="flat"
               @click="isEdit ? saveAll() : createAll()"
@@ -414,39 +472,41 @@
           </div>
         </v-card-actions>
       </div>
+
+      <!-- Snack -->
+      <v-snackbar v-model="snack.open" :timeout="2600" location="bottom right">
+        {{ snack.text }}
+        <template #actions>
+          <v-btn variant="text" @click="snack.open=false">OK</v-btn>
+        </template>
+      </v-snackbar>
+
+      <!-- Modal validación -->
+      <v-dialog v-model="vModal.open" max-width="520">
+        <v-card rounded="xl">
+          <v-card-title class="d-flex align-center ga-2">
+            <v-icon color="warning">mdi-alert-circle</v-icon>
+            <span class="font-weight-bold">Faltan datos obligatorios</span>
+          </v-card-title>
+          <v-card-text>
+            <div v-if="vModal.message" class="mb-2">{{ vModal.message }}</div>
+            <ul class="pf-ul">
+              <li v-for="(m, i) in vModal.items" :key="i">{{ m }}</li>
+            </ul>
+            <div class="text-caption text-medium-emphasis mt-3">
+              Completá lo indicado y volvé a intentar.
+            </div>
+          </v-card-text>
+          <v-card-actions class="justify-end">
+            <v-btn variant="flat" color="primary" @click="vModal.open=false">Entendido</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-card>
-
-    <!-- Snack -->
-    <v-snackbar v-model="snack.open" :timeout="2600" location="bottom right">
-      {{ snack.text }}
-      <template #actions>
-        <v-btn variant="text" @click="snack.open=false">OK</v-btn>
-      </template>
-    </v-snackbar>
-
-    <!-- Modal validación -->
-    <v-dialog v-model="vModal.open" max-width="520">
-      <v-card rounded="xl">
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="warning">mdi-alert-circle</v-icon>
-          <span class="font-weight-bold">Faltan datos obligatorios</span>
-        </v-card-title>
-        <v-card-text>
-          <div v-if="vModal.message" class="mb-2">{{ vModal.message }}</div>
-          <ul class="pf-ul">
-            <li v-for="(m, i) in vModal.items" :key="i">{{ m }}</li>
-          </ul>
-          <div class="text-caption text-medium-emphasis mt-3">
-            Completá lo indicado y volvé a intentar.
-          </div>
-        </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="flat" color="primary" @click="vModal.open=false">Entendido</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-dialog>
 </template>
+
+
 
 <script setup>
 import { computed, ref, watch } from "vue";
@@ -478,20 +538,32 @@ const openLocal = computed({
   set: (v) => emit("update:open", v),
 });
 
-const { smAndDown } = useDisplay();
+const { mdAndUp, smAndDown } = useDisplay();
 const isMobile = computed(() => !!smAndDown.value);
-const dialogMaxWidth = computed(() => (isMobile.value ? "100%" : 980));
 
 const step = ref(1);
 const nextCodePreview = ref(null);
 
-// stock + media queues
-const stockMatrix = ref([]);
-const queuedImages = ref([]); // File[]
-const queuedYoutubeVideos = ref([]); // [{key,url,title?}]
-const queuedVideoFiles = ref([]); // File[]
+/* ===================== Taxonomías ===================== */
+const categoriesList = ref([]);
+const subcategoriesList = ref([]);
 
-// UI YouTube input
+/* ===================== Queues (BLINDADAS) ===================== */
+const stockMatrix = ref([]);
+const queuedImages = ref([]);         // File[]
+const queuedYoutubeVideos = ref([]);  // [{key,url,title?}]
+const queuedVideoFiles = ref([]);     // File[]
+
+function arr(v) {
+  return Array.isArray(v) ? v : [];
+}
+
+const imagesCount = computed(() => arr(queuedImages.value).length);
+const youtubeCount = computed(() => arr(queuedYoutubeVideos.value).length);
+const videoFilesCount = computed(() => arr(queuedVideoFiles.value).length);
+const videosCount = computed(() => youtubeCount.value + videoFilesCount.value);
+
+/* ===================== UI ===================== */
 const ytUrl = ref("");
 const ytError = ref("");
 
@@ -509,6 +581,7 @@ function showValidation(items = [], message = "") {
   };
 }
 
+/* ===================== Utils ===================== */
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
@@ -518,10 +591,6 @@ function num(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
-function safe(v) {
-  const s = String(v ?? "").trim();
-  return s ? s : "—";
-}
 function toBool(v, d = false) {
   if (typeof v === "boolean") return v;
   const s = String(v ?? "").trim().toLowerCase();
@@ -529,7 +598,141 @@ function toBool(v, d = false) {
   if (s === "false" || s === "0") return false;
   return d;
 }
+function deepClone(obj) {
+  try {
+    return JSON.parse(JSON.stringify(obj || {}));
+  } catch {
+    return { ...(obj || {}) };
+  }
+}
+function safe(v) {
+  const s = String(v ?? "").trim();
+  return s ? s : "—";
+}
 
+function normalizeList(arrIn) {
+  const a = Array.isArray(arrIn) ? arrIn : [];
+  return a
+    .map((x) => {
+      const id =
+        toInt(x?.id, 0) ||
+        toInt(x?.value, 0) ||
+        toInt(x?.category_id, 0) ||
+        toInt(x?.subcategory_id, 0) ||
+        toInt(x?.rubro_id, 0) ||
+        toInt(x?.subrubro_id, 0);
+
+      const name = String(
+        x?.name ??
+          x?.nombre ??
+          x?.title ??
+          x?.label ??
+          x?.text ??
+          x?.descripcion ??
+          x?.category_name ??
+          x?.subcategory_name ??
+          x?.rubro ??
+          x?.subrubro ??
+          ""
+      ).trim();
+
+      const category_id =
+        toInt(x?.category_id, 0) ||
+        toInt(x?.categoryId, 0) ||
+        toInt(x?.rubro_id, 0) ||
+        toInt(x?.parent_id, 0) ||
+        0;
+
+      return { id, name, category_id };
+    })
+    .filter((x) => x.id > 0 && x.name);
+}
+
+function extractArray(res) {
+  const d = res?.data;
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.items)) return d.items;
+  if (Array.isArray(d?.rows)) return d.rows;
+  if (Array.isArray(d?.data)) return d.data;
+  return [];
+}
+
+async function tryGetFirstOk(label, urls = []) {
+  const tried = [];
+  for (const url of urls) {
+    tried.push(url);
+    try {
+      const res = await http.get(url);
+      const arr = extractArray(res);
+      if (arr.length) {
+        console.log(`[taxonomies] OK ${label}:`, url, arr.length);
+        return arr;
+      }
+    } catch {}
+  }
+  console.warn(`[taxonomies] FAIL ${label}. Endpoints probados:`, tried);
+  return [];
+}
+
+const TAXONOMY_ENDPOINTS = {
+  categories: [
+    "/admin/categories",
+    "/admin/product-categories",
+    "/admin/products/categories",
+    "/admin/meta/categories",
+    "/categories",
+  ],
+  subcategories: [
+    "/admin/subcategories",
+    "/admin/product-subcategories",
+    "/admin/products/subcategories",
+    "/admin/meta/subcategories",
+    "/subcategories",
+  ],
+};
+
+async function ensureTaxonomies() {
+  // 1) store
+  const cStore = normalizeList(products?.categories || products?.meta?.categories || []);
+  const sStore = normalizeList(products?.subcategories || products?.meta?.subcategories || []);
+  if (cStore.length) categoriesList.value = cStore;
+  if (sStore.length) subcategoriesList.value = sStore;
+
+  // 2) store methods (si existen)
+  try {
+    if (!categoriesList.value.length && typeof products.fetchCategories === "function") {
+      await products.fetchCategories();
+      categoriesList.value = normalizeList(products?.categories || products?.meta?.categories || []);
+    }
+  } catch {}
+  try {
+    if (!subcategoriesList.value.length && typeof products.fetchSubcategories === "function") {
+      await products.fetchSubcategories();
+      subcategoriesList.value = normalizeList(products?.subcategories || products?.meta?.subcategories || []);
+    }
+  } catch {}
+
+  // 3) http fallback
+  if (!categoriesList.value.length) {
+    categoriesList.value = normalizeList(
+      await tryGetFirstOk("categories", TAXONOMY_ENDPOINTS.categories)
+    );
+  }
+  if (!subcategoriesList.value.length) {
+    subcategoriesList.value = normalizeList(
+      await tryGetFirstOk("subcategories", TAXONOMY_ENDPOINTS.subcategories)
+    );
+  }
+
+  console.log("[taxonomies] categories:", categoriesList.value.length, categoriesList.value.slice(0, 3));
+  console.log("[taxonomies] subcategories:", subcategoriesList.value.length, subcategoriesList.value.slice(0, 3));
+
+  if (!categoriesList.value.length || !subcategoriesList.value.length) {
+    toast("⚠️ No se cargan Rubros/Subrubros. Mirá consola: [taxonomies] FAIL ...");
+  }
+}
+
+/* ===================== Draft ===================== */
 function pickId(maybe) {
   if (maybe === null || maybe === undefined) return 0;
   if (typeof maybe === "number") return toInt(maybe, 0);
@@ -546,7 +749,6 @@ function pickId(maybe) {
   }
   return 0;
 }
-
 function getSubcategoryIdFromDraft(d) {
   let sid =
     pickId(d?.subcategory_id) ||
@@ -558,7 +760,6 @@ function getSubcategoryIdFromDraft(d) {
   if (!sid) sid = pickId(d?.subcategory) || pickId(d?.subCategory) || pickId(d?.subrubro);
   return sid || null;
 }
-
 function getCategoryIdFromDraft(d) {
   let cid =
     pickId(d?.category_id) ||
@@ -568,7 +769,6 @@ function getCategoryIdFromDraft(d) {
     pickId(d?.category);
   return cid || null;
 }
-
 function defaultDraft() {
   return {
     id: null,
@@ -589,53 +789,89 @@ function defaultDraft() {
     price_reseller: 0,
   };
 }
-
-function deepClone(obj) {
-  try {
-    return JSON.parse(JSON.stringify(obj || {}));
-  } catch {
-    return { ...(obj || {}) };
-  }
-}
-
 const draft = ref(defaultDraft());
 
-const canGoAfterStep1 = computed(() => !validateDatos());
-const isReadyToCreate = computed(() => !validateDatos());
+/* ===================== SKU preview/final ===================== */
+const skuPreviewHint = ref("");
+function getCategoryNameById(id) {
+  const iid = toInt(id, 0);
+  if (!iid) return "";
+  const hit = arr(categoriesList.value).find((x) => toInt(x?.id, 0) === iid);
+  return String(hit?.name || "").trim();
+}
+function getSubcategoryNameById(id) {
+  const iid = toInt(id, 0);
+  if (!iid) return "";
+  const hit = arr(subcategoriesList.value).find((x) => toInt(x?.id, 0) === iid);
+  return String(hit?.name || "").trim();
+}
+function lettersOnly(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9 ]/g, " ")
+    .trim();
+}
+function makeInitials(label, take = 2) {
+  const clean = lettersOnly(label);
+  if (!clean) return "";
+  const stop = new Set(["DE", "DEL", "LA", "LAS", "EL", "LOS", "Y", "EN", "POR", "PARA"]);
+  const parts = clean
+    .split(/\s+/)
+    .map((x) => x.toUpperCase())
+    .filter((x) => x && !stop.has(x));
 
-const stockPreviewList = computed(() => {
-  const arr = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
-  return arr
-    .map((r) => ({
-      branch_id: toInt(r.branch_id, 0),
-      branch_name: String(r.branch_name || "").trim(),
-      qty: num(r.qty, 0),
-      enabled: toBool(r.enabled, false),
-    }))
-    .filter((x) => x.branch_id > 0 && x.branch_name && Number.isFinite(x.qty) && x.qty !== 0);
+  let out = "";
+  for (const p of parts) {
+    out += (p[0] || "");
+    if (out.length >= take) break;
+  }
+  if (out.length < take) out += parts.join("").slice(out.length, take);
+  return out.slice(0, take).toUpperCase();
+}
+function buildSku(d, forceId = null) {
+  const cid = getCategoryIdFromDraft(d);
+  const sid = getSubcategoryIdFromDraft(d);
+
+  const cat2 = makeInitials(getCategoryNameById(cid), 2) || "XX";
+  const sub2 = makeInitials(getSubcategoryNameById(sid), 2) || "XX";
+
+  const idReal = toInt(forceId ?? d?.id, 0);
+  if (idReal) {
+    skuPreviewHint.value = "";
+    return `${cat2}${sub2}${String(idReal).padStart(6, "0")}`;
+  }
+
+  const prev = toInt(nextCodePreview.value, 0);
+  skuPreviewHint.value = "preview";
+  return `${cat2}${sub2}${String(prev || 0).padStart(6, "0")}`;
+}
+
+const skuPreview = computed(() => {
+  const cid = toInt(getCategoryIdFromDraft(draft.value), 0);
+  const sid = toInt(getSubcategoryIdFromDraft(draft.value), 0);
+  if (!cid || !sid) return "";
+  return buildSku(draft.value, null);
 });
 
+const finalSku = computed(() => {
+  // si ya existe SKU real guardado (edit) lo mostramos
+  const s = String(draft.value?.sku || "").trim();
+  if (s) return s;
+
+  // si no, mostramos preview (create)
+  return skuPreview.value;
+});
+
+/* ===================== Next code ===================== */
 async function reloadNextCode() {
   if (isEdit.value) return;
   const code = await products.fetchNextCode();
   nextCodePreview.value = code || null;
 }
 
-function normalizeYoutubeQueue(arr) {
-  const a = Array.isArray(arr) ? arr : [];
-  return a
-    .map((x) => ({
-      key: String(x?.key || `${Date.now()}-${Math.random()}`),
-      url: String(x?.url || "").trim(),
-      title: x?.title ? String(x.title).trim() : "",
-    }))
-    .filter((x) => !!x.url);
-}
-function normalizeFilesQueue(arr) {
-  return Array.isArray(arr) ? arr.filter(Boolean) : [];
-}
-
-function hydrateDraft() {
+/* ===================== Hydrate ===================== */
+async function hydrateDraft() {
   products.error = null;
   products.lastFieldErrors = null;
 
@@ -646,6 +882,9 @@ function hydrateDraft() {
   stockMatrix.value = [];
   ytUrl.value = "";
   ytError.value = "";
+  skuPreviewHint.value = "";
+
+  await ensureTaxonomies();
 
   if (isEdit.value && props.item && typeof props.item === "object") {
     draft.value = { ...defaultDraft(), ...deepClone(props.item) };
@@ -653,7 +892,7 @@ function hydrateDraft() {
   } else {
     draft.value = defaultDraft();
     step.value = 1;
-    reloadNextCode();
+    await reloadNextCode();
   }
 
   if (Array.isArray(draft.value?.stock_matrix)) {
@@ -684,94 +923,84 @@ function onCancel() {
   openLocal.value = false;
 }
 
-/* ====== Validación paso 1 ====== */
+/* ===================== Validación ===================== */
 function validateDatos() {
   const errs = [];
-
   const name = String(draft.value?.name || "").trim();
-  const sku = String(draft.value?.sku || "").trim();
   const cat = toInt(getCategoryIdFromDraft(draft.value), 0);
+  const sub = toInt(getSubcategoryIdFromDraft(draft.value), 0);
 
-  if (!name) errs.push("• Falta el **Nombre** del producto (Paso 1 → Datos).");
-  if (!sku) errs.push("• Falta el **SKU** (código interno) (Paso 1 → Datos).");
-  if (!cat) errs.push("• Falta seleccionar el **Rubro** (Paso 1 → Datos).");
+  if (!name) errs.push("• Falta el **Nombre** del producto.");
+  if (!cat) errs.push("• Falta seleccionar el **Rubro**.");
+  if (!sub) errs.push("• Falta seleccionar el **Subrubro**.");
 
   return errs.length ? errs : null;
 }
 
-function buildPayload() {
-  const category_id = getCategoryIdFromDraft(draft.value);
-  const subcategory_id = getSubcategoryIdFromDraft(draft.value);
+const canGoAfterStep1 = computed(() => !validateDatos());
+const isReadyToCreate = computed(() => !validateDatos());
 
-  const payload = {
-    ...draft.value,
-    name: String(draft.value?.name || "").trim(),
-    sku: String(draft.value?.sku || "").trim(),
-    description: String(draft.value?.description || "").trim(),
-    brand: String(draft.value?.brand || "").trim(),
-    model: String(draft.value?.model || "").trim(),
+/* ===================== Stock preview ===================== */
+const stockPreviewList = computed(() => {
+  const a = arr(stockMatrix.value);
+  return a
+    .map((r) => ({
+      branch_id: toInt(r.branch_id, 0),
+      branch_name: String(r.branch_name || "").trim(),
+      qty: num(r.qty, 0),
+      enabled: toBool(r.enabled, false),
+    }))
+    .filter((x) => x.branch_id > 0 && x.branch_name && Number.isFinite(x.qty) && x.qty !== 0);
+});
 
-    category_id: category_id ? toInt(category_id, 0) : null,
-    subcategory_id: subcategory_id ? toInt(subcategory_id, 0) : null,
+/* ===================== Navegación ===================== */
+const steps = [
+  { value: 1, title: "Datos" },
+  { value: 2, title: "Precios" },
+  { value: 3, title: "Stock" },
+  { value: 4, title: "Media" },
+  { value: 5, title: "Resumen" },
+];
 
-    price_list: num(draft.value?.price_list, 0),
-    price_discount: num(draft.value?.price_discount, 0),
-    price_reseller: num(draft.value?.price_reseller, 0),
-  };
-
-  delete payload.code;
-  delete payload.category;
-  delete payload.subcategory;
-  delete payload.subCategory;
-  delete payload.subrubro;
-
-  if (payload.barcode === "") payload.barcode = null;
-  if (payload.branch_id === "" || payload.branch_id === 0) payload.branch_id = null;
-
-  return payload;
+function canGoTo(target) {
+  const t = toInt(target, 1);
+  if (t <= 1) return true;
+  return !!canGoAfterStep1.value;
 }
-
-function buildBranchIdsFromStockMatrix() {
-  const arr = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
-  const bids = [];
-
-  for (const r of arr) {
-    const bid = toInt(r.branch_id, 0);
-    if (!bid) continue;
-
-    const enabled = toBool(r.enabled, false);
-    const qty = num(r.qty, 0);
-
-    if (enabled || qty !== 0) bids.push(bid);
-  }
-
-  const owner = toInt(draft.value?.branch_id, 0);
-  if (owner) bids.push(owner);
-
-  return Array.from(new Set(bids));
+function goToStep(target) {
+  const t = toInt(target, 1);
+  if (!canGoTo(t)) return;
+  step.value = Math.min(5, Math.max(1, t));
 }
-
-/* ====== Navegación ====== */
 function prevStep() {
   step.value = Math.max(1, step.value - 1);
 }
 function nextStep() {
   if (step.value === 1) {
     const errs = validateDatos();
-    if (errs) {
-      showValidation(errs, "Antes de continuar, completá estos campos:");
-      return;
-    }
+    if (errs) return showValidation(errs, "Antes de continuar, completá estos campos:");
   }
   step.value = Math.min(5, step.value + 1);
 }
 
-/* ====== Cola imágenes ====== */
+/* ===================== Queue handlers (BLINDADOS) ===================== */
 function onQueuedChanged(files) {
-  queuedImages.value = Array.isArray(files) ? files : [];
+  queuedImages.value = arr(files);
+}
+function normalizeYoutubeQueue(a) {
+  return arr(a)
+    .map((x) => ({
+      key: String(x?.key || `${Date.now()}-${Math.random()}`),
+      url: String(x?.url || "").trim(),
+      title: x?.title ? String(x.title).trim() : "",
+    }))
+    .filter((x) => !!x.url);
+}
+function normalizeFilesQueue(a) {
+  return arr(a).filter(Boolean);
 }
 
-/* ====== Cola videos (YouTube) ====== */
+/* ===================== YouTube ===================== */
 function parseYoutubeUrl(raw) {
   const url = String(raw || "").trim();
   if (!url) return { ok: false, url: "", reason: "Pegá una URL." };
@@ -779,48 +1008,31 @@ function parseYoutubeUrl(raw) {
   const low = url.toLowerCase();
   const looksYoutube =
     low.includes("youtube.com/") || low.includes("youtu.be/") || low.includes("m.youtube.com/");
-
-  if (!looksYoutube) {
-    return { ok: false, url: "", reason: "La URL no parece de YouTube." };
-  }
+  if (!looksYoutube) return { ok: false, url: "", reason: "La URL no parece de YouTube." };
 
   return { ok: true, url, reason: "" };
 }
-
 function addYoutubeUrl() {
   ytError.value = "";
-  const raw = ytUrl.value;
-  const p = parseYoutubeUrl(raw);
-  if (!p.ok) {
-    ytError.value = p.reason || "URL inválida.";
-    return;
-  }
+  const p = parseYoutubeUrl(ytUrl.value);
+  if (!p.ok) return (ytError.value = p.reason || "URL inválida.");
 
-  const already = queuedYoutubeVideos.value.some((x) => String(x.url).trim() === p.url);
-  if (already) {
-    ytError.value = "Esa URL ya está en la cola.";
-    return;
-  }
+  const already = normalizeYoutubeQueue(queuedYoutubeVideos.value).some((x) => x.url === p.url);
+  if (already) return (ytError.value = "Esa URL ya está en la cola.");
 
   queuedYoutubeVideos.value = normalizeYoutubeQueue([
-    ...queuedYoutubeVideos.value,
-    {
-      key: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      url: p.url,
-      title: "",
-    },
+    ...normalizeYoutubeQueue(queuedYoutubeVideos.value),
+    { key: `${Date.now()}-${Math.random().toString(16).slice(2)}`, url: p.url, title: "" },
   ]);
 
   ytUrl.value = "";
   toast("✅ YouTube agregado a la cola");
 }
-
 function removeYoutubeAt(idx) {
-  const a = Array.isArray(queuedYoutubeVideos.value) ? [...queuedYoutubeVideos.value] : [];
+  const a = normalizeYoutubeQueue(queuedYoutubeVideos.value);
   a.splice(idx, 1);
   queuedYoutubeVideos.value = a;
 }
-
 function clearVideosQueue() {
   queuedYoutubeVideos.value = [];
   queuedVideoFiles.value = [];
@@ -828,10 +1040,9 @@ function clearVideosQueue() {
   ytError.value = "";
   toast("✅ Cola de videos limpia");
 }
-
 function onVideosChanged() {}
 
-/* ====== Subida videos (YouTube + Upload) ====== */
+/* ===================== Commit videos ===================== */
 async function commitVideos(productId) {
   const pid = toInt(productId, 0);
   if (!pid) return;
@@ -839,29 +1050,18 @@ async function commitVideos(productId) {
   const yq = normalizeYoutubeQueue(queuedYoutubeVideos.value);
   const fq = normalizeFilesQueue(queuedVideoFiles.value);
 
-  // 1) YouTube (ADMIN)
   for (const it of yq) {
-    const url = String(it?.url || "").trim();
-    if (!url) continue;
-
     try {
-      await http.post(`/admin/products/${pid}/videos/youtube`, {
-        url,
-        title: it?.title || null,
-      });
+      await http.post(`/admin/products/${pid}/videos/youtube`, { url: it.url, title: it?.title || null });
     } catch (e) {
       toast("⚠️ Video YouTube: " + (e?.friendlyMessage || e?.message || "Falló"));
     }
   }
 
-  // 2) Upload files (multipart) (ADMIN)
   for (const f of fq) {
-    if (!f) continue;
-
     try {
       const fd = new FormData();
       fd.append("file", f);
-
       await http.post(`/admin/products/${pid}/videos/upload`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -877,7 +1077,47 @@ async function commitVideos(productId) {
   }
 }
 
-/* ====== Create ====== */
+/* ===================== Payload ===================== */
+function buildPayload() {
+  const payload = {
+    ...draft.value,
+    name: String(draft.value?.name || "").trim(),
+    description: String(draft.value?.description || "").trim(),
+    brand: String(draft.value?.brand || "").trim(),
+    model: String(draft.value?.model || "").trim(),
+    category_id: toInt(getCategoryIdFromDraft(draft.value), 0) || null,
+    subcategory_id: toInt(getSubcategoryIdFromDraft(draft.value), 0) || null,
+    price_list: num(draft.value?.price_list, 0),
+    price_discount: num(draft.value?.price_discount, 0),
+    price_reseller: num(draft.value?.price_reseller, 0),
+  };
+
+  if (payload.barcode === "") payload.barcode = null;
+  if (payload.branch_id === "" || payload.branch_id === 0) payload.branch_id = null;
+
+  return payload;
+}
+
+function buildBranchIdsFromStockMatrix() {
+  const rows = arr(stockMatrix.value);
+  const bids = [];
+
+  for (const r of rows) {
+    const bid = toInt(r.branch_id, 0);
+    if (!bid) continue;
+
+    const enabled = toBool(r.enabled, false);
+    const qty = num(r.qty, 0);
+    if (enabled || qty !== 0) bids.push(bid);
+  }
+
+  const owner = toInt(draft.value?.branch_id, 0);
+  if (owner) bids.push(owner);
+
+  return Array.from(new Set(bids));
+}
+
+/* ===================== Create/Edit ===================== */
 async function createAll() {
   if (isEdit.value) return;
 
@@ -896,10 +1136,12 @@ async function createAll() {
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
-    const res = await products.create(payload);
+    // NO mandamos sku acá (se fija al final con ID real)
+    delete payload.sku;
 
-    if (!res) {
-      showValidation(["• Hay errores de validación del servidor (mirá el mensaje en rojo)."], "No se pudo crear.");
+    const ok = await products.create(payload);
+    if (!ok) {
+      showValidation(["• Hay errores de validación del servidor."], "No se pudo crear.");
       return;
     }
 
@@ -910,37 +1152,19 @@ async function createAll() {
       return;
     }
 
-    draft.value = { ...draft.value, ...deepClone(created) };
-    nextCodePreview.value = null;
-
-    // ✅ stock (FIX: permite enviar qty=0 si está habilitada)
-    const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
-    for (const r of rows) {
-      const bid = toInt(r.branch_id, 0);
-      const wid = toInt(r.warehouse_id, 0);
-
-      const enabled = toBool(r.enabled, false);
-
-      // si está habilitada => usamos qty (puede ser 0)
-      // si NO está habilitada => si qty=0 no mandamos (en create no hace falta limpiar)
-      const qty = num(r.qty, NaN);
-      if (!Number.isFinite(qty)) continue;
-
-      if (!enabled && qty === 0) continue;
-
-      const ok = await products.initStock({
-        product_id: pid,
-        branch_id: bid || null,
-        warehouse_id: wid || null,
-        qty,
-      });
-
-      if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
+    // fijamos sku real con id real
+    const skuReal = buildSku({ ...draft.value, ...created }, pid);
+    try {
+      await products.update(pid, { sku: skuReal });
+      draft.value = { ...draft.value, ...deepClone(created), sku: skuReal };
+    } catch (e) {
+      toast("⚠️ No se pudo fijar SKU final: " + (e?.friendlyMessage || e?.message || "Falló"));
+      draft.value = { ...draft.value, ...deepClone(created) };
     }
 
     // imágenes
-    if (queuedImages.value.length) {
-      const up = await products.uploadImages(pid, queuedImages.value);
+    if (imagesCount.value) {
+      const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
       else toast("✅ Imágenes subidas");
     }
@@ -956,7 +1180,6 @@ async function createAll() {
   }
 }
 
-/* ====== Edit ====== */
 async function saveAll() {
   if (!isEdit.value) return;
 
@@ -981,48 +1204,18 @@ async function saveAll() {
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
-    const res = await products.update(pid, payload);
+    // en edit, si no hay sku lo calculamos con id real
+    if (!String(payload.sku || "").trim()) payload.sku = buildSku(draft.value, pid);
 
-    if (!res) {
-      showValidation(["• Hay errores de validación del servidor (mirá el mensaje en rojo)."], "No se pudo guardar.");
+    const ok = await products.update(pid, payload);
+    if (!ok) {
+      showValidation(["• Hay errores de validación del servidor."], "No se pudo guardar.");
       return;
     }
 
-    // ✅ stock set absoluto (FIX FINAL):
-    // - si enabled=false => fuerza qty=0 (limpia stock viejo)
-    // - si current_qty no viene => igual manda update
-    const rows = Array.isArray(stockMatrix.value) ? stockMatrix.value : [];
-    for (const r of rows) {
-      const bid = toInt(r.branch_id, 0);
-      const wid = toInt(r.warehouse_id, 0);
-
-      const enabled = toBool(r.enabled, false);
-
-      // ✅ si está deshabilitada => SIEMPRE 0
-      const desiredQty = enabled ? num(r.qty, NaN) : 0;
-
-      // si está habilitada y no hay qty válido => no hacemos nada
-      if (enabled && !Number.isFinite(desiredQty)) continue;
-
-      // current puede venir null/undefined
-      const cur = num(r.current_qty, NaN);
-
-      // si cur es número y ya está igual, salteamos
-      if (Number.isFinite(cur) && desiredQty === cur) continue;
-
-      const ok = await products.initStock({
-        product_id: pid,
-        branch_id: bid || null,
-        warehouse_id: wid || null,
-        qty: desiredQty,
-      });
-
-      if (!ok) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
-    }
-
-    // imágenes también en EDIT
-    if (queuedImages.value.length) {
-      const up = await products.uploadImages(pid, queuedImages.value);
+    // imágenes (edit)
+    if (imagesCount.value) {
+      const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
       else toast("✅ Imágenes subidas");
       queuedImages.value = [];
@@ -1042,11 +1235,14 @@ async function saveAll() {
 
 <style>
 .pf-overlay .pf-card {
-  height: 90vh;
-  max-height: 90vh;
+  height: 100vh;
+  max-height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 0 !important;
 }
 
 .pf-overlay .pf-top,
@@ -1057,44 +1253,97 @@ async function saveAll() {
 .pf-overlay .pf-top {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 30;
 }
 
 .pf-overlay .pf-footer {
   position: sticky;
   bottom: 0;
-  z-index: 10;
+  z-index: 30;
 }
 
 .pf-overlay .pf-body {
   flex: 1;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  background: rgb(var(--v-theme-background));
 }
 
-.pf-overlay .pf-title,
-.pf-overlay .pf-actions {
+.pf-appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px;
 }
 
-.pf-overlay .pf-pad {
-  padding: 16px;
+.pf-appbar-left {
+  display: grid;
+  gap: 2px;
 }
 
-.pf-overlay .pf-h1 {
+.pf-h1 {
   font-size: 18px;
   font-weight: 900;
   line-height: 1.1;
 }
 
-.pf-overlay .pf-sub {
+.pf-sub {
   font-size: 13px;
   opacity: 0.85;
-  margin-top: 2px;
 }
 
-.pf-overlay .pf-stepper-head {
+.pf-progress {
+  padding: 0 16px 10px 16px;
+}
+
+.pf-stepper-head {
   padding: 10px 12px;
+}
+
+.pf-stepper-mobile {
+  padding: 10px 10px 8px 10px;
+}
+
+.pf-slide {
+  max-width: 100%;
+}
+
+.pf-stepchip {
+  margin-right: 8px;
+  border-radius: 999px !important;
+  padding: 0 10px;
+  user-select: none;
+}
+
+.pf-stepchip-n {
+  font-weight: 900;
+  margin-right: 8px;
+}
+
+.pf-stepchip-t {
+  font-weight: 800;
+}
+
+.pf-stephint {
+  margin-top: 8px;
+  padding: 0 6px;
+  opacity: 0.9;
+}
+
+.pf-overlay .pf-pad {
+  padding: 16px;
+}
+@media (max-width: 600px) {
+  .pf-overlay .pf-pad {
+    padding: 12px;
+  }
+  .pf-appbar {
+    padding: 12px 12px;
+  }
+  .pf-progress {
+    padding: 0 12px 10px 12px;
+  }
 }
 
 .pf-overlay .pf-step {
@@ -1105,6 +1354,43 @@ async function saveAll() {
 .pf-overlay .pf-meta {
   font-size: 12px;
   opacity: 0.9;
+}
+
+.pf-overlay .pf-actions {
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+.pf-footer-left {
+  min-width: 160px;
+}
+
+.pf-btn {
+  border-radius: 12px !important;
+}
+
+@media (max-width: 600px) {
+  .pf-overlay .pf-actions {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pf-footer-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pf-footer-right {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .pf-footer-right .pf-btn {
+    width: 100%;
+  }
 }
 
 .pf-summary-grid {
@@ -1128,6 +1414,11 @@ async function saveAll() {
   grid-template-columns: 140px 1fr;
   gap: 8px 12px;
   align-items: baseline;
+}
+@media (max-width: 600px) {
+  .pf-kv {
+    grid-template-columns: 120px 1fr;
+  }
 }
 .pf-kv .k {
   font-size: 12px;
@@ -1170,7 +1461,6 @@ async function saveAll() {
   padding-left: 18px;
 }
 
-/* ✅ Media card (videos) */
 .pf-media-card {
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.06);

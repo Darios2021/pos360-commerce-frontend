@@ -18,13 +18,26 @@
           :class="{ active: idx === active }"
           @click="active = idx"
         >
-          <img :src="it.url" :alt="it.title || ''" />
+          <img
+            :src="it.url"
+            :alt="it.title || ''"
+            @error="onImgError(it.url)"
+          />
         </button>
       </div>
 
       <!-- main -->
       <div class="pg-main">
-        <img :src="items[active]?.url" :alt="items[active]?.title || ''" />
+        <img
+          v-if="items[active]?.url"
+          :src="items[active]?.url"
+          :alt="items[active]?.title || ''"
+          @error="onImgError(items[active]?.url)"
+        />
+        <div v-else class="pg-main-empty">
+          <v-icon size="26">mdi-image-off-outline</v-icon>
+          <div class="pg-main-empty-txt">Sin imagen</div>
+        </div>
       </div>
     </div>
   </div>
@@ -39,28 +52,90 @@ const props = defineProps({
 
 const active = ref(0);
 
+function pickBase() {
+  const storage = (import.meta?.env?.VITE_STORAGE_PUBLIC_URL || "").trim();
+  if (storage) return storage.replace(/\/+$/, "");
+
+  const api = (import.meta?.env?.VITE_API_URL || import.meta?.env?.VITE_API_BASE_URL || "").trim();
+  if (api) return api.replace(/\/+$/, "");
+
+  return "";
+}
+
+function resolveUrl(input) {
+  if (!input) return "";
+  const base = pickBase();
+
+  const s = String(input).trim();
+  if (!s) return "";
+
+  // absoluta
+  if (/^https?:\/\//i.test(s)) return s;
+
+  // data uri
+  if (s.startsWith("data:image/")) return s;
+
+  // sin base, devolvemos tal cual
+  if (!base) return s;
+
+  // relativa con / => base + /path
+  if (s.startsWith("/")) return base + s;
+
+  // relativa sin / => base + /path
+  return base + "/" + s.replace(/^\/+/, "");
+}
+
 const items = computed(() => {
   const arr = Array.isArray(props.images) ? props.images : [];
   const out = [];
+
   for (const it of arr) {
     if (!it) continue;
+
+    // string
     if (typeof it === "string") {
-      const u = it.trim();
+      const u = resolveUrl(it);
       if (u) out.push({ url: u, title: "" });
       continue;
     }
-    const u = String(it.url || it.image_url || it.src || it.path || "").trim();
+
+    // object
+    const rawUrl =
+      it.url ||
+      it.image_url ||
+      it.src ||
+      it.path ||
+      it.key ||
+      it.objectKey ||
+      it.filename ||
+      "";
+    const u = resolveUrl(rawUrl);
+
     if (u) out.push({ url: u, title: String(it.title || it.alt || "").trim() });
   }
-  return out;
+
+  // dedupe simple
+  const seen = new Set();
+  return out.filter((x) => (seen.has(x.url) ? false : (seen.add(x.url), true)));
 });
 
 watch(
   () => items.value.length,
-  () => {
-    active.value = 0;
-  }
+  (len) => {
+    if (!len) {
+      active.value = 0;
+      return;
+    }
+    // ✅ clamp
+    if (active.value < 0) active.value = 0;
+    if (active.value > len - 1) active.value = 0;
+  },
+  { immediate: true }
 );
+
+function onImgError(url) {
+  console.warn("[ProductPhotoGallery] img error:", url);
+}
 </script>
 
 <style scoped>
@@ -130,5 +205,16 @@ watch(
   max-height: 520px;
   object-fit: contain;
   display:block;
+}
+
+.pg-main-empty{
+  display:grid;
+  place-items:center;
+  gap: 6px;
+  opacity: .8;
+}
+.pg-main-empty-txt{
+  font-size: 12px;
+  font-weight: 800;
 }
 </style>

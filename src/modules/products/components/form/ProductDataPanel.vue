@@ -1,144 +1,159 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
+<!-- src/modules/products/components/form/ProductDataPanel.vue -->
 <template>
-  <div class="pf-data d-flex flex-column ga-3">
-    <div class="pf-grid">
-      <v-text-field
-        v-model.trim="model.name"
-        label="Nombre"
-        placeholder="Ej: Auriculares HQ Spirit Boost"
-        variant="outlined"
-        density="compact"
-        class="c7"
-        :disabled="disabled"
-        :error="!!fieldErr('name')"
-        :error-messages="fieldErr('name')"
-        hide-details="auto"
-        clearable
-      />
+  <div class="pdp">
+    <v-row dense>
+      <!-- Nombre -->
+      <v-col cols="12" md="8">
+        <v-text-field
+          v-model="draft.name"
+          :disabled="disabled"
+          density="comfortable"
+          variant="outlined"
+          label="Nombre"
+          hide-details
+        />
+      </v-col>
 
-      <v-text-field
-        v-model="skuInput"
-        label="SKU"
-        placeholder="Ej: HQ-SPIRIT-BOOST-PULSE"
-        variant="outlined"
-        density="compact"
-        class="c5"
-        :disabled="disabled"
-        :error="skuTouched && !!skuError"
-        :error-messages="skuTouched ? skuError : ''"
-        :hint="skuHint"
-        hide-details="auto"
-        @blur="onSkuBlur"
-        @keydown.enter.prevent
-        clearable
-      >
-        <template #append-inner>
-          <v-btn
-            v-if="!disabled"
-            size="small"
-            variant="tonal"
-            class="ml-2"
-            @click="applySuggestedSku"
-            :disabled="!suggestedSku"
-            title="Generar SKU sugerido"
-          >
-            <v-icon start size="18">mdi-auto-fix</v-icon>
-            Sugerir
-          </v-btn>
-        </template>
-      </v-text-field>
-    </div>
+      <!-- Rubro -->
+      <v-col cols="12" md="6">
+        <v-select
+          v-model="categoryId"
+          :items="categoriesResolved"
+          item-title="name"
+          item-value="id"
+          :disabled="disabled"
+          density="comfortable"
+          variant="outlined"
+          label="Rubro"
+          hide-details
+          clearable
+          :menu-props="{ maxHeight: 420 }"
+        >
+          <template #no-data>
+            <div class="pa-4 text-caption text-medium-emphasis">
+              No hay rubros cargados.
+              <div class="mt-2">
+                <v-btn size="small" variant="tonal" @click="$emit('reload-taxonomies')">
+                  <v-icon start size="18">mdi-refresh</v-icon>
+                  Recargar
+                </v-btn>
+              </div>
+            </div>
+          </template>
+        </v-select>
+      </v-col>
 
-    <div class="pf-grid">
-      <v-select
-        v-model="model.category_id"
-        :items="rubros"
-        item-title="name"
-        item-value="id"
-        label="Rubro"
-        variant="outlined"
-        density="compact"
-        class="c6"
-        :disabled="disabled || catsLoading"
-        :loading="catsLoading"
-        :error="!!fieldErr('category_id')"
-        :error-messages="fieldErr('category_id')"
-        hide-details="auto"
-        clearable
-        no-data-text="No hay rubros"
-      />
+      <!-- Subrubro -->
+      <v-col cols="12" md="6">
+        <v-select
+          v-model="subcategoryId"
+          :items="filteredSubcategories"
+          item-title="name"
+          item-value="id"
+          :disabled="disabled || !categoryId"
+          density="comfortable"
+          variant="outlined"
+          label="Subrubro"
+          hide-details
+          clearable
+          :menu-props="{ maxHeight: 420 }"
+        >
+          <template #no-data>
+            <div class="pa-4 text-caption text-medium-emphasis">
+              No hay subrubros para este rubro.
+              <div class="mt-2">
+                <v-btn size="small" variant="tonal" @click="$emit('reload-taxonomies')">
+                  <v-icon start size="18">mdi-refresh</v-icon>
+                  Recargar
+                </v-btn>
+              </div>
+            </div>
+          </template>
+        </v-select>
+      </v-col>
 
-      <v-select
-        v-model="model.subcategory_id"
-        :items="subrubrosForSelected"
-        item-title="name"
-        item-value="id"
-        label="Subrubro"
-        variant="outlined"
-        density="compact"
-        class="c6"
-        :disabled="disabled || !model.category_id || catsLoading"
-        :loading="catsLoading"
-        :error="!!fieldErr('subcategory_id')"
-        :error-messages="fieldErr('subcategory_id')"
-        hide-details="auto"
-        clearable
-        no-data-text="No hay subrubros"
-      />
-    </div>
+      <!-- Marca -->
+      <v-col cols="12" md="6">
+        <v-text-field
+          v-model="draft.brand"
+          :disabled="disabled"
+          density="comfortable"
+          variant="outlined"
+          label="Marca"
+          hide-details
+        />
+      </v-col>
 
-    <div class="pf-grid">
-      <v-text-field
-        v-model.trim="model.brand"
-        label="Marca"
-        variant="outlined"
-        density="compact"
-        class="c6"
-        :disabled="disabled"
-        hide-details="auto"
-        clearable
-      />
+      <!-- Modelo -->
+      <v-col cols="12" md="6">
+        <v-text-field
+          v-model="draft.model"
+          :disabled="disabled"
+          density="comfortable"
+          variant="outlined"
+          label="Modelo"
+          hide-details
+        />
+      </v-col>
 
-      <v-text-field
-        v-model.trim="model.model"
-        label="Modelo"
-        variant="outlined"
-        density="compact"
-        class="c6"
-        :disabled="disabled"
-        hide-details="auto"
-        clearable
-      />
-    </div>
+      <!-- Descripción -->
+      <v-col cols="12">
+        <v-textarea
+          v-model="draft.description"
+          :disabled="disabled"
+          density="comfortable"
+          variant="outlined"
+          label="Descripción"
+          auto-grow
+          rows="3"
+          hide-details
+        />
+      </v-col>
 
-    <v-textarea
-      v-model.trim="model.description"
-      label="Descripción"
-      variant="outlined"
-      density="compact"
-      :disabled="disabled"
-      rows="2"
-      auto-grow
-      hide-details="auto"
-      clearable
-    />
+      <!-- ✅ SKU ABAJO + BLOQUEADO -->
+      <v-col cols="12" md="8">
+        <v-text-field
+          :model-value="draft.sku"
+          density="comfortable"
+          variant="outlined"
+          label="SKU (auto)"
+          readonly
+          disabled
+          hide-details
+          append-inner-icon="mdi-lock"
+        />
+      </v-col>
+
+      <v-col cols="12" md="4" class="d-flex align-end justify-end">
+        <v-btn variant="tonal" class="w-100" disabled>
+          <v-icon start>mdi-auto-fix</v-icon>
+          SUGERIR
+        </v-btn>
+      </v-col>
+    </v-row>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from "vue";
-import http from "../../../../app/api/http";
+import { computed } from "vue";
 import { useProductsStore } from "../../../../app/store/products.store";
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
   disabled: { type: Boolean, default: false },
-  productId: { type: [Number, String], default: null },
+  productId: { type: [Number, String, null], default: null },
+
+  // ✅ vienen del dialog
+  categories: { type: Array, default: () => [] },
+  subcategories: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:modelValue"]);
-const productsStore = useProductsStore();
+defineEmits(["update:modelValue", "reload-taxonomies"]);
 
-const model = computed({
+const products = useProductsStore();
+
+const draft = computed({
   get: () => props.modelValue || {},
   set: (v) => emit("update:modelValue", v),
 });
@@ -148,179 +163,94 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
-function fieldErr(field) {
-  return productsStore?.lastFieldErrors?.[field] || "";
-}
-
-// SKU
-const skuInput = ref(String(model.value?.sku || ""));
-const skuTouched = ref(false);
-
-watch(
-  () => model.value?.sku,
-  (v) => {
-    const s = String(v || "");
-    if (s !== skuInput.value) skuInput.value = s;
-  }
-);
-
-watch(
-  () => skuInput.value,
-  (v) => {
-    model.value = { ...model.value, sku: String(v || "") };
-  }
-);
-
-function normalizeSku(raw) {
-  return String(raw || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^A-Z0-9\-_]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^[-_]+|[-_]+$/g, "");
-}
-
-function suggestSkuFromName(name) {
-  const base = String(name || "")
-    .trim()
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!base) return "";
-  const parts = base.split(" ").filter(Boolean).slice(0, 6);
-  return normalizeSku(parts.join("-"));
-}
-
-const suggestedSku = computed(() => {
-  const cur = normalizeSku(skuInput.value);
-  if (cur) return "";
-  return suggestSkuFromName(model.value?.name);
-});
-
-const skuError = computed(() => {
-  const back = fieldErr("sku");
-  if (back) return back;
-
-  const s = normalizeSku(skuInput.value);
-  if (!s) return "SKU requerido (ej: HQ-SPIRIT-BOOST-PULSE)";
-  if (s.length < 3) return "SKU muy corto (mín 3)";
-  if (s.length > 64) return "SKU muy largo (máx 64)";
-  if (!/^[A-Z0-9][A-Z0-9\-_]*$/.test(s)) return "Solo letras/números/guion/underscore";
-  return "";
-});
-
-const skuHint = computed(() => {
-  const s = normalizeSku(skuInput.value);
-  if (!s) return "Tip: CABLE-ATHENEA-TIPO-C";
-  if (skuTouched.value && !skuError.value) return "OK ✅";
-  return "Se normaliza al salir.";
-});
-
-function onSkuBlur() {
-  skuTouched.value = true;
-  const norm = normalizeSku(skuInput.value);
-  if (norm !== skuInput.value) skuInput.value = norm;
-}
-
-function applySuggestedSku() {
-  if (!suggestedSku.value) return;
-  skuInput.value = suggestedSku.value;
-  skuTouched.value = true;
-  onSkuBlur();
-}
-
-// categorías
-const catsLoading = ref(false);
-const allCategories = ref([]);
-
-function unwrapList(res) {
-  if (!res) return [];
-  if (Array.isArray(res)) return res;
-  if (res.ok === false) return [];
-  const v = res.items ?? res.data ?? res.rows ?? res.list ?? res.result ?? null;
-  if (Array.isArray(v)) return v;
-  if (v && Array.isArray(v.items)) return v.items;
-  if (v && Array.isArray(v.rows)) return v.rows;
-  return [];
-}
-
-function normalizeCats(list) {
-  const arr = Array.isArray(list) ? list : [];
-  return arr
+/**
+ * ✅ Normaliza MUCHAS variantes:
+ * - id / value / category_id / subcategory_id
+ * - name / nombre / title / label / descripcion / category_name / subcategory_name
+ * - category_id / categoryId / rubro_id / parent_id
+ */
+function normalizeList(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  return a
     .map((x) => {
-      if (!x) return null;
-      const id = toInt(x.id ?? x.value ?? 0, 0);
-      const name = String(x.name ?? x.label ?? x.title ?? "").trim();
-      const parent_id =
-        x.parent_id === null || x.parent_id === undefined || x.parent_id === ""
-          ? null
-          : toInt(x.parent_id, 0);
-      const is_active = x.is_active === undefined ? 1 : toInt(x.is_active, 1);
-      if (!id || !name) return null;
-      return { ...x, id, name, parent_id, is_active };
+      const id =
+        toInt(x?.id, 0) ||
+        toInt(x?.value, 0) ||
+        toInt(x?.category_id, 0) ||
+        toInt(x?.subcategory_id, 0) ||
+        toInt(x?.rubro_id, 0) ||
+        toInt(x?.subrubro_id, 0);
+
+      const name = String(
+        x?.name ??
+          x?.nombre ??
+          x?.title ??
+          x?.label ??
+          x?.text ??
+          x?.descripcion ??
+          x?.category_name ??
+          x?.subcategory_name ??
+          x?.rubro ??
+          x?.subrubro ??
+          ""
+      ).trim();
+
+      const category_id =
+        toInt(x?.category_id, 0) ||
+        toInt(x?.categoryId, 0) ||
+        toInt(x?.rubro_id, 0) ||
+        toInt(x?.parent_id, 0) ||
+        0;
+
+      return { id, name, category_id };
     })
-    .filter(Boolean);
+    .filter((x) => x.id > 0 && x.name);
 }
 
-async function fetchCategories() {
-  catsLoading.value = true;
-  try {
-    const { data } = await http.get("/categories");
-    allCategories.value = normalizeCats(unwrapList(data));
-  } catch {
-    allCategories.value = [];
-  } finally {
-    catsLoading.value = false;
-  }
-}
-
-const rubros = computed(() => {
-  return (allCategories.value || [])
-    .filter((c) => c.is_active === 1 && (c.parent_id === null || c.parent_id === 0))
-    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+const categoriesResolved = computed(() => {
+  const p = normalizeList(props.categories);
+  if (p.length) return p;
+  return normalizeList(products?.categories || products?.meta?.categories || []);
 });
 
-const subrubrosForSelected = computed(() => {
-  const cid = toInt(model.value?.category_id, 0);
-  if (!cid) return [];
-  return (allCategories.value || [])
-    .filter((c) => c.is_active === 1 && toInt(c.parent_id, 0) === cid)
-    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+const subcategoriesResolved = computed(() => {
+  const p = normalizeList(props.subcategories);
+  if (p.length) return p;
+  return normalizeList(products?.subcategories || products?.meta?.subcategories || []);
 });
 
-watch(
-  () => model.value?.category_id,
-  (cid) => {
-    const catId = toInt(cid, 0);
-    const sid = toInt(model.value?.subcategory_id, 0);
-    if (!sid) return;
+const categoryId = computed({
+  get: () => (draft.value?.category_id ? toInt(draft.value.category_id, 0) : null),
+  set: (val) => {
+    const v = val ? toInt(val, 0) : null;
+    // al cambiar rubro => limpiar subrubro
+    emit("update:modelValue", { ...draft.value, category_id: v, subcategory_id: null });
+  },
+});
 
-    const ok = (allCategories.value || []).some(
-      (c) => toInt(c.id, 0) === sid && toInt(c.parent_id, 0) === catId
-    );
-    if (!ok) model.value = { ...model.value, subcategory_id: null };
-  }
-);
+const subcategoryId = computed({
+  get: () => (draft.value?.subcategory_id ? toInt(draft.value.subcategory_id, 0) : null),
+  set: (val) => {
+    const v = val ? toInt(val, 0) : null;
+    emit("update:modelValue", { ...draft.value, subcategory_id: v });
+  },
+});
 
-onMounted(fetchCategories);
+const filteredSubcategories = computed(() => {
+  const cid = categoryId.value ? toInt(categoryId.value, 0) : 0;
+  const arr = subcategoriesResolved.value;
+
+  if (!cid) return arr;
+
+  const hasCat = arr.some((x) => toInt(x?.category_id, 0) > 0);
+  if (!hasCat) return arr;
+
+  return arr.filter((x) => toInt(x?.category_id, 0) === cid);
+});
 </script>
 
 <style scoped>
-.pf-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 10px;
-}
-.c5 { grid-column: span 5; }
-.c6 { grid-column: span 6; }
-.c7 { grid-column: span 7; }
-
-@media (max-width: 960px) {
-  .c5, .c6, .c7 { grid-column: span 12; }
+.pdp {
+  width: 100%;
 }
 </style>

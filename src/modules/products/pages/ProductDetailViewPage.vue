@@ -1,19 +1,14 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
-<!-- ✅ FIX DEFINITIVO + DARK MODE (PROLIJO):
-     - Mantiene TODO el flujo (fetchBranchesMatrix) tal cual
-     - ✅ Mejora visual en modo oscuro:
-       * Fondo + cards con “surface” real (Vuetify vars)
-       * Bordes sutiles, separación, sombras suaves
-       * Tabla legible (thead, hover, divisores)
-       * Acciones a la derecha con mejor contraste
-       * Preview/label en “panel” con marco (sin romper el blanco de la etiqueta)
+<!-- FIX UI:
+  - ✅ Se elimina ProductStockBlock (sin el bloque “Total / Sucursal / En sucursal”)
+  - ✅ NO redundancia: se elimina la card de 3 botones
+  - ✅ Etiqueta+Impresión en panel angosto centrado
 -->
 
 <template>
   <div class="pd" data-page="product-detail-view">
-    <!-- 🔹 HEADER SIN BOTONES -->
-    <ProductHeader v-if="raw" :product="productForUI" @back="goBack" />
+    <ProductHeader v-if="raw" :product="productForUIFixed" @back="goBack" />
 
     <v-alert v-if="error" type="error" variant="tonal" class="mt-3">
       {{ error }}
@@ -27,10 +22,10 @@
     <div v-else-if="raw" class="pd-grid">
       <!-- ================= LEFT ================= -->
       <div class="pd-left">
-        <ProductPriceBlock :product="productForUI" class="mb-3" />
-        <ProductStockBlock :product="productForUI" class="mb-3" />
+        <ProductInfoCard :product="productForUIFixed" class="mb-3" />
+        <ProductPriceBlock :product="productForUIFixed" class="mb-3" />
 
-        <!-- ✅ Stock por sucursal (DB integral) -->
+        <!-- Stock por sucursal (versión estética) -->
         <v-card rounded="xl" elevation="1" class="pd-card mb-3">
           <div class="pd-card-head">
             <div class="pd-card-title">Stock por sucursal</div>
@@ -70,91 +65,84 @@
             No hay stock en ninguna sucursal (todas en 0).
           </v-alert>
 
-          <v-table v-if="branchesStock.length" density="compact" class="pd-table">
-            <thead>
-              <tr>
-                <th class="text-left">Sucursal</th>
-                <th class="text-right">Stock</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in branchesStock" :key="r.key">
-                <td class="pd-branch">
-                  <div class="pd-branch-name">{{ r.branch_name }}</div>
-                  <div class="pd-branch-meta">ID: {{ r.branch_id }}</div>
-                </td>
-                <td class="text-right">
+          <div v-if="branchesStock.length" class="pd-matrix">
+            <div class="pd-matrix-head">
+              <div class="h-left">
+                <div class="h-title">Sucursal</div>
+                <div class="h-sub">ID</div>
+              </div>
+              <div class="h-right">Stock</div>
+            </div>
+
+            <div class="pd-matrix-body">
+              <div v-for="r in branchesStock" :key="r.key" class="pd-matrix-row">
+                <div class="row-left">
+                  <div class="pd-avatar" :class="{ ok: r.stock_qty > 0 }">
+                    {{ initials(r.branch_name) }}
+                  </div>
+
+                  <div class="minw-0">
+                    <div class="pd-branch-name text-truncate">{{ r.branch_name }}</div>
+                    <div class="pd-branch-meta">ID: {{ r.branch_id }}</div>
+                  </div>
+                </div>
+
+                <div class="row-right">
                   <v-chip
                     size="small"
+                    class="pd-stock-chip"
                     :variant="r.stock_qty > 0 ? 'flat' : 'tonal'"
                     :color="r.stock_qty > 0 ? 'success' : undefined"
                   >
                     {{ fmtQty(r.stock_qty) }}
                   </v-chip>
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
-        </v-card>
-
-        <ProductInfoCard :product="productForUI" class="mb-3" />
-
-        <v-card rounded="xl" elevation="1" class="pd-card">
-          <div class="pd-card-head">
-            <div class="pd-card-title">Fotos</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <ProductPhotoGallery :images="ui.images" />
         </v-card>
       </div>
 
       <!-- ================= RIGHT ================= -->
       <div class="pd-right">
-        <!-- 🔹 BARRA DE ACCIONES -->
-        <v-card rounded="xl" elevation="1" class="pd-actions mb-3">
-          <div class="pd-actions-row">
-            <v-btn color="primary" variant="flat" :disabled="loading || !raw" @click="printDlg = true">
-              <v-icon start>mdi-printer</v-icon>
-              Imprimir etiqueta
-            </v-btn>
-
-            <v-btn color="primary" variant="tonal" :disabled="loading || !raw" @click="downloadPdf">
-              <v-icon start>mdi-file-pdf-box</v-icon>
-              Descargar PDF
-            </v-btn>
-
-            <v-btn variant="tonal" :disabled="loading || !raw" @click="openEcommerce">
-              <v-icon start>mdi-open-in-new</v-icon>
-              Ver eCommerce
-            </v-btn>
+        <!-- FOTOS ARRIBA -->
+        <v-card rounded="xl" elevation="1" class="pd-card mb-3">
+          <div class="pd-card-head">
+            <div class="pd-card-title">Fotos</div>
           </div>
+          <ProductPhotoGallery :images="ui.images" />
         </v-card>
 
-        <ProductLabelPreview :product="productForUI" :size="labelSize" :qrValue="ui.qrValue">
-          <template #actions="{ printEl }">
-            <div class="mt-3">
-              <ProductPrintActions
-                v-model="labelSize"
-                v-model:copies="copies"
-                :printEl="printEl"
-                :sheetEl="sheetEl"
-                :title="printTitle"
-                :product="productForUI"
-                :qrValue="ui.qrValue"
-              />
-            </div>
-          </template>
-        </ProductLabelPreview>
+        <!-- ✅ SOLO ETIQUETA + ACCIONES -->
+        <div class="pd-print-panel">
+          <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue">
+            <template #actions="{ printEl }">
+              <div class="mt-3">
+                <ProductPrintActions
+                  v-model="labelSize"
+                  v-model:copies="copies"
+                  :printEl="printEl"
+                  :sheetEl="sheetEl"
+                  :title="printTitle"
+                  :product="productForUIFixed"
+                  :qrValue="ui.qrValue"
+                  @open-ecommerce="openEcommerce"
+                  @download-pdf="downloadPdf"
+                  @print="printDlg = true"
+                />
+              </div>
+            </template>
+          </ProductLabelPreview>
+        </div>
       </div>
     </div>
 
-    <!-- 🔹 Render oculto SOLO para A4 -->
     <div class="pd-hidden">
       <div ref="sheetEl" class="pd-a4-shell">
-        <ProductLabelSheetA4 :product="productForUI" :size="labelSize" :copies="copies" :qrValue="ui.qrValue" />
+        <ProductLabelSheetA4 :product="productForUIFixed" :size="labelSize" :copies="copies" :qrValue="ui.qrValue" />
       </div>
     </div>
 
-    <!-- 🔹 Modal preview -->
     <v-dialog v-model="printDlg" max-width="820">
       <v-card rounded="xl">
         <v-card-title class="d-flex align-center ga-2">
@@ -163,7 +151,7 @@
         </v-card-title>
 
         <v-card-text>
-          <ProductLabelPreview :product="productForUI" :size="labelSize" :qrValue="ui.qrValue" />
+          <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue" />
         </v-card-text>
 
         <v-card-actions class="justify-end">
@@ -174,6 +162,7 @@
   </div>
 </template>
 
+
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -183,7 +172,6 @@ import { useAuthStore } from "@/app/store/auth.store";
 
 import ProductHeader from "@/modules/products/components/detail/ProductHeader.vue";
 import ProductPriceBlock from "@/modules/products/components/detail/ProductPriceBlock.vue";
-import ProductStockBlock from "@/modules/products/components/detail/ProductStockBlock.vue";
 import ProductInfoCard from "@/modules/products/components/detail/ProductInfoCard.vue";
 import ProductPhotoGallery from "@/modules/products/components/ProductPhotoGallery.vue";
 
@@ -218,6 +206,51 @@ const branchId = computed(() => {
   return bid > 0 ? bid : ls > 0 ? ls : null;
 });
 
+function unwrap(x) {
+  if (!x || typeof x !== "object") return x;
+  if (x.data && typeof x.data === "object") return x.data;
+  if (x.item && typeof x.item === "object") return x.item;
+  if (x.product && typeof x.product === "object") return x.product;
+  if (x.row && typeof x.row === "object") return x.row;
+  return x;
+}
+
+function unwrapArray(x) {
+  if (Array.isArray(x)) return x;
+  if (!x || typeof x !== "object") return [];
+  if (Array.isArray(x.rows)) return x.rows;
+  if (Array.isArray(x.data)) return x.data;
+  if (Array.isArray(x.items)) return x.items;
+  return [];
+}
+
+function toNum(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : d;
+}
+function fmtQty(v) {
+  return toNum(v, 0).toFixed(3);
+}
+
+function pickFirstNumber(obj, keys, def = 0) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    const n = toNum(v, NaN);
+    if (Number.isFinite(n)) return n;
+  }
+  return def;
+}
+
+function initials(name) {
+  const s = String(name || "").trim();
+  if (!s) return "—";
+  const parts = s.split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] || "";
+  const b = parts[1]?.[0] || "";
+  return (a + b).toUpperCase() || s.slice(0, 2).toUpperCase();
+}
+
 const ui = computed(() => buildProductUI(raw.value, { productId: productId.value, branchId: branchId.value }));
 const productForUI = computed(() => ui.value?.product || {});
 
@@ -234,17 +267,8 @@ function openEcommerce() {
   window.open(ui.value.ecommerceUrl, "_blank", "noopener,noreferrer");
 }
 
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
-}
-function fmtQty(v) {
-  return toNum(v, 0).toFixed(3);
-}
-
 /* =========================
-   ✅ Stock por sucursal (MISMO store que el panel)
+   ✅ Stock por sucursal
 ========================= */
 const mx = ref({
   loading: false,
@@ -259,7 +283,7 @@ const branchesStock = computed(() => {
       key: String(x?.branch_id ?? x?.id ?? Math.random()),
       branch_id: Number(x?.branch_id || 0),
       branch_name: String(x?.branch_name || x?.name || "").trim() || `Sucursal #${Number(x?.branch_id || 0)}`,
-      stock_qty: toNum(x?.stock_qty ?? x?.qty ?? x?.stock ?? 0, 0),
+      stock_qty: toNum(x?.stock_qty ?? x?.current_qty ?? x?.qty ?? x?.stock ?? 0, 0),
     }))
     .filter((r) => r.branch_id > 0)
     .sort((a, b) => a.branch_id - b.branch_id);
@@ -271,6 +295,52 @@ const totalStockAllBranches = computed(() => {
   return s;
 });
 
+const currentBranchRow = computed(() => {
+  const bid = Number(branchId.value || 0);
+  if (!bid) return null;
+  return branchesStock.value.find((r) => Number(r.branch_id) === bid) || null;
+});
+
+/* =========================
+   ✅ ENRIQUECER PRODUCTO para blocks
+========================= */
+const productForUIFixed = computed(() => {
+  const base = productForUI.value || {};
+  const r = raw.value || {};
+
+  const price = pickFirstNumber(r, ["price", "price_list", "price_discount", "price_reseller"], 0);
+  const cost = pickFirstNumber(r, ["cost"], 0);
+
+  const stock_total = Number.isFinite(totalStockAllBranches.value) ? totalStockAllBranches.value : 0;
+  const stock_in_branch = toNum(currentBranchRow.value?.stock_qty ?? 0, 0);
+  const branch_name = currentBranchRow.value?.branch_name || base?.branch_name || "";
+
+  const margin = price > 0 ? ((price - cost) / price) * 100 : null;
+
+  return {
+    ...base,
+
+    price,
+    cost,
+    margin,
+
+    price_list: pickFirstNumber(r, ["price_list"], price),
+    price_discount: pickFirstNumber(r, ["price_discount"], price),
+    price_reseller: pickFirstNumber(r, ["price_reseller"], price),
+
+    // útil si después querés mostrar “stock en otra sucursal”
+    branches_matrix: branchesStock.value,
+
+    stock_total,
+    stock_in_branch,
+    branch_name,
+
+    stock: stock_total,
+    stock_qty: stock_total,
+    qty: stock_total,
+  };
+});
+
 async function refreshBranchesMatrix() {
   const pid = Number(productId.value || 0);
   if (!pid) return;
@@ -278,8 +348,8 @@ async function refreshBranchesMatrix() {
   mx.value.loading = true;
   mx.value.error = "";
   try {
-    const matrix = await products.fetchBranchesMatrix(pid); // ✅ ESTA es la clave
-    mx.value.rows = Array.isArray(matrix) ? matrix : [];
+    const matrixResp = await products.fetchBranchesMatrix(pid);
+    mx.value.rows = unwrapArray(matrixResp);
   } catch (e) {
     mx.value.rows = [];
     mx.value.error = e?.message || products.error || "No se pudo cargar stock por sucursal";
@@ -288,9 +358,6 @@ async function refreshBranchesMatrix() {
   }
 }
 
-/* =========================
-   Fetch
-========================= */
 async function fetchProduct() {
   error.value = "";
   raw.value = null;
@@ -303,15 +370,15 @@ async function fetchProduct() {
 
   loading.value = true;
   try {
-    const full = await products.fetchOne(Number(id), {
+    const fullResp = await products.fetchOne(Number(id), {
       force: true,
       branch_id: branchId.value,
     });
 
+    const full = unwrap(fullResp);
     if (!full) throw new Error(products.error || "No se pudo obtener el producto.");
     raw.value = full;
 
-    // ✅ siempre traer matriz por sucursal desde DB (como el panel)
     await refreshBranchesMatrix();
   } catch (e) {
     error.value = e?.friendlyMessage || e?.message || "No se pudo obtener el producto.";
@@ -323,7 +390,7 @@ async function fetchProduct() {
 async function downloadPdf() {
   if (!raw.value) return;
   await downloadLabelPdfA4({
-    product: productForUI.value,
+    product: productForUIFixed.value,
     size: labelSize.value,
     copies: copies.value,
     qrValue: ui.value.qrValue,
@@ -336,10 +403,8 @@ watch(productId, fetchProduct);
 watch(branchId, fetchProduct);
 </script>
 
+
 <style scoped>
-/* =========================
-   Base layout
-========================= */
 .pd {
   padding: 14px;
   min-height: calc(100vh - 72px);
@@ -358,12 +423,14 @@ watch(branchId, fetchProduct);
 .pd-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 520px;
   gap: 12px;
   align-items: start;
 }
 
-.pd-left { min-width: 0; }
+.pd-left {
+  min-width: 0;
+}
 
 .pd-right {
   position: sticky;
@@ -371,15 +438,12 @@ watch(branchId, fetchProduct);
   min-width: 0;
 }
 
-/* =========================
-   Cards look (light + dark)
-========================= */
 .pd-card,
 .pd-actions {
   padding: 14px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
 .pd-card-head {
@@ -389,7 +453,10 @@ watch(branchId, fetchProduct);
   margin-bottom: 10px;
 }
 
-.pd-card-title { font-weight: 900; letter-spacing: .2px; }
+.pd-card-title {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
 
 .pd-muted {
   opacity: 0.85;
@@ -397,90 +464,138 @@ watch(branchId, fetchProduct);
   line-height: 1.35;
 }
 
-/* =========================
-   Actions panel (right)
-========================= */
-.pd-actions-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ✅ panel angosto para NO ocupar todo el ancho */
+.pd-print-panel {
+  max-width: 420px;
+  margin: 0 auto;
 }
 
-/* botones full width prolijos */
-.pd-actions :deep(.v-btn) {
-  width: 100%;
-  justify-content: center;
-}
-
-/* =========================
-   Table styling (key en dark)
-========================= */
-.pd-table {
-  border-radius: 12px;
+/* Stock por sucursal (look) */
+.pd-matrix {
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.pd-matrix-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.h-left .h-title {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  font-size: 13px;
+}
+.h-left .h-sub {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 1px;
+}
+.h-right {
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+.pd-matrix-body {
+  max-height: 280px;
+  overflow: auto;
   background: rgb(var(--v-theme-surface));
 }
 
-/* header */
-.pd-table :deep(thead tr) {
-  background: rgba(var(--v-theme-on-surface), 0.06);
+.pd-matrix-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.pd-table :deep(th) {
+.pd-matrix-row:last-child {
+  border-bottom: none;
+}
+.pd-matrix-row:hover {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.row-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.pd-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
   font-weight: 900;
-  letter-spacing: .2px;
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex: 0 0 auto;
+}
+.pd-avatar.ok {
+  background: rgba(var(--v-theme-success), 0.12);
+  border-color: rgba(var(--v-theme-success), 0.25);
 }
 
-/* rows */
-.pd-table :deep(tbody tr) {
-  background: transparent;
+.pd-branch-name {
+  font-weight: 900;
+  line-height: 1.1;
 }
-.pd-table :deep(tbody tr:hover) {
-  background: rgba(var(--v-theme-on-surface), 0.05);
-}
-.pd-table :deep(td) {
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+.pd-branch-meta {
+  font-size: 12px;
+  opacity: 0.72;
+  line-height: 1.1;
+  margin-top: 2px;
 }
 
-/* Branch cell */
-.pd-branch-name { font-weight: 900; }
-.pd-branch-meta { font-size: 12px; opacity: 0.72; }
+.pd-stock-chip {
+  min-width: 86px;
+  justify-content: center;
+}
 
-/* =========================
-   Preview panel fix (se vea “panel” y no pegado)
-   OJO: NO tocamos el blanco de la etiqueta, solo el contenedor
-========================= */
 .pd-right :deep(.plp-root),
 .pd-right :deep([data-comp="product-label-preview"]) {
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
 }
 
-/* si el componente no tiene wrapper identificable, al menos el primer v-card adentro */
-.pd-right :deep(.v-card) {
-  background: rgb(var(--v-theme-surface));
+@media (max-width: 1350px) {
+  .pd-grid {
+    grid-template-columns: 1fr 460px;
+  }
+  .pd-print-panel {
+    max-width: 100%;
+    margin: 0;
+  }
+}
+@media (max-width: 1100px) {
+  .pd-grid {
+    grid-template-columns: 1fr;
+  }
+  .pd-right {
+    position: static;
+  }
 }
 
-/* =========================
-   Responsive
-========================= */
-@media (max-width: 1200px) {
-  .pd-grid { grid-template-columns: 1fr 380px; }
-}
-
-@media (max-width: 980px) {
-  .pd-grid { grid-template-columns: 1fr; }
-  .pd-right { position: static; }
-}
-
-/* =========================
-   Hidden A4 render
-========================= */
 .pd-hidden {
   position: fixed;
   left: -99999px;
@@ -488,10 +603,9 @@ watch(branchId, fetchProduct);
   visibility: hidden;
   pointer-events: none;
 }
-
 .pd-a4-shell {
   width: 210mm;
   min-height: 297mm;
-  background: #fff; /* A4 SIEMPRE blanco */
+  background: #fff;
 }
 </style>
