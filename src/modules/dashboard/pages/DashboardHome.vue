@@ -48,8 +48,11 @@
             <DashboardSalesTab
               :loading="loading"
               :is-admin="isAdmin"
+              :scope="raw?.scope || null"
               :scope-label="scopeLabel"
               :sales="ui.sales"
+              :period="period"
+              @period-change="onPeriodChange"
             />
           </v-window-item>
 
@@ -126,19 +129,63 @@ const tab = ref("sales");
 const loading = ref(false);
 const error = ref("");
 
+// ✅ período para ventas (lo maneja el padre)
+const period = ref("30d"); // "30d" | "90d" | "12m" | "all"
+
 const branches = ref([]); // [{id,name}]
 const branchSelected = ref(null); // null => todas
 
 const ui = ref({
-  sales: { todayCount: 0, todayTotal: 0, avgTicket: 0, topPaymentLabel: "—", paymentsToday: [], salesByDay: [], salesByBranch: [], lastSales: [] },
-  stock: { outOfStockCount: 0, lowStockCount: 0, trackedProducts: 0, stockByBranch: [], lowStockItems: [] },
+  sales: {
+    today: { count: 0, total: 0, avgTicket: 0 },
+    week: { count: 0, total: 0, avgTicket: 0 },
+    month: { count: 0, total: 0, avgTicket: 0 },
+    trend: { week_total_pct: 0, week_count_pct: 0, month_total_pct: 0, month_count_pct: 0 },
+
+    paymentsToday: [],
+    salesByDay: [],
+
+    // compat old/new para picos
+    salesByDay30: [],
+    salesByPeriodDaily: [],
+
+    salesByBranch: [],
+    lastSales: [],
+
+    // compat old/new para tops
+    topBranch30d: null,
+    topBranchPeriod: null,
+
+    topCashiers30d: [],
+    topCashiersPeriod: [],
+
+    topProducts30d: [],
+    topProductsPeriod: [],
+
+    bestMonth12m: null,
+    bestMonthPeriod: null,
+
+    // ✅ periodo (para charts)
+    periodFrom: null,
+    periodTo: null,
+  },
+  stock: {
+    outOfStockCount: 0,
+    lowStockCount: 0,
+    trackedProducts: 0,
+    stockByBranch: [],
+    lowStockItems: [],
+    lowThreshold: 3,
+  },
   inventory: { totalProducts: 0, activeProducts: 0, noPriceProducts: 0, categories: 0, lastProducts: [] },
 });
 
 const raw = ref(null);
 const rawJson = computed(() => JSON.stringify(raw.value, null, 2));
 
-const effectiveBranchId = computed(() => (isAdmin.value ? (branchSelected.value ? Number(branchSelected.value) : null) : userBranchId.value));
+const effectiveBranchId = computed(() =>
+  isAdmin.value ? (branchSelected.value ? Number(branchSelected.value) : null) : userBranchId.value
+);
 
 const branchOptions = computed(() => {
   const opts = [];
@@ -159,7 +206,7 @@ const scopeLabel = computed(() => {
 const scopeText = computed(() => scopeLabel.value);
 
 // ---------------------
-// Adapter: OVERVIEW -> UI
+// Adapter: OVERVIEW -> UI (compat)
 // ---------------------
 function adaptOverviewToUi(payload) {
   const data = payload?.data || payload;
@@ -168,22 +215,41 @@ function adaptOverviewToUi(payload) {
   const inv = data?.inventory || {};
   const st = data?.stock || {};
 
-  const today = s?.today || {};
-  const paymentsToday = Array.isArray(s?.paymentsToday) ? s.paymentsToday : [];
-
-  let topPaymentLabel = "—";
-  if (paymentsToday.length) topPaymentLabel = paymentsToday[0]?.label || paymentsToday[0]?.method || "—";
-
   ui.value.sales = {
-    todayCount: Number(today?.count || 0),
-    todayTotal: Number(today?.total || 0),
-    avgTicket: Number(today?.avgTicket || 0),
-    topPaymentLabel,
-    paymentsToday,
-    // si tu overview todavía no trae esto, quedan vacíos sin romper
+    today: s?.today && typeof s.today === "object" ? s.today : { count: 0, total: 0, avgTicket: 0 },
+    week: s?.week && typeof s.week === "object" ? s.week : { count: 0, total: 0, avgTicket: 0 },
+    month: s?.month && typeof s.month === "object" ? s.month : { count: 0, total: 0, avgTicket: 0 },
+    trend: s?.trend && typeof s.trend === "object" ? s.trend : { week_total_pct: 0, week_count_pct: 0, month_total_pct: 0, month_count_pct: 0 },
+
+    paymentsToday: Array.isArray(s?.paymentsToday) ? s.paymentsToday : [],
     salesByDay: Array.isArray(s?.salesByDay) ? s.salesByDay : [],
+
+    // ✅ picos: nuevo/old
+    salesByPeriodDaily: Array.isArray(s?.salesByPeriodDaily) ? s.salesByPeriodDaily : [],
+    salesByDay30: Array.isArray(s?.salesByDay30) ? s.salesByDay30 : [],
+
     salesByBranch: Array.isArray(s?.salesByBranch) ? s.salesByBranch : [],
     lastSales: Array.isArray(s?.lastSales) ? s.lastSales : [],
+
+    // ✅ top branch: nuevo/old
+    topBranchPeriod: s?.topBranchPeriod || null,
+    topBranch30d: s?.topBranch30d || null,
+
+    // ✅ top cashiers: nuevo/old
+    topCashiersPeriod: Array.isArray(s?.topCashiersPeriod) ? s.topCashiersPeriod : [],
+    topCashiers30d: Array.isArray(s?.topCashiers30d) ? s.topCashiers30d : [],
+
+    // ✅ top products: nuevo/old
+    topProductsPeriod: Array.isArray(s?.topProductsPeriod) ? s.topProductsPeriod : [],
+    topProducts30d: Array.isArray(s?.topProducts30d) ? s.topProducts30d : [],
+
+    // ✅ best month: nuevo/old
+    bestMonthPeriod: s?.bestMonthPeriod || null,
+    bestMonth12m: s?.bestMonth12m || null,
+
+    // ✅ periodo para charts
+    periodFrom: s?.periodFrom || null,
+    periodTo: s?.periodTo || null,
   };
 
   ui.value.inventory = {
@@ -197,10 +263,38 @@ function adaptOverviewToUi(payload) {
   ui.value.stock = {
     outOfStockCount: Number(st?.outCount || 0),
     lowStockCount: Number(st?.lowCount || 0),
-    trackedProducts: Number(st?.okCount || 0),
+    trackedProducts: Number(st?.trackedProducts || st?.distinct_products || 0),
     stockByBranch: Array.isArray(st?.stockByBranch) ? st.stockByBranch : [],
     lowStockItems: Array.isArray(st?.lowStockItems) ? st.lowStockItems : [],
+    lowThreshold: Number(st?.lowThreshold || 3),
   };
+}
+
+function resetUi() {
+  ui.value.sales = {
+    today: { count: 0, total: 0, avgTicket: 0 },
+    week: { count: 0, total: 0, avgTicket: 0 },
+    month: { count: 0, total: 0, avgTicket: 0 },
+    trend: { week_total_pct: 0, week_count_pct: 0, month_total_pct: 0, month_count_pct: 0 },
+    paymentsToday: [],
+    salesByDay: [],
+    salesByDay30: [],
+    salesByPeriodDaily: [],
+    salesByBranch: [],
+    lastSales: [],
+    topBranch30d: null,
+    topBranchPeriod: null,
+    topCashiers30d: [],
+    topCashiersPeriod: [],
+    topProducts30d: [],
+    topProductsPeriod: [],
+    bestMonth12m: null,
+    bestMonthPeriod: null,
+    periodFrom: null,
+    periodTo: null,
+  };
+  ui.value.inventory = { totalProducts: 0, activeProducts: 0, noPriceProducts: 0, categories: 0, lastProducts: [] };
+  ui.value.stock = { outOfStockCount: 0, lowStockCount: 0, trackedProducts: 0, stockByBranch: [], lowStockItems: [], lowThreshold: 3 };
 }
 
 // ---------------------
@@ -223,7 +317,12 @@ async function fetchOverview() {
   loading.value = true;
   try {
     const params = {};
+
+    // ✅ branch scope
     if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
+
+    // ✅ period (backend nuevo; viejo lo ignora sin romper)
+    params.period = period.value;
 
     const resp = await dashboardOverview(params);
     raw.value = resp.data;
@@ -233,11 +332,7 @@ async function fetchOverview() {
   } catch (e) {
     console.error("❌ dashboard overview error", e);
     raw.value = null;
-
-    ui.value.sales = { todayCount: 0, todayTotal: 0, avgTicket: 0, topPaymentLabel: "—", paymentsToday: [], salesByDay: [], salesByBranch: [], lastSales: [] };
-    ui.value.inventory = { totalProducts: 0, activeProducts: 0, noPriceProducts: 0, categories: 0, lastProducts: [] };
-    ui.value.stock = { outOfStockCount: 0, lowStockCount: 0, trackedProducts: 0, stockByBranch: [], lowStockItems: [] };
-
+    resetUi();
     error.value = e?.response?.data?.message || e?.message || "No se pudo cargar el dashboard";
   } finally {
     loading.value = false;
@@ -248,12 +343,20 @@ function refresh() {
   fetchOverview();
 }
 
+// ✅ handler del select de período en SalesTab
+function onPeriodChange(v) {
+  if (!v || v === period.value) return;
+  period.value = v;
+  fetchOverview();
+}
+
 onMounted(async () => {
   if (!isAdmin.value && userBranchId.value) branchSelected.value = userBranchId.value;
   await fetchBranchesIfAdmin();
   await fetchOverview();
 });
 
+// ✅ cambio de sucursal => refetch
 watch(effectiveBranchId, () => {
   if (isAdmin.value) fetchOverview();
 });
