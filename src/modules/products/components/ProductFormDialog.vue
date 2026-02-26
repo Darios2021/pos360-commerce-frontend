@@ -1,12 +1,8 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/ProductFormDialog.vue -->
-<!-- SKU AUTO (FIX “COMO DEBE SER”):
-  ✅ SKU se calcula “en serio” AL FINAL (Paso 5 / Resumen) porque ahí tiene sentido fijarlo:
-     - En CREATE todavía NO hay ID real → solo preview
-     - Al CREAR: se fija SKU definitivo con el ID real y se persiste con update
-  ✅ Mientras tanto, mostramos un preview (no lo “grabamos” en draft hasta el final)
-  ✅ Prefijo = iniciales (2 + 2) de Rubro + Subrubro (por nombre)
-  ✅ Sufijo = ID real (cuando existe) o nextCodePreview (preview)
+<!-- FIX MOBILE UI:
+  ✅ Footer: botones NO se rompen (stack real + safe-area + widths)
+  ✅ Stepper mobile: NO se deforma (sin arrows superpuestos, scroll por swipe)
 -->
 
 <template>
@@ -77,7 +73,12 @@
         </div>
 
         <div v-else class="pf-stepper-mobile">
-          <v-slide-group show-arrows center-active class="pf-slide">
+          <!-- ✅ FIX: sin show-arrows (en mobile se superponen / deforman)
+               scroll por swipe + chips "no wrap" -->
+          <v-slide-group
+            class="pf-slide"
+            center-active
+          >
             <v-slide-group-item v-for="s in steps" :key="s.value">
               <v-chip
                 class="pf-stepchip"
@@ -107,12 +108,15 @@
         <div class="pf-pad">
           <!-- STEP 1 -->
           <div v-show="step === 1" class="pf-step">
-            <!-- ProductDataPanel debe renderizar SKU readonly, pero OJO:
-                 - El valor “oficial” se fija al final (Paso 5)
-                 - Igual podés mostrar el preview en el input (si ProductDataPanel usa draft.sku)
-                 👉 Por eso: acá NO pisamos draft.sku todavía, solo mostramos preview abajo
-            -->
-            <ProductDataPanel v-model="draft" :disabled="busy" :product-id="draft?.id || null" />
+            <ProductDataPanel
+              v-model="draft"
+              :disabled="busy"
+              :product-id="draft?.id || null"
+              :categories="categoriesList"
+              :subcategories="subcategoriesList"
+              :sku-preview="skuPreview"
+              @reload-taxonomies="ensureTaxonomies"
+            />
 
             <div class="pf-meta mt-3 d-flex align-center flex-wrap ga-2">
               <div>ID: <b>{{ draft?.id || "—" }}</b></div>
@@ -346,7 +350,7 @@
             />
           </div>
 
-          <!-- STEP 5 -->
+          <!-- STEP 5 ✅ RESUMEN (NO SE TOCA) -->
           <div v-show="step === 5" class="pf-step">
             <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
               <div>
@@ -379,8 +383,8 @@
                 <div class="pf-kv">
                   <div class="k">Nombre</div><div class="v">{{ safe(draft.name) }}</div>
                   <div class="k">SKU</div><div class="v">{{ safe(finalSku) }}</div>
-                  <div class="k">Rubro</div><div class="v">{{ safe(draft.category_id) }}</div>
-                  <div class="k">Subrubro</div><div class="v">{{ safe(draft.subcategory_id) }}</div>
+                  <div class="k">Rubro</div><div class="v">{{ safe(getCategoryNameById(getCategoryIdFromDraft(draft))) }}</div>
+                  <div class="k">Subrubro</div><div class="v">{{ safe(getSubcategoryNameById(getSubcategoryIdFromDraft(draft))) }}</div>
                   <div class="k">Marca</div><div class="v">{{ safe(draft.brand) }}</div>
                   <div class="k">Modelo</div><div class="v">{{ safe(draft.model) }}</div>
                 </div>
@@ -452,7 +456,14 @@
               ANTERIOR
             </v-btn>
 
-            <v-btn v-if="step < 5" class="pf-btn" color="primary" variant="flat" @click="nextStep" :disabled="busy">
+            <v-btn
+              v-if="step < 5"
+              class="pf-btn"
+              color="primary"
+              variant="flat"
+              @click="nextStep"
+              :disabled="busy"
+            >
               SIGUIENTE
               <v-icon end size="18">mdi-chevron-right</v-icon>
             </v-btn>
@@ -506,13 +517,12 @@
   </v-dialog>
 </template>
 
-
-
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
+import { CategoriesService } from "../../../app/services/categories.service";
 
 import ProductDataPanel from "./form/ProductDataPanel.vue";
 import ProductPricesPanel from "./panels/ProductPricesPanel.vue";
@@ -521,6 +531,7 @@ import ProductImagesPanel from "./panels/ProductImagesPanel.vue";
 import ProductVideosPanel from "./panels/ProductVideosPanel.vue";
 import ProductBarcodeCard from "./form/ProductBarcodeCard.vue";
 
+/* ===================== Props/Emit ===================== */
 const props = defineProps({
   open: { type: Boolean, default: false },
   mode: { type: String, default: "create" }, // create|edit
@@ -539,39 +550,32 @@ const openLocal = computed({
 });
 
 const { mdAndUp, smAndDown } = useDisplay();
-const isMobile = computed(() => !!smAndDown.value);
 
+/* ===================== UI state ===================== */
 const step = ref(1);
 const nextCodePreview = ref(null);
 
-/* ===================== Taxonomías ===================== */
+// taxonomies
 const categoriesList = ref([]);
 const subcategoriesList = ref([]);
 
-/* ===================== Queues (BLINDADAS) ===================== */
+// stock + media queues
 const stockMatrix = ref([]);
-const queuedImages = ref([]);         // File[]
-const queuedYoutubeVideos = ref([]);  // [{key,url,title?}]
-const queuedVideoFiles = ref([]);     // File[]
+const queuedImages = ref([]); // File[]
+const queuedYoutubeVideos = ref([]); // [{key,url,title?}]
+const queuedVideoFiles = ref([]); // File[]
 
-function arr(v) {
-  return Array.isArray(v) ? v : [];
-}
-
-const imagesCount = computed(() => arr(queuedImages.value).length);
-const youtubeCount = computed(() => arr(queuedYoutubeVideos.value).length);
-const videoFilesCount = computed(() => arr(queuedVideoFiles.value).length);
-const videosCount = computed(() => youtubeCount.value + videoFilesCount.value);
-
-/* ===================== UI ===================== */
+// YouTube input
 const ytUrl = ref("");
 const ytError = ref("");
 
+// toast
 const snack = ref({ open: false, text: "" });
 function toast(t) {
   snack.value = { open: true, text: String(t || "") };
 }
 
+// validation modal
 const vModal = ref({ open: false, message: "", items: [] });
 function showValidation(items = [], message = "") {
   vModal.value = {
@@ -582,14 +586,49 @@ function showValidation(items = [], message = "") {
 }
 
 /* ===================== Utils ===================== */
+function arr(v) {
+  return Array.isArray(v) ? v : [];
+}
+const imagesCount = computed(() => arr(queuedImages.value).length);
+const youtubeCount = computed(() => arr(queuedYoutubeVideos.value).length);
+const videoFilesCount = computed(() => arr(queuedVideoFiles.value).length);
+const videosCount = computed(() => youtubeCount.value + videoFilesCount.value);
+
+/* ✅ FIX CLAVE: toInt robusto (soporta objetos de v-select return-object) */
 function toInt(v, d = 0) {
+  if (v === null || v === undefined || v === "") return d;
+
+  if (typeof v === "object") {
+    const cand =
+      v?.id ??
+      v?.value ??
+      v?.category_id ??
+      v?.subcategory_id ??
+      v?.rubro_id ??
+      v?.subrubro_id ??
+      v?.categoryId ??
+      v?.subcategoryId ??
+      null;
+
+    if (cand !== null && cand !== undefined && cand !== "") {
+      const n2 = parseInt(String(cand), 10);
+      return Number.isFinite(n2) ? n2 : d;
+    }
+    return d;
+  }
+
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
 }
+
 function num(v, d = 0) {
   if (v === null || v === undefined || v === "") return d;
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
+}
+function safe(v) {
+  const s = String(v ?? "").trim();
+  return s ? s : "—";
 }
 function toBool(v, d = false) {
   if (typeof v === "boolean") return v;
@@ -605,13 +644,9 @@ function deepClone(obj) {
     return { ...(obj || {}) };
   }
 }
-function safe(v) {
-  const s = String(v ?? "").trim();
-  return s ? s : "—";
-}
 
-function normalizeList(arrIn) {
-  const a = Array.isArray(arrIn) ? arrIn : [];
+function normalizeTaxo(raw) {
+  const a = arr(raw);
   return a
     .map((x) => {
       const id =
@@ -622,19 +657,7 @@ function normalizeList(arrIn) {
         toInt(x?.rubro_id, 0) ||
         toInt(x?.subrubro_id, 0);
 
-      const name = String(
-        x?.name ??
-          x?.nombre ??
-          x?.title ??
-          x?.label ??
-          x?.text ??
-          x?.descripcion ??
-          x?.category_name ??
-          x?.subcategory_name ??
-          x?.rubro ??
-          x?.subrubro ??
-          ""
-      ).trim();
+      const name = String(x?.name ?? x?.nombre ?? x?.title ?? x?.label ?? x?.text ?? "").trim();
 
       const category_id =
         toInt(x?.category_id, 0) ||
@@ -648,107 +671,52 @@ function normalizeList(arrIn) {
     .filter((x) => x.id > 0 && x.name);
 }
 
-function extractArray(res) {
-  const d = res?.data;
-  if (Array.isArray(d)) return d;
-  if (Array.isArray(d?.items)) return d.items;
-  if (Array.isArray(d?.rows)) return d.rows;
-  if (Array.isArray(d?.data)) return d.data;
-  return [];
+/* ===================== Load taxonomies ===================== */
+async function loadCategories() {
+  const data = await CategoriesService.list();
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.rows)
+        ? data.rows
+        : [];
+  return normalizeTaxo(list);
 }
 
-async function tryGetFirstOk(label, urls = []) {
-  const tried = [];
-  for (const url of urls) {
-    tried.push(url);
-    try {
-      const res = await http.get(url);
-      const arr = extractArray(res);
-      if (arr.length) {
-        console.log(`[taxonomies] OK ${label}:`, url, arr.length);
-        return arr;
-      }
-    } catch {}
-  }
-  console.warn(`[taxonomies] FAIL ${label}. Endpoints probados:`, tried);
-  return [];
+async function loadSubcategories() {
+  const { data } = await http.get("/subcategories");
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.rows)
+        ? data.rows
+        : [];
+  return normalizeTaxo(list);
 }
-
-const TAXONOMY_ENDPOINTS = {
-  categories: [
-    "/admin/categories",
-    "/admin/product-categories",
-    "/admin/products/categories",
-    "/admin/meta/categories",
-    "/categories",
-  ],
-  subcategories: [
-    "/admin/subcategories",
-    "/admin/product-subcategories",
-    "/admin/products/subcategories",
-    "/admin/meta/subcategories",
-    "/subcategories",
-  ],
-};
 
 async function ensureTaxonomies() {
-  // 1) store
-  const cStore = normalizeList(products?.categories || products?.meta?.categories || []);
-  const sStore = normalizeList(products?.subcategories || products?.meta?.subcategories || []);
-  if (cStore.length) categoriesList.value = cStore;
-  if (sStore.length) subcategoriesList.value = sStore;
-
-  // 2) store methods (si existen)
   try {
-    if (!categoriesList.value.length && typeof products.fetchCategories === "function") {
-      await products.fetchCategories();
-      categoriesList.value = normalizeList(products?.categories || products?.meta?.categories || []);
-    }
-  } catch {}
-  try {
-    if (!subcategoriesList.value.length && typeof products.fetchSubcategories === "function") {
-      await products.fetchSubcategories();
-      subcategoriesList.value = normalizeList(products?.subcategories || products?.meta?.subcategories || []);
-    }
-  } catch {}
+    const [cats, subs] = await Promise.all([loadCategories(), loadSubcategories()]);
+    categoriesList.value = cats;
+    subcategoriesList.value = subs;
 
-  // 3) http fallback
-  if (!categoriesList.value.length) {
-    categoriesList.value = normalizeList(
-      await tryGetFirstOk("categories", TAXONOMY_ENDPOINTS.categories)
-    );
-  }
-  if (!subcategoriesList.value.length) {
-    subcategoriesList.value = normalizeList(
-      await tryGetFirstOk("subcategories", TAXONOMY_ENDPOINTS.subcategories)
-    );
-  }
-
-  console.log("[taxonomies] categories:", categoriesList.value.length, categoriesList.value.slice(0, 3));
-  console.log("[taxonomies] subcategories:", subcategoriesList.value.length, subcategoriesList.value.slice(0, 3));
-
-  if (!categoriesList.value.length || !subcategoriesList.value.length) {
-    toast("⚠️ No se cargan Rubros/Subrubros. Mirá consola: [taxonomies] FAIL ...");
+    if (!categoriesList.value.length) toast("⚠️ No hay rubros cargados (API /categories devolvió vacío).");
+    if (!subcategoriesList.value.length) toast("⚠️ No hay subrubros cargados (API /subcategories devolvió vacío).");
+  } catch (e) {
+    console.error("[taxo] ERROR loading taxonomies:", e);
+    toast("❌ Error cargando Rubros/Subrubros (mirá consola).");
+    categoriesList.value = [];
+    subcategoriesList.value = [];
   }
 }
 
-/* ===================== Draft ===================== */
+/* ===================== Draft helpers ===================== */
 function pickId(maybe) {
-  if (maybe === null || maybe === undefined) return 0;
-  if (typeof maybe === "number") return toInt(maybe, 0);
-  if (typeof maybe === "string") return toInt(maybe.trim(), 0);
-  if (typeof maybe === "object") {
-    return (
-      toInt(maybe.id, 0) ||
-      toInt(maybe.value, 0) ||
-      toInt(maybe.subcategory_id, 0) ||
-      toInt(maybe.subcategoryId, 0) ||
-      toInt(maybe.category_id, 0) ||
-      0
-    );
-  }
-  return 0;
+  return toInt(maybe, 0);
 }
+
 function getSubcategoryIdFromDraft(d) {
   let sid =
     pickId(d?.subcategory_id) ||
@@ -760,6 +728,7 @@ function getSubcategoryIdFromDraft(d) {
   if (!sid) sid = pickId(d?.subcategory) || pickId(d?.subCategory) || pickId(d?.subrubro);
   return sid || null;
 }
+
 function getCategoryIdFromDraft(d) {
   let cid =
     pickId(d?.category_id) ||
@@ -769,11 +738,12 @@ function getCategoryIdFromDraft(d) {
     pickId(d?.category);
   return cid || null;
 }
+
 function defaultDraft() {
   return {
     id: null,
     name: "",
-    sku: "",
+    sku: "", // ✅ NO tocar acá, se fija al final
     code: null,
     barcode: null,
     branch_id: null,
@@ -789,22 +759,40 @@ function defaultDraft() {
     price_reseller: 0,
   };
 }
+
 const draft = ref(defaultDraft());
 
-/* ===================== SKU preview/final ===================== */
+/* ✅ FIX: si el panel devuelve objeto, lo convertimos a ID (para que Stepper/preview no se rompa) */
+watch(
+  () => draft.value?.category_id,
+  (v) => {
+    if (v && typeof v === "object") draft.value.category_id = toInt(v, 0) || null;
+  }
+);
+watch(
+  () => draft.value?.subcategory_id,
+  (v) => {
+    if (v && typeof v === "object") draft.value.subcategory_id = toInt(v, 0) || null;
+  }
+);
+
+/* ===================== SKU (preview + final) ===================== */
 const skuPreviewHint = ref("");
+
 function getCategoryNameById(id) {
   const iid = toInt(id, 0);
   if (!iid) return "";
   const hit = arr(categoriesList.value).find((x) => toInt(x?.id, 0) === iid);
   return String(hit?.name || "").trim();
 }
+
 function getSubcategoryNameById(id) {
   const iid = toInt(id, 0);
   if (!iid) return "";
   const hit = arr(subcategoriesList.value).find((x) => toInt(x?.id, 0) === iid);
   return String(hit?.name || "").trim();
 }
+
 function lettersOnly(s) {
   return String(s || "")
     .normalize("NFD")
@@ -812,6 +800,7 @@ function lettersOnly(s) {
     .replace(/[^a-zA-Z0-9 ]/g, " ")
     .trim();
 }
+
 function makeInitials(label, take = 2) {
   const clean = lettersOnly(label);
   if (!clean) return "";
@@ -823,12 +812,14 @@ function makeInitials(label, take = 2) {
 
   let out = "";
   for (const p of parts) {
-    out += (p[0] || "");
+    out += p[0] || "";
     if (out.length >= take) break;
   }
+
   if (out.length < take) out += parts.join("").slice(out.length, take);
   return out.slice(0, take).toUpperCase();
 }
+
 function buildSku(d, forceId = null) {
   const cid = getCategoryIdFromDraft(d);
   const sid = getSubcategoryIdFromDraft(d);
@@ -855,13 +846,70 @@ const skuPreview = computed(() => {
 });
 
 const finalSku = computed(() => {
-  // si ya existe SKU real guardado (edit) lo mostramos
   const s = String(draft.value?.sku || "").trim();
-  if (s) return s;
-
-  // si no, mostramos preview (create)
-  return skuPreview.value;
+  return s || skuPreview.value;
 });
+
+/* ===================== Stepper mobile ===================== */
+const steps = [
+  { value: 1, title: "Datos" },
+  { value: 2, title: "Precios" },
+  { value: 3, title: "Stock" },
+  { value: 4, title: "Media" },
+  { value: 5, title: "Resumen" },
+];
+
+/* ===================== Validation ===================== */
+function validateDatos() {
+  const errs = [];
+  const name = String(draft.value?.name || "").trim();
+  const cat = toInt(getCategoryIdFromDraft(draft.value), 0);
+  const sub = toInt(getSubcategoryIdFromDraft(draft.value), 0);
+
+  if (!name) errs.push("• Falta el **Nombre** del producto.");
+  if (!cat) errs.push("• Falta seleccionar el **Rubro**.");
+  if (!sub) errs.push("• Falta seleccionar el **Subrubro**.");
+
+  return errs.length ? errs : null;
+}
+
+const canGoAfterStep1 = computed(() => !validateDatos());
+const isReadyToCreate = computed(() => !validateDatos());
+
+/* ===================== Stock preview ===================== */
+const stockPreviewList = computed(() => {
+  const a = arr(stockMatrix.value);
+  return a
+    .map((r) => ({
+      branch_id: toInt(r.branch_id, 0),
+      branch_name: String(r.branch_name || "").trim(),
+      qty: num(r.qty, 0),
+      enabled: toBool(r.enabled, false),
+    }))
+    .filter((x) => x.branch_id > 0 && x.branch_name && Number.isFinite(x.qty) && x.qty !== 0);
+});
+
+/* ===================== Navigation ===================== */
+function canGoTo(target) {
+  const t = toInt(target, 1);
+  if (t <= 1) return true;
+  return !!canGoAfterStep1.value;
+}
+function goToStep(target) {
+  const t = toInt(target, 1);
+  if (!canGoTo(t)) return;
+  step.value = Math.min(5, Math.max(1, t));
+}
+function prevStep() {
+  step.value = Math.max(1, step.value - 1);
+}
+function nextStep() {
+  if (step.value === 1) {
+    const errs = validateDatos();
+    if (errs) return showValidation(errs, "Antes de continuar, completá estos campos:");
+  }
+  step.value = Math.min(5, step.value + 1);
+}
 
 /* ===================== Next code ===================== */
 async function reloadNextCode() {
@@ -918,75 +966,18 @@ watch(
   { deep: true }
 );
 
+/* ===================== Cancel ===================== */
 function onCancel() {
   emit("cancel");
   openLocal.value = false;
 }
 
-/* ===================== Validación ===================== */
-function validateDatos() {
-  const errs = [];
-  const name = String(draft.value?.name || "").trim();
-  const cat = toInt(getCategoryIdFromDraft(draft.value), 0);
-  const sub = toInt(getSubcategoryIdFromDraft(draft.value), 0);
-
-  if (!name) errs.push("• Falta el **Nombre** del producto.");
-  if (!cat) errs.push("• Falta seleccionar el **Rubro**.");
-  if (!sub) errs.push("• Falta seleccionar el **Subrubro**.");
-
-  return errs.length ? errs : null;
-}
-
-const canGoAfterStep1 = computed(() => !validateDatos());
-const isReadyToCreate = computed(() => !validateDatos());
-
-/* ===================== Stock preview ===================== */
-const stockPreviewList = computed(() => {
-  const a = arr(stockMatrix.value);
-  return a
-    .map((r) => ({
-      branch_id: toInt(r.branch_id, 0),
-      branch_name: String(r.branch_name || "").trim(),
-      qty: num(r.qty, 0),
-      enabled: toBool(r.enabled, false),
-    }))
-    .filter((x) => x.branch_id > 0 && x.branch_name && Number.isFinite(x.qty) && x.qty !== 0);
-});
-
-/* ===================== Navegación ===================== */
-const steps = [
-  { value: 1, title: "Datos" },
-  { value: 2, title: "Precios" },
-  { value: 3, title: "Stock" },
-  { value: 4, title: "Media" },
-  { value: 5, title: "Resumen" },
-];
-
-function canGoTo(target) {
-  const t = toInt(target, 1);
-  if (t <= 1) return true;
-  return !!canGoAfterStep1.value;
-}
-function goToStep(target) {
-  const t = toInt(target, 1);
-  if (!canGoTo(t)) return;
-  step.value = Math.min(5, Math.max(1, t));
-}
-function prevStep() {
-  step.value = Math.max(1, step.value - 1);
-}
-function nextStep() {
-  if (step.value === 1) {
-    const errs = validateDatos();
-    if (errs) return showValidation(errs, "Antes de continuar, completá estos campos:");
-  }
-  step.value = Math.min(5, step.value + 1);
-}
-
-/* ===================== Queue handlers (BLINDADOS) ===================== */
+/* ===================== Images queue ===================== */
 function onQueuedChanged(files) {
   queuedImages.value = arr(files);
 }
+
+/* ===================== Videos queue ===================== */
 function normalizeYoutubeQueue(a) {
   return arr(a)
     .map((x) => ({
@@ -1000,7 +991,6 @@ function normalizeFilesQueue(a) {
   return arr(a).filter(Boolean);
 }
 
-/* ===================== YouTube ===================== */
 function parseYoutubeUrl(raw) {
   const url = String(raw || "").trim();
   if (!url) return { ok: false, url: "", reason: "Pegá una URL." };
@@ -1008,10 +998,11 @@ function parseYoutubeUrl(raw) {
   const low = url.toLowerCase();
   const looksYoutube =
     low.includes("youtube.com/") || low.includes("youtu.be/") || low.includes("m.youtube.com/");
-  if (!looksYoutube) return { ok: false, url: "", reason: "La URL no parece de YouTube." };
 
+  if (!looksYoutube) return { ok: false, url: "", reason: "La URL no parece de YouTube." };
   return { ok: true, url, reason: "" };
 }
+
 function addYoutubeUrl() {
   ytError.value = "";
   const p = parseYoutubeUrl(ytUrl.value);
@@ -1028,11 +1019,13 @@ function addYoutubeUrl() {
   ytUrl.value = "";
   toast("✅ YouTube agregado a la cola");
 }
+
 function removeYoutubeAt(idx) {
   const a = normalizeYoutubeQueue(queuedYoutubeVideos.value);
   a.splice(idx, 1);
   queuedYoutubeVideos.value = a;
 }
+
 function clearVideosQueue() {
   queuedYoutubeVideos.value = [];
   queuedVideoFiles.value = [];
@@ -1040,6 +1033,7 @@ function clearVideosQueue() {
   ytError.value = "";
   toast("✅ Cola de videos limpia");
 }
+
 function onVideosChanged() {}
 
 /* ===================== Commit videos ===================== */
@@ -1092,6 +1086,9 @@ function buildPayload() {
     price_reseller: num(draft.value?.price_reseller, 0),
   };
 
+  // IMPORTANT: SKU se fija AL FINAL
+  delete payload.sku;
+
   if (payload.barcode === "") payload.barcode = null;
   if (payload.branch_id === "" || payload.branch_id === 0) payload.branch_id = null;
 
@@ -1117,7 +1114,7 @@ function buildBranchIdsFromStockMatrix() {
   return Array.from(new Set(bids));
 }
 
-/* ===================== Create/Edit ===================== */
+/* ===================== Create ===================== */
 async function createAll() {
   if (isEdit.value) return;
 
@@ -1136,9 +1133,6 @@ async function createAll() {
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
-    // NO mandamos sku acá (se fija al final con ID real)
-    delete payload.sku;
-
     const ok = await products.create(payload);
     if (!ok) {
       showValidation(["• Hay errores de validación del servidor."], "No se pudo crear.");
@@ -1152,7 +1146,7 @@ async function createAll() {
       return;
     }
 
-    // fijamos sku real con id real
+    // ✅ fijar SKU final con ID real
     const skuReal = buildSku({ ...draft.value, ...created }, pid);
     try {
       await products.update(pid, { sku: skuReal });
@@ -1162,14 +1156,35 @@ async function createAll() {
       draft.value = { ...draft.value, ...deepClone(created) };
     }
 
-    // imágenes
+    // stock init (create)
+    const rows = arr(stockMatrix.value);
+    for (const r of rows) {
+      const bid = toInt(r.branch_id, 0);
+      const wid = toInt(r.warehouse_id, 0);
+
+      const enabled = toBool(r.enabled, false);
+      const qty = num(r.qty, NaN);
+      if (!Number.isFinite(qty)) continue;
+
+      if (!enabled && qty === 0) continue;
+
+      const ok2 = await products.initStock({
+        product_id: pid,
+        branch_id: bid || null,
+        warehouse_id: wid || null,
+        qty,
+      });
+
+      if (!ok2) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
+    }
+
+    // images
     if (imagesCount.value) {
       const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
       else toast("✅ Imágenes subidas");
     }
 
-    // videos
     await commitVideos(pid);
 
     emit("saved");
@@ -1180,6 +1195,7 @@ async function createAll() {
   }
 }
 
+/* ===================== Edit ===================== */
 async function saveAll() {
   if (!isEdit.value) return;
 
@@ -1204,16 +1220,46 @@ async function saveAll() {
     const payload = buildPayload();
     payload.branch_ids = buildBranchIdsFromStockMatrix();
 
-    // en edit, si no hay sku lo calculamos con id real
-    if (!String(payload.sku || "").trim()) payload.sku = buildSku(draft.value, pid);
-
     const ok = await products.update(pid, payload);
     if (!ok) {
       showValidation(["• Hay errores de validación del servidor."], "No se pudo guardar.");
       return;
     }
 
-    // imágenes (edit)
+    // ✅ si el producto edit NO tenía sku, lo fijamos igual
+    if (!String(draft.value?.sku || "").trim()) {
+      const skuReal = buildSku(draft.value, pid);
+      try {
+        await products.update(pid, { sku: skuReal });
+        draft.value.sku = skuReal;
+      } catch {}
+    }
+
+    // stock set absoluto (edit)
+    const rows = arr(stockMatrix.value);
+    for (const r of rows) {
+      const bid = toInt(r.branch_id, 0);
+      const wid = toInt(r.warehouse_id, 0);
+
+      const enabled = toBool(r.enabled, false);
+      const desiredQty = enabled ? num(r.qty, NaN) : 0;
+
+      if (enabled && !Number.isFinite(desiredQty)) continue;
+
+      const cur = num(r.current_qty, NaN);
+      if (Number.isFinite(cur) && desiredQty === cur) continue;
+
+      const ok2 = await products.initStock({
+        product_id: pid,
+        branch_id: bid || null,
+        warehouse_id: wid || null,
+        qty: desiredQty,
+      });
+
+      if (!ok2) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
+    }
+
+    // images
     if (imagesCount.value) {
       const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
@@ -1221,7 +1267,6 @@ async function saveAll() {
       queuedImages.value = [];
     }
 
-    // videos
     await commitVideos(pid);
 
     emit("saved");
@@ -1233,40 +1278,66 @@ async function saveAll() {
 }
 </script>
 
-<style>
-.pf-overlay .pf-card {
-  height: 100vh;
-  max-height: 100vh;
+<style scoped>
+/* =========================================================
+   ✅ UI REFRESH (LIGHT + DARK) — ProductFormDialog
+   + FIX MOBILE:
+   - Stepper chips sin deformar (scroll)
+   - Footer sticky con safe-area y botones 100% (no se rompen)
+========================================================= */
+
+.pf-card {
+  /* tokens base */
+  --pf-surface: rgb(var(--v-theme-surface));
+  --pf-surface2: rgb(var(--v-theme-surface-variant));
+  --pf-on: rgb(var(--v-theme-on-surface));
+  --pf-outline: rgb(var(--v-theme-outline));
+  --pf-outline2: rgb(var(--v-theme-outline-variant));
+
+  /* bordes adaptativos */
+  --pf-b1: color-mix(in srgb, var(--pf-outline) 26%, transparent);
+  --pf-b2: color-mix(in srgb, var(--pf-outline) 16%, transparent);
+
+  /* fondos suaves */
+  --pf-fill: color-mix(in srgb, var(--pf-surface2) 42%, var(--pf-surface));
+  --pf-fill2: color-mix(in srgb, var(--pf-surface2) 65%, var(--pf-surface));
+
+  /* texto */
+  --pf-muted: color-mix(in srgb, var(--pf-on) 70%, transparent);
+  --pf-muted2: color-mix(in srgb, var(--pf-on) 55%, transparent);
+
+  /* sombras (suaves en light, más marcadas en dark) */
+  --pf-shadow-1: 0 10px 26px color-mix(in srgb, rgba(0,0,0,.18) 55%, transparent);
+  --pf-shadow-2: 0 18px 48px color-mix(in srgb, rgba(0,0,0,.22) 60%, transparent);
+}
+
+/* ================= OVERLAY ================= */
+:deep(.pf-overlay) {
+  background: color-mix(in srgb, var(--pf-surface) 35%, rgba(0, 0, 0, 1));
+}
+
+:deep(.pf-overlay .v-overlay__content) {
   width: 100vw;
-  max-width: 100vw;
+  height: 100vh;
+  margin: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  display: flex;
+}
+
+/* Card raíz */
+.pf-card {
+  width: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 0 !important;
+  background: var(--pf-surface);
 }
 
-.pf-overlay .pf-top,
-.pf-overlay .pf-footer {
-  background: rgb(var(--v-theme-surface));
-}
-
-.pf-overlay .pf-top {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-.pf-overlay .pf-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 30;
-}
-
-.pf-overlay .pf-body {
-  flex: 1;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  background: rgb(var(--v-theme-background));
+/* ================= HEADER ================= */
+.pf-top {
+  background: var(--pf-surface);
 }
 
 .pf-appbar {
@@ -1277,127 +1348,197 @@ async function saveAll() {
   padding: 14px 16px;
 }
 
-.pf-appbar-left {
-  display: grid;
-  gap: 2px;
-}
-
 .pf-h1 {
-  font-size: 18px;
   font-weight: 900;
-  line-height: 1.1;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
 }
 
 .pf-sub {
-  font-size: 13px;
-  opacity: 0.85;
+  font-size: 12px;
+  color: var(--pf-muted);
 }
 
 .pf-progress {
-  padding: 0 16px 10px 16px;
+  padding: 0 16px 10px;
 }
 
+/* Stepper desktop */
 .pf-stepper-head {
-  padding: 10px 12px;
+  padding: 10px 16px 12px;
 }
 
+.pf-stepper {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--pf-b2);
+  background: color-mix(in srgb, var(--pf-surface) 70%, var(--pf-fill));
+  box-shadow: 0 8px 18px color-mix(in srgb, rgba(0,0,0,.12) 50%, transparent);
+}
+
+.pf-stepper :deep(.v-stepper-item) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.pf-stepper :deep(.v-stepper-item__title) {
+  font-weight: 800;
+  letter-spacing: 0.1px;
+}
+.pf-stepper :deep(.v-stepper-item__subtitle) {
+  color: var(--pf-muted2);
+}
+
+/* ================= Stepper mobile ================= */
 .pf-stepper-mobile {
-  padding: 10px 10px 8px 10px;
+  padding: 10px 12px 12px;
 }
 
+/* ✅ FIX: que el slide-group sea scrolleable y no “aplastado” */
 .pf-slide {
-  max-width: 100%;
+  width: 100%;
+}
+.pf-slide :deep(.v-slide-group__container) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.pf-slide :deep(.v-slide-group__content) {
+  gap: 8px;
+  padding: 2px 2px;
+}
+.pf-slide :deep(.v-slide-group__prev),
+.pf-slide :deep(.v-slide-group__next) {
+  display: none !important; /* por si Vuetify decide mostrarlos */
 }
 
 .pf-stepchip {
-  margin-right: 8px;
-  border-radius: 999px !important;
-  padding: 0 10px;
-  user-select: none;
+  border-radius: 999px;
+  font-weight: 900;
+  flex: 0 0 auto;
+  max-width: none;
+}
+.pf-stepchip-t {
+  white-space: nowrap;
 }
 
 .pf-stepchip-n {
-  font-weight: 900;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
   margin-right: 8px;
-}
-
-.pf-stepchip-t {
-  font-weight: 800;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--pf-on) 12%, transparent);
 }
 
 .pf-stephint {
   margin-top: 8px;
-  padding: 0 6px;
-  opacity: 0.9;
 }
 
-.pf-overlay .pf-pad {
-  padding: 16px;
-}
-@media (max-width: 600px) {
-  .pf-overlay .pf-pad {
-    padding: 12px;
-  }
-  .pf-appbar {
-    padding: 12px 12px;
-  }
-  .pf-progress {
-    padding: 0 12px 10px 12px;
-  }
+/* ================= BODY ================= */
+.pf-body {
+  flex: 1;
+  overflow-y: auto;
+  /* ✅ FIX: padding extra para que el footer sticky no tape contenido + safe-area */
+  padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
 }
 
-.pf-overlay .pf-step {
-  display: grid;
+.pf-pad {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 14px;
+}
+
+.pf-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pf-surface) 82%, var(--pf-fill2));
+  border: 1px solid var(--pf-b1);
+  box-shadow: var(--pf-shadow-1);
+}
+
+.pf-step :deep(.v-card),
+.pf-step :deep(.v-sheet),
+.pf-step :deep(.v-alert),
+.pf-step :deep(.v-expansion-panel),
+.pf-step :deep(.v-table),
+.pf-step :deep(.v-list) {
+  background: var(--pf-surface) !important;
+}
+
+.pf-step :deep(.v-card),
+.pf-step :deep(.v-expansion-panel),
+.pf-step :deep(.v-alert),
+.pf-step :deep(.v-table),
+.pf-step :deep(.v-sheet) {
+  border: 1px solid var(--pf-b2);
+  border-radius: 14px !important;
+  box-shadow: none;
+}
+
+.pf-step :deep(.v-field) {
+  background: color-mix(in srgb, var(--pf-surface) 75%, var(--pf-fill)) !important;
+  border-radius: 12px;
+}
+.pf-step :deep(.v-field__outline) {
+  opacity: 1 !important;
+}
+.pf-step :deep(.v-field--focused .v-field__outline) {
+  filter: saturate(1.05);
+}
+
+.pf-meta {
+  font-size: 12.5px;
+  color: var(--pf-muted);
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
 }
 
-.pf-overlay .pf-meta {
-  font-size: 12px;
-  opacity: 0.9;
+/* ================= FOOTER ================= */
+.pf-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  border-top: 1px solid var(--pf-b2);
+  background: color-mix(in srgb, var(--pf-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
 }
 
-.pf-overlay .pf-actions {
-  padding: 12px 16px;
-  gap: 10px;
+.pf-actions {
+  padding: 12px 14px;
+  /* ✅ FIX: si falta espacio, que no reviente */
+  flex-wrap: wrap;
+  row-gap: 10px;
 }
 
 .pf-footer-left {
-  min-width: 160px;
+  min-width: 0;
+}
+
+.pf-footer-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .pf-btn {
   border-radius: 12px !important;
 }
 
-@media (max-width: 600px) {
-  .pf-overlay .pf-actions {
-    padding: 10px 12px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .pf-footer-left {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .pf-footer-right {
-    width: 100%;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .pf-footer-right .pf-btn {
-    width: 100%;
-  }
-}
-
+/* ================= RESUMEN ================= */
 .pf-summary-grid {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 14px;
 }
+
 @media (max-width: 1100px) {
   .pf-summary-grid {
     grid-template-columns: 1fr;
@@ -1405,101 +1546,103 @@ async function saveAll() {
 }
 
 .pf-summary-card {
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--pf-b2);
+  background: var(--pf-surface);
+  box-shadow: var(--pf-shadow-1);
 }
 
 .pf-kv {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 150px 1fr;
   gap: 8px 12px;
-  align-items: baseline;
+  align-items: start;
 }
-@media (max-width: 600px) {
-  .pf-kv {
-    grid-template-columns: 120px 1fr;
-  }
-}
+
 .pf-kv .k {
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--pf-muted2);
 }
+
 .pf-kv .v {
-  font-weight: 700;
+  font-weight: 800;
   word-break: break-word;
 }
 
 .pf-desc {
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  min-height: 52px;
+  background: color-mix(in srgb, var(--pf-on) 7%, transparent);
+  border: 1px solid var(--pf-b2);
+  min-height: 60px;
   white-space: pre-wrap;
 }
 
-.pf-stock-preview {
-  display: grid;
-  gap: 8px;
-}
 .pf-stock-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-}
-.pf-stock-row .n {
-  font-weight: 800;
-}
-.pf-stock-row .q {
-  font-weight: 900;
-}
-
-.pf-ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.pf-media-card {
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--pf-on) 7%, transparent);
+  border: 1px solid var(--pf-b2);
 }
 
 .pf-video-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
+
 @media (max-width: 960px) {
   .pf-video-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.pf-queue {
-  display: grid;
-  gap: 8px;
+/* ✅ Mobile: footer perfecto */
+@media (max-width: 600px) {
+  .pf-pad {
+    padding: 14px 10px;
+  }
+
+  .pf-step {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .pf-kv {
+    grid-template-columns: 120px 1fr;
+  }
+
+  .pf-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    /* ✅ safe area */
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pf-footer-left {
+    width: 100%;
+    text-align: center;
+    order: 0;
+  }
+
+  .pf-footer-right {
+    width: 100%;
+    flex-direction: column;
+    order: 1;
+    gap: 10px;
+  }
+
+  .pf-btn {
+    width: 100%;
+  }
 }
-.pf-queue-list {
-  display: grid;
-  gap: 8px;
-}
-.pf-queue-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-}
-.pf-queue-title {
-  font-weight: 800;
-  font-size: 12px;
-}
-.pf-queue-sub {
-  font-size: 12px;
-  opacity: 0.8;
+
+/* helpers */
+.minw-0 {
+  min-width: 0;
 }
 </style>

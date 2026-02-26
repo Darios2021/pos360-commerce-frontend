@@ -1,9 +1,8 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/panels/ProductVideosPanel.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO
-     - EDIT mode: lista videos desde ADMIN (con token)
-       GET /api/v1/admin/products/:id/videos
-     - Delete:    DELETE /api/v1/admin/products/:id/videos/:videoId
-     - Muestra también colas locales (youtubeQueue / filesQueue)
+<!-- EDIT mode:
+  - GET    /api/v1/admin/products/:id/videos
+  - DELETE /api/v1/admin/products/:id/videos/:videoId
 -->
 
 <template>
@@ -29,12 +28,10 @@
 
     <v-divider class="my-3" />
 
-    <!-- ✅ Estado / errores -->
     <v-alert v-if="error" type="error" variant="tonal" density="comfortable" class="mb-3">
       {{ error }}
     </v-alert>
 
-    <!-- ✅ Server list -->
     <div class="pv-section">
       <div class="pv-subtitle">En el producto</div>
 
@@ -95,7 +92,6 @@
 
     <v-divider class="my-4" />
 
-    <!-- ✅ Queue preview -->
     <div class="pv-section">
       <div class="pv-subtitle">En cola</div>
 
@@ -156,7 +152,7 @@ import http from "../../../../app/api/http";
 
 const props = defineProps({
   productId: { type: [Number, String], default: null },
-  mode: { type: String, default: "edit" }, // edit
+  mode: { type: String, default: "edit" },
   youtubeQueue: { type: Array, default: () => [] },
   filesQueue: { type: Array, default: () => [] },
 });
@@ -191,16 +187,12 @@ function labelOf(v) {
 function extractYoutubeId(url) {
   const u = String(url || "").trim();
   if (!u) return "";
-  // watch?v=ID
   const m1 = u.match(/[?&]v=([^&#]+)/i);
   if (m1?.[1]) return m1[1];
-  // youtu.be/ID
   const m2 = u.match(/youtu\.be\/([^?&#/]+)/i);
   if (m2?.[1]) return m2[1];
-  // shorts/ID
   const m3 = u.match(/shorts\/([^?&#/]+)/i);
   if (m3?.[1]) return m3[1];
-  // embed/ID
   const m4 = u.match(/embed\/([^?&#/]+)/i);
   if (m4?.[1]) return m4[1];
   return "";
@@ -221,7 +213,6 @@ async function reload() {
 
   loading.value = true;
   try {
-    // ✅ FIX CLAVE: ADMIN endpoint (con token via http.js)
     const r = await http.get(`/admin/products/${pid.value}/videos`);
     const arr = r?.data?.data;
     serverVideos.value = Array.isArray(arr) ? arr : [];
@@ -239,7 +230,6 @@ async function removeVideo(v) {
   loading.value = true;
   error.value = "";
   try {
-    // ✅ DELETE ADMIN
     await http.delete(`/admin/products/${pid.value}/videos/${vid}`);
     await reload();
     emit("changed");
@@ -274,15 +264,14 @@ watch(
 <style scoped>
 .pv-card {
   padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
-.pv-head {
-  font-weight: 900;
-}
+
 .pv-section {
   display: grid;
   gap: 10px;
 }
+
 .pv-subtitle {
   font-size: 13px;
   font-weight: 900;
@@ -293,6 +282,7 @@ watch(
   display: grid;
   gap: 10px;
 }
+
 .pv-item {
   display: grid;
   grid-template-columns: 74px 1fr auto;
@@ -300,7 +290,8 @@ watch(
   align-items: center;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .pv-thumb {
@@ -308,28 +299,28 @@ watch(
   height: 42px;
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.04);
   display: grid;
   place-items: center;
 }
+
 .pv-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.pv-thumb-fallback {
-  opacity: 0.8;
-}
 
 .pv-meta .pv-title {
   font-weight: 900;
   font-size: 13px;
 }
+
 .pv-meta .pv-sub {
   font-size: 12px;
   opacity: 0.75;
 }
+
 .pv-actions {
   display: flex;
   align-items: center;
@@ -347,6 +338,7 @@ watch(
   display: grid;
   gap: 8px;
 }
+
 .pv-queue-item {
   display: flex;
   align-items: center;
@@ -354,12 +346,15 @@ watch(
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
 }
+
 .pv-queue-title {
   font-weight: 900;
   font-size: 12px;
 }
+
 .pv-queue-sub {
   font-size: 12px;
   opacity: 0.8;
@@ -369,12 +364,14 @@ watch(
   display: grid;
   gap: 6px;
 }
+
 .pv-file {
   display: flex;
   align-items: center;
   gap: 8px;
   opacity: 0.9;
 }
+
 .minw-0 {
   min-width: 0;
 }

@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/form/ProductStockBranchesPanel.vue -->
 <template>
   <div class="psb-root">
@@ -59,7 +60,12 @@
           <v-btn variant="tonal" prepend-icon="mdi-checkbox-multiple-marked" :disabled="loading" @click="enableAll">
             Habilitar todas
           </v-btn>
-          <v-btn variant="tonal" prepend-icon="mdi-checkbox-multiple-blank-outline" :disabled="loading" @click="disableAll">
+          <v-btn
+            variant="tonal"
+            prepend-icon="mdi-checkbox-multiple-blank-outline"
+            :disabled="loading"
+            @click="disableAll"
+          >
             Deshabilitar todas
           </v-btn>
         </div>
@@ -75,8 +81,27 @@
         class="psb-table"
         density="comfortable"
       >
+        <!-- ✅ FIX REAL: renderizamos un switch + chip con contraste -->
         <template #item.enabled="{ item }">
-          <v-checkbox-btn v-model="item.enabled" />
+          <div class="psb-enabled">
+            <v-chip
+              size="small"
+              class="psb-yn"
+              :color="item.enabled ? 'primary' : undefined"
+              :variant="item.enabled ? 'flat' : 'tonal'"
+            >
+              {{ item.enabled ? "Sí" : "No" }}
+            </v-chip>
+
+            <v-switch
+              v-model="item.enabled"
+              density="compact"
+              inset
+              hide-details
+              color="primary"
+              class="psb-switch"
+            />
+          </div>
         </template>
 
         <template #item.branch="{ item }">
@@ -145,7 +170,7 @@ const q = ref("");
 const rows = ref([]);
 
 const headers = [
-  { title: "Habilitar", key: "enabled", sortable: false, width: 90 },
+  { title: "Habilitada", key: "enabled", sortable: false, width: 140 },
   { title: "Sucursal", key: "branch", sortable: false },
   { title: "Stock actual", key: "stock_qty", sortable: false, align: "end" },
   { title: "Asignar ahora", key: "assign_qty", sortable: false, align: "end" },
@@ -256,7 +281,6 @@ async function applyOne(row) {
     const ok = await products.initStock({ product_id: pid, branch_id: bid, qty });
     if (!ok) throw new Error(products.error || "No se pudo aplicar stock");
 
-    // refrescar “stock actual” del row
     const newQty = await products.fetchStockQty(pid, bid);
     row.stock_qty = toNum(newQty, qty);
     row.assign_qty = row.stock_qty;
@@ -279,7 +303,6 @@ async function applyReparto() {
 
   try {
     for (const r of enabled) {
-      // no reentrar applying dentro de applyOne: llamamos directo al store
       const qty = Math.max(0, toNum(r.assign_qty, 0));
       const ok = await products.initStock({ product_id: pid, branch_id: r.branch_id, qty });
       if (!ok) throw new Error(products.error || `No se pudo aplicar en sucursal ${r.branch_id}`);
@@ -306,6 +329,229 @@ defineExpose({ refresh, applyReparto });
 </script>
 
 <style scoped>
-.psb-root { display: grid; gap: 14px; }
-.psb-table :deep(th) { font-weight: 900; }
+.psb-root {
+  display: grid;
+  gap: 14px;
+}
+
+.psb-table :deep(th) {
+  font-weight: 900;
+}
+
+/* ✅ celda Habilitada: chip + switch alineados */
+.psb-enabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+/* chip Sí/No legible en dark y light */
+.psb-yn {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 22%, transparent) !important;
+}
+
+/* ✅ switch SIEMPRE visible: track + thumb con contraste */
+.psb-switch {
+  opacity: 1 !important;
+}
+
+.psb-switch :deep(.v-selection-control),
+.psb-switch :deep(.v-selection-control__wrapper),
+.psb-switch :deep(.v-selection-control__input),
+.psb-switch :deep(.v-switch__track),
+.psb-switch :deep(.v-switch__thumb) {
+  opacity: 1 !important;
+}
+
+/* OFF: track gris visible */
+.psb-switch :deep(.v-switch__track) {
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 16%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 38%, transparent) !important;
+}
+
+/* OFF: thumb claro */
+.psb-switch :deep(.v-switch__thumb) {
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 90%, rgb(var(--v-theme-on-surface)) 10%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ON: track con primary bien marcado */
+.psb-switch :deep(input:checked + .v-selection-control__wrapper .v-switch__track) {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 45%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 75%, transparent) !important;
+}
+
+/* ON: thumb con tinte primary */
+.psb-switch :deep(input:checked + .v-selection-control__wrapper .v-switch__thumb) {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 28%, rgb(var(--v-theme-surface)) 72%) !important;
+}
+/* =========================================================
+   ✅ FIX HARD: switches/checkboxes visibles en DARK dentro del dialog
+   Aplica a CUALQUIER panel insertado (Step 3 incluido)
+========================================================= */
+
+.pf-card :deep(.v-selection-control),
+.pf-card :deep(.v-switch),
+.pf-card :deep(.v-checkbox),
+.pf-card :deep(.v-checkbox-btn) {
+  opacity: 1 !important;
+}
+
+/* Vuetify suele “lavar” el control con opacidades/overlays */
+.pf-card :deep(.v-selection-control__wrapper),
+.pf-card :deep(.v-selection-control__input) {
+  opacity: 1 !important;
+}
+
+/* ✅ Switch track + thumb (contraste real) */
+.pf-card :deep(.v-switch__track) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 38%, transparent) !important;
+}
+
+.pf-card :deep(.v-switch__thumb) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 92%, rgb(var(--v-theme-on-surface)) 8%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ✅ Estado ON (cuando el input está checked) */
+.pf-card :deep(.v-switch input:checked + .v-selection-control__wrapper .v-switch__track) {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 45%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 78%, transparent) !important;
+}
+
+.pf-card :deep(.v-switch input:checked + .v-selection-control__wrapper .v-switch__thumb) {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 30%, rgb(var(--v-theme-surface)) 70%) !important;
+}
+
+/* ✅ Si hay “chip” No/Sí al lado, que no se funda */
+.pf-card :deep(.v-chip) {
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 22%, transparent) !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 12%, transparent) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  font-weight: 800;
+}
+/* =========================================================
+   ✅ FIX OFF STATE: que el switch apagado se vea en DARK
+========================================================= */
+
+/* OFF: track visible + borde */
+.pf-card :deep(.v-switch input:not(:checked) + .v-selection-control__wrapper .v-switch__track) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 22%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 45%, transparent) !important;
+}
+
+/* OFF: thumb bien claro (contraste) */
+.pf-card :deep(.v-switch input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 96%, rgb(var(--v-theme-on-surface)) 4%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* OFF: por si Vuetify mete “disabled” visual aunque no esté disabled */
+.pf-card :deep(.v-switch .v-selection-control--disabled),
+.pf-card :deep(.v-switch.v-input--disabled) {
+  opacity: 1 !important;
+}
+
+/* OFF: si el track sigue negro por overlay, forzamos outline interno */
+.pf-card :deep(.v-switch__track) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
+}
+/* =========================================================
+   ✅ FINAL OVERRIDE (GANA SI O SI): Switch OFF visible en ProductFormDialog
+   Motivo: hay reglas duplicadas (psb-switch vs pf-card) y el OFF queda negro
+========================================================= */
+
+/* OFF: track + borde bien visibles */
+.pf-card :deep(.psb-switch input:not(:checked) + .v-selection-control__wrapper .v-switch__track),
+.pf-card :deep(.psb-enabled input:not(:checked) + .v-selection-control__wrapper .v-switch__track),
+.pf-card :deep(.v-data-table input:not(:checked) + .v-selection-control__wrapper .v-switch__track) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 28%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 55%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--v-theme-on-surface)) 20%, transparent) !important;
+}
+
+/* OFF: thumb claro y con sombra */
+.pf-card :deep(.psb-switch input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb),
+.pf-card :deep(.psb-enabled input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb),
+.pf-card :deep(.v-data-table input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 97%, rgb(var(--v-theme-on-surface)) 3%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.65) !important;
+}
+/* =========================================================
+   ✅ DARK ONLY: que el switch OFF se vea (sin tocar LIGHT)
+   Vuetify 3 agrega .v-theme--dark en el root
+========================================================= */
+
+:deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch) {
+  opacity: 1 !important;
+}
+
+:deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch .v-switch__track) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 26%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 55%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
+}
+
+:deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch .v-switch__thumb) {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 96%, rgb(var(--v-theme-on-surface)) 4%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.65) !important;
+}
+
+/* ✅ OFF (input no checked) aún más fuerte */
+:deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch input:not(:checked) + .v-selection-control__wrapper .v-switch__track) {
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 30%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 62%, transparent) !important;
+}
+
+:deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb) {
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 98%, rgb(var(--v-theme-on-surface)) 2%) !important;
+}
+/* =========================================================
+   ✅ FIX DEFINITIVO (GLOBAL): Switch OFF visible en DARK dentro del dialog
+   Motivo: scoped/:deep con .v-theme--dark a veces no matchea nada.
+   Esto sale del scope y pega directo al overlay real.
+========================================================= */
+
+/* DARK ONLY dentro del overlay del ProductFormDialog */
+:global(.v-theme--dark) .pf-overlay .v-switch__track {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 30%, transparent) !important;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 62%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
+}
+
+:global(.v-theme--dark) .pf-overlay .v-switch__thumb {
+  opacity: 1 !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 98%, rgb(var(--v-theme-on-surface)) 2%) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.70) !important;
+}
+
+/* OFF (apagado) aún más fuerte por si Vuetify lo “oscurece” */
+:global(.v-theme--dark) .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__track {
+  background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 34%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 70%, transparent) !important;
+}
+
+:global(.v-theme--dark) .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb {
+  background: rgb(var(--v-theme-surface)) !important;
+}
+
+/* ON se mantiene (por si el global te lo pisa) */
+:global(.v-theme--dark) .pf-overlay input:checked + .v-selection-control__wrapper .v-switch__track {
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 48%, transparent) !important;
+  border-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 80%, transparent) !important;
+}
 </style>

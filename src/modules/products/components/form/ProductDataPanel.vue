@@ -34,7 +34,7 @@
             <div class="pa-4 text-caption text-medium-emphasis">
               No hay rubros cargados.
               <div class="mt-2">
-                <v-btn size="small" variant="tonal" @click="$emit('reload-taxonomies')">
+                <v-btn size="small" variant="tonal" @click="emit('reload-taxonomies')">
                   <v-icon start size="18">mdi-refresh</v-icon>
                   Recargar
                 </v-btn>
@@ -63,7 +63,7 @@
             <div class="pa-4 text-caption text-medium-emphasis">
               No hay subrubros para este rubro.
               <div class="mt-2">
-                <v-btn size="small" variant="tonal" @click="$emit('reload-taxonomies')">
+                <v-btn size="small" variant="tonal" @click="emit('reload-taxonomies')">
                   <v-icon start size="18">mdi-refresh</v-icon>
                   Recargar
                 </v-btn>
@@ -111,10 +111,10 @@
         />
       </v-col>
 
-      <!-- ✅ SKU ABAJO + BLOQUEADO -->
+      <!-- ✅ SKU ABAJO + BLOQUEADO + MOSTRAR PREVIEW SOLO ACÁ -->
       <v-col cols="12" md="8">
         <v-text-field
-          :model-value="draft.sku"
+          :model-value="skuDisplay"
           density="comfortable"
           variant="outlined"
           label="SKU (auto)"
@@ -123,6 +123,10 @@
           hide-details
           append-inner-icon="mdi-lock"
         />
+        <!-- ✅ hint chiquito solo cuando es preview -->
+        <div v-if="skuIsPreview" class="pdp-sku-hint">
+          Preview (se fija al final)
+        </div>
       </v-col>
 
       <v-col cols="12" md="4" class="d-flex align-end justify-end">
@@ -144,12 +148,15 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   productId: { type: [Number, String, null], default: null },
 
-  // ✅ vienen del dialog
-  categories: { type: Array, default: () => [] },
-  subcategories: { type: Array, default: () => [] },
+  // ✅ vienen del dialog (pueden venir como Array o como {items/rows/data/results})
+  categories: { type: [Array, Object], default: () => [] },
+  subcategories: { type: [Array, Object], default: () => [] },
+
+  // ✅ FIX: preview SKU viene del dialog
+  skuPreview: { type: String, default: "" },
 });
 
-defineEmits(["update:modelValue", "reload-taxonomies"]);
+const emit = defineEmits(["update:modelValue", "reload-taxonomies"]);
 
 const products = useProductsStore();
 
@@ -163,14 +170,25 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
-/**
- * ✅ Normaliza MUCHAS variantes:
- * - id / value / category_id / subcategory_id
- * - name / nombre / title / label / descripcion / category_name / subcategory_name
- * - category_id / categoryId / rubro_id / parent_id
- */
-function normalizeList(arr) {
-  const a = Array.isArray(arr) ? arr : [];
+/** ✅ destapa lo que venga: array directo o {items|rows|data|results} */
+function unwrapArray(input) {
+  if (Array.isArray(input)) return input;
+
+  const o = input || {};
+  if (Array.isArray(o.items)) return o.items;
+  if (Array.isArray(o.rows)) return o.rows;
+  if (Array.isArray(o.data)) return o.data;
+  if (Array.isArray(o.results)) return o.results;
+
+  if (o.data && Array.isArray(o.data.items)) return o.data.items;
+  if (o.data && Array.isArray(o.data.rows)) return o.data.rows;
+
+  return [];
+}
+
+function normalizeList(input) {
+  const a = unwrapArray(input);
+
   return a
     .map((x) => {
       const id =
@@ -208,14 +226,16 @@ function normalizeList(arr) {
 }
 
 const categoriesResolved = computed(() => {
-  const p = normalizeList(props.categories);
-  if (p.length) return p;
+  const fromProps = normalizeList(props.categories);
+  if (fromProps.length) return fromProps;
+
   return normalizeList(products?.categories || products?.meta?.categories || []);
 });
 
 const subcategoriesResolved = computed(() => {
-  const p = normalizeList(props.subcategories);
-  if (p.length) return p;
+  const fromProps = normalizeList(props.subcategories);
+  if (fromProps.length) return fromProps;
+
   return normalizeList(products?.subcategories || products?.meta?.subcategories || []);
 });
 
@@ -223,7 +243,6 @@ const categoryId = computed({
   get: () => (draft.value?.category_id ? toInt(draft.value.category_id, 0) : null),
   set: (val) => {
     const v = val ? toInt(val, 0) : null;
-    // al cambiar rubro => limpiar subrubro
     emit("update:modelValue", { ...draft.value, category_id: v, subcategory_id: null });
   },
 });
@@ -247,10 +266,32 @@ const filteredSubcategories = computed(() => {
 
   return arr.filter((x) => toInt(x?.category_id, 0) === cid);
 });
+
+/* ===================== SKU display (solo visual) ===================== */
+const skuDisplay = computed(() => {
+  const real = String(draft.value?.sku || "").trim();
+  if (real) return real;
+
+  const prev = String(props.skuPreview || "").trim();
+  return prev; // si no hay preview, queda ""
+});
+
+const skuIsPreview = computed(() => {
+  const real = String(draft.value?.sku || "").trim();
+  const prev = String(props.skuPreview || "").trim();
+  return !real && !!prev;
+});
 </script>
 
 <style scoped>
 .pdp {
   width: 100%;
+}
+
+/* hint mini debajo del SKU */
+.pdp-sku-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.75;
 }
 </style>

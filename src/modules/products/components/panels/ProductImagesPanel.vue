@@ -1,6 +1,7 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/components/panels/ProductImagesPanel.vue -->
 <template>
-  <div class="d-flex flex-column ga-3">
+  <div class="pi-root d-flex flex-column ga-3">
     <div class="d-flex align-center justify-space-between flex-wrap ga-2">
       <div>
         <div class="text-subtitle-1 font-weight-bold">Imágenes</div>
@@ -53,7 +54,7 @@
       {{ error }}
     </v-alert>
 
-    <!-- ✅ MODO COLA (si NO hay id o si defer=true) -->
+    <!-- ✅ MODO COLA -->
     <template v-if="isQueueMode">
       <v-alert type="info" variant="tonal" density="comfortable" class="rounded-lg">
         Tenés <b>{{ queuedCount }}</b> imagen(es) en cola. Se subirán al tocar <b>CREAR</b>.
@@ -63,16 +64,16 @@
         Sin imágenes en cola.
       </div>
 
-      <div class="img-grid" v-else>
+      <div class="pi-grid" v-else>
         <v-card
           v-for="q in queued"
           :key="q.key"
-          class="img-card"
+          class="pi-card"
           rounded="lg"
           variant="tonal"
         >
-          <div class="img-wrap">
-            <img :src="q.url" class="img" alt="queued" />
+          <div class="pi-wrap">
+            <img :src="q.url" class="pi-img" alt="queued" />
           </div>
 
           <div class="d-flex align-center justify-space-between px-2 py-2">
@@ -95,22 +96,22 @@
       </div>
     </template>
 
-    <!-- ✅ MODO REAL (con productId y defer=false) -->
+    <!-- ✅ MODO REAL -->
     <template v-else>
       <div v-if="!images.length" class="text-caption text-medium-emphasis">
         Sin imágenes.
       </div>
 
-      <div class="img-grid">
+      <div class="pi-grid">
         <v-card
           v-for="img in images"
           :key="img.id || img.url"
-          class="img-card"
+          class="pi-card"
           rounded="lg"
           variant="tonal"
         >
-          <div class="img-wrap">
-            <img :src="img.url" class="img" alt="product" />
+          <div class="pi-wrap">
+            <img :src="img.url" class="pi-img" alt="product" />
           </div>
 
           <div class="d-flex align-center justify-space-between px-2 py-2">
@@ -158,13 +159,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import http from "../../../../app/api/http";
 
-/**
- * API esperado:
- * - GET    /products/:id/images
- * - POST   /products/:id/images (multipart)
- * - PATCH  /products/:id/images/:imageId/primary
- * - DELETE /products/:id/images/:imageId
- */
 const API = {
   list: (id) => `/products/${id}/images`,
   upload: (id) => `/products/${id}/images`,
@@ -176,11 +170,7 @@ const emit = defineEmits(["update:modelValue", "changed"]);
 
 const props = defineProps({
   productId: { type: [Number, String], default: null },
-
-  // ✅ v-model (cola): File[]
-  modelValue: { type: Array, default: () => [] },
-
-  // ✅ si true: siempre cola (aunque exista productId)
+  modelValue: { type: Array, default: () => [] }, // File[]
   defer: { type: Boolean, default: false },
 });
 
@@ -200,7 +190,6 @@ const resolvedId = computed(() => {
 });
 
 const isQueueMode = computed(() => {
-  // cola si no hay id o si defer=true
   return !resolvedId.value || !!props.defer;
 });
 
@@ -235,8 +224,8 @@ function removeQueuedByKey(key) {
   setQueue(next);
 }
 
-/* ===== previews (ObjectURL) ===== */
-const objectUrls = new Map(); // key -> url
+/* previews */
+const objectUrls = new Map();
 
 const queued = computed(() => {
   const arr = safeFiles(props.modelValue);
@@ -270,7 +259,7 @@ watch(
 
 onBeforeUnmount(() => cleanupObjectUrls(new Set()));
 
-/* ===== actions ===== */
+/* actions */
 function pickFiles() {
   error.value = "";
   fileInput.value?.click?.();
@@ -313,14 +302,12 @@ async function onFilesSelected(ev) {
 
   error.value = "";
 
-  // ✅ cola (create wizard)
   if (isQueueMode.value) {
     addToQueue(files);
     toast(`🧾 ${files.length} imagen(es) en cola`);
     return;
   }
 
-  // ✅ upload inmediato (edit)
   busy.value = true;
   try {
     const id = resolvedId.value;
@@ -394,35 +381,43 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.img-grid {
+.pi-root {
+  min-width: 0;
+}
+
+.pi-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 @media (max-width: 1100px) {
-  .img-grid {
+  .pi-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 760px) {
-  .img-grid {
+  .pi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.img-card {
+.pi-card {
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
-.img-wrap {
+
+.pi-wrap {
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.03);
   display: grid;
   place-items: center;
 }
-.img {
+
+.pi-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 </style>
