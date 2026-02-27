@@ -1,17 +1,5 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/CheckoutDialog.vue -->
-<!-- ✅ UI CLONADA del estilo de PosProductDetailsDialog (brand #2a85c4):
-  - Hero con gradiente suave
-  - Panels con fondo suave + bordes brand
-  - Métodos de pago en “paycards”
-  - Revendedor sutil abajo
-  - Resumen con thumbnails
-  - Footer sticky
-  - Hotkey F8/ESC cierra (sin flicker dentro del dialog)
-  - ✅ FIX PEDIDO: cuotas muestran valor calculado con PRECIO LISTA (cuando installments > 1)
-  - ✅ FIX: el componente NO crashea (faltaba itemImage())
-  - ✅ FIX: imágenes relativas "/pos360/media/..." ahora se convierten a URL absoluta del storage
--->
 
 <template>
   <v-dialog v-model="openLocal" max-width="980" persistent class="cod-dialog">
@@ -314,36 +302,51 @@ const props = defineProps({
   total: { type: Number, default: 0 },
   totalPreview: { type: Number, default: 0 },
   cart: { type: Array, default: () => [] },
+
+  // ✅ v-models (para integrarlo con usePosCheckout/PosPage)
+  paymentMethod: { type: String, default: "CASH" },
+  installments: { type: Number, default: 1 },
+  installmentsItems: { type: Array, default: () => [] },
+  applyReseller: { type: Boolean, default: false },
+  cashInput: { type: String, default: "" },
 });
 
-const emit = defineEmits(["update:open", "confirm", "cancel"]);
+const emit = defineEmits([
+  "update:open",
+  "update:paymentMethod",
+  "update:installments",
+  "update:applyReseller",
+  "update:cashInput",
+  "confirm",
+  "cancel",
+]);
 
-/* =========================
-   STATE LOCAL
-========================= */
+/* helpers */
+function toDigitsOnly(v) {
+  return String(v ?? "").replace(/[^\d]/g, "");
+}
+function toNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function money(v) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(v));
+}
+function qty3(n) {
+  return toNum(n).toFixed(3);
+}
+function formatMiles(n) {
+  if (!n) return "";
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Number(n));
+}
+
+/* state local */
 const state = reactive({
-  paymentMethod: "CASH",
-  installments: 1,
-  applyReseller: false,
-  cashDigits: "",
+  paymentMethod: props.paymentMethod || "CASH",
+  installments: Number(props.installments || 1),
+  applyReseller: !!props.applyReseller,
+  cashDigits: toDigitsOnly(props.cashInput),
 });
-
-/* =========================
-   OPEN SYNC (FIX REAL)
-   Solo sincroniza cuando ABRE
-========================= */
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (!isOpen) return;
-
-    state.paymentMethod = "CASH";
-    state.installments = 1;
-    state.applyReseller = false;
-    state.cashDigits = "";
-  },
-  { immediate: true }
-);
 
 const openLocal = computed({
   get: () => props.open,
@@ -351,44 +354,154 @@ const openLocal = computed({
 });
 
 /* =========================
-   HELPERS
+   PRICES (simple: usa lo que venga en cart)
+   - unit usa reseller/list/discount/base según política
+   - unitList para cuotas (lista)
 ========================= */
-function toNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+function pickPrice(it) {
+  const x = it || {};
+  const qty = toNum(x.qty || 0);
+
+  const reseller = toNum(x.price_reseller ?? x.reseller_price ?? x.priceReseller ?? x.resellerPrice);
+  const list = toNum(x.price_list ?? x.list_price ?? x.priceList ?? x.listPrice);
+  const discount = toNum(x.price_discount ?? x.discount_price ?? x.priceDiscount ?? x.discountPrice);
+  const base = toNum(x.price ?? x.unit_price ?? x.unitPrice);
+
+  const isCard = state.paymentMethod === "CARD";
+  const inst = Number(state.installments || 1);
+  const isListMode = isCard && inst > 1 && !state.applyReseller;
+
+  let unit = 0;
+  if (state.applyReseller && reseller > 0) unit = reseller;
+  else if (isListMode && list > 0) unit = list;
+  else if (discount > 0) unit = discount;
+  else if (list > 0) unit = list;
+  else unit = base;
+
+  const unitList = list > 0 ? list : discount > 0 ? discount : base;
+
+  return { unit, unitList, subtotal: unit * qty, subtotalList: unitList * qty };
 }
 
-function money(v) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-  }).format(toNum(v));
+/* images: ultra safe */
+function itemImageRaw(it) {
+  const x = it || {};
+  const p = x.product || x.Product || {};
+  return x.image || x.image_url || x.imageUrl || x.thumb || x.thumbnail || p.image || p.image_url || p.imageUrl || "";
+}
+function itemImage(it) {
+  const s = String(itemImageRaw(it) || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, "https://");
+  if (s.startsWith("//")) return `https:${s}`;
+  return s; // si te llega relativa, el v-img la va a pedir relativo (o la enriquecés en PosPage como ya hacés)
 }
 
-function toDigitsOnly(v) {
-  return String(v ?? "").replace(/[^\d]/g, "");
-}
-
-/* =========================
-   CASH
-========================= */
-const totalSafe = computed(() => toNum(props.total));
-
-const cashReceived = computed(() => toNum(state.cashDigits));
-const change = computed(() => cashReceived.value - totalSafe.value);
-const cashShort = computed(() => state.paymentMethod === "CASH" && change.value < 0);
-
-function onCashFormattedInput(v) {
-  state.cashDigits = toDigitsOnly(v);
-}
-
-const cannotConfirmFinal = computed(
-  () => state.paymentMethod === "CASH" && cashReceived.value < totalSafe.value
+const cartUi = computed(() =>
+  (Array.isArray(props.cart) ? props.cart : []).map((it, i) => {
+    const p = pickPrice(it);
+    const key = it?.id ?? it?.product_id ?? it?.sku ?? `${it?.name ?? "item"}_${i}`;
+    return {
+      ...it,
+      _key: key,
+      _img: itemImage(it),
+      _unit: p.unit,
+      _subtotal: p.subtotal,
+      _unitList: p.unitList,
+      _subtotalList: p.subtotalList,
+    };
+  })
 );
 
-/* =========================
-   ACTIONS
-========================= */
+const totalSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotal), 0) || toNum(props.total));
+const previewSafe = computed(() => toNum(props.totalPreview) || totalSafe.value || toNum(props.total));
+const totalListSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotalList), 0) || totalSafe.value);
+
+const policyLabel = computed(() => {
+  if (state.applyReseller) return "Revendedor";
+  if (state.paymentMethod === "CARD") return Number(state.installments || 1) > 1 ? "Lista" : "Descuento";
+  return "Descuento";
+});
+
+/* installments */
+const installmentsItemsSafe = computed(() => {
+  const raw = Array.isArray(props.installmentsItems) ? props.installmentsItems : [];
+  if (raw.length && typeof raw[0] === "object") return raw;
+
+  return [
+    { title: "1 pago", value: 1 },
+    { title: "2 cuotas", value: 2 },
+    { title: "3 cuotas", value: 3 },
+    { title: "4 cuotas", value: 4 },
+    { title: "5 cuotas", value: 5 },
+    { title: "6 cuotas", value: 6 },
+  ];
+});
+
+const ui = computed(() => {
+  const isCash = state.paymentMethod === "CASH";
+  const isCard = state.paymentMethod === "CARD";
+  const showInstallmentsChip = isCard && !state.applyReseller && Number(state.installments || 1) > 1;
+
+  const k = Number(state.installments || 1);
+  const perInstallmentList = k > 1 ? totalListSafe.value / k : 0;
+
+  return { isCash, showInstallmentsChip, perInstallmentList };
+});
+
+/* cash */
+const cashReceived = computed(() => toNum(state.cashDigits));
+const cashDisplay = computed(() => (cashReceived.value ? formatMiles(cashReceived.value) : ""));
+const change = computed(() => cashReceived.value - totalSafe.value);
+const cashShort = computed(() => ui.value.isCash && change.value < 0);
+
+function onCashFormattedInput(v) {
+  const digits = toDigitsOnly(v);
+  state.cashDigits = digits;
+  emit("update:cashInput", digits);
+}
+function roundUp(n, step) {
+  const x = Number(n || 0);
+  const s = Number(step || 1);
+  return s > 0 ? Math.ceil(x / s) * s : x;
+}
+function quickCash(v) {
+  const digits = String(Math.max(0, Math.trunc(Number(v || 0))));
+  state.cashDigits = digits;
+  emit("update:cashInput", digits);
+}
+
+/* actions */
+function onPaymentMethodChange(v) {
+  state.paymentMethod = v;
+  emit("update:paymentMethod", v);
+
+  if (v !== "CASH" && state.cashDigits) {
+    state.cashDigits = "";
+    emit("update:cashInput", "");
+  }
+
+  // si pasa a NO card, limpiamos cuotas
+  if (v !== "CARD") {
+    state.installments = 1;
+    emit("update:installments", 1);
+  }
+}
+function onInstallmentsChange(v) {
+  state.installments = Number(v || 1);
+  emit("update:installments", state.installments);
+}
+function onApplyResellerChange(v) {
+  state.applyReseller = !!v;
+  emit("update:applyReseller", state.applyReseller);
+  if (state.applyReseller) {
+    state.installments = 1;
+    emit("update:installments", 1);
+  }
+}
+
+const cannotConfirmFinal = computed(() => ui.value.isCash && cashReceived.value < totalSafe.value);
+
 function closeNow() {
   emit("update:open", false);
   emit("cancel");
@@ -402,28 +515,31 @@ function onConfirm() {
     cash_received: cashReceived.value,
     change: change.value > 0 ? change.value : 0,
     total: totalSafe.value,
+    total_preview: previewSafe.value,
+    total_list: totalListSafe.value,
+    per_installment_list: ui.value.perInstallmentList,
   });
-
-  emit("update:open", false);
 }
 
-/* hotkeys */
+/* hotkey: F8/ESC close */
 function onKeydownDialog(e) {
   if (!openLocal.value) return;
-
   const k = String(e.key || "").toLowerCase();
-  if (k === "escape") {
+  if (k === "f8" || k === "escape") {
     e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
     closeNow();
   }
 }
+onMounted(() => window.addEventListener("keydown", onKeydownDialog, { capture: true }));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKeydownDialog, { capture: true }));
 
-onMounted(() =>
-  window.addEventListener("keydown", onKeydownDialog, { capture: true })
-);
-onBeforeUnmount(() =>
-  window.removeEventListener("keydown", onKeydownDialog, { capture: true })
-);
+/* sync props -> local */
+watch(() => props.paymentMethod, (v) => (state.paymentMethod = v || "CASH"));
+watch(() => props.installments, (v) => (state.installments = Number(v || 1)));
+watch(() => props.applyReseller, (v) => (state.applyReseller = !!v));
+watch(() => props.cashInput, (v) => (state.cashDigits = toDigitsOnly(v)));
 </script>
 
 <style scoped>

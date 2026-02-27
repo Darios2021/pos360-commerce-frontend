@@ -1,3 +1,4 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/pos.store.js
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -80,10 +81,42 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
 }
 
 /* =========================
-   ✅ HELPERS: Normalización para ticket
+   ✅ HELPERS: Normalización para ticket + backend enum
 ========================= */
+
+/**
+ * ✅ IMPORTANTE:
+ * Tu backend está rechazando method=MERCADOPAGO.
+ * Acá mapeamos TODO a enums típicos: CASH / CARD / TRANSFER / QR / OTHER
+ */
 function normalizeMethod(m) {
-  return String(m || "").toUpperCase() || "CASH";
+  const raw = String(m || "").trim();
+  const up = raw.toUpperCase();
+
+  // aliases comunes -> QR
+  if (
+    up === "MERCADOPAGO" ||
+    up === "MERCADO_PAGO" ||
+    up === "MERCADO PAGO" ||
+    up === "MP" ||
+    up === "QR_MP" ||
+    up === "QRMERCADOPAGO"
+  )
+    return "QR";
+
+  // aliases comunes -> CARD
+  if (up === "DEBIT" || up === "DEBITO" || up === "DÉBITO" || up === "TARJETA" || up === "CREDIT" || up === "CREDITO")
+    return "CARD";
+
+  // normalizaciones directas
+  if (up === "EFECTIVO") return "CASH";
+  if (up === "TRANSFERENCIA") return "TRANSFER";
+
+  // enums aceptados (típico)
+  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "QR" || up === "OTHER") return up;
+
+  // fallback seguro (si preferís CASH, cambiá a "CASH")
+  return "OTHER";
 }
 
 function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_id, cart, totalAmount }) {
@@ -95,7 +128,6 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
     const sub = toNum(it.subtotal, qty * unit);
 
     return {
-      // formatos “flexibles”
       name: String(it.name || ""),
       qty,
       quantity: qty,
@@ -110,6 +142,7 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
       product_id: toInt(it.product_id, toInt(it.id, 0)),
       sku: it.sku || null,
       barcode: it.barcode || null,
+      image: it.image || it.image_url || null,
     };
   });
 
@@ -137,16 +170,12 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
 function normalizeSaleShape(saleMaybe) {
   if (!saleMaybe || typeof saleMaybe !== "object") return null;
 
-  // algunos backends devuelven {data:{...}} o {sale:{...}}
   const s = saleMaybe.sale || saleMaybe.data?.sale || saleMaybe.data || saleMaybe;
-
   if (!s || typeof s !== "object") return null;
 
-  // items
   const rawItems = s.items || s.lines || s.sale_items || s.cart || [];
   const items = Array.isArray(rawItems) ? rawItems : [];
 
-  // totales
   const total =
     toNum(s.total, 0) ||
     toNum(s.amount_total, 0) ||
@@ -167,11 +196,9 @@ function normalizeSaleShape(saleMaybe) {
 
   return {
     ...s,
-    // “unifico” campos útiles para el ticket
     payment_method: normalizeMethod(s.payment_method || s.method || s.paymentMethod),
     installments: toInt(s.installments || s.cuotas, 1) || 1,
     proof: s.proof || s.payment_proof || s.proof_id || s.operation_id || null,
-
     items,
     subtotal: subtotal || subtotal === 0 ? subtotal : 0,
     total: total || subtotal || 0,
@@ -214,7 +241,6 @@ export const usePosStore = defineStore("pos", {
     cart: [],
     toast: { show: false, text: "" },
 
-    // ✅ último comprobante normalizado (opcional)
     last_sale: null,
   }),
 
@@ -250,11 +276,6 @@ export const usePosStore = defineStore("pos", {
       dbg("resetContext");
     },
 
-    /**
-     * ✅ Contexto robusto:
-     * - llama /pos/context
-     * - si isAdmin=true: NO fija warehouse default (lo limpia) para permitir ADMIN_ALL
-     */
     async ensureContext({ force = false, isAdmin = false } = {}) {
       const currB = toInt(this.branch_id, 0);
       const currW = toInt(this.warehouse_id, 0);
@@ -270,7 +291,6 @@ export const usePosStore = defineStore("pos", {
         const { data } = await http.get("/pos/context", {
           params: {
             branch_id: currB || undefined,
-            // ✅ admin: NO mandar warehouse_id como hint
             warehouse_id: !isAdmin ? (currW || undefined) : undefined,
           },
         });
@@ -296,7 +316,6 @@ export const usePosStore = defineStore("pos", {
         }
 
         if (isAdmin) {
-          // 🔥 clave: admin queda SIN warehouse
           this.warehouse_id = null;
           writeLSInt(LS_WAREHOUSE, null);
           dbg("ensureContext admin: warehouse cleared");
@@ -308,7 +327,6 @@ export const usePosStore = defineStore("pos", {
           writeLSInt(LS_WAREHOUSE, warehouseId);
         }
 
-        // fallback: solo para no-admin
         if (toInt(this.branch_id, 0) > 0 && toInt(this.warehouse_id, 0) <= 0) {
           const wid = await fetchFirstWarehouseIdByBranch(this.branch_id);
           if (wid) {
@@ -446,18 +464,35 @@ export const usePosStore = defineStore("pos", {
     },
 
     // =========================
-    // Checkout (✅ ahora devuelve SALE “ticket-friendly” SIEMPRE)
+    // Checkout (✅ ticket-friendly SIEMPRE)
     // =========================
     async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
       this.error = "";
 
-      // ✅ snapshot del carrito ANTES de post (porque luego se limpia)
       const cartSnapshot = (this.cart || []).map((it) => ({ ...it }));
       const totalSnapshot = toNum(this.totalAmount, 0);
 
+      function logPayload(label, payload) {
+        try {
+          // eslint-disable-next-line no-console
+          console.log(`[POS_STORE] ${label}`, JSON.parse(JSON.stringify(payload)));
+        } catch {
+          // eslint-disable-next-line no-console
+          console.log(`[POS_STORE] ${label}`, payload);
+        }
+      }
+
+      function logApiError(e) {
+        try {
+          // eslint-disable-next-line no-console
+          console.log("[POS_STORE] API ERROR status:", e?.response?.status);
+          // eslint-disable-next-line no-console
+          console.log("[POS_STORE] API ERROR data:", e?.response?.data);
+        } catch {}
+      }
+
       try {
-        // checkout siempre no-admin (requiere depósito)
         await this.ensureContext({ isAdmin: false });
 
         if (!this.cart.length) throw new Error("Carrito vacío");
@@ -474,21 +509,48 @@ export const usePosStore = defineStore("pos", {
         const customer_name =
           (fullName || String(this.customer?.name || "").trim() || "Consumidor Final").trim() || "Consumidor Final";
 
+        const items = (this.cart || [])
+          .map((it) => {
+            const product_id = toInt(it.product_id, toInt(it.id, 0));
+            const qty = toNum(it.qty, 0);
+            const unit_price = toNum(it.price, 0);
+
+            return {
+              product_id,
+              quantity: qty,
+              qty,
+              unit_price,
+              unitPrice: unit_price,
+              price: unit_price,
+            };
+          })
+          .filter((x) => toInt(x.product_id, 0) > 0 && toNum(x.quantity, 0) > 0 && toNum(x.unit_price, 0) > 0);
+
+        if (!items.length) throw new Error("Carrito inválido (items vacíos o sin precio/cantidad).");
+
+        const amount = toNum(this.totalAmount, 0);
+        const bid = toInt(this.branch_id, 0) || null;
+
+        const method = normalizeMethod(paymentMethod);
+
         const payload = {
           customer_name,
           note: extra?.note || null,
-          branch_id: toInt(this.branch_id, 0) || undefined,
+
+          branch_id: bid,
           warehouse_id: wid,
-          items: this.cart.map((it) => ({
-            product_id: toInt(it.product_id, toInt(it.id, 0)),
-            quantity: toNum(it.qty, 0),
-            unit_price: toNum(it.price, 0),
-          })),
+
+          branchId: bid,
+          warehouseId: wid,
+
+          items,
+
           payments: [
             {
-              method: normalizeMethod(paymentMethod),
-              amount: toNum(this.totalAmount, 0),
+              method,
+              amount,
               reference: extra?.proof || null,
+              proof: extra?.proof || null,
               note: extra?.price_policy
                 ? `price_policy=${extra.price_policy}${extra?.installments ? `; installments=${extra.installments}` : ""}`
                 : null,
@@ -496,14 +558,15 @@ export const usePosStore = defineStore("pos", {
           ],
         };
 
+        dbg("checkoutSale payload ready", { bid, wid, items: items.length, amount, paymentMethod, method });
+        logPayload("POST /pos/sales payload =>", payload);
+
         const { data } = await http.post("/pos/sales", payload);
 
         dbg("checkoutSale POST /pos/sales resp", data);
 
-        // 1) intento normalizar lo que vino
         let sale = normalizeSaleShape(data);
 
-        // 2) saco id como pueda
         const saleId =
           toInt(sale?.id, 0) ||
           toInt(sale?.sale_id, 0) ||
@@ -513,41 +576,36 @@ export const usePosStore = defineStore("pos", {
           toInt(data?.data?.id, 0) ||
           0;
 
-        // 3) si no vino con items/totales, intento traer detalle
         const needDetails = !sale || !Array.isArray(sale.items) || sale.items.length === 0 || toNum(sale.total, 0) <= 0;
         if (needDetails && saleId > 0) {
           const full = await fetchSaleDetailBestEffort(saleId);
           if (full) sale = full;
         }
 
-        // 4) último fallback: construyo “sale” desde el carrito snapshot (SIEMPRE muestra items/total)
         if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
           sale = buildSaleFromCart({
             saleId: saleId || null,
-            paymentMethod,
+            paymentMethod: method,
             extra,
-            branch_id: toInt(this.branch_id, 0) || null,
+            branch_id: bid,
             warehouse_id: wid || null,
             cart: cartSnapshot,
             totalAmount: totalSnapshot,
           });
         } else {
-          // aseguro totales si vinieron vacíos
           if (toNum(sale.total, 0) <= 0) sale.total = totalSnapshot;
           if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
         }
 
-        // ✅ guardo el último comprobante para que el UI lo tome
         this.last_sale = sale;
-
-        // ✅ recién ahora limpio carrito
         this.clearCart();
 
         this.toast = { show: true, text: "✅ Venta registrada correctamente" };
 
-        // ✅ retorno “ticket-friendly”
         return { ok: true, sale, raw: data };
       } catch (e) {
+        logApiError(e);
+
         const msg = apiErrorMessage(e, "Error al confirmar la venta");
         this.error = msg;
 

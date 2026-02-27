@@ -92,6 +92,14 @@
 
         <!-- RIGHT -->
         <div class="pos-right">
+          <!-- ✅ CUSTOMER PANEL (componentizado + con spacing real) -->
+          <PosCustomerPanel
+            v-model="customer"
+            :disabled="customerDisabled"
+            :has-data="customerHasData"
+            @clear="clearCustomer"
+          />
+
           <div class="pos-cart-wrap">
             <PosCartPanel
               class="pos-surface"
@@ -125,8 +133,14 @@
     <CheckoutDialog
       v-model:open="checkoutDialog"
       :total="checkoutTotal"
+      :total-preview="checkoutTotalPreview"
       :cart="cartForCheckout"
-      @confirm="confirmPaymentSafe"
+      v-model:paymentMethod="paymentMethod"
+      v-model:installments="installments"
+      v-model:applyReseller="applyReseller"
+      v-model:cashInput="cashInput"
+      @confirm="onCheckoutConfirm"
+      @cancel="onCheckoutCancel"
     />
 
     <ReceiptDialog
@@ -207,6 +221,8 @@ import PosCartPanel from "../components/PosCartPanel.vue";
 import PosPickBranchDialog from "../components/PosPickBranchDialog.vue";
 import PosShortcutsHelpDialog from "../components/PosShortcutsHelpDialog.vue";
 
+import PosCustomerPanel from "../components/PosCustomerPanel.vue";
+
 import { usePosAccess } from "../composables/usePosAccess";
 import { usePosBranch } from "../composables/usePosBranch";
 import { usePosBranchScope } from "../composables/usePosBranchScope";
@@ -234,6 +250,115 @@ const shiftStartText = computed(() => {
 
 /* access */
 const { auth, canSell, isViewOnly, cashierName } = usePosAccess();
+
+/* ======================================================
+   ✅ CLIENTE: draft local + attach al checkout
+====================================================== */
+const CUSTOMER_DRAFT_KEY = "pos_customer_draft_v1";
+
+function emptyCustomer() {
+  return {
+    name: "",
+    doc: "",
+    phone: "",
+    email: "",
+    address: "",
+    note: "",
+  };
+}
+
+const customer = ref(emptyCustomer());
+
+function normalizeCustomer(obj) {
+  const o = obj && typeof obj === "object" ? obj : {};
+  return {
+    name: String(o.name ?? o.full_name ?? o.razon_social ?? o.company ?? "").trim(),
+    doc: String(o.doc ?? o.dni ?? o.cuit ?? o.document ?? "").trim(),
+    phone: String(o.phone ?? o.tel ?? o.telefono ?? "").trim(),
+    email: String(o.email ?? "").trim(),
+    address: String(o.address ?? o.direccion ?? "").trim(),
+    note: String(o.note ?? o.obs ?? o.observaciones ?? "").trim(),
+  };
+}
+
+const customerHasData = computed(() => {
+  const c = customer.value || {};
+  return !!(
+    String(c.name || "").trim() ||
+    String(c.doc || "").trim() ||
+    String(c.phone || "").trim() ||
+    String(c.email || "").trim() ||
+    String(c.address || "").trim() ||
+    String(c.note || "").trim()
+  );
+});
+
+const customerDisabled = computed(() => {
+  return !!loadingGlobal.value || !!isViewOnly?.value || !!needsBranchPick?.value || !canSell?.value;
+});
+
+function loadCustomerDraft() {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_DRAFT_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    customer.value = normalizeCustomer(parsed);
+  } catch {}
+}
+
+function saveCustomerDraft() {
+  try {
+    localStorage.setItem(CUSTOMER_DRAFT_KEY, JSON.stringify(normalizeCustomer(customer.value)));
+  } catch {}
+}
+
+function clearCustomer() {
+  customer.value = emptyCustomer();
+  try {
+    localStorage.removeItem(CUSTOMER_DRAFT_KEY);
+  } catch {}
+  tryAttachCustomerToStore(null);
+}
+
+/* store-agnostic */
+function tryAttachCustomerToStore(custOrNull) {
+  const payload = custOrNull ? normalizeCustomer(custOrNull) : null;
+
+  const candidates = [
+    ["setCustomer", (s) => s.setCustomer(payload)],
+    ["setClient", (s) => s.setClient(payload)],
+    ["setBuyer", (s) => s.setBuyer(payload)],
+    ["setCustomerDraft", (s) => s.setCustomerDraft(payload)],
+    ["setCustomerInfo", (s) => s.setCustomerInfo(payload)],
+  ];
+
+  for (const [name, fn] of candidates) {
+    try {
+      if (typeof posStore?.[name] === "function") {
+        fn(posStore);
+        return true;
+      }
+    } catch (e) {
+      console.warn("[POS] customer attach method failed:", name, e);
+    }
+  }
+
+  try {
+    if (typeof posStore?.$patch === "function") {
+      posStore.$patch({ customer: payload, customer_info: payload, customerInfo: payload });
+      return true;
+    }
+  } catch {}
+
+  try {
+    posStore.customer = payload;
+    posStore.customer_info = payload;
+    posStore.customerInfo = payload;
+    return true;
+  } catch {}
+
+  return false;
+}
 
 /* branch */
 const {
@@ -282,7 +407,7 @@ function getActiveBranchIdSafe() {
   return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
 }
 
-/* ✅ label informativo del carrito */
+/* label carrito */
 const cartBranchLabel = computed(() => {
   const id = Number(posStore?.cart_branch_id ?? posStore?.cartBranchId ?? 0) || null;
   if (!id) return "";
@@ -355,9 +480,7 @@ const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMulti
   isSellable,
 });
 
-/* ======================================================
-   ✅ CART ENRICH: inyecta imagen en items del carrito
-====================================================== */
+/* cart enrich */
 function cartKey(it) {
   const pid = Number(it?.product_id ?? it?.productId ?? it?.product?.id ?? it?.id ?? 0) || null;
   const sku = String(it?.sku ?? it?.code ?? it?.product?.sku ?? it?.product?.code ?? "").trim();
@@ -446,9 +569,7 @@ function openDetails(p) {
   detailsOpen.value = true;
 }
 
-/* =========================
-   ✅ ADD SAFE (store-agnostic)
-========================= */
+/* add safe */
 function addToCartSafe(product, qty = 1) {
   if (!product) return false;
 
@@ -475,7 +596,6 @@ function addToCartSafe(product, qty = 1) {
   return false;
 }
 
-/* ✅ ADD (row) */
 function add(product) {
   if (!product) return;
 
@@ -496,13 +616,10 @@ function add(product) {
   }
 }
 
-/* ✅ FIX REAL: ADD (details) recibe payload, usa detailsItem como producto */
 function addFromDetails(payload) {
   const product = detailsItem.value;
   const meta = payload || {};
   const unitPrice = Number(meta.unit_price || 0) || 0;
-
-  console.log("[POS] addFromDetails payload:", meta, "product:", product);
 
   if (!product) {
     toast("⚠️ No hay producto seleccionado (detailsItem null).");
@@ -566,7 +683,7 @@ function addFromDetails(payload) {
   detailsOpen.value = false;
 }
 
-/* pick branch (producto) - si tu dialog lo usa */
+/* pick branch (producto) */
 const pickBranchOpen = ref(false);
 const pickBranchProduct = ref(null);
 const pickBranchOptions = ref([]);
@@ -579,6 +696,7 @@ function onPickBranchConfirm(payload) {
 
 /* checkout */
 const allSellable = globalItems;
+
 const {
   checkoutDialog,
   checkoutTotal,
@@ -586,6 +704,10 @@ const {
   receiptOpen,
   receiptSale,
   receiptCompanyName,
+  paymentMethod,
+  installments,
+  applyReseller,
+  cashInput,
   openCheckout,
   confirmPayment,
 } = usePosCheckout({
@@ -600,14 +722,28 @@ const {
 function openCheckoutSafe() {
   openCheckout({ onSnack: toast });
 }
-async function confirmPaymentSafe(payload) {
-  await confirmPayment({
-    onSnack: toast,
-    payloadFromDialog: payload,
-  });
 
-  await fetchGlobalPool({ in_stock: 0 });
+async function onCheckoutConfirm(payload) {
+  try {
+    if (customerHasData.value) {
+      tryAttachCustomerToStore(customer.value);
+      saveCustomerDraft();
+    } else {
+      tryAttachCustomerToStore(null);
+    }
+
+    if (payload?.payment_method) paymentMethod.value = String(payload.payment_method).toUpperCase();
+    if (payload?.installments != null) installments.value = Number(payload.installments || 1);
+    if (payload?.apply_reseller != null) applyReseller.value = !!payload.apply_reseller;
+
+    if (payload?.cash_received != null) cashInput.value = String(payload.cash_received || "");
+
+    await confirmPayment({ onSnack: toast });
+    await fetchGlobalPool({ in_stock: 0 });
+  } catch {}
 }
+
+function onCheckoutCancel() {}
 
 function refresh() {
   fetchGlobalPool({ in_stock: 0 });
@@ -654,6 +790,9 @@ onMounted(async () => {
     if (typeof auth.fetchMe === "function") await auth.fetchMe();
   } catch {}
 
+  loadCustomerDraft();
+  if (customerHasData.value) tryAttachCustomerToStore(customer.value);
+
   await loadTaxonomy(auth);
 
   const ok = await ensureBranchSelected();
@@ -684,6 +823,16 @@ watch(
     if (open) branchPickSelected.value = getActiveBranchIdSafe();
   }
 );
+
+/* autosave draft cliente */
+watch(
+  () => customer.value,
+  () => {
+    if (customerDisabled.value) return;
+    saveCustomerDraft();
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
@@ -695,9 +844,6 @@ watch(
   overflow: hidden !important;
 }
 
-/* =========================================================
-   ✅ LEVANTAR TODO (aire real abajo)
-========================================================= */
 .pos-root {
   height: calc(100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px));
   min-height: 0;
@@ -727,7 +873,6 @@ watch(
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-
   padding-bottom: var(--pos-bottom-space);
   box-sizing: border-box;
 }
@@ -740,32 +885,20 @@ watch(
   gap: var(--pos-gap);
 }
 
-/* =========================================================
-   ✅ SOMBRAS / SURFACE PARA SEPARAR DEL FONDO
-   - aplica a TopBar, Filters, ProductsPanel y CartPanel
-========================================================= */
 .pos-surface {
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 14px;
-
-  /* sombra suave tipo “card” */
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.06),
     0 1px 2px rgba(0, 0, 0, 0.04);
-
-  /* evita “cortes” raros en shadow por overflow internos */
   overflow: hidden;
 }
-
-/* hover/active leve (no molesto) */
 .pos-surface:hover {
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.08),
     0 1px 3px rgba(0, 0, 0, 0.05);
 }
-
-/* en dark, el borde negro queda duro -> lo suavizamos */
 :global(.v-theme--dark) .pos-surface {
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow:
@@ -786,7 +919,6 @@ watch(
   flex-direction: column;
   gap: var(--pos-gap);
 }
-
 .pos-products-panel {
   flex: 1 1 0;
   min-height: 0;

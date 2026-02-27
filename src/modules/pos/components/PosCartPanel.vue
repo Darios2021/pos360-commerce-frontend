@@ -39,7 +39,8 @@
           </div>
 
           <div class="item-mid">
-            <span class="unit-price">{{ money(it.price) }}</span>
+            <!-- ✅ acá estaba el problema: it.price a veces es LIST -->
+            <span class="unit-price">{{ money(unitPriceEffective(it)) }}</span>
             <span class="unit-suffix">c/u</span>
             <span v-if="stockText(it)" class="stock-hint">· {{ stockText(it) }}</span>
           </div>
@@ -166,8 +167,54 @@ function clampQtyMin(q) {
   if (!(q > 0)) return 0;
   return Math.max(min, q);
 }
+
+/* =========================================================
+   ✅ PRECIO EFECTIVO (DISCOUNT > LIST)
+   - PRIORIDAD: unit_price / __pos_pricing.unit_price / discount keys
+   - FALLBACK: it.price (lo que venías mostrando)
+========================================================= */
+function pickFirstNumber(obj, keys) {
+  for (const k of keys) {
+    const v = obj?.[k];
+    const n = toNum(v);
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
+function unitPriceEffective(it) {
+  if (!it) return 0;
+
+  // ✅ si el item trae pricing calculado por el dialog/composable
+  const meta = it?.__pos_pricing && typeof it.__pos_pricing === "object" ? it.__pos_pricing : null;
+
+  // 1) precio unitario explícito (preferido)
+  const u1 = pickFirstNumber(it, ["unit_price", "unitPrice", "final_price", "finalPrice"]);
+  if (u1 > 0) return u1;
+
+  // 2) meta pricing
+  const u2 = pickFirstNumber(meta, ["unit_price", "unitPrice", "final_price", "finalPrice"]);
+  if (u2 > 0) return u2;
+
+  // 3) precio descuento (si vino separado)
+  const u3 = pickFirstNumber(it, ["price_discount", "discount_price", "discountPrice", "priceDiscount"]);
+  if (u3 > 0) return u3;
+
+  // 4) a veces viene como "price" pero con policy
+  //    si hay price_policy, intentamos mapear
+  const policy = String(it?.price_policy || it?.pricePolicy || meta?.price_policy || meta?.pricePolicy || "").toUpperCase();
+  if (policy === "DISCOUNT") {
+    const u4 = pickFirstNumber(it, ["price", "unit_price", "price_discount"]);
+    if (u4 > 0) return u4;
+  }
+
+  // 5) fallback final
+  return pickFirstNumber(it, ["price", "unitPriceValue", "unit_price_value"]);
+}
+
 function lineTotal(it) {
-  return round3(toNum(it?.qty) * toNum(it?.price));
+  // ✅ usar el unit price efectivo para que el total por línea coincida con lo que mostras
+  return round3(toNum(it?.qty) * toNum(unitPriceEffective(it)));
 }
 
 /* stock helpers */
@@ -239,7 +286,9 @@ function setQtyInStore(it, qty) {
     }
   }
   it.qty = qty;
-  it.subtotal = round3(toNum(it.price) * toNum(it.qty));
+
+  // ✅ subtotal coherente con el precio efectivo
+  it.subtotal = round3(toNum(unitPriceEffective(it)) * toNum(it.qty));
   return true;
 }
 
@@ -333,7 +382,6 @@ function remove(it) {
   display: flex;
   flex-direction: column;
 
-  /* ✅ sombra más suave (menos “inflado”) */
   box-shadow:
     0 6px 16px rgba(0,0,0,0.05),
     0 16px 34px rgba(0,0,0,0.06);
@@ -380,13 +428,13 @@ function remove(it) {
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* ✅ menos separación */
+  gap: 10px;
 }
 
 .cart-item {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 14px;
-  padding: 10px 10px; /* ✅ menos padding */
+  padding: 10px 10px;
   background: rgba(var(--v-theme-on-surface), 0.02);
   transition: all 160ms ease;
 }
@@ -440,7 +488,7 @@ function remove(it) {
 .item-bot {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: 36px 90px 36px 1fr 36px; /* ✅ más chico */
+  grid-template-columns: 36px 90px 36px 1fr 36px;
   align-items: center;
   gap: 8px;
 }
@@ -448,7 +496,6 @@ function remove(it) {
   min-width: 0;
 }
 
-/* botones más chicos */
 .qty-btn {
   border-radius: 999px !important;
   width: 36px !important;
@@ -492,16 +539,16 @@ function remove(it) {
 }
 .total-label {
   font-weight: 950;
-  font-size: 14px; /* ✅ menos */
+  font-size: 14px;
 }
 .total-amt {
-  font-size: 18px; /* ✅ menos */
+  font-size: 18px;
   font-weight: 1000;
   white-space: nowrap;
 }
 
 .pay-btn {
-  height: 38px; /* ✅ menos */
+  height: 38px;
   border-radius: 14px;
   font-weight: 950;
   letter-spacing: 0.3px;
@@ -514,7 +561,7 @@ function remove(it) {
 .empty-box {
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 14px;
-  padding: 12px; /* ✅ menos */
+  padding: 12px;
   background: rgba(var(--v-theme-on-surface), 0.02);
   text-align: center;
 }
@@ -528,7 +575,6 @@ function remove(it) {
   color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
-/* responsive */
 @media (max-width: 420px) {
   .item-bot {
     grid-template-columns: 36px 1fr 36px;
