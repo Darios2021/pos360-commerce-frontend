@@ -600,8 +600,12 @@ const {
 function openCheckoutSafe() {
   openCheckout({ onSnack: toast });
 }
-async function confirmPaymentSafe() {
-  await confirmPayment({ onSnack: toast });
+async function confirmPaymentSafe(payload) {
+  await confirmPayment({
+    onSnack: toast,
+    payloadFromDialog: payload,
+  });
+
   await fetchGlobalPool({ in_stock: 0 });
 }
 

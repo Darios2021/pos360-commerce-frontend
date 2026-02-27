@@ -6,9 +6,50 @@ function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
 
+/**
+ * ✅ Normaliza lo que venga del dialog/UI
+ * Acepta: "CASH","TRANSFER","CARD","QR" y también "cash","transfer","card","mercadopago","mp"
+ */
+function normalizeMethodUI(v) {
+  const s = String(v || "").trim().toLowerCase();
+
+  if (!s) return "CASH";
+  if (s === "cash" || s === "efectivo" || s === "CASH".toLowerCase()) return "CASH";
+  if (s === "transfer" || s === "transferencia" || s === "TRANSFER".toLowerCase()) return "TRANSFER";
+  if (
+    s === "card" ||
+    s === "tarjeta" ||
+    s === "debito" ||
+    s === "crédito" ||
+    s === "credito" ||
+    s === "CARD".toLowerCase()
+  )
+    return "CARD";
+
+  // ✅ tu caso: QR == MercadoPago
+  if (s === "qr" || s === "mp" || s === "mercadopago" || s === "mercado_pago") return "QR";
+
+  // fallback
+  return "CASH";
+}
+
+/**
+ * ✅ Lo que mandamos al store/backend:
+ * - Si tu backend/DB trabaja con codes: cash/transfer/card/mercadopago => mandamos eso.
+ * - Si tu backend trabaja con enum: CASH/TRANSFER/CARD/QR, lo dejamos también dentro de extra.
+ */
+function toBackendMethodCode(uiMethod) {
+  const m = normalizeMethodUI(uiMethod);
+  if (m === "CASH") return "cash";
+  if (m === "TRANSFER") return "transfer";
+  if (m === "CARD") return "card";
+  return "mercadopago"; // QR
+}
+
 export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnitPrice, toNum, allSellable }) {
   const checkoutDialog = ref(false);
 
+  // ✅ estado (UI enum)
   const paymentMethod = ref("CASH");
   const installments = ref(1);
   const applyReseller = ref(false);
@@ -35,10 +76,12 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     return "Descuento";
   }
 
-  function currentPricePolicy() {
-    if (applyReseller.value) return "RESELLER";
-    if (paymentMethod.value === "CARD") return Number(installments.value || 1) > 1 ? "LIST" : "DISCOUNT";
-    if (paymentMethod.value === "CASH" || paymentMethod.value === "TRANSFER" || paymentMethod.value === "QR") return "DISCOUNT";
+  function currentPricePolicy(method = paymentMethod.value, inst = installments.value, reseller = applyReseller.value) {
+    const m = normalizeMethodUI(method);
+
+    if (reseller) return "RESELLER";
+    if (m === "CARD") return Number(inst || 1) > 1 ? "LIST" : "DISCOUNT";
+    if (m === "CASH" || m === "TRANSFER" || m === "QR") return "DISCOUNT";
     return "DISCOUNT";
   }
 
@@ -68,12 +111,12 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
   }
 
   const paidAmount = computed(() => {
-    if (paymentMethod.value !== "CASH") return Number(checkoutTotal.value || 0);
+    if (normalizeMethodUI(paymentMethod.value) !== "CASH") return Number(checkoutTotal.value || 0);
     return parseCash(cashInput.value);
   });
 
   watch([paymentMethod, installments, applyReseller, cashInput], () => {
-    if (paymentMethod.value !== "CASH") {
+    if (normalizeMethodUI(paymentMethod.value) !== "CASH") {
       cashError.value = false;
       cashErrorMsg.value = "";
       return;
@@ -98,12 +141,14 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     cashErrorMsg.value = "";
   });
 
-  function applyCheckoutPricesIntoStore() {
-    const pol = currentPricePolicy();
+  function applyCheckoutPricesIntoStore(methodArg, instArg, resellerArg) {
+    const pol = currentPricePolicy(methodArg, instArg, resellerArg);
+
     for (const it of posStore.cart || []) {
       const pid = Number(it.product_id || it.id);
       const p = productById.value.get(pid) || it;
       const unit = resolveUnitPrice(p, pol);
+
       it.price = unit;
       it.price_label = pricePolicyLabel(pol);
       it.subtotal = unit * toNum(it.qty);
@@ -120,6 +165,7 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
       return;
     }
 
+    // reset
     paymentMethod.value = "CASH";
     installments.value = 1;
     applyReseller.value = false;
@@ -130,7 +176,16 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     checkoutDialog.value = true;
   }
 
-  async function confirmPayment({ onSnack } = {}) {
+  /**
+   * ✅ FIX REAL:
+   * confirmPayment puede recibir payload del dialog:
+   *  - { methodCode } o { payment_method } o { paymentMethod }
+   *  - installments / apply_reseller / applyReseller / proof
+   */
+  async function confirmPayment(payloadOrCtx = {}) {
+    const onSnack = payloadOrCtx?.onSnack;
+    const payload = payloadOrCtx?.payloadFromDialog || payloadOrCtx || {};
+
     if (needsBranchPick.value) {
       onSnack?.("🏬 Elegí sucursal para operar.");
       return;
@@ -141,31 +196,68 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     }
 
     try {
-      applyCheckoutPricesIntoStore();
+      // ✅ 1) Tomar método desde dialog (si viene) y sincronizar estado
+      const uiMethodIncoming =
+        payload?.methodCode ||
+        payload?.payment_method ||
+        payload?.paymentMethod ||
+        payload?.paymentMethodCode ||
+        payload?.method ||
+        payload?.provider ||
+        null;
+
+      const uiMethod = normalizeMethodUI(uiMethodIncoming || paymentMethod.value);
+
+      // si viene installments/reseller desde dialog, respetarlo
+      const instIncoming = Number(payload?.installments ?? installments.value ?? 1) || 1;
+      const resellerIncoming = Boolean(payload?.apply_reseller ?? payload?.applyReseller ?? applyReseller.value);
+
+      paymentMethod.value = uiMethod;
+      installments.value = instIncoming;
+      applyReseller.value = resellerIncoming;
+
+      // ✅ 2) Aplicar precios con política correcta (según método real)
+      applyCheckoutPricesIntoStore(uiMethod, instIncoming, resellerIncoming);
+
+      // ✅ 3) Armar extra + método backend
+      const backendMethodCode = toBackendMethodCode(uiMethod);
 
       const extra = {
-        price_policy: currentPricePolicy(),
-        installments: Number(installments.value || 1),
-        proof: paymentProof.value || null,
-        customer: { ...customer.value },
+        // para pricing/recibo
+        price_policy: currentPricePolicy(uiMethod, instIncoming, resellerIncoming),
+        installments: instIncoming,
+
+        // si tu backend lo usa:
+        proof: payload?.proof ?? paymentProof.value ?? null,
+
+        // guardamos ambos por auditoría
+        payment_method_ui: uiMethod, // CASH/TRANSFER/CARD/QR
+        payment_method_code: backendMethodCode, // cash/transfer/card/mercadopago
+
+        customer: { ...customer.value, ...(payload?.customer || {}) },
       };
 
-      const result = await posStore.checkoutSale(paymentMethod.value, extra);
+      // ✅ 4) LLAMADA CLAVE:
+      // Mandamos code backend (cash/transfer/card/mercadopago)
+      // Si tu store/backend espera enum, lo sigue teniendo en extra.payment_method_ui
+      const result = await posStore.checkoutSale(backendMethodCode, extra);
 
       checkoutDialog.value = false;
       onSnack?.("✅ Venta registrada correctamente");
 
       const sale = result?.sale || result?.data?.sale || result?.data || result || null;
+
       receiptSale.value =
         sale && (sale.id || sale.number || sale.created_at || sale.items)
           ? sale
           : {
               id: Date.now(),
               created_at: new Date().toISOString(),
-              payment_method: paymentMethod.value,
-              installments: Number(installments.value || 1),
-              proof: paymentProof.value || null,
-              customer: { ...customer.value },
+              payment_method: backendMethodCode,
+              payment_method_ui: uiMethod,
+              installments: instIncoming,
+              proof: extra.proof,
+              customer: { ...extra.customer },
               subtotal: checkoutTotal.value,
               total: checkoutTotal.value,
               items: (posStore.cart || []).map((it) => ({

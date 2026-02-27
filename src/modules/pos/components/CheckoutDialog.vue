@@ -314,335 +314,81 @@ const props = defineProps({
   total: { type: Number, default: 0 },
   totalPreview: { type: Number, default: 0 },
   cart: { type: Array, default: () => [] },
-
-  paymentMethod: { type: String, default: "CASH" },
-  installments: { type: Number, default: 1 },
-  installmentsItems: { type: Array, default: () => [] },
-  applyReseller: { type: Boolean, default: false },
-  cashInput: { type: String, default: "" },
 });
 
-const emit = defineEmits([
-  "update:open",
-  "update:paymentMethod",
-  "update:installments",
-  "update:applyReseller",
-  "update:cashInput",
-  "confirm",
-  "cancel",
-]);
+const emit = defineEmits(["update:open", "confirm", "cancel"]);
 
-const MEDIA_BASE =
-  (import.meta?.env?.VITE_MEDIA_BASE || import.meta?.env?.VITE_STORAGE_BASE || "").trim() ||
-  "https://storage-files.cingulado.org/pos360/media";
-
-const STORAGE_ORIGIN = computed(() => {
-  // https://storage-files.cingulado.org/pos360/media  -> https://storage-files.cingulado.org
-  try {
-    const u = new URL(MEDIA_BASE);
-    return u.origin;
-  } catch {
-    return "https://storage-files.cingulado.org";
-  }
-}).value;
-
+/* =========================
+   STATE LOCAL
+========================= */
 const state = reactive({
-  paymentMethod: props.paymentMethod || "CASH",
-  installments: Number(props.installments || 1),
-  applyReseller: !!props.applyReseller,
-  cashDigits: toDigitsOnly(props.cashInput),
+  paymentMethod: "CASH",
+  installments: 1,
+  applyReseller: false,
+  cashDigits: "",
 });
+
+/* =========================
+   OPEN SYNC (FIX REAL)
+   Solo sincroniza cuando ABRE
+========================= */
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (!isOpen) return;
+
+    state.paymentMethod = "CASH";
+    state.installments = 1;
+    state.applyReseller = false;
+    state.cashDigits = "";
+  },
+  { immediate: true }
+);
 
 const openLocal = computed({
   get: () => props.open,
   set: (v) => emit("update:open", v),
 });
 
-/* helpers */
-function toDigitsOnly(v) {
-  return String(v ?? "").replace(/[^\d]/g, "");
-}
+/* =========================
+   HELPERS
+========================= */
 function toNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+
 function money(v) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(toNum(v));
-}
-function qty3(n) {
-  return toNum(n).toFixed(3);
-}
-function formatMiles(n) {
-  if (!n) return "";
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Number(n));
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(toNum(v));
 }
 
-/* =========================
-   IMAGES
-========================= */
-function normalizeUrl(u) {
-  const s0 = String(u || "").trim();
-  if (!s0) return "";
-
-  // data url
-  if (s0.startsWith("data:image")) return s0;
-
-  // absolute http(s)
-  if (/^https?:\/\//i.test(s0)) return s0.replace(/^http:\/\//i, "https://");
-
-  // protocol-relative
-  if (s0.startsWith("//")) return `https:${s0}`;
-
-  // ✅ FIX: rutas absolutas del servidor ("/pos360/media/..", "/media/..") -> al ORIGIN del storage
-  if (s0.startsWith("/")) {
-    // /pos360/media/...  (ya trae el path completo)
-    if (s0.startsWith("/pos360/media/")) return `${STORAGE_ORIGIN}${s0}`;
-
-    // /media/xxxx  (si alguna vez te llega así)
-    if (s0.startsWith("/media/")) return `${STORAGE_ORIGIN}/pos360${s0}`;
-
-    // si es otra ruta (no media), la dejamos relativa (por compatibilidad)
-    return s0;
-  }
-
-  // sin slash inicial, limpiamos
-  const s = s0.replace(/^\/+/, "");
-
-  // si ya viene con "pos360/media/..." armamos directo al origin
-  if (s.includes("pos360/media/")) return `https://storage-files.cingulado.org/${s}`;
-
-  const looksLikePath =
-    s.includes("/") || /\.[a-z0-9]{2,5}($|\?|\#)/i.test(s) || s.includes("?") || s.includes("#");
-
-  if (looksLikePath) return `${MEDIA_BASE.replace(/\/+$/, "")}/${s}`;
-
-  return `${MEDIA_BASE.replace(/\/+$/, "")}/${encodeURIComponent(s)}`;
-}
-
-function itemImageRaw(it) {
-  const x = it || {};
-  const p = x.product || x.Product || x.prod || x.item || {};
-
-  const pickFromArray = (arr) => {
-    const a = Array.isArray(arr) ? arr : [];
-    const first = a[0] || null;
-    if (!first) return "";
-    if (typeof first === "string") return first;
-    return (
-      first.url ||
-      first.src ||
-      first.path ||
-      first.key ||
-      first.file_key ||
-      first.image_key ||
-      first.image_id ||
-      first.id ||
-      ""
-    );
-  };
-
-  return (
-    x.image ||
-    x.image_url ||
-    x.imageUrl ||
-    x.product_image ||
-    x.productImage ||
-    x.thumb ||
-    x.thumbnail ||
-    x.photo ||
-    x.picture ||
-    x.cover ||
-    x.media_url ||
-    x.mediaUrl ||
-    x.file_url ||
-    x.fileUrl ||
-    x.path ||
-    x.key ||
-    x.file_key ||
-    x.fileKey ||
-    x.image_key ||
-    x.imageKey ||
-    x.image_id ||
-    x.imageId ||
-    x.main_image ||
-    x.mainImage ||
-    x.preview ||
-    x.preview_url ||
-    x.previewUrl ||
-    pickFromArray(x.images) ||
-    pickFromArray(x.media) ||
-    pickFromArray(x.files) ||
-    pickFromArray(x.photos) ||
-    p.image ||
-    p.image_url ||
-    p.imageUrl ||
-    p.product_image ||
-    p.productImage ||
-    p.thumb ||
-    p.thumbnail ||
-    p.photo ||
-    p.picture ||
-    p.cover ||
-    p.media_url ||
-    p.mediaUrl ||
-    p.file_url ||
-    p.fileUrl ||
-    p.path ||
-    p.key ||
-    p.file_key ||
-    p.fileKey ||
-    p.image_key ||
-    p.imageKey ||
-    p.image_id ||
-    p.imageId ||
-    p.main_image ||
-    p.mainImage ||
-    p.preview ||
-    p.preview_url ||
-    p.previewUrl ||
-    pickFromArray(p.images) ||
-    pickFromArray(p.media) ||
-    pickFromArray(p.files) ||
-    pickFromArray(p.photos) ||
-    ""
-  );
-}
-
-/* ✅ FIX CLAVE: faltaba esta función (si no, el componente crashea y no abre) */
-function itemImage(it) {
-  const raw = itemImageRaw(it);
-  return normalizeUrl(raw);
+function toDigitsOnly(v) {
+  return String(v ?? "").replace(/[^\d]/g, "");
 }
 
 /* =========================
-   PRICING
+   CASH
 ========================= */
-function pickPrice(it) {
-  const x = it || {};
-  const qty = toNum(x.qty || 0);
+const totalSafe = computed(() => toNum(props.total));
 
-  const reseller = toNum(x.price_reseller ?? x.reseller_price ?? x.priceReseller ?? x.resellerPrice);
-  const list = toNum(x.price_list ?? x.list_price ?? x.priceList ?? x.listPrice);
-  const discount = toNum(x.price_discount ?? x.discount_price ?? x.priceDiscount ?? x.discountPrice);
-  const base = toNum(x.price ?? x.unit_price ?? x.unitPrice);
-
-  const isCard = state.paymentMethod === "CARD";
-  const inst = Number(state.installments || 1);
-  const isListMode = isCard && inst > 1 && !state.applyReseller;
-
-  // unit según política actual
-  let unit = 0;
-  if (state.applyReseller && reseller > 0) unit = reseller;
-  else if (isListMode && list > 0) unit = list;
-  else if (discount > 0) unit = discount;
-  else if (list > 0) unit = list;
-  else unit = base;
-
-  // unit LISTA (para cuotas)
-  const unitList = list > 0 ? list : discount > 0 ? discount : base;
-
-  return { unit, unitList, subtotal: unit * qty, subtotalList: unitList * qty };
-}
-
-const cartUi = computed(() =>
-  (Array.isArray(props.cart) ? props.cart : []).map((it, i) => {
-    const p = pickPrice(it);
-    const key = it?.id ?? it?.product_id ?? it?.sku ?? `${it?.name ?? "item"}_${i}`;
-    return {
-      ...it,
-      _key: key,
-      _img: itemImage(it),
-      _unit: p.unit,
-      _subtotal: p.subtotal,
-      _unitList: p.unitList,
-      _subtotalList: p.subtotalList,
-    };
-  })
-);
-
-const totalSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotal), 0) || toNum(props.total));
-const previewSafe = computed(() => totalSafe.value || toNum(props.totalPreview) || toNum(props.total));
-const totalListSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it._subtotalList), 0) || totalSafe.value);
-
-const policyLabel = computed(() => {
-  if (state.applyReseller) return "Revendedor";
-  if (state.paymentMethod === "CARD") return Number(state.installments || 1) > 1 ? "Lista" : "Descuento";
-  return "Descuento";
-});
-
-/* installments */
-const installmentsItemsSafe = computed(() => {
-  const raw = Array.isArray(props.installmentsItems) ? props.installmentsItems : [];
-  if (raw.length && typeof raw[0] === "object") return raw;
-
-  return [
-    { title: "1 pago", value: 1 },
-    { title: "2 cuotas", value: 2 },
-    { title: "3 cuotas", value: 3 },
-    { title: "4 cuotas", value: 4 },
-    { title: "5 cuotas", value: 5 },
-    { title: "6 cuotas", value: 6 },
-  ];
-});
-
-const ui = computed(() => {
-  const isCash = state.paymentMethod === "CASH";
-  const isCard = state.paymentMethod === "CARD";
-  const showInstallmentsChip = isCard && !state.applyReseller && Number(state.installments || 1) > 1;
-
-  const k = Number(state.installments || 1);
-  const perInstallmentList = k > 1 ? totalListSafe.value / k : 0;
-
-  return { isCash, showInstallmentsChip, perInstallmentList };
-});
-
-/* cash */
 const cashReceived = computed(() => toNum(state.cashDigits));
-const cashDisplay = computed(() => (cashReceived.value ? formatMiles(cashReceived.value) : ""));
 const change = computed(() => cashReceived.value - totalSafe.value);
-const cashShort = computed(() => change.value < 0);
+const cashShort = computed(() => state.paymentMethod === "CASH" && change.value < 0);
 
 function onCashFormattedInput(v) {
-  const digits = toDigitsOnly(v);
-  state.cashDigits = digits;
-  emit("update:cashInput", digits);
-}
-function roundUp(n, step) {
-  const x = Number(n || 0);
-  const s = Number(step || 1);
-  return s > 0 ? Math.ceil(x / s) * s : x;
-}
-function quickCash(v) {
-  const digits = String(Math.max(0, Math.trunc(Number(v || 0))));
-  state.cashDigits = digits;
-  emit("update:cashInput", digits);
+  state.cashDigits = toDigitsOnly(v);
 }
 
-/* actions */
-function onPaymentMethodChange(v) {
-  state.paymentMethod = v;
-  emit("update:paymentMethod", v);
+const cannotConfirmFinal = computed(
+  () => state.paymentMethod === "CASH" && cashReceived.value < totalSafe.value
+);
 
-  if (v !== "CASH" && state.cashDigits) {
-    state.cashDigits = "";
-    emit("update:cashInput", "");
-  }
-}
-function onInstallmentsChange(v) {
-  state.installments = Number(v || 1);
-  emit("update:installments", state.installments);
-}
-function onApplyResellerChange(v) {
-  state.applyReseller = !!v;
-  emit("update:applyReseller", state.applyReseller);
-  if (state.applyReseller) {
-    state.installments = 1;
-    emit("update:installments", 1);
-  }
-}
-
-const cannotConfirmFinal = computed(() => ui.value.isCash && cashReceived.value < totalSafe.value);
-
+/* =========================
+   ACTIONS
+========================= */
 function closeNow() {
   emit("update:open", false);
   emit("cancel");
@@ -656,31 +402,28 @@ function onConfirm() {
     cash_received: cashReceived.value,
     change: change.value > 0 ? change.value : 0,
     total: totalSafe.value,
-    total_preview: previewSafe.value,
-    total_list: totalListSafe.value,
-    per_installment_list: ui.value.perInstallmentList,
   });
+
+  emit("update:open", false);
 }
 
-/* hotkey: F8/ESC close (solo cuando está abierto) */
+/* hotkeys */
 function onKeydownDialog(e) {
   if (!openLocal.value) return;
+
   const k = String(e.key || "").toLowerCase();
-  if (k === "f8" || k === "escape") {
+  if (k === "escape") {
     e.preventDefault();
-    e.stopPropagation();
-    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
     closeNow();
   }
 }
-onMounted(() => window.addEventListener("keydown", onKeydownDialog, { capture: true }));
-onBeforeUnmount(() => window.removeEventListener("keydown", onKeydownDialog, { capture: true }));
 
-/* sync props -> local */
-watch(() => props.paymentMethod, (v) => (state.paymentMethod = v || "CASH"));
-watch(() => props.installments, (v) => (state.installments = Number(v || 1)));
-watch(() => props.applyReseller, (v) => (state.applyReseller = !!v));
-watch(() => props.cashInput, (v) => (state.cashDigits = toDigitsOnly(v)));
+onMounted(() =>
+  window.addEventListener("keydown", onKeydownDialog, { capture: true })
+);
+onBeforeUnmount(() =>
+  window.removeEventListener("keydown", onKeydownDialog, { capture: true })
+);
 </script>
 
 <style scoped>
