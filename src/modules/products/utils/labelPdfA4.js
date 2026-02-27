@@ -2,16 +2,22 @@
 // src/modules/products/utils/labelPdfA4.js
 //
 // ✅ FIXES (LO QUE PEDISTE):
-// 1) ✅ El GRANDE queda “bien” + vuelve la lógica de cuotas 3x/6x (según precio lista).
-//    - Ahora el auto-fit del precio tiene en cuenta que SIEMPRE debe entrar la línea de cuotas cuando aplica.
-// 2) ✅ El 58×40 (chico) deja de superponerse:
-//    - En chico uso layout “posicionado” (y fijos) + tamaños más conservadores.
-//    - Old/Off y Precio nunca se pisan.
+// 1) ✅ LOGO ARRIBA IZQ MUCHO MÁS GRANDE (100x60 / “GRANDE”)
+// 2) ✅ LOGOS DE MEDIOS MÁS GRANDES + ✅ Crédito San Juan (primero) MÁS GRANDE
+// 3) ✅ FUENTES MÁS GRANDES (precio/nombre/old/off/cuotas/medios)
+// 4) ✅ SUCURSAL CORRECTA AL IMPRIMIR:
+//    - Prioriza branchName (param) si viene
+//    - Si no viene, busca en MUCHAS keys de localStorage/sessionStorage
+//    - Si encuentra JSON, extrae name/title/branch_name
+// 5) ✅ CUOTAS MÁS GRANDES (en ambos tamaños) y SIN "(precio lista)"
+// 6) ✅ FIX REAL: el 58 estaba “roto” (Medios pisaba el precio). Ahora:
+//    - drawLabel58 es dinámico con footer reservado (igual filosofía que el grande)
+//    - Medios nunca pisa contenido
 //
 // Mantiene:
 // - Marca/Modelo
 // - Precio lista tachado + %OFF
-// - Precio final grande
+// - Precio final grande auto-fit (y garantiza que entren cuotas cuando aplica)
 // - QR + Medios + URL
 // - Logos contain (sin estirar)
 
@@ -98,13 +104,14 @@ function pickPrices(product) {
 }
 
 // ✅ Cuotas según PRECIO LISTA (como pediste)
+// ✅ FIX: NO debe decir "(precio lista)" (interno)
 function computeInstallments(priceList) {
   const pl = Math.round(n(priceList, 0));
   if (pl >= 100000 && pl <= 150000) {
-    return { count: 3, amount: Math.round(pl / 3), label: "En 3x (precio lista)" };
+    return { count: 3, amount: Math.round(pl / 3), label: "En 3x" };
   }
   if (pl > 150000) {
-    return { count: 6, amount: Math.round(pl / 6), label: "En 6x (precio lista)" };
+    return { count: 6, amount: Math.round(pl / 6), label: "En 6x" };
   }
   return null;
 }
@@ -132,6 +139,84 @@ function pickModel(product) {
   );
 }
 
+/* =========================
+   ✅ Branch name robusto
+========================= */
+function safeParseJSON(v) {
+  try {
+    return JSON.parse(v);
+  } catch {
+    return null;
+  }
+}
+function extractBranchNameFromAny(v) {
+  if (!v) return "";
+  if (typeof v === "string") {
+    const str = v.trim();
+    if (!str) return "";
+    if ((str.startsWith("{") && str.endsWith("}")) || (str.startsWith("[") && str.endsWith("]"))) {
+      const j = safeParseJSON(str);
+      const nm = extractBranchNameFromAny(j);
+      return nm || "";
+    }
+    return str;
+  }
+  if (typeof v === "object") {
+    return (
+      s(v.name) ||
+      s(v.title) ||
+      s(v.branch_name) ||
+      s(v.branchName) ||
+      s(v.label) ||
+      s(v.nombre) ||
+      ""
+    );
+  }
+  return "";
+}
+function getStorageAny(key) {
+  try {
+    const a = localStorage?.getItem?.(key);
+    if (a) return a;
+  } catch {}
+  try {
+    const b = sessionStorage?.getItem?.(key);
+    if (b) return b;
+  } catch {}
+  return "";
+}
+function resolveBranchName(branchNameParam) {
+  const direct = extractBranchNameFromAny(branchNameParam);
+  if (direct) return direct;
+
+  const KEYS = [
+    "pos_branch_name",
+    "shop_branch_name",
+    "branch_name",
+    "branchName",
+    "selected_branch_name",
+    "selectedBranchName",
+    "pos_branch",
+    "shop_branch",
+    "pos_branch_selected",
+    "shop_branch_selected",
+    "branchSelected",
+    "branch_selected",
+    "pos_branch_selected_obj",
+    "shop_branch_selected_obj",
+    "pos_branch_selected_name",
+    "shop_branch_selected_name",
+  ];
+
+  for (const k of KEYS) {
+    const raw = getStorageAny(k);
+    const nm = extractBranchNameFromAny(raw);
+    if (nm) return nm;
+  }
+
+  return "Casa Central";
+}
+
 /**
  * ✅ Layout “TOP + baseline”
  * jsPDF: fontSize es pt, posiciones son mm.
@@ -144,7 +229,6 @@ function lineH(pt, mult = 1.18) {
   return ptToMm(pt) * mult;
 }
 function baselineFromTop(pt) {
-  // aproximación estable para Helvetica: ~0.78 del tamaño en mm
   return ptToMm(pt) * 0.78;
 }
 function drawTextAtTop(doc, text, x, yTop, fontSize, fontStyle = "normal", color = [0, 0, 0]) {
@@ -207,7 +291,7 @@ function computeBig100Layout() {
   const A4 = getA4Landscape();
   const ratio = 60 / 100;
 
-  const targetW = A4.W * 0.70; // ✅ grande como antes
+  const targetW = A4.W * 0.70;
   let boxW = targetW;
   let boxH = boxW * ratio;
 
@@ -221,19 +305,23 @@ function computeBig100Layout() {
     page: A4,
     box: { x: (A4.W - boxW) / 2, y: (A4.H - boxH) / 2, w: boxW, h: boxH },
     pad: Math.max(8.2, boxW * 0.05),
-    qr: Math.max(34, boxW * 0.19),
+    qr: Math.max(40, boxW * 0.215),
   };
 }
 
+/**
+ * ✅ 58 INTERMEDIA (más grande por hoja)
+ * 70x50 (aprox) — 2x5 por página A4 portrait
+ */
 function computeGrid58Layout() {
   const A4 = getA4Portrait();
 
-  const CELL_W = 58;
-  const CELL_H = 40;
-  const COLS = 3;
-  const ROWS = 6;
-  const GAP_X = 3;
-  const GAP_Y = 3;
+  const CELL_W = 70;
+  const CELL_H = 50;
+  const COLS = 2;
+  const ROWS = 5;
+  const GAP_X = 4;
+  const GAP_Y = 4;
 
   const gridW = COLS * CELL_W + (COLS - 1) * GAP_X;
   const gridH = ROWS * CELL_H + (ROWS - 1) * GAP_Y;
@@ -249,8 +337,8 @@ function computeGrid58Layout() {
       marginL: Math.max(6, (A4.W - gridW) / 2),
       marginT: Math.max(8, (A4.H - gridH) / 2),
     },
-    pad: 2.6,
-    qr: 15.5,
+    pad: 3.2,
+    qr: 19.5,
   };
 }
 
@@ -274,16 +362,33 @@ function drawLogoContain(doc, png, aspect, x, y, slotW, slotH) {
   doc.addImage(png, "PNG", dx, dy, drawW, drawH);
 }
 
+/**
+ * ✅ FIX: fila de medios con altura REAL + crédito más grande
+ * - cfg.payRowH define el alto total de la fila
+ * - creditoBoost agranda el primer logo sin desalinear
+ */
 function drawPayLogosRow(doc, x, yTop, maxW, logosMeta, cfg) {
-  const slotH = cfg.payLogoH;
-  const slotW = cfg.paySlotW;
+  const baseH = cfg.payLogoH;
+  const baseW = cfg.paySlotW;
   const gap = cfg.payLogoGap;
+
+  const rowH = cfg.payRowH || baseH;
 
   let xx = x;
   for (const it of logosMeta) {
     if (!it?.png || !it?.aspect) continue;
+
+    const isCredito = it.key === "credito_sj";
+    const mult = isCredito ? (cfg.creditoBoost || 1.0) : 1.0;
+
+    const slotH = baseH * mult;
+    const slotW = baseW * mult;
+
     if (xx + slotW > x + maxW) break;
-    drawLogoContain(doc, it.png, it.aspect, xx, yTop, slotW, slotH);
+
+    const yy = yTop + (rowH - slotH) / 2; // ✅ centrado vertical
+    drawLogoContain(doc, it.png, it.aspect, xx, yy, slotW, slotH);
+
     xx += slotW + gap;
   }
 }
@@ -306,18 +411,18 @@ function drawHeader(doc, { x, y, w, headerH, pad }, data) {
     doc.addImage(data.storeLogo.png, "PNG", xL, logoY, logoW, logoH);
   }
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsBranch);
-  doc.setTextColor(40);
+  doc.setTextColor(35);
 
-  const brTxt = ellipsize(doc, data.branchName, w * 0.42);
+  const brTxt = ellipsize(doc, data.branchName, w * 0.46);
   const brW = doc.getTextWidth(brTxt);
   const yText = y + headerH - data.headerTextDrop;
   doc.text(brTxt, x + w - pad - brW, yText);
 }
 
 /* =========================
-   ✅ DRAW GRANDE (anti overlap + cuotas SIEMPRE)
+   ✅ DRAW GRANDE (100x60)
 ========================= */
 function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setDrawColor(220);
@@ -327,12 +432,10 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   drawHeader(doc, { x, y, w, headerH: data.headerH, pad }, data);
 
   const xL = x + pad;
-  const contentTop = y + data.headerH + pad * 0.65;
+  const contentTop = y + data.headerH + pad * 0.62;
 
-  // footer reserve (intocable)
   const footerTop = y + h - pad - data.footerReserveH;
 
-  // columns
   const xQR = x + w - pad - qrSize;
   const leftW = w - pad * 2 - qrSize - data.qrGap;
 
@@ -340,25 +443,25 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
 
   let yTop = contentTop + data.topPad;
 
-  // 1) Nombre (2 líneas)
+  // Nombre (2 líneas)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsName);
   const nameLines = doc.splitTextToSize(data.name, leftW).slice(0, 2);
   for (let i = 0; i < nameLines.length; i++) {
-    drawTextAtTop(doc, nameLines[i], xL, yTop + i * lineH(data.fsName, 1.12), data.fsName, "bold", [0, 0, 0]);
+    drawTextAtTop(doc, nameLines[i], xL, yTop + i * lineH(data.fsName, 1.10), data.fsName, "bold", [0, 0, 0]);
   }
-  yTop += nameLines.length * lineH(data.fsName, 1.12) + data.gapAfterName;
+  yTop += nameLines.length * lineH(data.fsName, 1.10) + data.gapAfterName;
 
-  // 2) Marca/Modelo
+  // Marca/Modelo
   const brandModel = [data.brand, data.model].filter(Boolean).join(" · ");
   if (brandModel) {
-    drawTextAtTop(doc, ellipsize(doc, brandModel, leftW), xL, yTop, data.fsBrandModel, "normal", [60, 60, 60]);
-    yTop += lineH(data.fsBrandModel, 1.10) + data.gapAfterBrand;
+    drawTextAtTop(doc, ellipsize(doc, brandModel, leftW), xL, yTop, data.fsBrandModel, "bold", [55, 55, 55]);
+    yTop += lineH(data.fsBrandModel, 1.08) + data.gapAfterBrand;
   } else {
     yTop += data.gapAfterBrand;
   }
 
-  // 3) Precio lista + OFF
+  // Old + OFF
   if (data.priceList > 0) {
     const oldTop = yTop;
 
@@ -366,28 +469,28 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     doc.setFontSize(data.fsOld);
 
     const oldTxt = money(data.priceList);
-    drawTextAtTop(doc, oldTxt, xL, oldTop, data.fsOld, "bold", [70, 70, 70]);
+    drawTextAtTop(doc, oldTxt, xL, oldTop, data.fsOld, "bold", [65, 65, 65]);
 
     const ww = doc.getTextWidth(oldTxt);
     const strikeY = oldTop + baselineFromTop(data.fsOld) - ptToMm(data.fsOld) * 0.28;
-    doc.setDrawColor(90);
-    doc.setLineWidth(0.35);
+    doc.setDrawColor(80);
+    doc.setLineWidth(0.42);
     doc.line(xL, strikeY, xL + ww, strikeY);
 
     if (data.hasDiscount && data.offPct > 0) {
-      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 6, oldTop, data.fsOld, "bold", [0, 0, 0]);
+      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 8, oldTop, data.fsOld, "bold", [0, 0, 0]);
     }
 
-    yTop += lineH(data.fsOld, 1.08) + data.gapAfterOld;
+    yTop += lineH(data.fsOld, 1.06) + data.gapAfterOld;
   } else {
     yTop += data.gapAfterOld;
   }
 
-  // 4) Precio final auto-fit (AHORA contempla cuotas)
+  // Precio final auto-fit (contempla cuotas)
   const priceText = money(data.finalPrice);
   let fsP = data.fsPriceMax;
 
-  const needInstall = data.installment ? lineH(data.fsInstall, 1.08) + data.gapAfterInstall : 0;
+  const needInstall = data.installment ? lineH(data.fsInstall, 1.06) + data.gapAfterInstall : 0;
 
   const tooWide = (fs) => {
     doc.setFont("helvetica", "bold");
@@ -395,20 +498,18 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     return doc.getTextWidth(priceText) > leftW;
   };
 
-  // ✅ para que entren cuotas: precioH + gapAfterPrice + cuotas
   while (fsP >= data.fsPriceMin) {
     const priceH = lineH(fsP, 1.02);
-    const needed = priceH + data.gapAfterPrice + needInstall; // meta va “si entra”
+    const needed = priceH + data.gapAfterPrice + needInstall;
     const available = footerTop - data.minGapBeforeFooter - yTop;
     if (available >= needed && !tooWide(fsP)) break;
     fsP -= 1;
   }
 
-  // draw price
   drawTextAtTop(doc, priceText, xL, yTop, fsP, "bold", [0, 0, 0]);
-  yTop += lineH(fsP, 1.04) + data.gapAfterPrice;
+  yTop += lineH(fsP, 1.03) + data.gapAfterPrice;
 
-  // 5) ✅ Cuotas SIEMPRE que aplique (ya lo garantizamos arriba)
+  // Cuotas (más grande)
   if (data.installment) {
     drawTextAtTop(
       doc,
@@ -419,11 +520,11 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
       "bold",
       [0, 0, 0]
     );
-    yTop += lineH(data.fsInstall, 1.08) + data.gapAfterInstall;
+    yTop += lineH(data.fsInstall, 1.06) + data.gapAfterInstall;
   }
 
-  // 6) Meta (solo si entra)
-  const metaNeed = lineH(data.fsMeta, 1.05);
+  // Meta (si entra)
+  const metaNeed = lineH(data.fsMeta, 1.04);
   if (data.sku && yTop + metaNeed <= footerTop - data.minGapBeforeFooter) {
     drawTextAtTop(doc, ellipsize(doc, `SKU: ${data.sku}`, leftW), xL, yTop, data.fsMeta, "bold", [0, 0, 0]);
     yTop += metaNeed + data.gapAfterMeta;
@@ -442,8 +543,10 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsFooter1);
   const labelW = doc.getTextWidth("Medios:");
-  const logosX = xL + labelW + 6;
-  const logosYTop = footerY1 - data.payLogoH + 1.1;
+  const logosX = xL + labelW + 8;
+
+  // ✅ fila con altura real
+  const logosYTop = footerY1 - data.payRowH + 1.0;
 
   drawPayLogosRow(doc, logosX, logosYTop, w - pad * 2 - (logosX - xL), data.payLogosMeta || [], data);
 
@@ -453,13 +556,13 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     xL,
     footerY2 - baselineFromTop(data.fsFooter2),
     data.fsFooter2,
-    "normal",
-    [70, 70, 70]
+    "bold",
+    [65, 65, 65]
   );
 }
 
 /* =========================
-   ✅ DRAW CHICO 58×40 (layout fijo, anti superposición)
+   ✅ DRAW 58 INTERMEDIA (FIX REAL: dinámico + footer reservado)
 ========================= */
 function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setDrawColor(220);
@@ -469,59 +572,63 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
   drawHeader(doc, { x, y, w, headerH: data.headerH, pad }, data);
 
   const xL = x + pad;
-  const contentTop = y + data.headerH + 0.8;
+  const contentTop = y + data.headerH + pad * 0.55;
 
-  const footerY1 = y + h - pad - data.footerLine1;
-  const footerY2 = y + h - pad - data.footerLine2;
-
+  // ✅ footer intocable
   const footerTop = y + h - pad - data.footerReserveH;
 
+  // columns
   const xQR = x + w - pad - qrSize;
   const leftW = w - pad * 2 - qrSize - data.qrGap;
 
   if (data.qrDataUrl) doc.addImage(data.qrDataUrl, "PNG", xQR, contentTop, qrSize, qrSize);
 
-  // ✅ posiciones fijas (en mm) relativas al contentTop
-  const yName = contentTop + 0.8;
-  const yBrand = yName + 7.2;     // debajo del nombre (2 líneas max)
-  const yOld = yBrand + 3.6;      // old/off
-  const yPrice = yOld + 3.6;      // precio final SIEMPRE abajo (no pisa)
-  const yInstall = yPrice + 5.0;  // cuotas si aplica
+  let yTop = contentTop + data.topPad;
 
-  // Nombre (hasta 2 líneas)
+  // 1) Nombre (máx 2 líneas)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsName);
   const nameLines = doc.splitTextToSize(data.name, leftW).slice(0, 2);
   for (let i = 0; i < nameLines.length; i++) {
-    drawTextAtTop(doc, nameLines[i], xL, yName + i * 3.6, data.fsName, "bold", [0, 0, 0]);
+    drawTextAtTop(doc, nameLines[i], xL, yTop + i * lineH(data.fsName, 1.10), data.fsName, "bold", [0, 0, 0]);
   }
+  yTop += nameLines.length * lineH(data.fsName, 1.10) + data.gapAfterName;
 
-  // Marca/Modelo (1 línea)
+  // 2) Marca/Modelo (1 línea)
   const brandModel = [data.brand, data.model].filter(Boolean).join(" · ");
   if (brandModel) {
-    drawTextAtTop(doc, ellipsize(doc, brandModel, leftW), xL, yBrand, data.fsBrandModel, "normal", [60, 60, 60]);
+    drawTextAtTop(doc, ellipsize(doc, brandModel, leftW), xL, yTop, data.fsBrandModel, "bold", [55, 55, 55]);
+    yTop += lineH(data.fsBrandModel, 1.05) + data.gapAfterBrand;
+  } else {
+    yTop += data.gapAfterBrand;
   }
 
-  // Precio lista + OFF
+  // 3) Old + OFF (si hay)
   if (data.priceList > 0) {
+    const oldTop = yTop;
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(data.fsOld);
 
     const oldTxt = money(data.priceList);
-    drawTextAtTop(doc, oldTxt, xL, yOld, data.fsOld, "bold", [70, 70, 70]);
+    drawTextAtTop(doc, oldTxt, xL, oldTop, data.fsOld, "bold", [70, 70, 70]);
 
     const ww = doc.getTextWidth(oldTxt);
-    const strikeY = yOld + baselineFromTop(data.fsOld) - ptToMm(data.fsOld) * 0.28;
+    const strikeY = oldTop + baselineFromTop(data.fsOld) - ptToMm(data.fsOld) * 0.28;
     doc.setDrawColor(90);
-    doc.setLineWidth(0.25);
+    doc.setLineWidth(0.28);
     doc.line(xL, strikeY, xL + ww, strikeY);
 
     if (data.hasDiscount && data.offPct > 0) {
-      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 2.5, yOld, data.fsOld, "bold", [0, 0, 0]);
+      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 3.4, oldTop, data.fsOld, "bold", [0, 0, 0]);
     }
+
+    yTop += lineH(data.fsOld, 1.04) + data.gapAfterOld;
+  } else {
+    yTop += data.gapAfterOld;
   }
 
-  // Precio final auto-fit (ancho + no pasar footer)
+  // 4) Precio final auto-fit (GARANTIZA cuotas si aplican)
   const priceText = money(data.finalPrice);
   let fsP = data.fsPriceMax;
 
@@ -531,40 +638,45 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
     return doc.getTextWidth(priceText) > leftW;
   };
 
-  // asegurar que el precio no invada footer
+  const needInstall = data.installment ? lineH(data.fsInstall, 1.06) + data.gapAfterInstall : 0;
+
   while (fsP >= data.fsPriceMin) {
     const priceH = lineH(fsP, 1.02);
-    const bottom = yPrice + priceH;
-    if (bottom <= footerTop - 0.6 && !tooWide(fsP)) break;
+    const needed = priceH + data.gapAfterPrice + needInstall;
+    const available = footerTop - data.minGapBeforeFooter - yTop;
+    if (available >= needed && !tooWide(fsP)) break;
     fsP -= 0.5;
   }
 
-  drawTextAtTop(doc, priceText, xL, yPrice, fsP, "bold", [0, 0, 0]);
+  drawTextAtTop(doc, priceText, xL, yTop, fsP, "bold", [0, 0, 0]);
+  yTop += lineH(fsP, 1.03) + data.gapAfterPrice;
 
-  // Cuotas (si aplica) — solo si entra
-  if (data.installment) {
-    const need = lineH(data.fsInstall, 1.06);
-    if (yInstall + need <= footerTop - 0.2) {
-      drawTextAtTop(
-        doc,
-        `${data.installment.count}x: ${money(data.installment.amount)}`,
-        xL,
-        yInstall,
-        data.fsInstall,
-        "bold",
-        [0, 0, 0]
-      );
-    }
+  // 5) Cuotas (más grandes)
+  if (data.installment && yTop + lineH(data.fsInstall, 1.06) <= footerTop - data.minGapBeforeFooter) {
+    drawTextAtTop(
+      doc,
+      `${data.installment.label}: ${money(data.installment.amount)}`,
+      xL,
+      yTop,
+      data.fsInstall,
+      "bold",
+      [0, 0, 0]
+    );
+    yTop += lineH(data.fsInstall, 1.06) + data.gapAfterInstall;
   }
 
-  // Footer fijo
+  // Footer fijo (SIEMPRE abajo)
+  const footerY1 = y + h - pad - data.footerLine1;
+  const footerY2 = y + h - pad - data.footerLine2;
+
   drawTextAtTop(doc, "Medios:", xL, footerY1 - baselineFromTop(data.fsFooter1), data.fsFooter1, "bold", [0, 0, 0]);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(data.fsFooter1);
   const labelW = doc.getTextWidth("Medios:");
-  const logosX = xL + labelW + 2.8;
-  const logosYTop = footerY1 - data.payLogoH + 0.6;
+  const logosX = xL + labelW + data.mediosGapX;
+
+  const logosYTop = footerY1 - data.payRowH + data.mediosRowDrop;
 
   drawPayLogosRow(doc, logosX, logosYTop, w - pad * 2 - (logosX - xL), data.payLogosMeta || [], data);
 
@@ -604,18 +716,14 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
 
   const shortUrl = String(ecommerceUrl || "").replace(/^https?:\/\//, "");
 
-  const branchTxt =
-    s(branchName) ||
-    s(localStorage?.getItem?.("pos_branch_name")) ||
-    s(localStorage?.getItem?.("shop_branch_name")) ||
-    "Casa Central";
+  const branchTxt = resolveBranchName(branchName);
 
   const storeLogo = await loadPngWithMeta(STORE_LOGO_URL);
 
   const payLogosMeta = [];
   for (const it of PAY_LOGOS) {
     const meta = await loadPngWithMeta(it.url);
-    if (meta?.png) payLogosMeta.push(meta);
+    if (meta?.png) payLogosMeta.push({ ...meta, key: it.key }); // ✅ key para boost
   }
 
   const totalCopies = Math.max(1, Number(copies || 1));
@@ -636,11 +744,12 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       storeLogo,
       payLogosMeta,
 
-      headerH: 20.5,
-      fsBranch: 11.8,
-      headerTextDrop: 5.5,
-      storeLogoH: 14.2,
-      storeLogoWMax: 70.0,
+      // HEADER grande
+      headerH: 25.5,
+      fsBranch: 14.2,
+      headerTextDrop: 6.6,
+      storeLogoH: 19.8,
+      storeLogoWMax: 120.0,
 
       name,
       brand,
@@ -655,43 +764,46 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       qrDataUrl,
       shortUrl,
 
-      // tipografías GRANDE
-      fsName: 18.8,
-      fsBrandModel: 12.4,
-      fsOld: 11.6,
+      // tipografías GRANDES
+      fsName: 22.0,
+      fsBrandModel: 14.0,
+      fsOld: 13.2,
 
-      // precio grande (auto-fit)
-      fsPriceMax: 42.5,
-      fsPriceMin: 30.0,
+      fsPriceMax: 56.0,
+      fsPriceMin: 38.0,
 
-      // cuotas/meta
-      fsInstall: 12.4,
-      fsMeta: 11.8,
+      // ✅ cuotas más grandes
+      fsInstall: 18.0,
+      fsMeta: 13.2,
 
       // spacing
-      topPad: 7.0,
-      gapAfterName: 3.0,
-      gapAfterBrand: 3.0,
-      gapAfterOld: 4.0, // ✅ clave: evita pisada con precio
-      gapAfterPrice: 3.0,
-      gapAfterInstall: 2.2,
-      gapAfterMeta: 1.6,
-      minGapBeforeFooter: 3.8,
+      topPad: 7.8,
+      gapAfterName: 3.4,
+      gapAfterBrand: 3.4,
+      gapAfterOld: 4.4,
+      gapAfterPrice: 3.2,
+      gapAfterInstall: 2.6,
+      gapAfterMeta: 1.8,
+      minGapBeforeFooter: 4.2,
 
       // footer
-      fsFooter1: 12.6,
-      fsFooter2: 9.4,
-      footerLine1: 11.0,
-      footerLine2: 4.2,
-      footerReserveH: 21.0,
+      fsFooter1: 14.2,
+      fsFooter2: 10.6,
+      footerLine1: 12.2,
+      footerLine2: 4.6,
 
-      // medios
-      payLogoH: 14.0,
-      paySlotW: 34.0,
-      payLogoGap: 6.4,
+      // ✅ medios + fila real + boost
+      payLogoH: 17.0,
+      paySlotW: 41.0,
+      payLogoGap: 7.0,
+      creditoBoost: 1.55,
+      payRowH: 17.0 * 1.55, // ✅ fila contempla el crédito grande
+
+      // footer reserve: debe cubrir fila medios + url
+      footerReserveH: 25.0,
 
       // columns
-      qrGap: 7.0,
+      qrGap: 8.5,
     };
 
     for (let i = 0; i < totalCopies; i++) {
@@ -703,7 +815,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     return doc;
   }
 
-  // 58×40 (compacto)
+  // ✅ 58 INTERMEDIA (2x5, más grande)
   const G = computeGrid58Layout();
   const capacity = G.grid.cols * G.grid.rows;
   const pages = Math.ceil(totalCopies / capacity);
@@ -720,11 +832,12 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     storeLogo,
     payLogosMeta,
 
-    headerH: 7.6,
-    fsBranch: 5.7,
-    headerTextDrop: 2.2,
-    storeLogoH: 5.6,
-    storeLogoWMax: 22.0,
+    // header más alto
+    headerH: 11.2,
+    fsBranch: 8.2,
+    headerTextDrop: 3.3,
+    storeLogoH: 8.8,
+    storeLogoWMax: 46.0,
 
     name,
     brand,
@@ -739,30 +852,48 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     qrDataUrl,
     shortUrl,
 
-    // tipografías CHICO (conservadoras)
-    fsName: 8.4,
-    fsBrandModel: 5.8,
-    fsOld: 5.6,
+    // ✅ tipografías 58 GRANDES (legible pegado en producto)
+    fsName: 12.6,
+    fsBrandModel: 8.6,
+    fsOld: 8.4,
 
-    fsPriceMax: 12.8,
-    fsPriceMin: 10.5,
+    fsPriceMax: 22.0,
+    fsPriceMin: 17.0,
 
-    fsInstall: 5.4,
+    // ✅ cuotas 58 grandes
+    fsInstall: 10.8,
+
+    // spacing dinámica
+    topPad: 3.2,
+    gapAfterName: 1.6,
+    gapAfterBrand: 1.6,
+    gapAfterOld: 1.8,
+    gapAfterPrice: 1.6,
+    gapAfterInstall: 1.2,
+    minGapBeforeFooter: 1.4,
 
     // footer
-    fsFooter1: 5.6,
-    fsFooter2: 5.0,
-    footerLine1: 6.3,
-    footerLine2: 1.7,
-    footerReserveH: 10.6,
+    fsFooter1: 8.6,
+    fsFooter2: 7.2,
+    footerLine1: 10.0,
+    footerLine2: 3.2,
 
-    // medios
-    payLogoH: 3.7,
-    paySlotW: 10.0,
-    payLogoGap: 1.1,
+    // ✅ medios 58 + fila real + boost
+    payLogoH: 6.8,
+    paySlotW: 18.0,
+    payLogoGap: 2.8,
+    creditoBoost: 1.55,
+    payRowH: 6.8 * 1.55,
+
+    // tweaks “Medios”
+    mediosGapX: 3.8,
+    mediosRowDrop: 0.8,
+
+    // ✅ footer reserve (CLAVE: evita que Medios pise precio)
+    footerReserveH: 18.5,
 
     // columns
-    qrGap: 2.6,
+    qrGap: 3.2,
   };
 
   let printed = 0;
@@ -783,7 +914,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     }
   }
 
-  doc.setProperties({ title: title || "Etiquetas A4 (58 grilla)" });
+  doc.setProperties({ title: title || "Etiquetas A4 (58 intermedia)" });
   return doc;
 }
 
@@ -805,7 +936,7 @@ export async function downloadLabelPdfA4({
     .slice(0, 40);
 
   const id = s(product?.id || product?.product_id || "");
-  const mode = String(size) === "58" ? "58x40" : "100x60_GRANDE";
+  const mode = String(size) === "58" ? "58_INTERMEDIA" : "100x60_GRANDE";
 
   doc.save(`Etiqueta_A4_${mode}_${id}_${nm}.pdf`);
 }
