@@ -1,6 +1,3 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/components/ShopSearchBox.vue -->
-
 <template>
   <div class="sb-wrap" @keydown.esc.prevent="close" ref="wrap">
     <v-text-field
@@ -268,34 +265,72 @@ watch(
 </script>
 
 <style scoped>
-.sb-wrap{
+.sb-wrap {
   position: relative;
   width: 100%;
 }
 
-/* input */
-.sb-input :deep(.v-field){
+/* ===============================
+   INPUT (FIX: texto no puede quedar blanco)
+   Porque shop.css fuerza blanco dentro del header
+================================ */
+.sb-input :deep(.v-field) {
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Dropdown */
-.sb-dd{
+/* texto que tipeás */
+.sb-input :deep(input),
+.sb-input :deep(textarea),
+.sb-input :deep(.v-field__input) {
+  color: rgba(0, 0, 0, 0.92) !important;
+  caret-color: rgba(0, 0, 0, 0.92) !important;
+}
+
+/* placeholder */
+.sb-input :deep(input::placeholder),
+.sb-input :deep(textarea::placeholder),
+.sb-input :deep(.v-field__input::placeholder) {
+  color: rgba(0, 0, 0, 0.55) !important;
+  opacity: 1 !important;
+}
+
+/* icono lupa + clear */
+.sb-input :deep(.v-icon),
+.sb-input :deep(.v-field__prepend-inner .v-icon),
+.sb-input :deep(.v-field__append-inner .v-icon) {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+/* ===============================
+   DROPDOWN (ya blindado)
+================================ */
+.sb-dd,
+.sb-dd * {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.sb-dd :deep(.v-icon) {
+  color: rgba(var(--v-theme-on-surface), 0.72) !important;
+}
+
+.sb-dd {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
 
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+  background: #fff !important;
   border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
   overflow: hidden;
   z-index: 9999;
 }
 
 /* scroll control */
-.sb-list{
+.sb-list {
   max-height: min(50vh, 360px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -303,14 +338,14 @@ watch(
 
 /* Status / empty */
 .sb-status,
-.sb-empty{
+.sb-empty {
   padding: 10px 12px;
   font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
+  color: rgba(0, 0, 0, 0.55) !important;
 }
 
 /* Row */
-.sb-row{
+.sb-row {
   width: 100%;
   text-align: left;
   border: 0;
@@ -322,112 +357,109 @@ watch(
   gap: 8px;
 
   padding: 7px 9px;
-  color: rgb(var(--v-theme-on-surface));
+  color: rgba(0, 0, 0, 0.92) !important;
 }
 
-.sb-row:hover{
-  background: rgba(var(--v-theme-on-surface), 0.04);
+.sb-row:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.sb-row.active{
+.sb-row.active {
   background: rgba(var(--v-theme-primary), 0.08);
 }
 
 /* Thumb */
-.sb-thumb{
+.sb-thumb {
   width: 40px;
   height: 40px;
   border-radius: 10px;
   overflow: hidden;
   flex: 0 0 auto;
 
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
   display: grid;
   place-items: center;
 }
 
-.sb-thumb img{
+.sb-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.sb-thumb-ph{
-  color: rgba(var(--v-theme-on-surface), 0.4);
+.sb-thumb-ph {
+  color: rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Text */
-.sb-info{
+.sb-info {
   min-width: 0;
   flex: 1 1 auto;
 }
 
-.sb-title{
+.sb-title {
   font-size: 13.5px;
-  font-weight: 600; /* 🔥 más sutil */
+  font-weight: 650;
   line-height: 1.2;
-  color: rgba(var(--v-theme-on-surface), 0.95);
+  color: rgba(0, 0, 0, 0.92) !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sb-meta{
+.sb-meta {
   margin-top: 2px;
   font-size: 10.8px;
   line-height: 1.15;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: rgba(0, 0, 0, 0.62) !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* Footer */
-.sb-foot{
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+.sb-foot {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   padding: 7px 10px;
   font-size: 10.5px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: rgba(0, 0, 0, 0.55) !important;
 }
 
-/* MOBILE más liviano aún */
-@media (max-width: 600px){
-
-  .sb-dd{
+/* MOBILE */
+@media (max-width: 600px) {
+  .sb-dd {
     border-radius: 12px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
   }
 
-  .sb-list{
+  .sb-list {
     max-height: min(45vh, 300px);
   }
 
-  .sb-row{
+  .sb-row {
     padding: 6px 8px;
     gap: 7px;
   }
 
-  .sb-thumb{
+  .sb-thumb {
     width: 34px;
     height: 34px;
     border-radius: 9px;
   }
 
-  .sb-title{
+  .sb-title {
     font-size: 12.8px;
-    font-weight: 600;
   }
 
-  .sb-meta{
+  .sb-meta {
     font-size: 10px;
   }
 
-  .sb-foot{
+  .sb-foot {
     font-size: 10px;
     padding: 6px 8px;
   }
 }
 </style>
-
