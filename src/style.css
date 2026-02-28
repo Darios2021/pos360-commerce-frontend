@@ -1,6 +1,5 @@
 /* ✅ COPY-PASTE FINAL COMPLETO */
 /* src/style.css */
-/* Global mínimo y seguro (App + Shop) */
 
 html,
 body {
@@ -12,50 +11,56 @@ body {
   min-height: 100vh;
 }
 
-/* ================================
-   ✅ FIX 1: “reborde / relieve” en íconos (DARK)
-   - Quita shadow + overlay/underlay en botones icon
-================================ */
-.v-theme--dark .v-btn--icon,
-.v-theme--dark .v-btn--icon.v-btn--density-default,
-.v-theme--dark .v-btn--icon.v-btn--density-comfortable,
-.v-theme--dark .v-btn--icon.v-btn--density-compact {
-  box-shadow: none !important;
+/* =========================================================
+   ✅ FALLBACK VARS (anti “todo negro” por vars faltantes)
+   - Si por timing falta --v-theme-* momentáneamente, no se cae a negro
+========================================================= */
+:root {
+  /* valores “seguros” para cuando todavía no están listas las vars */
+  --fallback-surface: 17 26 46;      /* similar a #111a2e */
+  --fallback-on-surface: 255 255 255;
+  --fallback-primary: 14 33 52;      /* #0e2134 */
 }
 
-.v-theme--dark .v-btn--icon .v-btn__overlay,
-.v-theme--dark .v-btn--icon .v-btn__underlay {
+/* =========================================================
+   ✅ OVERLAY FIX TELEPORT
+   - Menús/selects/autocomplete/tooltips NO deben oscurecer toda la app
+   - Dialogs sí
+========================================================= */
+
+/* Dialog scrim permitido */
+.v-overlay-container .v-overlay.v-dialog .v-overlay__scrim {
+  opacity: 0.55 !important;
+}
+
+/* Todo overlay NO dialog: sin scrim */
+.v-overlay-container .v-overlay:not(.v-dialog) .v-overlay__scrim {
   opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.v-theme--dark .v-btn--icon .v-icon,
-.v-theme--dark .v-btn--icon svg,
-.v-theme--dark .v-icon svg {
+/* Contenido overlay NO dialog: sin filtros raros + fondo seguro */
+.v-overlay-container .v-overlay:not(.v-dialog) .v-overlay__content {
   filter: none !important;
-  text-shadow: none !important;
+  backdrop-filter: none !important;
+
+  background: rgb(var(--v-theme-surface, var(--fallback-surface))) !important;
+  border: 1px solid color-mix(
+    in srgb,
+    rgb(var(--v-theme-on-surface, var(--fallback-on-surface))) 14%,
+    transparent
+  ) !important;
 }
 
-/* ================================
-   ✅ FIX 2: Drawer (como tu screenshot)
-   - Ese “cuadradito” con relieve suele ser un v-btn--icon/tonal en el prepend
-   - Lo dejamos FLAT: sin fondo, sin sombra, sin overlay
-================================ */
-.v-navigation-drawer .v-btn--icon {
-  background: transparent !important;
+/* Mata sombras excesivas por elevation dentro del overlay (NO dialog) */
+.v-overlay-container .v-overlay:not(.v-dialog) [class*="elevation-"] {
   box-shadow: none !important;
-  filter: none !important;
 }
 
-.v-navigation-drawer .v-btn--icon .v-btn__overlay,
-.v-navigation-drawer .v-btn--icon .v-btn__underlay {
+/* Quita bandas/underlays del menú */
+.v-overlay-container .v-overlay:not(.v-dialog) .v-list-item__overlay,
+.v-overlay-container .v-overlay:not(.v-dialog) .v-list-item__underlay,
+.v-overlay-container .v-overlay:not(.v-dialog) .v-btn__overlay,
+.v-overlay-container .v-overlay:not(.v-dialog) .v-btn__underlay {
   opacity: 0 !important;
-}
-
-/* Por si NO es v-btn y es algún wrapper con fondo */
-.v-navigation-drawer .v-list-item__prepend .v-icon,
-.v-navigation-drawer .v-list-item__prepend svg {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: 0 !important;
-  filter: none !important;
 }

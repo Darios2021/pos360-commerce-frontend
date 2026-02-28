@@ -1,71 +1,55 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/main.js
 
-// =============================
-// 🔐 PATCH GLOBAL para WebViews capados (Instagram / Facebook / iOS Private)
-// Debe ir ANTES de cualquier import
-// =============================
 (function () {
   if (typeof window === "undefined") return;
 
   const isMetaWebView =
     /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
-  // --- PATCH localStorage ---
+  // localStorage patch
   try {
-    const testKey = "__ls_test__";
-    window.localStorage.setItem(testKey, "1");
-    window.localStorage.removeItem(testKey);
-  } catch (_) {
-    const noopLS = {
-      getItem() {
-        return "null";
-      },
+    const k = "__ls_test__";
+    window.localStorage.setItem(k, "1");
+    window.localStorage.removeItem(k);
+  } catch {
+    const noop = {
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "localStorage", { value: noopLS, configurable: true });
+      Object.defineProperty(window, "localStorage", { value: noop, configurable: true });
     } catch {
-      window.localStorage = noopLS;
+      window.localStorage = noop;
     }
   }
 
-  // --- PATCH sessionStorage ---
+  // sessionStorage patch
   try {
-    const testKey = "__ss_test__";
-    window.sessionStorage.setItem(testKey, "1");
-    window.sessionStorage.removeItem(testKey);
-  } catch (_) {
-    const noopSS = {
-      getItem() {
-        return "null";
-      },
+    const k = "__ss_test__";
+    window.sessionStorage.setItem(k, "1");
+    window.sessionStorage.removeItem(k);
+  } catch {
+    const noop = {
+      getItem() { return "null"; },
       setItem() {},
       removeItem() {},
       clear() {},
-      key() {
-        return null;
-      },
-      get length() {
-        return 0;
-      },
+      key() { return null; },
+      get length() { return 0; },
     };
     try {
-      Object.defineProperty(window, "sessionStorage", { value: noopSS, configurable: true });
+      Object.defineProperty(window, "sessionStorage", { value: noop, configurable: true });
     } catch {
-      window.sessionStorage = noopSS;
+      window.sessionStorage = noop;
     }
   }
 
-  // --- PATCH IndexedDB ---
+  // indexedDB patch
   try {
     if (!window.indexedDB && !window.webkitIndexedDB) {
       window.indexedDB = {
@@ -74,7 +58,7 @@
         },
       };
     }
-  } catch (_) {
+  } catch {
     window.indexedDB = {
       open() {
         return { onerror() {}, onsuccess() {}, onupgradeneeded() {} };
@@ -85,9 +69,6 @@
   if (isMetaWebView) console.log("[META WEBVIEW DETECTADO]");
 })();
 
-// =============================
-// Imports
-// =============================
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { createHead } from "@vueuse/head";
@@ -98,24 +79,11 @@ import vuetify from "./app/plugins/vuetify";
 
 import VueApexCharts from "vue3-apexcharts";
 
-// ✅ Runtime theme (tu util actual)
-import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeTheme";
-
-// ✅ Theme endpoints
-import { getShopThemePublic } from "@/modules/shop/service/shopTheme.public.api";
-import { getShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
-
-// =============================
-// ✅ CSS
-// - style.css = NEUTRO (global mínimo)
-// - shop.css  = SOLO SHOP (scopeado por .scope-shop)
-// =============================
 import "./style.css";
 import "@/modules/shop/styles/shop.css";
 
-// =============================
-// (Opcional) Señal prerender
-// =============================
+import { applyThemeAtomic, wireThemeReactivity } from "@/app/theme/themeManager";
+
 function signalPrerenderReady(routerInstance) {
   try {
     const enabled =
@@ -123,7 +91,6 @@ function signalPrerenderReady(routerInstance) {
       String(import.meta.env.VITE_ENABLE_PRERENDER || "").toLowerCase() === "true";
 
     if (!enabled) return;
-    if (typeof document === "undefined") return;
 
     const fire = () => {
       try {
@@ -140,46 +107,10 @@ function signalPrerenderReady(routerInstance) {
   } catch {}
 }
 
-// =============================
-// ✅ Bootstrap THEME
-// - /shop  => public theme
-// - /app   => admin theme (si hay token)
-// =============================
-function isBackofficePath() {
-  try {
-    const p = window.location.pathname || "";
-    return p.startsWith("/app");
-  } catch {
-    return false;
-  }
-}
+const DEBUG_THEME =
+  String(import.meta.env.VITE_DEBUG_THEME || "") === "1" ||
+  String(import.meta.env.VITE_DEBUG_THEME || "").toLowerCase() === "true";
 
-async function bootstrapThemeOnce() {
-  try {
-    if (typeof window === "undefined") return;
-
-    if (isBackofficePath()) {
-      const th = await getShopThemeAdmin();
-      if (th) applyRuntimeTheme(normalizeTheme(th));
-      return;
-    }
-
-    const th = await getShopThemePublic();
-    if (th) applyRuntimeTheme(normalizeTheme(th));
-  } catch {
-    // silencioso
-  }
-}
-
-async function bootstrapThemeWithRetries() {
-  await bootstrapThemeOnce();
-  setTimeout(() => bootstrapThemeOnce(), 400);
-  setTimeout(() => bootstrapThemeOnce(), 1200);
-}
-
-// =============================
-// Bootstrap app
-// =============================
 const app = createApp(App);
 const head = createHead();
 
@@ -191,8 +122,11 @@ app.use(VueApexCharts);
 
 app.mount("#app");
 
-// ✅ aplica theme runtime (shop o backoffice)
-bootstrapThemeWithRetries();
+// ✅ theme inicial (una sola vez)
+applyThemeAtomic({ vuetify, path: window.location.pathname, debug: DEBUG_THEME });
 
-// ✅ compat prerender
+// ✅ reactividad: ruta + toggle (evento local) + storage + system
+wireThemeReactivity({ vuetify, router, debug: DEBUG_THEME });
+
+// ✅ prerender
 signalPrerenderReady(router);

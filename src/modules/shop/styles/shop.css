@@ -1,36 +1,50 @@
 /* ✅ COPY-PASTE FINAL COMPLETO */
 /* src/modules/shop/styles/shop.css */
-/* ================================
-   MERCADO LIBRE (SÓLO SHOP)
-   Scopeado para NO afectar backoffice
-================================ */
+/* =====================================
+   SHOP STYLES (SOLO SHOP)
+   Scopeado con .scope-shop
+   NO afecta backoffice
+===================================== */
 
-/* Variables solo shop */
+/* ================================
+   VARIABLES BASE SHOP
+================================ */
 .scope-shop {
   --ml-bg: #ebebeb;
   --ml-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* fallback contraste */
+  --v-theme-on-background: 33 37 41; /* #212529 */
+  --v-theme-on-surface: 33 37 41;
+
+  /* blanco sobre primary/secondary */
+  --v-theme-on-primary: 255 255 255;
+  --v-theme-on-secondary: 255 255 255;
 }
 
-/* Fondo del documento SOLO cuando estás en shop */
+/* ================================
+   FONDO GENERAL SHOP (ML)
+================================ */
 .scope-shop,
 .scope-shop :where(.v-application) {
   background: var(--ml-bg) !important;
 }
 
-/* ✅ Vuetify pinta el fondo acá, lo pisamos SOLO en shop */
 .scope-shop :where(.v-application__wrap),
 .scope-shop :where(.v-main),
 .scope-shop :where(.v-main__wrap) {
   background: var(--ml-bg) !important;
 }
 
-/* Forzar transparente en wrappers tuyos */
+/* Wrappers tuyos */
 .scope-shop :where([data-layout]),
 .scope-shop :where([data-page]) {
   background: transparent;
 }
 
-/* Tipografía SOLO shop */
+/* ================================
+   TIPOGRAFÍA
+================================ */
 .scope-shop,
 .scope-shop :where(.v-application),
 .scope-shop :where(.v-application *) {
@@ -40,7 +54,90 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Cards más ML SOLO shop */
+/* ================================
+   DEFAULT TEXT COLOR (SOLO CONTENIDO)
+   ✅ evita “texto blanco” en cards/sheets claras
+   ❌ NO tocamos v-container global (rompía footer/header)
+================================ */
+.scope-shop :where(.v-main .v-card, .v-main .v-sheet, .v-main .v-container) {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* inputs dentro del contenido */
+.scope-shop :where(.v-main .v-field__input, .v-main input, .v-main textarea) {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* helpers Vuetify */
+.scope-shop :where(.text-medium-emphasis) {
+  opacity: 0.82;
+}
+
+/* ================================
+   CARDS ESTILO ML
+================================ */
 .scope-shop :where(.v-card) {
   border-radius: 12px !important;
+}
+
+/* ================================
+   LINKS EN CONTENIDO (NO header/footer)
+================================ */
+.scope-shop :where(.v-main a, .v-main .text-primary) {
+  color: rgb(var(--v-theme-secondary)) !important;
+  text-decoration: none;
+}
+.scope-shop :where(.v-main a:hover) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ================================
+   HEADER + FOOTER (BLINDAJE)
+   ✅ SIEMPRE blanco sobre primary
+================================ */
+.scope-shop :where(.ml-header, .shop-footer, [data-shop-header], [data-shop-footer]) {
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
+
+/* ✅ blindaje total (esto evita que un .v-container adentro los pinte negro) */
+.scope-shop :where(.ml-header *, .shop-footer *) {
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
+
+/* si tenés items “soft” en header */
+.scope-shop :where(.ml-header .ml-nav-soft) {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* ================================
+   CAROUSEL / FLECHAS / CONTROLES
+   ✅ si caen sobre blanco, oscuras
+================================ */
+.scope-shop :where(.swiper-button-prev, .swiper-button-next),
+.scope-shop :where([class*="arrow"], [class*="Arrow"]) {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* ================================
+   HELPERS OPCIONALES
+================================ */
+.scope-shop .shop-primary,
+.scope-shop [data-shop-primary] {
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
+
+.scope-shop .shop-secondary,
+.scope-shop [data-shop-secondary] {
+  background: rgb(var(--v-theme-secondary)) !important;
+  color: rgb(var(--v-theme-on-secondary, 255 255 255)) !important;
+}
+
+/* ================================
+   SELECTION COLOR
+================================ */
+.scope-shop ::selection {
+  background: color-mix(in srgb, rgb(var(--v-theme-secondary)) 30%, transparent);
 }

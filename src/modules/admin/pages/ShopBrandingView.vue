@@ -1,7 +1,7 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/admin/pages/ShopBrandingView.vue -->
 <template>
-  <v-container class="mx-auto" style="max-width: 1100px;">
+  <v-container class="mx-auto" style="max-width: 1100px">
     <v-card rounded="xl" elevation="3" class="pa-4">
       <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
         <div>
@@ -41,13 +41,7 @@
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
               <div class="font-weight-bold">Logo</div>
-              <v-btn
-                color="primary"
-                variant="flat"
-                prepend-icon="mdi-upload"
-                @click="pickLogo"
-                :loading="uploadingLogo"
-              >
+              <v-btn color="primary" variant="flat" prepend-icon="mdi-upload" @click="pickLogo" :loading="uploadingLogo">
                 Subir logo
               </v-btn>
             </div>
@@ -57,7 +51,7 @@
                 <v-img v-if="branding.logo_url" :src="abs(branding.logo_url)" cover />
                 <v-icon v-else>mdi-image-outline</v-icon>
               </v-avatar>
-              <div class="text-caption text-medium-emphasis" style="word-break: break-all;">
+              <div class="text-caption text-medium-emphasis" style="word-break: break-all">
                 {{ branding.logo_url || "Sin logo cargado" }}
               </div>
             </div>
@@ -71,13 +65,7 @@
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
               <div class="font-weight-bold">Favicon</div>
-              <v-btn
-                color="primary"
-                variant="flat"
-                prepend-icon="mdi-upload"
-                @click="pickFavicon"
-                :loading="uploadingFav"
-              >
+              <v-btn color="primary" variant="flat" prepend-icon="mdi-upload" @click="pickFavicon" :loading="uploadingFav">
                 Subir favicon
               </v-btn>
             </div>
@@ -87,7 +75,7 @@
                 <v-img v-if="branding.favicon_url" :src="abs(branding.favicon_url)" cover />
                 <v-icon v-else>mdi-image-outline</v-icon>
               </v-avatar>
-              <div class="text-caption text-medium-emphasis" style="word-break: break-all;">
+              <div class="text-caption text-medium-emphasis" style="word-break: break-all">
                 {{ branding.favicon_url || "Sin favicon cargado" }}
               </div>
             </div>
@@ -105,13 +93,7 @@
           <v-card rounded="xl" variant="tonal" class="pa-3">
             <div class="d-flex align-center justify-space-between">
               <div class="font-weight-bold">OG Image (preview WhatsApp)</div>
-              <v-btn
-                color="primary"
-                variant="flat"
-                prepend-icon="mdi-upload"
-                @click="pickOg"
-                :loading="uploadingOg"
-              >
+              <v-btn color="primary" variant="flat" prepend-icon="mdi-upload" @click="pickOg" :loading="uploadingOg">
                 Subir OG
               </v-btn>
             </div>
@@ -122,7 +104,7 @@
                 <v-icon v-else>mdi-image-outline</v-icon>
               </v-avatar>
 
-              <div class="text-caption text-medium-emphasis" style="word-break: break-all;">
+              <div class="text-caption text-medium-emphasis" style="word-break: break-all">
                 {{ branding.og_image_url || "Sin OG cargada" }}
               </div>
             </div>
@@ -181,7 +163,7 @@
                 label="Color primary"
                 variant="outlined"
                 density="comfortable"
-                style="max-width: 240px;"
+                style="max-width: 240px"
                 hide-details
               />
               <v-chip size="small" variant="tonal">Header / Footer / Botones</v-chip>
@@ -206,7 +188,7 @@
                 label="Color secondary"
                 variant="outlined"
                 density="comfortable"
-                style="max-width: 240px;"
+                style="max-width: 240px"
                 hide-details
               />
               <v-chip size="small" variant="tonal">Accentos / Links</v-chip>
@@ -222,27 +204,30 @@
           <v-card rounded="xl" variant="outlined" class="pa-3">
             <div class="font-weight-bold mb-2">Preview</div>
 
-            <v-sheet rounded="xl" class="pa-4" :style="previewStyle">
-              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-                <div class="d-flex align-center ga-2">
-                  <v-avatar size="40" :style="{ background: themeForm.secondary }">
-                    <v-icon>mdi-storefront</v-icon>
-                  </v-avatar>
-                  <div>
-                    <div class="font-weight-black">San Juan Tecnología</div>
-                    <div class="text-caption" style="opacity:.85">Header / Footer con Primary</div>
+            <!-- ✅ SCOPE SOLO PARA EL PREVIEW -->
+            <div class="shop-preview-scope">
+              <v-sheet rounded="xl" class="pa-4" :style="previewStyle">
+                <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+                  <div class="d-flex align-center ga-2">
+                    <v-avatar size="40" :style="{ background: themeForm.secondary }">
+                      <v-icon>mdi-storefront</v-icon>
+                    </v-avatar>
+                    <div>
+                      <div class="font-weight-black">San Juan Tecnología</div>
+                      <div class="text-caption" style="opacity: 0.85">Header / Footer con Primary</div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-center ga-2">
+                    <v-btn variant="flat" color="primary">Primary</v-btn>
+                    <v-btn variant="tonal" color="secondary">Secondary</v-btn>
                   </div>
                 </div>
-
-                <div class="d-flex align-center ga-2">
-                  <v-btn variant="flat" color="primary">Primary</v-btn>
-                  <v-btn variant="tonal" color="secondary">Secondary</v-btn>
-                </div>
-              </div>
-            </v-sheet>
+              </v-sheet>
+            </div>
 
             <div class="text-caption text-medium-emphasis mt-2">
-              Al guardar aplicamos el cambio también “en vivo” en esta sesión del backoffice.
+              Al guardar NO pisamos el tema del backoffice; solo el Shop público tomará el cambio al entrar/recargar.
             </div>
           </v-card>
         </v-col>
@@ -256,7 +241,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import {
   getShopBranding,
   updateShopBranding,
@@ -267,8 +252,8 @@ import {
 
 import { getShopThemeAdmin, updateShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
 
-// ✅ IMPORT CORRECTO (según tu estructura)
-import { applyRuntimeTheme } from "@/modules/shop/utils/runtimeTheme";
+// ✅ ahora applyRuntimeTheme soporta scope
+import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeTheme";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -326,18 +311,28 @@ function abs(u) {
   return `${assetBase}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
+function applyPreviewThemeNow() {
+  // ✅ SOLO preview, no backoffice global
+  applyRuntimeTheme(normalizeTheme(themeForm.value), { scope: ".shop-preview-scope" });
+}
+
+// ✅ cada vez que cambian los inputs, actualizamos preview
+watch(
+  () => [themeForm.value.primary, themeForm.value.secondary],
+  () => applyPreviewThemeNow(),
+  { immediate: true }
+);
+
 async function load() {
   loading.value = true;
   error.value = "";
   try {
-    // branding
     const it = await getShopBranding();
     if (it) {
       branding.value = { ...branding.value, ...it };
       form.value.name = branding.value.name || "San Juan Tecnología";
     }
 
-    // theme
     const th = await getShopThemeAdmin();
     if (th) {
       theme.value = {
@@ -345,9 +340,7 @@ async function load() {
         secondary: normHex(th.secondary, "#3483fa"),
       };
       themeForm.value = { ...theme.value };
-
-      // aplica en vivo en el backoffice para que lo veas ya
-      applyRuntimeTheme(theme.value);
+      applyPreviewThemeNow();
     }
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || "No se pudo cargar la configuración.";
@@ -379,16 +372,15 @@ async function saveTheme() {
       secondary: normHex(themeForm.value.secondary, "#3483fa"),
     };
 
-    const saved = await updateShopThemeAdmin(payload);
+    await updateShopThemeAdmin(payload);
 
-    // aunque el backend devuelva null, aplicamos payload igual
     theme.value = { ...payload };
     themeForm.value = { ...payload };
 
-    // ✅ aplica runtime (sin reload)
-    applyRuntimeTheme(payload);
+    // ✅ preview solo
+    applyPreviewThemeNow();
 
-    snack.value = { show: true, text: "Tema guardado OK" };
+    snack.value = { show: true, text: "Tema guardado OK (impacta al Shop público)" };
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || "No se pudo guardar el tema.";
   } finally {
@@ -398,7 +390,7 @@ async function saveTheme() {
 
 function resetTheme() {
   themeForm.value = { primary: "#0e2134", secondary: "#3483fa" };
-  applyRuntimeTheme(themeForm.value);
+  applyPreviewThemeNow();
   snack.value = { show: true, text: "Preview reseteado (guardá para aplicar)" };
 }
 

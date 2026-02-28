@@ -21,7 +21,7 @@
 
           <div class="d-flex flex-column">
             <div class="font-weight-bold">POS360</div>
-            <div class="text-caption" style="opacity:.85">Inventario · Ecommerce · POS</div>
+            <div class="text-caption" style="opacity: 0.85">Inventario · Ecommerce · POS</div>
           </div>
         </div>
 
@@ -114,10 +114,9 @@
       >
         <div class="pt-2"></div>
 
-        <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Navegación</div>
+        <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Navegación</div>
 
         <v-list nav density="comfortable">
-          <!-- ✅ NO prepend-icon: usamos #prepend para que el icono NO desaparezca -->
           <v-list-item :to="{ name: 'home' }" exact>
             <template #prepend>
               <v-icon size="20">mdi-view-dashboard-outline</v-icon>
@@ -144,7 +143,7 @@
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Gestión</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Gestión</div>
 
           <v-list-item :to="{ name: 'products' }" exact>
             <template #prepend>
@@ -164,9 +163,8 @@
 
           <v-divider class="my-2" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity:.85">Sistema</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Sistema</div>
 
-          <!-- ✅ List group con icon manual -->
           <v-list-group v-if="showConfig" value="config">
             <template #activator="{ props }">
               <v-list-item v-bind="props">
@@ -298,8 +296,8 @@
 
         <v-spacer />
 
-        <div class="pa-4 text-caption" style="opacity:.85" v-if="!rail">v1 · 2025</div>
-        <div class="px-2 pb-4 text-caption text-center" style="opacity:.85" v-else>v1</div>
+        <div class="pa-4 text-caption" style="opacity: 0.85" v-if="!rail">v1 · 2025</div>
+        <div class="px-2 pb-4 text-caption text-center" style="opacity: 0.85" v-else>v1</div>
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
@@ -315,11 +313,13 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
-import { useTheme } from "vuetify";
 
 import { useAuthStore } from "../store/auth.store";
 import { useThemeStore } from "../store/theme.store";
 import { loadAuth } from "../utils/storage";
+
+// ✅ NUEVO: toggle centralizado (mismo tab + localStorage + evento)
+import { toggleDarkMode, setDarkMode } from "@/app/theme/darkMode";
 
 const drawer = ref(true);
 const rail = ref(false);
@@ -328,29 +328,28 @@ const accountMenu = ref(false);
 const auth = useAuthStore();
 const router = useRouter();
 
-const theme = useTheme();
 const themeStore = useThemeStore();
 
-/* ===== Dark Mode ===== */
+/* ===== Dark Mode =====
+   ✅ IMPORTANTE:
+   - Acá NO tocamos theme.change('dark/light') porque rompe tus themes reales
+   - Solo guardamos el flag y disparamos el evento que el ThemeManager escucha
+*/
 const isDark = computed(() => themeStore.isDark);
-
-function applyVuetifyTheme(dark) {
-  const name = dark ? "dark" : "light";
-  try {
-    if (typeof theme?.change === "function") theme.change(name);
-    else if (theme?.global?.name) theme.global.name.value = name;
-  } catch {}
-}
 
 function toggleDark() {
   const v = !themeStore.isDark;
   themeStore.setDark(v);
-  applyVuetifyTheme(v);
+  // dispara ui-dark-changed + escribe ui.dark
+  setDarkMode(v);
 }
 
+// ✅ si themeStore cambia por fuera (ej. restauración), sincronizamos el setter
 watch(
   () => themeStore.isDark,
-  (v) => applyVuetifyTheme(!!v),
+  (v) => {
+    setDarkMode(!!v);
+  },
   { immediate: true }
 );
 
@@ -740,8 +739,6 @@ function onLogout() {
 
 /* =========================
    ✅ HEADER: sacar “cajita/sombra” SIN romper los iconos
-   - NO tocamos .v-icon global
-   - Solo aplastamos overlay/underlay/background del botón
 ========================= */
 .pos-appbar :deep(.v-btn--icon),
 .pos-appbar :deep(.v-btn--icon .v-btn__content) {
@@ -753,20 +750,17 @@ function onLogout() {
   filter: none !important;
 }
 
-/* mata overlays que pintan la cajita */
 .pos-appbar :deep(.v-btn--icon .v-btn__overlay),
 .pos-appbar :deep(.v-btn--icon .v-btn__underlay) {
   opacity: 0 !important;
 }
 
-/* foco del navegador */
 .pos-appbar :deep(.v-btn--icon:focus),
 .pos-appbar :deep(.v-btn--icon:focus-visible) {
   outline: none !important;
   box-shadow: none !important;
 }
 
-/* ✅ Asegura que el icono SIEMPRE se vea */
 .pos-appbar :deep(.v-btn--icon .v-icon),
 .pos-appbar :deep(.v-btn--icon i),
 .pos-appbar :deep(.v-btn--icon svg) {
