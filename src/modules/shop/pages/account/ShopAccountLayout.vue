@@ -1,7 +1,8 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/account/ShopAccountLayout.vue -->
 <template>
-  <div class="acc">
+  <div class="acc-shell">
+    <!-- ✅ TOP BAR (solo cuenta) -->
     <header class="acc-top">
       <button class="acc-back" type="button" @click="goBack" aria-label="Volver">
         <v-icon size="22">mdi-arrow-left</v-icon>
@@ -17,22 +18,14 @@
       </div>
     </header>
 
-    <!-- Tabs estilo ML -->
+    <!-- ✅ Tabs -->
     <nav class="acc-tabs" aria-label="Secciones">
-      <router-link
-        to="/shop/account/orders"
-        class="acc-tab"
-        :class="{ active: isActive('/shop/account/orders') }"
-      >
+      <router-link to="/shop/account/orders" class="acc-tab" :class="{ active: isActive('/shop/account/orders') }">
         <v-icon size="18">mdi-receipt-text-outline</v-icon>
         <span>Mis compras</span>
       </router-link>
 
-      <router-link
-        to="/shop/account/favorites"
-        class="acc-tab"
-        :class="{ active: isActive('/shop/account/favorites') }"
-      >
+      <router-link to="/shop/account/favorites" class="acc-tab" :class="{ active: isActive('/shop/account/favorites') }">
         <v-icon size="18">mdi-heart-outline</v-icon>
         <span>Favoritos</span>
       </router-link>
@@ -46,7 +39,7 @@
 
 <script setup>
 import { useRouter, useRoute } from "vue-router";
-import { useShopAuthStore } from "@/modules/shop/store/shopAuth.store";
+import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 const router = useRouter();
 const route = useRoute();
@@ -62,19 +55,32 @@ function isActive(path) {
 </script>
 
 <style scoped>
-.acc {
-  min-height: calc(100vh - 120px);
-  background: #f4f4f4;
+/* ✅ NOTE:
+   Este layout SOLO vive dentro /shop/account/*
+   Si tu ShopHeader es sticky arriba, lo ideal es ocultarlo por route meta.
+*/
+
+.acc-shell {
+  min-height: 100vh;
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
 }
 
+/* ✅ Barra superior */
 .acc-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+
   height: 56px;
   display: grid;
   grid-template-columns: 46px 1fr auto;
   align-items: center;
-  padding: 0 10px;
-  background: #2e86c1; /* similar a tu barra */
-  color: #fff;
+  padding: 0 12px;
+
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
 .acc-back {
@@ -83,15 +89,19 @@ function isActive(path) {
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  color: inherit;
   display: grid;
   place-items: center;
   cursor: pointer;
+}
+.acc-back:hover {
+  background: rgba(255, 255, 255, 0.20);
 }
 
 .acc-title {
   font-weight: 900;
   font-size: 15px;
+  letter-spacing: 0.2px;
 }
 
 .acc-right {
@@ -104,45 +114,65 @@ function isActive(path) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #fff;
+  color: rgb(var(--v-theme-on-primary)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.10) !important;
 }
 
+/* ✅ FIX: evita “huevo blanco” */
 .acc-initials {
-  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-weight: 950;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .acc-name {
-  max-width: 190px;
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 800;
 }
 
+/* ✅ Tabs */
 .acc-tabs {
   position: sticky;
-  top: 0;
-  z-index: 3;
+  top: 56px; /* debajo de la barra */
+  z-index: 25;
+
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #fff;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .acc-tab {
   padding: 12px 10px;
-  display: flex;
+  display: inline-flex;
   gap: 8px;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: rgba(0,0,0,0.7);
-  font-weight: 700;
+
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-weight: 800;
   font-size: 13px;
   position: relative;
 }
 
+.acc-tab:hover {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
 .acc-tab.active {
-  color: #2e86c1;
+  color: rgb(var(--v-theme-primary));
 }
 
 .acc-tab.active::after {
@@ -153,10 +183,24 @@ function isActive(path) {
   bottom: 0;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #2e86c1;
+  background: rgb(var(--v-theme-primary));
 }
 
+/* ✅ Body */
 .acc-body {
-  padding: 14px 12px 22px;
+  padding: 14px 12px 28px;
+  width: min(1200px, calc(100% - 24px));
+  margin: 0 auto;
+}
+
+/* ✅ Mobile */
+@media (max-width: 600px) {
+  .acc-name {
+    max-width: 120px;
+  }
+
+  .acc-body {
+    width: calc(100% - 24px);
+  }
 }
 </style>

@@ -1,19 +1,19 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/pages/account/ShopAccountOrders.vue -->
 <template>
-  <section class="acc">
+  <section class="orders">
     <!-- Head -->
-    <header class="acc-head">
-      <div>
-        <div class="acc-title">Mis compras</div>
-        <div class="acc-sub">Tus pedidos y su estado.</div>
+    <header class="orders-head">
+      <div class="orders-head-left">
+        <div class="orders-title">Mis compras</div>
+        <div class="orders-sub">Tus pedidos y su estado.</div>
       </div>
 
-      <div class="acc-actions">
+      <div class="orders-actions">
         <v-text-field
           v-model="q"
-          class="acc-search"
-          density="comfortable"
+          class="orders-search"
+          density="compact"
           variant="solo-filled"
           rounded="pill"
           hide-details
@@ -21,7 +21,8 @@
           placeholder="Buscá por producto, código o estado…"
           prepend-inner-icon="mdi-magnify"
         />
-        <v-btn variant="tonal" :loading="loading" @click="reload">
+
+        <v-btn class="orders-refresh" variant="tonal" :loading="loading" @click="reload">
           Actualizar
         </v-btn>
       </div>
@@ -32,28 +33,23 @@
     </v-alert>
 
     <!-- Empty -->
-    <div v-if="!loading && filtered.length === 0" class="acc-empty">
-      <div class="acc-empty-ico">
+    <div v-if="!loading && filtered.length === 0" class="orders-empty">
+      <div class="orders-empty-ico">
         <v-icon size="30">mdi-receipt-text-outline</v-icon>
       </div>
-      <div class="acc-empty-title">Todavía no tenés compras</div>
-      <div class="acc-empty-sub">Cuando hagas un pedido, aparece acá.</div>
+      <div class="orders-empty-title">Todavía no tenés compras</div>
+      <div class="orders-empty-sub">Cuando hagas un pedido, aparece acá.</div>
       <v-btn color="primary" class="mt-3" @click="goShop">IR A LA TIENDA</v-btn>
     </div>
 
     <!-- List -->
-    <div v-else class="acc-list">
+    <div v-else class="orders-list">
       <article v-for="o in filtered" :key="o.id" class="order-card">
         <div class="order-top">
           <div class="order-date">{{ fmtDate(o.created_at) }}</div>
 
           <div class="order-right">
-            <v-chip
-              class="order-chip"
-              size="small"
-              :color="statusColor(o.status)"
-              variant="flat"
-            >
+            <v-chip class="order-chip" size="small" :color="statusColor(o.status)" variant="flat">
               {{ statusLabel(o.status) }}
             </v-chip>
 
@@ -63,12 +59,7 @@
 
         <div class="order-body">
           <div class="order-thumb">
-            <img
-              v-if="o.first_product_image_url"
-              :src="o.first_product_image_url"
-              alt=""
-              loading="lazy"
-            />
+            <img v-if="o.first_product_image_url" :src="o.first_product_image_url" alt="" loading="lazy" />
             <div v-else class="order-thumb-empty">
               <v-icon size="22">mdi-image-outline</v-icon>
             </div>
@@ -76,11 +67,7 @@
 
           <div class="order-mid">
             <div class="order-state">
-              <span
-                class="order-state-dot"
-                :class="`dot-${statusColor(o.status)}`"
-                aria-hidden="true"
-              />
+              <span class="order-state-dot" :class="`dot-${statusColor(o.status)}`" aria-hidden="true" />
               <span class="order-state-text">{{ statusShort(o.status) }}</span>
             </div>
 
@@ -92,13 +79,9 @@
             <div class="order-sub">
               <span class="order-items">{{ Number(o.items_count || 0) }} item{{ Number(o.items_count || 0) === 1 ? "" : "s" }}</span>
               <span class="order-sep">•</span>
-              <span class="order-pay">
-                Pago: <b>{{ paymentLabel(o.payment_status) }}</b>
-              </span>
+              <span class="order-pay">Pago: <b>{{ paymentLabel(o.payment_status) }}</b></span>
               <span class="order-sep">•</span>
-              <span class="order-ful">
-                {{ fulfillmentLabel(o.fulfillment_type) }}
-              </span>
+              <span class="order-ful">{{ fulfillmentLabel(o.fulfillment_type) }}</span>
             </div>
 
             <div class="order-prod" v-if="o.first_product_name">
@@ -107,47 +90,36 @@
           </div>
 
           <div class="order-cta">
-            <v-btn color="primary" variant="flat" class="order-btn" @click="openDetail(o)">
-              Ver detalle
-            </v-btn>
-            <v-btn variant="tonal" class="order-btn2" @click="goShop">
-              Volver a comprar
-            </v-btn>
+            <v-btn color="primary" variant="flat" class="order-btn" @click="openDetail(o)">Ver detalle</v-btn>
+            <v-btn variant="tonal" class="order-btn2" @click="goShop">Volver a comprar</v-btn>
           </div>
         </div>
       </article>
 
       <!-- Pager simple -->
-      <div v-if="total > limit" class="acc-pager">
-        <v-btn
-          variant="tonal"
-          :disabled="offset <= 0 || loading"
-          @click="prevPage"
-        >
-          Anterior
-        </v-btn>
+      <div v-if="total > limit" class="orders-pager">
+        <v-btn variant="tonal" :disabled="offset <= 0 || loading" @click="prevPage">Anterior</v-btn>
 
-        <div class="acc-pager-info">
+        <div class="orders-pager-info">
           {{ offset + 1 }}–{{ Math.min(offset + limit, total) }} de {{ total }}
         </div>
 
-        <v-btn
-          variant="tonal"
-          :disabled="offset + limit >= total || loading"
-          @click="nextPage"
-        >
-          Siguiente
-        </v-btn>
+        <v-btn variant="tonal" :disabled="offset + limit >= total || loading" @click="nextPage">Siguiente</v-btn>
       </div>
     </div>
 
-    <!-- =========================
-         DETAIL DIALOG (ML style)
-    ========================== -->
-    <v-dialog v-model="detail.open" max-width="760">
+    <!-- DETAIL DIALOG (estable) -->
+    <v-dialog
+      v-model="detail.open"
+      :fullscreen="smAndDown"
+      max-width="860"
+      scrollable
+      transition="dialog-bottom-transition"
+      content-class="orders-detail-dialog"
+    >
       <v-card rounded="xl" class="detail-card">
         <div class="detail-head">
-          <div>
+          <div class="detail-head-left">
             <div class="detail-title">Pedido #{{ detail.order?.id || "—" }}</div>
             <div class="detail-sub">
               {{ fmtDate(detail.order?.created_at) }}
@@ -156,18 +128,10 @@
           </div>
 
           <div class="detail-head-right">
-            <v-chip
-              size="small"
-              :color="statusColor(detail.order?.status)"
-              variant="flat"
-            >
+            <v-chip size="small" :color="statusColor(detail.order?.status)" variant="flat">
               {{ statusLabel(detail.order?.status) }}
             </v-chip>
-            <v-chip
-              size="small"
-              :color="paymentColor(detail.order?.payment_status)"
-              variant="tonal"
-            >
+            <v-chip size="small" :color="paymentColor(detail.order?.payment_status)" variant="tonal">
               {{ paymentLabel(detail.order?.payment_status) }}
             </v-chip>
           </div>
@@ -182,11 +146,10 @@
 
           <div v-if="detail.loading" class="detail-loading">
             <v-progress-circular indeterminate />
-            <div class="text-caption" style="opacity:.8">Cargando detalle…</div>
+            <div class="text-caption" style="opacity: .8">Cargando detalle…</div>
           </div>
 
           <template v-else>
-            <!-- Items -->
             <div class="detail-items">
               <div v-for="it in detail.items" :key="it.id" class="detail-item">
                 <div class="detail-item-thumb">
@@ -211,7 +174,6 @@
               </div>
             </div>
 
-            <!-- Summary -->
             <div class="detail-summary">
               <div class="sum-row">
                 <span>Subtotal</span>
@@ -258,17 +220,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-
-/**
- * ✅ IMPORTANTE:
- * Usamos el MISMO axios que ya tiene withCredentials true.
- * Si vos tenés este export default httpShop en:
- *   src/modules/shop/service/shop.auth.public.api.js
- * entonces va perfecto.
- */
+import { useDisplay } from "vuetify";
 import httpShop from "@/modules/shop/service/shop.auth.public.api";
 
 const router = useRouter();
+const { smAndDown } = useDisplay();
 
 const loading = ref(false);
 const error = ref(null);
@@ -296,7 +252,6 @@ function toInt(v, d = 0) {
 function fmtQty(v) {
   const n = Number(v || 0);
   if (!Number.isFinite(n)) return "1";
-  // si viene decimal, no lo rompas
   return String(n).includes(".") ? n.toFixed(3).replace(/0+$/, "").replace(/\.$/, "") : String(n);
 }
 
@@ -380,9 +335,6 @@ function fulfillmentLabel(v) {
   return v || "—";
 }
 
-// =====================
-// API
-// =====================
 async function fetchOrders() {
   loading.value = true;
   error.value = null;
@@ -390,6 +342,7 @@ async function fetchOrders() {
   try {
     const params = { limit: limit.value, offset: offset.value };
     const r = await httpShop.get("public/account/orders", { params });
+
     items.value = Array.isArray(r?.data?.items) ? r.data.items : [];
     total.value = toInt(r?.data?.total, items.value.length);
     limit.value = toInt(r?.data?.limit, limit.value);
@@ -444,18 +397,13 @@ function goShop() {
   router.push("/shop").catch(() => {});
 }
 
-// =====================
-// Search filter
-// =====================
 const filtered = computed(() => {
   const list = items.value || [];
   const s = String(q.value || "").trim().toLowerCase();
   if (!s) return list;
 
   return list.filter((o) => {
-    const hay =
-      `${o.id} ${o.public_code || ""} ${o.status || ""} ${o.payment_status || ""} ${o.first_product_name || ""}`
-        .toLowerCase();
+    const hay = `${o.id} ${o.public_code || ""} ${o.status || ""} ${o.payment_status || ""} ${o.first_product_name || ""}`.toLowerCase();
     return hay.includes(s);
   });
 });
@@ -465,96 +413,117 @@ onMounted(() => {
 });
 </script>
 
-
-
 <style scoped>
-.acc {
-  padding: 14px 14px 24px;
+.orders {
+  padding: 2px 0 18px;
 }
 
-/* ================= HEAD ================= */
-
-.acc-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+/* ================= HEAD (FIX estirado) ================= */
+.orders-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
   gap: 14px;
   margin-bottom: 14px;
 }
 
-.acc-title {
-  font-size: 18px;
-  font-weight: 900;
+.orders-head-left {
+  min-width: 0;
 }
 
-.acc-sub {
+.orders-title {
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: 0.2px;
+}
+
+.orders-sub {
   font-size: 12px;
-  opacity: 0.75;
+  opacity: 0.72;
   margin-top: 2px;
 }
 
-.acc-actions {
-  display: flex;
+.orders-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) auto; /* ✅ NO se estira infinito */
   align-items: center;
   gap: 10px;
+  justify-content: end;
 }
 
-.acc-search {
-  min-width: 340px;
+/* ✅ buscador “ML compacto” */
+.orders-search :deep(.v-field) {
+  border-radius: 999px;
+}
+.orders-search :deep(.v-field__input) {
+  min-height: 38px;
+  font-size: 13px;
+}
+.orders-search :deep(input) {
+  font-weight: 650;
+}
+
+/* ✅ botón compacto */
+.orders-refresh {
+  height: 38px;
+  min-height: 38px;
+  border-radius: 10px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
 }
 
 /* ================= EMPTY ================= */
-
-.acc-empty {
-  background: #fff;
+.orders-empty {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 18px;
   padding: 26px 16px;
   display: grid;
   justify-items: center;
   text-align: center;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-.acc-empty-ico {
+.orders-empty-ico {
   width: 52px;
   height: 52px;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
-.acc-empty-title {
-  font-weight: 900;
+.orders-empty-title {
+  font-weight: 950;
   font-size: 16px;
   margin-top: 10px;
 }
 
-.acc-empty-sub {
+.orders-empty-sub {
   font-size: 12px;
   opacity: 0.75;
   margin-top: 2px;
 }
 
 /* ================= LIST ================= */
-
-.acc-list {
+.orders-list {
   display: grid;
   gap: 12px;
 }
 
 .order-card {
-  background: #fff;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 18px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-
-/* ===== TOP ===== */
 
 .order-top {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -563,8 +532,8 @@ onMounted(() => {
 
 .order-date {
   font-size: 12px;
-  font-weight: 800;
-  opacity: 0.8;
+  font-weight: 850;
+  opacity: 0.78;
 }
 
 .order-right {
@@ -574,15 +543,13 @@ onMounted(() => {
 }
 
 .order-total {
-  font-weight: 900;
+  font-weight: 950;
   font-size: 13px;
 }
 
 .order-chip {
-  font-weight: 900;
+  font-weight: 950;
 }
-
-/* ===== BODY ===== */
 
 .order-body {
   padding: 14px;
@@ -597,8 +564,8 @@ onMounted(() => {
   height: 74px;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #f7f7f7;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  background: rgba(var(--v-theme-on-surface), 0.04);
   display: grid;
   place-items: center;
 }
@@ -608,7 +575,6 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
 }
-
 .order-thumb-empty {
   opacity: 0.55;
 }
@@ -632,7 +598,6 @@ onMounted(() => {
   border-radius: 99px;
   background: #4b90ff;
 }
-
 .dot-success { background: #22c55e; }
 .dot-warning { background: #f59e0b; }
 .dot-error   { background: #ef4444; }
@@ -640,12 +605,12 @@ onMounted(() => {
 
 .order-title {
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 950;
   line-height: 1.2;
 }
 
 .order-code {
-  font-weight: 800;
+  font-weight: 850;
   opacity: 0.65;
   margin-left: 6px;
 }
@@ -653,7 +618,7 @@ onMounted(() => {
 .order-sub {
   margin-top: 6px;
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.82;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -667,14 +632,12 @@ onMounted(() => {
 .order-prod {
   margin-top: 6px;
   font-size: 12px;
-  opacity: 0.85;
+  opacity: 0.88;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-/* ===== CTA ===== */
 
 .order-cta {
   display: grid;
@@ -684,18 +647,16 @@ onMounted(() => {
 
 .order-btn,
 .order-btn2 {
-  min-width: 130px;
+  min-width: 140px;
   height: 36px;
   min-height: 36px;
   border-radius: 10px;
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .2px;
+  font-weight: 950;
+  letter-spacing: 0.2px;
 }
 
-/* ================= PAGER ================= */
-
-.acc-pager {
+.orders-pager {
   margin-top: 10px;
   display: flex;
   align-items: center;
@@ -703,30 +664,168 @@ onMounted(() => {
   gap: 12px;
 }
 
-.acc-pager-info {
+.orders-pager-info {
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 950;
   opacity: 0.75;
 }
 
-/* ================= MOBILE ================= */
+/* DETAIL (igual que venías, estable) */
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  max-height: min(86vh, 760px);
+}
+.detail-head {
+  padding: 14px 14px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.detail-title {
+  font-weight: 950;
+  font-size: 15px;
+}
+.detail-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.72;
+}
+.detail-head-right {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.detail-body {
+  padding: 14px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.detail-loading {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 26px 0;
+}
+.detail-items {
+  display: grid;
+  gap: 10px;
+}
+.detail-item {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.detail-item-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  display: grid;
+  place-items: center;
+}
+.detail-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.detail-item-thumb-empty {
+  opacity: 0.55;
+}
+.detail-item-name {
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.detail-item-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.78;
+}
+.detail-item-sub .dot {
+  opacity: 0.35;
+  margin: 0 6px;
+}
+.detail-item-total {
+  font-weight: 950;
+  font-size: 13px;
+}
+.detail-summary {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.sum-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px;
+  font-size: 13px;
+}
+.sum-total {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-size: 14px;
+}
+.detail-meta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  font-weight: 850;
+  font-size: 12px;
+  opacity: 0.9;
+}
+.detail-actions {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 
+/* ================= MOBILE (FIX buscador gigante) ================= */
 @media (max-width: 760px) {
-
-  .acc-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+  .orders-head {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 
-  .acc-actions {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
+  .orders-actions {
+    grid-template-columns: 1fr auto; /* ✅ buscador 1fr + botón compacto */
+    width: 100%;
   }
 
-  .acc-search {
-    min-width: 0;
+  .orders-search :deep(.v-field__input) {
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  .orders-refresh {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 12px;
   }
 
   .order-body {
@@ -757,29 +856,20 @@ onMounted(() => {
     width: 100%;
   }
 
-  .order-btn :deep(.v-btn__content),
-  .order-btn2 :deep(.v-btn__content) {
-    padding: 0 10px !important;
+  .detail-card {
+    max-height: 100vh;
+    border-radius: 0 !important;
   }
 }
 
-/* ================= ULTRA MOBILE ================= */
-
+/* ultra mobile: botón full ancho si querés más “limpio” */
 @media (max-width: 420px) {
-
-  .order-btn,
-  .order-btn2 {
-    height: 32px !important;
-    min-height: 32px !important;
-    font-size: 10.5px !important;
+  .orders-actions {
+    grid-template-columns: 1fr; /* ✅ buscador arriba */
+    gap: 8px;
   }
-
-  .order-btn :deep(.v-btn__content),
-  .order-btn2 :deep(.v-btn__content) {
-    padding: 0 8px !important;
+  .orders-refresh {
+    width: 100%;
   }
-
 }
 </style>
-
-

@@ -13,7 +13,7 @@
 
     <div v-if="loading" class="fav-loading">
       <v-progress-circular indeterminate />
-      <div class="text-caption" style="opacity:.75">Cargando…</div>
+      <div class="text-caption" style="opacity: .75">Cargando…</div>
     </div>
 
     <div v-else-if="!items.length" class="fav-empty">
@@ -36,9 +36,7 @@
 
           <div class="fav-actions">
             <v-btn size="small" variant="tonal" @click="openProduct(p)">Ver</v-btn>
-            <v-btn size="small" variant="text" color="error" @click="remove(p)">
-              Quitar
-            </v-btn>
+            <v-btn size="small" variant="text" color="error" @click="remove(p)">Quitar</v-btn>
           </div>
         </div>
       </article>
@@ -75,7 +73,6 @@ async function remove(p) {
   const id = p.product_id || p.id;
   if (!id) return;
 
-  // optimista
   const prev = items.value.slice();
   items.value = items.value.filter((x) => (x.product_id || x.id) !== id);
 
@@ -102,10 +99,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.fav-head { margin-bottom: 10px; }
-.fav-h-title { font-size: 18px; font-weight: 900; }
-.fav-h-sub { font-size: 12px; opacity: .75; }
+.fav-head {
+  margin-bottom: 10px;
+}
+.fav-h-title {
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: 0.2px;
+}
+.fav-h-sub {
+  font-size: 12px;
+  opacity: 0.72;
+}
 
+/* loading */
 .fav-loading {
   display: grid;
   place-items: center;
@@ -113,17 +120,28 @@ onMounted(async () => {
   padding: 28px 0;
 }
 
+/* empty */
 .fav-empty {
-  background: #fff;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 18px;
   padding: 18px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   text-align: center;
 }
 
-.fav-empty-title { font-weight: 900; margin-top: 8px; }
-.fav-empty-sub { font-size: 12px; opacity: .75; margin-top: 2px; }
+.fav-empty-title {
+  font-weight: 950;
+  margin-top: 8px;
+}
+.fav-empty-sub {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
 
+/* grid */
 .fav-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -131,14 +149,20 @@ onMounted(async () => {
 }
 
 @media (min-width: 720px) {
-  .fav-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fav-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
 }
 
+/* card */
 .fav-card {
-  background: #fff;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 12px 28px rgba(0,0,0,.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   display: grid;
   grid-template-rows: auto 1fr;
 }
@@ -148,7 +172,7 @@ onMounted(async () => {
   padding: 0;
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #f4f4f4;
+  background: rgba(var(--v-theme-on-surface), 0.04);
   cursor: pointer;
 }
 .fav-media img {
@@ -161,14 +185,17 @@ onMounted(async () => {
   height: 100%;
   display: grid;
   place-items: center;
-  opacity: .6;
+  opacity: 0.6;
   font-size: 12px;
 }
 
-.fav-body { padding: 10px 10px 12px; }
+.fav-body {
+  padding: 10px 10px 12px;
+}
+
 .fav-title {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.2;
   min-height: 32px;
   display: -webkit-box;
@@ -176,12 +203,24 @@ onMounted(async () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.fav-price { margin-top: 6px; font-weight: 900; }
+
+.fav-price {
+  margin-top: 6px;
+  font-weight: 950;
+}
 
 .fav-actions {
   margin-top: 10px;
   display: flex;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* mobile */
+@media (max-width: 420px) {
+  .fav-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

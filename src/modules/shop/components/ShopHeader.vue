@@ -40,7 +40,9 @@
           <v-menu v-else location="bottom end" offset="10">
             <template #activator="{ props }">
               <button class="ml-account-btn ml-account-btn-mobile" type="button" v-bind="props" :title="auth.fullName">
-                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
+                <!-- ✅ si no hay iniciales, NO mostramos círculo blanco vacío -->
+                <span v-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
+                <v-icon v-else size="22" class="ml-account-icon">mdi-account-circle-outline</v-icon>
               </button>
             </template>
 
@@ -74,8 +76,6 @@
               </v-list>
             </v-card>
           </v-menu>
-
-          <!-- ❌ carrito removido en mobile a pedido -->
         </div>
       </div>
     </div>
@@ -117,7 +117,9 @@
           <v-menu v-else location="bottom end" offset="10" :close-on-content-click="true">
             <template #activator="{ props }">
               <button class="ml-account-btn" type="button" v-bind="props" :title="auth.fullName">
-                <span class="ml-account-avatar" aria-hidden="true">{{ auth.initials }}</span>
+                <span v-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
+                <v-icon v-else size="22" class="ml-account-icon">mdi-account-circle-outline</v-icon>
+
                 <span class="ml-account-name">{{ auth.fullName }}</span>
                 <v-icon size="18" class="ml-icon-white">mdi-chevron-down</v-icon>
               </button>
@@ -154,21 +156,11 @@
             </v-card>
           </v-menu>
 
-          <button
-            v-if="auth.isLogged"
-            class="ml-top-link ml-top-link-ghost"
-            type="button"
-            @click="goMyOrders"
-          >
+          <button v-if="auth.isLogged" class="ml-top-link ml-top-link-ghost" type="button" @click="goMyOrders">
             Mis compras
           </button>
 
-          <button
-            v-if="auth.isLogged"
-            class="ml-top-link ml-top-link-ghost"
-            type="button"
-            @click="goMyFavorites"
-          >
+          <button v-if="auth.isLogged" class="ml-top-link ml-top-link-ghost" type="button" @click="goMyFavorites">
             Favoritos
           </button>
 
@@ -242,6 +234,11 @@ function withVersion(url, v) {
 const logoDesktopUrl = computed(() => withVersion(DESKTOP_LOGO, branding.value?.updated_at));
 const logoMobileUrl = computed(() => withVersion(MOBILE_LOGO_ICON, branding.value?.updated_at));
 
+const safeInitials = computed(() => {
+  const s = String(auth.initials || "").trim();
+  return s ? s.slice(0, 3).toUpperCase() : "";
+});
+
 const WHATSAPP_NUMBER = "5492644392150";
 
 const waMessage = computed(() => {
@@ -302,9 +299,6 @@ watch(
 </script>
 
 <style scoped>
-/* ================================
-   HEADER BASE
-================================ */
 .ml-header {
   position: sticky;
   top: 0;
@@ -314,13 +308,7 @@ watch(
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* ================================
-   ROWS
-================================ */
-.ml-row-top {
-  padding: 10px 0 6px;
-}
-
+.ml-row-top { padding: 10px 0 6px; }
 .ml-row-bottom {
   padding: 6px 0 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.10);
@@ -332,9 +320,6 @@ watch(
   min-width: 0;
 }
 
-/* ================================
-   TOP GRID
-================================ */
 .ml-top-grid {
   display: flex;
   align-items: center;
@@ -342,9 +327,6 @@ watch(
   min-width: 0;
 }
 
-/* ================================
-   LOGO
-================================ */
 .ml-brand {
   flex: 0 0 auto;
   display: inline-flex;
@@ -352,33 +334,12 @@ watch(
   text-decoration: none;
 }
 
-.ml-logo-wide {
-  height: 56px;
-  display: flex;
-  align-items: center;
-}
-.ml-logo-wide-img {
-  height: 100%;
-  width: auto;
-  object-fit: contain;
-}
+.ml-logo-wide { height: 56px; display: flex; align-items: center; }
+.ml-logo-wide-img { height: 100%; width: auto; object-fit: contain; }
 
-.ml-logo-icon {
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ml-logo-icon-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
+.ml-logo-icon { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+.ml-logo-icon-img { width: 100%; height: 100%; object-fit: contain; }
 
-/* ================================
-   SEARCH (menos ancho)
-================================ */
 .ml-search {
   flex: 1 1 auto;
   display: flex;
@@ -386,10 +347,7 @@ watch(
   min-width: 0;
 }
 
-.ml-search > * {
-  width: min(720px, 100%);
-  max-width: 100%;
-}
+.ml-search > * { width: min(720px, 100%); max-width: 100%; }
 
 .ml-search :deep(.v-field) {
   width: 100%;
@@ -404,9 +362,6 @@ watch(
   font-size: 14px;
 }
 
-/* ================================
-   MOBILE TOP ACTIONS (solo login/cuenta)
-================================ */
 .ml-top-actions-mobile {
   display: inline-flex;
   align-items: center;
@@ -421,13 +376,8 @@ watch(
   cursor: pointer;
 }
 
-.ml-icon-white {
-  color: #fff !important;
-}
+.ml-icon-white { color: #fff !important; }
 
-/* ================================
-   BOTTOM GRID
-================================ */
 .ml-bottom-grid {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -435,9 +385,6 @@ watch(
   gap: 12px;
 }
 
-/* ================================
-   LOCATION
-================================ */
 .ml-loc {
   display: inline-flex;
   align-items: center;
@@ -449,23 +396,11 @@ watch(
   padding: 4px 6px;
   border-radius: 8px;
 }
-.ml-loc:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
+.ml-loc:hover { background: rgba(255, 255, 255, 0.08); }
 
-.ml-loc-top {
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.8;
-}
-.ml-loc-bottom {
-  font-size: 13px;
-  font-weight: 800;
-}
+.ml-loc-top { font-size: 11px; font-weight: 600; opacity: 0.8; }
+.ml-loc-bottom { font-size: 13px; font-weight: 800; }
 
-/* ================================
-   NAV
-================================ */
 .ml-nav {
   display: flex;
   align-items: center;
@@ -481,16 +416,9 @@ watch(
   text-decoration: none;
   white-space: nowrap;
 }
-.ml-nav-soft:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-.ml-nav-sep {
-  opacity: 0.4;
-}
+.ml-nav-soft:hover { background: rgba(255, 255, 255, 0.08); }
+.ml-nav-sep { opacity: 0.4; }
 
-/* ================================
-   ACTIONS (DESKTOP bottom)
-================================ */
 .ml-bottom-actions {
   display: flex;
   align-items: center;
@@ -521,9 +449,7 @@ watch(
   text-decoration: none;
 }
 
-/* ================================
-   ACCOUNT
-================================ */
+/* ✅ Cuenta */
 .ml-account-btn {
   display: inline-flex;
   align-items: center;
@@ -535,10 +461,9 @@ watch(
   color: #fff;
   cursor: pointer;
 }
-.ml-account-btn-mobile {
-  padding: 3px 6px;
-}
+.ml-account-btn-mobile { padding: 3px 6px; }
 
+/* ✅ FIX: nada de círculo blanco sólido */
 .ml-account-avatar {
   width: 28px;
   height: 28px;
@@ -548,48 +473,27 @@ watch(
   justify-content: center;
   font-weight: 900;
   font-size: 12px;
-  background: #fff;
-  color: #0b1b2b;
+
+  background: rgba(255, 255, 255, 0.18);     /* 👈 antes era #fff */
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;                                /* 👈 letras blancas */
 }
 
-.ml-account-name {
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
+.ml-account-icon {
+  color: #fff !important;
+  opacity: 0.95;
 }
 
-.ml-account-menu {
-  width: 320px;
-  overflow: hidden;
-  border-radius: 14px;
-}
+.ml-account-name { font-size: 13px; font-weight: 800; white-space: nowrap; }
 
-.ml-account-head {
-  padding: 12px 14px 8px;
-}
-.ml-account-title {
-  font-weight: 900;
-  font-size: 13.5px;
-}
-.ml-account-sub {
-  font-size: 11.5px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-.ml-account-list {
-  padding: 6px !important;
-}
+.ml-account-menu { width: 320px; overflow: hidden; border-radius: 14px; }
+.ml-account-head { padding: 12px 14px 8px; }
+.ml-account-title { font-weight: 900; font-size: 13.5px; }
+.ml-account-sub { font-size: 11.5px; opacity: 0.75; margin-top: 2px; }
+.ml-account-list { padding: 6px !important; }
 
-/* ================================
-   ICON SIZE CONTROL
-================================ */
-.ml-header :deep(.v-icon) {
-  font-size: 18px;
-}
+.ml-header :deep(.v-icon) { font-size: 18px; }
 
-/* ================================
-   WHATSAPP FAB
-================================ */
 .ml-wa-fab {
   position: fixed;
   right: 14px;
@@ -608,33 +512,21 @@ watch(
   text-decoration: none;
 }
 
-/* ================================
-   MOBILE
-================================ */
+/* ✅ Blindaje contra shop.css global */
+.ml-header :deep(button),
+.ml-header :deep(a),
+.ml-header :deep(.v-btn),
+.ml-header :deep(.v-icon) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 @media (max-width: 600px) {
-  .ml-search {
-    justify-content: stretch;
-  }
-  .ml-search > * {
-    width: 100%;
-  }
-
-  /* mobile: ocultamos la barra inferior */
-  .ml-row-bottom {
-    display: none;
-  }
-
-  .ml-account-name {
-    display: none;
-  }
-
-  .ml-logo-icon {
-    width: 46px;
-    height: 46px;
-  }
-
-  .ml-header :deep(.v-icon) {
-    font-size: 20px;
-  }
+  .ml-search { justify-content: stretch; }
+  .ml-search > * { width: 100%; }
+  .ml-row-bottom { display: none; }
+  .ml-account-name { display: none; }
+  .ml-logo-icon { width: 46px; height: 46px; }
+  .ml-header :deep(.v-icon) { font-size: 20px; }
 }
 </style>
