@@ -1,5 +1,5 @@
-// src/app/services/media.service.js
 // ✅ COPY-PASTE FINAL COMPLETO
+// src/app/services/media.service.js
 //
 // Admin Media API
 // - GET    /api/v1/admin/media/images
@@ -14,6 +14,10 @@
 // - normaliza strings (trim)
 // - maneja id vacío con error claro
 // - evita devolver {ok:false} silencioso en upload/overwrite/delete (deja que el caller vea el error si backend devuelve ok:false)
+//
+// ✅ FIX PEDIDO AHORA:
+// - QUITA la condición de "Imagen demasiado chica" (no validamos dimensiones en frontend)
+//   (si el backend sigue validando, hay que sacarlo del controller)
 
 import http from "@/app/api/http";
 
@@ -41,14 +45,12 @@ function toStr(v) {
 }
 
 function encodeId(id) {
-  // encodeURIComponent alcanza y es seguro para key/url/stem
-  // (axios NO vuelve a encodear si ya viene encoded)
+  // ✅ seguro para key/url/stem/filename
   return encodeURIComponent(toStr(id));
 }
 
 function assertOk(data, fallbackMessage = "Respuesta inválida") {
-  // si backend devuelve ok:false, devolvemos igual data (para mostrar message),
-  // pero si viene vacío, generamos un objeto estándar.
+  // ✅ NO “silenciamos” errores: devolvemos data para que el caller pueda mostrar message
   if (!data) return { ok: false, message: fallbackMessage };
   return data;
 }
@@ -85,7 +87,7 @@ export async function listMediaImages({
 
   const { data } = await http.get(url, noCacheConfig());
 
-  // devolvemos algo consistente para la vista
+  // ✅ devolvemos algo consistente para la vista
   if (!data || data.ok !== true) {
     return {
       ok: false,
@@ -100,6 +102,10 @@ export async function listMediaImages({
   return data;
 }
 
+/**
+ * ✅ UPLOAD
+ * - SIN validación de dimensiones (quita "Imagen demasiado chica")
+ */
 export async function uploadMediaImage(file) {
   if (!file) throw new Error("FILE_REQUIRED");
 
@@ -124,6 +130,8 @@ export async function uploadMediaImage(file) {
  * - backend resuelve el key exacto y hace putObject sobre el MISMO key (sin generar nombre nuevo)
  *
  * PUT /api/v1/admin/media/images/:id
+ *
+ * ✅ SIN validación de dimensiones (quita "Imagen demasiado chica")
  */
 export async function overwriteMediaImage(idOrKeyOrUrlOrFilename, file) {
   const rawId = toStr(idOrKeyOrUrlOrFilename);

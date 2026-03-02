@@ -1,12 +1,14 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/products.store.js
 //
-// FIX REAL:
-// - Fallback /products -> /admin/products SOLO para endpoints permitidos (whitelist)
+// FIX REAL (server-side products):
+// - fetchList(params) acepta filtros reales (category_id, subcategory_id, stock, images, price_min/max, etc.)
+// - Normaliza params: NO manda null/""/undefined
+// - Unwrap robusto (soporta {ok,data,meta} y variantes)
+// - Mantiene fallback /products -> /admin/products SOLO whitelist
 // - ✅ NO fallback para /products/:id/images (porque /admin/products/:id/images NO existe => 404 spam)
-// - fetchImages: si 403/404 => devuelve [] SIN setError (para que POS no se rompa)
+// - fetchImages: si 403/404 => [] SIN setError (para que POS no se rompa)
 // - Evita /api/v1 duplicado (axios ya usa baseURL="/api/v1")
-// - Mantiene compatibilidad con el front existente
 
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -26,38 +28,84 @@ function isPlainObject(x) {
   return !!x && typeof x === "object" && !Array.isArray(x);
 }
 
-function stripUndefined(obj) {
+/** ✅ quita undefined + null + "" */
+function compactParams(obj) {
   const out = {};
-  for (const k of Object.keys(obj || {})) if (obj[k] !== undefined) out[k] = obj[k];
+  for (const k of Object.keys(obj || {})) {
+    const v = obj[k];
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string" && v.trim() === "") continue;
+    out[k] = v;
+  }
   return out;
 }
 
-// ✅ Unwrap helpers
+// =======================
+// ✅ Unwrap helpers (ROBUSTO)
+// =======================
+function unwrapListSmart(payload) {
+  const p = payload;
+
+  // ya es array
+  if (Array.isArray(p)) return p;
+
+  // { ok, data:[...] }
+  if (p && Array.isArray(p.data)) return p.data;
+
+  // { items:[...] } / { rows:[...] }
+  if (p && Array.isArray(p.items)) return p.items;
+  if (p && Array.isArray(p.rows)) return p.rows;
+
+  // { ok, data:{ data:[...] } }
+  if (p && p.data && Array.isArray(p.data.data)) return p.data.data;
+
+  // { data:{ items:[...] } }
+  if (p && p.data && Array.isArray(p.data.items)) return p.data.items;
+
+  // { result:[...] }
+  if (p && Array.isArray(p.result)) return p.result;
+
+  return [];
+}
+
+function unwrapMetaSmart(payload) {
+  const p = payload;
+  if (!p) return {};
+
+  // { meta }
+  if (p.meta && typeof p.meta === "object") return p.meta;
+
+  // { pagination }
+  if (p.pagination && typeof p.pagination === "object") return p.pagination;
+
+  // { data:{ meta } }
+  if (p.data && p.data.meta && typeof p.data.meta === "object") return p.data.meta;
+
+  // { data:{ pagination } }
+  if (p.data && p.data.pagination && typeof p.data.pagination === "object") return p.data.pagination;
+
+  // algunas APIs: { page,total,pages,limit } al root
+  const hasAny =
+    Object.prototype.hasOwnProperty.call(p, "total") ||
+    Object.prototype.hasOwnProperty.call(p, "pages") ||
+    Object.prototype.hasOwnProperty.call(p, "page") ||
+    Object.prototype.hasOwnProperty.call(p, "limit");
+  if (hasAny) return { total: p.total, pages: p.pages, page: p.page, limit: p.limit };
+
+  return {};
+}
+
 function unwrapOne(res) {
   if (!res) return null;
   if (res.ok === false) return null;
 
   const v = res.data ?? res.item ?? res.product ?? res.user ?? res.result ?? null;
+
+  // { ok:true, data:{ data:{...} } }
   if (v && typeof v === "object" && !Array.isArray(v) && v.data && typeof v.data === "object") {
     return v.data;
   }
   return v;
-}
-
-function unwrapList(res) {
-  if (!res) return [];
-  if (res.ok === false) return [];
-  const v = res.data ?? res.items ?? res.list ?? res.rows ?? res.result ?? null;
-  if (Array.isArray(v)) return v;
-  if (v && Array.isArray(v.items)) return v.items;
-  if (v && Array.isArray(v.rows)) return v.rows;
-  if (v && Array.isArray(v.data)) return v.data;
-  return [];
-}
-
-function unwrapMeta(res) {
-  if (!res) return {};
-  return res.meta ?? res.pagination ?? res.data?.meta ?? {};
 }
 
 function unwrapOk(res) {
@@ -95,42 +143,30 @@ function pickHttpError(e) {
 function statusOf(e) {
   return Number(e?.response?.status || 0);
 }
-
 function is404(e) {
   return statusOf(e) === 404;
 }
-
-// ⚠️ OJO: 403 NO se usa para fallback global, porque en tu caso te manda a rutas admin que no existen.
-// Si querés fallback por 403 SOLO para list/one, lo controlamos en whitelist más abajo.
 function is403(e) {
   return statusOf(e) === 403;
 }
-
 function toAdminProductsPath(path) {
   const p = String(path || "");
   return p.replace(/^\/products(\/|$)/, "/admin/products$1");
 }
-
-// ✅ endpoints permitidos para fallback a /admin/products
 function canFallbackPath(path) {
   const p = String(path || "");
 
   if (!p.startsWith("/products")) return false;
   if (p.startsWith("/admin/products")) return false;
 
-  // ❌ NUNCA fallback para imágenes (tu problema actual)
+  // ❌ NUNCA fallback para imágenes (tu problema)
   if (/^\/products\/\d+\/images(\/|$)/.test(p)) return false;
 
-  // ❌ otros endpoints que NO son "admin products" en tu backend
+  // ❌ NO son "admin products" en tu backend
   if (/^\/products\/\d+\/stock(\/|$)/.test(p)) return false;
   if (/^\/products\/\d+\/branches(\/|$)/.test(p)) return false;
 
   // ✅ whitelist:
-  // /products
-  // /products/:id
-  // /products/next-code
-  // /products (POST)
-  // /products/:id (PATCH/DELETE)
   if (p === "/products") return true;
   if (p === "/products/next-code") return true;
   if (/^\/products\/\d+$/.test(p)) return true;
@@ -144,17 +180,15 @@ async function req(method, path, ...args) {
   } catch (e) {
     const p = String(path || "");
 
-    // ✅ fallback SOLO si el path está permitido
+    // ✅ fallback SOLO si está permitido
     if (canFallbackPath(p) && (is404(e) || is403(e))) {
       const adminPath = toAdminProductsPath(p);
       try {
         return await http[method](adminPath, ...args);
       } catch {
-        // si falla el fallback, devolvemos el error original
-        throw e;
+        throw e; // volvemos al original
       }
     }
-
     throw e;
   }
 }
@@ -240,7 +274,7 @@ function sanitizeProductPayload(raw = {}) {
 
   if ("code" in p) delete p.code;
 
-  return stripUndefined(p);
+  return compactParams(p);
 }
 
 export const useProductsStore = defineStore("products", {
@@ -250,6 +284,7 @@ export const useProductsStore = defineStore("products", {
     page: 1,
     limit: 20,
     pages: 1,
+    meta: { page: 1, limit: 20, total: 0, pages: 1 },
 
     loading: false,
     error: null,
@@ -294,31 +329,85 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    async fetchList({ q = "", page = 1, limit = 20, branch_id = null } = {}) {
+    /**
+     * ✅ LIST REAL (server-side)
+     * Acepta cualquier filtro y lo manda como querystring (compactado).
+     *
+     * Ej:
+     * fetchList({ q, page, limit, branch_id, category_id, subcategory_id, stock, images, price_min, price_max, price_presence })
+     */
+    async fetchList(paramsIn = {}) {
       this.loading = true;
       this.error = null;
       this.lastError = null;
       this.lastFieldErrors = null;
 
       try {
-        const params = { q, page, limit };
-        const bid = toInt(branch_id, 0);
-        if (bid > 0) params.branch_id = bid;
+        const p = isPlainObject(paramsIn) ? { ...paramsIn } : {};
+
+        // defaults
+        const page = toInt(p.page, 1) || 1;
+        const limit = Math.min(200, Math.max(1, toInt(p.limit, 20)));
+
+        // normalizaciones comunes
+        if ("branch_id" in p) {
+          const bid = toInt(p.branch_id, 0);
+          p.branch_id = bid > 0 ? bid : null;
+        }
+        if ("category_id" in p) {
+          const cid = toInt(p.category_id, 0);
+          p.category_id = cid > 0 ? cid : null;
+        }
+        if ("subcategory_id" in p) {
+          const sid = toInt(p.subcategory_id, 0);
+          p.subcategory_id = sid > 0 ? sid : null;
+        }
+
+        if ("price_min" in p) {
+          const n = toNum(p.price_min, NaN);
+          p.price_min = Number.isFinite(n) ? n : null;
+        }
+        if ("price_max" in p) {
+          const n = toNum(p.price_max, NaN);
+          p.price_max = Number.isFinite(n) ? n : null;
+        }
+
+        // strings: stock/images/price_presence
+        if ("stock" in p && p.stock != null) p.stock = String(p.stock).toLowerCase().trim();
+        if ("images" in p && p.images != null) p.images = String(p.images).toLowerCase().trim();
+        if ("price_presence" in p && p.price_presence != null) p.price_presence = String(p.price_presence).toLowerCase().trim();
+
+        p.page = page;
+        p.limit = limit;
+
+        const params = compactParams(p);
 
         const { data } = await req("get", "/products", { params });
 
-        const list = unwrapList(data);
-        const meta = unwrapMeta(data);
+        // ✅ parse robusto
+        const list = unwrapListSmart(data);
+        const meta = unwrapMetaSmart(data);
 
-        this.items = list;
-        this.total = toInt(meta.total, list.length || 0);
-        this.page = toInt(meta.page, page);
-        this.limit = toInt(meta.limit, limit);
-        this.pages = toInt(meta.pages, 1) || 1;
+        const total = toInt(meta.total, Array.isArray(list) ? list.length : 0);
+        const pages = Math.max(1, toInt(meta.pages, Math.ceil((total || 0) / limit) || 1));
+        const pageOut = Math.min(pages, Math.max(1, toInt(meta.page, page)));
+        const limitOut = toInt(meta.limit, limit);
+
+        this.items = Array.isArray(list) ? list : [];
+        this.total = total;
+        this.page = pageOut;
+        this.limit = limitOut;
+        this.pages = pages;
+        this.meta = { page: pageOut, limit: limitOut, total, pages };
 
         return data;
       } catch (e) {
         this.setError(e);
+        this.items = [];
+        this.total = 0;
+        this.page = 1;
+        this.pages = 1;
+        this.meta = { page: 1, limit: this.limit || 20, total: 0, pages: 1 };
         return null;
       } finally {
         this.loading = false;
@@ -387,7 +476,7 @@ export const useProductsStore = defineStore("products", {
 
       try {
         const { data } = await req("get", `/products/${pid}/branches`);
-        const list = unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
+        const list = unwrapListSmart(data) || (Array.isArray(data?.data) ? data.data : []);
         return Array.isArray(list) ? list : [];
       } catch (e) {
         this.setError(e);
@@ -395,12 +484,11 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ✅ CLAVE: EXISTE para producto NUEVO (ProductStockPanel cuando pid=0)
     async fetchBranches() {
       this.error = null;
       try {
         const { data } = await http.get("/branches");
-        const list = unwrapList(data) || (Array.isArray(data?.data) ? data.data : []);
+        const list = unwrapListSmart(data) || (Array.isArray(data?.data) ? data.data : []);
         return Array.isArray(list) ? list : [];
       } catch (e) {
         this.setError(e);
@@ -428,6 +516,7 @@ export const useProductsStore = defineStore("products", {
           else this.items = [created, ...(this.items || [])];
 
           this.total = toInt(this.total, 0) + (idx >= 0 ? 0 : 1);
+          this.meta = { ...this.meta, total: this.total };
         }
 
         return data;
@@ -496,11 +585,6 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    /**
-     * ✅ BORRADO ROBUSTO
-     * - OK => true
-     * - 409 => retorna {ok:false, code, message}
-     */
     async remove(id) {
       const pid = toInt(id, 0);
       if (!pid) return { ok: false, code: "MISSING_ID", message: "ID inválido" };
@@ -521,6 +605,7 @@ export const useProductsStore = defineStore("products", {
 
         this.items = (this.items || []).filter((x) => toInt(x.id, 0) !== pid);
         this.total = Math.max(0, toInt(this.total, 0) - 1);
+        this.meta = { ...this.meta, total: this.total };
         if (toInt(this.current?.id, 0) === pid) this.current = null;
 
         return true;
@@ -553,22 +638,16 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    /**
-     * ✅ IMÁGENES (POS friendly)
-     * - NO fallback a /admin/products/:id/images (no existe en tu API => 404 spam)
-     * - Si 403/404 => [] SIN setError (porque un user "solo vista" NO debe romper el POS)
-     */
     async fetchImages(productId) {
       const pid = toInt(productId, 0);
       if (!pid) return [];
 
       try {
         const { data } = await http.get(`/products/${pid}/images`);
-        return unwrapList(data);
+        return unwrapListSmart(data);
       } catch (e) {
         const s = Number(e?.response?.status || 0);
         if (s === 403 || s === 404) return [];
-        // otros errores sí los mostramos
         this.setError(e);
         return [];
       }
@@ -592,13 +671,12 @@ export const useProductsStore = defineStore("products", {
         for (const f of realFiles) fd.append("files", f);
         for (const f of realFiles) fd.append("images", f);
 
-        // ✅ upload sí puede ir por req (si tu admin/products soporta upload por admin)
         const { data } = await req("post", `/products/${pid}/images`, fd);
 
         const r = unwrapOk(data);
         if (r.ok === false) throw new Error(r.message || "UPLOAD_IMAGES_FAILED");
 
-        return unwrapList(data);
+        return unwrapListSmart(data);
       } catch (e) {
         this.setError(e);
         return null;
@@ -630,9 +708,6 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
-    // ==========================
-    // STOCK INIT (branch_id + warehouse_id)
-    // ==========================
     async initStock({ product_id, branch_id = null, warehouse_id = null, qty }) {
       this.loading = true;
       this.error = null;

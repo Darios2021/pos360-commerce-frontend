@@ -1,9 +1,12 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
-<!-- FIX:
-  ✅ Quita columna "Creación" (creador/fecha)
-  ✅ Acciones: 1 SOLO ícono (menú ⋮) que contiene Ver / Editar / Inactivar o Eliminar
-  ✅ Mantiene anti-desborde: wrap con scroll + truncados
+<!--
+✅ Server-side real:
+- No baja 1000/16000 items
+- Paginación real con meta.total/meta.pages del backend
+- Filtros reales (los aplica SQL en products.controller.js)
+- Scope correcto por sucursal (usuario ve lo suyo; admin ve todo o por branch_id)
+- Multi-sucursal chips con branches_gc ("1:Casa Central|3:Rivadavia")
 -->
 
 <template>
@@ -13,7 +16,7 @@
       <div class="minw-0">
         <div class="text-h5 font-weight-bold">Productos</div>
         <div class="text-caption text-medium-emphasis">
-          Mostrando {{ pagedRows.length }} de {{ filteredAll.length }} · Página {{ page }}/{{ pages }}
+          Mostrando {{ items.length }} de {{ meta.total }} · Página {{ meta.page }}/{{ meta.pages || 1 }}
         </div>
       </div>
 
@@ -38,12 +41,12 @@
       {{ products.error }}
     </v-alert>
 
-    <!-- FILTROS -->
+    <!-- FILTROS (server-side) -->
     <v-card rounded="xl" class="pa-4 mb-4">
       <v-row dense>
         <v-col cols="12" md="4">
           <v-text-field
-            v-model="q"
+            v-model="f.q"
             label="Buscar (nombre / sku / barcode / code / marca / modelo)"
             variant="outlined"
             density="comfortable"
@@ -54,11 +57,11 @@
 
         <v-col cols="12" md="4" v-if="isAdmin">
           <v-select
-            v-model="branchId"
+            v-model="f.branch_id"
             :items="branchItems"
             item-title="title"
             item-value="value"
-            label="Sucursal (stock en sucursal)"
+            label="Sucursal (scope/stock)"
             variant="outlined"
             density="comfortable"
             clearable
@@ -68,7 +71,7 @@
 
         <v-col cols="12" :md="isAdmin ? 4 : 4">
           <v-select
-            v-model="categoryId"
+            v-model="f.category_id"
             :items="categoryItems"
             item-title="title"
             item-value="value"
@@ -76,13 +79,13 @@
             variant="outlined"
             density="comfortable"
             clearable
-            @update:modelValue="() => { onCategoryChange(); applyFilters(); }"
+            @update:modelValue="onCategoryChange"
           />
         </v-col>
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="subcategoryValue"
+            v-model="f.subcategory_id"
             :items="subcategoryItems"
             item-title="title"
             item-value="value"
@@ -90,14 +93,14 @@
             variant="outlined"
             density="comfortable"
             clearable
-            :disabled="!categoryId"
+            :disabled="!f.category_id"
             @update:modelValue="applyFilters"
           />
         </v-col>
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="stockFilter"
+            v-model="f.stock"
             :items="stockItems"
             item-title="title"
             item-value="value"
@@ -110,7 +113,7 @@
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="pricePresence"
+            v-model="f.price_presence"
             :items="pricePresenceItems"
             item-title="title"
             item-value="value"
@@ -123,8 +126,8 @@
 
         <v-col cols="6" md="2">
           <v-text-field
-            v-model="priceMin"
-            label="Precio mín. (lista)"
+            v-model="f.price_min"
+            label="Precio mín."
             variant="outlined"
             density="comfortable"
             type="number"
@@ -136,8 +139,8 @@
 
         <v-col cols="6" md="2">
           <v-text-field
-            v-model="priceMax"
-            label="Precio máx. (lista)"
+            v-model="f.price_max"
+            label="Precio máx."
             variant="outlined"
             density="comfortable"
             type="number"
@@ -149,7 +152,7 @@
 
         <v-col cols="12" md="4">
           <v-select
-            v-model="imagesFilter"
+            v-model="f.images"
             :items="imagesItems"
             item-title="title"
             item-value="value"
@@ -167,88 +170,142 @@
           <v-btn variant="tonal" prepend-icon="mdi-filter-off" @click="clearFilters">
             Limpiar
           </v-btn>
+
+          <v-spacer />
+
+          <v-select
+            v-model="limit"
+            :items="[10, 20, 50, 100, 200]"
+            label="Filas"
+            variant="outlined"
+            density="comfortable"
+            style="max-width: 140px"
+            @update:modelValue="onLimitChange"
+          />
         </v-col>
       </v-row>
     </v-card>
 
-    <!-- TABLA (wrap con scroll) -->
+    <!-- TABLA -->
     <v-card rounded="xl" class="plp-table-card">
       <div class="plp-table-wrap">
         <v-data-table
           :headers="headers"
-          :items="pagedRows"
+          :items="items"
           item-key="id"
           show-select
           v-model:selected="selectedIds"
-          :loading="loadingAll || products.loading"
+          :loading="products.loading || loading"
           class="pos-table plp-table"
           fixed-header
           height="560"
+          @click:row="onRowClick"
         >
-          <!-- Nombre + estado inactivo -->
+          <!-- Nombre + estado -->
           <template #item.name="{ item }">
-            <div class="name-cell" :style="isInactive(item) ? 'opacity:.55' : ''">
-              <span class="text-truncate name-text" :title="item.name">{{ item.name }}</span>
-              <v-chip v-if="isInactive(item)" class="ml-2" size="x-small" color="grey" variant="tonal">
+            <div class="font-weight-bold d-flex align-center minw-0" :style="isInactive(rowRaw(item)) ? 'opacity:.55' : ''">
+              <span class="text-truncate">{{ rowRaw(item)?.name }}</span>
+              <v-chip v-if="isInactive(rowRaw(item))" class="ml-2" size="x-small" color="grey" variant="tonal">
                 Inactivo
               </v-chip>
             </div>
           </template>
 
-          <!-- ✅ sucursal dueña (admin) -->
+          <!-- Sucursal dueña -->
           <template v-if="isAdmin" #item.branch="{ item }">
             <div class="cell-truncate">
-              <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
-                {{ branchName(item.branch_id) }}
-              </v-chip>
+              <template v-if="Number(rowRaw(item)?.branch_id || 0) > 0">
+                <v-chip size="x-small" variant="tonal" :color="branchColor(rowRaw(item).branch_id)">
+                  {{ branchName(rowRaw(item).branch_id) }}
+                </v-chip>
+              </template>
+              <template v-else>
+                <span class="text-caption text-medium-emphasis">—</span>
+              </template>
+            </div>
+          </template>
+
+          <!-- Multi-sucursal chips (desde branches_gc) -->
+          <template v-if="isAdmin" #item.branches="{ item }">
+            <div class="branches-cell">
+              <template v-if="enabledBranches(rowRaw(item)).length">
+                <v-tooltip
+                  v-for="(b, i) in visibleBranches(enabledBranches(rowRaw(item)))"
+                  :key="`b-${rowRaw(item)?.id}-${b.id}-${i}`"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-chip v-bind="props" class="br-chip" size="x-small" variant="tonal" :color="branchColor(b.id)" label>
+                      {{ branchInitials(b.name) }}
+                    </v-chip>
+                  </template>
+                  <span>{{ b.name }}</span>
+                </v-tooltip>
+
+                <v-tooltip v-if="hiddenBranchesCount(enabledBranches(rowRaw(item))) > 0" location="top">
+                  <template #activator="{ props }">
+                    <v-chip v-bind="props" class="br-chip br-more" size="x-small" variant="tonal" label>
+                      +{{ hiddenBranchesCount(enabledBranches(rowRaw(item))) }}
+                    </v-chip>
+                  </template>
+                  <span>{{ hiddenBranchesText(enabledBranches(rowRaw(item))) }}</span>
+                </v-tooltip>
+              </template>
+
+              <template v-else>
+                <template v-if="Number(rowRaw(item)?.branch_id || 0) > 0">
+                  <v-chip class="br-chip" size="x-small" variant="tonal" :color="branchColor(rowRaw(item).branch_id)" label>
+                    {{ branchInitials(branchName(rowRaw(item).branch_id)) }}
+                  </v-chip>
+                </template>
+                <template v-else>
+                  <span class="text-caption text-medium-emphasis">—</span>
+                </template>
+              </template>
             </div>
           </template>
 
           <template #item.rubro="{ item }">
-            <div class="cell-truncate" :title="cleanTrail(item.rubro) || '—'">
-              {{ cleanTrail(item.rubro) || "—" }}
+            <div class="cell-truncate">
+              {{ rowRaw(item)?.category?.name || rowRaw(item)?.rubro || "—" }}
             </div>
           </template>
 
           <template #item.subrubro="{ item }">
-            <div class="cell-truncate" :title="cleanTrail(item.subrubro) || '—'">
-              {{ cleanTrail(item.subrubro) || "—" }}
+            <div class="cell-truncate">
+              {{ rowRaw(item)?.subcategory?.name || rowRaw(item)?.subrubro || "—" }}
             </div>
           </template>
 
-          <!-- ✅ ACCIONES: 1 ícono (menú) -->
+          <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="actions-cell">
+              <v-btn
+                icon="mdi-eye-outline"
+                variant="text"
+                class="act-btn"
+                title="Ver"
+                @click.stop="openView(rowRaw(item).id)"
+              />
               <v-menu location="bottom end" :close-on-content-click="true">
                 <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-dots-vertical"
-                    variant="text"
-                    class="act-btn"
-                    :title="'Acciones'"
-                  />
+                  <v-btn v-bind="props" icon="mdi-dots-vertical" variant="text" class="act-btn" title="Opciones" @click.stop />
                 </template>
 
-                <v-list density="comfortable" min-width="210">
-                  <v-list-item @click="openView(item.id)">
-                    <template #prepend><v-icon size="18">mdi-eye-outline</v-icon></template>
-                    <v-list-item-title>Ver</v-list-item-title>
-                  </v-list-item>
-
-                  <v-list-item @click="openEdit(item.id)">
+                <v-list density="comfortable" min-width="220">
+                  <v-list-item @click="openEdit(rowRaw(item).id)">
                     <template #prepend><v-icon size="18">mdi-pencil-outline</v-icon></template>
                     <v-list-item-title>Editar</v-list-item-title>
                   </v-list-item>
 
                   <v-divider />
 
-                  <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                  <v-list-item v-if="!isAdmin" @click="askDisable(rowRaw(item))">
                     <template #prepend><v-icon size="18">mdi-eye-off-outline</v-icon></template>
                     <v-list-item-title>Inactivar</v-list-item-title>
                   </v-list-item>
 
-                  <v-list-item v-else @click="askDelete(item)">
+                  <v-list-item v-else @click="askDelete(rowRaw(item))">
                     <template #prepend><v-icon size="18" color="red">mdi-delete-outline</v-icon></template>
                     <v-list-item-title class="text-red">Eliminar</v-list-item-title>
                   </v-list-item>
@@ -257,12 +314,13 @@
             </div>
           </template>
 
+          <!-- Bottom paginación -->
           <template #bottom>
             <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
               <div class="text-caption text-medium-emphasis">
-                Mostrando {{ pagedRows.length }} de {{ filteredAll.length }}
+                Mostrando {{ items.length }} de {{ meta.total }}
               </div>
-              <v-pagination v-model="page" :length="pages" :total-visible="7" />
+              <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="7" @update:modelValue="fetchNow" />
             </div>
           </template>
         </v-data-table>
@@ -270,13 +328,7 @@
     </v-card>
 
     <!-- FORM -->
-    <ProductFormDialog
-      v-model:open="formOpen"
-      :mode="formMode"
-      :item="formItem"
-      @saved="reload"
-      @deleted="reload"
-    />
+    <ProductFormDialog v-model:open="formOpen" :mode="formMode" :item="formItem" @saved="fetchNow" @deleted="fetchNow" />
 
     <!-- CONFIRM: inactivar -->
     <v-dialog v-model="disableOpen" max-width="520">
@@ -299,9 +351,7 @@
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
         <v-card-text>
           ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">
-            Si falla por ventas/relaciones, se inactiva automáticamente.
-          </div>
+          <div class="text-caption text-medium-emphasis mt-2">Si falla por ventas/relaciones, se inactiva automáticamente.</div>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
@@ -310,9 +360,7 @@
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snack.show" :timeout="3500">
-      {{ snack.text }}
-    </v-snackbar>
+    <v-snackbar v-model="snack.show" :timeout="3500">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
@@ -322,7 +370,6 @@ import { useRouter } from "vue-router";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
-
 import ProductFormDialog from "../components/ProductFormDialog.vue";
 
 const router = useRouter();
@@ -330,178 +377,61 @@ const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
 
-/* =========================
-   FLAGS / PERMISOS
-========================= */
+/* PERMISOS */
 const isAdmin = computed(() => {
   const r = auth.roles || [];
   return r.includes("admin") || r.includes("super_admin");
 });
 
-const userBranchId = computed(() => {
-  const u = auth?.user || {};
-  const bid = Number(u?.branch_id || 0) || Number(auth?.branchId || 0) || 0;
-  return bid > 0 ? bid : null;
-});
+/* UI state */
+const loading = ref(false);
+const items = computed(() => (Array.isArray(products.items) ? products.items : []));
 
-/* =========================
-   FILTROS
-========================= */
-const q = ref("");
-const branchId = ref(null);
-const categoryId = ref(null);
-
-/**
- * ✅ subcategoryValue puede ser:
- * - number (subcategory_id)
- * - string (name lower) si no hay id
- */
-const subcategoryValue = ref(null);
-
-const stockFilter = ref("all");
-const pricePresence = ref("all");
-const priceMin = ref(null);
-const priceMax = ref(null);
-const imagesFilter = ref("all");
-
-/* =========================
-   UI / PAGINACIÓN
-========================= */
+const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
 const page = ref(1);
 const limit = ref(20);
 const selectedIds = ref([]);
 
-/* =========================
-   FORM
-========================= */
+/* FORM */
 const formOpen = ref(false);
 const formMode = ref("create");
 const formItem = ref(null);
 
-/* =========================
-   CONFIRMS
-========================= */
+/* CONFIRMS */
 const deleteOpen = ref(false);
 const deleteItem = ref(null);
-
 const disableOpen = ref(false);
 const disableItem = ref(null);
 
-/* =========================
-   SNACK
-========================= */
+/* SNACK */
 const snack = ref({ show: false, text: "" });
 function toast(text) {
   snack.value = { show: true, text: String(text || "") };
 }
 
-/* =========================
-   HELPERS
-========================= */
-function toNum(v, d = 0) {
-  if (v === null || v === undefined || v === "") return d;
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : d;
-}
-function toInt(v, d = 0) {
-  const n = parseInt(String(v ?? ""), 10);
-  return Number.isFinite(n) ? n : d;
-}
-function priceListNumber(it) {
-  return toNum(it?.price_list, 0);
-}
-function stockQtyNumber(it) {
-  const v = it?.stock_qty ?? it?.stock ?? it?.qty ?? it?.quantity ?? 0;
-  return toNum(v, 0);
-}
-function cleanTrail(s) {
-  if (!s) return "";
-  return String(s).replace(/\s*>\s*/g, " / ").trim();
+/* Slot raw fix */
+function rowRaw(slotItem) {
+  return slotItem?.raw ?? slotItem ?? {};
 }
 function isInactive(it) {
   return it?.is_active === false || Number(it?.is_active) === 0;
 }
 
-function pickStr(...vals) {
-  for (const v of vals) {
-    const s = String(v ?? "").trim();
-    if (s) return s;
-  }
-  return "";
-}
-
-function matchText(it, needle) {
-  if (!needle) return true;
-  const n = String(needle).toLowerCase();
-
-  const hay = [
-    pickStr(it?.name),
-    pickStr(it?.sku),
-    pickStr(it?.barcode),
-    pickStr(it?.code),
-    pickStr(it?.brand),
-    pickStr(it?.model),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return hay.includes(n);
-}
-
-function normalizeRemoveResult(r) {
-  if (typeof r === "boolean") {
-    return { ok: r, code: r ? null : "DELETE_FAILED", message: r ? null : "No se pudo eliminar" };
-  }
-  if (r && typeof r === "object") {
-    return { ok: !!r.ok, code: r.code || null, message: r.message || null };
-  }
-  return { ok: false, code: "DELETE_FAILED", message: "No se pudo eliminar" };
-}
-
-/** ✅ FIX BORRADO: soporta distintos nombres de método en el store */
-async function callRemoveProduct(id) {
-  const fn =
-    (products && typeof products.remove === "function" && products.remove) ||
-    (products && typeof products.delete === "function" && products.delete) ||
-    (products && typeof products.destroy === "function" && products.destroy) ||
-    null;
-
-  if (!fn) {
-    return { ok: false, code: "CLIENT_NO_METHOD", message: "Store: falta método remove/delete/destroy" };
-  }
-
-  try {
-    const out = await fn(id);
-    return normalizeRemoveResult(out);
-  } catch (e) {
-    const msg = e?.response?.data?.message || e?.message || "No se pudo eliminar";
-    const code = e?.response?.data?.code || e?.code || "DELETE_FAILED";
-    return { ok: false, code, message: msg };
-  }
-}
-
-/* =========================
-   BRANCHES
-========================= */
+/* Branches */
 const branches = ref([]);
-
 async function loadBranchesSafe() {
   if (typeof products.fetchBranches !== "function") return;
   try {
     const arr = await products.fetchBranches();
     branches.value = Array.isArray(arr) ? arr : [];
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
-
 function branchName(id) {
   const bid = Number(id || 0);
   if (!bid) return "—";
   const found = branches.value.find((b) => Number(b?.id) === bid);
   return found?.name || `Sucursal #${bid}`;
 }
-
 function branchColor(id) {
   const bid = Number(id || 0);
   if (!bid) return "grey";
@@ -510,32 +440,61 @@ function branchColor(id) {
   if (bid === 3) return "deep-purple";
   return "blue-grey";
 }
-
 const branchItems = computed(() => {
   const out = [{ title: "Todas", value: null }];
-  const arr = (branches.value || [])
+  (branches.value || [])
     .map((b) => ({ title: b?.name || `Sucursal #${b?.id}`, value: Number(b?.id) }))
     .filter((x) => x.value > 0)
-    .sort((a, b) => a.value - b.value);
-  return out.concat(arr);
+    .sort((a, b) => a.value - b.value)
+    .forEach((x) => out.push(x));
+  return out;
 });
 
-/* =========================
-   CATEGORIES
-========================= */
-async function loadCategoriesSafe() {
-  try {
-    if (typeof categories.fetchAll === "function") {
-      await categories.fetchAll(true);
-      return;
-    }
-  } catch {
-    // ignore
-  }
+/* Multi-sucursal chips desde branches_gc */
+function branchInitials(name) {
+  const s = String(name || "").trim();
+  if (!s) return "—";
+  const parts = s.split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] || "";
+  const b = parts[1]?.[0] || "";
+  return (a + b).toUpperCase() || s.slice(0, 2).toUpperCase();
+}
+function enabledBranches(it) {
+  // backend: branches_gc "1:Casa Central|3:Rivadavia"
+  const gc = String(it?.branches_gc || "").trim();
+  if (!gc) return [];
+  return gc
+    .split("|")
+    .map((pair) => {
+      const idx = pair.indexOf(":");
+      if (idx <= 0) return null;
+      const id = Number(pair.slice(0, idx));
+      const name = String(pair.slice(idx + 1) || "").trim();
+      if (!id) return null;
+      return { id, name: name || branchName(id) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.id - b.id);
+}
+function visibleBranches(list) {
+  return (list || []).slice(0, 4);
+}
+function hiddenBranchesCount(list) {
+  const n = (list || []).length;
+  return n > 4 ? n - 4 : 0;
+}
+function hiddenBranchesText(list) {
+  const rest = (list || []).slice(4).map((b) => b.name).filter(Boolean);
+  return rest.length ? rest.join(" · ") : "—";
 }
 
+/* Categories */
+async function loadCategoriesSafe() {
+  try {
+    if (typeof categories.fetchAll === "function") await categories.fetchAll(true);
+  } catch {}
+}
 const parentList = computed(() => (Array.isArray(categories.parents) ? categories.parents : []));
-
 const categoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
   parentList.value
@@ -546,280 +505,166 @@ const categoryItems = computed(() => {
   return out;
 });
 
-function onCategoryChange() {
-  subcategoryValue.value = null;
-  page.value = 1;
-}
-
-/* =========================
-   DATASET LOCAL (FIX: traer TODO cuando hay filtros)
-========================= */
-const loadingAll = ref(false);
-const allItems = ref([]);
-
-/** detecta filtros activos */
-const hasActiveFilters = computed(() => {
-  const qq = String(q.value || "").trim();
-  const pmin = priceMin.value !== null && priceMin.value !== "" ? Number(priceMin.value) : null;
-  const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
-
-  return !!(
-    qq ||
-    branchId.value ||
-    categoryId.value ||
-    subcategoryValue.value ||
-    stockFilter.value !== "all" ||
-    pricePresence.value !== "all" ||
-    imagesFilter.value !== "all" ||
-    pmin !== null ||
-    pmax !== null
-  );
-});
-
-async function loadAll() {
-  if (!auth.isAuthed) return;
-  if (loadingAll.value) return;
-
-  loadingAll.value = true;
-  try {
-    const qq = String(q.value || "").trim();
-
-    const bid = isAdmin.value
-      ? branchId.value
-        ? Number(branchId.value)
-        : null
-      : userBranchId.value
-        ? Number(userBranchId.value)
-        : null;
-
-    const subVal = subcategoryValue.value;
-    const subId = typeof subVal === "number" && Number.isFinite(subVal) ? Number(subVal) : null;
-
-    const serverParams = {
-      q: qq || "",
-      category_id: categoryId.value ? Number(categoryId.value) : null,
-      subcategory_id: subId,
-      branch_id: bid,
-    };
-
-    allItems.value = [];
-
-    if (!hasActiveFilters.value) {
-      await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
-      allItems.value = Array.isArray(products.items) ? products.items : [];
-      return;
-    }
-
-    const LIMIT = 200;
-    let p = 1;
-    let pagesServer = 1;
-
-    const MAX_PAGES = 80;
-    const MAX_ITEMS = 16000;
-
-    do {
-      await products.fetchList({ ...serverParams, page: p, limit: LIMIT });
-
-      const items = Array.isArray(products.items) ? products.items : [];
-      const totalPages = Number(products.pages || 1) || 1;
-
-      if (p === 1) pagesServer = totalPages;
-
-      allItems.value = allItems.value.concat(items);
-
-      if (allItems.value.length >= MAX_ITEMS) break;
-
-      p++;
-    } while (p <= pagesServer && p <= MAX_PAGES);
-  } finally {
-    loadingAll.value = false;
-  }
-}
-
-/* =========================
-   NORMALIZADAS
-========================= */
-const normalized = computed(() => {
-  return (allItems.value || []).map((x) => {
-    const cid = toInt(x?.category_id, 0) || null;
-    const sid = toInt(x?.subcategory_id, 0) || null;
-
-    const rubro =
-      x?.category?.name ||
-      x?.rubro ||
-      x?.category_name ||
-      x?.categoryName ||
-      null;
-
-    const subrubro =
-      x?.subcategory?.name ||
-      x?.subrubro ||
-      x?.subcategory_name ||
-      x?.subcategoryName ||
-      null;
-
-    const imagesCount = Number(x?.images_count ?? x?.images?.length ?? x?.media?.images?.length ?? 0);
-
-    return {
-      ...x,
-      rubro,
-      subrubro,
-      rubro_id: cid,
-      subrubro_id: sid,
-      subrubro_key: String(subrubro || "").trim().toLowerCase() || null,
-      imagesCount,
-      _price_list_num: priceListNumber(x),
-      _stock_num: stockQtyNumber(x),
-    };
-  });
-});
-
-/* =========================
-   SUBRUBROS (items para select)
-========================= */
+// subcategories: leemos desde store si existe, si no armamos desde categories.children
 const subcategoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
-  const pid = categoryId.value ? Number(categoryId.value) : 0;
+  const pid = Number(f.value.category_id || 0);
   if (!pid) return out;
 
-  const map = new Map();
-  for (const it of normalized.value) {
-    if (Number(it?.rubro_id || 0) !== pid) continue;
-
-    const name = String(it?.subrubro || "").trim();
-    const sid = Number(it?.subrubro_id || 0) || 0;
-
-    if (sid > 0) {
-      if (!map.has(`id:${sid}`)) map.set(`id:${sid}`, { id: sid, name: name || `Subrubro #${sid}` });
-      continue;
-    }
-
-    if (!name) continue;
-    const key = `name:${name.toLowerCase()}`;
-    if (!map.has(key)) map.set(key, { id: null, name });
-  }
-
-  const arr = Array.from(map.values()).sort((a, b) => String(a.name).localeCompare(String(b.name), "es"));
-  for (const x of arr) {
-    out.push({
-      title: x.name,
-      value: x.id ? x.id : String(x.name).trim().toLowerCase(),
-    });
-  }
+  // si tenés categories.children por parent_id, usalo
+  const kids = Array.isArray(categories.children) ? categories.children : [];
+  kids
+    .filter((x) => Number(x?.category_id || x?.parent_id || 0) === pid || Number(x?.parent_id || 0) === pid)
+    .map((x) => ({ id: Number(x?.id || 0), name: String(x?.name || "").trim() }))
+    .filter((x) => x.id > 0 && x.name)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+    .forEach((x) => out.push({ title: x.name, value: x.id }));
 
   return out;
 });
 
-/* =========================
-   FILTRADO
-========================= */
-const filteredAll = computed(() => {
-  const qq = String(q.value || "").trim();
-  const pid = categoryId.value ? Number(categoryId.value) : null;
-
-  const subVal = subcategoryValue.value;
-  const subIsId = typeof subVal === "number" && Number.isFinite(subVal);
-  const subId = subIsId ? Number(subVal) : null;
-  const subKey = !subIsId && subVal ? String(subVal).toLowerCase() : null;
-
-  const pmin = priceMin.value !== null && priceMin.value !== "" ? Number(priceMin.value) : null;
-  const pmax = priceMax.value !== null && priceMax.value !== "" ? Number(priceMax.value) : null;
-
-  return normalized.value.filter((it) => {
-    if (isInactive(it)) return false;
-
-    if (qq && !matchText(it, qq)) return false;
-    if (pid && Number(it?.rubro_id || 0) !== pid) return false;
-
-    if (subId && Number(it?.subrubro_id || 0) !== subId) return false;
-    if (subKey && String(it?.subrubro_key || "") !== subKey) return false;
-
-    if (stockFilter.value === "with" && !(it._stock_num > 0)) return false;
-    if (stockFilter.value === "without" && !(it._stock_num <= 0)) return false;
-
-    const pl = it._price_list_num;
-    if (pricePresence.value === "with" && !(pl > 0)) return false;
-    if (pricePresence.value === "without" && !(pl <= 0)) return false;
-
-    if (pmin !== null && pl < pmin) return false;
-    if (pmax !== null && pl > pmax) return false;
-
-    if (imagesFilter.value === "with" && !(it.imagesCount > 0)) return false;
-    if (imagesFilter.value === "without" && !(it.imagesCount <= 0)) return false;
-
-    return true;
-  });
+/* Filtros server-side */
+const f = ref({
+  q: "",
+  branch_id: null,
+  category_id: null,
+  subcategory_id: null,
+  stock: "all", // all | with | without
+  price_presence: "all", // all | with | without
+  price_min: null,
+  price_max: null,
+  images: "all", // all | with | without
 });
 
-const pages = computed(() => Math.max(1, Math.ceil(filteredAll.value.length / Number(limit.value || 20))));
-
-const pagedRows = computed(() => {
-  const l = Number(limit.value || 20);
-  const start = (Number(page.value || 1) - 1) * l;
-  return filteredAll.value.slice(start, start + l);
-});
-
-watch(
-  () => [
-    q.value,
-    branchId.value,
-    categoryId.value,
-    subcategoryValue.value,
-    stockFilter.value,
-    pricePresence.value,
-    priceMin.value,
-    priceMax.value,
-    imagesFilter.value,
-    isAdmin.value,
-  ],
-  () => {
-    page.value = 1;
-    selectedIds.value = [];
-  }
-);
-
-/* =========================
-   HEADERS
-========================= */
-const headers = computed(() => {
-  const base = [
-    { title: "Nombre", key: "name", sortable: false, width: 420 },
-    { title: "Rubro", key: "rubro", sortable: false, width: 240 },
-    { title: "Subrubro", key: "subrubro", sortable: false, width: 240 },
-    { title: "", key: "actions", sortable: false, align: "end", width: 96 },
-  ];
-
-  if (!isAdmin.value) return base;
-
-  const out = [...base];
-  out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false, width: 200 });
-  return out;
-});
-
-/* =========================
-   UI CONSTS
-========================= */
 const stockItems = [
   { title: "Todos", value: "all" },
   { title: "Con stock", value: "with" },
   { title: "Sin stock", value: "without" },
 ];
-
 const pricePresenceItems = [
   { title: "Todos", value: "all" },
   { title: "Con precio", value: "with" },
   { title: "Sin precio (0)", value: "without" },
 ];
-
 const imagesItems = [
   { title: "Todas", value: "all" },
   { title: "Con imágenes", value: "with" },
   { title: "Sin imágenes", value: "without" },
 ];
 
-/* =========================
-   ACTIONS
-========================= */
+function onCategoryChange() {
+  f.value.subcategory_id = null;
+  applyFilters();
+}
+
+function onLimitChange() {
+  page.value = 1;
+  fetchNow();
+}
+
+async function applyFilters() {
+  page.value = 1;
+  selectedIds.value = [];
+  await fetchNow();
+}
+
+async function clearFilters() {
+  f.value = {
+    q: "",
+    branch_id: null,
+    category_id: null,
+    subcategory_id: null,
+    stock: "all",
+    price_presence: "all",
+    price_min: null,
+    price_max: null,
+    images: "all",
+  };
+  page.value = 1;
+  selectedIds.value = [];
+  await fetchNow();
+}
+
+/* Fetch real */
+async function fetchNow() {
+  if (!auth.isAuthed) return;
+  if (loading.value) return;
+
+  loading.value = true;
+  try {
+    const params = {
+      page: Number(page.value || 1),
+      limit: Number(limit.value || 20),
+
+      q: String(f.value.q || "").trim(),
+
+      // admin puede filtrar branch_id; no-admin el server ignora y usa ctxBranchId
+      branch_id: isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null,
+
+      category_id: f.value.category_id ? Number(f.value.category_id) : null,
+      subcategory_id: f.value.subcategory_id ? Number(f.value.subcategory_id) : null,
+
+      stock: f.value.stock,
+      price_presence: f.value.price_presence,
+      price_min: f.value.price_min !== "" && f.value.price_min != null ? Number(f.value.price_min) : null,
+      price_max: f.value.price_max !== "" && f.value.price_max != null ? Number(f.value.price_max) : null,
+      images: f.value.images,
+    };
+
+    // store debería setear products.items y meta/pages
+    const r = await products.fetchList(params);
+
+    // intentamos leer meta de forma robusta
+    const m =
+      (r && r.meta) ||
+      (r && r.data && r.meta) ||
+      products.meta ||
+      {
+        page: params.page,
+        limit: params.limit,
+        total: Array.isArray(products.items) ? products.items.length : 0,
+        pages: products.pages || 1,
+      };
+
+    meta.value = {
+      page: Number(m.page || params.page),
+      limit: Number(m.limit || params.limit),
+      total: Number(m.total || 0),
+      pages: Number(m.pages || 1) || 1,
+    };
+
+    // si el backend devuelve pages y la page quedó fuera, corregimos
+    if (page.value > meta.value.pages) page.value = meta.value.pages;
+  } finally {
+    loading.value = false;
+  }
+}
+
+/* Row click */
+function onRowClick(e, row) {
+  const item = row?.item?.raw ?? row?.item ?? row;
+  const t = e?.target;
+  if (t?.closest?.("button, a, input, label, textarea, select, .v-btn, .v-selection-control, .v-menu")) return;
+  openView(item?.id);
+}
+
+/* Headers */
+const headers = computed(() => {
+  const base = [
+    { title: "Nombre", key: "name", sortable: false, width: 520 },
+    { title: "Rubro", key: "rubro", sortable: false, width: 260 },
+    { title: "Subrubro", key: "subrubro", sortable: false, width: 260 },
+    { title: "", key: "actions", sortable: false, align: "end", width: 96 },
+  ];
+  if (!isAdmin.value) return base;
+
+  const out = [...base];
+  out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false, width: 220 });
+  out.splice(2, 0, { title: "Sucursales", key: "branches", sortable: false, width: 190 });
+  return out;
+});
+
+/* Actions */
 function openView(id) {
   const pid = Number(id || 0);
   if (!pid) return;
@@ -828,18 +673,9 @@ function openView(id) {
 
 async function openEdit(id) {
   if (!auth.isAuthed) return;
-
-  const bid = isAdmin.value
-    ? branchId.value
-      ? Number(branchId.value)
-      : null
-    : userBranchId.value
-      ? Number(userBranchId.value)
-      : null;
-
+  const bid = isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null;
   const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
   if (!full) return;
-
   formMode.value = "edit";
   formItem.value = full;
   formOpen.value = true;
@@ -851,39 +687,42 @@ function openCreate() {
   formOpen.value = true;
 }
 
-async function applyFilters() {
-  page.value = 1;
-  await loadAll();
-}
-
-async function clearFilters() {
-  q.value = "";
-  branchId.value = null;
-  categoryId.value = null;
-  subcategoryValue.value = null;
-  stockFilter.value = "all";
-  pricePresence.value = "all";
-  priceMin.value = null;
-  priceMax.value = null;
-  imagesFilter.value = "all";
-  selectedIds.value = [];
-  page.value = 1;
-  await reload();
-}
-
 function askDelete(item) {
   deleteItem.value = item;
   deleteOpen.value = true;
 }
-
 function askDisable(item) {
   disableItem.value = item;
   disableOpen.value = true;
 }
 
+function normalizeRemoveResult(r) {
+  if (typeof r === "boolean") return { ok: r, code: r ? null : "DELETE_FAILED", message: r ? null : "No se pudo eliminar" };
+  if (r && typeof r === "object") return { ok: !!r.ok, code: r.code || null, message: r.message || null };
+  return { ok: false, code: "DELETE_FAILED", message: "No se pudo eliminar" };
+}
+
+async function callRemoveProduct(id) {
+  const fn =
+    (products && typeof products.remove === "function" && products.remove) ||
+    (products && typeof products.delete === "function" && products.delete) ||
+    (products && typeof products.destroy === "function" && products.destroy) ||
+    null;
+
+  if (!fn) return { ok: false, code: "CLIENT_NO_METHOD", message: "Store: falta método remove/delete/destroy" };
+
+  try {
+    const out = await fn(id);
+    return normalizeRemoveResult(out);
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || "No se pudo eliminar";
+    const code = e?.response?.data?.code || e?.code || "DELETE_FAILED";
+    return { ok: false, code, message: msg };
+  }
+}
+
 async function doDisable() {
   if (!disableItem.value?.id) return;
-
   try {
     const updated = await products.update(disableItem.value.id, { is_active: false });
     if (!updated?.id) throw new Error(products.error || "No se pudo inactivar");
@@ -893,37 +732,32 @@ async function doDisable() {
   } finally {
     disableOpen.value = false;
     disableItem.value = null;
-    await reload();
+    await fetchNow();
   }
 }
 
 async function doDelete() {
   if (!deleteItem.value?.id) return;
-
   const id = Number(deleteItem.value.id);
-
   try {
     const r = await callRemoveProduct(id);
-
     if (r.ok) {
       toast("Producto eliminado");
       return;
     }
-
     if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
       const updated = await products.update(id, { is_active: false });
       if (!updated?.id) throw new Error(products.error || "No se pudo inactivar (fallback FK)");
       toast("No se pudo borrar (FK). Se inactivó.");
       return;
     }
-
     throw new Error(r.message || products.error || "No se pudo eliminar");
   } catch (e) {
     toast(e?.message || "No se pudo eliminar");
   } finally {
     deleteOpen.value = false;
     deleteItem.value = null;
-    await reload();
+    await fetchNow();
   }
 }
 
@@ -940,15 +774,12 @@ async function bulkDisableOrDelete() {
     try {
       if (isAdmin.value) {
         const r = await callRemoveProduct(id);
-        if (r.ok) {
-          deleted++;
-        } else if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
+        if (r.ok) deleted++;
+        else if (String(r.code || "").toUpperCase() === "FK_CONSTRAINT") {
           const updated = await products.update(id, { is_active: false });
           if (updated?.id) inactivated++;
           else failed++;
-        } else {
-          failed++;
-        }
+        } else failed++;
       } else {
         const updated = await products.update(id, { is_active: false });
         if (updated?.id) inactivated++;
@@ -960,22 +791,16 @@ async function bulkDisableOrDelete() {
   }
 
   selectedIds.value = [];
-
-  if (isAdmin.value) toast(`Eliminados: ${deleted} · Inactivados(FK): ${inactivated} · Fallidos: ${failed}`);
-  else toast(`Inactivados: ${inactivated} · Fallidos: ${failed}`);
-
-  await reload();
+  toast(isAdmin.value ? `Eliminados: ${deleted} · Inactivados(FK): ${inactivated} · Fallidos: ${failed}` : `Inactivados: ${inactivated} · Fallidos: ${failed}`);
+  await fetchNow();
 }
 
-/* =========================
-   DATA LOAD
-========================= */
+/* Load */
 async function reload() {
   if (!auth.isAuthed) return;
-
   await loadCategoriesSafe();
   await loadBranchesSafe();
-  await loadAll();
+  await fetchNow();
 }
 
 onMounted(reload);
@@ -987,26 +812,29 @@ watch(
   },
   { immediate: true }
 );
+
+watch(
+  () => [page.value],
+  () => {
+    selectedIds.value = [];
+  }
+);
 </script>
 
 <style scoped>
 .plp {
   min-width: 0;
 }
-
 .plp-table-card {
   overflow: hidden;
 }
-
 .plp-table-wrap {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-
-/* ✅ fuerza scroll en pantallas chicas en vez de romper */
 .plp-table {
-  min-width: 900px;
+  min-width: 980px;
 }
 
 .pos-table :deep(th) {
@@ -1014,17 +842,15 @@ watch(
   white-space: nowrap;
 }
 
-.name-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.pos-table :deep(tbody tr) {
+  cursor: pointer;
+  transition: background-color 120ms ease;
 }
-.name-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pos-table :deep(tbody tr:hover) {
+  background: rgba(var(--v-theme-on-surface), 0.045);
+}
+.pos-table :deep(tbody tr.v-data-table__selected) {
+  background: rgba(var(--v-theme-primary), 0.10) !important;
 }
 
 .cell-truncate {
@@ -1034,25 +860,51 @@ watch(
   white-space: nowrap;
 }
 
-/* ✅ acciones: 1 botón */
 .actions-cell {
   display: inline-flex;
   justify-content: flex-end;
   align-items: center;
-  min-width: 44px;
+  gap: 0px;
+  min-width: 76px;
 }
 .act-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
+  margin-left: -2px;
+}
+.actions-cell .act-btn:first-child {
+  margin-left: 0;
+}
+
+.branches-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 160px;
+}
+.br-chip {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  padding-inline: 6px;
+  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
+}
+.br-more {
+  opacity: 0.9;
+}
+
+.pos-table :deep(.v-btn),
+.pos-table :deep(.v-selection-control) {
+  cursor: pointer;
 }
 
 @media (max-width: 520px) {
   .plp-table {
-    min-width: 840px;
+    min-width: 900px;
   }
   .act-btn {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
   }
 }
 </style>

@@ -1,20 +1,13 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/products/utils/labelPdfA4.js
 //
-// ✅ FIXES (LO QUE PEDISTE AHORA):
-// 1) ✅ GRANDE (100): LOGOS DE MEDIOS MUCHO MÁS GRANDES (2 filas WRAP prolijas)
-// 2) ✅ GRANDE (100): SE QUITA URL del producto (NO tapa nada)
-// 3) ✅ GRANDE (100): PRECIO LISTA TACHADO MÁS GRANDE + %OFF alineado
-// 4) ✅ CUOTAS: se mantiene regla por precio lista:
-//    - 100.000 a 150.000 => 3x
-//    - >150.000 => 6x
-// 5) ✅ CHICA (58): se mantiene grilla pro, SIN URL, SIN "Medios:" (no se rompe)
-//
-// Mantiene:
-// - QR + Logo + Sucursal
-// - Marca/Modelo
-// - Precio final grande auto-fit
-// - Logos contain (sin estirar)
+// ✅ FIX DEFINITIVO MEDIOS DE PAGO:
+// - Se usa UN SOLO RECURSO "strip" con todos los medios en una línea
+// - Se elimina el grid de logos individuales (que se rompe por padding interno distinto)
+// - SIN "Medios:" y SIN URL
+// - Estilo ML: precio lista tachado + badge verde
+// - Cuotas por precio lista (100k-150k => 3x | >150k => 6x)
+// - 58: no se rompe
 
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
@@ -25,13 +18,9 @@ import QRCode from "qrcode";
 const STORE_LOGO_URL =
   "https://storage-files.cingulado.org/pos360/media/1770906123233-3976439306ab1686.webp";
 
-const PAY_LOGOS = [
-  { key: "credito_sj", url: "https://storage-files.cingulado.org/pos360/media/1769958150069-55eff4121596f9f8.webp" },
-  { key: "mercadopago", url: "https://storage-files.cingulado.org/pos360/media/1769785611712-ef532460bf2a0059.webp" },
-  { key: "mastercard", url: "https://storage-files.cingulado.org/pos360/media/1769785816768-9f322efa725c3d5e.webp" },
-  { key: "visa", url: "https://storage-files.cingulado.org/pos360/media/1769785603289-8ef15a33274405c8.webp" },
-  { key: "naranja", url: "https://storage-files.cingulado.org/pos360/media/1769785599197-627b0a0bac168cee.webp" },
-];
+// ✅ NUEVO: strip único con TODOS los medios
+const PAY_STRIP_URL =
+  "https://storage-files.cingulado.org/pos360/media/1772493744791-665f713788e427fd.webp";
 
 /* =========================
    Helpers
@@ -226,7 +215,7 @@ function drawTextAtTop(doc, text, x, yTop, fontSize, fontStyle = "normal", color
 }
 
 /* =========================
-   WEBP -> PNG + aspect
+   WEBP -> PNG + aspect (con cache)
 ========================= */
 const _imgCache = new Map();
 async function loadPngWithMeta(url) {
@@ -349,85 +338,38 @@ function drawLogoContain(doc, png, aspect, x, y, slotW, slotH) {
 }
 
 /**
- * ✅ WRAP en filas (para GRANDE): 2 filas reales y logos GRANDES
+ * ✅ OFF badge estilo ML (verde)
  */
-function drawPayLogosWrappedRows(doc, x, yTop, maxW, logosMeta, cfg) {
-  const items = (logosMeta || []).filter((it) => it?.png && it?.aspect);
-  if (!items.length) return 0;
+function drawOffBadge(doc, text, x, yTop, fs, cfg = {}) {
+  const padX = cfg.padX ?? 3.2;
+  const r = cfg.radius ?? 2.2;
+  const bg = cfg.bg ?? [0, 166, 80];
 
-  const baseH = cfg.payLogoH;
-  const baseW = cfg.paySlotW;
-  const gapX = cfg.payLogoGap;
-  const rowH = cfg.payRowH;
-  const maxRows = cfg.payMaxRows ?? 2;
-  const gapY = cfg.payRowGapY ?? 3.0;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(fs);
 
-  let row = 1;
-  let xx = x;
-  let yy = yTop;
+  const tw = doc.getTextWidth(String(text));
+  const h = lineH(fs, 1.05);
+  const w = tw + padX * 2;
 
-  for (const it of items) {
-    const isCredito = it.key === "credito_sj";
-    const mult = isCredito ? (cfg.creditoBoost || 1.0) : 1.0;
+  doc.setFillColor(bg[0], bg[1], bg[2]);
+  if (typeof doc.roundedRect === "function") doc.roundedRect(x, yTop, w, h, r, r, "F");
+  else doc.rect(x, yTop, w, h, "F");
 
-    const slotH = Math.min(rowH, baseH * mult);
-    const slotW = baseW * mult;
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(text), x + padX, yTop + baselineFromTop(fs) + 0.25);
+  doc.setTextColor(0, 0, 0);
 
-    if (xx + slotW > x + maxW) {
-      row++;
-      if (row > maxRows) break;
-      xx = x;
-      yy += rowH + gapY;
-    }
-
-    const yCenter = yy + (rowH - slotH) / 2;
-    drawLogoContain(doc, it.png, it.aspect, xx, yCenter, slotW, slotH);
-    xx += slotW + gapX;
-  }
-
-  return row;
+  return { w, h };
 }
 
 /**
- * ✅ GRILLA PRO (para CHICA): alineados perfectos (3x2)
+ * ✅ Dibuja el STRIP de medios (una sola imagen), centrado y prolijo.
+ * - si es muy ancho, se ajusta por alto.
  */
-function drawPayLogosGrid(doc, x, y, w, logosMeta, cfg) {
-  const items = (logosMeta || []).filter((it) => it?.png && it?.aspect);
-  if (!items.length) return;
-
-  const rows = cfg.payGridRows ?? 2;
-  const cols = cfg.payGridCols ?? 3;
-
-  const gapX = cfg.payGridGapX ?? 3.2;
-  const gapY = cfg.payGridGapY ?? 1.8;
-
-  const slotW = cfg.payGridSlotW;
-  const slotH = cfg.payGridSlotH;
-
-  const rowW = cols * slotW + (cols - 1) * gapX;
-  const startX = x + Math.max(0, (w - rowW) / 2);
-
-  let idx = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (idx >= items.length) return;
-
-      const it = items[idx++];
-      const isCredito = it.key === "credito_sj";
-      const mult = isCredito ? (cfg.creditoBoost || 1.0) : 1.0;
-
-      const innerW = Math.min(slotW, slotW * mult);
-      const innerH = Math.min(slotH, slotH * mult);
-
-      const sx = startX + c * (slotW + gapX);
-      const sy = y + r * (slotH + gapY);
-
-      const ix = sx + (slotW - innerW) / 2;
-      const iy = sy + (slotH - innerH) / 2;
-
-      drawLogoContain(doc, it.png, it.aspect, ix, iy, innerW, innerH);
-    }
-  }
+function drawPayStrip(doc, meta, x, y, w, h) {
+  if (!meta?.png || !meta?.aspect) return;
+  drawLogoContain(doc, meta.png, meta.aspect, x, y, w, h);
 }
 
 function drawHeader(doc, { x, y, w, headerH, pad }, data) {
@@ -471,8 +413,8 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   const xL = x + pad;
   const contentTop = y + data.headerH + pad * 0.62;
 
-  // ✅ footer block fijo (Medios) - 2 filas
-  const footerBlockTop = y + h - pad - data.footerReserveH;
+  // ✅ reservamos footer (para que nunca tape precio)
+  const footerTop = y + h - pad - data.footerReserveH;
 
   const xQR = x + w - pad - qrSize;
   const leftW = w - pad * 2 - qrSize - data.qrGap;
@@ -499,7 +441,7 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     yTop += data.gapAfterBrand;
   }
 
-  // ✅ Precio lista tachado + %OFF (MÁS GRANDE)
+  // Old price + badge verde
   if (data.priceList > 0 && data.hasDiscount) {
     const oldTop = yTop;
 
@@ -507,16 +449,20 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     doc.setFontSize(data.fsOld);
 
     const oldTxt = money(data.priceList);
-    drawTextAtTop(doc, oldTxt, xL, oldTop, data.fsOld, "bold", [65, 65, 65]);
+    drawTextAtTop(doc, oldTxt, xL, oldTop, data.fsOld, "bold", [120, 120, 120]);
 
     const ww = doc.getTextWidth(oldTxt);
     const strikeY = oldTop + baselineFromTop(data.fsOld) - ptToMm(data.fsOld) * 0.28;
-    doc.setDrawColor(80);
-    doc.setLineWidth(0.52);
+    doc.setDrawColor(140);
+    doc.setLineWidth(0.60);
     doc.line(xL, strikeY, xL + ww, strikeY);
 
     if (data.offPct > 0) {
-      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 10, oldTop, data.fsOld, "bold", [0, 0, 0]);
+      drawOffBadge(doc, `${data.offPct}% OFF`, xL + ww + 8.5, oldTop - 0.6, Math.max(11.5, data.fsOld - 3.0), {
+        bg: data.mlGreen,
+        padX: 3.4,
+        radius: 2.4,
+      });
     }
 
     yTop += lineH(data.fsOld, 1.08) + data.gapAfterOld;
@@ -524,7 +470,7 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     yTop += data.gapAfterOld;
   }
 
-  // Precio final auto-fit (garantiza cuotas si aplican)
+  // Precio final auto-fit (sin invadir footer)
   const priceText = money(data.finalPrice);
   let fsP = data.fsPriceMax;
 
@@ -539,7 +485,7 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   while (fsP >= data.fsPriceMin) {
     const priceH = lineH(fsP, 1.02);
     const needed = priceH + data.gapAfterPrice + needInstall;
-    const available = footerBlockTop - data.minGapBeforeFooter - yTop;
+    const available = footerTop - data.minGapBeforeFooter - yTop;
     if (available >= needed && !tooWide(fsP)) break;
     fsP -= 1;
   }
@@ -548,33 +494,13 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   yTop += lineH(fsP, 1.03) + data.gapAfterPrice;
 
   if (data.installment) {
-    drawTextAtTop(
-      doc,
-      `${data.installment.label}: ${money(data.installment.amount)}`,
-      xL,
-      yTop,
-      data.fsInstall,
-      "bold",
-      [0, 0, 0]
-    );
+    drawTextAtTop(doc, `${data.installment.label}: ${money(data.installment.amount)}`, xL, yTop, data.fsInstall, "bold", [0, 0, 0]);
   }
 
-  // ===== Footer block (Medios + 2 filas) =====
-  const labelY = footerBlockTop + 6.2;
-  drawTextAtTop(doc, "Medios:", xL, labelY, data.fsFooter1, "bold", [0, 0, 0]);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(data.fsFooter1);
-  const labelW = doc.getTextWidth("Medios:");
-  const logosX = xL + labelW + 10;
-
-  const logosYTop = labelY + lineH(data.fsFooter1, 1.0) + 1.6;
-  const logosMaxW = w - pad * 2 - (logosX - xL);
-
-  // ✅ logos GRANDES y WRAP 2 filas
-  drawPayLogosWrappedRows(doc, logosX, logosYTop, logosMaxW, data.payLogosMeta || [], data);
-
-  // ✅ URL QUITADA (como pediste) -> NO dibujamos nada abajo
+  // ✅ STRIP MEDIOS (una línea) — dentro de leftW, centrado
+  const stripH = data.payStripH;
+  const stripY = y + h - pad - stripH; // pegado abajo
+  drawPayStrip(doc, data.payStripMeta, xL, stripY, leftW, stripH);
 }
 
 /* =========================
@@ -595,7 +521,9 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
 
   if (data.qrDataUrl) doc.addImage(data.qrDataUrl, "PNG", xQR, contentTop, qrSize, qrSize);
 
-  const footerTopY = y + h - pad - data.footerFixedH;
+  // ✅ footer fijo para strip
+  const stripH = data.payStripH;
+  const footerTopY = y + h - pad - stripH;
   const contentMaxY = footerTopY - data.safeGapBeforeFooter;
 
   let yTop = contentTop + data.topPad;
@@ -649,15 +577,19 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
       doc.setFontSize(data.fsOld);
 
       const oldTxt = money(data.priceList);
-      drawTextAtTop(doc, oldTxt, xL, oldY, data.fsOld, "bold", [70, 70, 70]);
+      drawTextAtTop(doc, oldTxt, xL, oldY, data.fsOld, "bold", [120, 120, 120]);
 
       const ww = doc.getTextWidth(oldTxt);
       const strikeY = oldY + baselineFromTop(data.fsOld) - ptToMm(data.fsOld) * 0.28;
-      doc.setDrawColor(90);
+      doc.setDrawColor(140);
       doc.setLineWidth(0.28);
       doc.line(xL, strikeY, xL + ww, strikeY);
 
-      drawTextAtTop(doc, `${data.offPct}% OFF`, xL + ww + 4.0, oldY, data.fsOld, "bold", [0, 0, 0]);
+      drawOffBadge(doc, `${data.offPct}% OFF`, xL + ww + 3.2, oldY - 0.4, 7.6, {
+        bg: data.mlGreen,
+        padX: 2.2,
+        radius: 1.8,
+      });
     }
   }
 
@@ -665,23 +597,11 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
 
   if (data.installment) {
     const yInst = yPriceTop + priceH + data.gapAfterPrice;
-    drawTextAtTop(
-      doc,
-      `${data.installment.label}: ${money(data.installment.amount)}`,
-      xL,
-      yInst,
-      data.fsInstall,
-      "bold",
-      [0, 0, 0]
-    );
+    drawTextAtTop(doc, `${data.installment.label}: ${money(data.installment.amount)}`, xL, yInst, data.fsInstall, "bold", [0, 0, 0]);
   }
 
-  // Footer (solo logos)
-  const logosX = xL;
-  const logosW = w - pad * 2;
-  const logosY = footerTopY + data.footerPadTop;
-
-  drawPayLogosGrid(doc, logosX, logosY, logosW, data.payLogosMeta || [], data);
+  // ✅ STRIP medios abajo (centrado) dentro de leftW
+  drawPayStrip(doc, data.payStripMeta, xL, footerTopY, leftW, stripH);
 }
 
 /* =========================
@@ -711,12 +631,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
   const branchTxt = resolveBranchName(branchName);
 
   const storeLogo = await loadPngWithMeta(STORE_LOGO_URL);
-
-  const payLogosMeta = [];
-  for (const it of PAY_LOGOS) {
-    const meta = await loadPngWithMeta(it.url);
-    if (meta?.png) payLogosMeta.push({ ...meta, key: it.key });
-  }
+  const payStripMeta = await loadPngWithMeta(PAY_STRIP_URL);
 
   const totalCopies = Math.max(1, Number(copies || 1));
   const is58 = String(size) === "58";
@@ -734,7 +649,8 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     const data = {
       branchName: branchTxt,
       storeLogo,
-      payLogosMeta,
+      payStripMeta,
+      mlGreen: [0, 166, 80],
 
       headerH: 25.5,
       fsBranch: 14.2,
@@ -758,7 +674,6 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       fsName: 22.0,
       fsBrandModel: 14.0,
 
-      // ✅ MÁS GRANDE el tachado
       fsOld: 16.0,
 
       fsPriceMax: 56.0,
@@ -772,22 +687,13 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       gapAfterOld: 4.6,
       gapAfterPrice: 3.2,
       gapAfterInstall: 2.6,
-      minGapBeforeFooter: 5.2,
+      minGapBeforeFooter: 6.8,
 
-      fsFooter1: 14.2,
-      fsFooter2: 10.6,
+      // ✅ strip abajo (altura del recurso en la etiqueta)
+      payStripH: 18.5,
 
-      // ✅ LOGOS MUCHO MÁS GRANDES
-      payLogoH: 17.5,
-      paySlotW: 44.0,
-      payLogoGap: 8.0,
-      creditoBoost: 1.35,
-      payRowH: 20.0,
-      payMaxRows: 2,
-      payRowGapY: 3.4,
-
-      // ✅ footer más alto (2 filas grandes)
-      footerReserveH: 44.0,
+      // ✅ footer reservado (que incluya el strip)
+      footerReserveH: 46.0,
 
       qrGap: 8.5,
     };
@@ -815,7 +721,8 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
   const data58 = {
     branchName: branchTxt,
     storeLogo,
-    payLogosMeta,
+    payStripMeta,
+    mlGreen: [0, 166, 80],
 
     headerH: 13.0,
     fsBranch: 9.2,
@@ -852,17 +759,11 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     gapAfterPrice: 1.2,
     gapAfterInstall: 1.0,
 
-    footerFixedH: 19.8,
-    footerPadTop: 1.4,
-    safeGapBeforeFooter: 4.0,
+    // ✅ strip abajo: altura chica
+    payStripH: 9.2,
 
-    payGridRows: 2,
-    payGridCols: 3,
-    payGridGapX: 3.2,
-    payGridGapY: 1.8,
-    payGridSlotW: 18.8,
-    payGridSlotH: 7.9,
-    creditoBoost: 1.12,
+    // ✅ espacio seguro antes del strip
+    safeGapBeforeFooter: 4.0,
 
     qrGap: 4.0,
   };
