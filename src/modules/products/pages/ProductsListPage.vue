@@ -1,14 +1,16 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
-
-
-
+<!-- FIX:
+  ✅ Quita columna "Creación" (creador/fecha)
+  ✅ Acciones: 1 SOLO ícono (menú ⋮) que contiene Ver / Editar / Inactivar o Eliminar
+  ✅ Mantiene anti-desborde: wrap con scroll + truncados
+-->
 
 <template>
-  <div>
+  <div class="plp">
     <!-- HEADER -->
     <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
-      <div>
+      <div class="minw-0">
         <div class="text-h5 font-weight-bold">Productos</div>
         <div class="text-caption text-medium-emphasis">
           Mostrando {{ pagedRows.length }} de {{ filteredAll.length }} · Página {{ page }}/{{ pages }}
@@ -169,91 +171,102 @@
       </v-row>
     </v-card>
 
-    <!-- TABLA -->
-    <v-card rounded="xl" class="overflow-hidden">
-      <v-data-table
-        :headers="headers"
-        :items="pagedRows"
-        item-key="id"
-        show-select
-        v-model:selected="selectedIds"
-        :loading="loadingAll || products.loading"
-        class="pos-table"
-      >
-        <!-- Nombre + estado inactivo -->
-        <template #item.name="{ item }">
-          <div class="font-weight-bold d-flex align-center minw-0" :style="isInactive(item) ? 'opacity:.55' : ''">
-            <span class="text-truncate">{{ item.name }}</span>
-            <v-chip v-if="isInactive(item)" class="ml-2" size="x-small" color="grey" variant="tonal">
-              Inactivo
-            </v-chip>
-          </div>
-        </template>
-
-        <!-- ✅ mostramos sucursal dueña (products.branch_id) SOLO COMO INFO -->
-        <template v-if="isAdmin" #item.branch="{ item }">
-          <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
-            {{ branchName(item.branch_id) }}
-          </v-chip>
-        </template>
-
-        <template #item.rubro="{ item }">
-          <span class="text-truncate d-inline-block" style="max-width: 260px">
-            {{ cleanTrail(item.rubro) || "—" }}
-          </span>
-        </template>
-
-        <template #item.subrubro="{ item }">
-          <span class="text-truncate d-inline-block" style="max-width: 260px">
-            {{ cleanTrail(item.subrubro) || "—" }}
-          </span>
-        </template>
-
-        <!-- ✅ CREACIÓN COMPACTA -->
-        <template #item.created="{ item }">
-          <div class="created-compact">
-            <span class="created-user">{{ creatorLabel(item) || "—" }}</span>
-            <span class="created-sep">·</span>
-            <span class="created-date">
-              {{ fmtDateTimeShort(item?.created_at || item?.createdAt || item?.created_on || item?.createdOn) || "—" }}
-            </span>
-          </div>
-        </template>
-
-        <!-- ✅ ACCIONES -->
-        <template #item.actions="{ item }">
-          <div class="d-flex justify-end ga-1">
-            <!-- ✅ VER -->
-            <v-btn icon="mdi-eye-outline" variant="text" @click="openView(item.id)" />
-            <v-btn icon="mdi-pencil-outline" variant="text" @click="openEdit(item.id)" />
-
-            <v-btn
-              v-if="!isAdmin"
-              icon="mdi-eye-off-outline"
-              variant="text"
-              @click="askDisable(item)"
-              :title="'Inactivar'"
-            />
-            <v-btn
-              v-else
-              icon="mdi-delete-outline"
-              variant="text"
-              color="red"
-              @click="askDelete(item)"
-              :title="'Eliminar'"
-            />
-          </div>
-        </template>
-
-        <template #bottom>
-          <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
-            <div class="text-caption text-medium-emphasis">
-              Mostrando {{ pagedRows.length }} de {{ filteredAll.length }}
+    <!-- TABLA (wrap con scroll) -->
+    <v-card rounded="xl" class="plp-table-card">
+      <div class="plp-table-wrap">
+        <v-data-table
+          :headers="headers"
+          :items="pagedRows"
+          item-key="id"
+          show-select
+          v-model:selected="selectedIds"
+          :loading="loadingAll || products.loading"
+          class="pos-table plp-table"
+          fixed-header
+          height="560"
+        >
+          <!-- Nombre + estado inactivo -->
+          <template #item.name="{ item }">
+            <div class="name-cell" :style="isInactive(item) ? 'opacity:.55' : ''">
+              <span class="text-truncate name-text" :title="item.name">{{ item.name }}</span>
+              <v-chip v-if="isInactive(item)" class="ml-2" size="x-small" color="grey" variant="tonal">
+                Inactivo
+              </v-chip>
             </div>
-            <v-pagination v-model="page" :length="pages" :total-visible="7" />
-          </div>
-        </template>
-      </v-data-table>
+          </template>
+
+          <!-- ✅ sucursal dueña (admin) -->
+          <template v-if="isAdmin" #item.branch="{ item }">
+            <div class="cell-truncate">
+              <v-chip size="small" variant="tonal" :color="branchColor(item.branch_id)">
+                {{ branchName(item.branch_id) }}
+              </v-chip>
+            </div>
+          </template>
+
+          <template #item.rubro="{ item }">
+            <div class="cell-truncate" :title="cleanTrail(item.rubro) || '—'">
+              {{ cleanTrail(item.rubro) || "—" }}
+            </div>
+          </template>
+
+          <template #item.subrubro="{ item }">
+            <div class="cell-truncate" :title="cleanTrail(item.subrubro) || '—'">
+              {{ cleanTrail(item.subrubro) || "—" }}
+            </div>
+          </template>
+
+          <!-- ✅ ACCIONES: 1 ícono (menú) -->
+          <template #item.actions="{ item }">
+            <div class="actions-cell">
+              <v-menu location="bottom end" :close-on-content-click="true">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-dots-vertical"
+                    variant="text"
+                    class="act-btn"
+                    :title="'Acciones'"
+                  />
+                </template>
+
+                <v-list density="comfortable" min-width="210">
+                  <v-list-item @click="openView(item.id)">
+                    <template #prepend><v-icon size="18">mdi-eye-outline</v-icon></template>
+                    <v-list-item-title>Ver</v-list-item-title>
+                  </v-list-item>
+
+                  <v-list-item @click="openEdit(item.id)">
+                    <template #prepend><v-icon size="18">mdi-pencil-outline</v-icon></template>
+                    <v-list-item-title>Editar</v-list-item-title>
+                  </v-list-item>
+
+                  <v-divider />
+
+                  <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                    <template #prepend><v-icon size="18">mdi-eye-off-outline</v-icon></template>
+                    <v-list-item-title>Inactivar</v-list-item-title>
+                  </v-list-item>
+
+                  <v-list-item v-else @click="askDelete(item)">
+                    <template #prepend><v-icon size="18" color="red">mdi-delete-outline</v-icon></template>
+                    <v-list-item-title class="text-red">Eliminar</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+
+          <template #bottom>
+            <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
+              <div class="text-caption text-medium-emphasis">
+                Mostrando {{ pagedRows.length }} de {{ filteredAll.length }}
+              </div>
+              <v-pagination v-model="page" :length="pages" :total-visible="7" />
+            </div>
+          </template>
+        </v-data-table>
+      </div>
     </v-card>
 
     <!-- FORM -->
@@ -302,9 +315,6 @@
     </v-snackbar>
   </div>
 </template>
-
-
-
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
@@ -410,53 +420,6 @@ function cleanTrail(s) {
 }
 function isInactive(it) {
   return it?.is_active === false || Number(it?.is_active) === 0;
-}
-function fmtDateTimeShort(v) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
-}
-
-function creatorLabel(it) {
-  const x =
-    it?.created_by_user ||
-    it?.createdByUser ||
-    it?.created_by ||
-    it?.createdBy ||
-    it?.creator ||
-    it?.user ||
-    null;
-
-  if (x && typeof x === "object") {
-    return (
-      x.username ||
-      x.email ||
-      [x.first_name, x.last_name].filter(Boolean).join(" ") ||
-      x.name ||
-      x.id ||
-      ""
-    );
-  }
-
-  if (typeof x === "string" && x.trim()) return x.trim();
-  if (typeof x === "number" && x > 0) return `User #${x}`;
-
-  const alt =
-    it?.created_by_name ||
-    it?.createdByName ||
-    it?.created_by_email ||
-    it?.createdByEmail ||
-    it?.created_by_username ||
-    it?.createdByUsername ||
-    null;
-
-  return alt ? String(alt) : "";
 }
 
 function pickStr(...vals) {
@@ -613,13 +576,6 @@ const hasActiveFilters = computed(() => {
   );
 });
 
-/**
- * ✅ Carga lista:
- * - Si NO hay filtros => trae 1000 (rápido)
- * - Si HAY filtros => pagina y acumula TODO (cap seguro)
- * - branch_id se usa para stock por sucursal
- * - category_id / subcategory_id se mandan “si el backend los soporta”
- */
 async function loadAll() {
   if (!auth.isAuthed) return;
   if (loadingAll.value) return;
@@ -648,19 +604,17 @@ async function loadAll() {
 
     allItems.value = [];
 
-    // ✅ sin filtros => rápido
     if (!hasActiveFilters.value) {
       await products.fetchList({ q: "", page: 1, limit: 1000, branch_id: bid });
       allItems.value = Array.isArray(products.items) ? products.items : [];
       return;
     }
 
-    // ✅ con filtros => trae TODO paginado
     const LIMIT = 200;
     let p = 1;
     let pagesServer = 1;
 
-    const MAX_PAGES = 80; // 80*200 = 16k
+    const MAX_PAGES = 80;
     const MAX_ITEMS = 16000;
 
     do {
@@ -728,7 +682,7 @@ const subcategoryItems = computed(() => {
   const pid = categoryId.value ? Number(categoryId.value) : 0;
   if (!pid) return out;
 
-  const map = new Map(); // key -> { id?, name }
+  const map = new Map();
   for (const it of normalized.value) {
     if (Number(it?.rubro_id || 0) !== pid) continue;
 
@@ -774,9 +728,7 @@ const filteredAll = computed(() => {
   return normalized.value.filter((it) => {
     if (isInactive(it)) return false;
 
-    // ✅ busca en múltiples campos
     if (qq && !matchText(it, qq)) return false;
-
     if (pid && Number(it?.rubro_id || 0) !== pid) return false;
 
     if (subId && Number(it?.subrubro_id || 0) !== subId) return false;
@@ -831,17 +783,16 @@ watch(
 ========================= */
 const headers = computed(() => {
   const base = [
-    { title: "Nombre", key: "name", sortable: false },
-    { title: "Rubro", key: "rubro", sortable: false },
-    { title: "Subrubro", key: "subrubro", sortable: false },
-    { title: "Creación", key: "created", sortable: false },
-    { title: "", key: "actions", sortable: false, align: "end" },
+    { title: "Nombre", key: "name", sortable: false, width: 420 },
+    { title: "Rubro", key: "rubro", sortable: false, width: 240 },
+    { title: "Subrubro", key: "subrubro", sortable: false, width: 240 },
+    { title: "", key: "actions", sortable: false, align: "end", width: 96 },
   ];
 
   if (!isAdmin.value) return base;
 
   const out = [...base];
-  out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false });
+  out.splice(1, 0, { title: "Sucursal dueña", key: "branch", sortable: false, width: 200 });
   return out;
 });
 
@@ -917,12 +868,6 @@ async function clearFilters() {
   imagesFilter.value = "all";
   selectedIds.value = [];
   page.value = 1;
-  await reload();
-}
-
-async function onBranchChange() {
-  page.value = 1;
-  selectedIds.value = [];
   await reload();
 }
 
@@ -1044,36 +989,70 @@ watch(
 );
 </script>
 
-
-
 <style scoped>
+.plp {
+  min-width: 0;
+}
+
+.plp-table-card {
+  overflow: hidden;
+}
+
+.plp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ✅ fuerza scroll en pantallas chicas en vez de romper */
+.plp-table {
+  min-width: 900px;
+}
+
 .pos-table :deep(th) {
-  font-weight: 800;
-}
-
-/* ✅ evita que "Creación" rompa a 2 líneas */
-.created-compact {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  font-weight: 900;
   white-space: nowrap;
-  max-width: 360px;
 }
 
-.created-user {
-  font-size: 12px;
-  opacity: 0.9;
-  max-width: 160px;
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.created-sep {
-  opacity: 0.5;
+.cell-truncate {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.created-date {
-  font-size: 12px;
-  opacity: 0.9;
+/* ✅ acciones: 1 botón */
+.actions-cell {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 44px;
+}
+.act-btn {
+  width: 34px;
+  height: 34px;
+}
+
+@media (max-width: 520px) {
+  .plp-table {
+    min-width: 840px;
+  }
+  .act-btn {
+    width: 32px;
+    height: 32px;
+  }
 }
 </style>
