@@ -2,12 +2,9 @@
 // src/app/store/products.store.js
 //
 // FIX REAL (server-side products):
-// - fetchList(params) acepta filtros reales (category_id, subcategory_id, stock, images, price_min/max, etc.)
-// - Normaliza params: NO manda null/""/undefined
-// - Unwrap robusto (soporta {ok,data,meta} y variantes)
-// - Mantiene fallback /products -> /admin/products SOLO whitelist
-// - ✅ NO fallback para /products/:id/images (porque /admin/products/:id/images NO existe => 404 spam)
-// - fetchImages: si 403/404 => [] SIN setError (para que POS no se rompa)
+// - ✅ DETECTA RESPUESTA HTML / STRING (proxy mal / index.html) => muestra error (antes quedaba “0 sin errores”)
+// - Si backend responde ok:false con 200 => muestra error
+// - Mantiene unwrap robusto + compactParams + fallback whitelist
 // - Evita /api/v1 duplicado (axios ya usa baseURL="/api/v1")
 
 import { defineStore } from "pinia";
@@ -46,23 +43,17 @@ function compactParams(obj) {
 function unwrapListSmart(payload) {
   const p = payload;
 
-  // ya es array
   if (Array.isArray(p)) return p;
 
-  // { ok, data:[...] }
   if (p && Array.isArray(p.data)) return p.data;
 
-  // { items:[...] } / { rows:[...] }
   if (p && Array.isArray(p.items)) return p.items;
   if (p && Array.isArray(p.rows)) return p.rows;
 
-  // { ok, data:{ data:[...] } }
   if (p && p.data && Array.isArray(p.data.data)) return p.data.data;
 
-  // { data:{ items:[...] } }
   if (p && p.data && Array.isArray(p.data.items)) return p.data.items;
 
-  // { result:[...] }
   if (p && Array.isArray(p.result)) return p.result;
 
   return [];
@@ -72,19 +63,12 @@ function unwrapMetaSmart(payload) {
   const p = payload;
   if (!p) return {};
 
-  // { meta }
   if (p.meta && typeof p.meta === "object") return p.meta;
-
-  // { pagination }
   if (p.pagination && typeof p.pagination === "object") return p.pagination;
 
-  // { data:{ meta } }
   if (p.data && p.data.meta && typeof p.data.meta === "object") return p.data.meta;
-
-  // { data:{ pagination } }
   if (p.data && p.data.pagination && typeof p.data.pagination === "object") return p.data.pagination;
 
-  // algunas APIs: { page,total,pages,limit } al root
   const hasAny =
     Object.prototype.hasOwnProperty.call(p, "total") ||
     Object.prototype.hasOwnProperty.call(p, "pages") ||
@@ -101,7 +85,6 @@ function unwrapOne(res) {
 
   const v = res.data ?? res.item ?? res.product ?? res.user ?? res.result ?? null;
 
-  // { ok:true, data:{ data:{...} } }
   if (v && typeof v === "object" && !Array.isArray(v) && v.data && typeof v.data === "object") {
     return v.data;
   }
@@ -134,11 +117,20 @@ function pickHttpError(e) {
   return { status, data };
 }
 
+// =======================
+// ✅ Detecta “HTML / index” (proxy mal)
+// =======================
+function looksLikeHtml(x) {
+  if (typeof x !== "string") return false;
+  const s = x.trim().slice(0, 200).toLowerCase();
+  return s.startsWith("<!doctype") || s.startsWith("<html") || s.includes("<head") || s.includes("<body");
+}
+function mustBeJsonObjectOrArray(data) {
+  return Array.isArray(data) || isPlainObject(data);
+}
+
 /* =========================================
    ✅ FALLBACK /products -> /admin/products (WHITELIST)
-   - Solo para endpoints de PRODUCTS "core"
-   - ✅ NO aplica para /products/:id/images (porque admin route no existe)
-   - ✅ NO aplica para /products/:id/stock, /branches, etc.
 ========================================= */
 function statusOf(e) {
   return Number(e?.response?.status || 0);
@@ -159,14 +151,14 @@ function canFallbackPath(path) {
   if (!p.startsWith("/products")) return false;
   if (p.startsWith("/admin/products")) return false;
 
-  // ❌ NUNCA fallback para imágenes (tu problema)
+  // ❌ NUNCA fallback para imágenes
   if (/^\/products\/\d+\/images(\/|$)/.test(p)) return false;
 
   // ❌ NO son "admin products" en tu backend
   if (/^\/products\/\d+\/stock(\/|$)/.test(p)) return false;
   if (/^\/products\/\d+\/branches(\/|$)/.test(p)) return false;
 
-  // ✅ whitelist:
+  // ✅ whitelist
   if (p === "/products") return true;
   if (p === "/products/next-code") return true;
   if (/^\/products\/\d+$/.test(p)) return true;
@@ -180,13 +172,12 @@ async function req(method, path, ...args) {
   } catch (e) {
     const p = String(path || "");
 
-    // ✅ fallback SOLO si está permitido
     if (canFallbackPath(p) && (is404(e) || is403(e))) {
       const adminPath = toAdminProductsPath(p);
       try {
         return await http[method](adminPath, ...args);
       } catch {
-        throw e; // volvemos al original
+        throw e;
       }
     }
     throw e;
@@ -318,6 +309,9 @@ export const useProductsStore = defineStore("products", {
       this.error = null;
       try {
         const { data } = await req("get", "/products/next-code");
+        if (!mustBeJsonObjectOrArray(data) && !looksLikeHtml(data)) return null;
+        if (looksLikeHtml(data)) return null;
+
         const one = unwrapOne(data) || data?.data || data || null;
         const code = one?.code || null;
         this.nextCode = code;
@@ -331,10 +325,6 @@ export const useProductsStore = defineStore("products", {
 
     /**
      * ✅ LIST REAL (server-side)
-     * Acepta cualquier filtro y lo manda como querystring (compactado).
-     *
-     * Ej:
-     * fetchList({ q, page, limit, branch_id, category_id, subcategory_id, stock, images, price_min, price_max, price_presence })
      */
     async fetchList(paramsIn = {}) {
       this.loading = true;
@@ -345,11 +335,9 @@ export const useProductsStore = defineStore("products", {
       try {
         const p = isPlainObject(paramsIn) ? { ...paramsIn } : {};
 
-        // defaults
         const page = toInt(p.page, 1) || 1;
         const limit = Math.min(200, Math.max(1, toInt(p.limit, 20)));
 
-        // normalizaciones comunes
         if ("branch_id" in p) {
           const bid = toInt(p.branch_id, 0);
           p.branch_id = bid > 0 ? bid : null;
@@ -372,7 +360,6 @@ export const useProductsStore = defineStore("products", {
           p.price_max = Number.isFinite(n) ? n : null;
         }
 
-        // strings: stock/images/price_presence
         if ("stock" in p && p.stock != null) p.stock = String(p.stock).toLowerCase().trim();
         if ("images" in p && p.images != null) p.images = String(p.images).toLowerCase().trim();
         if ("price_presence" in p && p.price_presence != null) p.price_presence = String(p.price_presence).toLowerCase().trim();
@@ -384,7 +371,67 @@ export const useProductsStore = defineStore("products", {
 
         const { data } = await req("get", "/products", { params });
 
-        // ✅ parse robusto
+        // ✅ Debug mínimo (no rompe prod)
+        try {
+          const ct = http?.defaults?.headers?.common?.["Content-Type"];
+          console.log("[products.fetchList] params:", params, "contentTypeDefault:", ct, "respType:", typeof data);
+        } catch {}
+
+        // ✅ FIX: si vuelve HTML o string => PROXY MAL (antes quedaba vacío sin error)
+        if (looksLikeHtml(data) || (typeof data === "string" && !data.trim().startsWith("{") && !data.trim().startsWith("["))) {
+          this.items = [];
+          this.total = 0;
+          this.page = 1;
+          this.pages = 1;
+          this.meta = { page: 1, limit, total: 0, pages: 1 };
+
+          this.setError({
+            raw: {
+              code: "API_PROXY_HTML",
+              message:
+                "La API /api/v1/products está devolviendo HTML (index/proxy), no JSON. Revisá proxy/baseURL del frontend o el mount del backend.",
+              hint:
+                "Abrí Network -> /api/v1/products -> Response: si ves <!doctype html> es el problema. El backend no está recibiendo la ruta.",
+            },
+          });
+
+          // log snippet
+          try {
+            console.warn("[products.fetchList] HTML snippet:", String(data).slice(0, 200));
+          } catch {}
+
+          return null;
+        }
+
+        // ✅ si no es objeto/array => también error
+        if (!mustBeJsonObjectOrArray(data)) {
+          this.items = [];
+          this.total = 0;
+          this.page = 1;
+          this.pages = 1;
+          this.meta = { page: 1, limit, total: 0, pages: 1 };
+
+          this.setError({
+            raw: {
+              code: "API_BAD_RESPONSE",
+              message: "Respuesta inesperada de /products (no es JSON).",
+              gotType: typeof data,
+            },
+          });
+          return null;
+        }
+
+        // ✅ ok:false con HTTP 200 => mostrar error
+        if (data && data.ok === false) {
+          this.items = [];
+          this.total = 0;
+          this.page = 1;
+          this.pages = 1;
+          this.meta = { page: 1, limit, total: 0, pages: 1 };
+          this.setError({ raw: data });
+          return null;
+        }
+
         const list = unwrapListSmart(data);
         const meta = unwrapMetaSmart(data);
 
@@ -431,6 +478,14 @@ export const useProductsStore = defineStore("products", {
         if (bid > 0) params.branch_id = bid;
 
         const { data } = await req("get", `/products/${pid}`, { params });
+
+        if (looksLikeHtml(data)) {
+          this.setError({
+            raw: { code: "API_PROXY_HTML", message: "La API devolvió HTML en /products/:id (proxy/baseURL mal)." },
+          });
+          return null;
+        }
+
         const one = unwrapOne(data);
 
         this.current = one || null;

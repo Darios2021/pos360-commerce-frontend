@@ -1,13 +1,16 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/products/utils/labelPdfA4.js
 //
-// ✅ FIX DEFINITIVO MEDIOS DE PAGO:
-// - Se usa UN SOLO RECURSO "strip" con todos los medios en una línea
-// - Se elimina el grid de logos individuales (que se rompe por padding interno distinto)
-// - SIN "Medios:" y SIN URL
-// - Estilo ML: precio lista tachado + badge verde
-// - Cuotas por precio lista (100k-150k => 3x | >150k => 6x)
-// - 58: no se rompe
+// ✅ FIX (SUPERPOSICIÓN CUOTAS vs MEDIOS):
+// - En tamaño "100" (grande) se calcula dinámicamente la posición del STRIP de medios
+//   para que quede SIEMPRE debajo de:
+//   1) precio final
+//   2) cuotas (si aplica)
+// - Si hace falta, el strip baja (sin salirse del borde) y/o reduce un poco altura.
+// - Mantiene: ML style (tachado + badge verde), QR, logo, sucursal, sin URL, sin "Medios:"
+// - Cuotas por PRECIO LISTA:
+//    - 50.000 a 100.000  => 3x
+//    - > 100.000         => 6x
 
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
@@ -18,7 +21,6 @@ import QRCode from "qrcode";
 const STORE_LOGO_URL =
   "https://storage-files.cingulado.org/pos360/media/1770906123233-3976439306ab1686.webp";
 
-// ✅ NUEVO: strip único con TODOS los medios
 const PAY_STRIP_URL =
   "https://storage-files.cingulado.org/pos360/media/1772493744791-665f713788e427fd.webp";
 
@@ -87,11 +89,11 @@ function pickPrices(product) {
   return { priceList, finalPrice, hasDiscount, offPct };
 }
 
-// ✅ Cuotas según PRECIO LISTA (condiciones que pediste)
+// ✅ CUOTAS POR PRECIO LISTA
 function computeInstallments(priceList) {
   const pl = Math.round(n(priceList, 0));
-  if (pl >= 100000 && pl <= 150000) return { count: 3, amount: Math.round(pl / 3), label: "En 3x" };
-  if (pl > 150000) return { count: 6, amount: Math.round(pl / 6), label: "En 6x" };
+  if (pl >= 50000 && pl <= 100000) return { count: 3, amount: Math.round(pl / 3), label: "En 3x" };
+  if (pl > 100000) return { count: 6, amount: Math.round(pl / 6), label: "En 6x" };
   return null;
 }
 
@@ -215,7 +217,7 @@ function drawTextAtTop(doc, text, x, yTop, fontSize, fontStyle = "normal", color
 }
 
 /* =========================
-   WEBP -> PNG + aspect (con cache)
+   WEBP -> PNG + aspect (cache)
 ========================= */
 const _imgCache = new Map();
 async function loadPngWithMeta(url) {
@@ -285,8 +287,41 @@ function computeBig100Layout() {
 }
 
 /**
- * ✅ 58 MÁS GRANDE:
- * ~95×65mm — 2×3 por hoja A4 portrait (6 por hoja)
+ * ✅ NUEVO INTERMEDIO 80x55:
+ * A4 portrait, 2x4 = 8 etiquetas por hoja
+ */
+function computeGrid80Layout() {
+  const A4 = getA4Portrait();
+
+  const CELL_W = 80;
+  const CELL_H = 55;
+  const COLS = 2;
+  const ROWS = 4;
+  const GAP_X = 5;
+  const GAP_Y = 5;
+
+  const gridW = COLS * CELL_W + (COLS - 1) * GAP_X;
+  const gridH = ROWS * CELL_H + (ROWS - 1) * GAP_Y;
+
+  return {
+    page: A4,
+    cell: { w: CELL_W, h: CELL_H },
+    grid: {
+      cols: COLS,
+      rows: ROWS,
+      gapX: GAP_X,
+      gapY: GAP_Y,
+      marginL: Math.max(6, (A4.W - gridW) / 2),
+      marginT: Math.max(8, (A4.H - gridH) / 2),
+    },
+    pad: 3.6,
+    qr: 19.5,
+  };
+}
+
+/**
+ * ✅ 58 (95x65):
+ * A4 portrait, 2x3 = 6 etiquetas por hoja
  */
 function computeGrid58Layout() {
   const A4 = getA4Portrait();
@@ -337,9 +372,6 @@ function drawLogoContain(doc, png, aspect, x, y, slotW, slotH) {
   doc.addImage(png, "PNG", dx, dy, drawW, drawH);
 }
 
-/**
- * ✅ OFF badge estilo ML (verde)
- */
 function drawOffBadge(doc, text, x, yTop, fs, cfg = {}) {
   const padX = cfg.padX ?? 3.2;
   const r = cfg.radius ?? 2.2;
@@ -363,10 +395,6 @@ function drawOffBadge(doc, text, x, yTop, fs, cfg = {}) {
   return { w, h };
 }
 
-/**
- * ✅ Dibuja el STRIP de medios (una sola imagen), centrado y prolijo.
- * - si es muy ancho, se ajusta por alto.
- */
 function drawPayStrip(doc, meta, x, y, w, h) {
   if (!meta?.png || !meta?.aspect) return;
   drawLogoContain(doc, meta.png, meta.aspect, x, y, w, h);
@@ -401,7 +429,7 @@ function drawHeader(doc, { x, y, w, headerH, pad }, data) {
 }
 
 /* =========================
-   ✅ DRAW 100x60 (GRANDE)
+   ✅ DRAW 100x60 (GRANDE) - FIX cuotas vs medios
 ========================= */
 function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setDrawColor(220);
@@ -413,13 +441,17 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   const xL = x + pad;
   const contentTop = y + data.headerH + pad * 0.62;
 
-  // ✅ reservamos footer (para que nunca tape precio)
-  const footerTop = y + h - pad - data.footerReserveH;
-
   const xQR = x + w - pad - qrSize;
   const leftW = w - pad * 2 - qrSize - data.qrGap;
 
   if (data.qrDataUrl) doc.addImage(data.qrDataUrl, "PNG", xQR, contentTop, qrSize, qrSize);
+
+  // ✅ límites verticales
+  const bottomLimit = y + h - pad; // borde interno inferior
+  let stripH = data.payStripH; // altura deseada
+  const stripMinH = data.payStripMinH ?? 14.0;
+  const gapAfterInstall = data.gapAfterInstall ?? 2.6;
+  const gapBeforeStrip = data.gapBeforeStrip ?? 2.8;
 
   let yTop = contentTop + data.topPad;
 
@@ -428,7 +460,15 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setFontSize(data.fsName);
   const nameLines = doc.splitTextToSize(data.name, leftW).slice(0, 2);
   for (let i = 0; i < nameLines.length; i++) {
-    drawTextAtTop(doc, nameLines[i], xL, yTop + i * lineH(data.fsName, 1.10), data.fsName, "bold", [0, 0, 0]);
+    drawTextAtTop(
+      doc,
+      nameLines[i],
+      xL,
+      yTop + i * lineH(data.fsName, 1.10),
+      data.fsName,
+      "bold",
+      [0, 0, 0]
+    );
   }
   yTop += nameLines.length * lineH(data.fsName, 1.10) + data.gapAfterName;
 
@@ -441,7 +481,7 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     yTop += data.gapAfterBrand;
   }
 
-  // Old price + badge verde
+  // Old + badge
   if (data.priceList > 0 && data.hasDiscount) {
     const oldTop = yTop;
 
@@ -458,11 +498,14 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     doc.line(xL, strikeY, xL + ww, strikeY);
 
     if (data.offPct > 0) {
-      drawOffBadge(doc, `${data.offPct}% OFF`, xL + ww + 8.5, oldTop - 0.6, Math.max(11.5, data.fsOld - 3.0), {
-        bg: data.mlGreen,
-        padX: 3.4,
-        radius: 2.4,
-      });
+      drawOffBadge(
+        doc,
+        `${data.offPct}% OFF`,
+        xL + ww + 8.5,
+        oldTop - 0.6,
+        Math.max(11.5, data.fsOld - 3.0),
+        { bg: data.mlGreen, padX: 3.4, radius: 2.4 }
+      );
     }
 
     yTop += lineH(data.fsOld, 1.08) + data.gapAfterOld;
@@ -470,11 +513,13 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
     yTop += data.gapAfterOld;
   }
 
-  // Precio final auto-fit (sin invadir footer)
+  // ✅ Precio final con auto-fit (pero ahora reservando espacio REAL: strip + gap)
   const priceText = money(data.finalPrice);
   let fsP = data.fsPriceMax;
 
-  const needInstall = data.installment ? lineH(data.fsInstall, 1.06) + data.gapAfterInstall : 0;
+  const instH = data.installment ? lineH(data.fsInstall, 1.06) : 0;
+  const neededBelowPrice =
+    data.gapAfterPrice + (data.installment ? instH + gapAfterInstall : 0) + gapBeforeStrip + stripH;
 
   const tooWide = (fs) => {
     doc.setFont("helvetica", "bold");
@@ -484,29 +529,57 @@ function drawLabelBig(doc, { x, y, w, h, pad, qrSize }, data) {
 
   while (fsP >= data.fsPriceMin) {
     const priceH = lineH(fsP, 1.02);
-    const needed = priceH + data.gapAfterPrice + needInstall;
-    const available = footerTop - data.minGapBeforeFooter - yTop;
-    if (available >= needed && !tooWide(fsP)) break;
+    const available = bottomLimit - yTop;
+    if (available >= priceH + neededBelowPrice && !tooWide(fsP)) break;
     fsP -= 1;
   }
 
+  // Dibuja precio
   drawTextAtTop(doc, priceText, xL, yTop, fsP, "bold", [0, 0, 0]);
-  yTop += lineH(fsP, 1.03) + data.gapAfterPrice;
+  const yPriceTop = yTop;
+  const priceH = lineH(fsP, 1.03);
+  yTop += priceH + data.gapAfterPrice;
 
+  // Dibuja cuotas
+  let yAfterInstall = yTop;
   if (data.installment) {
-    drawTextAtTop(doc, `${data.installment.label}: ${money(data.installment.amount)}`, xL, yTop, data.fsInstall, "bold", [0, 0, 0]);
+    drawTextAtTop(
+      doc,
+      `${data.installment.label}: ${money(data.installment.amount)}`,
+      xL,
+      yTop,
+      data.fsInstall,
+      "bold",
+      [0, 0, 0]
+    );
+    yAfterInstall = yTop + instH + gapAfterInstall;
   }
 
-  // ✅ STRIP MEDIOS (una línea) — dentro de leftW, centrado
-  const stripH = data.payStripH;
-  const stripY = y + h - pad - stripH; // pegado abajo
-  drawPayStrip(doc, data.payStripMeta, xL, stripY, leftW, stripH);
+  // ✅ Posición dinámica del strip:
+  // - parte después de cuotas (o precio si no hay cuotas)
+  // - pero NUNCA se sale por abajo: si no entra, reduce altura hasta mínimo.
+  let stripTop = yAfterInstall + gapBeforeStrip;
+  let stripBottom = stripTop + stripH;
+
+  if (stripBottom > bottomLimit) {
+    // intentamos bajar no, porque ya está abajo; entonces reducimos altura
+    const maxH = Math.max(stripMinH, bottomLimit - stripTop);
+    stripH = Math.max(stripMinH, Math.min(stripH, maxH));
+    stripBottom = stripTop + stripH;
+
+    // si aun así no entra (caso extremo), forzamos stripTop para que entre
+    if (stripBottom > bottomLimit) {
+      stripTop = Math.max(yPriceTop + priceH + 1.0, bottomLimit - stripH);
+    }
+  }
+
+  drawPayStrip(doc, data.payStripMeta, xL, stripTop, leftW, stripH);
 }
 
 /* =========================
-   ✅ DRAW 58 (CHICA): SIN URL + SIN "Medios:"
+   ✅ DRAW COMPACT (GRID) - para 80 y 58
 ========================= */
-function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
+function drawLabelCompact(doc, { x, y, w, h, pad, qrSize }, data) {
   doc.setDrawColor(220);
   doc.setLineWidth(0.25);
   doc.rect(x, y, w, h);
@@ -521,7 +594,6 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
 
   if (data.qrDataUrl) doc.addImage(data.qrDataUrl, "PNG", xQR, contentTop, qrSize, qrSize);
 
-  // ✅ footer fijo para strip
   const stripH = data.payStripH;
   const footerTopY = y + h - pad - stripH;
   const contentMaxY = footerTopY - data.safeGapBeforeFooter;
@@ -585,10 +657,10 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
       doc.setLineWidth(0.28);
       doc.line(xL, strikeY, xL + ww, strikeY);
 
-      drawOffBadge(doc, `${data.offPct}% OFF`, xL + ww + 3.2, oldY - 0.4, 7.6, {
+      drawOffBadge(doc, `${data.offPct}% OFF`, xL + ww + 3.0, oldY - 0.35, data.fsOffBadge, {
         bg: data.mlGreen,
-        padX: 2.2,
-        radius: 1.8,
+        padX: data.offPadX,
+        radius: data.offRadius,
       });
     }
   }
@@ -600,7 +672,6 @@ function drawLabel58(doc, { x, y, w, h, pad, qrSize }, data) {
     drawTextAtTop(doc, `${data.installment.label}: ${money(data.installment.amount)}`, xL, yInst, data.fsInstall, "bold", [0, 0, 0]);
   }
 
-  // ✅ STRIP medios abajo (centrado) dentro de leftW
   drawPayStrip(doc, data.payStripMeta, xL, footerTopY, leftW, stripH);
 }
 
@@ -627,16 +698,18 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     scale: 7,
   });
 
-  const shortUrl = String(ecommerceUrl || "").replace(/^https?:\/\//, "");
   const branchTxt = resolveBranchName(branchName);
 
   const storeLogo = await loadPngWithMeta(STORE_LOGO_URL);
   const payStripMeta = await loadPngWithMeta(PAY_STRIP_URL);
 
   const totalCopies = Math.max(1, Number(copies || 1));
-  const is58 = String(size) === "58";
+  const mode = String(size || "100");
 
-  if (!is58) {
+  // =========================
+  // 100x60 GRANDE (1 por hoja)
+  // =========================
+  if (mode === "100") {
     const L = computeBig100Layout();
 
     const doc = new jsPDF({
@@ -669,11 +742,9 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       offPct,
       installment,
       qrDataUrl,
-      shortUrl,
 
       fsName: 22.0,
       fsBrandModel: 14.0,
-
       fsOld: 16.0,
 
       fsPriceMax: 56.0,
@@ -686,14 +757,13 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
       gapAfterBrand: 3.4,
       gapAfterOld: 4.6,
       gapAfterPrice: 3.2,
-      gapAfterInstall: 2.6,
-      minGapBeforeFooter: 6.8,
 
-      // ✅ strip abajo (altura del recurso en la etiqueta)
+      // ✅ gaps para evitar superposición
+      gapAfterInstall: 2.8,
+      gapBeforeStrip: 3.2,
+
       payStripH: 18.5,
-
-      // ✅ footer reservado (que incluya el strip)
-      footerReserveH: 46.0,
+      payStripMinH: 14.0,
 
       qrGap: 8.5,
     };
@@ -707,6 +777,96 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     return doc;
   }
 
+  // =========================
+  // 80x55 INTERMEDIA (8 por hoja)
+  // =========================
+  if (mode === "80") {
+    const G = computeGrid80Layout();
+    const capacity = G.grid.cols * G.grid.rows;
+    const pages = Math.ceil(totalCopies / capacity);
+
+    const doc = new jsPDF({
+      unit: "mm",
+      format: "a4",
+      orientation: G.page.orientation,
+      compress: true,
+    });
+
+    const data80 = {
+      branchName: branchTxt,
+      storeLogo,
+      payStripMeta,
+      mlGreen: [0, 166, 80],
+
+      headerH: 11.2,
+      fsBranch: 8.4,
+      headerTextDrop: 3.1,
+      storeLogoH: 8.8,
+      storeLogoWMax: 52.0,
+
+      name,
+      brand,
+      model,
+      sku,
+      code,
+      priceList,
+      finalPrice,
+      hasDiscount,
+      offPct,
+      installment,
+      qrDataUrl,
+
+      fsName: 12.4,
+      fsBrandModel: 9.1,
+      fsOld: 8.4,
+
+      fsOffBadge: 7.2,
+      offPadX: 2.0,
+      offRadius: 1.6,
+
+      fsPriceMax: 24.0,
+      fsPriceMin: 18.0,
+
+      fsInstall: 11.0,
+
+      topPad: 2.2,
+      gapAfterName: 1.1,
+      gapAfterBrand: 0.9,
+      gapAfterOld: 0.9,
+      gapAfterPrice: 1.0,
+      gapAfterInstall: 0.9,
+
+      payStripH: 8.2,
+      safeGapBeforeFooter: 3.2,
+
+      qrGap: 3.4,
+    };
+
+    let printed = 0;
+    for (let pg = 0; pg < pages; pg++) {
+      if (pg > 0) doc.addPage();
+
+      for (let r = 0; r < G.grid.rows; r++) {
+        for (let c = 0; c < G.grid.cols; c++) {
+          if (printed >= totalCopies) break;
+
+          const x = G.grid.marginL + c * (G.cell.w + G.grid.gapX);
+          const y = G.grid.marginT + r * (G.cell.h + G.grid.gapY);
+
+          drawLabelCompact(doc, { x, y, w: G.cell.w, h: G.cell.h, pad: G.pad, qrSize: G.qr }, data80);
+          printed++;
+        }
+        if (printed >= totalCopies) break;
+      }
+    }
+
+    doc.setProperties({ title: title || "Etiquetas A4 (80 intermedia)" });
+    return doc;
+  }
+
+  // =========================
+  // 58 (95x65) - 6 por hoja
+  // =========================
   const G = computeGrid58Layout();
   const capacity = G.grid.cols * G.grid.rows;
   const pages = Math.ceil(totalCopies / capacity);
@@ -741,14 +901,18 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     offPct,
     installment,
     qrDataUrl,
-    shortUrl,
 
     fsName: 14.2,
     fsBrandModel: 10.0,
     fsOld: 9.0,
 
+    fsOffBadge: 7.6,
+    offPadX: 2.2,
+    offRadius: 1.8,
+
     fsPriceMax: 30.0,
     fsPriceMin: 22.0,
+
     fsInstall: 13.4,
 
     topPad: 2.6,
@@ -759,10 +923,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
     gapAfterPrice: 1.2,
     gapAfterInstall: 1.0,
 
-    // ✅ strip abajo: altura chica
     payStripH: 9.2,
-
-    // ✅ espacio seguro antes del strip
     safeGapBeforeFooter: 4.0,
 
     qrGap: 4.0,
@@ -779,7 +940,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
         const x = G.grid.marginL + c * (G.cell.w + G.grid.gapX);
         const y = G.grid.marginT + r * (G.cell.h + G.grid.gapY);
 
-        drawLabel58(doc, { x, y, w: G.cell.w, h: G.cell.h, pad: G.pad, qrSize: G.qr }, data58);
+        drawLabelCompact(doc, { x, y, w: G.cell.w, h: G.cell.h, pad: G.pad, qrSize: G.qr }, data58);
         printed++;
       }
       if (printed >= totalCopies) break;
@@ -795,7 +956,7 @@ async function buildDocA4({ product, size, copies, qrValue, title, branchName } 
 ========================= */
 export async function downloadLabelPdfA4({
   product,
-  size = "100",
+  size = "100", // "100" | "80" | "58"
   copies = 1,
   qrValue = "",
   title = "",
@@ -808,14 +969,14 @@ export async function downloadLabelPdfA4({
     .slice(0, 40);
 
   const id = s(product?.id || product?.product_id || "");
-  const mode = String(size) === "58" ? "58_GRANDE" : "100x60_GRANDE";
+  const mode = String(size) === "58" ? "58_GRANDE" : String(size) === "80" ? "80_INTERMEDIA" : "100x60_GRANDE";
 
   doc.save(`Etiqueta_A4_${mode}_${id}_${nm}.pdf`);
 }
 
 export async function printLabelA4Pdf({
   product,
-  size = "100",
+  size = "100", // "100" | "80" | "58"
   copies = 1,
   qrValue = "",
   title = "",

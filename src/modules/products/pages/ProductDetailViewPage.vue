@@ -4,6 +4,7 @@
   - ✅ Se elimina ProductStockBlock (sin el bloque “Total / Sucursal / En sucursal”)
   - ✅ NO redundancia: se elimina la card de 3 botones
   - ✅ Etiqueta+Impresión en panel angosto centrado
+  - ✅ NUEVO: Botón 3ra medida (80×55) => size="80"
 -->
 
 <template>
@@ -118,6 +119,23 @@
           <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue">
             <template #actions="{ printEl }">
               <div class="mt-3">
+                <!-- ✅ Selector de medida (3 botones) -->
+                <div class="pd-sizebar">
+                  <div class="pd-sizebar-title">Impresión</div>
+
+                  <v-btn-toggle
+                    v-model="labelSize"
+                    mandatory
+                    density="comfortable"
+                    rounded="lg"
+                    class="pd-size-toggle"
+                  >
+                    <v-btn value="100" class="pd-size-btn">100×60</v-btn>
+                    <v-btn value="80" class="pd-size-btn">80×55</v-btn>
+                    <v-btn value="58" class="pd-size-btn">58×40</v-btn>
+                  </v-btn-toggle>
+                </div>
+
                 <ProductPrintActions
                   v-model="labelSize"
                   v-model:copies="copies"
@@ -162,7 +180,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -193,7 +210,7 @@ const error = ref("");
 const raw = ref(null);
 
 const printDlg = ref(false);
-const labelSize = ref("100");
+const labelSize = ref("100"); // "100" | "80" | "58"
 const copies = ref(8);
 const sheetEl = ref(null);
 
@@ -328,7 +345,6 @@ const productForUIFixed = computed(() => {
     price_discount: pickFirstNumber(r, ["price_discount"], price),
     price_reseller: pickFirstNumber(r, ["price_reseller"], price),
 
-    // útil si después querés mostrar “stock en otra sucursal”
     branches_matrix: branchesStock.value,
 
     stock_total,
@@ -391,7 +407,7 @@ async function downloadPdf() {
   if (!raw.value) return;
   await downloadLabelPdfA4({
     product: productForUIFixed.value,
-    size: labelSize.value,
+    size: labelSize.value, // ✅ ahora puede ser "80"
     copies: copies.value,
     qrValue: ui.value.qrValue,
     title: printTitle.value,
@@ -402,7 +418,6 @@ onMounted(fetchProduct);
 watch(productId, fetchProduct);
 watch(branchId, fetchProduct);
 </script>
-
 
 <style scoped>
 .pd {
@@ -468,6 +483,30 @@ watch(branchId, fetchProduct);
 .pd-print-panel {
   max-width: 420px;
   margin: 0 auto;
+}
+
+/* ✅ Selector de medida (3 botones) */
+.pd-sizebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pd-sizebar-title {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.pd-size-toggle {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pd-size-btn {
+  font-weight: 900;
+  letter-spacing: 0.2px;
 }
 
 /* Stock por sucursal (look) */
