@@ -135,6 +135,7 @@
       :total="checkoutTotal"
       :total-preview="checkoutTotalPreview"
       :cart="cartForCheckout"
+      :installments-items="installmentsItems12"
       v-model:paymentMethod="paymentMethod"
       v-model:installments="installments"
       v-model:applyReseller="applyReseller"
@@ -478,6 +479,14 @@ const { productImage, prefetchImagesForVisible } = usePosImages();
 const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMultiBranchCatalog({
   branchScope,
   isSellable,
+});
+
+/* ✅ cuotas: 1..12 */
+const installmentsItems12 = computed(() => {
+  const out = [];
+  out.push({ title: "1 pago", value: 1 });
+  for (let i = 2; i <= 12; i++) out.push({ title: `${i} cuotas`, value: i });
+  return out;
 });
 
 /* cart enrich */
