@@ -25,10 +25,17 @@
               <v-icon start size="16">mdi-credit-card-outline</v-icon>
               {{ state.installments }} cuotas de <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
             </v-chip>
+
+            <!-- ✅ chip de tipo tarjeta -->
+            <v-chip v-if="ui.showCardKindChip" size="small" variant="tonal" class="cod-chip cod-chip-soft">
+              <v-icon start size="16">{{ ui.cardKindIcon }}</v-icon>
+              {{ ui.cardKindLabel }}
+            </v-chip>
           </div>
 
           <div class="cod-sub text-caption text-medium-emphasis">
-            Elegí método y política: tarjeta en cuotas usa lista · revendedor pisa todo (si existe).
+            Política: efectivo/transfer/mp = descuento · tarjeta crédito cuotas = lista · débito siempre 1 pago · San Juan
+            Crédito (1–12) = lista · revendedor pisa todo (si existe).
           </div>
         </div>
 
@@ -60,7 +67,8 @@
               </div>
 
               <div class="text-caption text-medium-emphasis mt-1">
-                * Tarjeta: 1 pago = descuento · 2 a 6 cuotas = lista · Revendedor (si existe) pisa todo.
+                * Tarjeta: 1 pago = descuento · Crédito 2 a 6 cuotas = lista · Débito = 1 pago · San Juan Crédito: 1 a 12
+                cuotas = lista · Revendedor (si existe) pisa todo.
               </div>
 
               <v-divider class="my-4" />
@@ -92,11 +100,29 @@
                 >
                   <div class="ic"><v-icon>mdi-credit-card-outline</v-icon></div>
                   <div class="tx">
-                    <div class="t">Tarjeta / Débito</div>
-                    <div class="s">Cuotas usan lista</div>
+                    <div class="t">Tarjeta</div>
+                    <div class="s">Crédito cuotas = lista</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'CARD'">mdi-check-circle</v-icon>
+                    <v-icon v-else>mdi-circle-outline</v-icon>
+                  </div>
+                </button>
+
+                <!-- ✅ NUEVO: SAN JUAN CRÉDITO (front manda code credit_sjt) -->
+                <button
+                  type="button"
+                  class="cod-paycard"
+                  :class="{ active: state.paymentMethod === 'credit_sjt' }"
+                  @click="onPaymentMethodChange('credit_sjt')"
+                >
+                  <div class="ic"><v-icon>mdi-handshake-outline</v-icon></div>
+                  <div class="tx">
+                    <div class="t">San Juan Crédito</div>
+                    <div class="s">1 a 12 cuotas (lista)</div>
+                  </div>
+                  <div class="chk">
+                    <v-icon v-if="state.paymentMethod === 'credit_sjt'">mdi-check-circle</v-icon>
                     <v-icon v-else>mdi-circle-outline</v-icon>
                   </div>
                 </button>
@@ -118,11 +144,12 @@
                   </div>
                 </button>
 
+                <!-- ✅ MercadoPago como enum real (MERCADOPAGO) -->
                 <button
                   type="button"
                   class="cod-paycard"
-                  :class="{ active: state.paymentMethod === 'QR' }"
-                  @click="onPaymentMethodChange('QR')"
+                  :class="{ active: state.paymentMethod === 'MERCADOPAGO' }"
+                  @click="onPaymentMethodChange('MERCADOPAGO')"
                 >
                   <div class="ic"><v-icon>mdi-qrcode-scan</v-icon></div>
                   <div class="tx">
@@ -130,7 +157,7 @@
                     <div class="s">Usa descuento</div>
                   </div>
                   <div class="chk">
-                    <v-icon v-if="state.paymentMethod === 'QR'">mdi-check-circle</v-icon>
+                    <v-icon v-if="state.paymentMethod === 'MERCADOPAGO'">mdi-check-circle</v-icon>
                     <v-icon v-else>mdi-circle-outline</v-icon>
                   </div>
                 </button>
@@ -153,8 +180,27 @@
                   </div>
                 </v-col>
 
+                <!-- ✅ Card kind (solo si CARD y no reseller) -->
+                <v-col cols="12" md="6" v-if="ui.showCardKindSelect">
+                  <v-select
+                    v-model="state.cardKind"
+                    :items="cardKindItems"
+                    item-title="title"
+                    item-value="value"
+                    label="Tipo de tarjeta"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    class="cod-select"
+                    @update:modelValue="onCardKindChange"
+                  />
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    Débito siempre 1 pago. Crédito habilita cuotas.
+                  </div>
+                </v-col>
+
                 <!-- ✅ Cuotas: valor por cuota (LISTA) -->
-                <v-col cols="12" md="6" v-if="state.paymentMethod === 'CARD' && !state.applyReseller">
+                <v-col cols="12" md="6" v-if="ui.showInstallmentsSelect">
                   <v-select
                     v-model="state.installments"
                     :items="installmentsItemsSafe"
@@ -169,7 +215,7 @@
                   />
 
                   <div class="text-caption text-medium-emphasis mt-1">
-                    En cuotas se usa precio lista. Se calcula valor por cuota.
+                    {{ ui.installmentsHelp }}
                   </div>
 
                   <div v-if="Number(state.installments || 1) > 1" class="cod-installment-chip">
@@ -304,11 +350,14 @@ const props = defineProps({
   cart: { type: Array, default: () => [] },
 
   // ✅ v-models (para integrarlo con usePosCheckout/PosPage)
-  paymentMethod: { type: String, default: "CASH" },
+  paymentMethod: { type: String, default: "CASH" }, // CASH | CARD | TRANSFER | MERCADOPAGO | credit_sjt
   installments: { type: Number, default: 1 },
   installmentsItems: { type: Array, default: () => [] },
   applyReseller: { type: Boolean, default: false },
   cashInput: { type: String, default: "" },
+
+  // ✅ NUEVO: tipo tarjeta (solo CARD)
+  cardKind: { type: String, default: "CREDIT" }, // CREDIT | DEBIT
 });
 
 const emit = defineEmits([
@@ -317,6 +366,7 @@ const emit = defineEmits([
   "update:installments",
   "update:applyReseller",
   "update:cashInput",
+  "update:cardKind",
   "confirm",
   "cancel",
 ]);
@@ -339,6 +389,17 @@ function formatMiles(n) {
   if (!n) return "";
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Number(n));
 }
+function buildInstallments(maxN) {
+  const n = Math.max(1, Math.min(36, Number(maxN || 1)));
+  const out = [];
+  for (let i = 1; i <= n; i++) out.push({ title: i === 1 ? "1 pago" : `${i} cuotas`, value: i });
+  return out;
+}
+
+const cardKindItems = [
+  { title: "Crédito", value: "CREDIT" },
+  { title: "Débito", value: "DEBIT" },
+];
 
 /* state local */
 const state = reactive({
@@ -346,6 +407,7 @@ const state = reactive({
   installments: Number(props.installments || 1),
   applyReseller: !!props.applyReseller,
   cashDigits: toDigitsOnly(props.cashInput),
+  cardKind: String(props.cardKind || "CREDIT").toUpperCase() === "DEBIT" ? "DEBIT" : "CREDIT",
 });
 
 const openLocal = computed({
@@ -354,7 +416,7 @@ const openLocal = computed({
 });
 
 /* =========================
-   PRICES (simple: usa lo que venga en cart)
+   PRICES
    - unit usa reseller/list/discount/base según política
    - unitList para cuotas (lista)
 ========================= */
@@ -368,8 +430,16 @@ function pickPrice(it) {
   const base = toNum(x.price ?? x.unit_price ?? x.unitPrice);
 
   const isCard = state.paymentMethod === "CARD";
+  const isSj = state.paymentMethod === "credit_sjt";
+
   const inst = Number(state.installments || 1);
-  const isListMode = isCard && inst > 1 && !state.applyReseller;
+
+  const isDebit = isCard && state.cardKind === "DEBIT";
+
+  // ✅ lista aplica:
+  // - CARD: solo si CRÉDITO y cuotas > 1 (y no reseller)
+  // - SJCREDIT: SIEMPRE (y no reseller)
+  const isListMode = !state.applyReseller && ((isCard && !isDebit && inst > 1) || isSj);
 
   let unit = 0;
   if (state.applyReseller && reseller > 0) unit = reseller;
@@ -394,7 +464,7 @@ function itemImage(it) {
   if (!s) return "";
   if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, "https://");
   if (s.startsWith("//")) return `https:${s}`;
-  return s; // si te llega relativa, el v-img la va a pedir relativo (o la enriquecés en PosPage como ya hacés)
+  return s;
 }
 
 const cartUi = computed(() =>
@@ -419,7 +489,11 @@ const totalListSafe = computed(() => cartUi.value.reduce((a, it) => a + toNum(it
 
 const policyLabel = computed(() => {
   if (state.applyReseller) return "Revendedor";
-  if (state.paymentMethod === "CARD") return Number(state.installments || 1) > 1 ? "Lista" : "Descuento";
+  if (state.paymentMethod === "credit_sjt") return "Lista";
+  if (state.paymentMethod === "CARD") {
+    if (state.cardKind === "DEBIT") return "Descuento";
+    return Number(state.installments || 1) > 1 ? "Lista" : "Descuento";
+  }
   return "Descuento";
 });
 
@@ -428,25 +502,49 @@ const installmentsItemsSafe = computed(() => {
   const raw = Array.isArray(props.installmentsItems) ? props.installmentsItems : [];
   if (raw.length && typeof raw[0] === "object") return raw;
 
-  return [
-    { title: "1 pago", value: 1 },
-    { title: "2 cuotas", value: 2 },
-    { title: "3 cuotas", value: 3 },
-    { title: "4 cuotas", value: 4 },
-    { title: "5 cuotas", value: 5 },
-    { title: "6 cuotas", value: 6 },
-  ];
+  if (state.paymentMethod === "credit_sjt") return buildInstallments(12);
+  if (state.paymentMethod === "CARD") return state.cardKind === "DEBIT" ? buildInstallments(1) : buildInstallments(6);
+  return buildInstallments(1);
 });
 
 const ui = computed(() => {
   const isCash = state.paymentMethod === "CASH";
   const isCard = state.paymentMethod === "CARD";
-  const showInstallmentsChip = isCard && !state.applyReseller && Number(state.installments || 1) > 1;
+  const isSj = state.paymentMethod === "credit_sjt";
+  const isCardLike = isCard || isSj;
+
+  const isDebit = isCard && state.cardKind === "DEBIT";
+  const showCardKindSelect = isCard && !state.applyReseller;
+
+  const showInstallmentsSelect = isCardLike && !state.applyReseller && (!isCard || !isDebit);
+
+  const showInstallmentsChip =
+    isCardLike && !state.applyReseller && Number(state.installments || 1) > 1 && (!isCard || !isDebit);
 
   const k = Number(state.installments || 1);
   const perInstallmentList = k > 1 ? totalListSafe.value / k : 0;
 
-  return { isCash, showInstallmentsChip, perInstallmentList };
+  const installmentsHelp = isSj
+    ? "San Juan Crédito siempre usa precio lista y registra cuotas hasta 12."
+    : "En cuotas (crédito) se usa precio lista. Se calcula valor por cuota.";
+
+  const showCardKindChip = isCardLike && !state.applyReseller;
+  const cardKindLabel = isSj ? "Crédito" : isDebit ? "Débito" : "Crédito";
+  const cardKindIcon = isDebit ? "mdi-credit-card-chip-outline" : "mdi-credit-card-outline";
+
+  return {
+    isCash,
+    isCardLike,
+    isDebit,
+    showCardKindSelect,
+    showInstallmentsSelect,
+    showInstallmentsChip,
+    perInstallmentList,
+    installmentsHelp,
+    showCardKindChip,
+    cardKindLabel,
+    cardKindIcon,
+  };
 });
 
 /* cash */
@@ -472,6 +570,11 @@ function quickCash(v) {
 }
 
 /* actions */
+function normalizeCardKind(v) {
+  const k = String(v || "").toUpperCase();
+  return k === "DEBIT" ? "DEBIT" : "CREDIT";
+}
+
 function onPaymentMethodChange(v) {
   state.paymentMethod = v;
   emit("update:paymentMethod", v);
@@ -481,16 +584,63 @@ function onPaymentMethodChange(v) {
     emit("update:cashInput", "");
   }
 
-  // si pasa a NO card, limpiamos cuotas
-  if (v !== "CARD") {
+  // defaults
+  if (v === "CARD") {
+    // mantiene cardKind, pero asegura válido
+    state.cardKind = normalizeCardKind(state.cardKind);
+    emit("update:cardKind", state.cardKind);
+    // débito => 1 pago
+    if (state.cardKind === "DEBIT") {
+      state.installments = 1;
+      emit("update:installments", 1);
+    } else if (!Number(state.installments || 1)) {
+      state.installments = 1;
+      emit("update:installments", 1);
+    }
+    return;
+  }
+
+  if (v === "credit_sjt") {
+    // SJCREDIT siempre crédito; cuotas 1..12
+    state.cardKind = "CREDIT";
+    emit("update:cardKind", "CREDIT");
+    if (!Number(state.installments || 1)) {
+      state.installments = 1;
+      emit("update:installments", 1);
+    }
+    return;
+  }
+
+  // no card-like => 1
+  state.installments = 1;
+  emit("update:installments", 1);
+}
+
+function onCardKindChange(v) {
+  state.cardKind = normalizeCardKind(v);
+  emit("update:cardKind", state.cardKind);
+
+  // débito => 1 pago y sin cuotas
+  if (state.cardKind === "DEBIT") {
     state.installments = 1;
     emit("update:installments", 1);
   }
 }
+
 function onInstallmentsChange(v) {
-  state.installments = Number(v || 1);
+  const n = Number(v || 1);
+
+  // seguridad: débito nunca
+  if (state.paymentMethod === "CARD" && state.cardKind === "DEBIT" && n > 1) {
+    state.installments = 1;
+    emit("update:installments", 1);
+    return;
+  }
+
+  state.installments = n;
   emit("update:installments", state.installments);
 }
+
 function onApplyResellerChange(v) {
   state.applyReseller = !!v;
   emit("update:applyReseller", state.applyReseller);
@@ -508,8 +658,11 @@ function closeNow() {
 }
 
 function onConfirm() {
+  // ✅ método para backend: CASH | TRANSFER | MERCADOPAGO | CARD | credit_sjt
+  // ✅ card_kind: CREDIT/DEBIT (backend lo usa para forzar installments)
   emit("confirm", {
     payment_method: state.paymentMethod,
+    card_kind: state.paymentMethod === "CARD" ? state.cardKind : "CREDIT",
     installments: Number(state.installments || 1),
     apply_reseller: !!state.applyReseller,
     cash_received: cashReceived.value,
@@ -536,10 +689,41 @@ onMounted(() => window.addEventListener("keydown", onKeydownDialog, { capture: t
 onBeforeUnmount(() => window.removeEventListener("keydown", onKeydownDialog, { capture: true }));
 
 /* sync props -> local */
-watch(() => props.paymentMethod, (v) => (state.paymentMethod = v || "CASH"));
-watch(() => props.installments, (v) => (state.installments = Number(v || 1)));
-watch(() => props.applyReseller, (v) => (state.applyReseller = !!v));
-watch(() => props.cashInput, (v) => (state.cashDigits = toDigitsOnly(v)));
+watch(
+  () => props.paymentMethod,
+  (v) => (state.paymentMethod = v || "CASH")
+);
+watch(
+  () => props.installments,
+  (v) => (state.installments = Number(v || 1))
+);
+watch(
+  () => props.applyReseller,
+  (v) => (state.applyReseller = !!v)
+);
+watch(
+  () => props.cashInput,
+  (v) => (state.cashDigits = toDigitsOnly(v))
+);
+watch(
+  () => props.cardKind,
+  (v) => (state.cardKind = normalizeCardKind(v))
+);
+
+// ✅ coherencia: si es débito, cuotas=1
+watch(
+  () => [state.paymentMethod, state.cardKind],
+  () => {
+    if (state.paymentMethod === "CARD" && state.cardKind === "DEBIT" && Number(state.installments || 1) > 1) {
+      state.installments = 1;
+      emit("update:installments", 1);
+    }
+    if (state.paymentMethod === "credit_sjt" && state.cardKind !== "CREDIT") {
+      state.cardKind = "CREDIT";
+      emit("update:cardKind", "CREDIT");
+    }
+  }
+);
 </script>
 
 <style scoped>

@@ -81,42 +81,75 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
 }
 
 /* =========================
-   ✅ HELPERS: Normalización para ticket + backend enum
+   ✅ HELPERS: Normalización backend + providers
 ========================= */
 
 /**
  * ✅ IMPORTANTE:
- * Tu backend está rechazando method=MERCADOPAGO.
- * Acá mapeamos TODO a enums típicos: CASH / CARD / TRANSFER / QR / OTHER
+ * - DB enum Payment.method: CASH / TRANSFER / CARD / QR / OTHER
+ * - Para Crédito San Juan, el backend espera method="credit_sjt"
+ *   y lo guarda como OTHER + provider_code=credit_sjt en note (pos.controller.js).
  */
 function normalizeMethod(m) {
   const raw = String(m || "").trim();
   const up = raw.toUpperCase();
 
-  // aliases comunes -> QR
+  // ✅ San Juan Crédito (alias -> "credit_sjt" para tu backend)
+  if (
+    raw === "credit_sjt" ||
+    up === "CREDIT_SJT" ||
+    up === "SJCREDIT" ||
+    up === "SJ_CREDITO" ||
+    up === "SJ CREDITO" ||
+    up === "SANJUANCREDITO" ||
+    up === "SAN JUAN CREDITO" ||
+    up === "SAN JUAN CRÉDITO"
+  ) {
+    return "credit_sjt";
+  }
+
+  // ✅ MercadoPago / QR
   if (
     up === "MERCADOPAGO" ||
     up === "MERCADO_PAGO" ||
     up === "MERCADO PAGO" ||
     up === "MP" ||
     up === "QR_MP" ||
-    up === "QRMERCADOPAGO"
-  )
+    up === "QRMERCADOPAGO" ||
+    up === "QR"
+  ) {
     return "QR";
+  }
 
-  // aliases comunes -> CARD
-  if (up === "DEBIT" || up === "DEBITO" || up === "DÉBITO" || up === "TARJETA" || up === "CREDIT" || up === "CREDITO")
+  // ✅ alias -> CARD
+  if (up === "DEBIT" || up === "DEBITO" || up === "DÉBITO" || up === "TARJETA" || up === "CREDIT" || up === "CREDITO" || up === "CRÉDITO") {
     return "CARD";
+  }
 
-  // normalizaciones directas
+  // ✅ español -> enums
   if (up === "EFECTIVO") return "CASH";
   if (up === "TRANSFERENCIA") return "TRANSFER";
 
-  // enums aceptados (típico)
-  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "QR" || up === "OTHER") return up;
+  // ✅ enums aceptados por backend
+  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "OTHER") return up;
 
-  // fallback seguro (si preferís CASH, cambiá a "CASH")
   return "OTHER";
+}
+
+/**
+ * Para UI/chips de “Pago”, si querés:
+ * - si viene "credit_sjt" => mostrar "San Juan Crédito"
+ */
+export function paymentMethodLabel(m) {
+  const raw = String(m || "").trim();
+  const up = raw.toUpperCase();
+  if (raw === "credit_sjt" || up === "CREDIT_SJT" || up === "SJCREDIT") return "San Juan Crédito";
+  if (up === "CASH") return "Efectivo";
+  if (up === "CARD") return "Tarjeta";
+  if (up === "TRANSFER") return "Transferencia";
+  if (up === "QR") return "QR";
+  if (up === "OTHER") return "Otro";
+  return raw || "—";
 }
 
 function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_id, cart, totalAmount }) {
@@ -464,7 +497,7 @@ export const usePosStore = defineStore("pos", {
     },
 
     // =========================
-    // Checkout (✅ ticket-friendly SIEMPRE)
+    // Checkout
     // =========================
     async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
@@ -531,7 +564,17 @@ export const usePosStore = defineStore("pos", {
         const amount = toNum(this.totalAmount, 0);
         const bid = toInt(this.branch_id, 0) || null;
 
-        const method = normalizeMethod(paymentMethod);
+        // ✅ método para backend (incluye "credit_sjt")
+        const methodForApi = normalizeMethod(paymentMethod);
+
+        // ✅ cuotas / meta (viene del CheckoutDialog confirm payload)
+        const installments = toInt(extra?.installments, 1) || 1;
+        const total_list = toNum(extra?.total_list, 0) || null;
+        const per_installment_list = toNum(extra?.per_installment_list, 0) || null;
+
+        const isCreditSjt = methodForApi === "credit_sjt";
+        const isCard = methodForApi === "CARD";
+        const price_basis = (isCreditSjt || (isCard && installments > 1)) ? "LIST" : null;
 
         const payload = {
           customer_name,
@@ -547,18 +590,35 @@ export const usePosStore = defineStore("pos", {
 
           payments: [
             {
-              method,
+              // ✅ CLAVE: para SJCREDIT mandamos "credit_sjt"
+              method: methodForApi,
               amount,
               reference: extra?.proof || null,
               proof: extra?.proof || null,
+
+              // ✅ CLAVE: el backend registra cuotas/meta en Payment.note
+              installments,
+              price_basis,
+              total_list: total_list,
+              per_installment_list: per_installment_list,
+
               note: extra?.price_policy
-                ? `price_policy=${extra.price_policy}${extra?.installments ? `; installments=${extra.installments}` : ""}`
+                ? `price_policy=${extra.price_policy}${installments ? `; installments=${installments}` : ""}`
                 : null,
             },
           ],
         };
 
-        dbg("checkoutSale payload ready", { bid, wid, items: items.length, amount, paymentMethod, method });
+        dbg("checkoutSale payload ready", {
+          bid,
+          wid,
+          items: items.length,
+          amount,
+          paymentMethod,
+          methodForApi,
+          installments,
+          price_basis,
+        });
         logPayload("POST /pos/sales payload =>", payload);
 
         const { data } = await http.post("/pos/sales", payload);
@@ -585,7 +645,7 @@ export const usePosStore = defineStore("pos", {
         if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
           sale = buildSaleFromCart({
             saleId: saleId || null,
-            paymentMethod: method,
+            paymentMethod: methodForApi,
             extra,
             branch_id: bid,
             warehouse_id: wid || null,
@@ -596,6 +656,10 @@ export const usePosStore = defineStore("pos", {
           if (toNum(sale.total, 0) <= 0) sale.total = totalSnapshot;
           if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
         }
+
+        // ✅ guardamos para ticket (y UI)
+        sale.payment_method = methodForApi;
+        sale.installments = installments;
 
         this.last_sale = sale;
         this.clearCart();

@@ -1,5 +1,6 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
+
 <template>
   <v-container fluid class="pa-4 pos-sales-page">
     <!-- HEADER -->
@@ -495,6 +496,7 @@
   </v-container>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
@@ -642,7 +644,7 @@ const menuOpen = ref({});
 const sellerItems = ref([]);
 const sellerLoading = ref(false);
 const productItems = ref([]);
-const productLoading = ref(false);
+const productLoading = ref([]);
 const cacheSellers = ref([]);
 const cacheProducts = ref([]);
 
@@ -673,6 +675,8 @@ const payMethodItems = [
   { title: "Tarjeta", value: "CARD" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "Mercado Pago", value: "MERCADOPAGO" },
+  // ✅ si lo agregás al select, la UI ya lo maneja
+  { title: "San Juan Crédito", value: "CREDIT_SJT" },
   { title: "Otro", value: "OTHER" },
 ];
 
@@ -718,13 +722,75 @@ function toEndOfDay(dateStr) {
   return d ? `${d} 23:59:59` : "";
 }
 
+/* ============================================================
+   ✅ FIX: mostrar “San Juan Crédito” aunque payment.method sea OTHER
+   - lee payment.note (puede ser JSON o string) y detecta provider_code=credit_sjt
+============================================================ */
+function safeJsonParse(v) {
+  if (!v) return null;
+  if (typeof v === "object") return v;
+  const s = String(v || "").trim();
+  if (!s) return null;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function normStr(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function detectProviderCode(payment) {
+  const p = payment || {};
+  // 1) campos directos
+  const direct = p.provider_code || p.providerCode || p.provider || p.gateway || p.brand || "";
+  const d1 = normStr(direct);
+  if (d1) return d1;
+
+  // 2) note JSON
+  const noteObj = safeJsonParse(p.note);
+  const c2 = normStr(noteObj?.provider_code || noteObj?.providerCode || noteObj?.provider || noteObj?.code);
+  if (c2) return c2;
+
+  // 3) note texto (ej: "price_policy=LIST; provider_code=credit_sjt; installments=6")
+  const noteTxt = String(p.note || "").toLowerCase();
+  if (noteTxt.includes("credit_sjt") || noteTxt.includes("creditsjt") || noteTxt.includes("sanj uan")) return "credit_sjt";
+
+  return "";
+}
+
+function resolvePaymentMethod(payment) {
+  const p = payment || {};
+  const m = String(p.method || "").trim();
+  const up = m.toUpperCase();
+
+  // si viene bien, ok
+  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "MERCADOPAGO" || up === "QR" || up === "OTHER") {
+    // pero si es OTHER y detectamos SJT => lo “convertimos” para UI
+    const prov = detectProviderCode(p);
+    if (up === "OTHER" && prov === "credit_sjt") return "CREDIT_SJT";
+    return up === "QR" ? "MERCADOPAGO" : up;
+  }
+
+  // fallback por provider
+  const prov = detectProviderCode(p);
+  if (prov === "credit_sjt") return "CREDIT_SJT";
+
+  return up || "OTHER";
+}
+
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
   if (x === "TRANSFER") return "Transferencia";
   if (x === "CARD") return "Tarjeta";
-  if (x === "MERCADOPAGO") return "Mercado Pago";
-  if (x === "QR") return "Mercado Pago";
+  if (x === "MERCADOPAGO" || x === "QR") return "Mercado Pago";
+  if (x === "CREDIT_SJT" || x === "CREDIT_SJ" || x === "SJCREDIT") return "San Juan Crédito";
   if (x === "OTHER") return "Otro";
   return m || "—";
 }
@@ -734,8 +800,10 @@ function payColor(m) {
   if (x === "TRANSFER") return "purple";
   if (x === "CARD") return "blue";
   if (x === "MERCADOPAGO" || x === "QR") return "orange";
+  if (x === "CREDIT_SJT" || x === "CREDIT_SJ" || x === "SJCREDIT") return "teal";
   return "grey";
 }
+
 function statusLabel(s) {
   const x = String(s || "").toUpperCase();
   if (x === "PAID") return "Pagada";
@@ -818,10 +886,15 @@ function buildParams(page, limit) {
   const p = numOrNull(productId.value);
 
   const pmRaw = String(payMethod.value || "").trim();
-  const pm = pmRaw ? pmRaw.toUpperCase() : "";
+  const pmUp = pmRaw ? pmRaw.toUpperCase() : "";
 
   const st = String(status.value || "").trim();
   const qq = String(q.value || "").trim();
+
+  // ✅ backend-friendly: QR => MERCADOPAGO ; CREDIT_SJT => credit_sjt
+  let pmSend = pmUp;
+  if (pmSend === "QR") pmSend = "MERCADOPAGO";
+  if (pmSend === "CREDIT_SJT") pmSend = "credit_sjt";
 
   const params = {
     page,
@@ -831,7 +904,7 @@ function buildParams(page, limit) {
     seller_id: s ?? undefined,
     product: p ?? undefined,
     product_id: p ?? undefined,
-    pay_method: pm === "QR" ? "MERCADOPAGO" : (pm || undefined),
+    pay_method: pmSend || undefined,
   };
 
   if (effectiveBranchId.value) params.branch_id = effectiveBranchId.value;
@@ -841,11 +914,21 @@ function buildParams(page, limit) {
   return params;
 }
 
+/* ============================================================
+   ✅ FIX CLAVE: primaryPayment “reescribe” method para UI
+   - si el pago es OTHER pero provider_code=credit_sjt => method=CREDIT_SJT
+   - así NO tenés que tocar el template
+============================================================ */
 function primaryPayment(saleLike) {
   const pays = Array.isArray(saleLike?.payments) ? saleLike.payments : [];
   if (!pays.length) return null;
   const sorted = [...pays].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
-  return sorted[0] || pays[0] || null;
+  const p = sorted[0] || pays[0] || null;
+  if (!p) return null;
+
+  const resolved = resolvePaymentMethod(p);
+  // devolvemos clon con method “resuelto”
+  return { ...p, method: resolved };
 }
 
 function normalizeOptions(list) {
@@ -853,7 +936,6 @@ function normalizeOptions(list) {
   return arr
     .map((x) => {
       if (typeof x === "string") {
-        // string => title string / value parseado si se puede
         const parsed = parseProductIdFromText(x);
         return { title: x, value: parsed ?? x, _raw: x };
       }
@@ -880,7 +962,6 @@ async function fetchSales() {
     sales.value = Array.isArray(data.data) ? data.data : [];
     meta.value = data.meta || meta.value;
 
-    // ✅ limpiar menú de filas que ya no están
     const alive = new Set(sales.value.map((x) => Number(x?.id)).filter((x) => Number.isFinite(x)));
     const next = { ...(menuOpen.value || {}) };
     for (const k of Object.keys(next)) {
@@ -899,7 +980,7 @@ function normKey(k) {
   return String(k || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, ""); // saca _ - espacios etc.
+    .replace(/[^a-z0-9]/g, "");
 }
 function sumKeys(obj, keys) {
   const o = obj || {};
@@ -929,13 +1010,11 @@ async function fetchStats() {
       return Number.isFinite(n) ? n : 0;
     };
 
-    // ✅ sumamos desde nbm y raw, normalizando keys
     const cash = sumKeys(nbm, ["cash", "CASH"]) + sumKeys(raw, ["cash", "CASH"]);
     const transfer = sumKeys(nbm, ["transfer", "TRANSFER"]) + sumKeys(raw, ["transfer", "TRANSFER"]);
     const card = sumKeys(nbm, ["card", "CARD"]) + sumKeys(raw, ["card", "CARD"]);
     const other = sumKeys(nbm, ["other", "OTHER"]) + sumKeys(raw, ["other", "OTHER"]);
 
-    // ✅ Mercado Pago (todo lo que puedas imaginar)
     const mercadopago =
       sumKeys(nbm, ["mercadopago", "MERCADOPAGO", "mercado_pago", "mp", "MP", "qr", "QR"]) +
       sumKeys(raw, ["mercadopago", "MERCADOPAGO", "mercado_pago", "mp", "MP", "qr", "QR"]);
