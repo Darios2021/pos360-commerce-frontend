@@ -747,6 +747,13 @@ function normStr(v) {
 
 function detectProviderCode(payment) {
   const p = payment || {};
+
+  // ✅ 0) reference (TU CASO REAL: "SJCREDIT")
+  const ref = String(p.reference || p.ref || "").trim().toUpperCase();
+  if (ref === "SJCREDIT" || ref === "SJ_CREDIT" || ref === "SANJUANCREDITO" || ref === "SANJUAN_CREDITO") {
+    return "credit_sjt";
+  }
+
   // 1) campos directos
   const direct = p.provider_code || p.providerCode || p.provider || p.gateway || p.brand || "";
   const d1 = normStr(direct);
@@ -757,32 +764,31 @@ function detectProviderCode(payment) {
   const c2 = normStr(noteObj?.provider_code || noteObj?.providerCode || noteObj?.provider || noteObj?.code);
   if (c2) return c2;
 
-  // 3) note texto (ej: "price_policy=LIST; provider_code=credit_sjt; installments=6")
+  // 3) note texto
   const noteTxt = String(p.note || "").toLowerCase();
-  if (noteTxt.includes("credit_sjt") || noteTxt.includes("creditsjt") || noteTxt.includes("sanj uan")) return "credit_sjt";
+  if (noteTxt.includes("credit_sjt") || noteTxt.includes("creditsjt") || noteTxt.includes("sjcredit")) return "credit_sjt";
 
   return "";
 }
 
 function resolvePaymentMethod(payment) {
   const p = payment || {};
-  const m = String(p.method || "").trim();
-  const up = m.toUpperCase();
 
-  // si viene bien, ok
-  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "MERCADOPAGO" || up === "QR" || up === "OTHER") {
-    // pero si es OTHER y detectamos SJT => lo “convertimos” para UI
-    const prov = detectProviderCode(p);
-    if (up === "OTHER" && prov === "credit_sjt") return "CREDIT_SJT";
-    return up === "QR" ? "MERCADOPAGO" : up;
-  }
-
-  // fallback por provider
+  // ✅ Si viene SJ Crédito por reference/note => forzamos UI method
   const prov = detectProviderCode(p);
   if (prov === "credit_sjt") return "CREDIT_SJT";
 
+  // Normal
+  const up = String(p.method || "").trim().toUpperCase();
+
+  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "MERCADOPAGO" || up === "QR" || up === "OTHER") {
+    // QR lo mostramos como MercadoPago en UI
+    return up === "QR" ? "MERCADOPAGO" : up;
+  }
+
   return up || "OTHER";
 }
+
 
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
