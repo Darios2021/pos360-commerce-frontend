@@ -2,11 +2,11 @@
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 <!--
 ✅ Server-side real:
-- No baja 1000/16000 items
 - Paginación real con meta.total/meta.pages del backend
-- Filtros reales (los aplica SQL en products.controller.js)
-- Scope correcto por sucursal (usuario ve lo suyo; admin ve todo o por branch_id)
-- Multi-sucursal chips con branches_gc ("1:Casa Central|3:Rivadavia")
+- Filtros reales SQL
+- ✅ Estado (Activos / Inactivos / Todos)
+  - admin default: Todos (include_inactive=1) => 314
+  - no-admin default: Activos => 265
 -->
 
 <template>
@@ -124,6 +124,20 @@
           />
         </v-col>
 
+        <!-- ✅ ESTADO -->
+        <v-col cols="12" md="4">
+          <v-select
+            v-model="f.status"
+            :items="statusItems"
+            item-title="title"
+            item-value="value"
+            label="Estado"
+            variant="outlined"
+            density="comfortable"
+            @update:modelValue="applyFilters"
+          />
+        </v-col>
+
         <v-col cols="6" md="2">
           <v-text-field
             v-model="f.price_min"
@@ -201,7 +215,6 @@
           height="560"
           @click:row="onRowClick"
         >
-          <!-- Nombre + estado -->
           <template #item.name="{ item }">
             <div class="font-weight-bold d-flex align-center minw-0" :style="isInactive(rowRaw(item)) ? 'opacity:.55' : ''">
               <span class="text-truncate">{{ rowRaw(item)?.name }}</span>
@@ -211,7 +224,6 @@
             </div>
           </template>
 
-          <!-- Sucursal dueña -->
           <template v-if="isAdmin" #item.branch="{ item }">
             <div class="cell-truncate">
               <template v-if="Number(rowRaw(item)?.branch_id || 0) > 0">
@@ -225,7 +237,6 @@
             </div>
           </template>
 
-          <!-- Multi-sucursal chips (desde branches_gc) -->
           <template v-if="isAdmin" #item.branches="{ item }">
             <div class="branches-cell">
               <template v-if="enabledBranches(rowRaw(item)).length">
@@ -277,16 +288,9 @@
             </div>
           </template>
 
-          <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="actions-cell">
-              <v-btn
-                icon="mdi-eye-outline"
-                variant="text"
-                class="act-btn"
-                title="Ver"
-                @click.stop="openView(rowRaw(item).id)"
-              />
+              <v-btn icon="mdi-eye-outline" variant="text" class="act-btn" title="Ver" @click.stop="openView(rowRaw(item).id)" />
               <v-menu location="bottom end" :close-on-content-click="true">
                 <template #activator="{ props }">
                   <v-btn v-bind="props" icon="mdi-dots-vertical" variant="text" class="act-btn" title="Opciones" @click.stop />
@@ -314,12 +318,9 @@
             </div>
           </template>
 
-          <!-- Bottom paginación -->
           <template #bottom>
             <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
-              <div class="text-caption text-medium-emphasis">
-                Mostrando {{ items.length }} de {{ meta.total }}
-              </div>
+              <div class="text-caption text-medium-emphasis">Mostrando {{ items.length }} de {{ meta.total }}</div>
               <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="7" @update:modelValue="fetchNow" />
             </div>
           </template>
@@ -327,10 +328,8 @@
       </div>
     </v-card>
 
-    <!-- FORM -->
     <ProductFormDialog v-model:open="formOpen" :mode="formMode" :item="formItem" @saved="fetchNow" @deleted="fetchNow" />
 
-    <!-- CONFIRM: inactivar -->
     <v-dialog v-model="disableOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Inactivar producto</v-card-title>
@@ -345,7 +344,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- CONFIRM: delete -->
     <v-dialog v-model="deleteOpen" max-width="520">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
@@ -377,13 +375,11 @@ const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
 
-/* PERMISOS */
 const isAdmin = computed(() => {
   const r = auth.roles || [];
   return r.includes("admin") || r.includes("super_admin");
 });
 
-/* UI state */
 const loading = ref(false);
 const items = computed(() => (Array.isArray(products.items) ? products.items : []));
 
@@ -392,24 +388,20 @@ const page = ref(1);
 const limit = ref(20);
 const selectedIds = ref([]);
 
-/* FORM */
 const formOpen = ref(false);
 const formMode = ref("create");
 const formItem = ref(null);
 
-/* CONFIRMS */
 const deleteOpen = ref(false);
 const deleteItem = ref(null);
 const disableOpen = ref(false);
 const disableItem = ref(null);
 
-/* SNACK */
 const snack = ref({ show: false, text: "" });
 function toast(text) {
   snack.value = { show: true, text: String(text || "") };
 }
 
-/* Slot raw fix */
 function rowRaw(slotItem) {
   return slotItem?.raw ?? slotItem ?? {};
 }
@@ -450,7 +442,7 @@ const branchItems = computed(() => {
   return out;
 });
 
-/* Multi-sucursal chips desde branches_gc */
+/* Multi-sucursal chips */
 function branchInitials(name) {
   const s = String(name || "").trim();
   if (!s) return "—";
@@ -460,7 +452,6 @@ function branchInitials(name) {
   return (a + b).toUpperCase() || s.slice(0, 2).toUpperCase();
 }
 function enabledBranches(it) {
-  // backend: branches_gc "1:Casa Central|3:Rivadavia"
   const gc = String(it?.branches_gc || "").trim();
   if (!gc) return [];
   return gc
@@ -504,14 +495,11 @@ const categoryItems = computed(() => {
     .forEach((x) => out.push({ title: x.name, value: x.id }));
   return out;
 });
-
-// subcategories: leemos desde store si existe, si no armamos desde categories.children
 const subcategoryItems = computed(() => {
   const out = [{ title: "Todos", value: null }];
   const pid = Number(f.value.category_id || 0);
   if (!pid) return out;
 
-  // si tenés categories.children por parent_id, usalo
   const kids = Array.isArray(categories.children) ? categories.children : [];
   kids
     .filter((x) => Number(x?.category_id || x?.parent_id || 0) === pid || Number(x?.parent_id || 0) === pid)
@@ -523,17 +511,18 @@ const subcategoryItems = computed(() => {
   return out;
 });
 
-/* Filtros server-side */
+/* Filtros */
 const f = ref({
   q: "",
   branch_id: null,
   category_id: null,
   subcategory_id: null,
-  stock: "all", // all | with | without
-  price_presence: "all", // all | with | without
+  stock: "all",
+  price_presence: "all",
+  status: isAdmin.value ? "all" : "active", // ✅ admin ve TODO por defecto
   price_min: null,
   price_max: null,
-  images: "all", // all | with | without
+  images: "all",
 });
 
 const stockItems = [
@@ -551,23 +540,34 @@ const imagesItems = [
   { title: "Con imágenes", value: "with" },
   { title: "Sin imágenes", value: "without" },
 ];
+const statusItems = computed(() => {
+  // no-admin: no tiene sentido "Todos" si no querés que vean inactivos.
+  if (!isAdmin.value) {
+    return [
+      { title: "Activos", value: "active" },
+      { title: "Inactivos", value: "inactive" }, // por si lo querés permitir
+    ];
+  }
+  return [
+    { title: "Todos (activos + inactivos)", value: "all" },
+    { title: "Activos", value: "active" },
+    { title: "Inactivos", value: "inactive" },
+  ];
+});
 
 function onCategoryChange() {
   f.value.subcategory_id = null;
   applyFilters();
 }
-
 function onLimitChange() {
   page.value = 1;
   fetchNow();
 }
-
 async function applyFilters() {
   page.value = 1;
   selectedIds.value = [];
   await fetchNow();
 }
-
 async function clearFilters() {
   f.value = {
     q: "",
@@ -576,6 +576,7 @@ async function clearFilters() {
     subcategory_id: null,
     stock: "all",
     price_presence: "all",
+    status: isAdmin.value ? "all" : "active",
     price_min: null,
     price_max: null,
     images: "all",
@@ -585,7 +586,7 @@ async function clearFilters() {
   await fetchNow();
 }
 
-/* Fetch real */
+/* Fetch */
 async function fetchNow() {
   if (!auth.isAuthed) return;
   if (loading.value) return;
@@ -595,10 +596,8 @@ async function fetchNow() {
     const params = {
       page: Number(page.value || 1),
       limit: Number(limit.value || 20),
-
       q: String(f.value.q || "").trim(),
 
-      // admin puede filtrar branch_id; no-admin el server ignora y usa ctxBranchId
       branch_id: isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null,
 
       category_id: f.value.category_id ? Number(f.value.category_id) : null,
@@ -611,10 +610,20 @@ async function fetchNow() {
       images: f.value.images,
     };
 
-    // store debería setear products.items y meta/pages
+    // ✅ Estado -> backend
+    // all => include_inactive=1
+    // inactive => is_active=0
+    // active => (no mandamos nada, backend default is_active=1) o mandamos is_active=1 si querés
+    if (String(f.value.status) === "all") {
+      params.include_inactive = 1;
+    } else if (String(f.value.status) === "inactive") {
+      params.is_active = 0;
+    } else if (String(f.value.status) === "active") {
+      // opcional: params.is_active = 1;
+    }
+
     const r = await products.fetchList(params);
 
-    // intentamos leer meta de forma robusta
     const m =
       (r && r.meta) ||
       (r && r.data && r.meta) ||
@@ -633,14 +642,12 @@ async function fetchNow() {
       pages: Number(m.pages || 1) || 1,
     };
 
-    // si el backend devuelve pages y la page quedó fuera, corregimos
     if (page.value > meta.value.pages) page.value = meta.value.pages;
   } finally {
     loading.value = false;
   }
 }
 
-/* Row click */
 function onRowClick(e, row) {
   const item = row?.item?.raw ?? row?.item ?? row;
   const t = e?.target;
@@ -648,7 +655,6 @@ function onRowClick(e, row) {
   openView(item?.id);
 }
 
-/* Headers */
 const headers = computed(() => {
   const base = [
     { title: "Nombre", key: "name", sortable: false, width: 520 },
@@ -664,13 +670,11 @@ const headers = computed(() => {
   return out;
 });
 
-/* Actions */
 function openView(id) {
   const pid = Number(id || 0);
   if (!pid) return;
   router.push({ name: "productView", params: { id: pid } });
 }
-
 async function openEdit(id) {
   if (!auth.isAuthed) return;
   const bid = isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null;
@@ -680,13 +684,11 @@ async function openEdit(id) {
   formItem.value = full;
   formOpen.value = true;
 }
-
 function openCreate() {
   formMode.value = "create";
   formItem.value = null;
   formOpen.value = true;
 }
-
 function askDelete(item) {
   deleteItem.value = item;
   deleteOpen.value = true;
@@ -701,7 +703,6 @@ function normalizeRemoveResult(r) {
   if (r && typeof r === "object") return { ok: !!r.ok, code: r.code || null, message: r.message || null };
   return { ok: false, code: "DELETE_FAILED", message: "No se pudo eliminar" };
 }
-
 async function callRemoveProduct(id) {
   const fn =
     (products && typeof products.remove === "function" && products.remove) ||
@@ -735,7 +736,6 @@ async function doDisable() {
     await fetchNow();
   }
 }
-
 async function doDelete() {
   if (!deleteItem.value?.id) return;
   const id = Number(deleteItem.value.id);
@@ -795,7 +795,6 @@ async function bulkDisableOrDelete() {
   await fetchNow();
 }
 
-/* Load */
 async function reload() {
   if (!auth.isAuthed) return;
   await loadCategoriesSafe();
@@ -822,89 +821,32 @@ watch(
 </script>
 
 <style scoped>
-.plp {
-  min-width: 0;
-}
-.plp-table-card {
-  overflow: hidden;
-}
-.plp-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.plp-table {
-  min-width: 980px;
-}
+.plp { min-width: 0; }
+.plp-table-card { overflow: hidden; }
+.plp-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.plp-table { min-width: 980px; }
 
-.pos-table :deep(th) {
-  font-weight: 900;
-  white-space: nowrap;
-}
+.pos-table :deep(th) { font-weight: 900; white-space: nowrap; }
 
-.pos-table :deep(tbody tr) {
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-.pos-table :deep(tbody tr:hover) {
-  background: rgba(var(--v-theme-on-surface), 0.045);
-}
-.pos-table :deep(tbody tr.v-data-table__selected) {
-  background: rgba(var(--v-theme-primary), 0.10) !important;
-}
+.pos-table :deep(tbody tr) { cursor: pointer; transition: background-color 120ms ease; }
+.pos-table :deep(tbody tr:hover) { background: rgba(var(--v-theme-on-surface), 0.045); }
+.pos-table :deep(tbody tr.v-data-table__selected) { background: rgba(var(--v-theme-primary), 0.10) !important; }
 
-.cell-truncate {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.cell-truncate { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.actions-cell {
-  display: inline-flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0px;
-  min-width: 76px;
-}
-.act-btn {
-  width: 32px;
-  height: 32px;
-  margin-left: -2px;
-}
-.actions-cell .act-btn:first-child {
-  margin-left: 0;
-}
+.actions-cell { display: inline-flex; justify-content: flex-end; align-items: center; gap: 0px; min-width: 76px; }
+.act-btn { width: 32px; height: 32px; margin-left: -2px; }
+.actions-cell .act-btn:first-child { margin-left: 0; }
 
-.branches-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  min-width: 160px;
-}
-.br-chip {
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  padding-inline: 6px;
-  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
-}
-.br-more {
-  opacity: 0.9;
-}
+.branches-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 160px; }
+.br-chip { font-weight: 900; letter-spacing: 0.2px; padding-inline: 6px; border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important; }
+.br-more { opacity: 0.9; }
 
 .pos-table :deep(.v-btn),
-.pos-table :deep(.v-selection-control) {
-  cursor: pointer;
-}
+.pos-table :deep(.v-selection-control) { cursor: pointer; }
 
 @media (max-width: 520px) {
-  .plp-table {
-    min-width: 900px;
-  }
-  .act-btn {
-    width: 30px;
-    height: 30px;
-  }
+  .plp-table { min-width: 900px; }
+  .act-btn { width: 30px; height: 30px; }
 }
 </style>

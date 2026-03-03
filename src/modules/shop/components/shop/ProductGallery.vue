@@ -1,4 +1,4 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (gallery ML-like + videos YouTube/File, SHORTS 9:16, estable) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (FIX definitivo: imágenes SIN recorte ni zoom, usa max-width/max-height) -->
 <!-- src/modules/shop/components/ProductGallery.vue -->
 <template>
   <v-card class="pg-card" variant="outlined">
@@ -16,11 +16,19 @@
             :title="m.type === 'image' ? `Imagen ${i + 1}` : `Video ${i + 1}`"
           >
             <div class="thumb-inner">
-              <img v-if="m.type === 'image'" :src="m.src" alt="" @error="onMediaError(m)" />
+              <!-- ✅ IMG thumb = SIN recorte (max constraints) -->
+              <img
+                v-if="m.type === 'image'"
+                class="thumb-img"
+                :src="m.src"
+                alt=""
+                @error="onMediaError(m)"
+              />
 
               <div v-else class="thumb-video">
                 <img
                   v-if="m.thumb && !brokenThumb.has(m.thumb)"
+                  class="thumb-video-img"
                   :src="m.thumb"
                   alt=""
                   @error="onThumbError(m)"
@@ -48,22 +56,22 @@
             @keydown.space.prevent="openViewer"
             :title="media.length ? 'Ver media' : ''"
           >
-            <!-- MAIN IMAGE -->
-            <img
-              v-if="activeItem && activeItem.type === 'image'"
-              :key="'main-img-' + activeItem.src"
-              class="main-img"
-              :src="activeItem.src"
-              alt=""
-              @error="onMediaError(activeItem)"
-              decoding="async"
-              loading="eager"
-            />
+            <!-- ✅ MAIN IMAGE: SIN recorte (max constraints) -->
+            <div v-if="activeItem && activeItem.type === 'image'" class="img-box">
+              <img
+                :key="'main-img-' + activeItem.src"
+                class="main-img"
+                :src="activeItem.src"
+                alt=""
+                @error="onMediaError(activeItem)"
+                decoding="async"
+                loading="eager"
+              />
+            </div>
 
             <!-- MAIN VIDEO (✅ SHORTS 9:16) -->
             <div v-else-if="activeItem && activeItem.type === 'video'" class="main-video" @click.stop>
               <div class="video-box">
-                <!-- youtube -->
                 <iframe
                   v-if="activeItem.provider === 'youtube' && activeItem.embed"
                   class="video-embed"
@@ -74,7 +82,6 @@
                   allowfullscreen
                   referrerpolicy="strict-origin-when-cross-origin"
                 />
-                <!-- file -->
                 <video
                   v-else
                   class="video-embed"
@@ -117,11 +124,18 @@
                 role="listitem"
               >
                 <div class="thumb-inner">
-                  <img v-if="m.type === 'image'" :src="m.src" alt="" @error="onMediaError(m)" />
+                  <img
+                    v-if="m.type === 'image'"
+                    class="thumb-img"
+                    :src="m.src"
+                    alt=""
+                    @error="onMediaError(m)"
+                  />
 
                   <div v-else class="thumb-video">
                     <img
                       v-if="m.thumb && !brokenThumb.has(m.thumb)"
+                      class="thumb-video-img"
                       :src="m.thumb"
                       alt=""
                       @error="onThumbError(m)"
@@ -201,7 +215,6 @@
           draggable="false"
         />
 
-        <!-- ✅ VIDEO EN VISOR (SHORTS 9:16) -->
         <div v-else-if="viewerItem && viewerItem.type === 'video'" class="mlv-video">
           <div class="video-box video-box--viewer">
             <iframe
@@ -238,9 +251,6 @@ const props = defineProps({
   product: { type: Object, default: null },
 });
 
-/* =========================
-   STATE
-========================= */
 const activeIdx = ref(0);
 const viewer = ref(false);
 const viewerIdx = ref(0);
@@ -535,7 +545,6 @@ function next() {
   activeIdx.value = viewerIdx.value;
 }
 
-// Swipe mobile
 const touchStartX = ref(null);
 function onTouchStart(e) {
   const t = e?.changedTouches?.[0];
@@ -614,19 +623,32 @@ watch(viewerIdx, (v) => {
 .thumb-inner {
   width: 100%;
   height: 100%;
+  display: grid;
+  place-items: center;
+  background: #fff;
 }
-.thumb-inner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+
+/* ✅ THUMB IMG: nunca recorta */
+.thumb-img {
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  width: auto;
+  height: auto;
   display: block;
 }
 
+/* thumbs video */
 .thumb-video {
   width: 100%;
   height: 100%;
   position: relative;
   background: rgba(0, 0, 0, 0.06);
+}
+.thumb-video-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .thumb-video-fallback {
   width: 100%;
@@ -635,7 +657,6 @@ watch(viewerIdx, (v) => {
   place-items: center;
   color: rgba(0, 0, 0, 0.55);
 }
-
 .thumb-play {
   position: absolute;
   inset: auto 8px 8px auto;
@@ -666,15 +687,23 @@ watch(viewerIdx, (v) => {
   cursor: pointer;
 }
 
-/* Imagen = full cover */
-.main-img {
+/* ✅ Caja imagen centrada */
+.img-box {
   position: absolute;
   inset: 0;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  object-position: center center !important;
-  display: block !important;
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
+
+/* ✅ MAIN IMG: nunca recorta */
+.main-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
 }
 
 /* Video area */
@@ -687,7 +716,6 @@ watch(viewerIdx, (v) => {
   padding: 14px;
 }
 
-/* ✅ CONTENEDOR 9:16 (Shorts) */
 .video-box {
   width: min(360px, 92%);
   aspect-ratio: 9 / 16;
@@ -698,15 +726,11 @@ watch(viewerIdx, (v) => {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-
-/* En viewer lo hacemos más grande */
 .video-box--viewer {
   width: min(420px, 92vw);
   aspect-ratio: 9 / 16;
   border-radius: 20px;
 }
-
-/* iframe/video full size */
 .video-embed {
   position: absolute;
   inset: 0;
@@ -781,7 +805,6 @@ watch(viewerIdx, (v) => {
 .thumbs-scroll::-webkit-scrollbar {
   height: 8px;
 }
-
 .thumb-m {
   width: 72px;
   height: 72px;
@@ -826,7 +849,6 @@ watch(viewerIdx, (v) => {
   font-weight: 900;
   opacity: 0.95;
 }
-
 .mlv-close {
   width: 40px;
   height: 40px;
@@ -838,13 +860,11 @@ watch(viewerIdx, (v) => {
   place-items: center;
   cursor: pointer;
 }
-
 .mlv-stage {
   display: grid;
   place-items: center;
   padding: 18px 16px 22px;
 }
-
 .mlv-img {
   max-width: min(980px, 92vw);
   max-height: 78vh;
@@ -854,17 +874,14 @@ watch(viewerIdx, (v) => {
   user-select: none;
   -webkit-user-drag: none;
 }
-
 .mlv-video {
   display: grid;
   place-items: center;
 }
-
 .mlv-empty {
   color: #fff;
   opacity: 0.85;
 }
-
 .mlv-nav {
   position: absolute;
   top: 50%;
@@ -904,6 +921,9 @@ watch(viewerIdx, (v) => {
   }
   .video-box {
     width: min(360px, 96%);
+  }
+  .img-box {
+    padding: 10px;
   }
 }
 </style>
