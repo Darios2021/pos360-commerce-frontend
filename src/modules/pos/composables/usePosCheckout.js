@@ -8,49 +8,73 @@ function money(val) {
 
 /**
  * ✅ Normaliza lo que venga del dialog/UI
- * Acepta: "CASH","TRANSFER","CARD","QR" y también "cash","transfer","card","mercadopago","mp"
+ * Acepta:
+ * - "CASH","TRANSFER","CARD","MERCADOPAGO","credit_sjt"
+ * - alias: "efectivo","transferencia","tarjeta","mp","mercadopago","qr"
  */
 function normalizeMethodUI(v) {
-  const s = String(v || "").trim().toLowerCase();
+  const raw = String(v || "").trim();
+  const s = raw.toLowerCase();
+  const up = raw.toUpperCase();
 
   if (!s) return "CASH";
-  if (s === "cash" || s === "efectivo" || s === "CASH".toLowerCase()) return "CASH";
-  if (s === "transfer" || s === "transferencia" || s === "TRANSFER".toLowerCase()) return "TRANSFER";
+
+  // ✅ San Juan Crédito (NO convertir a CASH)
   if (
-    s === "card" ||
-    s === "tarjeta" ||
-    s === "debito" ||
-    s === "crédito" ||
-    s === "credito" ||
-    s === "CARD".toLowerCase()
-  )
-    return "CARD";
+    s === "credit_sjt" ||
+    up === "CREDIT_SJT" ||
+    up === "SJCREDIT" ||
+    up === "SAN JUAN CREDITO" ||
+    up === "SAN JUAN CRÉDITO" ||
+    up === "CREDITO SAN JUAN" ||
+    up === "CRÉDITO SAN JUAN"
+  ) {
+    return "credit_sjt";
+  }
 
-  // ✅ tu caso: QR == MercadoPago
-  if (s === "qr" || s === "mp" || s === "mercadopago" || s === "mercado_pago") return "QR";
+  // ✅ enums directos
+  if (up === "CASH") return "CASH";
+  if (up === "TRANSFER") return "TRANSFER";
+  if (up === "CARD") return "CARD";
+  if (up === "MERCADOPAGO") return "MERCADOPAGO";
 
-  // fallback
+  // ✅ español/alias
+  if (s === "efectivo") return "CASH";
+  if (s === "transferencia") return "TRANSFER";
+  if (s === "tarjeta" || s === "credito" || s === "crédito" || s === "debito" || s === "débito") return "CARD";
+
+  // ✅ MercadoPago / QR
+  if (s === "mp" || s === "mercadopago" || s === "mercado_pago" || s === "mercado pago" || s === "qr") {
+    return "MERCADOPAGO";
+  }
+
   return "CASH";
 }
 
-/**
- * ✅ Lo que mandamos al store/backend:
- * - Si tu backend/DB trabaja con codes: cash/transfer/card/mercadopago => mandamos eso.
- * - Si tu backend trabaja con enum: CASH/TRANSFER/CARD/QR, lo dejamos también dentro de extra.
- */
-function toBackendMethodCode(uiMethod) {
+// ✅ Para DB/Backend (payments.method enum + pista SJ Crédito)
+// ✅ Para DB/Backend (payments.method enum + pista SJ Crédito)
+function toPaymentsMethodAndReference(uiMethod) {
   const m = normalizeMethodUI(uiMethod);
-  if (m === "CASH") return "cash";
-  if (m === "TRANSFER") return "transfer";
-  if (m === "CARD") return "card";
-  return "mercadopago"; // QR
+
+  if (m === "CASH") return { method: "CASH", reference: null };
+  if (m === "TRANSFER") return { method: "TRANSFER", reference: null };
+  if (m === "CARD") return { method: "CARD", reference: null };
+
+  // ✅ MercadoPago: tu DB usa QR (según tu comentario)
+  if (m === "MERCADOPAGO") return { method: "QR", reference: "MERCADOPAGO" };
+
+  // ✅ FIX CLAVE: San Juan Crédito NO debe degradar a OTHER
+  // Mandamos el alias "credit_sjt" y además reference SJCREDIT como pista fuerte.
+  if (m === "credit_sjt") return { method: "credit_sjt", reference: "SJCREDIT" };
+
+  return { method: "CASH", reference: null };
 }
 
 export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnitPrice, toNum, allSellable }) {
   const checkoutDialog = ref(false);
 
   // ✅ estado (UI enum)
-  const paymentMethod = ref("CASH");
+  const paymentMethod = ref("CASH"); // CASH | TRANSFER | CARD | MERCADOPAGO | credit_sjt
   const installments = ref(1);
   const applyReseller = ref(false);
   const paymentProof = ref("");
@@ -80,8 +104,16 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     const m = normalizeMethodUI(method);
 
     if (reseller) return "RESELLER";
+
+    // ✅ San Juan Crédito SIEMPRE lista (si no reseller)
+    if (m === "credit_sjt") return "LIST";
+
+    // ✅ CARD: cuotas => lista, 1 pago => descuento
     if (m === "CARD") return Number(inst || 1) > 1 ? "LIST" : "DISCOUNT";
-    if (m === "CASH" || m === "TRANSFER" || m === "QR") return "DISCOUNT";
+
+    // efectivo/transfer/mp => descuento
+    if (m === "CASH" || m === "TRANSFER" || m === "MERCADOPAGO") return "DISCOUNT";
+
     return "DISCOUNT";
   }
 
@@ -178,9 +210,13 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
 
   /**
    * ✅ FIX REAL:
-   * confirmPayment puede recibir payload del dialog:
-   *  - { methodCode } o { payment_method } o { paymentMethod }
-   *  - installments / apply_reseller / applyReseller / proof
+   * confirmPayment recibe payload del dialog:
+   *  - { payment_method } (CheckoutDialog emite esto)
+   *  - installments / apply_reseller / proof / total_list / per_installment_list / card_kind
+   *
+   * ✅ CLAVE:
+   * - Para DB: mandamos payments.method enum (CASH/TRANSFER/CARD/QR/OTHER)
+   * - Para SJ Crédito: method=OTHER + reference=SJCREDIT
    */
   async function confirmPayment(payloadOrCtx = {}) {
     const onSnack = payloadOrCtx?.onSnack;
@@ -196,11 +232,11 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     }
 
     try {
-      // ✅ 1) Tomar método desde dialog (si viene) y sincronizar estado
+      // ✅ 1) método desde dialog (o estado actual)
       const uiMethodIncoming =
-        payload?.methodCode ||
         payload?.payment_method ||
         payload?.paymentMethod ||
+        payload?.methodCode ||
         payload?.paymentMethodCode ||
         payload?.method ||
         payload?.provider ||
@@ -208,39 +244,49 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
 
       const uiMethod = normalizeMethodUI(uiMethodIncoming || paymentMethod.value);
 
-      // si viene installments/reseller desde dialog, respetarlo
-      const instIncoming = Number(payload?.installments ?? installments.value ?? 1) || 1;
+      // ✅ 2) cuotas/reseller desde dialog
+      let instIncoming = Number(payload?.installments ?? installments.value ?? 1) || 1;
       const resellerIncoming = Boolean(payload?.apply_reseller ?? payload?.applyReseller ?? applyReseller.value);
+
+      // San Juan Crédito: clamp 1..12 (si no reseller)
+      if (uiMethod === "credit_sjt" && !resellerIncoming) {
+        if (instIncoming < 1) instIncoming = 1;
+        if (instIncoming > 12) instIncoming = 12;
+      }
 
       paymentMethod.value = uiMethod;
       installments.value = instIncoming;
       applyReseller.value = resellerIncoming;
 
-      // ✅ 2) Aplicar precios con política correcta (según método real)
+      // ✅ 3) aplicar precios según política real
       applyCheckoutPricesIntoStore(uiMethod, instIncoming, resellerIncoming);
 
-      // ✅ 3) Armar extra + método backend
-      const backendMethodCode = toBackendMethodCode(uiMethod);
+      // ✅ 4) mapear a DB enum + reference
+      const payMap = toPaymentsMethodAndReference(uiMethod);
 
+      // ✅ 5) extra para el store/backend (para que inserte payments bien)
       const extra = {
-        // para pricing/recibo
         price_policy: currentPricePolicy(uiMethod, instIncoming, resellerIncoming),
         installments: instIncoming,
-
-        // si tu backend lo usa:
         proof: payload?.proof ?? paymentProof.value ?? null,
 
-        // guardamos ambos por auditoría
-        payment_method_ui: uiMethod, // CASH/TRANSFER/CARD/QR
-        payment_method_code: backendMethodCode, // cash/transfer/card/mercadopago
+        // ✅ CLAVE: que quede pista para resolver “San Juan Crédito” en UI
+        reference: payload?.reference ?? payMap.reference ?? null,
+
+        // ✅ cuotas/meta (si el dialog las manda)
+        total_list: payload?.total_list ?? payload?.totalList ?? null,
+        per_installment_list: payload?.per_installment_list ?? payload?.perInstallmentList ?? null,
+
+        // ✅ card_kind (si existe)
+        card_kind: payload?.card_kind ?? payload?.cardKind ?? null,
 
         customer: { ...customer.value, ...(payload?.customer || {}) },
       };
 
-      // ✅ 4) LLAMADA CLAVE:
-      // Mandamos code backend (cash/transfer/card/mercadopago)
-      // Si tu store/backend espera enum, lo sigue teniendo en extra.payment_method_ui
-      const result = await posStore.checkoutSale(backendMethodCode, extra);
+      // ✅ 6) llamada CLAVE:
+      // mandamos el method ENUM que tu DB acepta (CASH/TRANSFER/CARD/QR/OTHER)
+      // (SJ crédito => OTHER + reference=SJCREDIT en extra)
+      const result = await posStore.checkoutSale(payMap.method, extra);
 
       checkoutDialog.value = false;
       onSnack?.("✅ Venta registrada correctamente");
@@ -253,8 +299,8 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
           : {
               id: Date.now(),
               created_at: new Date().toISOString(),
-              payment_method: backendMethodCode,
-              payment_method_ui: uiMethod,
+              payment_method: payMap.method,
+              reference: extra.reference,
               installments: instIncoming,
               proof: extra.proof,
               customer: { ...extra.customer },
