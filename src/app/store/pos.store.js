@@ -10,6 +10,13 @@
 // - MercadoPago => method "MERCADOPAGO"
 // - Cuotas (installments 1..12) SOLO en CARD (si NO es débito) o en Crédito San Juan
 // - Para débito: mandar card_kind="DEBIT" (installments queda 1)
+//
+// ✅ FIX HOY:
+// - ✅ Enviar snapshot cliente COMPLETO a backend:
+//   customer_name, customer_doc, customer_phone (TOP-LEVEL y dentro de payments[0])
+// - ✅ Enviar installments/reference también TOP-LEVEL (además de payments[0]) para compat
+// - ✅ Normalización de doc/teléfono desde extra.customer (doc/dni/cuit/cuil + phone/whatsapp)
+//
 
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -154,7 +161,15 @@ function normalizeMethod(m) {
   if (up === "TRANSFERENCIA") return "TRANSFER";
 
   // ✅ enums aceptados por backend
-  if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "QR" || up === "MERCADOPAGO" || up === "CREDIT_SJT" || up === "OTHER")
+  if (
+    up === "CASH" ||
+    up === "CARD" ||
+    up === "TRANSFER" ||
+    up === "QR" ||
+    up === "MERCADOPAGO" ||
+    up === "CREDIT_SJT" ||
+    up === "OTHER"
+  )
     return up;
 
   return "OTHER";
@@ -184,6 +199,78 @@ function pickPaymentMethodForApi(paymentMethodParam, extra) {
 
   return normalizeMethod(candidate);
 }
+
+/**
+ * ✅ Snapshot cliente robusto (para sales.customer_*)
+ */
+function pickFirst(...vals) {
+  for (const v of vals) {
+    const s = String(v ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+function normalizeDigitsPhone(v) {
+  // deja + y dígitos
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  return s.replace(/[^\d+]/g, "");
+}
+
+function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
+  const ex = extra && typeof extra === "object" ? extra : {};
+  const c = ex.customer && typeof ex.customer === "object" ? ex.customer : {};
+  const sc = storeCustomer && typeof storeCustomer === "object" ? storeCustomer : {};
+
+  const first_name = pickFirst(c.first_name, c.firstname, c.firstName, c.nombre);
+  const last_name = pickFirst(c.last_name, c.lastname, c.lastName, c.apellido);
+
+  const fullName = (first_name || last_name) ? `${first_name} ${last_name}`.trim() : "";
+
+  const customer_name = pickFirst(
+    ex.customer_name,
+    c.customer_name,
+    c.full_name,
+    c.fullName,
+    fullName,
+    sc.name,
+    sc.customer_name,
+    "Consumidor Final"
+  ).trim() || "Consumidor Final";
+
+  const customer_doc = pickFirst(
+    ex.customer_doc,
+    c.customer_doc,
+    c.doc,
+    c.dni,
+    c.cuit,
+    c.cuil,
+    c.document,
+    c.documento
+  ).trim();
+
+  const customer_phone_raw = pickFirst(
+    ex.customer_phone,
+    c.customer_phone,
+    c.phone,
+    c.tel,
+    c.telefono,
+    c.celular,
+    c.mobile,
+    c.whatsapp,
+    c.wa
+  );
+
+  const customer_phone = normalizeDigitsPhone(customer_phone_raw);
+
+  return {
+    customer_name,
+    customer_doc: customer_doc || null,
+    customer_phone: customer_phone || null,
+  };
+}
+
 /**
  * Para UI/chips de “Pago”
  */
@@ -589,10 +676,8 @@ export const usePosStore = defineStore("pos", {
 
         const ex = extra && typeof extra === "object" ? extra : {};
 
-        const c = ex?.customer || {};
-        const fullName = `${String(c.first_name || "").trim()} ${String(c.last_name || "").trim()}`.trim();
-        const customer_name =
-          (fullName || String(this.customer?.name || "").trim() || "Consumidor Final").trim() || "Consumidor Final";
+        // ✅ FIX: snapshot cliente completo (name/doc/phone)
+        const snap = normalizeCustomerSnapshot(ex, this.customer);
 
         const items = (this.cart || [])
           .map((it) => {
@@ -621,32 +706,58 @@ export const usePosStore = defineStore("pos", {
 
         // ✅ cuotas / meta
         let installments = toInt(ex?.installments, 1) || 1;
-        installments = Math.max(1, Math.min(12, installments));
 
-        const total_list = toNum(ex?.total_list, 0) || null;
-        const per_installment_list = toNum(ex?.per_installment_list, 0) || null;
-
-        // ✅ card_kind (para detectar débito)
-        const card_kind = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
+        const card_kind_raw = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
 
         const isCreditSjt = methodForApi === "credit_sjt" || methodForApi === "CREDIT_SJT";
         const isCard = methodForApi === "CARD";
 
         // 🔒 Débito: forzamos contado
         const isDebit =
-          card_kind === "DEBIT" ||
-          card_kind === "DEBITO" ||
-          card_kind === "DÉBITO" ||
+          card_kind_raw === "DEBIT" ||
+          card_kind_raw === "DEBITO" ||
+          card_kind_raw === "DÉBITO" ||
           ex?.is_debit === true ||
           ex?.isDebit === true;
 
-        if (isDebit && isCard) installments = 1;
+        if (isCard && isDebit) installments = 1;
+
+        // ✅ clamp cuotas:
+        // - SJ crédito: 1..12
+        // - CARD crédito: 1..12 (si querés 1..6 cambiá el 12 por 6)
+        if (isCreditSjt || (isCard && !isDebit)) {
+          installments = Math.max(1, Math.min(12, installments));
+        } else {
+          installments = 1;
+        }
+
+        const total_list = toNum(ex?.total_list, 0) || null;
+        const per_installment_list = toNum(ex?.per_installment_list, 0) || null;
 
         // ✅ policy: cuotas usan LIST
         const price_basis = (isCreditSjt || (isCard && installments > 1 && !isDebit)) ? "LIST" : null;
 
+        // ✅ referencia SJ crédito (si no viene)
+        const referenceTop =
+          ex?.reference ||
+          ex?.ref ||
+          (isCreditSjt ? "SJCREDIT" : null) ||
+          ex?.proof ||
+          null;
+
         const payload = {
-          customer_name,
+          // ✅ TOP-LEVEL snapshot cliente (para sales.customer_*)
+          customer_name: snap.customer_name,
+          customer_doc: snap.customer_doc,
+          customer_phone: snap.customer_phone,
+
+          // ✅ TOP-LEVEL payment meta (por si el backend lee acá)
+          payment_method: methodForApi,
+          method: methodForApi,
+          installments,
+          reference: referenceTop,
+          card_kind: isCard ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT") : (isCreditSjt ? "CREDIT" : null),
+
           note: ex?.note || null,
 
           branch_id: bid,
@@ -659,18 +770,26 @@ export const usePosStore = defineStore("pos", {
 
           payments: [
             {
-              // ✅ CLAVE: SJ Crédito mandamos "credit_sjt"
+              // ✅ método en payments también
               method: isCreditSjt ? "credit_sjt" : methodForApi,
               amount,
-             reference: ex?.reference || ex?.proof || null,
-            proof: ex?.proof || null,
 
+              // ✅ reference/proof
+              reference: referenceTop,
+              proof: ex?.proof || null,
+
+              // ✅ cuotas/meta
               installments,
               price_basis,
               total_list,
               per_installment_list,
 
-              card_kind: isCard ? (isDebit ? "DEBIT" : card_kind || "CREDIT") : null,
+              card_kind: isCard ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT") : (isCreditSjt ? "CREDIT" : null),
+
+              // ✅ snapshot cliente también acá (por si tu backend lo toma desde payments)
+              customer_name: snap.customer_name,
+              customer_doc: snap.customer_doc,
+              customer_phone: snap.customer_phone,
 
               note: ex?.price_policy
                 ? `price_policy=${ex.price_policy}${installments ? `; installments=${installments}` : ""}`
@@ -689,7 +808,11 @@ export const usePosStore = defineStore("pos", {
           methodForApi,
           installments,
           price_basis,
-          card_kind,
+          card_kind: payload.card_kind,
+          customer_name: snap.customer_name,
+          customer_doc: snap.customer_doc,
+          customer_phone: snap.customer_phone,
+          reference: referenceTop,
         });
         logPayload("POST /pos/sales payload =>", payload);
 
@@ -734,6 +857,11 @@ export const usePosStore = defineStore("pos", {
         // ✅ guardamos para ticket (y UI)
         sale.payment_method = methodForApi;
         sale.installments = installments;
+
+        // ✅ guardamos snapshot cliente también en el sale local
+        sale.customer_name = snap.customer_name;
+        sale.customer_doc = snap.customer_doc;
+        sale.customer_phone = snap.customer_phone;
 
         this.last_sale = sale;
         this.clearCart();

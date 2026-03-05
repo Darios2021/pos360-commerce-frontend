@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
   <v-container fluid class="pa-6 pos-sale-detail">
@@ -14,7 +15,6 @@
       </v-btn>
     </div>
 
-    <!-- Card principal -->
     <v-card class="rounded-xl elevation-3">
       <v-card-text v-if="loading" class="py-10 d-flex justify-center">
         <v-progress-circular indeterminate />
@@ -32,22 +32,29 @@
           <!-- Cliente -->
           <div class="min-w-320">
             <div class="text-caption text-medium-emphasis mb-1">Cliente</div>
-            <div class="text-h5 font-weight-black">{{ sale.customer_name || "Consumidor Final" }}</div>
+
+            <div class="text-h5 font-weight-black">
+              {{ customerNameResolved }}
+            </div>
+
+            <div class="text-caption text-medium-emphasis mt-1" v-if="customerMetaLine">
+              {{ customerMetaLine }}
+            </div>
 
             <div class="text-caption text-medium-emphasis mt-4 mb-1">Fecha</div>
             <div class="text-body-1 font-weight-medium">{{ dt(sale.sold_at || sale.created_at) }}</div>
 
             <div class="d-flex flex-wrap ga-2 mt-4">
               <v-chip size="small" variant="tonal" :color="statusColor(sale.status)">
-                {{ sale.status || "—" }}
+                {{ statusLabel(sale.status) }}
               </v-chip>
 
-              <v-chip size="small" variant="tonal" :color="payColor(topPaymentMethod)">
-                {{ methodLabel(topPaymentMethod) }}
+              <v-chip size="small" variant="tonal" :color="payColor(topPaymentMethodResolved)">
+                {{ methodLabel(topPaymentMethodResolved) }}
               </v-chip>
 
               <v-chip size="small" variant="tonal" color="primary">
-                Sucursal: {{ sale.branch?.name || sale.branch_id || "—" }}
+                Sucursal: {{ sale.branch?.name || sale.branch_name || sale.branch_id || "—" }}
               </v-chip>
 
               <v-chip size="small" variant="tonal" color="primary">
@@ -56,20 +63,43 @@
             </div>
 
             <div class="d-flex flex-wrap ga-2 mt-3">
-              <v-chip v-if="sale.customer_doc" size="small" variant="tonal">
+              <v-chip v-if="customerDocResolved" size="small" variant="tonal">
                 <v-icon start size="16">mdi-card-account-details-outline</v-icon>
-                {{ sale.customer_doc }}
+                {{ customerDocResolved }}
               </v-chip>
-              <v-chip v-if="sale.customer_phone" size="small" variant="tonal">
+
+              <v-chip v-if="customerPhoneResolved" size="small" variant="tonal">
                 <v-icon start size="16">mdi-phone</v-icon>
-                {{ sale.customer_phone }}
+                {{ customerPhoneResolved }}
               </v-chip>
+
+              <v-chip v-if="customerEmailResolved" size="small" variant="tonal">
+                <v-icon start size="16">mdi-email-outline</v-icon>
+                {{ customerEmailResolved }}
+              </v-chip>
+            </div>
+
+            <div class="mt-3" v-if="customerAddressResolved">
+              <div class="text-caption text-medium-emphasis mb-1">Dirección</div>
+              <div class="text-body-2">{{ customerAddressResolved }}</div>
             </div>
 
             <div v-if="sale.note" class="mt-4">
               <div class="text-caption text-medium-emphasis mb-1">Nota</div>
               <div class="text-body-2">{{ sale.note }}</div>
             </div>
+
+            <!-- ✅ Aviso snapshot vs real -->
+            <v-alert
+              v-if="!customerObj"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-4 rounded-xl"
+            >
+              Estos datos son <b>snapshot</b> guardados en la venta (customer_name/doc/tel). Si querés “cliente real”
+              (tabla customers), hay que incluirlo en el backend.
+            </v-alert>
           </div>
 
           <!-- Totales -->
@@ -105,7 +135,6 @@
               </div>
             </div>
 
-            <!-- ✅ Resumen Neto (devoluciones y cambios) -->
             <v-divider class="my-4" />
             <div class="d-flex align-center justify-space-between flex-wrap ga-2">
               <div>
@@ -244,14 +273,46 @@
         <v-divider class="my-6" />
         <div class="text-subtitle-1 font-weight-bold mb-2">Pagos</div>
 
-        <div v-if="(sale.payments || []).length" class="d-flex flex-column ga-2">
-          <div v-for="p in sale.payments" :key="p.id" class="d-flex justify-space-between align-center">
-            <div class="text-body-2 font-weight-medium">
-              {{ methodLabel(p.method) }}
-              <span v-if="p.paid_at" class="text-caption text-medium-emphasis"> · {{ dt(p.paid_at) }}</span>
-            </div>
-            <div class="text-body-2 font-weight-black">{{ money(p.amount) }}</div>
-          </div>
+        <div v-if="paymentsResolved.length" class="d-flex flex-column ga-2">
+          <v-card
+            v-for="p in paymentsResolved"
+            :key="p.id"
+            class="rounded-xl"
+            variant="outlined"
+          >
+            <v-card-text>
+              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+                <div class="text-body-2 font-weight-black">
+                  {{ methodLabel(p.method_resolved) }}
+                  <span v-if="p.card_type" class="text-medium-emphasis"> · {{ p.card_type_label }}</span>
+                  <span v-if="p.card_brand" class="text-medium-emphasis"> · {{ p.card_brand }}</span>
+                </div>
+
+                <div class="text-body-2 font-weight-black">{{ money(p.amount) }}</div>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-1 d-flex flex-wrap ga-2">
+                <span v-if="p.paid_at">Fecha: <b>{{ dt(p.paid_at) }}</b></span>
+                <span v-if="p.reference">Ref: <b>{{ p.reference }}</b></span>
+                <span v-if="p.provider_label">Proveedor: <b>{{ p.provider_label }}</b></span>
+              </div>
+
+              <!-- ✅ cuotas: cantidad + valor cuota + total con interés (si viene) -->
+              <div class="text-caption text-medium-emphasis mt-2 d-flex flex-wrap ga-2" v-if="p.installments > 1">
+                <span>Cuotas: <b>{{ p.installments }}</b></span>
+                <span v-if="p.installment_amount != null">
+                  Valor cuota: <b>{{ money(p.installment_amount) }}</b>
+                </span>
+                <span v-if="p.total_with_fee != null">
+                  Total financ.: <b>{{ money(p.total_with_fee) }}</b>
+                </span>
+              </div>
+
+              <div class="text-caption text-medium-emphasis mt-2" v-if="p.note_human">
+                Nota: {{ p.note_human }}
+              </div>
+            </v-card-text>
+          </v-card>
         </div>
 
         <v-alert v-else type="info" variant="tonal" class="rounded-xl">
@@ -283,7 +344,7 @@
               </div>
 
               <div class="text-caption text-medium-emphasis mt-2">
-                Medio: <b>{{ methodLabel(r.refund_method) }}</b>
+                Medio: <b>{{ methodLabel(resolveMethodFromRefund(r)) }}</b>
                 <span v-if="r.reference"> · Ref: {{ r.reference }}</span>
               </div>
 
@@ -393,18 +454,14 @@ const productsStore = useProductsStore();
 const id = computed(() => Number(route.params.id || 0));
 const loading = ref(false);
 
-// ✅ el backend devuelve: { sale, refunds, exchanges }
 const payload = ref(null);
 const sale = computed(() => payload.value?.sale || null);
 
-// ✅ devoluciones/cambios (del payload)
 const refunds = computed(() => (Array.isArray(payload.value?.refunds) ? payload.value.refunds : []));
 const exchanges = computed(() => (Array.isArray(payload.value?.exchanges) ? payload.value.exchanges : []));
 
 const refundsTotal = computed(() => refunds.value.reduce((a, r) => a + Number(r?.amount || 0), 0));
 const exchangesDiffTotal = computed(() => exchanges.value.reduce((a, x) => a + Number(x?.diff || 0), 0));
-
-// Neto “operativo”: total - devoluciones + (diff de cambios)
 const netTotal = computed(() => Number(sale.value?.total || 0) - refundsTotal.value + exchangesDiffTotal.value);
 
 const snack = ref({ show: false, text: "" });
@@ -423,9 +480,203 @@ const itemsHeaders = [
   { title: "", key: "actions", sortable: false, width: 140 },
 ];
 
-const topPaymentMethod = computed(() => {
-  const p = sale.value?.payments?.[0]?.method;
-  return String(p || "").toUpperCase();
+/* ============================================================
+   ✅ Métodos de pago + lectura de detalles (note JSON)
+   - QR => Mercado Pago
+   - credit_sjt => San Juan Crédito
+   - CARD => mostrar DEBIT/CREDIT + cuotas + valor cuota si viene
+============================================================ */
+function safeJsonParse(v) {
+  if (!v) return null;
+  if (typeof v === "object") return v;
+  const s = String(v || "").trim();
+  if (!s) return null;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function normStr(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function detectProviderCode(payment) {
+  const p = payment || {};
+  const refU = String(p.reference || p.ref || "").trim().toUpperCase();
+  if (refU === "SJCREDIT" || refU === "SJ_CREDIT" || refU === "SANJUANCREDITO" || refU === "SANJUAN_CREDITO") return "credit_sjt";
+  if (refU === "MERCADOPAGO" || refU === "MP") return "mercadopago";
+
+  const noteObj = safeJsonParse(p.note);
+  const c2 = normStr(noteObj?.provider_code || noteObj?.providerCode || noteObj?.provider || noteObj?.code || "");
+  if (c2) return c2;
+
+  const noteTxt = String(p.note || "").toLowerCase();
+  if (noteTxt.includes("credit_sjt") || noteTxt.includes("sjcredit") || noteTxt.includes("sanjuancredito")) return "credit_sjt";
+  if (noteTxt.includes("mercadopago") || noteTxt.includes("mp")) return "mercadopago";
+
+  return "";
+}
+
+function resolvePaymentMethod(payment) {
+  const p = payment || {};
+  const up = String(p.method || "").trim().toUpperCase();
+  const prov = detectProviderCode(p);
+
+  if (prov === "credit_sjt") return "CREDIT_SJT";
+  if (up === "CREDIT_SJT" || up === "CREDIT_SJ" || up === "SJCREDIT") return "CREDIT_SJT";
+
+  if (prov === "mercadopago") return "MERCADOPAGO";
+  if (up === "QR") return "MERCADOPAGO";
+  if (up === "MERCADOPAGO") return "MERCADOPAGO";
+
+  if (up === "CASH") return "CASH";
+  if (up === "CARD") return "CARD";
+  if (up === "TRANSFER") return "TRANSFER";
+  if (up === "OTHER") return "OTHER";
+
+  return up || "OTHER";
+}
+
+// ✅ extrae detalles del pago desde note JSON (y deja fallback si note es texto)
+function extractPaymentDetails(payment) {
+  const p = payment || {};
+  const noteObj = safeJsonParse(p.note) || null;
+
+  const raw = noteObj || {};
+  const cardTypeRaw = String(raw.card_type || raw.cardType || raw.type || "").trim().toUpperCase(); // DEBIT/CREDIT
+  const cardBrand = String(raw.brand || raw.card_brand || raw.cardBrand || raw.network || "").trim() || "";
+
+  const installments =
+    p.installments != null ? Number(p.installments || 1) :
+    raw.installments != null ? Number(raw.installments || 1) :
+    raw.cuotas != null ? Number(raw.cuotas || 1) :
+    1;
+
+  const installmentAmount =
+    raw.installment_amount != null ? Number(raw.installment_amount) :
+    raw.installmentAmount != null ? Number(raw.installmentAmount) :
+    raw.valor_cuota != null ? Number(raw.valor_cuota) :
+    raw.valorCuota != null ? Number(raw.valorCuota) :
+    null;
+
+  const totalWithFee =
+    raw.total_with_fee != null ? Number(raw.total_with_fee) :
+    raw.totalWithFee != null ? Number(raw.totalWithFee) :
+    raw.total_financiado != null ? Number(raw.total_financiado) :
+    null;
+
+  const providerCode = detectProviderCode(p);
+  const providerLabel =
+    providerCode === "mercadopago" ? "Mercado Pago" :
+    providerCode === "credit_sjt" ? "San Juan Crédito" :
+    providerCode ? providerCode : "";
+
+  // note humano si note era texto y no JSON
+  const noteHuman = noteObj ? (String(raw.note || raw.message || "").trim() || "") : String(p.note || "").trim();
+
+  return {
+    card_type: cardTypeRaw === "DEBIT" || cardTypeRaw === "CREDIT" ? cardTypeRaw : "",
+    card_type_label: cardTypeRaw === "DEBIT" ? "Débito" : cardTypeRaw === "CREDIT" ? "Crédito" : "",
+    card_brand: cardBrand,
+    installments: Number.isFinite(installments) && installments > 0 ? installments : 1,
+    installment_amount: Number.isFinite(installmentAmount) ? installmentAmount : null,
+    total_with_fee: Number.isFinite(totalWithFee) ? totalWithFee : null,
+    provider_label: providerLabel,
+    note_human: noteHuman && noteHuman !== "{}" ? noteHuman : "",
+  };
+}
+
+const topPaymentMethodResolved = computed(() => {
+  const p = sale.value?.payments?.[0] || null;
+  return resolvePaymentMethod(p);
+});
+
+const paymentsResolved = computed(() => {
+  const arr = Array.isArray(sale.value?.payments) ? sale.value.payments : [];
+  return arr.map((p) => {
+    const method_resolved = resolvePaymentMethod(p);
+    const det = extractPaymentDetails(p);
+
+    return {
+      ...p,
+      method_resolved,
+      ...det,
+      // si no había installments en note, usa el de DB
+      installments: det.installments || Number(p?.installments || 1) || 1,
+    };
+  });
+});
+
+/* ============================================================
+   ✅ Cliente: snapshot seguro + customer real si existe
+============================================================ */
+const customerObj = computed(() => sale.value?.customer || sale.value?.Customer || null);
+
+const customerNameResolved = computed(() => {
+  const s = sale.value || {};
+  const c = customerObj.value || {};
+  const name =
+    s.customer_name ||
+    s.customerName ||
+    c.name ||
+    c.full_name ||
+    c.fullName ||
+    [c.first_name, c.last_name].filter(Boolean).join(" ") ||
+    [c.firstName, c.lastName].filter(Boolean).join(" ");
+
+  const n = String(name || "").trim();
+  if (n) return n;
+
+  const cid = Number(s.customer_id || c.id || 0);
+  return cid ? `Cliente #${cid}` : "Consumidor Final";
+});
+
+const customerDocResolved = computed(() => {
+  const s = sale.value || {};
+  const c = customerObj.value || {};
+  return String(s.customer_doc || s.customerDoc || c.doc || c.document || c.dni || c.cuit || c.cuil || "").trim() || "";
+});
+
+const customerPhoneResolved = computed(() => {
+  const s = sale.value || {};
+  const c = customerObj.value || {};
+  return String(s.customer_phone || s.customerPhone || c.phone || c.telefono || c.mobile || c.cel || "").trim() || "";
+});
+
+const customerEmailResolved = computed(() => {
+  const s = sale.value || {};
+  const c = customerObj.value || {};
+  return String(s.customer_email || s.customerEmail || c.email || "").trim() || "";
+});
+
+const customerAddressResolved = computed(() => {
+  const s = sale.value || {};
+  const c = customerObj.value || {};
+  const addr =
+    s.customer_address ||
+    s.customerAddress ||
+    c.address ||
+    c.direccion ||
+    c.address_line ||
+    c.addressLine ||
+    c.street ||
+    "";
+
+  const a = String(addr || "").trim();
+  return a || "";
+});
+
+const customerMetaLine = computed(() => {
+  const s = sale.value || {};
+  const cid = Number(s.customer_id || customerObj.value?.id || 0) || null;
+  const extras = [];
+  if (cid) extras.push(`ID: ${cid}`);
+  return extras.length ? extras.join(" · ") : "";
 });
 
 // =====================
@@ -454,7 +705,8 @@ function methodLabel(m) {
   if (x === "CASH") return "Efectivo";
   if (x === "CARD") return "Tarjeta / Débito";
   if (x === "TRANSFER") return "Transferencia";
-  if (x === "QR") return "QR";
+  if (x === "MERCADOPAGO") return "Mercado Pago";
+  if (x === "CREDIT_SJT") return "San Juan Crédito";
   if (x === "OTHER") return "Otro";
   return m || "—";
 }
@@ -463,8 +715,17 @@ function payColor(m) {
   if (x === "CASH") return "green";
   if (x === "CARD") return "indigo";
   if (x === "TRANSFER") return "purple";
-  if (x === "QR") return "cyan";
+  if (x === "MERCADOPAGO") return "orange";
+  if (x === "CREDIT_SJT") return "teal";
   return "grey";
+}
+function statusLabel(s) {
+  const x = String(s || "").toUpperCase();
+  if (x === "PAID") return "Pagada";
+  if (x === "CANCELLED") return "Cancelada";
+  if (x === "REFUNDED") return "Reintegrada";
+  if (x === "DRAFT") return "Borrador";
+  return s || "—";
 }
 function statusColor(s) {
   const x = String(s || "").toUpperCase();
@@ -477,6 +738,14 @@ function statusColor(s) {
 function userLabel(s) {
   const u = s?.user || null;
   return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
+}
+
+function resolveMethodFromRefund(r) {
+  const up = String(r?.refund_method || r?.method || "").toUpperCase();
+  if (up === "QR") return "MERCADOPAGO";
+  if (up === "MERCADOPAGO") return "MERCADOPAGO";
+  if (up === "CREDIT_SJT" || up === "SJCREDIT") return "CREDIT_SJT";
+  return up || "OTHER";
 }
 
 // =====================
@@ -499,7 +768,6 @@ function productName(item) {
   );
 }
 function productSku(item) {
-  // ✅ súper tolerante (porque acá está el “—”)
   const prod = p(item) || {};
   const v =
     item?.product_sku_snapshot ||
@@ -548,24 +816,14 @@ function categoryLabel(item) {
 }
 
 // =====================
-// Imagen (mismo criterio que POS)
+// Imagen
 // =====================
 const imageById = ref({});
 const imgLoading = ref({});
 
 function pickUrlFromImageRow(row) {
   if (!row) return "";
-  return (
-    row.url ||
-    row.public_url ||
-    row.publicUrl ||
-    row.image_url ||
-    row.path ||
-    row.key ||
-    row.location ||
-    row.filename ||
-    ""
-  );
+  return row.url || row.public_url || row.publicUrl || row.image_url || row.path || row.key || row.location || row.filename || "";
 }
 function normalizeUrl(u) {
   if (!u) return "";
@@ -648,11 +906,10 @@ function itemImage(item) {
 }
 
 // =====================
-// Stock (más tolerante)
+// Stock
 // =====================
 function stockQty(item) {
   const prod = p(item) || {};
-  // ✅ POS suele devolver qty
   const q =
     prod?.qty ??
     prod?.stock_qty ??
@@ -696,15 +953,39 @@ function stockChipColor(item) {
 // =====================
 // Actions
 // =====================
+// ✅ FIX: navegar a producto por PATH robusto (no dependemos del route name)
 function goToProduct(pid) {
   const n = Number(pid || 0);
   if (!n) return;
-  router.push({ name: "productProfile", params: { id: n } });
+
+  // Intentos comunes en /app
+  const tries = [
+    `/app/products/${n}`,
+    `/app/products/view/${n}`,
+    `/app/products/detail/${n}`,
+    `/app/products/${n}/view`,
+  ];
+
+  // 1) si existe una ruta por name, intentamos primero (por si la tenés)
+  router.push({ name: "ProductDetailViewPage", params: { id: n } }).catch(() => {
+    router.push({ name: "product-detail", params: { id: n } }).catch(async () => {
+      // 2) fallback por path: probamos varios
+      for (const path of tries) {
+        try {
+          await router.push({ path });
+          return;
+        } catch {}
+      }
+      snack.value = { show: true, text: "No encontré la ruta del perfil de producto (router)" };
+    });
+  });
 }
+
 function openImage(item) {
   imageItem.value = item || null;
   imageDialog.value = true;
 }
+
 async function copyText(txt) {
   try {
     if (!txt) return;
@@ -717,16 +998,11 @@ async function copyText(txt) {
 
 // =====================================================
 // ✅ HYDRATE ROBUSTO: trae el producto COMPLETO
-// Orden:
-// 1) /pos/products/:id (mejor para qty)
-// 2) /pos/products?ids=...
-// 3) /products/:id
 // =====================================================
 function needsHydrateProducts(items) {
   const arr = Array.isArray(items) ? items : [];
   if (!arr.length) return false;
 
-  // hidratamos si falta product o falta “identidad” fuerte (sku/codigo)
   return arr.some((it) => {
     const prod = it?.product;
     if (!prod) return true;
@@ -754,7 +1030,6 @@ async function fetchPosProductOne(id) {
   for (const a of attempts) {
     try {
       const { data } = await http.get(a.url, a.params ? { params: a.params } : undefined);
-      // aceptamos {ok:true,data:{...}} o {...} directo
       const obj = data?.ok ? data?.data : data;
       if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
     } catch (e) {
@@ -813,7 +1088,6 @@ async function hydrateProductsForItems() {
   try {
     const map = new Map();
 
-    // 1) intento batch /pos/products?ids=...
     try {
       const list = await fetchPosProductsBatch(ids);
       for (const pr of list) {
@@ -821,7 +1095,6 @@ async function hydrateProductsForItems() {
         if (pid) map.set(pid, pr);
       }
     } catch {
-      // 2) si no hay batch, probamos /pos/products/:id en paralelo
       const rows = await Promise.all(ids.map((pid) => fetchPosProductOne(pid).catch(() => null)));
       for (const pr of rows) {
         const pid = Number(pr?.id || 0);
@@ -829,7 +1102,6 @@ async function hydrateProductsForItems() {
       }
     }
 
-    // 3) para los que sigan faltando, fallback /products/:id
     const missing = ids.filter((pid) => !map.has(pid));
     if (missing.length) {
       const rows = await Promise.all(missing.map((pid) => fetchProductFallbackOne(pid).catch(() => null)));
@@ -839,7 +1111,6 @@ async function hydrateProductsForItems() {
       }
     }
 
-    // inyectar a items
     for (const it of items) {
       const pid = pidOf(it);
       if (!pid) continue;
@@ -863,7 +1134,6 @@ async function load() {
 
     payload.value = data.data || null;
 
-    // ✅ clave: hidratar con estrategia robusta
     await hydrateProductsForItems();
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
