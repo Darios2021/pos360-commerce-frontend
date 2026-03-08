@@ -79,8 +79,6 @@
   </section>
 </template>
 
-
-
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
@@ -132,28 +130,28 @@ const MOBILE_ONLY_SLIDES = [
   },
 ];
 
-/* ✅ DESKTOP: SOLO ESTOS 4 SLIDES (1920x600) */
+/* ✅ DESKTOP: SOLO ESTOS 4 NUEVOS SLIDES */
 const DESKTOP_ONLY_SLIDES = [
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770903212732-17f2ec4cdd3b9ac5.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1772940300994-b27df50809df4046.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770903207736-3260b8240fb94ad2.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1772940323537-24e8ab20edd1d7e2.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770903202552-dbb0ad80d3d1516a.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1772940332137-90f5e1e086afaf92.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
   },
   {
-    image: "https://storage-files.cingulado.org/pos360/media/1770903121441-47eeccec2eb306f2.webp",
+    image: "https://storage-files.cingulado.org/pos360/media/1772940340936-8bab7563cfc89e28.webp",
     noText: true,
     noOverlay: true,
     action: { type: "shop" },
@@ -368,8 +366,8 @@ watch(
 .ml-slide {
   position: relative;
   width: 100%;
-  height: auto;                 /* ✅ nada fijo */
-  aspect-ratio: var(--ml-ar);   /* ✅ ratio real por slide */
+  height: auto;
+  aspect-ratio: var(--ml-ar);
   cursor: pointer;
   background: transparent;
   overflow: hidden;
@@ -384,8 +382,8 @@ watch(
   inset: 0;
   width: 100%;
   height: 100%;
-  display: block;       /* ✅ sin “bordecitos” por baseline */
-  object-fit: contain;  /* ✅ NO recorta */
+  display: block;
+  object-fit: contain;
   object-position: center;
   transform: none;
   background: transparent;
@@ -513,7 +511,6 @@ watch(
 
 /* =========================
    TABLET
-   (mantiene ratio, sin recortar)
    ========================= */
 @media (max-width: 960px) {
   .ml-mlarrow {

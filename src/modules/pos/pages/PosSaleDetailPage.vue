@@ -55,10 +55,6 @@
               {{ customerNameResolved }}
             </div>
 
-            <div v-if="customerMetaLine" class="hero-muted mt-1">
-              {{ customerMetaLine }}
-            </div>
-
             <div v-if="showCustomerDataBlock" class="mt-4">
               <div class="info-label mb-2">Datos del cliente</div>
 
@@ -82,23 +78,13 @@
                   <v-icon start size="16">mdi-phone</v-icon>
                   {{ customerPhoneResolved }}
                 </v-chip>
-
-                <v-chip
-                  v-if="customerEmailResolved"
-                  size="small"
-                  variant="outlined"
-                  class="detail-chip"
-                >
-                  <v-icon start size="16">mdi-email-outline</v-icon>
-                  {{ customerEmailResolved }}
-                </v-chip>
               </div>
             </div>
 
-            <div v-if="customerAddressResolved" class="mt-4">
-              <div class="info-label mb-1">Dirección</div>
-              <div class="info-value">
-                {{ customerAddressResolved }}
+            <div v-else class="mt-4">
+              <div class="info-label mb-1">Datos del cliente</div>
+              <div class="hero-muted">
+                Esta venta no guardó documento ni teléfono.
               </div>
             </div>
 
@@ -332,29 +318,10 @@
           </div>
 
           <div v-if="paymentsResolved.length" class="payments-stack">
-            <div v-if="paymentMethodSummary.length" class="payment-summary-grid">
-              <div
-                v-for="row in paymentMethodSummary"
-                :key="row.method"
-                class="payment-summary-card"
-              >
-                <div class="payment-summary-label">{{ methodLabel(row.method) }}</div>
-                <div class="payment-summary-value">{{ money(row.amount) }}</div>
-                <v-chip
-                  size="x-small"
-                  variant="flat"
-                  :color="payColor(row.method)"
-                  class="font-weight-bold mt-2"
-                >
-                  {{ row.count }} mov.
-                </v-chip>
-              </div>
-            </div>
-
             <v-card
               v-for="p in paymentsResolved"
               :key="p.id"
-              class="payment-card rounded-2xl elevation-0"
+              class="payment-card payment-card--single rounded-2xl elevation-0"
             >
               <v-card-text class="pa-4 pa-md-5">
                 <div class="payment-top">
@@ -376,15 +343,6 @@
                         class="detail-chip"
                       >
                         {{ p.card_type_label }}
-                      </v-chip>
-
-                      <v-chip
-                        v-if="p.provider_label && p.provider_label !== methodLabel(p.method_resolved)"
-                        size="small"
-                        variant="outlined"
-                        class="detail-chip"
-                      >
-                        {{ p.provider_label }}
                       </v-chip>
 
                       <v-chip
@@ -429,22 +387,6 @@
                     <div class="fact-label">{{ fact.label }}</div>
                     <div class="fact-value">{{ fact.value }}</div>
                   </div>
-                </div>
-
-                <div
-                  v-if="paymentTags(p).length"
-                  class="d-flex flex-wrap ga-2 mt-4"
-                >
-                  <v-chip
-                    v-for="tag in paymentTags(p)"
-                    :key="tag.text"
-                    size="small"
-                    variant="tonal"
-                    :color="tag.color"
-                    class="font-weight-medium"
-                  >
-                    {{ tag.text }}
-                  </v-chip>
                 </div>
 
                 <div v-if="p.note_human" class="payment-note mt-4">
@@ -767,7 +709,7 @@ function extractPaymentDetails(payment) {
   const providerCode = detectProviderCode(p);
   const providerLabel =
     providerCode === "mercadopago" ? "Mercado Pago" :
-    providerCode === "credit_sjt" ? "San Juan Crédito" :
+    providerCode === "credit_sjt" ? "Crédito SJ" :
     providerCode ? providerCode : "";
 
   const rawNoteHuman = noteObj
@@ -815,20 +757,6 @@ const paymentsResolved = computed(() => {
   });
 });
 
-const paymentMethodSummary = computed(() => {
-  const map = new Map();
-
-  for (const p of paymentsResolved.value) {
-    const key = p.method_resolved || "OTHER";
-    const prev = map.get(key) || { method: key, amount: 0, count: 0 };
-    prev.amount += Number(p.amount || 0);
-    prev.count += 1;
-    map.set(key, prev);
-  }
-
-  return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-});
-
 const customerObj = computed(() => sale.value?.customer || sale.value?.Customer || null);
 
 const customerNameResolved = computed(() => {
@@ -852,50 +780,18 @@ const customerNameResolved = computed(() => {
 
 const customerDocResolved = computed(() => {
   const s = sale.value || {};
-  const c = customerObj.value || {};
-  return String(s.customer_doc || s.customerDoc || c.doc || c.document || c.dni || c.cuit || c.cuil || "").trim() || "";
+  return String(s.customer_doc || s.customerDoc || "").trim() || "";
 });
 
 const customerPhoneResolved = computed(() => {
   const s = sale.value || {};
-  const c = customerObj.value || {};
-  return String(s.customer_phone || s.customerPhone || c.phone || c.telefono || c.mobile || c.cel || "").trim() || "";
-});
-
-const customerEmailResolved = computed(() => {
-  const s = sale.value || {};
-  const c = customerObj.value || {};
-  return String(s.customer_email || s.customerEmail || c.email || "").trim() || "";
-});
-
-const customerAddressResolved = computed(() => {
-  const s = sale.value || {};
-  const c = customerObj.value || {};
-  const addr =
-    s.customer_address ||
-    s.customerAddress ||
-    c.address ||
-    c.direccion ||
-    c.address_line ||
-    c.addressLine ||
-    c.street ||
-    "";
-
-  const a = String(addr || "").trim();
-  return a || "";
-});
-
-const customerMetaLine = computed(() => {
-  const s = sale.value || {};
-  const cid = Number(s.customer_id || customerObj.value?.id || 0) || null;
-  return cid ? `ID: ${cid}` : "";
+  return String(s.customer_phone || s.customerPhone || "").trim() || "";
 });
 
 const showCustomerDataBlock = computed(() => {
   return !!(
     customerDocResolved.value ||
-    customerPhoneResolved.value ||
-    customerEmailResolved.value
+    customerPhoneResolved.value
   );
 });
 
@@ -987,15 +883,21 @@ function paymentHeadline(p) {
   const installments = Number(p?.installments || 1);
   const cuota = paymentInstallmentText(p);
 
-  if (installments > 1 && cuota) {
-    return `${installments} cuotas de ${cuota}`;
+  if (method === "CREDIT_SJT") {
+    if (installments <= 1) return "Pagado en 1 cuota (Crédito SJ)";
+    if (cuota) return `Pagado en ${installments} cuotas de ${cuota} (Crédito SJ)`;
+    return `Pagado en ${installments} cuotas (Crédito SJ)`;
   }
 
-  if (method === "CARD") return "Pago con tarjeta";
-  if (method === "TRANSFER") return "Pago por transferencia";
-  if (method === "MERCADOPAGO") return "Cobro vía Mercado Pago";
-  if (method === "CASH") return "Pago en efectivo";
-  if (method === "CREDIT_SJT") return "San Juan Crédito";
+  if (method === "CARD") {
+    if (installments <= 1) return "Pagado en 1 pago con tarjeta";
+    if (cuota) return `Pagado en ${installments} cuotas de ${cuota} con tarjeta`;
+    return `Pagado en ${installments} cuotas con tarjeta`;
+  }
+
+  if (method === "TRANSFER") return "Pagado por transferencia";
+  if (method === "MERCADOPAGO") return "Pagado con Mercado Pago";
+  if (method === "CASH") return "Pagado en efectivo";
   return methodLabel(method);
 }
 
@@ -1011,7 +913,9 @@ function paymentFacts(p) {
 
   out.push({ label: "Método", value: methodLabel(p.method_resolved) });
 
-  if (Number(p.installments || 1) > 1) {
+  if (Number(p.installments || 1) <= 1) {
+    out.push({ label: "Cuotas", value: "1 cuota" });
+  } else {
     out.push({ label: "Cuotas", value: `${p.installments} cuotas` });
   }
 
@@ -1034,20 +938,6 @@ function paymentFacts(p) {
   }
 
   return out;
-}
-
-function paymentTags(p) {
-  const tags = [];
-
-  if (p?.card_brand) {
-    tags.push({ text: `Marca: ${p.card_brand}`, color: "blue-grey" });
-  }
-
-  if (p?.provider_label && p.provider_label !== methodLabel(p.method_resolved)) {
-    tags.push({ text: p.provider_label, color: "grey" });
-  }
-
-  return tags;
 }
 
 function resolveMethodFromRefund(r) {
@@ -1503,6 +1393,7 @@ watch(id, () => load());
   line-height: 1.05;
   font-weight: 900;
   color: var(--sd-text);
+  word-break: break-word;
 }
 
 .page-subtitle {
@@ -1522,16 +1413,14 @@ watch(id, () => load());
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
   gap: 20px;
   align-items: stretch;
 }
 
 .soft-panel,
-.total-panel,
 .soft-subcard,
 .payment-card,
-.payment-summary-card,
 .mini-stat-card,
 .fact-card {
   border: 1px solid var(--sd-border);
@@ -1545,6 +1434,7 @@ watch(id, () => load());
 
 .soft-panel {
   padding: 22px;
+  min-width: 0;
 }
 
 .panel-title,
@@ -1561,6 +1451,7 @@ watch(id, () => load());
   line-height: 1.12;
   font-weight: 900;
   color: var(--sd-text);
+  word-break: break-word;
 }
 
 .hero-muted,
@@ -1600,6 +1491,7 @@ watch(id, () => load());
   color: var(--sd-text);
   font-weight: 700;
   line-height: 1.35;
+  word-break: break-word;
 }
 
 .total-top {
@@ -1666,6 +1558,7 @@ watch(id, () => load());
   font-size: 1.08rem;
   font-weight: 900;
   color: var(--sd-text);
+  word-break: break-word;
 }
 
 .section-block {
@@ -1703,6 +1596,7 @@ watch(id, () => load());
 .product-name {
   font-weight: 900;
   color: var(--sd-text);
+  min-width: 0;
 }
 
 .product-meta {
@@ -1716,38 +1610,14 @@ watch(id, () => load());
   cursor: zoom-in;
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid var(--sd-border);
+  flex: 0 0 auto;
 }
 
 .detail-chip {
   color: var(--sd-text) !important;
   border-color: var(--sd-border-strong) !important;
   background: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
-.payment-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.payment-summary-card {
-  border-radius: 18px;
-  padding: 14px;
-  background: rgba(var(--v-theme-surface), 0.88);
-}
-
-.payment-summary-label {
-  color: var(--sd-text-soft);
-  font-size: 0.88rem;
-  font-weight: 700;
-}
-
-.payment-summary-value {
-  margin-top: 6px;
-  color: var(--sd-text);
-  font-size: 1.14rem;
-  font-weight: 900;
+  max-width: 100%;
 }
 
 .payments-stack {
@@ -1758,6 +1628,10 @@ watch(id, () => load());
 .payment-card {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.9));
+}
+
+.payment-card--single {
+  border-radius: 22px;
 }
 
 .payment-top {
@@ -1772,10 +1646,11 @@ watch(id, () => load());
 }
 
 .payment-title {
-  font-size: 1.24rem;
+  font-size: 1.3rem;
   line-height: 1.15;
   font-weight: 900;
   color: var(--sd-text);
+  word-break: break-word;
 }
 
 .payment-subline {
@@ -1786,7 +1661,7 @@ watch(id, () => load());
 }
 
 .payment-amount-box {
-  min-width: 180px;
+  min-width: 190px;
   border-radius: 18px;
   padding: 14px 16px;
   background: rgba(var(--v-theme-primary), 0.08);
@@ -1808,6 +1683,7 @@ watch(id, () => load());
   line-height: 1;
   font-weight: 900;
   color: var(--sd-text);
+  word-break: break-word;
 }
 
 .payment-facts-grid {
@@ -1820,6 +1696,7 @@ watch(id, () => load());
   border-radius: 18px;
   padding: 14px;
   background: rgba(var(--v-theme-on-surface), 0.025);
+  min-width: 0;
 }
 
 .payment-note {
@@ -1846,6 +1723,7 @@ watch(id, () => load());
   color: var(--sd-text) !important;
   border-bottom-color: var(--sd-border) !important;
   background: transparent;
+  vertical-align: top;
 }
 
 :deep(.v-data-table .v-table__wrapper > table > tbody > tr:hover > td) {
@@ -1871,6 +1749,21 @@ watch(id, () => load());
   }
 }
 
+@media (max-width: 860px) {
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .payment-top {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-amount-box {
+    min-width: 0;
+    text-align: left;
+  }
+}
+
 @media (max-width: 760px) {
   .page-head {
     margin-bottom: 14px;
@@ -1886,17 +1779,54 @@ watch(id, () => load());
     grid-template-columns: 1fr;
   }
 
-  .payment-top {
+  .product-cell {
+    align-items: flex-start;
+  }
+
+  .hero-customer-name {
+    font-size: 1.9rem;
+  }
+
+  .payment-title {
+    font-size: 1.08rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .pos-sale-detail {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .soft-panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .main-shell {
+    border-radius: 18px !important;
+  }
+
+  .page-title {
+    font-size: 1.45rem;
+  }
+
+  .total-main {
+    font-size: 1.85rem;
+  }
+
+  .mini-stats-grid,
+  .payment-facts-grid {
     grid-template-columns: 1fr;
   }
 
-  .payment-amount-box {
-    min-width: 0;
-    text-align: left;
+  .product-cell {
+    gap: 10px;
   }
 
-  .product-cell {
-    align-items: flex-start;
+  .thumb {
+    width: 50px !important;
+    height: 50px !important;
   }
 }
 </style>

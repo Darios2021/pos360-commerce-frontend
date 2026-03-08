@@ -1,3 +1,4 @@
+<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <template>
   <div class="scm-root" :class="{ mobile: isMobile }">
     <!-- DESKTOP -->
@@ -17,11 +18,14 @@
         </button>
       </template>
 
-      <v-card class="scm-card" elevation="14" rounded="xl">
+      <v-card class="scm-card" elevation="16" rounded="xl">
         <div class="scm-mega">
           <!-- LEFT -->
           <aside class="scm-left">
-            <div class="scm-left-title">Categorías</div>
+            <div class="scm-left-head">
+              <div class="scm-left-kicker">Explorar</div>
+              <div class="scm-left-title">Categorías</div>
+            </div>
 
             <div class="scm-left-list">
               <button
@@ -35,13 +39,23 @@
                 @click="pickParent(c)"
               >
                 <span class="scm-left-text">{{ c.name }}</span>
-                <v-icon
-                  size="18"
-                  class="scm-left-chevron"
-                  v-if="(childrenByParent[c.id] || []).length"
-                >
-                  mdi-chevron-right
-                </v-icon>
+
+                <div class="scm-left-meta">
+                  <span
+                    v-if="(childrenByParent[c.id] || []).length"
+                    class="scm-left-badge"
+                  >
+                    {{ (childrenByParent[c.id] || []).length }}
+                  </span>
+
+                  <v-icon
+                    size="18"
+                    class="scm-left-chevron"
+                    v-if="(childrenByParent[c.id] || []).length"
+                  >
+                    mdi-chevron-right
+                  </v-icon>
+                </div>
               </button>
             </div>
           </aside>
@@ -49,8 +63,11 @@
           <!-- RIGHT -->
           <section class="scm-right">
             <div class="scm-right-head">
-              <div class="scm-right-title">
-                {{ hoverParent?.name || "Elegí una categoría" }}
+              <div>
+                <div class="scm-right-kicker">Navegación</div>
+                <div class="scm-right-title">
+                  {{ hoverParent?.name || "Elegí una categoría" }}
+                </div>
               </div>
 
               <button
@@ -81,15 +98,17 @@
                     @click="pickChild(s)"
                     :title="s.name"
                   >
-                    {{ s.name }}
+                    <span class="scm-sub-dot"></span>
+                    <span class="scm-sub-text">{{ s.name }}</span>
                   </button>
                 </div>
               </div>
             </div>
 
             <div v-else class="scm-empty">
-              <div class="text-caption text-medium-emphasis">
-                No hay subcategorías para este rubro.
+              <div class="scm-empty-box">
+                <v-icon size="18">mdi-shape-outline</v-icon>
+                <span>No hay subcategorías para este rubro.</span>
               </div>
             </div>
           </section>
@@ -111,7 +130,11 @@
       class="scm-drawer"
     >
       <div class="scm-drawer-head">
-        <div class="scm-drawer-title">Categorías</div>
+        <div>
+          <div class="scm-drawer-kicker">Explorar</div>
+          <div class="scm-drawer-title">Categorías</div>
+        </div>
+
         <v-btn icon variant="text" @click="mobileCats = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -127,7 +150,16 @@
             :class="{ open: openParentId === Number(p.id) }"
             @click="toggleParent(p)"
           >
-            <span class="scm-acc-title">{{ p.name }}</span>
+            <div class="scm-acc-parent-main">
+              <span class="scm-acc-title">{{ p.name }}</span>
+              <span
+                v-if="(childrenByParent[p.id] || []).length"
+                class="scm-acc-badge"
+              >
+                {{ (childrenByParent[p.id] || []).length }}
+              </span>
+            </div>
+
             <v-icon size="16">
               {{ openParentId === Number(p.id) ? "mdi-chevron-up" : "mdi-chevron-down" }}
             </v-icon>
@@ -145,7 +177,8 @@
                 class="scm-acc-child"
                 @click="pickChildMobile(c)"
               >
-                {{ c.name }}
+                <span class="scm-acc-child-dot"></span>
+                <span>{{ c.name }}</span>
               </button>
 
               <button
@@ -171,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
 import {
@@ -268,11 +301,13 @@ function buildParentQuery(parentId) {
 function pickParent(c) {
   const pid = Number(c?.id || 0);
   if (!pid) return;
+
   router.push({
     name: "shopCategory",
     params: { id: pid },
     query: buildParentQuery(pid),
   });
+
   menu.value = false;
 }
 
@@ -280,11 +315,13 @@ function pickChild(s) {
   const subId = Number(s?.id || 0);
   const parentId = Number(s?.category_id || hoverParentId.value || 0);
   if (!subId || !parentId) return;
+
   router.push({
     name: "shopCategory",
     params: { id: parentId },
     query: buildChildQuery(parentId, subId),
   });
+
   menu.value = false;
 }
 
@@ -296,11 +333,13 @@ function toggleParent(p) {
 async function pickParentMobile(p) {
   const pid = Number(p?.id || 0);
   if (!pid) return;
+
   await router.push({
     name: "shopCategory",
     params: { id: pid },
     query: buildParentQuery(pid),
   });
+
   mobileCats.value = false;
 }
 
@@ -308,124 +347,567 @@ async function pickChildMobile(s) {
   const subId = Number(s?.id || 0);
   const parentId = Number(s?.category_id || 0);
   if (!subId || !parentId) return;
+
   await router.push({
     name: "shopCategory",
     params: { id: parentId },
     query: buildChildQuery(parentId, subId),
   });
+
   mobileCats.value = false;
 }
+
+function ensureDesktopDefaultSelection() {
+  if (!isMobile.value && !hoverParentId.value && parents.value.length) {
+    hoverParentId.value = Number(parents.value[0].id);
+  }
+}
+
+watch(menu, (val) => {
+  if (val) ensureDesktopDefaultSelection();
+});
+
+watch(
+  () => parents.value,
+  () => {
+    ensureDesktopDefaultSelection();
+  },
+  { deep: true }
+);
 
 onMounted(async () => {
   parentsList.value = await getPublicParentCategories();
   subMap.value = await getPublicSubcategoriesMap(parentsList.value);
 
-  // ✅ INICIA TODO CERRADO
-  hoverParentId.value = null;
+  hoverParentId.value = parents.value.length ? Number(parents.value[0].id) : null;
   openParentId.value = null;
 });
 </script>
 
 <style scoped>
-/* ⚠️ estilos intactos, no se tocó nada */
-</style>
-
-
-<style scoped>
-/* (mantené tus styles actuales; no cambio nada de UI acá) */
-.scm-root { display: inline-flex; align-items: center; }
-.scm-trigger {
-  appearance: none; border: 0; background: transparent; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 8px; border-radius: 10px;
-  color: rgba(255, 255, 255, 0.82);
-  font-weight: 750; font-size: 13px; opacity: 0.92;
-  transition: opacity 0.15s ease, background 0.15s ease;
+.scm-root {
+  display: inline-flex;
+  align-items: center;
 }
-.scm-trigger:hover { opacity: 1; background: rgba(255, 255, 255, 0.08); }
-.scm-trigger-ico { color: rgba(255, 255, 255, 0.78); }
 
+/* trigger */
+.scm-trigger {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 520;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  transition:
+    opacity 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.scm-trigger:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.scm-trigger:active {
+  transform: translateY(1px);
+}
+
+.scm-trigger-text {
+  font-weight: 520;
+}
+
+.scm-trigger-ico {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+/* card */
 .scm-card {
   position: relative;
   width: min(1120px, calc(100vw - 40px));
-  background: #fff !important;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%) !important;
+  border: 1px solid rgba(14, 24, 38, 0.08);
+  box-shadow:
+    0 16px 40px rgba(10, 24, 40, 0.14),
+    0 2px 10px rgba(10, 24, 40, 0.06);
   overflow: hidden;
 }
+
 .scm-mega {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  min-height: 460px;
-  max-height: calc(100vh - 160px);
+  grid-template-columns: 300px 1fr;
+  min-height: 500px;
+  max-height: calc(100vh - 150px);
 }
-.scm-left { background: #fff; border-right: 1px solid rgba(0, 0, 0, 0.08); padding: 12px 10px; overflow: hidden; }
-.scm-left-title { font-weight: 950; font-size: 13px; color: rgba(0,0,0,.72); padding: 6px 10px 10px; }
-.scm-left-list { display: flex; flex-direction: column; gap: 2px; max-height: 400px; overflow: auto; padding-right: 4px; }
+
+/* left */
+.scm-left {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(244, 247, 250, 0.98) 100%);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 14px 12px;
+  overflow: hidden;
+}
+
+.scm-left-head {
+  padding: 6px 10px 12px;
+}
+
+.scm-left-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.42);
+  margin-bottom: 4px;
+}
+
+.scm-left-title {
+  font-weight: 560;
+  font-size: 20px;
+  line-height: 1.1;
+  color: rgba(17, 24, 39, 0.88);
+}
+
+.scm-left-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.scm-left-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scm-left-list::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+}
+
 .scm-left-item {
-  width: 100%; border: 0; background: transparent; cursor: pointer;
-  border-radius: 10px; padding: 10px 10px;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  transition: background .15s ease;
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
-.scm-left-item:hover { background: rgba(0,0,0,.04); }
-.scm-left-item.active { background: rgba(20,136,209,.10); outline: 1px solid rgba(20,136,209,.18); }
-.scm-left-text { font-weight: 850; font-size: 13px; color: rgba(0,0,0,.80); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scm-left-chevron { color: rgba(0,0,0,.35); }
 
-.scm-right { padding: 18px 18px 16px; background: #fff; overflow: auto; }
+.scm-left-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.06);
+  transform: translateX(2px);
+}
+
+.scm-left-item.active {
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.08) 0%, rgba(21, 101, 192, 0.12) 100%);
+  border-color: rgba(21, 101, 192, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(21, 101, 192, 0.06);
+}
+
+.scm-left-text {
+  font-weight: 520;
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.86);
+  text-align: left;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scm-left-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.scm-left-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.65);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.scm-left-item.active .scm-left-badge {
+  background: rgba(21, 101, 192, 0.14);
+  color: rgba(21, 101, 192, 0.9);
+}
+
+.scm-left-chevron {
+  color: rgba(15, 23, 42, 0.34);
+}
+
+/* right */
+.scm-right {
+  padding: 22px 22px 18px;
+  background:
+    radial-gradient(circle at top right, rgba(25, 118, 210, 0.04), transparent 24%),
+    #ffffff;
+  overflow: auto;
+}
+
 .scm-right-head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,.08); margin-bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  margin-bottom: 18px;
 }
-.scm-right-title { font-weight: 500; font-size: 22px; color: rgba(0,0,0,.70); }
+
+.scm-right-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.42);
+  margin-bottom: 5px;
+}
+
+.scm-right-title {
+  font-weight: 540;
+  font-size: 32px;
+  line-height: 1.08;
+  color: rgba(17, 24, 39, 0.82);
+  letter-spacing: -0.02em;
+}
+
 .scm-seeall {
-  border: 0; background: transparent; color: rgba(20,136,209,.95);
-  font-weight: 850; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 8px; border-radius: 10px;
+  border: 1px solid rgba(21, 101, 192, 0.14);
+  background: rgba(21, 101, 192, 0.05);
+  color: rgba(21, 101, 192, 0.95);
+  font-weight: 560;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
-.scm-seeall:hover { background: rgba(20,136,209,.08); }
 
-.scm-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; padding-top: 6px; }
-.scm-group-title { font-weight: 700; font-size: 14px; color: rgba(0,0,0,.72); margin-bottom: 10px; }
-.scm-group-items { display: flex; flex-direction: column; gap: 10px; }
-.scm-sub { border: 0; background: transparent; cursor: pointer; text-align: left; padding: 0;
-  color: rgba(0,0,0,.55); font-weight: 500; font-size: 13px; line-height: 1.15; }
-.scm-sub:hover { color: rgba(20,136,209,.95); text-decoration: underline; text-underline-offset: 4px; }
+.scm-seeall:hover {
+  background: rgba(21, 101, 192, 0.09);
+  border-color: rgba(21, 101, 192, 0.22);
+  transform: translateY(-1px);
+}
 
-.scm-drawer :deep(.v-navigation-drawer__content) { padding: 12px; background: #fff; color: rgba(0,0,0,.8); }
-.scm-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px 10px; }
-.scm-drawer-title { font-weight: 950; font-size: 16px; color: rgba(0,0,0,.85); }
+/* groups */
+.scm-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding-top: 4px;
+}
 
-.scm-acc { padding: 10px 6px; }
-.scm-acc-item { margin-bottom: 8px; }
+.scm-group {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.86) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  padding: 16px 16px 14px;
+  min-height: 140px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.scm-group:hover {
+  transform: translateY(-2px);
+  border-color: rgba(21, 101, 192, 0.12);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.scm-group-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.78);
+  margin-bottom: 12px;
+  letter-spacing: 0.01em;
+}
+
+.scm-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.scm-sub {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: rgba(17, 24, 39, 0.6);
+  font-weight: 430;
+  font-size: 14px;
+  line-height: 1.22;
+  transition: color 0.16s ease, transform 0.16s ease;
+}
+
+.scm-sub:hover {
+  color: rgba(21, 101, 192, 0.95);
+  transform: translateX(2px);
+}
+
+.scm-sub-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(21, 101, 192, 0.4);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.scm-sub-text {
+  display: inline-block;
+}
+
+/* empty */
+.scm-empty {
+  padding-top: 10px;
+}
+
+.scm-empty-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed rgba(15, 23, 42, 0.14);
+  background: rgba(248, 250, 252, 0.7);
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: rgba(17, 24, 39, 0.58);
+  font-size: 14px;
+  font-weight: 450;
+}
+
+/* drawer */
+.scm-drawer :deep(.v-navigation-drawer__content) {
+  padding: 12px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  color: rgba(0, 0, 0, 0.82);
+}
+
+.scm-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 4px 12px;
+}
+
+.scm-drawer-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.42);
+  margin-bottom: 4px;
+}
+
+.scm-drawer-title {
+  font-weight: 560;
+  font-size: 22px;
+  color: rgba(17, 24, 39, 0.86);
+  line-height: 1.1;
+}
+
+.scm-acc {
+  padding: 12px 4px;
+}
+
+.scm-acc-item {
+  margin-bottom: 10px;
+}
+
 .scm-acc-parent {
-  width: 100%; border: 1px solid rgba(0,0,0,.10); background: rgba(0,0,0,.02);
-  border-radius: 14px; padding: 10px 10px;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  cursor: pointer; color: rgba(0,0,0,.85);
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 16px;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  color: rgba(17, 24, 39, 0.84);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
-.scm-acc-parent.open { background: rgba(20,136,209,.08); border-color: rgba(20,136,209,.20); }
-.scm-acc-title { font-weight: 850; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scm-acc-children { padding: 8px 6px 2px 14px; display: flex; flex-direction: column; gap: 8px; }
-.scm-acc-child { text-align: left; border: 0; background: transparent; padding: 6px 4px; cursor: pointer;
-  color: rgba(0,0,0,.68); font-weight: 700; font-size: 13px; }
-.scm-acc-child:hover { color: rgba(20,136,209,.95); text-decoration: underline; text-underline-offset: 4px; }
-.scm-acc-all {
-  margin-top: 6px; text-align: left;
-  border: 1px solid rgba(0,0,0,.10); background: rgba(0,0,0,.02);
-  padding: 10px 12px; border-radius: 14px; cursor: pointer;
-  font-weight: 900; font-size: 13px; color: rgba(0,0,0,.78);
-}
-.scm-acc-all:hover { background: rgba(20,136,209,.08); border-color: rgba(20,136,209,.20); }
-.scm-acc-empty { padding: 10px 6px; color: rgba(0,0,0,.55); font-size: 12px; }
 
-@media (max-width: 1100px) {
-  .scm-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.scm-acc-parent.open {
+  background: rgba(21, 101, 192, 0.08);
+  border-color: rgba(21, 101, 192, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(21, 101, 192, 0.04);
 }
+
+.scm-acc-parent-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scm-acc-title {
+  font-weight: 520;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scm-acc-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.66);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.scm-acc-children {
+  padding: 10px 4px 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scm-acc-child {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 7px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: rgba(17, 24, 39, 0.68);
+  font-weight: 430;
+  font-size: 14px;
+  line-height: 1.2;
+  border-radius: 10px;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.scm-acc-child:hover {
+  background: rgba(21, 101, 192, 0.05);
+  color: rgba(21, 101, 192, 0.95);
+  transform: translateX(2px);
+}
+
+.scm-acc-child-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(21, 101, 192, 0.42);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+
+.scm-acc-all {
+  margin-top: 6px;
+  text-align: left;
+  border: 1px solid rgba(21, 101, 192, 0.14);
+  background: rgba(21, 101, 192, 0.05);
+  padding: 11px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 550;
+  font-size: 13px;
+  color: rgba(21, 101, 192, 0.95);
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.scm-acc-all:hover {
+  background: rgba(21, 101, 192, 0.09);
+  border-color: rgba(21, 101, 192, 0.2);
+}
+
+.scm-acc-empty {
+  padding: 10px 6px;
+  color: rgba(17, 24, 39, 0.52);
+  font-size: 12px;
+}
+
+/* responsive */
+@media (max-width: 1100px) {
+  .scm-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scm-right-title {
+    font-size: 28px;
+  }
+}
+
 @media (max-width: 960px) {
-  .scm-card { width: 92vw; }
-  .scm-mega { grid-template-columns: 1fr; }
-  .scm-left { border-right: 0; border-bottom: 1px solid rgba(0,0,0,.08); }
-  .scm-groups { grid-template-columns: 1fr; }
+  .scm-card {
+    width: 92vw;
+  }
+
+  .scm-mega {
+    grid-template-columns: 1fr;
+  }
+
+  .scm-left {
+    border-right: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .scm-groups {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

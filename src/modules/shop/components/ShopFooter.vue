@@ -1,275 +1,363 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/shop/components/ShopFooter.vue -->
 <template>
   <v-sheet tag="footer" class="shop-footer">
     <v-container fluid class="footer-inner">
-      <v-row class="py-10" justify="space-between">
-        <!-- BRAND -->
-        <v-col cols="12" md="4">
-          <div class="d-flex align-center ga-3 mb-4">
-            <v-avatar :size="isMobile ? 64 : 84" class="brand-badge">
-              <template v-if="branding.logo_url">
-                <img :src="logoUrl" :alt="branding.name" class="brand-logo" />
-              </template>
-              <span v-else class="font-weight-black">360</span>
-            </v-avatar>
+      <div class="footer-shell">
 
-            <div class="d-flex flex-column">
-              <div class="brand-title">{{ branding.name || "POS360" }}</div>
-              <div class="brand-subtitle">Ecommerce · Inventario · POS</div>
+        <div class="footer-grid">
+
+          <!-- BRAND -->
+          <section class="footer-brand">
+            <router-link to="/shop" class="brand-link">
+              <img
+                v-if="logoUrl"
+                :src="logoUrl"
+                :alt="branding.name"
+                class="brand-logo"
+              />
+
+              <div v-else class="brand-fallback">
+                <div class="brand-title">{{ branding.name }}</div>
+                <div class="brand-subtitle">Ecommerce · Inventario · POS</div>
+              </div>
+            </router-link>
+
+            <p class="brand-desc">
+              Seguridad Electrónica · Hogar · Seguridad<br />
+              Consultoría y asesoramiento personalizado.
+            </p>
+
+            <div class="brand-actions">
+              <a class="footer-pill" :href="instagramUrl" target="_blank">
+                <v-icon size="16">mdi-instagram</v-icon>
+                Instagram
+              </a>
+
+              <a class="footer-pill" :href="rivadaviaMapsUrl" target="_blank">
+                <v-icon size="16">mdi-map-marker-outline</v-icon>
+                Cómo llegar
+              </a>
+
+              <router-link class="footer-pill" to="/shop">
+                <v-icon size="16">mdi-storefront-outline</v-icon>
+                Tienda
+              </router-link>
             </div>
-          </div>
+          </section>
 
-          <div class="brand-desc mb-5">
-            Comprá tecnología con una experiencia rápida y segura. Catálogo actualizado,
-            promos destacadas y retiro/entrega al finalizar.
-          </div>
 
-          <div class="d-flex flex-wrap ga-2">
-            <v-chip size="small" class="pill" prepend-icon="mdi-truck-fast-outline">
-              Envíos / Retiro
-            </v-chip>
-            <v-chip size="small" class="pill" prepend-icon="mdi-credit-card-outline">
-              Múltiples pagos
-            </v-chip>
-            <v-chip size="small" class="pill" prepend-icon="mdi-shield-check-outline">
-              Compra segura
-            </v-chip>
-          </div>
-        </v-col>
+          <!-- TIENDA -->
+          <section class="footer-col">
+            <div class="footer-title">Tienda</div>
 
-        <!-- LINKS -->
-        <v-col cols="12" sm="6" md="2">
-          <div class="section-title">Tienda</div>
-          <ul class="footer-list">
-            <li><a @click.prevent="go('/shop')">Inicio</a></li>
-            <li><a @click.prevent="go('/shop')">Productos</a></li>
-            <li><a @click.prevent="go('/shop')">Categorías</a></li>
-            <li><a @click.prevent="go('/shop')">Ofertas</a></li>
-          </ul>
-        </v-col>
+            <router-link to="/shop" class="footer-link">Inicio</router-link>
+            <router-link to="/shop/cart" class="footer-link">Carrito</router-link>
+            <router-link to="/shop/account/favorites" class="footer-link">Favoritos</router-link>
+            <router-link to="/shop/account/orders" class="footer-link">Mis compras</router-link>
+          </section>
 
-        <v-col cols="12" sm="6" md="2">
-          <div class="section-title">Cuenta</div>
-          <ul class="footer-list">
-            <li><a @click.prevent="go('/auth/login')">Ingresar</a></li>
-            <li><a @click.prevent="go('/auth/register')">Registrarse</a></li>
-            <li><a @click.prevent="go('/orders')">Mis pedidos</a></li>
-            <li><a @click.prevent="go('/shop/cart')">Carrito</a></li>
-          </ul>
-        </v-col>
 
-        <!-- CONTACT -->
-        <v-col cols="12" md="4">
-          <div class="section-title">Contacto</div>
+          <!-- CUENTA -->
+          <section class="footer-col">
+            <div class="footer-title">Cuenta</div>
 
-          <div class="contact">
-            <v-icon size="18">mdi-map-marker</v-icon>
-            <span>San Juan, Argentina</span>
-          </div>
-          <div class="contact">
-            <v-icon size="18">mdi-email</v-icon>
-            <span>contacto@pos360.local</span>
-          </div>
-          <div class="contact">
-            <v-icon size="18">mdi-phone</v-icon>
-            <span>+54 264 000-0000</span>
-          </div>
+            <router-link to="/shop/login" class="footer-link">Ingresar</router-link>
+            <router-link to="/shop/register" class="footer-link">Registrarse</router-link>
+            <router-link to="/shop/account/orders" class="footer-link">
+              Seguimiento de compras
+            </router-link>
+          </section>
 
-          <div class="mt-6">
-            <div class="section-title">Pagos</div>
-            <div class="d-flex flex-wrap ga-2">
-              <span class="pay-chip">VISA</span>
-              <span class="pay-chip">Mastercard</span>
-              <span class="pay-chip">Mercado Pago</span>
-              <span class="pay-chip">Transferencia</span>
+
+          <!-- SUCURSALES -->
+          <section class="footer-col footer-col-contact">
+
+            <div class="footer-title">Sucursales</div>
+
+            <div class="branches-list">
+
+              <!-- Rivadavia -->
+              <a
+                class="branch-card"
+                :href="rivadaviaMapsUrl"
+                target="_blank"
+              >
+                <div class="branch-top">
+                  <div class="branch-name">
+                    Sucursal Rivadavia
+                  </div>
+
+                  <v-icon size="18" class="branch-arrow">
+                    mdi-arrow-top-right
+                  </v-icon>
+                </div>
+
+                <div class="branch-location">
+                  <v-icon size="17">mdi-map-marker</v-icon>
+                  <span>
+                    CESAP · Calle Los Jesuitas · San Juan
+                  </span>
+                </div>
+              </a>
+
+
+              <!-- Chimbas -->
+              <a
+                class="branch-card"
+                :href="chimbasMapsUrl"
+                target="_blank"
+              >
+                <div class="branch-top">
+                  <div class="branch-name">
+                    Sucursal Chimbas
+                  </div>
+
+                  <v-icon size="18" class="branch-arrow">
+                    mdi-arrow-top-right
+                  </v-icon>
+                </div>
+
+                <div class="branch-location">
+                  <v-icon size="17">mdi-map-marker</v-icon>
+                  <span>
+                    Chango Más · Local 2 · Av. Benavidez
+                  </span>
+                </div>
+              </a>
+
             </div>
-          </div>
-        </v-col>
-      </v-row>
-
-      <div class="divider" />
-
-      <div class="bottom py-4 d-flex flex-column flex-md-row align-center justify-space-between">
-        <div class="copy">© {{ year }} {{ branding.name || "POS360" }} · Todos los derechos reservados</div>
-
-        <div class="d-flex align-center ga-2">
-          <v-btn icon variant="text" class="social" aria-label="Facebook">
-            <v-icon>mdi-facebook</v-icon>
-          </v-btn>
-          <v-btn icon variant="text" class="social" aria-label="Instagram">
-            <v-icon>mdi-instagram</v-icon>
-          </v-btn>
-          <v-btn icon variant="text" class="social" aria-label="LinkedIn">
-            <v-icon>mdi-linkedin</v-icon>
-          </v-btn>
-
-          <v-btn size="small" variant="tonal" class="to-top" prepend-icon="mdi-arrow-up" @click="toTop">
-            Arriba
-          </v-btn>
+          </section>
         </div>
+
+
+        <!-- Divider -->
+        <div class="footer-divider"></div>
+
+
+        <!-- Bottom -->
+        <div class="footer-bottom">
+
+          <div class="footer-copy">
+            © {{ year }} {{ branding.name }} · Todos los derechos reservados
+          </div>
+
+          <button class="footer-top" @click="toTop">
+
+            <v-icon size="16">mdi-arrow-up</v-icon>
+
+            Arriba
+          </button>
+
+        </div>
+
       </div>
     </v-container>
   </v-sheet>
 </template>
 
+
+
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useDisplay } from "vuetify";
-import { getShopBranding } from "@/modules/shop/service/shop.public.api";
+import { ref, computed, onMounted } from "vue"
+import { getShopBranding } from "@/modules/shop/service/shop.public.api"
 
-const router = useRouter();
-const year = new Date().getFullYear();
+const year = new Date().getFullYear()
 
-const { smAndDown } = useDisplay();
-const isMobile = computed(() => !!smAndDown.value);
+const instagramUrl = "https://www.instagram.com/sanjuan.tecnologia/"
+const rivadaviaMapsUrl = "https://maps.app.goo.gl/jxjPeb3JdsM9sprR6"
+const chimbasMapsUrl = "https://maps.app.goo.gl/r95QAotu3v6ZKqhMA"
 
 const branding = ref({
-  name: "POS360",
+  name: "San Juan Tecnología",
   logo_url: "",
-  favicon_url: "",
-  updated_at: null,
-});
+  updated_at: null
+})
 
-function go(path) {
-  router.push(path);
+function withVersion(url,v){
+  if(!url) return ""
+  if(!v) return url
+  return url + "?v=" + v
 }
 
-function toTop() {
-  window.scrollTo({ top: 0, behavior: "smooth" });
+const logoUrl = computed(()=>{
+  return withVersion(branding.value.logo_url,branding.value.updated_at)
+})
+
+function toTop(){
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  })
 }
 
-function withVersion(url, v) {
-  const u = String(url || "").trim();
-  if (!u) return "";
-  const ver = String(v || "").trim();
-  if (!ver) return u;
-
-  try {
-    const parsed = new URL(u, window.location.origin);
-    if (!parsed.searchParams.has("v")) parsed.searchParams.set("v", ver);
-    return parsed.toString();
-  } catch {
-    return u.includes("?") ? `${u}&v=${encodeURIComponent(ver)}` : `${u}?v=${encodeURIComponent(ver)}`;
-  }
-}
-
-const logoUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
-
-onMounted(async () => {
-  try {
-    const b = await getShopBranding();
-    if (b && typeof b === "object") branding.value = { ...branding.value, ...b };
-  } catch {}
-});
+onMounted(async()=>{
+  try{
+    const b = await getShopBranding()
+    if(b) branding.value = {...branding.value,...b}
+  }catch{}
+})
 </script>
 
+
+
 <style scoped>
-.shop-footer {
-  width: 100%;
-  color: rgb(var(--v-theme-on-primary));
-  background: rgb(var(--v-theme-primary)) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+
+.shop-footer{
+  width:100%;
+  background:rgb(var(--v-theme-primary));
+  color:white;
+  border-top:1px solid rgba(255,255,255,.12);
 }
 
-.footer-inner {
-  width: min(var(--shop-max, 1200px), calc(100% - 24px));
-  margin: 0 auto;
+.footer-inner{
+  width:min(1200px,calc(100% - 24px));
+  margin:auto;
+  padding:28px 0 18px;
 }
 
-/* logo sin avatar */
-.brand-badge {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  overflow: visible !important;
-}
-.brand-badge :deep(.v-avatar__underlay) {
-  display: none !important;
-}
-.brand-logo {
-  width: 100%;
-  height: 100%;
-  display: block;
-  padding: 0 !important;
-  object-fit: contain;
-  object-position: center;
+.footer-grid{
+  display:grid;
+  grid-template-columns:1.2fr .8fr .9fr 1fr;
+  gap:28px;
 }
 
-.brand-title {
-  font-family: "Orbitron", sans-serif;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 1.12rem;
-}
-.brand-subtitle {
-  opacity: 0.9;
-  font-size: 0.85rem;
-}
-.brand-desc {
-  opacity: 0.92;
-  font-size: 0.92rem;
-  line-height: 1.45;
+.brand-logo{
+  max-height:72px;
+  object-fit:contain;
 }
 
-.section-title {
-  font-weight: 900;
-  margin-bottom: 12px;
+.brand-desc{
+  margin:16px 0;
+  opacity:.9;
+  line-height:1.5;
 }
 
-.footer-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.footer-list li {
-  margin-bottom: 10px;
-}
-.footer-list a {
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
-}
-.footer-list a:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.brand-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.contact {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  opacity: 0.92;
-  margin-bottom: 10px;
+.footer-pill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  border-radius:999px;
+  text-decoration:none;
+  color:white;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.16);
+  transition:.15s;
 }
 
-.pay-chip {
-  display: inline-flex;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-  font-weight: 800;
+.footer-pill:hover{
+  background:rgba(255,255,255,.12);
 }
 
-.divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.14);
+.footer-title{
+  font-weight:700;
+  margin-bottom:14px;
 }
 
-.copy {
-  font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.82);
+.footer-link{
+  display:block;
+  margin-bottom:10px;
+  color:rgba(255,255,255,.85);
+  text-decoration:none;
+  font-size:.95rem;
 }
 
-.social {
-  color: rgba(255, 255, 255, 0.92) !important;
+.footer-link:hover{
+  color:white;
 }
 
-.to-top {
-  color: rgb(var(--v-theme-on-primary)) !important;
+.branches-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
+
+.branch-card{
+  padding:14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  text-decoration:none;
+  color:white;
+  transition:.15s;
+}
+
+.branch-card:hover{
+  background:rgba(255,255,255,.09);
+}
+
+.branch-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:6px;
+}
+
+.branch-name{
+  font-weight:700;
+  font-size:.95rem;
+}
+
+.branch-location{
+  display:flex;
+  gap:8px;
+  font-size:.9rem;
+  opacity:.9;
+}
+
+.footer-divider{
+  margin:20px 0 12px;
+  height:1px;
+  background:rgba(255,255,255,.15);
+}
+
+.footer-bottom{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.footer-copy{
+  font-size:.85rem;
+  opacity:.8;
+}
+
+.footer-top{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  border:none;
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  padding:8px 14px;
+  color:white;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.footer-top:hover{
+  background:rgba(255,255,255,.14);
+}
+
+@media (max-width:900px){
+
+.footer-grid{
+grid-template-columns:1fr;
+gap:24px;
+}
+
+.footer-bottom{
+flex-direction:column;
+align-items:flex-start;
+gap:12px;
+}
+
+}
+
 </style>

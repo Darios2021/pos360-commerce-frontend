@@ -6,12 +6,18 @@
     <div class="ml-row ml-row-top">
       <div class="ml-container ml-top-grid" :class="{ 'is-mobile': isMobile }">
         <router-link to="/shop" class="ml-brand" :aria-label="branding.name || 'San Juan Tecnología'">
-          <!-- ✅ Desktop: logo largo -->
+          <!-- ✅ Desktop: usa branding.logo_url dinámico igual que footer -->
           <div v-if="!isMobile" class="ml-logo-wide">
-            <img :src="logoDesktopUrl" :alt="branding.name" class="ml-logo-wide-img" />
+            <img
+              v-if="logoDesktopUrl"
+              :src="logoDesktopUrl"
+              :alt="branding.name"
+              class="ml-logo-wide-img"
+            />
+            <span v-else class="ml-brand-fallback-text">{{ branding.name || "San Juan Tecnología" }}</span>
           </div>
 
-          <!-- ✅ Mobile: solo icono -->
+          <!-- ✅ Mobile: mantiene icono -->
           <div v-else class="ml-logo-icon" aria-hidden="true">
             <img :src="logoMobileUrl" :alt="branding.name" class="ml-logo-icon-img" />
           </div>
@@ -40,7 +46,6 @@
           <v-menu v-else location="bottom end" offset="10">
             <template #activator="{ props }">
               <button class="ml-account-btn ml-account-btn-mobile" type="button" v-bind="props" :title="auth.fullName">
-                <!-- ✅ si no hay iniciales, NO mostramos círculo blanco vacío -->
                 <span v-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
                 <v-icon v-else size="22" class="ml-account-icon">mdi-account-circle-outline</v-icon>
               </button>
@@ -211,10 +216,15 @@ const isMobile = computed(() => !!xs.value);
 
 const branchId = 3;
 
-const DESKTOP_LOGO = "https://storage-files.cingulado.org/pos360/media/1770906123233-3976439306ab1686.webp";
+/* ✅ Desktop ahora usa branding.logo_url dinámico */
 const MOBILE_LOGO_ICON = "https://storage-files.cingulado.org/pos360/media/1771019362369-d2e805df760863de.webp";
 
-const branding = ref({ name: "San Juan Tecnología", updated_at: null });
+const branding = ref({
+  name: "San Juan Tecnología",
+  logo_url: "",
+  favicon_url: "",
+  updated_at: null,
+});
 
 function withVersion(url, v) {
   const u = String(url || "").trim();
@@ -231,7 +241,7 @@ function withVersion(url, v) {
   }
 }
 
-const logoDesktopUrl = computed(() => withVersion(DESKTOP_LOGO, branding.value?.updated_at));
+const logoDesktopUrl = computed(() => withVersion(branding.value?.logo_url, branding.value?.updated_at));
 const logoMobileUrl = computed(() => withVersion(MOBILE_LOGO_ICON, branding.value?.updated_at));
 
 const safeInitials = computed(() => {
@@ -305,20 +315,27 @@ watch(
   z-index: 60;
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
-.ml-row-top { padding: 10px 0 6px; }
+.ml-row-top {
+  padding: 10px 0 6px;
+}
+
 .ml-row-bottom {
   padding: 6px 0 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255,255,255,0.10);
 }
 
 .ml-container {
-  width: min(var(--shop-max, 1240px), calc(100% - 24px));
+  width: min(var(--shop-max,1240px),calc(100% - 24px));
   margin: 0 auto;
   min-width: 0;
 }
+
+/* =========================
+   TOP GRID
+========================= */
 
 .ml-top-grid {
   display: flex;
@@ -332,13 +349,39 @@ watch(
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  min-width: 0;
 }
 
-.ml-logo-wide { height: 56px; display: flex; align-items: center; }
-.ml-logo-wide-img { height: 100%; width: auto; object-fit: contain; }
+.ml-logo-wide {
+  min-height: 56px;
+  max-height: 56px;
+  display: flex;
+  align-items: center;
+}
 
-.ml-logo-icon { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
-.ml-logo-icon-img { width: 100%; height: 100%; object-fit: contain; }
+.ml-logo-wide-img {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+}
+
+.ml-logo-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ml-logo-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* =========================
+   SEARCH
+========================= */
 
 .ml-search {
   flex: 1 1 auto;
@@ -347,14 +390,16 @@ watch(
   min-width: 0;
 }
 
-.ml-search > * { width: min(720px, 100%); max-width: 100%; }
+.ml-search > * {
+  width: min(720px,100%);
+}
 
 .ml-search :deep(.v-field) {
   width: 100%;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255,255,255,0.98);
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.10);
 }
 
 .ml-search :deep(.v-field__input) {
@@ -362,11 +407,14 @@ watch(
   font-size: 14px;
 }
 
+/* =========================
+   MOBILE ACTIONS
+========================= */
+
 .ml-top-actions-mobile {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
 }
 
 .ml-top-icon-btn {
@@ -376,48 +424,90 @@ watch(
   cursor: pointer;
 }
 
-.ml-icon-white { color: #fff !important; }
+.ml-icon-white {
+  color: #fff !important;
+}
+
+/* =========================
+   BOTTOM GRID
+========================= */
 
 .ml-bottom-grid {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
+
+/* =========================
+   LOCATION
+========================= */
 
 .ml-loc {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: transparent;
   border: 0;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255,255,255,0.92);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 8px;
 }
-.ml-loc:hover { background: rgba(255, 255, 255, 0.08); }
 
-.ml-loc-top { font-size: 11px; font-weight: 600; opacity: 0.8; }
-.ml-loc-bottom { font-size: 13px; font-weight: 800; }
+.ml-loc:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.ml-loc-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.ml-loc-top {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.ml-loc-bottom {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* =========================
+   NAV
+========================= */
 
 .ml-nav {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
 }
+
 .ml-nav-soft {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   padding: 4px 6px;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255,255,255,0.88);
   text-decoration: none;
   white-space: nowrap;
 }
-.ml-nav-soft:hover { background: rgba(255, 255, 255, 0.08); }
-.ml-nav-sep { opacity: 0.4; }
+
+.ml-nav-soft:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.ml-nav-sep {
+  opacity: 0.35;
+}
+
+/* =========================
+   ACTIONS RIGHT
+========================= */
 
 .ml-bottom-actions {
   display: flex;
@@ -427,19 +517,19 @@ watch(
 
 .ml-top-link {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 500;
   padding: 4px 8px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255,255,255,0.92);
   text-decoration: none;
 }
 
 .ml-top-link-ghost {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
 }
 
 .ml-top-icon {
@@ -449,21 +539,26 @@ watch(
   text-decoration: none;
 }
 
-/* ✅ Cuenta */
+/* =========================
+   ACCOUNT
+========================= */
+
 .ml-account-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.08);
   color: #fff;
   cursor: pointer;
 }
-.ml-account-btn-mobile { padding: 3px 6px; }
 
-/* ✅ FIX: nada de círculo blanco sólido */
+.ml-account-btn-mobile {
+  padding: 3px 6px;
+}
+
 .ml-account-avatar {
   width: 28px;
   height: 28px;
@@ -471,28 +566,60 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 900;
+  font-weight: 700;
   font-size: 12px;
 
-  background: rgba(255, 255, 255, 0.18);     /* 👈 antes era #fff */
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #fff;                                /* 👈 letras blancas */
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: #fff;
 }
 
 .ml-account-icon {
   color: #fff !important;
-  opacity: 0.95;
 }
 
-.ml-account-name { font-size: 13px; font-weight: 800; white-space: nowrap; }
+.ml-account-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
-.ml-account-menu { width: 320px; overflow: hidden; border-radius: 14px; }
-.ml-account-head { padding: 12px 14px 8px; }
-.ml-account-title { font-weight: 900; font-size: 13.5px; }
-.ml-account-sub { font-size: 11.5px; opacity: 0.75; margin-top: 2px; }
-.ml-account-list { padding: 6px !important; }
+/* =========================
+   ACCOUNT MENU
+========================= */
 
-.ml-header :deep(.v-icon) { font-size: 18px; }
+.ml-account-menu {
+  width: 320px;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.ml-account-head {
+  padding: 12px 14px 8px;
+}
+
+.ml-account-title {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.ml-account-sub {
+  font-size: 11.5px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.ml-account-list {
+  padding: 6px !important;
+}
+
+.ml-header :deep(.v-icon) {
+  font-size: 18px;
+}
+
+/* =========================
+   WHATSAPP FAB
+========================= */
 
 .ml-wa-fab {
   position: fixed;
@@ -502,17 +629,24 @@ watch(
   width: 54px;
   height: 54px;
   border-radius: 999px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   background: #25d366 !important;
   color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.32);
+
   text-decoration: none;
 }
 
-/* ✅ Blindaje contra shop.css global */
+/* =========================
+   OVERRIDE GLOBAL CSS
+========================= */
+
 .ml-header :deep(button),
 .ml-header :deep(a),
 .ml-header :deep(.v-btn),
@@ -521,12 +655,35 @@ watch(
   box-shadow: none !important;
 }
 
-@media (max-width: 600px) {
-  .ml-search { justify-content: stretch; }
-  .ml-search > * { width: 100%; }
-  .ml-row-bottom { display: none; }
-  .ml-account-name { display: none; }
-  .ml-logo-icon { width: 46px; height: 46px; }
-  .ml-header :deep(.v-icon) { font-size: 20px; }
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width:600px) {
+
+  .ml-search {
+    justify-content: stretch;
+  }
+
+  .ml-search > * {
+    width: 100%;
+  }
+
+  .ml-row-bottom {
+    display: none;
+  }
+
+  .ml-account-name {
+    display: none;
+  }
+
+  .ml-logo-icon {
+    width: 46px;
+    height: 46px;
+  }
+
+  .ml-header :deep(.v-icon) {
+    font-size: 20px;
+  }
 }
 </style>
