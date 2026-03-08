@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="cart-head">
       <div class="cart-head-left">
-        <v-icon size="16">mdi-cart</v-icon>
+        <v-icon size="15">mdi-cart</v-icon>
         <span class="cart-title">Carrito</span>
       </div>
 
@@ -18,7 +18,7 @@
     <div class="cart-body">
       <div v-if="(cart || []).length === 0" class="empty">
         <div class="empty-box">
-          <v-icon size="36" class="mb-1">mdi-cart-off</v-icon>
+          <v-icon size="30" class="mb-1">mdi-cart-off</v-icon>
           <div class="empty-title">Carrito vacío</div>
           <div class="empty-sub">Agregá productos desde la lista.</div>
         </div>
@@ -112,7 +112,7 @@
       </v-btn>
 
       <div v-if="!canEdit" class="cart-lock text-caption text-medium-emphasis">
-        🔒 Solo vista (no puede editar ni vender).
+        🔒 Solo vista
       </div>
     </div>
 
@@ -174,9 +174,6 @@ function clampQtyMin(q) {
   return Math.max(min, q);
 }
 
-/* =========================================================
-   ✅ PRECIO EFECTIVO (SIEMPRE PRIORIZAR DESCUENTO)
-========================================================= */
 function pickFirstNumber(obj, keys) {
   for (const k of keys) {
     const v = obj?.[k];
@@ -193,7 +190,6 @@ function unitPriceEffective(it) {
     ? it.__pos_pricing
     : null;
 
-  // 1) SIEMPRE precio descuento primero
   const discountPrice =
     pickFirstNumber(it, [
       "price_discount",
@@ -214,7 +210,6 @@ function unitPriceEffective(it) {
 
   if (discountPrice > 0) return discountPrice;
 
-  // 2) unit price / final price explícito
   const explicitPrice =
     pickFirstNumber(it, [
       "unit_price",
@@ -231,13 +226,12 @@ function unitPriceEffective(it) {
 
   if (explicitPrice > 0) return explicitPrice;
 
-  // 3) si vino policy DISCOUNT, usar price antes que nada
   const policy = String(
     it?.price_policy ||
-    it?.pricePolicy ||
-    meta?.price_policy ||
-    meta?.pricePolicy ||
-    ""
+      it?.pricePolicy ||
+      meta?.price_policy ||
+      meta?.pricePolicy ||
+      ""
   ).toUpperCase();
 
   if (policy === "DISCOUNT") {
@@ -247,7 +241,6 @@ function unitPriceEffective(it) {
     if (byPolicy > 0) return byPolicy;
   }
 
-  // 4) fallback final
   return (
     pickFirstNumber(it, ["price", "unitPriceValue", "unit_price_value", "list_price", "price_list"]) ||
     pickFirstNumber(meta, ["price", "unitPriceValue", "unit_price_value", "list_price", "price_list"])
@@ -258,7 +251,6 @@ function lineTotal(it) {
   return round3(toNum(it?.qty) * toNum(unitPriceEffective(it)));
 }
 
-/* stock helpers */
 function maxQtyForItem(it) {
   const candidates = [
     it?.available_qty,
@@ -297,7 +289,6 @@ function isIncDisabled(it) {
   return toNum(it?.qty) >= m - 0.0005;
 }
 
-/* Draft qty */
 const qtyDraft = reactive({});
 
 function syncDraftFromCart() {
@@ -319,7 +310,6 @@ watch(
   { deep: true, immediate: true }
 );
 
-/* store mutations */
 function setQtyInStore(it, qty) {
   const store = props.posStore;
   const candidates = ["setQty", "updateQty", "setItemQty", "updateItemQty", "changeQty"];
@@ -357,7 +347,6 @@ function removeFromStore(it) {
   return true;
 }
 
-/* snack */
 const snack = reactive({ show: false, text: "" });
 
 function toast(text) {
@@ -365,7 +354,6 @@ function toast(text) {
   snack.show = true;
 }
 
-/* UI actions */
 function commit(it) {
   const k = itKey(it);
   let q = clampQtyMin(round3(parseQty(qtyDraft[k])));
@@ -426,10 +414,8 @@ function remove(it) {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-
   display: flex;
   flex-direction: column;
-
   border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface), 0.99) 0%, rgba(var(--v-theme-surface), 1) 100%);
@@ -440,27 +426,26 @@ function remove(it) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-
-  padding: 8px 10px;
   min-width: 0;
+  padding: 6px 9px;
 }
 
 .cart-head-left {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
 }
 
 .cart-title {
   font-weight: 900;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.1;
 }
 
 .cart-chip {
-  height: 24px !important;
-  min-height: 24px !important;
+  height: 22px !important;
+  min-height: 22px !important;
   border-radius: 999px !important;
 }
 
@@ -469,20 +454,18 @@ function remove(it) {
   background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
-/* BODY */
 .cart-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 8px 10px 0;
+  padding: 6px 8px 0;
   scrollbar-gutter: stable;
-
   scrollbar-width: auto;
   scrollbar-color: rgba(0, 0, 0, 0.28) rgba(0, 0, 0, 0.05);
 }
 
 .cart-body::-webkit-scrollbar {
-  width: 10px;
+  width: 9px;
 }
 
 .cart-body::-webkit-scrollbar-track {
@@ -500,44 +483,42 @@ function remove(it) {
   background: rgba(var(--v-theme-primary), 0.70);
 }
 
-/* EMPTY */
 .empty {
-  padding: 4px 0 8px;
+  padding: 2px 0 6px;
 }
 
 .empty-box {
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.15);
-  border-radius: 14px;
-  padding: 12px 10px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.14);
+  border-radius: 12px;
+  padding: 10px 8px;
   background: rgba(var(--v-theme-on-surface), 0.018);
   text-align: center;
 }
 
 .empty-title {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 
 .empty-sub {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.2;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.15;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
-/* ITEMS */
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cart-item {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   border-radius: 12px;
-  padding: 8px;
+  padding: 6px 7px;
   background: rgba(var(--v-theme-on-surface), 0.02);
   transition:
     border-color 0.16s ease,
@@ -548,20 +529,20 @@ function remove(it) {
 .cart-item:hover {
   border-color: rgba(var(--v-theme-primary), 0.22);
   background: rgba(var(--v-theme-primary), 0.03);
-  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.07);
+  box-shadow: 0 6px 14px rgba(var(--v-theme-primary), 0.06);
 }
 
 .item-top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .item-name {
   min-width: 0;
-  font-size: 12px;
-  line-height: 1.15;
+  font-size: 11px;
+  line-height: 1.1;
   font-weight: 850;
   white-space: nowrap;
   overflow: hidden;
@@ -570,38 +551,38 @@ function remove(it) {
 
 .item-total {
   flex: 0 0 auto;
-  font-size: 12.5px;
+  font-size: 11.5px;
   line-height: 1;
   font-weight: 950;
   white-space: nowrap;
 }
 
 .item-mid {
-  margin-top: 4px;
+  margin-top: 3px;
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   align-items: baseline;
-  color: rgba(var(--v-theme-on-surface), 0.68);
+  color: rgba(var(--v-theme-on-surface), 0.66);
 }
 
 .unit-price {
-  font-size: 11.25px;
+  font-size: 10.75px;
   font-weight: 800;
 }
 
 .unit-suffix,
 .stock-hint {
-  font-size: 10.5px;
+  font-size: 9.9px;
   opacity: 0.76;
 }
 
 .item-bot {
-  margin-top: 6px;
+  margin-top: 5px;
   display: grid;
-  grid-template-columns: 30px 72px 30px 1fr 30px;
+  grid-template-columns: 28px 64px 28px 1fr 28px;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .bot-spacer {
@@ -609,44 +590,43 @@ function remove(it) {
 }
 
 .qty-btn {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
   border-radius: 999px !important;
 }
 
 .trash-btn {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  border-radius: 10px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 9px !important;
 }
 
 .qty-input {
-  width: 72px;
+  width: 64px;
 }
 
 .qty-input :deep(.v-field) {
-  border-radius: 10px !important;
+  border-radius: 9px !important;
 }
 
 .qty-input :deep(.v-field__input) {
-  min-height: 30px;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  min-height: 28px;
+  padding-top: 3px;
+  padding-bottom: 3px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 900;
 }
 
 .cart-bottom-gap {
-  height: 8px;
+  height: 6px;
 }
 
-/* FOOTER */
 .cart-foot {
   flex: 0 0 auto;
-  padding: 8px 10px 10px;
+  padding: 6px 8px 8px;
   background: rgba(var(--v-theme-surface), 0.98);
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
@@ -655,70 +635,65 @@ function remove(it) {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .total-label {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 900;
 }
 
 .total-amt {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   font-weight: 1000;
   white-space: nowrap;
 }
 
 .pay-btn {
-  margin-top: 8px;
-  height: 34px !important;
-  border-radius: 12px !important;
-  font-size: 12px !important;
+  margin-top: 6px;
+  height: 30px !important;
+  border-radius: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 950 !important;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   text-transform: none !important;
 }
 
 .cart-lock {
-  margin-top: 6px;
-  line-height: 1.2;
+  margin-top: 5px;
+  line-height: 1.1;
 }
 
-/* NOTEBOOK */
 @media (max-width: 1366px) {
   .cart-head {
-    padding: 7px 9px;
+    padding: 6px 8px;
   }
 
   .cart-body {
-    padding: 7px 9px 0;
+    padding: 6px 7px 0;
   }
 
   .cart-foot {
-    padding: 7px 9px 9px;
-  }
-
-  .cart-title {
-    font-size: 12.5px;
+    padding: 6px 7px 7px;
   }
 
   .item-name {
-    font-size: 11.5px;
+    font-size: 10.75px;
   }
 
   .item-total {
-    font-size: 12px;
+    font-size: 11.25px;
   }
 
   .total-amt {
-    font-size: 15px;
+    font-size: 13.5px;
   }
 }
 
 @media (max-width: 420px) {
   .item-bot {
-    grid-template-columns: 30px 1fr 30px;
+    grid-template-columns: 28px 1fr 28px;
   }
 
   .qty-input {

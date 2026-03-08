@@ -1,9 +1,10 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/router/index.js
-// FIX scroll definitivo:
+// FIX scroll definitivo PROD/LOCAL:
 // - F5 en /shop inicia arriba
-// - volver desde producto / categorías / more conserva scroll real del home
-// - evita salto al footer porque restaura DESPUÉS de que renderiza el home
+// - volver desde producto conserva scroll real
+// - soporta /shop y /shop/
+// - evita salto al footer/hero
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -38,10 +39,8 @@ import StockPage from "@/modules/stock/pages/StockPage.vue";
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
 const routes = [
-  // SHOP PUBLIC
   ...shopRoutes,
 
-  // AUTH
   {
     path: "/app/auth",
     component: AuthLayout,
@@ -51,7 +50,6 @@ const routes = [
     ],
   },
 
-  // APP PRIVADO
   {
     path: "/app",
     component: AppShell,
@@ -59,20 +57,16 @@ const routes = [
     children: [
       { path: "", name: "home", component: DashboardHome },
 
-      // POS
       { path: "pos", name: "pos", component: PosPage },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
-      // PRODUCTS
       { path: "products", name: "products", component: ProductsListPage },
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
-      // IMPORT
       { path: "products-import", name: "productsImport", component: ImportProductsPage },
 
-      // CONFIG
       { path: "stock", name: "stock", component: StockPage },
       {
         path: "inventory",
@@ -82,10 +76,8 @@ const routes = [
       },
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ADMIN SHOP
       ...shopAdminRoutes,
 
-      // USERS
       {
         path: "users",
         name: "users",
@@ -93,7 +85,6 @@ const routes = [
         meta: { roles: ["admin", "super_admin"] },
       },
 
-      // PROFILE
       { path: "profile", name: "profile", component: ProfilePage },
     ],
   },
@@ -105,10 +96,34 @@ const routes = [
 // Scroll persistence
 // =======================
 
-const SCROLL_KEY = "scroll_positions_v4";
-const RELOAD_ONCE_KEY = "scroll_reload_once_v4";
-const SHOP_HOME_SCROLL_KEY = "shop_home_scroll_y_v8";
-const SHOP_HOME_RESTORE_PENDING_KEY = "shop_home_restore_pending_v8";
+const SCROLL_KEY = "scroll_positions_v5";
+const RELOAD_ONCE_KEY = "scroll_reload_once_v5";
+const SHOP_HOME_SCROLL_KEY = "shop_home_scroll_y_v9";
+const SHOP_HOME_RESTORE_PENDING_KEY = "shop_home_restore_pending_v9";
+
+function normalizePath(path = "") {
+  const p = String(path || "").trim();
+  if (!p) return "/";
+  if (p.length > 1 && p.endsWith("/")) return p.slice(0, -1);
+  return p;
+}
+
+function isShopHomePath(path) {
+  return normalizePath(path) === "/shop";
+}
+
+function isShopCategoryPath(path) {
+  return /^\/shop\/c\/[^/]+$/.test(normalizePath(path));
+}
+
+function getCurrentScroll() {
+  return Math.max(
+    window.scrollY || 0,
+    document.documentElement?.scrollTop || 0,
+    document.body?.scrollTop || 0,
+    document.scrollingElement?.scrollTop || 0
+  );
+}
 
 function readScroll() {
   try {
@@ -118,12 +133,13 @@ function readScroll() {
   }
 }
 
-function saveScroll(path) {
+function saveScroll(path, top = getCurrentScroll()) {
   try {
     if (!path) return;
+    const key = normalizePath(path);
     const map = readScroll();
-    map[path] = {
-      top: window.scrollY || 0,
+    map[key] = {
+      top: Number(top) || 0,
       left: window.scrollX || 0,
     };
     sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map));
@@ -132,14 +148,15 @@ function saveScroll(path) {
 
 function getScroll(path) {
   try {
+    const key = normalizePath(path);
     const map = readScroll();
-    return map[path] || null;
+    return map[key] || null;
   } catch {
     return null;
   }
 }
 
-function saveShopHomeScroll(top = window.scrollY || 0) {
+function saveShopHomeScroll(top = getCurrentScroll()) {
   try {
     sessionStorage.setItem(SHOP_HOME_SCROLL_KEY, String(Number(top) || 0));
   } catch {}
@@ -196,64 +213,48 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isShopHomePath(path) {
-  return path === "/shop";
-}
-
-function isShopCategoryPath(path) {
-  return /^\/shop\/c\/[^/]+$/.test(String(path || ""));
-}
-
-// Disable browser auto scroll restore
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
 }
 
 markReloadOnce();
 
-// Persist scroll while user scrolls
 if (typeof window !== "undefined") {
   window.addEventListener(
     "scroll",
     () => {
-      const path =
-        window.location.pathname +
-        window.location.search +
-        window.location.hash;
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      const top = getCurrentScroll();
 
-      saveScroll(path);
+      saveScroll(path, top);
 
-      if (window.location.pathname === "/shop") {
-        saveShopHomeScroll(window.scrollY || 0);
+      if (isShopHomePath(window.location.pathname)) {
+        saveShopHomeScroll(top);
       }
     },
     { passive: true }
   );
 
   window.addEventListener("pagehide", () => {
-    const path =
-      window.location.pathname +
-      window.location.search +
-      window.location.hash;
+    const path = window.location.pathname + window.location.search + window.location.hash;
+    const top = getCurrentScroll();
 
-    saveScroll(path);
+    saveScroll(path, top);
 
-    if (window.location.pathname === "/shop") {
-      saveShopHomeScroll(window.scrollY || 0);
+    if (isShopHomePath(window.location.pathname)) {
+      saveShopHomeScroll(top);
     }
   });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      const path =
-        window.location.pathname +
-        window.location.search +
-        window.location.hash;
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      const top = getCurrentScroll();
 
-      saveScroll(path);
+      saveScroll(path, top);
 
-      if (window.location.pathname === "/shop") {
-        saveShopHomeScroll(window.scrollY || 0);
+      if (isShopHomePath(window.location.pathname)) {
+        saveShopHomeScroll(top);
       }
     }
   });
@@ -268,7 +269,6 @@ const router = createRouter({
   routes,
 
   async scrollBehavior(to, from, savedPosition) {
-    // Hash anchors
     if (to.hash) {
       await delay(120);
       return {
@@ -278,26 +278,17 @@ const router = createRouter({
       };
     }
 
-    // Reload SOLO al boot
     if (consumeReloadOnce()) {
       await delay(40);
       return { top: 0, left: 0 };
     }
 
-    // ✅ Restore especial del home
     if (isShopHomePath(to.path) && consumeShopHomeRestorePending()) {
       const top = getShopHomeScroll();
-
-      // esperar a que el home termine de pintar contenido pesado
       await delay(700);
-
-      return {
-        top: top > 0 ? top : 0,
-        left: 0,
-      };
+      return { top: top > 0 ? top : 0, left: 0 };
     }
 
-    // Browser back/forward real
     if (savedPosition) {
       if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
         await delay(500);
@@ -305,7 +296,6 @@ const router = createRouter({
       return savedPosition;
     }
 
-    // Restore manual general
     const pos = getScroll(to.fullPath);
     if (pos && (pos.top > 0 || pos.left > 0)) {
       if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
@@ -314,7 +304,6 @@ const router = createRouter({
       return pos;
     }
 
-    // páginas pesadas del shop: dar un pequeño delay aunque vayan arriba
     if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
       await delay(120);
     }
@@ -329,12 +318,11 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   if (from?.fullPath) {
-    saveScroll(from.fullPath);
+    saveScroll(from.fullPath, getCurrentScroll());
   }
 
-  // ✅ si salimos del home del shop, guardamos scroll dedicado
-  if (from?.path === "/shop" && to?.path !== "/shop") {
-    saveShopHomeScroll(window.scrollY || 0);
+  if (isShopHomePath(from?.path) && !isShopHomePath(to?.path)) {
+    saveShopHomeScroll(getCurrentScroll());
     markShopHomeRestorePending();
   }
 
