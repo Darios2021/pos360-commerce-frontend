@@ -1,7 +1,10 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO (ANTI-TIMEOUT + ANTI-DOBLE LOAD + CANCEL + RETRY UI) -->
+<!-- ✅ COPY-PASTE FINAL COMPLETO (ANTI-TIMEOUT + ANTI-DOBLE LOAD + CANCEL + RETRY UI + ROUTE PRELOADER) -->
 <!-- src/modules/shop/pages/ShopProduct.vue -->
 <template>
   <v-container class="py-6">
+    <!-- ✅ mismo preloader reusable -->
+    <ShopRouteRestoreOverlay :model-value="showRoutePreloader" />
+
     <ShopCartDrawer />
 
     <div class="product-shell">
@@ -10,7 +13,7 @@
       </div>
 
       <!-- ✅ Estados -->
-      <div v-if="loading" class="loading-wrap">
+      <div v-if="loading && !showRoutePreloader" class="loading-wrap">
         <v-progress-circular indeterminate />
         <div class="text-medium-emphasis mt-3">Cargando producto…</div>
         <div class="text-caption text-medium-emphasis mt-1" style="opacity: 0.8">
@@ -77,6 +80,7 @@ import ProductInfoTabs from "../components/shop/ProductInfoTabs.vue";
 import PaymentMethodsCard from "../components/shop/PaymentMethodsCard.vue";
 import SimilarProductsRow from "../components/shop/SimilarProductsRow.vue";
 import ShopCartDrawer from "../components/shop/ShopCartDrawer.vue";
+import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 
 import { getProduct, getCatalog } from "../service/shop.public.api";
 import { useShopCartStore } from "../store/shopCart.store";
@@ -98,6 +102,9 @@ const similarLoading = ref(false);
 
 const paymentsEl = ref(null);
 
+/* ✅ mismo preloader reusable */
+const showRoutePreloader = ref(true);
+
 // ✅ cancelar/deduplicar cargas
 let activeLoadId = 0;
 let abortCtrl = null;
@@ -108,6 +115,11 @@ function dispatchPrerenderReadySafe() {
       document.dispatchEvent(new Event("prerender-ready"));
     }
   } catch {}
+}
+
+async function hideRoutePreloaderSoon() {
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  showRoutePreloader.value = false;
 }
 
 // Cart actions
@@ -320,6 +332,7 @@ async function load() {
 
   error.value = "";
   loading.value = true;
+  showRoutePreloader.value = true;
 
   try {
     const id = route.params.id;
@@ -333,6 +346,10 @@ async function load() {
 
     // similares en paralelo (sin bloquear UI)
     fetchSimilar(p, loadId);
+
+    if (loadId === activeLoadId) {
+      await hideRoutePreloaderSoon();
+    }
   } catch (e) {
     console.error("❌ ShopProduct load()", e);
 
@@ -345,6 +362,8 @@ async function load() {
     } else {
       error.value = String(e?.response?.data?.message || e?.message || e || "Error desconocido");
     }
+
+    showRoutePreloader.value = false;
   } finally {
     if (loadId === activeLoadId) loading.value = false;
     dispatchPrerenderReadySafe();

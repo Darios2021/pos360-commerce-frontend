@@ -4,10 +4,16 @@
 <template>
   <nav class="ml-bottom-nav" aria-label="Navegación inferior">
     <!-- Inicio -->
-    <router-link to="/shop" class="ml-nav-item" :class="{ active: isActive('/shop', true) }">
+    <button
+      type="button"
+      class="ml-nav-item ml-nav-button"
+      :class="{ active: isActive('/shop', true) }"
+      aria-label="Inicio"
+      @click="goHomeSmart"
+    >
       <v-icon>mdi-home-outline</v-icon>
       <span>Inicio</span>
-    </router-link>
+    </button>
 
     <!-- Categorías -->
     <router-link
@@ -52,10 +58,11 @@
 
 <script setup>
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 const route = useRoute();
+const router = useRouter();
 const cart = useShopCartStore();
 
 function isActive(path, exactShopHome = false) {
@@ -68,6 +75,27 @@ const isCategoriesActive = computed(() => {
   const p = route.path || "";
   return p.startsWith("/shop/categories") || p.startsWith("/shop/c/") || p.startsWith("/shop/category/");
 });
+
+async function goHomeSmart() {
+  const current = route.fullPath || "";
+
+  // ya estás en home
+  if (current === "/shop") return;
+
+  try {
+    const back = window?.history?.state?.back || "";
+    const hasShopBack = typeof back === "string" && back.startsWith("/shop");
+
+    // ✅ si el historial previo pertenece al shop, volver conserva mejor el scroll real
+    if (hasShopBack) {
+      router.back();
+      return;
+    }
+  } catch {}
+
+  // ✅ fallback
+  router.push("/shop");
+}
 </script>
 
 <style scoped>
@@ -119,6 +147,16 @@ const isCategoriesActive = computed(() => {
 
   font-size: 11px;
   line-height: 1;
+}
+
+.ml-nav-button{
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
 }
 
 .ml-nav-item :deep(.v-icon){
@@ -176,6 +214,3 @@ const isCategoriesActive = computed(() => {
   margin-top: 4px;
 }
 </style>
-
-
-
