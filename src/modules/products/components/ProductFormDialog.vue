@@ -3,6 +3,11 @@
 <!-- FIX MOBILE UI:
   ✅ Footer: botones NO se rompen (stack real + safe-area + widths)
   ✅ Stepper mobile: NO se deforma (sin arrows superpuestos, scroll por swipe)
+  ✅ FIX TAXONOMÍA:
+     - subcategorías filtradas por rubro seleccionado
+     - si cambia rubro, se limpia subrubro inválido
+     - en edición también se valida consistencia rubro/subrubro
+     - normalización separada de category/subcategory (sin cruzar IDs)
 -->
 
 <template>
@@ -73,12 +78,7 @@
         </div>
 
         <div v-else class="pf-stepper-mobile">
-          <!-- ✅ FIX: sin show-arrows (en mobile se superponen / deforman)
-               scroll por swipe + chips "no wrap" -->
-          <v-slide-group
-            class="pf-slide"
-            center-active
-          >
+          <v-slide-group class="pf-slide" center-active>
             <v-slide-group-item v-for="s in steps" :key="s.value">
               <v-chip
                 class="pf-stepchip"
@@ -113,7 +113,7 @@
               :disabled="busy"
               :product-id="draft?.id || null"
               :categories="categoriesList"
-              :subcategories="subcategoriesList"
+              :subcategories="filteredSubcategories"
               :sku-preview="skuPreview"
               @reload-taxonomies="ensureTaxonomies"
             />
@@ -350,7 +350,7 @@
             />
           </div>
 
-          <!-- STEP 5 ✅ RESUMEN (NO SE TOCA) -->
+          <!-- STEP 5 -->
           <div v-show="step === 5" class="pf-step">
             <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
               <div>
@@ -488,7 +488,7 @@
       <v-snackbar v-model="snack.open" :timeout="2600" location="bottom right">
         {{ snack.text }}
         <template #actions>
-          <v-btn variant="text" @click="snack.open=false">OK</v-btn>
+          <v-btn variant="text" @click="snack.open = false">OK</v-btn>
         </template>
       </v-snackbar>
 
@@ -509,7 +509,7 @@
             </div>
           </v-card-text>
           <v-card-actions class="justify-end">
-            <v-btn variant="flat" color="primary" @click="vModal.open=false">Entendido</v-btn>
+            <v-btn variant="flat" color="primary" @click="vModal.open = false">Entendido</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -534,7 +534,7 @@ import ProductBarcodeCard from "./form/ProductBarcodeCard.vue";
 /* ===================== Props/Emit ===================== */
 const props = defineProps({
   open: { type: Boolean, default: false },
-  mode: { type: String, default: "create" }, // create|edit
+  mode: { type: String, default: "create" },
   item: { type: Object, default: null },
 });
 
@@ -549,7 +549,7 @@ const openLocal = computed({
   set: (v) => emit("update:open", v),
 });
 
-const { mdAndUp, smAndDown } = useDisplay();
+const { mdAndUp } = useDisplay();
 
 /* ===================== UI state ===================== */
 const step = ref(1);
@@ -561,9 +561,9 @@ const subcategoriesList = ref([]);
 
 // stock + media queues
 const stockMatrix = ref([]);
-const queuedImages = ref([]); // File[]
-const queuedYoutubeVideos = ref([]); // [{key,url,title?}]
-const queuedVideoFiles = ref([]); // File[]
+const queuedImages = ref([]);
+const queuedYoutubeVideos = ref([]);
+const queuedVideoFiles = ref([]);
 
 // YouTube input
 const ytUrl = ref("");
@@ -589,12 +589,11 @@ function showValidation(items = [], message = "") {
 function arr(v) {
   return Array.isArray(v) ? v : [];
 }
+
 const imagesCount = computed(() => arr(queuedImages.value).length);
 const youtubeCount = computed(() => arr(queuedYoutubeVideos.value).length);
 const videoFilesCount = computed(() => arr(queuedVideoFiles.value).length);
-const videosCount = computed(() => youtubeCount.value + videoFilesCount.value);
 
-/* ✅ FIX CLAVE: toInt robusto (soporta objetos de v-select return-object) */
 function toInt(v, d = 0) {
   if (v === null || v === undefined || v === "") return d;
 
@@ -626,10 +625,12 @@ function num(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
+
 function safe(v) {
   const s = String(v ?? "").trim();
   return s ? s : "—";
 }
+
 function toBool(v, d = false) {
   if (typeof v === "boolean") return v;
   const s = String(v ?? "").trim().toLowerCase();
@@ -637,6 +638,7 @@ function toBool(v, d = false) {
   if (s === "false" || s === "0") return false;
   return d;
 }
+
 function deepClone(obj) {
   try {
     return JSON.parse(JSON.stringify(obj || {}));
@@ -645,19 +647,39 @@ function deepClone(obj) {
   }
 }
 
-function normalizeTaxo(raw) {
+function normalizeTaxo(raw, kind = "category") {
   const a = arr(raw);
+
   return a
     .map((x) => {
-      const id =
-        toInt(x?.id, 0) ||
-        toInt(x?.value, 0) ||
-        toInt(x?.category_id, 0) ||
-        toInt(x?.subcategory_id, 0) ||
-        toInt(x?.rubro_id, 0) ||
-        toInt(x?.subrubro_id, 0);
+      let id = 0;
 
-      const name = String(x?.name ?? x?.nombre ?? x?.title ?? x?.label ?? x?.text ?? "").trim();
+      if (kind === "subcategory") {
+        id =
+          toInt(x?.subcategory_id, 0) ||
+          toInt(x?.subrubro_id, 0) ||
+          toInt(x?.id, 0) ||
+          toInt(x?.value, 0);
+      } else {
+        id =
+          toInt(x?.category_id, 0) ||
+          toInt(x?.rubro_id, 0) ||
+          toInt(x?.id, 0) ||
+          toInt(x?.value, 0);
+      }
+
+      const name = String(
+        x?.name ??
+          x?.nombre ??
+          x?.title ??
+          x?.label ??
+          x?.text ??
+          x?.category_name ??
+          x?.subcategory_name ??
+          x?.rubro ??
+          x?.subrubro ??
+          ""
+      ).trim();
 
       const category_id =
         toInt(x?.category_id, 0) ||
@@ -681,7 +703,7 @@ async function loadCategories() {
       : Array.isArray(data?.rows)
         ? data.rows
         : [];
-  return normalizeTaxo(list);
+  return normalizeTaxo(list, "category");
 }
 
 async function loadSubcategories() {
@@ -693,7 +715,7 @@ async function loadSubcategories() {
       : Array.isArray(data?.rows)
         ? data.rows
         : [];
-  return normalizeTaxo(list);
+  return normalizeTaxo(list, "subcategory");
 }
 
 async function ensureTaxonomies() {
@@ -736,14 +758,28 @@ function getCategoryIdFromDraft(d) {
     pickId(d?.rubro_id) ||
     pickId(d?.rubroId) ||
     pickId(d?.category);
+
   return cid || null;
+}
+
+function setSubcategoryIdOnDraft(id) {
+  const v = toInt(id, 0) || null;
+
+  draft.value = {
+    ...draft.value,
+    subcategory_id: v,
+    subcategoryId: v,
+    sub_category_id: v,
+    subrubro_id: v,
+    subrubroId: v,
+  };
 }
 
 function defaultDraft() {
   return {
     id: null,
     name: "",
-    sku: "", // ✅ NO tocar acá, se fija al final
+    sku: "",
     code: null,
     barcode: null,
     branch_id: null,
@@ -762,21 +798,102 @@ function defaultDraft() {
 
 const draft = ref(defaultDraft());
 
-/* ✅ FIX: si el panel devuelve objeto, lo convertimos a ID (para que Stepper/preview no se rompa) */
+/* ===================== FIX TAXONOMÍA ===================== */
+const selectedCategoryId = computed(() => toInt(getCategoryIdFromDraft(draft.value), 0) || null);
+const selectedSubcategoryId = computed(() => toInt(getSubcategoryIdFromDraft(draft.value), 0) || null);
+
+const filteredSubcategories = computed(() => {
+  const cid = toInt(selectedCategoryId.value, 0);
+  const all = arr(subcategoriesList.value);
+
+  if (!cid) return [];
+  return all.filter((x) => toInt(x?.category_id, 0) === cid);
+});
+
+function subcategoryBelongsToCategory(subId, catId) {
+  const sid = toInt(subId, 0);
+  const cid = toInt(catId, 0);
+  if (!sid || !cid) return false;
+
+  const hit = arr(subcategoriesList.value).find((x) => toInt(x?.id, 0) === sid);
+  if (!hit) return false;
+
+  return toInt(hit?.category_id, 0) === cid;
+}
+
+function normalizeDraftTaxonomy() {
+  const cid = selectedCategoryId.value;
+  const sid = selectedSubcategoryId.value;
+
+  if (!cid) {
+    if (sid) setSubcategoryIdOnDraft(null);
+    return;
+  }
+
+  if (sid && !subcategoryBelongsToCategory(sid, cid)) {
+    setSubcategoryIdOnDraft(null);
+  }
+}
+
+/* si el panel o backend devuelve objeto, normalizamos */
 watch(
   () => draft.value?.category_id,
   (v) => {
-    if (v && typeof v === "object") draft.value.category_id = toInt(v, 0) || null;
-  }
-);
-watch(
-  () => draft.value?.subcategory_id,
-  (v) => {
-    if (v && typeof v === "object") draft.value.subcategory_id = toInt(v, 0) || null;
+    if (v && typeof v === "object") {
+      draft.value = { ...draft.value, category_id: toInt(v, 0) || null };
+    }
   }
 );
 
-/* ===================== SKU (preview + final) ===================== */
+watch(
+  () => draft.value?.subcategory_id,
+  (v) => {
+    if (v && typeof v === "object") {
+      setSubcategoryIdOnDraft(toInt(v, 0) || null);
+    }
+  }
+);
+
+/* cuando cambia rubro, limpiar subrubro inválido */
+watch(
+  selectedCategoryId,
+  (newCid) => {
+    const sid = selectedSubcategoryId.value;
+
+    if (!newCid) {
+      if (sid) setSubcategoryIdOnDraft(null);
+      return;
+    }
+
+    if (!sid) return;
+
+    if (!subcategoryBelongsToCategory(sid, newCid)) {
+      setSubcategoryIdOnDraft(null);
+    }
+  }
+);
+
+/* si por cualquier motivo cae un subrubro fuera del rubro actual, se limpia */
+watch(
+  selectedSubcategoryId,
+  (sid) => {
+    const cid = selectedCategoryId.value;
+    if (!sid) return;
+    if (!cid || !subcategoryBelongsToCategory(sid, cid)) {
+      setSubcategoryIdOnDraft(null);
+    }
+  }
+);
+
+watch(
+  () => subcategoriesList.value,
+  () => {
+    normalizeDraftTaxonomy();
+  },
+  { deep: true }
+);
+
+/* ===================== SKU ===================== */
 const skuPreviewHint = ref("");
 
 function getCategoryNameById(id) {
@@ -870,6 +987,10 @@ function validateDatos() {
   if (!cat) errs.push("• Falta seleccionar el **Rubro**.");
   if (!sub) errs.push("• Falta seleccionar el **Subrubro**.");
 
+  if (cat && sub && !subcategoryBelongsToCategory(sub, cat)) {
+    errs.push("• El **Subrubro** no corresponde al **Rubro** seleccionado.");
+  }
+
   return errs.length ? errs : null;
 }
 
@@ -895,14 +1016,17 @@ function canGoTo(target) {
   if (t <= 1) return true;
   return !!canGoAfterStep1.value;
 }
+
 function goToStep(target) {
   const t = toInt(target, 1);
   if (!canGoTo(t)) return;
   step.value = Math.min(5, Math.max(1, t));
 }
+
 function prevStep() {
   step.value = Math.max(1, step.value - 1);
 }
+
 function nextStep() {
   if (step.value === 1) {
     const errs = validateDatos();
@@ -936,6 +1060,7 @@ async function hydrateDraft() {
 
   if (isEdit.value && props.item && typeof props.item === "object") {
     draft.value = { ...defaultDraft(), ...deepClone(props.item) };
+    normalizeDraftTaxonomy();
     step.value = 2;
   } else {
     draft.value = defaultDraft();
@@ -987,6 +1112,7 @@ function normalizeYoutubeQueue(a) {
     }))
     .filter((x) => !!x.url);
 }
+
 function normalizeFilesQueue(a) {
   return arr(a).filter(Boolean);
 }
@@ -1086,7 +1212,6 @@ function buildPayload() {
     price_reseller: num(draft.value?.price_reseller, 0),
   };
 
-  // IMPORTANT: SKU se fija AL FINAL
   delete payload.sku;
 
   if (payload.barcode === "") payload.barcode = null;
@@ -1146,7 +1271,6 @@ async function createAll() {
       return;
     }
 
-    // ✅ fijar SKU final con ID real
     const skuReal = buildSku({ ...draft.value, ...created }, pid);
     try {
       await products.update(pid, { sku: skuReal });
@@ -1156,7 +1280,6 @@ async function createAll() {
       draft.value = { ...draft.value, ...deepClone(created) };
     }
 
-    // stock init (create)
     const rows = arr(stockMatrix.value);
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
@@ -1178,7 +1301,6 @@ async function createAll() {
       if (!ok2) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
-    // images
     if (imagesCount.value) {
       const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
@@ -1226,7 +1348,6 @@ async function saveAll() {
       return;
     }
 
-    // ✅ si el producto edit NO tenía sku, lo fijamos igual
     if (!String(draft.value?.sku || "").trim()) {
       const skuReal = buildSku(draft.value, pid);
       try {
@@ -1235,7 +1356,6 @@ async function saveAll() {
       } catch {}
     }
 
-    // stock set absoluto (edit)
     const rows = arr(stockMatrix.value);
     for (const r of rows) {
       const bid = toInt(r.branch_id, 0);
@@ -1259,7 +1379,6 @@ async function saveAll() {
       if (!ok2) toast("⚠️ Stock: " + (products.error || `Falló sucursal ${bid || "—"}`));
     }
 
-    // images
     if (imagesCount.value) {
       const up = await products.uploadImages(pid, arr(queuedImages.value));
       if (!up) toast("⚠️ Imágenes: " + (products.error || "No se pudieron subir"));
@@ -1279,39 +1398,22 @@ async function saveAll() {
 </script>
 
 <style scoped>
-/* =========================================================
-   ✅ UI REFRESH (LIGHT + DARK) — ProductFormDialog
-   + FIX MOBILE:
-   - Stepper chips sin deformar (scroll)
-   - Footer sticky con safe-area y botones 100% (no se rompen)
-========================================================= */
-
 .pf-card {
-  /* tokens base */
   --pf-surface: rgb(var(--v-theme-surface));
   --pf-surface2: rgb(var(--v-theme-surface-variant));
   --pf-on: rgb(var(--v-theme-on-surface));
   --pf-outline: rgb(var(--v-theme-outline));
   --pf-outline2: rgb(var(--v-theme-outline-variant));
-
-  /* bordes adaptativos */
   --pf-b1: color-mix(in srgb, var(--pf-outline) 26%, transparent);
   --pf-b2: color-mix(in srgb, var(--pf-outline) 16%, transparent);
-
-  /* fondos suaves */
   --pf-fill: color-mix(in srgb, var(--pf-surface2) 42%, var(--pf-surface));
   --pf-fill2: color-mix(in srgb, var(--pf-surface2) 65%, var(--pf-surface));
-
-  /* texto */
   --pf-muted: color-mix(in srgb, var(--pf-on) 70%, transparent);
   --pf-muted2: color-mix(in srgb, var(--pf-on) 55%, transparent);
-
-  /* sombras (suaves en light, más marcadas en dark) */
-  --pf-shadow-1: 0 10px 26px color-mix(in srgb, rgba(0,0,0,.18) 55%, transparent);
-  --pf-shadow-2: 0 18px 48px color-mix(in srgb, rgba(0,0,0,.22) 60%, transparent);
+  --pf-shadow-1: 0 10px 26px color-mix(in srgb, rgba(0, 0, 0, 0.18) 55%, transparent);
+  --pf-shadow-2: 0 18px 48px color-mix(in srgb, rgba(0, 0, 0, 0.22) 60%, transparent);
 }
 
-/* ================= OVERLAY ================= */
 :deep(.pf-overlay) {
   background: color-mix(in srgb, var(--pf-surface) 35%, rgba(0, 0, 0, 1));
 }
@@ -1325,7 +1427,6 @@ async function saveAll() {
   display: flex;
 }
 
-/* Card raíz */
 .pf-card {
   width: 100%;
   height: 100vh;
@@ -1335,7 +1436,6 @@ async function saveAll() {
   background: var(--pf-surface);
 }
 
-/* ================= HEADER ================= */
 .pf-top {
   background: var(--pf-surface);
 }
@@ -1364,7 +1464,6 @@ async function saveAll() {
   padding: 0 16px 10px;
 }
 
-/* Stepper desktop */
 .pf-stepper-head {
   padding: 10px 16px 12px;
 }
@@ -1374,41 +1473,44 @@ async function saveAll() {
   overflow: hidden;
   border: 1px solid var(--pf-b2);
   background: color-mix(in srgb, var(--pf-surface) 70%, var(--pf-fill));
-  box-shadow: 0 8px 18px color-mix(in srgb, rgba(0,0,0,.12) 50%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, rgba(0, 0, 0, 0.12) 50%, transparent);
 }
 
 .pf-stepper :deep(.v-stepper-item) {
   padding-top: 10px;
   padding-bottom: 10px;
 }
+
 .pf-stepper :deep(.v-stepper-item__title) {
   font-weight: 800;
   letter-spacing: 0.1px;
 }
+
 .pf-stepper :deep(.v-stepper-item__subtitle) {
   color: var(--pf-muted2);
 }
 
-/* ================= Stepper mobile ================= */
 .pf-stepper-mobile {
   padding: 10px 12px 12px;
 }
 
-/* ✅ FIX: que el slide-group sea scrolleable y no “aplastado” */
 .pf-slide {
   width: 100%;
 }
+
 .pf-slide :deep(.v-slide-group__container) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .pf-slide :deep(.v-slide-group__content) {
   gap: 8px;
   padding: 2px 2px;
 }
+
 .pf-slide :deep(.v-slide-group__prev),
 .pf-slide :deep(.v-slide-group__next) {
-  display: none !important; /* por si Vuetify decide mostrarlos */
+  display: none !important;
 }
 
 .pf-stepchip {
@@ -1417,6 +1519,7 @@ async function saveAll() {
   flex: 0 0 auto;
   max-width: none;
 }
+
 .pf-stepchip-t {
   white-space: nowrap;
 }
@@ -1436,11 +1539,9 @@ async function saveAll() {
   margin-top: 8px;
 }
 
-/* ================= BODY ================= */
 .pf-body {
   flex: 1;
   overflow-y: auto;
-  /* ✅ FIX: padding extra para que el footer sticky no tape contenido + safe-area */
   padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -1484,9 +1585,11 @@ async function saveAll() {
   background: color-mix(in srgb, var(--pf-surface) 75%, var(--pf-fill)) !important;
   border-radius: 12px;
 }
+
 .pf-step :deep(.v-field__outline) {
   opacity: 1 !important;
 }
+
 .pf-step :deep(.v-field--focused .v-field__outline) {
   filter: saturate(1.05);
 }
@@ -1500,7 +1603,6 @@ async function saveAll() {
   align-items: center;
 }
 
-/* ================= FOOTER ================= */
 .pf-footer {
   position: sticky;
   bottom: 0;
@@ -1512,7 +1614,6 @@ async function saveAll() {
 
 .pf-actions {
   padding: 12px 14px;
-  /* ✅ FIX: si falta espacio, que no reviente */
   flex-wrap: wrap;
   row-gap: 10px;
 }
@@ -1532,7 +1633,6 @@ async function saveAll() {
   border-radius: 12px !important;
 }
 
-/* ================= RESUMEN ================= */
 .pf-summary-grid {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
@@ -1600,7 +1700,6 @@ async function saveAll() {
   }
 }
 
-/* ✅ Mobile: footer perfecto */
 @media (max-width: 600px) {
   .pf-pad {
     padding: 14px 10px;
@@ -1619,7 +1718,6 @@ async function saveAll() {
     flex-direction: column;
     align-items: stretch !important;
     justify-content: flex-start !important;
-    /* ✅ safe area */
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -1641,7 +1739,6 @@ async function saveAll() {
   }
 }
 
-/* helpers */
 .minw-0 {
   min-width: 0;
 }

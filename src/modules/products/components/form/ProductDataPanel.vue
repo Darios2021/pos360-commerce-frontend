@@ -111,7 +111,7 @@
         />
       </v-col>
 
-      <!-- ✅ SKU ABAJO + BLOQUEADO + MOSTRAR PREVIEW SOLO ACÁ -->
+      <!-- SKU -->
       <v-col cols="12" md="8">
         <v-text-field
           :model-value="skuDisplay"
@@ -123,7 +123,6 @@
           hide-details
           append-inner-icon="mdi-lock"
         />
-        <!-- ✅ hint chiquito solo cuando es preview -->
         <div v-if="skuIsPreview" class="pdp-sku-hint">
           Preview (se fija al final)
         </div>
@@ -148,11 +147,9 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   productId: { type: [Number, String, null], default: null },
 
-  // ✅ vienen del dialog (pueden venir como Array o como {items/rows/data/results})
   categories: { type: [Array, Object], default: () => [] },
   subcategories: { type: [Array, Object], default: () => [] },
 
-  // ✅ FIX: preview SKU viene del dialog
   skuPreview: { type: String, default: "" },
 });
 
@@ -170,7 +167,6 @@ function toInt(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
-/** ✅ destapa lo que venga: array directo o {items|rows|data|results} */
 function unwrapArray(input) {
   if (Array.isArray(input)) return input;
 
@@ -186,18 +182,15 @@ function unwrapArray(input) {
   return [];
 }
 
-function normalizeList(input) {
-  const a = unwrapArray(input);
-
-  return a
+/* ✅ CATEGORÍAS */
+function normalizeCategories(input) {
+  return unwrapArray(input)
     .map((x) => {
       const id =
-        toInt(x?.id, 0) ||
-        toInt(x?.value, 0) ||
         toInt(x?.category_id, 0) ||
-        toInt(x?.subcategory_id, 0) ||
         toInt(x?.rubro_id, 0) ||
-        toInt(x?.subrubro_id, 0);
+        toInt(x?.id, 0) ||
+        toInt(x?.value, 0);
 
       const name = String(
         x?.name ??
@@ -207,8 +200,33 @@ function normalizeList(input) {
           x?.text ??
           x?.descripcion ??
           x?.category_name ??
-          x?.subcategory_name ??
           x?.rubro ??
+          ""
+      ).trim();
+
+      return { id, name };
+    })
+    .filter((x) => x.id > 0 && x.name);
+}
+
+/* ✅ SUBCATEGORÍAS */
+function normalizeSubcategories(input) {
+  return unwrapArray(input)
+    .map((x) => {
+      const id =
+        toInt(x?.subcategory_id, 0) ||
+        toInt(x?.subrubro_id, 0) ||
+        toInt(x?.id, 0) ||
+        toInt(x?.value, 0);
+
+      const name = String(
+        x?.name ??
+          x?.nombre ??
+          x?.title ??
+          x?.label ??
+          x?.text ??
+          x?.descripcion ??
+          x?.subcategory_name ??
           x?.subrubro ??
           ""
       ).trim();
@@ -226,54 +244,77 @@ function normalizeList(input) {
 }
 
 const categoriesResolved = computed(() => {
-  const fromProps = normalizeList(props.categories);
+  const fromProps = normalizeCategories(props.categories);
   if (fromProps.length) return fromProps;
 
-  return normalizeList(products?.categories || products?.meta?.categories || []);
+  return normalizeCategories(products?.categories || products?.meta?.categories || []);
 });
 
 const subcategoriesResolved = computed(() => {
-  const fromProps = normalizeList(props.subcategories);
+  const fromProps = normalizeSubcategories(props.subcategories);
   if (fromProps.length) return fromProps;
 
-  return normalizeList(products?.subcategories || products?.meta?.subcategories || []);
+  return normalizeSubcategories(products?.subcategories || products?.meta?.subcategories || []);
 });
 
 const categoryId = computed({
-  get: () => (draft.value?.category_id ? toInt(draft.value.category_id, 0) : null),
+  get: () => {
+    const v =
+      draft.value?.category_id ??
+      draft.value?.categoryId ??
+      draft.value?.rubro_id ??
+      draft.value?.rubroId ??
+      null;
+
+    const n = toInt(v, 0);
+    return n > 0 ? n : null;
+  },
   set: (val) => {
     const v = val ? toInt(val, 0) : null;
-    emit("update:modelValue", { ...draft.value, category_id: v, subcategory_id: null });
+    emit("update:modelValue", {
+      ...draft.value,
+      category_id: v,
+      subcategory_id: null,
+    });
   },
 });
 
 const subcategoryId = computed({
-  get: () => (draft.value?.subcategory_id ? toInt(draft.value.subcategory_id, 0) : null),
+  get: () => {
+    const v =
+      draft.value?.subcategory_id ??
+      draft.value?.subcategoryId ??
+      draft.value?.sub_category_id ??
+      draft.value?.subrubro_id ??
+      draft.value?.subrubroId ??
+      null;
+
+    const n = toInt(v, 0);
+    return n > 0 ? n : null;
+  },
   set: (val) => {
     const v = val ? toInt(val, 0) : null;
-    emit("update:modelValue", { ...draft.value, subcategory_id: v });
+    emit("update:modelValue", {
+      ...draft.value,
+      subcategory_id: v,
+    });
   },
 });
 
 const filteredSubcategories = computed(() => {
-  const cid = categoryId.value ? toInt(categoryId.value, 0) : 0;
+  const cid = toInt(categoryId.value, 0);
   const arr = subcategoriesResolved.value;
 
-  if (!cid) return arr;
-
-  const hasCat = arr.some((x) => toInt(x?.category_id, 0) > 0);
-  if (!hasCat) return arr;
-
+  if (!cid) return [];
   return arr.filter((x) => toInt(x?.category_id, 0) === cid);
 });
 
-/* ===================== SKU display (solo visual) ===================== */
 const skuDisplay = computed(() => {
   const real = String(draft.value?.sku || "").trim();
   if (real) return real;
 
   const prev = String(props.skuPreview || "").trim();
-  return prev; // si no hay preview, queda ""
+  return prev;
 });
 
 const skuIsPreview = computed(() => {
@@ -288,7 +329,6 @@ const skuIsPreview = computed(() => {
   width: 100%;
 }
 
-/* hint mini debajo del SKU */
 .pdp-sku-hint {
   margin-top: 6px;
   font-size: 12px;

@@ -38,8 +38,9 @@
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <div class="mb-6">
-        <InstagramPhoneCarousel />
+      <!-- ✅ BLOQUE PROMOS TELEFONOS + AURICULARES -->
+      <div class="mb-8">
+        <PromoGridTelefonosAuriculares />
       </div>
 
       <div
@@ -114,6 +115,16 @@
       <div class="mt-6">
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
+
+      <!-- ✅ ENTRETENIMIENTO MAS ABAJO Y MAS CONTENIDO -->
+      <div class="mt-8 entertainment-wrap">
+        <PromoBannerEntretenimiento />
+      </div>
+
+      <!-- ✅ INSTAGRAM CASI AL FINAL -->
+      <div class="mt-6 instagram-near-footer">
+        <InstagramPhoneCarousel />
+      </div>
     </section>
 
     <ShopFooter />
@@ -135,6 +146,8 @@ import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
 import PromoSliderAuriculares from "@/modules/shop/components/PromoSliderAuriculares.vue";
 import PromoSliderCargadores from "@/modules/shop/components/PromoSliderCargadores.vue";
 import PromoSliderAudioMicrofonos from "@/modules/shop/components/PromoSliderAudioMicrofonos.vue";
+import PromoGridTelefonosAuriculares from "@/modules/shop/components/PromoGridTelefonosAuriculares.vue";
+import PromoBannerEntretenimiento from "@/modules/shop/components/PromoBannerEntretenimiento.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
@@ -426,39 +439,158 @@ watch(
   margin-top: 18px;
 }
 
+/* ✅ separa visualmente entretenimiento del bloque de arriba */
+.entertainment-wrap {
+  padding-top: 6px;
+}
+
+/* ✅ achica el banner de entretenimiento desde home */
+.entertainment-wrap :deep(.ent-shell) {
+  min-height: 220px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 39%);
+}
+
+.entertainment-wrap :deep(.ent-copy) {
+  padding: 24px 28px;
+  gap: 10px;
+}
+
+.entertainment-wrap :deep(.ent-title) {
+  font-size: 32px;
+  line-height: 0.98;
+  letter-spacing: -0.7px;
+  max-width: 520px;
+}
+
+.entertainment-wrap :deep(.ent-sub) {
+  font-size: 15px;
+  max-width: 500px;
+}
+
+.entertainment-wrap :deep(.ent-media) {
+  min-height: 220px;
+}
+
+.entertainment-wrap :deep(.ent-img) {
+  max-width: 420px;
+  padding: 14px 12px 12px;
+}
+
+.instagram-near-footer {
+  margin-bottom: 8px;
+}
+
 @media (max-width: 1400px) {
   .product-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+
 @media (max-width: 1200px) {
   .shop-page {
     --shop-max: 1100px;
   }
+
   .product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
 @media (max-width: 960px) {
   .after-hero-spacer {
     height: 14px;
   }
+
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .entertainment-wrap :deep(.ent-shell) {
+    min-height: 190px;
+    grid-template-columns: minmax(0, 1fr) 40%;
+  }
+
+  .entertainment-wrap :deep(.ent-copy) {
+    padding: 18px 20px;
+  }
+
+  .entertainment-wrap :deep(.ent-title) {
+    font-size: 24px;
+  }
+
+  .entertainment-wrap :deep(.ent-sub) {
+    font-size: 13px;
+  }
+
+  .entertainment-wrap :deep(.ent-media) {
+    min-height: 190px;
+  }
+
+  .entertainment-wrap :deep(.ent-img) {
+    max-width: 300px;
+    padding: 12px 10px;
+  }
 }
+
 @media (max-width: 600px) {
   .after-hero-spacer {
     height: 12px;
   }
+
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
-  /* espacio para bottom nav (lo pone el layout también, pero esto ayuda en home) */
   .content {
     padding-bottom: 92px;
+  }
+
+  .entertainment-wrap :deep(.ent-shell) {
+    min-height: 158px;
+    grid-template-columns: minmax(0, 1fr) 39%;
+  }
+
+  .entertainment-wrap :deep(.ent-copy) {
+    padding: 14px 14px 14px 16px;
+    gap: 6px;
+  }
+
+  .entertainment-wrap :deep(.ent-kicker) {
+    font-size: 9px;
+    letter-spacing: 3px;
+  }
+
+  .entertainment-wrap :deep(.ent-title) {
+    font-size: 18px;
+    line-height: 1.05;
+    letter-spacing: -0.2px;
+  }
+
+  .entertainment-wrap :deep(.ent-sub) {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .entertainment-wrap :deep(.ent-btn) {
+    min-width: 110px;
+    height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
+    border-radius: 9px;
+  }
+
+  .entertainment-wrap :deep(.ent-note) {
+    display: none;
+  }
+
+  .entertainment-wrap :deep(.ent-media) {
+    min-height: 158px;
+  }
+
+  .entertainment-wrap :deep(.ent-img) {
+    max-width: 220px;
+    padding: 10px 8px;
   }
 }
 </style>
