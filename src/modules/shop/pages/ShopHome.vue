@@ -3,6 +3,15 @@
 
 <template>
   <v-container fluid class="shop-page pa-0">
+    <!-- ✅ overlay elegante para evitar flash al footer mientras restaura scroll -->
+    <transition name="home-restore-fade">
+      <div v-if="isRestoringHome" class="home-restore-mask" aria-hidden="true">
+        <div class="home-restore-topbar">
+          <span class="home-restore-shimmer"></span>
+        </div>
+      </div>
+    </transition>
+
     <!-- HERO FULL-BLEED -->
     <section class="hero-fullbleed">
       <div class="hero-bleed-inner">
@@ -112,6 +121,11 @@
         <PromoSliderCargadores />
       </div>
 
+      <!-- ✅ SEGURIDAD ELECTRÓNICA separado de Parlantes -->
+      <div class="mt-8" v-if="!loading && items.length && !itemsError">
+        <PromoBannerSeguridadElectronica />
+      </div>
+
       <div class="mt-6">
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
@@ -120,11 +134,6 @@
       <div class="mt-8 entertainment-wrap">
         <PromoBannerEntretenimiento />
       </div>
-
-      <!-- ✅ INSTAGRAM CASI AL FINAL -->
-      <div class="mt-6 instagram-near-footer">
-        <InstagramPhoneCarousel />
-      </div>
     </section>
 
     <ShopFooter />
@@ -132,8 +141,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from "vue";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
@@ -150,8 +159,9 @@ import PromoGridTelefonosAuriculares from "@/modules/shop/components/PromoGridTe
 import PromoBannerEntretenimiento from "@/modules/shop/components/PromoBannerEntretenimiento.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
+import PromoBannerSeguridadElectronica from "@/modules/shop/components/PromoBannerSeguridadElectronica.vue";
+
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
-import InstagramPhoneCarousel from "@/modules/shop/components/InstagramPhoneCarousel.vue";
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
@@ -162,6 +172,7 @@ const router = useRouter();
 const loading = ref(false);
 const loadingMore = ref(false);
 const itemsError = ref(null);
+const isRestoringHome = ref(false);
 
 const items = ref([]);
 const page = ref(Number(route.query.page || 1));
@@ -179,7 +190,103 @@ const aurisItems = ref([]);
 const audioCatId = ref(null);
 const aurisSubIds = ref([]);
 
+const productsTop = ref(null);
+
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
+
+// ✅ scroll restore real del home
+const HOME_SCROLL_KEY = "shop_home_scroll_y_v3";
+const HOME_SCROLL_PATH_KEY = "shop_home_scroll_path_v3";
+const HOME_RESTORE_LOCK_KEY = "shop_home_restore_pending_v3";
+
+function saveHomeScroll() {
+  try {
+    if (route.path !== "/shop") return;
+    sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY || 0));
+    sessionStorage.setItem(HOME_SCROLL_PATH_KEY, route.fullPath || "/shop");
+  } catch {}
+}
+
+function markHomeRestorePending() {
+  try {
+    sessionStorage.setItem(HOME_RESTORE_LOCK_KEY, "1");
+  } catch {}
+}
+
+function clearHomeRestorePending() {
+  try {
+    sessionStorage.removeItem(HOME_RESTORE_LOCK_KEY);
+  } catch {}
+}
+
+function shouldRestoreHomeScroll() {
+  try {
+    return sessionStorage.getItem(HOME_RESTORE_LOCK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function getSavedHomeScroll() {
+  try {
+    const savedPath = sessionStorage.getItem(HOME_SCROLL_PATH_KEY) || "/shop";
+    const savedY = Number(sessionStorage.getItem(HOME_SCROLL_KEY) || 0);
+    if (savedPath !== (route.fullPath || "/shop")) return 0;
+    return Number.isFinite(savedY) ? savedY : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function forceScrollTopNow() {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  } catch {}
+}
+
+async function finishRestoreMask() {
+  await new Promise((resolve) => setTimeout(resolve, 90));
+  isRestoringHome.value = false;
+}
+
+async function restoreHomeScrollIfNeeded() {
+  if (!shouldRestoreHomeScroll()) {
+    isRestoringHome.value = false;
+    return;
+  }
+
+  const y = getSavedHomeScroll();
+  clearHomeRestorePending();
+
+  await nextTick();
+
+  if (!y || y <= 0) {
+    forceScrollTopNow();
+    await finishRestoreMask();
+    return;
+  }
+
+  const restore = () => {
+    try {
+      window.scrollTo({ top: y, left: 0, behavior: "auto" });
+    } catch {}
+  };
+
+  restore();
+
+  requestAnimationFrame(() => {
+    restore();
+    setTimeout(restore, 80);
+    setTimeout(restore, 220);
+    setTimeout(restore, 450);
+    setTimeout(restore, 800);
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 160));
+  await finishRestoreMask();
+}
 
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -239,8 +346,6 @@ function clearAllFilters() {
   nq.page = "1";
   router.replace({ path: "/shop", query: nq });
 }
-
-const productsTop = ref(null);
 
 function scrollToProducts() {
   const el = productsTop.value;
@@ -347,7 +452,19 @@ function dispatchPrerenderReadySafe() {
 
 let ogDone = false;
 
+onBeforeRouteLeave((to, from, next) => {
+  try {
+    if (from?.path === "/shop" && to?.path !== "/shop") {
+      saveHomeScroll();
+      markHomeRestorePending();
+    }
+  } catch {}
+  next();
+});
+
 onMounted(async () => {
+  isRestoringHome.value = shouldRestoreHomeScroll();
+
   if (!ogDone) {
     ogDone = true;
 
@@ -369,8 +486,12 @@ onMounted(async () => {
     allCats.value = [];
   }
 
-  fetchHomeShorts();
+  await fetchHomeShorts();
   dispatchPrerenderReadySafe();
+
+  await restoreHomeScrollIfNeeded();
+
+  window.addEventListener("scroll", saveHomeScroll, { passive: true });
 });
 
 watch(
@@ -378,10 +499,15 @@ watch(
   async () => {
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
-    fetchHomeShorts();
+    await fetchHomeShorts();
     dispatchPrerenderReadySafe();
   }
 );
+
+onBeforeUnmount(() => {
+  saveHomeScroll();
+  window.removeEventListener("scroll", saveHomeScroll);
+});
 </script>
 
 <style scoped>
@@ -390,6 +516,57 @@ watch(
   padding: 0 !important;
   margin: 0 !important;
   background: transparent;
+}
+
+.home-restore-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(255, 255, 255, 0.14);
+  pointer-events: all;
+}
+
+.home-restore-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(52, 131, 250, 0.1);
+  overflow: hidden;
+}
+
+.home-restore-shimmer {
+  display: block;
+  width: 28%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(52, 131, 250, 0) 0%,
+    rgba(52, 131, 250, 0.55) 50%,
+    rgba(52, 131, 250, 0) 100%
+  );
+  animation: homeRestoreSlide 0.95s ease-in-out infinite;
+}
+
+.home-restore-fade-enter-active,
+.home-restore-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.home-restore-fade-enter-from,
+.home-restore-fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes homeRestoreSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(430%);
+  }
 }
 
 .hero-fullbleed {
@@ -439,12 +616,10 @@ watch(
   margin-top: 18px;
 }
 
-/* ✅ separa visualmente entretenimiento del bloque de arriba */
 .entertainment-wrap {
   padding-top: 6px;
 }
 
-/* ✅ achica el banner de entretenimiento desde home */
 .entertainment-wrap :deep(.ent-shell) {
   min-height: 220px;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 39%);
@@ -474,10 +649,6 @@ watch(
 .entertainment-wrap :deep(.ent-img) {
   max-width: 420px;
   padding: 14px 12px 12px;
-}
-
-.instagram-near-footer {
-  margin-bottom: 8px;
 }
 
 @media (max-width: 1400px) {
@@ -544,6 +715,14 @@ watch(
 
   .content {
     padding-bottom: 92px;
+  }
+
+  .home-restore-topbar {
+    height: 2.5px;
+  }
+
+  .home-restore-shimmer {
+    width: 36%;
   }
 
   .entertainment-wrap :deep(.ent-shell) {

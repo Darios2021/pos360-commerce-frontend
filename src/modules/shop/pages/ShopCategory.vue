@@ -2,6 +2,8 @@
 <!-- src/modules/shop/pages/ShopCategory.vue -->
 <template>
   <div class="category-page" data-page="shop-category-v2">
+    <ShopRouteRestoreOverlay :model-value="isRestoringCategory" />
+
     <section class="section">
       <div class="cat-layout">
         <!-- LEFT: filtros -->
@@ -74,8 +76,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from "vue";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
@@ -83,12 +85,14 @@ import { getPublicCategoriesAll, getPublicCategoryChildren } from "@/modules/sho
 import ProductCardSubcat from "@/modules/shop/components/shop/ProductCardSubcat.vue";
 import ShopCategoryFilters from "@/modules/shop/components/shop/ShopCategoryFilters.vue";
 import ShopSortSelect from "@/modules/shop/components/shop/ShopSortSelect.vue";
+import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
 
 const loading = ref(false);
 const err = ref("");
+const isRestoringCategory = ref(false);
 
 const parentId = computed(() => Number(route.params.id || 0));
 
@@ -123,6 +127,100 @@ const pages = computed(() => {
 });
 
 const resultsLabelComputed = computed(() => `Productos (${Number(total.value || 0)})`);
+
+/* ✅ scroll restore categoría */
+const CATEGORY_SCROLL_KEY = "shop_category_scroll_y_v1";
+const CATEGORY_SCROLL_PATH_KEY = "shop_category_scroll_path_v1";
+const CATEGORY_RESTORE_LOCK_KEY = "shop_category_restore_pending_v1";
+
+function saveCategoryScroll() {
+  try {
+    if (!route.path.startsWith("/shop/c/")) return;
+    sessionStorage.setItem(CATEGORY_SCROLL_KEY, String(window.scrollY || 0));
+    sessionStorage.setItem(CATEGORY_SCROLL_PATH_KEY, route.fullPath || "");
+  } catch {}
+}
+
+function markCategoryRestorePending() {
+  try {
+    sessionStorage.setItem(CATEGORY_RESTORE_LOCK_KEY, "1");
+  } catch {}
+}
+
+function clearCategoryRestorePending() {
+  try {
+    sessionStorage.removeItem(CATEGORY_RESTORE_LOCK_KEY);
+  } catch {}
+}
+
+function shouldRestoreCategoryScroll() {
+  try {
+    return sessionStorage.getItem(CATEGORY_RESTORE_LOCK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function getSavedCategoryScroll() {
+  try {
+    const savedPath = sessionStorage.getItem(CATEGORY_SCROLL_PATH_KEY) || "";
+    const savedY = Number(sessionStorage.getItem(CATEGORY_SCROLL_KEY) || 0);
+    if (savedPath !== (route.fullPath || "")) return 0;
+    return Number.isFinite(savedY) ? savedY : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function forceCategoryScrollTopNow() {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  } catch {}
+}
+
+async function finishCategoryRestoreMask() {
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  isRestoringCategory.value = false;
+}
+
+async function restoreCategoryScrollIfNeeded() {
+  if (!shouldRestoreCategoryScroll()) {
+    isRestoringCategory.value = false;
+    return;
+  }
+
+  const y = getSavedCategoryScroll();
+  clearCategoryRestorePending();
+
+  await nextTick();
+
+  if (!y || y <= 0) {
+    forceCategoryScrollTopNow();
+    await finishCategoryRestoreMask();
+    return;
+  }
+
+  const restore = () => {
+    try {
+      window.scrollTo({ top: y, left: 0, behavior: "auto" });
+    } catch {}
+  };
+
+  restore();
+
+  requestAnimationFrame(() => {
+    restore();
+    setTimeout(restore, 80);
+    setTimeout(restore, 220);
+    setTimeout(restore, 450);
+    setTimeout(restore, 800);
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 260));
+  await finishCategoryRestoreMask();
+}
 
 /* subcats */
 async function fetchSubcats() {
@@ -215,7 +313,6 @@ function setQuery(partial) {
   router
     .replace({ name: route.name, params: route.params, query: q })
     .finally(() => {
-      // deja que el watcher de route.query corra una vez
       setTimeout(() => (syncingQuery = false), 0);
     });
 }
@@ -353,11 +450,35 @@ function prevPage() {
 }
 
 /* init */
+onBeforeRouteLeave((to, from, next) => {
+  try {
+    if (from?.path.startsWith("/shop/c/") && to?.path !== from?.path) {
+      saveCategoryScroll();
+      markCategoryRestorePending();
+    }
+  } catch {}
+  next();
+});
+
 onMounted(async () => {
+  isRestoringCategory.value = true;
+
   catsAll.value = await getPublicCategoriesAll();
   readStateFromQuery();
   await fetchSubcats();
   await fetchCatalog();
+  await restoreCategoryScrollIfNeeded();
+
+  if (!shouldRestoreCategoryScroll()) {
+    await finishCategoryRestoreMask();
+  }
+
+  window.addEventListener("scroll", saveCategoryScroll, { passive: true });
+});
+
+onBeforeUnmount(() => {
+  saveCategoryScroll();
+  window.removeEventListener("scroll", saveCategoryScroll);
 });
 
 /* ✅ cuando cambia la categoría (/shop/c/:id), reset TOTAL para evitar query “pegada” */
@@ -393,7 +514,7 @@ watch(
 watch(
   () => route.query,
   () => {
-    if (syncingQuery) return; // evita doble-fetch por nuestro replace
+    if (syncingQuery) return;
     readStateFromQuery();
     fetchCatalog();
   },

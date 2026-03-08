@@ -1,6 +1,51 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/shop/utils/ogPrerender.js
-import { useHead } from "@vueuse/head";
+
 import { nextTick } from "vue";
+
+function upsertMetaByName(name, content) {
+  if (typeof document === "undefined" || !name) return;
+
+  let el = document.head.querySelector(`meta[name="${CSS.escape(name)}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute("name", name);
+    document.head.appendChild(el);
+  }
+
+  el.setAttribute("content", String(content ?? ""));
+}
+
+function upsertMetaByProperty(property, content) {
+  if (typeof document === "undefined" || !property) return;
+
+  let el = document.head.querySelector(`meta[property="${CSS.escape(property)}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute("property", property);
+    document.head.appendChild(el);
+  }
+
+  el.setAttribute("content", String(content ?? ""));
+}
+
+function upsertCanonical(href) {
+  if (typeof document === "undefined") return;
+
+  let el = document.head.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement("link");
+    el.setAttribute("rel", "canonical");
+    document.head.appendChild(el);
+  }
+
+  el.setAttribute("href", String(href ?? ""));
+}
+
+function setDocumentTitle(title) {
+  if (typeof document === "undefined") return;
+  document.title = String(title ?? "");
+}
 
 /**
  * Setea OG tags para preview (WhatsApp/IG/FB) y libera el prerender.
@@ -14,39 +59,45 @@ export async function setOgAndReady({
   siteName = "San Juan Tecnología",
 }) {
   const safeTitle = (title || siteName).toString().trim();
-  const safeDesc = (description || "Electrónica, ecommerce, sistemas POS y soluciones tecnológicas.").toString().trim();
+  const safeDesc = (
+    description || "Electrónica, ecommerce, sistemas POS y soluciones tecnológicas."
+  )
+    .toString()
+    .trim();
 
   // ⚠️ OG image debe ser ABSOLUTA y accesible públicamente
   const safeImage = (image || "").toString().trim();
-
   const safeUrl = (url || "").toString().trim();
 
-  useHead({
-    title: safeTitle,
-    meta: [
-      { name: "description", content: safeDesc },
+  // title
+  setDocumentTitle(safeTitle);
 
-      // Open Graph
-      { property: "og:site_name", content: siteName },
-      { property: "og:type", content: "website" },
-      { property: "og:title", content: safeTitle },
-      { property: "og:description", content: safeDesc },
-      ...(safeImage ? [{ property: "og:image", content: safeImage }] : []),
-      ...(safeUrl ? [{ property: "og:url", content: safeUrl }] : []),
+  // description
+  upsertMetaByName("description", safeDesc);
 
-      // Twitter (muchas apps lo leen también)
-      { name: "twitter:card", content: safeImage ? "summary_large_image" : "summary" },
-      { name: "twitter:title", content: safeTitle },
-      { name: "twitter:description", content: safeDesc },
-      ...(safeImage ? [{ name: "twitter:image", content: safeImage }] : []),
-    ],
-    link: safeUrl ? [{ rel: "canonical", href: safeUrl }] : [],
-  });
+  // Open Graph
+  upsertMetaByProperty("og:site_name", siteName);
+  upsertMetaByProperty("og:type", "website");
+  upsertMetaByProperty("og:title", safeTitle);
+  upsertMetaByProperty("og:description", safeDesc);
+
+  if (safeImage) upsertMetaByProperty("og:image", safeImage);
+  if (safeUrl) upsertMetaByProperty("og:url", safeUrl);
+
+  // Twitter
+  upsertMetaByName("twitter:card", safeImage ? "summary_large_image" : "summary");
+  upsertMetaByName("twitter:title", safeTitle);
+  upsertMetaByName("twitter:description", safeDesc);
+
+  if (safeImage) upsertMetaByName("twitter:image", safeImage);
+
+  // canonical
+  if (safeUrl) upsertCanonical(safeUrl);
 
   // Esperar a que el head se aplique
   await nextTick();
 
-  // Liberar prerender (PuppeteerRenderer espera este evento)
+  // Liberar prerender
   if (typeof document !== "undefined") {
     document.dispatchEvent(new Event("prerender-ready"));
   }

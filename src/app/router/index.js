@@ -1,6 +1,9 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/router/index.js
-// ✅ Shop público + Plataforma en /app + Auth en /app/auth
+// FIX scroll:
+// - F5 en /shop inicia arriba
+// - volver desde producto conserva scroll
+// - evita salto al footer
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -9,49 +12,37 @@ import { useAuthStore } from "@/app/store/auth.store";
 import AppShell from "@/app/layouts/AppShell.vue";
 import AuthLayout from "@/app/layouts/AuthLayout.vue";
 
-// Shop routes
+// Shop
 import { shopRoutes } from "@/modules/shop/router/shop.routes";
-
-// ✅ Admin tienda / configs (relativos para colgar de /app)
 import { shopAdminRoutes } from "@/app/router/shopAdmin.routes";
 
 // Pages
 import LoginPage from "@/modules/auth/pages/LoginPage.vue";
 import ProfilePage from "@/modules/account/pages/ProfilePage.vue";
-
-// Dashboard
 import DashboardHome from "@/modules/dashboard/pages/DashboardHome.vue";
 
-// POS
 import PosPage from "@/modules/pos/pages/PosPage.vue";
 import PosSalesPage from "@/modules/pos/pages/PosSalesPage.vue";
 import PosSaleDetailPage from "@/modules/pos/pages/PosSaleDetailPage.vue";
 
-// Products
 import ProductsListPage from "@/modules/products/pages/ProductsListPage.vue";
 import ProductProfilePage from "@/modules/products/pages/ProductProfilePage.vue";
 import ProductDetailViewPage from "@/modules/products/pages/ProductDetailViewPage.vue";
 
-// Import
 import ImportProductsPage from "@/modules/import/pages/ImportProductsPage.vue";
 
-// Configuración
 import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
 import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
 import StockPage from "@/modules/stock/pages/StockPage.vue";
 
-// Users
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 
 const routes = [
-  // =========================
-  // SHOP (público) en /shop/*
-  // =========================
+
+  // SHOP PUBLIC
   ...shopRoutes,
 
-  // =========================
-  // AUTH (PLATAFORMA) en /app/auth/*
-  // =========================
+  // AUTH
   {
     path: "/app/auth",
     component: AuthLayout,
@@ -61,14 +52,13 @@ const routes = [
     ],
   },
 
-  // =========================
-  // APP (privado) en /app/*
-  // =========================
+  // APP PRIVADO
   {
     path: "/app",
     component: AppShell,
     meta: { requiresAuth: true },
     children: [
+
       { path: "", name: "home", component: DashboardHome },
 
       // POS
@@ -76,19 +66,15 @@ const routes = [
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
-      // Productos
+      // PRODUCTS
       { path: "products", name: "products", component: ProductsListPage },
-
-      // ✅ NUEVA VISTA "VER" (ADMIN)
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
-
-      // (tu vista existente, la dejo)
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
-      // Importación
+      // IMPORT
       { path: "products-import", name: "productsImport", component: ImportProductsPage },
 
-      // Configuración
+      // CONFIG
       { path: "stock", name: "stock", component: StockPage },
       {
         path: "inventory",
@@ -96,12 +82,13 @@ const routes = [
         component: InventoryPage,
         meta: { roles: ["admin", "super_admin"] },
       },
+
       { path: "categories", name: "categories", component: CategoriesPage },
 
-      // ✅ TIENDA ADMIN + LINKS + GALERÍA MULTIMEDIA (cuelga bajo /app/...):
+      // ADMIN SHOP
       ...shopAdminRoutes,
 
-      // Usuarios
+      // USERS
       {
         path: "users",
         name: "users",
@@ -109,40 +96,149 @@ const routes = [
         meta: { roles: ["admin", "super_admin"] },
       },
 
-      // Cuenta
+      // PROFILE
       { path: "profile", name: "profile", component: ProfilePage },
     ],
   },
 
-  // ✅ fallback / catch-all (SIEMPRE al final)
   { path: "/:pathMatch(.*)*", redirect: "/shop" },
 ];
+
+
+// =======================
+// Scroll persistence
+// =======================
+
+const SCROLL_KEY = "scroll_positions_v1";
+
+function readScroll() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveScroll(path) {
+  const map = readScroll();
+  map[path] = {
+    top: window.scrollY || 0,
+    left: window.scrollX || 0,
+  };
+  sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map));
+}
+
+function getScroll(path) {
+  const map = readScroll();
+  return map[path];
+}
+
+
+// Detect reload
+function isReload() {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0];
+    if (nav) return nav.type === "reload";
+    return performance.navigation.type === 1;
+  } catch {
+    return false;
+  }
+}
+
+
+// Disable browser auto scroll restore
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
+
+// Persist scroll while user scrolls
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "scroll",
+    () => {
+      const path =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
+
+      saveScroll(path);
+    },
+    { passive: true }
+  );
+}
+
+
+// =======================
+// Router
+// =======================
 
 const router = createRouter({
   history: createWebHistory("/"),
   routes,
-  scrollBehavior: (to, from, saved) => saved || { top: 0 },
+
+  scrollBehavior(to, from, savedPosition) {
+
+    // Hash anchors
+    if (to.hash) {
+      return {
+        el: to.hash,
+        top: 90,
+        behavior: "smooth",
+      };
+    }
+
+    // Browser back
+    if (savedPosition) {
+      return savedPosition;
+    }
+
+    // F5 reload
+    if (isReload()) {
+      return { top: 0, left: 0 };
+    }
+
+    // Manual restore
+    const pos = getScroll(to.fullPath);
+    if (pos) {
+      return pos;
+    }
+
+    return { top: 0, left: 0 };
+  },
 });
 
-// =========================
-// Guard global
-// =========================
-router.beforeEach((to) => {
+
+// =======================
+// Guards
+// =======================
+
+router.beforeEach((to, from) => {
+
+  if (from?.fullPath) {
+    saveScroll(from.fullPath);
+  }
+
   const auth = useAuthStore();
   if (auth.status === "idle") auth.hydrate?.();
 
   if (to.meta?.public) return true;
 
-  // si ya está logueado y va al login, mandalo al home
-  if (to.name === "login" && auth.isAuthed) return { name: "home" };
+  if (to.name === "login" && auth.isAuthed) {
+    return { name: "home" };
+  }
 
-  // si requiere auth y no está logueado -> login (/app/auth/login)
-  if (to.meta?.requiresAuth && !auth.isAuthed) return { name: "login" };
+  if (to.meta?.requiresAuth && !auth.isAuthed) {
+    return { name: "login" };
+  }
 
   const roles = to.meta?.roles;
+
   if (roles?.length) {
     const r = auth.roles || [];
-    if (!roles.some((x) => r.includes(x))) return { name: "home" };
+    if (!roles.some((x) => r.includes(x))) {
+      return { name: "home" };
+    }
   }
 
   return true;
