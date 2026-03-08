@@ -1,23 +1,38 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
-  <v-container fluid class="pa-6 pos-sale-detail">
+  <v-container fluid class="pos-sale-detail pa-4 pa-md-6">
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-4">
+    <div class="page-head">
       <div>
-        <div class="text-h4 font-weight-black">Venta #{{ sale?.id ?? id }}</div>
-        <div class="text-caption text-medium-emphasis">Detalle completo</div>
+        <div class="page-kicker">Detalle de venta</div>
+        <div class="page-title">Venta #{{ sale?.id ?? id }}</div>
+        <div v-if="sale" class="page-subtitle">
+          {{ dt(sale.sold_at || sale.created_at) }}
+        </div>
       </div>
 
-      <v-btn variant="tonal" @click="$router.back()">
-        <v-icon start>mdi-arrow-left</v-icon>
-        Volver
-      </v-btn>
+      <div class="d-flex align-center ga-2 flex-wrap">
+        <v-chip
+          v-if="sale?.status"
+          size="small"
+          variant="flat"
+          :color="statusColor(sale.status)"
+          class="font-weight-bold"
+        >
+          {{ statusLabel(sale.status) }}
+        </v-chip>
+
+        <v-btn variant="tonal" class="rounded-lg" @click="$router.back()">
+          <v-icon start>mdi-arrow-left</v-icon>
+          Volver
+        </v-btn>
+      </div>
     </div>
 
-    <v-card class="rounded-xl elevation-3">
-      <v-card-text v-if="loading" class="py-10 d-flex justify-center">
-        <v-progress-circular indeterminate />
+    <v-card class="main-shell rounded-2xl elevation-0">
+      <v-card-text v-if="loading" class="py-16 d-flex justify-center">
+        <v-progress-circular indeterminate size="38" width="4" />
       </v-card-text>
 
       <v-card-text v-else-if="!sale">
@@ -26,143 +41,179 @@
         </v-alert>
       </v-card-text>
 
-      <v-card-text v-else>
-        <!-- Top: cliente + totales -->
-        <div class="d-flex flex-wrap align-start justify-space-between ga-6">
+      <v-card-text v-else class="pa-3 pa-md-5">
+        <!-- HERO -->
+        <section class="hero-grid">
           <!-- Cliente -->
-          <div class="min-w-320">
-            <div class="text-caption text-medium-emphasis mb-1">Cliente</div>
+          <article class="soft-panel">
+            <div class="panel-title mb-4">
+              <v-icon size="18" class="mr-2">mdi-account-circle-outline</v-icon>
+              Cliente
+            </div>
 
-            <div class="text-h5 font-weight-black">
+            <div class="hero-customer-name">
               {{ customerNameResolved }}
             </div>
 
-            <div class="text-caption text-medium-emphasis mt-1" v-if="customerMetaLine">
+            <div v-if="customerMetaLine" class="hero-muted mt-1">
               {{ customerMetaLine }}
             </div>
 
-            <div class="text-caption text-medium-emphasis mt-4 mb-1">Fecha</div>
-            <div class="text-body-1 font-weight-medium">{{ dt(sale.sold_at || sale.created_at) }}</div>
+            <div v-if="showCustomerDataBlock" class="mt-4">
+              <div class="info-label mb-2">Datos del cliente</div>
 
-            <div class="d-flex flex-wrap ga-2 mt-4">
-              <v-chip size="small" variant="tonal" :color="statusColor(sale.status)">
-                {{ statusLabel(sale.status) }}
-              </v-chip>
+              <div class="d-flex flex-wrap ga-2">
+                <v-chip
+                  v-if="customerDocResolved"
+                  size="small"
+                  variant="outlined"
+                  class="detail-chip"
+                >
+                  <v-icon start size="16">mdi-card-account-details-outline</v-icon>
+                  {{ customerDocResolved }}
+                </v-chip>
 
-              <v-chip size="small" variant="tonal" :color="payColor(topPaymentMethodResolved)">
-                {{ methodLabel(topPaymentMethodResolved) }}
-              </v-chip>
+                <v-chip
+                  v-if="customerPhoneResolved"
+                  size="small"
+                  variant="outlined"
+                  class="detail-chip"
+                >
+                  <v-icon start size="16">mdi-phone</v-icon>
+                  {{ customerPhoneResolved }}
+                </v-chip>
 
-              <v-chip size="small" variant="tonal" color="primary">
-                Sucursal: {{ sale.branch?.name || sale.branch_name || sale.branch_id || "—" }}
-              </v-chip>
-
-              <v-chip size="small" variant="tonal" color="primary">
-                Usuario: {{ userLabel(sale) }}
-              </v-chip>
+                <v-chip
+                  v-if="customerEmailResolved"
+                  size="small"
+                  variant="outlined"
+                  class="detail-chip"
+                >
+                  <v-icon start size="16">mdi-email-outline</v-icon>
+                  {{ customerEmailResolved }}
+                </v-chip>
+              </div>
             </div>
 
-            <div class="d-flex flex-wrap ga-2 mt-3">
-              <v-chip v-if="customerDocResolved" size="small" variant="tonal">
-                <v-icon start size="16">mdi-card-account-details-outline</v-icon>
-                {{ customerDocResolved }}
-              </v-chip>
-
-              <v-chip v-if="customerPhoneResolved" size="small" variant="tonal">
-                <v-icon start size="16">mdi-phone</v-icon>
-                {{ customerPhoneResolved }}
-              </v-chip>
-
-              <v-chip v-if="customerEmailResolved" size="small" variant="tonal">
-                <v-icon start size="16">mdi-email-outline</v-icon>
-                {{ customerEmailResolved }}
-              </v-chip>
-            </div>
-
-            <div class="mt-3" v-if="customerAddressResolved">
-              <div class="text-caption text-medium-emphasis mb-1">Dirección</div>
-              <div class="text-body-2">{{ customerAddressResolved }}</div>
+            <div v-if="customerAddressResolved" class="mt-4">
+              <div class="info-label mb-1">Dirección</div>
+              <div class="info-value">
+                {{ customerAddressResolved }}
+              </div>
             </div>
 
             <div v-if="sale.note" class="mt-4">
-              <div class="text-caption text-medium-emphasis mb-1">Nota</div>
-              <div class="text-body-2">{{ sale.note }}</div>
-            </div>
-
-            <!-- ✅ Aviso snapshot vs real -->
-            <v-alert
-              v-if="!customerObj"
-              type="info"
-              variant="tonal"
-              density="compact"
-              class="mt-4 rounded-xl"
-            >
-              Estos datos son <b>snapshot</b> guardados en la venta (customer_name/doc/tel). Si querés “cliente real”
-              (tabla customers), hay que incluirlo en el backend.
-            </v-alert>
-          </div>
-
-          <!-- Totales -->
-          <div class="flex-1 min-w-360">
-            <div class="d-flex justify-space-between">
-              <div>
-                <div class="text-body-2">Subtotal</div>
-                <div class="text-body-2">Descuento</div>
-                <div class="text-body-2">Impuestos</div>
-              </div>
-              <div class="text-right">
-                <div class="text-body-2 font-weight-bold">{{ money(sale.subtotal) }}</div>
-                <div class="text-body-2 font-weight-bold">{{ money(sale.discount_total) }}</div>
-                <div class="text-body-2 font-weight-bold">{{ money(sale.tax_total) }}</div>
+              <div class="info-label mb-1">Nota</div>
+              <div class="info-value">
+                {{ sale.note }}
               </div>
             </div>
+          </article>
 
-            <v-divider class="my-4" />
-
-            <div class="d-flex justify-space-between align-center">
-              <div class="text-h6 font-weight-black">TOTAL</div>
-              <div class="text-h5 font-weight-black">{{ money(sale.total) }}</div>
+          <!-- Venta -->
+          <article class="soft-panel">
+            <div class="panel-title mb-4">
+              <v-icon size="18" class="mr-2">mdi-receipt-text-outline</v-icon>
+              Venta
             </div>
 
-            <div class="d-flex justify-space-between mt-3">
-              <div>
-                <div class="text-body-2">Pagado</div>
-                <div class="text-body-2">Vuelto</div>
+            <div class="info-grid sale-info-grid">
+              <div class="info-item">
+                <div class="info-label">Fecha</div>
+                <div class="info-value">{{ dt(sale.sold_at || sale.created_at) }}</div>
               </div>
-              <div class="text-right">
-                <div class="text-body-2 font-weight-bold">{{ money(sale.paid_total) }}</div>
-                <div class="text-body-2 font-weight-bold">{{ money(sale.change_total) }}</div>
-              </div>
-            </div>
 
-            <v-divider class="my-4" />
-            <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-              <div>
-                <div class="text-caption text-medium-emphasis">Resumen neto</div>
-                <div class="text-body-2">
-                  Devuelto: <b>{{ money(refundsTotal) }}</b>
-                  <span class="mx-2">·</span>
-                  Diferencias cambios: <b>{{ money(exchangesDiffTotal) }}</b>
+              <div v-if="branchLabelResolved" class="info-item">
+                <div class="info-label">Sucursal</div>
+                <div class="info-value">{{ branchLabelResolved }}</div>
+              </div>
+
+              <div v-if="userLabel(sale) !== '—'" class="info-item">
+                <div class="info-label">Usuario</div>
+                <div class="info-value">{{ userLabel(sale) }}</div>
+              </div>
+
+              <div v-if="sale?.status" class="info-item">
+                <div class="info-label">Estado</div>
+                <div class="info-value">
+                  <v-chip
+                    size="small"
+                    variant="flat"
+                    :color="statusColor(sale.status)"
+                    class="font-weight-bold"
+                  >
+                    {{ statusLabel(sale.status) }}
+                  </v-chip>
                 </div>
               </div>
-
-              <v-chip size="small" variant="tonal" :color="netTotal >= 0 ? 'green' : 'orange'">
-                Neto: <b class="ml-1">{{ money(netTotal) }}</b>
-              </v-chip>
             </div>
-          </div>
-        </div>
 
-        <v-divider class="my-6" />
+            <div class="total-top mt-6">
+              <div>
+                <div class="total-kicker">Total venta</div>
+                <div class="total-main">{{ money(sale.total) }}</div>
+              </div>
 
-        <!-- Productos -->
-        <div class="d-flex align-center justify-space-between mb-2">
-          <div class="text-subtitle-1 font-weight-bold">Productos</div>
+              <div class="text-right">
+                <div class="hero-muted">Pagado</div>
+                <div class="text-h6 font-weight-black">{{ money(sale.paid_total) }}</div>
+              </div>
+            </div>
 
-          <div class="d-flex align-center ga-2">
-            <div class="text-caption text-medium-emphasis">items: {{ (sale.items || []).length }}</div>
+            <div class="money-breakdown mt-5">
+              <div v-if="hasValue(sale.subtotal)" class="money-row">
+                <span>Subtotal</span>
+                <strong>{{ money(sale.subtotal) }}</strong>
+              </div>
 
-            <v-chip size="x-small" variant="tonal" :color="productsLoading ? 'indigo' : 'grey'">
+              <div v-if="Number(sale.discount_total || 0) > 0" class="money-row">
+                <span>Descuento</span>
+                <strong>{{ money(sale.discount_total) }}</strong>
+              </div>
+
+              <div v-if="Number(sale.tax_total || 0) > 0" class="money-row">
+                <span>Impuestos</span>
+                <strong>{{ money(sale.tax_total) }}</strong>
+              </div>
+
+              <div v-if="Number(sale.change_total || 0) > 0" class="money-row">
+                <span>Vuelto</span>
+                <strong>{{ money(sale.change_total) }}</strong>
+              </div>
+            </div>
+
+            <v-divider v-if="showNetSummary" class="my-4" />
+
+            <div v-if="showNetSummary" class="mini-stats-grid">
+              <div v-if="refundsTotal > 0" class="mini-stat-card">
+                <div class="mini-stat-label">Devuelto</div>
+                <div class="mini-stat-value">{{ money(refundsTotal) }}</div>
+              </div>
+
+              <div v-if="exchangesDiffTotal !== 0" class="mini-stat-card">
+                <div class="mini-stat-label">Dif. cambios</div>
+                <div class="mini-stat-value">{{ money(exchangesDiffTotal) }}</div>
+              </div>
+
+              <div class="mini-stat-card mini-stat-card--accent">
+                <div class="mini-stat-label">Neto</div>
+                <div class="mini-stat-value">{{ money(netTotal) }}</div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- PRODUCTOS -->
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Productos</div>
+              <div class="section-subtitle">
+                {{ (sale.items || []).length }} item{{ (sale.items || []).length === 1 ? "" : "s" }}
+              </div>
+            </div>
+
+            <v-chip size="small" variant="tonal" :color="productsLoading ? 'indigo' : 'grey'">
               <v-progress-circular
                 v-if="productsLoading"
                 indeterminate
@@ -173,224 +224,332 @@
               {{ productsLoading ? "Cargando productos…" : "Productos listos" }}
             </v-chip>
           </div>
-        </div>
 
-        <v-data-table
-          :headers="itemsHeaders"
-          :items="sale.items || []"
-          item-key="id"
-          class="rounded-xl"
-          density="comfortable"
-        >
-          <template #item.product="{ item }">
-            <div class="d-flex align-center ga-3">
-              <v-avatar size="54" rounded="lg" class="thumb" @click="openImage(item)">
-                <v-img v-if="itemImage(item)" :src="itemImage(item)" cover />
-                <v-icon v-else>mdi-image-off-outline</v-icon>
-              </v-avatar>
+          <div class="table-wrap">
+            <v-data-table
+              :headers="itemsHeaders"
+              :items="sale.items || []"
+              item-key="id"
+              class="products-table"
+              density="comfortable"
+            >
+              <template #item.product="{ item }">
+                <div class="product-cell">
+                  <v-avatar size="58" rounded="lg" class="thumb" @click="openImage(item)">
+                    <v-img v-if="itemImage(item)" :src="itemImage(item)" cover />
+                    <v-icon v-else>mdi-image-off-outline</v-icon>
+                  </v-avatar>
 
-              <div class="min-w-0 flex-1">
-                <div class="d-flex align-center justify-space-between ga-3">
-                  <div class="text-body-1 font-weight-black text-truncate">
-                    {{ productName(item) }}
+                  <div class="min-w-0 flex-1">
+                    <div class="d-flex align-center justify-space-between ga-3 flex-wrap">
+                      <div class="product-name text-truncate">
+                        {{ productName(item) }}
+                      </div>
+
+                      <v-chip
+                        v-if="availabilityLabel(item) !== '—'"
+                        size="x-small"
+                        variant="flat"
+                        :color="availabilityColor(item)"
+                        class="font-weight-bold"
+                        title="Disponibilidad según stock actual"
+                      >
+                        {{ availabilityLabel(item) }}
+                      </v-chip>
+                    </div>
+
+                    <div v-if="productMetaLine(item)" class="product-meta mt-1">
+                      {{ productMetaLine(item) }}
+                    </div>
+
+                    <div
+                      v-if="productChips(item).length"
+                      class="d-flex flex-wrap ga-1 mt-2"
+                    >
+                      <v-chip
+                        v-for="chip in productChips(item)"
+                        :key="chip.text"
+                        size="x-small"
+                        :variant="chip.variant || 'outlined'"
+                        :color="chip.color || undefined"
+                        class="detail-chip"
+                      >
+                        <template v-if="chip.icon" #prepend>
+                          <v-icon size="15">{{ chip.icon }}</v-icon>
+                        </template>
+                        {{ chip.text }}
+                      </v-chip>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template #item.stock="{ item }">
+                <div class="text-right font-weight-black">
+                  {{ stockText(item) }}
+                </div>
+              </template>
+
+              <template #item.qty="{ item }">
+                <div class="font-weight-black">{{ number(item.quantity) }}</div>
+              </template>
+
+              <template #item.unit="{ item }">
+                <div class="font-weight-bold">{{ money(item.unit_price) }}</div>
+              </template>
+
+              <template #item.total="{ item }">
+                <div class="font-weight-black">{{ money(item.line_total) }}</div>
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex ga-2 justify-end">
+                  <v-btn size="small" variant="tonal" color="primary" @click="goToProduct(item.product_id)">
+                    <v-icon start>mdi-cube-outline</v-icon>
+                    Perfil
+                  </v-btn>
+                </div>
+              </template>
+
+              <template #bottom />
+            </v-data-table>
+          </div>
+        </section>
+
+        <!-- PAGOS -->
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Pagos</div>
+              <div class="section-subtitle">
+                Método y detalle real de cobro
+              </div>
+            </div>
+
+            <v-chip size="small" variant="flat" color="primary" class="font-weight-bold">
+              {{ paymentsResolved.length }} registro{{ paymentsResolved.length === 1 ? "" : "s" }}
+            </v-chip>
+          </div>
+
+          <div v-if="paymentsResolved.length" class="payments-stack">
+            <div v-if="paymentMethodSummary.length" class="payment-summary-grid">
+              <div
+                v-for="row in paymentMethodSummary"
+                :key="row.method"
+                class="payment-summary-card"
+              >
+                <div class="payment-summary-label">{{ methodLabel(row.method) }}</div>
+                <div class="payment-summary-value">{{ money(row.amount) }}</div>
+                <v-chip
+                  size="x-small"
+                  variant="flat"
+                  :color="payColor(row.method)"
+                  class="font-weight-bold mt-2"
+                >
+                  {{ row.count }} mov.
+                </v-chip>
+              </div>
+            </div>
+
+            <v-card
+              v-for="p in paymentsResolved"
+              :key="p.id"
+              class="payment-card rounded-2xl elevation-0"
+            >
+              <v-card-text class="pa-4 pa-md-5">
+                <div class="payment-top">
+                  <div class="payment-top-left">
+                    <div class="d-flex align-center ga-2 flex-wrap">
+                      <v-chip
+                        size="small"
+                        variant="flat"
+                        :color="payColor(p.method_resolved)"
+                        class="font-weight-bold"
+                      >
+                        {{ methodLabel(p.method_resolved) }}
+                      </v-chip>
+
+                      <v-chip
+                        v-if="p.card_type_label"
+                        size="small"
+                        variant="outlined"
+                        class="detail-chip"
+                      >
+                        {{ p.card_type_label }}
+                      </v-chip>
+
+                      <v-chip
+                        v-if="p.provider_label && p.provider_label !== methodLabel(p.method_resolved)"
+                        size="small"
+                        variant="outlined"
+                        class="detail-chip"
+                      >
+                        {{ p.provider_label }}
+                      </v-chip>
+
+                      <v-chip
+                        v-if="p.card_brand"
+                        size="small"
+                        variant="outlined"
+                        class="detail-chip"
+                      >
+                        Marca: {{ p.card_brand }}
+                      </v-chip>
+                    </div>
+
+                    <div class="payment-title mt-3">
+                      {{ paymentHeadline(p) }}
+                    </div>
+
+                    <div v-if="paymentSubline(p).length" class="payment-subline mt-1">
+                      <span
+                        v-for="part in paymentSubline(p)"
+                        :key="part"
+                      >
+                        {{ part }}
+                      </span>
+                    </div>
                   </div>
 
-                  <v-chip
-                    size="x-small"
-                    variant="tonal"
-                    :color="availabilityColor(item)"
-                    title="Disponibilidad según stock actual"
+                  <div class="payment-amount-box">
+                    <div class="payment-amount-label">Monto cobrado</div>
+                    <div class="payment-amount-value">{{ money(p.amount) }}</div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="paymentFacts(p).length"
+                  class="payment-facts-grid mt-4"
+                >
+                  <div
+                    v-for="fact in paymentFacts(p)"
+                    :key="fact.label"
+                    class="fact-card"
                   >
-                    {{ availabilityLabel(item) }}
-                  </v-chip>
+                    <div class="fact-label">{{ fact.label }}</div>
+                    <div class="fact-value">{{ fact.value }}</div>
+                  </div>
                 </div>
 
-                <div class="text-caption text-medium-emphasis mt-1 d-flex flex-wrap ga-2">
-                  <span><b>SKU:</b> {{ productSku(item) }}</span>
-                  <span v-if="productBrand(item)"><b>Marca:</b> {{ productBrand(item) }}</span>
-                  <span v-if="productModel(item)"><b>Modelo:</b> {{ productModel(item) }}</span>
-                </div>
-
-                <div class="d-flex flex-wrap ga-1 mt-2">
-                  <v-chip size="x-small" variant="tonal">
-                    Cat: {{ categoryLabel(item) }}
-                  </v-chip>
-
-                  <v-chip size="x-small" variant="tonal" v-if="warehouseLabel(item) !== '—'">
-                    Depósito: {{ warehouseLabel(item) }}
-                  </v-chip>
-
-                  <v-chip size="x-small" variant="tonal" :color="stockChipColor(item)" title="Stock actual (POS)">
-                    Stock: <b class="ml-1">{{ stockText(item) }}</b>
-                  </v-chip>
-
+                <div
+                  v-if="paymentTags(p).length"
+                  class="d-flex flex-wrap ga-2 mt-4"
+                >
                   <v-chip
-                    size="x-small"
+                    v-for="tag in paymentTags(p)"
+                    :key="tag.text"
+                    size="small"
                     variant="tonal"
-                    color="blue-grey"
-                    v-if="barcodeLabel(item)"
-                    title="Barcode"
+                    :color="tag.color"
+                    class="font-weight-medium"
                   >
-                    <v-icon start size="16">mdi-barcode</v-icon>
-                    {{ barcodeLabel(item) }}
+                    {{ tag.text }}
                   </v-chip>
                 </div>
-              </div>
+
+                <div v-if="p.note_human" class="payment-note mt-4">
+                  <div class="fact-label mb-1">Nota</div>
+                  <div class="fact-value">{{ p.note_human }}</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+
+          <v-alert v-else type="info" variant="tonal" class="rounded-xl mt-2">
+            Sin pagos registrados.
+          </v-alert>
+        </section>
+
+        <!-- DEVOLUCIONES -->
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Devoluciones</div>
+              <div class="section-subtitle">Reintegros asociados a la venta</div>
             </div>
-          </template>
 
-          <template #item.stock="{ item }">
-            <div class="text-right">
-              <div class="font-weight-black">{{ stockText(item) }}</div>
-            </div>
-          </template>
+            <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
+              {{ refunds.length }}
+            </v-chip>
+          </div>
 
-          <template #item.qty="{ item }">
-            <div class="font-weight-black">{{ number(item.quantity) }}</div>
-          </template>
+          <v-alert v-if="!refunds.length" type="info" variant="tonal" class="rounded-xl">
+            No hay devoluciones registradas para esta venta.
+          </v-alert>
 
-          <template #item.unit="{ item }">
-            <div class="font-weight-bold">{{ money(item.unit_price) }}</div>
-          </template>
+          <div v-else class="d-flex flex-column ga-3">
+            <v-card v-for="r in refunds" :key="r.id" class="soft-subcard rounded-xl elevation-0">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between flex-wrap ga-3">
+                  <div>
+                    <div class="info-label">Fecha</div>
+                    <div class="info-value">{{ dt(r.created_at) }}</div>
+                  </div>
 
-          <template #item.total="{ item }">
-            <div class="font-weight-black">{{ money(item.line_total) }}</div>
-          </template>
-
-          <template #item.actions="{ item }">
-            <div class="d-flex ga-2 justify-end">
-              <v-btn size="small" variant="tonal" color="primary" @click="goToProduct(item.product_id)">
-                <v-icon start>mdi-cube-outline</v-icon>
-                Perfil
-              </v-btn>
-            </div>
-          </template>
-
-          <template #bottom />
-        </v-data-table>
-
-        <!-- Pagos -->
-        <v-divider class="my-6" />
-        <div class="text-subtitle-1 font-weight-bold mb-2">Pagos</div>
-
-        <div v-if="paymentsResolved.length" class="d-flex flex-column ga-2">
-          <v-card
-            v-for="p in paymentsResolved"
-            :key="p.id"
-            class="rounded-xl"
-            variant="outlined"
-          >
-            <v-card-text>
-              <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-                <div class="text-body-2 font-weight-black">
-                  {{ methodLabel(p.method_resolved) }}
-                  <span v-if="p.card_type" class="text-medium-emphasis"> · {{ p.card_type_label }}</span>
-                  <span v-if="p.card_brand" class="text-medium-emphasis"> · {{ p.card_brand }}</span>
+                  <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
+                    {{ money(r.amount) }}
+                  </v-chip>
                 </div>
 
-                <div class="text-body-2 font-weight-black">{{ money(p.amount) }}</div>
-              </div>
-
-              <div class="text-caption text-medium-emphasis mt-1 d-flex flex-wrap ga-2">
-                <span v-if="p.paid_at">Fecha: <b>{{ dt(p.paid_at) }}</b></span>
-                <span v-if="p.reference">Ref: <b>{{ p.reference }}</b></span>
-                <span v-if="p.provider_label">Proveedor: <b>{{ p.provider_label }}</b></span>
-              </div>
-
-              <!-- ✅ cuotas: cantidad + valor cuota + total con interés (si viene) -->
-              <div class="text-caption text-medium-emphasis mt-2 d-flex flex-wrap ga-2" v-if="p.installments > 1">
-                <span>Cuotas: <b>{{ p.installments }}</b></span>
-                <span v-if="p.installment_amount != null">
-                  Valor cuota: <b>{{ money(p.installment_amount) }}</b>
-                </span>
-                <span v-if="p.total_with_fee != null">
-                  Total financ.: <b>{{ money(p.total_with_fee) }}</b>
-                </span>
-              </div>
-
-              <div class="text-caption text-medium-emphasis mt-2" v-if="p.note_human">
-                Nota: {{ p.note_human }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
-
-        <v-alert v-else type="info" variant="tonal" class="rounded-xl">
-          Sin pagos registrados.
-        </v-alert>
-
-        <!-- ✅ Devoluciones -->
-        <v-divider class="my-6" />
-        <div class="d-flex align-center justify-space-between mb-2">
-          <div class="text-subtitle-1 font-weight-bold">Devoluciones</div>
-          <v-chip size="small" variant="tonal" color="orange">{{ refunds.length }}</v-chip>
-        </div>
-
-        <v-alert v-if="!refunds.length" type="info" variant="tonal" class="rounded-xl">
-          No hay devoluciones registradas para esta venta.
-        </v-alert>
-
-        <div v-else class="d-flex flex-column ga-2">
-          <v-card v-for="r in refunds" :key="r.id" class="rounded-xl" variant="outlined">
-            <v-card-text>
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-caption text-medium-emphasis">Fecha</div>
-                  <div class="font-weight-bold">{{ dt(r.created_at) }}</div>
+                <div class="hero-muted mt-3">
+                  Medio: <b>{{ methodLabel(resolveMethodFromRefund(r)) }}</b>
+                  <span v-if="r.reference"> · Ref: <b>{{ r.reference }}</b></span>
                 </div>
-                <v-chip size="small" variant="tonal" color="orange">
-                  {{ money(r.amount) }}
-                </v-chip>
-              </div>
 
-              <div class="text-caption text-medium-emphasis mt-2">
-                Medio: <b>{{ methodLabel(resolveMethodFromRefund(r)) }}</b>
-                <span v-if="r.reference"> · Ref: {{ r.reference }}</span>
-              </div>
-
-              <div class="text-caption text-medium-emphasis" v-if="r.reason">
-                Motivo: {{ r.reason }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
-
-        <!-- ✅ Cambios -->
-        <v-divider class="my-6" />
-        <div class="d-flex align-center justify-space-between mb-2">
-          <div class="text-subtitle-1 font-weight-bold">Cambios</div>
-          <v-chip size="small" variant="tonal" color="cyan">{{ exchanges.length }}</v-chip>
-        </div>
-
-        <v-alert v-if="!exchanges.length" type="info" variant="tonal" class="rounded-xl">
-          No hay cambios registrados para esta venta.
-        </v-alert>
-
-        <div v-else class="d-flex flex-column ga-2">
-          <v-card v-for="x in exchanges" :key="x.id" class="rounded-xl" variant="outlined">
-            <v-card-text>
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-caption text-medium-emphasis">Fecha</div>
-                  <div class="font-weight-bold">{{ dt(x.created_at) }}</div>
+                <div v-if="r.reason" class="hero-muted mt-1">
+                  Motivo: {{ r.reason }}
                 </div>
-                <v-chip size="small" variant="tonal" color="cyan">
-                  Dif: {{ money(x.diff) }}
-                </v-chip>
-              </div>
+              </v-card-text>
+            </v-card>
+          </div>
+        </section>
 
-              <div class="text-caption text-medium-emphasis mt-2">
-                Original: {{ money(x.original_total) }}
-                · Nuevo: {{ money(x.new_total) }}
-                · Devuelto: {{ money(x.returned_amount) }}
-              </div>
+        <!-- CAMBIOS -->
+        <section class="section-block">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Cambios</div>
+              <div class="section-subtitle">Movimientos por reemplazo de productos</div>
+            </div>
 
-              <div class="text-caption text-medium-emphasis" v-if="x.note">
-                Nota: {{ x.note }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
+            <v-chip size="small" variant="flat" color="cyan" class="font-weight-bold">
+              {{ exchanges.length }}
+            </v-chip>
+          </div>
+
+          <v-alert v-if="!exchanges.length" type="info" variant="tonal" class="rounded-xl">
+            No hay cambios registrados para esta venta.
+          </v-alert>
+
+          <div v-else class="d-flex flex-column ga-3">
+            <v-card v-for="x in exchanges" :key="x.id" class="soft-subcard rounded-xl elevation-0">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between flex-wrap ga-3">
+                  <div>
+                    <div class="info-label">Fecha</div>
+                    <div class="info-value">{{ dt(x.created_at) }}</div>
+                  </div>
+
+                  <v-chip size="small" variant="flat" color="cyan" class="font-weight-bold">
+                    Dif: {{ money(x.diff) }}
+                  </v-chip>
+                </div>
+
+                <div class="hero-muted mt-3">
+                  Original: <b>{{ money(x.original_total) }}</b>
+                  <span class="mx-1">·</span>
+                  Nuevo: <b>{{ money(x.new_total) }}</b>
+                  <span class="mx-1">·</span>
+                  Devuelto: <b>{{ money(x.returned_amount) }}</b>
+                </div>
+
+                <div v-if="x.note" class="hero-muted mt-1">
+                  Nota: {{ x.note }}
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+        </section>
       </v-card-text>
     </v-card>
 
@@ -403,7 +562,9 @@
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
+
         <v-divider />
+
         <v-card-text>
           <v-img
             v-if="itemImage(imageItem)"
@@ -411,11 +572,12 @@
             cover
             style="max-height:540px; border-radius: 14px;"
           />
+
           <v-alert v-else type="info" variant="tonal" class="rounded-xl">
             Este producto no tiene imagen asociada.
           </v-alert>
 
-          <div class="d-flex ga-2 mt-4">
+          <div class="d-flex ga-2 mt-4 flex-wrap">
             <v-btn
               variant="tonal"
               color="primary"
@@ -426,7 +588,11 @@
               Ver producto
             </v-btn>
 
-            <v-btn variant="tonal" @click="copyText(itemImage(imageItem) || '')" :disabled="!itemImage(imageItem)">
+            <v-btn
+              variant="tonal"
+              @click="copyText(itemImage(imageItem) || '')"
+              :disabled="!itemImage(imageItem)"
+            >
               <v-icon start>mdi-link-variant</v-icon>
               Copiar URL
             </v-btn>
@@ -463,6 +629,7 @@ const exchanges = computed(() => (Array.isArray(payload.value?.exchanges) ? payl
 const refundsTotal = computed(() => refunds.value.reduce((a, r) => a + Number(r?.amount || 0), 0));
 const exchangesDiffTotal = computed(() => exchanges.value.reduce((a, x) => a + Number(x?.diff || 0), 0));
 const netTotal = computed(() => Number(sale.value?.total || 0) - refundsTotal.value + exchangesDiffTotal.value);
+const showNetSummary = computed(() => refundsTotal.value > 0 || exchangesDiffTotal.value !== 0);
 
 const snack = ref({ show: false, text: "" });
 
@@ -480,12 +647,6 @@ const itemsHeaders = [
   { title: "", key: "actions", sortable: false, width: 140 },
 ];
 
-/* ============================================================
-   ✅ Métodos de pago + lectura de detalles (note JSON)
-   - QR => Mercado Pago
-   - credit_sjt => San Juan Crédito
-   - CARD => mostrar DEBIT/CREDIT + cuotas + valor cuota si viene
-============================================================ */
 function safeJsonParse(v) {
   if (!v) return null;
   if (typeof v === "object") return v;
@@ -503,6 +664,16 @@ function normStr(v) {
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+}
+
+function numOrNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function hasValue(v) {
+  return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
 }
 
 function detectProviderCode(payment) {
@@ -542,13 +713,17 @@ function resolvePaymentMethod(payment) {
   return up || "OTHER";
 }
 
-// ✅ extrae detalles del pago desde note JSON (y deja fallback si note es texto)
 function extractPaymentDetails(payment) {
   const p = payment || {};
   const noteObj = safeJsonParse(p.note) || null;
-
   const raw = noteObj || {};
-  const cardTypeRaw = String(raw.card_type || raw.cardType || raw.type || "").trim().toUpperCase(); // DEBIT/CREDIT
+
+  const cardTypeRaw = String(
+    raw.card_type || raw.cardType || raw.type || raw.card_kind || raw.cardKind || ""
+  )
+    .trim()
+    .toUpperCase();
+
   const cardBrand = String(raw.brand || raw.card_brand || raw.cardBrand || raw.network || "").trim() || "";
 
   const installments =
@@ -557,18 +732,37 @@ function extractPaymentDetails(payment) {
     raw.cuotas != null ? Number(raw.cuotas || 1) :
     1;
 
-  const installmentAmount =
-    raw.installment_amount != null ? Number(raw.installment_amount) :
-    raw.installmentAmount != null ? Number(raw.installmentAmount) :
-    raw.valor_cuota != null ? Number(raw.valor_cuota) :
-    raw.valorCuota != null ? Number(raw.valorCuota) :
-    null;
+  const listTotal =
+    numOrNull(raw.list_total) ??
+    numOrNull(raw.listTotal) ??
+    numOrNull(raw.total_list) ??
+    numOrNull(raw.totalList);
+
+  let installmentAmount = null;
+
+  if (listTotal != null && Number(installments || 1) > 1) {
+    installmentAmount = listTotal / Number(installments || 1);
+  } else {
+    installmentAmount =
+      numOrNull(raw.per_installment_list) ??
+      numOrNull(raw.perInstallmentList) ??
+      numOrNull(raw.installment_amount) ??
+      numOrNull(raw.installmentAmount) ??
+      numOrNull(raw.valor_cuota) ??
+      numOrNull(raw.valorCuota);
+  }
 
   const totalWithFee =
-    raw.total_with_fee != null ? Number(raw.total_with_fee) :
-    raw.totalWithFee != null ? Number(raw.totalWithFee) :
-    raw.total_financiado != null ? Number(raw.total_financiado) :
-    null;
+    numOrNull(raw.total_with_fee) ??
+    numOrNull(raw.totalWithFee) ??
+    numOrNull(raw.total_financiado);
+
+  const priceBasis = String(raw.price_basis || raw.priceBasis || "").trim().toUpperCase() || "";
+  const priceBasisLabel =
+    priceBasis === "LIST" ? "Precio lista" :
+    priceBasis === "DISCOUNT" ? "Descuento" :
+    priceBasis === "RESELLER" ? "Revendedor" :
+    "";
 
   const providerCode = detectProviderCode(p);
   const providerLabel =
@@ -576,25 +770,35 @@ function extractPaymentDetails(payment) {
     providerCode === "credit_sjt" ? "San Juan Crédito" :
     providerCode ? providerCode : "";
 
-  // note humano si note era texto y no JSON
-  const noteHuman = noteObj ? (String(raw.note || raw.message || "").trim() || "") : String(p.note || "").trim();
+  const rawNoteHuman = noteObj
+    ? String(raw.note || raw.message || "").trim()
+    : String(p.note || "").trim();
+
+  const noteHuman =
+    rawNoteHuman &&
+    rawNoteHuman !== "{}" &&
+    rawNoteHuman !== "null" &&
+    !rawNoteHuman.startsWith("{")
+      ? rawNoteHuman
+      : "";
 
   return {
     card_type: cardTypeRaw === "DEBIT" || cardTypeRaw === "CREDIT" ? cardTypeRaw : "",
-    card_type_label: cardTypeRaw === "DEBIT" ? "Débito" : cardTypeRaw === "CREDIT" ? "Crédito" : "",
+    card_type_label:
+      cardTypeRaw === "DEBIT" ? "Débito" :
+      cardTypeRaw === "CREDIT" ? "Crédito" :
+      "",
     card_brand: cardBrand,
     installments: Number.isFinite(installments) && installments > 0 ? installments : 1,
-    installment_amount: Number.isFinite(installmentAmount) ? installmentAmount : null,
-    total_with_fee: Number.isFinite(totalWithFee) ? totalWithFee : null,
+    installment_amount: installmentAmount,
+    list_total: listTotal,
+    total_with_fee: totalWithFee,
     provider_label: providerLabel,
-    note_human: noteHuman && noteHuman !== "{}" ? noteHuman : "",
+    price_basis: priceBasis,
+    price_basis_label: priceBasisLabel,
+    note_human: noteHuman,
   };
 }
-
-const topPaymentMethodResolved = computed(() => {
-  const p = sale.value?.payments?.[0] || null;
-  return resolvePaymentMethod(p);
-});
 
 const paymentsResolved = computed(() => {
   const arr = Array.isArray(sale.value?.payments) ? sale.value.payments : [];
@@ -606,15 +810,25 @@ const paymentsResolved = computed(() => {
       ...p,
       method_resolved,
       ...det,
-      // si no había installments en note, usa el de DB
       installments: det.installments || Number(p?.installments || 1) || 1,
     };
   });
 });
 
-/* ============================================================
-   ✅ Cliente: snapshot seguro + customer real si existe
-============================================================ */
+const paymentMethodSummary = computed(() => {
+  const map = new Map();
+
+  for (const p of paymentsResolved.value) {
+    const key = p.method_resolved || "OTHER";
+    const prev = map.get(key) || { method: key, amount: 0, count: 0 };
+    prev.amount += Number(p.amount || 0);
+    prev.count += 1;
+    map.set(key, prev);
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+});
+
 const customerObj = computed(() => sale.value?.customer || sale.value?.Customer || null);
 
 const customerNameResolved = computed(() => {
@@ -674,14 +888,22 @@ const customerAddressResolved = computed(() => {
 const customerMetaLine = computed(() => {
   const s = sale.value || {};
   const cid = Number(s.customer_id || customerObj.value?.id || 0) || null;
-  const extras = [];
-  if (cid) extras.push(`ID: ${cid}`);
-  return extras.length ? extras.join(" · ") : "";
+  return cid ? `ID: ${cid}` : "";
 });
 
-// =====================
-// Helpers UI
-// =====================
+const showCustomerDataBlock = computed(() => {
+  return !!(
+    customerDocResolved.value ||
+    customerPhoneResolved.value ||
+    customerEmailResolved.value
+  );
+});
+
+const branchLabelResolved = computed(() => {
+  const s = sale.value || {};
+  return String(s.branch?.name || s.branch_name || s.branch_id || "").trim() || "";
+});
+
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
@@ -697,13 +919,10 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// =====================
-// Labels
-// =====================
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
-  if (x === "CARD") return "Tarjeta / Débito";
+  if (x === "CARD") return "Tarjeta";
   if (x === "TRANSFER") return "Transferencia";
   if (x === "MERCADOPAGO") return "Mercado Pago";
   if (x === "CREDIT_SJT") return "San Juan Crédito";
@@ -740,6 +959,97 @@ function userLabel(s) {
   return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
 }
 
+function paymentBaseText(p) {
+  if (p?.price_basis_label) return p.price_basis_label;
+  if (String(p?.method_resolved || "").toUpperCase() === "CREDIT_SJT") return "Precio lista";
+  return "";
+}
+
+function paymentInstallmentText(p) {
+  const installments = Number(p?.installments || 1);
+  if (installments <= 1) return "";
+
+  const listTotal = Number(p?.list_total ?? NaN);
+  if (Number.isFinite(listTotal) && listTotal > 0) {
+    return money(listTotal / installments);
+  }
+
+  const installmentAmount = Number(p?.installment_amount ?? NaN);
+  if (Number.isFinite(installmentAmount) && installmentAmount > 0) {
+    return money(installmentAmount);
+  }
+
+  return "";
+}
+
+function paymentHeadline(p) {
+  const method = String(p?.method_resolved || "").toUpperCase();
+  const installments = Number(p?.installments || 1);
+  const cuota = paymentInstallmentText(p);
+
+  if (installments > 1 && cuota) {
+    return `${installments} cuotas de ${cuota}`;
+  }
+
+  if (method === "CARD") return "Pago con tarjeta";
+  if (method === "TRANSFER") return "Pago por transferencia";
+  if (method === "MERCADOPAGO") return "Cobro vía Mercado Pago";
+  if (method === "CASH") return "Pago en efectivo";
+  if (method === "CREDIT_SJT") return "San Juan Crédito";
+  return methodLabel(method);
+}
+
+function paymentSubline(p) {
+  const arr = [];
+  if (p?.paid_at) arr.push(`Fecha: ${dt(p.paid_at)}`);
+  if (p?.reference) arr.push(`Ref: ${p.reference}`);
+  return arr;
+}
+
+function paymentFacts(p) {
+  const out = [];
+
+  out.push({ label: "Método", value: methodLabel(p.method_resolved) });
+
+  if (Number(p.installments || 1) > 1) {
+    out.push({ label: "Cuotas", value: `${p.installments} cuotas` });
+  }
+
+  const cuota = paymentInstallmentText(p);
+  if (cuota) {
+    out.push({ label: "Valor cuota", value: cuota });
+  }
+
+  const base = paymentBaseText(p);
+  if (base) {
+    out.push({ label: "Base cálculo", value: base });
+  }
+
+  if (p.list_total != null) {
+    out.push({ label: "Total lista", value: money(p.list_total) });
+  }
+
+  if (p.total_with_fee != null) {
+    out.push({ label: "Total financiado", value: money(p.total_with_fee) });
+  }
+
+  return out;
+}
+
+function paymentTags(p) {
+  const tags = [];
+
+  if (p?.card_brand) {
+    tags.push({ text: `Marca: ${p.card_brand}`, color: "blue-grey" });
+  }
+
+  if (p?.provider_label && p.provider_label !== methodLabel(p.method_resolved)) {
+    tags.push({ text: p.provider_label, color: "grey" });
+  }
+
+  return tags;
+}
+
 function resolveMethodFromRefund(r) {
   const up = String(r?.refund_method || r?.method || "").toUpperCase();
   if (up === "QR") return "MERCADOPAGO";
@@ -748,9 +1058,6 @@ function resolveMethodFromRefund(r) {
   return up || "OTHER";
 }
 
-// =====================
-// Product getters
-// =====================
 function p(item) {
   return item?.product || null;
 }
@@ -783,7 +1090,7 @@ function productSku(item) {
     null;
 
   const s = v ? String(v).trim() : "";
-  return s || "—";
+  return s || "";
 }
 function productBrand(item) {
   const v = p(item)?.brand || p(item)?.marca || "";
@@ -802,7 +1109,7 @@ function barcodeLabel(item) {
   return s || "";
 }
 function warehouseLabel(item) {
-  return item?.warehouse?.name || (item?.warehouse_id ? `#${item.warehouse_id}` : "—");
+  return item?.warehouse?.name || (item?.warehouse_id ? `#${item.warehouse_id}` : "");
 }
 function categoryLabel(item) {
   const prod = p(item) || {};
@@ -812,12 +1119,37 @@ function categoryLabel(item) {
     return `${cat.name}${parent}`;
   }
   const cid = Number(prod?.category_id || prod?.subcategory_id || prod?.categoryId || 0) || null;
-  return cid ? `#${cid}` : "—";
+  return cid ? `#${cid}` : "";
 }
 
-// =====================
-// Imagen
-// =====================
+function productMetaLine(item) {
+  const parts = [];
+  const sku = productSku(item);
+  const brand = productBrand(item);
+  const model = productModel(item);
+
+  if (sku) parts.push(`SKU: ${sku}`);
+  if (brand) parts.push(`Marca: ${brand}`);
+  if (model) parts.push(`Modelo: ${model}`);
+
+  return parts.join(" · ");
+}
+
+function productChips(item) {
+  const out = [];
+  const cat = categoryLabel(item);
+  const wh = warehouseLabel(item);
+  const stock = stockText(item);
+  const barcode = barcodeLabel(item);
+
+  if (cat) out.push({ text: `Cat: ${cat}`, variant: "outlined" });
+  if (wh) out.push({ text: `Depósito: ${wh}`, variant: "outlined" });
+  if (stock !== "—") out.push({ text: `Stock: ${stock}`, variant: "flat", color: stockChipColor(item) });
+  if (barcode) out.push({ text: barcode, variant: "outlined", icon: "mdi-barcode" });
+
+  return out;
+}
+
 const imageById = ref({});
 const imgLoading = ref({});
 
@@ -905,9 +1237,6 @@ function itemImage(item) {
   return "";
 }
 
-// =====================
-// Stock
-// =====================
 function stockQty(item) {
   const prod = p(item) || {};
   const q =
@@ -950,15 +1279,10 @@ function stockChipColor(item) {
   return availabilityColor(item);
 }
 
-// =====================
-// Actions
-// =====================
-// ✅ FIX: navegar a producto por PATH robusto (no dependemos del route name)
 function goToProduct(pid) {
   const n = Number(pid || 0);
   if (!n) return;
 
-  // Intentos comunes en /app
   const tries = [
     `/app/products/${n}`,
     `/app/products/view/${n}`,
@@ -966,10 +1290,8 @@ function goToProduct(pid) {
     `/app/products/${n}/view`,
   ];
 
-  // 1) si existe una ruta por name, intentamos primero (por si la tenés)
   router.push({ name: "ProductDetailViewPage", params: { id: n } }).catch(() => {
     router.push({ name: "product-detail", params: { id: n } }).catch(async () => {
-      // 2) fallback por path: probamos varios
       for (const path of tries) {
         try {
           await router.push({ path });
@@ -996,9 +1318,6 @@ async function copyText(txt) {
   }
 }
 
-// =====================================================
-// ✅ HYDRATE ROBUSTO: trae el producto COMPLETO
-// =====================================================
 function needsHydrateProducts(items) {
   const arr = Array.isArray(items) ? items : [];
   if (!arr.length) return false;
@@ -1121,9 +1440,6 @@ async function hydrateProductsForItems() {
   }
 }
 
-// =====================
-// Load
-// =====================
 async function load() {
   loading.value = true;
   payload.value = null;
@@ -1133,7 +1449,6 @@ async function load() {
     if (!data?.ok) throw new Error(data?.message || "Error cargando venta");
 
     payload.value = data.data || null;
-
     await hydrateProductsForItems();
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
@@ -1148,18 +1463,440 @@ watch(id, () => load());
 
 <style scoped>
 .pos-sale-detail {
-  background: radial-gradient(1200px 600px at 30% 0%, rgba(255,255,255,.06), transparent 60%),
-              radial-gradient(900px 500px at 80% 10%, rgba(255,255,255,.04), transparent 60%),
-              rgba(0,0,0,.02);
+  --sd-surface: rgba(var(--v-theme-surface), 1);
+  --sd-surface-soft: rgba(var(--v-theme-surface), 0.76);
+  --sd-border: rgba(var(--v-theme-on-surface), 0.12);
+  --sd-border-strong: rgba(var(--v-theme-on-surface), 0.18);
+  --sd-text: rgba(var(--v-theme-on-surface), 0.96);
+  --sd-text-soft: rgba(var(--v-theme-on-surface), 0.76);
+  --sd-text-faint: rgba(var(--v-theme-on-surface), 0.62);
+  --sd-bg-b: rgba(var(--v-theme-on-surface), 0.03);
+
+  background:
+    radial-gradient(1200px 700px at 15% 0%, rgba(var(--v-theme-primary), 0.08), transparent 55%),
+    radial-gradient(1000px 600px at 100% 0%, rgba(var(--v-theme-secondary), 0.05), transparent 55%),
+    linear-gradient(180deg, var(--sd-bg-b), transparent 24%);
+  min-height: 100%;
 }
 
-.min-w-0 { min-width: 0; }
-.min-w-320 { min-width: 320px; }
-.min-w-360 { min-width: 360px; }
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.page-kicker {
+  font-size: 12px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--sd-text-soft);
+  margin-bottom: 8px;
+}
+
+.page-title {
+  font-size: clamp(1.7rem, 2vw, 2.4rem);
+  line-height: 1.05;
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.page-subtitle {
+  margin-top: 6px;
+  font-size: 0.96rem;
+  color: var(--sd-text-soft);
+}
+
+.main-shell {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.98));
+  border: 1px solid var(--sd-border);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(360px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.soft-panel,
+.total-panel,
+.soft-subcard,
+.payment-card,
+.payment-summary-card,
+.mini-stat-card,
+.fact-card {
+  border: 1px solid var(--sd-border);
+}
+
+.soft-panel,
+.soft-subcard {
+  background: linear-gradient(180deg, var(--sd-surface-soft), rgba(var(--v-theme-surface), 0.9));
+  border-radius: 22px;
+}
+
+.soft-panel {
+  padding: 22px;
+}
+
+.panel-title,
+.section-title {
+  display: flex;
+  align-items: center;
+  font-weight: 900;
+  color: var(--sd-text);
+  letter-spacing: 0.01em;
+}
+
+.hero-customer-name {
+  font-size: clamp(1.35rem, 1.8vw, 1.85rem);
+  line-height: 1.12;
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.hero-muted,
+.product-meta,
+.payment-subline,
+.section-subtitle {
+  color: var(--sd-text-soft);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sale-info-grid {
+  align-items: start;
+}
+
+.info-item {
+  min-width: 0;
+}
+
+.info-label,
+.fact-label,
+.total-kicker {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sd-text-faint);
+}
+
+.info-value,
+.fact-value {
+  margin-top: 4px;
+  color: var(--sd-text);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.total-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.total-main {
+  font-size: clamp(2rem, 2.5vw, 2.8rem);
+  line-height: 1;
+  font-weight: 900;
+  margin-top: 6px;
+  color: var(--sd-text);
+}
+
+.money-breakdown {
+  display: grid;
+  gap: 10px;
+}
+
+.money-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  color: var(--sd-text-soft);
+}
+
+.money-row strong {
+  color: var(--sd-text);
+  font-weight: 900;
+}
+
+.mini-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-stat-card {
+  border-radius: 18px;
+  padding: 14px 14px 12px;
+  background: rgba(var(--v-theme-surface), 0.82);
+}
+
+.mini-stat-card--accent {
+  background: rgba(var(--v-theme-primary), 0.09);
+  border-color: rgba(var(--v-theme-primary), 0.22);
+}
+
+.mini-stat-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sd-text-faint);
+}
+
+.mini-stat-value {
+  margin-top: 8px;
+  font-size: 1.08rem;
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.section-block {
+  margin-top: 28px;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.table-wrap {
+  border: 1px solid var(--sd-border);
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+
+.products-table {
+  background: transparent;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.product-name {
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.84rem;
+}
 
 .thumb {
   cursor: zoom-in;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid var(--sd-border);
+}
+
+.detail-chip {
+  color: var(--sd-text) !important;
+  border-color: var(--sd-border-strong) !important;
+  background: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.payment-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.payment-summary-card {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(var(--v-theme-surface), 0.88);
+}
+
+.payment-summary-label {
+  color: var(--sd-text-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.payment-summary-value {
+  margin-top: 6px;
+  color: var(--sd-text);
+  font-size: 1.14rem;
+  font-weight: 900;
+}
+
+.payments-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.payment-card {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.9));
+}
+
+.payment-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
+.payment-top-left {
+  min-width: 0;
+}
+
+.payment-title {
+  font-size: 1.24rem;
+  line-height: 1.15;
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.payment-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.9rem;
+}
+
+.payment-amount-box {
+  min-width: 180px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+  text-align: right;
+}
+
+.payment-amount-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sd-text-faint);
+}
+
+.payment-amount-value {
+  margin-top: 6px;
+  font-size: 1.4rem;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--sd-text);
+}
+
+.payment-facts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fact-card {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.025);
+}
+
+.payment-note {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px dashed var(--sd-border-strong);
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+:deep(.v-data-table .v-table__wrapper > table > thead > tr > th) {
+  color: var(--sd-text-soft) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  background: rgba(var(--v-theme-on-surface), 0.025);
+}
+
+:deep(.v-data-table .v-table__wrapper > table > tbody > tr > td) {
+  color: var(--sd-text) !important;
+  border-bottom-color: var(--sd-border) !important;
+  background: transparent;
+}
+
+:deep(.v-data-table .v-table__wrapper > table > tbody > tr:hover > td) {
+  background: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+:deep(.v-alert),
+:deep(.v-card),
+:deep(.v-chip),
+:deep(.v-btn),
+:deep(.v-list),
+:deep(.v-field) {
+  --v-medium-emphasis-opacity: 1;
+}
+
+@media (max-width: 1100px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-facts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .page-head {
+    margin-bottom: 14px;
+  }
+
+  .soft-panel {
+    padding: 18px;
+  }
+
+  .info-grid,
+  .mini-stats-grid,
+  .payment-facts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-top {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-amount-box {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .product-cell {
+    align-items: flex-start;
+  }
 }
 </style>

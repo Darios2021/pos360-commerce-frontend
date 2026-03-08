@@ -97,6 +97,11 @@
                 Mercado Pago: {{ stats.ready ? money(stats.net_by_method.mercadopago) : "—" }}
               </v-chip>
 
+              <v-chip size="small" variant="tonal" class="pm-chip pm-credit-sjt">
+                <span class="pm-dot" aria-hidden="true" />
+                San Juan Crédito: {{ stats.ready ? money(stats.net_by_method.credit_sjt) : "—" }}
+              </v-chip>
+
               <v-chip size="small" variant="tonal" class="pm-chip pm-other">
                 <span class="pm-dot" aria-hidden="true" />
                 Otro: {{ stats.ready ? money(stats.net_by_method.other) : "—" }}
@@ -137,8 +142,8 @@
                 density="comfortable"
                 hide-details
                 clearable
-                @keyup.enter="applyFilters"
-                @click:clear="applyFilters"
+                @keyup.enter="applyFiltersImmediate"
+                @click:clear="applyFiltersImmediate"
               />
               <div class="text-caption text-medium-emphasis mt-1">
                 Este campo usa <b>q</b> del backend.
@@ -161,12 +166,11 @@
                 item-value="value"
                 :no-filter="true"
                 @update:search="onSellerSearch"
-                @update:model-value="applyFilters"
-                @click:clear="sellerId = null; applyFilters()"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="sellerId = null; applyFiltersImmediate()"
               />
             </v-col>
 
-            <!-- ✅ FIX REAL: PRODUCTO (return-object + parseo) -->
             <v-col cols="12" sm="6" md="3">
               <v-autocomplete
                 v-model="productPick"
@@ -184,8 +188,8 @@
                 item-value="value"
                 :no-filter="true"
                 @update:search="onProductSearch"
-                @update:model-value="applyFilters"
-                @click:clear="productPick = null; applyFilters()"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="productPick = null; applyFiltersImmediate()"
               />
             </v-col>
 
@@ -198,8 +202,8 @@
                 density="comfortable"
                 hide-details
                 clearable
-                @update:model-value="applyFilters"
-                @click:clear="payMethod = ''; applyFilters()"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="payMethod = ''; applyFiltersImmediate()"
               />
             </v-col>
 
@@ -212,8 +216,8 @@
                 density="comfortable"
                 hide-details
                 clearable
-                @update:model-value="applyFilters"
-                @click:clear="status = ''; applyFilters()"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="status = ''; applyFiltersImmediate()"
               />
             </v-col>
 
@@ -245,7 +249,7 @@
                     placeholder="(sin fecha)"
                   />
                 </template>
-                <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFilters()" />
+                <v-date-picker v-model="from" show-adjacent-months @update:model-value="fromMenu = false; applyFiltersImmediate()" />
               </v-menu>
             </v-col>
 
@@ -264,7 +268,7 @@
                     placeholder="(sin fecha)"
                   />
                 </template>
-                <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFilters()" />
+                <v-date-picker v-model="to" show-adjacent-months @update:model-value="toMenu = false; applyFiltersImmediate()" />
               </v-menu>
             </v-col>
 
@@ -290,7 +294,7 @@
             </v-col>
 
             <v-col cols="12" md="1">
-              <v-btn block color="primary" @click="applyFilters" :loading="loading || statsLoading">
+              <v-btn block color="primary" @click="applyFiltersImmediate" :loading="loading || statsLoading">
                 <v-icon>mdi-filter</v-icon>
               </v-btn>
             </v-col>
@@ -379,11 +383,65 @@
         </template>
 
         <template #item.method="{ item }">
-          <v-chip size="small" variant="tonal" :color="payColor(primaryPayment(item)?.method)">
-            {{ methodLabel(primaryPayment(item)?.method) }}
-          </v-chip>
-          <div class="text-caption text-medium-emphasis" v-if="(item.payments || []).length > 1">
-            +{{ item.payments.length - 1 }} pago(s)
+          <div class="d-flex flex-wrap ga-1">
+            <v-chip size="small" variant="tonal" :color="payColor(primaryPayment(item)?.method)">
+              {{ methodLabel(primaryPayment(item)?.method) }}
+            </v-chip>
+
+            <v-chip
+              v-if="paymentInstallments(primaryPayment(item))"
+              size="small"
+              variant="tonal"
+              color="indigo"
+            >
+              {{ paymentInstallments(primaryPayment(item)) }} cuota<span v-if="paymentInstallments(primaryPayment(item)) > 1">s</span>
+            </v-chip>
+
+            <v-chip
+              v-if="paymentPerInstallment(primaryPayment(item))"
+              size="small"
+              variant="tonal"
+              color="cyan"
+            >
+              Cuota: {{ money(paymentPerInstallment(primaryPayment(item))) }}
+            </v-chip>
+
+            <v-chip
+              v-if="paymentCardKindLabel(primaryPayment(item))"
+              size="small"
+              variant="tonal"
+              color="blue-grey"
+            >
+              {{ paymentCardKindLabel(primaryPayment(item)) }}
+            </v-chip>
+
+            <v-chip
+              v-if="paymentPriceBasisLabel(primaryPayment(item))"
+              size="small"
+              variant="tonal"
+              color="deep-purple"
+            >
+              {{ paymentPriceBasisLabel(primaryPayment(item)) }}
+            </v-chip>
+
+            <v-chip
+              v-if="paymentReference(primaryPayment(item))"
+              size="small"
+              variant="tonal"
+              color="grey"
+            >
+              Ref: {{ paymentReference(primaryPayment(item)) }}
+            </v-chip>
+          </div>
+
+          <div class="text-caption text-medium-emphasis mt-1">
+            <span v-if="paymentListTotal(primaryPayment(item))">
+              Total base: {{ money(paymentListTotal(primaryPayment(item))) }}
+            </span>
+            <span v-if="paymentListTotal(primaryPayment(item)) && (item.payments || []).length > 1"> · </span>
+            <span v-if="(item.payments || []).length > 1">
+              +{{ item.payments.length - 1 }} pago(s)
+            </span>
           </div>
         </template>
 
@@ -393,7 +451,6 @@
           </v-chip>
         </template>
 
-        <!-- ✅ ACCIONES: TODO FUNCIONA -->
         <template #item.actions="{ item }">
           <div class="d-flex ga-2 align-center flex-wrap">
             <v-btn size="small" variant="tonal" color="primary" @click.stop="goDetail(item.id)" title="Ver detalle">
@@ -496,7 +553,6 @@
   </v-container>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
@@ -507,7 +563,7 @@ const router = useRouter();
 const auth = useAuthStore();
 
 // =====================
-// ✅ debounce (FIX filtros “andan medio mal”)
+// debounce
 // =====================
 function debounce(fn, wait = 250) {
   let t = null;
@@ -630,21 +686,15 @@ const snack = ref({ show: false, text: "" });
 
 const q = ref("");
 const sellerId = ref(null);
-
-// ✅ PRODUCTO: guardamos objeto
 const productPick = ref(null);
-
-// ✅ pay method
 const payMethod = ref("");
-
-// ✅ menú acciones por fila
 const menuOpen = ref({});
 
 // ===== autocomplete data =====
 const sellerItems = ref([]);
 const sellerLoading = ref(false);
 const productItems = ref([]);
-const productLoading = ref([]);
+const productLoading = ref(false);
 const cacheSellers = ref([]);
 const cacheProducts = ref([]);
 
@@ -658,7 +708,15 @@ const stats = ref({
   refunds_sum: 0,
   gross_total_sum: 0,
   gross_paid_sum: 0,
-  net_by_method: { cash: 0, transfer: 0, card: 0, mercadopago: 0, other: 0, raw_by_method: {} },
+  net_by_method: {
+    cash: 0,
+    transfer: 0,
+    card: 0,
+    mercadopago: 0,
+    credit_sjt: 0,
+    other: 0,
+    raw_by_method: {},
+  },
 });
 
 const statusItems = [
@@ -675,7 +733,6 @@ const payMethodItems = [
   { title: "Tarjeta", value: "CARD" },
   { title: "Transferencia", value: "TRANSFER" },
   { title: "Mercado Pago", value: "MERCADOPAGO" },
-  // ✅ si lo agregás al select, la UI ya lo maneja
   { title: "San Juan Crédito", value: "CREDIT_SJT" },
   { title: "Otro", value: "OTHER" },
 ];
@@ -686,7 +743,7 @@ const headers = [
   { title: "Cliente", key: "customer", sortable: false, width: 260 },
   { title: "Producto", key: "product", sortable: false, width: 280 },
   { title: "Total", key: "total", sortable: false, width: 220 },
-  { title: "Pago", key: "method", sortable: false, width: 160 },
+  { title: "Pago", key: "method", sortable: false, width: 360 },
   { title: "Estado", key: "status", sortable: false, width: 140 },
   { title: "", key: "actions", sortable: false, width: 280 },
 ];
@@ -708,10 +765,18 @@ function fullUserName(u) {
   return name || "";
 }
 
+function formatLocalDate(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function normalizeDate(v) {
   if (!v) return "";
   if (typeof v === "string") return v.slice(0, 10);
-  return new Date(v).toISOString().slice(0, 10);
+  return formatLocalDate(v);
 }
 function toStartOfDay(dateStr) {
   const d = normalizeDate(dateStr);
@@ -722,10 +787,6 @@ function toEndOfDay(dateStr) {
   return d ? `${d} 23:59:59` : "";
 }
 
-/* ============================================================
-   ✅ FIX: mostrar “San Juan Crédito” aunque payment.method sea OTHER
-   - lee payment.note (puede ser JSON o string) y detecta provider_code=credit_sjt
-============================================================ */
 function safeJsonParse(v) {
   if (!v) return null;
   if (typeof v === "object") return v;
@@ -748,23 +809,19 @@ function normStr(v) {
 function detectProviderCode(payment) {
   const p = payment || {};
 
-  // ✅ 0) reference (TU CASO REAL: "SJCREDIT")
   const ref = String(p.reference || p.ref || "").trim().toUpperCase();
   if (ref === "SJCREDIT" || ref === "SJ_CREDIT" || ref === "SANJUANCREDITO" || ref === "SANJUAN_CREDITO") {
     return "credit_sjt";
   }
 
-  // 1) campos directos
   const direct = p.provider_code || p.providerCode || p.provider || p.gateway || p.brand || "";
   const d1 = normStr(direct);
   if (d1) return d1;
 
-  // 2) note JSON
   const noteObj = safeJsonParse(p.note);
   const c2 = normStr(noteObj?.provider_code || noteObj?.providerCode || noteObj?.provider || noteObj?.code);
   if (c2) return c2;
 
-  // 3) note texto
   const noteTxt = String(p.note || "").toLowerCase();
   if (noteTxt.includes("credit_sjt") || noteTxt.includes("creditsjt") || noteTxt.includes("sjcredit")) return "credit_sjt";
 
@@ -774,21 +831,19 @@ function detectProviderCode(payment) {
 function resolvePaymentMethod(payment) {
   const p = payment || {};
 
-  // ✅ Si viene SJ Crédito por reference/note => forzamos UI method
   const prov = detectProviderCode(p);
   if (prov === "credit_sjt") return "CREDIT_SJT";
 
-  // Normal
   const up = String(p.method || "").trim().toUpperCase();
 
   if (up === "CASH" || up === "CARD" || up === "TRANSFER" || up === "MERCADOPAGO" || up === "QR" || up === "OTHER") {
-    // QR lo mostramos como MercadoPago en UI
     return up === "QR" ? "MERCADOPAGO" : up;
   }
 
+  if (up === "CREDIT_SJT") return "CREDIT_SJT";
+
   return up || "OTHER";
 }
-
 
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
@@ -832,7 +887,6 @@ function numOrNull(v) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// ✅ parsear SKU/ID si te llega string raro
 function parseProductIdFromText(text) {
   const s = String(text || "");
   const m1 = s.match(/SKU\s*[:#]?\s*([0-9]{2,})/i);
@@ -848,7 +902,6 @@ function parseProductIdFromText(text) {
   return null;
 }
 
-// ✅ product_id FINAL para filtros
 const productId = computed(() => {
   const v = productPick.value;
   if (!v) return null;
@@ -897,7 +950,6 @@ function buildParams(page, limit) {
   const st = String(status.value || "").trim();
   const qq = String(q.value || "").trim();
 
-  // ✅ backend-friendly: QR => MERCADOPAGO ; CREDIT_SJT => credit_sjt
   let pmSend = pmUp;
   if (pmSend === "QR") pmSend = "MERCADOPAGO";
   if (pmSend === "CREDIT_SJT") pmSend = "credit_sjt";
@@ -908,7 +960,6 @@ function buildParams(page, limit) {
     q: qq || undefined,
     status: st || undefined,
     seller_id: s ?? undefined,
-    product: p ?? undefined,
     product_id: p ?? undefined,
     pay_method: pmSend || undefined,
   };
@@ -920,11 +971,6 @@ function buildParams(page, limit) {
   return params;
 }
 
-/* ============================================================
-   ✅ FIX CLAVE: primaryPayment “reescribe” method para UI
-   - si el pago es OTHER pero provider_code=credit_sjt => method=CREDIT_SJT
-   - así NO tenés que tocar el template
-============================================================ */
 function primaryPayment(saleLike) {
   const pays = Array.isArray(saleLike?.payments) ? saleLike.payments : [];
   if (!pays.length) return null;
@@ -933,8 +979,54 @@ function primaryPayment(saleLike) {
   if (!p) return null;
 
   const resolved = resolvePaymentMethod(p);
-  // devolvemos clon con method “resuelto”
   return { ...p, method: resolved };
+}
+
+function paymentMeta(payment) {
+  const p = payment || {};
+  const noteObj = safeJsonParse(p.note) || {};
+  return noteObj && typeof noteObj === "object" ? noteObj : {};
+}
+
+function paymentInstallments(payment) {
+  const p = payment || {};
+  const meta = paymentMeta(p);
+  const n = Number(p.installments ?? meta.installments ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function paymentPerInstallment(payment) {
+  const meta = paymentMeta(payment);
+  const n = Number(meta.per_installment_list ?? meta.perInstallmentList ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function paymentListTotal(payment) {
+  const meta = paymentMeta(payment);
+  const n = Number(meta.list_total ?? meta.listTotal ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function paymentReference(payment) {
+  const ref = String(payment?.reference || "").trim();
+  return ref || "";
+}
+
+function paymentCardKindLabel(payment) {
+  const meta = paymentMeta(payment);
+  const x = String(meta.card_kind || meta.cardKind || "").trim().toUpperCase();
+  if (x === "CREDIT") return "Crédito";
+  if (x === "DEBIT" || x === "DEBITO" || x === "DÉBITO") return "Débito";
+  return "";
+}
+
+function paymentPriceBasisLabel(payment) {
+  const meta = paymentMeta(payment);
+  const x = String(meta.price_basis || meta.priceBasis || "").trim().toUpperCase();
+  if (x === "LIST") return "Precio lista";
+  if (x === "DISCOUNT") return "Descuento";
+  if (x === "RESELLER") return "Revendedor";
+  return "";
 }
 
 function normalizeOptions(list) {
@@ -981,7 +1073,6 @@ async function fetchSales() {
   }
 }
 
-// ✅ normalización de keys (MercadoPago viene con mil variantes)
 function normKey(k) {
   return String(k || "")
     .trim()
@@ -996,6 +1087,10 @@ function sumKeys(obj, keys) {
   for (const kk of keys) total += Number(map.get(normKey(kk)) || 0);
   return Number.isFinite(total) ? total : 0;
 }
+function hasOwnNumericValues(obj) {
+  if (!obj || typeof obj !== "object") return false;
+  return Object.entries(obj).some(([k, v]) => k !== "raw_by_method" && Number.isFinite(Number(v)));
+}
 
 async function fetchStats() {
   statsLoading.value = true;
@@ -1009,21 +1104,47 @@ async function fetchStats() {
 
     const d = data.data || {};
     const nbm = d.net_by_method || {};
-    const raw = nbm.raw_by_method || nbm.RAW_BY_METHOD || {};
+    const raw = nbm.raw_by_method || d.raw_by_method || {};
+
+    const source = hasOwnNumericValues(nbm) ? nbm : raw;
 
     const toNum = (v) => {
       const n = Number(v || 0);
       return Number.isFinite(n) ? n : 0;
     };
 
-    const cash = sumKeys(nbm, ["cash", "CASH"]) + sumKeys(raw, ["cash", "CASH"]);
-    const transfer = sumKeys(nbm, ["transfer", "TRANSFER"]) + sumKeys(raw, ["transfer", "TRANSFER"]);
-    const card = sumKeys(nbm, ["card", "CARD"]) + sumKeys(raw, ["card", "CARD"]);
-    const other = sumKeys(nbm, ["other", "OTHER"]) + sumKeys(raw, ["other", "OTHER"]);
+    const cash = sumKeys(source, ["cash", "CASH"]);
+    const transfer = sumKeys(source, ["transfer", "TRANSFER"]);
+    const card = sumKeys(source, ["card", "CARD"]);
 
-    const mercadopago =
-      sumKeys(nbm, ["mercadopago", "MERCADOPAGO", "mercado_pago", "mp", "MP", "qr", "QR"]) +
-      sumKeys(raw, ["mercadopago", "MERCADOPAGO", "mercado_pago", "mp", "MP", "qr", "QR"]);
+    const mercadopago = sumKeys(source, [
+      "mercadopago",
+      "MERCADOPAGO",
+      "mercado_pago",
+      "mercado pago",
+      "mp",
+      "MP",
+      "qr",
+      "QR",
+    ]);
+
+    const credit_sjt = sumKeys(source, [
+      "credit_sjt",
+      "CREDIT_SJT",
+      "creditsjt",
+      "sjcredit",
+      "sj_credit",
+      "sjuancredito",
+      "sanjuancredito",
+      "SAN_JUAN_CREDITO",
+    ]);
+
+    const accounted = cash + transfer + card + mercadopago + credit_sjt;
+    const totalBySource = Object.entries(source || {}).reduce((acc, [k, v]) => {
+      if (k === "raw_by_method") return acc;
+      return acc + toNum(v);
+    }, 0);
+    const other = Math.max(0, totalBySource - accounted);
 
     stats.value = {
       ready: true,
@@ -1033,7 +1154,15 @@ async function fetchStats() {
       refunds_sum: toNum(d.refunds_sum),
       gross_total_sum: toNum(d.gross_total_sum),
       gross_paid_sum: toNum(d.gross_paid_sum),
-      net_by_method: { cash, transfer, card, mercadopago, other, raw_by_method: raw || {} },
+      net_by_method: {
+        cash,
+        transfer,
+        card,
+        mercadopago,
+        credit_sjt,
+        other,
+        raw_by_method: raw || {},
+      },
     };
   } catch (e) {
     stats.value.ready = false;
@@ -1047,7 +1176,7 @@ async function refreshAll() {
   await Promise.all([fetchSales(), fetchStats()]);
 }
 
-// ✅ applyFilters debounced
+// ✅ apply filters
 const applyFiltersDebounced = debounce(() => {
   meta.value.page = 1;
   refreshAll();
@@ -1055,6 +1184,12 @@ const applyFiltersDebounced = debounce(() => {
 
 function applyFilters() {
   applyFiltersDebounced();
+}
+
+function applyFiltersImmediate() {
+  applyFiltersDebounced.cancel?.();
+  meta.value.page = 1;
+  refreshAll();
 }
 
 onBeforeUnmount(() => {
@@ -1116,7 +1251,7 @@ function onBranchChanged() {
   productPick.value = null;
   onSellerSearch("");
   onProductSearch("");
-  applyFilters();
+  applyFiltersImmediate();
 }
 
 // ===== Row click / navigation =====
@@ -1137,7 +1272,6 @@ function onRowClick(_, row) {
   goDetail(item.id);
 }
 
-// ✅ acciones del menú (cierran el menú siempre)
 function closeMenu(id) {
   const key = String(id);
   menuOpen.value = { ...(menuOpen.value || {}), [key]: false };
@@ -1157,18 +1291,18 @@ function actExchange(id) {
 
 // ===== Ranges =====
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return formatLocalDate(new Date());
 }
 function clearDates() {
   from.value = "";
   to.value = "";
-  applyFilters();
+  applyFiltersImmediate();
 }
 function setToday() {
   const t = todayISO();
   from.value = t;
   to.value = t;
-  applyFilters();
+  applyFiltersImmediate();
 }
 function setThisWeek() {
   const now = new Date();
@@ -1177,17 +1311,17 @@ function setThisWeek() {
   monday.setDate(now.getDate() - (day - 1));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  from.value = monday.toISOString().slice(0, 10);
-  to.value = sunday.toISOString().slice(0, 10);
-  applyFilters();
+  from.value = formatLocalDate(monday);
+  to.value = formatLocalDate(sunday);
+  applyFiltersImmediate();
 }
 function setThisMonth() {
   const now = new Date();
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  from.value = first.toISOString().slice(0, 10);
-  to.value = last.toISOString().slice(0, 10);
-  applyFilters();
+  from.value = formatLocalDate(first);
+  to.value = formatLocalDate(last);
+  applyFiltersImmediate();
 }
 
 function resetFilters() {
@@ -1243,11 +1377,18 @@ function exportCsv() {
       branch: s.branch?.name || s.branch_id,
       seller: s.user?.username || fullUserName(s.user) || s.user_id,
       customer_name: s.customer_name || "Consumidor Final",
+      customer_doc: s.customer_doc || "",
+      customer_phone: s.customer_phone || "",
       product: primaryProductName(s),
       status: statusLabel(s.status),
       total: Number(s.total || 0),
       paid_total: Number(s.paid_total || 0),
       method: methodLabel(p?.method),
+      installments: paymentInstallments(p) || "",
+      per_installment: paymentPerInstallment(p) || "",
+      card_kind: paymentCardKindLabel(p) || "",
+      price_basis: paymentPriceBasisLabel(p) || "",
+      reference: paymentReference(p) || "",
     };
   });
 
@@ -1338,9 +1479,6 @@ const KpiCard = {
   background: rgb(var(--v-theme-background));
 }
 
-/* =========================
-   ✅ Chips PRO (metodos)
-========================= */
 .pm-chip {
   font-weight: 900;
   letter-spacing: 0.2px;
@@ -1367,11 +1505,13 @@ const KpiCard = {
 .pm-transfer :deep(.v-chip__content) { color: rgb(var(--v-theme-secondary)) !important; }
 .pm-card :deep(.v-chip__content) { color: rgb(var(--v-theme-info)) !important; }
 .pm-mp :deep(.v-chip__content) { color: rgb(var(--v-theme-warning)) !important; }
+.pm-credit-sjt :deep(.v-chip__content) { color: rgb(var(--v-theme-teal, 0 150 136)) !important; }
 .pm-other :deep(.v-chip__content) { color: rgb(var(--v-theme-on-surface-variant)) !important; }
 
 .pm-cash .pm-dot { background: rgb(var(--v-theme-success)); }
 .pm-transfer .pm-dot { background: rgb(var(--v-theme-secondary)); }
 .pm-card .pm-dot { background: rgb(var(--v-theme-info)); }
 .pm-mp .pm-dot { background: rgb(var(--v-theme-warning)); }
+.pm-credit-sjt .pm-dot { background: rgb(var(--v-theme-teal, 0 150 136)); }
 .pm-other .pm-dot { background: rgb(var(--v-theme-on-surface-variant)); }
 </style>

@@ -6,12 +6,6 @@ function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
 
-/**
- * ✅ Normaliza lo que venga del dialog/UI
- * Acepta:
- * - "CASH","TRANSFER","CARD","MERCADOPAGO","credit_sjt"
- * - alias: "efectivo","transferencia","tarjeta","mp","mercadopago","qr"
- */
 function normalizeMethodUI(v) {
   const raw = String(v || "").trim();
   const s = raw.toLowerCase();
@@ -19,7 +13,6 @@ function normalizeMethodUI(v) {
 
   if (!s) return "CASH";
 
-  // ✅ San Juan Crédito (NO convertir a CASH)
   if (
     s === "credit_sjt" ||
     up === "CREDIT_SJT" ||
@@ -32,18 +25,15 @@ function normalizeMethodUI(v) {
     return "credit_sjt";
   }
 
-  // ✅ enums directos
   if (up === "CASH") return "CASH";
   if (up === "TRANSFER") return "TRANSFER";
   if (up === "CARD") return "CARD";
   if (up === "MERCADOPAGO") return "MERCADOPAGO";
 
-  // ✅ español/alias
   if (s === "efectivo") return "CASH";
   if (s === "transferencia") return "TRANSFER";
   if (s === "tarjeta" || s === "credito" || s === "crédito" || s === "debito" || s === "débito") return "CARD";
 
-  // ✅ MercadoPago / QR
   if (s === "mp" || s === "mercadopago" || s === "mercado_pago" || s === "mercado pago" || s === "qr") {
     return "MERCADOPAGO";
   }
@@ -51,33 +41,20 @@ function normalizeMethodUI(v) {
   return "CASH";
 }
 
-/**
- * ✅ Map UI -> Backend payments.method + reference
- * - DB enum típico: CASH | TRANSFER | CARD | QR | OTHER
- * - SJ Crédito: method=OTHER + reference=SJCREDIT (o si tu backend acepta credit_sjt como method, igual lo soportamos)
- */
 function toPaymentsMethodAndReference(uiMethod) {
   const m = normalizeMethodUI(uiMethod);
 
   if (m === "CASH") return { method: "CASH", reference: null };
   if (m === "TRANSFER") return { method: "TRANSFER", reference: null };
   if (m === "CARD") return { method: "CARD", reference: null };
-
-  // ✅ MercadoPago => QR + reference MERCADOPAGO
   if (m === "MERCADOPAGO") return { method: "QR", reference: "MERCADOPAGO" };
-
-  // ✅ San Juan Crédito => OTHER + reference SJCREDIT
-  // (si tu backend/enum soporta "credit_sjt" como method, podés cambiar method acá)
   if (m === "credit_sjt") return { method: "OTHER", reference: "SJCREDIT" };
 
   return { method: "CASH", reference: null };
 }
 
 /* =========================
-   CUSTOMER SNAPSHOT (CLAVE)
-   - Garantiza que SIEMPRE mandemos:
-     customer_name, customer_doc, customer_phone
-   - Soporta alias: doc/dni/cuit, phone/whatsapp/tel, etc.
+   CUSTOMER SNAPSHOT
 ========================= */
 function normalizeDigits(v) {
   return String(v ?? "")
@@ -96,22 +73,26 @@ function pickFirst(...vals) {
 function buildCustomerSnapshot(input = {}) {
   const c = input || {};
 
-  const first_name = pickFirst(c.first_name, c.firstname, c.firstName, c.nombre, c.name);
+  const explicitName = pickFirst(
+    c.customer_name,
+    c.name,
+    c.full_name,
+    c.fullName,
+    c.razon_social,
+    c.razonSocial,
+    c.company
+  );
+
+  const first_name = pickFirst(c.first_name, c.firstname, c.firstName, c.nombre);
   const last_name = pickFirst(c.last_name, c.lastname, c.lastName, c.apellido, c.surname);
 
   const customer_name = pickFirst(
-    c.customer_name,
-    c.full_name,
-    c.fullName,
-    (first_name || last_name) ? `${first_name} ${last_name}`.trim() : "",
-    c.razon_social,
-    c.razonSocial
+    explicitName,
+    (first_name || last_name) ? `${first_name} ${last_name}`.trim() : ""
   ).trim();
 
-  // doc: doc/dni/cuit/cuil/document
   const customer_doc = pickFirst(c.customer_doc, c.doc, c.dni, c.cuit, c.cuil, c.document, c.documento).trim();
 
-  // phone: phone/tel/telefono/whatsapp/celular
   const rawPhone = pickFirst(
     c.customer_phone,
     c.phone,
@@ -125,31 +106,36 @@ function buildCustomerSnapshot(input = {}) {
 
   const customer_phone = normalizeDigits(rawPhone);
 
-  // email
   const email = pickFirst(c.email, c.mail).trim();
-
-  // mantener whatsapp (si venía) por compat de UI, pero el snapshot principal es customer_phone
   const whatsapp = normalizeDigits(pickFirst(c.whatsapp, c.wa, c.phone, c.tel, c.telefono));
+  const address = pickFirst(c.address, c.direccion).trim();
+  const note = pickFirst(c.note, c.obs, c.observaciones).trim();
 
   return {
-    // para UI / recibo
     first_name,
     last_name,
     email,
     whatsapp,
-
-    // ✅ snapshot real para sales.*
+    address,
+    note,
     customer_name,
     customer_doc,
     customer_phone,
   };
 }
 
-export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnitPrice, toNum, allSellable }) {
+export function usePosCheckout({
+  posStore,
+  canSell,
+  needsBranchPick,
+  resolveUnitPrice,
+  toNum,
+  allSellable,
+  customerRef = null, // ✅ CLAVE
+}) {
   const checkoutDialog = ref(false);
 
-  // ✅ estado (UI enum)
-  const paymentMethod = ref("CASH"); // CASH | TRANSFER | CARD | MERCADOPAGO | credit_sjt
+  const paymentMethod = ref("CASH");
   const installments = ref(1);
   const applyReseller = ref(false);
   const paymentProof = ref("");
@@ -160,16 +146,6 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
   const receiptOpen = ref(false);
   const receiptSale = ref(null);
   const receiptCompanyName = ref("POS360");
-
-  // ✅ FIX: customer ahora incluye doc/phone (además de whatsapp)
-  const customer = ref({
-    first_name: "",
-    last_name: "",
-    doc: "",       // ✅ NUEVO
-    phone: "",     // ✅ NUEVO
-    whatsapp: "",
-    email: "",
-  });
 
   const productById = computed(() => {
     const m = new Map();
@@ -187,14 +163,8 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     const m = normalizeMethodUI(method);
 
     if (reseller) return "RESELLER";
-
-    // ✅ San Juan Crédito SIEMPRE lista (si no reseller)
     if (m === "credit_sjt") return "LIST";
-
-    // ✅ CARD: cuotas => lista, 1 pago => descuento
     if (m === "CARD") return Number(inst || 1) > 1 ? "LIST" : "DISCOUNT";
-
-    // efectivo/transfer/mp => descuento
     if (m === "CASH" || m === "TRANSFER" || m === "MERCADOPAGO") return "DISCOUNT";
 
     return "DISCOUNT";
@@ -280,7 +250,6 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
       return;
     }
 
-    // reset
     paymentMethod.value = "CASH";
     installments.value = 1;
     applyReseller.value = false;
@@ -291,17 +260,6 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     checkoutDialog.value = true;
   }
 
-  /**
-   * ✅ FIX REAL:
-   * confirmPayment recibe payload del dialog:
-   *  - { payment_method } (CheckoutDialog emite esto)
-   *  - installments / apply_reseller / proof / total_list / per_installment_list / card_kind
-   *
-   * ✅ CLAVE PARA TU CASO:
-   * - Enviamos snapshot a backend como campos top-level:
-   *     customer_name, customer_doc, customer_phone
-   *   así sales.customer_* NO queda NULL.
-   */
   async function confirmPayment(payloadOrCtx = {}) {
     const onSnack = payloadOrCtx?.onSnack;
     const payload = payloadOrCtx?.payloadFromDialog || payloadOrCtx || {};
@@ -316,7 +274,6 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     }
 
     try {
-      // ✅ 1) método desde dialog (o estado actual)
       const uiMethodIncoming =
         payload?.payment_method ||
         payload?.paymentMethod ||
@@ -328,11 +285,9 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
 
       const uiMethod = normalizeMethodUI(uiMethodIncoming || paymentMethod.value);
 
-      // ✅ 2) cuotas/reseller desde dialog
       let instIncoming = Number(payload?.installments ?? installments.value ?? 1) || 1;
       const resellerIncoming = Boolean(payload?.apply_reseller ?? payload?.applyReseller ?? applyReseller.value);
 
-      // San Juan Crédito: clamp 1..12 (si no reseller)
       if (uiMethod === "credit_sjt" && !resellerIncoming) {
         if (instIncoming < 1) instIncoming = 1;
         if (instIncoming > 12) instIncoming = 12;
@@ -342,31 +297,37 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
       installments.value = instIncoming;
       applyReseller.value = resellerIncoming;
 
-      // ✅ 3) aplicar precios según política real
       applyCheckoutPricesIntoStore(uiMethod, instIncoming, resellerIncoming);
 
-      // ✅ 4) mapear a DB enum + reference
       const payMap = toPaymentsMethodAndReference(uiMethod);
 
-      // ✅ 5) CUSTOMER SNAPSHOT (merge: state + payload.customer + payload.extra.customer)
+      // ✅ CLAVE: usar customerRef del PosPage
+      const liveCustomer =
+        customerRef && typeof customerRef === "object" && "value" in customerRef
+          ? customerRef.value || {}
+          : {};
+
+      const storeCustomer =
+        posStore?.customer ||
+        posStore?.customer_info ||
+        posStore?.customerInfo ||
+        {};
+
       const mergedCustomer = {
-        ...(customer.value || {}),
+        ...liveCustomer,
+        ...storeCustomer,
         ...(payload?.customer || {}),
         ...(payload?.extra?.customer || {}),
       };
 
       const snap = buildCustomerSnapshot({
         ...mergedCustomer,
-        // también aceptamos que payload traiga ya customer_*:
         customer_name: payload?.customer_name,
         customer_doc: payload?.customer_doc,
         customer_phone: payload?.customer_phone,
       });
 
-      // ✅ 6) extra para el store/backend (para que inserte payments bien)
-      // 🔥 IMPORTANTÍSIMO: mandamos customer_* TOP-LEVEL para el backend.
       const extra = {
-        // --- pricing / payment meta
         price_policy: currentPricePolicy(uiMethod, instIncoming, resellerIncoming),
         installments: instIncoming,
         proof: payload?.proof ?? paymentProof.value ?? null,
@@ -375,24 +336,32 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
         per_installment_list: payload?.per_installment_list ?? payload?.perInstallmentList ?? null,
         card_kind: payload?.card_kind ?? payload?.cardKind ?? null,
 
-        // --- ✅ snapshot top-level (esto llena sales.customer_* en backend)
-        customer_name: snap.customer_name,
+        // ✅ snapshot top-level
+        customer_name: snap.customer_name || null,
         customer_doc: snap.customer_doc || null,
         customer_phone: snap.customer_phone || null,
 
-        // --- para UI/recibo (se conserva)
         customer: {
           ...mergedCustomer,
           first_name: snap.first_name,
           last_name: snap.last_name,
           email: snap.email,
           whatsapp: snap.whatsapp,
+          address: snap.address,
+          note: snap.note,
           doc: snap.customer_doc,
           phone: snap.customer_phone,
+          name: snap.customer_name,
         },
       };
 
-      // ✅ 7) llamada CLAVE
+      console.log("[POS][checkout] customer snapshot =>", {
+        customer_name: extra.customer_name,
+        customer_doc: extra.customer_doc,
+        customer_phone: extra.customer_phone,
+        customer: extra.customer,
+      });
+
       const result = await posStore.checkoutSale(payMap.method, extra);
 
       checkoutDialog.value = false;
@@ -432,10 +401,7 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
   }
 
   return {
-    // dialog
     checkoutDialog,
-
-    // state
     paymentMethod,
     installments,
     applyReseller,
@@ -443,20 +409,11 @@ export function usePosCheckout({ posStore, canSell, needsBranchPick, resolveUnit
     cashInput,
     cashError,
     cashErrorMsg,
-
-    // totals
     checkoutTotal,
     checkoutTotalPreview,
-
-    // receipt
     receiptOpen,
     receiptSale,
     receiptCompanyName,
-
-    // customer
-    customer,
-
-    // actions
     openCheckout,
     confirmPayment,
   };

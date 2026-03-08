@@ -1,22 +1,5 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/pos.store.js
-//
-// ✅ Ajustado a tu DB REAL:
-// payments.method enum: CASH, TRANSFER, CARD, QR, MERCADOPAGO, CREDIT_SJT, OTHER
-//
-// ✅ Reglas:
-// - Crédito San Juan => enviar method "credit_sjt" (alias) O "CREDIT_SJT" (si querés)
-//   (backend lo normaliza y guarda method=CREDIT_SJT + reference=SJCREDIT)
-// - MercadoPago => method "MERCADOPAGO"
-// - Cuotas (installments 1..12) SOLO en CARD (si NO es débito) o en Crédito San Juan
-// - Para débito: mandar card_kind="DEBIT" (installments queda 1)
-//
-// ✅ FIX HOY:
-// - ✅ Enviar snapshot cliente COMPLETO a backend:
-//   customer_name, customer_doc, customer_phone (TOP-LEVEL y dentro de payments[0])
-// - ✅ Enviar installments/reference también TOP-LEVEL (además de payments[0]) para compat
-// - ✅ Normalización de doc/teléfono desde extra.customer (doc/dni/cuit/cuil + phone/whatsapp)
-//
 
 import { defineStore } from "pinia";
 import http from "../api/http";
@@ -49,7 +32,6 @@ const POS_DEBUG =
 
 function dbg(...args) {
   if (!POS_DEBUG) return;
-  // eslint-disable-next-line no-console
   console.log("[POS_STORE]", ...args);
 }
 
@@ -99,22 +81,12 @@ async function fetchFirstWarehouseIdByBranch(branchId) {
 }
 
 /* =========================
-   ✅ HELPERS: Normalización backend + providers
+   Helpers pago
 ========================= */
-
-/**
- * ✅ IMPORTANTE:
- * - DB enum Payment.method (backend):
- *   CASH / TRANSFER / CARD / QR / MERCADOPAGO / CREDIT_SJT / OTHER
- *
- * - Para Crédito San Juan, enviá method="credit_sjt" (recomendado)
- *   (backend lo normaliza y persiste CREDIT_SJT + reference=SJCREDIT)
- */
 function normalizeMethod(m) {
   const raw = String(m || "").trim();
   const up = raw.toUpperCase();
 
-  // ✅ San Juan Crédito (alias -> "credit_sjt")
   if (
     raw === "credit_sjt" ||
     up === "CREDIT_SJT" ||
@@ -128,7 +100,6 @@ function normalizeMethod(m) {
     return "credit_sjt";
   }
 
-  // ✅ MercadoPago => enum real
   if (
     up === "MERCADOPAGO" ||
     up === "MERCADO_PAGO" ||
@@ -140,10 +111,8 @@ function normalizeMethod(m) {
     return "MERCADOPAGO";
   }
 
-  // ✅ QR genérico
   if (up === "QR") return "QR";
 
-  // ✅ alias -> CARD
   if (
     up === "DEBIT" ||
     up === "DEBITO" ||
@@ -156,11 +125,9 @@ function normalizeMethod(m) {
     return "CARD";
   }
 
-  // ✅ español -> enums
   if (up === "EFECTIVO") return "CASH";
   if (up === "TRANSFERENCIA") return "TRANSFER";
 
-  // ✅ enums aceptados por backend
   if (
     up === "CASH" ||
     up === "CARD" ||
@@ -169,22 +136,16 @@ function normalizeMethod(m) {
     up === "MERCADOPAGO" ||
     up === "CREDIT_SJT" ||
     up === "OTHER"
-  )
+  ) {
     return up;
+  }
 
   return "OTHER";
 }
 
-/**
- * ✅ FIX CLAVE:
- * a veces el composable puede llamar checkout("CASH", extra)
- * pero el método real está en extra.payment_method (emit del dialog).
- * Priorizamos SIEMPRE extra.* por sobre el parámetro.
- */
 function pickPaymentMethodForApi(paymentMethodParam, extra) {
   const ex = extra && typeof extra === "object" ? extra : {};
 
-  // ✅ prioridad extra.*
   const candidate =
     ex.payment_method ||
     ex.paymentMethod ||
@@ -193,16 +154,15 @@ function pickPaymentMethodForApi(paymentMethodParam, extra) {
     ex.payMethod ||
     paymentMethodParam;
 
-  // ✅ FIX: si por algún motivo llega OTHER pero reference marca SJ Crédito
   const ref = String(ex.reference || ex.ref || "").trim().toUpperCase();
   if (ref === "SJCREDIT" || ref === "SJ_CREDIT" || ref === "SANJUANCREDITO") return "credit_sjt";
 
   return normalizeMethod(candidate);
 }
 
-/**
- * ✅ Snapshot cliente robusto (para sales.customer_*)
- */
+/* =========================
+   Snapshot cliente
+========================= */
 function pickFirst(...vals) {
   for (const v of vals) {
     const s = String(v ?? "").trim();
@@ -212,7 +172,6 @@ function pickFirst(...vals) {
 }
 
 function normalizeDigitsPhone(v) {
-  // deja + y dígitos
   const s = String(v ?? "").trim();
   if (!s) return "";
   return s.replace(/[^\d+]/g, "");
@@ -223,19 +182,45 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
   const c = ex.customer && typeof ex.customer === "object" ? ex.customer : {};
   const sc = storeCustomer && typeof storeCustomer === "object" ? storeCustomer : {};
 
-  const first_name = pickFirst(c.first_name, c.firstname, c.firstName, c.nombre);
-  const last_name = pickFirst(c.last_name, c.lastname, c.lastName, c.apellido);
+  const first_name = pickFirst(
+    c.first_name,
+    c.firstname,
+    c.firstName,
+    c.nombre,
+    sc.first_name,
+    sc.firstname,
+    sc.firstName,
+    sc.nombre
+  );
+
+  const last_name = pickFirst(
+    c.last_name,
+    c.lastname,
+    c.lastName,
+    c.apellido,
+    sc.last_name,
+    sc.lastname,
+    sc.lastName,
+    sc.apellido
+  );
 
   const fullName = (first_name || last_name) ? `${first_name} ${last_name}`.trim() : "";
 
   const customer_name = pickFirst(
     ex.customer_name,
     c.customer_name,
+    c.name,
     c.full_name,
     c.fullName,
+    c.razon_social,
+    c.razonSocial,
     fullName,
-    sc.name,
     sc.customer_name,
+    sc.name,
+    sc.full_name,
+    sc.fullName,
+    sc.razon_social,
+    sc.razonSocial,
     "Consumidor Final"
   ).trim() || "Consumidor Final";
 
@@ -247,7 +232,14 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
     c.cuit,
     c.cuil,
     c.document,
-    c.documento
+    c.documento,
+    sc.customer_doc,
+    sc.doc,
+    sc.dni,
+    sc.cuit,
+    sc.cuil,
+    sc.document,
+    sc.documento
   ).trim();
 
   const customer_phone_raw = pickFirst(
@@ -259,7 +251,15 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
     c.celular,
     c.mobile,
     c.whatsapp,
-    c.wa
+    c.wa,
+    sc.customer_phone,
+    sc.phone,
+    sc.tel,
+    sc.telefono,
+    sc.celular,
+    sc.mobile,
+    sc.whatsapp,
+    sc.wa
   );
 
   const customer_phone = normalizeDigitsPhone(customer_phone_raw);
@@ -271,9 +271,6 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
   };
 }
 
-/**
- * Para UI/chips de “Pago”
- */
 export function paymentMethodLabel(m) {
   const raw = String(m || "").trim();
   const up = raw.toUpperCase();
@@ -299,14 +296,11 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
       name: String(it.name || ""),
       qty,
       quantity: qty,
-
       unit_price: unit,
       unitPrice: unit,
       price: unit,
-
       subtotal: sub,
       price_label: it.price_label || it.priceLabel || "",
-
       product_id: toInt(it.product_id, toInt(it.id, 0)),
       sku: it.sku || null,
       barcode: it.barcode || null,
@@ -324,10 +318,8 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
     installments: toInt(extra?.installments, 1) || 1,
     proof: extra?.proof || null,
     customer: extra?.customer || null,
-
     branch_id: branch_id || null,
     warehouse_id: warehouse_id || null,
-
     items,
     subtotal: total,
     total,
@@ -401,14 +393,11 @@ export const usePosStore = defineStore("pos", {
   state: () => ({
     loading: false,
     error: "",
-
     branch_id: readLSInt(LS_BRANCH),
     warehouse_id: readLSInt(LS_WAREHOUSE),
-
-    customer: { name: "Consumidor Final" },
+    customer: null,
     cart: [],
     toast: { show: false, text: "" },
-
     last_sale: null,
   }),
 
@@ -436,6 +425,11 @@ export const usePosStore = defineStore("pos", {
       dbg("setBranch", { branch_id: this.branch_id });
     },
 
+    setCustomer(payload) {
+      this.customer = payload && typeof payload === "object" ? { ...payload } : null;
+      dbg("setCustomer", this.customer);
+    },
+
     resetContext() {
       this.branch_id = null;
       this.warehouse_id = null;
@@ -448,7 +442,6 @@ export const usePosStore = defineStore("pos", {
       const currB = toInt(this.branch_id, 0);
       const currW = toInt(this.warehouse_id, 0);
 
-      // ✅ Para POS “normal” exigimos warehouse; para admin permitimos operar sin warehouse
       if (!force && currB > 0 && (isAdmin || currW > 0)) {
         dbg("ensureContext skip", { isAdmin, branch_id: currB, warehouse_id: currW });
         return;
@@ -460,7 +453,6 @@ export const usePosStore = defineStore("pos", {
         const { data } = await http.get("/pos/context", {
           params: {
             branch_id: currB || undefined,
-            // ✅ admin: no forzamos warehouse
             warehouse_id: !isAdmin ? (currW || undefined) : undefined,
           },
         });
@@ -478,8 +470,6 @@ export const usePosStore = defineStore("pos", {
           toInt(ctx?.warehouse_id, 0) ||
           toInt(ctx?.warehouse?.id, 0);
 
-        dbg("ensureContext got /pos/context", { branchId, warehouseId, ctx });
-
         if (branchId > 0 && (force || toInt(this.branch_id, 0) <= 0)) {
           this.branch_id = branchId;
           writeLSInt(LS_BRANCH, branchId);
@@ -488,7 +478,6 @@ export const usePosStore = defineStore("pos", {
         if (isAdmin) {
           this.warehouse_id = null;
           writeLSInt(LS_WAREHOUSE, null);
-          dbg("ensureContext admin: warehouse cleared");
           return;
         }
 
@@ -502,33 +491,14 @@ export const usePosStore = defineStore("pos", {
           if (wid) {
             this.warehouse_id = wid;
             writeLSInt(LS_WAREHOUSE, wid);
-            dbg("ensureContext fallback warehouse resolved", {
-              branch_id: this.branch_id,
-              warehouse_id: this.warehouse_id,
-            });
           }
         }
-
-        dbg("ensureContext done", {
-          isAdmin,
-          branch_id: this.branch_id,
-          warehouse_id: this.warehouse_id,
-        });
       } catch (e) {
         this.error = apiErrorMessage(e, "No se pudo cargar contexto POS");
-        dbg("ensureContext error", {
-          msg: this.error,
-          status: e?.response?.status,
-          data: e?.response?.data,
-          raw: e?.message,
-        });
         throw e;
       }
     },
 
-    // =========================
-    // Carrito
-    // =========================
     clearCart() {
       this.cart = [];
     },
@@ -577,12 +547,10 @@ export const usePosStore = defineStore("pos", {
           image: product?.image || product?.image_url || null,
           qty: 1,
           available_qty: available,
-
           price,
           price_list: toNum(product?.price_list, 0),
           price_discount: toNum(product?.price_discount, 0),
           price_reseller: toNum(product?.price_reseller, 0),
-
           price_label: product?.price_label || "Precio",
           subtotal: 0,
         };
@@ -633,34 +601,12 @@ export const usePosStore = defineStore("pos", {
       this._recalcLine(it);
     },
 
-    // =========================
-    // Checkout
-    // =========================
     async checkoutSale(paymentMethod = "CASH", extra = {}) {
       this.loading = true;
       this.error = "";
 
       const cartSnapshot = (this.cart || []).map((it) => ({ ...it }));
       const totalSnapshot = toNum(this.totalAmount, 0);
-
-      function logPayload(label, payload) {
-        try {
-          // eslint-disable-next-line no-console
-          console.log(`[POS_STORE] ${label}`, JSON.parse(JSON.stringify(payload)));
-        } catch {
-          // eslint-disable-next-line no-console
-          console.log(`[POS_STORE] ${label}`, payload);
-        }
-      }
-
-      function logApiError(e) {
-        try {
-          // eslint-disable-next-line no-console
-          console.log("[POS_STORE] API ERROR status:", e?.response?.status);
-          // eslint-disable-next-line no-console
-          console.log("[POS_STORE] API ERROR data:", e?.response?.data);
-        } catch {}
-      }
 
       try {
         await this.ensureContext({ isAdmin: false });
@@ -675,8 +621,6 @@ export const usePosStore = defineStore("pos", {
         if (!wid) throw new Error("No hay depósito seleccionado. Configurá warehouse_id en el POS.");
 
         const ex = extra && typeof extra === "object" ? extra : {};
-
-        // ✅ FIX: snapshot cliente completo (name/doc/phone)
         const snap = normalizeCustomerSnapshot(ex, this.customer);
 
         const items = (this.cart || [])
@@ -701,18 +645,14 @@ export const usePosStore = defineStore("pos", {
         const amount = toNum(this.totalAmount, 0);
         const bid = toInt(this.branch_id, 0) || null;
 
-        // ✅ FIX: método real SIEMPRE desde extra.payment_method primero
         const methodForApi = pickPaymentMethodForApi(paymentMethod, ex);
 
-        // ✅ cuotas / meta
         let installments = toInt(ex?.installments, 1) || 1;
-
         const card_kind_raw = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
 
         const isCreditSjt = methodForApi === "credit_sjt" || methodForApi === "CREDIT_SJT";
         const isCard = methodForApi === "CARD";
 
-        // 🔒 Débito: forzamos contado
         const isDebit =
           card_kind_raw === "DEBIT" ||
           card_kind_raw === "DEBITO" ||
@@ -722,9 +662,6 @@ export const usePosStore = defineStore("pos", {
 
         if (isCard && isDebit) installments = 1;
 
-        // ✅ clamp cuotas:
-        // - SJ crédito: 1..12
-        // - CARD crédito: 1..12 (si querés 1..6 cambiá el 12 por 6)
         if (isCreditSjt || (isCard && !isDebit)) {
           installments = Math.max(1, Math.min(12, installments));
         } else {
@@ -733,25 +670,23 @@ export const usePosStore = defineStore("pos", {
 
         const total_list = toNum(ex?.total_list, 0) || null;
         const per_installment_list = toNum(ex?.per_installment_list, 0) || null;
+        const price_basis = isCreditSjt || (isCard && installments > 1 && !isDebit) ? "LIST" : null;
 
-        // ✅ policy: cuotas usan LIST
-        const price_basis = (isCreditSjt || (isCard && installments > 1 && !isDebit)) ? "LIST" : null;
-
-        // ✅ referencia SJ crédito (si no viene)
-        const referenceTop =
+        let referenceTop =
           ex?.reference ||
           ex?.ref ||
-          (isCreditSjt ? "SJCREDIT" : null) ||
           ex?.proof ||
           null;
 
+        if (isCreditSjt && !referenceTop) {
+          referenceTop = "SJCREDIT";
+        }
+
         const payload = {
-          // ✅ TOP-LEVEL snapshot cliente (para sales.customer_*)
           customer_name: snap.customer_name,
           customer_doc: snap.customer_doc,
           customer_phone: snap.customer_phone,
 
-          // ✅ TOP-LEVEL payment meta (por si el backend lee acá)
           payment_method: methodForApi,
           method: methodForApi,
           installments,
@@ -762,7 +697,6 @@ export const usePosStore = defineStore("pos", {
 
           branch_id: bid,
           warehouse_id: wid,
-
           branchId: bid,
           warehouseId: wid,
 
@@ -770,23 +704,16 @@ export const usePosStore = defineStore("pos", {
 
           payments: [
             {
-              // ✅ método en payments también
               method: isCreditSjt ? "credit_sjt" : methodForApi,
               amount,
-
-              // ✅ reference/proof
               reference: referenceTop,
               proof: ex?.proof || null,
-
-              // ✅ cuotas/meta
               installments,
               price_basis,
               total_list,
               per_installment_list,
-
               card_kind: isCard ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT") : (isCreditSjt ? "CREDIT" : null),
 
-              // ✅ snapshot cliente también acá (por si tu backend lo toma desde payments)
               customer_name: snap.customer_name,
               customer_doc: snap.customer_doc,
               customer_phone: snap.customer_phone,
@@ -798,27 +725,12 @@ export const usePosStore = defineStore("pos", {
           ],
         };
 
-        dbg("checkoutSale payload ready", {
-          bid,
-          wid,
-          items: items.length,
-          amount,
-          paymentMethodParam: paymentMethod,
-          paymentMethodExtra: ex?.payment_method,
-          methodForApi,
-          installments,
-          price_basis,
-          card_kind: payload.card_kind,
-          customer_name: snap.customer_name,
-          customer_doc: snap.customer_doc,
-          customer_phone: snap.customer_phone,
-          reference: referenceTop,
-        });
-        logPayload("POST /pos/sales payload =>", payload);
+        console.log("[POS_STORE] store.customer =>", this.customer);
+        console.log("[POS_STORE] checkout extra =>", ex);
+        console.log("[POS_STORE] customer snapshot =>", snap);
+        console.log("[POS_STORE] POST /pos/sales payload =>", JSON.parse(JSON.stringify(payload)));
 
         const { data } = await http.post("/pos/sales", payload);
-
-        dbg("checkoutSale POST /pos/sales resp", data);
 
         let sale = normalizeSaleShape(data);
 
@@ -854,11 +766,8 @@ export const usePosStore = defineStore("pos", {
           if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
         }
 
-        // ✅ guardamos para ticket (y UI)
         sale.payment_method = methodForApi;
         sale.installments = installments;
-
-        // ✅ guardamos snapshot cliente también en el sale local
         sale.customer_name = snap.customer_name;
         sale.customer_doc = snap.customer_doc;
         sale.customer_phone = snap.customer_phone;
@@ -870,8 +779,6 @@ export const usePosStore = defineStore("pos", {
 
         return { ok: true, sale, raw: data };
       } catch (e) {
-        logApiError(e);
-
         const msg = apiErrorMessage(e, "Error al confirmar la venta");
         this.error = msg;
 

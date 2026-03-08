@@ -52,7 +52,6 @@
             @next="nextPage"
           />
 
-          <!-- ✅ PRODUCTS PANEL -->
           <PosProductsPanel
             class="pos-products-panel pos-surface"
             :loading="loadingGlobal"
@@ -92,7 +91,6 @@
 
         <!-- RIGHT -->
         <div class="pos-right">
-          <!-- ✅ CUSTOMER PANEL (componentizado + con spacing real) -->
           <PosCustomerPanel
             v-model="customer"
             :disabled="customerDisabled"
@@ -121,7 +119,6 @@
       </div>
     </div>
 
-    <!-- dialogs -->
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
       :can-sell="canSell && !needsBranchPick"
@@ -726,6 +723,7 @@ const {
   resolveUnitPrice,
   toNum,
   allSellable,
+  customerRef: customer, // ✅ CLAVE
 });
 
 function openCheckoutSafe() {
@@ -744,12 +742,17 @@ async function onCheckoutConfirm(payload) {
     if (payload?.payment_method) paymentMethod.value = String(payload.payment_method).toUpperCase();
     if (payload?.installments != null) installments.value = Number(payload.installments || 1);
     if (payload?.apply_reseller != null) applyReseller.value = !!payload.apply_reseller;
-
     if (payload?.cash_received != null) cashInput.value = String(payload.cash_received || "");
 
-    await confirmPayment({ onSnack: toast });
+    await confirmPayment({
+      onSnack: toast,
+      payloadFromDialog: payload, // ✅ CLAVE
+    });
+
     await fetchGlobalPool({ in_stock: 0 });
-  } catch {}
+  } catch (e) {
+    console.error("[POS] onCheckoutConfirm error", e);
+  }
 }
 
 function onCheckoutCancel() {}
@@ -817,7 +820,6 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown, { capture: true });
 });
 
-/* prefetch */
 watch(
   () => [page.value, sellableStockTotal.value],
   async () => {
@@ -825,7 +827,6 @@ watch(
   }
 );
 
-/* sync selection when dialog opens */
 watch(
   () => branchPickOpen.value,
   (open) => {
@@ -833,7 +834,6 @@ watch(
   }
 );
 
-/* autosave draft cliente */
 watch(
   () => customer.value,
   () => {
@@ -920,7 +920,6 @@ watch(
     0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
-/* LEFT */
 .pos-left {
   min-height: 0;
   min-width: 0;
@@ -933,7 +932,6 @@ watch(
   min-height: 0;
 }
 
-/* RIGHT */
 .pos-right {
   min-height: 0;
   min-width: 0;
@@ -950,7 +948,6 @@ watch(
   min-height: 0;
 }
 
-/* Notebook */
 @media (max-width: 1366px) {
   .pos-root {
     --pos-gap: 12px;
@@ -966,7 +963,6 @@ watch(
   }
 }
 
-/* Mobile */
 @media (max-width: 960px) {
   :global(body.pos-noscroll) {
     overflow: auto !important;
