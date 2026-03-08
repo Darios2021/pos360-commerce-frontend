@@ -1,10 +1,8 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/pos/components/PosCustomerPanel.vue -->
 <template>
-  <v-card class="pos-surface pc" rounded="xl">
+  <div class="pc">
     <div class="pc-head">
       <div class="pc-left">
-        <v-icon size="18" class="pc-ico">mdi-account</v-icon>
+        <v-icon size="16" class="pc-ico">mdi-account</v-icon>
 
         <div class="pc-title-wrap">
           <div class="pc-title">Datos del cliente</div>
@@ -15,92 +13,88 @@
         </v-chip>
       </div>
 
-      <!-- ✅ desktop: texto / mobile: icon only -->
       <v-btn
         class="pc-clear text-medium-emphasis"
         :size="isXs ? 'small' : 'small'"
-        :variant="isXs ? 'text' : 'text'"
+        :variant="'text'"
         :disabled="disabled || !hasData"
         @click="$emit('clear')"
         title="Limpiar datos"
       >
-        <v-icon :start="!isXs" size="18">mdi-eraser</v-icon>
+        <v-icon :start="!isXs" size="16">mdi-eraser</v-icon>
         <span v-if="!isXs">Limpiar</span>
       </v-btn>
     </div>
 
-    <v-divider />
+    <div class="pc-divider" />
 
     <div class="pc-body">
-      <div class="pc-inner">
-        <div class="pc-grid">
-          <v-text-field
-            v-model="local.name"
-            label="Nombre / Razón social"
-            variant="outlined"
-            :density="density"
-            hide-details
-            :disabled="disabled"
-            prepend-inner-icon="mdi-account-outline"
-            class="pc-field pc-span-2"
-            autocomplete="off"
-          />
+      <div class="pc-grid">
+        <v-text-field
+          v-model="local.name"
+          label="Nombre / Razón social"
+          variant="outlined"
+          :density="density"
+          hide-details
+          :disabled="disabled"
+          prepend-inner-icon="mdi-account-outline"
+          class="pc-field pc-span-2"
+          autocomplete="off"
+        />
 
-          <v-text-field
-            v-model="local.doc"
-            label="DNI / CUIT"
-            variant="outlined"
-            :density="density"
-            hide-details
-            :disabled="disabled"
-            prepend-inner-icon="mdi-card-account-details-outline"
-            class="pc-field"
-            inputmode="numeric"
-            autocomplete="off"
-          />
+        <v-text-field
+          v-model="local.doc"
+          label="DNI / CUIT"
+          variant="outlined"
+          :density="density"
+          hide-details
+          :disabled="disabled"
+          prepend-inner-icon="mdi-card-account-details-outline"
+          class="pc-field"
+          inputmode="numeric"
+          autocomplete="off"
+        />
 
-          <v-text-field
-            v-model="local.phone"
-            label="Teléfono"
-            variant="outlined"
-            :density="density"
-            hide-details
-            :disabled="disabled"
-            prepend-inner-icon="mdi-phone-outline"
-            class="pc-field"
-            inputmode="tel"
-            autocomplete="off"
-          />
+        <v-text-field
+          v-model="local.phone"
+          label="Teléfono"
+          variant="outlined"
+          :density="density"
+          hide-details
+          :disabled="disabled"
+          prepend-inner-icon="mdi-phone-outline"
+          class="pc-field"
+          inputmode="tel"
+          autocomplete="off"
+        />
 
-          <v-text-field
-            v-model="local.email"
-            label="Email"
-            variant="outlined"
-            :density="density"
-            hide-details
-            :disabled="disabled"
-            prepend-inner-icon="mdi-email-outline"
-            class="pc-field pc-span-2"
-            inputmode="email"
-            autocomplete="off"
-          />
+        <v-text-field
+          v-model="local.email"
+          label="Email"
+          variant="outlined"
+          :density="density"
+          hide-details
+          :disabled="disabled"
+          prepend-inner-icon="mdi-email-outline"
+          class="pc-field pc-span-2"
+          inputmode="email"
+          autocomplete="off"
+        />
 
-          <v-text-field
-            v-model="local.address"
-            label="Dirección"
-            variant="outlined"
-            :density="density"
-            hide-details
-            :disabled="disabled"
-            prepend-inner-icon="mdi-map-marker-outline"
-            class="pc-field pc-span-2"
-            autocomplete="off"
-          />
-        </div>
-
+        <v-text-field
+          v-model="local.address"
+          label="Dirección"
+          variant="outlined"
+          :density="density"
+          hide-details
+          :disabled="disabled"
+          prepend-inner-icon="mdi-map-marker-outline"
+          class="pc-field pc-span-2"
+          autocomplete="off"
+        />
       </div>
     </div>
-  </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -146,8 +140,8 @@ watch(
   { deep: true }
 );
 
-/* ✅ responsive sin Vuetify useDisplay (simple & robust) */
 const vw = ref(9999);
+
 function setVw() {
   try {
     vw.value = window.innerWidth || 9999;
@@ -155,64 +149,60 @@ function setVw() {
     vw.value = 9999;
   }
 }
+
 onMounted(() => {
   setVw();
   window.addEventListener("resize", setVw, { passive: true });
 });
+
 onBeforeUnmount(() => window.removeEventListener("resize", setVw));
 
 const isXs = computed(() => vw.value <= 380);
 
 const density = computed(() => {
-  return vw.value <= 420 ? "compact" : "comfortable";
+  if (vw.value <= 420) return "compact";
+  if (vw.value <= 1280) return "compact";
+  return "comfortable";
 });
 </script>
 
 <style scoped>
-/* ✅ clave: no recortar outlines */
 .pc {
-  overflow: visible !important;
-}
-.pc :deep(.v-card) {
-  overflow: visible !important;
+  min-width: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.99) 0%, rgba(var(--v-theme-surface), 1) 100%);
 }
 
-/* ✅ HEADER responsive (no se rompe) */
+/* HEADER */
 .pc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 
-  padding: 10px 12px;
-
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, rgb(var(--v-theme-surface)) 92%, rgb(var(--v-theme-primary)) 8%),
-    rgb(var(--v-theme-surface))
-  );
+  padding: 8px 10px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(var(--v-theme-primary), 0.035) 0%,
+      rgba(var(--v-theme-surface), 0.98) 100%
+    );
 }
 
-:global(.v-theme--dark) .pc-head {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, rgb(var(--v-theme-surface)) 92%, rgb(var(--v-theme-primary)) 10%),
-    rgb(var(--v-theme-surface))
-  );
-}
-
-/* left pack */
 .pc-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0; /* ✅ permite ellipsis */
+  gap: 8px;
+  min-width: 0;
   flex: 1 1 auto;
 }
 
 .pc-ico {
   flex: 0 0 auto;
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .pc-title-wrap {
@@ -221,89 +211,167 @@ const density = computed(() => {
 }
 
 .pc-title {
-  font-weight: 950;
-  letter-spacing: 0.2px;
-  line-height: 1.05;
-
+  font-size: 13px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* chip nunca se achica raro */
 .pc-chip {
   flex: 0 0 auto;
-  max-width: 120px;
-  border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent);
+  max-width: 110px;
+  min-height: 20px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
 }
 
-/* botón a la derecha */
 .pc-clear {
   flex: 0 0 auto;
-  font-weight: 900;
-  letter-spacing: 0.2px;
+  min-width: auto !important;
+  height: 28px !important;
+  padding-inline: 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+  text-transform: none !important;
   white-space: nowrap;
 }
 
-/* ✅ en pantallas muy chicas: permitir wrap del header sin romper */
-@media (max-width: 380px) {
-  .pc-head {
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-  .pc-clear {
-    margin-left: auto;
-  }
-  .pc-chip {
-    max-width: 96px;
-  }
+.pc-divider {
+  height: 1px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
-/* body + inner padding real */
+/* BODY */
 .pc-body {
-  padding: 10px 10px 8px;
-  overflow: visible;
-}
-.pc-inner {
-  padding: 2px;
-  overflow: visible;
+  padding: 8px 10px 10px;
 }
 
-/* grid */
 .pc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
+
 .pc-span-2 {
   grid-column: 1 / -1;
 }
 
+/* FIELDS */
+.pc-field {
+  min-width: 0;
+}
+
 .pc-field :deep(.v-field) {
   border-radius: 12px !important;
+  background: rgba(var(--v-theme-background), 0.16);
+  transition:
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
 }
+
+:global(.v-theme--light) .pc-field :deep(.v-field) {
+  background: rgba(var(--v-theme-background), 0.24);
+}
+
+:global(.v-theme--dark) .pc-field :deep(.v-field) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
 .pc-field :deep(.v-field__outline) {
   opacity: 1 !important;
 }
+
 .pc-field :deep(.v-field__prepend-inner) {
-  padding-inline-end: 8px;
-}
-.pc-field :deep(.v-field__prepend-inner .v-icon) {
-  opacity: 0.9;
+  padding-inline-end: 7px;
 }
 
-/* mobile 1 col */
+.pc-field :deep(.v-field__prepend-inner .v-icon) {
+  opacity: 0.86;
+  font-size: 16px;
+}
+
+.pc-field :deep(.v-label) {
+  font-size: 12px;
+}
+
+.pc-field :deep(.v-field__input) {
+  min-height: 34px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 12.5px;
+}
+
+.pc-field :deep(input) {
+  font-size: 12.5px;
+}
+
+.pc-field :deep(.v-field--focused) {
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.10);
+}
+
+/* NOTEBOOK */
+@media (max-width: 1366px) {
+  .pc-head {
+    padding: 7px 9px;
+  }
+
+  .pc-body {
+    padding: 7px 9px 9px;
+  }
+
+  .pc-grid {
+    gap: 7px;
+  }
+
+  .pc-title {
+    font-size: 12.5px;
+  }
+
+  .pc-field :deep(.v-field__input) {
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .pc-field :deep(input) {
+    font-size: 12px;
+  }
+
+  .pc-clear {
+    height: 26px !important;
+    font-size: 10.75px !important;
+    padding-inline: 7px !important;
+  }
+}
+
+/* MOBILE */
 @media (max-width: 420px) {
   .pc-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
   }
+
   .pc-span-2 {
     grid-column: auto;
   }
 }
 
-.pc-foot {
-  padding-top: 8px;
+@media (max-width: 380px) {
+  .pc-head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .pc-clear {
+    margin-left: auto;
+  }
+
+  .pc-chip {
+    max-width: 92px;
+  }
 }
 </style>

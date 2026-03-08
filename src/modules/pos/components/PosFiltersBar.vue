@@ -1,8 +1,6 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/pos/components/PosFiltersBar.vue -->
 <template>
-  <v-card class="pf-root" rounded="xl" elevation="0">
-    <v-card-text class="pf-inner">
+  <div class="pf-root">
+    <div class="pf-inner">
       <v-row dense class="pf-row">
         <v-col cols="12" md="6">
           <v-text-field
@@ -75,7 +73,7 @@
             @click="$emit('prev')"
             :disabled="disabledAll || page <= 1"
           >
-            <v-icon start>mdi-chevron-left</v-icon>
+            <v-icon start size="16">mdi-chevron-left</v-icon>
             Anterior
           </v-btn>
 
@@ -88,16 +86,16 @@
             :disabled="disabledAll || page >= pages"
           >
             Siguiente
-            <v-icon end>mdi-chevron-right</v-icon>
+            <v-icon end size="16">mdi-chevron-right</v-icon>
           </v-btn>
         </div>
       </div>
 
-      <div v-if="error" class="mt-2 text-caption text-error">
+      <div v-if="error" class="pf-error text-caption text-error">
         {{ error }}
       </div>
-    </v-card-text>
-  </v-card>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -141,7 +139,6 @@ const qLocal = ref(props.q || "");
 const rubroLocal = ref(props.rubroId ?? null);
 const subrubroLocal = ref(props.subrubroId ?? null);
 
-/* sync down */
 watch(
   () => props.q,
   (v) => {
@@ -149,6 +146,7 @@ watch(
     if (nv !== String(qLocal.value ?? "")) qLocal.value = nv;
   }
 );
+
 watch(
   () => props.rubroId,
   (v) => {
@@ -156,6 +154,7 @@ watch(
     if (nv !== rubroLocal.value) rubroLocal.value = nv;
   }
 );
+
 watch(
   () => props.subrubroId,
   (v) => {
@@ -164,7 +163,6 @@ watch(
   }
 );
 
-/* sync up */
 watch(qLocal, (v) => emit("update:q", String(v ?? "")));
 watch(rubroLocal, (v) => emit("update:rubro-id", v ?? null));
 watch(subrubroLocal, (v) => emit("update:subrubro-id", v ?? null));
@@ -199,7 +197,6 @@ const showingText = computed(() => {
   return `${shown} de ${total} · Página ${page}/${pages}`;
 });
 
-/* expose for F2 */
 function focusSearch() {
   searchRef.value?.focus?.();
 }
@@ -208,66 +205,194 @@ defineExpose({ focusSearch });
 
 <style scoped>
 .pf-root {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.99) 0%, rgba(var(--v-theme-surface), 1) 100%);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow:
+    0 8px 22px rgba(15, 23, 42, 0.05),
+    0 2px 6px rgba(15, 23, 42, 0.03);
 }
 
-/* ✅ menos padding del card (antes 14px) */
+:global(.v-theme--light) .pf-root {
+  border-color: rgba(var(--v-theme-on-surface), 0.09);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.06),
+    0 2px 8px rgba(15, 23, 42, 0.035);
+}
+
+:global(.v-theme--dark) .pf-root {
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.14);
+}
+
 .pf-inner {
-  padding: 10px 12px;
+  padding: 8px 10px 9px;
 }
 
-/* ✅ menos aire vertical de la grilla */
 .pf-row {
   margin: 0 !important;
 }
+
 .pf-row :deep(.v-col) {
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
 }
 
-/* inputs compact firmes */
+.pf-field {
+  --pf-field-radius: 13px;
+}
+
 .pf-field :deep(.v-field) {
-  border-radius: 14px;
+  border-radius: var(--pf-field-radius);
+  background: rgba(var(--v-theme-background), 0.16);
+  transition:
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
 }
 
-/* ✅ achica altura visual del campo */
+:global(.v-theme--light) .pf-field :deep(.v-field) {
+  background: rgba(var(--v-theme-background), 0.28);
+}
+
+:global(.v-theme--dark) .pf-field :deep(.v-field) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.pf-field :deep(.v-field__prepend-inner) {
+  padding-top: 0;
+}
+
+.pf-field :deep(.v-label) {
+  font-size: 12px;
+}
+
 .pf-field :deep(.v-field__input) {
-  padding-top: 6px;
-  padding-bottom: 6px;
-  min-height: 38px;
-  font-size: 13px;
+  min-height: 34px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 12.5px;
+}
+
+.pf-field :deep(input) {
+  font-size: 12.5px;
 }
 
 .pf-field :deep(.v-field--focused) {
-  box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.10);
 }
 
-/* bottom */
+.pf-search :deep(.v-field__input) {
+  font-weight: 500;
+}
+
 .pf-bottom {
+  margin-top: 6px;
+  padding-top: 6px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px; /* ✅ menos alto */
+  gap: 10px;
   flex-wrap: wrap;
+
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.pf-stats {
+  font-size: 11.5px !important;
+  line-height: 1.2;
+}
+
+.pf-dot {
+  margin: 0 5px;
+  opacity: 0.45;
 }
 
 .pf-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
 }
 
-/* ✅ botones más compactos */
 .pf-btn {
-  border-radius: 12px;
-  height: 34px;
-  padding: 0 12px;
-  font-size: 12.5px;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  border-radius: 11px !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  text-transform: none !important;
 }
 
-.pf-dot {
-  opacity: 0.55;
-  margin: 0 6px;
+.pf-error {
+  margin-top: 6px;
+  line-height: 1.2;
+}
+
+/* NOTEBOOK */
+@media (max-width: 1366px) {
+  .pf-inner {
+    padding: 7px 9px 8px;
+  }
+
+  .pf-field :deep(.v-field__input) {
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .pf-field :deep(input) {
+    font-size: 12px;
+  }
+
+  .pf-btn {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 9px !important;
+    font-size: 11px !important;
+  }
+
+  .pf-stats {
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .pf-root {
+    border-radius: 14px;
+  }
+
+  .pf-inner {
+    padding: 9px;
+  }
+
+  .pf-bottom {
+    align-items: stretch;
+  }
+
+  .pf-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .pf-btn {
+    flex: 1 1 calc(50% - 4px);
+  }
+}
+
+@media (max-width: 600px) {
+  .pf-btn {
+    flex: 1 1 100%;
+  }
+
+  .pf-stats {
+    width: 100%;
+  }
 }
 </style>

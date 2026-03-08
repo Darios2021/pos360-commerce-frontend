@@ -21,18 +21,18 @@
 
       <!-- ✅ BLOQUE PRECIOS (ALTURA HOMOGÉNEA) -->
       <div class="mlx-price-block">
-        <!-- old price (1 línea fija, invisible si no aplica) -->
+        <!-- old price -->
         <div class="mlx-old" :class="{ 'is-empty': !showOldPrice }">
           {{ showOldPrice ? `$ ${fmtMoney(oldPrice)}` : " " }}
         </div>
 
-        <!-- price + off (1 línea fija) -->
+        <!-- price + off -->
         <div class="mlx-price-row">
           <div class="mlx-price">$ {{ fmtMoney(displayPrice) }}</div>
           <div class="mlx-off" v-if="offPct">{{ offPct }}% OFF</div>
         </div>
 
-        <!-- installments (1 línea fija, invisible si no aplica) -->
+        <!-- installments -->
         <div class="mlx-installments" :class="{ 'is-empty': !show3Installments }">
           <template v-if="show3Installments">
             En 3 cuotas de <b>$ {{ fmtMoney(installment3) }}</b>
@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <!-- ✅ shipping (1 línea fija para homogeneidad, pero sin aire extra) -->
+      <!-- shipping -->
       <div class="mlx-ship" :class="{ 'is-empty': !shipText }">
         <template v-if="shipText">
           <span class="mlx-ship-free">Envío gratis</span>
@@ -128,9 +128,30 @@ const shipFree = computed(() => Boolean(props.p?.free_shipping || props.p?.shipp
 const shipBolt = computed(() => Boolean(props.p?.shipping_fast || props.p?.bolt || shipFull.value));
 const shipText = computed(() => (shipFree.value || shipFull.value ? "ok" : ""));
 
+/* scroll snapshot manual antes de navegar */
+const SCROLL_KEY = "scroll_positions_v2";
+
+function saveCurrentScrollSnapshot() {
+  try {
+    const fullPath = route.fullPath || (window.location.pathname + window.location.search + window.location.hash);
+    const raw = sessionStorage.getItem(SCROLL_KEY) || "{}";
+    const map = JSON.parse(raw);
+
+    map[fullPath] = {
+      top: window.scrollY || 0,
+      left: window.scrollX || 0,
+    };
+
+    sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map));
+  } catch {}
+}
+
 /* nav */
 function openProduct() {
+  saveCurrentScrollSnapshot();
+
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
+
   router.push({
     name: "shopProduct",
     params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
@@ -138,10 +159,8 @@ function openProduct() {
   });
 }
 </script>
+
 <style scoped>
-/* =========================
-   ML CARD – homogeneous + compact
-   ========================= */
 .mlx {
   height: 100%;
   display: flex;
@@ -236,7 +255,6 @@ function openProduct() {
   column-gap: 10px;
 }
 
-/* ✅ precio: 1px más chico para que nunca choque */
 .mlx-price {
   font-size: clamp(18px, 1.55vw, 21px);
   font-weight: 400;
@@ -247,7 +265,6 @@ function openProduct() {
   min-width: 0;
 }
 
-/* ✅ OFF: bajalo un toque más */
 .mlx-off {
   display: inline-flex;
   align-items: center;
@@ -260,8 +277,7 @@ function openProduct() {
   border-radius: 4px;
   padding: 2px 6px;
   white-space: nowrap;
-
-  margin-top: 4px; /* 👈 antes 2px */
+  margin-top: 4px;
 }
 
 /* installments */
@@ -292,13 +308,11 @@ function openProduct() {
 .mlx-ship-bolt { font-weight: 800; }
 .mlx-ship-full { font-weight: 900; letter-spacing: 0.02em; }
 
-/* ✅ Si la card está angosta, OFF abajo */
 @media (max-width: 420px) {
   .mlx-price-row { grid-template-columns: 1fr; row-gap: 4px; }
   .mlx-off { justify-self: start; margin-top: 0; }
 }
 
-/* responsive media */
 @media (max-width: 1200px) { .mlx-media { height: 215px; } }
 @media (max-width: 960px)  { .mlx-media { height: 205px; } }
 @media (max-width: 600px)  {
@@ -306,4 +320,3 @@ function openProduct() {
   .mlx-installments { white-space: normal; }
 }
 </style>
-

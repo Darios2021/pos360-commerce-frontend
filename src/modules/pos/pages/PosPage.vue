@@ -1,10 +1,8 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/pos/pages/PosPage.vue -->
 <template>
   <v-container fluid class="pos-root">
     <div class="pos-header">
       <PosTopBar
-        class="pos-surface"
+        class="pos-surface pos-topbar-shell"
         :branch-chip-label="branchChipLabel"
         :sellable-stock-total="sellableStockTotal"
         :stock-only-total="stockOnlyTotal"
@@ -29,7 +27,7 @@
         <div class="pos-left">
           <PosFiltersBar
             ref="filtersRef"
-            class="pos-surface"
+            class="pos-surface pos-filters-shell"
             v-model:q="q"
             v-model:rubro-id="rubroId"
             v-model:subrubro-id="subrubroId"
@@ -53,7 +51,7 @@
           />
 
           <PosProductsPanel
-            class="pos-products-panel pos-surface"
+            class="pos-products-panel pos-surface pos-products-shell"
             :loading="loadingGlobal"
             :disabled="loadingGlobal"
             :items="pagedItems"
@@ -91,16 +89,18 @@
 
         <!-- RIGHT -->
         <div class="pos-right">
-          <PosCustomerPanel
-            v-model="customer"
-            :disabled="customerDisabled"
-            :has-data="customerHasData"
-            @clear="clearCustomer"
-          />
+          <div class="pos-surface pos-side-shell pos-customer-shell">
+            <PosCustomerPanel
+              v-model="customer"
+              :disabled="customerDisabled"
+              :has-data="customerHasData"
+              @clear="clearCustomer"
+            />
+          </div>
 
           <div class="pos-cart-wrap">
             <PosCartPanel
-              class="pos-surface"
+              class="pos-surface pos-side-shell pos-cart-shell"
               :cart="posStore.cart"
               :total-items="posStore.totalItems"
               :total="checkoutTotalPreview"
@@ -110,11 +110,9 @@
             />
           </div>
 
-          <div v-if="cartBranchLabel" class="text-caption text-medium-emphasis">
+          <div v-if="cartBranchLabel" class="pos-cart-branch-note text-caption text-medium-emphasis">
             Carrito: <b>{{ cartBranchLabel }}</b>
           </div>
-
-          <div class="pos-right-spacer" />
         </div>
       </div>
     </div>
@@ -148,7 +146,11 @@
       :branch-name="branchName || ''"
     />
 
-    <PosPickBranchDialog v-model:open="pickBranchOpen" :branches="pickBranchOptions" @confirm="onPickBranchConfirm" />
+    <PosPickBranchDialog
+      v-model:open="pickBranchOpen"
+      :branches="pickBranchOptions"
+      @confirm="onPickBranchConfirm"
+    />
 
     <v-dialog v-model="branchPickOpen" max-width="560">
       <v-card class="rounded-xl overflow-hidden">
@@ -158,7 +160,9 @@
         </v-card-title>
 
         <v-card-text class="pt-2">
-          <div class="text-caption text-medium-emphasis mb-3">La sucursal activa define desde dónde operás (stock / venta).</div>
+          <div class="text-caption text-medium-emphasis mb-3">
+            La sucursal activa define desde dónde operás (stock / venta).
+          </div>
 
           <v-alert v-if="(posStore.cart || []).length" type="warning" variant="tonal" class="mb-3">
             Tenés un carrito en curso. Terminá la venta o vaciá el carrito antes de cambiar sucursal.
@@ -318,7 +322,6 @@ function clearCustomer() {
   tryAttachCustomerToStore(null);
 }
 
-/* store-agnostic */
 function tryAttachCustomerToStore(custOrNull) {
   const payload = custOrNull ? normalizeCustomer(custOrNull) : null;
 
@@ -405,7 +408,6 @@ function getActiveBranchIdSafe() {
   return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
 }
 
-/* label carrito */
 const cartBranchLabel = computed(() => {
   const id = Number(posStore?.cart_branch_id ?? posStore?.cartBranchId ?? 0) || null;
   if (!id) return "";
@@ -478,7 +480,6 @@ const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMulti
   isSellable,
 });
 
-/* ✅ cuotas: 1..12 */
 const installmentsItems12 = computed(() => {
   const out = [];
   out.push({ title: "1 pago", value: 1 });
@@ -486,7 +487,6 @@ const installmentsItems12 = computed(() => {
   return out;
 });
 
-/* cart enrich */
 function cartKey(it) {
   const pid = Number(it?.product_id ?? it?.productId ?? it?.product?.id ?? it?.id ?? 0) || null;
   const sku = String(it?.sku ?? it?.code ?? it?.product?.sku ?? it?.product?.code ?? "").trim();
@@ -531,10 +531,10 @@ const cartForCheckout = computed(() => {
   });
 });
 
-/* helpers stock */
 function getActiveBranchId() {
   return getActiveBranchIdSafe();
 }
+
 function qtyForActive(p) {
   const ab = getActiveBranchId();
   if (!ab) return Number(p?.total_qty || 0) || 0;
@@ -694,7 +694,7 @@ const pickBranchOpen = ref(false);
 const pickBranchProduct = ref(null);
 const pickBranchOptions = ref([]);
 
-function onPickBranchConfirm(payload) {
+function onPickBranchConfirm() {
   pickBranchOpen.value = false;
   pickBranchProduct.value = null;
   pickBranchOptions.value = [];
@@ -723,7 +723,7 @@ const {
   resolveUnitPrice,
   toNum,
   allSellable,
-  customerRef: customer, // ✅ CLAVE
+  customerRef: customer,
 });
 
 function openCheckoutSafe() {
@@ -746,7 +746,7 @@ async function onCheckoutConfirm(payload) {
 
     await confirmPayment({
       onSnack: toast,
-      payloadFromDialog: payload, // ✅ CLAVE
+      payloadFromDialog: payload,
     });
 
     await fetchGlobalPool({ in_stock: 0 });
@@ -812,6 +812,7 @@ onMounted(async () => {
     await fetchGlobalPool({ in_stock: 0 });
     return;
   }
+
   await fetchGlobalPool({ in_stock: 0 });
 });
 
@@ -849,6 +850,7 @@ watch(
 :global(body) {
   height: 100%;
 }
+
 :global(body.pos-noscroll) {
   overflow: hidden !important;
 }
@@ -858,13 +860,26 @@ watch(
   min-height: 0;
   overflow: hidden;
 
-  --pos-gap: 14px;
-  --pos-pad: 14px;
-  --pos-bottom-space: 40px;
+  --pos-gap: clamp(10px, 0.9vw, 16px);
+  --pos-pad: clamp(8px, 0.85vw, 14px);
+  --pos-radius: 16px;
+  --pos-radius-lg: 18px;
+  --pos-border-light: rgba(0, 0, 0, 0.07);
+  --pos-border-dark: rgba(255, 255, 255, 0.09);
+  --pos-shadow-light:
+    0 8px 20px rgba(15, 23, 42, 0.06),
+    0 2px 6px rgba(15, 23, 42, 0.04);
+  --pos-shadow-light-hover:
+    0 12px 24px rgba(15, 23, 42, 0.08),
+    0 3px 8px rgba(15, 23, 42, 0.05);
+  --pos-shadow-dark:
+    0 10px 24px rgba(0, 0, 0, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.18);
+  --pos-shadow-dark-hover:
+    0 14px 28px rgba(0, 0, 0, 0.34),
+    0 3px 10px rgba(0, 0, 0, 0.22);
 
   padding: var(--pos-pad);
-  padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
-
   background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-background));
 
@@ -876,48 +891,22 @@ watch(
 
 .pos-header {
   flex: 0 0 auto;
+  min-height: 0;
 }
 
 .pos-body {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: var(--pos-bottom-space);
-  box-sizing: border-box;
 }
 
 .pos-layout {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 360px);
   gap: var(--pos-gap);
-}
-
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-.pos-surface:hover {
-  box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.05);
-}
-:global(.v-theme--dark) .pos-surface {
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.35),
-    0 1px 2px rgba(0, 0, 0, 0.25);
-}
-:global(.v-theme--dark) .pos-surface:hover {
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.45),
-    0 1px 3px rgba(0, 0, 0, 0.28);
+  align-items: stretch;
 }
 
 .pos-left {
@@ -927,39 +916,116 @@ watch(
   flex-direction: column;
   gap: var(--pos-gap);
 }
+
 .pos-products-panel {
   flex: 1 1 0;
   min-height: 0;
 }
 
+/* ✅ CLAVE DEL FIX */
 .pos-right {
   min-height: 0;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--pos-gap);
+  overflow: hidden;
 }
+
+.pos-customer-shell {
+  min-height: 0;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
 .pos-cart-wrap {
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.pos-cart-shell {
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
   height: 100%;
 }
-.pos-right-spacer {
-  flex: 1 1 0;
-  min-height: 0;
+
+.pos-cart-branch-note {
+  padding-inline: 2px;
+  opacity: 0.88;
 }
 
-@media (max-width: 1366px) {
-  .pos-root {
-    --pos-gap: 12px;
-    --pos-pad: 12px;
-    --pos-bottom-space: 34px;
+.pos-surface {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 1) 0%, rgba(var(--v-theme-surface), 1) 100%);
+  border: 1px solid var(--pos-border-light);
+  border-radius: var(--pos-radius);
+  box-shadow: var(--pos-shadow-light);
+  overflow: hidden;
+  transition:
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
 
-    padding: var(--pos-pad);
-    padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
+.pos-surface:hover {
+  box-shadow: var(--pos-shadow-light-hover);
+  border-color: rgba(0, 0, 0, 0.09);
+}
+
+.pos-topbar-shell,
+.pos-filters-shell,
+.pos-products-shell,
+.pos-side-shell {
+  backdrop-filter: saturate(1.05);
+}
+
+.pos-topbar-shell {
+  border-radius: var(--pos-radius-lg);
+}
+
+:global(.v-theme--dark) .pos-surface {
+  border-color: var(--pos-border-dark);
+  box-shadow: var(--pos-shadow-dark);
+}
+
+:global(.v-theme--dark) .pos-surface:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--pos-shadow-dark-hover);
+}
+
+@media (max-width: 1440px) {
+  .pos-root {
+    --pos-gap: 10px;
+    --pos-pad: 10px;
+    --pos-radius: 15px;
+    --pos-radius-lg: 16px;
   }
 
   .pos-layout {
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) 338px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .pos-root {
+    --pos-gap: 9px;
+    --pos-pad: 9px;
+    --pos-radius: 14px;
+    --pos-radius-lg: 15px;
+  }
+
+  .pos-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .pos-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
   }
 }
 
@@ -971,26 +1037,54 @@ watch(
   .pos-root {
     height: auto;
     overflow: visible;
-
+    --pos-gap: 12px;
     --pos-pad: 12px;
-    --pos-bottom-space: 22px;
-
-    padding: var(--pos-pad);
-    padding-bottom: calc(var(--pos-pad) + var(--pos-bottom-space) + env(safe-area-inset-bottom, 0px));
   }
 
   .pos-body {
     overflow: visible;
-    padding-bottom: 0;
   }
 
   .pos-layout {
     height: auto;
-    display: block;
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
   }
 
+  .pos-left,
+  .pos-right,
+  .pos-cart-wrap,
   .pos-products-panel {
     min-height: auto;
+  }
+
+  .pos-right {
+    display: flex;
+    overflow: visible;
+  }
+
+  .pos-customer-shell,
+  .pos-cart-shell,
+  .pos-products-shell,
+  .pos-filters-shell,
+  .pos-topbar-shell {
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pos-root {
+    --pos-gap: 10px;
+    --pos-pad: 10px;
+  }
+
+  .pos-customer-shell,
+  .pos-cart-shell,
+  .pos-products-shell,
+  .pos-filters-shell,
+  .pos-topbar-shell {
+    border-radius: 14px;
   }
 }
 </style>

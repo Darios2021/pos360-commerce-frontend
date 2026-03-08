@@ -1,4 +1,3 @@
-<!-- ✅ POS PRODUCT ROW — ULTRA COMPACT (SIN ROMPER) -->
 <template>
   <div
     class="prow"
@@ -12,7 +11,7 @@
     <div class="prow-img">
       <v-img v-if="image" :src="image" class="img" cover />
       <div v-else class="noimg">
-        <v-icon size="20">mdi-package-variant</v-icon>
+        <v-icon size="18">mdi-package-variant</v-icon>
       </div>
     </div>
 
@@ -52,11 +51,17 @@
         :disabled="disabled"
         @click.stop="$emit('add', item)"
       >
-        <v-icon size="18">mdi-plus</v-icon>
+        <v-icon size="16">mdi-plus</v-icon>
       </v-btn>
 
-      <v-btn icon variant="tonal" density="compact" class="btn-action" @click.stop="$emit('details', item)">
-        <v-icon size="18">mdi-eye-outline</v-icon>
+      <v-btn
+        icon
+        variant="tonal"
+        density="compact"
+        class="btn-action"
+        @click.stop="$emit('details', item)"
+      >
+        <v-icon size="16">mdi-eye-outline</v-icon>
       </v-btn>
     </div>
   </div>
@@ -93,70 +98,88 @@ function money(v) {
 </script>
 
 <style scoped>
-/* ===========================
-   ✅ ULTRA COMPACT (más filas)
-   ✅ + SOMBRA “CARD” VISIBLE
-=========================== */
 .prow {
-  display: grid;
-  grid-template-columns: 64px 1fr auto auto;
-  align-items: center;
-  gap: 10px;
-
-  padding: 7px 10px;
-  border-radius: 12px;
-
-  /* ✅ diferencia clara contra el fondo */
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-
-  /* ✅ sombra más notoria (sin inflar demasiado) */
-  box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.06),
-    0 2px 6px rgba(0, 0, 0, 0.04);
-
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
-  cursor: pointer;
   position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+
+  padding: 6px 8px;
+  border-radius: 11px;
+  cursor: pointer;
+
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.04),
+    0 1px 3px rgba(15, 23, 42, 0.03);
+
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+}
+
+:global(.v-theme--light) .prow {
+  background: rgba(var(--v-theme-surface), 1);
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.045),
+    0 1px 4px rgba(15, 23, 42, 0.03);
+}
+
+:global(.v-theme--dark) .prow {
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.18),
+    0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .prow:hover {
-  border-color: rgba(var(--v-theme-primary), 0.28);
-  background: rgba(var(--v-theme-primary), 0.03);
   transform: translateY(-1px);
+  border-color: rgba(var(--v-theme-primary), 0.22);
+  background: rgba(var(--v-theme-primary), 0.025);
   box-shadow:
-    0 16px 32px rgba(0, 0, 0, 0.08),
-    0 3px 10px rgba(0, 0, 0, 0.05),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.10);
+    0 8px 18px rgba(15, 23, 42, 0.06),
+    0 2px 5px rgba(15, 23, 42, 0.04);
+}
+
+:global(.v-theme--dark) .prow:hover {
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.16);
 }
 
 .prow:focus-visible {
   outline: none;
+  border-color: rgba(var(--v-theme-primary), 0.34);
   box-shadow:
-    0 0 0 4px rgba(var(--v-theme-primary), 0.16),
-    0 16px 32px rgba(0, 0, 0, 0.08),
-    0 3px 10px rgba(0, 0, 0, 0.05);
+    0 0 0 3px rgba(var(--v-theme-primary), 0.12),
+    0 8px 18px rgba(15, 23, 42, 0.06),
+    0 2px 5px rgba(15, 23, 42, 0.04);
 }
 
 .prow.disabled {
-  opacity: 0.6;
+  opacity: 0.58;
   pointer-events: none;
   transform: none;
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.04),
-    0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 /* IMAGE */
 .prow-img {
-  width: 64px;
-  height: 48px;
-  border-radius: 10px;
+  width: 56px;
+  height: 42px;
+  border-radius: 9px;
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.045);
+
   display: flex;
   align-items: center;
   justify-content: center;
+
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .img {
@@ -168,6 +191,7 @@ function money(v) {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.6;
 }
 
 /* MAIN */
@@ -176,30 +200,34 @@ function money(v) {
 }
 
 .prow-title {
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.15;
+  font-size: 12.25px;
+  line-height: 1.12;
+  font-weight: 850;
+  letter-spacing: 0.005em;
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ✅ CLAVE: meta 1 línea para que NO suba la altura */
 .prow-meta {
   margin-top: 2px;
+  min-width: 0;
+
   display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
   align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
 
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .meta-text {
-  font-size: 11px;
+  min-width: 0;
+  font-size: 10.5px;
+  line-height: 1.1;
   opacity: 0.62;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -207,83 +235,166 @@ function money(v) {
 
 /* CHIPS */
 .pill {
-  font-size: 10.25px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-weight: 700;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+
+  font-size: 9.75px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
 .pill.dark {
-  background: rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  color: rgba(var(--v-theme-on-surface), 0.88);
 }
 
 .pill.stock {
-  background: rgba(var(--v-theme-primary), 0.12);
+  background: rgba(var(--v-theme-primary), 0.11);
   color: rgb(var(--v-theme-primary));
 }
 
 .pill.off {
-  background: rgba(0, 200, 100, 0.12);
-  color: #0f8a4a;
+  background: rgba(0, 180, 95, 0.11);
+  color: #0d8c4a;
 }
 
 /* PRICE */
 .prow-price {
+  min-width: 88px;
   text-align: right;
-  min-width: 96px;
 }
 
 .price-discount {
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 13px;
   line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.01em;
 }
 
 .price-list {
-  font-size: 11px;
-  opacity: 0.6;
-  text-decoration: line-through;
   margin-top: 1px;
+  font-size: 10.5px;
+  line-height: 1;
+  opacity: 0.56;
+  text-decoration: line-through;
 }
 
 /* ACTIONS */
 .prow-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
 }
 
 .btn-action {
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 12px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 10px !important;
 }
 
-/* RESPONSIVE */
-@media (max-width: 960px) {
+/* NOTEBOOK */
+@media (max-width: 1366px) {
   .prow {
-    grid-template-columns: 56px 1fr auto;
+    grid-template-columns: 52px minmax(0, 1fr) auto auto;
+    gap: 7px;
+    padding: 5px 7px;
   }
 
   .prow-img {
-    width: 56px;
-    height: 44px;
+    width: 52px;
+    height: 40px;
+  }
+
+  .prow-title {
+    font-size: 11.75px;
+  }
+
+  .meta-text {
+    font-size: 10px;
+  }
+
+  .pill {
+    font-size: 9.4px;
+    padding: 1px 5px;
+    min-height: 17px;
   }
 
   .prow-price {
-    min-width: 86px;
+    min-width: 82px;
+  }
+
+  .price-discount {
+    font-size: 12.5px;
+  }
+
+  .price-list {
+    font-size: 10px;
+  }
+
+  .btn-action {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 9px !important;
+  }
+}
+
+/* TABLET / MOBILE */
+@media (max-width: 960px) {
+  .prow {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .prow-img {
+    width: 52px;
+    height: 40px;
   }
 
   .prow-actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
-    margin-top: 6px;
+    margin-top: 4px;
   }
 
-  /* en mobile permitimos wrap de meta para que no quede ilegible */
   .prow-meta {
     flex-wrap: wrap;
     white-space: normal;
+  }
+}
+
+@media (max-width: 600px) {
+  .prow {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    padding: 5px 6px;
+    border-radius: 10px;
+  }
+
+  .prow-img {
+    width: 48px;
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .prow-title {
+    font-size: 11.5px;
+  }
+
+  .price-discount {
+    font-size: 12px;
+  }
+
+  .btn-action {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
   }
 }
 </style>

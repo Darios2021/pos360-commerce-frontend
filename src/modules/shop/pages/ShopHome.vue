@@ -3,7 +3,7 @@
 
 <template>
   <v-container fluid class="shop-page pa-0">
-    <!-- ✅ overlay reusable para evitar flash al footer mientras restaura scroll -->
+    <!-- ✅ overlay SOLO visual -->
     <ShopRouteRestoreOverlay :model-value="isRestoringHome" />
 
     <!-- HERO FULL-BLEED -->
@@ -41,7 +41,6 @@
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <!-- ✅ BLOQUE PROMOS TELEFONOS + AURICULARES -->
       <div class="mb-8">
         <PromoGridTelefonosAuriculares />
       </div>
@@ -115,7 +114,6 @@
         <PromoSliderCargadores />
       </div>
 
-      <!-- ✅ SEGURIDAD ELECTRÓNICA separado de Parlantes -->
       <div class="mt-8" v-if="!loading && items.length && !itemsError">
         <PromoBannerSeguridadElectronica />
       </div>
@@ -124,7 +122,6 @@
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
 
-      <!-- ✅ ENTRETENIMIENTO MAS ABAJO Y MAS CONTENIDO -->
       <div class="mt-8 entertainment-wrap">
         <PromoBannerEntretenimiento />
       </div>
@@ -135,8 +132,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from "vue";
-import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
@@ -166,7 +163,7 @@ const router = useRouter();
 const loading = ref(false);
 const loadingMore = ref(false);
 const itemsError = ref(null);
-const isRestoringHome = ref(false);
+const isRestoringHome = ref(true);
 
 const items = ref([]);
 const page = ref(Number(route.query.page || 1));
@@ -188,103 +185,14 @@ const productsTop = ref(null);
 
 const isMetaWebView = /instagram|fb_iab|fbav|facebook|messenger/i.test(navigator.userAgent || "");
 
-// ✅ scroll restore real del home
-const HOME_SCROLL_KEY = "shop_home_scroll_y_v4";
-const HOME_SCROLL_PATH_KEY = "shop_home_scroll_path_v4";
-const HOME_RESTORE_LOCK_KEY = "shop_home_restore_pending_v4";
-
-function saveHomeScroll() {
-  try {
-    if (route.path !== "/shop") return;
-    sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY || 0));
-    sessionStorage.setItem(HOME_SCROLL_PATH_KEY, route.fullPath || "/shop");
-  } catch {}
-}
-
-function markHomeRestorePending() {
-  try {
-    sessionStorage.setItem(HOME_RESTORE_LOCK_KEY, "1");
-  } catch {}
-}
-
-function clearHomeRestorePending() {
-  try {
-    sessionStorage.removeItem(HOME_RESTORE_LOCK_KEY);
-  } catch {}
-}
-
-function shouldRestoreHomeScroll() {
-  try {
-    return sessionStorage.getItem(HOME_RESTORE_LOCK_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function getSavedHomeScroll() {
-  try {
-    const savedPath = sessionStorage.getItem(HOME_SCROLL_PATH_KEY) || "/shop";
-    const savedY = Number(sessionStorage.getItem(HOME_SCROLL_KEY) || 0);
-    if (savedPath !== (route.fullPath || "/shop")) return 0;
-    return Number.isFinite(savedY) ? savedY : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function forceScrollTopNow() {
-  try {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  } catch {}
-}
-
-async function finishRestoreMask() {
-  await new Promise((resolve) => setTimeout(resolve, 120));
-  isRestoringHome.value = false;
-}
-
-async function restoreHomeScrollIfNeeded() {
-  if (!shouldRestoreHomeScroll()) {
-    isRestoringHome.value = false;
-    return;
-  }
-
-  const y = getSavedHomeScroll();
-  clearHomeRestorePending();
-
-  await nextTick();
-
-  if (!y || y <= 0) {
-    forceScrollTopNow();
-    await finishRestoreMask();
-    return;
-  }
-
-  const restore = () => {
-    try {
-      window.scrollTo({ top: y, left: 0, behavior: "auto" });
-    } catch {}
-  };
-
-  restore();
-
-  requestAnimationFrame(() => {
-    restore();
-    setTimeout(restore, 80);
-    setTimeout(restore, 220);
-    setTimeout(restore, 450);
-    setTimeout(restore, 800);
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 260));
-  await finishRestoreMask();
-}
-
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
+}
+
+async function hideOverlaySoon() {
+  await new Promise((resolve) => setTimeout(resolve, 180));
+  isRestoringHome.value = false;
 }
 
 const heroSlides = ref([
@@ -446,16 +354,6 @@ function dispatchPrerenderReadySafe() {
 
 let ogDone = false;
 
-onBeforeRouteLeave((to, from, next) => {
-  try {
-    if (from?.path === "/shop" && to?.path !== "/shop") {
-      saveHomeScroll();
-      markHomeRestorePending();
-    }
-  } catch {}
-  next();
-});
-
 onMounted(async () => {
   isRestoringHome.value = true;
 
@@ -483,29 +381,20 @@ onMounted(async () => {
   await fetchHomeShorts();
   dispatchPrerenderReadySafe();
 
-  await restoreHomeScrollIfNeeded();
-
-  if (!shouldRestoreHomeScroll()) {
-    await finishRestoreMask();
-  }
-
-  window.addEventListener("scroll", saveHomeScroll, { passive: true });
+  await hideOverlaySoon();
 });
 
 watch(
   () => route.query,
   async () => {
+    isRestoringHome.value = true;
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
     await fetchHomeShorts();
     dispatchPrerenderReadySafe();
+    await hideOverlaySoon();
   }
 );
-
-onBeforeUnmount(() => {
-  saveHomeScroll();
-  window.removeEventListener("scroll", saveHomeScroll);
-});
 </script>
 
 <style scoped>
@@ -662,14 +551,6 @@ onBeforeUnmount(() => {
 
   .content {
     padding-bottom: 92px;
-  }
-
-  .home-restore-topbar {
-    height: 2.5px;
-  }
-
-  .home-restore-shimmer {
-    width: 36%;
   }
 
   .entertainment-wrap :deep(.ent-shell) {
