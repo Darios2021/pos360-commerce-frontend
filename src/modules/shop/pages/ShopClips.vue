@@ -2,14 +2,13 @@
 <!-- src/modules/shop/pages/ShopClips.vue -->
 <template>
   <div class="clips" data-page="shop-clips" :style="rootStyle">
-    <!-- Top minimal -->
+    <!-- Top -->
     <header class="clips-top" aria-label="Clips topbar">
       <button class="clips-back" type="button" @click="goBack" aria-label="Volver">
         <v-icon size="22">mdi-arrow-left</v-icon>
       </button>
     </header>
 
-    <!-- estados -->
     <v-alert v-if="error" type="error" variant="tonal" class="clips-alert">
       {{ error }}
     </v-alert>
@@ -19,7 +18,7 @@
       <div class="text-caption" style="opacity: 0.8">Cargando clips…</div>
     </div>
 
-    <!-- Feed vertical -->
+    <!-- Feed -->
     <main
       v-else
       ref="feedEl"
@@ -36,131 +35,24 @@
         :data-index="idx"
       >
         <div class="clip-stage">
-          <!-- SOLO el activo monta iframe -->
-          <template v-if="isActive(it.key)">
-            <div
-              class="clip-iframeWrap"
-              @click="toggleMute"
-              :title="muted ? 'Activar sonido' : 'Silenciar'"
-            >
-              <iframe
-                :key="`${it.key}-${muted ? 'm1' : 'm0'}`"
-                class="clip-iframe"
-                :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(it.url) }"
-                :src="cleanAutoplayUrl(it.url)"
-                loading="eager"
-                frameborder="0"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowfullscreen
-                title="Video"
-              ></iframe>
+          <!-- Fondo liviano -->
+          <img
+            v-if="it.thumb"
+            class="clip-thumb"
+            :src="it.thumb"
+            alt=""
+            :loading="idx <= 1 ? 'eager' : 'lazy'"
+            decoding="async"
+          />
+          <div v-else class="clip-thumbEmpty">Video</div>
 
-              <div class="clip-shadowTop"></div>
-              <div class="clip-shadowBottom"></div>
+          <div class="clip-shadowTop"></div>
+          <div class="clip-shadowBottom"></div>
 
-              <div class="clip-hint" v-if="muted">
-                Tocá para activar el sonido
-              </div>
-            </div>
-          </template>
-
-          <!-- Inactivos: thumb liviano -->
-          <template v-else>
-            <button
-              class="clip-thumbBtn"
-              type="button"
-              @click="activateByKey(it.key)"
-              :title="it.title || 'Reproducir'"
-            >
-              <img
-                v-if="it.thumb"
-                class="clip-thumb"
-                :src="it.thumb"
-                alt=""
-                :loading="idx <= 1 ? 'eager' : 'lazy'"
-                decoding="async"
-              />
-              <div v-else class="clip-thumbEmpty">Video</div>
-
-              <div class="clip-shadowTop"></div>
-              <div class="clip-shadowBottom"></div>
-
-              <div class="clip-play">
-                <div class="clip-play-ring">
-                  <v-icon size="28">mdi-play</v-icon>
-                </div>
-              </div>
-            </button>
-          </template>
-
-          <!-- acciones derecha -->
-          <div class="clip-actions" aria-label="Acciones">
-            <button
-              class="clip-action"
-              type="button"
-              @click.stop="toggleMute"
-              :title="muted ? 'Activar sonido' : 'Silenciar'"
-              aria-label="Sonido"
-            >
-              <v-icon size="22">{{ muted ? "mdi-volume-off" : "mdi-volume-high" }}</v-icon>
-            </button>
-
-            <button
-              class="clip-action"
-              type="button"
-              @click.stop="share(it)"
-              title="Compartir"
-              aria-label="Compartir"
-            >
-              <v-icon size="22">mdi-share-variant</v-icon>
-            </button>
-          </div>
-
-          <!-- Card producto -->
-          <div v-if="resolvedProduct(it)?.id" class="pbar" aria-label="Producto">
-            <button class="pbar-left" type="button" @click="goProduct(resolvedProduct(it).id)">
-              <div class="pbar-img">
-                <img
-                  v-if="productImgFromItem(it)"
-                  :src="productImgFromItem(it)"
-                  alt=""
-                  loading="lazy"
-                  @error="onItemImgError(it)"
-                />
-                <div v-else class="pbar-imgEmpty">Sin</div>
-              </div>
-
-              <div class="pbar-mid">
-                <div class="pbar-title">{{ resolvedProduct(it).name || "Producto" }}</div>
-
-                <div class="pbar-priceRow">
-                  <div class="pbar-price">$ {{ fmtMoney(finalPrice(resolvedProduct(it))) }}</div>
-                  <div v-if="offPct(resolvedProduct(it))" class="pbar-off">
-                    {{ offPct(resolvedProduct(it)) }}% OFF
-                  </div>
-                </div>
-
-                <div v-if="showOldPrice(resolvedProduct(it))" class="pbar-old">
-                  $ {{ fmtMoney(oldPrice(resolvedProduct(it))) }}
-                </div>
-              </div>
-            </button>
-
-            <button
-              class="pbar-go"
-              type="button"
-              @click="buyNow(it)"
-              title="Comprar"
-              aria-label="Comprar"
-            >
-              <v-icon size="18">mdi-lightning-bolt</v-icon>
-            </button>
-          </div>
-
-          <div v-else class="pbar pbar--empty">
-            <div class="pbar-mid">
-              <div class="pbar-title">Producto no disponible</div>
-              <div class="text-caption" style="opacity: 0.7">—</div>
+          <!-- Placeholder mientras no asienta -->
+          <div v-if="activeKey !== it.key || !isSettled" class="clip-playGhost">
+            <div class="clip-play-ring">
+              <v-icon size="28">mdi-play</v-icon>
             </div>
           </div>
         </div>
@@ -171,11 +63,104 @@
         <span class="text-caption" style="opacity: 0.75">Cargando más…</span>
       </div>
     </main>
+
+    <!-- ✅ PLAYER GLOBAL: NO captura swipe -->
+    <div v-if="activeItem && isSettled" class="clip-playerGlobal" :style="playerStyle">
+      <iframe
+        :key="iframeKey"
+        class="clip-iframe"
+        :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(activeItem.url) }"
+        :src="cleanAutoplayUrl(activeItem.url)"
+        loading="eager"
+        frameborder="0"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen
+        title="Video"
+      ></iframe>
+
+      <div class="clip-shadowTop"></div>
+      <div class="clip-shadowBottom"></div>
+    </div>
+
+    <!-- acciones globales -->
+    <div v-if="activeItem" class="clip-actions" aria-label="Acciones">
+      <button
+        class="clip-action"
+        type="button"
+        @click.stop="toggleMute"
+        :title="muted ? 'Activar sonido' : 'Silenciar'"
+        aria-label="Sonido"
+      >
+        <v-icon size="22">{{ muted ? "mdi-volume-off" : "mdi-volume-high" }}</v-icon>
+      </button>
+
+      <button
+        class="clip-action"
+        type="button"
+        @click.stop="share(activeItem)"
+        title="Compartir"
+        aria-label="Compartir"
+      >
+        <v-icon size="22">mdi-share-variant</v-icon>
+      </button>
+    </div>
+
+    <div v-if="activeItem && muted" class="clip-hint">
+      Tocá el botón para activar el sonido
+    </div>
+
+    <!-- CARD GLOBAL FIJA -->
+    <div v-if="activeProduct?.id" class="pbar" aria-label="Producto">
+      <button class="pbar-left" type="button" @click="goProduct(activeProduct.id)">
+        <div class="pbar-img">
+          <img
+            v-if="activeProductImg"
+            :src="activeProductImg"
+            alt=""
+            loading="lazy"
+            @error="onActiveImgError"
+          />
+          <div v-else class="pbar-imgEmpty">Sin</div>
+        </div>
+
+        <div class="pbar-mid">
+          <div class="pbar-title">{{ activeProduct.name || "Producto" }}</div>
+
+          <div class="pbar-priceRow">
+            <div class="pbar-price">$ {{ fmtMoney(finalPrice(activeProduct)) }}</div>
+            <div v-if="offPct(activeProduct)" class="pbar-off">
+              {{ offPct(activeProduct) }}% OFF
+            </div>
+          </div>
+
+          <div v-if="showOldPrice(activeProduct)" class="pbar-old">
+            $ {{ fmtMoney(oldPrice(activeProduct)) }}
+          </div>
+        </div>
+      </button>
+
+      <button
+        class="pbar-go"
+        type="button"
+        @click="buyNow(activeItem)"
+        title="Comprar"
+        aria-label="Comprar"
+      >
+        <v-icon size="18">mdi-lightning-bolt</v-icon>
+      </button>
+    </div>
+
+    <div v-else-if="activeItem" class="pbar pbar--empty">
+      <div class="pbar-mid">
+        <div class="pbar-title">Producto no disponible</div>
+        <div class="text-caption" style="opacity: 0.7">—</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { publicVideosFeed } from "@/modules/shop/service/shop.videos.public.api.js";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
@@ -191,8 +176,10 @@ const error = ref("");
 const items = ref([]);
 const feedEl = ref(null);
 
-const activePlayKey = ref("");
+const activeKey = ref("");
 const muted = ref(true);
+const iframeKey = ref("if_0");
+const isSettled = ref(false);
 
 // paging
 const offset = ref(0);
@@ -209,7 +196,6 @@ function clamp(n, a, b) {
 function s(x) {
   return String(x || "").trim();
 }
-
 function goBack() {
   if (window.history.length > 1) router.back();
   else router.push("/shop");
@@ -242,7 +228,7 @@ function measureBottomNav() {
   if (!el) return;
   const rect = el.getBoundingClientRect();
   const h = Math.round(rect.height || 0);
-  if (h >= 48 && h <= 160) bottomNavH.value = h;
+  if (h >= 48 && h <= 180) bottomNavH.value = h;
 }
 
 function setupBottomNavObserver() {
@@ -258,115 +244,110 @@ function setupBottomNavObserver() {
 }
 
 /* =========================
-   helpers active / scroll
+   viewport / active
 ========================= */
 function viewportH() {
   return Math.max(1, window.innerHeight || 1);
 }
 
-function isActive(key) {
-  return activePlayKey.value === key;
+function currentIndexFromScroll() {
+  const el = feedEl.value;
+  if (!el) return 0;
+  return clamp(Math.round(el.scrollTop / viewportH()), 0, Math.max(0, items.value.length - 1));
 }
 
-function currentIndex() {
-  const idx = items.value.findIndex((x) => x?.key === activePlayKey.value);
-  return idx >= 0 ? idx : 0;
-}
-
-function activateByIndex(idx) {
+function setActiveByIndex(idx) {
   const it = items.value?.[idx];
   if (!it?.key) return;
-  activePlayKey.value = it.key;
+
+  if (activeKey.value !== it.key) {
+    activeKey.value = it.key;
+    activeImgBroken.value = false;
+  }
+}
+
+function scrollToIndex(idx, behavior = "smooth") {
+  const el = feedEl.value;
+  if (!el) return;
+  el.scrollTo({
+    top: idx * viewportH(),
+    behavior,
+  });
 }
 
 function activateByKey(key) {
   const idx = items.value.findIndex((x) => x?.key === key);
   if (idx < 0) return;
 
-  activateByIndex(idx);
-
-  const el = feedEl.value;
-  if (!el) return;
-
-  el.scrollTo({
-    top: idx * viewportH(),
-    behavior: "smooth",
-  });
+  isSettled.value = false;
+  setActiveByIndex(idx);
+  scrollToIndex(idx, "smooth");
 }
 
 /* =========================
-   IntersectionObserver
+   scroll settle
 ========================= */
-let io = null;
+let scrollRaf = 0;
+let settleTimer = 0;
 
-function setupObserver() {
-  try {
-    io?.disconnect?.();
-  } catch {}
-
-  const root = feedEl.value;
-  if (!root) return;
-
-  io = new IntersectionObserver(
-    (entries) => {
-      let best = null;
-
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        if (!best || entry.intersectionRatio > best.intersectionRatio) {
-          best = entry;
-        }
-      }
-
-      if (!best) return;
-
-      const key = best.target?.getAttribute?.("data-key") || "";
-      if (!key) return;
-
-      if (activePlayKey.value !== key) {
-        activePlayKey.value = key;
-
-        const idx = Number(best.target?.getAttribute?.("data-index") || 0);
-        if (maxIndex() - idx <= 2) fetchMore();
-      }
-    },
-    {
-      root,
-      threshold: [0.4, 0.6, 0.72, 0.85],
-    }
-  );
-
-  nextTick(() => {
-    const nodes = root.querySelectorAll(".clip[data-key]");
-    nodes.forEach((node) => io.observe(node));
-  });
-}
-
-function refreshObserver() {
-  nextTick(() => setupObserver());
-}
-
-function maxIndex() {
-  return Math.max(0, (items.value?.length || 1) - 1);
-}
-
-let scrollTick = 0;
 function onScroll() {
-  if (scrollTick) return;
+  isSettled.value = false;
 
-  scrollTick = window.requestAnimationFrame(() => {
-    scrollTick = 0;
+  if (scrollRaf) return;
+  scrollRaf = requestAnimationFrame(() => {
+    scrollRaf = 0;
+
+    const idx = currentIndexFromScroll();
+    setActiveByIndex(idx);
 
     const el = feedEl.value;
-    if (!el) return;
+    if (el) {
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1400;
+      if (nearBottom) fetchMore();
+    }
 
-    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1400;
-    if (nearBottom) fetchMore();
+    clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(() => {
+      const finalIdx = currentIndexFromScroll();
+      setActiveByIndex(finalIdx);
+
+      // ✅ corrige que quede entre slides
+      scrollToIndex(finalIdx, "smooth");
+
+      window.setTimeout(() => {
+        isSettled.value = true;
+      }, 120);
+    }, 120);
   });
 }
 
 /* =========================
-   Sonido / Share
+   active item / player position
+========================= */
+const activeIndex = computed(() => {
+  const idx = items.value.findIndex((x) => x?.key === activeKey.value);
+  return idx >= 0 ? idx : 0;
+});
+
+const activeItem = computed(() => items.value?.[activeIndex.value] || null);
+
+const playerStyle = computed(() => {
+  const top = activeIndex.value * viewportH();
+  return {
+    transform: `translate3d(0, ${top}px, 0)`,
+  };
+});
+
+watch(
+  () => [activeKey.value, muted.value, isSettled.value],
+  () => {
+    if (!activeItem.value?.key || !isSettled.value) return;
+    iframeKey.value = `if_${activeItem.value.key}_${muted.value ? 1 : 0}_${Date.now()}`;
+  }
+);
+
+/* =========================
+   sonido / share
 ========================= */
 function toggleMute() {
   muted.value = !muted.value;
@@ -378,11 +359,7 @@ async function share(it) {
     const url = p?.id ? `${window.location.origin}/shop/product/${p.id}` : window.location.href;
 
     if (navigator.share) {
-      await navigator.share({
-        title: "San Juan Tecnología",
-        text: p?.name || "Producto",
-        url,
-      });
+      await navigator.share({ title: "San Juan Tecnología", text: p?.name || "Producto", url });
       return;
     }
 
@@ -391,7 +368,7 @@ async function share(it) {
 }
 
 /* =========================
-   YouTube embed
+   youtube embed
 ========================= */
 function isYouTube(u) {
   return /youtube\.com|youtu\.be/i.test(s(u));
@@ -495,8 +472,7 @@ function finalPrice(p) {
 }
 function oldPrice(p) {
   const l = toNum(p?.price_list);
-  const base = l > 0 ? l : toNum(p?.price);
-  return base;
+  return l > 0 ? l : toNum(p?.price);
 }
 function showOldPrice(p) {
   const d = toNum(p?.price_discount);
@@ -553,8 +529,6 @@ function resolvedProduct(it) {
   };
 }
 
-const brokenByKey = ref({});
-
 function pickFirstImageCandidate(it) {
   const prod = it?.product && typeof it.product === "object" ? it.product : null;
   const all = [
@@ -585,17 +559,17 @@ function pickFirstImageCandidate(it) {
   return all[0] || "";
 }
 
-function productImgFromItem(it) {
-  if (!it?.key) return "";
-  if (brokenByKey.value[it.key]) return "";
-  const raw = pickFirstImageCandidate(it);
-  return raw ? resolveUrl(raw) : "";
-}
+const activeImgBroken = ref(false);
 
-function onItemImgError(it) {
-  const key = it?.key;
-  if (!key) return;
-  brokenByKey.value = { ...brokenByKey.value, [key]: true };
+const activeProduct = computed(() => resolvedProduct(activeItem.value));
+const activeProductImg = computed(() => {
+  if (!activeItem.value || activeImgBroken.value) return "";
+  const raw = pickFirstImageCandidate(activeItem.value);
+  return raw ? resolveUrl(raw) : "";
+});
+
+function onActiveImgError() {
+  activeImgBroken.value = true;
 }
 
 /* =========================
@@ -620,7 +594,7 @@ function goProduct(productId) {
 }
 
 /* =========================
-   fetch clips
+   fetch
 ========================= */
 function normalizeItem(x) {
   const id = Number(x?.id || 0);
@@ -664,7 +638,7 @@ async function fetchFirstPage() {
     hasMore.value = Boolean(r?.meta?.has_more) && items.value.length < HARD_MAX.value;
 
     if (items.value?.[0]?.key) {
-      activePlayKey.value = items.value[0].key;
+      activeKey.value = items.value[0].key;
     }
   } catch (e) {
     error.value = e?.message || "No se pudieron cargar los clips";
@@ -697,8 +671,6 @@ async function fetchMore() {
     items.value = items.value.concat(dedup);
     offset.value = offset.value + next.length;
     hasMore.value = Boolean(r?.meta?.has_more) && next.length > 0 && items.value.length < HARD_MAX.value;
-
-    refreshObserver();
   } finally {
     loadingMore.value = false;
   }
@@ -710,14 +682,16 @@ onMounted(async () => {
 
   measureBottomNav();
   setupBottomNavObserver();
-  setupObserver();
+
+  activeImgBroken.value = false;
+  isSettled.value = true;
 
   window.addEventListener("resize", measureBottomNav, { passive: true });
 });
 
 onBeforeUnmount(() => {
-  if (scrollTick) cancelAnimationFrame(scrollTick);
-  scrollTick = 0;
+  clearTimeout(settleTimer);
+  if (scrollRaf) cancelAnimationFrame(scrollRaf);
 
   window.removeEventListener("resize", measureBottomNav);
 
@@ -725,30 +699,24 @@ onBeforeUnmount(() => {
     ro?.disconnect?.();
   } catch {}
   ro = null;
-
-  try {
-    io?.disconnect?.();
-  } catch {}
-  io = null;
 });
 </script>
 
 <style scoped>
 .clips {
-  background: #0b0f16;
+  background: #000;
   color: #fff;
   min-height: 100svh;
   min-height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 /* top */
 .clips-top {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 60;
+  inset: 0 0 auto 0;
+  z-index: 80;
   pointer-events: none;
   height: calc(10px + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
@@ -759,21 +727,22 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 12px;
   top: calc(8px + env(safe-area-inset-top));
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.66);
   color: #111;
   display: grid;
   place-items: center;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(8px);
 }
 
 /* states */
 .clips-alert {
   margin: calc(14px + 44px + env(safe-area-inset-top)) 12px 12px;
+  position: relative;
+  z-index: 90;
 }
 
 .clips-loading {
@@ -791,13 +760,12 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   overscroll-behavior-y: contain;
   scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  background: #000;
-  padding-bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 20px);
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
 }
-
 .clips-feed::-webkit-scrollbar {
   display: none;
 }
@@ -808,50 +776,41 @@ onBeforeUnmount(() => {
   height: 100dvh;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  content-visibility: auto;
-  contain-intrinsic-size: 100dvh;
 }
 
 .clip-stage {
   position: absolute;
   inset: 0;
-  background: #000;
   overflow: hidden;
-}
-
-/* thumb */
-.clip-thumbBtn {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  padding: 0;
   background: #000;
-  cursor: pointer;
-  overflow: hidden;
 }
 
 .clip-thumb {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
+  background: #000;
 }
 
 .clip-thumbEmpty {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
   opacity: 0.7;
   background: linear-gradient(180deg, #171717, #060606);
 }
 
-.clip-play {
+.clip-playGhost {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  z-index: 3;
+  z-index: 4;
+  pointer-events: none;
 }
 
 .clip-play-ring {
@@ -865,12 +824,17 @@ onBeforeUnmount(() => {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
 }
 
-/* iframe */
-.clip-iframeWrap {
+.clip-playerGlobal {
   position: absolute;
-  inset: 0;
-  background: #000;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100svh;
+  height: 100dvh;
+  z-index: 6;
   overflow: hidden;
+  will-change: transform;
+  pointer-events: none; /* ✅ CLAVE */
 }
 
 .clip-iframe {
@@ -881,6 +845,7 @@ onBeforeUnmount(() => {
   border: 0;
   display: block;
   background: #000;
+  pointer-events: none; /* ✅ CLAVE */
 }
 
 .clip-iframe--ytCover {
@@ -900,26 +865,26 @@ onBeforeUnmount(() => {
   height: 140px;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0));
   pointer-events: none;
-  z-index: 2;
+  z-index: 7;
 }
 
 .clip-shadowBottom {
   position: absolute;
   inset: auto 0 0 0;
-  height: 240px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0));
+  height: 270px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   pointer-events: none;
-  z-index: 2;
+  z-index: 7;
 }
 
-/* actions */
+/* acciones */
 .clip-actions {
-  position: absolute;
+  position: fixed;
   right: 12px;
-  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 130px);
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 146px);
   display: grid;
   gap: 10px;
-  z-index: 8;
+  z-index: 95;
 }
 
 .clip-action {
@@ -934,41 +899,41 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(10px);
 }
 
-/* hint */
 .clip-hint {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 146px);
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 162px);
   transform: translateX(-50%);
   font-size: 12px;
   line-height: 1;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.56);
+  background: rgba(0, 0, 0, 0.58);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  z-index: 9;
+  z-index: 96;
   white-space: nowrap;
   backdrop-filter: blur(10px);
+  pointer-events: none;
 }
 
-/* product bar */
+/* card global fija */
 .pbar {
-  position: absolute;
+  position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 18px);
-  z-index: 10;
+  bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 16px);
+  z-index: 97;
 
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: center;
 
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.97);
   color: #111;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 18px;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
   padding: 10px;
   backdrop-filter: blur(10px);
 }
@@ -997,7 +962,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: #f2f2f2;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  flex: 0 0 auto;
 }
 
 .pbar-img img {
@@ -1072,7 +1036,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 20px rgba(45, 127, 249, 0.24);
 }
 
-/* loading more */
+/* more */
 .clips-more {
   padding: 18px 12px calc(18px + var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom));
   display: flex;
@@ -1083,15 +1047,15 @@ onBeforeUnmount(() => {
   color: #fff;
 }
 
-/* mobile fino */
+/* mobile */
 @media (max-width: 420px) {
   .clip-actions {
     right: 10px;
-    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 124px);
+    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 138px);
   }
 
   .clip-hint {
-    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 138px);
+    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 154px);
     font-size: 11px;
     padding: 9px 12px;
   }
@@ -1099,7 +1063,7 @@ onBeforeUnmount(() => {
   .pbar {
     left: 10px;
     right: 10px;
-    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 14px);
+    bottom: calc(var(--ml-bottom-nav-h, 76px) + env(safe-area-inset-bottom) + 12px);
     border-radius: 16px;
     padding: 9px;
   }
