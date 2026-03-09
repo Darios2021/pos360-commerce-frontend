@@ -2,12 +2,11 @@
   <div class="mlc" data-page="shop-categories">
     <div class="mlc-topbar">
       <button class="mlc-back" type="button" @click="goBack" aria-label="Volver">
-        <v-icon size="22">mdi-arrow-left</v-icon>
+        <v-icon size="20">mdi-arrow-left</v-icon>
       </button>
 
       <div class="mlc-title-wrap">
         <div class="mlc-title">Categorías</div>
-        <div class="mlc-subtitle">Explorá por rubro</div>
       </div>
 
       <div class="mlc-topbar-spacer" />
@@ -20,7 +19,7 @@
     <div class="mlc-body">
       <aside class="mlc-left" aria-label="Listado de categorías">
         <div v-if="loadingParents" class="mlc-left-loading">
-          <v-progress-circular indeterminate size="18" />
+          <v-progress-circular indeterminate size="16" />
           <span>Cargando…</span>
         </div>
 
@@ -31,15 +30,16 @@
           class="mlc-left-item"
           :class="{ active: Number(activeParentId) === Number(c.id) }"
           @click="selectParent(c.id)"
+          :title="c.name"
         >
-          <span class="mlc-left-text">{{ c.name }}</span>
+          <span class="mlc-left-text">{{ shortLeftName(c.name) }}</span>
         </button>
       </aside>
 
       <main class="mlc-right" aria-label="Subcategorías">
         <div class="mlc-right-head">
           <div class="mlc-right-head-main">
-            <div class="mlc-right-kicker">Rubro seleccionado</div>
+            <div class="mlc-right-eyebrow">Categoría</div>
             <div class="mlc-right-title">{{ activeParent?.name || "Categorías" }}</div>
           </div>
 
@@ -50,41 +50,45 @@
             @click="openParentAll()"
             aria-label="Ver todo"
           >
-            <span>Ver todo</span>
-            <v-icon size="17">mdi-chevron-right</v-icon>
+            Ver todo
+            <v-icon size="15">mdi-chevron-right</v-icon>
           </button>
         </div>
 
         <div v-if="loadingChildren" class="mlc-right-loading">
-          <v-progress-circular indeterminate />
-          <div class="text-caption" style="opacity: 0.75">Cargando categorías…</div>
+          <v-progress-circular indeterminate size="22" />
+          <div class="mlc-loading-text">Cargando categorías…</div>
         </div>
 
-        <div v-else class="mlc-grid">
+        <div v-else class="mlc-list">
           <button
             v-for="s in children"
             :key="s.id"
             type="button"
-            class="mlc-card"
+            class="mlc-row"
             @click="openSubcategory(s.id)"
             :title="s.name"
           >
-            <div class="mlc-card-inner">
-              <div class="mlc-icon">
-                <span class="mlc-icon-ph" :class="{ off: !!iconForSub(s) }">
-                  {{ initials(s.name) }}
-                </span>
+            <div class="mlc-row-media">
+              <span class="mlc-icon-ph" :class="{ off: !!iconForSub(s) }">
+                {{ initials(s.name) }}
+              </span>
 
-                <img
-                  v-if="iconForSub(s)"
-                  :src="iconForSub(s)"
-                  alt=""
-                  loading="lazy"
-                  @error="onIconErr(s)"
-                />
-              </div>
+              <img
+                v-if="iconForSub(s)"
+                :src="iconForSub(s)"
+                alt=""
+                loading="lazy"
+                @error="onIconErr(s)"
+              />
+            </div>
 
-              <div class="mlc-name">{{ s.name }}</div>
+            <div class="mlc-row-body">
+              <div class="mlc-row-name">{{ s.name }}</div>
+            </div>
+
+            <div class="mlc-row-arrow">
+              <v-icon size="16">mdi-chevron-right</v-icon>
             </div>
           </button>
 
@@ -113,12 +117,8 @@ const err = ref("");
 const catsAll = ref([]);
 const parents = ref([]);
 const activeParentId = ref(null);
-
 const children = ref([]);
 
-/* =========================
-   Helpers
-========================= */
 function norm(s) {
   return String(s || "")
     .trim()
@@ -143,14 +143,29 @@ function initials(name) {
   return (a + b) || a || "•";
 }
 
-/* ✅ branchId para catálogo (CLAVE) */
+/* ✅ abreviaciones suaves solo para panel izquierdo */
+function shortLeftName(name) {
+  const s = String(name || "").trim();
+  const n = norm(s);
+
+  const map = {
+    "seguridad electronica": "SEG. ELECTRÓNICA",
+    "hogar / electro": "HOGAR / ELECTRO",
+    "salud / belleza": "SALUD / BELLEZA",
+    "entretenimiento": "ENTRETEN.",
+    "computacion": "COMPUTACIÓN",
+    "informatica": "INFORMÁTICA",
+  };
+
+  return map[n] || s.toUpperCase();
+}
+
 const branchId = computed(() => {
   const v = route.query.branch_id ?? route.query.branchId ?? 3;
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : 3;
 });
 
-/* ✅ thumb super-robusto */
 function thumbFromProduct(p) {
   const cands = [
     p?.thumbnail_url,
@@ -163,8 +178,6 @@ function thumbFromProduct(p) {
     p?.image,
     p?.img,
     p?.cover_url,
-
-    // ✅ comunes en APIs
     p?.media?.thumbnail,
     p?.media?.cover,
     p?.media?.image,
@@ -184,9 +197,6 @@ function cacheKey(parentId, subId) {
   return `p:${Number(parentId || 0)}|s:${Number(subId || 0)}|b:${Number(branchId.value || 0)}`;
 }
 
-/* =========================
-   ✅ CACHE REACTIVO (img por subcat)
-========================= */
 const repImg = reactive({});
 const repLoading = reactive({});
 
@@ -251,9 +261,6 @@ function onIconErr(s) {
   if (repImg[k]) repImg[k] = "";
 }
 
-/* =========================
-   Fetch parents/children
-========================= */
 async function fetchParents() {
   loadingParents.value = true;
   err.value = "";
@@ -352,374 +359,289 @@ function goBack() {
   }
 }
 
-const activeParent = computed(() => parents.value.find((p) => Number(p.id) === Number(activeParentId.value)) || null);
+const activeParent = computed(
+  () => parents.value.find((p) => Number(p.id) === Number(activeParentId.value)) || null
+);
 
 onMounted(async () => {
   await fetchParents();
   if (activeParentId.value) await fetchChildren(activeParentId.value);
 });
 </script>
-
 <style scoped>
-.mlc {
-  min-height: 100vh;
-  background:
-    linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
-  color: #0e2134;
+
+.mlc{
+min-height:100vh;
+background:#f7f8fa;
+color:#142136;
 }
 
-/* topbar */
-.mlc-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  min-height: 58px;
-  padding: 0 6px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  display: grid;
-  grid-template-columns: 46px 1fr 46px;
-  align-items: center;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+/* TOPBAR */
+
+.mlc-topbar{
+position:sticky;
+top:0;
+z-index:8;
+min-height:48px;
+padding:0 8px;
+background:#ffffff;
+border-bottom:1px solid rgba(0,0,0,0.06);
+display:grid;
+grid-template-columns:36px 1fr 36px;
+align-items:center;
 }
 
-.mlc-back {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #0e2134;
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.18s ease;
+.mlc-back{
+width:32px;
+height:32px;
+border:0;
+background:transparent;
+display:flex;
+align-items:center;
+justify-content:center;
+cursor:pointer;
 }
 
-.mlc-back:active {
-  transform: scale(0.96);
-  background: rgba(15, 23, 42, 0.06);
+.mlc-title{
+font-size:13px;
+font-weight:600;
+color:#1f2b3a;
 }
 
-.mlc-title-wrap {
-  min-width: 0;
+.mlc-topbar-spacer{
+width:32px;
 }
 
-.mlc-title {
-  font-weight: 900;
-  color: #0f172a;
-  font-size: 17px;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+/* LAYOUT */
+
+.mlc-body{
+display:grid;
+grid-template-columns:104px 1fr;
+min-height:calc(100vh - 48px);
 }
 
-.mlc-subtitle {
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: #64748b;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+/* LEFT PANEL */
+
+.mlc-left{
+background:#fbfcfd;
+border-right:1px solid rgba(0,0,0,0.05);
+overflow-y:auto;
+padding:4px 0;
 }
 
-.mlc-topbar-spacer {
-  width: 40px;
+.mlc-left-item{
+width:100%;
+border:0;
+background:transparent;
+text-align:left;
+padding:8px 8px 8px 10px;
+cursor:pointer;
+
+font-size:10px;
+line-height:1.15;
+color:#2a3646;
+font-weight:500;
+
+min-height:36px;
+
+display:flex;
+align-items:center;
+
+transition:background .15s ease;
 }
 
-.mlc-alert {
-  margin: 12px 12px 0;
-  border-radius: 14px;
+.mlc-left-item:hover{
+background:#f2f5f8;
 }
 
-/* body */
-.mlc-body {
-  display: grid;
-  grid-template-columns: 132px 1fr;
-  gap: 0;
-  min-height: calc(100vh - 58px);
+.mlc-left-item.active{
+background:#eaf2fb;
+color:#0f4a8a;
+font-weight:600;
 }
 
-/* left */
-.mlc-left {
-  background: rgba(255, 255, 255, 0.8);
-  border-right: 1px solid rgba(15, 23, 42, 0.06);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 8px 0 96px;
+.mlc-left-text{
+display:block;
+white-space:normal;
+word-break:break-word;
 }
 
-.mlc-left-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 12px;
-  font-size: 12px;
-  color: #475569;
+/* RIGHT PANEL */
+
+.mlc-right{
+overflow-y:auto;
+background:#ffffff;
+padding:0 10px; /* 👈 aire lateral */
 }
 
-.mlc-left-item {
-  position: relative;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 12px 12px 12px 14px;
-  cursor: pointer;
-  color: #0f172a;
-  font-weight: 800;
-  font-size: 12.2px;
-  line-height: 1.18;
-  letter-spacing: -0.015em;
-  transition: background 0.18s ease, color 0.18s ease;
+/* HEADER */
+
+.mlc-right-head{
+position:sticky;
+top:0;
+z-index:3;
+
+background:#ffffff;
+border-bottom:1px solid rgba(0,0,0,0.05);
+
+padding:10px 2px;
+
+display:flex;
+align-items:center;
+justify-content:space-between;
 }
 
-.mlc-left-item::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 999px;
-  background: transparent;
-  transition: background 0.18s ease;
+.mlc-right-eyebrow{
+font-size:9px;
+text-transform:uppercase;
+color:#7a8795;
+letter-spacing:.05em;
 }
 
-.mlc-left-item.active {
-  background: linear-gradient(180deg, #eef4ff 0%, #e8f0ff 100%);
-  color: #0a3d7a;
+.mlc-right-title{
+font-size:12px;
+font-weight:600;
+color:#1c2736;
+margin-top:2px;
 }
 
-.mlc-left-item.active::before {
-  background: rgb(var(--v-theme-primary));
+.mlc-seeall{
+border:0;
+background:transparent;
+font-size:11px;
+color:rgb(var(--v-theme-primary));
+cursor:pointer;
+
+display:flex;
+align-items:center;
+gap:2px;
 }
 
-.mlc-left-text {
-  display: block;
-  overflow-wrap: anywhere;
+/* LIST */
+
+.mlc-list{
+display:flex;
+flex-direction:column;
+padding:4px 2px 12px;
 }
 
-/* right */
-.mlc-right {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 96px;
+/* ITEM */
+
+.mlc-row{
+width:100%;
+border:0;
+background:#ffffff;
+
+border-bottom:1px solid rgba(0,0,0,0.06);
+
+padding:10px 14px; /* 👈 aire lateral */
+
+display:grid;
+grid-template-columns:36px 1fr 18px;
+align-items:center;
+gap:12px;
+
+cursor:pointer;
+
+transition:background .15s ease;
 }
 
-.mlc-right-head {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: rgba(248, 250, 252, 0.96);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
-  padding: 12px 12px 10px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 10px;
+.mlc-row:hover{
+background:#fafbfc;
 }
 
-.mlc-right-head-main {
-  min-width: 0;
+.mlc-row:first-child{
+border-top:1px solid rgba(0,0,0,0.06);
 }
 
-.mlc-right-kicker {
-  font-size: 10.5px;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #64748b;
-  font-weight: 800;
-  margin-bottom: 5px;
+/* ICON */
+
+.mlc-row-media{
+width:36px;
+height:36px;
+
+border-radius:8px;
+
+background:#f5f7fa;
+
+border:1px solid rgba(0,0,0,0.05);
+
+overflow:hidden;
+
+display:flex;
+align-items:center;
+justify-content:center;
 }
 
-.mlc-right-title {
-  font-weight: 900;
-  color: #0f172a;
-  font-size: 16px;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  word-break: break-word;
+.mlc-row-media img{
+width:100%;
+height:100%;
+object-fit:cover;
 }
 
-.mlc-seeall {
-  border: 0;
-  background: #ffffff;
-  color: rgb(var(--v-theme-primary));
-  font-weight: 800;
-  font-size: 12px;
-  min-height: 34px;
-  padding: 0 10px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+.mlc-icon-ph{
+font-size:10px;
+font-weight:600;
+color:#3c4958;
 }
 
-.mlc-right-loading {
-  min-height: 240px;
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  padding: 20px;
+.mlc-icon-ph.off{
+opacity:0;
 }
 
-/* grid */
-.mlc-grid {
-  padding: 14px 12px 18px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+/* NAME */
+
+.mlc-row-name{
+font-size:12px;
+font-weight:600;
+color:#1d2a3a;
+letter-spacing:-0.01em;
 }
 
-.mlc-card {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  text-align: center;
-  cursor: pointer;
+/* ARROW */
+
+.mlc-row-arrow{
+display:flex;
+justify-content:flex-end;
+color:#8a96a3;
 }
 
-.mlc-card-inner {
-  height: 100%;
-  min-height: 124px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.05);
-  box-shadow:
-    0 8px 22px rgba(15, 23, 42, 0.05),
-    0 2px 6px rgba(15, 23, 42, 0.04);
-  padding: 14px 10px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+/* EMPTY */
+
+.mlc-empty{
+padding:18px;
+text-align:center;
+font-size:11px;
+color:#7a8795;
 }
 
-.mlc-card:active .mlc-card-inner {
-  transform: scale(0.98);
-  box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.05),
-    0 1px 3px rgba(15, 23, 42, 0.04);
+/* MOBILE */
+
+@media(max-width:600px){
+
+.mlc-body{
+grid-template-columns:100px 1fr;
 }
 
-/* icon */
-.mlc-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  margin: 0 auto;
-  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  position: relative;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+.mlc-left-item{
+font-size:9.5px;
+min-height:34px;
 }
 
-.mlc-icon-ph {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #0f172a;
-  font-weight: 900;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+.mlc-row{
+padding:9px 12px;
+grid-template-columns:34px 1fr 18px;
 }
 
-.mlc-icon-ph.off {
-  opacity: 0;
+.mlc-row-media{
+width:34px;
+height:34px;
 }
 
-.mlc-icon img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  object-position: center;
+.mlc-row-name{
+font-size:11.5px;
 }
 
-.mlc-name {
-  margin-top: 10px;
-  font-size: 12.2px;
-  line-height: 1.2;
-  color: #0f172a;
-  font-weight: 800;
-  letter-spacing: -0.015em;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  min-height: 29px;
 }
 
-.mlc-empty {
-  grid-column: 1 / -1;
-  padding: 28px 12px;
-  text-align: center;
-  font-size: 12.5px;
-  color: #64748b;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px dashed rgba(15, 23, 42, 0.12);
-}
-
-@media (max-width: 600px) {
-  .mlc-body {
-    grid-template-columns: 126px 1fr;
-  }
-
-  .mlc-left-item {
-    font-size: 12px;
-    padding: 12px 10px 12px 14px;
-  }
-
-  .mlc-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .mlc-card-inner {
-    min-height: 118px;
-    padding: 13px 9px 11px;
-  }
-
-  .mlc-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 16px;
-  }
-}
-
-@media (max-width: 390px) {
-  .mlc-body {
-    grid-template-columns: 118px 1fr;
-  }
-
-  .mlc-grid {
-    gap: 10px;
-    padding: 12px 10px 18px;
-  }
-
-  .mlc-right-head {
-    padding: 12px 10px 10px;
-  }
-
-  .mlc-seeall {
-    font-size: 11.5px;
-    padding: 0 9px;
-  }
-
-  .mlc-name {
-    font-size: 11.7px;
-  }
-}
 </style>
