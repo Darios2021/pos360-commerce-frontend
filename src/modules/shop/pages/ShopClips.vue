@@ -35,7 +35,7 @@
         :data-index="idx"
       >
         <div class="clip-stage">
-          <!-- Fondo liviano -->
+          <!-- Thumb base -->
           <img
             v-if="it.thumb"
             class="clip-thumb"
@@ -46,10 +46,29 @@
           />
           <div v-else class="clip-thumbEmpty">Video</div>
 
+          <!-- ✅ Player SOLO en el slide activo y asentado -->
+          <div
+            v-if="activeKey === it.key && isSettled"
+            class="clip-activePlayer"
+            aria-hidden="true"
+          >
+            <iframe
+              :key="iframeKey"
+              class="clip-iframe"
+              :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(it.url) }"
+              :src="cleanAutoplayUrl(it.url)"
+              loading="eager"
+              frameborder="0"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowfullscreen
+              title="Video"
+            ></iframe>
+          </div>
+
           <div class="clip-shadowTop"></div>
           <div class="clip-shadowBottom"></div>
 
-          <!-- Placeholder mientras no asienta -->
+          <!-- placeholder mientras no asentó -->
           <div v-if="activeKey !== it.key || !isSettled" class="clip-playGhost">
             <div class="clip-play-ring">
               <v-icon size="28">mdi-play</v-icon>
@@ -63,24 +82,6 @@
         <span class="text-caption" style="opacity: 0.75">Cargando más…</span>
       </div>
     </main>
-
-    <!-- ✅ PLAYER GLOBAL: NO captura swipe -->
-    <div v-if="activeItem && isSettled" class="clip-playerGlobal" :style="playerStyle">
-      <iframe
-        :key="iframeKey"
-        class="clip-iframe"
-        :class="{ 'clip-iframe--ytCover': shouldCoverYouTube(activeItem.url) }"
-        :src="cleanAutoplayUrl(activeItem.url)"
-        loading="eager"
-        frameborder="0"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        allowfullscreen
-        title="Video"
-      ></iframe>
-
-      <div class="clip-shadowTop"></div>
-      <div class="clip-shadowBottom"></div>
-    </div>
 
     <!-- acciones globales -->
     <div v-if="activeItem" class="clip-actions" aria-label="Acciones">
@@ -275,15 +276,6 @@ function scrollToIndex(idx, behavior = "smooth") {
   });
 }
 
-function activateByKey(key) {
-  const idx = items.value.findIndex((x) => x?.key === key);
-  if (idx < 0) return;
-
-  isSettled.value = false;
-  setActiveByIndex(idx);
-  scrollToIndex(idx, "smooth");
-}
-
 /* =========================
    scroll settle
 ========================= */
@@ -310,19 +302,17 @@ function onScroll() {
     settleTimer = window.setTimeout(() => {
       const finalIdx = currentIndexFromScroll();
       setActiveByIndex(finalIdx);
-
-      // ✅ corrige que quede entre slides
       scrollToIndex(finalIdx, "smooth");
 
       window.setTimeout(() => {
         isSettled.value = true;
-      }, 120);
-    }, 120);
+      }, 110);
+    }, 110);
   });
 }
 
 /* =========================
-   active item / player position
+   active item
 ========================= */
 const activeIndex = computed(() => {
   const idx = items.value.findIndex((x) => x?.key === activeKey.value);
@@ -330,13 +320,6 @@ const activeIndex = computed(() => {
 });
 
 const activeItem = computed(() => items.value?.[activeIndex.value] || null);
-
-const playerStyle = computed(() => {
-  const top = activeIndex.value * viewportH();
-  return {
-    transform: `translate3d(0, ${top}px, 0)`,
-  };
-});
 
 watch(
   () => [activeKey.value, muted.value, isSettled.value],
@@ -804,37 +787,12 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, #171717, #060606);
 }
 
-.clip-playGhost {
+/* ✅ player dentro del slide activo */
+.clip-activePlayer {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 4;
+  z-index: 5;
   pointer-events: none;
-}
-
-.clip-play-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #111;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
-}
-
-.clip-playerGlobal {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 100svh;
-  height: 100dvh;
-  z-index: 6;
-  overflow: hidden;
-  will-change: transform;
-  pointer-events: none; /* ✅ CLAVE */
 }
 
 .clip-iframe {
@@ -845,7 +803,7 @@ onBeforeUnmount(() => {
   border: 0;
   display: block;
   background: #000;
-  pointer-events: none; /* ✅ CLAVE */
+  pointer-events: none;
 }
 
 .clip-iframe--ytCover {
@@ -875,6 +833,26 @@ onBeforeUnmount(() => {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   pointer-events: none;
   z-index: 7;
+}
+
+.clip-playGhost {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.clip-play-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
 }
 
 /* acciones */
