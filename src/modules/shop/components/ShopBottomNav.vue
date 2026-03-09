@@ -106,8 +106,6 @@ function goHome() {
 </script>
 
 <style scoped>
-/* NAV */
-
 .ml-bottom-nav{
   --ml-nav-h:64px;
   --ml-safe:env(safe-area-inset-bottom);
@@ -131,11 +129,11 @@ function goHome() {
   z-index:250;
 }
 
-/* ITEMS */
-
 .ml-nav-item{
   flex:1 1 0;
   min-width:64px;
+  min-height:64px;
+  box-sizing:border-box;
 
   display:flex;
   flex-direction:column;
@@ -143,6 +141,7 @@ function goHome() {
   justify-content:center;
 
   gap:3px;
+  padding:8px 0 6px;
 
   text-decoration:none;
   color:#6f6f6f;
@@ -156,10 +155,14 @@ function goHome() {
   -webkit-tap-highlight-color:transparent;
 }
 
-.ml-nav-item span{
-  font:inherit;
-  line-height:inherit;
+.ml-nav-item > span{
+  display:block;
+  min-height:12px;
+  line-height:1.1;
   letter-spacing:inherit;
+  font:inherit;
+  text-align:center;
+  white-space:nowrap;
 }
 
 .ml-nav-button{
@@ -168,7 +171,7 @@ function goHome() {
   background:transparent;
   border:0;
   border-radius:0;
-  padding:0;
+  padding:8px 0 6px;
   margin:0;
   outline:none;
   box-shadow:none;
@@ -184,14 +187,17 @@ function goHome() {
 
 .ml-nav-item :deep(.v-icon){
   font-size:22px;
+  line-height:1;
+  flex:0 0 auto;
 }
 
 .ml-nav-item.active{
   color:#1976d2;
-  font-weight:700;
 }
 
-/* CART */
+.ml-nav-item.active > span{
+  font-weight:500;
+}
 
 .ml-nav-item.is-cart{
   position:relative;
@@ -228,5 +234,21 @@ function goHome() {
 
 .ml-cart-label{
   margin-top:4px;
+}
+
+@media (max-width:380px){
+  .ml-nav-item{
+    min-width:60px;
+    font-size:10.5px;
+  }
+
+  .ml-nav-item :deep(.v-icon){
+    font-size:21px;
+  }
+
+  .ml-cart-bubble{
+    width:58px;
+    height:58px;
+  }
 }
 </style>

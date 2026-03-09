@@ -1,10 +1,11 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/router/index.js
-// FIX scroll definitivo PROD/LOCAL:
+// FIX scroll robusto:
 // - F5 en /shop inicia arriba
 // - volver desde producto conserva scroll real
 // - soporta /shop y /shop/
-// - evita salto al footer/hero
+// - no depende de delays fijos para home/category
+// - espera a que el documento tenga altura suficiente antes de restaurar
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -96,10 +97,10 @@ const routes = [
 // Scroll persistence
 // =======================
 
-const SCROLL_KEY = "scroll_positions_v5";
-const RELOAD_ONCE_KEY = "scroll_reload_once_v5";
-const SHOP_HOME_SCROLL_KEY = "shop_home_scroll_y_v9";
-const SHOP_HOME_RESTORE_PENDING_KEY = "shop_home_restore_pending_v9";
+const SCROLL_KEY = "scroll_positions_v6";
+const RELOAD_ONCE_KEY = "scroll_reload_once_v6";
+const SHOP_HOME_SCROLL_KEY = "shop_home_scroll_y_v10";
+const SHOP_HOME_RESTORE_PENDING_KEY = "shop_home_restore_pending_v10";
 
 function normalizePath(path = "") {
   const p = String(path || "").trim();
@@ -123,6 +124,12 @@ function getCurrentScroll() {
     document.body?.scrollTop || 0,
     document.scrollingElement?.scrollTop || 0
   );
+}
+
+function getMaxScrollableY() {
+  const el = document.scrollingElement || document.documentElement || document.body;
+  if (!el) return 0;
+  return Math.max(0, (el.scrollHeight || 0) - window.innerHeight);
 }
 
 function readScroll() {
@@ -209,8 +216,22 @@ function consumeReloadOnce() {
   }
 }
 
-function delay(ms) {
+function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitUntilScrollable(targetTop, opts = {}) {
+  const timeoutMs = Number(opts.timeoutMs || 2200);
+  const intervalMs = Number(opts.intervalMs || 60);
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    const maxY = getMaxScrollableY();
+    if (maxY >= targetTop) return true;
+    await sleep(intervalMs);
+  }
+
+  return false;
 }
 
 if ("scrollRestoration" in history) {
@@ -270,7 +291,7 @@ const router = createRouter({
 
   async scrollBehavior(to, from, savedPosition) {
     if (to.hash) {
-      await delay(120);
+      await sleep(120);
       return {
         el: to.hash,
         top: 90,
@@ -279,33 +300,52 @@ const router = createRouter({
     }
 
     if (consumeReloadOnce()) {
-      await delay(40);
+      await sleep(40);
       return { top: 0, left: 0 };
     }
 
+    // ✅ restore especial del home
     if (isShopHomePath(to.path) && consumeShopHomeRestorePending()) {
-      const top = getShopHomeScroll();
-      await delay(700);
-      return { top: top > 0 ? top : 0, left: 0 };
+      const top = Math.max(0, getShopHomeScroll());
+
+      if (top > 0) {
+        await waitUntilScrollable(top, { timeoutMs: 2600, intervalMs: 60 });
+      } else {
+        await sleep(80);
+      }
+
+      return { top, left: 0 };
     }
 
+    // Browser back/forward real
     if (savedPosition) {
-      if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
-        await delay(500);
+      const targetTop = Math.max(0, Number(savedPosition.top || 0));
+
+      if ((isShopHomePath(to.path) || isShopCategoryPath(to.path)) && targetTop > 0) {
+        await waitUntilScrollable(targetTop, { timeoutMs: 2200, intervalMs: 60 });
+      } else if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
+        await sleep(80);
       }
+
       return savedPosition;
     }
 
+    // Restore manual general
     const pos = getScroll(to.fullPath);
     if (pos && (pos.top > 0 || pos.left > 0)) {
-      if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
-        await delay(500);
+      const targetTop = Math.max(0, Number(pos.top || 0));
+
+      if ((isShopHomePath(to.path) || isShopCategoryPath(to.path)) && targetTop > 0) {
+        await waitUntilScrollable(targetTop, { timeoutMs: 2200, intervalMs: 60 });
+      } else if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
+        await sleep(80);
       }
+
       return pos;
     }
 
     if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
-      await delay(120);
+      await sleep(80);
     }
 
     return { top: 0, left: 0 };

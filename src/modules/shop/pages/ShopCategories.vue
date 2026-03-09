@@ -4,7 +4,12 @@
       <button class="mlc-back" type="button" @click="goBack" aria-label="Volver">
         <v-icon size="22">mdi-arrow-left</v-icon>
       </button>
-      <div class="mlc-title">Categorías</div>
+
+      <div class="mlc-title-wrap">
+        <div class="mlc-title">Categorías</div>
+        <div class="mlc-subtitle">Explorá por rubro</div>
+      </div>
+
       <div class="mlc-topbar-spacer" />
     </div>
 
@@ -33,7 +38,10 @@
 
       <main class="mlc-right" aria-label="Subcategorías">
         <div class="mlc-right-head">
-          <div class="mlc-right-title">{{ activeParent?.name || "Categorías" }}</div>
+          <div class="mlc-right-head-main">
+            <div class="mlc-right-kicker">Rubro seleccionado</div>
+            <div class="mlc-right-title">{{ activeParent?.name || "Categorías" }}</div>
+          </div>
 
           <button
             v-if="activeParentId"
@@ -42,8 +50,8 @@
             @click="openParentAll()"
             aria-label="Ver todo"
           >
-            Ver todo
-            <v-icon size="18">mdi-chevron-right</v-icon>
+            <span>Ver todo</span>
+            <v-icon size="17">mdi-chevron-right</v-icon>
           </button>
         </div>
 
@@ -61,21 +69,23 @@
             @click="openSubcategory(s.id)"
             :title="s.name"
           >
-            <div class="mlc-icon">
-              <span class="mlc-icon-ph" :class="{ off: !!iconForSub(s) }">
-                {{ initials(s.name) }}
-              </span>
+            <div class="mlc-card-inner">
+              <div class="mlc-icon">
+                <span class="mlc-icon-ph" :class="{ off: !!iconForSub(s) }">
+                  {{ initials(s.name) }}
+                </span>
 
-              <img
-                v-if="iconForSub(s)"
-                :src="iconForSub(s)"
-                alt=""
-                loading="lazy"
-                @error="onIconErr(s)"
-              />
+                <img
+                  v-if="iconForSub(s)"
+                  :src="iconForSub(s)"
+                  alt=""
+                  loading="lazy"
+                  @error="onIconErr(s)"
+                />
+              </div>
+
+              <div class="mlc-name">{{ s.name }}</div>
             </div>
-
-            <div class="mlc-name">{{ s.name }}</div>
           </button>
 
           <div v-if="!children.length" class="mlc-empty">
@@ -177,8 +187,8 @@ function cacheKey(parentId, subId) {
 /* =========================
    ✅ CACHE REACTIVO (img por subcat)
 ========================= */
-const repImg = reactive({}); // key -> url
-const repLoading = reactive({}); // key -> boolean
+const repImg = reactive({});
+const repLoading = reactive({});
 
 async function fetchRepImageForSub(parentId, subId) {
   const k = cacheKey(parentId, subId);
@@ -188,11 +198,10 @@ async function fetchRepImageForSub(parentId, subId) {
 
   repLoading[k] = true;
   try {
-    // ✅ pedimos varios y elegimos el primero con thumb real
     const r = await getCatalog({
-      branch_id: branchId.value,           // ✅ CLAVE
+      branch_id: branchId.value,
       page: 1,
-      limit: 6,                            // ✅ no 1
+      limit: 6,
       category_id: Number(parentId),
       subcategory_id: Number(subId),
       include_children: 0,
@@ -219,7 +228,6 @@ async function fetchRepImageForSub(parentId, subId) {
   }
 }
 
-/* limitador simple de concurrencia */
 async function mapLimit(arr, limit, fn) {
   const res = [];
   let i = 0;
@@ -233,7 +241,6 @@ async function mapLimit(arr, limit, fn) {
   return res;
 }
 
-/* ✅ icon por subcat (cache) */
 function iconForSub(s) {
   const k = cacheKey(activeParentId.value, s?.id);
   return repImg[k] || "";
@@ -296,7 +303,6 @@ async function fetchChildren(parentId) {
       }))
       .filter((x) => x.id && x.name);
 
-    // ✅ precarga fotos (solo primeras N)
     const slice = children.value.slice(0, PREFETCH_MAX);
     await mapLimit(slice, PREFETCH_CONCURRENCY, async (s) => fetchRepImageForSub(parentId, s.id));
   } catch {
@@ -356,94 +362,137 @@ onMounted(async () => {
 
 <style scoped>
 .mlc {
-  background: #f5f5f5;
-  min-height: calc(100vh - 0px);
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
+  color: #0e2134;
 }
 
 /* topbar */
 .mlc-topbar {
   position: sticky;
   top: 0;
-  z-index: 5;
-  height: 46px;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  z-index: 8;
+  min-height: 58px;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   display: grid;
   grid-template-columns: 46px 1fr 46px;
   align-items: center;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
 }
 
 .mlc-back {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #0e2134;
   cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.mlc-back:active {
+  transform: scale(0.96);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.mlc-title-wrap {
+  min-width: 0;
 }
 
 .mlc-title {
-  font-weight: 800;
-  color: #0e2134;
-  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  font-size: 17px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.mlc-subtitle {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .mlc-topbar-spacer {
-  width: 46px;
+  width: 40px;
 }
 
 .mlc-alert {
   margin: 12px 12px 0;
+  border-radius: 14px;
 }
 
 /* body */
 .mlc-body {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 132px 1fr;
   gap: 0;
-  min-height: calc(100vh - 46px);
+  min-height: calc(100vh - 58px);
 }
 
 /* left */
 .mlc-left {
-  background: #ffffff;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding: 8px 0 96px;
 }
 
 .mlc-left-loading {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 14px 12px;
   font-size: 12px;
-  opacity: 0.8;
+  color: #475569;
 }
 
 .mlc-left-item {
+  position: relative;
   width: 100%;
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 10px 10px;
+  padding: 12px 12px 12px 14px;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  color: #0e2134;
-  font-weight: 700;
-  font-size: 11.5px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 12.2px;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.mlc-left-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.18s ease;
 }
 
 .mlc-left-item.active {
-  background: #f3f7ff;
-  border-left-color: rgb(var(--v-theme-primary));
-  font-weight: 800;
+  background: linear-gradient(180deg, #eef4ff 0%, #e8f0ff 100%);
+  color: #0a3d7a;
+}
+
+.mlc-left-item.active::before {
+  background: rgb(var(--v-theme-primary));
 }
 
 .mlc-left-text {
@@ -453,44 +502,67 @@ onMounted(async () => {
 
 /* right */
 .mlc-right {
-  background: #ffffff;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: 96px;
 }
 
 .mlc-right-head {
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 10px 12px;
+  z-index: 3;
+  background: rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  padding: 12px 12px 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
 }
 
-.mlc-right-title {
+.mlc-right-head-main {
+  min-width: 0;
+}
+
+.mlc-right-kicker {
+  font-size: 10.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
   font-weight: 800;
-  color: #0e2134;
-  font-size: 13px;
+  margin-bottom: 5px;
+}
+
+.mlc-right-title {
+  font-weight: 900;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  word-break: break-word;
 }
 
 .mlc-seeall {
   border: 0;
-  background: transparent;
+  background: #ffffff;
   color: rgb(var(--v-theme-primary));
   font-weight: 800;
   font-size: 12px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 .mlc-right-loading {
-  min-height: 220px;
+  min-height: 240px;
   display: grid;
   place-items: center;
   gap: 10px;
@@ -499,9 +571,9 @@ onMounted(async () => {
 
 /* grid */
 .mlc-grid {
-  padding: 14px 12px 16px;
+  padding: 14px 12px 18px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -513,18 +585,43 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+.mlc-card-inner {
+  height: 100%;
+  min-height: 124px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 8px 22px rgba(15, 23, 42, 0.05),
+    0 2px 6px rgba(15, 23, 42, 0.04);
+  padding: 14px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.mlc-card:active .mlc-card-inner {
+  transform: scale(0.98);
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
 /* icon */
 .mlc-icon {
-  width: 58px;
-  height: 58px;
-  border-radius: 999px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
   margin: 0 auto;
-  background: #f4f6f8;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   display: grid;
   place-items: center;
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .mlc-icon-ph {
@@ -532,10 +629,12 @@ onMounted(async () => {
   inset: 0;
   display: grid;
   place-items: center;
-  color: #0e2134;
-  font-weight: 800;
-  font-size: 13px;
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: -0.02em;
 }
+
 .mlc-icon-ph.off {
   opacity: 0;
 }
@@ -549,41 +648,78 @@ onMounted(async () => {
 }
 
 .mlc-name {
-  margin-top: 8px;
-  font-size: 11px;
-  line-height: 1.1;
-  color: #0e2134;
-  font-weight: 650;
+  margin-top: 10px;
+  font-size: 12.2px;
+  line-height: 1.2;
+  color: #0f172a;
+  font-weight: 800;
+  letter-spacing: -0.015em;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  min-height: 29px;
 }
 
 .mlc-empty {
   grid-column: 1 / -1;
-  padding: 18px 6px;
+  padding: 28px 12px;
   text-align: center;
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 12.5px;
+  color: #64748b;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px dashed rgba(15, 23, 42, 0.12);
 }
 
 @media (max-width: 600px) {
   .mlc-body {
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: 126px 1fr;
   }
-  .mlc-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    padding-bottom: 92px;
-  }
-  .mlc-icon {
-    width: 54px;
-    height: 54px;
-  }
+
   .mlc-left-item {
-    padding: 10px 8px;
+    font-size: 12px;
+    padding: 12px 10px 12px 14px;
+  }
+
+  .mlc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .mlc-card-inner {
+    min-height: 118px;
+    padding: 13px 9px 11px;
+  }
+
+  .mlc-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 390px) {
+  .mlc-body {
+    grid-template-columns: 118px 1fr;
+  }
+
+  .mlc-grid {
+    gap: 10px;
+    padding: 12px 10px 18px;
+  }
+
+  .mlc-right-head {
+    padding: 12px 10px 10px;
+  }
+
+  .mlc-seeall {
     font-size: 11.5px;
+    padding: 0 9px;
+  }
+
+  .mlc-name {
+    font-size: 11.7px;
   }
 }
 </style>
