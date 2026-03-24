@@ -155,9 +155,22 @@ function pickPaymentMethodForApi(paymentMethodParam, extra) {
     paymentMethodParam;
 
   const ref = String(ex.reference || ex.ref || "").trim().toUpperCase();
-  if (ref === "SJCREDIT" || ref === "SJ_CREDIT" || ref === "SANJUANCREDITO") return "credit_sjt";
+  if (ref === "SJCREDIT" || ref === "SJ_CREDIT" || ref === "SANJUANCREDITO") {
+    return "credit_sjt";
+  }
 
   return normalizeMethod(candidate);
+}
+
+function toBackendPaymentMethod(method) {
+  const m = String(method || "").trim();
+
+  // 🔥 San Juan Crédito al backend viaja como OTHER + reference=SJCREDIT
+  if (m === "credit_sjt" || m.toUpperCase() === "CREDIT_SJT") {
+    return "OTHER";
+  }
+
+  return normalizeMethod(m);
 }
 
 /* =========================
@@ -645,13 +658,15 @@ export const usePosStore = defineStore("pos", {
         const amount = toNum(this.totalAmount, 0);
         const bid = toInt(this.branch_id, 0) || null;
 
-        const methodForApi = pickPaymentMethodForApi(paymentMethod, ex);
+        const methodForApiRaw = pickPaymentMethodForApi(paymentMethod, ex);
+        const isCreditSjt =
+          methodForApiRaw === "credit_sjt" || methodForApiRaw === "CREDIT_SJT";
+
+        const methodForApi = toBackendPaymentMethod(methodForApiRaw);
+        const isCard = methodForApi === "CARD";
 
         let installments = toInt(ex?.installments, 1) || 1;
         const card_kind_raw = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
-
-        const isCreditSjt = methodForApi === "credit_sjt" || methodForApi === "CREDIT_SJT";
-        const isCard = methodForApi === "CARD";
 
         const isDebit =
           card_kind_raw === "DEBIT" ||
@@ -683,47 +698,54 @@ export const usePosStore = defineStore("pos", {
         }
 
         const payload = {
-          customer_name: snap.customer_name,
-          customer_doc: snap.customer_doc,
-          customer_phone: snap.customer_phone,
+  customer_name: snap.customer_name,
+  customer_doc: snap.customer_doc,
+  customer_phone: snap.customer_phone,
 
-          payment_method: methodForApi,
-          method: methodForApi,
-          installments,
-          reference: referenceTop,
-          card_kind: isCard ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT") : (isCreditSjt ? "CREDIT" : null),
+  payment_method: methodForApi,
+  method: methodForApi,
+  installments,
+  reference: referenceTop,
+  card_kind: isCard
+    ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT")
+    : (isCreditSjt ? "CREDIT" : null),
 
-          note: ex?.note || null,
+  note: ex?.note || null,
 
-          branch_id: bid,
-          warehouse_id: wid,
-          branchId: bid,
-          warehouseId: wid,
+  branch_id: bid,
+  warehouse_id: wid,
+  branchId: bid,
+  warehouseId: wid,
 
-          items,
+  // 🔥🔥🔥 ESTA ES LA CLAVE
+  cash_register_id: toInt(ex?.cash_register_id, 0) || null,
 
-          payments: [
-            {
-              method: isCreditSjt ? "credit_sjt" : methodForApi,
-              amount,
-              reference: referenceTop,
-              proof: ex?.proof || null,
-              installments,
-              price_basis,
-              total_list,
-              per_installment_list,
-              card_kind: isCard ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT") : (isCreditSjt ? "CREDIT" : null),
+  items,
 
-              customer_name: snap.customer_name,
-              customer_doc: snap.customer_doc,
-              customer_phone: snap.customer_phone,
+  payments: [
+    {
+      method: methodForApi,
+      amount,
+      reference: referenceTop,
+      proof: ex?.proof || null,
+      installments,
+      price_basis,
+      total_list,
+      per_installment_list,
+      card_kind: isCard
+        ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT")
+        : (isCreditSjt ? "CREDIT" : null),
 
-              note: ex?.price_policy
-                ? `price_policy=${ex.price_policy}${installments ? `; installments=${installments}` : ""}`
-                : null,
-            },
-          ],
-        };
+      customer_name: snap.customer_name,
+      customer_doc: snap.customer_doc,
+      customer_phone: snap.customer_phone,
+
+      note: ex?.price_policy
+        ? `price_policy=${ex.price_policy}${installments ? `; installments=${installments}` : ""}`
+        : null,
+    },
+  ],
+};
 
         console.log("[POS_STORE] store.customer =>", this.customer);
         console.log("[POS_STORE] checkout extra =>", ex);
@@ -754,7 +776,7 @@ export const usePosStore = defineStore("pos", {
         if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
           sale = buildSaleFromCart({
             saleId: saleId || null,
-            paymentMethod: methodForApi,
+            paymentMethod: methodForApiRaw,
             extra: ex,
             branch_id: bid,
             warehouse_id: wid || null,
@@ -766,7 +788,7 @@ export const usePosStore = defineStore("pos", {
           if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
         }
 
-        sale.payment_method = methodForApi;
+        sale.payment_method = methodForApiRaw;
         sale.installments = installments;
         sale.customer_name = snap.customer_name;
         sale.customer_doc = snap.customer_doc;

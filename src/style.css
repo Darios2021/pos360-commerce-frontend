@@ -12,20 +12,18 @@ body {
 }
 
 /* =========================================================
-   ✅ FALLBACK VARS (anti “todo negro” por vars faltantes)
-   - Si por timing falta --v-theme-* momentáneamente, no se cae a negro
+   BASE APP
 ========================================================= */
-:root {
-  /* valores “seguros” para cuando todavía no están listas las vars */
-  --fallback-surface: 17 26 46;      /* similar a #111a2e */
-  --fallback-on-surface: 255 255 255;
-  --fallback-primary: 14 33 52;      /* #0e2134 */
+html,
+body,
+#app,
+.v-application {
+  background: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-background));
 }
 
 /* =========================================================
-   ✅ OVERLAY FIX TELEPORT
-   - Menús/selects/autocomplete/tooltips NO deben oscurecer toda la app
-   - Dialogs sí
+   OVERLAY FIX TELEPORT
 ========================================================= */
 
 /* Dialog scrim permitido */
@@ -39,17 +37,33 @@ body {
   pointer-events: none !important;
 }
 
-/* Contenido overlay NO dialog: sin filtros raros + fondo seguro */
+/* =========================================================
+   SOLO overlays NO dialog
+   (menus, dropdowns, etc.)
+========================================================= */
 .v-overlay-container .v-overlay:not(.v-dialog) .v-overlay__content {
   filter: none !important;
   backdrop-filter: none !important;
+  border: 1px solid
+    color-mix(in srgb, rgb(var(--v-theme-on-surface)) 12%, transparent) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14) !important;
+  border-radius: 14px !important;
+}
 
-  background: rgb(var(--v-theme-surface, var(--fallback-surface))) !important;
-  border: 1px solid color-mix(
-    in srgb,
-    rgb(var(--v-theme-on-surface, var(--fallback-on-surface))) 14%,
-    transparent
-  ) !important;
+/* Light */
+.v-theme--light
+  .v-overlay-container
+  .v-overlay:not(.v-dialog)
+  .v-overlay__content {
+  background: #ffffff !important;
+}
+
+/* Dark */
+.v-theme--dark
+  .v-overlay-container
+  .v-overlay:not(.v-dialog)
+  .v-overlay__content {
+  background: rgb(var(--v-theme-surface)) !important;
 }
 
 /* Mata sombras excesivas por elevation dentro del overlay (NO dialog) */
@@ -63,4 +77,15 @@ body {
 .v-overlay-container .v-overlay:not(.v-dialog) .v-btn__overlay,
 .v-overlay-container .v-overlay:not(.v-dialog) .v-btn__underlay {
   opacity: 0 !important;
+}
+
+/* =========================================================
+   IMPORTANTE:
+   NO tocar el contenido de dialogs globalmente
+========================================================= */
+.v-overlay-container .v-overlay.v-dialog .v-overlay__content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }

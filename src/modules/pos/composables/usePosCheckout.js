@@ -1,9 +1,13 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/pos/composables/usePosCheckout.js
 import { ref, computed, watch } from "vue";
+import { usePosCashRegister } from "./usePosCashRegister";
 
 function money(val) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(Number(val || 0));
 }
 
 function normalizeMethodUI(v) {
@@ -32,9 +36,23 @@ function normalizeMethodUI(v) {
 
   if (s === "efectivo") return "CASH";
   if (s === "transferencia") return "TRANSFER";
-  if (s === "tarjeta" || s === "credito" || s === "crédito" || s === "debito" || s === "débito") return "CARD";
+  if (
+    s === "tarjeta" ||
+    s === "credito" ||
+    s === "crédito" ||
+    s === "debito" ||
+    s === "débito"
+  ) {
+    return "CARD";
+  }
 
-  if (s === "mp" || s === "mercadopago" || s === "mercado_pago" || s === "mercado pago" || s === "qr") {
+  if (
+    s === "mp" ||
+    s === "mercadopago" ||
+    s === "mercado_pago" ||
+    s === "mercado pago" ||
+    s === "qr"
+  ) {
     return "MERCADOPAGO";
   }
 
@@ -88,10 +106,18 @@ function buildCustomerSnapshot(input = {}) {
 
   const customer_name = pickFirst(
     explicitName,
-    (first_name || last_name) ? `${first_name} ${last_name}`.trim() : ""
+    first_name || last_name ? `${first_name} ${last_name}`.trim() : ""
   ).trim();
 
-  const customer_doc = pickFirst(c.customer_doc, c.doc, c.dni, c.cuit, c.cuil, c.document, c.documento).trim();
+  const customer_doc = pickFirst(
+    c.customer_doc,
+    c.doc,
+    c.dni,
+    c.cuit,
+    c.cuil,
+    c.document,
+    c.documento
+  ).trim();
 
   const rawPhone = pickFirst(
     c.customer_phone,
@@ -107,7 +133,9 @@ function buildCustomerSnapshot(input = {}) {
   const customer_phone = normalizeDigits(rawPhone);
 
   const email = pickFirst(c.email, c.mail).trim();
-  const whatsapp = normalizeDigits(pickFirst(c.whatsapp, c.wa, c.phone, c.tel, c.telefono));
+  const whatsapp = normalizeDigits(
+    pickFirst(c.whatsapp, c.wa, c.phone, c.tel, c.telefono)
+  );
   const address = pickFirst(c.address, c.direccion).trim();
   const note = pickFirst(c.note, c.obs, c.observaciones).trim();
 
@@ -131,8 +159,16 @@ export function usePosCheckout({
   resolveUnitPrice,
   toNum,
   allSellable,
-  customerRef = null, // ✅ CLAVE
+  customerRef = null,
 }) {
+// 🔥 usar caja inyectada desde PosPage
+const {
+  isCajaOpen: injectedIsCajaOpen,
+  currentCashRegisterId: injectedCashRegisterId,
+} = arguments[0] || {};
+
+const isCajaOpen = injectedIsCajaOpen;
+const currentCashRegisterId = injectedCashRegisterId;
   const checkoutDialog = ref(false);
 
   const paymentMethod = ref("CASH");
@@ -149,7 +185,9 @@ export function usePosCheckout({
 
   const productById = computed(() => {
     const m = new Map();
-    for (const p of allSellable.value || []) m.set(Number(p.id), p);
+    for (const p of allSellable.value || []) {
+      m.set(Number(p.id), p);
+    }
     return m;
   });
 
@@ -159,7 +197,11 @@ export function usePosCheckout({
     return "Descuento";
   }
 
-  function currentPricePolicy(method = paymentMethod.value, inst = installments.value, reseller = applyReseller.value) {
+  function currentPricePolicy(
+    method = paymentMethod.value,
+    inst = installments.value,
+    reseller = applyReseller.value
+  ) {
     const m = normalizeMethodUI(method);
 
     if (reseller) return "RESELLER";
@@ -173,18 +215,22 @@ export function usePosCheckout({
   const checkoutTotal = computed(() => {
     const pol = currentPricePolicy();
     let sum = 0;
+
     for (const it of posStore.cart || []) {
       const pid = Number(it.product_id || it.id);
       const p = productById.value.get(pid) || it;
       const unit = resolveUnitPrice(p, pol);
       sum += unit * toNum(it.qty);
     }
+
     return sum;
   });
 
   const checkoutTotalPreview = computed(() => {
     let sum = 0;
-    for (const it of posStore.cart || []) sum += toNum(it.qty) * toNum(it.price);
+    for (const it of posStore.cart || []) {
+      sum += toNum(it.qty) * toNum(it.price);
+    }
     return sum;
   });
 
@@ -196,7 +242,9 @@ export function usePosCheckout({
   }
 
   const paidAmount = computed(() => {
-    if (normalizeMethodUI(paymentMethod.value) !== "CASH") return Number(checkoutTotal.value || 0);
+    if (normalizeMethodUI(paymentMethod.value) !== "CASH") {
+      return Number(checkoutTotal.value || 0);
+    }
     return parseCash(cashInput.value);
   });
 
@@ -245,8 +293,14 @@ export function usePosCheckout({
       onSnack?.("🏬 Elegí sucursal para operar.");
       return;
     }
+
     if (!canSell.value) {
       onSnack?.("🔒 Sin permiso POS (pos.sale). No se puede cobrar / registrar ventas.");
+      return;
+    }
+
+    if (!isCajaOpen.value || !currentCashRegisterId.value) {
+      onSnack?.("🧾 Debés abrir una caja antes de registrar la venta.");
       return;
     }
 
@@ -266,11 +320,17 @@ export function usePosCheckout({
 
     if (needsBranchPick.value) {
       onSnack?.("🏬 Elegí sucursal para operar.");
-      return;
+      throw new Error("SUCURSAL_REQUERIDA");
     }
+
     if (!canSell.value) {
       onSnack?.("🔒 Sin permiso POS (pos.sale). No se puede confirmar ventas.");
-      return;
+      throw new Error("SIN_PERMISO_POS");
+    }
+
+    if (!isCajaOpen.value || !currentCashRegisterId.value) {
+      onSnack?.("🧾 No hay una caja abierta para asociar la venta.");
+      throw new Error("CAJA_REQUERIDA");
     }
 
     try {
@@ -286,7 +346,9 @@ export function usePosCheckout({
       const uiMethod = normalizeMethodUI(uiMethodIncoming || paymentMethod.value);
 
       let instIncoming = Number(payload?.installments ?? installments.value ?? 1) || 1;
-      const resellerIncoming = Boolean(payload?.apply_reseller ?? payload?.applyReseller ?? applyReseller.value);
+      const resellerIncoming = Boolean(
+        payload?.apply_reseller ?? payload?.applyReseller ?? applyReseller.value
+      );
 
       if (uiMethod === "credit_sjt" && !resellerIncoming) {
         if (instIncoming < 1) instIncoming = 1;
@@ -301,7 +363,6 @@ export function usePosCheckout({
 
       const payMap = toPaymentsMethodAndReference(uiMethod);
 
-      // ✅ CLAVE: usar customerRef del PosPage
       const liveCustomer =
         customerRef && typeof customerRef === "object" && "value" in customerRef
           ? customerRef.value || {}
@@ -333,10 +394,10 @@ export function usePosCheckout({
         proof: payload?.proof ?? paymentProof.value ?? null,
         reference: payload?.reference ?? payMap.reference ?? null,
         total_list: payload?.total_list ?? payload?.totalList ?? null,
-        per_installment_list: payload?.per_installment_list ?? payload?.perInstallmentList ?? null,
+        per_installment_list:
+          payload?.per_installment_list ?? payload?.perInstallmentList ?? null,
         card_kind: payload?.card_kind ?? payload?.cardKind ?? null,
 
-        // ✅ snapshot top-level
         customer_name: snap.customer_name || null,
         customer_doc: snap.customer_doc || null,
         customer_phone: snap.customer_phone || null,
@@ -362,7 +423,12 @@ export function usePosCheckout({
         customer: extra.customer,
       });
 
-      const result = await posStore.checkoutSale(payMap.method, extra);
+      console.log("[POS][checkout] cash_register_id =>", currentCashRegisterId.value);
+
+      const result = await posStore.checkoutSale(payMap.method, {
+        ...extra,
+        cash_register_id: currentCashRegisterId.value,
+      });
 
       checkoutDialog.value = false;
       onSnack?.("✅ Venta registrada correctamente");
@@ -379,6 +445,7 @@ export function usePosCheckout({
               reference: extra.reference,
               installments: instIncoming,
               proof: extra.proof,
+              cash_register_id: currentCashRegisterId.value,
               customer: { ...extra.customer },
               customer_name: extra.customer_name,
               customer_doc: extra.customer_doc,
@@ -395,8 +462,15 @@ export function usePosCheckout({
             };
 
       receiptOpen.value = true;
+      return result;
     } catch (e) {
-      onSnack?.(posStore.error || e?.response?.data?.message || "❌ Error al confirmar la venta");
+      onSnack?.(
+        posStore.error ||
+          e?.response?.data?.message ||
+          e?.message ||
+          "❌ Error al confirmar la venta"
+      );
+      throw e;
     }
   }
 
@@ -418,3 +492,5 @@ export function usePosCheckout({
     confirmPayment,
   };
 }
+
+export default usePosCheckout;

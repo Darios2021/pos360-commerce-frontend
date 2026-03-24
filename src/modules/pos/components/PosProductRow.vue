@@ -105,12 +105,13 @@ function money(v) {
   align-items: center;
   gap: 8px;
 
-  padding: 6px 8px;
-  border-radius: 11px;
+  padding: 7px 9px;
+  border-radius: 12px;
   cursor: pointer;
 
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+
   box-shadow:
     0 4px 12px rgba(15, 23, 42, 0.04),
     0 1px 3px rgba(15, 23, 42, 0.03);
@@ -122,43 +123,49 @@ function money(v) {
     background-color 0.12s ease;
 }
 
+/* ✅ TEST FUERTE LIGHT: si esto no se nota, el problema es el padre */
 :global(.v-theme--light) .prow {
-  background: rgba(var(--v-theme-surface), 1);
-  border-color: rgba(var(--v-theme-on-surface), 0.08);
+  background: #f4f8ff;
+  border-color: #cfdcf0;
   box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.045),
-    0 1px 4px rgba(15, 23, 42, 0.03);
+    0 8px 18px rgba(15, 23, 42, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
 :global(.v-theme--dark) .prow {
+  background: rgb(var(--v-theme-surface));
   border-color: rgba(255, 255, 255, 0.06);
+
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.18),
-    0 1px 4px rgba(0, 0, 0, 0.14);
+    0 6px 16px rgba(0, 0, 0, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 .prow:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--v-theme-primary), 0.22);
-  background: rgba(var(--v-theme-primary), 0.025);
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  background: rgba(var(--v-theme-primary), 0.07);
+
   box-shadow:
-    0 8px 18px rgba(15, 23, 42, 0.06),
-    0 2px 5px rgba(15, 23, 42, 0.04);
+    0 10px 22px rgba(15, 23, 42, 0.10),
+    0 3px 8px rgba(15, 23, 42, 0.06);
+}
+
+:global(.v-theme--light) .prow:hover {
+  background: #eaf2ff;
 }
 
 :global(.v-theme--dark) .prow:hover {
-  box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.24),
-    0 2px 6px rgba(0, 0, 0, 0.16);
+  background: rgba(var(--v-theme-primary), 0.10);
 }
 
 .prow:focus-visible {
   outline: none;
-  border-color: rgba(var(--v-theme-primary), 0.34);
+  border-color: rgba(var(--v-theme-primary), 0.35);
+
   box-shadow:
     0 0 0 3px rgba(var(--v-theme-primary), 0.12),
-    0 8px 18px rgba(15, 23, 42, 0.06),
-    0 2px 5px rgba(15, 23, 42, 0.04);
+    0 10px 22px rgba(15, 23, 42, 0.08);
 }
 
 .prow.disabled {
@@ -173,13 +180,19 @@ function money(v) {
   height: 42px;
   border-radius: 9px;
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.045);
+
+  background: rgba(var(--v-theme-on-surface), 0.04);
 
   display: flex;
   align-items: center;
   justify-content: center;
 
   border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+}
+
+:global(.v-theme--light) .prow-img {
+  background: #eef3f9;
+  border-color: #d8e2ee;
 }
 
 .img {
@@ -228,7 +241,7 @@ function money(v) {
   min-width: 0;
   font-size: 10.5px;
   line-height: 1.1;
-  opacity: 0.62;
+  opacity: 0.68;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -252,6 +265,11 @@ function money(v) {
 .pill.dark {
   background: rgba(var(--v-theme-on-surface), 0.07);
   color: rgba(var(--v-theme-on-surface), 0.88);
+}
+
+:global(.v-theme--light) .pill.dark {
+  background: #e9eef5;
+  color: #263445;
 }
 
 .pill.stock {
@@ -299,12 +317,16 @@ function money(v) {
   border-radius: 10px !important;
 }
 
+:global(.v-theme--light) .btn-action {
+  background: #e8eef6 !important;
+}
+
 /* NOTEBOOK */
 @media (max-width: 1366px) {
   .prow {
     grid-template-columns: 52px minmax(0, 1fr) auto auto;
     gap: 7px;
-    padding: 5px 7px;
+    padding: 6px 8px;
   }
 
   .prow-img {
@@ -346,16 +368,11 @@ function money(v) {
   }
 }
 
-/* TABLET / MOBILE */
+/* MOBILE */
 @media (max-width: 960px) {
   .prow {
     grid-template-columns: 52px minmax(0, 1fr) auto;
     align-items: start;
-  }
-
-  .prow-img {
-    width: 52px;
-    height: 40px;
   }
 
   .prow-actions {

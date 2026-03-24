@@ -1,50 +1,84 @@
 <template>
   <v-container fluid class="pos-root">
     <div class="pos-header">
-      <PosTopBar
-        class="pos-surface pos-topbar-shell"
-        :branch-chip-label="branchChipLabel"
-        :sellable-stock-total="sellableStockTotal"
-        :stock-only-total="stockOnlyTotal"
-        :cashier-name="cashierName"
-        :shift-start-text="shiftStartText"
-        :is-view-only="isViewOnly"
-        :needs-branch-pick="needsBranchPick"
-        :has-multi-branches="hasMultiBranches"
-        :loading-global="loadingGlobal"
-        :cart-count="(posStore.cart || []).length"
-        :checkout-disabled="(posStore.cart || []).length === 0 || !canSell.value || needsBranchPick.value"
-        @refresh="refresh"
-        @open-branch-switch="openBranchSwitch"
-        @help="helpOpen = true"
-        @checkout="openCheckoutSafe"
-      />
+      <div class="pos-header-main">
+        <div class="pos-header-caja">
+          <div class="pos-surface pos-caja-actions-shell">
+            <PosCajaActionsBar
+              :is-caja-open="isCajaOpen"
+              :opened-at="currentCashRegister?.opened_at || openedAt"
+              :opened-by="
+                currentCashRegister?.opened_by_name ||
+                currentCashRegister?.user_name ||
+                cashierName
+              "
+              :branch-chip-label="branchChipLabel"
+              :has-multi-branches="hasMultiBranches"
+              :loading-global="loading || cajaBusy"
+              :cart-count="cartCount"
+              @open-config="openCajaConfig"
+              @close-caja="onCloseCaja"
+              @refresh="refresh"
+              @open-branch-switch="openBranchSwitch"
+            />
+          </div>
+        </div>
+
+        <div class="pos-header-topbar">
+          <PosTopBar
+            class="pos-surface pos-topbar-shell"
+            :is-view-only="isViewOnly"
+            :needs-branch-pick="needsBranchPick"
+            :has-multi-branches="hasMultiBranches"
+            :loading-global="loading || cajaBusy"
+            :cart-count="cartCount"
+            @help="handleHelp"
+            @clients="handleClients"
+            @search="handleSearch"
+            @show-cart="openCartDialog"
+            @cash-in="handleCashIn"
+            @pay="handlePay"
+            @blocked-pay="handleBlockedPay"
+            @blocked-cash-in="handleBlockedCashIn"
+          />
+        </div>
+      </div>
     </div>
 
     <div class="pos-body">
       <div class="pos-layout">
-        <!-- LEFT -->
         <div class="pos-left">
-          <PosFiltersBar
+          <PosScannerSearchBar
             ref="filtersRef"
-            class="pos-surface pos-filters-shell"
+            class="pos-surface pos-filters-shell pos-scanner-search-shell"
             v-model:q="q"
             v-model:rubro-id="rubroId"
             v-model:subrubro-id="subrubroId"
+            :visual-state="scannerVisualState"
+            :icon-name="scannerIconName"
+            :icon-color="scannerIconColor"
+            :state-label="scannerStateLabel"
+            :last-scan="scannerLastScan"
+            :last-message="scannerLastMessage"
+            :is-on="scannerIsOn"
+            :sound-enabled="true"
+            :vibration-enabled="true"
+            :show-test-button="true"
             :rubro-items="rubroItems"
             :subrubro-items="subrubroItems"
             :subrubro-no-data-text="subrubroNoDataText"
             :page="page"
             :pages="pages"
-            :limit="limit"
-            :shown-count="pagedItems.length"
-            :total-count="sellableStockTotal"
-            :stock-only-total="stockOnlyTotal"
-            :error="errorGlobal"
-            :disabled-all="loadingGlobal"
-            @typing="debounceSearch"
-            @enter="doSearch"
-            @clear="clearSearch"
+            :shown-count="items.length"
+            :total-count="total"
+            :stock-only-total="total"
+            :error="error"
+            :disabled-all="loading"
+            @toggle="toggleScanner"
+            @test="openScannerTest"
+            @typing="onTyping"
+            @enter="onEnter"
+            @clear="clearQuery"
             @rubro-change="onRubroChange"
             @prev="prevPage"
             @next="nextPage"
@@ -52,42 +86,37 @@
 
           <PosProductsPanel
             class="pos-products-panel pos-surface pos-products-shell"
-            :loading="loadingGlobal"
-            :disabled="loadingGlobal"
-            :items="pagedItems"
-            :shown-count="pagedItems.length"
-            :total-count="sellableStockTotal"
-            :stock-only-total="stockOnlyTotal"
+            :loading="loading"
+            :disabled="loading"
+            :items="items"
+            :shown-count="items.length"
+            :total-count="total"
+            :stock-only-total="total"
             :page="page"
             :pages="pages"
             @prev="prevPage"
             @next="nextPage"
           >
             <PosProductRow
-              v-for="p in pagedItems"
+              v-for="p in items"
               :key="p.id"
               :item="p"
               :image="productImage(p)"
               :name="p.name"
               :sku="p.sku || p.code"
-              :stkLabel="`STK ${qtyForActive(p)}`"
-              :offLabel="
-                resolveUnitPrice(p, 'LIST') > resolveUnitPrice(p, 'DISCOUNT')
-                  ? `${Math.round((1 - resolveUnitPrice(p, 'DISCOUNT') / resolveUnitPrice(p, 'LIST')) * 100)}% OFF`
-                  : ''
-              "
-              :rubro-label="rubroTitleFromProduct(p) || ''"
-              :subrubro-label="subrubroTitleFromProduct(p) || ''"
-              :price-discount="resolveUnitPrice(p, 'DISCOUNT')"
-              :price-list="resolveUnitPrice(p, 'LIST')"
-              :disabled="!canSell || needsBranchPick"
+              :stkLabel="`STK ${p.stock_qty ?? p.qty ?? 0}`"
+              :offLabel="getOffLabel(p)"
+              :rubro-label="rubroTitleFromProduct?.(p) || ''"
+              :subrubro-label="subrubroTitleFromProduct?.(p) || ''"
+              :price-discount="p.price_discount ?? p.effective_price ?? p.price ?? 0"
+              :price-list="p.price_list ?? p.price ?? 0"
+              :disabled="productsDisabled"
               @add="add"
               @details="openDetails"
             />
           </PosProductsPanel>
         </div>
 
-        <!-- RIGHT -->
         <div class="pos-right">
           <div class="pos-surface pos-side-shell pos-customer-shell">
             <PosCustomerPanel
@@ -104,22 +133,33 @@
               :cart="posStore.cart"
               :total-items="posStore.totalItems"
               :total="checkoutTotalPreview"
-              :can-edit="canSell && !needsBranchPick"
+              :can-edit="cartEditable"
               :pos-store="posStore"
               @checkout="openCheckoutSafe"
             />
           </div>
 
-          <div v-if="cartBranchLabel" class="pos-cart-branch-note text-caption text-medium-emphasis">
+          <div
+            v-if="cartBranchLabel"
+            class="pos-cart-branch-note text-caption text-medium-emphasis"
+          >
             Carrito: <b>{{ cartBranchLabel }}</b>
           </div>
         </div>
       </div>
     </div>
 
+    <PosCartPreviewDialog
+      v-model="showCartDialog"
+      :items="cartItems"
+      :total-amount="checkoutTotalPreview"
+      currency="ARS"
+      @go-pay="handleGoPayFromCart"
+    />
+
     <PosProductDetailsDialog
       v-model:open="detailsOpen"
-      :can-sell="canSell && !needsBranchPick"
+      :can-sell="detailsCanSell"
       :item="detailsItem"
       :image="detailsItem ? productImage(detailsItem) : ''"
       @add="addFromDetails"
@@ -152,544 +192,702 @@
       @confirm="onPickBranchConfirm"
     />
 
-    <v-dialog v-model="branchPickOpen" max-width="560">
-      <v-card class="rounded-xl overflow-hidden">
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon>mdi-store</v-icon>
-          <span class="font-weight-bold">Cambiar sucursal activa</span>
+    <PosBranchSwitchDialog
+      v-model:open="branchPickOpen"
+      v-model:selected="branchPickSelected"
+      :items="uiBranchesForSelect"
+      :cart-count="cartCount"
+      @confirm="confirmActiveBranchChange"
+    />
+
+    <PosCajaConfigDialog
+      v-model:open="cajaConfigOpen"
+      :caja-type="cajaType"
+      :invoice-mode="invoiceMode"
+      :invoice-type="invoiceType"
+      :opening-amount="openingAmount"
+      :note="openingNote"
+      :caja-type-options="cajaTypeOptions"
+      :invoice-mode-options="invoiceModeOptions"
+      :invoice-type-options="invoiceTypeOptions"
+      @save="onSaveCajaConfig"
+    />
+
+    <PosCajaArqueoDialog
+      v-model:open="cajaArqueoOpen"
+      :is-caja-open="isCajaOpen"
+      :caja-type-label="cajaTypeLabel"
+      :invoice-type-label="invoiceTypeLabel"
+      :summary="summary"
+      @save="onSaveArqueo"
+    />
+
+    <PosShortcutsHelpDialog v-model="helpOpen" />
+
+    <PosConsultaDialog
+      v-model="consultaOpen"
+      :items="consultaItems"
+      :loading="consultaLoading"
+      @manual-search="handleManualConsulta"
+      @barcode-search="handleBarcodeConsulta"
+      @add-to-cart="handleAddConsultaToCart"
+      @select="handleSelectConsultaItem"
+    />
+
+    <v-dialog v-model="scannerTestOpen" max-width="460">
+      <v-card class="pos-scanner-test-dialog">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <span>Probar scanner</span>
+          <v-btn
+            icon
+            variant="text"
+            density="comfortable"
+            @click="scannerTestOpen = false"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
         </v-card-title>
 
         <v-card-text class="pt-2">
-          <div class="text-caption text-medium-emphasis mb-3">
-            La sucursal activa define desde dónde operás (stock / venta).
+          <div class="text-body-2 mb-3">
+            Pegá o escribí un código para simular una lectura de pistola.
           </div>
 
-          <v-alert v-if="(posStore.cart || []).length" type="warning" variant="tonal" class="mb-3">
-            Tenés un carrito en curso. Terminá la venta o vaciá el carrito antes de cambiar sucursal.
-          </v-alert>
-
-          <v-select
-            v-model="branchPickSelected"
-            :items="uiBranchesForSelect"
-            item-title="title"
-            item-value="value"
-            :return-object="false"
-            label="Sucursal"
+          <v-text-field
+            v-model="scannerTestCode"
+            label="Código"
             variant="outlined"
-            density="comfortable"
-            :disabled="(posStore.cart || []).length > 0"
-            hint="Elegí la sucursal donde vas a operar"
-            persistent-hint
+            density="compact"
+            clearable
+            hide-details
+            @keyup.enter="runScannerTest"
           />
         </v-card-text>
 
-        <v-divider />
-
-        <v-card-actions class="pa-4">
-          <v-btn variant="tonal" @click="branchPickOpen = false">Cancelar</v-btn>
-          <v-spacer />
-          <v-btn
-            color="primary"
-            variant="flat"
-            :disabled="!branchPickSelected || (posStore.cart || []).length > 0"
-            @click="confirmActiveBranchChange"
-          >
-            Aplicar
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="scannerTestOpen = false">
+            Cerrar
+          </v-btn>
+          <v-btn color="primary" variant="flat" @click="runScannerTest">
+            Simular lectura
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <PosShortcutsHelpDialog v-model="helpOpen" />
-    <v-snackbar v-model="snack.show" :timeout="3200">{{ snack.text }}</v-snackbar>
+    <v-snackbar v-model="snack.show" :timeout="3200">
+      {{ snack.text }}
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+import http from "../../../app/api/http";
+
 import { usePosStore } from "../../../app/store/pos.store";
+import { useAuthStore } from "../../../app/store/auth.store";
 
 import PosTopBar from "../components/PosTopBar.vue";
-import PosFiltersBar from "../components/PosFiltersBar.vue";
-import { usePosFilters } from "../composables/usePosFilters";
-
 import PosProductsPanel from "../components/PosProductsPanel.vue";
 import PosProductRow from "../components/PosProductRow.vue";
-
 import CheckoutDialog from "../components/CheckoutDialog.vue";
 import PosProductDetailsDialog from "../components/PosProductDetailsDialog.vue";
 import ReceiptDialog from "../components/ReceiptDialog.vue";
 import PosCartPanel from "../components/PosCartPanel.vue";
+import PosCartPreviewDialog from "../components/PosCartPreviewDialog.vue";
 import PosPickBranchDialog from "../components/PosPickBranchDialog.vue";
 import PosShortcutsHelpDialog from "../components/PosShortcutsHelpDialog.vue";
-
 import PosCustomerPanel from "../components/PosCustomerPanel.vue";
+import PosCajaActionsBar from "../components/PosCajaActionsBar.vue";
+import PosCajaConfigDialog from "../components/PosCajaConfigDialog.vue";
+import PosCajaArqueoDialog from "../components/PosCajaArqueoDialog.vue";
+import PosBranchSwitchDialog from "../components/PosBranchSwitchDialog.vue";
+import PosScannerSearchBar from "../components/PosScannerSearchBar.vue";
+import PosConsultaDialog from "../components/PosConsultaDialog.vue";
 
-import { usePosAccess } from "../composables/usePosAccess";
+import { usePosHotkeys } from "../composables/usePosHotkeys";
 import { usePosBranch } from "../composables/usePosBranch";
 import { usePosBranchScope } from "../composables/usePosBranchScope";
 import { usePosPricing } from "../composables/usePosPricing";
 import { usePosImages } from "../composables/usePosImages";
+import { usePosBranchSwitch } from "../composables/usePosBranchSwitch";
+import { usePosCustomer } from "../composables/usePosCustomer";
+import { usePosProductActions } from "../composables/usePosProductActions";
 import { usePosCheckout } from "../composables/usePosCheckout";
-import { usePosMultiBranchCatalog } from "../composables/usePosMultiBranchCatalog";
+import { usePosCashRegister } from "../composables/usePosCashRegister";
+import { usePosProductSearch } from "../composables/usePosProductSearch";
+import { usePosScannerInput } from "../composables/usePosScannerInput";
 
 const posStore = usePosStore();
+const auth = useAuthStore();
 
-/* UI */
-const helpOpen = ref(false);
 const filtersRef = ref(null);
-const snack = ref({ show: false, text: "" });
+const helpOpen = ref(false);
+const branchPickOpen = ref(false);
+
+const scannerTestOpen = ref(false);
+const scannerTestCode = ref("");
+const scannerEnabled = ref(true);
+
+const showCartDialog = ref(false);
+
+const consultaOpen = ref(false);
+const consultaLoading = ref(false);
+const consultaItems = ref([]);
+
+const snack = ref({
+  show: false,
+  text: "",
+});
+
 function toast(text) {
-  snack.value = { show: true, text: String(text || "") };
+  snack.value.text = String(text || "");
+  snack.value.show = true;
 }
 
-/* shift / cajero */
-const shiftStart = ref(new Date());
-const shiftStartText = computed(() => {
-  const d = shiftStart.value || new Date();
-  return new Date(d).toLocaleString("es-AR", { hour: "2-digit", minute: "2-digit" });
-});
-
-/* access */
-const { auth, canSell, isViewOnly, cashierName } = usePosAccess();
-
-/* ======================================================
-   ✅ CLIENTE: draft local + attach al checkout
-====================================================== */
-const CUSTOMER_DRAFT_KEY = "pos_customer_draft_v1";
-
-function emptyCustomer() {
-  return {
-    name: "",
-    doc: "",
-    phone: "",
-    email: "",
-    address: "",
-    note: "",
-  };
+function toInt(v, def = 0) {
+  const n = parseInt(String(v ?? ""), 10);
+  return Number.isFinite(n) ? n : def;
 }
 
-const customer = ref(emptyCustomer());
-
-function normalizeCustomer(obj) {
-  const o = obj && typeof obj === "object" ? obj : {};
-  return {
-    name: String(o.name ?? o.full_name ?? o.razon_social ?? o.company ?? "").trim(),
-    doc: String(o.doc ?? o.dni ?? o.cuit ?? o.document ?? "").trim(),
-    phone: String(o.phone ?? o.tel ?? o.telefono ?? "").trim(),
-    email: String(o.email ?? "").trim(),
-    address: String(o.address ?? o.direccion ?? "").trim(),
-    note: String(o.note ?? o.obs ?? o.observaciones ?? "").trim(),
-  };
+function toArr(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data.rows)) return data.rows;
+  return [];
 }
 
-const customerHasData = computed(() => {
-  const c = customer.value || {};
-  return !!(
-    String(c.name || "").trim() ||
-    String(c.doc || "").trim() ||
-    String(c.phone || "").trim() ||
-    String(c.email || "").trim() ||
-    String(c.address || "").trim() ||
-    String(c.note || "").trim()
-  );
-});
-
-const customerDisabled = computed(() => {
-  return !!loadingGlobal.value || !!isViewOnly?.value || !!needsBranchPick?.value || !canSell?.value;
-});
-
-function loadCustomerDraft() {
-  try {
-    const raw = localStorage.getItem(CUSTOMER_DRAFT_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    customer.value = normalizeCustomer(parsed);
-  } catch {}
-}
-
-function saveCustomerDraft() {
-  try {
-    localStorage.setItem(CUSTOMER_DRAFT_KEY, JSON.stringify(normalizeCustomer(customer.value)));
-  } catch {}
-}
-
-function clearCustomer() {
-  customer.value = emptyCustomer();
-  try {
-    localStorage.removeItem(CUSTOMER_DRAFT_KEY);
-  } catch {}
-  tryAttachCustomerToStore(null);
-}
-
-function tryAttachCustomerToStore(custOrNull) {
-  const payload = custOrNull ? normalizeCustomer(custOrNull) : null;
-
-  const candidates = [
-    ["setCustomer", (s) => s.setCustomer(payload)],
-    ["setClient", (s) => s.setClient(payload)],
-    ["setBuyer", (s) => s.setBuyer(payload)],
-    ["setCustomerDraft", (s) => s.setCustomerDraft(payload)],
-    ["setCustomerInfo", (s) => s.setCustomerInfo(payload)],
-  ];
-
-  for (const [name, fn] of candidates) {
-    try {
-      if (typeof posStore?.[name] === "function") {
-        fn(posStore);
-        return true;
-      }
-    } catch (e) {
-      console.warn("[POS] customer attach method failed:", name, e);
-    }
-  }
-
-  try {
-    if (typeof posStore?.$patch === "function") {
-      posStore.$patch({ customer: payload, customer_info: payload, customerInfo: payload });
-      return true;
-    }
-  } catch {}
-
-  try {
-    posStore.customer = payload;
-    posStore.customer_info = payload;
-    posStore.customerInfo = payload;
-    return true;
-  } catch {}
-
-  return false;
-}
-
-/* branch */
 const {
-  userBranches,
   branchItems,
-  branchPickOpen,
+  fetchedBranches,
   activeBranchId,
   branchName,
   branchChipLabel,
-  needsBranchPick,
   ensureBranchSelected,
-  fetchedBranches,
-} = usePosBranch({ auth, posStore });
+  needsBranchPick,
+  userBranches: userBranchesFromBranch,
+} = usePosBranch({ posStore, auth, toast });
 
-const branchScope = usePosBranchScope({ auth, userBranches, branchItems });
+const isViewOnly = computed(() => false);
 
-const uiBranchesForSelect = computed(() => {
-  const fb = Array.isArray(fetchedBranches?.value) ? fetchedBranches.value : [];
-  if (fb.length) {
-    return fb
-      .map((b) => {
-        const value = Number(b?.id ?? b?.branch_id ?? 0) || null;
-        if (!value) return null;
-        const title = String(b?.name ?? b?.branch_name ?? "").trim() || `Sucursal #${value}`;
-        return { title, value };
-      })
-      .filter(Boolean);
-  }
+const userBranches = computed(() => {
+  if (Array.isArray(userBranchesFromBranch?.value)) return userBranchesFromBranch.value;
+  if (Array.isArray(userBranchesFromBranch)) return userBranchesFromBranch;
 
-  const raw = Array.isArray(branchItems?.value) ? branchItems.value : [];
-  return raw
-    .map((it) => {
-      const value = Number(it?.value ?? it?.id ?? 0) || null;
-      if (!value) return null;
-      const title = String(it?.title ?? it?.name ?? "").trim() || `Sucursal #${value}`;
-      return { title, value };
-    })
-    .filter(Boolean);
+  if (Array.isArray(auth?.user?.branches)) return auth.user.branches;
+  if (Array.isArray(auth?.me?.branches)) return auth.me.branches;
+
+  if (Array.isArray(fetchedBranches?.value)) return fetchedBranches.value;
+  if (Array.isArray(branchItems?.value)) return branchItems.value;
+
+  return [];
 });
 
-const hasMultiBranches = computed(() => uiBranchesForSelect.value.length > 1);
-const branchPickSelected = ref(null);
-
-function getActiveBranchIdSafe() {
-  const v = activeBranchId?.value;
-  return Number(v?.id ?? v?.value ?? v ?? posStore?.branch_id ?? 0) || null;
-}
-
-const cartBranchLabel = computed(() => {
-  const id = Number(posStore?.cart_branch_id ?? posStore?.cartBranchId ?? 0) || null;
-  if (!id) return "";
-  const list = uiBranchesForSelect.value || [];
-  const found = list.find((x) => Number(x.value) === id);
-  return found?.title || `Sucursal #${id}`;
+usePosBranchScope({
+  auth,
+  userBranches,
+  branchItems,
 });
 
-function openBranchSwitch() {
-  if (!hasMultiBranches.value) return;
+const activeWarehouseId = computed(() => {
+  return (
+    toInt(posStore?.warehouseId, 0) ||
+    toInt(posStore?.currentWarehouseId, 0) ||
+    toInt(posStore?.context?.warehouseId, 0) ||
+    toInt(posStore?.context?.warehouse_id, 0) ||
+    toInt(posStore?.posContext?.warehouseId, 0) ||
+    toInt(posStore?.posContext?.warehouse_id, 0) ||
+    0
+  );
+});
 
-  if ((posStore.cart || []).length) {
-    toast("🧠 Terminá la venta o vaciá el carrito antes de cambiar sucursal.");
-    return;
-  }
-
-  branchPickSelected.value = getActiveBranchIdSafe();
-  branchPickOpen.value = true;
-}
-
-async function confirmActiveBranchChange() {
-  if ((posStore.cart || []).length) {
-    toast("🧠 Terminá la venta o vaciá el carrito antes de cambiar sucursal.");
-    branchPickOpen.value = false;
-    return;
-  }
-
-  const nextId = Number(branchPickSelected.value || 0) || null;
-  if (!nextId) return;
-
-  try {
-    if (typeof posStore.setBranchId === "function") posStore.setBranchId(nextId);
-    else if (typeof posStore.setActiveBranch === "function") posStore.setActiveBranch(nextId);
-    else if (typeof posStore.$patch === "function") posStore.$patch({ branch_id: nextId });
-    else posStore.branch_id = nextId;
-  } catch {}
-
-  try {
-    localStorage.setItem("pos_branch_id", String(nextId));
-    localStorage.setItem("active_branch_id", String(nextId));
-    localStorage.setItem("branch_id", String(nextId));
-  } catch {}
-
-  try {
-    activeBranchId.value = nextId;
-  } catch {}
-
-  try {
-    await ensureBranchSelected?.();
-  } catch {}
-
-  branchPickOpen.value = false;
-
-  try {
-    await fetchGlobalPool({ in_stock: 0 });
-  } catch {}
-
-  toast("✅ Sucursal activa actualizada");
-}
-
-/* pricing */
-const { resolveUnitPrice, isSellable, toNum } = usePosPricing();
-
-/* images */
+const { toNum, resolveUnitPrice } = usePosPricing();
 const { productImage, prefetchImagesForVisible } = usePosImages();
 
-/* catálogo global */
-const { loadingGlobal, errorGlobal, globalItems, fetchGlobalPool } = usePosMultiBranchCatalog({
-  branchScope,
-  isSellable,
-});
+const categories = ref([]);
+const subcategories = ref([]);
+const taxonomyLoading = ref(false);
 
-const installmentsItems12 = computed(() => {
-  const out = [];
-  out.push({ title: "1 pago", value: 1 });
-  for (let i = 2; i <= 12; i++) out.push({ title: `${i} cuotas`, value: i });
-  return out;
-});
-
-function cartKey(it) {
-  const pid = Number(it?.product_id ?? it?.productId ?? it?.product?.id ?? it?.id ?? 0) || null;
-  const sku = String(it?.sku ?? it?.code ?? it?.product?.sku ?? it?.product?.code ?? "").trim();
-  return { pid, sku };
+async function loadCategories() {
+  try {
+    taxonomyLoading.value = true;
+    const { data } = await http.get("/categories");
+    categories.value = toArr(data);
+  } catch (err) {
+    categories.value = [];
+    console.error("[POS] loadCategories error", err);
+  } finally {
+    taxonomyLoading.value = false;
+  }
 }
 
-function findProductInPool(it) {
-  const { pid, sku } = cartKey(it);
-  const pool = Array.isArray(globalItems?.value) ? globalItems.value : [];
-
-  if (pid) {
-    const byId = pool.find((p) => Number(p?.id ?? p?.product_id ?? 0) === pid);
-    if (byId) return byId;
+async function loadSubcategories(categoryId) {
+  const cid = toInt(categoryId, 0);
+  if (!cid) {
+    subcategories.value = [];
+    return;
   }
 
-  if (sku) {
-    const bySku = pool.find((p) => String(p?.sku ?? p?.code ?? "").trim() === sku);
-    if (bySku) return bySku;
+  try {
+    taxonomyLoading.value = true;
+    const { data } = await http.get(`/categories/${cid}/subcategories`, {
+      params: { is_active: 1 },
+    });
+    subcategories.value = toArr(data);
+  } catch (err) {
+    subcategories.value = [];
+    console.error("[POS] loadSubcategories error", err);
+  } finally {
+    taxonomyLoading.value = false;
   }
-
-  return null;
 }
 
-const cartForCheckout = computed(() => {
-  const cart = Array.isArray(posStore?.cart) ? posStore.cart : [];
-  return cart.map((it) => {
-    const already = String(it?.image || it?.image_url || it?.imageUrl || it?.thumb || it?.thumbnail || "").trim();
-    if (already) return it;
+const rubroItems = computed(() => {
+  return (categories.value || [])
+    .map((c) => ({
+      title: String(c?.name || "").trim(),
+      value: Number(c?.id || 0),
+    }))
+    .filter((x) => x.title && x.value);
+});
 
-    const p = findProductInPool(it);
-    if (!p) return it;
+const subrubroItems = computed(() => {
+  return (subcategories.value || [])
+    .map((s) => ({
+      title: String(s?.name || "").trim(),
+      value: Number(s?.id || 0),
+    }))
+    .filter((x) => x.title && x.value);
+});
 
-    const img = productImage(p);
-    if (!img) return it;
+const subrubroNoDataText = computed(() => {
+  if (!rubroId.value) return "Elegí un rubro primero";
+  if (taxonomyLoading.value) return "Cargando subrubros...";
+  if (!subrubroItems.value.length) return "Este rubro no tiene subrubros";
+  return "Sin datos";
+});
 
-    return {
-      ...it,
-      image: img,
-      image_url: img,
-      product: it?.product ? { ...it.product, image: img, image_url: img } : it?.product,
-    };
+const categoryNameMap = computed(() => {
+  const map = new Map();
+  for (const c of categories.value || []) {
+    const id = Number(c?.id || 0);
+    const name = String(c?.name || "").trim();
+    if (id && name) map.set(id, name);
+  }
+  return map;
+});
+
+const subcategoryNameMap = computed(() => {
+  const map = new Map();
+  for (const s of subcategories.value || []) {
+    const id = Number(s?.id || 0);
+    const name = String(s?.name || "").trim();
+    if (id && name) map.set(id, name);
+  }
+  return map;
+});
+
+function rubroTitleFromProduct(product) {
+  const id = Number(product?.category_id || 0);
+  return categoryNameMap.value.get(id) || "";
+}
+
+function subrubroTitleFromProduct(product) {
+  const id = Number(product?.subcategory_id || 0);
+  return subcategoryNameMap.value.get(id) || "";
+}
+
+const {
+  q,
+  rubroId,
+  subrubroId,
+  page,
+  limit,
+  items,
+  loading,
+  error,
+  total,
+  pages,
+  searchNow,
+  onTyping,
+  onEnter,
+  clearQuery,
+  prevPage,
+  nextPage,
+  resetResults,
+  setRubro,
+  setSubrubro,
+  setQuery,
+} = usePosProductSearch({
+  branchId: activeBranchId,
+  warehouseId: activeWarehouseId,
+  initialLimit: 48,
+  inStock: true,
+  sellable: true,
+  minSearchLength: 3,
+  debounceMs: 320,
+  autoSearch: true,
+  keepResultsOnShortQuery: true,
+});
+
+async function refreshCatalog() {
+  await searchNow({ force: true });
+}
+
+async function onRubroChange() {
+  setRubro(rubroId.value);
+  await loadSubcategories(rubroId.value);
+}
+
+const {
+  currentCashRegister,
+  currentCashRegisterId,
+  summary,
+  isBusy: cajaBusy,
+  isCajaOpen,
+
+  cajaType,
+  invoiceMode,
+  invoiceType,
+  openingAmount,
+  openingNote,
+  openedAt,
+
+  cajaTypeOptions,
+  invoiceModeOptions,
+  invoiceTypeOptions,
+
+  cajaTypeLabel,
+  invoiceTypeLabel,
+
+  cajaConfigOpen,
+  cajaArqueoOpen,
+  openCajaConfig,
+  closeCajaConfig,
+  openCajaArqueo,
+  closeCajaArqueo,
+
+  openCaja,
+  closeCaja,
+  refreshCaja,
+  canSellWithCaja,
+} = usePosCashRegister();
+
+const shiftStart = ref(new Date());
+
+const cashierName = computed(() => {
+  return (
+    auth?.user?.name ||
+    auth?.user?.username ||
+    auth?.me?.name ||
+    auth?.me?.username ||
+    "Caja"
+  );
+});
+
+const shiftStartText = computed(() => {
+  const base = openedAt.value || shiftStart.value || new Date();
+  return new Date(base).toLocaleString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 });
 
-function getActiveBranchId() {
-  return getActiveBranchIdSafe();
-}
-
-function qtyForActive(p) {
-  const ab = getActiveBranchId();
-  if (!ab) return Number(p?.total_qty || 0) || 0;
-  return Number(p?.stockByBranch?.[String(ab)] || 0) || 0;
-}
-
-/* filtros */
-const filters = usePosFilters({ globalItems, isSellable, qtyForActive });
 const {
-  q,
-  page,
-  limit,
-  rubroId,
-  subrubroId,
-  rubroItems,
-  subrubroItems,
-  subrubroNoDataText,
-  stockOnlyTotal,
-  sellableStockTotal,
-  pages,
-  pagedItems,
-  onRubroChange,
-  debounceSearch,
-  doSearch,
-  clearSearch,
-  prevPage,
-  nextPage,
-  loadTaxonomy,
-  rubroTitleFromProduct,
-  subrubroTitleFromProduct,
-} = filters;
+  branchPickSelected,
+  uiBranchesForSelect,
+  hasMultiBranches,
+  cartBranchLabel,
+  getActiveBranchIdSafe,
+  openBranchSwitch,
+  confirmActiveBranchChange,
+} = usePosBranchSwitch({
+  posStore,
+  branchPickOpen,
+  activeBranchId,
+  branchItems,
+  fetchedBranches,
+  ensureBranchSelected,
+  fetchGlobalPool: refreshCatalog,
+  toast,
+});
 
-/* details */
-const detailsOpen = ref(false);
-const detailsItem = ref(null);
-function openDetails(p) {
-  detailsItem.value = p || null;
-  detailsOpen.value = true;
+const {
+  customer,
+  customerHasData,
+  customerDisabled,
+  tryAttachCustomerToStore,
+  loadCustomerDraft,
+  saveCustomerDraft,
+  clearCustomer,
+} = usePosCustomer({
+  posStore,
+  loadingGlobal: loading,
+  isViewOnly,
+  needsBranchPick,
+  canSell: computed(() => true),
+});
+
+const canSell = computed(() => !isViewOnly.value);
+
+const canProceedWithCaja = computed(() => {
+  return !!isCajaOpen.value;
+});
+
+function logCajaState(origin = "unknown") {
+  console.log(`[POS][${origin}] caja`, {
+    canProceedWithCaja: canProceedWithCaja.value,
+    canSellWithCaja: canSellWithCaja?.value,
+    isCajaOpen: isCajaOpen.value,
+    currentCashRegisterId: currentCashRegisterId?.value,
+    cajaType: cajaType.value,
+    invoiceMode: invoiceMode.value,
+    invoiceType: invoiceType.value,
+    currentCashRegister: currentCashRegister?.value || null,
+    summary: summary?.value || null,
+  });
 }
 
-/* add safe */
-function addToCartSafe(product, qty = 1) {
-  if (!product) return false;
+const cartItems = computed(() => {
+  return Array.isArray(posStore.cart) ? posStore.cart : [];
+});
 
-  const candidates = [
-    ["addToCart", (s) => s.addToCart(product, qty)],
-    ["add", (s) => s.add(product, qty)],
-    ["addItem", (s) => s.addItem(product, qty)],
-    ["addProduct", (s) => s.addProduct(product, qty)],
-    ["cartAdd", (s) => s.cartAdd(product, qty)],
-    ["pushToCart", (s) => s.pushToCart(product, qty)],
-  ];
+const cartCount = computed(() => {
+  return cartItems.value.reduce((acc, item) => {
+    const qty = Number(item?.qty ?? item?.quantity ?? item?.cant ?? 1);
+    return acc + (Number.isFinite(qty) ? qty : 1);
+  }, 0);
+});
 
-  for (const [name, fn] of candidates) {
-    try {
-      if (typeof posStore?.[name] === "function") {
-        fn(posStore);
-        return true;
-      }
-    } catch (e) {
-      console.warn("[POS] addToCart method failed:", name, e);
-    }
-  }
+const productsDisabled = computed(() => {
+  return loading.value || !canSell.value || needsBranchPick.value;
+});
 
-  return false;
+const cartEditable = computed(() => {
+  return canSell.value && !needsBranchPick.value;
+});
+
+const detailsCanSell = computed(() => {
+  return canSell.value && !needsBranchPick.value;
+});
+
+const checkoutDisabled = computed(() => {
+  return (
+    cartCount.value === 0 ||
+    !canSell.value ||
+    needsBranchPick.value ||
+    !canProceedWithCaja.value
+  );
+});
+
+function getOffLabel(product) {
+  const list = Number(product?.price_list || resolveUnitPrice(product, "LIST") || 0);
+  const discount = Number(
+    product?.price_discount ??
+      product?.effective_price ??
+      resolveUnitPrice(product, "DISCOUNT") ??
+      product?.price ??
+      0
+  );
+
+  if (!list || !discount || discount >= list) return "";
+  return `${Math.round((1 - discount / list) * 100)}% OFF`;
 }
 
-function add(product) {
-  if (!product) return;
+const {
+  detailsOpen,
+  detailsItem,
+  cartForCheckout,
+  openDetails,
+  add,
+  addFromDetails,
+} = usePosProductActions({
+  posStore,
+  canSell,
+  needsBranchPick,
+  globalItems: items,
+  productImage,
+  toast,
+});
 
-  if (!canSell?.value) {
-    toast("⛔ No tenés permiso para vender.");
-    return;
-  }
+async function searchExactByScanner(code) {
+  const raw = String(code || "").trim();
+  if (!raw) return [];
 
-  if (needsBranchPick?.value) {
-    toast("🏬 Elegí una sucursal antes de agregar productos.");
-    return;
-  }
+  try {
+    const { data } = await http.get("/pos/products", {
+      params: {
+        q: raw,
+        page: 1,
+        limit: 10,
+        branch_id: activeBranchId.value || undefined,
+        warehouse_id: activeWarehouseId.value || undefined,
+        in_stock: "true",
+        sellable: "true",
+      },
+    });
 
-  const ok = addToCartSafe(product, 1);
-  if (!ok) {
-    toast("⚠️ No encontré el método para agregar al carrito (posStore).");
-    console.warn("[POS] No add method found in posStore. Revisá pos.store:", posStore);
+    const rows = toArr(data);
+    const normalized = raw.toLowerCase();
+
+    const exact = rows.filter((p) => {
+      const barcode = String(p?.barcode || "").trim().toLowerCase();
+      const sku = String(p?.sku || "").trim().toLowerCase();
+      const codeField = String(p?.code || "").trim().toLowerCase();
+      return barcode === normalized || sku === normalized || codeField === normalized;
+    });
+
+    return exact.length ? exact : rows;
+  } catch (err) {
+    console.error("[POS] scanner search error", err);
+    throw new Error(err?.response?.data?.message || err?.message || "No se pudo buscar el código");
   }
 }
 
-function addFromDetails(payload) {
-  const product = detailsItem.value;
-  const meta = payload || {};
-  const unitPrice = Number(meta.unit_price || 0) || 0;
-
-  if (!product) {
-    toast("⚠️ No hay producto seleccionado (detailsItem null).");
+async function handleScannerMatch(product, code) {
+  if (needsBranchPick.value) {
+    toast("Elegí una sucursal antes de usar el scanner");
     return;
   }
 
-  if (!canSell?.value) {
-    toast("⛔ No tenés permiso para vender.");
+  if (!canProceedWithCaja.value) {
+    toast("Abrí una caja antes de vender con scanner");
     return;
   }
 
-  if (needsBranchPick?.value) {
-    toast("🏬 Elegí una sucursal antes de agregar productos.");
-    return;
-  }
-
-  if (unitPrice <= 0) {
-    toast("⚠️ Producto sin precio válido.");
-    return;
-  }
-
-  const pricedCandidates = [
-    ["addToCartWithPrice", (s) => s.addToCartWithPrice(product, unitPrice, meta)],
-    ["addWithPrice", (s) => s.addWithPrice(product, unitPrice, meta)],
-    ["addPriced", (s) => s.addPriced(product, unitPrice, meta)],
-    ["addFromDetails", (s) => s.addFromDetails(product, meta)],
-  ];
-
-  for (const [name, fn] of pricedCandidates) {
-    try {
-      if (typeof posStore?.[name] === "function") {
-        fn(posStore);
-        toast("✅ Agregado al carrito");
-        detailsOpen.value = false;
-        return;
-      }
-    } catch (e) {
-      console.warn("[POS] priced add method failed:", name, e);
-    }
-  }
-
-  const cloned = {
-    ...product,
-    unit_price: unitPrice,
-    price_policy: meta.price_policy || null,
-    price_label: meta.price_label || null,
-    paymentMethod: meta.paymentMethod || null,
-    installments: Number(meta.installments || 1) || 1,
-    applyReseller: Boolean(meta.applyReseller),
-    __pos_pricing: { ...meta, unit_price: unitPrice },
-  };
-
-  const ok = addToCartSafe(cloned, 1);
-  if (!ok) {
-    toast("⚠️ No encontré el método para agregar al carrito (posStore).");
-    console.warn("[POS] No add method found in posStore. Revisá pos.store:", posStore);
-    return;
-  }
-
-  toast("✅ Agregado al carrito");
-  detailsOpen.value = false;
+  add(product);
+  setQuery(String(code || ""));
+  toast(`Agregado: ${product?.name || product?.sku || product?.code || "Producto"}`);
 }
 
-/* pick branch (producto) */
+async function handleScannerMultiple(rows, code) {
+  setQuery(String(code || ""));
+  await searchNow({ force: true, resetPage: true });
+  toast(`Se encontraron ${rows.length} productos para ${code}`);
+}
+
+function handleScannerNoMatch(code) {
+  setQuery(String(code || ""));
+  toast(`Sin coincidencias para ${code}`);
+}
+
+function handleScannerError(err, code) {
+  console.error("[POS] scanner error", code, err);
+  toast(err?.message || `Error leyendo ${code}`);
+}
+
+function handleScannerRead(code) {
+  setQuery(String(code || ""));
+}
+
+const scanner = usePosScannerInput({
+  enabled: scannerEnabled,
+  minLength: 4,
+  maxLength: 120,
+  maxAvgCharMs: 45,
+  maxGapMs: 90,
+  captureInsideInputs: false,
+  preventEnterDefault: true,
+  onScan: handleScannerRead,
+  searchExact: searchExactByScanner,
+  onMatch: handleScannerMatch,
+  onMultiple: handleScannerMultiple,
+  onNoMatch: handleScannerNoMatch,
+  onError: handleScannerError,
+  normalizeCode: (code) => String(code || "").trim(),
+});
+
+const scannerVisualState = computed(() => scanner.visualState.value);
+const scannerIconName = computed(() => scanner.iconName.value);
+const scannerIconColor = computed(() => scanner.iconColor.value);
+const scannerStateLabel = computed(() => scanner.stateLabel.value);
+const scannerLastMessage = computed(() => scanner.lastMessage.value);
+const scannerLastScan = computed(() => scanner.lastScan.value);
+const scannerIsOn = computed(() => scanner.isScannerOn.value);
+
+function toggleScanner() {
+  scanner.toggle();
+}
+
+function openScannerTest() {
+  scannerTestCode.value = "";
+  scannerTestOpen.value = true;
+}
+
+async function runScannerTest() {
+  const code = String(scannerTestCode.value || "").trim();
+  if (!code) {
+    toast("Ingresá un código");
+    return;
+  }
+
+  await scanner.simulateScan(code);
+  scannerTestOpen.value = false;
+}
+
+function openCartDialog() {
+  showCartDialog.value = true;
+}
+
+function closeCartDialog() {
+  showCartDialog.value = false;
+}
+
+function handleBlockedPay(payload) {
+  const reason = String(payload?.reason || "");
+
+  if (reason === "EMPTY_CART") {
+    toast("Agregá productos al carrito antes de cobrar");
+    return;
+  }
+
+  if (reason === "NEEDS_BRANCH") {
+    toast("Seleccioná una sucursal para operar");
+    return;
+  }
+
+  if (reason === "VIEW_ONLY") {
+    toast("La vista está en modo solo lectura");
+    return;
+  }
+
+  if (reason === "LOADING") {
+    toast("Esperá a que termine la operación actual");
+    return;
+  }
+
+  toast("No se puede iniciar el cobro todavía");
+}
+
+function handleBlockedCashIn(payload) {
+  const reason = String(payload?.reason || "");
+
+  if (reason === "NEEDS_BRANCH") {
+    toast("Seleccioná una sucursal para operar");
+    return;
+  }
+
+  if (reason === "VIEW_ONLY") {
+    toast("La vista está en modo solo lectura");
+    return;
+  }
+
+  if (reason === "LOADING") {
+    toast("Esperá a que termine la operación actual");
+    return;
+  }
+
+  toast("No se pudo abrir el ingreso de dinero");
+}
+
+async function handleGoPayFromCart() {
+  showCartDialog.value = false;
+  await openCheckoutSafe();
+}
+
 const pickBranchOpen = ref(false);
 const pickBranchProduct = ref(null);
 const pickBranchOptions = ref([]);
@@ -700,8 +898,7 @@ function onPickBranchConfirm() {
   pickBranchOptions.value = [];
 }
 
-/* checkout */
-const allSellable = globalItems;
+const allSellable = items;
 
 const {
   checkoutDialog,
@@ -724,14 +921,58 @@ const {
   toNum,
   allSellable,
   customerRef: customer,
+  isCajaOpen,
+  currentCashRegisterId,
 });
 
-function openCheckoutSafe() {
+const installmentsItems12 = computed(() => {
+  const out = [{ title: "1 pago", value: 1 }];
+  for (let i = 2; i <= 12; i++) out.push({ title: `${i} cuotas`, value: i });
+  return out;
+});
+
+async function openCheckoutSafe() {
+  logCajaState("before-open-checkout");
+
+  if (needsBranchPick.value) {
+    toast("Elegí una sucursal antes de vender");
+    return;
+  }
+
+  if (!cartItems.value.length) {
+    toast("Agregá productos al carrito antes de cobrar");
+    return;
+  }
+
+  if (!canProceedWithCaja.value) {
+    await refreshCaja().catch(() => {});
+    logCajaState("after-refresh-open-checkout");
+  }
+
+  if (!canProceedWithCaja.value) {
+    toast("Debés abrir una caja antes de registrar la venta");
+    openCajaConfig();
+    return;
+  }
+
   openCheckout({ onSnack: toast });
 }
 
 async function onCheckoutConfirm(payload) {
   try {
+    logCajaState("before-confirm-checkout");
+
+    if (!canProceedWithCaja.value) {
+      await refreshCaja().catch(() => {});
+      logCajaState("after-refresh-confirm-checkout");
+    }
+
+    if (!canProceedWithCaja.value) {
+      toast("Debés abrir una caja antes de registrar la venta");
+      openCajaConfig();
+      return;
+    }
+
     if (customerHasData.value) {
       tryAttachCustomerToStore(customer.value);
       saveCustomerDraft();
@@ -739,109 +980,346 @@ async function onCheckoutConfirm(payload) {
       tryAttachCustomerToStore(null);
     }
 
-    if (payload?.payment_method) paymentMethod.value = String(payload.payment_method).toUpperCase();
-    if (payload?.installments != null) installments.value = Number(payload.installments || 1);
-    if (payload?.apply_reseller != null) applyReseller.value = !!payload.apply_reseller;
-    if (payload?.cash_received != null) cashInput.value = String(payload.cash_received || "");
+    if (payload?.payment_method) {
+      paymentMethod.value = String(payload.payment_method).toUpperCase();
+    }
+
+    if (payload?.installments != null) {
+      installments.value = Number(payload.installments || 1);
+    }
+
+    if (payload?.apply_reseller != null) {
+      applyReseller.value = !!payload.apply_reseller;
+    }
+
+    if (payload?.cash_received != null) {
+      cashInput.value = String(payload.cash_received || "");
+    }
 
     await confirmPayment({
       onSnack: toast,
       payloadFromDialog: payload,
     });
 
-    await fetchGlobalPool({ in_stock: 0 });
-  } catch (e) {
-    console.error("[POS] onCheckoutConfirm error", e);
+    showCartDialog.value = false;
+
+    await refreshCatalog();
+    await refreshCaja().catch(() => {});
+  } catch (err) {
+    console.error("[POS] onCheckoutConfirm error", err);
+
+    if (err?.code === "CAJA_NO_ABIERTA") {
+      toast(err?.message || "No hay caja abierta");
+      await refreshCaja().catch(() => {});
+      openCajaConfig();
+      return;
+    }
+
+    toast(err?.message || "Error al confirmar la venta");
   }
 }
 
 function onCheckoutCancel() {}
 
-function refresh() {
-  fetchGlobalPool({ in_stock: 0 });
+async function refresh() {
+  await refreshCatalog();
+  await refreshCaja().catch(() => {});
+  logCajaState("manual-refresh");
 }
 
-/* hotkeys */
-function onKeydown(e) {
-  if (!e || e.repeat) return;
-  const key = String(e.key || "").toLowerCase();
+async function onSaveCajaConfig(payload) {
+  try {
+    await openCaja({
+      opening_cash: payload?.opening_amount ?? payload?.opening_cash ?? 0,
+      opening_note: payload?.note ?? payload?.opening_note ?? "",
+      caja_type: payload?.caja_type,
+      invoice_mode: payload?.invoice_mode,
+      invoice_type: payload?.invoice_type,
+    });
 
-  if (key === "f1") {
-    e.preventDefault();
-    helpOpen.value = true;
-    return;
-  }
-  if (key === "f2" || (e.ctrlKey && key === "k")) {
-    e.preventDefault();
-    filtersRef.value?.focusSearch?.();
-    return;
-  }
-  if (key === "f8") {
-    e.preventDefault();
-    openCheckoutSafe();
-    return;
-  }
-  if (key === "pageup") {
-    e.preventDefault();
-    prevPage();
-    return;
-  }
-  if (key === "pagedown") {
-    e.preventDefault();
-    nextPage();
-    return;
+    closeCajaConfig();
+    await refreshCaja().catch(() => {});
+    logCajaState("after-open-caja");
+
+    toast(`Caja iniciada • ${cajaTypeLabel.value} • ${invoiceTypeLabel.value}`);
+  } catch (err) {
+    if (err?.status === 409) {
+      toast("Ya hay una caja abierta, sincronizando...");
+      await refreshCaja().catch(() => {});
+      closeCajaConfig();
+      logCajaState("open-caja-409");
+      return;
+    }
+
+    toast(err?.message || "Error al abrir caja");
   }
 }
+
+async function onCloseCaja() {
+  if (!isCajaOpen.value) {
+    await refreshCaja().catch(() => {});
+  }
+
+  if (!isCajaOpen.value) {
+    toast("No hay caja abierta");
+    return;
+  }
+
+  await openCajaArqueo();
+}
+
+async function onSaveArqueo(payload) {
+  try {
+    await closeCaja({
+      closing_cash: payload?.closing_cash ?? 0,
+      closing_note: payload?.closing_note ?? "",
+      declared: payload?.declared || {},
+      difference: payload?.difference || {},
+    });
+
+    closeCajaArqueo();
+    await refreshCaja().catch(() => {});
+    logCajaState("after-close-caja");
+    toast("Caja cerrada");
+  } catch (err) {
+    toast(err?.message || "Error al cerrar caja");
+  }
+}
+
+function handleHelp() {
+  helpOpen.value = true;
+}
+
+async function handleSearch() {
+  consultaOpen.value = true;
+
+  if (!consultaItems.value.length) {
+    try {
+      consultaLoading.value = true;
+      const { data } = await http.get("/pos/products", {
+        params: {
+          page: 1,
+          limit: 30,
+          branch_id: activeBranchId.value || undefined,
+          warehouse_id: activeWarehouseId.value || undefined,
+          in_stock: "true",
+          sellable: "true",
+        },
+      });
+      consultaItems.value = toArr(data);
+    } catch (err) {
+      console.error("[POS] handleSearch error", err);
+      toast("No se pudo abrir la consulta");
+    } finally {
+      consultaLoading.value = false;
+    }
+  }
+}
+
+async function handlePay() {
+  await openCheckoutSafe();
+}
+
+async function handleCashIn() {
+  if (!isCajaOpen.value) {
+    await refreshCaja().catch(() => {});
+  }
+
+  if (!isCajaOpen.value) {
+    toast("Primero abrí una caja");
+    openCajaConfig();
+    return;
+  }
+
+  toast("Ingreso de dinero: conectá este botón al modal de movimientos de caja");
+}
+
+async function handleClients() {
+  toast("Clientes: usá el panel de cliente de la derecha o conectá este botón a tu modal");
+}
+
+async function runConsultaSearch(query, { exact = false } = {}) {
+  const raw = String(query || "").trim();
+
+  if (!raw) {
+    consultaItems.value = [];
+    return;
+  }
+
+  if (needsBranchPick.value) {
+    toast("Seleccioná una sucursal antes de consultar");
+    return;
+  }
+
+  try {
+    consultaLoading.value = true;
+
+    const { data } = await http.get("/pos/products", {
+      params: {
+        q: raw,
+        page: 1,
+        limit: 50,
+        branch_id: activeBranchId.value || undefined,
+        warehouse_id: activeWarehouseId.value || undefined,
+        in_stock: "true",
+        sellable: "true",
+      },
+    });
+
+    const rows = toArr(data);
+
+    if (exact) {
+      const normalized = raw.toLowerCase();
+      const exactRows = rows.filter((p) => {
+        const barcode = String(p?.barcode || "").trim().toLowerCase();
+        const sku = String(p?.sku || "").trim().toLowerCase();
+        const codeField = String(p?.code || "").trim().toLowerCase();
+        return barcode === normalized || sku === normalized || codeField === normalized;
+      });
+
+      consultaItems.value = exactRows.length ? exactRows : rows;
+    } else {
+      consultaItems.value = rows;
+    }
+
+    if (!consultaItems.value.length) {
+      toast(`Sin resultados para "${raw}"`);
+    }
+  } catch (err) {
+    console.error("[POS] consulta search error", err);
+    toast(err?.response?.data?.message || err?.message || "No se pudo realizar la consulta");
+    consultaItems.value = [];
+  } finally {
+    consultaLoading.value = false;
+  }
+}
+
+async function handleManualConsulta(query) {
+  await runConsultaSearch(query, { exact: false });
+}
+
+async function handleBarcodeConsulta(code) {
+  await runConsultaSearch(code, { exact: true });
+}
+
+function handleAddConsultaToCart(product) {
+  if (needsBranchPick.value) {
+    toast("Elegí una sucursal antes de agregar productos");
+    return;
+  }
+
+  if (!canProceedWithCaja.value) {
+    toast("Abrí una caja antes de vender");
+    return;
+  }
+
+  add(product);
+  toast(`Agregado: ${product?.name || product?.sku || product?.code || "Producto"}`);
+}
+
+function handleSelectConsultaItem(product) {
+  if (!product) return;
+  openDetails(product);
+}
+
+usePosHotkeys({
+  filtersRef,
+  helpOpen,
+  openCheckoutSafe,
+  prevPage,
+  nextPage,
+});
 
 onMounted(async () => {
   document.body.classList.add("pos-noscroll");
   shiftStart.value = new Date();
-  window.addEventListener("keydown", onKeydown, { capture: true });
 
   try {
-    if (typeof auth.fetchMe === "function") await auth.fetchMe();
+    if (typeof auth.fetchMe === "function") {
+      await auth.fetchMe();
+    }
   } catch {}
 
   loadCustomerDraft();
-  if (customerHasData.value) tryAttachCustomerToStore(customer.value);
 
-  await loadTaxonomy(auth);
-
-  const ok = await ensureBranchSelected();
-  if (!ok?.ok) {
-    await fetchGlobalPool({ in_stock: 0 });
-    return;
+  if (customerHasData.value) {
+    tryAttachCustomerToStore(customer.value);
   }
 
-  await fetchGlobalPool({ in_stock: 0 });
+  await loadCategories();
+
+  const ok = await ensureBranchSelected();
+
+  if (ok?.ok) {
+    await refreshCaja().catch(() => {});
+    logCajaState("mounted-ok");
+  } else {
+    await refreshCaja({ withSummary: false }).catch(() => {});
+    logCajaState("mounted-no-ok");
+  }
+
+  await refreshCatalog();
+  filtersRef.value?.focusSearch?.();
 });
 
 onBeforeUnmount(() => {
   document.body.classList.remove("pos-noscroll");
-  window.removeEventListener("keydown", onKeydown, { capture: true });
+  closeCajaConfig();
+  closeCajaArqueo();
 });
 
 watch(
-  () => [page.value, sellableStockTotal.value],
+  () => [page.value, items.value.length],
   async () => {
-    await prefetchImagesForVisible?.(pagedItems.value);
-  }
+    await prefetchImagesForVisible?.(items.value);
+  },
+  { flush: "post" }
 );
 
 watch(
   () => branchPickOpen.value,
   (open) => {
-    if (open) branchPickSelected.value = getActiveBranchIdSafe();
+    if (open) {
+      branchPickSelected.value = getActiveBranchIdSafe();
+    }
   }
 );
 
 watch(
-  () => customer.value,
-  () => {
-    if (customerDisabled.value) return;
-    saveCustomerDraft();
+  () => activeBranchId?.value,
+  async (newVal, oldVal) => {
+    if (!newVal || newVal === oldVal) return;
+
+    resetResults();
+    consultaItems.value = [];
+    await refreshCaja().catch(() => {});
+    logCajaState("branch-change");
+    await refreshCatalog();
+  }
+);
+
+watch(
+  () => rubroId.value,
+  async (newVal, oldVal) => {
+    if (newVal === oldVal) return;
+
+    if (!newVal) {
+      subcategories.value = [];
+      subrubroId.value = null;
+      return;
+    }
+
+    await loadSubcategories(newVal);
   },
-  { deep: true }
+  { immediate: true }
+);
+
+watch(
+  () => subrubroId.value,
+  (newVal, oldVal) => {
+    if (newVal === oldVal) return;
+    setSubrubro(newVal ?? null);
+  }
 );
 </script>
 
@@ -860,24 +1338,29 @@ watch(
   min-height: 0;
   overflow: hidden;
 
-  --pos-gap: clamp(10px, 0.9vw, 16px);
-  --pos-pad: clamp(8px, 0.85vw, 14px);
-  --pos-radius: 16px;
-  --pos-radius-lg: 18px;
-  --pos-border-light: rgba(0, 0, 0, 0.07);
-  --pos-border-dark: rgba(255, 255, 255, 0.09);
-  --pos-shadow-light:
-    0 8px 20px rgba(15, 23, 42, 0.06),
-    0 2px 6px rgba(15, 23, 42, 0.04);
-  --pos-shadow-light-hover:
-    0 12px 24px rgba(15, 23, 42, 0.08),
-    0 3px 8px rgba(15, 23, 42, 0.05);
-  --pos-shadow-dark:
-    0 10px 24px rgba(0, 0, 0, 0.28),
+  --pos-gap: clamp(8px, 0.7vw, 12px);
+  --pos-pad: clamp(6px, 0.65vw, 10px);
+  --pos-radius: 14px;
+  --pos-radius-lg: 16px;
+
+  --pos-border-light: rgba(15, 23, 42, 0.1);
+  --pos-border-strong: rgba(15, 23, 42, 0.16);
+
+  --pos-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.05),
+    0 2px 8px rgba(15, 23, 42, 0.04);
+
+  --pos-shadow-hover:
+    0 10px 22px rgba(15, 23, 42, 0.07),
+    0 3px 10px rgba(15, 23, 42, 0.05);
+
+  --pos-surface-shadow-dark:
+    0 10px 24px rgba(0, 0, 0, 0.26),
     0 2px 8px rgba(0, 0, 0, 0.18);
-  --pos-shadow-dark-hover:
-    0 14px 28px rgba(0, 0, 0, 0.34),
-    0 3px 10px rgba(0, 0, 0, 0.22);
+
+  --pos-surface-shadow-dark-hover:
+    0 12px 28px rgba(0, 0, 0, 0.3),
+    0 4px 10px rgba(0, 0, 0, 0.22);
 
   padding: var(--pos-pad);
   background: rgb(var(--v-theme-background));
@@ -889,9 +1372,49 @@ watch(
   box-sizing: border-box;
 }
 
+:global(.v-theme--light) .pos-root {
+  background: #dfe6ee;
+}
+
 .pos-header {
   flex: 0 0 auto;
   min-height: 0;
+}
+
+.pos-header-main {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--pos-gap);
+  align-items: stretch;
+}
+
+.pos-header-caja,
+.pos-header-topbar {
+  min-width: 0;
+  display: flex;
+}
+
+.pos-header-caja > *,
+.pos-header-topbar > * {
+  width: 100%;
+}
+
+.pos-caja-actions-shell {
+  width: 100%;
+  min-height: 100%;
+  padding: 6px 8px;
+  border-radius: var(--pos-radius-lg);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+.pos-topbar-shell {
+  border-radius: var(--pos-radius-lg);
+  width: 100%;
 }
 
 .pos-body {
@@ -904,7 +1427,7 @@ watch(
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 360px);
+  grid-template-columns: minmax(0, 0.62fr) minmax(340px, 0.38fr);
   gap: var(--pos-gap);
   align-items: stretch;
 }
@@ -920,22 +1443,22 @@ watch(
 .pos-products-panel {
   flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* ✅ CLAVE DEL FIX */
 .pos-right {
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(190px, auto) minmax(0, 1fr) auto;
   gap: var(--pos-gap);
   overflow: hidden;
 }
 
 .pos-customer-shell {
-  min-height: 0;
+  min-height: 190px;
   min-width: 0;
-  flex: 0 0 auto;
+  overflow: hidden;
 }
 
 .pos-cart-wrap {
@@ -950,20 +1473,22 @@ watch(
   min-width: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .pos-cart-branch-note {
   padding-inline: 2px;
   opacity: 0.88;
+  line-height: 1.15;
+  font-size: 12px;
 }
 
 .pos-surface {
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface), 1) 0%, rgba(var(--v-theme-surface), 1) 100%);
+  background: rgb(var(--v-theme-surface));
   border: 1px solid var(--pos-border-light);
   border-radius: var(--pos-radius);
-  box-shadow: var(--pos-shadow-light);
+  box-shadow: var(--pos-shadow);
   overflow: hidden;
   transition:
     box-shadow 0.18s ease,
@@ -972,60 +1497,194 @@ watch(
 }
 
 .pos-surface:hover {
-  box-shadow: var(--pos-shadow-light-hover);
-  border-color: rgba(0, 0, 0, 0.09);
+  box-shadow: var(--pos-shadow-hover);
+  border-color: var(--pos-border-strong);
 }
 
 .pos-topbar-shell,
 .pos-filters-shell,
 .pos-products-shell,
-.pos-side-shell {
-  backdrop-filter: saturate(1.05);
+.pos-side-shell,
+.pos-caja-actions-shell {
+  backdrop-filter: none;
 }
 
-.pos-topbar-shell {
+.pos-scanner-search-shell {
   border-radius: var(--pos-radius-lg);
+  overflow: hidden;
+}
+
+:global(.v-theme--light) .pos-surface {
+  border-color: rgba(15, 23, 42, 0.09);
+}
+
+:global(.v-theme--light) .pos-topbar-shell,
+:global(.v-theme--light) .pos-filters-shell,
+:global(.v-theme--light) .pos-side-shell,
+:global(.v-theme--light) .pos-caja-actions-shell {
+  background: #fbfcfe;
+}
+
+:global(.v-theme--light) .pos-products-shell {
+  background: #f5f7fb;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+:global(.v-theme--light) .pos-scanner-search-shell {
+  background: #fbfcfe;
 }
 
 :global(.v-theme--dark) .pos-surface {
-  border-color: var(--pos-border-dark);
-  box-shadow: var(--pos-shadow-dark);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--pos-surface-shadow-dark);
 }
 
 :global(.v-theme--dark) .pos-surface:hover {
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: var(--pos-shadow-dark-hover);
+  box-shadow: var(--pos-surface-shadow-dark-hover);
+}
+
+:global(.v-theme--dark) .pos-caja-actions-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+}
+
+.pos-left :deep(.pssb) {
+  padding: 10px 12px 8px !important;
+}
+
+.pos-left :deep(.pssb-toolbar) {
+  align-items: center !important;
+}
+
+.pos-left :deep(.pssb-footer) {
+  padding-top: 2px;
+}
+
+.pos-left :deep(.pssb-pagination) {
+  justify-content: flex-end;
+}
+
+.pos-scanner-test-dialog {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+@media (max-height: 900px) {
+  .pos-root {
+    --pos-gap: 8px;
+    --pos-pad: 8px;
+  }
+
+  .pos-right {
+    grid-template-rows: minmax(176px, auto) minmax(0, 1fr) auto;
+  }
+
+  .pos-customer-shell {
+    min-height: 176px;
+  }
+}
+
+@media (max-height: 820px) {
+  .pos-root {
+    --pos-gap: 7px;
+    --pos-pad: 7px;
+    --pos-radius: 13px;
+    --pos-radius-lg: 14px;
+  }
+
+  .pos-right {
+    grid-template-rows: minmax(162px, auto) minmax(0, 1fr) auto;
+  }
+
+  .pos-customer-shell {
+    min-height: 162px;
+  }
+
+  .pos-cart-branch-note {
+    font-size: 11px;
+  }
+}
+
+@media (max-height: 760px) {
+  .pos-root {
+    --pos-gap: 6px;
+    --pos-pad: 6px;
+    --pos-radius: 12px;
+    --pos-radius-lg: 13px;
+  }
+
+  .pos-right {
+    grid-template-rows: minmax(148px, auto) minmax(0, 1fr) auto;
+  }
+
+  .pos-customer-shell {
+    min-height: 148px;
+  }
+
+  .pos-cart-branch-note {
+    font-size: 11px;
+    line-height: 1.05;
+  }
 }
 
 @media (max-width: 1440px) {
   .pos-root {
-    --pos-gap: 10px;
-    --pos-pad: 10px;
-    --pos-radius: 15px;
-    --pos-radius-lg: 16px;
-  }
-
-  .pos-layout {
-    grid-template-columns: minmax(0, 1fr) 338px;
-  }
-}
-
-@media (max-width: 1280px) {
-  .pos-root {
-    --pos-gap: 9px;
-    --pos-pad: 9px;
+    --pos-gap: 8px;
+    --pos-pad: 8px;
     --pos-radius: 14px;
     --pos-radius-lg: 15px;
   }
 
   .pos-layout {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 0.6fr) 360px;
+  }
+
+  .pos-header-main {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1280px) {
+  .pos-root {
+    --pos-gap: 7px;
+    --pos-pad: 7px;
+    --pos-radius: 13px;
+    --pos-radius-lg: 14px;
+  }
+
+  .pos-layout {
+    grid-template-columns: minmax(0, 0.6fr) 320px;
+  }
+
+  .pos-right {
+    grid-template-rows: minmax(154px, auto) minmax(0, 1fr) auto;
+  }
+
+  .pos-customer-shell {
+    min-height: 154px;
+  }
+
+  .pos-header-main {
+    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1100px) {
   .pos-layout {
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 0.6fr) 300px;
+  }
+
+  .pos-right {
+    grid-template-rows: minmax(146px, auto) minmax(0, 1fr) auto;
+  }
+
+  .pos-customer-shell {
+    min-height: 146px;
+  }
+
+  .pos-header-main {
+    grid-template-columns: minmax(200px, 230px) minmax(0, 1fr);
   }
 }
 
@@ -1045,6 +1704,11 @@ watch(
     overflow: visible;
   }
 
+  .pos-header-main {
+    display: flex;
+    flex-direction: column;
+  }
+
   .pos-layout {
     height: auto;
     min-height: auto;
@@ -1061,15 +1725,31 @@ watch(
 
   .pos-right {
     display: flex;
+    flex-direction: column;
     overflow: visible;
+  }
+
+  .pos-customer-shell,
+  .pos-cart-shell {
+    min-height: auto;
   }
 
   .pos-customer-shell,
   .pos-cart-shell,
   .pos-products-shell,
   .pos-filters-shell,
-  .pos-topbar-shell {
+  .pos-topbar-shell,
+  .pos-caja-actions-shell {
     border-radius: 16px;
+  }
+
+  .pos-caja-actions-shell {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .pos-left :deep(.pssb) {
+    padding: 9px !important;
   }
 }
 
@@ -1083,7 +1763,8 @@ watch(
   .pos-cart-shell,
   .pos-products-shell,
   .pos-filters-shell,
-  .pos-topbar-shell {
+  .pos-topbar-shell,
+  .pos-caja-actions-shell {
     border-radius: 14px;
   }
 }

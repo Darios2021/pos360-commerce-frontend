@@ -1,11 +1,5 @@
 <!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
-<!-- FIX UI:
-  - ✅ Se elimina ProductStockBlock (sin el bloque “Total / Sucursal / En sucursal”)
-  - ✅ NO redundancia: se elimina la card de 3 botones
-  - ✅ Etiqueta+Impresión en panel angosto centrado
-  - ✅ NUEVO: Botón 3ra medida (80×55) => size="80"
--->
 
 <template>
   <div class="pd" data-page="product-detail-view">
@@ -24,12 +18,32 @@
       <!-- ================= LEFT ================= -->
       <div class="pd-left">
         <ProductInfoCard :product="productForUIFixed" class="mb-3" />
+
         <ProductPriceBlock :product="productForUIFixed" class="mb-3" />
 
-        <!-- Stock por sucursal (versión estética) -->
+        <!-- ✅ BLOQUE EXCLUSIVO: CÓDIGO DE BARRAS -->
+        <ProductBarcodeCard
+          class="mb-3"
+          :product="productForUIFixed"
+          :value="
+            productForUIFixed.barcode ||
+            productForUIFixed.sku ||
+            productForUIFixed.code ||
+            productForUIFixed.id
+          "
+          format="CODE128"
+          @copied="onBarcodeCopied"
+          @print="onBarcodePrint"
+        />
+
+        <!-- Stock por sucursal -->
         <v-card rounded="xl" elevation="1" class="pd-card mb-3">
           <div class="pd-card-head">
-            <div class="pd-card-title">Stock por sucursal</div>
+            <div>
+              <div class="pd-card-title">Stock por sucursal</div>
+              <div class="pd-card-subtitle">Disponibilidad real del producto por punto de venta</div>
+            </div>
+
             <v-spacer />
 
             <v-btn
@@ -106,58 +120,85 @@
 
       <!-- ================= RIGHT ================= -->
       <div class="pd-right">
-        <!-- FOTOS ARRIBA -->
+        <!-- FOTOS -->
         <v-card rounded="xl" elevation="1" class="pd-card mb-3">
           <div class="pd-card-head">
-            <div class="pd-card-title">Fotos</div>
+            <div>
+              <div class="pd-card-title">Fotos</div>
+              <div class="pd-card-subtitle">Vista previa de imágenes del producto</div>
+            </div>
           </div>
+
           <ProductPhotoGallery :images="ui.images" />
         </v-card>
 
-        <!-- ✅ SOLO ETIQUETA + ACCIONES -->
-        <div class="pd-print-panel">
-          <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue">
-            <template #actions="{ printEl }">
-              <div class="mt-3">
-                <!-- ✅ Selector de medida (3 botones) -->
-                <div class="pd-sizebar">
-                  <div class="pd-sizebar-title">Impresión</div>
-
-                  <v-btn-toggle
-                    v-model="labelSize"
-                    mandatory
-                    density="comfortable"
-                    rounded="lg"
-                    class="pd-size-toggle"
-                  >
-                    <v-btn value="100" class="pd-size-btn">100×60</v-btn>
-                    <v-btn value="80" class="pd-size-btn">80×55</v-btn>
-                    <v-btn value="58" class="pd-size-btn">58×40</v-btn>
-                  </v-btn-toggle>
-                </div>
-
-                <ProductPrintActions
-                  v-model="labelSize"
-                  v-model:copies="copies"
-                  :printEl="printEl"
-                  :sheetEl="sheetEl"
-                  :title="printTitle"
-                  :product="productForUIFixed"
-                  :qrValue="ui.qrValue"
-                  @open-ecommerce="openEcommerce"
-                  @download-pdf="downloadPdf"
-                  @print="printDlg = true"
-                />
+        <!-- ✅ BLOQUE EXCLUSIVO: QR / ETIQUETA / IMPRESIÓN -->
+        <v-card rounded="xl" elevation="1" class="pd-card">
+          <div class="pd-card-head pd-card-head--stack">
+            <div>
+              <div class="pd-card-title">Etiqueta y QR</div>
+              <div class="pd-card-subtitle">
+                Este bloque es para generar e imprimir la etiqueta comercial con QR.
+                No imprime el código de barras del producto.
               </div>
-            </template>
-          </ProductLabelPreview>
-        </div>
+            </div>
+          </div>
+
+          <div class="pd-print-panel">
+            <ProductLabelPreview
+              :product="productForUIFixed"
+              :size="labelSize"
+              :qrValue="ui.qrValue"
+            >
+              <template #actions="{ printEl }">
+                <div class="mt-3">
+                  <div class="pd-sizebar">
+                    <div>
+                      <div class="pd-sizebar-title">Formato de etiqueta / QR</div>
+                      <div class="pd-sizebar-sub">Elegí el tamaño para impresión de etiqueta</div>
+                    </div>
+
+                    <v-btn-toggle
+                      v-model="labelSize"
+                      mandatory
+                      density="comfortable"
+                      rounded="lg"
+                      class="pd-size-toggle"
+                    >
+                      <v-btn value="100" class="pd-size-btn">100×60</v-btn>
+                      <v-btn value="80" class="pd-size-btn">80×55</v-btn>
+                      <v-btn value="58" class="pd-size-btn">58×40</v-btn>
+                    </v-btn-toggle>
+                  </div>
+
+                  <ProductPrintActions
+                    v-model="labelSize"
+                    v-model:copies="copies"
+                    :printEl="printEl"
+                    :sheetEl="sheetEl"
+                    :title="printTitle"
+                    :product="productForUIFixed"
+                    :qrValue="ui.qrValue"
+                    @open-ecommerce="openEcommerce"
+                    @download-pdf="downloadPdf"
+                    @print="printDlg = true"
+                  />
+                </div>
+              </template>
+            </ProductLabelPreview>
+          </div>
+        </v-card>
       </div>
     </div>
 
     <div class="pd-hidden">
       <div ref="sheetEl" class="pd-a4-shell">
-        <ProductLabelSheetA4 :product="productForUIFixed" :size="labelSize" :copies="copies" :qrValue="ui.qrValue" />
+        <ProductLabelSheetA4
+          :product="productForUIFixed"
+          :size="labelSize"
+          :copies="copies"
+          :qrValue="ui.qrValue"
+        />
       </div>
     </div>
 
@@ -165,11 +206,15 @@
       <v-card rounded="xl">
         <v-card-title class="d-flex align-center ga-2">
           <v-icon>mdi-printer</v-icon>
-          <span class="font-weight-black">Etiqueta</span>
+          <span class="font-weight-black">Vista previa de etiqueta / QR</span>
         </v-card-title>
 
         <v-card-text>
-          <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue" />
+          <ProductLabelPreview
+            :product="productForUIFixed"
+            :size="labelSize"
+            :qrValue="ui.qrValue"
+          />
         </v-card-text>
 
         <v-card-actions class="justify-end">
@@ -190,6 +235,7 @@ import { useAuthStore } from "@/app/store/auth.store";
 import ProductHeader from "@/modules/products/components/detail/ProductHeader.vue";
 import ProductPriceBlock from "@/modules/products/components/detail/ProductPriceBlock.vue";
 import ProductInfoCard from "@/modules/products/components/detail/ProductInfoCard.vue";
+import ProductBarcodeCard from "@/modules/products/components/detail/ProductBarcodeCard.vue";
 import ProductPhotoGallery from "@/modules/products/components/ProductPhotoGallery.vue";
 
 import ProductLabelPreview from "@/modules/products/components/label/ProductLabelPreview.vue";
@@ -246,6 +292,7 @@ function toNum(v, d = 0) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
+
 function fmtQty(v) {
   return toNum(v, 0).toFixed(3);
 }
@@ -268,7 +315,13 @@ function initials(name) {
   return (a + b).toUpperCase() || s.slice(0, 2).toUpperCase();
 }
 
-const ui = computed(() => buildProductUI(raw.value, { productId: productId.value, branchId: branchId.value }));
+const ui = computed(() =>
+  buildProductUI(raw.value, {
+    productId: productId.value,
+    branchId: branchId.value,
+  })
+);
+
 const productForUI = computed(() => ui.value?.product || {});
 
 const printTitle = computed(() => {
@@ -280,12 +333,21 @@ const printTitle = computed(() => {
 function goBack() {
   router.back();
 }
+
 function openEcommerce() {
   window.open(ui.value.ecommerceUrl, "_blank", "noopener,noreferrer");
 }
 
+function onBarcodeCopied(value) {
+  console.log("[barcode copied]", value);
+}
+
+function onBarcodePrint(value) {
+  console.log("[barcode print]", value);
+}
+
 /* =========================
-   ✅ Stock por sucursal
+   Stock por sucursal
 ========================= */
 const mx = ref({
   loading: false,
@@ -319,7 +381,7 @@ const currentBranchRow = computed(() => {
 });
 
 /* =========================
-   ✅ ENRIQUECER PRODUCTO para blocks
+   Enriquecer producto
 ========================= */
 const productForUIFixed = computed(() => {
   const base = productForUI.value || {};
@@ -363,6 +425,7 @@ async function refreshBranchesMatrix() {
 
   mx.value.loading = true;
   mx.value.error = "";
+
   try {
     const matrixResp = await products.fetchBranchesMatrix(pid);
     mx.value.rows = unwrapArray(matrixResp);
@@ -393,8 +456,8 @@ async function fetchProduct() {
 
     const full = unwrap(fullResp);
     if (!full) throw new Error(products.error || "No se pudo obtener el producto.");
-    raw.value = full;
 
+    raw.value = full;
     await refreshBranchesMatrix();
   } catch (e) {
     error.value = e?.friendlyMessage || e?.message || "No se pudo obtener el producto.";
@@ -405,9 +468,10 @@ async function fetchProduct() {
 
 async function downloadPdf() {
   if (!raw.value) return;
+
   await downloadLabelPdfA4({
     product: productForUIFixed.value,
-    size: labelSize.value, // ✅ ahora puede ser "80"
+    size: labelSize.value,
     copies: copies.value,
     qrValue: ui.value.qrValue,
     title: printTitle.value,
@@ -468,9 +532,20 @@ watch(branchId, fetchProduct);
   margin-bottom: 10px;
 }
 
+.pd-card-head--stack {
+  align-items: flex-start;
+}
+
 .pd-card-title {
   font-weight: 900;
   letter-spacing: 0.2px;
+}
+
+.pd-card-subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+  opacity: 0.72;
 }
 
 .pd-muted {
@@ -479,13 +554,12 @@ watch(branchId, fetchProduct);
   line-height: 1.35;
 }
 
-/* ✅ panel angosto para NO ocupar todo el ancho */
+/* panel QR / etiqueta */
 .pd-print-panel {
   max-width: 420px;
   margin: 0 auto;
 }
 
-/* ✅ Selector de medida (3 botones) */
 .pd-sizebar {
   display: flex;
   align-items: center;
@@ -493,23 +567,31 @@ watch(branchId, fetchProduct);
   gap: 10px;
   margin-bottom: 10px;
 }
+
 .pd-sizebar-title {
   font-weight: 900;
   letter-spacing: 0.2px;
   font-size: 13px;
-  opacity: 0.9;
+  opacity: 0.95;
+}
+
+.pd-sizebar-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.68;
 }
 
 .pd-size-toggle {
   background: rgba(var(--v-theme-on-surface), 0.03);
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
+
 .pd-size-btn {
   font-weight: 900;
   letter-spacing: 0.2px;
 }
 
-/* Stock por sucursal (look) */
+/* Stock por sucursal */
 .pd-matrix {
   border-radius: 14px;
   overflow: hidden;
@@ -530,11 +612,13 @@ watch(branchId, fetchProduct);
   letter-spacing: 0.2px;
   font-size: 13px;
 }
+
 .h-left .h-sub {
   font-size: 11px;
   opacity: 0.7;
   margin-top: 1px;
 }
+
 .h-right {
   font-size: 12px;
   font-weight: 900;
@@ -555,9 +639,11 @@ watch(branchId, fetchProduct);
   padding: 10px 12px;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
+
 .pd-matrix-row:last-child {
   border-bottom: none;
 }
+
 .pd-matrix-row:hover {
   background: rgba(var(--v-theme-on-surface), 0.03);
 }
@@ -568,6 +654,7 @@ watch(branchId, fetchProduct);
   gap: 10px;
   min-width: 0;
 }
+
 .row-right {
   display: flex;
   align-items: center;
@@ -587,6 +674,7 @@ watch(branchId, fetchProduct);
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   flex: 0 0 auto;
 }
+
 .pd-avatar.ok {
   background: rgba(var(--v-theme-success), 0.12);
   border-color: rgba(var(--v-theme-success), 0.25);
@@ -596,6 +684,7 @@ watch(branchId, fetchProduct);
   font-weight: 900;
   line-height: 1.1;
 }
+
 .pd-branch-meta {
   font-size: 12px;
   opacity: 0.72;
@@ -621,15 +710,18 @@ watch(branchId, fetchProduct);
   .pd-grid {
     grid-template-columns: 1fr 460px;
   }
+
   .pd-print-panel {
     max-width: 100%;
     margin: 0;
   }
 }
+
 @media (max-width: 1100px) {
   .pd-grid {
     grid-template-columns: 1fr;
   }
+
   .pd-right {
     position: static;
   }
@@ -642,6 +734,7 @@ watch(branchId, fetchProduct);
   visibility: hidden;
   pointer-events: none;
 }
+
 .pd-a4-shell {
   width: 210mm;
   min-height: 297mm;

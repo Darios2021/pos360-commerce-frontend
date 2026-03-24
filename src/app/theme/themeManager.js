@@ -1,11 +1,5 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/theme/themeManager.js
-//
-// Theme Manager ATÓMICO + evento local (mismo tab)
-// - Evita estados intermedios al togglear dark
-// - Cancela llamadas viejas (token)
-// - Aplica tema según ruta (/app vs /shop)
-// - Reacciona a: router, storage (otros tabs) y evento custom (mismo tab)
 
 import { normalizeTheme, applyRuntimeTheme } from "@/modules/shop/utils/runtimeTheme";
 import { getShopThemePublic } from "@/modules/shop/service/shopTheme.public.api";
@@ -47,13 +41,11 @@ function setVuetifyThemeName(vuetify, name) {
   const n = String(name || "").trim();
   if (!n) return;
 
-  // ✅ Vuetify nuevo (tu warning lo confirma)
   if (typeof vuetify?.theme?.change === "function") {
     vuetify.theme.change(n);
     return;
   }
 
-  // fallback
   if (vuetify?.theme?.global?.name?.value != null) {
     vuetify.theme.global.name.value = n;
   }
@@ -72,12 +64,6 @@ let lastAppliedKey = null;
 
 /**
  * ✅ Aplica el theme de forma atómica
- * @param {object} params
- *  - vuetify
- *  - path
- *  - force
- *  - debug
- *  - darkOverride (true/false/null)
  */
 export async function applyThemeAtomic({
   vuetify,
@@ -88,16 +74,20 @@ export async function applyThemeAtomic({
 } = {}) {
   const token = ++applyToken;
   const p = String(path || window.location.pathname || "/");
-  const dark = darkOverride === true || darkOverride === false ? darkOverride : getPreferredDark();
-  const themeName = getThemeNameForRoute(p, dark);
+  const dark =
+    darkOverride === true || darkOverride === false
+      ? darkOverride
+      : getPreferredDark();
 
+  const themeName = getThemeNameForRoute(p, dark);
   const key = `${p}|${themeName}`;
+
   if (!force && lastAppliedKey === key) {
     if (debug) console.log("[THEME] skip", key);
     return;
   }
 
-  // 1) set name rápido (evita flashes)
+  // ✅ 1) Aplicar theme base Vuetify (rápido)
   setVuetifyThemeName(vuetify, themeName);
 
   if (debug) {
@@ -110,33 +100,40 @@ export async function applyThemeAtomic({
     });
   }
 
-  // 2) runtime theme según ruta (admin vs public)
-  const thRaw = await fetchThemeForRoute(p);
+  // ✅ 2) SOLO ecommerce usa runtime theme
+  if (!isBackofficePath(p)) {
+    const thRaw = await fetchThemeForRoute(p);
 
-  // cancel si entró otro apply
-  if (token !== applyToken) {
-    if (debug) console.log("[THEME] cancel (newer request)", { token, applyToken });
-    return;
-  }
+    // cancel si hay una nueva ejecución
+    if (token !== applyToken) {
+      if (debug) console.log("[THEME] cancel (newer request)", { token, applyToken });
+      return;
+    }
 
-  const th = normalizeTheme(thRaw);
-  if (th) {
-    const scope = isBackofficePath(p) ? ".scope-app" : ".scope-shop";
-    applyRuntimeTheme(th, { scope });
-    if (debug) console.log("[THEME] runtime applied", { token, scope });
+    const th = normalizeTheme(thRaw);
+
+    if (th) {
+      applyRuntimeTheme(th, { scope: ".scope-shop" });
+
+      if (debug) {
+        console.log("[THEME] runtime applied (shop only)", {
+          token,
+        });
+      }
+    } else {
+      if (debug) console.log("[THEME] runtime not available", { token });
+    }
   } else {
-    if (debug) console.log("[THEME] runtime not available", { token });
+    if (debug) {
+      console.log("[THEME] admin: runtime theme SKIPPED");
+    }
   }
 
   if (token === applyToken) lastAppliedKey = key;
 }
 
 /**
- * ✅ Wire reactivity:
- * - router changes
- * - localStorage changes (otros tabs)
- * - evento local (mismo tab): "ui-dark-changed"
- * - system changes (si no hay override)
+ * ✅ Reactividad
  */
 export function wireThemeReactivity({ vuetify, router, debug = false } = {}) {
   router?.afterEach?.((to) => {
@@ -146,13 +143,19 @@ export function wireThemeReactivity({ vuetify, router, debug = false } = {}) {
   // otros tabs
   window.addEventListener("storage", (ev) => {
     if (ev?.key === "ui.dark") {
-      applyThemeAtomic({ vuetify, path: window.location.pathname, force: true, debug });
+      applyThemeAtomic({
+        vuetify,
+        path: window.location.pathname,
+        force: true,
+        debug,
+      });
     }
   });
 
-  // mismo tab (nuestro evento)
+  // mismo tab
   window.addEventListener("ui-dark-changed", (ev) => {
     const dark = ev?.detail?.dark;
+
     applyThemeAtomic({
       vuetify,
       path: window.location.pathname,
@@ -165,14 +168,26 @@ export function wireThemeReactivity({ vuetify, router, debug = false } = {}) {
   // system
   try {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+
     mq?.addEventListener?.("change", () => {
       let hasOverride = false;
+
       try {
         const v = window.localStorage.getItem("ui.dark");
-        hasOverride = v === "1" || v === "0" || v === "true" || v === "false";
+        hasOverride =
+          v === "1" ||
+          v === "0" ||
+          v === "true" ||
+          v === "false";
       } catch {}
+
       if (!hasOverride) {
-        applyThemeAtomic({ vuetify, path: window.location.pathname, force: true, debug });
+        applyThemeAtomic({
+          vuetify,
+          path: window.location.pathname,
+          force: true,
+          debug,
+        });
       }
     });
   } catch {}

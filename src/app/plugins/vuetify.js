@@ -1,5 +1,6 @@
 // ✅ COPY-PASTE FINAL COMPLETO
 // src/app/plugins/vuetify.js
+
 import "vuetify/styles";
 import "@mdi/font/css/materialdesignicons.css";
 
@@ -33,13 +34,63 @@ const vuetify = createVuetify({
   theme: {
     defaultTheme: "adminLight",
     options: { customProperties: true },
+
     themes: {
-      adminLight: { dark: false, colors: { primary: "#0e2134", secondary: "#3483fa", background: "#f6f7fb", surface: "#ffffff" }},
-      adminDark: { dark: true, colors: { primary: "#0e2134", secondary: "#3483fa", background: "#0b1320", surface: "#111a2e" }},
-      shopLight: { dark: false, colors: { primary: "#0e2134", secondary: "#3483fa", background: "#ebebeb", surface: "#ffffff" }},
-      shopDark: { dark: true, colors: { primary: "#0e2134", secondary: "#3483fa", background: "#0b1320", surface: "#111a2e" }},
-    }
-  }
+      /* ============================
+         🔵 ADMIN / POS (MEJORADO)
+         ============================ */
+      adminLight: {
+        dark: false,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+
+          // 🔥 CANVAS (más gris → separa capas)
+          background: "#e9eef5",
+
+          // 🔥 SUPERFICIES (cards)
+          surface: "#ffffff",
+        },
+      },
+
+      adminDark: {
+        dark: true,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+
+          // fondo profundo
+          background: "#0b1320",
+
+          // superficies
+          surface: "#111a2e",
+        },
+      },
+
+      /* ============================
+         🟡 SHOP (no tocar)
+         ============================ */
+      shopLight: {
+        dark: false,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#ebebeb",
+          surface: "#ffffff",
+        },
+      },
+
+      shopDark: {
+        dark: true,
+        colors: {
+          primary: "#0e2134",
+          secondary: "#3483fa",
+          background: "#0b1320",
+          surface: "#111a2e",
+        },
+      },
+    },
+  },
 });
 
 export default vuetify;

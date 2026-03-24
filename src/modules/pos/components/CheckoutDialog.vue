@@ -2,7 +2,7 @@
 <!-- src/modules/pos/components/CheckoutDialog.vue -->
 
 <template>
-  <v-dialog v-model="openLocal" max-width="980" persistent class="cod-dialog">
+  <v-dialog v-model="openLocal" max-width="920" persistent class="cod-dialog">
     <v-card rounded="xl" class="cod-root">
       <!-- HERO -->
       <div class="cod-hero">
@@ -11,31 +11,24 @@
             <div class="cod-title text-h6 font-weight-black">Cobro</div>
 
             <v-chip size="small" variant="tonal" class="cod-chip">
-              <v-icon start size="16">mdi-cart</v-icon>
+              <v-icon start size="14">mdi-cart</v-icon>
               Ítems: <b class="ml-1">{{ cartUi.length }}</b>
             </v-chip>
 
             <v-chip size="small" variant="tonal" class="cod-chip">
-              <v-icon start size="16">mdi-eye-outline</v-icon>
+              <v-icon start size="14">mdi-eye-outline</v-icon>
               Preview: <b class="ml-1">{{ money(previewSafe) }}</b>
             </v-chip>
 
-            <!-- ✅ cuota calculada con TOTAL LISTA cuando corresponde -->
             <v-chip v-if="ui.showInstallmentsChip" size="small" variant="tonal" class="cod-chip cod-chip-soft">
-              <v-icon start size="16">mdi-credit-card-outline</v-icon>
-              {{ state.installments }} cuotas de <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
+              <v-icon start size="14">mdi-credit-card-outline</v-icon>
+              {{ state.installments }} × <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
             </v-chip>
 
-            <!-- ✅ chip de tipo tarjeta -->
             <v-chip v-if="ui.showCardKindChip" size="small" variant="tonal" class="cod-chip cod-chip-soft">
-              <v-icon start size="16">{{ ui.cardKindIcon }}</v-icon>
+              <v-icon start size="14">{{ ui.cardKindIcon }}</v-icon>
               {{ ui.cardKindLabel }}
             </v-chip>
-          </div>
-
-          <div class="cod-sub text-caption text-medium-emphasis">
-            Política: efectivo/transfer/mp = descuento · tarjeta crédito cuotas = lista · débito siempre 1 pago · San Juan
-            Crédito (1–12) = lista · revendedor pisa todo (si existe).
           </div>
         </div>
 
@@ -44,8 +37,8 @@
           <div class="cod-total">{{ money(totalSafe) }}</div>
         </div>
 
-        <v-btn icon variant="text" class="cod-close" @click="closeNow" title="Cerrar">
-          <v-icon>mdi-close</v-icon>
+        <v-btn icon variant="tonal" density="comfortable" class="cod-close" @click="closeNow" title="Cerrar">
+          <v-icon size="18">mdi-close</v-icon>
         </v-btn>
       </div>
 
@@ -60,18 +53,12 @@
               <div class="cod-sec-head">
                 <div class="text-subtitle-1 font-weight-black">Opciones de pago</div>
 
-                <!-- ✅ Política en chip -->
                 <v-chip size="small" variant="tonal" class="cod-chip cod-chip-soft">
                   {{ policyLabel }}
                 </v-chip>
               </div>
 
-              <div class="text-caption text-medium-emphasis mt-1">
-                * Tarjeta: 1 pago = descuento · Crédito 2 a 6 cuotas = lista · Débito = 1 pago · San Juan Crédito: 1 a 12
-                cuotas = lista · Revendedor (si existe) pisa todo.
-              </div>
-
-              <v-divider class="my-4" />
+              <v-divider class="my-3" />
 
               <!-- Payment method as selectable cards -->
               <div class="cod-paygrid">
@@ -84,7 +71,6 @@
                   <div class="ic"><v-icon>mdi-cash</v-icon></div>
                   <div class="tx">
                     <div class="t">Efectivo</div>
-                    <div class="s">Usa descuento</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'CASH'">mdi-check-circle</v-icon>
@@ -101,7 +87,6 @@
                   <div class="ic"><v-icon>mdi-credit-card-outline</v-icon></div>
                   <div class="tx">
                     <div class="t">Tarjeta</div>
-                    <div class="s">Crédito cuotas = lista</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'CARD'">mdi-check-circle</v-icon>
@@ -109,7 +94,6 @@
                   </div>
                 </button>
 
-                <!-- ✅ NUEVO: SAN JUAN CRÉDITO (front manda code credit_sjt) -->
                 <button
                   type="button"
                   class="cod-paycard"
@@ -119,7 +103,6 @@
                   <div class="ic"><v-icon>mdi-handshake-outline</v-icon></div>
                   <div class="tx">
                     <div class="t">San Juan Crédito</div>
-                    <div class="s">1 a 12 cuotas (lista)</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'credit_sjt'">mdi-check-circle</v-icon>
@@ -136,7 +119,6 @@
                   <div class="ic"><v-icon>mdi-bank-transfer</v-icon></div>
                   <div class="tx">
                     <div class="t">Transferencia</div>
-                    <div class="s">Usa descuento</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'TRANSFER'">mdi-check-circle</v-icon>
@@ -144,7 +126,6 @@
                   </div>
                 </button>
 
-                <!-- ✅ MercadoPago como enum real (MERCADOPAGO) -->
                 <button
                   type="button"
                   class="cod-paycard"
@@ -154,7 +135,6 @@
                   <div class="ic"><v-icon>mdi-qrcode-scan</v-icon></div>
                   <div class="tx">
                     <div class="t">Mercado Pago (QR)</div>
-                    <div class="s">Usa descuento</div>
                   </div>
                   <div class="chk">
                     <v-icon v-if="state.paymentMethod === 'MERCADOPAGO'">mdi-check-circle</v-icon>
@@ -163,7 +143,7 @@
                 </button>
               </div>
 
-              <v-row dense class="mt-3">
+              <v-row dense class="mt-2">
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="state.applyReseller"
@@ -175,12 +155,8 @@
                     class="cod-reseller"
                     @update:modelValue="onApplyResellerChange"
                   />
-                  <div class="text-caption text-medium-emphasis">
-                    Si no existe revendedor (&gt; 0), cae a descuento/lista según corresponda.
-                  </div>
                 </v-col>
 
-                <!-- ✅ Card kind (solo si CARD y no reseller) -->
                 <v-col cols="12" md="6" v-if="ui.showCardKindSelect">
                   <v-select
                     v-model="state.cardKind"
@@ -194,12 +170,8 @@
                     class="cod-select"
                     @update:modelValue="onCardKindChange"
                   />
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    Débito siempre 1 pago. Crédito habilita cuotas.
-                  </div>
                 </v-col>
 
-                <!-- ✅ Cuotas: valor por cuota (LISTA) -->
                 <v-col cols="12" md="6" v-if="ui.showInstallmentsSelect">
                   <v-select
                     v-model="state.installments"
@@ -214,20 +186,15 @@
                     @update:modelValue="onInstallmentsChange"
                   />
 
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    {{ ui.installmentsHelp }}
-                  </div>
-
                   <div v-if="Number(state.installments || 1) > 1" class="cod-installment-chip">
                     <v-chip size="small" variant="tonal" class="cod-chip cod-chip-soft">
                       {{ state.installments }} × <b class="ml-1">{{ money(ui.perInstallmentList) }}</b>
-                      <span class="ml-1">(lista)</span>
                     </v-chip>
                   </div>
                 </v-col>
               </v-row>
 
-              <v-divider class="my-4" />
+              <v-divider class="my-3" />
 
               <!-- CASH -->
               <v-expand-transition>
@@ -240,7 +207,7 @@
                       class="cod-chip"
                       :class="cashShort ? 'cod-chip-bad' : cashReceived > 0 ? 'cod-chip-ok' : ''"
                     >
-                      <v-icon start size="16">{{ cashShort ? "mdi-alert-circle" : "mdi-cash-refund" }}</v-icon>
+                      <v-icon start size="14">{{ cashShort ? "mdi-alert-circle" : "mdi-cash-refund" }}</v-icon>
                       {{ cashShort ? "Faltan" : "Vuelto" }}:
                       <b class="ml-1">{{ money(Math.abs(change)) }}</b>
                     </v-chip>
@@ -287,10 +254,10 @@
               <v-list density="compact" bg-color="transparent" class="pa-0">
                 <v-list-item v-for="it in cartUi" :key="it._key" class="rounded-lg mb-2 cod-item">
                   <template #prepend>
-                    <v-avatar rounded="lg" size="44" class="cod-border">
+                    <v-avatar rounded="lg" size="40" class="cod-border">
                       <v-img v-if="it._img" :src="it._img" cover />
                       <div v-else class="cod-noimg">
-                        <v-icon size="20">mdi-package-variant</v-icon>
+                        <v-icon size="18">mdi-package-variant</v-icon>
                       </div>
                     </v-avatar>
                   </template>
@@ -329,10 +296,10 @@
 
       <!-- FOOTER -->
       <v-card-actions class="cod-actions">
-        <v-btn variant="tonal" @click="closeNow">Cancelar</v-btn>
+        <v-btn variant="tonal" size="small" @click="closeNow">Cancelar</v-btn>
         <v-spacer />
         <v-btn color="primary" variant="flat" class="cod-confirm" :disabled="cannotConfirmFinal" @click="onConfirm">
-          <v-icon start>mdi-check</v-icon>
+          <v-icon start size="16">mdi-check</v-icon>
           Confirmar venta
         </v-btn>
       </v-card-actions>
@@ -349,15 +316,13 @@ const props = defineProps({
   totalPreview: { type: Number, default: 0 },
   cart: { type: Array, default: () => [] },
 
-  // ✅ v-models (para integrarlo con usePosCheckout/PosPage)
-  paymentMethod: { type: String, default: "CASH" }, // CASH | CARD | TRANSFER | MERCADOPAGO | credit_sjt
+  paymentMethod: { type: String, default: "CASH" },
   installments: { type: Number, default: 1 },
   installmentsItems: { type: Array, default: () => [] },
   applyReseller: { type: Boolean, default: false },
   cashInput: { type: String, default: "" },
 
-  // ✅ NUEVO: tipo tarjeta (solo CARD)
-  cardKind: { type: String, default: "CREDIT" }, // CREDIT | DEBIT
+  cardKind: { type: String, default: "CREDIT" },
 });
 
 const emit = defineEmits([
@@ -371,7 +336,6 @@ const emit = defineEmits([
   "cancel",
 ]);
 
-/* helpers */
 function toDigitsOnly(v) {
   return String(v ?? "").replace(/[^\d]/g, "");
 }
@@ -401,7 +365,6 @@ const cardKindItems = [
   { title: "Débito", value: "DEBIT" },
 ];
 
-/* state local */
 const state = reactive({
   paymentMethod: props.paymentMethod || "CASH",
   installments: Number(props.installments || 1),
@@ -415,11 +378,6 @@ const openLocal = computed({
   set: (v) => emit("update:open", v),
 });
 
-/* =========================
-   PRICES
-   - unit usa reseller/list/discount/base según política
-   - unitList para cuotas (lista)
-========================= */
 function pickPrice(it) {
   const x = it || {};
   const qty = toNum(x.qty || 0);
@@ -433,12 +391,7 @@ function pickPrice(it) {
   const isSj = state.paymentMethod === "credit_sjt";
 
   const inst = Number(state.installments || 1);
-
   const isDebit = isCard && state.cardKind === "DEBIT";
-
-  // ✅ lista aplica:
-  // - CARD: solo si CRÉDITO y cuotas > 1 (y no reseller)
-  // - SJCREDIT: SIEMPRE (y no reseller)
   const isListMode = !state.applyReseller && ((isCard && !isDebit && inst > 1) || isSj);
 
   let unit = 0;
@@ -453,7 +406,6 @@ function pickPrice(it) {
   return { unit, unitList, subtotal: unit * qty, subtotalList: unitList * qty };
 }
 
-/* images: ultra safe */
 function itemImageRaw(it) {
   const x = it || {};
   const p = x.product || x.Product || {};
@@ -497,7 +449,6 @@ const policyLabel = computed(() => {
   return "Descuento";
 });
 
-/* installments */
 const installmentsItemsSafe = computed(() => {
   const raw = Array.isArray(props.installmentsItems) ? props.installmentsItems : [];
   if (raw.length && typeof raw[0] === "object") return raw;
@@ -524,10 +475,6 @@ const ui = computed(() => {
   const k = Number(state.installments || 1);
   const perInstallmentList = k > 1 ? totalListSafe.value / k : 0;
 
-  const installmentsHelp = isSj
-    ? "San Juan Crédito siempre usa precio lista y registra cuotas hasta 12."
-    : "En cuotas (crédito) se usa precio lista. Se calcula valor por cuota.";
-
   const showCardKindChip = isCardLike && !state.applyReseller;
   const cardKindLabel = isSj ? "Crédito" : isDebit ? "Débito" : "Crédito";
   const cardKindIcon = isDebit ? "mdi-credit-card-chip-outline" : "mdi-credit-card-outline";
@@ -540,14 +487,12 @@ const ui = computed(() => {
     showInstallmentsSelect,
     showInstallmentsChip,
     perInstallmentList,
-    installmentsHelp,
     showCardKindChip,
     cardKindLabel,
     cardKindIcon,
   };
 });
 
-/* cash */
 const cashReceived = computed(() => toNum(state.cashDigits));
 const cashDisplay = computed(() => (cashReceived.value ? formatMiles(cashReceived.value) : ""));
 const change = computed(() => cashReceived.value - totalSafe.value);
@@ -569,7 +514,6 @@ function quickCash(v) {
   emit("update:cashInput", digits);
 }
 
-/* actions */
 function normalizeCardKind(v) {
   const k = String(v || "").toUpperCase();
   return k === "DEBIT" ? "DEBIT" : "CREDIT";
@@ -584,12 +528,9 @@ function onPaymentMethodChange(v) {
     emit("update:cashInput", "");
   }
 
-  // defaults
   if (v === "CARD") {
-    // mantiene cardKind, pero asegura válido
     state.cardKind = normalizeCardKind(state.cardKind);
     emit("update:cardKind", state.cardKind);
-    // débito => 1 pago
     if (state.cardKind === "DEBIT") {
       state.installments = 1;
       emit("update:installments", 1);
@@ -601,7 +542,6 @@ function onPaymentMethodChange(v) {
   }
 
   if (v === "credit_sjt") {
-    // SJCREDIT siempre crédito; cuotas 1..12
     state.cardKind = "CREDIT";
     emit("update:cardKind", "CREDIT");
     if (!Number(state.installments || 1)) {
@@ -611,7 +551,6 @@ function onPaymentMethodChange(v) {
     return;
   }
 
-  // no card-like => 1
   state.installments = 1;
   emit("update:installments", 1);
 }
@@ -620,7 +559,6 @@ function onCardKindChange(v) {
   state.cardKind = normalizeCardKind(v);
   emit("update:cardKind", state.cardKind);
 
-  // débito => 1 pago y sin cuotas
   if (state.cardKind === "DEBIT") {
     state.installments = 1;
     emit("update:installments", 1);
@@ -630,7 +568,6 @@ function onCardKindChange(v) {
 function onInstallmentsChange(v) {
   const n = Number(v || 1);
 
-  // seguridad: débito nunca
   if (state.paymentMethod === "CARD" && state.cardKind === "DEBIT" && n > 1) {
     state.installments = 1;
     emit("update:installments", 1);
@@ -658,8 +595,6 @@ function closeNow() {
 }
 
 function onConfirm() {
-  // ✅ método para backend: CASH | TRANSFER | MERCADOPAGO | CARD | credit_sjt
-  // ✅ card_kind: CREDIT/DEBIT (backend lo usa para forzar installments)
   emit("confirm", {
     payment_method: state.paymentMethod,
     card_kind: state.paymentMethod === "CARD" ? state.cardKind : "CREDIT",
@@ -674,7 +609,6 @@ function onConfirm() {
   });
 }
 
-/* hotkey: F8/ESC close */
 function onKeydownDialog(e) {
   if (!openLocal.value) return;
   const k = String(e.key || "").toLowerCase();
@@ -688,7 +622,6 @@ function onKeydownDialog(e) {
 onMounted(() => window.addEventListener("keydown", onKeydownDialog, { capture: true }));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKeydownDialog, { capture: true }));
 
-/* sync props -> local */
 watch(
   () => props.paymentMethod,
   (v) => (state.paymentMethod = v || "CASH")
@@ -710,7 +643,6 @@ watch(
   (v) => (state.cardKind = normalizeCardKind(v))
 );
 
-// ✅ coherencia: si es débito, cuotas=1
 watch(
   () => [state.paymentMethod, state.cardKind],
   () => {
@@ -727,92 +659,145 @@ watch(
 </script>
 
 <style scoped>
-/* Brand */
 .cod-root {
   overflow: hidden;
-  --cod-brand: 42, 133, 196; /* #2a85c4 */
+  --cod-brand: 42, 133, 196;
+  border-radius: 16px !important;
+}
+
+.cod-dialog :deep(.v-overlay__content) {
+  max-height: min(90vh, 900px);
+}
+
+.cod-dialog :deep(.v-card) {
+  max-height: min(90vh, 900px);
 }
 
 /* HERO */
 .cod-hero {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 16px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px 8px;
   position: relative;
   background: linear-gradient(
     180deg,
-    rgba(var(--cod-brand), 0.18),
-    rgba(var(--cod-brand), 0.06),
-    rgba(var(--v-theme-surface), 0.92)
+    rgba(var(--cod-brand), 0.11),
+    rgba(var(--cod-brand), 0.04),
+    rgba(var(--v-theme-surface), 0.98)
   );
 }
+
 .cod-hero-left {
   min-width: 0;
+  padding-right: 34px;
 }
+
 .cod-hero-right {
   text-align: right;
-  padding-top: 2px;
+  padding-top: 1px;
+  min-width: 150px;
 }
+
 .cod-title-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 5px;
 }
+
 .cod-title {
-  margin-right: 6px;
+  margin-right: 2px;
+  font-size: 1.02rem !important;
+  line-height: 1.05;
 }
+
 .cod-chip {
-  border: 1px solid rgba(var(--cod-brand), 0.18);
-  background: rgba(var(--cod-brand), 0.08) !important;
+  border: 1px solid rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--cod-brand), 0.065) !important;
+  min-height: 24px;
+  font-size: 0.73rem !important;
 }
+
 .cod-chip-soft {
-  border-color: rgba(var(--cod-brand), 0.14);
-  background: rgba(var(--cod-brand), 0.06) !important;
+  border-color: rgba(var(--cod-brand), 0.11);
+  background: rgba(var(--cod-brand), 0.045) !important;
 }
-.cod-sub {
-  margin-top: 6px;
-}
+
 .cod-total-label {
-  opacity: 0.85;
+  opacity: 0.75;
+  font-size: 0.72rem !important;
+  margin-bottom: 1px;
 }
+
 .cod-total {
   font-weight: 950;
-  font-size: 34px;
-  line-height: 1.05;
-  color: rgba(var(--v-theme-on-surface), 0.92);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(var(--v-theme-on-surface), 0.95);
 }
+
 .cod-close {
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 8px;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  z-index: 2;
+  border: 1px solid rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  color: rgba(var(--v-theme-on-surface), 0.85) !important;
 }
 
 /* BODY */
 .cod-body {
-  padding: 16px;
-  background: rgba(var(--cod-brand), 0.02);
+  padding: 10px 12px;
+  background: rgba(var(--cod-brand), 0.014);
 }
+
+.cod-grid {
+  margin-top: 0 !important;
+}
+
 .cod-panel {
-  border: 1px solid rgba(var(--cod-brand), 0.14);
-  background: rgba(var(--v-theme-surface), 0.86);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-  padding: 14px;
+  border: 1px solid rgba(var(--cod-brand), 0.11);
+  background: rgba(var(--v-theme-surface), 0.96);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.03);
+  padding: 10px;
 }
+
+.cod-panel-left,
+.cod-panel-right {
+  min-height: 100%;
+}
+
 .cod-sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+}
+
+.cod-sec-head .text-subtitle-1 {
+  font-size: 0.93rem !important;
+  line-height: 1.05;
+}
+
+.cod-panel .text-caption {
+  font-size: 0.72rem !important;
+  line-height: 1.25;
 }
 
 /* paycards */
 .cod-paygrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 7px;
 }
+
 @media (max-width: 959px) {
   .cod-paygrid {
     grid-template-columns: 1fr;
@@ -821,126 +806,174 @@ watch(
 
 .cod-paycard {
   appearance: none;
-  border: 1px solid rgba(var(--cod-brand), 0.16);
-  background: rgba(var(--cod-brand), 0.04);
-  border-radius: 14px;
-  padding: 12px;
+  border: 1px solid rgba(var(--cod-brand), 0.13);
+  background: rgba(var(--cod-brand), 0.03);
+  border-radius: 11px;
+  padding: 8px 10px;
   display: grid;
-  grid-template-columns: 40px 1fr 26px;
-  gap: 10px;
+  grid-template-columns: 32px 1fr 20px;
+  gap: 8px;
   align-items: center;
   cursor: pointer;
   text-align: left;
-  transition: transform 0.08s ease, border-color 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.08s ease,
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+  min-height: 60px;
 }
+
 .cod-paycard:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--cod-brand), 0.35);
-  background: rgba(var(--cod-brand), 0.06);
+  border-color: rgba(var(--cod-brand), 0.26);
+  background: rgba(var(--cod-brand), 0.045);
 }
+
 .cod-paycard.active {
-  border-color: rgba(var(--cod-brand), 0.55);
-  background: rgba(var(--cod-brand), 0.12);
+  border-color: rgba(var(--cod-brand), 0.42);
+  background: rgba(var(--cod-brand), 0.085);
+  box-shadow: 0 4px 12px rgba(var(--cod-brand), 0.07);
 }
+
 .cod-paycard .ic {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--v-theme-on-surface), 0.028);
+  border: 1px solid rgba(var(--cod-brand), 0.11);
   color: rgba(var(--cod-brand), 0.95);
 }
+
+.cod-paycard .ic :deep(.v-icon) {
+  font-size: 18px;
+}
+
 .cod-paycard.active .ic {
-  background: rgba(var(--cod-brand), 0.18);
-  border-color: rgba(var(--cod-brand), 0.28);
+  background: rgba(var(--cod-brand), 0.14);
+  border-color: rgba(var(--cod-brand), 0.22);
 }
+
 .cod-paycard .tx .t {
-  font-weight: 950;
-  line-height: 1.1;
+  font-weight: 850;
+  line-height: 1.05;
+  font-size: 0.88rem;
 }
-.cod-paycard .tx .s {
-  font-size: 0.78rem;
-  opacity: 0.78;
-  margin-top: 2px;
-}
+
 .cod-paycard .chk {
-  opacity: 0.9;
+  opacity: 0.92;
   color: rgba(var(--cod-brand), 0.95);
+}
+
+.cod-paycard .chk :deep(.v-icon) {
+  font-size: 20px;
 }
 
 .cod-select :deep(.v-field) {
-  border-radius: 12px;
-}
-.cod-installment-chip {
-  margin-top: 8px;
+  border-radius: 10px;
+  min-height: 38px;
 }
 
-/* cash box */
-.cod-cashbox {
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--cod-brand), 0.18);
-  background: rgba(var(--cod-brand), 0.04);
+.cod-select :deep(.v-field__input) {
+  min-height: 38px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 0.88rem;
 }
+
+.cod-installment-chip {
+  margin-top: 5px;
+}
+
+.cod-reseller {
+  margin-top: -2px;
+}
+
+.cod-cashbox {
+  padding: 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--cod-brand), 0.14);
+  background: rgba(var(--cod-brand), 0.03);
+}
+
 .cod-cash-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 7px;
 }
+
+.cod-cash-input :deep(.v-field) {
+  border-radius: 10px;
+}
+
 .cod-cash-input :deep(input) {
-  font-size: 22px;
-  font-weight: 950;
-  letter-spacing: 0.5px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
 }
+
 .cod-chip-ok {
-  border-color: rgba(76, 175, 80, 0.35) !important;
-  background: rgba(76, 175, 80, 0.14) !important;
+  border-color: rgba(76, 175, 80, 0.32) !important;
+  background: rgba(76, 175, 80, 0.12) !important;
 }
+
 .cod-chip-bad {
-  border-color: rgba(244, 67, 54, 0.35) !important;
-  background: rgba(244, 67, 54, 0.12) !important;
+  border-color: rgba(244, 67, 54, 0.32) !important;
+  background: rgba(244, 67, 54, 0.1) !important;
 }
+
 .cod-quick {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
 /* summary items */
 .cod-item {
-  border: 1px solid rgba(var(--cod-brand), 0.12);
-  background: rgba(var(--v-theme-surface), 0.92);
+  border: 1px solid rgba(var(--cod-brand), 0.09);
+  background: rgba(var(--v-theme-surface), 0.98);
+  min-height: 58px !important;
+  padding-inline: 6px !important;
 }
+
 .cod-border {
-  border: 1px solid rgba(var(--cod-brand), 0.18);
-  border-radius: 10px;
+  border: 1px solid rgba(var(--cod-brand), 0.13);
+  border-radius: 9px;
 }
+
 .cod-noimg {
   width: 100%;
   height: 100%;
   display: grid;
   place-items: center;
-  background: rgba(var(--cod-brand), 0.06);
+  background: rgba(var(--cod-brand), 0.045);
 }
+
 .cod-item-title {
-  font-weight: 950;
+  font-weight: 850;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.84rem;
 }
+
 .cod-item-sub {
-  font-size: 0.78rem;
-  opacity: 0.82;
+  font-size: 0.7rem;
+  opacity: 0.78;
+  line-height: 1.15;
 }
+
 .cod-item-amt {
-  font-weight: 950;
+  font-weight: 900;
+  font-size: 0.86rem;
 }
+
 .cod-sum-row {
   display: flex;
   align-items: center;
@@ -948,32 +981,109 @@ watch(
   gap: 10px;
 }
 
-/* footer sticky */
+.cod-sum-row b {
+  font-size: 0.9rem;
+}
+
+/* footer */
 .cod-actions {
-  padding: 14px 16px;
+  padding: 8px 12px;
   position: sticky;
   bottom: 0;
-  background: rgba(var(--v-theme-surface), 0.92);
-  border-top: 1px solid rgba(var(--cod-brand), 0.14);
-  backdrop-filter: blur(10px);
+  background: rgba(var(--v-theme-surface), 0.96);
+  border-top: 1px solid rgba(var(--cod-brand), 0.11);
+  backdrop-filter: blur(8px);
 }
+
+.cod-actions :deep(.v-btn) {
+  min-height: 38px;
+}
+
 .cod-confirm {
-  font-weight: 950;
+  font-weight: 900;
+  padding-inline: 16px !important;
+  min-width: 190px;
+}
+
+/* desktop tighter */
+@media (min-width: 960px) {
+  .cod-dialog :deep(.v-overlay__content) {
+    width: min(920px, calc(100vw - 34px)) !important;
+  }
+
+  .cod-body {
+    max-height: calc(90vh - 138px);
+    overflow: auto;
+  }
+}
+
+/* tablet */
+@media (max-width: 959px) {
+  .cod-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .cod-hero-right {
+    text-align: left;
+    min-width: 0;
+  }
+
+  .cod-total {
+    font-size: 19px;
+  }
+
+  .cod-body {
+    max-height: calc(90vh - 146px);
+    overflow: auto;
+  }
 }
 
 /* mobile */
-@media (max-width: 520px) {
-  .cod-body {
-    padding: 12px;
-  }
-  .cod-panel {
-    padding: 12px;
-  }
+@media (max-width: 600px) {
   .cod-hero {
-    padding: 14px 14px 12px;
+    padding: 10px 10px 8px;
+    gap: 8px;
   }
+
+  .cod-title {
+    font-size: 0.96rem !important;
+  }
+
   .cod-total {
-    font-size: 28px;
+    font-size: 18px;
+  }
+
+  .cod-body {
+    padding: 9px;
+  }
+
+  .cod-panel {
+    padding: 9px;
+  }
+
+  .cod-paycard {
+    min-height: 56px;
+    padding: 8px 9px;
+    grid-template-columns: 30px 1fr 18px;
+  }
+
+  .cod-paycard .ic {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .cod-paycard .tx .t {
+    font-size: 0.84rem;
+  }
+
+  .cod-actions {
+    padding: 8px 10px;
+  }
+
+  .cod-confirm {
+    min-width: 0;
+    width: 100%;
   }
 }
 </style>
