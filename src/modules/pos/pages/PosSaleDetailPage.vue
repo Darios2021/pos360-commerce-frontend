@@ -2,7 +2,6 @@
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
   <v-container fluid class="pos-sale-detail pa-4 pa-md-6">
-    <!-- Header -->
     <div class="page-head">
       <div>
         <div class="page-kicker">Detalle de venta</div>
@@ -42,7 +41,6 @@
       </v-card-text>
 
       <v-card-text v-else class="pa-3 pa-md-5">
-        <!-- HERO -->
         <section class="hero-grid">
           <!-- Cliente -->
           <article class="soft-panel">
@@ -55,10 +53,10 @@
               {{ customerNameResolved }}
             </div>
 
-            <div v-if="showCustomerDataBlock" class="mt-4">
+            <div class="mt-4">
               <div class="info-label mb-2">Datos del cliente</div>
 
-              <div class="d-flex flex-wrap ga-2">
+              <div v-if="showCustomerDataBlock" class="d-flex flex-wrap ga-2">
                 <v-chip
                   v-if="customerDocResolved"
                   size="small"
@@ -78,13 +76,20 @@
                   <v-icon start size="16">mdi-phone</v-icon>
                   {{ customerPhoneResolved }}
                 </v-chip>
-              </div>
-            </div>
 
-            <div v-else class="mt-4">
-              <div class="info-label mb-1">Datos del cliente</div>
-              <div class="hero-muted">
-                Esta venta no guardó documento ni teléfono.
+                <v-chip
+                  v-if="customerEmailResolved"
+                  size="small"
+                  variant="outlined"
+                  class="detail-chip"
+                >
+                  <v-icon start size="16">mdi-email-outline</v-icon>
+                  {{ customerEmailResolved }}
+                </v-chip>
+              </div>
+
+              <div v-else class="hero-muted">
+                Esta venta no guardó datos de cliente.
               </div>
             </div>
 
@@ -131,6 +136,21 @@
                     {{ statusLabel(sale.status) }}
                   </v-chip>
                 </div>
+              </div>
+
+              <div class="info-item">
+                <div class="info-label">Modo fiscal</div>
+                <div class="info-value">{{ invoiceModeLabelResolved }}</div>
+              </div>
+
+              <div class="info-item">
+                <div class="info-label">Comprobante</div>
+                <div class="info-value">{{ invoiceTypeResolved }}</div>
+              </div>
+
+              <div class="info-item">
+                <div class="info-label">Tipo cliente</div>
+                <div class="info-value">{{ customerTypeLabelResolved }}</div>
               </div>
             </div>
 
@@ -320,7 +340,7 @@
           <div v-if="paymentsResolved.length" class="payments-stack">
             <v-card
               v-for="p in paymentsResolved"
-              :key="p.id"
+              :key="p.id || `${p.payment_method_id}_${p.amount}_${p.reference || ''}`"
               class="payment-card payment-card--single rounded-2xl elevation-0"
             >
               <v-card-text class="pa-4 pa-md-5">
@@ -333,7 +353,7 @@
                         :color="payColor(p.method_resolved)"
                         class="font-weight-bold"
                       >
-                        {{ methodLabel(p.method_resolved) }}
+                        {{ p.method_display }}
                       </v-chip>
 
                       <v-chip
@@ -352,6 +372,15 @@
                         class="detail-chip"
                       >
                         Marca: {{ p.card_brand }}
+                      </v-chip>
+
+                      <v-chip
+                        v-if="p.installments > 1"
+                        size="small"
+                        variant="outlined"
+                        class="detail-chip"
+                      >
+                        {{ p.installments }} cuotas
                       </v-chip>
                     </div>
 
@@ -434,7 +463,7 @@
                 </div>
 
                 <div class="hero-muted mt-3">
-                  Medio: <b>{{ methodLabel(resolveMethodFromRefund(r)) }}</b>
+                  Medio: <b>{{ refundMethodLabel(r) }}</b>
                   <span v-if="r.reference"> · Ref: <b>{{ r.reference }}</b></span>
                 </div>
 
@@ -495,7 +524,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- Dialog imagen -->
     <v-dialog v-model="imageDialog" max-width="860">
       <v-card class="rounded-xl">
         <v-card-title class="d-flex align-center justify-space-between">
@@ -564,6 +592,7 @@ const loading = ref(false);
 
 const payload = ref(null);
 const sale = computed(() => payload.value?.sale || null);
+const saleExtra = computed(() => safeJsonParse(sale.value?.extra) || {});
 
 const refunds = computed(() => (Array.isArray(payload.value?.refunds) ? payload.value.refunds : []));
 const exchanges = computed(() => (Array.isArray(payload.value?.exchanges) ? payload.value.exchanges : []));
@@ -601,13 +630,6 @@ function safeJsonParse(v) {
   }
 }
 
-function normStr(v) {
-  return String(v || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-}
-
 function numOrNull(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
@@ -618,124 +640,240 @@ function hasValue(v) {
   return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
 }
 
-function detectProviderCode(payment) {
-  const p = payment || {};
-  const refU = String(p.reference || p.ref || "").trim().toUpperCase();
-  if (refU === "SJCREDIT" || refU === "SJ_CREDIT" || refU === "SANJUANCREDITO" || refU === "SANJUAN_CREDITO") return "credit_sjt";
-  if (refU === "MERCADOPAGO" || refU === "MP") return "mercadopago";
-
-  const noteObj = safeJsonParse(p.note);
-  const c2 = normStr(noteObj?.provider_code || noteObj?.providerCode || noteObj?.provider || noteObj?.code || "");
-  if (c2) return c2;
-
-  const noteTxt = String(p.note || "").toLowerCase();
-  if (noteTxt.includes("credit_sjt") || noteTxt.includes("sjcredit") || noteTxt.includes("sanjuancredito")) return "credit_sjt";
-  if (noteTxt.includes("mercadopago") || noteTxt.includes("mp")) return "mercadopago";
-
+function firstFilled(...vals) {
+  for (const v of vals) {
+    const s = String(v ?? "").trim();
+    if (s) return s;
+  }
   return "";
 }
 
+function customerData() {
+  const s = sale.value || {};
+  const extra = saleExtra.value || {};
+  const c = extra.customer || s.customer || s.Customer || {};
+
+  return {
+    name: firstFilled(
+      s.customer_name,
+      s.customerName,
+      c.name,
+      c.customer_name,
+      c.full_name,
+      c.fullName,
+      [c.first_name, c.last_name].filter(Boolean).join(" "),
+      [c.firstName, c.lastName].filter(Boolean).join(" ")
+    ),
+    doc: firstFilled(
+      s.customer_doc,
+      s.customerDoc,
+      c.doc,
+      c.customer_doc,
+      c.document,
+      c.documento,
+      c.dni,
+      c.cuit,
+      c.cuil
+    ),
+    phone: firstFilled(
+      s.customer_phone,
+      s.customerPhone,
+      c.phone,
+      c.customer_phone,
+      c.telefono,
+      c.tel,
+      c.mobile,
+      c.whatsapp
+    ),
+    email: firstFilled(
+      c.email,
+      c.mail
+    ),
+  };
+}
+
+const customerNameResolved = computed(() => {
+  const d = customerData();
+  if (d.name) return d.name;
+
+  const cid = Number(sale.value?.customer_id || sale.value?.customer?.id || 0);
+  return cid ? `Cliente #${cid}` : "Consumidor Final";
+});
+
+const customerDocResolved = computed(() => customerData().doc || "");
+const customerPhoneResolved = computed(() => customerData().phone || "");
+const customerEmailResolved = computed(() => customerData().email || "");
+
+const showCustomerDataBlock = computed(() => {
+  return !!(
+    customerDocResolved.value ||
+    customerPhoneResolved.value ||
+    customerEmailResolved.value
+  );
+});
+
+const branchLabelResolved = computed(() => {
+  const s = sale.value || {};
+  return firstFilled(
+    s.branch?.name,
+    s.branch_name,
+    s.branch?.display_name,
+    s.branch_id ? `#${s.branch_id}` : ""
+  );
+});
+
+const invoiceModeResolved = computed(() =>
+  firstFilled(
+    saleExtra.value?.invoice_mode,
+    sale.value?.invoice_mode
+  ).toUpperCase()
+);
+
+const invoiceTypeResolved = computed(() =>
+  firstFilled(
+    saleExtra.value?.invoice_type,
+    sale.value?.invoice_type,
+    "—"
+  ).toUpperCase()
+);
+
+const customerTypeResolved = computed(() =>
+  firstFilled(
+    saleExtra.value?.customer_type,
+    sale.value?.customer_type,
+    "CONSUMIDOR_FINAL"
+  ).toUpperCase()
+);
+
+const invoiceModeLabelResolved = computed(() => {
+  const x = invoiceModeResolved.value;
+  if (x === "NO_FISCAL") return "No fiscal";
+  if (x === "FISCAL") return "Fiscal";
+  if (x === "MIXED") return "Mixta";
+  if (x === "TICKET_ONLY") return "Solo ticket";
+  return x || "—";
+});
+
+const customerTypeLabelResolved = computed(() => {
+  const x = customerTypeResolved.value;
+  if (x === "CONSUMIDOR_FINAL") return "Consumidor final";
+  if (x === "CLIENTE_REGISTRADO") return "Cliente registrado";
+  return x || "—";
+});
+
 function resolvePaymentMethod(payment) {
   const p = payment || {};
-  const up = String(p.method || "").trim().toUpperCase();
-  const prov = detectProviderCode(p);
 
-  if (prov === "credit_sjt") return "CREDIT_SJT";
-  if (up === "CREDIT_SJT" || up === "CREDIT_SJ" || up === "SJCREDIT") return "CREDIT_SJT";
+  const display = firstFilled(
+    p.label,
+    p.payment_method_name,
+    p.payment_method_label,
+    p.display_name
+  );
 
-  if (prov === "mercadopago") return "MERCADOPAGO";
-  if (up === "QR") return "MERCADOPAGO";
-  if (up === "MERCADOPAGO") return "MERCADOPAGO";
+  const methodRaw = firstFilled(
+    p.method,
+    p.kind,
+    p.payment_method_kind
+  ).toUpperCase();
 
-  if (up === "CASH") return "CASH";
-  if (up === "CARD") return "CARD";
-  if (up === "TRANSFER") return "TRANSFER";
-  if (up === "OTHER") return "OTHER";
+  let resolved = methodRaw || "OTHER";
 
-  return up || "OTHER";
+  if (resolved === "QR") resolved = "MERCADOPAGO";
+  if (resolved === "MERCADOPAGO") resolved = "MERCADOPAGO";
+  if (resolved === "CREDIT_SJT") resolved = "CREDIT_SJT";
+
+  return {
+    method_resolved: resolved,
+    method_display: display || methodLabel(resolved),
+  };
 }
 
 function extractPaymentDetails(payment) {
   const p = payment || {};
-  const noteObj = safeJsonParse(p.note) || null;
-  const raw = noteObj || {};
+  const noteObj = safeJsonParse(p.note) || {};
+  const extra = safeJsonParse(p.extra) || {};
 
-  const cardTypeRaw = String(
-    raw.card_type || raw.cardType || raw.type || raw.card_kind || raw.cardKind || ""
-  )
-    .trim()
-    .toUpperCase();
+  const merged = { ...noteObj, ...extra };
 
-  const cardBrand = String(raw.brand || raw.card_brand || raw.cardBrand || raw.network || "").trim() || "";
+  const cardKind = firstFilled(
+    p.card_kind,
+    p.cardKind,
+    merged.card_kind,
+    merged.cardKind,
+    merged.card_type,
+    merged.cardType
+  ).toUpperCase();
+
+  const cardBrand = firstFilled(
+    p.card_brand,
+    p.cardBrand,
+    merged.card_brand,
+    merged.cardBrand,
+    merged.brand,
+    merged.network
+  );
 
   const installments =
-    p.installments != null ? Number(p.installments || 1) :
-    raw.installments != null ? Number(raw.installments || 1) :
-    raw.cuotas != null ? Number(raw.cuotas || 1) :
+    numOrNull(p.installments) ??
+    numOrNull(merged.installments) ??
+    numOrNull(merged.cuotas) ??
     1;
 
   const listTotal =
-    numOrNull(raw.list_total) ??
-    numOrNull(raw.listTotal) ??
-    numOrNull(raw.total_list) ??
-    numOrNull(raw.totalList);
+    numOrNull(merged.list_total) ??
+    numOrNull(merged.listTotal) ??
+    numOrNull(merged.total_list) ??
+    numOrNull(merged.totalList);
 
-  let installmentAmount = null;
-
-  if (listTotal != null && Number(installments || 1) > 1) {
-    installmentAmount = listTotal / Number(installments || 1);
-  } else {
-    installmentAmount =
-      numOrNull(raw.per_installment_list) ??
-      numOrNull(raw.perInstallmentList) ??
-      numOrNull(raw.installment_amount) ??
-      numOrNull(raw.installmentAmount) ??
-      numOrNull(raw.valor_cuota) ??
-      numOrNull(raw.valorCuota);
-  }
+  const installmentAmount =
+    numOrNull(merged.per_installment_list) ??
+    numOrNull(merged.perInstallmentList) ??
+    numOrNull(merged.installment_amount) ??
+    numOrNull(merged.installmentAmount) ??
+    (Number.isFinite(Number(listTotal)) && Number(installments) > 1
+      ? Number(listTotal) / Number(installments)
+      : null);
 
   const totalWithFee =
-    numOrNull(raw.total_with_fee) ??
-    numOrNull(raw.totalWithFee) ??
-    numOrNull(raw.total_financiado);
+    numOrNull(merged.total_with_fee) ??
+    numOrNull(merged.totalWithFee) ??
+    numOrNull(merged.total_financiado);
 
-  const priceBasis = String(raw.price_basis || raw.priceBasis || "").trim().toUpperCase() || "";
+  const priceBasis = firstFilled(
+    merged.price_basis,
+    merged.priceBasis,
+    saleExtra.value?.price_policy
+  ).toUpperCase();
+
   const priceBasisLabel =
-    priceBasis === "LIST" ? "Precio lista" :
-    priceBasis === "DISCOUNT" ? "Descuento" :
-    priceBasis === "RESELLER" ? "Revendedor" :
-    "";
+    priceBasis === "LIST" || priceBasis === "LIST_PRICE"
+      ? "Precio lista"
+      : priceBasis === "DISCOUNT" || priceBasis === "SALE_PRICE"
+        ? "Precio contado"
+        : priceBasis === "RESELLER"
+          ? "Revendedor"
+          : "";
 
-  const providerCode = detectProviderCode(p);
-  const providerLabel =
-    providerCode === "mercadopago" ? "Mercado Pago" :
-    providerCode === "credit_sjt" ? "Crédito SJ" :
-    providerCode ? providerCode : "";
-
-  const rawNoteHuman = noteObj
-    ? String(raw.note || raw.message || "").trim()
-    : String(p.note || "").trim();
-
-  const noteHuman =
-    rawNoteHuman &&
-    rawNoteHuman !== "{}" &&
-    rawNoteHuman !== "null" &&
-    !rawNoteHuman.startsWith("{")
-      ? rawNoteHuman
-      : "";
+  const noteHuman = firstFilled(
+    merged.note,
+    merged.message,
+    typeof p.note === "string" && !String(p.note).trim().startsWith("{") ? p.note : ""
+  );
 
   return {
-    card_type: cardTypeRaw === "DEBIT" || cardTypeRaw === "CREDIT" ? cardTypeRaw : "",
+    card_type: cardKind,
     card_type_label:
-      cardTypeRaw === "DEBIT" ? "Débito" :
-      cardTypeRaw === "CREDIT" ? "Crédito" :
-      "",
+      cardKind === "DEBIT"
+        ? "Débito"
+        : cardKind === "CREDIT"
+          ? "Crédito"
+          : "",
     card_brand: cardBrand,
-    installments: Number.isFinite(installments) && installments > 0 ? installments : 1,
+    installments: Number.isFinite(Number(installments)) && Number(installments) > 0 ? Number(installments) : 1,
     installment_amount: installmentAmount,
     list_total: listTotal,
     total_with_fee: totalWithFee,
-    provider_label: providerLabel,
     price_basis: priceBasis,
     price_basis_label: priceBasisLabel,
     note_human: noteHuman,
@@ -745,59 +883,15 @@ function extractPaymentDetails(payment) {
 const paymentsResolved = computed(() => {
   const arr = Array.isArray(sale.value?.payments) ? sale.value.payments : [];
   return arr.map((p) => {
-    const method_resolved = resolvePaymentMethod(p);
+    const base = resolvePaymentMethod(p);
     const det = extractPaymentDetails(p);
 
     return {
       ...p,
-      method_resolved,
+      ...base,
       ...det,
-      installments: det.installments || Number(p?.installments || 1) || 1,
     };
   });
-});
-
-const customerObj = computed(() => sale.value?.customer || sale.value?.Customer || null);
-
-const customerNameResolved = computed(() => {
-  const s = sale.value || {};
-  const c = customerObj.value || {};
-  const name =
-    s.customer_name ||
-    s.customerName ||
-    c.name ||
-    c.full_name ||
-    c.fullName ||
-    [c.first_name, c.last_name].filter(Boolean).join(" ") ||
-    [c.firstName, c.lastName].filter(Boolean).join(" ");
-
-  const n = String(name || "").trim();
-  if (n) return n;
-
-  const cid = Number(s.customer_id || c.id || 0);
-  return cid ? `Cliente #${cid}` : "Consumidor Final";
-});
-
-const customerDocResolved = computed(() => {
-  const s = sale.value || {};
-  return String(s.customer_doc || s.customerDoc || "").trim() || "";
-});
-
-const customerPhoneResolved = computed(() => {
-  const s = sale.value || {};
-  return String(s.customer_phone || s.customerPhone || "").trim() || "";
-});
-
-const showCustomerDataBlock = computed(() => {
-  return !!(
-    customerDocResolved.value ||
-    customerPhoneResolved.value
-  );
-});
-
-const branchLabelResolved = computed(() => {
-  const s = sale.value || {};
-  return String(s.branch?.name || s.branch_name || s.branch_id || "").trim() || "";
 });
 
 function money(val) {
@@ -821,7 +915,8 @@ function methodLabel(m) {
   if (x === "CARD") return "Tarjeta";
   if (x === "TRANSFER") return "Transferencia";
   if (x === "MERCADOPAGO") return "Mercado Pago";
-  if (x === "CREDIT_SJT") return "San Juan Crédito";
+  if (x === "QR") return "QR";
+  if (x === "CREDIT_SJT") return "Crédito / Financiación";
   if (x === "OTHER") return "Otro";
   return m || "—";
 }
@@ -830,7 +925,7 @@ function payColor(m) {
   if (x === "CASH") return "green";
   if (x === "CARD") return "indigo";
   if (x === "TRANSFER") return "purple";
-  if (x === "MERCADOPAGO") return "orange";
+  if (x === "MERCADOPAGO" || x === "QR") return "orange";
   if (x === "CREDIT_SJT") return "teal";
   return "grey";
 }
@@ -855,78 +950,52 @@ function userLabel(s) {
   return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
 }
 
-function paymentBaseText(p) {
-  if (p?.price_basis_label) return p.price_basis_label;
-  if (String(p?.method_resolved || "").toUpperCase() === "CREDIT_SJT") return "Precio lista";
-  return "";
-}
-
-function paymentInstallmentText(p) {
-  const installments = Number(p?.installments || 1);
-  if (installments <= 1) return "";
-
-  const listTotal = Number(p?.list_total ?? NaN);
-  if (Number.isFinite(listTotal) && listTotal > 0) {
-    return money(listTotal / installments);
-  }
-
-  const installmentAmount = Number(p?.installment_amount ?? NaN);
-  if (Number.isFinite(installmentAmount) && installmentAmount > 0) {
-    return money(installmentAmount);
-  }
-
-  return "";
-}
-
 function paymentHeadline(p) {
-  const method = String(p?.method_resolved || "").toUpperCase();
   const installments = Number(p?.installments || 1);
-  const cuota = paymentInstallmentText(p);
+  const method = p?.method_display || methodLabel(p?.method_resolved);
 
-  if (method === "CREDIT_SJT") {
-    if (installments <= 1) return "Pagado en 1 cuota (Crédito SJ)";
-    if (cuota) return `Pagado en ${installments} cuotas de ${cuota} (Crédito SJ)`;
-    return `Pagado en ${installments} cuotas (Crédito SJ)`;
+  if (installments > 1) {
+    return `${method} en ${installments} cuotas`;
   }
 
-  if (method === "CARD") {
-    if (installments <= 1) return "Pagado en 1 pago con tarjeta";
-    if (cuota) return `Pagado en ${installments} cuotas de ${cuota} con tarjeta`;
-    return `Pagado en ${installments} cuotas con tarjeta`;
-  }
-
-  if (method === "TRANSFER") return "Pagado por transferencia";
-  if (method === "MERCADOPAGO") return "Pagado con Mercado Pago";
-  if (method === "CASH") return "Pagado en efectivo";
-  return methodLabel(method);
+  return `${method} en 1 pago`;
 }
 
 function paymentSubline(p) {
   const arr = [];
-  if (p?.paid_at) arr.push(`Fecha: ${dt(p.paid_at)}`);
   if (p?.reference) arr.push(`Ref: ${p.reference}`);
+  if (p?.paid_at) arr.push(`Fecha pago: ${dt(p.paid_at)}`);
+  if (p?.payment_method_id) arr.push(`ID medio: ${p.payment_method_id}`);
   return arr;
 }
 
 function paymentFacts(p) {
   const out = [];
 
-  out.push({ label: "Método", value: methodLabel(p.method_resolved) });
+  out.push({ label: "Método", value: p.method_display || methodLabel(p.method_resolved) });
 
-  if (Number(p.installments || 1) <= 1) {
-    out.push({ label: "Cuotas", value: "1 cuota" });
-  } else {
-    out.push({ label: "Cuotas", value: `${p.installments} cuotas` });
+  out.push({
+    label: "Cuotas",
+    value:
+      Number(p.installments || 1) > 1
+        ? `${p.installments} cuotas`
+        : "1 cuota",
+  });
+
+  if (p.card_type_label) {
+    out.push({ label: "Tipo tarjeta", value: p.card_type_label });
   }
 
-  const cuota = paymentInstallmentText(p);
-  if (cuota) {
-    out.push({ label: "Valor cuota", value: cuota });
+  if (p.card_brand) {
+    out.push({ label: "Marca", value: p.card_brand });
   }
 
-  const base = paymentBaseText(p);
-  if (base) {
-    out.push({ label: "Base cálculo", value: base });
+  if (p.price_basis_label) {
+    out.push({ label: "Base cálculo", value: p.price_basis_label });
+  }
+
+  if (p.installment_amount != null && Number(p.installments || 1) > 1) {
+    out.push({ label: "Valor cuota", value: money(p.installment_amount) });
   }
 
   if (p.list_total != null) {
@@ -940,12 +1009,10 @@ function paymentFacts(p) {
   return out;
 }
 
-function resolveMethodFromRefund(r) {
-  const up = String(r?.refund_method || r?.method || "").toUpperCase();
-  if (up === "QR") return "MERCADOPAGO";
-  if (up === "MERCADOPAGO") return "MERCADOPAGO";
-  if (up === "CREDIT_SJT" || up === "SJCREDIT") return "CREDIT_SJT";
-  return up || "OTHER";
+function refundMethodLabel(r) {
+  return methodLabel(
+    firstFilled(r?.refund_method, r?.method, r?.payment_method_name, "OTHER")
+  );
 }
 
 function p(item) {

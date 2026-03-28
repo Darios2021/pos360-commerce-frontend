@@ -6,6 +6,8 @@
 // - soporta /shop y /shop/
 // - no depende de delays fijos para home/category
 // - espera a que el documento tenga altura suficiente antes de restaurar
+// ✅ NUEVO: ruta /app/admin/fiscal
+// ✅ NUEVO: ruta /app/admin/payment-methods
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -38,6 +40,8 @@ import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
 import StockPage from "@/modules/stock/pages/StockPage.vue";
 
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
+import FiscalAdminPage from "@/modules/admin/pages/FiscalAdminPage.vue";
+import PaymentMethodsAdminPage from "@/modules/admin/pages/PaymentMethodsAdminPage.vue";
 
 const routes = [
   ...shopRoutes,
@@ -78,6 +82,20 @@ const routes = [
       { path: "categories", name: "categories", component: CategoriesPage },
 
       ...shopAdminRoutes,
+
+      {
+        path: "admin/fiscal",
+        name: "adminFiscal",
+        component: FiscalAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+
+      {
+        path: "admin/payment-methods",
+        name: "adminPaymentMethods",
+        component: PaymentMethodsAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
 
       {
         path: "users",
@@ -304,7 +322,6 @@ const router = createRouter({
       return { top: 0, left: 0 };
     }
 
-    // ✅ restore especial del home
     if (isShopHomePath(to.path) && consumeShopHomeRestorePending()) {
       const top = Math.max(0, getShopHomeScroll());
 
@@ -317,7 +334,6 @@ const router = createRouter({
       return { top, left: 0 };
     }
 
-    // Browser back/forward real
     if (savedPosition) {
       const targetTop = Math.max(0, Number(savedPosition.top || 0));
 
@@ -330,7 +346,6 @@ const router = createRouter({
       return savedPosition;
     }
 
-    // Restore manual general
     const pos = getScroll(to.fullPath);
     if (pos && (pos.top > 0 || pos.left > 0)) {
       const targetTop = Math.max(0, Number(pos.top || 0));

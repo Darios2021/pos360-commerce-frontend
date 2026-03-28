@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="1240"
+    max-width="1080"
     persistent
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
@@ -10,33 +10,24 @@
       <div class="consulta-header">
         <div class="consulta-header__left">
           <div class="consulta-icon-wrap">
-            <v-icon size="22">mdi-magnify</v-icon>
+            <v-icon size="18">mdi-magnify</v-icon>
           </div>
 
-          <div>
+          <div class="min-w-0">
             <div class="consulta-title">Consulta POS</div>
             <div class="consulta-subtitle">
-              Consultá productos por nombre, código, SKU o código de barras
+              Buscá un producto y visualizá toda su información en la misma pantalla
             </div>
           </div>
         </div>
 
         <div class="consulta-header__right">
-          <v-chip
-            size="small"
-            variant="tonal"
-            color="primary"
-            class="mr-2"
-          >
+          <v-chip size="small" variant="tonal" color="primary">
             {{ filteredItems.length }} resultado<span v-if="filteredItems.length !== 1">s</span>
           </v-chip>
 
-          <v-btn
-            icon
-            variant="text"
-            @click="closeDialog"
-          >
-            <v-icon>mdi-close</v-icon>
+          <v-btn icon variant="text" size="small" @click="closeDialog">
+            <v-icon size="20">mdi-close</v-icon>
           </v-btn>
         </div>
       </div>
@@ -45,146 +36,50 @@
 
       <v-card-text class="consulta-body">
         <div class="consulta-layout">
-          <!-- PANEL IZQUIERDO -->
-          <div class="consulta-panel consulta-panel--search">
+          <!-- COLUMNA IZQUIERDA -->
+          <div class="consulta-left">
             <div class="panel-block">
               <div class="panel-title">
-                <v-icon size="18" class="mr-2">mdi-tune-variant</v-icon>
-                Búsqueda
+                <v-icon size="16" class="mr-2">mdi-magnify</v-icon>
+                Buscar producto
               </div>
 
-              <v-tabs
-                v-model="searchTab"
-                density="comfortable"
-                color="primary"
-                class="consulta-tabs"
-              >
-                <v-tab value="manual">
-                  <v-icon start size="16">mdi-form-textbox</v-icon>
-                  Manual
-                </v-tab>
-                <v-tab value="barcode">
-                  <v-icon start size="16">mdi-barcode-scan</v-icon>
-                  Barras
-                </v-tab>
-              </v-tabs>
-
-              <v-window v-model="searchTab" class="mt-3">
-                <!-- MANUAL -->
-                <v-window-item value="manual">
-                  <div class="search-grid">
-                    <v-text-field
-                      v-model="manualQuery"
-                      label="Buscar producto"
-                      placeholder="Nombre, código, SKU, marca..."
-                      density="comfortable"
-                      variant="outlined"
-                      clearable
-                      hide-details
-                      prepend-inner-icon="mdi-magnify"
-                      @keydown.enter.prevent="runManualSearch"
-                    />
-
-                    <div class="search-actions">
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        :loading="loading"
-                        @click="runManualSearch"
-                      >
-                        <v-icon start>mdi-magnify</v-icon>
-                        Buscar
-                      </v-btn>
-
-                      <v-btn
-                        variant="tonal"
-                        color="default"
-                        @click="clearManual"
-                      >
-                        <v-icon start>mdi-broom</v-icon>
-                        Limpiar
-                      </v-btn>
-                    </div>
-                  </div>
-                </v-window-item>
-
-                <!-- BARRAS -->
-                <v-window-item value="barcode">
-                  <div class="search-grid">
-                    <v-text-field
-                      ref="barcodeInputRef"
-                      v-model="barcodeQuery"
-                      label="Código de barras"
-                      placeholder="Escaneá o escribí el código"
-                      density="comfortable"
-                      variant="outlined"
-                      clearable
-                      hide-details
-                      prepend-inner-icon="mdi-barcode-scan"
-                      append-inner-icon="mdi-keyboard-outline"
-                      @keydown.enter.prevent="runBarcodeSearch"
-                    />
-
-                    <div class="search-actions">
-                      <v-btn
-                        color="warning"
-                        variant="flat"
-                        :loading="loading"
-                        @click="runBarcodeSearch"
-                      >
-                        <v-icon start>mdi-barcode-scan</v-icon>
-                        Consultar
-                      </v-btn>
-
-                      <v-btn
-                        variant="tonal"
-                        color="default"
-                        @click="focusBarcode"
-                      >
-                        <v-icon start>mdi-crosshairs-gps</v-icon>
-                        Foco
-                      </v-btn>
-
-                      <v-btn
-                        variant="tonal"
-                        color="default"
-                        @click="clearBarcode"
-                      >
-                        <v-icon start>mdi-broom</v-icon>
-                        Limpiar
-                      </v-btn>
-                    </div>
-                  </div>
-
-                  <v-alert
-                    class="mt-3"
-                    variant="tonal"
-                    color="info"
-                    density="comfortable"
-                  >
-                    Si usás pistola lectora, al terminar el escaneo se ejecuta con Enter.
-                  </v-alert>
-                </v-window-item>
-              </v-window>
-            </div>
-
-            <div class="panel-block mt-4">
-              <div class="panel-title">
-                <v-icon size="18" class="mr-2">mdi-filter-variant</v-icon>
-                Filtros rápidos
-              </div>
-
-              <div class="filters-grid">
+              <div class="search-grid">
                 <v-text-field
-                  v-model="clientFilter"
-                  label="Filtro local"
-                  placeholder="Refinar resultados"
+                  ref="searchInputRef"
+                  v-model="searchQuery"
+                  label="Buscar"
+                  placeholder="Nombre, código, SKU o código de barras"
                   density="compact"
                   variant="outlined"
                   clearable
                   hide-details
-                  prepend-inner-icon="mdi-filter-outline"
+                  prepend-inner-icon="mdi-magnify"
+                  append-inner-icon="mdi-barcode-scan"
+                  @keydown.enter.prevent="runSearch"
                 />
+
+                <div class="search-actions">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    size="small"
+                    :loading="loading"
+                    @click="runSearch"
+                  >
+                    <v-icon start size="15">mdi-magnify</v-icon>
+                    Buscar
+                  </v-btn>
+
+                  <v-btn
+                    variant="tonal"
+                    size="small"
+                    @click="clearSearch"
+                  >
+                    <v-icon start size="15">mdi-broom</v-icon>
+                    Limpiar
+                  </v-btn>
+                </div>
 
                 <v-switch
                   v-model="onlyWithStock"
@@ -197,59 +92,28 @@
               </div>
             </div>
 
-            <div class="panel-block mt-4">
-              <div class="panel-title">
-                <v-icon size="18" class="mr-2">mdi-chart-box-outline</v-icon>
-                Resumen
-              </div>
-
-              <div class="stats-grid">
-                <div class="stat-card">
-                  <div class="stat-card__label">Resultados</div>
-                  <div class="stat-card__value">{{ filteredItems.length }}</div>
-                </div>
-
-                <div class="stat-card stat-card--success">
-                  <div class="stat-card__label">Con stock</div>
-                  <div class="stat-card__value">{{ itemsWithStock }}</div>
-                </div>
-
-                <div class="stat-card stat-card--error">
-                  <div class="stat-card__label">Sin stock</div>
-                  <div class="stat-card__value">{{ itemsWithoutStock }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- PANEL DERECHO -->
-          <div class="consulta-panel consulta-panel--results">
-            <div class="panel-block panel-block--fill">
+            <div class="panel-block mt-3">
               <div class="results-header">
                 <div class="panel-title mb-0">
-                  <v-icon size="18" class="mr-2">mdi-package-variant-closed</v-icon>
-                  Resultados
+                  <v-icon size="16" class="mr-2">mdi-package-variant-closed</v-icon>
+                  Productos
                 </div>
 
-                <v-chip
-                  size="small"
-                  variant="tonal"
-                  color="primary"
-                >
+                <v-chip size="small" variant="tonal" color="primary">
                   {{ filteredItems.length }}
                 </v-chip>
               </div>
 
               <div v-if="loading" class="state-box">
-                <v-progress-circular indeterminate color="primary" size="28" />
+                <v-progress-circular indeterminate color="primary" size="24" />
                 <div class="state-box__text">Consultando productos...</div>
               </div>
 
               <div v-else-if="!filteredItems.length" class="state-box state-box--empty">
-                <v-icon size="46">mdi-database-search-outline</v-icon>
+                <v-icon size="36">mdi-database-search-outline</v-icon>
                 <div class="state-box__title">Sin resultados</div>
                 <div class="state-box__text">
-                  Realizá una búsqueda manual o escaneá un código de barras.
+                  Escribí el producto que querés buscar y presioná Enter o Buscar.
                 </div>
               </div>
 
@@ -274,113 +138,91 @@
                       </div>
                     </div>
 
-                    <div class="result-card__chips">
-                      <v-chip
-                        size="small"
-                        :color="getStock(item) > 0 ? 'success' : 'error'"
-                        variant="flat"
-                      >
-                        {{ getStockLabel(item) }}
-                      </v-chip>
-
-                      <v-chip
-                        v-if="getStatus(item)"
-                        size="small"
-                        variant="tonal"
-                        :color="getStatusColor(item)"
-                      >
-                        {{ getStatus(item) }}
-                      </v-chip>
-                    </div>
+                    <v-chip
+                      size="small"
+                      :color="getStock(item) > 0 ? 'success' : 'error'"
+                      variant="flat"
+                    >
+                      {{ getStockLabel(item) }}
+                    </v-chip>
                   </div>
 
-                  <div class="result-card__body">
-                    <div class="result-card__info">
-                      <div class="info-pill">
-                        <v-icon size="15">mdi-currency-usd</v-icon>
-                        <span>{{ formatMoney(getPrice(item)) }}</span>
-                      </div>
-
-                      <div class="info-pill" v-if="getCategory(item)">
-                        <v-icon size="15">mdi-shape-outline</v-icon>
-                        <span>{{ getCategory(item) }}</span>
-                      </div>
-
-                      <div class="info-pill" v-if="getBrand(item)">
-                        <v-icon size="15">mdi-tag-outline</v-icon>
-                        <span>{{ getBrand(item) }}</span>
-                      </div>
-
-                      <div class="info-pill" v-if="getBranch(item)">
-                        <v-icon size="15">mdi-store-outline</v-icon>
-                        <span>{{ getBranch(item) }}</span>
-                      </div>
+                  <div class="result-card__bottom">
+                    <div class="info-pill">
+                      <v-icon size="14">mdi-currency-usd</v-icon>
+                      <span>{{ formatMoney(getPrice(item)) }}</span>
                     </div>
 
-                    <div class="result-card__actions">
-                      <v-btn
-                        size="small"
-                        variant="text"
-                        color="primary"
-                        @click.stop="openDetail(item)"
-                      >
-                        <v-icon start size="16">mdi-eye-outline</v-icon>
-                        Ver
-                      </v-btn>
-
-                      <v-btn
-                        size="small"
-                        variant="tonal"
-                        color="success"
-                        :disabled="getStock(item) <= 0"
-                        @click.stop="addToCart(item)"
-                      >
-                        <v-icon start size="16">mdi-cart-plus</v-icon>
-                        Agregar
-                      </v-btn>
-                    </div>
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      color="success"
+                      :disabled="getStock(item) <= 0"
+                      @click.stop="addToCart(item)"
+                    >
+                      <v-icon start size="15">mdi-cart-plus</v-icon>
+                      Agregar
+                    </v-btn>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </v-card-text>
-    </v-card>
 
-    <!-- DETALLE -->
-    <v-dialog
-      :model-value="detailOpen"
-      max-width="900"
-      @update:model-value="detailOpen = $event"
-    >
-      <v-card class="detail-shell">
-        <div class="detail-header">
-          <div>
-            <div class="detail-title">
-              {{ selectedItem ? getName(selectedItem) : "Detalle de producto" }}
-            </div>
-            <div class="detail-subtitle">
-              Información completa del producto consultado
-            </div>
-          </div>
+          <!-- COLUMNA DERECHA -->
+          <div class="consulta-right">
+            <div v-if="selectedItem" class="detail-shell-inline">
+              <div class="detail-inline-header">
+                <div class="min-w-0">
+                  <div class="detail-title">
+                    {{ getName(selectedItem) }}
+                  </div>
+                  <div class="detail-subtitle">
+                    Información completa del producto seleccionado
+                  </div>
+                </div>
 
-          <v-btn
-            icon
-            variant="text"
-            @click="detailOpen = false"
-          >
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </div>
+                <div class="detail-inline-top">
+                  <v-chip
+                    size="small"
+                    :color="getStock(selectedItem) > 0 ? 'success' : 'error'"
+                    variant="flat"
+                  >
+                    {{ getStockLabel(selectedItem) }}
+                  </v-chip>
 
-        <v-divider />
+                  <v-chip
+                    v-if="getStatus(selectedItem)"
+                    size="small"
+                    variant="tonal"
+                    :color="getStatusColor(selectedItem)"
+                  >
+                    {{ getStatus(selectedItem) }}
+                  </v-chip>
+                </div>
+              </div>
 
-        <v-card-text v-if="selectedItem" class="detail-body">
-          <div class="detail-grid">
-            <div class="detail-main">
-              <div class="detail-section">
-                <div class="detail-section__title">Datos generales</div>
+              <div class="hero-grid">
+                <div class="hero-price-card">
+                  <div class="hero-price-card__label">Precio</div>
+                  <div class="hero-price-card__value">
+                    {{ formatMoney(getPrice(selectedItem)) }}
+                  </div>
+                </div>
+
+                <div class="hero-mini-card">
+                  <div class="hero-mini-card__label">Stock</div>
+                  <div class="hero-mini-card__value">{{ getStock(selectedItem) }}</div>
+                </div>
+
+                <div class="hero-mini-card">
+                  <div class="hero-mini-card__label">Sucursal</div>
+                  <div class="hero-mini-card__value">{{ getBranch(selectedItem) || "—" }}</div>
+                </div>
+              </div>
+
+              <div class="detail-section mt-3">
+                <div class="detail-section__title">Datos del producto</div>
 
                 <div class="detail-kv-grid">
                   <div class="kv-item">
@@ -412,101 +254,86 @@
                     <div class="kv-label">Categoría</div>
                     <div class="kv-value">{{ getCategory(selectedItem) || "—" }}</div>
                   </div>
-                </div>
-              </div>
-
-              <div class="detail-section mt-4">
-                <div class="detail-section__title">Comercial</div>
-
-                <div class="detail-kv-grid">
-                  <div class="kv-item">
-                    <div class="kv-label">Precio</div>
-                    <div class="kv-value">{{ formatMoney(getPrice(selectedItem)) }}</div>
-                  </div>
 
                   <div class="kv-item">
-                    <div class="kv-label">Stock</div>
-                    <div class="kv-value">{{ getStock(selectedItem) }}</div>
+                    <div class="kv-label">Estado</div>
+                    <div class="kv-value">{{ getStatus(selectedItem) || "—" }}</div>
                   </div>
 
                   <div class="kv-item">
                     <div class="kv-label">Sucursal</div>
                     <div class="kv-value">{{ getBranch(selectedItem) || "—" }}</div>
                   </div>
-
-                  <div class="kv-item">
-                    <div class="kv-label">Estado</div>
-                    <div class="kv-value">{{ getStatus(selectedItem) || "—" }}</div>
-                  </div>
                 </div>
               </div>
 
-              <div class="detail-section mt-4" v-if="getDescription(selectedItem)">
+              <div class="detail-section mt-3">
+                <div class="detail-section__title">Medios de pago</div>
+
+                <div v-if="paymentMethods.length" class="payment-list">
+                  <div
+                    v-for="(method, index) in paymentMethods"
+                    :key="`${method.name}-${index}`"
+                    class="payment-card"
+                  >
+                    <div class="payment-card__head">
+                      <div class="payment-card__name">
+                        {{ method.name }}
+                      </div>
+
+                      <v-chip
+                        size="x-small"
+                        variant="tonal"
+                        :color="method.enabled ? 'success' : 'grey'"
+                      >
+                        {{ method.enabled ? "Disponible" : "No disponible" }}
+                      </v-chip>
+                    </div>
+
+                    <div class="payment-card__meta">
+                      <span v-if="method.priceLabel">Precio: {{ method.priceLabel }}</span>
+                      <span v-if="method.extraLabel">Detalle: {{ method.extraLabel }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="empty-mini">
+                  No hay medios de pago informados para este producto.
+                </div>
+              </div>
+
+              <div v-if="getDescription(selectedItem)" class="detail-section mt-3">
                 <div class="detail-section__title">Descripción</div>
                 <div class="detail-description">
                   {{ getDescription(selectedItem) }}
                 </div>
               </div>
-            </div>
 
-            <div class="detail-side">
-              <div class="detail-side-card">
-                <div class="detail-side-card__title">Acciones</div>
-
+              <div class="detail-inline-actions">
                 <v-btn
-                  block
                   color="success"
                   variant="flat"
+                  size="small"
                   :disabled="getStock(selectedItem) <= 0"
                   @click="addToCart(selectedItem)"
                 >
-                  <v-icon start>mdi-cart-plus</v-icon>
-                  Agregar al carrito
-                </v-btn>
-
-                <v-btn
-                  block
-                  class="mt-2"
-                  color="primary"
-                  variant="tonal"
-                  @click="emit('select', selectedItem)"
-                >
-                  <v-icon start>mdi-check-circle-outline</v-icon>
-                  Seleccionar
+                  <v-icon start size="15">mdi-cart-plus</v-icon>
+                  Agregar
                 </v-btn>
               </div>
+            </div>
 
-              <div class="detail-side-card mt-3">
-                <div class="detail-side-card__title">Estado rápido</div>
-
-                <div class="quick-status-list">
-                  <div class="quick-status-row">
-                    <span>Stock</span>
-                    <v-chip
-                      size="small"
-                      :color="getStock(selectedItem) > 0 ? 'success' : 'error'"
-                      variant="flat"
-                    >
-                      {{ getStockLabel(selectedItem) }}
-                    </v-chip>
-                  </div>
-
-                  <div class="quick-status-row">
-                    <span>Precio</span>
-                    <strong>{{ formatMoney(getPrice(selectedItem)) }}</strong>
-                  </div>
-
-                  <div class="quick-status-row">
-                    <span>Sucursal</span>
-                    <strong>{{ getBranch(selectedItem) || "—" }}</strong>
-                  </div>
-                </div>
+            <div v-else class="detail-empty">
+              <v-icon size="34">mdi-package-variant-closed</v-icon>
+              <div class="detail-empty__title">Detalle del producto</div>
+              <div class="detail-empty__text">
+                Buscá un producto y tocá el resultado para ver todos sus datos acá mismo.
               </div>
             </div>
           </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+        </div>
+      </v-card-text>
+    </v-card>
   </v-dialog>
 </template>
 
@@ -522,44 +349,52 @@ const props = defineProps({
 const emit = defineEmits([
   "update:modelValue",
   "search",
-  "barcode-search",
   "manual-search",
-  "select",
+  "barcode-search",
   "add-to-cart",
 ]);
 
-const searchTab = ref("manual");
-const manualQuery = ref("");
-const barcodeQuery = ref("");
-const clientFilter = ref("");
+const searchQuery = ref("");
 const onlyWithStock = ref(false);
 const selectedItem = ref(null);
-const detailOpen = ref(false);
-const barcodeInputRef = ref(null);
+const searchInputRef = ref(null);
 
 watch(
   () => props.modelValue,
   async (val) => {
     if (val) {
       await nextTick();
-      if (searchTab.value === "barcode") focusBarcode();
+      focusSearch();
+
+      if (!selectedItem.value && props.items?.length) {
+        selectedItem.value = props.items[0];
+      }
     }
   }
 );
 
-watch(searchTab, async (tab) => {
-  if (tab === "barcode" && props.modelValue) {
-    await nextTick();
-    focusBarcode();
-  }
-});
+watch(
+  () => props.items,
+  (items) => {
+    if (Array.isArray(items) && items.length) {
+      const currentKey = getItemKey(selectedItem.value);
+      const found = items.find((it) => getItemKey(it) === currentKey);
+      selectedItem.value = found || items[0];
+    } else {
+      selectedItem.value = null;
+    }
+  },
+  { immediate: true }
+);
 
-const normalizedItems = computed(() => Array.isArray(props.items) ? props.items : []);
+const normalizedItems = computed(() =>
+  Array.isArray(props.items) ? props.items : []
+);
 
 const filteredItems = computed(() => {
   let rows = [...normalizedItems.value];
 
-  const q = (clientFilter.value || "").trim().toLowerCase();
+  const q = (searchQuery.value || "").trim().toLowerCase();
   if (q) {
     rows = rows.filter((item) => {
       const haystack = [
@@ -587,52 +422,34 @@ const filteredItems = computed(() => {
   return rows;
 });
 
-const itemsWithStock = computed(() =>
-  filteredItems.value.filter((item) => Number(getStock(item) || 0) > 0).length
-);
-
-const itemsWithoutStock = computed(() =>
-  filteredItems.value.filter((item) => Number(getStock(item) || 0) <= 0).length
-);
+const paymentMethods = computed(() => normalizePaymentMethods(selectedItem.value));
 
 function closeDialog() {
   emit("update:modelValue", false);
 }
 
-function clearManual() {
-  manualQuery.value = "";
-  clientFilter.value = "";
-}
-
-function clearBarcode() {
-  barcodeQuery.value = "";
-}
-
-function runManualSearch() {
-  const query = (manualQuery.value || "").trim();
-  emit("manual-search", query);
-  emit("search", { type: "manual", query });
-}
-
-function runBarcodeSearch() {
-  const query = (barcodeQuery.value || "").trim();
-  emit("barcode-search", query);
-  emit("search", { type: "barcode", query });
-}
-
-function focusBarcode() {
-  const el = barcodeInputRef.value;
+function focusSearch() {
+  const el = searchInputRef.value;
   if (el?.focus) el.focus();
+}
+
+function clearSearch() {
+  searchQuery.value = "";
+  if (normalizedItems.value.length) {
+    selectedItem.value = normalizedItems.value[0];
+  } else {
+    selectedItem.value = null;
+  }
+}
+
+function runSearch() {
+  const query = (searchQuery.value || "").trim();
+  emit("manual-search", query);
+  emit("search", { type: "mixed", query });
 }
 
 function selectItem(item) {
   selectedItem.value = item;
-  emit("select", item);
-}
-
-function openDetail(item) {
-  selectedItem.value = item;
-  detailOpen.value = true;
 }
 
 function addToCart(item) {
@@ -645,13 +462,14 @@ function isSelected(item) {
 }
 
 function getItemKey(item) {
+  if (!item) return null;
   return (
-    item?.id ??
-    item?.product_id ??
-    item?.uuid ??
-    item?.code ??
-    item?.sku ??
-    item?.barcode ??
+    item.id ??
+    item.product_id ??
+    item.uuid ??
+    item.code ??
+    item.sku ??
+    item.barcode ??
     JSON.stringify(item)
   );
 }
@@ -707,7 +525,13 @@ function getCategory(item) {
 }
 
 function getBranch(item) {
-  const branch = pick(item, ["branch_name", "sucursal", "branch", "deposito", "warehouse_name"]);
+  const branch = pick(item, [
+    "branch_name",
+    "sucursal",
+    "branch",
+    "deposito",
+    "warehouse_name",
+  ]);
   if (typeof branch === "object") {
     return branch?.name || branch?.nombre || null;
   }
@@ -764,6 +588,157 @@ function getStatusColor(item) {
   return "primary";
 }
 
+function normalizePaymentMethods(item) {
+  if (!item) return [];
+
+  const raw =
+    item?.payment_methods ??
+    item?.paymentMethods ??
+    item?.medios_pago ??
+    item?.mediosDePago ??
+    item?.formas_pago ??
+    item?.formasDePago ??
+    null;
+
+  if (Array.isArray(raw)) {
+    return raw.map((entry) => normalizeSinglePaymentMethod(entry)).filter(Boolean);
+  }
+
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw)
+      .map(([key, value]) => normalizeSinglePaymentMethod(value, key))
+      .filter(Boolean);
+  }
+
+  const fallback = [];
+
+  const cashPrice = pick(item, ["cash_price", "precio_efectivo", "price_cash"]);
+  const cardPrice = pick(item, ["card_price", "precio_tarjeta", "price_card"]);
+  const transferPrice = pick(item, ["transfer_price", "precio_transferencia", "price_transfer"]);
+  const qrPrice = pick(item, ["qr_price", "precio_qr", "price_qr"]);
+
+  if (cashPrice !== null) {
+    fallback.push({
+      name: "Efectivo",
+      enabled: true,
+      priceLabel: formatMoney(cashPrice),
+      extraLabel: "",
+    });
+  }
+
+  if (cardPrice !== null) {
+    fallback.push({
+      name: "Tarjeta",
+      enabled: true,
+      priceLabel: formatMoney(cardPrice),
+      extraLabel: "",
+    });
+  }
+
+  if (transferPrice !== null) {
+    fallback.push({
+      name: "Transferencia",
+      enabled: true,
+      priceLabel: formatMoney(transferPrice),
+      extraLabel: "",
+    });
+  }
+
+  if (qrPrice !== null) {
+    fallback.push({
+      name: "QR",
+      enabled: true,
+      priceLabel: formatMoney(qrPrice),
+      extraLabel: "",
+    });
+  }
+
+  return fallback;
+}
+
+function normalizeSinglePaymentMethod(entry, fallbackKey = "") {
+  if (entry === null || entry === undefined) return null;
+
+  if (typeof entry === "string") {
+    return {
+      name: formatPaymentName(entry || fallbackKey),
+      enabled: true,
+      priceLabel: "",
+      extraLabel: "",
+    };
+  }
+
+  if (typeof entry === "number") {
+    return {
+      name: formatPaymentName(fallbackKey),
+      enabled: true,
+      priceLabel: formatMoney(entry),
+      extraLabel: "",
+    };
+  }
+
+  if (typeof entry === "object") {
+    const name =
+      entry?.name ??
+      entry?.nombre ??
+      entry?.method ??
+      entry?.medio ??
+      fallbackKey;
+
+    const enabled =
+      entry?.enabled ??
+      entry?.activo ??
+      entry?.available ??
+      entry?.disponible ??
+      true;
+
+    const rawPrice =
+      entry?.price ??
+      entry?.precio ??
+      entry?.amount ??
+      entry?.importe ??
+      entry?.value ??
+      null;
+
+    const installments =
+      entry?.installments ??
+      entry?.cuotas ??
+      entry?.installment_text ??
+      entry?.detalle ??
+      entry?.note ??
+      "";
+
+    return {
+      name: formatPaymentName(name),
+      enabled: Boolean(enabled),
+      priceLabel: rawPrice !== null && rawPrice !== "" ? formatMoney(rawPrice) : "",
+      extraLabel: String(installments || ""),
+    };
+  }
+
+  return null;
+}
+
+function formatPaymentName(value) {
+  const key = String(value || "").trim().toUpperCase();
+
+  const map = {
+    CASH: "Efectivo",
+    EFECTIVO: "Efectivo",
+    CARD: "Tarjeta",
+    TARJETA: "Tarjeta",
+    CREDIT_CARD: "Tarjeta crédito",
+    DEBIT_CARD: "Tarjeta débito",
+    TRANSFER: "Transferencia",
+    TRANSFERENCIA: "Transferencia",
+    QR: "QR",
+    MERCADOPAGO: "Mercado Pago",
+    MERCADO_PAGO: "Mercado Pago",
+  };
+
+  return map[key] || String(value || "Medio de pago");
+}
+
 function formatMoney(value) {
   const amount = Number(value || 0);
   return new Intl.NumberFormat("es-AR", {
@@ -776,181 +751,148 @@ function formatMoney(value) {
 
 <style scoped>
 .consulta-shell {
-  border-radius: 24px;
+  border-radius: 18px;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(17, 27, 53, 0.96), rgba(9, 16, 34, 0.98));
-  color: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
 }
 
 .consulta-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
-.consulta-header__left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
+.consulta-header__left,
 .consulta-header__right {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .consulta-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(59, 130, 246, 0.16);
-  border: 1px solid rgba(96, 165, 250, 0.22);
+  background: rgba(var(--v-theme-primary), 0.1);
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  color: rgb(var(--v-theme-primary));
+  flex: 0 0 auto;
 }
 
-.consulta-title {
-  font-size: 1.1rem;
+.consulta-title,
+.detail-title {
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1.1;
 }
 
-.consulta-subtitle {
-  font-size: 0.84rem;
-  opacity: 0.78;
-  margin-top: 4px;
+.consulta-subtitle,
+.detail-subtitle {
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  margin-top: 3px;
+  line-height: 1.3;
 }
 
 .consulta-body {
-  padding: 18px !important;
+  padding: 14px !important;
 }
 
 .consulta-layout {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 
-.consulta-panel {
-  min-width: 0;
+.panel-block,
+.result-card,
+.detail-shell-inline,
+.detail-empty,
+.hero-price-card,
+.hero-mini-card,
+.kv-item,
+.payment-card {
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.panel-block {
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 14px;
-  backdrop-filter: blur(10px);
+.panel-block,
+.detail-shell-inline,
+.detail-empty {
+  border-radius: 16px;
+  padding: 12px;
 }
 
-.panel-block--fill {
-  min-height: 620px;
-}
-
-.panel-title {
+.panel-title,
+.detail-section__title {
   display: flex;
   align-items: center;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  margin-bottom: 12px;
-}
-
-.consulta-tabs {
-  border-radius: 14px;
-  overflow: hidden;
+  margin-bottom: 10px;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .search-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
-.search-actions {
+.search-actions,
+.detail-inline-actions,
+.detail-inline-top,
+.result-card__bottom,
+.result-card__meta,
+.payment-card__meta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-}
-
-.filters-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.stat-card {
-  border-radius: 16px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.stat-card--success {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.24);
-}
-
-.stat-card--error {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.24);
-}
-
-.stat-card__label {
-  font-size: 0.72rem;
-  opacity: 0.75;
-  margin-bottom: 4px;
-}
-
-.stat-card__value {
-  font-size: 1.1rem;
-  font-weight: 800;
 }
 
 .results-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .state-box {
-  min-height: 520px;
+  min-height: 260px;
   display: grid;
   place-content: center;
   text-align: center;
-  gap: 10px;
-  opacity: 0.92;
+  gap: 8px;
 }
 
 .state-box--empty {
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(var(--v-theme-on-surface), 0.72);
 }
 
 .state-box__title {
-  font-size: 1rem;
+  font-size: 0.94rem;
   font-weight: 800;
 }
 
 .state-box__text {
-  font-size: 0.88rem;
-  max-width: 420px;
-  opacity: 0.75;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  max-width: 320px;
 }
 
 .results-list {
   display: grid;
-  gap: 12px;
-  max-height: 620px;
+  gap: 10px;
+  max-height: 560px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -960,35 +902,32 @@ function formatMoney(value) {
 }
 
 .results-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.16);
   border-radius: 999px;
 }
 
 .result-card {
-  border-radius: 18px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 11px;
   cursor: pointer;
-  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  transition: 0.16s ease;
 }
 
 .result-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(96, 165, 250, 0.34);
-  background: rgba(255, 255, 255, 0.062);
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  background: rgba(var(--v-theme-primary), 0.04);
 }
 
 .result-card--selected {
-  border-color: rgba(96, 165, 250, 0.48);
-  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(var(--v-theme-primary), 0.42);
+  background: rgba(var(--v-theme-primary), 0.07);
 }
 
 .result-card__top {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .result-card__identity {
@@ -996,209 +935,197 @@ function formatMoney(value) {
 }
 
 .result-card__name {
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 800;
-  line-height: 1.2;
-  margin-bottom: 6px;
+  line-height: 1.18;
+  margin-bottom: 4px;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .result-card__meta {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 0.78rem;
-  opacity: 0.72;
+  font-size: 0.74rem;
+  color: rgba(var(--v-theme-on-surface), 0.66);
 }
 
-.result-card__chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.result-card__body {
-  display: flex;
+.result-card__bottom {
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  align-items: flex-end;
-}
-
-.result-card__info {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .info-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.76rem;
+  color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
-.result-card__actions {
+.detail-shell-inline {
+  position: sticky;
+  top: 0;
+}
+
+.detail-inline-header {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.detail-shell {
-  border-radius: 24px;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(18, 27, 52, 0.98), rgba(9, 14, 28, 1));
-  color: rgba(255, 255, 255, 0.96);
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-.detail-title {
-  font-size: 1.06rem;
-  font-weight: 800;
-}
-
-.detail-subtitle {
-  font-size: 0.84rem;
-  opacity: 0.74;
-  margin-top: 4px;
-}
-
-.detail-body {
-  padding: 18px !important;
-}
-
-.detail-grid {
+.hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 16px;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 10px;
+}
+
+.hero-price-card,
+.hero-mini-card {
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.hero-price-card__label,
+.hero-mini-card__label,
+.kv-label {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.64);
+  margin-bottom: 4px;
+}
+
+.hero-price-card__value {
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.hero-mini-card__value,
+.kv-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  word-break: break-word;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .detail-section {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 18px;
-  padding: 14px;
-}
-
-.detail-section__title,
-.detail-side-card__title {
-  font-size: 0.9rem;
-  font-weight: 800;
-  margin-bottom: 12px;
+  margin-top: 12px;
 }
 
 .detail-kv-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.kv-item {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.kv-label {
-  font-size: 0.72rem;
-  opacity: 0.7;
-  margin-bottom: 4px;
-}
-
-.kv-value {
-  font-size: 0.92rem;
-  font-weight: 700;
-  word-break: break-word;
-}
-
-.detail-description {
-  font-size: 0.9rem;
-  line-height: 1.55;
-  opacity: 0.92;
-}
-
-.detail-side-card {
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 14px;
-}
-
-.quick-status-list {
-  display: grid;
   gap: 10px;
 }
 
-.quick-status-row {
+.kv-item {
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.payment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-card {
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.payment-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 0.88rem;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
-@media (max-width: 1080px) {
+.payment-card__name {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.payment-card__meta {
+  font-size: 0.76rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.detail-description {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.detail-inline-actions {
+  margin-top: 14px;
+}
+
+.detail-empty {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.detail-empty__title {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.detail-empty__text,
+.empty-mini {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+@media (max-width: 980px) {
   .consulta-layout {
     grid-template-columns: 1fr;
   }
 
-  .detail-grid {
-    grid-template-columns: 1fr;
+  .detail-shell-inline {
+    position: static;
   }
 
-  .panel-block--fill {
-    min-height: auto;
-  }
-
-  .results-list {
-    max-height: 420px;
-  }
-}
-
-@media (max-width: 720px) {
-  .consulta-header,
-  .detail-header {
-    padding: 14px;
-  }
-
-  .consulta-body,
-  .detail-body {
-    padding: 14px !important;
-  }
-
-  .stats-grid,
+  .hero-grid,
   .detail-kv-grid {
     grid-template-columns: 1fr;
   }
 
+  .results-list {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 720px) {
+  .consulta-header {
+    padding: 12px;
+  }
+
+  .consulta-body {
+    padding: 12px !important;
+  }
+
   .result-card__top,
-  .result-card__body {
+  .result-card__bottom,
+  .detail-inline-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .result-card__chips {
-    justify-content: flex-start;
-  }
-
-  .result-card__actions {
-    width: 100%;
-  }
-
-  .result-card__actions :deep(.v-btn) {
+  .detail-inline-actions :deep(.v-btn) {
     flex: 1 1 auto;
+  }
+
+  .consulta-subtitle,
+  .detail-subtitle {
+    display: none;
   }
 }
 </style>

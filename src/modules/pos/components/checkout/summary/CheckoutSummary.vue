@@ -1,0 +1,292 @@
+<template>
+  <div class="ck-summary">
+    <div class="ck-summary__head">
+      <div class="ck-summary__title">Resumen</div>
+    </div>
+
+    <div v-if="showItems" class="ck-summary__items">
+      <div
+        v-for="it in cartUi"
+        :key="it._key"
+        class="ck-item"
+      >
+        <div class="ck-item__left">
+          <div class="ck-item__icon">
+            <v-icon size="18">mdi-package-variant-closed</v-icon>
+          </div>
+
+          <div class="ck-item__text">
+            <div class="ck-item__name">
+              {{ it.name || it.product_name || "Producto" }}
+            </div>
+
+            <div class="ck-item__meta">
+              <template v-if="showPrices">
+                {{ toNum(it.qty) }} × {{ money(it._unit) }}
+              </template>
+              <template v-else>
+                {{ toNum(it.qty) }}
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="showPrices" class="ck-item__price">
+          {{ money(it._subtotal) }}
+        </div>
+      </div>
+    </div>
+
+    <div class="ck-summary__totals">
+      <div class="ck-total-card">
+        <div class="ck-total-card__top">
+          <div class="ck-total-card__label">TOTAL</div>
+          <v-icon size="24" class="ck-total-card__icon">mdi-cash-multiple</v-icon>
+        </div>
+
+        <div class="ck-total-card__value">
+          {{ money(totalSafe) }}
+        </div>
+      </div>
+
+      <div class="ck-total-row ck-total-row--paid">
+        <span>Pagado</span>
+        <strong>{{ money(paidSafe) }}</strong>
+      </div>
+
+      <div class="ck-total-row ck-total-row--change">
+        <span>Vuelto</span>
+        <strong>{{ money(changeSafe) }}</strong>
+      </div>
+
+      <div class="ck-total-row ck-total-row--preview">
+        <span class="ck-total-row__left">
+          <span>Prev.</span>
+          <v-icon size="18">mdi-history</v-icon>
+        </span>
+        <strong>{{ money(previewSafe) }}</strong>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+defineProps({
+  cartUi: { type: Array, default: () => [] },
+  totalSafe: { type: Number, default: 0 },
+  previewSafe: { type: Number, default: 0 },
+  paidSafe: { type: Number, default: 0 },
+  changeSafe: { type: Number, default: 0 },
+  money: { type: Function, required: true },
+  toNum: { type: Function, required: true },
+  showItems: { type: Boolean, default: true },
+  showPrices: { type: Boolean, default: true },
+});
+</script>
+
+<style scoped>
+.ck-summary {
+  height: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, auto) 1fr;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgba(var(--v-theme-surface), 0.5);
+  color: rgb(var(--v-theme-on-surface));
+  box-shadow: none;
+}
+
+.ck-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ck-summary__title {
+  font-size: 1.45rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.ck-summary__items {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.ck-summary__items::-webkit-scrollbar {
+  width: 7px;
+}
+
+.ck-summary__items::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.14);
+  border-radius: 999px;
+}
+
+.ck-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 68px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.025);
+}
+
+.ck-item__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ck-item__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.ck-item__text {
+  min-width: 0;
+}
+
+.ck-item__name {
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ck-item__meta {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.ck-item__price {
+  font-size: 0.94rem;
+  font-weight: 900;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.ck-summary__totals {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.ck-total-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.ck-total-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ck-total-card__label {
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+}
+
+.ck-total-card__icon {
+  opacity: 0.5;
+}
+
+.ck-total-card__value {
+  font-size: clamp(1.7rem, 2vw, 2.15rem);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.ck-total-row {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 15px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ck-total-row strong {
+  font-size: 0.95rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.ck-total-row__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ck-total-row--paid strong {
+  color: rgb(var(--v-theme-success));
+}
+
+.ck-total-row--change strong {
+  color: rgb(var(--v-theme-success));
+}
+
+.ck-total-row--preview strong {
+  color: rgb(var(--v-theme-error));
+}
+
+@media (max-width: 960px) {
+  .ck-summary {
+    grid-template-rows: auto auto auto;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .ck-summary__title {
+    font-size: 1.28rem;
+  }
+
+  .ck-summary__items {
+    max-height: 210px;
+  }
+
+  .ck-total-card__value {
+    font-size: 1.8rem;
+  }
+
+  .ck-total-row {
+    min-height: 44px;
+  }
+}
+</style>

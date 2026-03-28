@@ -165,7 +165,7 @@ function pickPaymentMethodForApi(paymentMethodParam, extra) {
 function toBackendPaymentMethod(method) {
   const m = String(method || "").trim();
 
-  // 🔥 San Juan Crédito al backend viaja como OTHER + reference=SJCREDIT
+  // San Juan Crédito al backend viaja como OTHER + reference=SJCREDIT
   if (m === "credit_sjt" || m.toUpperCase() === "CREDIT_SJT") {
     return "OTHER";
   }
@@ -217,25 +217,26 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
     sc.apellido
   );
 
-  const fullName = (first_name || last_name) ? `${first_name} ${last_name}`.trim() : "";
+  const fullName = first_name || last_name ? `${first_name} ${last_name}`.trim() : "";
 
-  const customer_name = pickFirst(
-    ex.customer_name,
-    c.customer_name,
-    c.name,
-    c.full_name,
-    c.fullName,
-    c.razon_social,
-    c.razonSocial,
-    fullName,
-    sc.customer_name,
-    sc.name,
-    sc.full_name,
-    sc.fullName,
-    sc.razon_social,
-    sc.razonSocial,
-    "Consumidor Final"
-  ).trim() || "Consumidor Final";
+  const customer_name =
+    pickFirst(
+      ex.customer_name,
+      c.customer_name,
+      c.name,
+      c.full_name,
+      c.fullName,
+      c.razon_social,
+      c.razonSocial,
+      fullName,
+      sc.customer_name,
+      sc.name,
+      sc.full_name,
+      sc.fullName,
+      sc.razon_social,
+      sc.razonSocial,
+      "Consumidor Final"
+    ).trim() || "Consumidor Final";
 
   const customer_doc = pickFirst(
     ex.customer_doc,
@@ -277,11 +278,72 @@ function normalizeCustomerSnapshot(extra = {}, storeCustomer = {}) {
 
   const customer_phone = normalizeDigitsPhone(customer_phone_raw);
 
+  const customer_email = pickFirst(
+    ex.customer_email,
+    c.customer_email,
+    c.email,
+    sc.customer_email,
+    sc.email
+  ).trim();
+
   return {
     customer_name,
     customer_doc: customer_doc || null,
     customer_phone: customer_phone || null,
+    customer_email: customer_email || null,
   };
+}
+
+function normalizeInvoiceMode(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+
+  if (!s) return "NO_FISCAL";
+  if (["NO_FISCAL", "FISCAL", "MIXED", "TICKET_ONLY"].includes(s)) return s;
+
+  return "NO_FISCAL";
+}
+
+function normalizeInvoiceType(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+
+  if (!s) return "TICKET";
+  if (["TICKET", "A", "B", "C", "M", "NC", "ND", "OTHER"].includes(s)) return s;
+
+  return "TICKET";
+}
+
+function normalizeInvoiceTypeByMode(mode, type) {
+  const finalMode = normalizeInvoiceMode(mode);
+  const finalType = normalizeInvoiceType(type);
+
+  if (finalMode === "NO_FISCAL" || finalMode === "TICKET_ONLY") {
+    return "TICKET";
+  }
+
+  if (finalType === "TICKET") return "B";
+  return finalType || "B";
+}
+
+function normalizeCustomerType(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+
+  if (!s) return "FINAL_CONSUMER";
+  if (s === "CONSUMIDOR_FINAL") return "FINAL_CONSUMER";
+  if (s === "FINAL_CONSUMER") return "FINAL_CONSUMER";
+
+  if (
+    s === "RESPONSABLE_INSCRIPTO" ||
+    s === "MONOTRIBUTO" ||
+    s === "REGISTERED"
+  ) {
+    return "REGISTERED";
+  }
+
+  if (s === "WALK_IN") return "WALK_IN";
+  if (s === "COMPANY") return "COMPANY";
+  if (s === "OTHER") return "OTHER";
+
+  return "FINAL_CONSUMER";
 }
 
 export function paymentMethodLabel(m) {
@@ -297,7 +359,16 @@ export function paymentMethodLabel(m) {
   return raw || "—";
 }
 
-function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_id, cart, totalAmount }) {
+function buildSaleFromCart({
+  saleId,
+  paymentMethod,
+  extra,
+  branch_id,
+  warehouse_id,
+  cart,
+  totalAmount,
+  payments = [],
+}) {
   const now = new Date();
 
   const items = (cart || []).map((it) => {
@@ -334,6 +405,7 @@ function buildSaleFromCart({ saleId, paymentMethod, extra, branch_id, warehouse_
     branch_id: branch_id || null,
     warehouse_id: warehouse_id || null,
     items,
+    payments,
     subtotal: total,
     total,
     amount_total: total,
@@ -400,6 +472,172 @@ async function fetchSaleDetailBestEffort(saleId) {
   }
 
   return null;
+}
+
+/* =========================
+   Helpers payload moderno
+========================= */
+function isModernSalePayload(input) {
+  return !!(
+    input &&
+    typeof input === "object" &&
+    !Array.isArray(input) &&
+    (
+      Array.isArray(input.items) ||
+      Array.isArray(input.payments) ||
+      input.cash_register_id !== undefined ||
+      input.invoice_mode !== undefined ||
+      input.invoice_type !== undefined ||
+      input.customer_type !== undefined ||
+      input.extra !== undefined
+    )
+  );
+}
+
+function normalizeSaleItemsForApi(inputItems = [], cartFallback = []) {
+  const source = Array.isArray(inputItems) && inputItems.length ? inputItems : cartFallback;
+
+  return source
+    .map((it) => {
+      const product_id = toInt(it.product_id, toInt(it.id, 0));
+      const quantity = toNum(it.quantity ?? it.qty, 0);
+      const unit_price = toNum(it.unit_price ?? it.unitPrice ?? it.price, 0);
+
+      return {
+        product_id,
+        quantity,
+        qty: quantity,
+        unit_price,
+        unitPrice: unit_price,
+        price: unit_price,
+      };
+    })
+    .filter((x) => toInt(x.product_id, 0) > 0 && toNum(x.quantity, 0) > 0 && toNum(x.unit_price, 0) > 0);
+}
+
+function normalizeSingleLegacyPayment({
+  paymentMethod,
+  extra,
+  amount,
+  customer,
+}) {
+  const ex = extra && typeof extra === "object" ? extra : {};
+
+  const methodForApiRaw = pickPaymentMethodForApi(paymentMethod, ex);
+  const isCreditSjt =
+    methodForApiRaw === "credit_sjt" || methodForApiRaw === "CREDIT_SJT";
+
+  const methodForApi = toBackendPaymentMethod(methodForApiRaw);
+  const isCard = methodForApi === "CARD";
+
+  let installments = toInt(ex?.installments, 1) || 1;
+  const card_kind_raw = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
+
+  const isDebit =
+    card_kind_raw === "DEBIT" ||
+    card_kind_raw === "DEBITO" ||
+    card_kind_raw === "DÉBITO" ||
+    ex?.is_debit === true ||
+    ex?.isDebit === true;
+
+  if (isCard && isDebit) installments = 1;
+
+  if (isCreditSjt || (isCard && !isDebit)) {
+    installments = Math.max(1, Math.min(12, installments));
+  } else {
+    installments = 1;
+  }
+
+  const total_list = toNum(ex?.total_list, 0) || null;
+  const per_installment_list = toNum(ex?.per_installment_list, 0) || null;
+  const price_basis = isCreditSjt || (isCard && installments > 1 && !isDebit) ? "LIST" : null;
+
+  let referenceTop =
+    ex?.reference ||
+    ex?.ref ||
+    ex?.proof ||
+    null;
+
+  if (isCreditSjt && !referenceTop) {
+    referenceTop = "SJCREDIT";
+  }
+
+  return {
+    method: methodForApi,
+    amount,
+    reference: referenceTop,
+    proof: ex?.proof || null,
+    installments,
+    price_basis,
+    total_list,
+    per_installment_list,
+    card_kind: isCard
+      ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT")
+      : (isCreditSjt ? "CREDIT" : null),
+    customer_name: customer.customer_name,
+    customer_doc: customer.customer_doc,
+    customer_phone: customer.customer_phone,
+    note: ex?.price_policy
+      ? `price_policy=${ex.price_policy}${installments ? `; installments=${installments}` : ""}`
+      : (ex?.note || null),
+  };
+}
+
+function normalizePaymentRowForApi(row, fallbackCustomer) {
+  const p = row && typeof row === "object" ? row : {};
+  const payment_method_id = toInt(p.payment_method_id ?? p.paymentMethodId, 0) || null;
+
+  const rawMethod = pickFirst(
+    p.method,
+    p.payment_method,
+    p.paymentMethod,
+    p.kind,
+    p.provider_code
+  );
+
+  const rawReference = pickFirst(
+    p.reference,
+    p.ref,
+    p.proof
+  );
+
+  const methodForApiRaw = rawMethod ? normalizeMethod(rawMethod) : "";
+  const inferredMethod = rawReference &&
+    ["SJCREDIT", "SJ_CREDIT", "SANJUANCREDITO"].includes(String(rawReference).trim().toUpperCase())
+    ? "credit_sjt"
+    : methodForApiRaw;
+
+  const finalRawMethod = inferredMethod || rawMethod || "";
+  const finalMethod = finalRawMethod ? toBackendPaymentMethod(finalRawMethod) : null;
+
+  const amount = toNum(p.amount, 0);
+  const installments = Math.max(1, toInt(p.installments, 1) || 1);
+
+  const card_kind = p.card_kind == null
+    ? null
+    : String(p.card_kind).trim().toUpperCase() || null;
+
+  return {
+    payment_method_id,
+    ...(finalMethod ? { method: finalMethod } : {}),
+    amount,
+    reference: rawReference || null,
+    proof: p.proof || null,
+    installments,
+    price_basis: p.price_basis || p.priceBasis || null,
+    total_list: p.total_list ?? p.totalList ?? null,
+    per_installment_list:
+      p.per_installment_list ?? p.perInstallmentList ?? null,
+    card_kind,
+    customer_name: p.customer_name || fallbackCustomer.customer_name,
+    customer_doc: p.customer_doc || fallbackCustomer.customer_doc,
+    customer_phone: p.customer_phone || fallbackCustomer.customer_phone,
+    note: p.note || null,
+  };
+}
+
+function sumPayments(payments = []) {
+  return (payments || []).reduce((acc, p) => acc + toNum(p?.amount, 0), 0);
 }
 
 export const usePosStore = defineStore("pos", {
@@ -633,123 +871,191 @@ export const usePosStore = defineStore("pos", {
         }
         if (!wid) throw new Error("No hay depósito seleccionado. Configurá warehouse_id en el POS.");
 
-        const ex = extra && typeof extra === "object" ? extra : {};
-        const snap = normalizeCustomerSnapshot(ex, this.customer);
+        const modernMode = isModernSalePayload(paymentMethod);
+        const incoming = modernMode ? paymentMethod : null;
+        const ex = modernMode
+          ? (incoming?.extra && typeof incoming.extra === "object" ? incoming.extra : {})
+          : (extra && typeof extra === "object" ? extra : {});
 
-        const items = (this.cart || [])
-          .map((it) => {
-            const product_id = toInt(it.product_id, toInt(it.id, 0));
-            const qty = toNum(it.qty, 0);
-            const unit_price = toNum(it.price, 0);
+        const snap = normalizeCustomerSnapshot(
+          {
+            ...ex,
+            customer_name: modernMode ? (incoming?.customer_name ?? ex.customer_name) : ex.customer_name,
+            customer_doc: modernMode ? (incoming?.customer_doc ?? ex.customer_doc) : ex.customer_doc,
+            customer_phone: modernMode ? (incoming?.customer_phone ?? ex.customer_phone) : ex.customer_phone,
+            customer_email: modernMode ? (incoming?.customer_email ?? ex.customer_email) : ex.customer_email,
+          },
+          this.customer
+        );
 
-            return {
-              product_id,
-              quantity: qty,
-              qty,
-              unit_price,
-              unitPrice: unit_price,
-              price: unit_price,
-            };
-          })
-          .filter((x) => toInt(x.product_id, 0) > 0 && toNum(x.quantity, 0) > 0 && toNum(x.unit_price, 0) > 0);
+        const items = normalizeSaleItemsForApi(
+          modernMode ? incoming?.items : null,
+          this.cart || []
+        );
 
-        if (!items.length) throw new Error("Carrito inválido (items vacíos o sin precio/cantidad).");
+        if (!items.length) {
+          throw new Error("Carrito inválido (items vacíos o sin precio/cantidad).");
+        }
 
-        const amount = toNum(this.totalAmount, 0);
-        const bid = toInt(this.branch_id, 0) || null;
+        const bid =
+          toInt(
+            modernMode
+              ? (incoming?.branch_id ?? incoming?.branchId ?? this.branch_id)
+              : this.branch_id,
+            0
+          ) || null;
 
-        const methodForApiRaw = pickPaymentMethodForApi(paymentMethod, ex);
-        const isCreditSjt =
-          methodForApiRaw === "credit_sjt" || methodForApiRaw === "CREDIT_SJT";
+        const warehouseIdFinal =
+          toInt(
+            modernMode
+              ? (incoming?.warehouse_id ?? incoming?.warehouseId ?? wid)
+              : wid,
+            0
+          ) || null;
 
-        const methodForApi = toBackendPaymentMethod(methodForApiRaw);
-        const isCard = methodForApi === "CARD";
+        const amount =
+          toNum(
+            modernMode
+              ? (
+                  incoming?.total ??
+                  incoming?.paid_total ??
+                  incoming?.subtotal ??
+                  items.reduce((acc, it) => acc + toNum(it.quantity, 0) * toNum(it.unit_price, 0), 0)
+                )
+              : this.totalAmount,
+            0
+          );
 
-        let installments = toInt(ex?.installments, 1) || 1;
-        const card_kind_raw = String(ex?.card_kind || ex?.cardKind || "").trim().toUpperCase() || null;
+        let payments = [];
 
-        const isDebit =
-          card_kind_raw === "DEBIT" ||
-          card_kind_raw === "DEBITO" ||
-          card_kind_raw === "DÉBITO" ||
-          ex?.is_debit === true ||
-          ex?.isDebit === true;
-
-        if (isCard && isDebit) installments = 1;
-
-        if (isCreditSjt || (isCard && !isDebit)) {
-          installments = Math.max(1, Math.min(12, installments));
+        if (modernMode && Array.isArray(incoming?.payments) && incoming.payments.length) {
+          payments = incoming.payments
+            .map((row) => normalizePaymentRowForApi(row, snap))
+            .filter((p) => toNum(p.amount, 0) > 0);
         } else {
-          installments = 1;
+          payments = [
+            normalizeSingleLegacyPayment({
+              paymentMethod,
+              extra: ex,
+              amount,
+              customer: snap,
+            }),
+          ];
         }
 
-        const total_list = toNum(ex?.total_list, 0) || null;
-        const per_installment_list = toNum(ex?.per_installment_list, 0) || null;
-        const price_basis = isCreditSjt || (isCard && installments > 1 && !isDebit) ? "LIST" : null;
-
-        let referenceTop =
-          ex?.reference ||
-          ex?.ref ||
-          ex?.proof ||
-          null;
-
-        if (isCreditSjt && !referenceTop) {
-          referenceTop = "SJCREDIT";
+        if (!payments.length) {
+          throw new Error("No hay pagos válidos para registrar.");
         }
+
+        const paymentsTotal = sumPayments(payments);
+        const effectiveTotal = amount > 0 ? amount : paymentsTotal;
+
+        const cashRegisterId =
+          toInt(
+            modernMode
+              ? (incoming?.cash_register_id ?? incoming?.cashRegisterId ?? ex?.cash_register_id)
+              : ex?.cash_register_id,
+            0
+          ) || null;
+
+        const firstPaymentMethod = payments.length === 1
+          ? (payments[0]?.method || null)
+          : null;
+
+        // ✅ FIX CLAVE:
+        // mandar invoice_mode / invoice_type / customer_type
+        // también a nivel TOP-LEVEL, no sólo en extra
+        const invoiceMode =
+          modernMode
+            ? normalizeInvoiceMode(incoming?.invoice_mode ?? incoming?.extra?.invoice_mode ?? ex?.invoice_mode)
+            : normalizeInvoiceMode(ex?.invoice_mode);
+
+        const invoiceType =
+          modernMode
+            ? normalizeInvoiceTypeByMode(
+                invoiceMode,
+                incoming?.invoice_type ?? incoming?.extra?.invoice_type ?? ex?.invoice_type
+              )
+            : normalizeInvoiceTypeByMode(invoiceMode, ex?.invoice_type);
+
+        const customerType =
+          modernMode
+            ? normalizeCustomerType(
+                incoming?.customer_type ?? incoming?.extra?.customer_type ?? ex?.customer_type
+              )
+            : normalizeCustomerType(ex?.customer_type);
 
         const payload = {
-  customer_name: snap.customer_name,
-  customer_doc: snap.customer_doc,
-  customer_phone: snap.customer_phone,
+          customer_name: snap.customer_name,
+          customer_doc: snap.customer_doc,
+          customer_phone: snap.customer_phone,
+          customer_email: snap.customer_email,
 
-  payment_method: methodForApi,
-  method: methodForApi,
-  installments,
-  reference: referenceTop,
-  card_kind: isCard
-    ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT")
-    : (isCreditSjt ? "CREDIT" : null),
+          payment_method: firstPaymentMethod,
+          method: firstPaymentMethod,
 
-  note: ex?.note || null,
+          installments:
+            payments.length === 1
+              ? Math.max(1, toInt(payments[0]?.installments, 1) || 1)
+              : 1,
 
-  branch_id: bid,
-  warehouse_id: wid,
-  branchId: bid,
-  warehouseId: wid,
+          reference:
+            payments.length === 1
+              ? (payments[0]?.reference || null)
+              : null,
 
-  // 🔥🔥🔥 ESTA ES LA CLAVE
-  cash_register_id: toInt(ex?.cash_register_id, 0) || null,
+          card_kind:
+            payments.length === 1
+              ? (payments[0]?.card_kind || null)
+              : null,
 
-  items,
+          note: modernMode ? (incoming?.note || null) : (ex?.note || null),
 
-  payments: [
-    {
-      method: methodForApi,
-      amount,
-      reference: referenceTop,
-      proof: ex?.proof || null,
-      installments,
-      price_basis,
-      total_list,
-      per_installment_list,
-      card_kind: isCard
-        ? (isDebit ? "DEBIT" : card_kind_raw || "CREDIT")
-        : (isCreditSjt ? "CREDIT" : null),
+          branch_id: bid,
+          warehouse_id: warehouseIdFinal,
+          branchId: bid,
+          warehouseId: warehouseIdFinal,
 
-      customer_name: snap.customer_name,
-      customer_doc: snap.customer_doc,
-      customer_phone: snap.customer_phone,
+          cash_register_id: cashRegisterId,
 
-      note: ex?.price_policy
-        ? `price_policy=${ex.price_policy}${installments ? `; installments=${installments}` : ""}`
-        : null,
-    },
-  ],
-};
+          // ✅ TOP-LEVEL fiscales
+          invoice_mode: invoiceMode,
+          invoice_type: invoiceType,
+          customer_type: customerType,
+
+          items,
+          payments,
+
+          extra: {
+            ...(ex || {}),
+            ...(modernMode && incoming?.extra && typeof incoming.extra === "object" ? incoming.extra : {}),
+            invoice_mode: invoiceMode,
+            invoice_type: invoiceType,
+            customer_type: customerType,
+            mixed_mode:
+              modernMode
+                ? (incoming?.extra?.mixed_mode ?? ex?.mixed_mode ?? payments.length > 1)
+                : (ex?.mixed_mode ?? payments.length > 1),
+            customer: {
+              ...(ex?.customer || {}),
+              ...(modernMode && incoming?.extra?.customer ? incoming.extra.customer : {}),
+              name: snap.customer_name,
+              doc: snap.customer_doc,
+              phone: snap.customer_phone,
+              email: snap.customer_email,
+            },
+          },
+        };
 
         console.log("[POS_STORE] store.customer =>", this.customer);
+        console.log("[POS_STORE] checkout modernMode =>", modernMode);
         console.log("[POS_STORE] checkout extra =>", ex);
         console.log("[POS_STORE] customer snapshot =>", snap);
+        console.log("[POS_STORE] normalized fiscal =>", {
+          invoice_mode: invoiceMode,
+          invoice_type: invoiceType,
+          customer_type: customerType,
+        });
         console.log("[POS_STORE] POST /pos/sales payload =>", JSON.parse(JSON.stringify(payload)));
 
         const { data } = await http.post("/pos/sales", payload);
@@ -776,23 +1082,37 @@ export const usePosStore = defineStore("pos", {
         if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
           sale = buildSaleFromCart({
             saleId: saleId || null,
-            paymentMethod: methodForApiRaw,
-            extra: ex,
+            paymentMethod:
+              payments.length === 1
+                ? payments[0]?.method || "OTHER"
+                : "OTHER",
+            extra: payload.extra || {},
             branch_id: bid,
-            warehouse_id: wid || null,
+            warehouse_id: warehouseIdFinal || null,
             cart: cartSnapshot,
-            totalAmount: totalSnapshot,
+            totalAmount: effectiveTotal || totalSnapshot,
+            payments,
           });
         } else {
-          if (toNum(sale.total, 0) <= 0) sale.total = totalSnapshot;
-          if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = totalSnapshot;
+          if (toNum(sale.total, 0) <= 0) sale.total = effectiveTotal || totalSnapshot;
+          if (toNum(sale.subtotal, 0) <= 0) sale.subtotal = effectiveTotal || totalSnapshot;
+          if (!Array.isArray(sale.payments) || !sale.payments.length) sale.payments = payments;
         }
 
-        sale.payment_method = methodForApiRaw;
-        sale.installments = installments;
+        sale.payment_method =
+          payments.length === 1
+            ? (payments[0]?.method || "OTHER")
+            : "OTHER";
+
+        sale.installments =
+          payments.length === 1
+            ? Math.max(1, toInt(payments[0]?.installments, 1) || 1)
+            : 1;
+
         sale.customer_name = snap.customer_name;
         sale.customer_doc = snap.customer_doc;
         sale.customer_phone = snap.customer_phone;
+        sale.customer_email = snap.customer_email;
 
         this.last_sale = sale;
         this.clearCart();

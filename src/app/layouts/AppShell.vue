@@ -197,6 +197,24 @@
               <v-list-item-title>Categorías</v-list-item-title>
             </v-list-item>
 
+            <v-list-item v-if="isAdmin && hasRoute('adminFiscal')" :to="{ name: 'adminFiscal' }" exact>
+              <template #prepend>
+                <v-icon size="20">mdi-file-document-outline</v-icon>
+              </template>
+              <v-list-item-title>Fiscal</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item
+              v-if="isAdmin && hasRoute('adminPaymentMethods')"
+              :to="{ name: 'adminPaymentMethods' }"
+              exact
+            >
+              <template #prepend>
+                <v-icon size="20">mdi-credit-card-cog-outline</v-icon>
+              </template>
+              <v-list-item-title>Medios de pago</v-list-item-title>
+            </v-list-item>
+
             <v-list-item
               v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
               :to="{ name: 'shopBranding' }"
@@ -373,6 +391,8 @@ const showConfig = computed(() => {
     hasRoute("stock") ||
     hasRoute("inventory") ||
     hasRoute("categories") ||
+    hasRoute("adminFiscal") ||
+    hasRoute("adminPaymentMethods") ||
     hasRoute("shopBranding") ||
     hasRoute("users")
   );
