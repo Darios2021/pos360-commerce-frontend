@@ -6,7 +6,7 @@
       type="button"
       class="ck-pay"
       :class="{
-        active: !mixedMode && Number(selectedMethodId) === Number(method.id),
+        active: isActive(method),
         cursor: cursorTarget === 'method' && idx === cursorIndex,
         cursorActive:
           cursorTarget === 'method' &&
@@ -32,12 +32,8 @@
         </span>
       </div>
 
-      <v-icon size="26">
-        {{
-          !mixedMode && Number(selectedMethodId) === Number(method.id)
-            ? "mdi-check-circle"
-            : "mdi-circle-outline"
-        }}
+      <v-icon size="26" class="ck-pay-state">
+        {{ isActive(method) ? "mdi-check-circle" : "mdi-circle-outline" }}
       </v-icon>
     </button>
 
@@ -66,7 +62,7 @@
         <span class="ck-pay-name">Mixto</span>
       </div>
 
-      <v-icon size="26">
+      <v-icon size="26" class="ck-pay-state">
         {{ mixedMode ? "mdi-check-circle" : "mdi-circle-outline" }}
       </v-icon>
     </button>
@@ -74,7 +70,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   methods: { type: Array, default: () => [] },
   selectedMethodId: { type: [Number, String, null], default: null },
   mixedMode: { type: Boolean, default: false },
@@ -93,117 +89,129 @@ defineEmits([
   "select-single-method",
   "toggle-mixed-mode",
 ]);
+
+function isActive(method) {
+  if (props.mixedMode) return false;
+  if (props.selectedMethodId == null) return false;
+  if (method?.id == null) return false;
+  return String(props.selectedMethodId) === String(method.id);
+}
 </script>
 
 <style scoped>
 .ck-pay-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 430px));
+  align-content: start;
+  justify-content: start;
+  gap: 8px 10px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .ck-pay {
   position: relative;
-  min-height: 92px;
-  padding: 16px 18px;
-  border-radius: 20px;
+  min-height: 58px;
+  padding: 7px 10px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-on-surface), 0.02);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  text-align: left;
+  gap: 8px;
   transition:
-    background-color 0.16s ease,
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.ck-pay:hover {
-  border-color: rgba(var(--v-theme-on-surface), 0.18);
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.ck-pay::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 6px;
-  background: transparent;
-  transition: background-color 0.16s ease;
-}
-
-.ck-pay.active {
-  color: rgb(var(--v-theme-primary));
-  border-color: rgba(var(--v-theme-primary), 0.36);
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-.ck-pay.cursor::before {
-  background: rgba(var(--v-theme-primary), 0.42);
-}
-
-.ck-pay.cursor {
-  border-color: rgba(var(--v-theme-primary), 0.34);
-}
-
-.ck-pay.cursorActive {
-  box-shadow:
-    0 0 0 2px rgba(var(--v-theme-primary), 0.14),
-    0 12px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
-}
-
-.ck-cursor-tag {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  min-height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  background: rgba(var(--v-theme-primary), 0.14);
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
 
 .ck-pay-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .ck-pay-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
-  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--v-theme-primary), 0.08);
   flex: 0 0 auto;
 }
 
+.ck-pay-icon :deep(.v-icon) {
+  font-size: 19px !important;
+}
+
 .ck-pay-name {
-  font-size: 1.08rem;
+  min-width: 0;
+  font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.08;
-  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.ck-pay-state {
+  flex: 0 0 auto;
+  font-size: 20px;
+  opacity: 0.95;
+}
+
+.ck-cursor-tag {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  height: 15px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.48rem;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(var(--v-theme-primary), 0.16);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.ck-pay.active {
+  border: 2px solid rgba(var(--v-theme-primary), 0.9);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--v-theme-primary), 0.1) 0%,
+      rgba(var(--v-theme-primary), 0.045) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-primary), 0.16),
+    0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.ck-pay.cursor {
+  border-color: rgba(var(--v-theme-primary), 0.32);
+}
+
+.ck-pay.cursorActive {
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-primary), 0.24),
+    0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 1200px) {
+  .ck-pay-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
 }
 
 @media (max-width: 760px) {
@@ -212,11 +220,7 @@ defineEmits([
   }
 
   .ck-pay {
-    min-height: 84px;
-  }
-
-  .ck-pay-name {
-    font-size: 1rem;
+    min-height: 54px;
   }
 }
 </style>

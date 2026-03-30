@@ -11,11 +11,15 @@
     </div>
 
     <div class="ck-screen__body">
-      <div class="ck-config-shell" :class="{ 'ck-config-shell--single': !showSide }">
+      <div
+        class="ck-config-shell"
+        :class="{ 'ck-config-shell--single': !showSide }"
+      >
         <section class="ck-config-main">
           <div class="ck-config-main__inner">
             <template v-if="state.mixedMode">
               <PaymentMixed
+                ref="paymentMixedRef"
                 :state="state"
                 :mixed-method-items="mixedMethodItems"
                 :mixed-paid="mixedPaid"
@@ -142,6 +146,7 @@ const emit = defineEmits([
 ]);
 
 const paymentSingleRef = ref(null);
+const paymentMixedRef = ref(null);
 
 function parseAmount(v) {
   if (v === null || v === undefined) return 0;
@@ -154,11 +159,16 @@ function parseAmount(v) {
 
 const screenTitle = computed(() => {
   if (props.state?.mixedMode) return "Pago mixto";
-  return props.selectedMethod ? props.methodLabel(props.selectedMethod) : "Configuración";
+  return props.selectedMethod
+    ? props.methodLabel(props.selectedMethod)
+    : "Configuración";
 });
 
 const screenSubtitle = computed(() => {
-  if (props.state?.mixedMode) return "Distribuí el cobro entre varios medios";
+  if (props.state?.mixedMode) {
+    return "Usá flechas para navegar, Enter para confirmar y números para importe";
+  }
+
   if (props.singleUsesCashEntry) return "Usá flechas y Enter";
   if (props.selectedMethod && props.methodNeedsCardKind(props.selectedMethod)) {
     return "Usá flechas para elegir las opciones";
@@ -198,17 +208,23 @@ const errorText = computed(() => {
   return "";
 });
 
-const showSide = computed(() => true);
+const showSide = computed(() => false);
 
 function isValid() {
   if (props.state?.mixedMode) {
-    return Number(props.mixedPaid || 0) > 0 && Number(props.mixedMissing || 0) <= 0;
+    return (
+      Number(props.mixedPaid || 0) > 0 &&
+      Number(props.mixedMissing || 0) <= 0
+    );
   }
 
   if (!props.selectedMethod) return false;
 
   if (props.singleUsesCashEntry) {
-    return Number(singlePaid.value || 0) > 0 && Number(props.singleMissing || 0) <= 0;
+    return (
+      Number(singlePaid.value || 0) > 0 &&
+      Number(props.singleMissing || 0) <= 0
+    );
   }
 
   return true;
@@ -222,16 +238,22 @@ function emitNextIfValid() {
 
 function focusCurrent() {
   nextTick(() => {
-    if (props.state?.mixedMode) return;
+    if (props.state?.mixedMode) {
+      paymentMixedRef.value?.focusCurrent?.();
+      return;
+    }
 
     paymentSingleRef.value?.focusCurrent?.();
   });
 }
 
 function handleKeyboardAction(action) {
-  if (!props.state?.mixedMode) {
-    const childHandled = paymentSingleRef.value?.handleKeyboardAction?.(action);
-    if (childHandled) return true;
+  if (props.state?.mixedMode) {
+    const handled = paymentMixedRef.value?.handleKeyboardAction?.(action);
+    if (handled) return true;
+  } else {
+    const handled = paymentSingleRef.value?.handleKeyboardAction?.(action);
+    if (handled) return true;
   }
 
   if (action === "enter") {
@@ -258,30 +280,30 @@ defineExpose({
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 12px;
-  padding: 10px 12px 12px;
-  border-radius: 20px;
+  gap: 8px;
+  padding: 4px 6px 6px;
+  border-radius: 14px;
   background: transparent;
 }
 
 .ck-screen__head {
   display: grid;
-  gap: 4px;
-  padding-inline: 2px;
+  gap: 2px;
+  padding-inline: 1px;
 }
 
 .ck-screen__title {
-  font-size: 1.18rem;
+  font-size: 0.98rem;
   font-weight: 950;
   line-height: 1.02;
   letter-spacing: -0.02em;
 }
 
 .ck-screen__subtitle {
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: rgba(var(--v-theme-on-surface), 0.6);
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 .ck-screen__body {
@@ -291,8 +313,8 @@ defineExpose({
 .ck-config-shell {
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 8px;
   align-items: start;
 }
 
@@ -302,7 +324,7 @@ defineExpose({
 
 .ck-config-main {
   min-width: 0;
-  border-radius: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background:
     linear-gradient(
@@ -311,47 +333,47 @@ defineExpose({
       rgba(var(--v-theme-on-surface), 0.015) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 4px 12px rgba(0, 0, 0, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 3px 10px rgba(0, 0, 0, 0.025);
   overflow: hidden;
 }
 
 .ck-config-main__inner {
-  padding: 14px;
+  padding: 10px;
 }
 
 .ck-config-side {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ck-side-total {
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background:
     linear-gradient(
       180deg,
-      rgba(var(--v-theme-primary), 0.075) 0%,
-      rgba(var(--v-theme-primary), 0.045) 100%
+      rgba(var(--v-theme-primary), 0.07) 0%,
+      rgba(var(--v-theme-primary), 0.04) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 4px 10px rgba(0, 0, 0, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 3px 8px rgba(0, 0, 0, 0.025);
 }
 
 .ck-side-total__label {
-  font-size: 0.76rem;
+  font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.56);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .ck-side-total__value {
-  font-size: 1.62rem;
+  font-size: 1.22rem;
   line-height: 1;
   font-weight: 950;
   letter-spacing: -0.03em;
@@ -359,26 +381,27 @@ defineExpose({
 
 .ck-side-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ck-side-row {
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 14px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   background: rgba(var(--v-theme-surface), 0.58);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  font-size: 0.92rem;
+  gap: 8px;
+  font-size: 0.78rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .ck-side-row strong {
   font-weight: 900;
   white-space: nowrap;
+  font-size: 0.8rem;
 }
 
 .ck-side-row--warn {
@@ -388,15 +411,15 @@ defineExpose({
 }
 
 .ck-error-box {
-  min-height: 46px;
-  padding: 0 12px;
-  border-radius: 14px;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: rgba(var(--v-theme-error), 0.08);
   color: rgb(var(--v-theme-error));
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 800;
   border: 1px solid rgba(var(--v-theme-error), 0.14);
 }
@@ -411,22 +434,22 @@ defineExpose({
   }
 
   .ck-side-total__value {
-    font-size: 1.48rem;
+    font-size: 1.1rem;
   }
 }
 
 @media (max-width: 760px) {
   .ck-screen {
-    padding: 6px 0 0;
-    gap: 10px;
+    padding: 4px 0 0;
+    gap: 7px;
   }
 
   .ck-config-main__inner {
-    padding: 10px;
+    padding: 8px;
   }
 
   .ck-side-total {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 }
 </style>

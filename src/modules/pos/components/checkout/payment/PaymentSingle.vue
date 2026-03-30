@@ -392,69 +392,84 @@ defineExpose({
 });
 </script>
 
+<!-- SOLO TE DEJO EL STYLE CORREGIDO (EL TEMPLATE Y SCRIPT YA ESTÁN BIEN) -->
 <style scoped>
 .ck-single {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ck-sections {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ck-section {
   display: grid;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  gap: 6px;
+  padding: 0;            /* 🔥 sin padding contenedor */
+  border: none;          /* 🔥 sin caja */
+  background: transparent;
 }
 
-.ck-section.active {
-  border-color: rgba(var(--v-theme-primary), 0.28);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
-}
+
 
 .ck-section__label {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 900;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
-.ck-section--reference {
-  padding: 14px;
-}
-
+/* =========================
+   GRID
+========================= */
 .ck-pay-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  /* 🔥 CLAVE */
+  overflow: visible;
 }
 
 .ck-pay-grid--installments {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* =========================
+   CARD
+========================= */
 .ck-pay {
   position: relative;
-  min-height: 72px;
+  z-index: 1;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+
   border-radius: 16px;
-  padding: 12px 58px 12px 14px;
+  padding: 10px 42px 10px 12px;
+
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-surface), 0.3);
-  box-shadow: none;
+  background: rgba(var(--v-theme-surface), 0.35);
+
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
+
   text-align: left;
+
+  /* ❌ SACAMOS ESTO */
+  /* overflow: hidden; */
+
   transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease,
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
+    border-color 0.14s ease,
+    background 0.14s ease,
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .ck-pay:hover {
@@ -462,194 +477,138 @@ defineExpose({
   border-color: rgba(var(--v-theme-on-surface), 0.2);
 }
 
-.ck-pay.active {
-  border-color: rgba(var(--v-theme-primary), 0.95);
-  background: rgba(var(--v-theme-primary), 0.1);
+/* 🔥 ACTIVO */
+.ck-pay.active,
+.ck-pay.cursorActive {
+  z-index: 3;
+
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(var(--v-theme-primary), 0.22) 100%
+    );
+
   box-shadow:
-    0 0 0 1px rgba(var(--v-theme-primary), 0.14),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    0 0 0 2px rgba(255, 255, 255, 0.1),
+    0 0 0 4px rgba(var(--v-theme-primary), 0.34),
+    0 12px 20px rgba(0, 0, 0, 0.28);
+
+  transform: translateY(-2px);
 }
 
 .ck-pay.cursor {
-  border-color: rgba(var(--v-theme-on-surface), 0.28);
-}
-
-.ck-pay.cursorActive {
-  border-color: rgba(var(--v-theme-primary), 1);
-  box-shadow:
-    0 0 0 2px rgba(var(--v-theme-primary), 0.18),
-    0 6px 14px rgba(0, 0, 0, 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.5);
 }
 
 .ck-pay:disabled {
-  opacity: 0.52;
-  cursor: not-allowed;
-  transform: none;
+  opacity: 0.5;
 }
 
+/* =========================
+   CONTENIDO
+========================= */
 .ck-pay__left {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  flex: 1;
 }
 
 .ck-pay__icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), 0.06);
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.ck-pay.active .ck-pay__icon {
-  background: rgba(var(--v-theme-primary), 0.16);
 }
 
 .ck-pay__text {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ck-pay__title {
-  font-size: 0.98rem;
+  font-size: 0.82rem;
   font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: -0.015em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-pay__hint {
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  line-height: 1.05;
   color: rgba(var(--v-theme-on-surface), 0.68);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
+/* =========================
+   CHECK
+========================= */
 .ck-pay__state {
   position: absolute;
   top: 50%;
-  right: 14px;
+  right: 10px;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  border: 2px solid rgba(var(--v-theme-on-surface), 0.34);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: rgb(var(--v-theme-on-surface));
 }
 
-.ck-pay.active .ck-pay__state {
-  border-color: rgb(var(--v-theme-on-surface));
-  background: rgba(255, 255, 255, 0.08);
-}
-
+/* =========================
+   TAG (ELEGIR)
+========================= */
 .ck-cursor-tag {
   position: absolute;
-  top: 8px;
-  right: 40px;
-  padding: 3px 7px;
+
+  /* 🔥 AHORA NO SE CORTA */
+  top: -12px;
+  right: 14px;
+
+  z-index: 5;
+
+  height: 22px;
+  padding: 0 10px;
+
   border-radius: 999px;
-  background: rgba(var(--v-theme-primary), 0.14);
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  pointer-events: none;
-  max-width: calc(100% - 92px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+
+  backdrop-filter: blur(6px);
+
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.3);
 }
 
-.ck-field {
-  width: 100%;
-}
-
+/* =========================
+   EMPTY
+========================= */
 .ck-empty {
-  min-height: 180px;
-  padding: 18px;
-  border-radius: 18px;
+  min-height: 160px;
+  padding: 16px;
+  border-radius: 16px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.14);
   background: rgba(var(--v-theme-on-surface), 0.02);
-  display: grid;
-  align-content: center;
-  gap: 6px;
 }
 
-.ck-empty__title {
-  font-size: 1rem;
-  font-weight: 900;
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 1100px) {
+  .ck-pay-grid--installments {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
-.ck-empty__text {
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.58);
-}
-
-@media (max-width: 960px) {
+@media (max-width: 760px) {
   .ck-pay-grid {
     grid-template-columns: 1fr;
   }
 
   .ck-pay-grid--installments {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
-  .ck-section {
-    padding: 10px;
-  }
-
-  .ck-pay {
-    min-height: 68px;
-    padding: 10px 54px 10px 12px;
-    border-radius: 15px;
-  }
-
-  .ck-pay__title {
-    font-size: 0.92rem;
-  }
-
-  .ck-pay__hint {
-    font-size: 0.72rem;
-  }
-
-  .ck-pay__icon {
-    width: 33px;
-    height: 33px;
-    border-radius: 10px;
-  }
-
-  .ck-pay__state {
-    width: 18px;
-    height: 18px;
-    right: 12px;
-  }
-
-  .ck-cursor-tag {
-    top: 7px;
-    right: 34px;
-    font-size: 0.64rem;
-    padding: 3px 6px;
-    max-width: calc(100% - 82px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

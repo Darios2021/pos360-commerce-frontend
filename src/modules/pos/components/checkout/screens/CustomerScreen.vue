@@ -3,35 +3,23 @@
     <div class="ck-screen__head">
       <div class="ck-screen__title">Cliente</div>
       <div class="ck-screen__subtitle">
-        {{ subtitleText }}
+        {{ isFacturaMode ? "Completá los datos" : "Cliente opcional" }}
       </div>
     </div>
 
     <div class="ck-screen__body">
       <div class="ck-form-shell">
-        <div v-if="isFacturaMode" class="ck-alert ck-alert--required">
-          <div class="ck-alert__icon">
-            <v-icon size="18">mdi-receipt-text-check-outline</v-icon>
-          </div>
-
-          <div class="ck-alert__text">
-            <div class="ck-alert__title">Obligatorio para factura electrónica</div>
-            <div class="ck-alert__desc">
-              Completá nombre o razón social y documento para emitir el comprobante fiscal.
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="ck-alert ck-alert--optional">
-          <div class="ck-alert__icon">
-            <v-icon size="18">mdi-account-outline</v-icon>
-          </div>
-
-          <div class="ck-alert__text">
-            <div class="ck-alert__title">Cliente opcional</div>
-            <div class="ck-alert__desc">
-              Podés asociar un cliente a la venta o continuar sin completar estos datos.
-            </div>
+        <div class="ck-top-strip">
+          <div
+            class="ck-top-chip"
+            :class="isFacturaMode ? 'ck-top-chip--required' : 'ck-top-chip--optional'"
+          >
+            <v-icon size="14">
+              {{ isFacturaMode ? "mdi-receipt-text-check-outline" : "mdi-account-outline" }}
+            </v-icon>
+            <span>
+              {{ isFacturaMode ? "Obligatorio para facturar" : "Podés seguir sin cliente" }}
+            </span>
           </div>
         </div>
 
@@ -45,7 +33,7 @@
             <v-text-field
               :ref="customerNameRef"
               :model-value="customerName"
-              placeholder="Ingresar nombre o razón social"
+              placeholder="Nombre o razón social"
               variant="outlined"
               density="comfortable"
               hide-details="auto"
@@ -66,7 +54,7 @@
 
               <v-text-field
                 :model-value="customerDoc"
-                placeholder="Ingresar documento"
+                placeholder="Documento"
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
@@ -86,7 +74,7 @@
 
               <v-text-field
                 :model-value="customerPhone"
-                placeholder="Ingresar teléfono"
+                placeholder="Teléfono"
                 variant="outlined"
                 density="comfortable"
                 hide-details
@@ -99,13 +87,13 @@
 
           <div class="ck-help-row">
             <div class="ck-help-pill">
-              <v-icon size="16">mdi-keyboard-outline</v-icon>
-              <span>Enter para seguir</span>
+              <v-icon size="14">mdi-keyboard-return</v-icon>
+              <span>Enter seguir</span>
             </div>
 
             <div class="ck-help-pill">
-              <v-icon size="16">mdi-backspace-outline</v-icon>
-              <span>Borrar para volver</span>
+              <v-icon size="14">mdi-backspace-outline</v-icon>
+              <span>Borrar volver</span>
             </div>
           </div>
         </div>
@@ -137,19 +125,13 @@ const isFacturaMode = computed(() => {
   return String(props.state?.invoiceMode || "").toUpperCase() === "FISCAL";
 });
 
-const subtitleText = computed(() => {
-  return isFacturaMode.value
-    ? "Datos requeridos para emitir factura electrónica"
-    : "Podés asociar un cliente a la venta";
-});
-
 const cleanName = computed(() => String(props.customerName || "").trim());
 const cleanDoc = computed(() => String(props.customerDoc || "").trim());
 
 const nameError = computed(() => isFacturaMode.value && !cleanName.value);
 const docError = computed(() => isFacturaMode.value && !cleanDoc.value);
 
-const nameErrorMsg = computed(() => "Ingresá el nombre o razón social.");
+const nameErrorMsg = computed(() => "Ingresá nombre o razón social.");
 const docErrorMsg = computed(() => "Ingresá DNI, CUIT o CUIL.");
 
 function isValid() {
@@ -201,30 +183,32 @@ defineExpose({
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 12px;
-  padding: 10px 12px 12px;
+  gap: 6px;
+  padding: 6px 8px;
   border-radius: 20px;
   background: transparent;
+  min-width: 0;
 }
 
 .ck-screen__head {
   display: grid;
-  gap: 4px;
+  gap: 1px;
   padding-inline: 2px;
 }
 
 .ck-screen__title {
-  font-size: 1.18rem;
+  font-size: 0.95rem;
   font-weight: 950;
   line-height: 1.02;
   letter-spacing: -0.02em;
+  color: #f4f7fb;
 }
 
 .ck-screen__subtitle {
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  line-height: 1.15;
+  line-height: 1.05;
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .ck-screen__body {
@@ -233,124 +217,109 @@ defineExpose({
 
 .ck-form-shell {
   display: grid;
-  gap: 12px;
+  gap: 6px;
+  min-height: 0;
+  align-content: start;
 }
 
-.ck-alert {
-  min-height: 64px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  display: grid;
-  grid-template-columns: 40px 1fr;
-  gap: 10px;
-  align-items: start;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.03);
+.ck-top-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.ck-alert--required {
-  background: rgba(var(--v-theme-error), 0.06);
-  border-color: rgba(var(--v-theme-error), 0.18);
-}
-
-.ck-alert--optional {
-  background: rgba(var(--v-theme-primary), 0.06);
-  border-color: rgba(var(--v-theme-primary), 0.14);
-}
-
-.ck-alert__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+.ck-top-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(var(--v-theme-surface), 0.72);
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  border: 1px solid transparent;
 }
 
-.ck-alert__text {
-  display: grid;
-  gap: 2px;
+.ck-top-chip--required {
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.1);
+  border-color: rgba(251, 113, 133, 0.16);
 }
 
-.ck-alert__title {
-  font-size: 0.9rem;
-  font-weight: 950;
-  line-height: 1.1;
-}
-
-.ck-alert__desc {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  line-height: 1.2;
+.ck-top-chip--optional {
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .ck-form {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
   border-radius: 18px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(
       180deg,
-      rgba(var(--v-theme-surface), 0.9) 0%,
-      rgba(var(--v-theme-on-surface), 0.015) 100%
-    );
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(10, 20, 44, 0.74);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 4px 12px rgba(0, 0, 0, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 6px 16px rgba(0, 0, 0, 0.14);
 }
 
 .ck-form__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ck-field-wrap {
   display: grid;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .ck-field-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .ck-field-label {
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.66);
+  color: rgba(255, 255, 255, 0.72);
   letter-spacing: 0.01em;
+  line-height: 1.05;
 }
 
 .ck-required-chip,
 .ck-optional-chip {
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 22px;
+  padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 900;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .ck-required-chip {
-  background: rgba(var(--v-theme-error), 0.12);
-  color: rgb(var(--v-theme-error));
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.1);
 }
 
 .ck-optional-chip {
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .ck-field {
@@ -358,53 +327,55 @@ defineExpose({
 }
 
 .ck-field :deep(.v-field) {
-  border-radius: 16px;
-  background: rgba(var(--v-theme-surface), 0.58);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(10, 20, 44, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ck-field :deep(.v-field__input) {
+  min-height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+  color: #f4f7fb;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .ck-help-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  padding-top: 2px;
+  padding-top: 0;
 }
 
 .ck-help-pill {
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  color: rgba(var(--v-theme-on-surface), 0.76);
-  font-size: 0.76rem;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.68rem;
   font-weight: 800;
+  line-height: 1;
 }
 
 @media (max-width: 760px) {
   .ck-screen {
-    padding: 6px 0 0;
-    gap: 10px;
+    padding: 6px 6px 0;
+    gap: 6px;
   }
 
   .ck-form {
-    padding: 10px;
+    padding: 8px;
+    gap: 8px;
   }
 
   .ck-form__grid {
     grid-template-columns: 1fr;
-  }
-
-  .ck-alert {
-    grid-template-columns: 1fr;
-  }
-
-  .ck-alert__icon {
-    width: 36px;
-    height: 36px;
   }
 }
 </style>

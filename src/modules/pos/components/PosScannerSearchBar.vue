@@ -1,25 +1,34 @@
 <template>
-  <div class="pos-search-bar">
-    <v-text-field
-      ref="searchRef"
-      v-model="qLocal"
-      placeholder="Buscar producto, SKU o código..."
-      prepend-inner-icon="mdi-magnify"
-      variant="outlined"
-      density="comfortable"
-      hide-details
-      clearable
-      autocomplete="off"
-      spellcheck="false"
-      class="search-input"
-      :class="inputStateClass"
-      :disabled="disabledAll"
-      @focus="isFocused = true"
-      @blur="onBlur"
-      @keydown.enter.prevent="onEnter"
-      @click:clear="onClear"
-      @update:model-value="onTyping"
-    />
+  <div class="pos-search-bar" :class="{ 'hotkey-active': hotkeyActive }">
+    <div class="search-shell">
+      <v-text-field
+        ref="searchRef"
+        v-model="qLocal"
+        placeholder="Buscar producto, SKU o código..."
+        prepend-inner-icon="mdi-magnify"
+        variant="outlined"
+        density="comfortable"
+        hide-details
+        clearable
+        autocomplete="off"
+        spellcheck="false"
+        class="search-input"
+        :class="inputStateClass"
+        :disabled="disabledAll"
+        @focus="isFocused = true"
+        @blur="onBlur"
+        @keydown.enter.prevent="onEnter"
+        @click:clear="onClear"
+        @update:model-value="onTyping"
+      />
+
+      <transition name="search-pill">
+        <div v-if="hotkeyActive" class="search-hotkey-pill">
+          <v-icon size="16">mdi-keyboard</v-icon>
+          <span>{{ focusHotkey }} activo</span>
+        </div>
+      </transition>
+    </div>
 
     <div
       class="scanner-toggle"
@@ -37,7 +46,14 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, nextTick } from "vue";
+import {
+  ref,
+  watch,
+  computed,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 
 const props = defineProps({
   q: { type: String, default: "" },
@@ -47,6 +63,7 @@ const props = defineProps({
   keepFocusOnSubmit: { type: Boolean, default: true },
   focusOnEnable: { type: Boolean, default: true },
   disabledAll: { type: Boolean, default: false },
+  focusHotkey: { type: String, default: "F2" },
 });
 
 const emit = defineEmits([
@@ -57,11 +74,16 @@ const emit = defineEmits([
   "toggle",
   "submit",
   "scan",
+  "focus-hotkey",
+  "hotkey-visual-active",
 ]);
 
 const searchRef = ref(null);
 const qLocal = ref(props.q || "");
 const isFocused = ref(false);
+const hotkeyActive = ref(false);
+
+let hotkeyVisualTimer = null;
 
 const inputStateClass = computed(() => {
   const classes = [];
@@ -69,6 +91,7 @@ const inputStateClass = computed(() => {
   if (isFocused.value) classes.push("is-active");
   if (props.visualState === "success") classes.push("is-success");
   if (props.visualState === "error") classes.push("is-error");
+  if (hotkeyActive.value) classes.push("is-hotkey-active");
 
   return classes;
 });
@@ -108,6 +131,19 @@ function looksLikeBarcode(value) {
   return /^[0-9A-Z\-_.]+$/i.test(v) && v.length >= 6;
 }
 
+function getNativeInput() {
+  const refValue = searchRef.value;
+  if (!refValue) return null;
+
+  const root = refValue.$el || refValue;
+
+  return (
+    root?.querySelector?.("input") ||
+    root?.querySelector?.("textarea") ||
+    null
+  );
+}
+
 function focusInput({ select = false } = {}) {
   nextTick(() => {
     const refValue = searchRef.value;
@@ -115,13 +151,32 @@ function focusInput({ select = false } = {}) {
 
     refValue.focus?.();
 
-    const root = refValue.$el || refValue;
-    const input =
-      root?.querySelector?.("input") ||
-      root?.querySelector?.("textarea");
-
+    const input = getNativeInput();
     input?.focus?.();
-    if (select) input?.select?.();
+
+    if (select) {
+      input?.select?.();
+    }
+  });
+}
+
+function triggerHotkeyVisualState() {
+  hotkeyActive.value = false;
+
+  if (hotkeyVisualTimer) {
+    clearTimeout(hotkeyVisualTimer);
+    hotkeyVisualTimer = null;
+  }
+
+  nextTick(() => {
+    hotkeyActive.value = true;
+    emit("hotkey-visual-active", true);
+
+    hotkeyVisualTimer = setTimeout(() => {
+      hotkeyActive.value = false;
+      emit("hotkey-visual-active", false);
+      hotkeyVisualTimer = null;
+    }, 1600);
   });
 }
 
@@ -187,9 +242,37 @@ function handleToggle() {
   emit("toggle");
 }
 
+function handleGlobalKeydown(e) {
+  if (props.disabledAll) return;
+  if (e.repeat) return;
+  if (e.key !== props.focusHotkey) return;
+
+  e.preventDefault();
+  emit("focus-hotkey");
+  focusInput({ select: true });
+  triggerHotkeyVisualState();
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", handleGlobalKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleGlobalKeydown);
+
+  if (hotkeyVisualTimer) {
+    clearTimeout(hotkeyVisualTimer);
+    hotkeyVisualTimer = null;
+  }
+});
+
 defineExpose({
   focusSearch: () => {
     focusInput();
+  },
+  focusSearchAndSelect: () => {
+    focusInput({ select: true });
+    triggerHotkeyVisualState();
   },
   clearSearch: () => {
     clearInternal(false);
@@ -200,6 +283,9 @@ defineExpose({
   setValueAndSubmit: (value) => {
     qLocal.value = normalizeValue(value);
     onEnter();
+  },
+  activateHotkeyVisual: () => {
+    triggerHotkeyVisualState();
   },
 });
 </script>
@@ -214,6 +300,23 @@ defineExpose({
   border-radius: 16px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pos-search-bar.hotkey-active {
+  border-color: rgba(var(--v-theme-primary), 0.34);
+  box-shadow:
+    0 0 0 2px rgba(var(--v-theme-primary), 0.12),
+    0 10px 26px rgba(var(--v-theme-primary), 0.12);
+  animation: posShellPulse 0.55s ease;
+}
+
+.search-shell {
+  position: relative;
+  flex: 1 1 auto;
 }
 
 .search-input {
@@ -239,8 +342,17 @@ defineExpose({
 .search-input.is-active :deep(.v-field) {
   border-color: rgba(var(--v-theme-primary), 0.42);
   box-shadow:
-    0 0 0 2px rgba(var(--v-theme-primary), 0.10),
-    0 4px 14px rgba(var(--v-theme-primary), 0.10);
+    0 0 0 2px rgba(var(--v-theme-primary), 0.1),
+    0 4px 14px rgba(var(--v-theme-primary), 0.1);
+}
+
+.search-input.is-hotkey-active :deep(.v-field) {
+  border-color: rgba(var(--v-theme-primary), 0.7);
+  box-shadow:
+    0 0 0 3px rgba(var(--v-theme-primary), 0.16),
+    0 0 18px rgba(var(--v-theme-primary), 0.18),
+    0 10px 22px rgba(var(--v-theme-primary), 0.12);
+  animation: hotkeyFlash 0.6s ease;
 }
 
 .search-input.is-success :deep(.v-field) {
@@ -259,17 +371,86 @@ defineExpose({
   animation: flashError 0.28s ease;
 }
 
+.search-hotkey-pill {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.14);
+  border: 1px solid rgba(var(--v-theme-primary), 0.24);
+  color: rgb(var(--v-theme-primary));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px rgba(var(--v-theme-primary), 0.14);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+@keyframes posShellPulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.006);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes hotkeyFlash {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @keyframes flashSuccess {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.01); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes flashError {
-  0% { transform: translateX(0); }
-  30% { transform: translateX(-3px); }
-  60% { transform: translateX(3px); }
-  100% { transform: translateX(0); }
+  0% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(-3px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.search-pill-enter-active,
+.search-pill-leave-active {
+  transition: all 0.18s ease;
+}
+
+.search-pill-enter-from,
+.search-pill-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
 }
 
 .scanner-toggle {
@@ -282,7 +463,7 @@ defineExpose({
   cursor: pointer;
   user-select: none;
   background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   transition: 0.2s ease;
 }
 

@@ -1,6 +1,3 @@
-// ✅ COPY-PASTE FINAL COMPLETO
-// src/app/plugins/vuetify.js
-
 import "vuetify/styles";
 import "@mdi/font/css/materialdesignicons.css";
 
@@ -13,17 +10,8 @@ const vuetify = createVuetify({
   directives,
 
   defaults: {
-    // 🔥 regla base: ningún overlay tiene scrim por defecto
-    VOverlay: {
-      scrim: false,
-    },
-
-    // 🔥 dialogs sí tienen scrim
-    VDialog: {
-      scrim: true,
-    },
-
-    // blindaje extra
+    VOverlay: { scrim: false },
+    VDialog: { scrim: true },
     VMenu: { scrim: false },
     VSelect: { menuProps: { scrim: false } },
     VAutocomplete: { menuProps: { scrim: false } },
@@ -36,19 +24,13 @@ const vuetify = createVuetify({
     options: { customProperties: true },
 
     themes: {
-      /* ============================
-         🔵 ADMIN / POS (MEJORADO)
-         ============================ */
       adminLight: {
         dark: false,
         colors: {
-          primary: "#0e2134",
+          primary: "#02498b",
           secondary: "#3483fa",
-
-          // 🔥 CANVAS (más gris → separa capas)
+          sidebar: "#02498b",
           background: "#e9eef5",
-
-          // 🔥 SUPERFICIES (cards)
           surface: "#ffffff",
         },
       },
@@ -56,24 +38,18 @@ const vuetify = createVuetify({
       adminDark: {
         dark: true,
         colors: {
-          primary: "#0e2134",
-          secondary: "#3483fa",
-
-          // fondo profundo
+          primary: "#02498b",
+          secondary: "#4f8cff",
+          sidebar: "#02498b",
           background: "#0b1320",
-
-          // superficies
           surface: "#111a2e",
         },
       },
 
-      /* ============================
-         🟡 SHOP (no tocar)
-         ============================ */
       shopLight: {
         dark: false,
         colors: {
-          primary: "#0e2134",
+          primary: "#02498b",
           secondary: "#3483fa",
           background: "#ebebeb",
           surface: "#ffffff",
@@ -83,8 +59,8 @@ const vuetify = createVuetify({
       shopDark: {
         dark: true,
         colors: {
-          primary: "#0e2134",
-          secondary: "#3483fa",
+          primary: "#02498b",
+          secondary: "#4f8cff",
           background: "#0b1320",
           surface: "#111a2e",
         },

@@ -1,116 +1,192 @@
 <template>
-  <div class="ck-step-shell ck-invoice-pos">
-    <div class="ck-invoice-pos__header">
-      <div>
-        <div class="ck-invoice-pos__title">Facturación</div>
-        <div class="ck-invoice-pos__subtitle">
-          Flechas cambian la selección · Enter confirma · Backspace vuelve
-        </div>
-      </div>
-
-      <div class="ck-invoice-pos__status">
-        <span class="ck-mini-pill">
-          {{ isFiscal ? "Fiscal" : "No fiscal" }}
-        </span>
-
-        <span v-if="isFiscal" class="ck-mini-pill">
-          {{ customerLabel }}
-        </span>
-
-        <span class="ck-mini-pill">
-          Tipo {{ effectiveInvoiceType }}
-        </span>
-      </div>
+  <div class="ck-screen">
+    <!-- HEADER -->
+    <div class="ck-screen__head">
+      <div class="ck-screen__title">Facturación</div>
+      <div class="ck-screen__subtitle">Elegí el comprobante</div>
     </div>
 
-    <div class="ck-invoice-pos__body">
-      <section
-        class="ck-line"
-        :class="{ activeLine: cursorGroup === 0 }"
-      >
-        <div class="ck-line__label">
-          <span class="ck-line__step">1</span>
-          <span class="ck-line__text">Comprobante</span>
-        </div>
+    <div class="ck-screen__body">
+      <div class="ck-flow">
 
-        <div class="ck-line__options">
-          <button
-            v-for="(item, idx) in invoiceModeItems"
-            :key="item.value"
-            ref="invoiceModeRefs"
-            type="button"
-            class="ck-chip-option"
-            :class="{
-              selected: currentModeValue === item.value,
-              cursor: cursorGroup === 0 && cursorIndex === idx
-            }"
-            @click="selectValue(0, item.value, idx)"
-            @dblclick="confirmCurrent"
-          >
-            {{ item.title }}
-          </button>
-        </div>
-      </section>
+        <!-- =========================
+             COMPROBANTE
+        ========================= -->
+        <section class="ck-group">
+          <div class="ck-group__label">Comprobante</div>
 
-      <section
-        v-if="isFiscal"
-        class="ck-line"
-        :class="{ activeLine: cursorGroup === 1 }"
-      >
-        <div class="ck-line__label">
-          <span class="ck-line__step">2</span>
-          <span class="ck-line__text">Cliente fiscal</span>
-        </div>
+          <div class="ck-mode-grid">
+            <button
+              v-for="(item, idx) in invoiceModeItems"
+              :key="item.value"
+              ref="invoiceModeRefs"
+              type="button"
+              class="ck-mode-card"
+              :class="{
+                active: currentModeValue === item.value,
+                cursor: cursorGroup === 0 && cursorIndex === idx,
+                cursorActive: cursorGroup === 0 && cursorIndex === idx
+              }"
+              @click="selectValue(0, item.value, idx)"
+            >
+              <div class="ck-mode-card__left">
+                <span class="ck-mode-card__icon">
+                  <v-icon size="18">
+                    {{
+                      item.value === "FISCAL"
+                        ? "mdi-receipt-text-outline"
+                        : "mdi-cash-register"
+                    }}
+                  </v-icon>
+                </span>
 
-        <div class="ck-line__options">
-          <button
-            v-for="(item, idx) in customerTypeItems"
-            :key="item.value"
-            ref="customerTypeRefs"
-            type="button"
-            class="ck-chip-option"
-            :class="{
-              selected: state.customerType === item.value,
-              cursor: cursorGroup === 1 && cursorIndex === idx
-            }"
-            @click="selectValue(1, item.value, idx)"
-            @dblclick="confirmCurrent"
-          >
-            {{ item.title }}
-          </button>
-        </div>
-      </section>
+                <div class="ck-mode-card__text">
+                  <span class="ck-mode-card__title">
+                    {{ item.title }}
+                  </span>
+                  <span class="ck-mode-card__hint">
+                    {{
+                      item.value === "FISCAL"
+                        ? "Comprobante ARCA"
+                        : "Venta sin comprobante fiscal"
+                    }}
+                  </span>
+                </div>
+              </div>
 
-      <section class="ck-line ck-line--info">
-        <div class="ck-line__label">
-          <span class="ck-line__step ck-line__step--info">i</span>
-          <span class="ck-line__text">Resultado</span>
-        </div>
+              <!-- TAG -->
+              <span
+                v-if="cursorGroup === 0 && cursorIndex === idx"
+                class="ck-cursor-tag"
+              >
+                Elegir
+              </span>
 
-        <div class="ck-result">
-          <div class="ck-result__item">
-            <span class="ck-result__k">Modo</span>
-            <span class="ck-result__v">{{ isFiscal ? "Fiscal" : "No fiscal" }}</span>
+              <!-- CHECK -->
+              <span class="ck-mode-card__state">
+                <v-icon
+                  v-if="currentModeValue === item.value"
+                  size="14"
+                >
+                  mdi-check
+                </v-icon>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- =========================
+             CONDICION CLIENTE
+        ========================= -->
+        <section v-if="isFiscal" class="ck-group">
+          <div class="ck-group__label">Condición del cliente</div>
+
+          <div class="ck-customer-grid">
+            <button
+              v-for="(item, idx) in customerTypeItems"
+              :key="item.value"
+              ref="customerTypeRefs"
+              type="button"
+              class="ck-customer-card"
+              :class="{
+                active: state.customerType === item.value,
+                cursor: cursorGroup === 1 && cursorIndex === idx,
+                cursorActive: cursorGroup === 1 && cursorIndex === idx
+              }"
+              @click="selectValue(1, item.value, idx)"
+            >
+              <!-- LETRA -->
+              <div class="ck-customer-card__top">
+                <span class="ck-doc-chip">
+                  {{ item.letter }}
+                </span>
+              </div>
+
+              <div class="ck-customer-card__title">
+                {{ item.title }}
+              </div>
+
+              <div class="ck-customer-card__hint">
+                {{ item.docLabel }}
+              </div>
+
+              <!-- TAG -->
+              <span
+                v-if="cursorGroup === 1 && cursorIndex === idx"
+                class="ck-cursor-tag"
+              >
+                Elegir
+              </span>
+
+              <!-- CHECK -->
+              <span class="ck-customer-card__state">
+                <v-icon
+                  v-if="state.customerType === item.value"
+                  size="14"
+                >
+                  mdi-check
+                </v-icon>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- =========================
+             TIPO DE COMPROBANTE
+        ========================= -->
+        <section class="ck-group">
+          <div class="ck-group__label">Tipo de comprobante</div>
+
+          <!-- 🔥 NO FISCAL (MISMO ESTILO QUE LOS DEMÁS) -->
+          <div v-if="!isFiscal" class="ck-type-grid ck-type-grid--single">
+            <div class="ck-type-card ck-type-card--X active">
+              <div class="ck-type-card__left">
+                <span class="ck-type-card__icon">
+                  <v-icon size="18">mdi-file-cancel-outline</v-icon>
+                </span>
+
+                <div class="ck-type-card__text">
+                  <span class="ck-type-card__title">
+                    No fiscal
+                  </span>
+                  <span class="ck-type-card__hint">
+                    Comprobante interno
+                  </span>
+                </div>
+              </div>
+
+              <span class="ck-type-card__letter">X</span>
+            </div>
           </div>
 
-          <div class="ck-result__item">
-            <span class="ck-result__k">Cliente</span>
-            <span class="ck-result__v">
-              {{ isFiscal ? customerLabel : "No aplica" }}
-            </span>
-          </div>
+          <!-- 🔥 FISCAL -->
+          <div v-else class="ck-type-grid ck-type-grid--single">
+            <div
+              class="ck-type-card"
+              :class="`ck-type-card--${effectiveInvoiceType}`"
+            >
+              <div class="ck-type-card__left">
+                <span class="ck-type-card__icon">
+                  <v-icon size="18">mdi-file-document-outline</v-icon>
+                </span>
 
-          <div class="ck-result__item">
-            <span class="ck-result__k">Tipo sugerido</span>
-            <span class="ck-result__v">Tipo {{ effectiveInvoiceType }}</span>
-          </div>
-        </div>
-      </section>
-    </div>
+                <div class="ck-type-card__text">
+                  <span class="ck-type-card__title">
+                    Fiscal
+                  </span>
+                  <span class="ck-type-card__hint">
+                    Tipo de comprobante
+                  </span>
+                </div>
+              </div>
 
-    <div class="ck-invoice-pos__footer">
-      <div class="ck-kbd-inline">
-        ← → cambia · ↑ ↓ bloque · Enter confirmar · Backspace volver
+              <span class="ck-type-card__letter">
+                {{ effectiveInvoiceType }}
+              </span>
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
@@ -378,234 +454,300 @@ defineExpose({
 </script>
 
 <style scoped>
-.ck-invoice-pos {
+/* =========================
+   SCREEN
+========================= */
+.ck-screen {
   min-height: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 18px;
-  background: rgb(var(--v-theme-surface));
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  padding: 8px 10px;
 }
 
-.ck-invoice-pos__header {
+.ck-screen__head {
+  display: grid;
+  gap: 2px;
+}
+
+.ck-screen__title {
+  font-size: 0.95rem;
+  font-weight: 950;
+  line-height: 1.05;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.ck-screen__subtitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+/* =========================
+   FLOW
+========================= */
+.ck-flow {
+  display: grid;
+  gap: 10px;
+}
+
+.ck-group {
+  display: grid;
+  gap: 4px;
+}
+
+.ck-group__label {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* =========================
+   GRID
+========================= */
+.ck-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ck-customer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ck-type-grid {
+  display: grid;
+  gap: 10px;
+}
+
+/* 🔥 IMPORTANTE: evita que la X sea gigante */
+.ck-type-grid--compact {
+  display: grid;
+  justify-content: start;
+}
+
+.ck-type-grid--compact .ck-type-card {
+  width: min(420px, 100%);
+}
+
+/* =========================
+   CARD BASE (COMPACTA)
+========================= */
+.ck-mode-card,
+.ck-customer-card,
+.ck-type-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+
+  border-radius: 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(10, 20, 44, 0.75);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 6px 16px rgba(0, 0, 0, 0.18);
+
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease,
+    transform 0.14s ease;
+}
+
+/* tamaños compactos */
+.ck-mode-card,
+.ck-type-card {
+  min-height: 60px;
+  padding: 10px 40px 10px 12px;
+
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
-.ck-invoice-pos__title {
-  font-size: 1.05rem;
-  font-weight: 900;
-  line-height: 1.1;
-}
+.ck-customer-card {
+  min-height: 78px;
+  padding: 8px;
 
-.ck-invoice-pos__subtitle {
-  margin-top: 4px;
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.64);
-}
-
-.ck-invoice-pos__status {
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.ck-mini-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-on-surface), 0.07);
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 0.78rem;
-  font-weight: 800;
-  white-space: nowrap;
+/* hover */
+.ck-mode-card:hover,
+.ck-customer-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(44, 132, 255, 0.25);
 }
 
-.ck-invoice-pos__body {
-  display: grid;
-  gap: 10px;
-  flex: 1 1 auto;
-  min-height: 0;
+/* =========================
+   ACTIVO (ESTILO CUOTAS)
+========================= */
+.ck-mode-card.active,
+.ck-customer-card.active,
+.ck-type-card.active,
+.ck-mode-card.cursorActive,
+.ck-customer-card.cursorActive {
+  z-index: 3;
+
+  border: 1px solid rgba(44, 132, 255, 0.6);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(44, 132, 255, 0.16) 0%,
+      rgba(44, 132, 255, 0.1) 100%
+    ),
+    rgba(10, 20, 44, 0.9);
+
+  box-shadow:
+    0 0 0 2px rgba(44, 132, 255, 0.35),
+    0 0 0 5px rgba(44, 132, 255, 0.12),
+    0 10px 22px rgba(0, 0, 0, 0.22);
+
+  transform: translateY(-1px);
 }
 
-.ck-line {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
+.ck-mode-card.cursor,
+.ck-customer-card.cursor {
+  border-color: rgba(44, 132, 255, 0.35);
 }
 
-.ck-line.activeLine {
-  border-color: rgba(var(--v-theme-primary), 0.38);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.12);
-}
-
-.ck-line--info {
-  background: rgba(var(--v-theme-primary), 0.035);
-}
-
-.ck-line__label {
+/* =========================
+   CONTENT
+========================= */
+.ck-mode-card__left,
+.ck-type-card__left {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  flex: 1;
 }
 
-.ck-line__step {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  display: inline-flex;
+/* iconos chicos */
+.ck-mode-card__icon,
+.ck-type-card__icon,
+.ck-doc-chip,
+.ck-type-card__letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
+}
+
+/* textos compactos */
+.ck-mode-card__title,
+.ck-type-card__title {
   font-size: 0.78rem;
   font-weight: 900;
-  flex: 0 0 auto;
+  line-height: 1.05;
+  color: #f4f7fb;
 }
 
-.ck-line__step--info {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.7);
-}
-
-.ck-line__text {
-  font-size: 0.92rem;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.ck-line__options {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.ck-chip-option {
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 0.88rem;
+.ck-mode-card__hint,
+.ck-type-card__hint,
+.ck-customer-card__hint {
+  font-size: 0.64rem;
   font-weight: 800;
-  white-space: nowrap;
-  outline: none;
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
+  line-height: 1.05;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.ck-chip-option:hover {
-  border-color: rgba(var(--v-theme-primary), 0.25);
-}
-
-.ck-chip-option.selected {
-  background: rgba(var(--v-theme-primary), 0.1);
-  border-color: rgba(var(--v-theme-primary), 0.52);
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.ck-chip-option.cursor {
-  border-color: rgba(var(--v-theme-primary), 0.9);
-  box-shadow:
-    0 0 0 2px rgba(var(--v-theme-primary), 0.22),
-    0 6px 18px rgba(0, 0, 0, 0.12);
-  background: rgba(var(--v-theme-primary), 0.14);
-}
-
-.ck-result {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.ck-result__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-}
-
-.ck-result__k {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.62);
-}
-
-.ck-result__v {
-  font-size: 0.88rem;
+.ck-customer-card__title {
+  font-size: 0.72rem;
   font-weight: 900;
-  color: rgb(var(--v-theme-on-surface));
 }
 
-.ck-invoice-pos__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.ck-kbd-inline {
+/* =========================
+   TYPE LETTER (A/B/C/X IGUALES)
+========================= */
+.ck-type-card__letter {
   font-size: 0.8rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-weight: 950;
 }
 
-@media (max-width: 840px) {
-  .ck-line {
+/* =========================
+   CHECK
+========================= */
+.ck-mode-card__state,
+.ck-customer-card__state {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: #fff;
+}
+
+/* =========================
+   TAG "ELEGIR"
+========================= */
+.ck-cursor-tag {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+
+  z-index: 5;
+
+  height: 22px;
+  padding: 0 10px;
+
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 950;
+
+  color: white;
+
+  background: linear-gradient(
+    180deg,
+    rgba(120, 130, 150, 0.95),
+    rgba(90, 100, 120, 0.95)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 900px) {
+  .ck-customer-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .ck-mode-grid,
+  .ck-customer-grid {
     grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .ck-line__label {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 640px) {
-  .ck-line__options {
-    gap: 6px;
-  }
-
-  .ck-chip-option {
-    min-height: 38px;
-    padding: 0 12px;
-    font-size: 0.84rem;
-  }
-
-  .ck-mini-pill {
-    font-size: 0.74rem;
-  }
-
-  .ck-result {
-    gap: 10px;
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 </style>

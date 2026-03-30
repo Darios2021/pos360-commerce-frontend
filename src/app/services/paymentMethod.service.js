@@ -63,6 +63,10 @@ function cleanCode(v) {
   return s || null;
 }
 
+function slugify(v) {
+  return cleanCode(v);
+}
+
 function normalizeDate(v) {
   if (v === undefined) return undefined;
   if (v === null || v === "") return null;
@@ -79,7 +83,9 @@ function ensureJsonObject(v, def = null) {
   if (typeof v === "string") {
     try {
       const parsed = JSON.parse(v);
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : def;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : def;
     } catch {
       return def;
     }
@@ -104,8 +110,88 @@ function ensureJsonArray(v, def = null) {
   return Array.isArray(v) ? v : def;
 }
 
+function normalizeInstallmentNumber(v) {
+  const n = parseInt(String(v ?? "").trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function uniqueSortedPositiveInts(values = []) {
+  const nums = values
+    .map(normalizeInstallmentNumber)
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  return [...new Set(nums)].sort((a, b) => a - b);
+}
+
+function normalizeInstallmentPlan(raw) {
+  const arr = ensureJsonArray(raw, []);
+  const normalized = safeArray(arr)
+    .map((row) => {
+      const item = safeObj(row);
+      const installments = normalizeInstallmentNumber(item.installments);
+
+      if (!installments) return null;
+
+      return {
+        installments,
+        pricing_mode:
+          cleanStr(item.pricing_mode, 40)?.toUpperCase() || "SAME_AS_BASE",
+        surcharge_percent: toNum(item.surcharge_percent, 0),
+      };
+    })
+    .filter(Boolean);
+
+  const dedup = new Map();
+  for (const row of normalized) {
+    dedup.set(row.installments, row);
+  }
+
+  return [...dedup.values()].sort((a, b) => a.installments - b.installments);
+}
+
+function extractInstallmentNumbers(raw) {
+  const plan = normalizeInstallmentPlan(raw);
+  return uniqueSortedPositiveInts(plan.map((x) => x.installments));
+}
+
+function buildInstallmentPlanFromRange(min, max) {
+  const from = Math.max(1, toInt(min, 1));
+  const to = Math.max(from, toInt(max, from));
+
+  const out = [];
+  for (let i = from; i <= to; i += 1) {
+    out.push({
+      installments: i,
+      pricing_mode: "SAME_AS_BASE",
+      surcharge_percent: 0,
+    });
+  }
+  return out;
+}
+
+function normalizeError(err, fallbackMessage) {
+  const e = err instanceof Error ? err : new Error(fallbackMessage || "Error");
+
+  e.friendlyMessage =
+    err?.response?.data?.message ||
+    err?.friendlyMessage ||
+    err?.message ||
+    fallbackMessage ||
+    "Error";
+
+  e.code = err?.response?.data?.code || err?.code || null;
+  e.httpStatus = err?.response?.status || err?.httpStatus || null;
+  e.validation =
+    err?.response?.data?.errors ||
+    err?.response?.data?.validation ||
+    err?.validation ||
+    null;
+
+  return e;
+}
+
 /* =========================================================
-   Helpers POS (FIX)
+   Helpers POS
 ========================================================= */
 function resolvePosMethod(kind, providerCode) {
   const k = String(kind || "").trim().toUpperCase();
@@ -117,7 +203,6 @@ function resolvePosMethod(kind, providerCode) {
   if (k === "QR") return "QR";
   if (k === "MERCADOPAGO") return "MERCADOPAGO";
 
-  // Compatibilidad con tu backend actual
   if (k === "CREDIT_SJT") return "OTHER";
 
   if (p === "cash") return "CASH";
@@ -259,6 +344,22 @@ export function createPaymentMethodForm(overrides = {}) {
 ========================================================= */
 export function normalizePaymentMethod(row = {}) {
   const x = safeObj(row);
+  const installmentPlan = normalizeInstallmentPlan(x.installment_plan_json);
+  const installmentNumbers = extractInstallmentNumbers(installmentPlan);
+
+  const normalizedMin =
+    installmentNumbers.length > 0
+      ? installmentNumbers[0]
+      : Math.max(1, toInt(x.min_installments, 1));
+
+  const normalizedMax =
+    installmentNumbers.length > 0
+      ? installmentNumbers[installmentNumbers.length - 1]
+      : Math.max(normalizedMin, toInt(x.max_installments, normalizedMin));
+
+  let normalizedDefault = Math.max(1, toInt(x.default_installments, normalizedMin));
+  if (normalizedDefault < normalizedMin) normalizedDefault = normalizedMin;
+  if (normalizedDefault > normalizedMax) normalizedDefault = normalizedMax;
 
   return {
     id: toInt(x.id, 0) || null,
@@ -270,8 +371,8 @@ export function normalizePaymentMethod(row = {}) {
     description: cleanStr(x.description, 255) || "",
 
     kind: cleanStr(x.kind, 40)?.toUpperCase() || "OTHER",
-    provider_code: cleanStr(x.provider_code, 80) || "",
-    card_brand: cleanStr(x.card_brand, 60) || "",
+    provider_code: cleanStr(x.provider_code, 80)?.toLowerCase() || "",
+    card_brand: cleanStr(x.card_brand, 60)?.toUpperCase() || "",
     card_kind: cleanStr(x.card_kind, 20)?.toUpperCase() || null,
 
     is_active: parseBool(x.is_active, false),
@@ -286,7 +387,8 @@ export function normalizePaymentMethod(row = {}) {
     only_backoffice: parseBool(x.only_backoffice, false),
 
     allows_change: parseBool(x.allows_change, false),
-    change_limit_amount: x.change_limit_amount == null ? null : toNum(x.change_limit_amount, 0),
+    change_limit_amount:
+      x.change_limit_amount == null ? null : toNum(x.change_limit_amount, 0),
     counts_as_cash_in_register: parseBool(x.counts_as_cash_in_register, false),
     impacts_cash_register: parseBool(x.impacts_cash_register, false),
     register_group: cleanStr(x.register_group, 40)?.toUpperCase() || "OTHER",
@@ -296,18 +398,20 @@ export function normalizePaymentMethod(row = {}) {
     pricing_mode: cleanStr(x.pricing_mode, 40)?.toUpperCase() || "SALE_PRICE",
     surcharge_percent: toNum(x.surcharge_percent, 0),
     surcharge_fixed_amount: toNum(x.surcharge_fixed_amount, 0),
-    fixed_price_value: x.fixed_price_value == null ? null : toNum(x.fixed_price_value, 0),
+    fixed_price_value:
+      x.fixed_price_value == null ? null : toNum(x.fixed_price_value, 0),
 
     rounding_mode: cleanStr(x.rounding_mode, 20)?.toUpperCase() || "NONE",
     rounding_value: x.rounding_value == null ? null : toNum(x.rounding_value, 0),
 
     supports_installments: parseBool(x.supports_installments, false),
-    min_installments: Math.max(1, toInt(x.min_installments, 1)),
-    max_installments: Math.max(1, toInt(x.max_installments, 1)),
-    default_installments: Math.max(1, toInt(x.default_installments, 1)),
-    installment_pricing_mode: cleanStr(x.installment_pricing_mode, 40)?.toUpperCase() || "SAME_AS_BASE",
+    min_installments: normalizedMin,
+    max_installments: normalizedMax,
+    default_installments: normalizedDefault,
+    installment_pricing_mode:
+      cleanStr(x.installment_pricing_mode, 40)?.toUpperCase() || "SAME_AS_BASE",
     installment_surcharge_percent: toNum(x.installment_surcharge_percent, 0),
-    installment_plan_json: ensureJsonArray(x.installment_plan_json, []) || [],
+    installment_plan_json: installmentPlan,
 
     requires_reference: parseBool(x.requires_reference, false),
     requires_auth_code: parseBool(x.requires_auth_code, false),
@@ -322,7 +426,8 @@ export function normalizePaymentMethod(row = {}) {
     valid_from: x.valid_from || null,
     valid_to: x.valid_to || null,
 
-    input_schema_json: ensureJsonObject(x.input_schema_json, { fields: [] }) || { fields: [] },
+    input_schema_json:
+      ensureJsonObject(x.input_schema_json, { fields: [] }) || { fields: [] },
     meta: ensureJsonObject(x.meta, {}) || {},
 
     created_at: x.created_at || null,
@@ -340,15 +445,55 @@ export function normalizePaymentMethodList(rows) {
 export function buildPaymentMethodPayload(form = {}) {
   const x = normalizePaymentMethod(form);
 
+  const normalizedName = cleanStr(x.name, 140);
+  const normalizedCode = cleanCode(x.code) || slugify(normalizedName);
+  const normalizedDisplayName = cleanStr(x.display_name, 180);
+  const rawKind = cleanStr(x.kind, 40)?.toUpperCase() || "OTHER";
+
+  let supportsInstallments = !!x.supports_installments;
+  let installmentPlan = normalizeInstallmentPlan(x.installment_plan_json);
+  let minInstallments = Math.max(1, toInt(x.min_installments, 1));
+  let maxInstallments = Math.max(minInstallments, toInt(x.max_installments, minInstallments));
+  let defaultInstallments = Math.max(1, toInt(x.default_installments, minInstallments));
+
+  if (installmentPlan.length) {
+    const installments = extractInstallmentNumbers(installmentPlan);
+    minInstallments = installments[0];
+    maxInstallments = installments[installments.length - 1];
+
+    if (!installments.includes(defaultInstallments)) {
+      defaultInstallments = installments[0];
+    }
+  } else if (supportsInstallments) {
+    installmentPlan = buildInstallmentPlanFromRange(minInstallments, maxInstallments);
+    const installments = extractInstallmentNumbers(installmentPlan);
+    minInstallments = installments[0];
+    maxInstallments = installments[installments.length - 1];
+
+    if (!installments.includes(defaultInstallments)) {
+      defaultInstallments = installments[0];
+    }
+  }
+
+  if (!supportsInstallments) {
+    installmentPlan = [];
+    minInstallments = 1;
+    maxInstallments = 1;
+    defaultInstallments = 1;
+  }
+
   return {
     branch_id: x.branch_id || null,
 
-    code: cleanCode(x.code),
-    name: cleanStr(x.name, 140),
-    display_name: cleanStr(x.display_name, 180),
+    code: normalizedCode,
+    name: normalizedName,
+    display_name: normalizedDisplayName,
     description: cleanStr(x.description, 255),
 
-    kind: cleanStr(x.kind, 40)?.toUpperCase() || "OTHER",
+    kind: rawKind,
+
+    // Importante: no forzamos provider_code desde frontend.
+    // Dejamos que backend defina defaults consistentes.
     provider_code: cleanStr(x.provider_code, 80)?.toLowerCase() || null,
     card_brand: cleanStr(x.card_brand, 60)?.toUpperCase() || null,
     card_kind: cleanStr(x.card_kind, 20)?.toUpperCase() || null,
@@ -365,7 +510,8 @@ export function buildPaymentMethodPayload(form = {}) {
     only_backoffice: !!x.only_backoffice,
 
     allows_change: !!x.allows_change,
-    change_limit_amount: x.change_limit_amount == null ? null : toNum(x.change_limit_amount, 0),
+    change_limit_amount:
+      x.change_limit_amount == null ? null : toNum(x.change_limit_amount, 0),
     counts_as_cash_in_register: !!x.counts_as_cash_in_register,
     impacts_cash_register: !!x.impacts_cash_register,
     register_group: cleanStr(x.register_group, 40)?.toUpperCase() || "OTHER",
@@ -375,18 +521,20 @@ export function buildPaymentMethodPayload(form = {}) {
     pricing_mode: cleanStr(x.pricing_mode, 40)?.toUpperCase() || "SALE_PRICE",
     surcharge_percent: toNum(x.surcharge_percent, 0),
     surcharge_fixed_amount: toNum(x.surcharge_fixed_amount, 0),
-    fixed_price_value: x.fixed_price_value == null ? null : toNum(x.fixed_price_value, 0),
+    fixed_price_value:
+      x.fixed_price_value == null ? null : toNum(x.fixed_price_value, 0),
 
     rounding_mode: cleanStr(x.rounding_mode, 20)?.toUpperCase() || "NONE",
     rounding_value: x.rounding_value == null ? null : toNum(x.rounding_value, 0),
 
-    supports_installments: !!x.supports_installments,
-    min_installments: Math.max(1, toInt(x.min_installments, 1)),
-    max_installments: Math.max(1, toInt(x.max_installments, 1)),
-    default_installments: Math.max(1, toInt(x.default_installments, 1)),
-    installment_pricing_mode: cleanStr(x.installment_pricing_mode, 40)?.toUpperCase() || "SAME_AS_BASE",
+    supports_installments: supportsInstallments,
+    min_installments: minInstallments,
+    max_installments: maxInstallments,
+    default_installments: defaultInstallments,
+    installment_pricing_mode:
+      cleanStr(x.installment_pricing_mode, 40)?.toUpperCase() || "SAME_AS_BASE",
     installment_surcharge_percent: toNum(x.installment_surcharge_percent, 0),
-    installment_plan_json: ensureJsonArray(x.installment_plan_json, []) || [],
+    installment_plan_json: installmentPlan,
 
     requires_reference: !!x.requires_reference,
     requires_auth_code: !!x.requires_auth_code,
@@ -401,7 +549,8 @@ export function buildPaymentMethodPayload(form = {}) {
     valid_from: normalizeDate(x.valid_from),
     valid_to: normalizeDate(x.valid_to),
 
-    input_schema_json: ensureJsonObject(x.input_schema_json, { fields: [] }) || { fields: [] },
+    input_schema_json:
+      ensureJsonObject(x.input_schema_json, { fields: [] }) || { fields: [] },
     meta: ensureJsonObject(x.meta, {}) || {},
   };
 }
@@ -413,8 +562,8 @@ export function validatePaymentMethodForm(form = {}) {
   const x = buildPaymentMethodPayload(form);
   const errors = {};
 
-  if (!x.code) errors.code = "Código requerido";
   if (!x.name) errors.name = "Nombre requerido";
+  if (!x.code) errors.code = "Código requerido";
 
   if (x.kind === "CARD" && !x.card_kind) {
     errors.card_kind = "Tipo de tarjeta requerido";
@@ -425,12 +574,27 @@ export function validatePaymentMethodForm(form = {}) {
   }
 
   if (x.supports_installments) {
-    if (x.min_installments < 1) errors.min_installments = "Mínimo inválido";
-    if (x.max_installments < x.min_installments) errors.max_installments = "Máximo inválido";
-    if (x.default_installments < x.min_installments || x.default_installments > x.max_installments) {
+    if (x.min_installments < 1) {
+      errors.min_installments = "Mínimo inválido";
+    }
+
+    if (x.max_installments < x.min_installments) {
+      errors.max_installments = "Máximo inválido";
+    }
+
+    if (
+      x.default_installments < x.min_installments ||
+      x.default_installments > x.max_installments
+    ) {
       errors.default_installments = "Default fuera de rango";
     }
-    if (x.installment_pricing_mode === "PLAN" && !safeArray(x.installment_plan_json).length) {
+
+    const plan = normalizeInstallmentPlan(x.installment_plan_json);
+    if (!plan.length) {
+      errors.installment_plan_json = "El plan de cuotas es requerido";
+    }
+
+    if (x.installment_pricing_mode === "PLAN" && !plan.length) {
       errors.installment_plan_json = "El plan de cuotas es requerido";
     }
   }
@@ -442,6 +606,7 @@ export function validatePaymentMethodForm(form = {}) {
   if (x.valid_from && x.valid_to) {
     const d1 = new Date(x.valid_from).getTime();
     const d2 = new Date(x.valid_to).getTime();
+
     if (Number.isFinite(d1) && Number.isFinite(d2) && d2 < d1) {
       errors.valid_to = "No puede ser anterior a la fecha desde";
     }
@@ -458,51 +623,69 @@ export function validatePaymentMethodForm(form = {}) {
    API - POS / PUBLIC
 ========================================================= */
 export async function fetchPosPaymentMethods(params = {}) {
-  const query = {};
-  if (params.branch_id || params.branchId) {
-    query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
-  }
+  try {
+    const query = {};
+    if (params.branch_id || params.branchId) {
+      query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
+    }
 
-  const res = await http.get("/pos/payment-methods", { params: query });
-  return normalizePaymentMethodList(pickRows(res));
+    const res = await http.get("/pos/payment-methods", { params: query });
+    return normalizePaymentMethodList(pickRows(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudieron cargar los medios de pago POS");
+  }
 }
 
 export async function fetchPublicPaymentMethods(params = {}) {
-  const query = {};
-  if (params.branch_id || params.branchId) {
-    query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
-  }
+  try {
+    const query = {};
+    if (params.branch_id || params.branchId) {
+      query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
+    }
 
-  const res = await http.get("/public/payment-methods", { params: query });
-  return normalizePaymentMethodList(pickRows(res));
+    const res = await http.get("/public/payment-methods", { params: query });
+    return normalizePaymentMethodList(pickRows(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudieron cargar los medios de pago públicos");
+  }
 }
 
 /* =========================================================
    API - ADMIN
 ========================================================= */
 export async function fetchAdminPaymentMethods(params = {}) {
-  const query = {};
+  try {
+    const query = {};
 
-  if (params.branch_id || params.branchId) {
-    query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
-  }
-  if (params.active_only !== undefined || params.activeOnly !== undefined) {
-    query.active_only = parseBool(params.active_only ?? params.activeOnly, false);
-  }
-  if (params.q) {
-    query.q = String(params.q).trim();
-  }
+    if (params.branch_id || params.branchId) {
+      query.branch_id = toInt(params.branch_id ?? params.branchId, 0) || undefined;
+    }
 
-  const res = await http.get("/admin/payment-methods", { params: query });
-  return normalizePaymentMethodList(pickRows(res));
+    if (params.active_only !== undefined || params.activeOnly !== undefined) {
+      query.active_only = parseBool(params.active_only ?? params.activeOnly, false);
+    }
+
+    if (params.q) {
+      query.q = String(params.q).trim();
+    }
+
+    const res = await http.get("/admin/payment-methods", { params: query });
+    return normalizePaymentMethodList(pickRows(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudieron cargar los medios de pago");
+  }
 }
 
 export async function fetchAdminPaymentMethodById(id) {
   const methodId = toInt(id, 0);
   if (!methodId) throw new Error("ID inválido");
 
-  const res = await http.get(`/admin/payment-methods/${methodId}`);
-  return normalizePaymentMethod(pickOne(res));
+  try {
+    const res = await http.get(`/admin/payment-methods/${methodId}`);
+    return normalizePaymentMethod(pickOne(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudo cargar el medio de pago");
+  }
 }
 
 export async function createAdminPaymentMethod(form) {
@@ -513,8 +696,19 @@ export async function createAdminPaymentMethod(form) {
     throw err;
   }
 
-  const res = await http.post("/admin/payment-methods", check.payload);
-  return normalizePaymentMethod(pickOne(res));
+  try {
+    const res = await http.post("/admin/payment-methods", check.payload);
+    return normalizePaymentMethod(pickOne(res));
+  } catch (err) {
+    const e = normalizeError(err, "No se pudo crear el medio de pago");
+    if (!e.validation && err?.response?.data?.code === "PAYMENT_METHOD_CODE_REQUIRED") {
+      e.validation = { code: "Código requerido" };
+    }
+    if (!e.validation && err?.response?.data?.code === "PAYMENT_METHOD_NAME_REQUIRED") {
+      e.validation = { name: "Nombre requerido" };
+    }
+    throw e;
+  }
 }
 
 export async function updateAdminPaymentMethod(id, form) {
@@ -528,24 +722,36 @@ export async function updateAdminPaymentMethod(id, form) {
     throw err;
   }
 
-  const res = await http.put(`/admin/payment-methods/${methodId}`, check.payload);
-  return normalizePaymentMethod(pickOne(res));
+  try {
+    const res = await http.put(`/admin/payment-methods/${methodId}`, check.payload);
+    return normalizePaymentMethod(pickOne(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudo actualizar el medio de pago");
+  }
 }
 
 export async function toggleAdminPaymentMethodActive(id) {
   const methodId = toInt(id, 0);
   if (!methodId) throw new Error("ID inválido");
 
-  const res = await http.patch(`/admin/payment-methods/${methodId}/toggle-active`);
-  return normalizePaymentMethod(pickOne(res));
+  try {
+    const res = await http.patch(`/admin/payment-methods/${methodId}/toggle-active`);
+    return normalizePaymentMethod(pickOne(res));
+  } catch (err) {
+    throw normalizeError(err, "No se pudo cambiar el estado del medio de pago");
+  }
 }
 
 export async function deleteAdminPaymentMethod(id) {
   const methodId = toInt(id, 0);
   if (!methodId) throw new Error("ID inválido");
 
-  const res = await http.delete(`/admin/payment-methods/${methodId}`);
-  return res?.data || { ok: true };
+  try {
+    const res = await http.delete(`/admin/payment-methods/${methodId}`);
+    return res?.data || { ok: true };
+  } catch (err) {
+    throw normalizeError(err, "No se pudo eliminar el medio de pago");
+  }
 }
 
 /* =========================================================
@@ -568,18 +774,23 @@ export function getPaymentMethodInstallmentOptions(method) {
     return [{ title: "1 cuota", value: 1 }];
   }
 
-  const min = Math.max(1, toInt(x.min_installments, 1));
-  const max = Math.max(min, toInt(x.max_installments, min));
+  const planNumbers = extractInstallmentNumbers(x.installment_plan_json);
+  const installments = planNumbers.length
+    ? planNumbers
+    : uniqueSortedPositiveInts(
+        buildInstallmentPlanFromRange(x.min_installments, x.max_installments).map(
+          (row) => row.installments
+        )
+      );
 
-  const out = [];
-  for (let i = min; i <= max; i += 1) {
-    out.push({
-      title: i === 1 ? "1 cuota" : `${i} cuotas`,
-      value: i,
-    });
+  if (!installments.length) {
+    return [{ title: "1 cuota", value: 1 }];
   }
 
-  return out;
+  return installments.map((i) => ({
+    title: i === 1 ? "1 cuota" : `${i} cuotas`,
+    value: i,
+  }));
 }
 
 export function resolvePaymentMethodDefaults(method) {

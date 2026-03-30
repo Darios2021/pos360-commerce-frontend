@@ -1,6 +1,12 @@
 <template>
   <div class="ck-cash">
+
+    <!-- =========================
+         QUICK OPTIONS
+    ========================= -->
     <div class="ck-cash__quick">
+
+      <!-- EXACTO -->
       <button
         ref="quickRefs"
         type="button"
@@ -13,9 +19,20 @@
         @click="applyExactAndContinue"
       >
         <span class="ck-cash-btn__label">Exacto</span>
-        <strong class="ck-cash-btn__value">{{ money(total) }}</strong>
+        <strong class="ck-cash-btn__value">
+          {{ money(total) }}
+        </strong>
+
+        <!-- TAG -->
+        <span
+          v-if="cursorIndex === 0"
+          class="ck-cursor-tag"
+        >
+          Elegir
+        </span>
       </button>
 
+      <!-- REDONDEADO -->
       <button
         ref="quickRefs"
         type="button"
@@ -28,9 +45,20 @@
         @click="applyRoundedAndContinue"
       >
         <span class="ck-cash-btn__label">Redondeado</span>
-        <strong class="ck-cash-btn__value">{{ money(roundedAmount) }}</strong>
+        <strong class="ck-cash-btn__value">
+          {{ money(roundedAmount) }}
+        </strong>
+
+        <!-- TAG -->
+        <span
+          v-if="cursorIndex === 1"
+          class="ck-cursor-tag"
+        >
+          Elegir
+        </span>
       </button>
 
+      <!-- MANUAL -->
       <button
         ref="quickRefs"
         type="button"
@@ -44,16 +72,34 @@
       >
         <span class="ck-cash-btn__label">Insertar</span>
         <strong class="ck-cash-btn__value">Manual</strong>
+
+        <!-- TAG -->
+        <span
+          v-if="cursorIndex === 2"
+          class="ck-cursor-tag"
+        >
+          Elegir
+        </span>
       </button>
+
     </div>
 
+    <!-- =========================
+         MANUAL INPUT
+    ========================= -->
     <transition name="ck-fade">
       <div v-if="manualMode" class="ck-cash__manual">
-        <div class="ck-cash__manual-label">Importe recibido</div>
 
-        <div class="ck-manual-input-wrap" :class="{ error: error }">
+        <div class="ck-cash__manual-label">
+          Importe recibido
+        </div>
+
+        <div
+          class="ck-manual-input-wrap"
+          :class="{ error: error }"
+        >
           <span class="ck-manual-input__icon">
-            <v-icon size="22">mdi-cash</v-icon>
+            <v-icon size="20">mdi-cash</v-icon>
           </span>
 
           <input
@@ -71,25 +117,40 @@
         <div v-if="error" class="ck-cash__error">
           {{ errorMessage }}
         </div>
+
       </div>
     </transition>
 
+    <!-- =========================
+         STATUS
+    ========================= -->
     <div class="ck-cash__status-line">
-      <div v-if="missing > 0" class="ck-status ck-status--error">
+
+      <div
+        v-if="missing > 0"
+        class="ck-status ck-status--error"
+      >
         Faltan {{ money(missing) }}
       </div>
 
-      <div v-else-if="change > 0" class="ck-status ck-status--ok">
+      <div
+        v-else-if="change > 0"
+        class="ck-status ck-status--ok"
+      >
         Vuelto {{ money(change) }}
       </div>
 
-      <div v-else-if="hasEnteredAmount" class="ck-status ck-status--neutral">
+      <div
+        v-else-if="hasEnteredAmount"
+        class="ck-status ck-status--neutral"
+      >
         Importe exacto
       </div>
+
     </div>
+
   </div>
 </template>
-
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 
@@ -359,97 +420,231 @@ defineExpose({
   handleKeyboardAction,
 });
 </script>
-
 <style scoped>
+/* =========================
+   ROOT
+========================= */
 .ck-cash {
   display: grid;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
 }
 
+/* =========================
+   GRID
+========================= */
 .ck-cash__quick {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
+/* =========================
+   CARD BASE
+   MISMO ESTÁNDAR QUE FACTURACIÓN
+========================= */
 .ck-cash-btn {
-  min-height: 82px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  display: grid;
-  align-content: center;
-  gap: 6px;
-  text-align: left;
-  transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
+  appearance: none;
+  -webkit-appearance: none;
   outline: none;
+  cursor: pointer;
+
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  padding: 10px 40px 10px 12px;
+
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(10, 20, 44, 0.75);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 6px 16px rgba(0, 0, 0, 0.18);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+
+  text-align: left;
+  overflow: visible;
+
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease,
+    transform 0.14s ease;
 }
 
+/* hover igual que facturación */
 .ck-cash-btn:hover {
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  transform: translateY(-1px);
+  border-color: rgba(44, 132, 255, 0.25);
+}
+
+/* =========================
+   ACTIVO / CURSOR ACTIVE
+   MISMO ESTILO QUE FACTURACIÓN
+========================= */
+.ck-cash-btn.active,
+.ck-cash-btn.cursorActive {
+  z-index: 3;
+
+  border: 1px solid rgba(44, 132, 255, 0.6);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(44, 132, 255, 0.16) 0%,
+      rgba(44, 132, 255, 0.1) 100%
+    ),
+    rgba(10, 20, 44, 0.9);
+
+  box-shadow:
+    0 0 0 2px rgba(44, 132, 255, 0.35),
+    0 0 0 5px rgba(44, 132, 255, 0.12),
+    0 10px 22px rgba(0, 0, 0, 0.22);
+
   transform: translateY(-1px);
 }
 
-.ck-cash-btn.active {
-  border-color: rgba(var(--v-theme-primary), 0.44);
-  background: rgba(var(--v-theme-primary), 0.08);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.12);
-}
-
 .ck-cash-btn.cursor {
-  border-color: rgba(var(--v-theme-on-surface), 0.28);
+  border-color: rgba(44, 132, 255, 0.35);
 }
 
-.ck-cash-btn.cursorActive {
-  border-color: rgba(var(--v-theme-primary), 0.84);
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.14);
-}
-
+/* =========================
+   TEXTOS
+========================= */
 .ck-cash-btn__label {
-  font-size: 0.8rem;
+  display: block;
+  font-size: 0.78rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.05;
+  color: #f4f7fb;
 }
 
 .ck-cash-btn__value {
-  font-size: 1.08rem;
-  font-weight: 900;
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 800;
   line-height: 1.05;
+  color: rgba(255, 255, 255, 0.7);
 }
 
+/* Si querés que el valor se vea más fuerte como en efectivo viejo,
+   cambiá label/value en el template. Acá solo igualamos visual base. */
+
+/* =========================
+   TAG ELEGIR
+   MISMO QUE FACTURACIÓN
+========================= */
+.ck-cursor-tag {
+  position: absolute;
+  top: -10px;
+  right: 14px;
+
+  z-index: 5;
+
+  height: 22px;
+  padding: 0 10px;
+
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+
+  font-size: 0.62rem;
+  font-weight: 950;
+  line-height: 1;
+
+  color: white;
+
+  background: linear-gradient(
+    180deg,
+    rgba(120, 130, 150, 0.95),
+    rgba(90, 100, 120, 0.95)
+  );
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* =========================
+   MANUAL
+========================= */
 .ck-cash__manual {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ck-cash__manual-label {
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 .ck-manual-input-wrap {
-  min-height: 74px;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  min-height: 60px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(10, 20, 44, 0.75);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 6px 16px rgba(0, 0, 0, 0.18);
+
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 10px;
+  padding: 0 14px;
+
   transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease;
 }
 
 .ck-manual-input-wrap:focus-within {
-  border-color: rgba(var(--v-theme-primary), 0.52);
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.12);
+  border-color: rgba(44, 132, 255, 0.6);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(44, 132, 255, 0.16) 0%,
+      rgba(44, 132, 255, 0.1) 100%
+    ),
+    rgba(10, 20, 44, 0.9);
+
+  box-shadow:
+    0 0 0 2px rgba(44, 132, 255, 0.35),
+    0 0 0 5px rgba(44, 132, 255, 0.12),
+    0 10px 22px rgba(0, 0, 0, 0.22);
 }
 
 .ck-manual-input-wrap.error {
@@ -457,74 +652,84 @@ defineExpose({
 }
 
 .ck-manual-input__icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--v-theme-primary), 0.08);
   flex: 0 0 auto;
 }
 
 .ck-manual-input {
   width: 100%;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  font-size: 2rem;
+
+  font-size: 1.15rem;
   font-weight: 900;
-  line-height: 1;
-  color: rgb(var(--v-theme-on-surface));
-  letter-spacing: 0.01em;
+  line-height: 1.05;
+  color: #f4f7fb;
 }
 
 .ck-manual-input::placeholder {
-  color: rgba(var(--v-theme-on-surface), 0.34);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .ck-cash__error {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: rgb(var(--v-theme-error));
 }
 
+/* =========================
+   STATUS
+========================= */
 .ck-cash__status-line {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 28px;
+  min-height: 26px;
 }
 
 .ck-status {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 26px;
   padding: 0 10px;
+
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .ck-status--error {
   color: rgb(var(--v-theme-error));
-  background: rgba(var(--v-theme-error), 0.1);
+  background: rgba(var(--v-theme-error), 0.12);
 }
 
 .ck-status--ok {
-  color: rgb(var(--v-theme-success));
-  background: rgba(var(--v-theme-success), 0.1);
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.14);
 }
 
 .ck-status--neutral {
-  color: rgba(var(--v-theme-on-surface), 0.72);
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.05);
 }
 
+/* =========================
+   ANIM
+========================= */
 .ck-fade-enter-active,
 .ck-fade-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition: opacity 0.14s ease, transform 0.14s ease;
 }
 
 .ck-fade-enter-from,
@@ -533,13 +738,16 @@ defineExpose({
   transform: translateY(-4px);
 }
 
+/* =========================
+   RESPONSIVE
+========================= */
 @media (max-width: 760px) {
   .ck-cash__quick {
     grid-template-columns: 1fr;
   }
 
   .ck-manual-input {
-    font-size: 1.6rem;
+    font-size: 1rem;
   }
 }
 </style>

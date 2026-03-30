@@ -4,30 +4,43 @@
   <v-app>
     <v-layout>
       <!-- ================= HEADER ================= -->
-      <v-app-bar flat elevation="0" color="primary" height="72" class="pos-appbar">
+      <v-app-bar
+        flat
+        elevation="0"
+        height="72"
+        class="pos-appbar"
+      >
         <template #prepend>
           <v-btn
             :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
             variant="text"
-            @click="toggleRail"
+            class="pos-appbar-toggle"
             :title="rail ? 'Expandir menú' : 'Contraer menú'"
+            @click="toggleRail"
           />
         </template>
 
-        <div class="d-flex align-center ga-3">
-          <v-avatar color="secondary" variant="flat" size="40" class="brand-avatar">
+        <div class="d-flex align-center ga-3 brand-wrap">
+          <v-avatar
+            color="secondary"
+            variant="flat"
+            size="40"
+            class="brand-avatar"
+          >
             <span class="font-weight-bold">360</span>
           </v-avatar>
 
-          <div class="d-flex flex-column">
+          <div class="d-flex flex-column brand-copy">
             <div class="font-weight-bold">POS360</div>
-            <div class="text-caption" style="opacity: 0.85">Inventario · Ecommerce · POS</div>
+            <div class="text-caption brand-subtitle">
+              Inventario · Ecommerce · POS
+            </div>
           </div>
         </div>
 
         <v-spacer />
 
-        <!-- 🌙 Modo oscuro (HEADER) -->
+        <!-- 🌙 Modo oscuro -->
         <v-btn
           icon
           variant="text"
@@ -35,13 +48,26 @@
           :title="isDark ? 'Modo claro' : 'Modo oscuro'"
           @click="toggleDark"
         >
-          <v-icon>{{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}</v-icon>
+          <v-icon>
+            {{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}
+          </v-icon>
         </v-btn>
 
         <!-- ===== Cuenta ===== -->
-        <v-menu v-model="accountMenu" :close-on-content-click="false" location="bottom end" offset="12">
+        <v-menu
+          v-model="accountMenu"
+          :close-on-content-click="false"
+          location="bottom end"
+          offset="12"
+        >
           <template #activator="{ props }">
-            <v-btn v-bind="props" icon variant="text" class="ml-1" title="Cuenta">
+            <v-btn
+              v-bind="props"
+              icon
+              variant="text"
+              class="ml-1"
+              title="Cuenta"
+            >
               <v-avatar size="34" class="pos-avatar-btn">
                 <v-img
                   v-if="userAvatarFinal"
@@ -58,7 +84,12 @@
           <v-card rounded="xl" class="pos-account-card" min-width="340">
             <div class="d-flex align-center justify-space-between px-4 pt-4">
               <div class="text-caption text-medium-emphasis">Cuenta</div>
-              <v-btn icon="mdi-close" variant="text" density="comfortable" @click="accountMenu = false" />
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                density="comfortable"
+                @click="accountMenu = false"
+              />
             </div>
 
             <div class="px-4 pt-3 pb-2 text-center">
@@ -70,12 +101,20 @@
                   class="avatar-img"
                   cover
                 />
-                <span v-else class="text-h6 font-weight-bold">{{ userInitials }}</span>
+                <span v-else class="text-h6 font-weight-bold">
+                  {{ userInitials }}
+                </span>
               </v-avatar>
 
-              <div class="text-h6 font-weight-bold">{{ userFullName || "Usuario" }}</div>
-              <div class="text-caption text-medium-emphasis">{{ userRoleLabel }}</div>
-              <div class="text-caption text-medium-emphasis mt-1">{{ userEmailOrUsername }}</div>
+              <div class="text-h6 font-weight-bold">
+                {{ userFullName || "Usuario" }}
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                {{ userRoleLabel }}
+              </div>
+              <div class="text-caption text-medium-emphasis mt-1">
+                {{ userEmailOrUsername }}
+              </div>
             </div>
 
             <div class="px-4 pb-2">
@@ -94,7 +133,13 @@
             <v-divider class="my-3" />
 
             <div class="px-4 pb-4">
-              <v-btn block color="red" variant="tonal" prepend-icon="mdi-logout-variant" @click="onLogout">
+              <v-btn
+                block
+                color="red"
+                variant="tonal"
+                prepend-icon="mdi-logout-variant"
+                @click="onLogout"
+              >
                 Cerrar sesión
               </v-btn>
             </div>
@@ -109,20 +154,23 @@
         :rail="rail"
         width="280"
         rail-width="72"
-        color="primary"
         class="pos-drawer"
       >
-        <div class="pt-2"></div>
+        <div class="pt-3" />
 
-        <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Navegación</div>
+        <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
+          Navegación
+        </div>
 
-        <v-list nav density="comfortable">
+        <v-list nav density="comfortable" class="pos-nav-list">
           <v-list-item :to="{ name: 'home' }" exact>
             <template #prepend>
               <v-icon size="20">mdi-view-dashboard-outline</v-icon>
             </template>
             <v-list-item-title>Dashboard</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Dashboard
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item :to="{ name: 'pos' }" exact>
@@ -130,7 +178,9 @@
               <v-icon size="20">mdi-point-of-sale</v-icon>
             </template>
             <v-list-item-title>Punto de Venta</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Punto de Venta
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item :to="{ name: 'posSales' }" exact>
@@ -138,19 +188,25 @@
               <v-icon size="20">mdi-receipt-text-outline</v-icon>
             </template>
             <v-list-item-title>Ventas</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Ventas
+            </v-tooltip>
           </v-list-item>
 
-          <v-divider class="my-2" />
+          <v-divider class="my-2 nav-divider" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Gestión</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
+            Gestión
+          </div>
 
           <v-list-item :to="{ name: 'products' }" exact>
             <template #prepend>
               <v-icon size="20">mdi-package-variant-closed</v-icon>
             </template>
             <v-list-item-title>Productos</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Productos
+            </v-tooltip>
           </v-list-item>
 
           <v-list-item :to="{ name: 'productsImport' }" exact>
@@ -158,164 +214,262 @@
               <v-icon size="20">mdi-database-import-outline</v-icon>
             </template>
             <v-list-item-title>Importar CSV</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">Importar CSV</v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Importar CSV
+            </v-tooltip>
           </v-list-item>
 
-          <v-divider class="my-2" />
+          <v-divider class="my-2 nav-divider" />
 
-          <div v-if="!rail" class="px-4 py-2 text-caption" style="opacity: 0.85">Sistema</div>
+          <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
+            Sistema
+          </div>
 
-          <v-list-group v-if="showConfig" value="config">
-            <template #activator="{ props }">
-              <v-list-item v-bind="props">
+          <!-- CONFIGURACIÓN -->
+          <template v-if="showConfig && !rail">
+            <v-list-group value="config">
+              <template #activator="{ props }">
+                <v-list-item v-bind="props">
+                  <template #prepend>
+                    <v-icon size="20">mdi-cog-outline</v-icon>
+                  </template>
+                  <v-list-item-title>Configuración</v-list-item-title>
+                </v-list-item>
+              </template>
+
+              <v-list-item
+                v-if="hasRoute('stock')"
+                :to="{ name: 'stock' }"
+                exact
+              >
                 <template #prepend>
-                  <v-icon size="20">mdi-cog-outline</v-icon>
+                  <v-icon size="20">mdi-warehouse</v-icon>
                 </template>
-                <v-list-item-title>Configuración</v-list-item-title>
-                <v-tooltip v-if="rail" activator="parent" location="right">Configuración</v-tooltip>
+                <v-list-item-title>Stock</v-list-item-title>
               </v-list-item>
-            </template>
 
-            <v-list-item v-if="hasRoute('stock')" :to="{ name: 'stock' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-warehouse</v-icon>
-              </template>
-              <v-list-item-title>Stock</v-list-item-title>
-            </v-list-item>
+              <v-list-item
+                v-if="isAdmin && hasRoute('inventory')"
+                :to="{ name: 'inventory' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-clipboard-list-outline</v-icon>
+                </template>
+                <v-list-item-title>Gestión de inventario</v-list-item-title>
+              </v-list-item>
 
-            <v-list-item v-if="isAdmin && hasRoute('inventory')" :to="{ name: 'inventory' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-clipboard-list-outline</v-icon>
-              </template>
-              <v-list-item-title>Gestión de inventario</v-list-item-title>
-            </v-list-item>
+              <v-list-item
+                v-if="hasRoute('categories')"
+                :to="{ name: 'categories' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-shape-outline</v-icon>
+                </template>
+                <v-list-item-title>Categorías</v-list-item-title>
+              </v-list-item>
 
-            <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-shape-outline</v-icon>
-              </template>
-              <v-list-item-title>Categorías</v-list-item-title>
-            </v-list-item>
+              <v-list-item
+                v-if="isAdmin && hasRoute('adminFiscal')"
+                :to="{ name: 'adminFiscal' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-file-document-outline</v-icon>
+                </template>
+                <v-list-item-title>Fiscal</v-list-item-title>
+              </v-list-item>
 
-            <v-list-item v-if="isAdmin && hasRoute('adminFiscal')" :to="{ name: 'adminFiscal' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-file-document-outline</v-icon>
-              </template>
-              <v-list-item-title>Fiscal</v-list-item-title>
-            </v-list-item>
+              <v-list-item
+                v-if="isAdmin && hasRoute('adminPaymentMethods')"
+                :to="{ name: 'adminPaymentMethods' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-credit-card-cog-outline</v-icon>
+                </template>
+                <v-list-item-title>Medios de pago</v-list-item-title>
+              </v-list-item>
 
+              <v-list-item
+                v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
+                :to="{ name: 'shopBranding' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-storefront-outline</v-icon>
+                </template>
+                <v-list-item-title>Tienda</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="isAdmin && hasRoute('users')"
+                :to="{ name: 'users' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-account-multiple-outline</v-icon>
+                </template>
+                <v-list-item-title>Usuarios</v-list-item-title>
+              </v-list-item>
+            </v-list-group>
+          </template>
+
+          <template v-else-if="showConfig && rail">
             <v-list-item
-              v-if="isAdmin && hasRoute('adminPaymentMethods')"
-              :to="{ name: 'adminPaymentMethods' }"
+              v-if="configLandingRoute"
+              :to="configLandingRoute"
               exact
             >
               <template #prepend>
-                <v-icon size="20">mdi-credit-card-cog-outline</v-icon>
+                <v-icon size="20">mdi-cog-outline</v-icon>
               </template>
-              <v-list-item-title>Medios de pago</v-list-item-title>
+              <v-tooltip activator="parent" location="right">
+                Configuración
+              </v-tooltip>
             </v-list-item>
+          </template>
 
+          <!-- TIENDA -->
+          <template v-if="isAdmin && showShopMenu && !rail">
+            <v-list-group value="shopAdmin">
+              <template #activator="{ props }">
+                <v-list-item v-bind="props">
+                  <template #prepend>
+                    <v-icon size="20">mdi-storefront-outline</v-icon>
+                  </template>
+                  <v-list-item-title>Tienda</v-list-item-title>
+                </v-list-item>
+              </template>
+
+              <v-list-item
+                v-if="hasRoute('shopBranding')"
+                :to="{ name: 'shopBranding' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-palette-outline</v-icon>
+                </template>
+                <v-list-item-title>Branding</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopOrders')"
+                :to="{ name: 'shopOrders' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-receipt-text-outline</v-icon>
+                </template>
+                <v-list-item-title>Pedidos</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopOrdersSettings')"
+                :to="{ name: 'shopOrdersSettings' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-tune-variant</v-icon>
+                </template>
+                <v-list-item-title>Pedidos (config)</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopShippingSettings')"
+                :to="{ name: 'shopShippingSettings' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-truck-delivery-outline</v-icon>
+                </template>
+                <v-list-item-title>Envíos</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopPickupSettings')"
+                :to="{ name: 'shopPickupSettings' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-store-marker-outline</v-icon>
+                </template>
+                <v-list-item-title>Retiros</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopPaymentsSettings')"
+                :to="{ name: 'shopPaymentsSettings' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-credit-card-outline</v-icon>
+                </template>
+                <v-list-item-title>Pagos</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('shopNotificationsSettings')"
+                :to="{ name: 'shopNotificationsSettings' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-bell-outline</v-icon>
+                </template>
+                <v-list-item-title>Notificaciones</v-list-item-title>
+              </v-list-item>
+
+              <v-divider class="my-2 nav-divider" />
+
+              <v-list-item
+                v-if="hasRoute('shopLinks')"
+                :to="{ name: 'shopLinks' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-link-variant</v-icon>
+                </template>
+                <v-list-item-title>Links Tienda</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
+                v-if="hasRoute('adminGaleriaMultimedia')"
+                :to="{ name: 'adminGaleriaMultimedia' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-image-multiple-outline</v-icon>
+                </template>
+                <v-list-item-title>Galería multimedia</v-list-item-title>
+              </v-list-item>
+            </v-list-group>
+          </template>
+
+          <template v-else-if="isAdmin && showShopMenu && rail">
             <v-list-item
-              v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
-              :to="{ name: 'shopBranding' }"
+              v-if="shopLandingRoute"
+              :to="shopLandingRoute"
               exact
             >
               <template #prepend>
                 <v-icon size="20">mdi-storefront-outline</v-icon>
               </template>
-              <v-list-item-title>Tienda</v-list-item-title>
+              <v-tooltip activator="parent" location="right">
+                Tienda
+              </v-tooltip>
             </v-list-item>
-
-            <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-account-multiple-outline</v-icon>
-              </template>
-              <v-list-item-title>Usuarios</v-list-item-title>
-            </v-list-item>
-          </v-list-group>
-
-          <v-list-group v-if="isAdmin && showShopMenu" value="shopAdmin">
-            <template #activator="{ props }">
-              <v-list-item v-bind="props">
-                <template #prepend>
-                  <v-icon size="20">mdi-storefront-outline</v-icon>
-                </template>
-                <v-list-item-title>Tienda</v-list-item-title>
-                <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
-              </v-list-item>
-            </template>
-
-            <v-list-item v-if="hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-palette-outline</v-icon>
-              </template>
-              <v-list-item-title>Branding</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-receipt-text-outline</v-icon>
-              </template>
-              <v-list-item-title>Pedidos</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopOrdersSettings')" :to="{ name: 'shopOrdersSettings' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-tune-variant</v-icon>
-              </template>
-              <v-list-item-title>Pedidos (config)</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopShippingSettings')" :to="{ name: 'shopShippingSettings' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-truck-delivery-outline</v-icon>
-              </template>
-              <v-list-item-title>Envíos</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopPickupSettings')" :to="{ name: 'shopPickupSettings' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-store-marker-outline</v-icon>
-              </template>
-              <v-list-item-title>Retiros</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-credit-card-outline</v-icon>
-              </template>
-              <v-list-item-title>Pagos</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('shopNotificationsSettings')" :to="{ name: 'shopNotificationsSettings' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-bell-outline</v-icon>
-              </template>
-              <v-list-item-title>Notificaciones</v-list-item-title>
-            </v-list-item>
-
-            <v-divider class="my-2" />
-
-            <v-list-item v-if="hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-link-variant</v-icon>
-              </template>
-              <v-list-item-title>Links Tienda</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item v-if="hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" exact>
-              <template #prepend>
-                <v-icon size="20">mdi-image-multiple-outline</v-icon>
-              </template>
-              <v-list-item-title>Galería multimedia</v-list-item-title>
-            </v-list-item>
-          </v-list-group>
+          </template>
         </v-list>
 
         <v-spacer />
 
-        <div class="pa-4 text-caption" style="opacity: 0.85" v-if="!rail">v1 · 2025</div>
-        <div class="px-2 pb-4 text-caption text-center" style="opacity: 0.85" v-else>v1</div>
+        <div class="pa-4 text-caption drawer-version" v-if="!rail">
+          v1 · 2025
+        </div>
+        <div class="px-2 pb-4 text-caption text-center drawer-version" v-else>
+          v1
+        </div>
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
@@ -335,9 +489,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth.store";
 import { useThemeStore } from "../store/theme.store";
 import { loadAuth } from "../utils/storage";
-
-// ✅ NUEVO: toggle centralizado (mismo tab + localStorage + evento)
-import { toggleDarkMode, setDarkMode } from "@/app/theme/darkMode";
+import { setDarkMode } from "@/app/theme/darkMode";
 
 const drawer = ref(true);
 const rail = ref(false);
@@ -345,31 +497,20 @@ const accountMenu = ref(false);
 
 const auth = useAuthStore();
 const router = useRouter();
-
 const themeStore = useThemeStore();
 
-/* ===== Dark Mode =====
-   ✅ IMPORTANTE:
-   - Acá NO tocamos theme.change('dark/light') porque rompe tus themes reales
-   - Solo guardamos el flag y disparamos el evento que el ThemeManager escucha
-*/
+/* ===== Dark Mode ===== */
 const isDark = computed(() => themeStore.isDark);
 
 function toggleDark() {
   const v = !themeStore.isDark;
   themeStore.setDark(v);
-  // dispara ui-dark-changed + escribe ui.dark
   setDarkMode(v);
 }
 
-// ✅ si themeStore cambia por fuera (ej. restauración), sincronizamos el setter
-watch(
-  () => themeStore.isDark,
-  (v) => {
-    setDarkMode(!!v);
-  },
-  { immediate: true }
-);
+onMounted(() => {
+  themeStore.syncFromStorage?.();
+});
 
 /* ===== Admin ===== */
 const isAdmin = computed(() => {
@@ -411,8 +552,32 @@ const showShopMenu = computed(() => {
   );
 });
 
+const configLandingRoute = computed(() => {
+  if (hasRoute("stock")) return { name: "stock" };
+  if (hasRoute("inventory")) return { name: "inventory" };
+  if (hasRoute("categories")) return { name: "categories" };
+  if (hasRoute("adminFiscal")) return { name: "adminFiscal" };
+  if (hasRoute("adminPaymentMethods")) return { name: "adminPaymentMethods" };
+  if (hasRoute("shopBranding")) return { name: "shopBranding" };
+  if (hasRoute("users")) return { name: "users" };
+  return null;
+});
+
+const shopLandingRoute = computed(() => {
+  if (hasRoute("shopBranding")) return { name: "shopBranding" };
+  if (hasRoute("shopOrders")) return { name: "shopOrders" };
+  if (hasRoute("shopOrdersSettings")) return { name: "shopOrdersSettings" };
+  if (hasRoute("shopShippingSettings")) return { name: "shopShippingSettings" };
+  if (hasRoute("shopPickupSettings")) return { name: "shopPickupSettings" };
+  if (hasRoute("shopPaymentsSettings")) return { name: "shopPaymentsSettings" };
+  if (hasRoute("shopNotificationsSettings")) return { name: "shopNotificationsSettings" };
+  if (hasRoute("shopLinks")) return { name: "shopLinks" };
+  if (hasRoute("adminGaleriaMultimedia")) return { name: "adminGaleriaMultimedia" };
+  return null;
+});
+
 /* =========================
-   ✅ Avatar persistente (reactivo)
+   Avatar persistente
 ========================= */
 const authTick = ref(0);
 const avatarVer = ref(Date.now());
@@ -442,7 +607,8 @@ function pickUser() {
 
 const userAvatarRaw = computed(() => {
   const { u, su } = pickUser();
-  const v = u.avatar_url || u.avatarUrl || su.avatar_url || su.avatarUrl || "";
+  const v =
+    u.avatar_url || u.avatarUrl || su.avatar_url || su.avatarUrl || "";
   return String(v || "").trim();
 });
 
@@ -462,15 +628,21 @@ const userEmailOrUsername = computed(() => {
 
 const userFullName = computed(() => {
   const { u, su } = pickUser();
-  const first = u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "";
-  const last = u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "";
+  const first =
+    u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "";
+  const last =
+    u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "";
   return [first, last].filter(Boolean).join(" ").trim();
 });
 
 const userInitials = computed(() => {
   const { u, su } = pickUser();
-  const first = String(u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? "").trim();
-  const last = String(u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? "").trim();
+  const first = String(
+    u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? ""
+  ).trim();
+  const last = String(
+    u.last_name ?? u.lastName ?? su.last_name ?? su.lastName ?? ""
+  ).trim();
   const i1 = first ? first[0].toUpperCase() : "";
   const i2 = last ? last[0].toUpperCase() : "";
   return (i1 + i2) || "U";
@@ -525,9 +697,12 @@ function onLogout() {
 
 <style scoped>
 /* =========================
-   Header: línea sutil abajo (tipo ChatGPT)
+   COLOR FIJO NAVBAR + SIDEBAR
 ========================= */
+
 .pos-appbar {
+  background: #02498b !important;
+  color: #fff !important;
   border-bottom: none !important;
   position: relative;
 }
@@ -540,17 +715,17 @@ function onLogout() {
   bottom: 0;
   height: 1px;
   pointer-events: none;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.18);
 }
 
-/* =========================
-   Drawer: línea sutil lateral SIEMPRE visible
-========================= */
 .pos-drawer {
+  background: #02498b !important;
+  color: #fff !important;
   border-right: none !important;
 }
 
 .pos-drawer :deep(.v-navigation-drawer__content) {
+  background: #02498b !important;
   position: relative;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
 }
@@ -572,8 +747,40 @@ function onLogout() {
 }
 
 /* =========================
-   ✅ Drawer SIN cajas / SIN relieve / SIN focus ring
+   Texto general navbar/drawer
 ========================= */
+
+.pos-appbar,
+.pos-appbar .brand-subtitle,
+.pos-drawer,
+.pos-drawer .section-caption,
+.pos-drawer .drawer-version {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.pos-appbar-toggle {
+  margin-inline-start: 2px;
+}
+
+.brand-wrap,
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-subtitle,
+.section-caption,
+.drawer-version {
+  opacity: 0.85;
+}
+
+.pos-nav-list {
+  padding-top: 2px;
+}
+
+/* =========================
+   Drawer clean
+========================= */
+
 .pos-drawer :deep(.v-list),
 .pos-drawer :deep(.v-list-item),
 .pos-drawer :deep(.v-list-item__content),
@@ -589,7 +796,14 @@ function onLogout() {
   background: transparent !important;
   background-color: transparent !important;
   border: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 14px !important;
+  margin-inline: 8px !important;
+  min-height: 46px !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.pos-drawer :deep(.v-list-group__items .v-list-item) {
+  margin-inline: 10px !important;
 }
 
 .pos-drawer :deep(.v-list-item__overlay),
@@ -597,34 +811,45 @@ function onLogout() {
   opacity: 0 !important;
 }
 
+/* =========================
+   Hover / Active
+========================= */
+
 .pos-drawer :deep(.v-list-item:hover) {
-  background: transparent !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .pos-drawer :deep(.v-list-item--active),
 .pos-drawer :deep(.v-list-item--active:hover) {
-  background: transparent !important;
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
 .pos-drawer :deep(.v-list-item--active)::before {
   content: "";
   position: absolute;
-  left: 8px;
-  top: 10px;
-  bottom: 10px;
+  left: -2px;
+  top: 9px;
+  bottom: 9px;
   width: 3px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .pos-drawer :deep(.v-list-item--active .v-list-item-title),
 .pos-drawer :deep(.v-list-item--active .v-list-item__content) {
   font-weight: 800 !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+.nav-divider {
+  opacity: 0.18;
+  color: rgba(255, 255, 255, 0.18) !important;
 }
 
 /* =========================
-   ✅ FIX: eliminar FOCUS RING rectangular
+   Focus off
 ========================= */
+
 .pos-drawer :deep(.v-list-item:focus),
 .pos-drawer :deep(.v-list-item:focus-visible),
 .pos-drawer :deep(.v-list-item--link:focus),
@@ -642,28 +867,41 @@ function onLogout() {
 }
 
 /* =========================
-   ✅ ICONS: espacio correcto del prepend
+   Icons
 ========================= */
+
 .pos-drawer :deep(.v-list-item__prepend) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-width: 44px !important;
-  width: 44px !important;
-  margin-inline-end: 12px !important;
+  min-width: 42px !important;
+  width: 42px !important;
+  margin-inline-end: 10px !important;
+}
+
+.pos-drawer :deep(.v-list-item__prepend > .v-icon),
+.pos-drawer :deep(.v-list-item-title),
+.pos-drawer :deep(.v-list-item__content),
+.pos-drawer :deep(.v-list-subheader),
+.pos-drawer :deep(.v-list-group__header .v-icon),
+.pos-appbar :deep(.v-icon),
+.pos-appbar :deep(.v-btn),
+.pos-appbar :deep(.v-btn .v-icon) {
+  color: rgba(255, 255, 255, 0.95) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .pos-drawer :deep(.v-list-item__prepend > .v-icon) {
-  opacity: 1 !important;
-  visibility: visible !important;
   background: transparent !important;
   box-shadow: none !important;
   filter: none !important;
 }
 
 /* =========================
-   ✅ FIX: flechitas del v-list-group (append)
+   Group append cleanup
 ========================= */
+
 .pos-drawer :deep(.v-list-group__header__append),
 .pos-drawer :deep(.v-list-group__header .v-list-item__append),
 .pos-drawer :deep(.v-list-group__header .v-list-item-action),
@@ -706,8 +944,17 @@ function onLogout() {
 }
 
 /* =========================
+   Ripples off del drawer para matar el celeste
+========================= */
+
+.pos-drawer :deep(.v-ripple__container) {
+  display: none !important;
+}
+
+/* =========================
    Main
 ========================= */
+
 .pos-main {
   background: rgb(var(--v-theme-background));
 }
@@ -721,14 +968,15 @@ function onLogout() {
 /* =========================
    Avatar
 ========================= */
+
 .pos-avatar-btn {
   border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
 .pos-account-avatar {
-  border: 3px solid rgba(0, 0, 0, 0.08);
+  border: 3px solid rgba(var(--v-theme-on-surface), 0.08);
   overflow: hidden;
 }
 
@@ -758,8 +1006,9 @@ function onLogout() {
 }
 
 /* =========================
-   ✅ HEADER: sacar “cajita/sombra” SIN romper los iconos
+   Header buttons clean
 ========================= */
+
 .pos-appbar :deep(.v-btn--icon),
 .pos-appbar :deep(.v-btn--icon .v-btn__content) {
   background: transparent !important;
@@ -790,5 +1039,15 @@ function onLogout() {
   background: transparent !important;
   box-shadow: none !important;
   filter: none !important;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 760px) {
+  .brand-copy {
+    min-width: 0;
+  }
 }
 </style>

@@ -21,7 +21,10 @@
               }"
             >
               {{ item.label }}
-              <span v-if="idx < screenSteps.length - 1" class="ck-screen-sep">•</span>
+              <span
+                v-if="idx < screenSteps.length - 1"
+                class="ck-screen-sep"
+              >•</span>
             </span>
           </div>
         </div>
@@ -51,7 +54,10 @@
       <v-divider />
 
       <v-card-text class="ck-body">
-        <div class="ck-body-layout" :class="{ 'ck-body-layout--with-summary': showSummary }">
+        <div
+          class="ck-body-layout"
+          :class="{ 'ck-body-layout--with-summary': showSummary }"
+        >
           <section class="ck-main">
             <PaymentMethodScreen
               v-if="currentScreen === 'payment-method'"
@@ -175,16 +181,6 @@
 
         <div class="ck-footer-right">
           <v-btn
-            variant="text"
-            density="comfortable"
-            class="ck-btn-cancel"
-            :disabled="confirmBusy"
-            @click="closeNow"
-          >
-            Cancelar
-          </v-btn>
-
-          <v-btn
             variant="outlined"
             density="comfortable"
             rounded="pill"
@@ -192,8 +188,16 @@
             :disabled="backDisabled || confirmBusy"
             @click="goPrevScreen"
           >
-            <span class="ck-kbd-box ck-kbd-box--back">Borrar</span>
-            <span>Atrás</span>
+            <span class="ck-kbd-box ck-kbd-box--back">
+              <v-icon size="30" class="ck-kbd-icon ck-kbd-icon--back">
+                mdi-keyboard-backspace
+              </v-icon>
+            </span>
+
+            <span class="ck-btn-stack">
+              <span class="ck-btn-main">BORRAR</span>
+              <span class="ck-btn-sub">Atrás</span>
+            </span>
           </v-btn>
 
           <v-btn
@@ -205,8 +209,18 @@
             :loading="confirmBusy && currentScreen === 'confirm'"
             @click="handlePrimaryAction"
           >
-            <span class="ck-kbd-box ck-kbd-box--enter">Enter</span>
-            <span>{{ primaryLabel }}</span>
+            <span class="ck-kbd-box ck-kbd-box--enter">
+              <v-icon size="30" class="ck-kbd-icon ck-kbd-icon--enter">
+                mdi-keyboard-return
+              </v-icon>
+            </span>
+
+            <span class="ck-btn-stack">
+              <span class="ck-btn-main">ENTER</span>
+              <span class="ck-btn-sub">
+                {{ currentScreen === "confirm" ? "Aceptar" : primaryLabel }}
+              </span>
+            </span>
           </v-btn>
         </div>
       </div>
@@ -307,6 +321,14 @@ function parseAmount(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function normalizeCardKind(v, fallback = "CREDIT") {
+  const k = String(v || fallback).toUpperCase();
+  if (k === "DEBIT") return "DEBIT";
+  if (k === "BOTH") return "BOTH";
+  if (k === "PREPAID") return "PREPAID";
+  return "CREDIT";
+}
+
 function normalizeMethod(method = {}) {
   const x = method || {};
   return {
@@ -315,6 +337,7 @@ function normalizeMethod(method = {}) {
     display_name: String(x.display_name || "").trim(),
     kind: String(x.kind || "OTHER").toUpperCase(),
     pricing_mode: String(x.pricing_mode || "SALE_PRICE").toUpperCase(),
+    card_kind: normalizeCardKind(x.card_kind, "CREDIT"),
     supports_installments: !!x.supports_installments,
     min_installments: Number(x.min_installments || 1) || 1,
     max_installments: Number(x.max_installments || 1) || 1,
@@ -350,22 +373,61 @@ function methodNeedsReference(method) {
 }
 
 function methodNeedsCardKind(method) {
-  return String(method?.kind || "").toUpperCase() === "CARD";
+  if (String(method?.kind || "").toUpperCase() !== "CARD") return false;
+  return String(method?.card_kind || "CREDIT").toUpperCase() === "BOTH";
 }
 
-function methodSupportsInstallments(method) {
-  return !!method?.supports_installments;
+function methodSupportsInstallments(method, effectiveCardKind = null) {
+  if (!method) return false;
+
+  const kind = String(method.kind || "").toUpperCase();
+  if (kind !== "CARD") return !!method.supports_installments;
+
+  const configuredCardKind = String(method.card_kind || "CREDIT").toUpperCase();
+  const effective =
+    String(effectiveCardKind || configuredCardKind || "CREDIT").toUpperCase();
+
+  if (configuredCardKind === "DEBIT") return false;
+  if (configuredCardKind === "PREPAID") return false;
+  if (configuredCardKind === "CREDIT") return !!method.supports_installments;
+  if (configuredCardKind === "BOTH") return effective !== "DEBIT";
+
+  return !!method.supports_installments;
 }
 
-function methodUsesListPrice(method) {
-  return String(method?.pricing_mode || "SALE_PRICE").toUpperCase() === "LIST_PRICE";
+function methodUsesListPrice(method, effectiveCardKind = null) {
+  if (!method) return false;
+
+  const kind = String(method.kind || "").toUpperCase();
+  const pricingMode = String(method.pricing_mode || "SALE_PRICE").toUpperCase();
+
+  if (kind !== "CARD") {
+    return pricingMode === "LIST_PRICE";
+  }
+
+  const configuredCardKind = String(method.card_kind || "CREDIT").toUpperCase();
+  const effective =
+    String(effectiveCardKind || configuredCardKind || "CREDIT").toUpperCase();
+
+  if (configuredCardKind === "DEBIT") return false;
+  if (configuredCardKind === "PREPAID") return false;
+  if (configuredCardKind === "CREDIT") return true;
+  if (configuredCardKind === "BOTH") {
+    return effective !== "DEBIT";
+  }
+
+  return pricingMode === "LIST_PRICE";
 }
 
 function methodUsesCashEntry(method) {
   return String(method?.kind || "").toUpperCase() === "CASH" || !!method?.allows_change;
 }
 
-function buildInstallmentItems(method) {
+function buildInstallmentItems(method, effectiveCardKind = null) {
+  if (!methodSupportsInstallments(method, effectiveCardKind)) {
+    return [{ title: "1 cuota", value: 1 }];
+  }
+
   const plan = Array.isArray(method?.installment_plan_json)
     ? method.installment_plan_json
         .map((x) => Number(x?.installments || 0))
@@ -399,10 +461,7 @@ function makeMixedRow(input = {}) {
     amount: String(input.amount ?? ""),
     installments: Number(input.installments || 1) || 1,
     reference: String(input.reference || ""),
-    card_kind:
-      String(input.card_kind || "CREDIT").toUpperCase() === "DEBIT"
-        ? "DEBIT"
-        : "CREDIT",
+    card_kind: normalizeCardKind(input.card_kind, "CREDIT"),
   };
 }
 
@@ -488,10 +547,7 @@ const state = reactive({
   applyReseller: !!props.applyReseller,
   paymentProof: String(props.paymentProof || ""),
   cashInput: String(props.cashInput ?? ""),
-  cardKind:
-    String(props.cardKind || "CREDIT").toUpperCase() === "DEBIT"
-      ? "DEBIT"
-      : "CREDIT",
+  cardKind: normalizeCardKind(props.cardKind, "CREDIT"),
 
   mixedMode: !!props.mixedMode,
   mixedPayments: normalizeMixedPaymentsInput(props.mixedPayments),
@@ -510,8 +566,8 @@ const selectedMethod = computed(() => {
 });
 
 const singleInstallmentItems = computed(() => {
-  if (!selectedMethod.value || !methodSupportsInstallments(selectedMethod.value)) return [];
-  return buildInstallmentItems(selectedMethod.value);
+  if (!selectedMethod.value) return [];
+  return buildInstallmentItems(selectedMethod.value, state.cardKind);
 });
 
 watch(
@@ -550,10 +606,7 @@ watch(
       state.applyReseller = !!props.applyReseller;
       state.paymentProof = String(props.paymentProof || "");
       state.cashInput = String(props.cashInput ?? "");
-      state.cardKind =
-        String(props.cardKind || "CREDIT").toUpperCase() === "DEBIT"
-          ? "DEBIT"
-          : "CREDIT";
+      state.cardKind = normalizeCardKind(props.cardKind, "CREDIT");
 
       state.mixedMode = !!props.mixedMode;
       state.mixedPayments = normalizeMixedPaymentsInput(props.mixedPayments);
@@ -606,18 +659,30 @@ watch(
   (method) => {
     if (!method) return;
 
-    if (!methodSupportsInstallments(method)) {
+    const configuredCardKind = String(method.card_kind || "CREDIT").toUpperCase();
+
+    if (String(method.kind || "").toUpperCase() === "CARD") {
+      if (configuredCardKind === "DEBIT") {
+        state.cardKind = "DEBIT";
+      } else if (configuredCardKind === "CREDIT") {
+        state.cardKind = "CREDIT";
+      } else if (configuredCardKind === "PREPAID") {
+        state.cardKind = "DEBIT";
+      } else if (configuredCardKind === "BOTH") {
+        state.cardKind = normalizeCardKind(state.cardKind, "CREDIT");
+      }
+    } else {
+      state.cardKind = "CREDIT";
+    }
+
+    if (!methodSupportsInstallments(method, state.cardKind)) {
       state.installments = 1;
     } else {
-      const items = buildInstallmentItems(method);
+      const items = buildInstallmentItems(method, state.cardKind);
       const exists = items.some((x) => Number(x.value) === Number(state.installments));
       if (!exists) {
         state.installments = Number(method.default_installments || items[0]?.value || 1);
       }
-    }
-
-    if (!methodNeedsCardKind(method)) {
-      state.cardKind = "CREDIT";
     }
 
     if (!methodNeedsReference(method)) {
@@ -625,6 +690,24 @@ watch(
     }
   },
   { immediate: true }
+);
+
+watch(
+  () => state.cardKind,
+  (cardKind) => {
+    if (!selectedMethod.value) return;
+
+    if (!methodSupportsInstallments(selectedMethod.value, cardKind)) {
+      state.installments = 1;
+      return;
+    }
+
+    const items = buildInstallmentItems(selectedMethod.value, cardKind);
+    const exists = items.some((x) => Number(x.value) === Number(state.installments));
+    if (!exists) {
+      state.installments = Number(selectedMethod.value.default_installments || items[0]?.value || 1);
+    }
+  }
 );
 
 watch(
@@ -662,6 +745,27 @@ watch(
 watch(() => state.invoiceMode, (v) => emit("update:invoiceMode", v));
 watch(() => state.invoiceType, (v) => emit("update:invoiceType", v));
 watch(() => state.customerType, (v) => emit("update:customerType", v));
+
+function rowMethod(row) {
+  return (
+    visiblePaymentMethods.value.find(
+      (x) => Number(x.id) === Number(row?.payment_method_id)
+    ) || null
+  );
+}
+
+function rowEffectiveCardKind(row) {
+  const method = rowMethod(row);
+  if (!method) return "CREDIT";
+
+  const configuredCardKind = String(method.card_kind || "CREDIT").toUpperCase();
+  if (configuredCardKind === "DEBIT") return "DEBIT";
+  if (configuredCardKind === "PREPAID") return "DEBIT";
+  if (configuredCardKind === "CREDIT") return "CREDIT";
+  if (configuredCardKind === "BOTH") return normalizeCardKind(row?.card_kind, "CREDIT");
+
+  return normalizeCardKind(row?.card_kind, "CREDIT");
+}
 
 function pickPrice(it) {
   const x = it || {};
@@ -723,6 +827,23 @@ const cartUi = computed(() =>
   })
 );
 
+const computedSaleUsesListPrice = computed(() => {
+  if (state.applyReseller) return false;
+
+  if (state.mixedMode) {
+    return state.mixedPayments.some((row) => {
+      const method = rowMethod(row);
+      if (!method) return false;
+      if (parseAmount(row.amount) <= 0) return false;
+
+      return methodUsesListPrice(method, rowEffectiveCardKind(row));
+    });
+  }
+
+  if (!selectedMethod.value) return false;
+  return methodUsesListPrice(selectedMethod.value, state.cardKind);
+});
+
 const totalSafe = computed(
   () =>
     cartUi.value.reduce((a, it) => a + toNum(it._subtotal), 0) ||
@@ -738,23 +859,6 @@ const totalListSafe = computed(
     cartUi.value.reduce((a, it) => a + toNum(it._subtotalList), 0) ||
     totalSafe.value
 );
-
-const computedSaleUsesListPrice = computed(() => {
-  if (state.applyReseller) return false;
-
-  if (state.mixedMode) {
-    return state.mixedPayments.some((row) => {
-      const method = visiblePaymentMethods.value.find(
-        (x) => Number(x.id) === Number(row.payment_method_id)
-      );
-      if (!method) return false;
-      return parseAmount(row.amount) > 0 && methodUsesListPrice(method);
-    });
-  }
-
-  if (!selectedMethod.value) return false;
-  return methodUsesListPrice(selectedMethod.value);
-});
 
 const singleUsesCashEntry = computed(() => methodUsesCashEntry(selectedMethod.value));
 
@@ -843,17 +947,32 @@ const paymentSummaryLabel = computed(() => {
   if (state.mixedMode) {
     return state.mixedPayments
       .map((row) => {
-        const method = visiblePaymentMethods.value.find(
-          (x) => Number(x.id) === Number(row.payment_method_id)
-        );
+        const method = rowMethod(row);
         if (!method || parseAmount(row.amount) <= 0) return null;
-        return `${methodLabel(method)} ${money(parseAmount(row.amount))}`;
+
+        const effectiveCardKind = rowEffectiveCardKind(row);
+        let suffix = "";
+        if (String(method.kind || "").toUpperCase() === "CARD") {
+          suffix =
+            effectiveCardKind === "DEBIT"
+              ? " (Débito)"
+              : " (Crédito)";
+        }
+
+        return `${methodLabel(method)}${suffix} ${money(parseAmount(row.amount))}`;
       })
       .filter(Boolean)
       .join(" + ") || "Mixto";
   }
 
-  return selectedMethod.value ? methodLabel(selectedMethod.value) : "Sin medio";
+  if (!selectedMethod.value) return "Sin medio";
+
+  if (String(selectedMethod.value.kind || "").toUpperCase() === "CARD") {
+    const suffix = state.cardKind === "DEBIT" ? " (Débito)" : " (Crédito)";
+    return `${methodLabel(selectedMethod.value)}${suffix}`;
+  }
+
+  return methodLabel(selectedMethod.value);
 });
 
 const showSummary = computed(() =>
@@ -926,8 +1045,7 @@ function quickCash(v) {
 }
 
 function setCardKind(v) {
-  state.cardKind =
-    String(v || "CREDIT").toUpperCase() === "DEBIT" ? "DEBIT" : "CREDIT";
+  state.cardKind = normalizeCardKind(v, "CREDIT");
   if (state.cardKind === "DEBIT") state.installments = 1;
 }
 
@@ -1041,21 +1159,13 @@ function removeMixedRow(uid) {
   state.mixedPayments = state.mixedPayments.filter((row) => row.uid !== uid);
 }
 
-function rowMethod(row) {
-  return (
-    visiblePaymentMethods.value.find(
-      (x) => Number(x.id) === Number(row?.payment_method_id)
-    ) || null
-  );
-}
-
 function rowMethodNeedsCardKind(row) {
   return methodNeedsCardKind(rowMethod(row));
 }
 
 function rowMethodSupportsInstallments(row) {
   const method = rowMethod(row);
-  return methodSupportsInstallments(method);
+  return methodSupportsInstallments(method, rowEffectiveCardKind(row));
 }
 
 function rowMethodNeedsReference(row) {
@@ -1066,7 +1176,7 @@ function rowMethodNeedsReference(row) {
 function mixedInstallmentItems(row) {
   const method = rowMethod(row);
   if (!method) return [];
-  return buildInstallmentItems(method);
+  return buildInstallmentItems(method, rowEffectiveCardKind(row));
 }
 
 function mixedRowAmountError(row) {
@@ -1238,71 +1348,96 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 .ck-root {
   display: flex;
   flex-direction: column;
-  min-height: min(760px, 90dvh);
-  max-height: min(760px, 90dvh);
+  min-height: min(540px, 80dvh);
+  max-height: min(540px, 80dvh);
   overflow: hidden;
   background:
-    linear-gradient(125deg, rgba(var(--v-theme-on-surface), 0.02) 0%, rgba(var(--v-theme-on-surface), 0.01) 38%, rgba(var(--v-theme-on-surface), 0.03) 100%),
+    linear-gradient(
+      125deg,
+      rgba(var(--v-theme-on-surface), 0.02) 0%,
+      rgba(var(--v-theme-on-surface), 0.01) 38%,
+      rgba(var(--v-theme-on-surface), 0.03) 100%
+    ),
     rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 10px 22px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .ck-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
-  padding: 16px 20px 12px;
+  gap: 10px;
+  padding: 10px 12px 8px;
   flex: 0 0 auto;
 }
 
 .ck-header-left {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ck-title {
-  font-size: 1.5rem;
-  font-weight: 900;
+  font-size: 0.98rem;
+  font-weight: 950;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .ck-screen-line {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 
 .ck-screen-pill {
-  font-size: 0.88rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.44);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  background: rgba(var(--v-theme-on-surface), 0.045);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ck-screen-pill.active {
-  color: rgb(var(--v-theme-on-surface));
+  color: white;
+  background: rgba(var(--v-theme-primary), 0.92);
+  border-color: rgba(var(--v-theme-primary), 0.92);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.22);
+  transform: translateY(-1px);
 }
 
 .ck-screen-pill.done {
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-color: rgba(var(--v-theme-primary), 0.18);
 }
 
 .ck-screen-sep {
-  margin-left: 6px;
-  opacity: 0.34;
+  display: none;
 }
 
 .ck-header-right {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 4px;
   flex: 0 0 auto;
 }
 
@@ -1311,38 +1446,38 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-total-label {
-  font-size: 0.75rem;
+  font-size: 0.56rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   color: rgba(var(--v-theme-on-surface), 0.5);
-  margin-bottom: 4px;
+  margin-bottom: 1px;
 }
 
 .ck-total-line {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
 }
 
 .ck-total-icon {
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .ck-total {
-  font-size: 2.35rem;
+  font-size: 1.18rem;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
 }
 
 .ck-close {
-  margin-top: 2px;
+  margin-top: -1px;
 }
 
 .ck-body {
-  padding: 14px 16px;
+  padding: 10px 12px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -1351,13 +1486,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 .ck-body-layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 12px;
   height: 100%;
   min-height: 0;
 }
 
 .ck-body-layout--with-summary {
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.72fr);
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 320px);
   align-items: stretch;
 }
 
@@ -1369,114 +1504,323 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-main {
   height: 100%;
+  overflow: hidden;
 }
 
 .ck-summary-wrap {
   height: 100%;
+  width: 100%;
+  max-width: 320px;
+  justify-self: end;
 }
 
 .ck-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 10px 14px;
   flex: 0 0 auto;
-  background: rgba(var(--v-theme-on-surface), 0.018);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ck-footer-help {
-  font-size: 0.84rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.56);
+  color: rgba(var(--v-theme-on-surface), 0.62);
   letter-spacing: 0.01em;
 }
 
 .ck-footer-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-}
-
-.ck-btn-cancel {
-  min-height: 46px;
-  padding-inline: 16px;
-  font-weight: 900;
-  font-size: 0.86rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  margin-left: auto;
 }
 
 .ck-btn-kbd {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding-inline: 16px;
-  font-weight: 900;
-  font-size: 0.86rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 18px;
+  border-radius: 999px !important;
+  font-weight: 950;
+  text-transform: none;
+  letter-spacing: 0;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+}
+
+.ck-btn-kbd:hover {
+  transform: translateY(-1px);
+}
+
+.ck-btn-kbd:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+.ck-btn-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ck-btn-main {
+  font-size: 0.96rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.ck-btn-sub {
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1;
+  opacity: 0.88;
+  letter-spacing: 0;
 }
 
 .ck-btn-kbd--back {
   min-width: 190px;
-  border-width: 2px;
+  color: #111827 !important;
+  border: 2px solid rgba(18, 24, 33, 0.28) !important;
+  background:
+    linear-gradient(180deg, #f4f4f4 0%, #dadada 54%, #cfcfcf 100%) !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.08),
+    0 10px 22px rgba(0, 0, 0, 0.22) !important;
+}
+
+.ck-btn-kbd--back::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+}
+
+.ck-btn-kbd--back .ck-btn-main {
+  color: #111111;
+}
+
+.ck-btn-kbd--back .ck-btn-sub {
+  color: rgba(17, 24, 39, 0.72);
 }
 
 .ck-btn-kbd--primary {
-  min-width: 230px;
-  box-shadow: 0 6px 14px rgba(var(--v-theme-primary), 0.22);
+  min-width: 210px;
+  color: #ffffff !important;
+  border: 2px solid rgba(4, 29, 59, 0.44) !important;
+  background:
+    linear-gradient(180deg, #0d6fd4 0%, #0358aa 42%, #02498b 100%) !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.16),
+    0 12px 26px rgba(2, 73, 139, 0.46),
+    0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.ck-btn-kbd--primary::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.ck-btn-kbd--primary .ck-btn-main {
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+.ck-btn-kbd--primary .ck-btn-sub {
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .ck-kbd-box {
-  min-width: 66px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
+  min-width: 54px;
+  width: 54px;
+  height: 36px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.76rem;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: none;
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.08);
 }
 
 .ck-kbd-box--back {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgb(var(--v-theme-on-surface));
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(0, 0, 0, 0.05) 100%
+    );
+  border: 1px solid rgba(17, 24, 39, 0.08);
 }
 
 .ck-kbd-box--enter {
-  background: rgba(255, 255, 255, 0.18);
-  color: white;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(0, 0, 0, 0.12) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ck-kbd-icon {
+  line-height: 1;
+}
+
+.ck-kbd-icon--back {
+  color: #2b3139;
+}
+
+.ck-kbd-icon--enter {
+  color: #ffffff;
+}
+
+.ck-btn-kbd :deep(.v-icon) {
+  font-size: 22px !important;
+}
+
+.ck-btn-kbd:disabled {
+  opacity: 0.5;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+:global(.v-theme--dark) .ck-root :deep(.ck-pay.active),
+:global(.v-theme--dark) .ck-root :deep(.ck-option.active),
+:global(.v-theme--dark) .ck-root :deep(.ck-choice.active),
+:global(.v-theme--dark) .ck-root :deep(.ck-card.active),
+:global(.v-theme--dark) .ck-root :deep(.ck-box.active),
+:global(.v-theme--dark) .ck-root :deep(.ck-item.active),
+:global(.v-theme--dark) .ck-root :deep(.cursorActive.active),
+:global(.v-theme--dark) .ck-root :deep(.active.cursorActive) {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(var(--v-theme-primary), 0.22) 100%
+    ) !important;
+  border: 2px solid rgba(255, 255, 255, 0.92) !important;
+  outline: none !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.1),
+    0 0 0 4px rgba(var(--v-theme-primary), 0.34),
+    0 10px 18px rgba(0, 0, 0, 0.38) !important;
+  transform: translateY(-1px);
+}
+
+:global(.v-theme--dark) .ck-root :deep(.ck-pay.active::before),
+:global(.v-theme--dark) .ck-root :deep(.ck-option.active::before),
+:global(.v-theme--dark) .ck-root :deep(.ck-choice.active::before),
+:global(.v-theme--dark) .ck-root :deep(.ck-card.active::before),
+:global(.v-theme--dark) .ck-root :deep(.ck-box.active::before),
+:global(.v-theme--dark) .ck-root :deep(.ck-item.active::before) {
+  background: rgba(var(--v-theme-primary), 1) !important;
+}
+
+:global(.v-theme--dark) .ck-root :deep(.ck-pay.active *),
+:global(.v-theme--dark) .ck-root :deep(.ck-option.active *),
+:global(.v-theme--dark) .ck-root :deep(.ck-choice.active *),
+:global(.v-theme--dark) .ck-root :deep(.ck-card.active *),
+:global(.v-theme--dark) .ck-root :deep(.ck-box.active *),
+:global(.v-theme--dark) .ck-root :deep(.ck-item.active *) {
+  opacity: 1 !important;
+}
+
+:global(.v-theme--dark) .ck-root :deep(.ck-pay.active .ck-pay-state),
+:global(.v-theme--dark) .ck-root :deep(.ck-option.active .ck-pay-state),
+:global(.v-theme--dark) .ck-root :deep(.ck-choice.active .ck-pay-state),
+:global(.v-theme--dark) .ck-root :deep(.ck-card.active .ck-pay-state) {
+  color: rgba(255, 255, 255, 1) !important;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.22));
+}
+
+:global(.v-theme--dark) .ck-root :deep(.ck-cursor-tag) {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: rgba(255, 255, 255, 0.98) !important;
 }
 
 @media (max-width: 1200px) {
   .ck-body-layout--with-summary {
-    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.7fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(250px, 290px);
+  }
+
+  .ck-summary-wrap {
+    max-width: 290px;
   }
 
   .ck-total {
-    font-size: 2.1rem;
+    font-size: 1.08rem;
+  }
+
+  .ck-btn-kbd--back {
+    min-width: 178px;
+  }
+
+  .ck-btn-kbd--primary {
+    min-width: 194px;
+  }
+
+  .ck-kbd-box {
+    min-width: 50px;
+    width: 50px;
+    height: 34px;
+  }
+
+  .ck-btn-main {
+    font-size: 0.92rem;
+  }
+
+  .ck-btn-sub {
+    font-size: 0.7rem;
+  }
+
+  .ck-btn-kbd :deep(.v-icon) {
+    font-size: 20px !important;
   }
 }
 
 @media (max-width: 960px) {
   .ck-root {
-    min-height: min(820px, 94dvh);
-    max-height: min(820px, 94dvh);
+    min-height: min(580px, 88dvh);
+    max-height: min(580px, 88dvh);
   }
 
   .ck-body-layout--with-summary {
     grid-template-columns: 1fr;
   }
 
+  .ck-summary-wrap {
+    max-width: none;
+    justify-self: stretch;
+  }
+
   .ck-total {
-    font-size: 2rem;
+    font-size: 1.02rem;
   }
 }
 
@@ -1484,7 +1828,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   .ck-header {
     flex-direction: column;
     align-items: stretch;
-    padding: 14px 14px 12px;
+    padding: 8px 8px 6px;
+  }
+
+  .ck-header-left {
+    gap: 5px;
   }
 
   .ck-header-right {
@@ -1501,22 +1849,30 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   }
 
   .ck-body {
-    padding: 12px;
+    padding: 8px;
   }
 
   .ck-footer {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px;
+    padding: 8px 10px;
   }
 
   .ck-footer-right {
-    justify-content: stretch;
     width: 100%;
+    margin-left: 0;
+    gap: 10px;
   }
 
   .ck-footer-right :deep(.v-btn) {
     flex: 1 1 auto;
+  }
+
+  .ck-btn-kbd {
+    min-height: 58px;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 14px;
   }
 
   .ck-btn-kbd--back,
@@ -1525,7 +1881,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   }
 
   .ck-kbd-box {
-    min-width: 62px;
+    min-width: 46px;
+    width: 46px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .ck-btn-main {
+    font-size: 0.9rem;
+  }
+
+  .ck-btn-sub {
+    font-size: 0.68rem;
+  }
+
+  .ck-btn-kbd :deep(.v-icon) {
+    font-size: 18px !important;
   }
 }
 </style>

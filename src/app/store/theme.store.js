@@ -1,14 +1,17 @@
+// ✅ COPY-PASTE FINAL COMPLETO
 // src/app/store/theme.store.js
+
 import { defineStore } from "pinia";
 
-const KEY = "pos360_theme";
+const KEY = "ui.dark";
 
 function readSaved() {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (typeof obj?.dark === "boolean") return obj.dark;
+    const raw = window.localStorage.getItem(KEY);
+
+    if (raw === "1" || raw === "true") return true;
+    if (raw === "0" || raw === "false") return false;
+
     return null;
   } catch {
     return null;
@@ -17,15 +20,23 @@ function readSaved() {
 
 function writeSaved(dark) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ dark: !!dark }));
+    window.localStorage.setItem(KEY, dark ? "1" : "0");
   } catch {
     // ignore
   }
 }
 
+function readSystemPref() {
+  try {
+    return !!window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+  } catch {
+    return false;
+  }
+}
+
 export const useThemeStore = defineStore("theme", {
   state: () => ({
-    dark: readSaved() ?? false,
+    dark: readSaved() ?? readSystemPref(),
   }),
 
   getters: {
@@ -37,8 +48,16 @@ export const useThemeStore = defineStore("theme", {
       this.dark = !!v;
       writeSaved(this.dark);
     },
+
     toggle() {
       this.setDark(!this.dark);
+    },
+
+    syncFromStorage() {
+      const saved = readSaved();
+      if (typeof saved === "boolean") {
+        this.dark = saved;
+      }
     },
   },
 });

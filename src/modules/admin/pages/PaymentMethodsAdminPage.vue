@@ -173,7 +173,7 @@
               <v-text-field
                 v-model="form.name"
                 label="Nombre"
-                placeholder="Ej: Crédito Argentino"
+                placeholder="Ej: Visa"
                 variant="outlined"
                 density="comfortable"
                 :error-messages="errors.name ? [errors.name] : []"
@@ -220,6 +220,9 @@
                 label="Precio que usa"
                 variant="outlined"
                 density="comfortable"
+                :disabled="isDualCard"
+                :hint="pricingModeHint"
+                persistent-hint
               />
             </v-col>
 
@@ -266,8 +269,9 @@
                   multiple
                   chips
                   closable-chips
-                  hint="Ej: 3, 6, 12"
+                  hint="Ej: 1, 3, 6, 12"
                   persistent-hint
+                  :error-messages="errors.installment_plan_json ? [errors.installment_plan_json] : []"
                 />
               </v-col>
 
@@ -278,6 +282,7 @@
                   label="Cuota por defecto"
                   variant="outlined"
                   density="comfortable"
+                  :error-messages="errors.default_installments ? [errors.default_installments] : []"
                 />
               </v-col>
             </template>
@@ -296,6 +301,22 @@
           </v-row>
 
           <v-alert
+            v-if="isDualCard"
+            variant="tonal"
+            color="info"
+            class="mt-4"
+            density="comfortable"
+          >
+            <div class="font-weight-bold mb-1">Tarjeta dual</div>
+            <div class="text-body-2">
+              Este medio se guardará como <strong>crédito + débito</strong>.
+              En el POS la operación deberá definir el tipo:
+              <strong>débito = precio contado</strong> y
+              <strong>crédito = precio lista</strong>.
+            </div>
+          </v-alert>
+
+          <v-alert
             variant="tonal"
             color="primary"
             class="mt-4"
@@ -305,7 +326,7 @@
             <div class="text-body-2">
               <strong>{{ previewName }}</strong>
               <span class="mx-1">•</span>
-              {{ kindLabel(form.kind) }}
+              {{ previewKindLabel }}
               <span class="mx-1">•</span>
               {{ previewPricingLabel }}
               <span v-if="form.supports_installments">
@@ -350,6 +371,7 @@ import {
   deleteAdminPaymentMethod,
   validatePaymentMethodForm,
   normalizePaymentMethod,
+  buildPaymentMethodPayload,
 } from "@/app/services/paymentMethod.service";
 
 const KIND_OPTIONS = [
@@ -414,23 +436,99 @@ function normalizeInstallmentOptions(values) {
   return [...new Set(nums)].sort((a, b) => a - b);
 }
 
+function buildInstallmentPlan(options) {
+  return normalizeInstallmentOptions(options).map((n) => ({
+    installments: n,
+    pricing_mode: "SAME_AS_BASE",
+    surcharge_percent: 0,
+  }));
+}
+
+function extractInstallmentOptions(item) {
+  const raw = Array.isArray(item?.installment_plan_json)
+    ? item.installment_plan_json
+    : [];
+
+  const fromPlan = raw
+    .map((x) => parseInt(String(x?.installments ?? ""), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  if (fromPlan.length) {
+    return [...new Set(fromPlan)].sort((a, b) => a - b);
+  }
+
+  if (
+    Number.isFinite(Number(item?.min_installments)) &&
+    Number.isFinite(Number(item?.max_installments)) &&
+    Number(item?.max_installments) >= Number(item?.min_installments)
+  ) {
+    const min = Number(item.min_installments);
+    const max = Number(item.max_installments);
+    const out = [];
+    for (let i = min; i <= max; i += 1) out.push(i);
+    return out;
+  }
+
+  return [];
+}
+
 const normalizedInstallmentOptions = computed(() =>
   normalizeInstallmentOptions(installmentOptionsModel.value)
 );
 
-const defaultInstallmentsItems = computed(() => normalizedInstallmentOptions.value);
+const defaultInstallmentsItems = computed(() =>
+  normalizedInstallmentOptions.value.map((n) => ({
+    title: n === 1 ? "1 cuota" : `${n} cuotas`,
+    value: n,
+  }))
+);
+
+const isDualCard = computed(
+  () => form.value.kind === "CARD" && form.value.card_kind === "BOTH"
+);
+
+const pricingModeHint = computed(() => {
+  if (isDualCard.value) {
+    return "En dual: débito usa precio contado y crédito usa precio lista";
+  }
+  return undefined;
+});
+
+const previewPayload = computed(() => {
+  const payload = buildPaymentMethodPayload({
+    ...form.value,
+    installment_plan_json: form.value.supports_installments
+      ? buildInstallmentPlan(normalizedInstallmentOptions.value)
+      : [],
+  });
+
+  return payload;
+});
 
 const previewName = computed(
-  () => form.value.display_name || form.value.name || "Sin nombre"
+  () => previewPayload.value.display_name || previewPayload.value.name || "Sin nombre"
 );
 
-const previewPricingLabel = computed(() =>
-  form.value.pricing_mode === "LIST_PRICE" ? "Precio lista" : "Precio contado"
-);
+const previewKindLabel = computed(() => {
+  if (isDualCard.value) return "Tarjeta dual";
+  return kindLabel(form.value.kind);
+});
+
+const previewPricingLabel = computed(() => {
+  if (isDualCard.value) {
+    return "Débito: contado • Crédito: lista";
+  }
+
+  return previewPayload.value.pricing_mode === "LIST_PRICE"
+    ? "Precio lista"
+    : "Precio contado";
+});
 
 const previewInstallmentsLabel = computed(() => {
   const opts = normalizedInstallmentOptions.value;
-  if (!form.value.supports_installments || !opts.length) return "Sin cuotas";
+  if (!previewPayload.value.supports_installments || !opts.length) {
+    return "Sin cuotas";
+  }
   return `Cuotas: ${opts.join(", ")}`;
 });
 
@@ -451,6 +549,7 @@ watch(
 
     if (kind === "CARD") {
       form.value.card_kind = form.value.card_kind || "CREDIT";
+
       if (!normalizedInstallmentOptions.value.length) {
         installmentOptionsModel.value = [1, 3, 6];
       }
@@ -458,11 +557,45 @@ watch(
 
     if (kind === "CREDIT_SJT") {
       form.value.pricing_mode = "LIST_PRICE";
+      form.value.supports_installments = true;
+      form.value.card_kind = null;
+
       if (!normalizedInstallmentOptions.value.length) {
         installmentOptionsModel.value = [3, 6, 12];
       }
+    }
+  }
+);
+
+watch(
+  () => form.value.card_kind,
+  (cardKind) => {
+    if (form.value.kind !== "CARD") return;
+
+    if (cardKind === "DEBIT") {
+      form.value.pricing_mode = "SALE_PRICE";
+      form.value.supports_installments = false;
+      installmentOptionsModel.value = [];
+      return;
+    }
+
+    if (cardKind === "CREDIT") {
+      form.value.pricing_mode = "LIST_PRICE";
       form.value.supports_installments = true;
-      form.value.card_kind = null;
+
+      if (!normalizedInstallmentOptions.value.length) {
+        installmentOptionsModel.value = [1, 3, 6];
+      }
+      return;
+    }
+
+    if (cardKind === "BOTH") {
+      form.value.pricing_mode = "SALE_PRICE";
+      form.value.supports_installments = true;
+
+      if (!normalizedInstallmentOptions.value.length) {
+        installmentOptionsModel.value = [1, 3, 6];
+      }
     }
   }
 );
@@ -491,11 +624,13 @@ watch(
       form.value.min_installments = 1;
       form.value.max_installments = 1;
       form.value.default_installments = 1;
+      form.value.installment_plan_json = [];
       return;
     }
 
     form.value.min_installments = opts[0];
     form.value.max_installments = opts[opts.length - 1];
+    form.value.installment_plan_json = buildInstallmentPlan(opts);
 
     if (!opts.includes(Number(form.value.default_installments))) {
       form.value.default_installments = opts[0];
@@ -518,33 +653,13 @@ function kindLabel(kind) {
 }
 
 function pricingLabel(item) {
-  return item?.pricing_mode === "LIST_PRICE" ? "Precio lista" : "Precio contado";
-}
-
-function extractInstallmentOptions(item) {
-  const raw = Array.isArray(item?.installment_plan_json)
-    ? item.installment_plan_json
-    : [];
-
-  const fromPlan = raw
-    .map((x) => parseInt(String(x?.installments ?? ""), 10))
-    .filter((n) => Number.isFinite(n) && n > 0);
-
-  if (fromPlan.length) {
-    return [...new Set(fromPlan)].sort((a, b) => a - b);
+  if (item?.kind === "CARD" && item?.card_kind === "BOTH") {
+    return "Débito contado / Crédito lista";
   }
 
-  if (
-    Number.isFinite(Number(item?.min_installments)) &&
-    Number.isFinite(Number(item?.max_installments)) &&
-    Number(item?.max_installments) >= Number(item?.min_installments)
-  ) {
-    const min = Number(item.min_installments);
-    const max = Number(item.max_installments);
-    if (min === max) return [min];
-  }
-
-  return [];
+  return item?.pricing_mode === "LIST_PRICE"
+    ? "Precio lista"
+    : "Precio contado";
 }
 
 function installmentsSummary(item) {
@@ -562,63 +677,6 @@ function installmentsSummary(item) {
   }
 
   return plan.join(", ");
-}
-
-function slugify(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-function buildInstallmentPlan(options) {
-  return normalizeInstallmentOptions(options).map((n) => ({
-    installments: n,
-    pricing_mode: "SAME_AS_BASE",
-    surcharge_percent: 0,
-  }));
-}
-
-function buildPayloadFromSimpleForm() {
-  const installmentOptions = normalizedInstallmentOptions.value;
-  const supportsInstallments =
-    !!form.value.supports_installments && installmentOptions.length > 0;
-
-  return {
-    ...form.value,
-    code: form.value.code || slugify(form.value.name),
-    display_name: form.value.display_name || form.value.name,
-    supports_installments: supportsInstallments,
-    min_installments: supportsInstallments ? installmentOptions[0] : 1,
-    max_installments: supportsInstallments
-      ? installmentOptions[installmentOptions.length - 1]
-      : 1,
-    default_installments: supportsInstallments
-      ? Number(form.value.default_installments || installmentOptions[0] || 1)
-      : 1,
-    installment_pricing_mode: "SAME_AS_BASE",
-    installment_plan_json: supportsInstallments
-      ? buildInstallmentPlan(installmentOptions)
-      : [],
-    provider_code: form.value.provider_code || slugify(form.value.name),
-    only_pos: false,
-    only_ecom: false,
-    only_backoffice: false,
-    allow_mixed: true,
-    is_default: !!form.value.is_default,
-    is_featured: !!form.value.is_featured,
-    description: form.value.description || "",
-    surcharge_percent: 0,
-    surcharge_fixed_amount: 0,
-    fixed_price_value: null,
-    rounding_mode: "NONE",
-    rounding_value: null,
-  };
 }
 
 function openCreate() {
@@ -675,7 +733,13 @@ async function save() {
     saving.value = true;
     errors.value = {};
 
-    const payload = buildPayloadFromSimpleForm();
+    const payload = buildPaymentMethodPayload({
+      ...form.value,
+      installment_plan_json: form.value.supports_installments
+        ? buildInstallmentPlan(normalizedInstallmentOptions.value)
+        : [],
+    });
+
     const check = validatePaymentMethodForm(payload);
 
     if (!check.ok) {
@@ -685,10 +749,10 @@ async function save() {
     }
 
     if (isEdit.value && form.value.id) {
-      await updateAdminPaymentMethod(form.value.id, payload);
+      await updateAdminPaymentMethod(form.value.id, check.payload);
       notify("Medio de pago actualizado", "success");
     } else {
-      await createAdminPaymentMethod(payload);
+      await createAdminPaymentMethod(check.payload);
       notify("Medio de pago creado", "success");
     }
 
@@ -724,7 +788,10 @@ async function removeItem(item) {
     notify("Medio de pago eliminado", "success");
     await loadRows();
   } catch (e) {
-    notify(e?.friendlyMessage || e?.message || "No se pudo eliminar", "error");
+    notify(
+      e?.friendlyMessage || e?.message || "No se pudo eliminar",
+      "error"
+    );
   }
 }
 

@@ -90,24 +90,28 @@ defineProps({
   min-height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, auto) 1fr;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 24px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-surface), 0.5);
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(var(--v-theme-on-surface), 0.018) 0%,
+      rgba(var(--v-theme-on-surface), 0.01) 100%
+    );
   color: rgb(var(--v-theme-on-surface));
-  box-shadow: none;
 }
 
 .ck-summary__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ck-summary__title {
-  font-size: 1.45rem;
+  font-size: 0.92rem;
   font-weight: 950;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -123,7 +127,7 @@ defineProps({
 }
 
 .ck-summary__items::-webkit-scrollbar {
-  width: 7px;
+  width: 6px;
 }
 
 .ck-summary__items::-webkit-scrollbar-thumb {
@@ -134,13 +138,13 @@ defineProps({
 .ck-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  min-height: 68px;
-  padding: 12px 14px;
-  border-radius: 18px;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.025);
+  background: rgba(var(--v-theme-on-surface), 0.024);
 }
 
 .ck-item__left {
@@ -151,9 +155,9 @@ defineProps({
 }
 
 .ck-item__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), 0.05);
   display: inline-flex;
   align-items: center;
@@ -166,24 +170,24 @@ defineProps({
 }
 
 .ck-item__name {
-  font-size: 0.92rem;
+  font-size: 0.8rem;
   font-weight: 900;
-  line-height: 1.08;
+  line-height: 1.05;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ck-item__meta {
-  margin-top: 4px;
-  font-size: 0.8rem;
+  margin-top: 3px;
+  font-size: 0.7rem;
   font-weight: 700;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
 .ck-item__price {
-  font-size: 0.94rem;
-  font-weight: 900;
+  font-size: 0.82rem;
+  font-weight: 950;
   white-space: nowrap;
   text-align: right;
 }
@@ -195,8 +199,8 @@ defineProps({
 }
 
 .ck-total-card {
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   background: rgba(var(--v-theme-on-surface), 0.03);
 }
@@ -205,12 +209,12 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
 .ck-total-card__label {
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   font-weight: 950;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -222,28 +226,28 @@ defineProps({
 }
 
 .ck-total-card__value {
-  font-size: clamp(1.7rem, 2vw, 2.15rem);
+  font-size: 1.02rem;
   line-height: 1;
   font-weight: 950;
   letter-spacing: -0.04em;
 }
 
 .ck-total-row {
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: 15px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.025);
+  background: rgba(var(--v-theme-on-surface), 0.022);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  font-size: 0.9rem;
-  font-weight: 700;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .ck-total-row strong {
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   font-weight: 950;
   white-space: nowrap;
 }
@@ -251,7 +255,7 @@ defineProps({
 .ck-total-row__left {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .ck-total-row--paid strong {
@@ -264,29 +268,5 @@ defineProps({
 
 .ck-total-row--preview strong {
   color: rgb(var(--v-theme-error));
-}
-
-@media (max-width: 960px) {
-  .ck-summary {
-    grid-template-rows: auto auto auto;
-    padding: 14px;
-    border-radius: 20px;
-  }
-
-  .ck-summary__title {
-    font-size: 1.28rem;
-  }
-
-  .ck-summary__items {
-    max-height: 210px;
-  }
-
-  .ck-total-card__value {
-    font-size: 1.8rem;
-  }
-
-  .ck-total-row {
-    min-height: 44px;
-  }
 }
 </style>
