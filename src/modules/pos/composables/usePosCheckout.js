@@ -207,6 +207,45 @@ export function usePosCheckout({
     return buildPaymentMethodMeta(getMethodById(id));
   }
 
+  function methodUsesListPrice(meta, effectiveCardKind = null) {
+    if (!meta) return false;
+    const kind = String(meta.kind || "").toUpperCase();
+    const pricingMode = String(meta.pricing_mode || "SALE_PRICE").toUpperCase();
+    if (kind !== "CARD") return pricingMode === "LIST_PRICE";
+    const configuredCardKind = String(meta.card_kind || "CREDIT").toUpperCase();
+    const effective = String(effectiveCardKind || configuredCardKind || "CREDIT").toUpperCase();
+    if (configuredCardKind === "DEBIT") return false;
+    if (configuredCardKind === "PREPAID") return false;
+    if (configuredCardKind === "CREDIT") return true;
+    if (configuredCardKind === "BOTH") return effective !== "DEBIT";
+    return pricingMode === "LIST_PRICE";
+  }
+
+  function determineSaleUsesListPrice(payload) {
+    if (applyReseller.value) return false;
+    if (payload?.mixed_mode && Array.isArray(payload?.mixed_payments)) {
+      return payload.mixed_payments.some((row) => {
+        if (toSafeNum(row.amount, 0) <= 0) return false;
+        return methodUsesListPrice(getMethodMetaById(row?.payment_method_id), row.card_kind);
+      });
+    }
+    const methodId = payload?.payment_method_id ?? paymentMethodId.value;
+    const cardKindVal = payload?.card_kind ?? cardKind.value;
+    return methodUsesListPrice(getMethodMetaById(methodId), cardKindVal);
+  }
+
+  function pickItemPrice(it, saleUsesListPrice) {
+    const reseller = toSafeNum(it.price_reseller, 0);
+    const list = toSafeNum(it.price_list, 0);
+    const discount = toSafeNum(it.price_discount, 0);
+    const base = toSafeNum(it.price ?? it.unit_price ?? it.unitPrice, 0);
+    if (applyReseller.value && reseller > 0) return reseller;
+    if (saleUsesListPrice && list > 0) return list;
+    if (discount > 0) return discount;
+    if (list > 0) return list;
+    return base;
+  }
+
   function getDefaultPaymentMethodId() {
     if (!paymentMethods.value.length) return null;
 
@@ -434,7 +473,17 @@ export function usePosCheckout({
   }
 
   async function confirmPayment(payload = {}) {
-    const total = checkoutTotal.value;
+    const saleUsesListPrice = determineSaleUsesListPrice(payload);
+
+    const computedTotal = (posStore.cart || []).reduce((acc, it) => {
+      const qty = toSafeNum(it.qty ?? it.quantity, 0);
+      return acc + qty * pickItemPrice(it, saleUsesListPrice);
+    }, 0);
+
+    const total =
+      toSafeNum(payload?.total, 0) > 0
+        ? toSafeNum(payload.total, 0)
+        : computedTotal || checkoutTotal.value;
 
     if (!total || total <= 0) {
       console.error("[POS_CHECKOUT] total inválido", {
@@ -515,7 +564,7 @@ export function usePosCheckout({
       items: (posStore.cart || []).map((it) => ({
         product_id: Number(it.product_id ?? it.id),
         quantity: toSafeNum(it.qty ?? it.quantity, 0),
-        unit_price: toSafeNum(it.price ?? it.unit_price ?? it.unitPrice, 0),
+        unit_price: pickItemPrice(it, saleUsesListPrice),
       })),
       payments,
       cash_register_id: Number(currentCashRegisterId.value),
