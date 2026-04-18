@@ -657,7 +657,7 @@ function remove(it) {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 5px;
   min-width: 0;
 }
 
@@ -690,24 +690,24 @@ function remove(it) {
 .qty-box {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 24px 54px 24px;
-  gap: 3px;
+  grid-template-columns: 30px 60px 30px;
+  gap: 4px;
   align-items: center;
 }
 
 .qty-btn {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  border-radius: 6px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 8px !important;
 }
 
 .trash-btn {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  border-radius: 6px !important;
-  margin-left: 2px;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 8px !important;
+  margin-left: 4px;
 }
 
 .qty-input {
@@ -724,13 +724,13 @@ function remove(it) {
 }
 
 .qty-input :deep(.v-field__input) {
-  min-height: 24px;
+  min-height: 30px;
   padding-top: 2px;
   padding-bottom: 2px;
   padding-left: 4px;
   padding-right: 4px;
   text-align: center;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
