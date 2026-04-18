@@ -40,7 +40,7 @@
     minmax(var(--pos-right-min-width, 380px), var(--pos-right-column, 0.86fr));
 
   grid-template-rows:
-    var(--pos-topbar-height, 98px)
+    var(--pos-topbar-height, 52px)
     minmax(0, 1fr);
 
   grid-template-areas:

@@ -310,36 +310,34 @@ function money(v) {
 <style scoped>
 .prow {
   --row-bg: rgb(var(--v-theme-surface));
-  --row-border: rgba(var(--v-theme-on-surface), 0.08);
-  --row-border-hover: rgba(var(--v-theme-on-surface), 0.15);
+  --row-border: rgba(var(--v-theme-on-surface), 0.07);
+  --row-border-hover: rgba(var(--v-theme-on-surface), 0.13);
   --row-text: rgb(var(--v-theme-on-surface));
-  --row-muted: rgba(var(--v-theme-on-surface), 0.58);
-  --row-media-bg: rgba(var(--v-theme-on-surface), 0.045);
+  --row-muted: rgba(var(--v-theme-on-surface), 0.5);
+  --row-media-bg: rgba(var(--v-theme-on-surface), 0.04);
   --row-btn-bg: rgba(var(--v-theme-on-surface), 0.05);
-  --row-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-  --row-shadow-hover: 0 8px 18px rgba(0, 0, 0, 0.07);
+  --row-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --row-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.07);
 
   position: relative;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 46px;
-  gap: 10px;
+  grid-template-columns: 62px minmax(0, 1fr) 38px;
+  gap: 8px;
   align-items: center;
-  min-height: 108px;
-  padding: 10px 12px;
-  border-radius: 16px;
+  min-height: 76px;
+  padding: 8px 10px;
+  border-radius: 10px;
   cursor: pointer;
   background: var(--row-bg);
   border: 1px solid var(--row-border);
   box-shadow: var(--row-shadow);
   transition:
-    border-color 0.14s ease,
-    box-shadow 0.14s ease,
-    transform 0.14s ease;
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .prow:hover {
-  transform: translateY(-1px);
   border-color: var(--row-border-hover);
   box-shadow: var(--row-shadow-hover);
 }
@@ -362,13 +360,13 @@ function money(v) {
 }
 
 .prow-media {
-  width: 88px;
-  height: 88px;
-  min-width: 88px;
-  border-radius: 14px;
+  width: 62px;
+  height: 62px;
+  min-width: 62px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--row-media-bg);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -408,9 +406,9 @@ function money(v) {
 }
 
 .prow-title {
-  font-size: 15px;
-  line-height: 1.08;
-  font-weight: 900;
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--row-text);
   display: -webkit-box;
@@ -422,28 +420,28 @@ function money(v) {
 .prow-meta-lines {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  margin-top: 8px;
+  gap: 3px 8px;
+  margin-top: 4px;
 }
 
 .meta-inline {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   max-width: 100%;
-  font-size: 12px;
+  font-size: 10.5px;
   line-height: 1.1;
 }
 
 .meta-inline__label {
-  font-weight: 800;
+  font-weight: 600;
   color: var(--row-muted);
   white-space: nowrap;
 }
 
 .meta-inline__value {
-  font-weight: 800;
+  font-weight: 600;
   color: var(--row-text);
   white-space: nowrap;
   overflow: hidden;
@@ -451,18 +449,18 @@ function money(v) {
 }
 
 .prow-stock-row {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .stock-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 28px;
-  padding: 4px 10px;
+  gap: 4px;
+  min-height: 20px;
+  padding: 2px 7px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 700;
   border: 1px solid transparent;
 }
 
@@ -483,16 +481,16 @@ function money(v) {
 }
 
 .prow-price-box {
-  min-width: 154px;
+  min-width: 120px;
   text-align: right;
   flex: 0 0 auto;
 }
 
 .price-current {
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--row-text);
 }
 
@@ -500,29 +498,29 @@ function money(v) {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .price-list {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.45);
   text-decoration: line-through;
 }
 
 .price-discount-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
-  padding: 0 8px;
+  min-height: 17px;
+  padding: 0 6px;
   border-radius: 999px;
-  background: rgba(var(--v-theme-success), 0.12);
+  background: rgba(var(--v-theme-success), 0.1);
   color: rgb(var(--v-theme-success));
-  font-size: 11px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -533,10 +531,10 @@ function money(v) {
 }
 
 .btn-action {
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  border-radius: 12px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 8px !important;
   background: var(--row-btn-bg) !important;
   color: var(--row-text) !important;
 }
@@ -567,53 +565,53 @@ function money(v) {
 
 @media (max-width: 900px) {
   .prow {
-    grid-template-columns: 78px minmax(0, 1fr) 42px;
-    min-height: 96px;
-    gap: 8px;
-    padding: 9px 10px;
+    grid-template-columns: 56px minmax(0, 1fr) 34px;
+    min-height: 68px;
+    gap: 7px;
+    padding: 7px 9px;
   }
 
   .prow-media {
-    width: 78px;
-    height: 78px;
-    min-width: 78px;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
   }
 
   .prow-title {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .prow-meta-lines {
-    gap: 5px 10px;
-    margin-top: 7px;
+    gap: 3px 7px;
+    margin-top: 3px;
   }
 
   .meta-inline {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .stock-badge {
-    min-height: 24px;
-    padding: 3px 8px;
-    font-size: 10px;
+    min-height: 18px;
+    padding: 2px 6px;
+    font-size: 9px;
   }
 
   .prow-price-box {
-    min-width: 132px;
+    min-width: 100px;
   }
 
   .price-current {
-    font-size: 19px;
+    font-size: 15px;
   }
 
   .price-list {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .price-discount-chip {
-    min-height: 18px;
-    padding: 0 6px;
-    font-size: 10px;
+    min-height: 15px;
+    padding: 0 5px;
+    font-size: 9px;
   }
 }
 

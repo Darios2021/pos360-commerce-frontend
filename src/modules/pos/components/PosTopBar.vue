@@ -318,11 +318,12 @@ onBeforeUnmount(() => {
 .ptb-hotkeys {
   width: 100%;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: nowrap;
-  padding: 10px 14px;
+  padding: 0 12px;
+  height: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -333,63 +334,60 @@ onBeforeUnmount(() => {
 
 .ptb-hotkey {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-width: 74px;
-  height: 54px;
-  padding: 6px 10px;
-  border-radius: 16px;
+  gap: 5px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
   cursor: pointer;
   flex: 0 0 auto;
   background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   transition:
-    transform 0.16s ease,
-    background 0.16s ease,
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.13s ease,
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
 }
 
 .ptb-hotkey:hover {
-  transform: translateY(-1px);
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
 }
 
 .ptb-hotkey.active {
-  transform: translateY(-1px);
-  background: rgba(var(--v-theme-primary), 0.12);
-  border-color: rgba(var(--v-theme-primary), 0.32);
-  box-shadow:
-    0 0 0 2px rgba(var(--v-theme-primary), 0.12),
-    0 10px 22px rgba(var(--v-theme-primary), 0.12);
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.1);
 }
 
 .ptb-hotkey.active .ptb-hotkey-key {
   color: rgb(var(--v-theme-primary));
 }
 
-.ptb-hotkey.active .ptb-hotkey-icon :deep(.v-icon) {
-  transform: scale(1.05);
-}
-
 .ptb-hotkey-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.9;
 }
 
 .ptb-hotkey-icon :deep(.v-icon) {
-  font-size: 22px;
-  transition: transform 0.16s ease;
+  font-size: 15px;
 }
 
 .ptb-hotkey-key {
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 900;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.ptb-hotkey.active .ptb-hotkey-icon {
+  opacity: 1;
 }
 
 /* COLORES */
