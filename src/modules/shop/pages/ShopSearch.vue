@@ -65,13 +65,6 @@
             </div>
           </div>
 
-          <!-- BANNER: búsqueda relajada (ej: "cargador celular" → mostrando "cargador") -->
-          <div v-if="relaxedQuery && q && total > 0" class="srp-relaxed-notice">
-            <v-icon size="16" class="srp-relaxed-icon">mdi-information-outline</v-icon>
-            No encontramos resultados exactos para <strong>"{{ q }}"</strong>.
-            Mostrando resultados para <strong>"{{ relaxedQuery }}"</strong>.
-          </div>
-
           <!-- CHIPS de filtros activos -->
           <div v-if="activeFilterCount > 0" class="srp-chips">
             <v-chip
