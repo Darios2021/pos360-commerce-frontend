@@ -167,25 +167,25 @@
                     <div class="pfp-section-body">
                       <v-row dense>
                         <v-col cols="12">
-                          <v-text-field v-model="draft.name" :disabled="busy" density="comfortable" variant="outlined"
+                          <v-text-field v-model="draft.name" :disabled="busy" density="compact" variant="outlined"
                             label="Nombre del producto *" placeholder="Ej: Auriculares Bluetooth Sony WH-1000XM5"
                             :error="!draft.name && step1Touched"
                             :error-messages="!draft.name && step1Touched ? ['Obligatorio'] : []"
                             prepend-inner-icon="mdi-package-variant" hide-details="auto" />
                         </v-col>
                         <v-col cols="6">
-                          <v-text-field v-model="draft.brand" :disabled="busy" density="comfortable" variant="outlined"
+                          <v-text-field v-model="draft.brand" :disabled="busy" density="compact" variant="outlined"
                             label="Marca" prepend-inner-icon="mdi-tag" hide-details />
                         </v-col>
                         <v-col cols="6">
-                          <v-text-field v-model="draft.model" :disabled="busy" density="comfortable" variant="outlined"
+                          <v-text-field v-model="draft.model" :disabled="busy" density="compact" variant="outlined"
                             label="Modelo" prepend-inner-icon="mdi-identifier" hide-details />
                         </v-col>
                         <v-col cols="12">
-                          <v-textarea v-model="draft.description" :disabled="busy" density="comfortable"
+                          <v-textarea v-model="draft.description" :disabled="busy" density="compact"
                             variant="outlined" label="Descripción"
                             placeholder="Características, especificaciones, usos…"
-                            auto-grow rows="3" prepend-inner-icon="mdi-text-box-outline" hide-details />
+                            auto-grow rows="2" prepend-inner-icon="mdi-text-box-outline" hide-details />
                         </v-col>
                       </v-row>
                     </div>
@@ -203,17 +203,17 @@
                     <div class="pfp-section-body">
                       <v-row dense>
                         <v-col cols="12" sm="4">
-                          <v-text-field v-model="draft.price_list" :disabled="busy" density="comfortable"
+                          <v-text-field v-model="draft.price_list" :disabled="busy" density="compact"
                             variant="outlined" label="Lista" type="number" min="0"
                             prepend-inner-icon="mdi-currency-usd" :error-messages="fieldErr('price_list')" hide-details="auto" />
                         </v-col>
                         <v-col cols="12" sm="4">
-                          <v-text-field v-model="draft.price_discount" :disabled="busy" density="comfortable"
+                          <v-text-field v-model="draft.price_discount" :disabled="busy" density="compact"
                             variant="outlined" label="Descuento" type="number" min="0"
                             prepend-inner-icon="mdi-tag-minus" :error-messages="fieldErr('price_discount')" hide-details="auto" />
                         </v-col>
                         <v-col cols="12" sm="4">
-                          <v-text-field v-model="draft.price_reseller" :disabled="busy" density="comfortable"
+                          <v-text-field v-model="draft.price_reseller" :disabled="busy" density="compact"
                             variant="outlined" label="Revendedor" type="number" min="0"
                             prepend-inner-icon="mdi-store-outline" :error-messages="fieldErr('price_reseller')" hide-details="auto" />
                         </v-col>
@@ -242,7 +242,7 @@
                       <v-row dense>
                         <v-col cols="12" sm="6">
                           <v-select v-model="draftCategoryId" :items="categoriesList" item-title="name" item-value="id"
-                            :disabled="busy" density="comfortable" variant="outlined" label="Rubro *"
+                            :disabled="busy" density="compact" variant="outlined" label="Rubro *"
                             prepend-inner-icon="mdi-shape-outline" hide-details="auto" clearable
                             :error="!draftCategoryId && step1Touched"
                             :error-messages="!draftCategoryId && step1Touched ? ['Obligatorio'] : []"
@@ -250,7 +250,7 @@
                         </v-col>
                         <v-col cols="12" sm="6">
                           <v-select v-model="draftSubcategoryId" :items="filteredSubcategories" item-title="name"
-                            item-value="id" :disabled="busy || !draftCategoryId" density="comfortable"
+                            item-value="id" :disabled="busy || !draftCategoryId" density="compact"
                             variant="outlined" label="Subrubro *" prepend-inner-icon="mdi-shape-plus-outline"
                             hide-details="auto" clearable
                             :error="!draftSubcategoryId && step1Touched"
@@ -264,13 +264,13 @@
                           </v-select>
                         </v-col>
                         <v-col cols="12" sm="8">
-                          <v-text-field :model-value="skuPreview || draft.sku || ''" density="comfortable"
+                          <v-text-field :model-value="skuPreview || draft.sku || ''" density="compact"
                             variant="outlined" label="SKU (auto)" prepend-inner-icon="mdi-barcode-scan"
                             hide-details readonly
                             :placeholder="draftCategoryId && draftSubcategoryId ? 'Calculando…' : 'Seleccioná rubro y subrubro'" />
                         </v-col>
                         <v-col cols="12" sm="4">
-                          <v-text-field :model-value="draft.code || nextCodePreview || ''" density="comfortable"
+                          <v-text-field :model-value="draft.code || nextCodePreview || ''" density="compact"
                             variant="outlined" label="Código interno" prepend-inner-icon="mdi-pound"
                             hide-details readonly />
                         </v-col>
@@ -367,7 +367,7 @@
                       <div>
                         <div class="pfp-video-label"><v-icon size="16" color="#FF0000">mdi-youtube</v-icon> YouTube / Shorts</div>
                         <div class="d-flex ga-2 mt-2">
-                          <v-text-field v-model="ytUrl" :disabled="busy" density="comfortable" label="URL YouTube"
+                          <v-text-field v-model="ytUrl" :disabled="busy" density="compact" label="URL YouTube"
                             prepend-inner-icon="mdi-link" variant="outlined" hide-details class="flex-1"
                             @keyup.enter="addYoutubeUrl" />
                           <v-btn color="primary" variant="flat" rounded="lg" @click="addYoutubeUrl" :disabled="busy">
@@ -389,7 +389,7 @@
                       <div>
                         <div class="pfp-video-label"><v-icon size="16">mdi-upload</v-icon> Archivo de video</div>
                         <div class="mt-2">
-                          <v-file-input v-model="queuedVideoFiles" :disabled="busy" density="comfortable"
+                          <v-file-input v-model="queuedVideoFiles" :disabled="busy" density="compact"
                             variant="outlined" prepend-icon="" prepend-inner-icon="mdi-video-plus"
                             label="Elegí archivos de video" multiple accept="video/*" show-size chips hide-details />
                         </div>
@@ -419,7 +419,7 @@
                 </v-chip>
               </div>
 
-              <v-alert v-if="products.error" type="error" variant="tonal" density="comfortable" class="mb-4">
+              <v-alert v-if="products.error" type="error" variant="tonal" density="compact" class="mb-4">
                 {{ products.error }}
               </v-alert>
 
@@ -1031,7 +1031,7 @@ async function saveAll() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 16px;
 }
 .pfp-back-btn { margin-left: -6px; }
 
@@ -1147,7 +1147,7 @@ async function saveAll() {
 }
 .pfp-main::-webkit-scrollbar { display: none; }
 
-.pfp-content { padding: 24px 28px 100px; }
+.pfp-content { padding: 18px 24px 24px; }
 
 .pfp-init-loading {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1158,18 +1158,18 @@ async function saveAll() {
 .pfp-step1-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 14px;
 }
-@media (max-width: 1100px) { .pfp-step1-grid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .pfp-step1-grid { grid-template-columns: 1fr; } }
 
 /* ══ STEP 2 — 2-col: stock + images, videos full width ══ */
 .pfp-step2-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 14px;
 }
 .pfp-step2-videos { grid-column: 1 / -1; }
-@media (max-width: 900px) { .pfp-step2-grid { grid-template-columns: 1fr; } .pfp-step2-videos { grid-column: auto; } }
+@media (max-width: 780px) { .pfp-step2-grid { grid-template-columns: 1fr; } .pfp-step2-videos { grid-column: auto; } }
 
 /* ══ SECTION CARDS ══ */
 .pfp-section {
@@ -1179,14 +1179,14 @@ async function saveAll() {
 }
 .pfp-section-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
+  padding: 9px 12px;
   background: rgba(var(--v-theme-surface-variant), 0.35);
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.pfp-section-icon { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); }
+.pfp-section-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); }
 .pfp-section-title { font-size: 13px; font-weight: 800; line-height: 1.2; }
 .pfp-section-sub   { font-size: 11px; opacity: 0.55; }
-.pfp-section-body  { padding: 14px; }
+.pfp-section-body  { padding: 10px 12px; }
 .pfp-section-body.pa-0 { padding: 0; }
 .pfp-section :deep(.v-field) { border-radius: 9px; }
 
@@ -1247,8 +1247,8 @@ async function saveAll() {
 }
 .pfp-footer-inner {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 12px 20px; flex-wrap: wrap;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  gap: 12px; padding: 9px 20px; flex-wrap: wrap;
+  padding-bottom: calc(9px + env(safe-area-inset-bottom, 0px));
 }
 .pfp-footer-info  { display: flex; align-items: center; gap: 5px; font-size: 12px; opacity: 0.55; }
 .pfp-footer-step  { font-weight: 800; }
@@ -1263,23 +1263,42 @@ async function saveAll() {
 
 /* ══ TABLET ══ */
 @media (max-width: 959px) {
-  .pfp-content { padding: 18px 18px 90px; }
+  .pfp-content { padding: 14px 16px 20px; }
   .pfp-summary-grid { grid-template-columns: 1fr; }
 }
 
 /* ══ MOBILE ══ */
 @media (max-width: 599px) {
-  .pfp-content { padding: 12px 12px 88px; }
-  .pfp-topbar-inner { padding: 8px 12px; gap: 6px; }
+  .pfp-content { padding: 10px 10px 16px; }
+  .pfp-topbar-inner { padding: 7px 10px; gap: 6px; }
   .pfp-title { font-size: 13px; }
-  .pfp-section-head { padding: 10px 12px; }
-  .pfp-section-body { padding: 10px; }
+  .pfp-section-head { padding: 8px 10px; }
+  .pfp-section-body { padding: 8px 10px; }
   .pfp-toggle-row { flex-direction: column; }
   .pfp-toggle-card { min-width: 0; }
-  .pfp-footer-inner { flex-direction: column; align-items: stretch; gap: 8px; }
+  .pfp-footer-inner { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 14px; }
   .pfp-footer-btns  { gap: 8px; }
   .pfp-btn-nav, .pfp-btn-save { flex: 1; min-width: 0; }
   .pfp-price-row-grid { grid-template-columns: 1fr 1fr; }
   .pfp-kv { grid-template-columns: 80px 1fr; }
+}
+
+/* ══ LAPTOP / NOTEBOOK HEIGHT (≤ 820px viewport height) ══ */
+@media (max-height: 820px) {
+  .pfp-content       { padding: 12px 20px 16px; }
+  .pfp-step1-grid    { gap: 10px; }
+  .pfp-step2-grid    { gap: 10px; }
+  .pfp-section-head  { padding: 7px 11px; }
+  .pfp-section-body  { padding: 8px 11px; }
+  .pfp-topbar-inner  { padding: 7px 14px; }
+}
+
+/* ══ VERY SHORT SCREENS (≤ 700px height, phones landscape) ══ */
+@media (max-height: 700px) {
+  .pfp-content      { padding: 8px 14px 12px; }
+  .pfp-section-head { padding: 6px 10px; }
+  .pfp-section-body { padding: 7px 10px; }
+  .pfp-step1-grid   { gap: 8px; }
+  .pfp-footer-inner { padding: 7px 14px; }
 }
 </style>
