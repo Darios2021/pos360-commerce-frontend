@@ -28,6 +28,15 @@
 
       <template v-else>
         <div v-if="suggestions.length" class="sb-list">
+          <!-- Fila: buscar el término escrito -->
+          <button class="sb-term-row" type="button" @mousedown.prevent="goSearch">
+            <v-icon size="16" class="sb-term-icon">mdi-magnify</v-icon>
+            <div class="sb-term-info">
+              <span class="sb-term-text">Buscar <strong>{{ normalize(text) }}</strong></span>
+              <span class="sb-term-hint">Ver todos los resultados</span>
+            </div>
+            <v-icon size="14" class="sb-term-arr">mdi-arrow-right</v-icon>
+          </button>
           <button
             v-for="(s, i) in suggestions"
             :key="String(s.product_id) + '-' + i"
@@ -200,17 +209,12 @@ function move(dir) {
 }
 
 function pick(s) {
-  const q = String(s.name || "").trim();
   close();
-  if (q) {
-    router.push({ name: "shopSearch", query: { q } });
-  } else {
-    router.push({
-      name: "shopProduct",
-      params: { id: String(s.product_id) },
-      query: { branch_id: String(props.branchId) },
-    });
-  }
+  router.push({
+    name: "shopProduct",
+    params: { id: String(s.product_id) },
+    query: { branch_id: String(props.branchId) },
+  });
 }
 
 function goSearch() {
@@ -476,4 +480,25 @@ watch(
   background: rgba(52, 131, 250, 0.07);
 }
 .sb-foot :deep(.v-icon) { color: #3483fa !important; }
+/* --- Fila "Buscar X" (primera del dropdown) --- */
+.sb-term-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: rgba(52, 131, 250, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.sb-term-row:hover { background: rgba(52, 131, 250, 0.12); }
+.sb-term-icon { color: #3483fa !important; flex: 0 0 auto; }
+.sb-term-arr { color: #3483fa !important; flex: 0 0 auto; margin-left: auto; }
+.sb-term-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.sb-term-text { font-size: 13px; color: #222; }
+.sb-term-text strong { color: #111; }
+.sb-term-hint { font-size: 10.5px; color: #3483fa; }
 </style>
