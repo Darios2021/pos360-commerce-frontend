@@ -10,22 +10,26 @@
         <div class="ck-header-left">
           <div class="ck-title">Cobro POS</div>
 
-          <div class="ck-screen-line">
-            <span
+          <div class="ck-stepper">
+            <template
               v-for="(item, idx) in screenSteps"
               :key="item.key"
-              class="ck-screen-pill"
-              :class="{
-                active: currentScreen === item.key,
-                done: screenIndex(item.key) < currentScreenIndex
-              }"
             >
-              {{ item.label }}
-              <span
-                v-if="idx < screenSteps.length - 1"
-                class="ck-screen-sep"
-              >•</span>
-            </span>
+              <div
+                class="ck-step"
+                :class="{
+                  'ck-step--active': currentScreen === item.key,
+                  'ck-step--done': screenIndex(item.key) < currentScreenIndex
+                }"
+              >
+                <div class="ck-step-circle">
+                  <v-icon v-if="screenIndex(item.key) < currentScreenIndex" size="11">mdi-check</v-icon>
+                  <span v-else class="ck-step-num">{{ idx + 1 }}</span>
+                </div>
+                <span class="ck-step-label">{{ item.label }}</span>
+              </div>
+              <div v-if="idx < screenSteps.length - 1" class="ck-step-line" />
+            </template>
           </div>
         </div>
 
@@ -1388,50 +1392,80 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   letter-spacing: -0.02em;
 }
 
-.ck-screen-line {
+/* ── Stepper ── */
+.ck-stepper {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 0;
 }
 
-.ck-screen-pill {
-  display: inline-flex;
+.ck-step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ck-step-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 0.72rem;
+  flex: 0 0 auto;
+  border: 1.5px solid rgba(var(--v-theme-on-surface), 0.18);
+  background: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ck-step-num {
+  font-size: 0.62rem;
   font-weight: 900;
   line-height: 1;
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  background: rgba(var(--v-theme-on-surface), 0.045);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+  color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-.ck-screen-pill.active {
-  color: white;
-  background: rgba(var(--v-theme-primary), 0.92);
-  border-color: rgba(var(--v-theme-primary), 0.92);
-  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.22);
-  transform: translateY(-1px);
+.ck-step--active .ck-step-circle {
+  background: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
 }
 
-.ck-screen-pill.done {
+.ck-step--active .ck-step-circle .ck-step-num {
+  color: #fff;
+}
+
+.ck-step--done .ck-step-circle {
+  background: rgba(var(--v-theme-primary), 0.14);
+  border-color: rgba(var(--v-theme-primary), 0.36);
+}
+
+.ck-step--done .ck-step-circle :deep(.v-icon) {
+  color: rgb(var(--v-theme-primary));
+}
+
+.ck-step-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  white-space: nowrap;
+}
+
+.ck-step--active .ck-step-label {
   color: rgb(var(--v-theme-on-surface));
-  background: rgba(var(--v-theme-primary), 0.12);
-  border-color: rgba(var(--v-theme-primary), 0.18);
+  font-weight: 900;
 }
 
-.ck-screen-sep {
-  display: none;
+.ck-step--done .ck-step-label {
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.ck-step-line {
+  width: 18px;
+  height: 1.5px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 3px;
+  flex: 0 0 auto;
 }
 
 .ck-header-right {

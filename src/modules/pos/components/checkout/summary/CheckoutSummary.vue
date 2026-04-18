@@ -39,14 +39,8 @@
 
     <div class="ck-summary__totals">
       <div class="ck-total-card">
-        <div class="ck-total-card__top">
-          <div class="ck-total-card__label">TOTAL</div>
-          <v-icon size="24" class="ck-total-card__icon">mdi-cash-multiple</v-icon>
-        </div>
-
-        <div class="ck-total-card__value">
-          {{ money(totalSafe) }}
-        </div>
+        <div class="ck-total-card__label">TOTAL</div>
+        <div class="ck-total-card__value">{{ money(totalSafe) }}</div>
       </div>
 
       <div class="ck-total-row ck-total-row--paid">
@@ -89,18 +83,13 @@ defineProps({
   height: 100%;
   min-height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(0, auto) 1fr;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background:
-    linear-gradient(
-      145deg,
-      rgba(var(--v-theme-on-surface), 0.018) 0%,
-      rgba(var(--v-theme-on-surface), 0.01) 100%
-    );
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background: rgba(var(--v-theme-surface), 1);
   color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
 }
 
 .ck-summary__head {
@@ -108,65 +97,64 @@ defineProps({
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
 
 .ck-summary__title {
-  font-size: 0.92rem;
-  font-weight: 950;
+  font-size: 0.75rem;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 .ck-summary__items {
   min-height: 0;
   overflow: auto;
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  padding-right: 2px;
+  padding: 4px 0;
 }
 
 .ck-summary__items::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .ck-summary__items::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 999px;
 }
 
+/* Recibo-style: no borders, just rows with dividers */
 .ck-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
-  min-height: 36px;
-  padding: 5px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.ck-item:last-child {
+  border-bottom: none;
 }
 
 .ck-item__left {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
 }
 
 .ck-item__icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
+  opacity: 0.35;
 }
 
 .ck-item__icon :deep(.v-icon) {
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 .ck-item__text {
@@ -174,92 +162,94 @@ defineProps({
 }
 
 .ck-item__name {
-  font-size: 0.74rem;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 0.73rem;
+  font-weight: 700;
+  line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ck-item__meta {
-  font-size: 0.66rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   line-height: 1;
 }
 
 .ck-item__price {
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: 0.76rem;
+  font-weight: 800;
   white-space: nowrap;
   text-align: right;
 }
 
 .ck-summary__totals {
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+  padding: 8px 12px;
   display: grid;
-  align-content: start;
-  gap: 5px;
+  gap: 4px;
 }
 
 .ck-total-card {
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-on-surface), 0.03);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  margin-bottom: 4px;
 }
 
 .ck-total-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 8px;
+  display: none;
 }
 
 .ck-total-card__label {
-  font-size: 0.66rem;
-  font-weight: 950;
-  letter-spacing: 0.05em;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.56);
+  color: rgba(var(--v-theme-on-surface), 0.45);
 }
 
 .ck-total-card__icon {
-  opacity: 0.5;
+  display: none;
 }
 
 .ck-total-card__value {
-  font-size: 1.02rem;
+  font-size: 1.2rem;
   line-height: 1;
   font-weight: 950;
   letter-spacing: -0.04em;
 }
 
 .ck-total-row {
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  background: rgba(var(--v-theme-on-surface), 0.018);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  min-height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 0;
 }
 
 .ck-total-row strong {
-  font-size: 0.8rem;
-  font-weight: 950;
+  font-size: 0.74rem;
+  font-weight: 900;
   white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
 
 .ck-total-row__left {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .ck-total-row--paid strong {
