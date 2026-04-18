@@ -2,9 +2,9 @@
 <template>
   <v-container fluid class="shop-page pa-0">
 
-    <!-- ── HERO (misma estructura que PromoBannerSeguridadElectronica) ── -->
-    <section class="content pt-4 pb-0">
-      <v-card class="hero-card" variant="flat" rounded="xl">
+    <!-- ── HERO FULL-BLEED ── -->
+    <section class="hero-fullbleed">
+      <div class="hero-inner">
         <div class="hero-grid">
           <div class="hero-left">
             <div class="hero-kicker">San Juan Seguridad</div>
@@ -13,7 +13,21 @@
               Sistemas de videovigilancia, alarmas y control de acceso
               para hogares y empresas. Instalación y soporte incluidos.
             </p>
-            <div class="d-flex ga-3 flex-wrap mt-2">
+            <div class="d-flex ga-2 flex-wrap mt-2 mb-4">
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                Instalación incluida
+              </v-chip>
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                Acceso remoto
+              </v-chip>
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                Garantía oficial
+              </v-chip>
+            </div>
+            <div class="d-flex ga-3 flex-wrap">
               <v-btn
                 color="white"
                 variant="flat"
@@ -45,7 +59,7 @@
             />
           </div>
         </div>
-      </v-card>
+      </div>
     </section>
 
     <section class="content pt-6">
@@ -160,7 +174,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ── Mismo patrón que ShopHome ── */
 .shop-page { --shop-max: 1200px; padding: 0 !important; background: #ebebeb !important; }
 
 .content {
@@ -169,21 +182,30 @@ onMounted(async () => {
   padding-bottom: 24px;
 }
 
-/* Hero */
-.hero-card { background: #02498b !important; overflow: hidden; }
+/* Hero full-bleed */
+.hero-fullbleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  background: #02498b;
+  border-radius: 0 0 22px 22px;
+  overflow: hidden;
+}
+.hero-inner {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0;
+}
 .hero-grid {
   display: grid;
   grid-template-columns: 1fr 420px;
   align-items: center;
-  padding: 36px 36px;
   gap: 24px;
-  min-height: 200px;
 }
 .hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 700; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
 .hero-title { margin: 0 0 12px; color: white; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.1; font-weight: 800; }
-.hero-sub { margin: 0 0 16px; color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.6; max-width: 480px; }
+.hero-sub { margin: 0 0 10px; color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.6; max-width: 480px; }
 .hero-right { display: flex; justify-content: flex-end; align-items: center; }
-.hero-img { width: 400px; height: 190px; object-fit: contain; }
+.hero-img { width: 400px; height: 200px; object-fit: contain; }
 
 /* Services */
 .services-grid {
@@ -195,14 +217,11 @@ onMounted(async () => {
 /* CTA */
 .cta-card { background: linear-gradient(135deg, #02498b 0%, #013066 100%) !important; margin-bottom: 32px; }
 
-/* Responsive */
 @media (max-width: 900px) {
   .hero-grid { grid-template-columns: 1fr; }
-  .hero-right { justify-content: center; }
-  .hero-img { width: 100%; height: 180px; }
+  .hero-right { display: none; }
 }
 @media (max-width: 600px) {
-  .hero-grid { padding: 24px 20px; }
-  .hero-title { font-size: 1.8rem; }
+  .hero-inner { padding: 28px 0; }
 }
 </style>

@@ -2,9 +2,9 @@
 <template>
   <v-container fluid class="shop-page pa-0">
 
-    <!-- ── HERO ── -->
-    <section class="content pt-4 pb-0">
-      <v-card class="hero-card" variant="flat" rounded="xl">
+    <!-- ── HERO FULL-BLEED ── -->
+    <section class="hero-fullbleed">
+      <div class="hero-inner">
         <div class="hero-grid">
           <div class="hero-left">
             <div class="hero-kicker">San Juan Servicio Técnico</div>
@@ -72,7 +72,7 @@
             </v-card>
           </div>
         </div>
-      </v-card>
+      </div>
     </section>
 
     <section class="content pt-6">
@@ -212,13 +212,23 @@ const faqs = [
   padding-bottom: 24px;
 }
 
-/* Hero */
-.hero-card { background: #02498b !important; overflow: hidden; }
+/* Hero full-bleed */
+.hero-fullbleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  background: #02498b;
+  border-radius: 0 0 22px 22px;
+  overflow: hidden;
+}
+.hero-inner {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0;
+}
 .hero-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 300px;
   align-items: center;
-  padding: 36px;
   gap: 24px;
 }
 .hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 700; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
@@ -265,6 +275,6 @@ const faqs = [
   .hero-right { display: none; }
 }
 @media (max-width: 600px) {
-  .hero-grid { padding: 24px 20px; }
+  .hero-inner { padding: 28px 0; }
 }
 </style>

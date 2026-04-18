@@ -2,9 +2,9 @@
 <template>
   <v-container fluid class="shop-page pa-0">
 
-    <!-- ── HERO ── -->
-    <section class="content pt-4 pb-0">
-      <v-card class="hero-card" variant="flat" rounded="xl">
+    <!-- ── HERO FULL-BLEED ── -->
+    <section class="hero-fullbleed">
+      <div class="hero-inner">
         <div class="hero-grid">
           <div class="hero-left">
             <div class="hero-kicker">San Juan Sistemas</div>
@@ -13,7 +13,21 @@
               Desarrollamos e implementamos soluciones tecnológicas a medida:
               ecommerce, control de stock, CRM y más. Soporte local en San Juan.
             </p>
-            <div class="d-flex ga-3 flex-wrap mt-2">
+            <div class="d-flex ga-2 flex-wrap mt-2 mb-4">
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                Primera consulta gratis
+              </v-chip>
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                Soporte 24/7
+              </v-chip>
+              <v-chip color="white" variant="flat" size="small" label>
+                <v-icon start size="14" color="success">mdi-check-circle</v-icon>
+                50+ proyectos
+              </v-chip>
+            </div>
+            <div class="d-flex ga-3 flex-wrap">
               <v-btn
                 color="white"
                 variant="flat"
@@ -45,13 +59,13 @@
                 rounded="lg"
                 class="deco-card pa-3 text-center"
               >
-                <v-icon size="28" color="primary" class="mb-1">{{ d.icon }}</v-icon>
+                <v-icon size="28" class="mb-1">{{ d.icon }}</v-icon>
                 <div class="text-caption font-weight-medium">{{ d.label }}</div>
               </v-card>
             </div>
           </div>
         </div>
-      </v-card>
+      </div>
     </section>
 
     <section id="portfolio" class="content pt-6">
@@ -243,19 +257,28 @@ const techs = ["Vue.js", "Node.js", "React", "MySQL", "Docker", "AWS", "MercadoP
   padding-bottom: 24px;
 }
 
-/* Hero */
-.hero-card { background: #02498b !important; overflow: hidden; }
+/* Hero full-bleed */
+.hero-fullbleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  background: #02498b;
+  border-radius: 0 0 22px 22px;
+  overflow: hidden;
+}
+.hero-inner {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0;
+}
 .hero-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
   align-items: center;
-  padding: 36px;
   gap: 24px;
-  min-height: 200px;
 }
 .hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 700; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
 .hero-title { margin: 0 0 12px; color: white; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.1; font-weight: 800; }
-.hero-sub { margin: 0 0 16px; color: rgba(255,255,255,0.85); font-size: 15px; line-height: 1.6; }
+.hero-sub { margin: 0 0 10px; color: rgba(255,255,255,0.85); font-size: 15px; line-height: 1.6; }
 
 /* Hero deco */
 .hero-deco-grid {
@@ -264,7 +287,7 @@ const techs = ["Vue.js", "Node.js", "React", "MySQL", "Docker", "AWS", "MercadoP
   gap: 8px;
 }
 .deco-card { background: rgba(255,255,255,0.12) !important; border: 1px solid rgba(255,255,255,0.15) !important; }
-.deco-card .v-icon { --v-icon-color: white !important; }
+.deco-card :deep(.v-icon) { color: white !important; }
 .deco-card .text-caption { color: rgba(255,255,255,0.85) !important; }
 
 /* Metrics */
@@ -298,6 +321,6 @@ const techs = ["Vue.js", "Node.js", "React", "MySQL", "Docker", "AWS", "MercadoP
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) {
-  .hero-grid { padding: 24px 20px; }
+  .hero-inner { padding: 28px 0; }
 }
 </style>
