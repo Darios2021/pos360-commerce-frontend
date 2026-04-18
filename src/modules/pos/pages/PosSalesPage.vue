@@ -1083,8 +1083,14 @@ function sumKeys(obj, keys) {
   const o = obj || {};
   const map = new Map();
   for (const [k, v] of Object.entries(o)) map.set(normKey(k), Number(v || 0));
+  const seen = new Set();
   let total = 0;
-  for (const kk of keys) total += Number(map.get(normKey(kk)) || 0);
+  for (const kk of keys) {
+    const nk = normKey(kk);
+    if (seen.has(nk)) continue;
+    seen.add(nk);
+    total += Number(map.get(nk) || 0);
+  }
   return Number.isFinite(total) ? total : 0;
 }
 function hasOwnNumericValues(obj) {

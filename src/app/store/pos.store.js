@@ -756,7 +756,7 @@ export const usePosStore = defineStore("pos", {
 
     _recalcLine(it) {
       const qty = toNum(it.qty, 0);
-      const price = toNum(it.price, 0);
+      const price = toNum(it.price_discount, 0) || toNum(it.price, 0);
       it.subtotal = qty * price;
     },
 

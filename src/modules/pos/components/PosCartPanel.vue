@@ -117,7 +117,10 @@
     <div class="cart-foot">
       <div class="foot-card">
         <div class="total-row">
-          <span class="total-label">Total</span>
+          <div class="total-label-group">
+            <span class="total-label">Total</span>
+            <span class="total-price-mode">Precio contado</span>
+          </div>
           <span class="total-amt">{{ money(total) }}</span>
         </div>
 
@@ -800,14 +803,28 @@ function remove(it) {
 
 .total-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.total-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .total-label {
   font-size: 12px;
   font-weight: 900;
+}
+
+.total-price-mode {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.5;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .total-amt {
