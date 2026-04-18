@@ -159,12 +159,32 @@
           </div>
         </div>
 
-        <div v-if="isAdmin" class="plp-card-branches">
-          <v-chip v-for="(b,i) in visibleBranches(enabledBranches(item))" :key="`${item.id}-b${b.id}-${i}`"
-            size="x-small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip">
-            {{ branchInitials(b.name) }}
+        <!-- Sucursales — visible para todos -->
+        <div class="plp-card-branches">
+          <!-- Multi-sucursal: chips con nombre -->
+          <template v-if="enabledBranches(item).length">
+            <v-chip
+              v-for="(b,i) in visibleBranches(enabledBranches(item))"
+              :key="`${item.id}-b${b.id}-${i}`"
+              size="small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip"
+            >
+              <v-icon start size="12">mdi-store-outline</v-icon>
+              {{ enabledBranches(item).length <= 3 ? b.name : branchInitials(b.name) }}
+            </v-chip>
+            <v-chip v-if="hiddenBranchesCount(enabledBranches(item)) > 0"
+              size="small" variant="tonal" label class="plp-br-chip">
+              +{{ hiddenBranchesCount(enabledBranches(item)) }}
+            </v-chip>
+          </template>
+          <!-- Fallback: solo sucursal dueña -->
+          <v-chip v-else-if="Number(item.branch_id || 0) > 0"
+            size="small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
+            <v-icon start size="12">mdi-store-outline</v-icon>
+            {{ branchName(item.branch_id) }}
           </v-chip>
-          <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">+{{ hiddenBranchesCount(enabledBranches(item)) }}</span>
+          <span v-else class="plp-no-branch">
+            <v-icon size="12" class="mr-1">mdi-store-off-outline</v-icon>Sin sucursal
+          </span>
         </div>
 
         <div class="plp-card-actions" @click.stop>
@@ -208,7 +228,7 @@
         </div>
         <div class="plp-lh-name">Nombre</div>
         <div class="plp-lh-cat">Rubro · Subrubro</div>
-        <div v-if="isAdmin" class="plp-lh-branches">Sucursales</div>
+        <div class="plp-lh-branches">Sucursales</div>
         <div class="plp-lh-price">Precio</div>
         <div class="plp-lh-stock">Stock</div>
         <div class="plp-lh-actions"></div>
@@ -227,11 +247,17 @@
           <span class="plp-tag plp-tag--cat" v-if="item.category?.name || item.rubro">{{ item.category?.name || item.rubro }}</span>
           <span class="plp-tag plp-tag--sub" v-if="item.subcategory?.name || item.subrubro">{{ item.subcategory?.name || item.subrubro }}</span>
         </div>
-        <div v-if="isAdmin" class="plp-row-branches">
+        <div class="plp-row-branches">
           <template v-if="enabledBranches(item).length">
             <v-chip v-for="(b,i) in visibleBranches(enabledBranches(item))" :key="`${item.id}-r${b.id}-${i}`"
               size="x-small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip">
               {{ branchInitials(b.name) }}
+            </v-chip>
+            <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">+{{ hiddenBranchesCount(enabledBranches(item)) }}</span>
+          </template>
+          <template v-else-if="Number(item.branch_id || 0) > 0">
+            <v-chip size="x-small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
+              {{ branchInitials(branchName(item.branch_id)) }}
             </v-chip>
           </template>
           <span v-else class="text-medium-emphasis text-caption">—</span>
@@ -912,10 +938,14 @@ function getStockLabel(item) {
 .plp-card-price--none { color: rgba(var(--v-theme-on-surface), 0.3); font-weight: 400; font-size: 12px; }
 .plp-card-stock { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; }
 
-.plp-card-branches { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 14px 4px; }
-.plp-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0px; padding: 4px 8px 8px; }
-.plp-more { font-size: 10px; opacity: 0.5; padding: 0 4px; }
-.plp-br-chip { font-weight: 900 !important; }
+.plp-card-branches {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 6px 14px 2px;
+  border-top: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+}
+.plp-br-chip { font-weight: 800 !important; font-size: 11px !important; }
+.plp-no-branch { display: flex; align-items: center; font-size: 11px; opacity: 0.35; padding: 2px 0; }
+.plp-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0px; padding: 2px 8px 8px; }
 
 /* STOCK DOT */
 .st-dot { width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
@@ -960,7 +990,7 @@ function getStockLabel(item) {
 @media (max-width: 768px) {
   .plp-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
   .plp-list-head, .plp-list-row { grid-template-columns: 32px 1fr 120px 70px 64px; }
-  .plp-lh-cat,.plp-row-cat,.plp-lh-branches,.plp-row-branches { display: none; }
+  .plp-lh-cat,.plp-row-cat { display: none; }
 }
 
 /* MOBILE */
