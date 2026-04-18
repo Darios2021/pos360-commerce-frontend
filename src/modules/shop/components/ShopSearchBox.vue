@@ -200,12 +200,17 @@ function move(dir) {
 }
 
 function pick(s) {
+  const q = String(s.name || "").trim();
   close();
-  router.push({
-    name: "shopProduct",
-    params: { id: String(s.product_id) },
-    query: { branch_id: String(props.branchId) },
-  });
+  if (q) {
+    router.push({ name: "shopSearch", query: { q } });
+  } else {
+    router.push({
+      name: "shopProduct",
+      params: { id: String(s.product_id) },
+      query: { branch_id: String(props.branchId) },
+    });
+  }
 }
 
 function goSearch() {
