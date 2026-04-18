@@ -1,580 +1,552 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
-  <v-container fluid class="pos-sale-detail pa-4 pa-md-6">
-    <div class="page-head">
-      <div>
-        <div class="page-kicker">Detalle de venta</div>
-        <div class="page-title">Venta #{{ sale?.id ?? id }}</div>
-        <div v-if="sale" class="page-subtitle">
-          {{ dt(sale.sold_at || sale.created_at) }}
+  <div class="sd">
+
+    <!-- ── TOP BAR ── -->
+    <div class="sd-bar">
+      <v-btn icon variant="text" size="small" @click="$router.back()" class="sd-back">
+        <v-icon>mdi-arrow-left</v-icon>
+      </v-btn>
+      <div class="sd-bar-info">
+        <div class="sd-bar-title">Venta #{{ sale?.id ?? id }}</div>
+        <div class="sd-bar-sub" v-if="sale">{{ dt(sale.sold_at || sale.created_at) }}</div>
+      </div>
+      <v-spacer />
+      <v-chip
+        v-if="sale?.status"
+        size="small"
+        variant="flat"
+        :color="statusColor(sale.status)"
+        class="font-weight-bold"
+      >{{ statusLabel(sale.status) }}</v-chip>
+    </div>
+
+    <!-- ── LOADING ── -->
+    <div v-if="loading" class="sd-loading">
+      <v-progress-circular indeterminate size="32" color="primary" />
+      <span>Cargando venta…</span>
+    </div>
+
+    <!-- ── NOT FOUND ── -->
+    <v-alert v-else-if="!sale" type="warning" variant="tonal" class="ma-3">
+      Venta no encontrada.
+    </v-alert>
+
+    <!-- ── CONTENT ── -->
+    <template v-else>
+
+      <!-- HERO STRIP -->
+      <div class="sd-hero">
+        <div class="sd-hs">
+          <div class="sd-hs-ico sd-hs-ico--primary"><v-icon size="14" color="white">mdi-currency-usd</v-icon></div>
+          <div>
+            <div class="sd-hs-val">{{ money(sale.total) }}</div>
+            <div class="sd-hs-lbl">Total venta</div>
+          </div>
+        </div>
+        <div class="sd-hero-sep" />
+        <div class="sd-hs">
+          <div class="sd-hs-ico sd-hs-ico--green"><v-icon size="14" color="white">mdi-check-circle-outline</v-icon></div>
+          <div>
+            <div class="sd-hs-val">{{ money(sale.paid_total) }}</div>
+            <div class="sd-hs-lbl">Pagado</div>
+          </div>
+        </div>
+        <div class="sd-hero-sep" />
+        <div class="sd-hs">
+          <div class="sd-hs-ico sd-hs-ico--indigo"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
+          <div>
+            <div class="sd-hs-val">{{ (sale.items || []).length }} ítem{{ (sale.items || []).length === 1 ? '' : 's' }}</div>
+            <div class="sd-hs-lbl">Productos</div>
+          </div>
+        </div>
+        <div class="sd-hero-sep" />
+        <div class="sd-hs">
+          <div class="sd-hs-ico sd-hs-ico--purple"><v-icon size="14" color="white">mdi-account-outline</v-icon></div>
+          <div>
+            <div class="sd-hs-val">{{ customerNameResolved }}</div>
+            <div class="sd-hs-lbl">Cliente</div>
+          </div>
+        </div>
+        <div class="sd-hero-sep" />
+        <div class="sd-hs">
+          <div class="sd-hs-ico sd-hs-ico--teal"><v-icon size="14" color="white">mdi-store-outline</v-icon></div>
+          <div>
+            <div class="sd-hs-val">{{ branchLabelResolved || '—' }}</div>
+            <div class="sd-hs-lbl">Sucursal</div>
+          </div>
         </div>
       </div>
 
-      <div class="d-flex align-center ga-2 flex-wrap">
-        <v-chip
-          v-if="sale?.status"
-          size="small"
-          variant="flat"
-          :color="statusColor(sale.status)"
-          class="font-weight-bold"
-        >
-          {{ statusLabel(sale.status) }}
-        </v-chip>
+      <!-- TABS -->
+      <v-tabs v-model="activeTab" color="primary" density="compact" class="sd-tabs">
+        <v-tab value="resumen">
+          <v-icon start size="14">mdi-receipt-text-outline</v-icon>Resumen
+        </v-tab>
+        <v-tab value="productos">
+          <v-icon start size="14">mdi-package-variant</v-icon>
+          Productos
+          <v-chip v-if="(sale.items || []).length" size="x-small" class="ml-1" color="primary" variant="tonal">
+            {{ (sale.items || []).length }}
+          </v-chip>
+        </v-tab>
+        <v-tab value="pagos">
+          <v-icon start size="14">mdi-cash-multiple</v-icon>
+          Pagos
+          <v-chip v-if="paymentsResolved.length" size="x-small" class="ml-1" color="primary" variant="tonal">
+            {{ paymentsResolved.length }}
+          </v-chip>
+        </v-tab>
+        <v-tab value="devoluciones">
+          <v-icon start size="14">mdi-swap-horizontal</v-icon>
+          Historial
+          <v-chip v-if="refunds.length + exchanges.length" size="x-small" class="ml-1" color="orange" variant="tonal">
+            {{ refunds.length + exchanges.length }}
+          </v-chip>
+        </v-tab>
+      </v-tabs>
 
-        <v-btn variant="tonal" class="rounded-lg" @click="$router.back()">
-          <v-icon start>mdi-arrow-left</v-icon>
-          Volver
-        </v-btn>
-      </div>
-    </div>
+      <v-tabs-window v-model="activeTab">
 
-    <v-card class="main-shell rounded-2xl elevation-0">
-      <v-card-text v-if="loading" class="py-16 d-flex justify-center">
-        <v-progress-circular indeterminate size="38" width="4" />
-      </v-card-text>
+        <!-- ── RESUMEN ── -->
+        <v-tabs-window-item value="resumen" class="sd-tab">
 
-      <v-card-text v-else-if="!sale">
-        <v-alert type="warning" variant="tonal" class="rounded-xl">
-          Venta no encontrada.
-        </v-alert>
-      </v-card-text>
+          <div class="sd-info-grid">
 
-      <v-card-text v-else class="pa-3 pa-md-5">
-        <section class="hero-grid">
-          <!-- Cliente -->
-          <article class="soft-panel">
-            <div class="panel-title mb-4">
-              <v-icon size="18" class="mr-2">mdi-account-circle-outline</v-icon>
-              Cliente
-            </div>
-
-            <div class="hero-customer-name">
-              {{ customerNameResolved }}
-            </div>
-
-            <div class="mt-4">
-              <div class="info-label mb-2">Datos del cliente</div>
-
-              <div v-if="showCustomerDataBlock" class="d-flex flex-wrap ga-2">
-                <v-chip
-                  v-if="customerDocResolved"
-                  size="small"
-                  variant="outlined"
-                  class="detail-chip"
-                >
-                  <v-icon start size="16">mdi-card-account-details-outline</v-icon>
-                  {{ customerDocResolved }}
-                </v-chip>
-
-                <v-chip
-                  v-if="customerPhoneResolved"
-                  size="small"
-                  variant="outlined"
-                  class="detail-chip"
-                >
-                  <v-icon start size="16">mdi-phone</v-icon>
-                  {{ customerPhoneResolved }}
-                </v-chip>
-
-                <v-chip
-                  v-if="customerEmailResolved"
-                  size="small"
-                  variant="outlined"
-                  class="detail-chip"
-                >
-                  <v-icon start size="16">mdi-email-outline</v-icon>
-                  {{ customerEmailResolved }}
-                </v-chip>
+            <!-- ▸ VENTA -->
+            <div class="sd-card sd-card--primary">
+              <div class="sd-card-head">
+                <div class="sd-badge sd-badge--primary">
+                  <v-icon size="14" color="white">mdi-receipt-text-outline</v-icon>
+                </div>
+                <span class="sd-card-ttl">Datos de la venta</span>
               </div>
-
-              <div v-else class="hero-muted">
-                Esta venta no guardó datos de cliente.
-              </div>
-            </div>
-
-            <div v-if="sale.note" class="mt-4">
-              <div class="info-label mb-1">Nota</div>
-              <div class="info-value">
-                {{ sale.note }}
-              </div>
-            </div>
-          </article>
-
-          <!-- Venta -->
-          <article class="soft-panel">
-            <div class="panel-title mb-4">
-              <v-icon size="18" class="mr-2">mdi-receipt-text-outline</v-icon>
-              Venta
-            </div>
-
-            <div class="info-grid sale-info-grid">
-              <div class="info-item">
-                <div class="info-label">Fecha</div>
-                <div class="info-value">{{ dt(sale.sold_at || sale.created_at) }}</div>
-              </div>
-
-              <div v-if="branchLabelResolved" class="info-item">
-                <div class="info-label">Sucursal</div>
-                <div class="info-value">{{ branchLabelResolved }}</div>
-              </div>
-
-              <div v-if="userLabel(sale) !== '—'" class="info-item">
-                <div class="info-label">Usuario</div>
-                <div class="info-value">{{ userLabel(sale) }}</div>
-              </div>
-
-              <div v-if="sale?.status" class="info-item">
-                <div class="info-label">Estado</div>
-                <div class="info-value">
-                  <v-chip
-                    size="small"
-                    variant="flat"
-                    :color="statusColor(sale.status)"
-                    class="font-weight-bold"
-                  >
+              <div class="sd-irows">
+                <div class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-calendar-outline</v-icon>
+                  <span class="sd-ir-k">Fecha</span>
+                  <span class="sd-ir-v">{{ dt(sale.sold_at || sale.created_at) }}</span>
+                </div>
+                <div v-if="branchLabelResolved" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-store-outline</v-icon>
+                  <span class="sd-ir-k">Sucursal</span>
+                  <span class="sd-ir-v">{{ branchLabelResolved }}</span>
+                </div>
+                <div v-if="userLabel(sale) !== '—'" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-account-outline</v-icon>
+                  <span class="sd-ir-k">Cajero</span>
+                  <span class="sd-ir-v">{{ userLabel(sale) }}</span>
+                </div>
+                <div v-if="sale?.sale_number" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-pound</v-icon>
+                  <span class="sd-ir-k">Número</span>
+                  <span class="sd-ir-v">#{{ sale.sale_number }}</span>
+                </div>
+                <div class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-layers-outline</v-icon>
+                  <span class="sd-ir-k">Estado</span>
+                  <v-chip size="x-small" variant="flat" :color="statusColor(sale.status)" class="font-weight-bold">
                     {{ statusLabel(sale.status) }}
                   </v-chip>
                 </div>
-              </div>
-
-              <div class="info-item">
-                <div class="info-label">Modo fiscal</div>
-                <div class="info-value">{{ invoiceModeLabelResolved }}</div>
-              </div>
-
-              <div class="info-item">
-                <div class="info-label">Comprobante</div>
-                <div class="info-value">{{ invoiceTypeResolved }}</div>
-              </div>
-
-              <div class="info-item">
-                <div class="info-label">Tipo cliente</div>
-                <div class="info-value">{{ customerTypeLabelResolved }}</div>
-              </div>
-            </div>
-
-            <div class="total-top mt-6">
-              <div>
-                <div class="total-kicker">Total venta</div>
-                <div class="total-main">{{ money(sale.total) }}</div>
-              </div>
-
-              <div class="text-right">
-                <div class="hero-muted">Pagado</div>
-                <div class="text-h6 font-weight-black">{{ money(sale.paid_total) }}</div>
-              </div>
-            </div>
-
-            <div class="money-breakdown mt-5">
-              <div v-if="hasValue(sale.subtotal)" class="money-row">
-                <span>Subtotal</span>
-                <strong>{{ money(sale.subtotal) }}</strong>
-              </div>
-
-              <div v-if="Number(sale.discount_total || 0) > 0" class="money-row">
-                <span>Descuento</span>
-                <strong>{{ money(sale.discount_total) }}</strong>
-              </div>
-
-              <div v-if="Number(sale.tax_total || 0) > 0" class="money-row">
-                <span>Impuestos</span>
-                <strong>{{ money(sale.tax_total) }}</strong>
-              </div>
-
-              <div v-if="Number(sale.change_total || 0) > 0" class="money-row">
-                <span>Vuelto</span>
-                <strong>{{ money(sale.change_total) }}</strong>
-              </div>
-            </div>
-
-            <v-divider v-if="showNetSummary" class="my-4" />
-
-            <div v-if="showNetSummary" class="mini-stats-grid">
-              <div v-if="refundsTotal > 0" class="mini-stat-card">
-                <div class="mini-stat-label">Devuelto</div>
-                <div class="mini-stat-value">{{ money(refundsTotal) }}</div>
-              </div>
-
-              <div v-if="exchangesDiffTotal !== 0" class="mini-stat-card">
-                <div class="mini-stat-label">Dif. cambios</div>
-                <div class="mini-stat-value">{{ money(exchangesDiffTotal) }}</div>
-              </div>
-
-              <div class="mini-stat-card mini-stat-card--accent">
-                <div class="mini-stat-label">Neto</div>
-                <div class="mini-stat-value">{{ money(netTotal) }}</div>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <!-- PRODUCTOS -->
-        <section class="section-block">
-          <div class="section-head">
-            <div>
-              <div class="section-title">Productos</div>
-              <div class="section-subtitle">
-                {{ (sale.items || []).length }} item{{ (sale.items || []).length === 1 ? "" : "s" }}
-              </div>
-            </div>
-
-            <v-chip size="small" variant="tonal" :color="productsLoading ? 'indigo' : 'grey'">
-              <v-progress-circular
-                v-if="productsLoading"
-                indeterminate
-                size="14"
-                width="2"
-                class="mr-2"
-              />
-              {{ productsLoading ? "Cargando productos…" : "Productos listos" }}
-            </v-chip>
-          </div>
-
-          <div class="table-wrap">
-            <v-data-table
-              :headers="itemsHeaders"
-              :items="sale.items || []"
-              item-key="id"
-              class="products-table"
-              density="comfortable"
-            >
-              <template #item.product="{ item }">
-                <div class="product-cell">
-                  <v-avatar size="58" rounded="lg" class="thumb" @click="openImage(item)">
-                    <v-img v-if="itemImage(item)" :src="itemImage(item)" cover />
-                    <v-icon v-else>mdi-image-off-outline</v-icon>
-                  </v-avatar>
-
-                  <div class="min-w-0 flex-1">
-                    <div class="d-flex align-center justify-space-between ga-3 flex-wrap">
-                      <div class="product-name text-truncate">
-                        {{ productName(item) }}
-                      </div>
-
-                      <v-chip
-                        v-if="availabilityLabel(item) !== '—'"
-                        size="x-small"
-                        variant="flat"
-                        :color="availabilityColor(item)"
-                        class="font-weight-bold"
-                        title="Disponibilidad según stock actual"
-                      >
-                        {{ availabilityLabel(item) }}
-                      </v-chip>
-                    </div>
-
-                    <div v-if="productMetaLine(item)" class="product-meta mt-1">
-                      {{ productMetaLine(item) }}
-                    </div>
-
-                    <div
-                      v-if="productChips(item).length"
-                      class="d-flex flex-wrap ga-1 mt-2"
-                    >
-                      <v-chip
-                        v-for="chip in productChips(item)"
-                        :key="chip.text"
-                        size="x-small"
-                        :variant="chip.variant || 'outlined'"
-                        :color="chip.color || undefined"
-                        class="detail-chip"
-                      >
-                        <template v-if="chip.icon" #prepend>
-                          <v-icon size="15">{{ chip.icon }}</v-icon>
-                        </template>
-                        {{ chip.text }}
-                      </v-chip>
-                    </div>
-                  </div>
+                <div class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-file-document-outline</v-icon>
+                  <span class="sd-ir-k">Fiscal</span>
+                  <span class="sd-ir-v">{{ invoiceModeLabelResolved }}</span>
                 </div>
-              </template>
-
-              <template #item.stock="{ item }">
-                <div class="text-right font-weight-black">
-                  {{ stockText(item) }}
+                <div v-if="invoiceTypeResolved && invoiceTypeResolved !== '—'" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-printer-outline</v-icon>
+                  <span class="sd-ir-k">Comprobante</span>
+                  <span class="sd-ir-v">{{ invoiceTypeResolved }}</span>
                 </div>
-              </template>
-
-              <template #item.qty="{ item }">
-                <div class="font-weight-black">{{ number(item.quantity) }}</div>
-              </template>
-
-              <template #item.unit="{ item }">
-                <div class="font-weight-bold">{{ money(item.unit_price) }}</div>
-              </template>
-
-              <template #item.total="{ item }">
-                <div class="font-weight-black">{{ money(item.line_total) }}</div>
-              </template>
-
-              <template #item.actions="{ item }">
-                <div class="d-flex ga-2 justify-end">
-                  <v-btn size="small" variant="tonal" color="primary" @click="goToProduct(item.product_id)">
-                    <v-icon start>mdi-cube-outline</v-icon>
-                    Perfil
-                  </v-btn>
+                <div class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-account-group-outline</v-icon>
+                  <span class="sd-ir-k">Tipo cliente</span>
+                  <span class="sd-ir-v">{{ customerTypeLabelResolved }}</span>
                 </div>
-              </template>
-
-              <template #bottom />
-            </v-data-table>
-          </div>
-        </section>
-
-        <!-- PAGOS -->
-        <section class="section-block">
-          <div class="section-head">
-            <div>
-              <div class="section-title">Pagos</div>
-              <div class="section-subtitle">
-                Método y detalle real de cobro
+                <div v-if="sale.note" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-note-text-outline</v-icon>
+                  <span class="sd-ir-k">Nota</span>
+                  <span class="sd-ir-v">{{ sale.note }}</span>
+                </div>
               </div>
             </div>
 
-            <v-chip size="small" variant="flat" color="primary" class="font-weight-bold">
-              {{ paymentsResolved.length }} registro{{ paymentsResolved.length === 1 ? "" : "s" }}
-            </v-chip>
-          </div>
-
-          <div v-if="paymentsResolved.length" class="payments-stack">
-            <v-card
-              v-for="p in paymentsResolved"
-              :key="p.id || `${p.payment_method_id}_${p.amount}_${p.reference || ''}`"
-              class="payment-card payment-card--single rounded-2xl elevation-0"
-            >
-              <v-card-text class="pa-4 pa-md-5">
-                <div class="payment-top">
-                  <div class="payment-top-left">
-                    <div class="d-flex align-center ga-2 flex-wrap">
-                      <v-chip
-                        size="small"
-                        variant="flat"
-                        :color="payColor(p.method_resolved)"
-                        class="font-weight-bold"
-                      >
-                        {{ p.method_display }}
-                      </v-chip>
-
-                      <v-chip
-                        v-if="p.card_type_label"
-                        size="small"
-                        variant="outlined"
-                        class="detail-chip"
-                      >
-                        {{ p.card_type_label }}
-                      </v-chip>
-
-                      <v-chip
-                        v-if="p.card_brand"
-                        size="small"
-                        variant="outlined"
-                        class="detail-chip"
-                      >
-                        Marca: {{ p.card_brand }}
-                      </v-chip>
-
-                      <v-chip
-                        v-if="p.installments > 1"
-                        size="small"
-                        variant="outlined"
-                        class="detail-chip"
-                      >
-                        {{ p.installments }} cuotas
-                      </v-chip>
-                    </div>
-
-                    <div class="payment-title mt-3">
-                      {{ paymentHeadline(p) }}
-                    </div>
-
-                    <div v-if="paymentSubline(p).length" class="payment-subline mt-1">
-                      <span
-                        v-for="part in paymentSubline(p)"
-                        :key="part"
-                      >
-                        {{ part }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="payment-amount-box">
-                    <div class="payment-amount-label">Monto cobrado</div>
-                    <div class="payment-amount-value">{{ money(p.amount) }}</div>
-                  </div>
+            <!-- ▸ CLIENTE -->
+            <div class="sd-card sd-card--purple">
+              <div class="sd-card-head">
+                <div class="sd-badge sd-badge--purple">
+                  <v-icon size="14" color="white">mdi-account-circle-outline</v-icon>
                 </div>
+                <span class="sd-card-ttl">Cliente</span>
+              </div>
+              <div class="sd-cust-avatar">
+                <span class="sd-cust-initials">{{ customerInitials }}</span>
+              </div>
+              <div class="sd-cust-name">{{ customerNameResolved }}</div>
 
-                <div
-                  v-if="paymentFacts(p).length"
-                  class="payment-facts-grid mt-4"
+              <div v-if="showCustomerDataBlock" class="sd-irows mt-2">
+                <div v-if="customerDocResolved" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-card-account-details-outline</v-icon>
+                  <span class="sd-ir-k">Documento</span>
+                  <span class="sd-ir-v">{{ customerDocResolved }}</span>
+                </div>
+                <div v-if="customerPhoneResolved" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-phone-outline</v-icon>
+                  <span class="sd-ir-k">Teléfono</span>
+                  <span class="sd-ir-v">{{ customerPhoneResolved }}</span>
+                </div>
+                <div v-if="customerEmailResolved" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-email-outline</v-icon>
+                  <span class="sd-ir-k">Email</span>
+                  <span class="sd-ir-v">{{ customerEmailResolved }}</span>
+                </div>
+              </div>
+              <div v-else class="sd-no-data">
+                <v-icon size="13" class="mr-1">mdi-information-slab-circle-outline</v-icon>
+                Venta sin datos adicionales de cliente
+              </div>
+            </div>
+
+            <!-- ▸ PAGO PRINCIPAL -->
+            <div class="sd-card sd-card--green" v-if="paymentsResolved.length">
+              <div class="sd-card-head">
+                <div class="sd-badge sd-badge--green">
+                  <v-icon size="14" color="white">mdi-cash-check</v-icon>
+                </div>
+                <span class="sd-card-ttl">Pago</span>
+                <v-chip v-if="paymentsResolved.length > 1" size="x-small" variant="tonal" class="ml-auto">
+                  {{ paymentsResolved.length }} métodos
+                </v-chip>
+              </div>
+
+              <div class="sd-pay-main">
+                <v-chip
+                  size="large"
+                  variant="flat"
+                  :color="payColor(paymentsResolved[0].method_resolved)"
+                  class="font-weight-bold"
                 >
-                  <div
-                    v-for="fact in paymentFacts(p)"
-                    :key="fact.label"
-                    class="fact-card"
-                  >
-                    <div class="fact-label">{{ fact.label }}</div>
-                    <div class="fact-value">{{ fact.value }}</div>
-                  </div>
+                  <v-icon start size="16">{{ payIcon(paymentsResolved[0].method_resolved) }}</v-icon>
+                  {{ paymentsResolved[0].method_display }}
+                </v-chip>
+                <div class="sd-pay-big">{{ money(paymentsResolved[0].amount) }}</div>
+              </div>
+
+              <div class="sd-irows">
+                <div v-if="paymentsResolved[0].installments > 1" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-credit-card-clock-outline</v-icon>
+                  <span class="sd-ir-k">Cuotas</span>
+                  <span class="sd-ir-v">{{ paymentsResolved[0].installments }}x</span>
                 </div>
-
-                <div v-if="p.note_human" class="payment-note mt-4">
-                  <div class="fact-label mb-1">Nota</div>
-                  <div class="fact-value">{{ p.note_human }}</div>
+                <div v-if="paymentsResolved[0].installment_amount && paymentsResolved[0].installments > 1" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-calculator-variant-outline</v-icon>
+                  <span class="sd-ir-k">Valor cuota</span>
+                  <span class="sd-ir-v">{{ money(paymentsResolved[0].installment_amount) }}</span>
                 </div>
-              </v-card-text>
-            </v-card>
-          </div>
-
-          <v-alert v-else type="info" variant="tonal" class="rounded-xl mt-2">
-            Sin pagos registrados.
-          </v-alert>
-        </section>
-
-        <!-- DEVOLUCIONES -->
-        <section class="section-block">
-          <div class="section-head">
-            <div>
-              <div class="section-title">Devoluciones</div>
-              <div class="section-subtitle">Reintegros asociados a la venta</div>
+                <div v-if="paymentsResolved[0].card_type_label" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-credit-card-outline</v-icon>
+                  <span class="sd-ir-k">Tipo</span>
+                  <span class="sd-ir-v">{{ paymentsResolved[0].card_type_label }}</span>
+                </div>
+                <div v-if="paymentsResolved[0].card_brand" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-contactless-payment</v-icon>
+                  <span class="sd-ir-k">Marca</span>
+                  <span class="sd-ir-v">{{ paymentsResolved[0].card_brand }}</span>
+                </div>
+                <div v-if="paymentsResolved[0].price_basis_label" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-tag-outline</v-icon>
+                  <span class="sd-ir-k">Base precio</span>
+                  <span class="sd-ir-v">{{ paymentsResolved[0].price_basis_label }}</span>
+                </div>
+                <div v-if="paymentsResolved[0].reference" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-pound</v-icon>
+                  <span class="sd-ir-k">Referencia</span>
+                  <span class="sd-ir-v sd-mono">{{ paymentsResolved[0].reference }}</span>
+                </div>
+                <div v-if="paymentsResolved.length > 1" class="sd-ir">
+                  <v-icon size="13" class="sd-ir-ico">mdi-plus-circle-outline</v-icon>
+                  <span class="sd-ir-k">Otros</span>
+                  <span class="sd-ir-v">+{{ paymentsResolved.length - 1 }} pago{{ paymentsResolved.length > 2 ? 's' : '' }}</span>
+                </div>
+              </div>
             </div>
 
-            <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
-              {{ refunds.length }}
+            <!-- Pago fallback (sin pagos) -->
+            <div v-else class="sd-card sd-card--green sd-card--empty">
+              <div class="sd-card-head">
+                <div class="sd-badge sd-badge--green"><v-icon size="14" color="white">mdi-cash-check</v-icon></div>
+                <span class="sd-card-ttl">Pago</span>
+              </div>
+              <div class="sd-no-data">
+                <v-icon size="13" class="mr-1">mdi-information-slab-circle-outline</v-icon>
+                Sin pagos registrados
+              </div>
+            </div>
+
+          </div>
+
+          <!-- TOTALES STRIP -->
+          <div class="sd-totals">
+            <div v-if="hasValue(sale.subtotal) && Number(sale.subtotal) !== Number(sale.total)" class="sd-tot">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-format-list-bulleted</v-icon>Subtotal</div>
+              <div class="sd-tot-v">{{ money(sale.subtotal) }}</div>
+            </div>
+            <div v-if="Number(sale.discount_total || 0) > 0" class="sd-tot sd-tot--neg">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-tag-outline</v-icon>Descuento</div>
+              <div class="sd-tot-v">-{{ money(sale.discount_total) }}</div>
+            </div>
+            <div v-if="Number(sale.tax_total || 0) > 0" class="sd-tot">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-percent-outline</v-icon>Impuestos</div>
+              <div class="sd-tot-v">{{ money(sale.tax_total) }}</div>
+            </div>
+            <div class="sd-tot sd-tot--main">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-sigma</v-icon>Total</div>
+              <div class="sd-tot-v">{{ money(sale.total) }}</div>
+            </div>
+            <div class="sd-tot sd-tot--ok">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-check-circle-outline</v-icon>Pagado</div>
+              <div class="sd-tot-v">{{ money(sale.paid_total) }}</div>
+            </div>
+            <div v-if="Number(sale.change_total || 0) > 0" class="sd-tot">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-minus</v-icon>Vuelto</div>
+              <div class="sd-tot-v">{{ money(sale.change_total) }}</div>
+            </div>
+            <div v-if="refundsTotal > 0" class="sd-tot sd-tot--warn">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-refund</v-icon>Devuelto</div>
+              <div class="sd-tot-v">-{{ money(refundsTotal) }}</div>
+            </div>
+            <div v-if="showNetSummary" class="sd-tot sd-tot--neto">
+              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-check</v-icon>Neto</div>
+              <div class="sd-tot-v">{{ money(netTotal) }}</div>
+            </div>
+          </div>
+
+        </v-tabs-window-item>
+
+        <!-- ── PRODUCTOS ── -->
+        <v-tabs-window-item value="productos" class="sd-tab">
+          <div class="sd-tab-head">
+            <div class="sd-tab-head-left">
+              <div class="sd-badge sd-badge--indigo"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
+              <span class="sd-tab-ttl">
+                {{ (sale.items || []).length }} producto{{ (sale.items || []).length === 1 ? '' : 's' }}
+              </span>
+            </div>
+            <v-chip v-if="productsLoading" size="x-small" color="indigo" variant="tonal">
+              <v-progress-circular size="10" width="2" indeterminate class="mr-1" />Cargando…
             </v-chip>
           </div>
 
-          <v-alert v-if="!refunds.length" type="info" variant="tonal" class="rounded-xl">
-            No hay devoluciones registradas para esta venta.
-          </v-alert>
+          <div class="sd-items-list">
+            <div
+              v-for="item in (sale.items || [])"
+              :key="item.id || item.product_id"
+              class="sd-item-row"
+            >
+              <div class="sd-item-img" @click="openImage(item)" title="Ver imagen">
+                <img v-if="itemImage(item)" :src="itemImage(item)" class="sd-img" />
+                <v-icon v-else size="22" color="medium-emphasis">mdi-image-outline</v-icon>
+              </div>
 
-          <div v-else class="d-flex flex-column ga-3">
-            <v-card v-for="r in refunds" :key="r.id" class="soft-subcard rounded-xl elevation-0">
-              <v-card-text>
-                <div class="d-flex align-center justify-space-between flex-wrap ga-3">
-                  <div>
-                    <div class="info-label">Fecha</div>
-                    <div class="info-value">{{ dt(r.created_at) }}</div>
-                  </div>
-
-                  <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
-                    {{ money(r.amount) }}
-                  </v-chip>
+              <div class="sd-item-body">
+                <div class="sd-item-name">{{ productName(item) }}</div>
+                <div v-if="productMetaLine(item)" class="sd-item-meta">{{ productMetaLine(item) }}</div>
+                <div class="sd-item-chips">
+                  <v-chip
+                    v-if="availabilityLabel(item) !== '—'"
+                    size="x-small"
+                    variant="flat"
+                    :color="availabilityColor(item)"
+                  >{{ availabilityLabel(item) }}</v-chip>
+                  <v-chip v-if="categoryLabel(item)" size="x-small" variant="outlined">{{ categoryLabel(item) }}</v-chip>
                 </div>
+              </div>
 
-                <div class="hero-muted mt-3">
-                  Medio: <b>{{ refundMethodLabel(r) }}</b>
-                  <span v-if="r.reference"> · Ref: <b>{{ r.reference }}</b></span>
-                </div>
+              <div class="sd-item-nums">
+                <div class="sd-item-qty">× {{ number(item.quantity) }}</div>
+                <div class="sd-item-unit">{{ money(item.unit_price) }} c/u</div>
+                <div class="sd-item-total">{{ money(item.line_total) }}</div>
+              </div>
 
-                <div v-if="r.reason" class="hero-muted mt-1">
-                  Motivo: {{ r.reason }}
-                </div>
-              </v-card-text>
-            </v-card>
-          </div>
-        </section>
-
-        <!-- CAMBIOS -->
-        <section class="section-block">
-          <div class="section-head">
-            <div>
-              <div class="section-title">Cambios</div>
-              <div class="section-subtitle">Movimientos por reemplazo de productos</div>
+              <v-btn size="x-small" variant="tonal" color="primary" @click="goToProduct(item.product_id)" title="Ver producto">
+                <v-icon size="13">mdi-open-in-new</v-icon>
+              </v-btn>
             </div>
-
-            <v-chip size="small" variant="flat" color="cyan" class="font-weight-bold">
-              {{ exchanges.length }}
-            </v-chip>
           </div>
 
-          <v-alert v-if="!exchanges.length" type="info" variant="tonal" class="rounded-xl">
-            No hay cambios registrados para esta venta.
+          <div v-if="!(sale.items || []).length" class="sd-empty">
+            <v-icon size="32" color="medium-emphasis">mdi-package-variant-remove</v-icon>
+            <span>Sin productos en esta venta</span>
+          </div>
+        </v-tabs-window-item>
+
+        <!-- ── PAGOS ── -->
+        <v-tabs-window-item value="pagos" class="sd-tab">
+          <div class="sd-tab-head">
+            <div class="sd-tab-head-left">
+              <div class="sd-badge sd-badge--green"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
+              <span class="sd-tab-ttl">
+                {{ paymentsResolved.length }} pago{{ paymentsResolved.length === 1 ? '' : 's' }} registrado{{ paymentsResolved.length === 1 ? '' : 's' }}
+              </span>
+            </div>
+          </div>
+
+          <v-alert v-if="!paymentsResolved.length" type="info" variant="tonal" class="rounded-xl">
+            Sin pagos registrados para esta venta.
           </v-alert>
 
-          <div v-else class="d-flex flex-column ga-3">
-            <v-card v-for="x in exchanges" :key="x.id" class="soft-subcard rounded-xl elevation-0">
-              <v-card-text>
-                <div class="d-flex align-center justify-space-between flex-wrap ga-3">
-                  <div>
-                    <div class="info-label">Fecha</div>
-                    <div class="info-value">{{ dt(x.created_at) }}</div>
-                  </div>
-
-                  <v-chip size="small" variant="flat" color="cyan" class="font-weight-bold">
-                    Dif: {{ money(x.diff) }}
+          <div v-else class="sd-pays">
+            <div
+              v-for="pm in paymentsResolved"
+              :key="pm.id || `${pm.payment_method_id}_${pm.amount}`"
+              class="sd-pay-card"
+            >
+              <div class="sd-pay-card-head">
+                <div class="sd-pay-chips">
+                  <v-chip size="small" variant="flat" :color="payColor(pm.method_resolved)" class="font-weight-bold">
+                    <v-icon start size="14">{{ payIcon(pm.method_resolved) }}</v-icon>
+                    {{ pm.method_display }}
+                  </v-chip>
+                  <v-chip v-if="pm.card_type_label" size="small" variant="outlined">{{ pm.card_type_label }}</v-chip>
+                  <v-chip v-if="pm.card_brand" size="small" variant="outlined">{{ pm.card_brand }}</v-chip>
+                  <v-chip v-if="pm.installments > 1" size="small" variant="outlined">
+                    <v-icon start size="12">mdi-credit-card-clock-outline</v-icon>
+                    {{ pm.installments }} cuotas
                   </v-chip>
                 </div>
-
-                <div class="hero-muted mt-3">
-                  Original: <b>{{ money(x.original_total) }}</b>
-                  <span class="mx-1">·</span>
-                  Nuevo: <b>{{ money(x.new_total) }}</b>
-                  <span class="mx-1">·</span>
-                  Devuelto: <b>{{ money(x.returned_amount) }}</b>
+                <div class="sd-pay-amount-box">
+                  <div class="sd-pay-albl">Cobrado</div>
+                  <div class="sd-pay-aval">{{ money(pm.amount) }}</div>
                 </div>
+              </div>
 
-                <div v-if="x.note" class="hero-muted mt-1">
-                  Nota: {{ x.note }}
+              <div class="sd-pay-headline">{{ paymentHeadline(pm) }}</div>
+              <div v-if="paymentSubline(pm).length" class="sd-pay-subline">
+                <span v-for="part in paymentSubline(pm)" :key="part">{{ part }}</span>
+              </div>
+
+              <div v-if="paymentFacts(pm).filter(f => !['Método','Cuotas'].includes(f.label)).length" class="sd-facts">
+                <div
+                  v-for="fact in paymentFacts(pm).filter(f => !['Método','Cuotas'].includes(f.label))"
+                  :key="fact.label"
+                  class="sd-fact"
+                >
+                  <div class="sd-fact-lbl">{{ fact.label }}</div>
+                  <div class="sd-fact-val">{{ fact.value }}</div>
                 </div>
-              </v-card-text>
-            </v-card>
+              </div>
+
+              <div v-if="pm.note_human" class="sd-pay-note">
+                <v-icon size="13" class="mr-1 opacity-40">mdi-note-text-outline</v-icon>
+                {{ pm.note_human }}
+              </div>
+            </div>
           </div>
-        </section>
-      </v-card-text>
-    </v-card>
+        </v-tabs-window-item>
 
-    <v-dialog v-model="imageDialog" max-width="860">
-      <v-card class="rounded-xl">
+        <!-- ── HISTORIAL ── -->
+        <v-tabs-window-item value="devoluciones" class="sd-tab">
+
+          <!-- Devoluciones -->
+          <div class="sd-tab-head">
+            <div class="sd-tab-head-left">
+              <div class="sd-badge sd-badge--orange"><v-icon size="14" color="white">mdi-cash-refund</v-icon></div>
+              <span class="sd-tab-ttl">Devoluciones ({{ refunds.length }})</span>
+            </div>
+          </div>
+
+          <v-alert v-if="!refunds.length" type="info" variant="tonal" density="compact" class="mb-4 rounded-xl">
+            No hay devoluciones para esta venta.
+          </v-alert>
+          <div v-else class="sd-hist-list mb-4">
+            <div v-for="r in refunds" :key="r.id" class="sd-hist-card sd-hist-card--orange">
+              <div class="sd-hist-row">
+                <div>
+                  <div class="sd-hist-date">
+                    <v-icon size="12" class="mr-1 opacity-50">mdi-calendar-outline</v-icon>
+                    {{ dt(r.created_at) }}
+                  </div>
+                  <div class="sd-hist-meta">
+                    <v-icon size="12" class="mr-1 opacity-50">mdi-bank-transfer-out</v-icon>
+                    Medio: <b>{{ refundMethodLabel(r) }}</b>
+                    <span v-if="r.reference"> · Ref: {{ r.reference }}</span>
+                  </div>
+                  <div v-if="r.reason" class="sd-hist-meta">
+                    <v-icon size="12" class="mr-1 opacity-50">mdi-comment-outline</v-icon>
+                    {{ r.reason }}
+                  </div>
+                </div>
+                <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
+                  {{ money(r.amount) }}
+                </v-chip>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cambios -->
+          <div class="sd-tab-head mt-2">
+            <div class="sd-tab-head-left">
+              <div class="sd-badge sd-badge--teal"><v-icon size="14" color="white">mdi-swap-horizontal</v-icon></div>
+              <span class="sd-tab-ttl">Cambios ({{ exchanges.length }})</span>
+            </div>
+          </div>
+
+          <v-alert v-if="!exchanges.length" type="info" variant="tonal" density="compact" class="rounded-xl">
+            No hay cambios para esta venta.
+          </v-alert>
+          <div v-else class="sd-hist-list">
+            <div v-for="x in exchanges" :key="x.id" class="sd-hist-card sd-hist-card--teal">
+              <div class="sd-hist-row">
+                <div>
+                  <div class="sd-hist-date">
+                    <v-icon size="12" class="mr-1 opacity-50">mdi-calendar-outline</v-icon>
+                    {{ dt(x.created_at) }}
+                  </div>
+                  <div class="sd-hist-meta">
+                    Original: <b>{{ money(x.original_total) }}</b>
+                    · Nuevo: <b>{{ money(x.new_total) }}</b>
+                    · Devuelto: <b>{{ money(x.returned_amount) }}</b>
+                  </div>
+                  <div v-if="x.note" class="sd-hist-meta">
+                    <v-icon size="12" class="mr-1 opacity-50">mdi-comment-outline</v-icon>{{ x.note }}
+                  </div>
+                </div>
+                <v-chip size="small" variant="flat" color="teal" class="font-weight-bold">
+                  Dif: {{ money(x.diff) }}
+                </v-chip>
+              </div>
+            </div>
+          </div>
+
+        </v-tabs-window-item>
+
+      </v-tabs-window>
+
+    </template>
+
+    <!-- ── IMAGE DIALOG ── -->
+    <v-dialog v-model="imageDialog" max-width="760">
+      <v-card rounded="xl">
         <v-card-title class="d-flex align-center justify-space-between">
-          <div class="font-weight-black">{{ productName(imageItem) }}</div>
-          <v-btn icon variant="text" @click="imageDialog = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
+          <span class="font-weight-black">{{ productName(imageItem) }}</span>
+          <v-btn icon variant="text" @click="imageDialog = false"><v-icon>mdi-close</v-icon></v-btn>
         </v-card-title>
-
         <v-divider />
-
         <v-card-text>
-          <v-img
-            v-if="itemImage(imageItem)"
-            :src="itemImage(imageItem)"
-            cover
-            style="max-height:540px; border-radius: 14px;"
-          />
-
-          <v-alert v-else type="info" variant="tonal" class="rounded-xl">
-            Este producto no tiene imagen asociada.
-          </v-alert>
-
-          <div class="d-flex ga-2 mt-4 flex-wrap">
-            <v-btn
-              variant="tonal"
-              color="primary"
-              @click="goToProduct(imageItem?.product_id)"
-              :disabled="!imageItem?.product_id"
-            >
-              <v-icon start>mdi-cube-outline</v-icon>
-              Ver producto
-            </v-btn>
-
-            <v-btn
-              variant="tonal"
-              @click="copyText(itemImage(imageItem) || '')"
-              :disabled="!itemImage(imageItem)"
-            >
-              <v-icon start>mdi-link-variant</v-icon>
-              Copiar URL
+          <v-img v-if="itemImage(imageItem)" :src="itemImage(imageItem)" cover style="max-height:500px;border-radius:12px;" />
+          <v-alert v-else type="info" variant="tonal">Sin imagen para este producto.</v-alert>
+          <div class="d-flex ga-2 mt-3">
+            <v-btn variant="tonal" color="primary" @click="goToProduct(imageItem?.product_id)" :disabled="!imageItem?.product_id">
+              <v-icon start>mdi-open-in-new</v-icon>Ver producto
             </v-btn>
           </div>
         </v-card-text>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snack.show" :timeout="3200">
-      {{ snack.text }}
-    </v-snackbar>
-  </v-container>
+    <v-snackbar v-model="snack.show" :timeout="3200">{{ snack.text }}</v-snackbar>
+  </div>
 </template>
 
 <script setup>
@@ -589,6 +561,7 @@ const productsStore = useProductsStore();
 
 const id = computed(() => Number(route.params.id || 0));
 const loading = ref(false);
+const activeTab = ref("resumen");
 
 const payload = ref(null);
 const sale = computed(() => payload.value?.sale || null);
@@ -603,48 +576,27 @@ const netTotal = computed(() => Number(sale.value?.total || 0) - refundsTotal.va
 const showNetSummary = computed(() => refundsTotal.value > 0 || exchangesDiffTotal.value !== 0);
 
 const snack = ref({ show: false, text: "" });
-
 const imageDialog = ref(false);
 const imageItem = ref(null);
-
 const productsLoading = ref(false);
-
-const itemsHeaders = [
-  { title: "Producto", key: "product", sortable: false },
-  { title: "Stock", key: "stock", sortable: false, width: 110, align: "end" },
-  { title: "Cant.", key: "qty", sortable: false, width: 110 },
-  { title: "Unit.", key: "unit", sortable: false, width: 160 },
-  { title: "Total", key: "total", sortable: false, width: 160 },
-  { title: "", key: "actions", sortable: false, width: 140 },
-];
 
 function safeJsonParse(v) {
   if (!v) return null;
   if (typeof v === "object") return v;
   const s = String(v || "").trim();
   if (!s) return null;
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(s); } catch { return null; }
 }
-
 function numOrNull(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
-
 function hasValue(v) {
   return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
 }
-
 function firstFilled(...vals) {
-  for (const v of vals) {
-    const s = String(v ?? "").trim();
-    if (s) return s;
-  }
+  for (const v of vals) { const s = String(v ?? "").trim(); if (s) return s; }
   return "";
 }
 
@@ -652,99 +604,51 @@ function customerData() {
   const s = sale.value || {};
   const extra = saleExtra.value || {};
   const c = extra.customer || s.customer || s.Customer || {};
-
   return {
     name: firstFilled(
-      s.customer_name,
-      s.customerName,
-      c.name,
-      c.customer_name,
-      c.full_name,
-      c.fullName,
+      s.customer_name, s.customerName, c.name, c.customer_name, c.full_name, c.fullName,
       [c.first_name, c.last_name].filter(Boolean).join(" "),
       [c.firstName, c.lastName].filter(Boolean).join(" ")
     ),
-    doc: firstFilled(
-      s.customer_doc,
-      s.customerDoc,
-      c.doc,
-      c.customer_doc,
-      c.document,
-      c.documento,
-      c.dni,
-      c.cuit,
-      c.cuil
-    ),
-    phone: firstFilled(
-      s.customer_phone,
-      s.customerPhone,
-      c.phone,
-      c.customer_phone,
-      c.telefono,
-      c.tel,
-      c.mobile,
-      c.whatsapp
-    ),
-    email: firstFilled(
-      c.email,
-      c.mail
-    ),
+    doc: firstFilled(s.customer_doc, s.customerDoc, c.doc, c.customer_doc, c.document, c.documento, c.dni, c.cuit, c.cuil),
+    phone: firstFilled(s.customer_phone, s.customerPhone, c.phone, c.customer_phone, c.telefono, c.tel, c.mobile, c.whatsapp),
+    email: firstFilled(c.email, c.mail),
   };
 }
 
 const customerNameResolved = computed(() => {
   const d = customerData();
   if (d.name) return d.name;
-
   const cid = Number(sale.value?.customer_id || sale.value?.customer?.id || 0);
   return cid ? `Cliente #${cid}` : "Consumidor Final";
 });
-
 const customerDocResolved = computed(() => customerData().doc || "");
 const customerPhoneResolved = computed(() => customerData().phone || "");
 const customerEmailResolved = computed(() => customerData().email || "");
+const showCustomerDataBlock = computed(() => !!(customerDocResolved.value || customerPhoneResolved.value || customerEmailResolved.value));
 
-const showCustomerDataBlock = computed(() => {
-  return !!(
-    customerDocResolved.value ||
-    customerPhoneResolved.value ||
-    customerEmailResolved.value
-  );
+const customerInitials = computed(() => {
+  const name = customerNameResolved.value || "CF";
+  const parts = name.split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] || "";
+  const b = parts[1]?.[0] || "";
+  return (a + b).toUpperCase() || name.slice(0, 2).toUpperCase();
 });
 
 const branchLabelResolved = computed(() => {
   const s = sale.value || {};
-  return firstFilled(
-    s.branch?.name,
-    s.branch_name,
-    s.branch?.display_name,
-    s.branch_id ? `#${s.branch_id}` : ""
-  );
+  return firstFilled(s.branch?.name, s.branch_name, s.branch?.display_name, s.branch_id ? `#${s.branch_id}` : "");
 });
 
 const invoiceModeResolved = computed(() =>
-  firstFilled(
-    saleExtra.value?.invoice_mode,
-    sale.value?.invoice_mode
-  ).toUpperCase()
+  firstFilled(saleExtra.value?.invoice_mode, sale.value?.invoice_mode).toUpperCase()
 );
-
 const invoiceTypeResolved = computed(() =>
-  firstFilled(
-    saleExtra.value?.invoice_type,
-    sale.value?.invoice_type,
-    "—"
-  ).toUpperCase()
+  firstFilled(saleExtra.value?.invoice_type, sale.value?.invoice_type, "—").toUpperCase()
 );
-
 const customerTypeResolved = computed(() =>
-  firstFilled(
-    saleExtra.value?.customer_type,
-    sale.value?.customer_type,
-    "CONSUMIDOR_FINAL"
-  ).toUpperCase()
+  firstFilled(saleExtra.value?.customer_type, sale.value?.customer_type, "CONSUMIDOR_FINAL").toUpperCase()
 );
-
 const invoiceModeLabelResolved = computed(() => {
   const x = invoiceModeResolved.value;
   if (x === "NO_FISCAL") return "No fiscal";
@@ -753,7 +657,6 @@ const invoiceModeLabelResolved = computed(() => {
   if (x === "TICKET_ONLY") return "Solo ticket";
   return x || "—";
 });
-
 const customerTypeLabelResolved = computed(() => {
   const x = customerTypeResolved.value;
   if (x === "CONSUMIDOR_FINAL") return "Consumidor final";
@@ -763,112 +666,37 @@ const customerTypeLabelResolved = computed(() => {
 
 function resolvePaymentMethod(payment) {
   const p = payment || {};
-
-  const display = firstFilled(
-    p.label,
-    p.payment_method_name,
-    p.payment_method_label,
-    p.display_name
-  );
-
-  const methodRaw = firstFilled(
-    p.method,
-    p.kind,
-    p.payment_method_kind
-  ).toUpperCase();
-
+  const display = firstFilled(p.label, p.payment_method_name, p.payment_method_label, p.display_name);
+  const methodRaw = firstFilled(p.method, p.kind, p.payment_method_kind).toUpperCase();
   let resolved = methodRaw || "OTHER";
-
   if (resolved === "QR") resolved = "MERCADOPAGO";
-  if (resolved === "MERCADOPAGO") resolved = "MERCADOPAGO";
   if (resolved === "CREDIT_SJT") resolved = "CREDIT_SJT";
-
-  return {
-    method_resolved: resolved,
-    method_display: display || methodLabel(resolved),
-  };
+  return { method_resolved: resolved, method_display: display || methodLabel(resolved) };
 }
 
 function extractPaymentDetails(payment) {
   const p = payment || {};
   const noteObj = safeJsonParse(p.note) || {};
   const extra = safeJsonParse(p.extra) || {};
-
   const merged = { ...noteObj, ...extra };
-
-  const cardKind = firstFilled(
-    p.card_kind,
-    p.cardKind,
-    merged.card_kind,
-    merged.cardKind,
-    merged.card_type,
-    merged.cardType
-  ).toUpperCase();
-
-  const cardBrand = firstFilled(
-    p.card_brand,
-    p.cardBrand,
-    merged.card_brand,
-    merged.cardBrand,
-    merged.brand,
-    merged.network
-  );
-
-  const installments =
-    numOrNull(p.installments) ??
-    numOrNull(merged.installments) ??
-    numOrNull(merged.cuotas) ??
-    1;
-
-  const listTotal =
-    numOrNull(merged.list_total) ??
-    numOrNull(merged.listTotal) ??
-    numOrNull(merged.total_list) ??
-    numOrNull(merged.totalList);
-
-  const installmentAmount =
-    numOrNull(merged.per_installment_list) ??
-    numOrNull(merged.perInstallmentList) ??
+  const cardKind = firstFilled(p.card_kind, p.cardKind, merged.card_kind, merged.cardKind, merged.card_type, merged.cardType).toUpperCase();
+  const cardBrand = firstFilled(p.card_brand, p.cardBrand, merged.card_brand, merged.cardBrand, merged.brand, merged.network);
+  const installments = numOrNull(p.installments) ?? numOrNull(merged.installments) ?? numOrNull(merged.cuotas) ?? 1;
+  const listTotal = numOrNull(merged.list_total) ?? numOrNull(merged.listTotal) ?? numOrNull(merged.total_list);
+  const installmentAmount = numOrNull(merged.per_installment_list) ?? numOrNull(merged.perInstallmentList) ??
     numOrNull(merged.installment_amount) ??
-    numOrNull(merged.installmentAmount) ??
-    (Number.isFinite(Number(listTotal)) && Number(installments) > 1
-      ? Number(listTotal) / Number(installments)
-      : null);
-
-  const totalWithFee =
-    numOrNull(merged.total_with_fee) ??
-    numOrNull(merged.totalWithFee) ??
-    numOrNull(merged.total_financiado);
-
-  const priceBasis = firstFilled(
-    merged.price_basis,
-    merged.priceBasis,
-    saleExtra.value?.price_policy
-  ).toUpperCase();
-
+    (Number.isFinite(Number(listTotal)) && Number(installments) > 1 ? Number(listTotal) / Number(installments) : null);
+  const totalWithFee = numOrNull(merged.total_with_fee) ?? numOrNull(merged.totalWithFee) ?? numOrNull(merged.total_financiado);
+  const priceBasis = firstFilled(merged.price_basis, merged.priceBasis, saleExtra.value?.price_policy).toUpperCase();
   const priceBasisLabel =
-    priceBasis === "LIST" || priceBasis === "LIST_PRICE"
-      ? "Precio lista"
-      : priceBasis === "DISCOUNT" || priceBasis === "SALE_PRICE"
-        ? "Precio contado"
-        : priceBasis === "RESELLER"
-          ? "Revendedor"
-          : "";
-
-  const noteHuman = firstFilled(
-    merged.note,
-    merged.message,
-    typeof p.note === "string" && !String(p.note).trim().startsWith("{") ? p.note : ""
-  );
-
+    priceBasis === "LIST" || priceBasis === "LIST_PRICE" ? "Precio lista" :
+    priceBasis === "DISCOUNT" || priceBasis === "SALE_PRICE" ? "Precio contado" :
+    priceBasis === "RESELLER" ? "Revendedor" : "";
+  const noteHuman = firstFilled(merged.note, merged.message,
+    typeof p.note === "string" && !String(p.note).trim().startsWith("{") ? p.note : "");
   return {
     card_type: cardKind,
-    card_type_label:
-      cardKind === "DEBIT"
-        ? "Débito"
-        : cardKind === "CREDIT"
-          ? "Crédito"
-          : "",
+    card_type_label: cardKind === "DEBIT" ? "Débito" : cardKind === "CREDIT" ? "Crédito" : "",
     card_brand: cardBrand,
     installments: Number.isFinite(Number(installments)) && Number(installments) > 0 ? Number(installments) : 1,
     installment_amount: installmentAmount,
@@ -882,40 +710,22 @@ function extractPaymentDetails(payment) {
 
 const paymentsResolved = computed(() => {
   const arr = Array.isArray(sale.value?.payments) ? sale.value.payments : [];
-  return arr.map((p) => {
-    const base = resolvePaymentMethod(p);
-    const det = extractPaymentDetails(p);
-
-    return {
-      ...p,
-      ...base,
-      ...det,
-    };
-  });
+  return arr.map((p) => ({ ...p, ...resolvePaymentMethod(p), ...extractPaymentDetails(p) }));
 });
 
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
-function dt(val) {
-  return val ? new Date(val).toLocaleString("es-AR") : "—";
-}
-function number(v) {
-  const n = Number(v || 0);
-  return Number.isFinite(n) ? n : 0;
-}
-function toNum(v) {
-  const n = Number(v ?? 0);
-  return Number.isFinite(n) ? n : 0;
-}
+function dt(val) { return val ? new Date(val).toLocaleString("es-AR") : "—"; }
+function number(v) { const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
+function toNum(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
 
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH") return "Efectivo";
   if (x === "CARD") return "Tarjeta";
   if (x === "TRANSFER") return "Transferencia";
-  if (x === "MERCADOPAGO") return "Mercado Pago";
-  if (x === "QR") return "QR";
+  if (x === "MERCADOPAGO" || x === "QR") return "Mercado Pago";
   if (x === "CREDIT_SJT") return "Crédito / Financiación";
   if (x === "OTHER") return "Otro";
   return m || "—";
@@ -928,6 +738,15 @@ function payColor(m) {
   if (x === "MERCADOPAGO" || x === "QR") return "orange";
   if (x === "CREDIT_SJT") return "teal";
   return "grey";
+}
+function payIcon(m) {
+  const x = String(m || "").toUpperCase();
+  if (x === "CASH") return "mdi-cash";
+  if (x === "CARD") return "mdi-credit-card-outline";
+  if (x === "TRANSFER") return "mdi-bank-transfer";
+  if (x === "MERCADOPAGO" || x === "QR") return "mdi-qrcode";
+  if (x === "CREDIT_SJT") return "mdi-wallet-outline";
+  return "mdi-cash-multiple";
 }
 function statusLabel(s) {
   const x = String(s || "").toUpperCase();
@@ -949,18 +768,11 @@ function userLabel(s) {
   const u = s?.user || null;
   return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
 }
-
 function paymentHeadline(p) {
   const installments = Number(p?.installments || 1);
   const method = p?.method_display || methodLabel(p?.method_resolved);
-
-  if (installments > 1) {
-    return `${method} en ${installments} cuotas`;
-  }
-
-  return `${method} en 1 pago`;
+  return installments > 1 ? `${method} en ${installments} cuotas` : `${method} en 1 pago`;
 }
-
 function paymentSubline(p) {
   const arr = [];
   if (p?.reference) arr.push(`Ref: ${p.reference}`);
@@ -968,198 +780,83 @@ function paymentSubline(p) {
   if (p?.payment_method_id) arr.push(`ID medio: ${p.payment_method_id}`);
   return arr;
 }
-
 function paymentFacts(p) {
   const out = [];
-
   out.push({ label: "Método", value: p.method_display || methodLabel(p.method_resolved) });
-
-  out.push({
-    label: "Cuotas",
-    value:
-      Number(p.installments || 1) > 1
-        ? `${p.installments} cuotas`
-        : "1 cuota",
-  });
-
-  if (p.card_type_label) {
-    out.push({ label: "Tipo tarjeta", value: p.card_type_label });
-  }
-
-  if (p.card_brand) {
-    out.push({ label: "Marca", value: p.card_brand });
-  }
-
-  if (p.price_basis_label) {
-    out.push({ label: "Base cálculo", value: p.price_basis_label });
-  }
-
-  if (p.installment_amount != null && Number(p.installments || 1) > 1) {
+  out.push({ label: "Cuotas", value: Number(p.installments || 1) > 1 ? `${p.installments} cuotas` : "1 cuota" });
+  if (p.card_type_label) out.push({ label: "Tipo tarjeta", value: p.card_type_label });
+  if (p.card_brand) out.push({ label: "Marca", value: p.card_brand });
+  if (p.price_basis_label) out.push({ label: "Base cálculo", value: p.price_basis_label });
+  if (p.installment_amount != null && Number(p.installments || 1) > 1)
     out.push({ label: "Valor cuota", value: money(p.installment_amount) });
-  }
-
-  if (p.list_total != null) {
-    out.push({ label: "Total lista", value: money(p.list_total) });
-  }
-
-  if (p.total_with_fee != null) {
-    out.push({ label: "Total financiado", value: money(p.total_with_fee) });
-  }
-
+  if (p.list_total != null) out.push({ label: "Total lista", value: money(p.list_total) });
+  if (p.total_with_fee != null) out.push({ label: "Total financiado", value: money(p.total_with_fee) });
   return out;
 }
-
 function refundMethodLabel(r) {
-  return methodLabel(
-    firstFilled(r?.refund_method, r?.method, r?.payment_method_name, "OTHER")
-  );
+  return methodLabel(firstFilled(r?.refund_method, r?.method, r?.payment_method_name, "OTHER"));
 }
 
-function p(item) {
-  return item?.product || null;
-}
+function p(item) { return item?.product || null; }
 function pidOf(item) {
   const pid = Number(item?.product_id || item?.productId || p(item)?.id || 0);
   return Number.isFinite(pid) ? pid : 0;
 }
 function productName(item) {
-  return (
-    item?.product_name_snapshot ||
-    p(item)?.name ||
-    p(item)?.title ||
-    p(item)?.product_name ||
-    (pidOf(item) ? `Producto #${pidOf(item)}` : "Producto")
-  );
+  return item?.product_name_snapshot || p(item)?.name || p(item)?.title ||
+    (pidOf(item) ? `Producto #${pidOf(item)}` : "Producto");
 }
 function productSku(item) {
   const prod = p(item) || {};
-  const v =
-    item?.product_sku_snapshot ||
-    prod?.sku ||
-    prod?.SKU ||
-    prod?.code ||
-    prod?.product_code ||
-    prod?.internal_code ||
-    prod?.codigo ||
-    prod?.barcode ||
-    prod?.ean ||
-    prod?.gtin ||
-    null;
-
-  const s = v ? String(v).trim() : "";
-  return s || "";
+  const v = item?.product_sku_snapshot || prod?.sku || prod?.code || prod?.product_code || prod?.barcode || null;
+  return v ? String(v).trim() : "";
 }
-function productBrand(item) {
-  const v = p(item)?.brand || p(item)?.marca || "";
-  const s = v ? String(v).trim() : "";
-  return s || "";
-}
-function productModel(item) {
-  const v = p(item)?.model || p(item)?.modelo || "";
-  const s = v ? String(v).trim() : "";
-  return s || "";
-}
-function barcodeLabel(item) {
-  const prod = p(item) || {};
-  const v = prod?.barcode || prod?.ean || prod?.gtin || prod?.codigo_barra || "";
-  const s = v ? String(v).trim() : "";
-  return s || "";
-}
-function warehouseLabel(item) {
-  return item?.warehouse?.name || (item?.warehouse_id ? `#${item.warehouse_id}` : "");
-}
+function productBrand(item) { return String(p(item)?.brand || p(item)?.marca || "").trim(); }
+function productModel(item) { return String(p(item)?.model || p(item)?.modelo || "").trim(); }
 function categoryLabel(item) {
   const prod = p(item) || {};
   const cat = prod?.category || null;
-  if (cat?.name) {
-    const parent = cat?.parent?.name ? ` / ${cat.parent.name}` : "";
-    return `${cat.name}${parent}`;
-  }
-  const cid = Number(prod?.category_id || prod?.subcategory_id || prod?.categoryId || 0) || null;
+  if (cat?.name) { const parent = cat?.parent?.name ? ` / ${cat.parent.name}` : ""; return `${cat.name}${parent}`; }
+  const cid = Number(prod?.category_id || prod?.subcategory_id || 0) || null;
   return cid ? `#${cid}` : "";
 }
-
 function productMetaLine(item) {
   const parts = [];
-  const sku = productSku(item);
-  const brand = productBrand(item);
-  const model = productModel(item);
-
+  const sku = productSku(item); const brand = productBrand(item); const model = productModel(item);
   if (sku) parts.push(`SKU: ${sku}`);
   if (brand) parts.push(`Marca: ${brand}`);
   if (model) parts.push(`Modelo: ${model}`);
-
   return parts.join(" · ");
-}
-
-function productChips(item) {
-  const out = [];
-  const cat = categoryLabel(item);
-  const wh = warehouseLabel(item);
-  const stock = stockText(item);
-  const barcode = barcodeLabel(item);
-
-  if (cat) out.push({ text: `Cat: ${cat}`, variant: "outlined" });
-  if (wh) out.push({ text: `Depósito: ${wh}`, variant: "outlined" });
-  if (stock !== "—") out.push({ text: `Stock: ${stock}`, variant: "flat", color: stockChipColor(item) });
-  if (barcode) out.push({ text: barcode, variant: "outlined", icon: "mdi-barcode" });
-
-  return out;
 }
 
 const imageById = ref({});
 const imgLoading = ref({});
-
 function pickUrlFromImageRow(row) {
   if (!row) return "";
-  return row.url || row.public_url || row.publicUrl || row.image_url || row.path || row.key || row.location || row.filename || "";
+  return row.url || row.public_url || row.publicUrl || row.image_url || row.path || row.filename || "";
 }
 function normalizeUrl(u) {
   if (!u) return "";
   const s = String(u);
   if (s.startsWith("http://") || s.startsWith("https://")) return s;
-
   const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
   if (apiBase && s.startsWith("/")) return apiBase + s;
-
   const s3Base = (import.meta.env.VITE_S3_PUBLIC_BASE_URL || "").replace(/\/$/, "");
   if (s3Base) return s3Base + (s.startsWith("/") ? s : `/${s}`);
-
   return s;
 }
 function pickImageFromProduct(prod) {
-  const direct =
-    prod?.main_image_url ||
-    prod?.image_url ||
-    prod?.image ||
-    prod?.thumb_url ||
-    prod?.thumbnail_url ||
-    prod?.public_url ||
-    prod?.publicUrl ||
-    null;
-
+  const direct = prod?.main_image_url || prod?.image_url || prod?.image || prod?.thumb_url || prod?.public_url || null;
   if (direct) return normalizeUrl(direct);
-
-  const arr = Array.isArray(prod?.images)
-    ? prod.images
-    : Array.isArray(prod?.product_images)
-      ? prod.product_images
-      : null;
-
-  if (arr?.length) {
-    const u = pickUrlFromImageRow(arr[0]);
-    if (u) return normalizeUrl(u);
-  }
+  const arr = Array.isArray(prod?.images) ? prod.images : Array.isArray(prod?.product_images) ? prod.product_images : null;
+  if (arr?.length) { const u = pickUrlFromImageRow(arr[0]); if (u) return normalizeUrl(u); }
   return "";
 }
-
 async function fetchFirstImageViaStore(productId) {
   const pid = Number(productId || 0);
   if (!pid) return "";
-
   if (imageById.value[pid] !== undefined) return imageById.value[pid] || "";
   if (imgLoading.value[pid]) return "";
-
   imgLoading.value = { ...imgLoading.value, [pid]: true };
   try {
     const imgs = await productsStore.fetchImages(pid);
@@ -1172,50 +869,27 @@ async function fetchFirstImageViaStore(productId) {
     imageById.value = { ...imageById.value, [pid]: "" };
     return "";
   } finally {
-    const next = { ...imgLoading.value };
-    delete next[pid];
-    imgLoading.value = next;
+    const next = { ...imgLoading.value }; delete next[pid]; imgLoading.value = next;
   }
 }
-
 function itemImage(item) {
   const prod = p(item) || {};
   const pid = pidOf(item);
   if (!pid) return "";
-
   const fromObj = pickImageFromProduct(prod);
   if (fromObj) {
     if (imageById.value[pid] !== fromObj) imageById.value = { ...imageById.value, [pid]: fromObj };
     return fromObj;
   }
-
   if (imageById.value[pid] !== undefined) return imageById.value[pid] || "";
   fetchFirstImageViaStore(pid);
   return "";
 }
-
 function stockQty(item) {
   const prod = p(item) || {};
-  const q =
-    prod?.qty ??
-    prod?.stock_qty ??
-    prod?.stock ??
-    prod?.on_hand ??
-    prod?.available_qty ??
-    prod?.available ??
-    prod?.existence ??
-    prod?.current_stock ??
-    prod?.warehouse_qty ??
-    null;
-
+  const q = prod?.qty ?? prod?.stock_qty ?? prod?.stock ?? prod?.on_hand ?? prod?.available_qty ?? prod?.existence ?? null;
   if (q === null || q === undefined) return null;
   return toNum(q);
-}
-function stockText(item) {
-  if (!pidOf(item)) return "—";
-  if (!p(item)) return "—";
-  const q = stockQty(item);
-  return q === null ? "—" : String(q);
 }
 function availabilityLabel(item) {
   if (!p(item)) return "—";
@@ -1232,186 +906,99 @@ function availabilityColor(item) {
   if (lab === "Sin stock") return "red";
   return "grey";
 }
-function stockChipColor(item) {
-  return availabilityColor(item);
-}
 
 function goToProduct(pid) {
   const n = Number(pid || 0);
   if (!n) return;
-
-  const tries = [
-    `/app/products/${n}`,
-    `/app/products/view/${n}`,
-    `/app/products/detail/${n}`,
-    `/app/products/${n}/view`,
-  ];
-
-  router.push({ name: "ProductDetailViewPage", params: { id: n } }).catch(() => {
-    router.push({ name: "product-detail", params: { id: n } }).catch(async () => {
-      for (const path of tries) {
-        try {
-          await router.push({ path });
-          return;
-        } catch {}
-      }
-      snack.value = { show: true, text: "No encontré la ruta del perfil de producto (router)" };
+  router.push({ name: "productView", params: { id: n } }).catch(() => {
+    router.push({ path: `/app/products/${n}/view` }).catch(() => {
+      snack.value = { show: true, text: "No se encontró la ruta del producto" };
     });
   });
 }
-
-function openImage(item) {
-  imageItem.value = item || null;
-  imageDialog.value = true;
-}
-
-async function copyText(txt) {
-  try {
-    if (!txt) return;
-    await navigator.clipboard.writeText(txt);
-    snack.value = { show: true, text: "Copiado" };
-  } catch {
-    snack.value = { show: true, text: "No se pudo copiar" };
-  }
-}
+function openImage(item) { imageItem.value = item || null; imageDialog.value = true; }
 
 function needsHydrateProducts(items) {
   const arr = Array.isArray(items) ? items : [];
   if (!arr.length) return false;
-
   return arr.some((it) => {
     const prod = it?.product;
     if (!prod) return true;
-
     const name = prod?.name || prod?.title || prod?.product_name;
     if (!name) return true;
-
-    const hasSku = !!(prod?.sku || prod?.code || prod?.product_code || prod?.internal_code);
-    const hasQty = prod?.qty !== undefined || prod?.stock_qty !== undefined || prod?.stock !== undefined;
-
+    const hasSku = !!(prod?.sku || prod?.code);
+    const hasQty = prod?.qty !== undefined || prod?.stock_qty !== undefined;
     return !(hasSku && hasQty);
   });
 }
-
 async function fetchPosProductOne(id) {
   const pid = Number(id || 0);
   if (!pid) return null;
-
-  const attempts = [
-    { url: `/pos/products/${pid}`, params: { include_images: 1 } },
-    { url: `/pos/products/${pid}`, params: undefined },
-  ];
-
-  let lastErr = null;
-  for (const a of attempts) {
+  for (const a of [{ url: `/pos/products/${pid}`, params: { include_images: 1 } }, { url: `/pos/products/${pid}` }]) {
     try {
       const { data } = await http.get(a.url, a.params ? { params: a.params } : undefined);
       const obj = data?.ok ? data?.data : data;
       if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
-    } catch (e) {
-      lastErr = e;
-    }
+    } catch {}
   }
-
-  throw lastErr || new Error("pos product one failed");
+  return null;
 }
-
 async function fetchPosProductsBatch(ids) {
-  const params = { ids: ids.join(","), include_images: 1, limit: ids.length, page: 1 };
-  const { data } = await http.get("/pos/products", { params });
-
+  const { data } = await http.get("/pos/products", { params: { ids: ids.join(","), include_images: 1, limit: ids.length, page: 1 } });
   const out = data?.data || data || [];
   const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
-  if (!arr.length) throw new Error("pos products batch vacío");
+  if (!arr.length) throw new Error("vacío");
   return arr;
 }
-
 async function fetchProductFallbackOne(id) {
   const pid = Number(id || 0);
   if (!pid) return null;
-
-  const attempts = [
-    { url: `/products/${pid}`, params: { include_images: 1 } },
-    { url: `/products/${pid}`, params: undefined },
-  ];
-
-  let lastErr = null;
-  for (const a of attempts) {
+  for (const a of [{ url: `/products/${pid}`, params: { include_images: 1 } }, { url: `/products/${pid}` }]) {
     try {
       const { data } = await http.get(a.url, a.params ? { params: a.params } : undefined);
       const obj = data?.ok ? data?.data : data;
       if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
-    } catch (e) {
-      lastErr = e;
-    }
+    } catch {}
   }
-
-  throw lastErr || new Error("product one failed");
+  return null;
 }
-
 async function hydrateProductsForItems() {
   const s = sale.value;
   if (!s) return;
-
   const items = Array.isArray(s.items) ? s.items : [];
   if (!needsHydrateProducts(items)) return;
-
   const ids = Array.from(new Set(items.map((it) => pidOf(it)).filter((n) => Number.isFinite(n) && n > 0)));
   if (!ids.length) return;
-
   productsLoading.value = true;
-
   try {
     const map = new Map();
-
     try {
       const list = await fetchPosProductsBatch(ids);
-      for (const pr of list) {
-        const pid = Number(pr?.id || 0);
-        if (pid) map.set(pid, pr);
-      }
+      for (const pr of list) { const pid = Number(pr?.id || 0); if (pid) map.set(pid, pr); }
     } catch {
       const rows = await Promise.all(ids.map((pid) => fetchPosProductOne(pid).catch(() => null)));
-      for (const pr of rows) {
-        const pid = Number(pr?.id || 0);
-        if (pid) map.set(pid, pr);
-      }
+      for (const pr of rows) { const pid = Number(pr?.id || 0); if (pid) map.set(pid, pr); }
     }
-
     const missing = ids.filter((pid) => !map.has(pid));
     if (missing.length) {
       const rows = await Promise.all(missing.map((pid) => fetchProductFallbackOne(pid).catch(() => null)));
-      for (const pr of rows) {
-        const pid = Number(pr?.id || 0);
-        if (pid && !map.has(pid)) map.set(pid, pr);
-      }
+      for (const pr of rows) { const pid = Number(pr?.id || 0); if (pid && !map.has(pid)) map.set(pid, pr); }
     }
-
-    for (const it of items) {
-      const pid = pidOf(it);
-      if (!pid) continue;
-      if (map.has(pid)) it.product = map.get(pid);
-    }
-  } finally {
-    productsLoading.value = false;
-  }
+    for (const it of items) { const pid = pidOf(it); if (pid && map.has(pid)) it.product = map.get(pid); }
+  } finally { productsLoading.value = false; }
 }
 
 async function load() {
   loading.value = true;
   payload.value = null;
-
   try {
     const { data } = await http.get(`/pos/sales/${id.value}`);
     if (!data?.ok) throw new Error(data?.message || "Error cargando venta");
-
     payload.value = data.data || null;
     await hydrateProductsForItems();
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
-  } finally {
-    loading.value = false;
-  }
+  } finally { loading.value = false; }
 }
 
 onMounted(load);
@@ -1419,481 +1006,268 @@ watch(id, () => load());
 </script>
 
 <style scoped>
-.pos-sale-detail {
-  --sd-surface: rgba(var(--v-theme-surface), 1);
-  --sd-surface-soft: rgba(var(--v-theme-surface), 0.76);
-  --sd-border: rgba(var(--v-theme-on-surface), 0.12);
-  --sd-border-strong: rgba(var(--v-theme-on-surface), 0.18);
-  --sd-text: rgba(var(--v-theme-on-surface), 0.96);
-  --sd-text-soft: rgba(var(--v-theme-on-surface), 0.76);
-  --sd-text-faint: rgba(var(--v-theme-on-surface), 0.62);
-  --sd-bg-b: rgba(var(--v-theme-on-surface), 0.03);
+.sd { display: flex; flex-direction: column; min-height: 100%; }
 
-  background:
-    radial-gradient(1200px 700px at 15% 0%, rgba(var(--v-theme-primary), 0.08), transparent 55%),
-    radial-gradient(1000px 600px at 100% 0%, rgba(var(--v-theme-secondary), 0.05), transparent 55%),
-    linear-gradient(180deg, var(--sd-bg-b), transparent 24%);
-  min-height: 100%;
+/* ── TOP BAR ── */
+.sd-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  position: sticky; top: 0; z-index: 10;
+}
+.sd-back { flex-shrink: 0; margin-left: -4px; }
+.sd-bar-title { font-size: 16px; font-weight: 900; }
+.sd-bar-sub { font-size: 11px; opacity: 0.45; margin-top: 1px; }
+
+/* ── LOADING ── */
+.sd-loading { display: flex; align-items: center; gap: 12px; padding: 40px 20px; opacity: 0.7; font-size: 14px; }
+
+/* ── HERO STRIP ── */
+.sd-hero {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0;
+  padding: 12px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.sd-hs { flex: 1; min-width: 110px; display: flex; align-items: center; gap: 10px; padding: 4px 10px; }
+.sd-hs-ico {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.sd-hs-ico--primary { background: rgb(var(--v-theme-primary)); }
+.sd-hs-ico--green   { background: rgb(var(--v-theme-success)); }
+.sd-hs-ico--indigo  { background: #5c6bc0; }
+.sd-hs-ico--purple  { background: #9c27b0; }
+.sd-hs-ico--teal    { background: #009688; }
+.sd-hs-val { font-size: 14px; font-weight: 900; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.sd-hs-lbl { font-size: 10px; opacity: 0.4; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.sd-hero-sep { width: 1px; height: 32px; background: rgba(var(--v-border-color), var(--v-border-opacity)); flex-shrink: 0; }
+
+/* ── TABS ── */
+.sd-tabs {
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  position: sticky; top: 49px; z-index: 9;
 }
 
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-
-.page-kicker {
-  font-size: 12px;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 800;
-  color: var(--sd-text-soft);
-  margin-bottom: 8px;
-}
-
-.page-title {
-  font-size: clamp(1.7rem, 2vw, 2.4rem);
-  line-height: 1.05;
-  font-weight: 900;
-  color: var(--sd-text);
-  word-break: break-word;
-}
-
-.page-subtitle {
-  margin-top: 6px;
-  font-size: 0.96rem;
-  color: var(--sd-text-soft);
-}
-
-.main-shell {
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.98));
-  border: 1px solid var(--sd-border);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
-  gap: 20px;
-  align-items: stretch;
-}
-
-.soft-panel,
-.soft-subcard,
-.payment-card,
-.mini-stat-card,
-.fact-card {
-  border: 1px solid var(--sd-border);
-}
-
-.soft-panel,
-.soft-subcard {
-  background: linear-gradient(180deg, var(--sd-surface-soft), rgba(var(--v-theme-surface), 0.9));
-  border-radius: 22px;
-}
-
-.soft-panel {
-  padding: 22px;
-  min-width: 0;
-}
-
-.panel-title,
-.section-title {
-  display: flex;
-  align-items: center;
-  font-weight: 900;
-  color: var(--sd-text);
-  letter-spacing: 0.01em;
-}
-
-.hero-customer-name {
-  font-size: clamp(1.35rem, 1.8vw, 1.85rem);
-  line-height: 1.12;
-  font-weight: 900;
-  color: var(--sd-text);
-  word-break: break-word;
-}
-
-.hero-muted,
-.product-meta,
-.payment-subline,
-.section-subtitle {
-  color: var(--sd-text-soft);
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.sale-info-grid {
-  align-items: start;
-}
-
-.info-item {
-  min-width: 0;
-}
-
-.info-label,
-.fact-label,
-.total-kicker {
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sd-text-faint);
-}
-
-.info-value,
-.fact-value {
-  margin-top: 4px;
-  color: var(--sd-text);
-  font-weight: 700;
-  line-height: 1.35;
-  word-break: break-word;
-}
-
-.total-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.total-main {
-  font-size: clamp(2rem, 2.5vw, 2.8rem);
-  line-height: 1;
-  font-weight: 900;
-  margin-top: 6px;
-  color: var(--sd-text);
-}
-
-.money-breakdown {
-  display: grid;
-  gap: 10px;
-}
-
-.money-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items: center;
-  color: var(--sd-text-soft);
-}
-
-.money-row strong {
-  color: var(--sd-text);
-  font-weight: 900;
-}
-
-.mini-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.mini-stat-card {
-  border-radius: 18px;
-  padding: 14px 14px 12px;
-  background: rgba(var(--v-theme-surface), 0.82);
-}
-
-.mini-stat-card--accent {
-  background: rgba(var(--v-theme-primary), 0.09);
-  border-color: rgba(var(--v-theme-primary), 0.22);
-}
-
-.mini-stat-label {
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sd-text-faint);
-}
-
-.mini-stat-value {
-  margin-top: 8px;
-  font-size: 1.08rem;
-  font-weight: 900;
-  color: var(--sd-text);
-  word-break: break-word;
-}
-
-.section-block {
-  margin-top: 28px;
-}
-
-.section-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+/* ── TAB ── */
+.sd-tab { padding: 14px 16px 24px; }
+.sd-tab-head {
+  display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
 }
+.sd-tab-head-left { display: flex; align-items: center; gap: 9px; }
+.sd-tab-ttl { font-size: 13px; font-weight: 800; }
 
-.table-wrap {
-  border: 1px solid var(--sd-border);
-  border-radius: 22px;
-  overflow: hidden;
-  background: rgba(var(--v-theme-surface), 0.9);
+/* ── SHARED BADGE ── */
+.sd-badge {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center;
 }
+.sd-badge--primary { background: rgb(var(--v-theme-primary)); }
+.sd-badge--purple  { background: #9c27b0; }
+.sd-badge--green   { background: rgb(var(--v-theme-success)); }
+.sd-badge--indigo  { background: #5c6bc0; }
+.sd-badge--orange  { background: rgb(var(--v-theme-warning)); }
+.sd-badge--teal    { background: #009688; }
 
-.products-table {
-  background: transparent;
-}
-
-.product-cell {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  padding: 4px 0;
-}
-
-.product-name {
-  font-weight: 900;
-  color: var(--sd-text);
-  min-width: 0;
-}
-
-.product-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  font-size: 0.84rem;
-}
-
-.thumb {
-  cursor: zoom-in;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px solid var(--sd-border);
-  flex: 0 0 auto;
-}
-
-.detail-chip {
-  color: var(--sd-text) !important;
-  border-color: var(--sd-border-strong) !important;
-  background: rgba(var(--v-theme-on-surface), 0.02) !important;
-  max-width: 100%;
-}
-
-.payments-stack {
+/* ── INFO GRID (3 cols) ── */
+.sd-info-grid {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.payment-card {
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.9));
-}
-
-.payment-card--single {
-  border-radius: 22px;
-}
-
-.payment-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: start;
-}
-
-.payment-top-left {
-  min-width: 0;
-}
-
-.payment-title {
-  font-size: 1.3rem;
-  line-height: 1.15;
-  font-weight: 900;
-  color: var(--sd-text);
-  word-break: break-word;
-}
-
-.payment-subline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  font-size: 0.9rem;
-}
-
-.payment-amount-box {
-  min-width: 190px;
-  border-radius: 18px;
+/* ── CARD ── */
+.sd-card {
+  position: relative;
   padding: 14px 16px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  border: 1px solid rgba(var(--v-theme-primary), 0.18);
-  text-align: right;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+}
+.sd-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 14px 0 0 14px;
+}
+.sd-card--primary::before { background: rgb(var(--v-theme-primary)); }
+.sd-card--purple::before  { background: #9c27b0; }
+.sd-card--green::before   { background: rgb(var(--v-theme-success)); }
+.sd-card--empty { opacity: 0.75; }
+
+.sd-card-head {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 12px;
+}
+.sd-card-ttl { font-size: 12px; font-weight: 800; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.06em; flex: 1; }
+
+/* Customer panel */
+.sd-cust-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(#9c27b0, 0.12);
+  background: rgba(var(--v-theme-primary), 0.1);
+  display: grid; place-items: center;
+  margin-bottom: 8px;
+}
+.sd-cust-initials { font-size: 16px; font-weight: 900; }
+.sd-cust-name { font-size: 17px; font-weight: 900; line-height: 1.2; margin-bottom: 2px; }
+
+/* Pay panel */
+.sd-pay-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 10px; }
+.sd-pay-big { font-size: 22px; font-weight: 900; }
+
+/* Info rows with icons */
+.sd-irows { display: flex; flex-direction: column; }
+.sd-ir {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+}
+.sd-ir:last-child { border-bottom: none; }
+.sd-ir-ico { opacity: 0.35; flex-shrink: 0; }
+.sd-ir-k { font-size: 11px; font-weight: 700; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.04em; flex: 1; min-width: 0; }
+.sd-ir-v { font-size: 13px; font-weight: 700; text-align: right; word-break: break-word; }
+.sd-mono { font-family: monospace; font-size: 12px; }
+
+.sd-no-data {
+  display: flex; align-items: center;
+  font-size: 12px; opacity: 0.4;
+  padding: 8px 0;
 }
 
-.payment-amount-label {
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sd-text-faint);
+/* ── TOTALES STRIP ── */
+.sd-totals {
+  display: flex; flex-wrap: wrap;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+.sd-tot {
+  flex: 1; min-width: 110px;
+  padding: 12px 14px;
+  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.sd-tot:last-child { border-right: none; }
+.sd-tot-k {
+  display: flex; align-items: center;
+  font-size: 10px; font-weight: 800;
+  opacity: 0.4; text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.sd-tot-v { font-size: 17px; font-weight: 900; }
+.sd-tot--main { background: rgba(var(--v-theme-primary), 0.05); }
+.sd-tot--main .sd-tot-v { color: rgb(var(--v-theme-primary)); }
+.sd-tot--ok .sd-tot-v { color: rgb(var(--v-theme-success)); }
+.sd-tot--neg .sd-tot-v { color: rgb(var(--v-theme-warning)); }
+.sd-tot--warn .sd-tot-v { color: rgb(var(--v-theme-warning)); }
+.sd-tot--neto { background: rgba(var(--v-theme-success), 0.04); }
+.sd-tot--neto .sd-tot-v { color: rgb(var(--v-theme-success)); }
+
+/* ── ITEMS LIST ── */
+.sd-items-list { display: flex; flex-direction: column; gap: 8px; }
+.sd-item-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+}
+.sd-item-img {
+  width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0;
+  overflow: hidden; cursor: zoom-in;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  display: grid; place-items: center;
+}
+.sd-img { width: 100%; height: 100%; object-fit: cover; }
+.sd-item-body { flex: 1; min-width: 0; }
+.sd-item-name { font-size: 14px; font-weight: 900; line-height: 1.3; }
+.sd-item-meta { font-size: 11px; opacity: 0.5; margin-top: 2px; }
+.sd-item-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+.sd-item-nums { text-align: right; flex-shrink: 0; }
+.sd-item-qty { font-size: 15px; font-weight: 900; }
+.sd-item-unit { font-size: 11px; opacity: 0.5; }
+.sd-item-total { font-size: 14px; font-weight: 900; color: rgb(var(--v-theme-primary)); }
+
+.sd-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 32px; opacity: 0.45; font-size: 13px;
 }
 
-.payment-amount-value {
-  margin-top: 6px;
-  font-size: 1.4rem;
-  line-height: 1;
-  font-weight: 900;
-  color: var(--sd-text);
-  word-break: break-word;
+/* ── PAYMENTS ── */
+.sd-pays { display: flex; flex-direction: column; gap: 10px; }
+.sd-pay-card {
+  padding: 14px 16px; border-radius: 14px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
 }
+.sd-pay-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.sd-pay-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sd-pay-amount-box {
+  padding: 8px 12px; border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.07);
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+  text-align: right; flex-shrink: 0;
+}
+.sd-pay-albl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.45; }
+.sd-pay-aval { font-size: 18px; font-weight: 900; }
+.sd-pay-headline { font-size: 15px; font-weight: 900; margin-bottom: 4px; }
+.sd-pay-subline { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; opacity: 0.5; margin-bottom: 8px; }
 
-.payment-facts-grid {
+.sd-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px; margin-top: 10px;
 }
-
-.fact-card {
-  border-radius: 18px;
-  padding: 14px;
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  min-width: 0;
-}
-
-.payment-note {
-  border-radius: 18px;
-  padding: 14px;
+.sd-fact {
+  padding: 9px 11px; border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px dashed var(--sd-border-strong);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.sd-fact-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.4; }
+.sd-fact-val { font-size: 13px; font-weight: 700; margin-top: 3px; }
+.sd-pay-note {
+  display: flex; align-items: center;
+  margin-top: 10px; padding: 9px 11px; border-radius: 10px;
+  font-size: 12px; opacity: 0.65;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px dashed rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.5));
 }
 
-.min-w-0 {
-  min-width: 0;
+/* ── HISTORIAL ── */
+.sd-hist-list { display: flex; flex-direction: column; gap: 8px; }
+.sd-hist-card {
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  position: relative; overflow: hidden;
 }
+.sd-hist-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.sd-hist-card--orange::before { background: rgb(var(--v-theme-warning)); }
+.sd-hist-card--teal::before   { background: #009688; }
+.sd-hist-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sd-hist-date { font-size: 13px; font-weight: 700; }
+.sd-hist-meta { font-size: 12px; opacity: 0.55; margin-top: 3px; }
 
-:deep(.v-data-table .v-table__wrapper > table > thead > tr > th) {
-  color: var(--sd-text-soft) !important;
-  font-weight: 800 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-  background: rgba(var(--v-theme-on-surface), 0.025);
-}
-
-:deep(.v-data-table .v-table__wrapper > table > tbody > tr > td) {
-  color: var(--sd-text) !important;
-  border-bottom-color: var(--sd-border) !important;
-  background: transparent;
-  vertical-align: top;
-}
-
-:deep(.v-data-table .v-table__wrapper > table > tbody > tr:hover > td) {
-  background: rgba(var(--v-theme-primary), 0.03) !important;
-}
-
-:deep(.v-alert),
-:deep(.v-card),
-:deep(.v-chip),
-:deep(.v-btn),
-:deep(.v-list),
-:deep(.v-field) {
-  --v-medium-emphasis-opacity: 1;
-}
-
-@media (max-width: 1100px) {
-  .hero-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .payment-facts-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
+/* ── RESPONSIVE ── */
 @media (max-width: 860px) {
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  .payment-top {
-    grid-template-columns: 1fr;
-  }
-
-  .payment-amount-box {
-    min-width: 0;
-    text-align: left;
-  }
+  .sd-info-grid { grid-template-columns: 1fr 1fr; }
+  .sd-card--green { grid-column: 1 / -1; }
 }
-
-@media (max-width: 760px) {
-  .page-head {
-    margin-bottom: 14px;
-  }
-
-  .soft-panel {
-    padding: 18px;
-  }
-
-  .info-grid,
-  .mini-stats-grid,
-  .payment-facts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-cell {
-    align-items: flex-start;
-  }
-
-  .hero-customer-name {
-    font-size: 1.9rem;
-  }
-
-  .payment-title {
-    font-size: 1.08rem;
-  }
-}
-
-@media (max-width: 520px) {
-  .pos-sale-detail {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-
-  .soft-panel {
-    padding: 16px;
-    border-radius: 18px;
-  }
-
-  .main-shell {
-    border-radius: 18px !important;
-  }
-
-  .page-title {
-    font-size: 1.45rem;
-  }
-
-  .total-main {
-    font-size: 1.85rem;
-  }
-
-  .mini-stats-grid,
-  .payment-facts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-cell {
-    gap: 10px;
-  }
-
-  .thumb {
-    width: 50px !important;
-    height: 50px !important;
-  }
+@media (max-width: 560px) {
+  .sd-info-grid { grid-template-columns: 1fr; }
+  .sd-card--green { grid-column: auto; }
+  .sd-hero { overflow-x: auto; flex-wrap: nowrap; }
+  .sd-hs { min-width: 100px; }
+  .sd-tab { padding: 10px 12px 20px; }
+  .sd-totals { overflow-x: auto; flex-wrap: nowrap; }
+  .sd-tot { min-width: 100px; }
 }
 </style>
