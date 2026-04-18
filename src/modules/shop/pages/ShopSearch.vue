@@ -258,8 +258,13 @@ const mobilePendingBrands = ref([]);
 const mobilePendingPriceMin = ref(null);
 const mobilePendingPriceMax = ref(null);
 
-// ── Facets calculados desde los ítems de la página actual ─────────────────────
+// ── Facets: desde Meilisearch (todo el catálogo) o calculados desde la página ─
+const apiFacetsBrands = ref([]);  // llegan del backend cuando usa Meilisearch
+const apiFacetsCats   = ref([]);
+
 const brandsFacet = computed(() => {
+  if (apiFacetsBrands.value.length) return apiFacetsBrands.value;
+  // fallback: calcular desde items de la página actual
   const map = new Map();
   for (const p of items.value) {
     const b = String(p?.brand_name || p?.brand || p?.brandName || "").trim();
@@ -272,6 +277,8 @@ const brandsFacet = computed(() => {
 });
 
 const catsFacet = computed(() => {
+  if (apiFacetsCats.value.length) return apiFacetsCats.value;
+  // fallback: calcular desde items de la página actual
   const map = new Map();
   for (const p of items.value) {
     const id = String(p?.category_id ?? "").trim();
@@ -364,10 +371,15 @@ async function fetchResults() {
     });
     items.value = Array.isArray(r?.items) ? r.items : [];
     total.value = Number(r?.total || 0);
+    // Facets reales de Meilisearch (presentes solo cuando _source === "meilisearch")
+    apiFacetsBrands.value = Array.isArray(r?.brandsFacet) ? r.brandsFacet : [];
+    apiFacetsCats.value   = Array.isArray(r?.catsFacet)   ? r.catsFacet   : [];
   } catch {
     err.value = "No se pudo cargar los resultados. Intentá de nuevo.";
     items.value = [];
     total.value = 0;
+    apiFacetsBrands.value = [];
+    apiFacetsCats.value   = [];
   } finally {
     loading.value = false;
   }
