@@ -1601,23 +1601,22 @@ async function saveAll() {
   flex: 1;
   overflow-y: auto;
   scroll-behavior: smooth;
+  background: rgba(var(--v-theme-surface-variant), 0.2);
 }
 
 .pf-content {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 24px 16px 120px;
+  max-width: 100%;
+  padding: 24px 32px 120px;
 }
 
 /* ══════════════════════════════
    SECTION CARDS
 ══════════════════════════════ */
 .pf-section {
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.2));
   background: rgb(var(--v-theme-surface));
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
 .pf-section-head {
