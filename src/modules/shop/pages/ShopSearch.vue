@@ -38,6 +38,7 @@
             :selected-brands="selectedBrands"
             :price-min="priceMin"
             :price-max="priceMax"
+            :max-item-price="maxItemPrice"
             @update:selectedCatId="onCat"
             @update:selectedBrands="onBrands"
             @update:price="onPrice"
@@ -197,6 +198,7 @@
             :selected-brands="selectedBrands"
             :price-min="priceMin"
             :price-max="priceMax"
+            :max-item-price="maxItemPrice"
             @update:selectedCatId="onCatMobile"
             @update:selectedBrands="onBrandsMobile"
             @update:price="onPriceMobile"
@@ -290,6 +292,14 @@ const catNameSelected = computed(() => {
 const pages = computed(() => {
   const t = Number(total.value || 0);
   return t ? Math.max(1, Math.ceil(t / limit.value)) : 1;
+});
+
+const maxItemPrice = computed(() => {
+  if (!items.value.length) return null;
+  const prices = items.value
+    .map(p => Number(p?.price ?? p?.sale_price ?? p?.regular_price ?? 0))
+    .filter(v => Number.isFinite(v) && v > 0);
+  return prices.length ? Math.max(...prices) : null;
 });
 
 const activeFilterCount = computed(() => {

@@ -1,113 +1,193 @@
 <!-- src/modules/shop/components/shop/ShopSearchFilters.vue -->
 <template>
-  <aside class="sf" aria-label="Filtros de búsqueda">
-    <div class="sf-card">
-      <!-- CATEGORÍA -->
-      <section v-if="categories.length" class="sf-sec">
-        <div class="sf-title">Categoría</div>
-        <div class="sf-list">
+  <aside class="mlf-wrap" aria-label="Filtros">
+
+    <!-- ─── CHIPS de filtros activos ────────────────────────────────── -->
+    <div v-if="activeCount > 0" class="mlf-active">
+      <div class="mlf-active-title">Filtros activos</div>
+      <div class="mlf-active-chips">
+        <button
+          v-if="selectedCatId"
+          class="mlf-chip"
+          type="button"
+          @click="$emit('update:selectedCatId', null)"
+        >
+          {{ catLabel }}
+          <span class="mlf-chip-x">×</span>
+        </button>
+        <button
+          v-for="b in selectedBrands"
+          :key="b"
+          class="mlf-chip"
+          type="button"
+          @click="removeBrand(b)"
+        >
+          {{ b }}
+          <span class="mlf-chip-x">×</span>
+        </button>
+        <button
+          v-if="priceMin !== null || priceMax !== null"
+          class="mlf-chip"
+          type="button"
+          @click="$emit('update:price', { min: null, max: null })"
+        >
+          {{ priceLabel }}
+          <span class="mlf-chip-x">×</span>
+        </button>
+      </div>
+      <button class="mlf-clear-all" type="button" @click="$emit('clearAll')">
+        Limpiar todo
+      </button>
+    </div>
+
+    <!-- ─── CATEGORÍAS ───────────────────────────────────────────────── -->
+    <section v-if="categories.length" class="mlf-sec">
+      <div class="mlf-sec-head">
+        <span class="mlf-sec-title">Categorías</span>
+      </div>
+      <ul class="mlf-cat-list">
+        <li>
           <button
-            class="sf-row"
-            :class="{ on: !selectedCatId }"
+            class="mlf-cat-item"
+            :class="{ active: !selectedCatId }"
             type="button"
             :disabled="loading"
             @click="$emit('update:selectedCatId', null)"
           >
-            <span class="sf-row-name">Ver todas</span>
-            <span class="sf-row-count">{{ totalCount }}</span>
+            <span class="mlf-cat-dot" :class="{ show: !selectedCatId }"></span>
+            <span class="mlf-cat-name">Ver todas</span>
+            <span class="mlf-cat-count">{{ totalCount }}</span>
           </button>
+        </li>
+        <li v-for="c in visibleCats" :key="c.key">
           <button
-            v-for="c in visibleCats"
-            :key="c.key"
-            class="sf-row"
-            :class="{ on: String(selectedCatId) === String(c.key) }"
+            class="mlf-cat-item"
+            :class="{ active: String(selectedCatId) === String(c.key) }"
             type="button"
             :disabled="loading"
             @click="$emit('update:selectedCatId', c.key)"
           >
-            <span class="sf-row-name">{{ c.label }}</span>
-            <span class="sf-row-count">{{ c.count }}</span>
+            <span class="mlf-cat-dot" :class="{ show: String(selectedCatId) === String(c.key) }"></span>
+            <span class="mlf-cat-name">{{ c.label }}</span>
+            <span class="mlf-cat-count">{{ c.count }}</span>
           </button>
-        </div>
-        <button
-          v-if="categories.length > catFold"
-          class="sf-more"
-          type="button"
-          @click="showMoreCats = !showMoreCats"
-        >
-          {{ showMoreCats ? "Mostrar menos" : `Ver ${categories.length - catFold} más` }}
-        </button>
-      </section>
+        </li>
+      </ul>
+      <button v-if="categories.length > catFold" class="mlf-more-link" type="button" @click="showMoreCats = !showMoreCats">
+        {{ showMoreCats ? "Ver menos" : `Ver ${categories.length - catFold} categorías más` }}
+      </button>
+    </section>
 
-      <!-- MARCA -->
-      <section v-if="brands.length" class="sf-sec">
-        <div class="sf-title">Marca</div>
-        <div class="sf-list">
+    <!-- ─── MARCA ────────────────────────────────────────────────────── -->
+    <section v-if="brands.length" class="mlf-sec">
+      <div class="mlf-sec-head">
+        <span class="mlf-sec-title">Marca</span>
+        <button
+          v-if="selectedBrands.length"
+          class="mlf-sec-clear"
+          type="button"
+          @click="$emit('update:selectedBrands', [])"
+        >
+          Limpiar
+        </button>
+      </div>
+      <ul class="mlf-brand-list">
+        <li v-for="b in visibleBrands" :key="b.key">
           <button
-            v-for="b in visibleBrands"
-            :key="b.key"
-            class="sf-row sf-check-row"
-            :class="{ on: isBrandOn(b.key) }"
+            class="mlf-brand-item"
+            :class="{ active: isBrandOn(b.key) }"
             type="button"
             :disabled="loading"
             @click="toggleBrand(b.key)"
           >
-            <span class="sf-check-box">
-              <v-icon size="14" v-if="isBrandOn(b.key)">mdi-check</v-icon>
+            <span class="mlf-cb" :class="{ checked: isBrandOn(b.key) }">
+              <svg v-if="isBrandOn(b.key)" viewBox="0 0 10 8" fill="none">
+                <path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
             </span>
-            <span class="sf-row-name">{{ b.label }}</span>
-            <span class="sf-row-count">{{ b.count }}</span>
+            <span class="mlf-brand-name">{{ b.label }}</span>
+            <span class="mlf-brand-count">({{ b.count }})</span>
           </button>
-        </div>
+        </li>
+      </ul>
+      <button v-if="brands.length > brandFold" class="mlf-more-link" type="button" @click="showMoreBrands = !showMoreBrands">
+        {{ showMoreBrands ? "Ver menos marcas" : `Ver ${brands.length - brandFold} marcas más` }}
+      </button>
+    </section>
+
+    <!-- ─── PRECIO ───────────────────────────────────────────────────── -->
+    <section class="mlf-sec">
+      <div class="mlf-sec-head">
+        <span class="mlf-sec-title">Precio</span>
         <button
-          v-if="brands.length > brandFold"
-          class="sf-more"
+          v-if="priceMin !== null || priceMax !== null"
+          class="mlf-sec-clear"
           type="button"
-          @click="showMoreBrands = !showMoreBrands"
+          @click="$emit('update:price', { min: null, max: null })"
         >
-          {{ showMoreBrands ? "Mostrar menos" : `Ver ${brands.length - brandFold} más` }}
-        </button>
-      </section>
-
-      <!-- PRECIO -->
-      <section class="sf-sec">
-        <div class="sf-title">Precio</div>
-        <div class="sf-price-row">
-          <input
-            v-model="priceMinLocal"
-            class="sf-mm"
-            inputmode="numeric"
-            placeholder="Mínimo"
-            :disabled="loading"
-            @keydown.enter="applyPrice"
-          />
-          <span class="sf-sep">–</span>
-          <input
-            v-model="priceMaxLocal"
-            class="sf-mm"
-            inputmode="numeric"
-            placeholder="Máximo"
-            :disabled="loading"
-            @keydown.enter="applyPrice"
-          />
-          <button class="sf-go" type="button" :disabled="loading" @click="applyPrice" aria-label="Aplicar precio">
-            <span>›</span>
-          </button>
-        </div>
-        <div v-if="priceMin !== null || priceMax !== null" class="sf-price-applied">
-          Aplicado:
-          {{ priceMin !== null ? `$${Number(priceMin).toLocaleString("es-AR")}` : "—" }}
-          –
-          {{ priceMax !== null ? `$${Number(priceMax).toLocaleString("es-AR")}` : "—" }}
-        </div>
-      </section>
-
-      <div class="sf-bottom">
-        <button class="sf-reset" type="button" :disabled="loading" @click="$emit('clearAll')">
-          LIMPIAR FILTROS
+          Limpiar
         </button>
       </div>
+
+      <!-- Rangos preestablecidos -->
+      <ul v-if="priceRanges.length" class="mlf-price-ranges">
+        <li v-for="r in priceRanges" :key="r.label">
+          <button
+            class="mlf-price-range-btn"
+            :class="{ active: isPriceRangeActive(r) }"
+            type="button"
+            :disabled="loading"
+            @click="applyPreset(r)"
+          >
+            <span class="mlf-price-dot" :class="{ show: isPriceRangeActive(r) }"></span>
+            {{ r.label }}
+          </button>
+        </li>
+      </ul>
+
+      <!-- Input personalizado -->
+      <div class="mlf-price-custom">
+        <div class="mlf-price-custom-label">Rango personalizado</div>
+        <div class="mlf-price-row">
+          <div class="mlf-price-field">
+            <span class="mlf-price-prefix">$</span>
+            <input
+              v-model="priceMinLocal"
+              class="mlf-price-input"
+              inputmode="numeric"
+              placeholder="Mín"
+              :disabled="loading"
+              @keydown.enter="applyPrice"
+            />
+          </div>
+          <span class="mlf-price-dash">—</span>
+          <div class="mlf-price-field">
+            <span class="mlf-price-prefix">$</span>
+            <input
+              v-model="priceMaxLocal"
+              class="mlf-price-input"
+              inputmode="numeric"
+              placeholder="Máx"
+              :disabled="loading"
+              @keydown.enter="applyPrice"
+            />
+          </div>
+          <button class="mlf-price-apply" type="button" :disabled="loading" @click="applyPrice">
+            <svg viewBox="0 0 8 14" fill="none" width="8" height="14">
+              <path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── LIMPIAR TODO ─────────────────────────────────────────────── -->
+    <div v-if="activeCount > 0" class="mlf-footer">
+      <button class="mlf-footer-btn" type="button" :disabled="loading" @click="$emit('clearAll')">
+        Limpiar todos los filtros
+      </button>
     </div>
+
   </aside>
 </template>
 
@@ -115,14 +195,16 @@
 import { ref, computed, watch } from "vue";
 
 const props = defineProps({
-  loading: { type: Boolean, default: false },
-  categories: { type: Array, default: () => [] },
-  selectedCatId: { type: [Number, String, null], default: null },
-  totalCount: { type: Number, default: 0 },
-  brands: { type: Array, default: () => [] },
-  selectedBrands: { type: Array, default: () => [] },
-  priceMin: { type: [Number, null], default: null },
-  priceMax: { type: [Number, null], default: null },
+  loading:        { type: Boolean, default: false },
+  categories:     { type: Array,   default: () => [] },
+  selectedCatId:  { type: [Number, String, null], default: null },
+  totalCount:     { type: Number,  default: 0 },
+  brands:         { type: Array,   default: () => [] },
+  selectedBrands: { type: Array,   default: () => [] },
+  priceMin:       { type: [Number, null], default: null },
+  priceMax:       { type: [Number, null], default: null },
+  // Rangos computados desde los ítems del padre (opcional)
+  maxItemPrice:   { type: [Number, null], default: null },
 });
 
 const emit = defineEmits([
@@ -132,18 +214,41 @@ const emit = defineEmits([
   "clearAll",
 ]);
 
-const catFold = 8;
-const brandFold = 9;
-const showMoreCats = ref(false);
+// ── Folds ────────────────────────────────────────────────────────────
+const catFold   = 6;
+const brandFold = 8;
+const showMoreCats   = ref(false);
 const showMoreBrands = ref(false);
 
-const visibleCats = computed(() =>
-  showMoreCats.value ? props.categories : props.categories.slice(0, catFold)
-);
-const visibleBrands = computed(() =>
-  showMoreBrands.value ? props.brands : props.brands.slice(0, brandFold)
-);
+const visibleCats   = computed(() => showMoreCats.value   ? props.categories : props.categories.slice(0, catFold));
+const visibleBrands = computed(() => showMoreBrands.value ? props.brands     : props.brands.slice(0, brandFold));
 
+// ── Activos ──────────────────────────────────────────────────────────
+const activeCount = computed(() => {
+  let n = 0;
+  if (props.selectedCatId) n++;
+  n += props.selectedBrands.length;
+  if (props.priceMin !== null || props.priceMax !== null) n++;
+  return n;
+});
+
+const catLabel = computed(() => {
+  const c = props.categories.find(x => String(x.key) === String(props.selectedCatId));
+  return c ? c.label : String(props.selectedCatId);
+});
+
+const priceLabel = computed(() => {
+  const fmt = v => `$${Number(v).toLocaleString("es-AR")}`;
+  if (props.priceMin !== null && props.priceMax !== null) return `${fmt(props.priceMin)} – ${fmt(props.priceMax)}`;
+  if (props.priceMin !== null) return `Desde ${fmt(props.priceMin)}`;
+  if (props.priceMax !== null) return `Hasta ${fmt(props.priceMax)}`;
+  return "Precio";
+});
+
+// ── Categorías ───────────────────────────────────────────────────────
+// (emits manejados inline)
+
+// ── Marcas ───────────────────────────────────────────────────────────
 function isBrandOn(key) {
   return (props.selectedBrands || []).map(String).includes(String(key));
 }
@@ -154,160 +259,397 @@ function toggleBrand(key) {
   else set.add(k);
   emit("update:selectedBrands", Array.from(set));
 }
+function removeBrand(b) {
+  emit("update:selectedBrands", props.selectedBrands.filter(x => x !== b));
+}
 
+// ── Precio ───────────────────────────────────────────────────────────
 const priceMinLocal = ref(props.priceMin ?? "");
 const priceMaxLocal = ref(props.priceMax ?? "");
-watch(() => props.priceMin, (v) => { priceMinLocal.value = v ?? ""; });
-watch(() => props.priceMax, (v) => { priceMaxLocal.value = v ?? ""; });
+watch(() => props.priceMin, v => { priceMinLocal.value = v ?? ""; });
+watch(() => props.priceMax, v => { priceMaxLocal.value = v ?? ""; });
 
 function applyPrice() {
-  const minRaw = String(priceMinLocal.value ?? "").trim();
-  const maxRaw = String(priceMaxLocal.value ?? "").trim();
-  const min = minRaw === "" ? null : Number(minRaw);
-  const max = maxRaw === "" ? null : Number(maxRaw);
+  const min = priceMinLocal.value === "" ? null : Number(priceMinLocal.value);
+  const max = priceMaxLocal.value === "" ? null : Number(priceMaxLocal.value);
   emit("update:price", {
     min: Number.isFinite(min) ? min : null,
     max: Number.isFinite(max) ? max : null,
   });
 }
+
+// Rangos preestablecidos — se calculan según el precio máximo del catálogo
+const priceRanges = computed(() => {
+  const max = props.maxItemPrice || 100000;
+  if (max <= 5000)  return [];
+  if (max <= 15000) return [
+    { label: "Menos de $5.000",    min: null, max: 5000 },
+    { label: "$5.000 a $10.000",   min: 5000, max: 10000 },
+    { label: "Más de $10.000",     min: 10000, max: null },
+  ];
+  if (max <= 50000) return [
+    { label: "Menos de $5.000",    min: null,  max: 5000 },
+    { label: "$5.000 a $15.000",   min: 5000,  max: 15000 },
+    { label: "$15.000 a $30.000",  min: 15000, max: 30000 },
+    { label: "Más de $30.000",     min: 30000, max: null },
+  ];
+  return [
+    { label: "Menos de $10.000",   min: null,   max: 10000 },
+    { label: "$10.000 a $30.000",  min: 10000,  max: 30000 },
+    { label: "$30.000 a $80.000",  min: 30000,  max: 80000 },
+    { label: "Más de $80.000",     min: 80000,  max: null },
+  ];
+});
+
+function isPriceRangeActive(r) {
+  const sameMin = (r.min === null && props.priceMin === null) || r.min === props.priceMin;
+  const sameMax = (r.max === null && props.priceMax === null) || r.max === props.priceMax;
+  return sameMin && sameMax && (props.priceMin !== null || props.priceMax !== null);
+}
+
+function applyPreset(r) {
+  if (isPriceRangeActive(r)) {
+    emit("update:price", { min: null, max: null });
+  } else {
+    emit("update:price", { min: r.min, max: r.max });
+  }
+}
 </script>
 
 <style scoped>
-.sf { width: 100%; }
+/* ── Forzar modo claro siempre ─────────────────────────────────────── */
+.mlf-wrap {
+  color-scheme: light;
+  width: 100%;
+  font-family: inherit;
+}
 
-.sf-card {
+/* ── Chips de filtros activos ──────────────────────────────────────── */
+.mlf-active {
   background: #fff;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 16px 14px;
+  color: #333;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
 }
-
-.sf-sec + .sf-sec { margin-top: 20px; }
-
-.sf-title {
-  font-weight: 900;
-  font-size: 14px;
-  color: #111;
+.mlf-active-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #999;
+  margin-bottom: 8px;
+}
+.mlf-active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
-
-.sf-list { display: grid; gap: 2px; }
-
-.sf-row {
+.mlf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #3483fa;
+  border-radius: 999px;
+  background: rgba(52, 131, 250, 0.08);
+  color: #3483fa;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px 4px 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.mlf-chip:hover { background: rgba(52, 131, 250, 0.16); }
+.mlf-chip-x { font-size: 15px; line-height: 1; margin-top: -1px; }
+.mlf-clear-all {
   border: 0;
   background: transparent;
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
+  color: #3483fa;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* ── Sección base ──────────────────────────────────────────────────── */
+.mlf-sec {
+  background: #fff;
+  color: #333;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 16px 16px 12px;
+  margin-bottom: 8px;
+}
+
+.mlf-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.mlf-sec-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: -0.1px;
+}
+.mlf-sec-clear {
+  border: 0;
+  background: transparent;
+  color: #3483fa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.mlf-sec-clear:hover { text-decoration: underline; }
+
+/* ── Categorías ────────────────────────────────────────────────────── */
+.mlf-cat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mlf-cat-item {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: #222;
+  border: 0;
+  background: transparent;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
   text-align: left;
-  transition: background 0.12s;
+  transition: background 0.1s;
+  color: #333;
 }
-.sf-row:hover { background: rgba(0, 0, 0, 0.04); }
-.sf-row.on { background: rgba(52, 131, 250, 0.08); font-weight: 700; color: #1557d0; }
-
-.sf-check-box {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid rgba(0, 0, 0, 0.25);
-  display: grid;
-  place-items: center;
+.mlf-cat-item:hover { background: #f5f5f5; }
+.mlf-cat-item.active { color: #3483fa; }
+.mlf-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
   flex: 0 0 auto;
-  background: #fff;
+  transition: border-color 0.12s, background 0.12s;
 }
-.sf-row.on .sf-check-box {
+.mlf-cat-dot.show {
   border-color: #3483fa;
   background: #3483fa;
 }
-.sf-row.on .sf-check-box :deep(.v-icon) { color: #fff !important; }
-
-.sf-row-name {
-  flex: 1 1 auto;
+.mlf-cat-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sf-row-count {
+.mlf-cat-item.active .mlf-cat-name { font-weight: 600; }
+.mlf-cat-count {
+  font-size: 12px;
+  color: #999;
   flex: 0 0 auto;
-  font-size: 11.5px;
-  opacity: 0.6;
-  background: rgba(0, 0, 0, 0.05);
-  padding: 1px 6px;
-  border-radius: 999px;
 }
+.mlf-cat-item.active .mlf-cat-count { color: #3483fa; }
 
-.sf-more {
+/* ── Marcas ────────────────────────────────────────────────────────── */
+.mlf-brand-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mlf-brand-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  padding: 6px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+  color: #333;
+}
+.mlf-brand-item:hover { background: #f5f5f5; }
+.mlf-brand-item.active { color: #3483fa; }
+
+/* Checkbox custom ── */
+.mlf-cb {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid #c0c0c0;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s, background 0.12s;
+  background: #fff;
+}
+.mlf-cb.checked {
+  border-color: #3483fa;
+  background: #3483fa;
+}
+.mlf-cb svg { display: block; }
+
+.mlf-brand-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mlf-brand-item.active .mlf-brand-name { font-weight: 600; }
+.mlf-brand-count {
+  font-size: 12px;
+  color: #999;
+  flex: 0 0 auto;
+}
+.mlf-brand-item.active .mlf-brand-count { color: #3483fa; }
+
+/* ── Más link ──────────────────────────────────────────────────────── */
+.mlf-more-link {
   margin-top: 8px;
   border: 0;
   background: transparent;
   color: #3483fa;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 2px 10px;
-  font-size: 12.5px;
+  padding: 4px 6px;
+  display: block;
+}
+.mlf-more-link:hover { text-decoration: underline; }
+
+/* ── Precio ────────────────────────────────────────────────────────── */
+.mlf-price-ranges {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mlf-price-range-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  text-align: left;
+  transition: background 0.1s;
+}
+.mlf-price-range-btn:hover { background: #f5f5f5; }
+.mlf-price-range-btn.active { color: #3483fa; font-weight: 600; }
+.mlf-price-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  flex: 0 0 auto;
+  transition: border-color 0.12s, background 0.12s;
+}
+.mlf-price-dot.show {
+  border-color: #3483fa;
+  background: #3483fa;
 }
 
-.sf-price-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto;
-  gap: 8px;
-  align-items: center;
+.mlf-price-custom-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #aaa;
+  margin-bottom: 8px;
 }
-.sf-mm {
-  width: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 13px;
-  outline: none;
-  background: #fff;
+.mlf-price-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mlf-price-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fafafa;
   transition: border-color 0.15s;
 }
-.sf-mm:focus { border-color: #3483fa; }
-.sf-sep { opacity: 0.5; font-weight: 700; }
-.sf-go {
+.mlf-price-field:focus-within { border-color: #3483fa; background: #fff; }
+.mlf-price-prefix {
+  padding: 0 6px;
+  font-size: 13px;
+  color: #999;
+  font-weight: 600;
+  border-right: 1px solid #eee;
+  line-height: 34px;
+}
+.mlf-price-input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  padding: 8px 8px;
+  font-size: 13px;
+  background: transparent;
+  color: #333;
+  width: 0;
+  min-width: 0;
+}
+.mlf-price-dash { color: #bbb; font-size: 16px; font-weight: 700; flex: 0 0 auto; }
+.mlf-price-apply {
   width: 34px;
   height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  line-height: 1;
-  transition: background 0.12s, border-color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  flex: 0 0 auto;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.sf-go:hover { background: #3483fa; border-color: #3483fa; color: #fff; }
-.sf-price-applied {
-  margin-top: 8px;
-  font-size: 11px;
-  color: #3483fa;
-  font-weight: 600;
-}
+.mlf-price-apply:hover { background: #3483fa; border-color: #3483fa; color: #fff; }
 
-.sf-bottom { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0, 0, 0, 0.06); }
-.sf-reset {
-  width: 100%;
+/* ── Footer ────────────────────────────────────────────────────────── */
+.mlf-footer {
+  padding: 4px 0 2px;
+  text-align: center;
+}
+.mlf-footer-btn {
   border: 0;
   background: transparent;
-  padding: 10px 0;
-  cursor: pointer;
-  font-weight: 900;
-  letter-spacing: 0.5px;
-  color: #555;
+  color: #666;
+  font-size: 12.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 12px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  padding: 10px 0;
+  width: 100%;
   transition: color 0.12s;
 }
-.sf-reset:hover { color: #111; }
+.mlf-footer-btn:hover { color: #333; }
 </style>
