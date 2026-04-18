@@ -1,225 +1,164 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
 
 <template>
-  <div class="pd" data-page="product-detail-view">
-    <ProductHeader v-if="raw" :product="productForUIFixed" @back="goBack" />
+  <div class="pdv">
 
-    <v-alert v-if="error" type="error" variant="tonal" class="mt-3">
-      {{ error }}
-    </v-alert>
+    <!-- TOP BAR -->
+    <div class="pdv-topbar" v-if="raw || loading">
+      <v-btn icon variant="text" size="small" @click="goBack" class="pdv-back">
+        <v-icon>mdi-arrow-left</v-icon>
+      </v-btn>
+      <div class="pdv-topbar-info" v-if="raw">
+        <div class="pdv-topbar-name">{{ productForUIFixed.name || 'Producto' }}</div>
+        <div class="pdv-topbar-meta">
+          <v-chip size="x-small" :color="productForUIFixed.is_active !== false ? 'success' : 'warning'" variant="tonal">
+            {{ productForUIFixed.is_active !== false ? 'Activo' : 'Inactivo' }}
+          </v-chip>
+          <span class="pdv-topbar-sku" v-if="productForUIFixed.sku || productForUIFixed.code">
+            {{ productForUIFixed.sku || productForUIFixed.code }}
+          </span>
+        </div>
+      </div>
+      <v-spacer />
+      <v-btn v-if="raw" variant="tonal" size="small" prepend-icon="mdi-pencil-outline" rounded="lg"
+        @click="$router.push({ name: 'productEdit', params: { id: productId } })">
+        Editar
+      </v-btn>
+    </div>
 
-    <div v-if="loading" class="pd-loading">
-      <v-progress-circular indeterminate size="22" />
+    <!-- ERROR -->
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
+
+    <!-- LOADING -->
+    <div v-if="loading && !raw" class="pdv-loading">
+      <v-progress-circular indeterminate size="32" color="primary" />
       <span>Cargando producto…</span>
     </div>
 
-    <div v-else-if="raw" class="pd-grid">
-      <!-- ================= LEFT ================= -->
-      <div class="pd-left">
-        <ProductInfoCard :product="productForUIFixed" class="mb-3" />
+    <!-- CONTENT -->
+    <div v-else-if="raw" class="pdv-grid">
 
-        <ProductPriceBlock :product="productForUIFixed" class="mb-3" />
+      <!-- LEFT -->
+      <div class="pdv-left">
 
-        <!-- ✅ BLOQUE EXCLUSIVO: CÓDIGO DE BARRAS -->
-        <ProductBarcodeCard
-          class="mb-3"
-          :product="productForUIFixed"
-          :value="
-            productForUIFixed.barcode ||
-            productForUIFixed.sku ||
-            productForUIFixed.code ||
-            productForUIFixed.id
-          "
-          format="CODE128"
-          @copied="onBarcodeCopied"
-          @print="onBarcodePrint"
-        />
-
-        <!-- Stock por sucursal -->
-        <v-card rounded="xl" elevation="1" class="pd-card mb-3">
-          <div class="pd-card-head">
-            <div>
-              <div class="pd-card-title">Stock por sucursal</div>
-              <div class="pd-card-subtitle">Disponibilidad real del producto por punto de venta</div>
-            </div>
-
-            <v-spacer />
-
-            <v-btn
-              size="small"
-              variant="tonal"
-              prepend-icon="mdi-refresh"
-              :disabled="mx.loading || !raw"
-              @click="refreshBranchesMatrix"
-            >
-              Refrescar
-            </v-btn>
-
-            <v-chip v-if="mx.loading" size="small" variant="tonal">Cargando…</v-chip>
-            <v-chip v-else-if="branchesStock.length" size="small" variant="tonal">
-              {{ branchesStock.length }} sucursal{{ branchesStock.length === 1 ? "" : "es" }}
-            </v-chip>
+        <!-- PHOTOS -->
+        <div class="pdv-card pdv-card--photos">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="pink">mdi-image-multiple</v-icon>
+            <span class="pdv-card-title">Fotos</span>
           </div>
+          <ProductPhotoGallery :images="ui.images" />
+        </div>
 
-          <v-alert v-if="mx.error" type="error" variant="tonal" class="mb-3" density="comfortable">
-            {{ mx.error }}
-          </v-alert>
-
-          <div v-if="!mx.loading && !mx.error && !branchesStock.length" class="pd-muted">
-            No hay detalle de stock por sucursal para este producto.
+        <!-- INFO -->
+        <div class="pdv-card">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="primary">mdi-information-outline</v-icon>
+            <span class="pdv-card-title">Información</span>
           </div>
+          <ProductInfoCard :product="productForUIFixed" />
+        </div>
 
-          <v-alert
-            v-else-if="!mx.loading && !mx.error && branchesStock.length && totalStockAllBranches === 0"
-            type="info"
-            variant="tonal"
-            density="comfortable"
-            class="mb-3"
-          >
-            No hay stock en ninguna sucursal (todas en 0).
-          </v-alert>
-
-          <div v-if="branchesStock.length" class="pd-matrix">
-            <div class="pd-matrix-head">
-              <div class="h-left">
-                <div class="h-title">Sucursal</div>
-                <div class="h-sub">ID</div>
-              </div>
-              <div class="h-right">Stock</div>
-            </div>
-
-            <div class="pd-matrix-body">
-              <div v-for="r in branchesStock" :key="r.key" class="pd-matrix-row">
-                <div class="row-left">
-                  <div class="pd-avatar" :class="{ ok: r.stock_qty > 0 }">
-                    {{ initials(r.branch_name) }}
-                  </div>
-
-                  <div class="minw-0">
-                    <div class="pd-branch-name text-truncate">{{ r.branch_name }}</div>
-                    <div class="pd-branch-meta">ID: {{ r.branch_id }}</div>
-                  </div>
-                </div>
-
-                <div class="row-right">
-                  <v-chip
-                    size="small"
-                    class="pd-stock-chip"
-                    :variant="r.stock_qty > 0 ? 'flat' : 'tonal'"
-                    :color="r.stock_qty > 0 ? 'success' : undefined"
-                  >
-                    {{ fmtQty(r.stock_qty) }}
-                  </v-chip>
-                </div>
-              </div>
-            </div>
+        <!-- PRICES -->
+        <div class="pdv-card">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="success">mdi-cash-multiple</v-icon>
+            <span class="pdv-card-title">Precios</span>
           </div>
-        </v-card>
+          <ProductPriceBlock :product="productForUIFixed" />
+        </div>
+
+        <!-- BARCODE -->
+        <div class="pdv-card">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="indigo">mdi-barcode</v-icon>
+            <span class="pdv-card-title">Código de barras</span>
+          </div>
+          <ProductBarcodeCard :product="productForUIFixed"
+            :value="productForUIFixed.barcode || productForUIFixed.sku || productForUIFixed.code || productForUIFixed.id"
+            format="CODE128" @copied="onBarcodeCopied" @print="onBarcodePrint" />
+        </div>
       </div>
 
-      <!-- ================= RIGHT ================= -->
-      <div class="pd-right">
-        <!-- FOTOS -->
-        <v-card rounded="xl" elevation="1" class="pd-card mb-3">
-          <div class="pd-card-head">
-            <div>
-              <div class="pd-card-title">Fotos</div>
-              <div class="pd-card-subtitle">Vista previa de imágenes del producto</div>
-            </div>
+      <!-- RIGHT -->
+      <div class="pdv-right">
+
+        <!-- STOCK -->
+        <div class="pdv-card">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="cyan">mdi-warehouse</v-icon>
+            <span class="pdv-card-title">Stock por sucursal</span>
+            <v-spacer />
+            <v-chip v-if="branchesStock.length" size="x-small" variant="tonal">{{ branchesStock.length }} suc.</v-chip>
+            <v-btn size="x-small" variant="text" icon @click="refreshBranchesMatrix" :disabled="mx.loading || !raw">
+              <v-icon size="14">mdi-refresh</v-icon>
+            </v-btn>
           </div>
 
-          <ProductPhotoGallery :images="ui.images" />
-        </v-card>
+          <v-alert v-if="mx.error" type="error" variant="tonal" density="compact" class="mb-2">{{ mx.error }}</v-alert>
+          <div v-if="mx.loading" class="pdv-stock-loading"><v-progress-circular size="18" indeterminate color="primary" /><span>Cargando…</span></div>
+          <div v-else-if="!branchesStock.length" class="pdv-muted">Sin datos de stock por sucursal.</div>
+          <v-alert v-else-if="totalStockAllBranches === 0" type="info" variant="tonal" density="compact" class="mb-2">Sin stock en todas las sucursales.</v-alert>
 
-        <!-- ✅ BLOQUE EXCLUSIVO: QR / ETIQUETA / IMPRESIÓN -->
-        <v-card rounded="xl" elevation="1" class="pd-card">
-          <div class="pd-card-head pd-card-head--stack">
-            <div>
-              <div class="pd-card-title">Etiqueta y QR</div>
-              <div class="pd-card-subtitle">
-                Este bloque es para generar e imprimir la etiqueta comercial con QR.
-                No imprime el código de barras del producto.
-              </div>
+          <div v-if="branchesStock.length" class="pdv-stock-list">
+            <div v-for="r in branchesStock" :key="r.key" class="pdv-stock-row">
+              <div class="pdv-stock-avatar" :class="{ ok: r.stock_qty > 0 }">{{ initials(r.branch_name) }}</div>
+              <div class="pdv-stock-name">{{ r.branch_name }}</div>
+              <v-chip size="small" :variant="r.stock_qty > 0 ? 'flat' : 'tonal'"
+                :color="r.stock_qty > 0 ? 'success' : undefined" class="pdv-stock-chip">
+                {{ fmtQty(r.stock_qty) }}
+              </v-chip>
             </div>
           </div>
+        </div>
 
-          <div class="pd-print-panel">
-            <ProductLabelPreview
-              :product="productForUIFixed"
-              :size="labelSize"
-              :qrValue="ui.qrValue"
-            >
+        <!-- LABEL / QR -->
+        <div class="pdv-card">
+          <div class="pdv-card-head">
+            <v-icon size="16" color="orange">mdi-qrcode</v-icon>
+            <span class="pdv-card-title">Etiqueta y QR</span>
+          </div>
+
+          <div class="pdv-label-wrap">
+            <ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue">
               <template #actions="{ printEl }">
-                <div class="mt-3">
-                  <div class="pd-sizebar">
-                    <div>
-                      <div class="pd-sizebar-title">Formato de etiqueta / QR</div>
-                      <div class="pd-sizebar-sub">Elegí el tamaño para impresión de etiqueta</div>
-                    </div>
-
-                    <v-btn-toggle
-                      v-model="labelSize"
-                      mandatory
-                      density="comfortable"
-                      rounded="lg"
-                      class="pd-size-toggle"
-                    >
-                      <v-btn value="100" class="pd-size-btn">100×60</v-btn>
-                      <v-btn value="80" class="pd-size-btn">80×55</v-btn>
-                      <v-btn value="58" class="pd-size-btn">58×40</v-btn>
+                <div class="pdv-label-actions">
+                  <div class="pdv-size-row">
+                    <span class="pdv-size-label">Formato</span>
+                    <v-btn-toggle v-model="labelSize" mandatory density="compact" rounded="lg" class="pdv-size-toggle">
+                      <v-btn value="100" size="small">100×60</v-btn>
+                      <v-btn value="80" size="small">80×55</v-btn>
+                      <v-btn value="58" size="small">58×40</v-btn>
                     </v-btn-toggle>
                   </div>
-
-                  <ProductPrintActions
-                    v-model="labelSize"
-                    v-model:copies="copies"
-                    :printEl="printEl"
-                    :sheetEl="sheetEl"
-                    :title="printTitle"
-                    :product="productForUIFixed"
-                    :qrValue="ui.qrValue"
-                    @open-ecommerce="openEcommerce"
-                    @download-pdf="downloadPdf"
-                    @print="printDlg = true"
-                  />
+                  <ProductPrintActions v-model="labelSize" v-model:copies="copies" :printEl="printEl" :sheetEl="sheetEl"
+                    :title="printTitle" :product="productForUIFixed" :qrValue="ui.qrValue"
+                    @open-ecommerce="openEcommerce" @download-pdf="downloadPdf" @print="printDlg = true" />
                 </div>
               </template>
             </ProductLabelPreview>
           </div>
-        </v-card>
+        </div>
+
       </div>
     </div>
 
-    <div class="pd-hidden">
-      <div ref="sheetEl" class="pd-a4-shell">
-        <ProductLabelSheetA4
-          :product="productForUIFixed"
-          :size="labelSize"
-          :copies="copies"
-          :qrValue="ui.qrValue"
-        />
+    <!-- Hidden A4 sheet for printing -->
+    <div class="pdv-hidden">
+      <div ref="sheetEl" class="pdv-a4-shell">
+        <ProductLabelSheetA4 :product="productForUIFixed" :size="labelSize" :copies="copies" :qrValue="ui.qrValue" />
       </div>
     </div>
 
+    <!-- Print dialog -->
     <v-dialog v-model="printDlg" max-width="820">
       <v-card rounded="xl">
         <v-card-title class="d-flex align-center ga-2">
           <v-icon>mdi-printer</v-icon>
-          <span class="font-weight-black">Vista previa de etiqueta / QR</span>
+          <span class="font-weight-black">Vista previa — Etiqueta / QR</span>
         </v-card-title>
-
-        <v-card-text>
-          <ProductLabelPreview
-            :product="productForUIFixed"
-            :size="labelSize"
-            :qrValue="ui.qrValue"
-          />
-        </v-card-text>
-
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" @click="printDlg = false">Cerrar</v-btn>
-        </v-card-actions>
+        <v-card-text><ProductLabelPreview :product="productForUIFixed" :size="labelSize" :qrValue="ui.qrValue" /></v-card-text>
+        <v-card-actions class="justify-end"><v-btn variant="text" @click="printDlg = false">Cerrar</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -232,7 +171,6 @@ import { useRoute, useRouter } from "vue-router";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 
-import ProductHeader from "@/modules/products/components/detail/ProductHeader.vue";
 import ProductPriceBlock from "@/modules/products/components/detail/ProductPriceBlock.vue";
 import ProductInfoCard from "@/modules/products/components/detail/ProductInfoCard.vue";
 import ProductBarcodeCard from "@/modules/products/components/detail/ProductBarcodeCard.vue";
@@ -484,260 +422,87 @@ watch(branchId, fetchProduct);
 </script>
 
 <style scoped>
-.pd {
-  padding: 14px;
-  min-height: calc(100vh - 72px);
-  color: rgb(var(--v-theme-on-background));
-  background: rgb(var(--v-theme-background));
-}
+.pdv { display: flex; flex-direction: column; gap: 12px; }
 
-.pd-loading {
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  opacity: 0.9;
+/* TOP BAR */
+.pdv-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: 14px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
+.pdv-back { flex-shrink: 0; margin-left: -4px; }
+.pdv-topbar-name { font-size: 16px; font-weight: 900; line-height: 1.2; }
+.pdv-topbar-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.pdv-topbar-sku { font-size: 11px; opacity: 0.45; font-family: monospace; }
 
-.pd-grid {
-  margin-top: 12px;
+/* LOADING */
+.pdv-loading { display: flex; align-items: center; gap: 10px; padding: 40px 20px; opacity: 0.8; }
+
+/* GRID */
+.pdv-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 520px;
+  grid-template-columns: minmax(0, 1fr) 400px;
   gap: 12px;
   align-items: start;
 }
+.pdv-left { display: flex; flex-direction: column; gap: 12px; }
+.pdv-right { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px; }
 
-.pd-left {
-  min-width: 0;
-}
-
-.pd-right {
-  position: sticky;
-  top: 12px;
-  min-width: 0;
-}
-
-.pd-card,
-.pd-actions {
-  padding: 14px;
+/* CARD */
+.pdv-card {
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.2));
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
-
-.pd-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.pd-card-head--stack {
-  align-items: flex-start;
-}
-
-.pd-card-title {
-  font-weight: 900;
-  letter-spacing: 0.2px;
-}
-
-.pd-card-subtitle {
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.3;
-  opacity: 0.72;
-}
-
-.pd-muted {
-  opacity: 0.85;
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-/* panel QR / etiqueta */
-.pd-print-panel {
-  max-width: 420px;
-  margin: 0 auto;
-}
-
-.pd-sizebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.pd-sizebar-title {
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  font-size: 13px;
-  opacity: 0.95;
-}
-
-.pd-sizebar-sub {
-  margin-top: 2px;
-  font-size: 11px;
-  opacity: 0.68;
-}
-
-.pd-size-toggle {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-
-.pd-size-btn {
-  font-weight: 900;
-  letter-spacing: 0.2px;
-}
-
-/* Stock por sucursal */
-.pd-matrix {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-
-.pd-matrix-head {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
+.pdv-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
+.pdv-card-title { font-size: 13px; font-weight: 800; flex: 1; }
 
-.h-left .h-title {
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  font-size: 13px;
+.pdv-card :deep(.v-card), .pdv-card :deep([data-comp]) { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
+
+/* STOCK */
+.pdv-stock-loading { display: flex; align-items: center; gap: 8px; padding: 12px 14px; font-size: 13px; opacity: 0.7; }
+.pdv-muted { padding: 12px 14px; font-size: 13px; opacity: 0.5; }
+.pdv-stock-list { display: flex; flex-direction: column; }
+.pdv-stock-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
 }
-
-.h-left .h-sub {
-  font-size: 11px;
-  opacity: 0.7;
-  margin-top: 1px;
+.pdv-stock-row:last-child { border-bottom: none; }
+.pdv-stock-avatar {
+  width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 900;
+  background: rgba(var(--v-theme-on-surface), 0.07);
 }
+.pdv-stock-avatar.ok { background: rgba(var(--v-theme-success), 0.12); color: rgb(var(--v-theme-success)); }
+.pdv-stock-name { flex: 1; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdv-stock-chip { min-width: 72px; justify-content: center; }
 
-.h-right {
-  font-size: 12px;
-  font-weight: 900;
-  opacity: 0.85;
-}
+/* LABEL */
+.pdv-label-wrap { padding: 12px; }
+.pdv-label-actions { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.pdv-size-row { display: flex; align-items: center; gap: 10px; }
+.pdv-size-label { font-size: 12px; font-weight: 700; opacity: 0.6; white-space: nowrap; }
+.pdv-size-toggle { flex: 1; }
 
-.pd-matrix-body {
-  max-height: 280px;
-  overflow: auto;
-  background: rgb(var(--v-theme-surface));
-}
+/* HIDDEN */
+.pdv-hidden { position: fixed; left: -99999px; top: 0; visibility: hidden; pointer-events: none; }
+.pdv-a4-shell { width: 210mm; min-height: 297mm; background: #fff; }
 
-.pd-matrix-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-
-.pd-matrix-row:last-child {
-  border-bottom: none;
-}
-
-.pd-matrix-row:hover {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-}
-
-.row-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.row-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.pd-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  flex: 0 0 auto;
-}
-
-.pd-avatar.ok {
-  background: rgba(var(--v-theme-success), 0.12);
-  border-color: rgba(var(--v-theme-success), 0.25);
-}
-
-.pd-branch-name {
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.pd-branch-meta {
-  font-size: 12px;
-  opacity: 0.72;
-  line-height: 1.1;
-  margin-top: 2px;
-}
-
-.pd-stock-chip {
-  min-width: 86px;
-  justify-content: center;
-}
-
-.pd-right :deep(.plp-root),
-.pd-right :deep([data-comp="product-label-preview"]) {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
-}
-
-@media (max-width: 1350px) {
-  .pd-grid {
-    grid-template-columns: 1fr 460px;
-  }
-
-  .pd-print-panel {
-    max-width: 100%;
-    margin: 0;
-  }
-}
-
+/* RESPONSIVE */
 @media (max-width: 1100px) {
-  .pd-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pd-right {
-    position: static;
-  }
+  .pdv-grid { grid-template-columns: 1fr; }
+  .pdv-right { position: static; }
 }
-
-.pd-hidden {
-  position: fixed;
-  left: -99999px;
-  top: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.pd-a4-shell {
-  width: 210mm;
-  min-height: 297mm;
-  background: #fff;
+@media (max-width: 600px) {
+  .pdv-topbar { padding: 8px 12px; }
+  .pdv-topbar-name { font-size: 14px; }
 }
 </style>

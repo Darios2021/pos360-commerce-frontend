@@ -1,379 +1,325 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/products/pages/ProductsListPage.vue -->
-<!--
-✅ Server-side real:
-- Paginación real con meta.total/meta.pages del backend
-- Filtros reales SQL
-- ✅ Estado (Activos / Inactivos / Todos)
-  - admin default: Todos (include_inactive=1) => 314
-  - no-admin default: Activos => 265
--->
 
 <template>
   <div class="plp">
-    <!-- HEADER -->
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
-      <div class="minw-0">
-        <div class="text-h5 font-weight-bold">Productos</div>
-        <div class="text-caption text-medium-emphasis">
-          Mostrando {{ items.length }} de {{ meta.total }} · Página {{ meta.page }}/{{ meta.pages || 1 }}
-        </div>
+
+    <!-- TOP BAR -->
+    <div class="plp-top">
+      <div class="plp-top-left">
+        <div class="plp-title">Productos</div>
+        <div class="plp-meta">{{ meta.total.toLocaleString('es') }} productos · Pág. {{ meta.page }}/{{ meta.pages || 1 }}</div>
       </div>
-
-      <div class="d-flex ga-2 align-center flex-wrap">
-        <v-btn
-          v-if="selectedIds.length"
-          :color="isAdmin ? 'red' : 'primary'"
-          variant="tonal"
-          :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'"
-          @click="bulkDisableOrDelete"
-        >
-          {{ isAdmin ? "Eliminar seleccionados" : "Inactivar seleccionados" }}
+      <div class="plp-top-right">
+        <v-btn v-if="selectedIds.length" :color="isAdmin ? 'error' : 'warning'" variant="tonal" size="small" rounded="lg"
+          :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'" @click="bulkDisableOrDelete">
+          {{ isAdmin ? 'Eliminar' : 'Inactivar' }} ({{ selectedIds.length }})
         </v-btn>
-
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate">
-          Nuevo producto
+        <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="lg" class="plp-view-toggle" v-if="smAndUp">
+          <v-btn value="grid" size="small"><v-icon size="18">mdi-view-grid-outline</v-icon></v-btn>
+          <v-btn value="list" size="small"><v-icon size="18">mdi-format-list-bulleted</v-icon></v-btn>
+        </v-btn-toggle>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate" rounded="lg" size="small">
+          Nuevo
         </v-btn>
       </div>
     </div>
 
-    <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3">
-      {{ products.error }}
-    </v-alert>
+    <!-- SEARCH + FILTER TOGGLE -->
+    <div class="plp-searchbar">
+      <v-text-field v-model="f.q" placeholder="Buscar por nombre, SKU, marca, modelo..." variant="outlined"
+        density="compact" hide-details clearable prepend-inner-icon="mdi-magnify" class="plp-search-input"
+        @input="debouncedSearch" @click:clear="clearSearch" @keyup.enter="applyFilters" />
+      <v-btn :variant="filtersOpen ? 'flat' : 'tonal'" :color="activeFiltersCount > 0 ? 'primary' : undefined"
+        density="compact" rounded="lg" class="plp-filter-btn" @click="filtersOpen = !filtersOpen">
+        <v-icon start size="16">{{ filtersOpen ? 'mdi-filter-off' : 'mdi-filter-outline' }}</v-icon>
+        Filtros
+        <v-badge v-if="activeFiltersCount > 0" :content="String(activeFiltersCount)" color="primary" inline class="ml-1" />
+      </v-btn>
+    </div>
 
-    <!-- FILTROS (server-side) -->
-    <v-card rounded="xl" class="pa-4 mb-4">
-      <v-row dense>
-        <v-col cols="12" md="4">
-          <v-text-field
-            v-model="f.q"
-            label="Buscar (nombre / sku / barcode / code / marca / modelo)"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            @keyup.enter="applyFilters"
-          />
-        </v-col>
+    <!-- ACTIVE CHIP ROW -->
+    <div class="plp-chips" v-if="activeFilterChips.length">
+      <v-chip v-for="chip in activeFilterChips" :key="chip.key" size="small" closable variant="tonal"
+        color="primary" class="plp-chip" @click:close="removeFilter(chip.key)">
+        {{ chip.label }}
+      </v-chip>
+      <button class="plp-chip-clear" @click="clearFilters">Limpiar todo</button>
+    </div>
 
-        <v-col cols="12" md="4" v-if="isAdmin">
-          <v-select
-            v-model="f.branch_id"
-            :items="branchItems"
-            item-title="title"
-            item-value="value"
-            label="Sucursal (scope/stock)"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="12" :md="isAdmin ? 4 : 4">
-          <v-select
-            v-model="f.category_id"
-            :items="categoryItems"
-            item-title="title"
-            item-value="value"
-            label="Rubro"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            @update:modelValue="onCategoryChange"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-select
-            v-model="f.subcategory_id"
-            :items="subcategoryItems"
-            item-title="title"
-            item-value="value"
-            label="Subrubro"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            :disabled="!f.category_id"
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-select
-            v-model="f.stock"
-            :items="stockItems"
-            item-title="title"
-            item-value="value"
-            label="Stock"
-            variant="outlined"
-            density="comfortable"
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-select
-            v-model="f.price_presence"
-            :items="pricePresenceItems"
-            item-title="title"
-            item-value="value"
-            label="Precio (lista)"
-            variant="outlined"
-            density="comfortable"
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <!-- ✅ ESTADO -->
-        <v-col cols="12" md="4">
-          <v-select
-            v-model="f.status"
-            :items="statusItems"
-            item-title="title"
-            item-value="value"
-            label="Estado"
-            variant="outlined"
-            density="comfortable"
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="6" md="2">
-          <v-text-field
-            v-model="f.price_min"
-            label="Precio mín."
-            variant="outlined"
-            density="comfortable"
-            type="number"
-            clearable
-            @keyup.enter="applyFilters"
-            @blur="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="6" md="2">
-          <v-text-field
-            v-model="f.price_max"
-            label="Precio máx."
-            variant="outlined"
-            density="comfortable"
-            type="number"
-            clearable
-            @keyup.enter="applyFilters"
-            @blur="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-select
-            v-model="f.images"
-            :items="imagesItems"
-            item-title="title"
-            item-value="value"
-            label="Imágenes"
-            variant="outlined"
-            density="comfortable"
-            @update:modelValue="applyFilters"
-          />
-        </v-col>
-
-        <v-col cols="12" class="d-flex ga-2">
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="applyFilters">
-            Buscar
-          </v-btn>
-          <v-btn variant="tonal" prepend-icon="mdi-filter-off" @click="clearFilters">
-            Limpiar
-          </v-btn>
-
-          <v-spacer />
-
-          <v-select
-            v-model="limit"
-            :items="[10, 20, 50, 100, 200]"
-            label="Filas"
-            variant="outlined"
-            density="comfortable"
-            style="max-width: 140px"
-            @update:modelValue="onLimitChange"
-          />
-        </v-col>
-      </v-row>
-    </v-card>
-
-    <!-- TABLA -->
-    <v-card rounded="xl" class="plp-table-card">
-      <div class="plp-table-wrap">
-        <v-data-table
-          :headers="headers"
-          :items="items"
-          item-key="id"
-          show-select
-          v-model:selected="selectedIds"
-          :loading="products.loading || loading"
-          class="pos-table plp-table"
-          fixed-header
-          height="560"
-          @click:row="onRowClick"
-        >
-          <template #item.name="{ item }">
-            <div class="font-weight-bold d-flex align-center minw-0" :style="isInactive(rowRaw(item)) ? 'opacity:.55' : ''">
-              <span class="text-truncate">{{ rowRaw(item)?.name }}</span>
-              <v-chip v-if="isInactive(rowRaw(item))" class="ml-2" size="x-small" color="grey" variant="tonal">
-                Inactivo
-              </v-chip>
-            </div>
-          </template>
-
-          <template v-if="isAdmin" #item.branch="{ item }">
-            <div class="cell-truncate">
-              <template v-if="Number(rowRaw(item)?.branch_id || 0) > 0">
-                <v-chip size="x-small" variant="tonal" :color="branchColor(rowRaw(item).branch_id)">
-                  {{ branchName(rowRaw(item).branch_id) }}
-                </v-chip>
-              </template>
-              <template v-else>
-                <span class="text-caption text-medium-emphasis">—</span>
-              </template>
-            </div>
-          </template>
-
-          <template v-if="isAdmin" #item.branches="{ item }">
-            <div class="branches-cell">
-              <template v-if="enabledBranches(rowRaw(item)).length">
-                <v-tooltip
-                  v-for="(b, i) in visibleBranches(enabledBranches(rowRaw(item)))"
-                  :key="`b-${rowRaw(item)?.id}-${b.id}-${i}`"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-chip v-bind="props" class="br-chip" size="x-small" variant="tonal" :color="branchColor(b.id)" label>
-                      {{ branchInitials(b.name) }}
-                    </v-chip>
-                  </template>
-                  <span>{{ b.name }}</span>
-                </v-tooltip>
-
-                <v-tooltip v-if="hiddenBranchesCount(enabledBranches(rowRaw(item))) > 0" location="top">
-                  <template #activator="{ props }">
-                    <v-chip v-bind="props" class="br-chip br-more" size="x-small" variant="tonal" label>
-                      +{{ hiddenBranchesCount(enabledBranches(rowRaw(item))) }}
-                    </v-chip>
-                  </template>
-                  <span>{{ hiddenBranchesText(enabledBranches(rowRaw(item))) }}</span>
-                </v-tooltip>
-              </template>
-
-              <template v-else>
-                <template v-if="Number(rowRaw(item)?.branch_id || 0) > 0">
-                  <v-chip class="br-chip" size="x-small" variant="tonal" :color="branchColor(rowRaw(item).branch_id)" label>
-                    {{ branchInitials(branchName(rowRaw(item).branch_id)) }}
-                  </v-chip>
-                </template>
-                <template v-else>
-                  <span class="text-caption text-medium-emphasis">—</span>
-                </template>
-              </template>
-            </div>
-          </template>
-
-          <template #item.rubro="{ item }">
-            <div class="cell-truncate">
-              {{ rowRaw(item)?.category?.name || rowRaw(item)?.rubro || "—" }}
-            </div>
-          </template>
-
-          <template #item.subrubro="{ item }">
-            <div class="cell-truncate">
-              {{ rowRaw(item)?.subcategory?.name || rowRaw(item)?.subrubro || "—" }}
-            </div>
-          </template>
-
-          <template #item.actions="{ item }">
-            <div class="actions-cell">
-              <v-btn icon="mdi-eye-outline" variant="text" class="act-btn" title="Ver" @click.stop="openView(rowRaw(item).id)" />
-              <v-menu location="bottom end" :close-on-content-click="true">
-                <template #activator="{ props }">
-                  <v-btn v-bind="props" icon="mdi-dots-vertical" variant="text" class="act-btn" title="Opciones" @click.stop />
-                </template>
-
-                <v-list density="comfortable" min-width="220">
-                  <v-list-item @click="openEdit(rowRaw(item).id)">
-                    <template #prepend><v-icon size="18">mdi-pencil-outline</v-icon></template>
-                    <v-list-item-title>Editar</v-list-item-title>
-                  </v-list-item>
-
-                  <v-divider />
-
-                  <v-list-item v-if="!isAdmin" @click="askDisable(rowRaw(item))">
-                    <template #prepend><v-icon size="18">mdi-eye-off-outline</v-icon></template>
-                    <v-list-item-title>Inactivar</v-list-item-title>
-                  </v-list-item>
-
-                  <v-list-item v-else @click="askDelete(rowRaw(item))">
-                    <template #prepend><v-icon size="18" color="red">mdi-delete-outline</v-icon></template>
-                    <v-list-item-title class="text-red">Eliminar</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </template>
-
-          <template #bottom>
-            <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
-              <div class="text-caption text-medium-emphasis">Mostrando {{ items.length }} de {{ meta.total }}</div>
-              <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="7" @update:modelValue="fetchNow" />
-            </div>
-          </template>
-        </v-data-table>
+    <!-- FILTER PANEL -->
+    <v-expand-transition>
+      <div v-if="filtersOpen" class="plp-filter-panel">
+        <v-row dense>
+          <v-col v-if="isAdmin" cols="12" sm="6" md="3">
+            <v-select v-model="f.branch_id" :items="branchItems" item-title="title" item-value="value"
+              label="Sucursal" variant="outlined" density="compact" hide-details clearable @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
+            <v-select v-model="f.category_id" :items="categoryItems" item-title="title" item-value="value"
+              label="Rubro" variant="outlined" density="compact" hide-details clearable @update:modelValue="onCategoryChange" />
+          </v-col>
+          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
+            <v-select v-model="f.subcategory_id" :items="subcategoryItems" item-title="title" item-value="value"
+              label="Subrubro" variant="outlined" density="compact" hide-details clearable
+              :disabled="!f.category_id" @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
+            <v-select v-model="f.status" :items="statusItems" item-title="title" item-value="value"
+              label="Estado" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="12" sm="4" md="2">
+            <v-select v-model="f.stock" :items="stockItems" item-title="title" item-value="value"
+              label="Stock" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="12" sm="4" md="2">
+            <v-select v-model="f.price_presence" :items="pricePresenceItems" item-title="title" item-value="value"
+              label="Precio" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
+            <v-text-field v-model="f.price_min" label="Mín $" variant="outlined" density="compact"
+              type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
+            <v-text-field v-model="f.price_max" label="Máx $" variant="outlined" density="compact"
+              type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
+            <v-select v-model="f.images" :items="imagesItems" item-title="title" item-value="value"
+              label="Imágenes" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
+            <v-select v-model="limit" :items="[10,20,50,100]" label="Por pág." variant="outlined"
+              density="compact" hide-details @update:modelValue="onLimitChange" />
+          </v-col>
+        </v-row>
       </div>
-    </v-card>
+    </v-expand-transition>
 
-    <!-- ProductFormDialog migrado a ProductFormPage (rutas /products/new y /products/:id/edit) -->
+    <!-- ERROR -->
+    <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3" density="compact">{{ products.error }}</v-alert>
 
-    <v-dialog v-model="disableOpen" max-width="520">
+    <!-- SKELETON -->
+    <div v-if="loading && !items.length" class="plp-skeleton-grid">
+      <div v-for="n in 8" :key="n" class="plp-skeleton-card" />
+    </div>
+
+    <!-- EMPTY -->
+    <div v-else-if="!loading && !items.length" class="plp-empty">
+      <v-icon size="52" color="medium-emphasis">mdi-package-variant-closed</v-icon>
+      <div class="plp-empty-title">Sin resultados</div>
+      <div class="plp-empty-sub">Probá con otros filtros o creá un nuevo producto</div>
+      <div class="d-flex ga-2 mt-4">
+        <v-btn variant="tonal" rounded="lg" @click="clearFilters">Limpiar filtros</v-btn>
+        <v-btn color="primary" variant="flat" rounded="lg" @click="openCreate">Nuevo producto</v-btn>
+      </div>
+    </div>
+
+    <!-- GRID VIEW -->
+    <div v-else-if="viewMode === 'grid' || !smAndUp" class="plp-grid" :class="{ 'plp-grid--loading': loading }">
+      <div v-for="item in items" :key="item.id" class="plp-card"
+        :class="{ 'plp-card--inactive': isInactive(item) }" @click="openView(item.id)">
+
+        <div class="plp-card-accent" :style="{ background: getCategoryColor(item) }" />
+
+        <div class="plp-card-header">
+          <div class="plp-card-img-wrap">
+            <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
+            <v-icon v-else size="26" color="medium-emphasis">mdi-package-variant-closed</v-icon>
+          </div>
+          <div class="plp-card-check" @click.stop>
+            <v-checkbox-btn :model-value="selectedIds.includes(item.id)" @update:modelValue="toggleSelect(item.id)"
+              density="compact" hide-details />
+          </div>
+        </div>
+
+        <div class="plp-card-body">
+          <div class="plp-card-name" :title="item.name">{{ item.name }}</div>
+          <div class="plp-card-brand" v-if="item.brand || item.model">
+            {{ [item.brand, item.model].filter(Boolean).join(' · ') }}
+          </div>
+          <div class="plp-card-sku" v-if="item.sku || item.code">
+            <v-icon size="11" class="mr-1">mdi-barcode</v-icon>{{ item.sku || item.code }}
+          </div>
+        </div>
+
+        <div class="plp-card-tags">
+          <span class="plp-tag plp-tag--cat" v-if="item.category?.name || item.rubro">{{ item.category?.name || item.rubro }}</span>
+          <span class="plp-tag plp-tag--sub" v-if="item.subcategory?.name || item.subrubro">{{ item.subcategory?.name || item.subrubro }}</span>
+          <span class="plp-tag plp-tag--inactive" v-if="isInactive(item)">Inactivo</span>
+        </div>
+
+        <div class="plp-card-footer">
+          <div class="plp-card-price" v-if="Number(item.price_list) > 0">
+            $&nbsp;{{ fmtPrice(item.price_list) }}
+          </div>
+          <div class="plp-card-price plp-card-price--none" v-else>Sin precio</div>
+
+          <div class="plp-card-stock" :class="getStockClass(item)">
+            <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
+          </div>
+        </div>
+
+        <div v-if="isAdmin" class="plp-card-branches">
+          <v-chip v-for="(b,i) in visibleBranches(enabledBranches(item))" :key="`${item.id}-b${b.id}-${i}`"
+            size="x-small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip">
+            {{ branchInitials(b.name) }}
+          </v-chip>
+          <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">+{{ hiddenBranchesCount(enabledBranches(item)) }}</span>
+        </div>
+
+        <div class="plp-card-actions" @click.stop>
+          <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
+            <v-icon size="16">mdi-eye-outline</v-icon>
+          </v-btn>
+          <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
+            <v-icon size="16">mdi-pencil-outline</v-icon>
+          </v-btn>
+          <v-menu location="bottom end" :close-on-content-click="true">
+            <template #activator="{ props }">
+              <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
+                <v-icon size="16">mdi-dots-vertical</v-icon>
+              </v-btn>
+            </template>
+            <v-list density="compact" min-width="160">
+              <v-list-item @click="openEdit(item.id)">
+                <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
+                <v-list-item-title>Editar</v-list-item-title>
+              </v-list-item>
+              <v-divider />
+              <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
+                <v-list-item-title>Inactivar</v-list-item-title>
+              </v-list-item>
+              <v-list-item v-else @click="askDelete(item)">
+                <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
+                <v-list-item-title class="text-error">Eliminar</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIST VIEW -->
+    <div v-else class="plp-list-wrap" :class="{ 'plp-list--loading': loading }">
+      <div class="plp-list-head">
+        <div class="plp-lh-check">
+          <v-checkbox-btn :model-value="allSelected" @update:modelValue="toggleSelectAll" density="compact" hide-details />
+        </div>
+        <div class="plp-lh-name">Nombre</div>
+        <div class="plp-lh-cat">Rubro · Subrubro</div>
+        <div v-if="isAdmin" class="plp-lh-branches">Sucursales</div>
+        <div class="plp-lh-price">Precio</div>
+        <div class="plp-lh-stock">Stock</div>
+        <div class="plp-lh-actions"></div>
+      </div>
+      <div v-for="item in items" :key="item.id" class="plp-list-row"
+        :class="{ 'plp-list-row--inactive': isInactive(item) }" @click="openView(item.id)">
+        <div class="plp-lh-check" @click.stop>
+          <v-checkbox-btn :model-value="selectedIds.includes(item.id)" @update:modelValue="toggleSelect(item.id)"
+            density="compact" hide-details />
+        </div>
+        <div class="plp-row-name">
+          <div class="plp-row-name-text">{{ item.name }}</div>
+          <div class="plp-row-sku" v-if="item.sku || item.brand">{{ item.sku || '' }}{{ item.sku && item.brand ? ' · ' : '' }}{{ item.brand || '' }}</div>
+        </div>
+        <div class="plp-row-cat">
+          <span class="plp-tag plp-tag--cat" v-if="item.category?.name || item.rubro">{{ item.category?.name || item.rubro }}</span>
+          <span class="plp-tag plp-tag--sub" v-if="item.subcategory?.name || item.subrubro">{{ item.subcategory?.name || item.subrubro }}</span>
+        </div>
+        <div v-if="isAdmin" class="plp-row-branches">
+          <template v-if="enabledBranches(item).length">
+            <v-chip v-for="(b,i) in visibleBranches(enabledBranches(item))" :key="`${item.id}-r${b.id}-${i}`"
+              size="x-small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip">
+              {{ branchInitials(b.name) }}
+            </v-chip>
+          </template>
+          <span v-else class="text-medium-emphasis text-caption">—</span>
+        </div>
+        <div class="plp-row-price">
+          <span v-if="Number(item.price_list) > 0" class="plp-price-val">${{ fmtPrice(item.price_list) }}</span>
+          <span v-else class="text-medium-emphasis text-caption">—</span>
+        </div>
+        <div class="plp-row-stock" :class="getStockClass(item)">
+          <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
+        </div>
+        <div class="plp-row-actions" @click.stop>
+          <v-btn icon size="x-small" variant="text" @click.stop="openView(item.id)"><v-icon size="16">mdi-eye-outline</v-icon></v-btn>
+          <v-menu location="bottom end" :close-on-content-click="true">
+            <template #activator="{ props }">
+              <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop><v-icon size="16">mdi-dots-vertical</v-icon></v-btn>
+            </template>
+            <v-list density="compact" min-width="160">
+              <v-list-item @click="openEdit(item.id)">
+                <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
+                <v-list-item-title>Editar</v-list-item-title>
+              </v-list-item>
+              <v-divider />
+              <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
+                <v-list-item-title>Inactivar</v-list-item-title>
+              </v-list-item>
+              <v-list-item v-else @click="askDelete(item)">
+                <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
+                <v-list-item-title class="text-error">Eliminar</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="plp-pagination" v-if="meta.total > 0">
+      <span class="plp-pag-info">{{ items.length }} de {{ meta.total }}</span>
+      <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="smAndUp ? 7 : 4"
+        rounded="lg" @update:modelValue="fetchNow" size="small" />
+    </div>
+
+    <!-- Dialogs -->
+    <v-dialog v-model="disableOpen" max-width="460">
       <v-card rounded="xl">
-        <v-card-title class="font-weight-bold">Inactivar producto</v-card-title>
-        <v-card-text>
-          ¿Seguro que querés inactivar <b>{{ disableItem?.name }}</b> (ID #{{ disableItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">Se oculta para usuarios y POS (no se borra).</div>
+        <v-card-title class="font-weight-bold pt-5 px-5">Inactivar producto</v-card-title>
+        <v-card-text class="px-5">¿Inactivar <b>{{ disableItem?.name }}</b>?
+          <div class="text-caption text-medium-emphasis mt-1">Se oculta del catálogo y del POS. No se borra.</div>
         </v-card-text>
-        <v-card-actions class="justify-end">
+        <v-card-actions class="justify-end px-5 pb-5">
           <v-btn variant="tonal" @click="disableOpen = false" :disabled="products.loading">Cancelar</v-btn>
-          <v-btn color="primary" variant="flat" @click="doDisable" :loading="products.loading">Inactivar</v-btn>
+          <v-btn color="warning" variant="flat" rounded="lg" @click="doDisable" :loading="products.loading">Inactivar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="deleteOpen" max-width="520">
+    <v-dialog v-model="deleteOpen" max-width="460">
       <v-card rounded="xl">
-        <v-card-title class="font-weight-bold">Eliminar producto</v-card-title>
-        <v-card-text>
-          ¿Seguro que querés eliminar <b>{{ deleteItem?.name }}</b> (ID #{{ deleteItem?.id }})?
-          <div class="text-caption text-medium-emphasis mt-2">Si falla por ventas/relaciones, se inactiva automáticamente.</div>
+        <v-card-title class="font-weight-bold pt-5 px-5">Eliminar producto</v-card-title>
+        <v-card-text class="px-5">¿Eliminar <b>{{ deleteItem?.name }}</b>?
+          <div class="text-caption text-medium-emphasis mt-1">Si tiene ventas relacionadas, se inactiva automáticamente.</div>
         </v-card-text>
-        <v-card-actions class="justify-end">
+        <v-card-actions class="justify-end px-5 pb-5">
           <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" @click="doDelete" :loading="products.loading">Eliminar</v-btn>
+          <v-btn color="error" variant="flat" rounded="lg" @click="doDelete" :loading="products.loading">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snack.show" :timeout="3500">{{ snack.text }}</v-snackbar>
+    <v-snackbar v-model="snack.show" :timeout="3500" location="bottom right" rounded="lg">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
-import ProductFormDialog from "../components/ProductFormDialog.vue";
 
 const router = useRouter();
 const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
+const { smAndUp } = useDisplay();
 
 const isAdmin = computed(() => {
   const r = auth.roles || [];
@@ -387,10 +333,6 @@ const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
 const page = ref(1);
 const limit = ref(20);
 const selectedIds = ref([]);
-
-const formOpen = ref(false);
-const formMode = ref("create");
-const formItem = ref(null);
 
 const deleteOpen = ref(false);
 const deleteItem = ref(null);
@@ -519,7 +461,7 @@ const f = ref({
   subcategory_id: null,
   stock: "all",
   price_presence: "all",
-  status: isAdmin.value ? "all" : "active", // ✅ admin ve TODO por defecto
+  status: isAdmin.value ? "all" : "active", // admin ve TODO por defecto
   price_min: null,
   price_max: null,
   images: "all",
@@ -541,11 +483,10 @@ const imagesItems = [
   { title: "Sin imágenes", value: "without" },
 ];
 const statusItems = computed(() => {
-  // no-admin: no tiene sentido "Todos" si no querés que vean inactivos.
   if (!isAdmin.value) {
     return [
       { title: "Activos", value: "active" },
-      { title: "Inactivos", value: "inactive" }, // por si lo querés permitir
+      { title: "Inactivos", value: "inactive" },
     ];
   }
   return [
@@ -610,10 +551,10 @@ async function fetchNow() {
       images: f.value.images,
     };
 
-    // ✅ Estado -> backend
+    // Estado -> backend
     // all => include_inactive=1
     // inactive => is_active=0
-    // active => (no mandamos nada, backend default is_active=1) o mandamos is_active=1 si querés
+    // active => (no mandamos nada, backend default is_active=1)
     if (String(f.value.status) === "all") {
       params.include_inactive = 1;
     } else if (String(f.value.status) === "inactive") {
@@ -812,35 +753,225 @@ watch(
     selectedIds.value = [];
   }
 );
+
+/* ── NEW UI HELPERS ── */
+const viewMode = ref('grid'); // 'grid' | 'list'
+const filtersOpen = ref(false);
+let _searchTimer = null;
+function debouncedSearch() { clearTimeout(_searchTimer); _searchTimer = setTimeout(() => applyFilters(), 400); }
+function clearSearch() { f.value.q = ''; applyFilters(); }
+
+const activeFiltersCount = computed(() => {
+  let n = 0;
+  if (f.value.branch_id) n++;
+  if (f.value.category_id) n++;
+  if (f.value.subcategory_id) n++;
+  if (f.value.stock !== 'all') n++;
+  if (f.value.price_presence !== 'all') n++;
+  if (f.value.images !== 'all') n++;
+  if (f.value.price_min) n++;
+  if (f.value.price_max) n++;
+  const defStatus = isAdmin.value ? 'all' : 'active';
+  if (f.value.status !== defStatus) n++;
+  return n;
+});
+
+const activeFilterChips = computed(() => {
+  const chips = [];
+  if (f.value.branch_id) { const b = branchItems.value.find(x => x.value === f.value.branch_id); chips.push({ key: 'branch_id', label: `Sucursal: ${b?.title || f.value.branch_id}` }); }
+  if (f.value.category_id) { const c = categoryItems.value.find(x => x.value === f.value.category_id); chips.push({ key: 'category_id', label: `Rubro: ${c?.title || f.value.category_id}` }); }
+  if (f.value.subcategory_id) { const s = subcategoryItems.value.find(x => x.value === f.value.subcategory_id); chips.push({ key: 'subcategory_id', label: `Subrubro: ${s?.title || f.value.subcategory_id}` }); }
+  if (f.value.stock !== 'all') chips.push({ key: 'stock', label: stockItems.find(x => x.value === f.value.stock)?.title });
+  if (f.value.price_presence !== 'all') chips.push({ key: 'price_presence', label: pricePresenceItems.find(x => x.value === f.value.price_presence)?.title });
+  if (f.value.images !== 'all') chips.push({ key: 'images', label: imagesItems.find(x => x.value === f.value.images)?.title });
+  if (f.value.price_min) chips.push({ key: 'price_min', label: `Mín $${f.value.price_min}` });
+  if (f.value.price_max) chips.push({ key: 'price_max', label: `Máx $${f.value.price_max}` });
+  const defStatus = isAdmin.value ? 'all' : 'active';
+  if (f.value.status !== defStatus) { const s = statusItems.value.find(x => x.value === f.value.status); chips.push({ key: 'status', label: s?.title }); }
+  return chips.filter(c => c.label);
+});
+
+function removeFilter(key) {
+  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', price_min: null, price_max: null, status: isAdmin.value ? 'all' : 'active' };
+  f.value[key] = defaults[key];
+  if (key === 'category_id') f.value.subcategory_id = null;
+  applyFilters();
+}
+
+function toggleSelect(id) {
+  const idx = selectedIds.value.indexOf(id);
+  if (idx >= 0) selectedIds.value.splice(idx, 1);
+  else selectedIds.value.push(id);
+}
+
+const allSelected = computed(() => items.value.length > 0 && items.value.every(it => selectedIds.value.includes(it.id)));
+function toggleSelectAll(val) { selectedIds.value = val ? items.value.map(it => it.id) : []; }
+
+const CAT_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
+function getCategoryColor(item) { const id = Number(item?.category_id || 0); return id ? CAT_COLORS[id % CAT_COLORS.length] : '#6b7280'; }
+
+function getProductImage(item) {
+  const imgs = item?.images;
+  if (Array.isArray(imgs) && imgs.length) { const f = imgs[0]; return typeof f === 'string' ? f : f?.url || f?.thumbnail || null; }
+  return item?.thumbnail || item?.image_url || item?.image || null;
+}
+
+function fmtPrice(v) { const n = Number(v||0); if(!n) return '—'; return new Intl.NumberFormat('es-AR').format(Math.round(n)); }
+
+function getStockClass(item) {
+  const qty = Number(item?.stock_total ?? item?.stock_qty ?? item?.stock ?? item?.qty ?? -1);
+  if (qty < 0) return 'st-unknown'; if (qty === 0) return 'st-zero'; return 'st-ok';
+}
+function getStockLabel(item) {
+  const qty = Number(item?.stock_total ?? item?.stock_qty ?? item?.stock ?? item?.qty ?? -1);
+  if (qty < 0) return '—'; if (qty === 0) return 'Sin stock'; return `${qty} uds`;
+}
 </script>
 
 <style scoped>
-.plp { min-width: 0; }
-.plp-table-card { overflow: hidden; }
-.plp-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.plp-table { min-width: 980px; }
+/* root */
+.plp { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
-.pos-table :deep(th) { font-weight: 900; white-space: nowrap; }
+/* TOP BAR */
+.plp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.plp-top-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plp-title { font-size: 22px; font-weight: 900; line-height: 1.1; }
+.plp-meta { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+.plp-view-toggle { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 
-.pos-table :deep(tbody tr) { cursor: pointer; transition: background-color 120ms ease; }
-.pos-table :deep(tbody tr:hover) { background: rgba(var(--v-theme-on-surface), 0.045); }
-.pos-table :deep(tbody tr.v-data-table__selected) { background: rgba(var(--v-theme-primary), 0.10) !important; }
+/* SEARCH BAR */
+.plp-searchbar { display: flex; gap: 8px; align-items: center; }
+.plp-search-input { flex: 1; }
+.plp-filter-btn { height: 40px !important; flex-shrink: 0; }
 
-.cell-truncate { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* CHIPS */
+.plp-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.plp-chip { font-size: 11px !important; }
+.plp-chip-clear { font-size: 11px; opacity: 0.5; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 6px; color: inherit; }
+.plp-chip-clear:hover { opacity: 0.9; }
 
-.actions-cell { display: inline-flex; justify-content: flex-end; align-items: center; gap: 0px; min-width: 76px; }
-.act-btn { width: 32px; height: 32px; margin-left: -2px; }
-.actions-cell .act-btn:first-child { margin-left: 0; }
+/* FILTER PANEL */
+.plp-filter-panel {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
 
-.branches-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 160px; }
-.br-chip { font-weight: 900; letter-spacing: 0.2px; padding-inline: 6px; border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important; }
-.br-more { opacity: 0.9; }
+/* SKELETON */
+.plp-skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.plp-skeleton-card { height: 200px; border-radius: 14px; background: rgba(var(--v-theme-on-surface), 0.06); animation: plp-pulse 1.4s ease infinite; }
+@keyframes plp-pulse { 0%,100%{ opacity:.5 } 50%{ opacity:1 } }
 
-.pos-table :deep(.v-btn),
-.pos-table :deep(.v-selection-control) { cursor: pointer; }
+/* EMPTY */
+.plp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 8px; text-align: center; }
+.plp-empty-title { font-size: 17px; font-weight: 800; }
+.plp-empty-sub { font-size: 13px; opacity: 0.5; }
 
-@media (max-width: 520px) {
-  .plp-table { min-width: 900px; }
-  .act-btn { width: 30px; height: 30px; }
+/* GRID */
+.plp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  transition: opacity 0.2s;
+}
+.plp-grid--loading { opacity: 0.5; pointer-events: none; }
+
+/* CARD */
+.plp-card {
+  position: relative;
+  display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.2));
+  background: rgb(var(--v-theme-surface));
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.12s;
+}
+.plp-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.12); transform: translateY(-1px); }
+.plp-card--inactive { opacity: 0.55; }
+.plp-card-accent { height: 4px; flex-shrink: 0; }
+
+.plp-card-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 10px 0; }
+.plp-card-img-wrap { width: 48px; height: 48px; border-radius: 9px; background: rgba(var(--v-theme-on-surface), 0.05); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
+.plp-card-img { width: 100%; height: 100%; object-fit: cover; }
+.plp-card-check { margin-top: -4px; margin-right: -6px; }
+
+.plp-card-body { padding: 8px 10px 4px; flex: 1; min-width: 0; }
+.plp-card-name { font-size: 13px; font-weight: 800; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.plp-card-brand { font-size: 11px; opacity: 0.5; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plp-card-sku { display: flex; align-items: center; font-size: 10px; opacity: 0.5; margin-top: 3px; font-family: monospace; }
+
+.plp-card-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 10px; }
+.plp-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.plp-tag--cat { background: rgba(var(--v-theme-primary), 0.12); color: rgb(var(--v-theme-primary)); }
+.plp-tag--sub { background: rgba(var(--v-theme-on-surface), 0.08); opacity: 0.75; }
+.plp-tag--inactive { background: rgba(var(--v-theme-error), 0.1); color: rgb(var(--v-theme-error)); }
+
+.plp-card-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.plp-card-price { font-size: 13px; font-weight: 900; color: rgb(var(--v-theme-success)); }
+.plp-card-price--none { color: rgba(var(--v-theme-on-surface), 0.3); font-weight: 400; font-size: 11px; }
+.plp-card-stock { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
+
+.plp-card-branches { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px 10px 0; }
+.plp-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0px; padding: 4px 6px 6px; }
+.plp-more { font-size: 10px; opacity: 0.5; padding: 0 4px; }
+.plp-br-chip { font-weight: 900 !important; }
+
+/* STOCK DOT */
+.st-dot { width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
+.st-ok .st-dot { background: rgb(var(--v-theme-success)); }
+.st-zero .st-dot { background: rgba(var(--v-theme-on-surface), 0.25); }
+.st-unknown .st-dot { background: rgba(var(--v-theme-on-surface), 0.15); }
+.st-ok { color: rgb(var(--v-theme-success)); }
+.st-zero { opacity: 0.5; }
+.st-unknown { opacity: 0.35; }
+
+/* LIST VIEW */
+.plp-list-wrap { border-radius: 12px; overflow: hidden; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgb(var(--v-theme-surface)); }
+.plp-list--loading { opacity: 0.5; pointer-events: none; }
+.plp-list-head, .plp-list-row { display: grid; align-items: center; gap: 8px; padding: 10px 14px; }
+.plp-list-head { grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px; background: rgba(var(--v-theme-surface-variant), 0.4); border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
+.plp-list-row { grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px; cursor: pointer; border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6)); transition: background 0.12s; }
+.plp-list-row:last-child { border-bottom: none; }
+.plp-list-row:hover { background: rgba(var(--v-theme-on-surface), 0.035); }
+.plp-list-row--inactive { opacity: 0.5; }
+
+.plp-lh-check { display: flex; align-items: center; justify-content: center; }
+.plp-lh-name,.plp-row-name { min-width: 0; }
+.plp-row-name-text { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plp-row-sku { font-size: 10px; opacity: 0.45; font-family: monospace; }
+.plp-row-cat { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.plp-row-branches { display: flex; flex-wrap: wrap; gap: 3px; }
+.plp-row-price .plp-price-val { font-size: 13px; font-weight: 800; color: rgb(var(--v-theme-success)); }
+.plp-row-stock { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
+.plp-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0; }
+
+/* LIST without admin branches */
+.plp-list-head:not(:has(.plp-lh-branches)),
+.plp-list-row:not(:has(.plp-row-branches)) {
+  grid-template-columns: 32px 1fr 200px 100px 90px 64px;
+}
+
+/* PAGINATION */
+.plp-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.plp-pag-info { font-size: 12px; opacity: 0.5; }
+
+/* TABLET */
+@media (max-width: 768px) {
+  .plp-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .plp-list-head, .plp-list-row { grid-template-columns: 32px 1fr 120px 70px 64px; }
+  .plp-lh-cat,.plp-row-cat,.plp-lh-branches,.plp-row-branches { display: none; }
+}
+
+/* MOBILE */
+@media (max-width: 480px) {
+  .plp-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plp-card-name { font-size: 12px; }
+  .plp-card-img-wrap { width: 38px; height: 38px; }
+  .plp-pagination { flex-direction: column; align-items: center; }
+}
+
+@media (max-width: 360px) {
+  .plp-grid { grid-template-columns: 1fr; }
 }
 </style>
