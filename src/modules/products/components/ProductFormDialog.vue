@@ -44,10 +44,19 @@
 
           <!-- Mobile steps -->
           <div class="pf-steps-mobile" v-else>
-            <span v-for="s in STEPS" :key="s.value"
-              class="pf-dot"
-              :class="{ active: step === s.value, done: step > s.value }"
-            />
+            <div class="pf-step-mobile-info">
+              <span class="pf-step-mobile-count">{{ step }}/{{ STEPS.length }}</span>
+              <v-icon size="12" :color="canGoAfterStep1 ? 'success' : 'medium-emphasis'" class="mx-1">
+                {{ canGoAfterStep1 ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+              </v-icon>
+              <span class="pf-step-mobile-name">{{ STEPS[step - 1].title }}</span>
+            </div>
+            <div class="pf-dots-row">
+              <span v-for="s in STEPS" :key="s.value"
+                class="pf-dot"
+                :class="{ active: step === s.value, done: step > s.value }"
+              />
+            </div>
           </div>
 
           <!-- Close -->
@@ -1470,20 +1479,36 @@ async function saveAll() {
 /* Mobile dots */
 .pf-steps-mobile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
-  justify-content: center;
+  min-width: 0;
+}
+
+.pf-step-mobile-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+.pf-step-mobile-count { font-size: 11px; opacity: 0.45; font-weight: 600; }
+.pf-step-mobile-name  { font-size: 13px; font-weight: 800; }
+
+.pf-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .pf-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   background: rgba(var(--v-theme-on-surface), 0.2);
   transition: all 0.2s;
 }
-.pf-dot.active { width: 24px; background: rgb(var(--v-theme-primary)); }
+.pf-dot.active { width: 20px; background: rgb(var(--v-theme-primary)); }
 .pf-dot.done { background: rgb(var(--v-theme-success)); }
 
 .pf-close-btn { flex-shrink: 0; }
@@ -1815,19 +1840,32 @@ async function saveAll() {
 }
 
 /* ══════════════════════════════
-   MOBILE
+   TABLET (600-959px)
 ══════════════════════════════ */
-@media (max-width: 600px) {
-  .pf-content { padding: 16px 12px 100px; }
-  .pf-topbar-inner { padding: 10px 12px; gap: 10px; }
+@media (max-width: 959px) {
+  .pf-content { padding: 20px 20px 110px; }
+  .pf-summary-grid { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════
+   MOBILE (< 600px)
+══════════════════════════════ */
+@media (max-width: 599px) {
+  .pf-content { padding: 12px 12px 96px; }
+  .pf-topbar-inner { padding: 10px 12px; gap: 8px; }
   .pf-title { font-size: 14px; }
-  .pf-kv { grid-template-columns: 90px 1fr; }
-  .pf-price-row-grid { grid-template-columns: 1fr; gap: 6px; }
-  .pf-price-item { display: flex; justify-content: space-between; align-items: center; }
-  .pf-price-label { margin-bottom: 0; }
-  .pf-footer-inner { flex-direction: column; align-items: stretch; }
-  .pf-footer-btns { flex-direction: column; }
-  .pf-btn-nav, .pf-btn-save { width: 100%; }
-  .pf-toggle-row { flex-direction: column; }
+  .pf-section-head { padding: 12px 14px; gap: 10px; }
+  .pf-section-body { padding: 12px; }
+  .pf-section-icon { width: 26px; height: 26px; border-radius: 7px; }
+  .pf-section-title { font-size: 13px; }
+  .pf-kv { grid-template-columns: 80px 1fr; }
+  .pf-price-row-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pf-footer-inner { flex-direction: column; align-items: stretch; gap: 8px; }
+  .pf-footer-btns { gap: 8px; }
+  .pf-btn-nav, .pf-btn-save { flex: 1; min-width: 0; }
+  .pf-toggle-row { flex-direction: column; gap: 8px; }
+  .pf-toggle-card { padding: 12px; min-width: 0; }
+  .pf-video-grid { grid-template-columns: 1fr; gap: 12px; }
+  .pf-sidenav-item { padding: 8px 10px; }
 }
 </style>

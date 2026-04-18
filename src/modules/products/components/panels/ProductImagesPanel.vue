@@ -2,6 +2,8 @@
 <!-- src/modules/products/components/panels/ProductImagesPanel.vue -->
 <template>
   <div class="pi-root d-flex flex-column ga-3">
+
+    <!-- Action bar -->
     <div class="d-flex align-center justify-space-between flex-wrap ga-2">
       <div>
         <div class="text-subtitle-1 font-weight-bold">Imágenes</div>
@@ -10,45 +12,71 @@
             Subí imágenes al producto existente.
           </template>
           <template v-else>
-            Elegí imágenes ahora y quedan en cola. Se subirán al tocar <b>CREAR</b> en el Resumen.
+            En cola: se suben al crear.
           </template>
         </div>
       </div>
 
-      <div class="d-flex ga-2">
+      <div class="d-flex ga-2 flex-wrap">
         <v-btn
           variant="tonal"
           size="small"
           @click="refresh"
           :disabled="busy || !resolvedId"
-          title="Refrescar (solo si el producto ya existe)"
+          title="Refrescar"
         >
-          <v-icon start size="18">mdi-refresh</v-icon>
-          Refrescar
+          <v-icon size="18">mdi-refresh</v-icon>
+        </v-btn>
+
+        <v-btn
+          color="teal-darken-1"
+          variant="tonal"
+          size="small"
+          @click="openCamera"
+          :disabled="busy"
+          title="Usar cámara del dispositivo"
+        >
+          <v-icon start size="18">mdi-camera</v-icon>
+          Cámara
         </v-btn>
 
         <v-btn
           color="primary"
+          variant="flat"
           size="small"
           @click="pickFiles"
           :loading="busy"
           :disabled="busy"
-          title="Elegir imágenes"
+          title="Elegir archivos"
         >
-          <v-icon start size="18">mdi-upload</v-icon>
+          <v-icon start size="18">mdi-image-plus</v-icon>
           {{ resolvedId && !defer ? "Subir" : "Elegir" }}
         </v-btn>
       </div>
     </div>
 
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/*"
-      multiple
-      class="d-none"
-      @change="onFilesSelected"
-    />
+    <!-- Hidden inputs -->
+    <input ref="fileInput" type="file" accept="image/*" multiple class="d-none" @change="onFilesSelected" />
+    <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="d-none" @change="onFilesSelected" />
+
+    <!-- Drop zone (shown when no images) -->
+    <div
+      v-if="isQueueMode && !queuedCount"
+      class="pi-dropzone"
+      :class="{ over: isDragOver }"
+      @dragover.prevent="isDragOver = true"
+      @dragleave="isDragOver = false"
+      @drop.prevent="onDrop"
+      @click="pickFiles"
+    >
+      <v-icon size="40" :color="isDragOver ? 'primary' : undefined" class="pi-dropzone-icon">mdi-cloud-upload-outline</v-icon>
+      <div class="pi-dropzone-text">Arrastrá imágenes o tocá aquí</div>
+      <div class="pi-dropzone-hint">JPG · PNG · WEBP</div>
+      <v-btn color="teal-darken-1" variant="tonal" size="small" class="mt-3" @click.stop="openCamera">
+        <v-icon start size="16">mdi-camera</v-icon>
+        Tomar con cámara
+      </v-btn>
+    </div>
 
     <v-alert v-if="error" type="error" variant="tonal" density="compact">
       {{ error }}
@@ -56,15 +84,17 @@
 
     <!-- ✅ MODO COLA -->
     <template v-if="isQueueMode">
-      <v-alert type="info" variant="tonal" density="comfortable" class="rounded-lg">
-        Tenés <b>{{ queuedCount }}</b> imagen(es) en cola. Se subirán al tocar <b>CREAR</b>.
+      <v-alert v-if="queuedCount" type="info" variant="tonal" density="compact" class="rounded-lg">
+        <b>{{ queuedCount }}</b> imagen(es) en cola · se subirán al crear
       </v-alert>
 
-      <div v-if="!queuedCount" class="text-caption text-medium-emphasis">
-        Sin imágenes en cola.
-      </div>
-
-      <div class="pi-grid" v-else>
+      <div
+        v-if="queuedCount"
+        class="pi-grid"
+        @dragover.prevent="isDragOver = true"
+        @dragleave="isDragOver = false"
+        @drop.prevent="onDrop"
+      >
         <v-card
           v-for="q in queued"
           :key="q.key"
@@ -175,10 +205,12 @@ const props = defineProps({
 });
 
 const fileInput = ref(null);
+const cameraInput = ref(null);
 const busy = ref(false);
 const error = ref("");
 const images = ref([]);
 const snack = ref({ open: false, text: "" });
+const isDragOver = ref(false);
 
 function toast(t) {
   snack.value = { open: true, text: String(t || "") };
@@ -263,6 +295,23 @@ onBeforeUnmount(() => cleanupObjectUrls(new Set()));
 function pickFiles() {
   error.value = "";
   fileInput.value?.click?.();
+}
+
+function openCamera() {
+  error.value = "";
+  cameraInput.value?.click?.();
+}
+
+function onDrop(e) {
+  isDragOver.value = false;
+  const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith("image/"));
+  if (!files.length) return;
+  if (isQueueMode.value) {
+    addToQueue(files);
+    toast(`🧾 ${files.length} imagen(es) en cola`);
+  } else {
+    onFilesSelected({ target: { files, value: "" } });
+  }
 }
 
 function normalizeImages(list) {
@@ -420,4 +469,31 @@ onMounted(() => {
   object-fit: cover;
   display: block;
 }
+
+/* ── Drop zone ── */
+.pi-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 20px;
+  border: 2px dashed rgba(var(--v-border-color), calc(var(--v-border-opacity) * 2));
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: center;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+.pi-dropzone:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-color: rgb(var(--v-theme-primary));
+}
+.pi-dropzone.over {
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-color: rgb(var(--v-theme-primary));
+}
+.pi-dropzone-icon { opacity: 0.5; }
+.pi-dropzone-text { font-size: 14px; font-weight: 600; opacity: 0.8; }
+.pi-dropzone-hint { font-size: 12px; opacity: 0.45; }
 </style>
