@@ -25,10 +25,12 @@
                 :mixed-paid="mixedPaid"
                 :mixed-missing="mixedMissing"
                 :mixed-change="mixedChange"
+                :total-safe="totalSafe"
                 :money="money"
                 :set-mixed-amount-ref="setMixedAmountRef"
                 @add-mixed-row="$emit('add-mixed-row')"
                 @remove-mixed-row="$emit('remove-mixed-row', $event)"
+                @ready="emitNextIfValid"
               />
             </template>
 
@@ -251,14 +253,21 @@ function handleKeyboardAction(action) {
   if (props.state?.mixedMode) {
     const handled = paymentMixedRef.value?.handleKeyboardAction?.(action);
     if (handled) return true;
-  } else {
-    const handled = paymentSingleRef.value?.handleKeyboardAction?.(action);
-    if (handled) return true;
+
+    // only allow backspace to go back when not handled by mixed component
+    if (action === "backspace") {
+      emit("back");
+      return true;
+    }
+
+    if (action === "enter") return emitNextIfValid();
+    return false;
   }
 
-  if (action === "enter") {
-    return emitNextIfValid();
-  }
+  const handled = paymentSingleRef.value?.handleKeyboardAction?.(action);
+  if (handled) return true;
+
+  if (action === "enter") return emitNextIfValid();
 
   if (action === "backspace") {
     emit("back");

@@ -373,7 +373,7 @@ export function usePosCheckout({
           payment_method_id: Number.isFinite(methodId) ? methodId : null,
           amount,
           installments: safeInstallments,
-          reference: cleanString(r?.reference),
+          reference: cleanString(r?.reference) || (methodMeta?.requires_reference ? "PAGO_MIXTO" : null),
           card_kind: safeCardKind,
         };
       })
@@ -511,10 +511,10 @@ export function usePosCheckout({
         (acc, p) => acc + toSafeNum(p.amount, 0),
         0
       );
-      const diff = Math.abs(paidTotal - total);
 
-      if (diff > 0.01) {
-        throw new Error("La suma de los pagos no coincide con el total.");
+      if (paidTotal < total - 0.01) {
+        const missing = (total - paidTotal).toFixed(2);
+        throw new Error(`Faltan $${missing} para completar el pago mixto.`);
       }
     } else {
       const methodId = ensureValidSinglePaymentMethod();

@@ -183,32 +183,29 @@ defineExpose({
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 10px 12px;
   background: transparent;
   min-width: 0;
 }
 
 .ck-screen__head {
   display: grid;
-  gap: 1px;
-  padding-inline: 2px;
+  gap: 2px;
 }
 
 .ck-screen__title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 950;
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-  color: #f4f7fb;
+  line-height: 1.1;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-screen__subtitle {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  line-height: 1.05;
-  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.1;
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
 .ck-screen__body {
@@ -217,7 +214,7 @@ defineExpose({
 
 .ck-form-shell {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-height: 0;
   align-content: start;
 }
@@ -229,52 +226,43 @@ defineExpose({
 }
 
 .ck-top-chip {
-  min-height: 28px;
+  min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  font-weight: 900;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 800;
   line-height: 1;
   border: 1px solid transparent;
 }
 
 .ck-top-chip--required {
-  color: #fb7185;
-  background: rgba(251, 113, 133, 0.1);
-  border-color: rgba(251, 113, 133, 0.16);
+  color: rgb(var(--v-theme-error));
+  background: rgba(var(--v-theme-error), 0.08);
+  border-color: rgba(var(--v-theme-error), 0.16);
 }
 
 .ck-top-chip--optional {
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .ck-form {
   display: grid;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      rgba(255, 255, 255, 0.01) 100%
-    ),
-    rgba(10, 20, 44, 0.74);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 6px 16px rgba(0, 0, 0, 0.14);
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgba(var(--v-theme-surface), 0.6);
 }
 
 .ck-form__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ck-field-wrap {
@@ -292,34 +280,34 @@ defineExpose({
 }
 
 .ck-field-label {
-  font-size: 0.76rem;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   letter-spacing: 0.01em;
   line-height: 1.05;
 }
 
 .ck-required-chip,
 .ck-optional-chip {
-  min-height: 22px;
-  padding: 0 9px;
+  min-height: 20px;
+  padding: 0 8px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 900;
   white-space: nowrap;
   line-height: 1;
 }
 
 .ck-required-chip {
-  color: #fb7185;
-  background: rgba(251, 113, 133, 0.1);
+  color: rgb(var(--v-theme-error));
+  background: rgba(var(--v-theme-error), 0.08);
 }
 
 .ck-optional-chip {
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ck-field {
@@ -327,18 +315,15 @@ defineExpose({
 }
 
 .ck-field :deep(.v-field) {
-  border-radius: 14px;
-  background: rgba(10, 20, 44, 0.58);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
 }
 
 .ck-field :deep(.v-field__input) {
-  min-height: 42px;
+  min-height: 40px;
   padding-top: 0;
   padding-bottom: 0;
-  color: #f4f7fb;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.88rem;
 }
 
 .ck-help-row {
@@ -346,31 +331,30 @@ defineExpose({
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding-top: 0;
 }
 
 .ck-help-pill {
-  min-height: 26px;
+  min-height: 24px;
   padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.68rem;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-size: 0.66rem;
   font-weight: 800;
   line-height: 1;
 }
 
 @media (max-width: 760px) {
   .ck-screen {
-    padding: 6px 6px 0;
-    gap: 6px;
+    padding: 8px;
+    gap: 8px;
   }
 
   .ck-form {
-    padding: 8px;
+    padding: 10px;
     gap: 8px;
   }
 

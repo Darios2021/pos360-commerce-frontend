@@ -39,24 +39,33 @@
 
     <div class="ck-summary__totals">
       <div class="ck-total-card">
-        <div class="ck-total-card__label">TOTAL</div>
+        <div class="ck-total-card__label">
+          <v-icon size="13" class="ck-total-card__label-icon">mdi-cart-check</v-icon>
+          TOTAL
+        </div>
         <div class="ck-total-card__value">{{ money(totalSafe) }}</div>
       </div>
 
       <div class="ck-total-row ck-total-row--paid">
-        <span>Pagado</span>
+        <span class="ck-total-row__left">
+          <v-icon size="13">mdi-check-circle-outline</v-icon>
+          <span>Pagado</span>
+        </span>
         <strong>{{ money(paidSafe) }}</strong>
       </div>
 
       <div class="ck-total-row ck-total-row--change">
-        <span>Vuelto</span>
+        <span class="ck-total-row__left">
+          <v-icon size="13">mdi-cash-refund</v-icon>
+          <span>Vuelto</span>
+        </span>
         <strong>{{ money(changeSafe) }}</strong>
       </div>
 
       <div class="ck-total-row ck-total-row--preview">
         <span class="ck-total-row__left">
-          <span>Prev.</span>
-          <v-icon size="18">mdi-history</v-icon>
+          <v-icon size="13">mdi-timer-sand</v-icon>
+          <span>Pendiente</span>
         </span>
         <strong>{{ money(previewSafe) }}</strong>
       </div>
@@ -186,17 +195,17 @@ defineProps({
 
 .ck-summary__totals {
   border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-  padding: 8px 12px;
+  padding: 10px 12px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .ck-total-card {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 4px 0 6px;
+  padding: 2px 0 8px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   margin-bottom: 4px;
 }
@@ -206,11 +215,18 @@ defineProps({
 }
 
 .ck-total-card__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.ck-total-card__label-icon {
+  opacity: 0.6;
 }
 
 .ck-total-card__icon {
@@ -218,10 +234,11 @@ defineProps({
 }
 
 .ck-total-card__value {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   line-height: 1;
   font-weight: 950;
   letter-spacing: -0.04em;
+  color: rgb(var(--v-theme-primary));
 }
 
 .ck-total-row {
@@ -229,27 +246,29 @@ defineProps({
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.70rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  min-height: 22px;
-  padding: 0;
-  border: none;
-  background: none;
-  border-radius: 0;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  min-height: 24px;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
 .ck-total-row strong {
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 900;
   white-space: nowrap;
-  color: rgba(var(--v-theme-on-surface), 0.85);
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 
 .ck-total-row__left {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+}
+
+.ck-total-row--paid {
+  background: rgba(var(--v-theme-success), 0.06);
 }
 
 .ck-total-row--paid strong {
@@ -258,6 +277,10 @@ defineProps({
 
 .ck-total-row--change strong {
   color: rgb(var(--v-theme-success));
+}
+
+.ck-total-row--preview {
+  background: rgba(var(--v-theme-error), 0.06);
 }
 
 .ck-total-row--preview strong {
