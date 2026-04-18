@@ -2,7 +2,6 @@
 <template>
   <v-dialog
     v-model="openLocal"
-    fullscreen
     persistent
     content-class="pf-overlay"
     transition="dialog-bottom-transition"
@@ -1349,22 +1348,50 @@ async function saveAll() {
 /* ══════════════════════════════
    ROOT
 ══════════════════════════════ */
+:deep(.pf-overlay) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 :deep(.pf-overlay .v-overlay__content) {
-  width: 100vw !important;
-  height: 100dvh !important;
-  margin: 0 !important;
+  width: min(1600px, 97vw) !important;
+  height: 92dvh !important;
   max-width: none !important;
-  max-height: none !important;
+  max-height: 92dvh !important;
+  margin: 0 !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.35) !important;
 }
 
 .pf-root {
-  width: 100vw;
-  height: 100dvh;
+  width: 100%;
+  height: 92dvh;
+  max-height: 92dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 20px;
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
+}
+
+/* Mobile: usar casi toda la pantalla */
+@media (max-width: 599px) {
+  :deep(.pf-overlay .v-overlay__content) {
+    width: 100vw !important;
+    height: 96dvh !important;
+    max-height: 96dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    margin-top: auto !important;
+    align-self: flex-end;
+  }
+  .pf-root {
+    height: 96dvh;
+    max-height: 96dvh;
+    border-radius: 16px 16px 0 0;
+  }
 }
 
 /* ══════════════════════════════
@@ -1625,8 +1652,8 @@ async function saveAll() {
 .pf-main {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   scroll-behavior: smooth;
-  background: rgba(var(--v-theme-surface-variant), 0.2);
 }
 
 .pf-content {
