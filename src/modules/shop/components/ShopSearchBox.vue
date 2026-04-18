@@ -23,65 +23,55 @@
     />
 
     <!-- Dropdown -->
-    <div v-if="open && (loading || showEmpty || suggestions.length)" class="sb-dd">
-      <div v-if="loading" class="sb-status">Buscando…</div>
+    <div v-if="open && (loading || showEmpty || termSuggestions.length)" class="sb-dd">
+      <div v-if="loading" class="sb-status">
+        <v-icon size="14" class="sb-status-icon">mdi-loading mdi-spin</v-icon>
+        Buscando…
+      </div>
 
       <template v-else>
-        <div v-if="suggestions.length" class="sb-list">
-          <!-- Fila: buscar el término escrito -->
-          <button class="sb-term-row" type="button" @mousedown.prevent="goSearch">
-            <v-icon size="16" class="sb-term-icon">mdi-magnify</v-icon>
-            <div class="sb-term-info">
-              <span class="sb-term-text">Buscar <strong>{{ normalize(text) }}</strong></span>
-              <span class="sb-term-hint">Ver todos los resultados</span>
-            </div>
-            <v-icon size="14" class="sb-term-arr">mdi-arrow-right</v-icon>
-          </button>
-          <button
-            v-for="(s, i) in suggestions"
-            :key="String(s.product_id) + '-' + i"
-            class="sb-row"
-            :class="{ active: i === activeIdx }"
-            type="button"
-            @mouseenter="activeIdx = i"
-            @mousedown.prevent="pick(s)"
+        <ul v-if="termSuggestions.length" class="sb-list" role="listbox">
+          <!-- Row 0: buscar el término exacto -->
+          <li role="option">
+            <button
+              class="sb-row sb-row--search"
+              :class="{ active: activeIdx === -1 }"
+              type="button"
+              @mouseenter="activeIdx = -1"
+              @mousedown.prevent="goSearch"
+            >
+              <v-icon size="16" class="sb-row-icon">mdi-magnify</v-icon>
+              <span class="sb-row-text">
+                <span class="sb-row-typed">{{ normalize(text) }}</span>
+                <span class="sb-row-hint"> — buscar esto</span>
+              </span>
+              <v-icon size="13" class="sb-row-arr">mdi-arrow-right</v-icon>
+            </button>
+          </li>
+
+          <!-- Predicciones de texto -->
+          <li
+            v-for="(s, i) in termSuggestions"
+            :key="s.product_id + '-' + i"
+            role="option"
           >
-            <!-- ✅ THUMB -->
-            <div class="sb-thumb" aria-hidden="true">
-              <img
-                v-if="thumbOf(s)"
-                :src="thumbOf(s)"
-                :alt="s.name || 'Producto'"
-                loading="lazy"
-                @error="onThumbErr"
-              />
-              <div v-else class="sb-thumb-ph">
-                <v-icon size="18">mdi-image-outline</v-icon>
-              </div>
-            </div>
+            <button
+              class="sb-row"
+              :class="{ active: i === activeIdx }"
+              type="button"
+              @mouseenter="activeIdx = i"
+              @mousedown.prevent="searchTerm(s.name)"
+            >
+              <v-icon size="15" class="sb-row-icon">mdi-magnify</v-icon>
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <span class="sb-row-text" v-html="highlightCompletion(s.name)"></span>
+            </button>
+          </li>
+        </ul>
 
-            <!-- TEXT -->
-            <div class="sb-info">
-              <div class="sb-title">{{ s.name }}</div>
-              <div class="sb-meta">
-                <span v-if="s.brand">{{ s.brand }}</span>
-                <span v-if="s.model">· {{ s.model }}</span>
-                <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
-                <span v-else-if="s.category_name">· {{ s.category_name }}</span>
-              </div>
-            </div>
-          </button>
-
-          <div class="sb-foot" @mousedown.prevent="goSearch">
-          <v-icon size="15" start>mdi-magnify</v-icon>
-          <span>Ver todos los resultados para <strong>{{ normalize(text) }}</strong></span>
-          <v-icon size="14">mdi-chevron-right</v-icon>
-        </div>
-        </div>
-
-        <!-- ✅ Empty state -->
+        <!-- Empty state -->
         <div v-else-if="showEmpty" class="sb-empty">
-          No encontramos resultados para “{{ normalize(text) }}”.
+          Sin resultados para "{{ normalize(text) }}"
         </div>
       </template>
     </div>
@@ -116,6 +106,20 @@ function normalize(v) {
   return String(v || "").trim();
 }
 
+// Deduplicate suggestions by name (case-insensitive) and limit
+const termSuggestions = computed(() => {
+  const seen = new Set();
+  const result = [];
+  for (const s of suggestions.value) {
+    const key = (s.name || "").toLowerCase().trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(s);
+    if (result.length >= 8) break;
+  }
+  return result;
+});
+
 const showEmpty = computed(() => {
   const q = normalize(text.value);
   return open.value && !loading.value && q.length >= 2 && suggestions.value.length === 0;
@@ -146,25 +150,6 @@ function onDocClick(e) {
 onMounted(() => document.addEventListener("click", onDocClick));
 onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
-function commitQueryQ(q) {
-  const qq = normalize(q);
-  const nq = { ...route.query };
-
-  if (qq) nq.q = qq;
-  else delete nq.q;
-
-  nq.page = "1";
-  router.replace({ name: route.name, params: route.params, query: nq });
-}
-
-function clear() {
-  text.value = "";
-  suggestions.value = [];
-  loading.value = false;
-  close();
-  commitQueryQ(null);
-}
-
 async function fetchSuggestions() {
   const q = normalize(text.value);
   if (q.length < 2) {
@@ -178,7 +163,7 @@ async function fetchSuggestions() {
     const r = await getSuggestions({
       branch_id: props.branchId,
       q,
-      limit: 8,
+      limit: 10,
     });
 
     const arr = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
@@ -186,7 +171,7 @@ async function fetchSuggestions() {
     open.value = true;
     activeIdx.value = arr.length ? 0 : -1;
   } catch (e) {
-    console.warn("❌ fetchSuggestions", e);
+    console.warn("fetchSuggestions error", e);
     suggestions.value = [];
   } finally {
     loading.value = false;
@@ -196,37 +181,37 @@ async function fetchSuggestions() {
 function onType() {
   open.value = true;
   clearTimeout(tmr);
-  tmr = setTimeout(fetchSuggestions, 280);
+  tmr = setTimeout(fetchSuggestions, 240);
 }
 
+// activeIdx: -1 = "Buscar X" row, 0..n = term suggestions
 function move(dir) {
-  if (!open.value || !suggestions.value.length) return;
-  const n = suggestions.value.length;
-  let i = activeIdx.value < 0 ? 0 : activeIdx.value + dir;
-  if (i < 0) i = n - 1;
-  if (i >= n) i = 0;
+  if (!open.value) return;
+  const max = termSuggestions.value.length - 1;
+  if (max < 0) return;
+  let i = activeIdx.value + dir;
+  if (i < -1) i = max;
+  if (i > max) i = -1;
   activeIdx.value = i;
 }
 
-function pick(s) {
+function searchTerm(name) {
+  const q = normalize(name);
   close();
-  router.push({
-    name: "shopProduct",
-    params: { id: String(s.product_id) },
-    query: { branch_id: String(props.branchId) },
-  });
+  if (!q) return;
+  router.push({ name: "shopSearch", query: { q } });
 }
 
 function goSearch() {
-  const qq = normalize(text.value);
+  const q = normalize(text.value);
   close();
-  if (!qq) return;
-  router.push({ name: "shopSearch", query: { q: qq } });
+  if (!q) return;
+  router.push({ name: "shopSearch", query: { q } });
 }
 
 function onEnter() {
-  if (open.value && activeIdx.value >= 0 && suggestions.value[activeIdx.value]) {
-    pick(suggestions.value[activeIdx.value]);
+  if (open.value && activeIdx.value >= 0 && termSuggestions.value[activeIdx.value]) {
+    searchTerm(termSuggestions.value[activeIdx.value].name);
     return;
   }
   const q = normalize(text.value);
@@ -235,26 +220,32 @@ function onEnter() {
   router.push({ name: "shopSearch", query: { q } });
 }
 
-function thumbOf(s) {
-  const cands = [
-    s?.thumbnail_url,
-    s?.thumb_url,
-    s?.image_thumb,
-    s?.image_url,
-    s?.photo_url,
-    s?.image,
-    s?.img,
-    s?.cover_url,
-    s?.main_image_url,
-    s?.product_image_url,
-  ];
-  const u = cands.find((x) => typeof x === "string" && x.trim().length > 0);
-  return u ? u.trim() : "";
+function clear() {
+  text.value = "";
+  suggestions.value = [];
+  loading.value = false;
+  close();
+  const nq = { ...route.query };
+  delete nq.q;
+  nq.page = "1";
+  router.replace({ name: route.name, params: route.params, query: nq });
 }
 
-function onThumbErr(ev) {
-  const img = ev?.target;
-  if (img) img.style.display = "none";
+// Bold the part that completes the typed query (ML-style)
+function escHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function highlightCompletion(name) {
+  const q = normalize(text.value).toLowerCase();
+  const n = (name || "").toLowerCase();
+  if (q && n.startsWith(q)) {
+    const typed = escHtml(name.slice(0, q.length));
+    const rest = escHtml(name.slice(q.length));
+    return `${typed}<strong>${rest}</strong>`;
+  }
+  // fallback: bold everything after first word match
+  return `<strong>${escHtml(name)}</strong>`;
 }
 
 watch(
@@ -272,233 +263,159 @@ watch(
   width: 100%;
 }
 
-/* ===============================
-   INPUT (FIX: texto no puede quedar blanco)
-   Porque shop.css fuerza blanco dentro del header
-================================ */
+/* INPUT */
 .sb-input :deep(.v-field) {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.98) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
-/* texto que tipeás */
 .sb-input :deep(input),
-.sb-input :deep(textarea),
 .sb-input :deep(.v-field__input) {
   color: rgba(0, 0, 0, 0.92) !important;
   caret-color: rgba(0, 0, 0, 0.92) !important;
 }
 
-/* placeholder */
 .sb-input :deep(input::placeholder),
-.sb-input :deep(textarea::placeholder),
 .sb-input :deep(.v-field__input::placeholder) {
-  color: rgba(0, 0, 0, 0.55) !important;
+  color: rgba(0, 0, 0, 0.45) !important;
   opacity: 1 !important;
 }
 
-/* icono lupa + clear */
 .sb-input :deep(.v-icon),
 .sb-input :deep(.v-field__prepend-inner .v-icon),
 .sb-input :deep(.v-field__append-inner .v-icon) {
-  color: rgba(0, 0, 0, 0.55) !important;
+  color: rgba(0, 0, 0, 0.45) !important;
 }
 
-/* ===============================
-   DROPDOWN (ya blindado)
-================================ */
-.sb-dd,
-.sb-dd * {
-  color: rgb(var(--v-theme-on-surface)) !important;
-}
-
-.sb-dd :deep(.v-icon) {
-  color: rgba(var(--v-theme-on-surface), 0.72) !important;
-}
-
+/* DROPDOWN */
 .sb-dd {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 5px);
   left: 0;
   right: 0;
-
   background: #fff !important;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  color: #222 !important;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
   overflow: hidden;
   z-index: 9999;
 }
 
-/* scroll control */
+/* List */
 .sb-list {
-  max-height: min(50vh, 360px);
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: min(55vh, 380px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Status / empty */
-.sb-status,
+/* Status */
+.sb-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+.sb-status-icon { opacity: 0.6; }
+
+/* Empty */
 .sb-empty {
-  padding: 10px 12px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.55) !important;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45) !important;
 }
 
-/* Row */
+/* Row base */
 .sb-row {
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 7px 9px;
-  color: rgba(0, 0, 0, 0.92) !important;
-}
-
-.sb-row:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.sb-row.active {
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-/* Thumb */
-.sb-thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex: 0 0 auto;
-
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.02);
-  display: grid;
-  place-items: center;
-}
-
-.sb-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.sb-thumb-ph {
-  color: rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Text */
-.sb-info {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.sb-title {
-  font-size: 13.5px;
-  font-weight: 650;
-  line-height: 1.2;
-  color: rgba(0, 0, 0, 0.92) !important;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sb-meta {
-  margin-top: 2px;
-  font-size: 10.8px;
-  line-height: 1.15;
-  color: rgba(0, 0, 0, 0.62) !important;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Footer */
-.sb-foot {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 7px 10px;
-  font-size: 10.5px;
-  color: rgba(0, 0, 0, 0.55) !important;
-}
-
-/* MOBILE */
-@media (max-width: 600px) {
-  .sb-dd {
-    border-radius: 12px;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-  }
-
-  .sb-list {
-    max-height: min(45vh, 300px);
-  }
-
-  .sb-row {
-    padding: 6px 8px;
-    gap: 7px;
-  }
-
-  .sb-thumb {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-  }
-
-  .sb-title {
-    font-size: 12.8px;
-  }
-
-  .sb-meta {
-    font-size: 10px;
-  }
-
-  .sb-foot {
-    font-size: 10px;
-    padding: 6px 8px;
-  }
-}
-.sb-foot {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 9px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 12.5px;
-  color: #1557d0;
-  font-weight: 600;
-  transition: background 0.12s;
-}
-.sb-foot:hover {
-  background: rgba(52, 131, 250, 0.07);
-}
-.sb-foot :deep(.v-icon) { color: #3483fa !important; }
-/* --- Fila "Buscar X" (primera del dropdown) --- */
-.sb-term-row {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 16px;
   border: 0;
-  background: rgba(52, 131, 250, 0.05);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s;
+  transition: background 0.1s;
+  color: #222 !important;
 }
-.sb-term-row:hover { background: rgba(52, 131, 250, 0.12); }
-.sb-term-icon { color: #3483fa !important; flex: 0 0 auto; }
-.sb-term-arr { color: #3483fa !important; flex: 0 0 auto; margin-left: auto; }
-.sb-term-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.sb-term-text { font-size: 13px; color: #222; }
-.sb-term-text strong { color: #111; }
-.sb-term-hint { font-size: 10.5px; color: #3483fa; }
+.sb-row:hover,
+.sb-row.active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* "Buscar X" row — slightly distinct */
+.sb-row--search {
+  background: rgba(52, 131, 250, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 2px;
+}
+.sb-row--search:hover,
+.sb-row--search.active {
+  background: rgba(52, 131, 250, 0.1);
+}
+
+/* Icon */
+.sb-row-icon {
+  color: rgba(0, 0, 0, 0.35) !important;
+  flex: 0 0 auto;
+}
+.sb-row--search .sb-row-icon {
+  color: #3483fa !important;
+}
+
+/* Text */
+.sb-row-text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.25;
+  color: #222 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-row-text :deep(strong) {
+  font-weight: 700;
+  color: #111 !important;
+}
+
+/* "buscar esto" hint */
+.sb-row-typed {
+  font-weight: 600;
+  color: #3483fa !important;
+}
+.sb-row-hint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4) !important;
+  font-weight: 400;
+}
+
+/* Arrow icon on "Buscar X" row */
+.sb-row-arr {
+  color: #3483fa !important;
+  flex: 0 0 auto;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .sb-dd {
+    border-radius: 14px;
+  }
+  .sb-list {
+    max-height: min(50vh, 320px);
+  }
+  .sb-row {
+    padding: 9px 14px;
+    gap: 9px;
+  }
+  .sb-row-text {
+    font-size: 13px;
+  }
+}
 </style>
