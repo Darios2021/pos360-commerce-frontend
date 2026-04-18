@@ -114,7 +114,11 @@
         <PromoSliderCargadores />
       </div>
 
-      <div class="mt-8" v-if="!loading && items.length && !itemsError">
+      <div class="mt-8">
+        <PromoSliderSeguridad />
+      </div>
+
+      <div class="mt-4" v-if="!loading && items.length && !itemsError">
         <PromoBannerSeguridadElectronica />
       </div>
 
@@ -151,6 +155,7 @@ import PromoBannerEntretenimiento from "@/modules/shop/components/PromoBannerEnt
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import PromoBannerSeguridadElectronica from "@/modules/shop/components/PromoBannerSeguridadElectronica.vue";
+import PromoSliderSeguridad from "@/modules/shop/components/PromoSliderSeguridad.vue";
 import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
