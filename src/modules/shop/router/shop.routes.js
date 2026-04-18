@@ -131,6 +131,26 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
+      // ✅ LANDINGS
+      {
+        path: "seguridad",
+        name: "shopLandingSeguridad",
+        component: () => import("@/modules/shop/pages/ShopLandingSeguridad.vue"),
+        meta: { public: true },
+      },
+      {
+        path: "sistemas",
+        name: "shopLandingSistemas",
+        component: () => import("@/modules/shop/pages/ShopLandingSistemas.vue"),
+        meta: { public: true },
+      },
+      {
+        path: "servicio-tecnico",
+        name: "shopLandingServicioTecnico",
+        component: () => import("@/modules/shop/pages/ShopLandingServicioTecnico.vue"),
+        meta: { public: true },
+      },
+
       // ✅ MI CUENTA (MIS COMPRAS / FAVORITOS)
       ...shopAccountRoutes,
     ],
