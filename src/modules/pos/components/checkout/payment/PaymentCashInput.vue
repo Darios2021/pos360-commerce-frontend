@@ -36,7 +36,7 @@
       <button
         ref="quickRefs"
         type="button"
-        class="ck-cash-btn"
+        class="ck-cash-btn ck-cash-btn--rounded"
         :class="{
           active: quickMode === 'rounded',
           cursor: cursorIndex === 1,
@@ -444,6 +444,11 @@ defineExpose({
    CARD BASE
    MISMO ESTÁNDAR QUE FACTURACIÓN
 ========================= */
+/* Color token per button */
+.ck-cash-btn { --cc: 34, 197, 94; }                      /* exact = green */
+.ck-cash-btn.ck-cash-btn--rounded { --cc: 59, 130, 246; } /* rounded = blue */
+.ck-cash-btn.ck-cash-btn--manual { --cc: 139, 92, 246; }  /* manual = violet */
+
 .ck-cash-btn {
   appearance: none;
   -webkit-appearance: none;
@@ -455,23 +460,12 @@ defineExpose({
 
   width: 100%;
   min-width: 0;
-  min-height: 60px;
-  padding: 10px 40px 10px 12px;
+  min-height: 72px;
+  padding: 12px 14px;
 
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      rgba(255, 255, 255, 0.01) 100%
-    ),
-    rgba(10, 20, 44, 0.75);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 6px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 14px;
+  border: 1.5px solid rgba(var(--cc), 0.2);
+  background: rgba(var(--cc), 0.07);
 
   display: flex;
   flex-direction: column;
@@ -486,43 +480,28 @@ defineExpose({
     border-color 0.14s ease,
     box-shadow 0.14s ease,
     background 0.14s ease,
-    transform 0.14s ease;
+    transform 0.13s ease;
 }
 
-/* hover igual que facturación */
 .ck-cash-btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(44, 132, 255, 0.25);
+  border-color: rgba(var(--cc), 0.4);
+  box-shadow: 0 4px 14px rgba(var(--cc), 0.18);
 }
 
-/* =========================
-   ACTIVO / CURSOR ACTIVE
-   MISMO ESTILO QUE FACTURACIÓN
-========================= */
 .ck-cash-btn.active,
 .ck-cash-btn.cursorActive {
   z-index: 3;
-
-  border: 1px solid rgba(44, 132, 255, 0.6);
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(44, 132, 255, 0.16) 0%,
-      rgba(44, 132, 255, 0.1) 100%
-    ),
-    rgba(10, 20, 44, 0.9);
-
+  background: rgb(var(--cc));
+  border-color: rgb(var(--cc));
   box-shadow:
-    0 0 0 2px rgba(44, 132, 255, 0.35),
-    0 0 0 5px rgba(44, 132, 255, 0.12),
-    0 10px 22px rgba(0, 0, 0, 0.22);
-
+    0 0 0 3px rgba(var(--cc), 0.22),
+    0 6px 18px rgba(var(--cc), 0.28);
   transform: translateY(-1px);
 }
 
 .ck-cash-btn.cursor {
-  border-color: rgba(44, 132, 255, 0.35);
+  border-color: rgba(var(--cc), 0.5);
 }
 
 /* =========================
@@ -530,18 +509,30 @@ defineExpose({
 ========================= */
 .ck-cash-btn__label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 900;
   line-height: 1.05;
-  color: #f4f7fb;
+  color: rgb(var(--cc));
+  transition: color 0.15s;
+}
+
+.ck-cash-btn.active .ck-cash-btn__label,
+.ck-cash-btn.cursorActive .ck-cash-btn__label {
+  color: #fff;
 }
 
 .ck-cash-btn__value {
   display: block;
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.05;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: color 0.15s;
+}
+
+.ck-cash-btn.active .ck-cash-btn__value,
+.ck-cash-btn.cursorActive .ck-cash-btn__value {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Si querés que el valor se vea más fuerte como en efectivo viejo,
@@ -603,27 +594,14 @@ defineExpose({
 }
 
 .ck-manual-input-wrap {
-  min-height: 60px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      rgba(255, 255, 255, 0.01) 100%
-    ),
-    rgba(10, 20, 44, 0.75);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 6px 16px rgba(0, 0, 0, 0.18);
-
+  min-height: 58px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.06);
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-
   transition:
     border-color 0.14s ease,
     box-shadow 0.14s ease,
@@ -631,20 +609,11 @@ defineExpose({
 }
 
 .ck-manual-input-wrap:focus-within {
-  border-color: rgba(44, 132, 255, 0.6);
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(44, 132, 255, 0.16) 0%,
-      rgba(44, 132, 255, 0.1) 100%
-    ),
-    rgba(10, 20, 44, 0.9);
-
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.1);
   box-shadow:
-    0 0 0 2px rgba(44, 132, 255, 0.35),
-    0 0 0 5px rgba(44, 132, 255, 0.12),
-    0 10px 22px rgba(0, 0, 0, 0.22);
+    0 0 0 3px rgba(139, 92, 246, 0.18),
+    0 6px 18px rgba(139, 92, 246, 0.2);
 }
 
 .ck-manual-input-wrap.error {

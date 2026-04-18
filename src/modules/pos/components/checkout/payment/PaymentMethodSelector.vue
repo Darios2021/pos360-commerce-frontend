@@ -112,9 +112,9 @@ function isActive(method) {
 /* ── Card base ── */
 .ck-pay {
   position: relative;
-  min-height: 52px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border-radius: 14px;
   border: 1.5px solid rgba(var(--pc), 0.18);
   background: rgba(var(--pc), 0.06);
   display: flex;
@@ -164,10 +164,10 @@ function isActive(method) {
 
 /* ── Icon ── */
 .ck-pay-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: rgba(var(--pc), 0.12);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(var(--pc), 0.14);
   color: rgb(var(--pc));
   display: flex;
   align-items: center;
@@ -177,7 +177,7 @@ function isActive(method) {
 }
 
 .ck-pay-icon :deep(.v-icon) {
-  font-size: 16px !important;
+  font-size: 22px !important;
   color: rgb(var(--pc)) !important;
   transition: color 0.15s;
 }
@@ -185,7 +185,7 @@ function isActive(method) {
 /* ── Name ── */
 .ck-pay-name {
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
@@ -248,7 +248,7 @@ function isActive(method) {
     grid-template-columns: 1fr;
   }
   .ck-pay {
-    min-height: 48px;
+    min-height: 58px;
   }
 }
 </style>

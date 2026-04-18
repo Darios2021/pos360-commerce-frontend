@@ -439,6 +439,12 @@ defineExpose({
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* Color tokens */
+.ck-pay { --pc: 99, 102, 241; }
+.ck-pay[data-kind="credit"] { --pc: 59, 130, 246; }
+.ck-pay[data-kind="debit"] { --pc: 34, 197, 94; }
+.ck-pay[data-kind="prepaid"] { --pc: 245, 158, 11; }
+
 /* =========================
    CARD
 ========================= */
@@ -448,62 +454,49 @@ defineExpose({
 
   width: 100%;
   min-width: 0;
-  min-height: 60px;
+  min-height: 56px;
 
-  border-radius: 16px;
-  padding: 10px 42px 10px 12px;
+  border-radius: 12px;
+  padding: 8px 40px 8px 10px;
 
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-surface), 0.35);
+  border: 1.5px solid rgba(var(--pc), 0.18);
+  background: rgba(var(--pc), 0.06);
 
   display: flex;
   align-items: center;
   gap: 10px;
-
   text-align: left;
-
-  /* ❌ SACAMOS ESTO */
-  /* overflow: hidden; */
 
   transition:
     border-color 0.14s ease,
     background 0.14s ease,
-    transform 0.14s ease,
+    transform 0.13s ease,
     box-shadow 0.14s ease;
 }
 
 .ck-pay:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--v-theme-on-surface), 0.2);
+  border-color: rgba(var(--pc), 0.36);
+  box-shadow: 0 4px 12px rgba(var(--pc), 0.15);
 }
 
-/* 🔥 ACTIVO */
 .ck-pay.active,
 .ck-pay.cursorActive {
   z-index: 3;
-
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(var(--v-theme-primary), 0.22) 100%
-    );
-
+  background: rgb(var(--pc));
+  border-color: rgb(var(--pc));
   box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.1),
-    0 0 0 4px rgba(var(--v-theme-primary), 0.34),
-    0 12px 20px rgba(0, 0, 0, 0.28);
-
-  transform: translateY(-2px);
+    0 0 0 3px rgba(var(--pc), 0.22),
+    0 6px 16px rgba(var(--pc), 0.28);
+  transform: translateY(-1px);
 }
 
 .ck-pay.cursor {
-  border-color: rgba(var(--v-theme-primary), 0.5);
+  border-color: rgba(var(--pc), 0.5);
 }
 
 .ck-pay:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 /* =========================
@@ -512,18 +505,26 @@ defineExpose({
 .ck-pay__left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
 }
 
 .ck-pay__icon {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 9px;
+  background: rgba(var(--pc), 0.14);
+  color: rgb(var(--pc));
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ck-pay.active .ck-pay__icon,
+.ck-pay.cursorActive .ck-pay__icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .ck-pay__text {
@@ -534,13 +535,25 @@ defineExpose({
 
 .ck-pay__title {
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 800;
+  transition: color 0.15s;
+}
+
+.ck-pay.active .ck-pay__title,
+.ck-pay.cursorActive .ck-pay__title {
+  color: #fff;
 }
 
 .ck-pay__hint {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  transition: color 0.15s;
+}
+
+.ck-pay.active .ck-pay__hint,
+.ck-pay.cursorActive .ck-pay__hint {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 /* =========================
@@ -551,6 +564,13 @@ defineExpose({
   top: 50%;
   right: 10px;
   transform: translateY(-50%);
+  color: rgba(var(--pc), 0.5);
+  transition: color 0.15s;
+}
+
+.ck-pay.active .ck-pay__state,
+.ck-pay.cursorActive .ck-pay__state {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* =========================

@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     v-model="openLocal"
-    max-width="1180"
+    max-width="980"
     persistent
     class="checkout-dialog"
   >
@@ -1352,8 +1352,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 .ck-root {
   display: flex;
   flex-direction: column;
-  min-height: min(540px, 80dvh);
-  max-height: min(540px, 80dvh);
+  min-height: min(700px, 92dvh);
+  max-height: min(700px, 92dvh);
   overflow: hidden;
   background:
     linear-gradient(
@@ -1407,28 +1407,29 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-step-circle {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  border: 1.5px solid rgba(var(--v-theme-on-surface), 0.18);
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.15);
   background: transparent;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .ck-step-num {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
-  color: rgba(var(--v-theme-on-surface), 0.4);
+  color: rgba(var(--v-theme-on-surface), 0.35);
 }
 
 .ck-step--active .ck-step-circle {
   background: rgb(var(--v-theme-primary));
   border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.18);
 }
 
 .ck-step--active .ck-step-circle .ck-step-num {
@@ -1445,9 +1446,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-step-label {
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.4);
+  color: rgba(var(--v-theme-on-surface), 0.35);
   white-space: nowrap;
 }
 
@@ -1457,14 +1458,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-step--done .ck-step-label {
-  color: rgba(var(--v-theme-on-surface), 0.65);
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 .ck-step-line {
-  width: 18px;
+  width: 24px;
   height: 1.5px;
-  background: rgba(var(--v-theme-on-surface), 0.12);
-  margin: 0 3px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  margin: 0 4px;
   flex: 0 0 auto;
 }
 
@@ -1840,8 +1841,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 @media (max-width: 960px) {
   .ck-root {
-    min-height: min(580px, 88dvh);
-    max-height: min(580px, 88dvh);
+    min-height: min(640px, 90dvh);
+    max-height: min(640px, 90dvh);
   }
 
   .ck-body-layout--with-summary {
