@@ -23,68 +23,56 @@
     />
 
     <!-- Dropdown -->
-    <div v-if=”open && (loading || showEmpty || suggestions.length)” class=”sb-dd”>
-      <div v-if=”loading” class=”sb-status”>Buscando…</div>
+    <div v-if="open && (loading || showEmpty || suggestions.length)" class="sb-dd">
+      <div v-if="loading" class="sb-status">Buscando…</div>
 
       <template v-else>
-        <div v-if=”suggestions.length” class=”sb-list”>
+        <div v-if="suggestions.length" class="sb-list">
           <button
-            v-for=”(s, i) in suggestions”
-            :key=”String(s.product_id) + '-' + i”
-            class=”sb-row”
-            :class=”{ active: i === activeIdx }”
-            type=”button”
-            @mouseenter=”activeIdx = i”
-            @mousedown.prevent=”pick(s)”
+            v-for="(s, i) in suggestions"
+            :key="String(s.product_id) + '-' + i"
+            class="sb-row"
+            :class="{ active: i === activeIdx }"
+            type="button"
+            @mouseenter="activeIdx = i"
+            @mousedown.prevent="pick(s)"
           >
             <!-- ✅ THUMB -->
-            <div class=”sb-thumb” aria-hidden=”true”>
+            <div class="sb-thumb" aria-hidden="true">
               <img
-                v-if=”thumbOf(s)”
-                :src=”thumbOf(s)”
-                :alt=”s.name || 'Producto'”
-                loading=”lazy”
-                @error=”onThumbErr”
+                v-if="thumbOf(s)"
+                :src="thumbOf(s)"
+                :alt="s.name || 'Producto'"
+                loading="lazy"
+                @error="onThumbErr"
               />
-              <div v-else class=”sb-thumb-ph”>
-                <v-icon size=”18”>mdi-image-outline</v-icon>
+              <div v-else class="sb-thumb-ph">
+                <v-icon size="18">mdi-image-outline</v-icon>
               </div>
             </div>
 
             <!-- TEXT -->
-            <div class=”sb-info”>
-              <div class=”sb-title”>{{ s.name }}</div>
-              <div class=”sb-meta”>
-                <span v-if=”s.brand”>{{ s.brand }}</span>
-                <span v-if=”s.model”>· {{ s.model }}</span>
-                <span v-if=”s.subcategory_name”>· {{ s.subcategory_name }}</span>
-                <span v-else-if=”s.category_name”>· {{ s.category_name }}</span>
+            <div class="sb-info">
+              <div class="sb-title">{{ s.name }}</div>
+              <div class="sb-meta">
+                <span v-if="s.brand">{{ s.brand }}</span>
+                <span v-if="s.model">· {{ s.model }}</span>
+                <span v-if="s.subcategory_name">· {{ s.subcategory_name }}</span>
+                <span v-else-if="s.category_name">· {{ s.category_name }}</span>
               </div>
             </div>
-
-            <!-- flecha → indica que va al producto -->
-            <v-icon size=”14” class=”sb-arrow” aria-hidden=”true”>mdi-chevron-right</v-icon>
           </button>
+
+          <div class="sb-foot" @mousedown.prevent="goSearch">
+          <v-icon size="15" start>mdi-magnify</v-icon>
+          <span>Ver todos los resultados para <strong>{{ normalize(text) }}</strong></span>
+          <v-icon size="14">mdi-chevron-right</v-icon>
+        </div>
         </div>
 
-        <!-- ✅ Ver todos los resultados -->
-        <button
-          v-if=”suggestions.length && normalize(text).length >= 2”
-          class=”sb-see-all”
-          type=”button”
-          @mousedown.prevent=”goSearch”
-        >
-          <v-icon size=”16” class=”sb-see-all-icon”>mdi-magnify</v-icon>
-          <span>Ver todos los resultados para <strong>”{{ normalize(text) }}”</strong></span>
-          <v-icon size=”14”>mdi-arrow-right</v-icon>
-        </button>
-
         <!-- ✅ Empty state -->
-        <div v-else-if=”showEmpty” class=”sb-empty”>
-          <div>Sin resultados para “<strong>{{ normalize(text) }}</strong>”</div>
-          <button class=”sb-empty-search” type=”button” @mousedown.prevent=”goSearch”>
-            Buscar de todas formas →
-          </button>
+        <div v-else-if="showEmpty" class="sb-empty">
+          No encontramos resultados para “{{ normalize(text) }}”.
         </div>
       </template>
     </div>
@@ -148,13 +136,6 @@ function onDocClick(e) {
 }
 onMounted(() => document.addEventListener("click", onDocClick));
 onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
-
-function goSearch() {
-  const qq = normalize(text.value);
-  close();
-  if (!qq) return;
-  router.push({ name: "shopSearch", query: { q: qq } });
-}
 
 function commitQueryQ(q) {
   const qq = normalize(q);
@@ -227,14 +208,18 @@ function pick(s) {
   });
 }
 
+function goSearch() {
+  const qq = normalize(text.value);
+  close();
+  if (!qq) return;
+  router.push({ name: "shopSearch", query: { q: qq } });
+}
+
 function onEnter() {
-  // Si hay sugerencia activa → abrir ese producto
   if (open.value && activeIdx.value >= 0 && suggestions.value[activeIdx.value]) {
     pick(suggestions.value[activeIdx.value]);
     return;
   }
-
-  // Sin sugerencia → ir a la página de resultados de búsqueda
   const q = normalize(text.value);
   close();
   if (!q) return;
@@ -435,50 +420,6 @@ watch(
   color: rgba(0, 0, 0, 0.55) !important;
 }
 
-/* Flecha en cada sugerencia */
-.sb-arrow {
-  flex: 0 0 auto;
-  opacity: 0.35;
-  color: rgba(0, 0, 0, 0.7) !important;
-}
-
-/* Botón "Ver todos los resultados" */
-.sb-see-all {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 12px;
-  border: 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.07);
-  background: rgba(52, 131, 250, 0.04);
-  cursor: pointer;
-  font-size: 13px;
-  color: #1557d0;
-  font-weight: 600;
-  text-align: left;
-  transition: background 0.12s;
-}
-.sb-see-all:hover {
-  background: rgba(52, 131, 250, 0.1);
-}
-.sb-see-all-icon {
-  flex: 0 0 auto;
-  color: #3483fa !important;
-}
-
-/* Empty search link */
-.sb-empty-search {
-  margin-top: 8px;
-  border: 0;
-  background: transparent;
-  color: #3483fa;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0;
-}
-
 /* MOBILE */
 @media (max-width: 600px) {
   .sb-dd {
@@ -509,9 +450,25 @@ watch(
     font-size: 10px;
   }
 
-  .sb-see-all {
-    font-size: 12px;
-    padding: 10px 10px;
+  .sb-foot {
+    font-size: 10px;
+    padding: 6px 8px;
   }
 }
+.sb-foot {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: #1557d0;
+  font-weight: 600;
+  transition: background 0.12s;
+}
+.sb-foot:hover {
+  background: rgba(52, 131, 250, 0.07);
+}
+.sb-foot :deep(.v-icon) { color: #3483fa !important; }
 </style>
