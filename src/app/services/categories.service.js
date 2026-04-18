@@ -2,8 +2,8 @@
 import http from "../api/http";
 
 export const CategoriesService = {
-  async list() {
-    const { data } = await http.get("/categories");
+  async list(params = {}) {
+    const { data } = await http.get("/categories", { params });
     return data;
   },
 

@@ -204,7 +204,9 @@ function normalizeCategories(input) {
           ""
       ).trim();
 
-      return { id, name };
+      const parent_id = toInt(x?.parent_id, 0) || null;
+
+      return { id, name, parent_id };
     })
     .filter((x) => x.id > 0 && x.name);
 }
@@ -245,9 +247,14 @@ function normalizeSubcategories(input) {
 
 const categoriesResolved = computed(() => {
   const fromProps = normalizeCategories(props.categories);
+  // Only show root categories (no parent) in the Rubro dropdown
+  const rootsFromProps = fromProps.filter((c) => !c.parent_id);
+  if (rootsFromProps.length) return rootsFromProps;
   if (fromProps.length) return fromProps;
 
-  return normalizeCategories(products?.categories || products?.meta?.categories || []);
+  const fromStore = normalizeCategories(products?.categories || products?.meta?.categories || []);
+  const rootsFromStore = fromStore.filter((c) => !c.parent_id);
+  return rootsFromStore.length ? rootsFromStore : fromStore;
 });
 
 const subcategoriesResolved = computed(() => {

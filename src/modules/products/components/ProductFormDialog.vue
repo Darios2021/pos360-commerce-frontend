@@ -681,21 +681,23 @@ function normalizeTaxo(raw, kind = "category") {
           ""
       ).trim();
 
+      // For subcategories: category_id links to the parent category
+      // For categories: we expose parent_id so callers can detect children
       const category_id =
-        toInt(x?.category_id, 0) ||
-        toInt(x?.categoryId, 0) ||
-        toInt(x?.rubro_id, 0) ||
-        toInt(x?.parent_id, 0) ||
-        0;
+        kind === "subcategory"
+          ? (toInt(x?.category_id, 0) || toInt(x?.categoryId, 0) || toInt(x?.rubro_id, 0) || 0)
+          : 0;
 
-      return { id, name, category_id };
+      const parent_id = toInt(x?.parent_id, 0) || null;
+
+      return { id, name, category_id, parent_id };
     })
     .filter((x) => x.id > 0 && x.name);
 }
 
 /* ===================== Load taxonomies ===================== */
 async function loadCategories() {
-  const data = await CategoriesService.list();
+  const data = await CategoriesService.list({ root_only: 1 });
   const list = Array.isArray(data)
     ? data
     : Array.isArray(data?.items)
