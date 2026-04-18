@@ -65,6 +65,13 @@
             </div>
           </div>
 
+          <!-- BANNER: búsqueda relajada (ej: "cargador celular" → mostrando "cargador") -->
+          <div v-if="relaxedQuery && q && total > 0" class="srp-relaxed-notice">
+            <v-icon size="16" class="srp-relaxed-icon">mdi-information-outline</v-icon>
+            No encontramos resultados exactos para <strong>"{{ q }}"</strong>.
+            Mostrando resultados para <strong>"{{ relaxedQuery }}"</strong>.
+          </div>
+
           <!-- CHIPS de filtros activos -->
           <div v-if="activeFilterCount > 0" class="srp-chips">
             <v-chip
@@ -261,6 +268,7 @@ const mobilePendingPriceMax = ref(null);
 // ── Facets: desde Meilisearch (todo el catálogo) o calculados desde la página ─
 const apiFacetsBrands = ref([]);  // llegan del backend cuando usa Meilisearch
 const apiFacetsCats   = ref([]);
+const relaxedQuery    = ref(null); // cuando la búsqueda fue relajada (ej: "cargador celular" → "cargador")
 
 const brandsFacet = computed(() => {
   if (apiFacetsBrands.value.length) return apiFacetsBrands.value;
@@ -371,15 +379,16 @@ async function fetchResults() {
     });
     items.value = Array.isArray(r?.items) ? r.items : [];
     total.value = Number(r?.total || 0);
-    // Facets reales de Meilisearch (presentes solo cuando _source === "meilisearch")
     apiFacetsBrands.value = Array.isArray(r?.brandsFacet) ? r.brandsFacet : [];
     apiFacetsCats.value   = Array.isArray(r?.catsFacet)   ? r.catsFacet   : [];
+    relaxedQuery.value    = r?.relaxed_query || null;
   } catch {
     err.value = "No se pudo cargar los resultados. Intentá de nuevo.";
     items.value = [];
     total.value = 0;
     apiFacetsBrands.value = [];
     apiFacetsCats.value   = [];
+    relaxedQuery.value    = null;
   } finally {
     loading.value = false;
   }
@@ -616,6 +625,21 @@ onMounted(() => {
 }
 .srp-count { font-weight: 900; color: #111; }
 .srp-term { font-style: normal; font-weight: 700; color: #111; }
+
+/* ── RELAXED QUERY NOTICE ── */
+.srp-relaxed-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #5d4037;
+}
+.srp-relaxed-icon { color: #f9a825; flex-shrink: 0; }
 
 /* ── CHIPS ── */
 .srp-chips {
