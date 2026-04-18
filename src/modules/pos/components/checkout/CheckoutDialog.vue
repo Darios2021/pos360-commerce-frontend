@@ -1241,6 +1241,16 @@ function onConfirm() {
     total: totalSafe.value,
     total_preview: previewSafe.value,
     total_list: totalListSafe.value,
+
+    // ✅ Items con el unit_price final según el método de pago (lista o descuento)
+    items: cartUi.value.map((it) => ({
+      product_id: it.product_id,
+      quantity: it.qty ?? it.quantity ?? 1,
+      unit_price: it._unit,
+      product_name_snapshot: it.name || it.product_name_snapshot || null,
+      product_sku_snapshot: it.sku || it.product_sku_snapshot || null,
+      product_barcode_snapshot: it.barcode || it.product_barcode_snapshot || null,
+    })),
   });
 }
 
