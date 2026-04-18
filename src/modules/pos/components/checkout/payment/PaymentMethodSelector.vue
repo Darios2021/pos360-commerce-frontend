@@ -111,9 +111,9 @@ function isActive(method) {
 
 .ck-pay {
   position: relative;
-  min-height: 58px;
-  padding: 7px 10px;
-  border-radius: 14px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 11px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   background: rgba(var(--v-theme-on-surface), 0.02);
   display: flex;
@@ -136,9 +136,9 @@ function isActive(method) {
 }
 
 .ck-pay-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: rgba(var(--v-theme-primary), 0.08);
   display: flex;
   align-items: center;
@@ -147,13 +147,13 @@ function isActive(method) {
 }
 
 .ck-pay-icon :deep(.v-icon) {
-  font-size: 19px !important;
+  font-size: 16px !important;
 }
 
 .ck-pay-name {
   min-width: 0;
-  font-size: 0.82rem;
-  font-weight: 900;
+  font-size: 0.79rem;
+  font-weight: 800;
   line-height: 1.08;
   white-space: nowrap;
   overflow: hidden;
@@ -220,7 +220,7 @@ function isActive(method) {
   }
 
   .ck-pay {
-    min-height: 54px;
+    min-height: 44px;
   }
 }
 </style>

@@ -122,7 +122,7 @@ defineProps({
   overflow: auto;
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 5px;
   padding-right: 2px;
 }
 
@@ -138,26 +138,26 @@ defineProps({
 .ck-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  min-height: 56px;
-  padding: 8px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.024);
+  min-height: 36px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .ck-item__left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   min-width: 0;
 }
 
 .ck-item__icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   background: rgba(var(--v-theme-on-surface), 0.05);
   display: inline-flex;
   align-items: center;
@@ -165,29 +165,33 @@ defineProps({
   flex: 0 0 auto;
 }
 
+.ck-item__icon :deep(.v-icon) {
+  font-size: 13px !important;
+}
+
 .ck-item__text {
   min-width: 0;
 }
 
 .ck-item__name {
-  font-size: 0.8rem;
-  font-weight: 900;
-  line-height: 1.05;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ck-item__meta {
-  margin-top: 3px;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  line-height: 1;
 }
 
 .ck-item__price {
-  font-size: 0.82rem;
-  font-weight: 950;
+  font-size: 0.78rem;
+  font-weight: 900;
   white-space: nowrap;
   text-align: right;
 }
@@ -195,12 +199,12 @@ defineProps({
 .ck-summary__totals {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 5px;
 }
 
 .ck-total-card {
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   background: rgba(var(--v-theme-on-surface), 0.03);
 }
@@ -233,21 +237,21 @@ defineProps({
 }
 
 .ck-total-row {
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.022);
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  background: rgba(var(--v-theme-on-surface), 0.018);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 800;
 }
 
 .ck-total-row strong {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   font-weight: 950;
   white-space: nowrap;
 }

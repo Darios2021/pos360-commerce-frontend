@@ -1544,9 +1544,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  min-height: 64px;
-  padding: 8px 18px;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 14px;
   border-radius: 999px !important;
   font-weight: 950;
   text-transform: none;
@@ -1578,14 +1578,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-btn-main {
-  font-size: 0.96rem;
+  font-size: 0.88rem;
   font-weight: 950;
   line-height: 1;
   letter-spacing: 0.01em;
 }
 
 .ck-btn-sub {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 850;
   line-height: 1;
   opacity: 0.88;
@@ -1593,7 +1593,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-btn-kbd--back {
-  min-width: 190px;
+  min-width: 168px;
   color: #111827 !important;
   border: 2px solid rgba(18, 24, 33, 0.28) !important;
   background:
@@ -1622,7 +1622,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-btn-kbd--primary {
-  min-width: 210px;
+  min-width: 188px;
   color: #ffffff !important;
   border: 2px solid rgba(4, 29, 59, 0.44) !important;
   background:
@@ -1653,10 +1653,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-kbd-box {
-  min-width: 54px;
-  width: 54px;
-  height: 36px;
-  border-radius: 12px;
+  min-width: 44px;
+  width: 44px;
+  height: 30px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1701,7 +1701,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-btn-kbd :deep(.v-icon) {
-  font-size: 22px !important;
+  font-size: 19px !important;
 }
 
 .ck-btn-kbd:disabled {
@@ -1778,29 +1778,29 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   }
 
   .ck-btn-kbd--back {
-    min-width: 178px;
+    min-width: 154px;
   }
 
   .ck-btn-kbd--primary {
-    min-width: 194px;
+    min-width: 170px;
   }
 
   .ck-kbd-box {
-    min-width: 50px;
-    width: 50px;
-    height: 34px;
+    min-width: 42px;
+    width: 42px;
+    height: 28px;
   }
 
   .ck-btn-main {
-    font-size: 0.92rem;
+    font-size: 0.84rem;
   }
 
   .ck-btn-sub {
-    font-size: 0.7rem;
+    font-size: 0.66rem;
   }
 
   .ck-btn-kbd :deep(.v-icon) {
-    font-size: 20px !important;
+    font-size: 17px !important;
   }
 }
 
@@ -1869,10 +1869,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   }
 
   .ck-btn-kbd {
-    min-height: 58px;
+    min-height: 48px;
     justify-content: center;
-    gap: 10px;
-    padding: 8px 14px;
+    gap: 8px;
+    padding: 6px 12px;
   }
 
   .ck-btn-kbd--back,
@@ -1881,22 +1881,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   }
 
   .ck-kbd-box {
-    min-width: 46px;
-    width: 46px;
-    height: 32px;
-    border-radius: 10px;
+    min-width: 40px;
+    width: 40px;
+    height: 28px;
+    border-radius: 8px;
   }
 
   .ck-btn-main {
-    font-size: 0.9rem;
+    font-size: 0.84rem;
   }
 
   .ck-btn-sub {
-    font-size: 0.68rem;
+    font-size: 0.64rem;
   }
 
   .ck-btn-kbd :deep(.v-icon) {
-    font-size: 18px !important;
+    font-size: 16px !important;
   }
 }
 </style>

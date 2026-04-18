@@ -552,8 +552,8 @@ defineExpose({
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   background: rgba(var(--v-theme-surface), 0.92);
   color: rgb(var(--v-theme-on-surface));
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition:
     border-color 0.16s ease,
     background 0.16s ease,
@@ -582,12 +582,12 @@ defineExpose({
 ========================= */
 .ck-mode-card,
 .ck-type-card {
-  min-height: 72px;
-  padding: 12px 42px 12px 12px;
+  min-height: 54px;
+  padding: 8px 36px 8px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ck-mode-card__left,
@@ -601,9 +601,9 @@ defineExpose({
 .ck-mode-card__icon,
 .ck-type-card__icon {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: rgba(var(--v-theme-primary), 0.08);
   color: rgb(var(--v-theme-primary));
   display: flex;
@@ -620,7 +620,7 @@ defineExpose({
 
 .ck-mode-card__title,
 .ck-type-card__title {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   line-height: 1.1;
   font-weight: 950;
   color: rgb(var(--v-theme-on-surface));
@@ -638,13 +638,13 @@ defineExpose({
    CUSTOMER CARD
 ========================= */
 .ck-customer-card {
-  min-height: 108px;
-  padding: 12px 10px 12px 10px;
+  min-height: 80px;
+  padding: 8px;
   display: grid;
   align-content: center;
   justify-items: center;
   text-align: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ck-customer-card__top {
@@ -654,9 +654,9 @@ defineExpose({
 }
 
 .ck-doc-chip {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
   border: 1px solid rgba(var(--v-theme-primary), 0.18);
@@ -687,9 +687,9 @@ defineExpose({
 ========================= */
 .ck-type-card__letter {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
   border: 1px solid rgba(var(--v-theme-primary), 0.16);
