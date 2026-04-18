@@ -169,7 +169,7 @@ async function fetchSuggestions() {
     const arr = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
     suggestions.value = arr;
     open.value = true;
-    activeIdx.value = arr.length ? 0 : -1;
+    activeIdx.value = -1;
   } catch (e) {
     console.warn("fetchSuggestions error", e);
     suggestions.value = [];
