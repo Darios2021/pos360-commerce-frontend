@@ -41,26 +41,20 @@
           class="cart-item"
         >
           <div class="item-shell">
-            <div class="item-main">
-              <div class="item-texts">
-                <div class="item-name" :title="it?.name || ''">
-                  {{ it?.name || "—" }}
-                </div>
-
-                <div class="item-meta">
-                  <span class="unit-price">{{ money(unitPriceEffective(it)) }}</span>
-                  <span class="unit-suffix">c/u</span>
-                  <span v-if="stockText(it)" class="stock-hint">{{ stockText(it) }}</span>
-                </div>
+            <!-- Row 1: name + subtotal -->
+            <div class="item-row-top">
+              <div class="item-name" :title="it?.name || ''">
+                {{ it?.name || "—" }}
               </div>
-
-              <div class="item-total-box">
-                <span class="item-total-label">Subtotal</span>
-                <span class="item-total">{{ money(lineTotal(it)) }}</span>
-              </div>
+              <span class="item-total">{{ money(lineTotal(it)) }}</span>
             </div>
 
-            <div class="item-controls">
+            <!-- Row 2: price/stock + qty controls + trash -->
+            <div class="item-row-bot">
+              <span class="unit-price">{{ money(unitPriceEffective(it)) }}</span>
+              <span class="unit-suffix">c/u</span>
+              <span v-if="stockText(it)" class="stock-hint">{{ stockText(it) }}</span>
+              <div class="row-bot-spacer" />
               <div class="qty-box">
                 <v-btn
                   class="qty-btn"
@@ -71,7 +65,6 @@
                   :disabled="!canEdit"
                   @click="dec(it)"
                 />
-
                 <v-text-field
                   v-model="qtyDraft[itKey(it)]"
                   class="qty-input"
@@ -83,7 +76,6 @@
                   @blur="commit(it)"
                   @keyup.enter="commit(it)"
                 />
-
                 <v-btn
                   class="qty-btn"
                   size="small"
@@ -94,7 +86,6 @@
                   @click="inc(it)"
                 />
               </div>
-
               <v-btn
                 class="trash-btn"
                 size="small"
@@ -489,7 +480,7 @@ function remove(it) {
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  padding: 10px 12px 9px;
+  padding: 7px 10px 6px;
 }
 
 .cart-head-left {
@@ -614,7 +605,7 @@ function remove(it) {
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 
 .cart-item {
@@ -623,127 +614,100 @@ function remove(it) {
 
 .item-shell {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
-  border-radius: 10px;
-  padding: 8px;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(var(--v-theme-surface), 1) 0%,
-      rgba(var(--v-theme-on-surface), 0.018) 100%
-    );
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: rgba(var(--v-theme-surface), 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.14s ease;
 }
 
 .item-shell:hover {
-  border-color: rgba(var(--v-theme-primary), 0.22);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+  border-color: rgba(var(--v-theme-primary), 0.2);
 }
 
-.item-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-}
-
-.item-texts {
+/* Row 1: name + subtotal */
+.item-row-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
 .item-name {
+  flex: 1 1 0;
   min-width: 0;
-  font-size: 12px;
-  line-height: 1.15;
-  font-weight: 700;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.item-meta {
-  margin-top: 5px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-  color: rgba(var(--v-theme-on-surface), 0.66);
-}
-
-.unit-price {
   font-size: 11.5px;
-  font-weight: 850;
-}
-
-.unit-suffix {
-  font-size: 10.5px;
-  opacity: 0.76;
-}
-
-.stock-hint {
-  font-size: 10.4px;
-  opacity: 0.82;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  border: 1px solid rgba(var(--v-theme-primary), 0.10);
-}
-
-.item-total-box {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-width: 90px;
-}
-
-.item-total-label {
-  font-size: 10px;
-  line-height: 1;
+  line-height: 1.2;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.54);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-total {
-  font-size: 15px;
+  flex: 0 0 auto;
+  font-size: 13px;
   line-height: 1;
-  font-weight: 1000;
+  font-weight: 800;
   white-space: nowrap;
 }
 
-.item-controls {
-  margin-top: 7px;
+/* Row 2: price/stock + controls */
+.item-row-bot {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.unit-price {
+  font-size: 10.5px;
+  font-weight: 700;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.unit-suffix {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.stock-hint {
+  font-size: 9.5px;
+  opacity: 0.7;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1px solid rgba(var(--v-theme-primary), 0.10);
+  white-space: nowrap;
+}
+
+.row-bot-spacer {
+  flex: 1 1 auto;
 }
 
 .qty-box {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 28px;
-  gap: 5px;
+  grid-template-columns: 24px 54px 24px;
+  gap: 3px;
   align-items: center;
 }
 
 .qty-btn {
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  border-radius: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border-radius: 6px !important;
 }
 
 .trash-btn {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 3px 8px rgba(var(--v-theme-error), 0.14);
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border-radius: 6px !important;
+  margin-left: 2px;
 }
 
 .qty-input {
@@ -751,20 +715,22 @@ function remove(it) {
 }
 
 .qty-input :deep(.v-field) {
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   background: rgba(var(--v-theme-on-surface), 0.025);
 }
 
 .qty-input :deep(.v-field__outline) {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .qty-input :deep(.v-field__input) {
-  min-height: 28px;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  min-height: 24px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 4px;
+  padding-right: 4px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -774,7 +740,7 @@ function remove(it) {
 
 .cart-foot {
   flex: 0 0 auto;
-  padding: 10px;
+  padding: 7px 8px 8px;
   background: rgba(var(--v-theme-surface), 0.98);
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
