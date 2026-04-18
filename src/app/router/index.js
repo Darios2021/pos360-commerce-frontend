@@ -30,6 +30,7 @@ import PosSalesPage from "@/modules/pos/pages/PosSalesPage.vue";
 import PosSaleDetailPage from "@/modules/pos/pages/PosSaleDetailPage.vue";
 
 import ProductsListPage from "@/modules/products/pages/ProductsListPage.vue";
+import ProductFormPage from "@/modules/products/pages/ProductFormPage.vue";
 import ProductProfilePage from "@/modules/products/pages/ProductProfilePage.vue";
 import ProductDetailViewPage from "@/modules/products/pages/ProductDetailViewPage.vue";
 
@@ -67,6 +68,8 @@ const routes = [
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
       { path: "products", name: "products", component: ProductsListPage },
+      { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true } },
+      { path: "products/:id/edit", name: "productEdit", component: ProductFormPage, meta: { fullPage: true } },
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 

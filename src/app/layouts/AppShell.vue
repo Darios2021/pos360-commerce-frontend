@@ -473,8 +473,11 @@
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
-      <v-main class="pos-main">
-        <v-container fluid class="pos-container">
+      <v-main class="pos-main" :class="{ 'pos-main--full': $route.meta.fullPage }">
+        <template v-if="$route.meta.fullPage">
+          <router-view />
+        </template>
+        <v-container v-else fluid class="pos-container">
           <router-view />
         </v-container>
       </v-main>
@@ -957,6 +960,16 @@ function onLogout() {
 
 .pos-main {
   background: rgb(var(--v-theme-background));
+}
+
+.pos-main--full {
+  display: flex;
+  flex-direction: column;
+}
+.pos-main--full > * {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .pos-container {

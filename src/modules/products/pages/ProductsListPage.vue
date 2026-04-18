@@ -328,7 +328,7 @@
       </div>
     </v-card>
 
-    <ProductFormDialog v-model:open="formOpen" :mode="formMode" :item="formItem" @saved="fetchNow" @deleted="fetchNow" />
+    <!-- ProductFormDialog migrado a ProductFormPage (rutas /products/new y /products/:id/edit) -->
 
     <v-dialog v-model="disableOpen" max-width="520">
       <v-card rounded="xl">
@@ -675,19 +675,13 @@ function openView(id) {
   if (!pid) return;
   router.push({ name: "productView", params: { id: pid } });
 }
-async function openEdit(id) {
-  if (!auth.isAuthed) return;
-  const bid = isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null;
-  const full = await products.fetchOne(Number(id), { force: true, branch_id: bid });
-  if (!full) return;
-  formMode.value = "edit";
-  formItem.value = full;
-  formOpen.value = true;
+function openEdit(id) {
+  const pid = Number(id || 0);
+  if (!pid || !auth.isAuthed) return;
+  router.push({ name: "productEdit", params: { id: pid } });
 }
 function openCreate() {
-  formMode.value = "create";
-  formItem.value = null;
-  formOpen.value = true;
+  router.push({ name: "productNew" });
 }
 function askDelete(item) {
   deleteItem.value = item;
