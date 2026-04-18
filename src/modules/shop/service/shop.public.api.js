@@ -371,6 +371,15 @@ export async function getCatalog(params = {}) {
       ? DEFAULT_IN_STOCK
       : toInt(params.in_stock, DEFAULT_IN_STOCK);
 
+  const price_min =
+    params.price_min === null || params.price_min === undefined || params.price_min === ""
+      ? null
+      : toNum(params.price_min, NaN);
+  const price_max =
+    params.price_max === null || params.price_max === undefined || params.price_max === ""
+      ? null
+      : toNum(params.price_max, NaN);
+
   const q = cleanParams({
     branch_id,
     search: params.search || "",
@@ -387,6 +396,8 @@ export async function getCatalog(params = {}) {
     model: model || "",
     volume_min: Number.isFinite(volume_min) ? volume_min : null,
     volume_max: Number.isFinite(volume_max) ? volume_max : null,
+    price_min: Number.isFinite(price_min) ? price_min : null,
+    price_max: Number.isFinite(price_max) ? price_max : null,
     sort: sort || "",
   });
 

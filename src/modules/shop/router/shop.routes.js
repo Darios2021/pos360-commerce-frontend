@@ -5,6 +5,7 @@ import ShopLayout from "@/modules/shop/layouts/ShopLayout.vue";
 
 import ShopHome from "@/modules/shop/pages/ShopHome.vue";
 import ShopCategory from "@/modules/shop/pages/ShopCategory.vue";
+import ShopSearch from "@/modules/shop/pages/ShopSearch.vue";
 import ShopProduct from "@/modules/shop/pages/ShopProduct.vue";
 import ShopCart from "@/modules/shop/pages/ShopCart.vue";
 
@@ -58,6 +59,14 @@ export const shopRoutes = [
       {
         path: "category",
         redirect: "/shop/categories",
+      },
+
+      // ✅ BÚSQUEDA (resultados de búsqueda estilo ML)
+      {
+        path: "search",
+        name: "shopSearch",
+        component: ShopSearch,
+        meta: { public: true },
       },
 
       // Categoría (estilo Mercado Libre)
