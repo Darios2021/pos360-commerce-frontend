@@ -14,6 +14,12 @@
         >{{ p.title }}</button>
       </div>
 
+      <!-- Hoy reference pill -->
+      <div class="dv-today-chip">
+        <span class="dv-today-dot" />
+        Hoy: <b>{{ num(today.count) }} ventas · {{ money(today.total) }}</b>
+      </div>
+
       <div class="dv-bar-spacer" />
 
       <!-- Branch selector (admin only) -->
@@ -36,63 +42,53 @@
       </div>
     </div>
 
-    <!-- ── Row 1: Hero KPIs ───────────────────────────────────────────────────── -->
+    <!-- ── Row 1: Hero KPIs (todas reaccionan al período) ───────────────────── -->
     <div class="dv-kpi-row">
-      <!-- Hoy -->
+      <!-- Total recaudado -->
       <div class="dv-kpi" style="--kpi-accent:#3b82f6">
         <div class="dv-kpi-badge" style="background:#3b82f6">
-          <v-icon color="white" size="20">mdi-calendar-today</v-icon>
+          <v-icon color="white" size="20">mdi-cash-multiple</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Hoy</div>
-          <div class="dv-kpi-value">{{ num(today.count) }}</div>
-          <div class="dv-kpi-meta">{{ money(today.total) }}</div>
+          <div class="dv-kpi-label">Total recaudado <span class="dv-kpi-period">· {{ periodLabelShort }}</span></div>
+          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(periodTotal) }}</div>
+          <div class="dv-kpi-meta">{{ periodCount }} ventas en el período</div>
         </div>
       </div>
 
-      <!-- Semana -->
+      <!-- Promedio diario -->
       <div class="dv-kpi" style="--kpi-accent:#10b981">
         <div class="dv-kpi-badge" style="background:#10b981">
-          <v-icon color="white" size="20">mdi-calendar-week</v-icon>
+          <v-icon color="white" size="20">mdi-trending-up</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Esta semana</div>
-          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(week.total) }}</div>
-          <div class="dv-kpi-meta">{{ num(week.count) }} ventas</div>
-        </div>
-        <div v-if="trendWeekPct" class="dv-kpi-trend" :class="trendWeekPct > 0 ? 'up' : 'dn'">
-          <v-icon size="13">{{ trendWeekPct > 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}</v-icon>
-          {{ Math.abs(trendWeekPct).toFixed(0) }}%
+          <div class="dv-kpi-label">Promedio por día <span class="dv-kpi-period">· {{ periodLabelShort }}</span></div>
+          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(avgPerDay) }}</div>
+          <div class="dv-kpi-meta">{{ nonZeroDays }} días activos / {{ timelinePoints.length }} totales</div>
         </div>
       </div>
 
-      <!-- Mes -->
+      <!-- Ticket promedio -->
       <div class="dv-kpi" style="--kpi-accent:#8b5cf6">
         <div class="dv-kpi-badge" style="background:#8b5cf6">
-          <v-icon color="white" size="20">mdi-calendar-month</v-icon>
+          <v-icon color="white" size="20">mdi-ticket-percent-outline</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Este mes</div>
-          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(month.total) }}</div>
-          <div class="dv-kpi-meta">{{ num(month.count) }} ventas</div>
-        </div>
-        <div v-if="trendMonthPct" class="dv-kpi-trend" :class="trendMonthPct > 0 ? 'up' : 'dn'">
-          <v-icon size="13">{{ trendMonthPct > 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}</v-icon>
-          {{ Math.abs(trendMonthPct).toFixed(0) }}%
+          <div class="dv-kpi-label">Ticket promedio <span class="dv-kpi-period">· {{ periodLabelShort }}</span></div>
+          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(avgTicketPeriod) }}</div>
+          <div class="dv-kpi-meta">Pico: {{ money(peakMax) }} ({{ peakDateFmt }})</div>
         </div>
       </div>
 
-      <!-- Período seleccionado -->
+      <!-- Mejor mes del período -->
       <div class="dv-kpi" style="--kpi-accent:#f59e0b">
         <div class="dv-kpi-badge" style="background:#f59e0b">
-          <v-icon color="white" size="20">mdi-chart-line</v-icon>
+          <v-icon color="white" size="20">mdi-calendar-star</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">{{ periodLabel }} <span class="dv-kpi-period">· ticket prom.</span></div>
-          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(avgTicketPeriod) }}</div>
-          <div class="dv-kpi-meta">
-            {{ money(periodTotal) }} · {{ nonZeroDays }} días activos
-          </div>
+          <div class="dv-kpi-label">Mejor mes <span class="dv-kpi-period">· {{ periodLabelShort }}</span></div>
+          <div class="dv-kpi-value dv-kpi-value--xs">{{ bestMonthLabel }}</div>
+          <div class="dv-kpi-meta">{{ bestMonth ? money(bestMonth.total) + ' · ' + num(bestMonth.count) + ' ventas' : '—' }}</div>
         </div>
       </div>
     </div>
@@ -609,6 +605,7 @@ const avgPerDay   = computed(() => {
 });
 const nonZeroDays  = computed(() => timelinePoints.value.filter(p => p.total > 0).length);
 const periodTotal  = computed(() => timelinePoints.value.reduce((a,p) => a + p.total, 0));
+const periodCount  = computed(() => timelinePoints.value.reduce((a,p) => a + p.count, 0));
 const avgTicketPeriod = computed(() => {
   const total = periodTotal.value;
   const count = timelinePoints.value.reduce((a,p) => a + p.count, 0);
@@ -1039,6 +1036,29 @@ const optAvgDow    = computed(() => ({
   color: rgb(var(--v-theme-on-surface));
   box-shadow: 0 1px 6px rgba(0,0,0,.10), 0 0 0 1px rgba(var(--v-theme-on-surface), 0.07);
 }
+.dv-today-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.50);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  white-space: nowrap;
+}
+.dv-today-chip b { color: rgba(var(--v-theme-on-surface), 0.80); font-weight: 800; }
+.dv-today-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 5px rgba(16,185,129,.7);
+  flex-shrink: 0;
+}
+
 .dv-bar-spacer { flex: 1; }
 
 .dv-scope {
