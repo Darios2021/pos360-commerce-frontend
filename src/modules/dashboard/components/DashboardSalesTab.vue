@@ -13,7 +13,25 @@
           @click="emitPeriod(p.value)"
         >{{ p.title }}</button>
       </div>
-      <div class="dv-scope" v-if="scopeLabelChip">
+
+      <div class="dv-bar-spacer" />
+
+      <!-- Branch selector (admin only) -->
+      <div v-if="isAdmin && branches.length" class="dv-branch-wrap">
+        <v-icon size="15" class="dv-branch-icon">mdi-store-outline</v-icon>
+        <select
+          class="dv-branch-select"
+          :value="selectedBranch ?? ''"
+          @change="onBranchChange"
+        >
+          <option value="">Todas las sucursales</option>
+          <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
+        </select>
+        <v-icon size="13" class="dv-branch-chevron">mdi-chevron-down</v-icon>
+      </div>
+
+      <!-- Non-admin fixed scope label -->
+      <div v-else-if="scopeLabelChip" class="dv-scope">
         <v-icon size="13" class="mr-1">mdi-store-outline</v-icon>{{ props.scopeLabel }}
       </div>
     </div>
@@ -453,8 +471,10 @@ const props = defineProps({
   sales:            { type: Object,  default: () => ({}) },
   analytics:        { type: Object,  default: null },
   period:           { type: String,  default: "30d" },
+  branches:         { type: Array,   default: () => [] },
+  selectedBranch:   { type: Number,  default: null },
 });
-const emit = defineEmits(["period-change"]);
+const emit = defineEmits(["period-change", "branch-change"]);
 
 const periodItems = [
   { title: "Último mes",   value: "30d" },
@@ -468,6 +488,10 @@ const productToggle = ref("total");
 
 watch(() => props.period, (v) => { if (v && v !== periodLocal.value) periodLocal.value = v; });
 function emitPeriod(v) { periodLocal.value = v; emit("period-change", v); }
+function onBranchChange(e) {
+  const val = e.target.value;
+  emit("branch-change", val === "" ? null : Number(val));
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
@@ -1013,13 +1037,49 @@ const optAvgDow    = computed(() => ({
   color: rgb(var(--v-theme-on-surface));
   box-shadow: 0 1px 6px rgba(0,0,0,.10), 0 0 0 1px rgba(var(--v-theme-on-surface), 0.07);
 }
+.dv-bar-spacer { flex: 1; }
+
 .dv-scope {
   display: flex;
   align-items: center;
   font-size: 11.5px;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.45);
-  margin-left: auto;
+}
+
+/* Branch selector */
+.dv-branch-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dv-branch-wrap:hover { border-color: rgba(var(--v-theme-on-surface), 0.25); }
+.dv-branch-icon   { color: rgba(var(--v-theme-on-surface), 0.50); flex-shrink: 0; }
+.dv-branch-chevron { color: rgba(var(--v-theme-on-surface), 0.40); flex-shrink: 0; pointer-events: none; }
+.dv-branch-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.80);
+  cursor: pointer;
+  padding-right: 2px;
+  min-width: 130px;
+  max-width: 200px;
+}
+.dv-branch-select option {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 /* ── KPI row ─────────────────────────────────────────────────────────────── */

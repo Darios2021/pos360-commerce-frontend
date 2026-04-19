@@ -11,26 +11,13 @@
       </div>
 
       <div class="dash-header__right">
-        <v-select
-          v-model="branchSelected"
-          :items="branchOptions"
-          item-title="title"
-          item-value="value"
-          label="Sucursal"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="dash-branch-select"
-          :disabled="!isAdmin"
-        />
-
         <v-btn
           color="primary"
           variant="flat"
           size="small"
           prepend-icon="mdi-refresh"
           rounded="lg"
-          :loading="loading"
+          :loading="loading || loadingAnalytics"
           @click="refresh"
         >
           Actualizar
@@ -78,7 +65,10 @@
           :sales="ui.sales"
           :analytics="analytics.sales"
           :period="period"
+          :branches="branches"
+          :selected-branch="effectiveBranchId"
           @period-change="onPeriodChange"
+          @branch-change="onBranchChange"
         />
 
         <DashboardStockTab
@@ -372,6 +362,10 @@ function onPeriodChange(v) {
   period.value = v;
   refreshAll();
 }
+function onBranchChange(bid) {
+  branchSelected.value = bid;
+  refreshAll();
+}
 
 onMounted(async () => {
   if (!isAdmin.value && userBranchId.value) branchSelected.value = userBranchId.value;
@@ -433,10 +427,6 @@ watch(effectiveBranchId, () => { if (isAdmin.value) refreshAll(); });
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.dash-branch-select {
-  min-width: 260px;
 }
 
 /* ─── Custom Tab Bar ───────────────────────────────────── */
