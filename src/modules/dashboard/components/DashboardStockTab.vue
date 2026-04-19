@@ -1,99 +1,207 @@
 <template>
   <div class="dstk">
-    <!-- Row 1: 5 KPIs -->
-    <v-row dense class="mb-3">
-      <v-col cols="12" sm="6" md="4" xl="">
-        <KpiCard
-          title="Sin stock"
-          :value="String(num(stock.outOfStockCount))"
-          :loading="loading"
-          icon="mdi-close-octagon-outline"
-          tone="error"
-          sub="Productos agotados"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="4" xl="">
-        <KpiCard
-          title="Stock bajo"
-          :value="String(num(stock.lowStockCount))"
-          :loading="loading"
-          icon="mdi-alert-outline"
-          tone="warning"
-          :sub="`Umbral ≤ ${num(stock.lowThreshold || 3)} unidades`"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="4" xl="">
-        <KpiCard
-          title="Stock OK"
-          :value="String(num(stock.okCount))"
-          :loading="loading"
-          icon="mdi-check-circle-outline"
-          tone="success"
-          :sub="`${num(stock.trackedProducts)} productos rastreados`"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="6" xl="">
-        <KpiCard
-          title="Valor al costo"
-          :value="money(stock.totalInventoryCostValue)"
-          :loading="loading"
-          icon="mdi-cash-check"
-          tone="info"
-          sub="Costo × Qty en stock"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="6" xl="">
-        <KpiCard
-          title="Valor de precio"
-          :value="money(stock.totalInventoryPriceValue)"
-          :loading="loading"
-          icon="mdi-currency-usd"
-          tone="primary"
-          sub="Precio venta × Qty en stock"
-        />
-      </v-col>
-    </v-row>
 
-    <!-- Row 2: Stacked by Branch (5) + Global Donut (3) + Value by Warehouse (4) -->
+    <!-- ─── Filter bar ──────────────────────────────────────────────────────── -->
+    <div class="stk-bar">
+      <v-menu v-if="branches.length" :close-on-content-click="true" offset-y>
+        <template #activator="{ props: mp }">
+          <button class="stk-pill stk-pill--branch" v-bind="mp">
+            <v-icon size="14" class="mr-1">mdi-store-outline</v-icon>
+            {{ currentBranchLabel }}
+            <v-icon size="13" class="ml-1">mdi-chevron-down</v-icon>
+          </button>
+        </template>
+        <v-list density="compact" rounded="lg" min-width="200" class="pa-1" bg-color="surface">
+          <v-list-item rounded="lg" class="mb-1" @click="$emit('branch-change', null)">
+            <v-list-item-title class="font-weight-bold text-body-2">Todas las sucursales</v-list-item-title>
+          </v-list-item>
+          <v-list-item v-for="b in branches" :key="b.id" rounded="lg" @click="$emit('branch-change', b.id)">
+            <v-list-item-title class="text-body-2">{{ b.name }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <v-chip v-if="loading" size="small" variant="tonal" class="chip-soft">
+        <v-progress-circular indeterminate size="10" class="mr-1" />
+        Cargando…
+      </v-chip>
+      <v-chip v-else-if="!branches.length" size="small" variant="tonal" class="chip-soft">
+        <v-icon size="12" class="mr-1">mdi-map-marker-outline</v-icon>
+        {{ currentBranchLabel }}
+      </v-chip>
+    </div>
+
+    <!-- ─── KPI strip ──────────────────────────────────────────────────────── -->
+    <div class="stk-kpi-strip">
+      <div class="stk-kpi stk-kpi--error" :class="{ 'stk-kpi--pulse': num(stock.outOfStockCount) > 0 }">
+        <div class="stk-kpi__icon-wrap stk-kpi__icon-wrap--error">
+          <v-icon size="22" color="error">mdi-close-octagon-outline</v-icon>
+        </div>
+        <div class="stk-kpi__body">
+          <div class="stk-kpi__num">{{ num(stock.outOfStockCount) }}</div>
+          <div class="stk-kpi__lbl">Sin stock</div>
+          <div class="stk-kpi__sub">Agotados</div>
+        </div>
+      </div>
+
+      <div class="stk-kpi stk-kpi--warning">
+        <div class="stk-kpi__icon-wrap stk-kpi__icon-wrap--warning">
+          <v-icon size="22" color="warning">mdi-alert-outline</v-icon>
+        </div>
+        <div class="stk-kpi__body">
+          <div class="stk-kpi__num">{{ num(stock.lowStockCount) }}</div>
+          <div class="stk-kpi__lbl">Stock bajo</div>
+          <div class="stk-kpi__sub">≤ {{ num(stock.lowThreshold || 3) }} u.</div>
+        </div>
+      </div>
+
+      <div class="stk-kpi stk-kpi--success">
+        <div class="stk-kpi__icon-wrap stk-kpi__icon-wrap--success">
+          <v-icon size="22" color="success">mdi-check-circle-outline</v-icon>
+        </div>
+        <div class="stk-kpi__body">
+          <div class="stk-kpi__num">{{ num(stock.okCount) }}</div>
+          <div class="stk-kpi__lbl">Stock OK</div>
+          <div class="stk-kpi__sub">{{ num(stock.trackedProducts) }} rastreados</div>
+        </div>
+      </div>
+
+      <div class="stk-kpi stk-kpi--info">
+        <div class="stk-kpi__icon-wrap stk-kpi__icon-wrap--info">
+          <v-icon size="22" color="info">mdi-currency-usd</v-icon>
+        </div>
+        <div class="stk-kpi__body">
+          <div class="stk-kpi__num stk-kpi__num--sm">{{ money(stock.totalInventoryPriceValue) }}</div>
+          <div class="stk-kpi__lbl">Valor inventario</div>
+          <div class="stk-kpi__sub">Precio venta × Qty</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Sin stock: alerta urgente ─────────────────────────────────────── -->
+    <v-card v-if="!loading && outItems.length" class="stk-card stk-card--urgent" elevation="0">
+      <div class="stk-head stk-head--error">
+        <div class="d-flex align-center gap-2">
+          <v-icon color="error" size="20">mdi-close-octagon</v-icon>
+          <div>
+            <div class="stk-title">Productos sin stock — reposición urgente</div>
+            <div class="stk-sub">Hacé clic en un producto para editarlo</div>
+          </div>
+        </div>
+        <v-chip size="small" color="error" variant="flat">{{ outItems.length }} productos</v-chip>
+      </div>
+      <v-divider />
+      <div class="stk-alert-feed" :class="{ 'stk-alert-feed--collapsed': outItems.length > 8 && !showAllOut }">
+        <div
+          v-for="item in outItems.slice(0, showAllOut ? 999 : 8)"
+          :key="`out-${item.product_id}-${item.warehouse_id}`"
+          class="stk-alert-row stk-alert-row--error"
+          @click="goToProduct(item.product_id)"
+        >
+          <v-icon size="15" color="error" class="flex-shrink-0">mdi-close-octagon</v-icon>
+          <div class="stk-alert-info">
+            <div class="stk-alert-name">{{ item.name || `Producto #${item.product_id}` }}</div>
+            <div class="stk-alert-meta">
+              <span v-if="item.sku" class="stk-alert-sku">{{ item.sku }}</span>
+              <span v-if="item.branch_name" class="stk-alert-branch">
+                <v-icon size="10" class="mr-px">mdi-store</v-icon>{{ item.branch_name }}
+              </span>
+              <span v-if="item.warehouse_name" class="stk-alert-wh">
+                <v-icon size="10" class="mr-px">mdi-warehouse</v-icon>{{ item.warehouse_name }}
+              </span>
+            </div>
+          </div>
+          <v-chip size="x-small" color="error" variant="flat" class="flex-shrink-0 mr-1">0 u.</v-chip>
+          <v-icon size="14" class="op40 flex-shrink-0">mdi-chevron-right</v-icon>
+        </div>
+      </div>
+      <div v-if="outItems.length > 8" class="stk-show-more" @click="showAllOut = !showAllOut">
+        {{ showAllOut ? 'Ver menos' : `Ver todos (${outItems.length})` }}
+      </div>
+    </v-card>
+
+    <!-- ─── Stock bajo: alerta ──────────────────────────────────────────────── -->
+    <v-card v-if="!loading && lowItems.length" class="stk-card stk-card--warn" elevation="0">
+      <div class="stk-head stk-head--warning">
+        <div class="d-flex align-center gap-2">
+          <v-icon color="warning" size="20">mdi-alert</v-icon>
+          <div>
+            <div class="stk-title">Stock bajo — revisar pronto</div>
+            <div class="stk-sub">Por debajo del umbral mínimo · clic para editar</div>
+          </div>
+        </div>
+        <v-chip size="small" color="warning" variant="flat">{{ lowItems.length }} productos</v-chip>
+      </div>
+      <v-divider />
+      <div class="stk-alert-feed" :class="{ 'stk-alert-feed--collapsed': lowItems.length > 8 && !showAllLow }">
+        <div
+          v-for="item in lowItems.slice(0, showAllLow ? 999 : 8)"
+          :key="`low-${item.product_id}-${item.warehouse_id}`"
+          class="stk-alert-row stk-alert-row--warning"
+          @click="goToProduct(item.product_id)"
+        >
+          <v-icon size="15" color="warning" class="flex-shrink-0">mdi-alert</v-icon>
+          <div class="stk-alert-info">
+            <div class="stk-alert-name">{{ item.name || `Producto #${item.product_id}` }}</div>
+            <div class="stk-alert-meta">
+              <span v-if="item.sku" class="stk-alert-sku">{{ item.sku }}</span>
+              <span v-if="item.branch_name" class="stk-alert-branch">
+                <v-icon size="10" class="mr-px">mdi-store</v-icon>{{ item.branch_name }}
+              </span>
+            </div>
+          </div>
+          <v-chip size="x-small" color="warning" variant="flat" class="flex-shrink-0 mr-1">
+            {{ item.stock }} / {{ item.min_stock || stock.lowThreshold || 3 }} u.
+          </v-chip>
+          <v-icon size="14" class="op40 flex-shrink-0">mdi-chevron-right</v-icon>
+        </div>
+      </div>
+      <div v-if="lowItems.length > 8" class="stk-show-more" @click="showAllLow = !showAllLow">
+        {{ showAllLow ? 'Ver menos' : `Ver todos (${lowItems.length})` }}
+      </div>
+    </v-card>
+
+    <!-- ─── OK state ────────────────────────────────────────────────────────── -->
+    <div v-if="!loading && !outItems.length && !lowItems.length" class="stk-allgood">
+      <v-icon size="22" color="success" class="mb-1">mdi-check-decagram</v-icon>
+      <div>Todo el stock está en buen estado — sin alertas activas</div>
+    </div>
+
+    <!-- ─── Row: Estado por sucursal ──────────────────────────────────────── -->
     <v-row dense>
-      <v-col cols="12" lg="5">
-        <v-card class="stk-card" elevation="0">
+      <v-col cols="12" lg="8">
+        <v-card class="stk-card h-full" elevation="0">
           <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Estado de stock por sucursal</div>
-              <div class="stk-sub">Sin stock / Bajo / OK (100% apilado)</div>
+            <div>
+              <div class="stk-title">Estado por sucursal</div>
+              <div class="stk-sub">Sin stock · Bajo · OK por sede</div>
             </div>
-            <v-chip size="small" variant="tonal" class="chip-soft">
-              Total: <b class="ml-1">{{ totalAll }}</b>
-            </v-chip>
+            <v-chip size="small" variant="tonal" class="chip-soft">{{ totalAll }} productos</v-chip>
           </div>
           <v-divider />
           <div class="stk-body">
-            <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!rows.length" class="empty-state">Sin datos por sucursal.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optStackByBranch" :series="seriesStackByBranch" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="3">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Estado global</div>
-              <div class="stk-sub">Distribución general</div>
-            </div>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!totalAll" class="empty-state">Sin datos.</div>
-            <div v-else>
-              <ApexChart height="260" type="donut" :options="optDonutGlobal" :series="seriesDonutGlobal" />
-              <div class="px-4 pb-3 text-caption text-medium-emphasis text-center">
-                Out <b class="text-error">{{ sumOut }}</b> · Low <b class="text-warning">{{ sumLow }}</b> · OK <b class="text-success">{{ sumOk }}</b>
+            <div v-else class="branch-list">
+              <div v-for="r in rows" :key="r.key" class="branch-row">
+                <div class="branch-name">{{ r.label }}</div>
+                <div class="branch-bar-wrap">
+                  <div class="branch-seg branch-seg--error"   :style="{ width: r.total ? (r.out/r.total*100)+'%' : '0%' }" :title="`Sin stock: ${r.out}`" />
+                  <div class="branch-seg branch-seg--warning" :style="{ width: r.total ? (r.low/r.total*100)+'%' : '0%' }" :title="`Bajo: ${r.low}`" />
+                  <div class="branch-seg branch-seg--success" :style="{ width: r.total ? (r.ok/r.total*100)+'%' : '0%' }" :title="`OK: ${r.ok}`" />
+                </div>
+                <div class="branch-badges">
+                  <span v-if="r.out" class="branch-badge branch-badge--error">{{ r.out }}</span>
+                  <span v-if="r.low" class="branch-badge branch-badge--warning">{{ r.low }}</span>
+                  <span class="branch-badge branch-badge--success">{{ r.ok }}</span>
+                </div>
+                <div class="branch-total">{{ r.total }} u.</div>
+              </div>
+              <!-- Legend -->
+              <div class="branch-legend">
+                <span class="bl-item"><span class="bl-dot" style="background:#FF4560" />Sin stock</span>
+                <span class="bl-item"><span class="bl-dot" style="background:#FEB019" />Stock bajo</span>
+                <span class="bl-item"><span class="bl-dot" style="background:#00E396" />OK</span>
               </div>
             </div>
           </div>
@@ -101,66 +209,19 @@
       </v-col>
 
       <v-col cols="12" lg="4">
-        <v-card class="stk-card" elevation="0">
+        <v-card class="stk-card h-full" elevation="0">
           <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Valor por depósito</div>
-              <div class="stk-sub">Precio venta × Qty</div>
-            </div>
-            <v-chip size="small" variant="tonal" class="chip-soft">
-              {{ money(stock.totalInventoryPriceValue) }}
-            </v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!inventoryValueRows.length" class="empty-state">Sin datos de valor.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optValueBar" :series="seriesValueBar" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Row 3: Top Stocked Products (7) + Stock Ratio Radial (5) -->
-    <v-row dense class="mt-2">
-      <v-col cols="12" lg="7">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Top 10 productos con más stock</div>
-              <div class="stk-sub">Por cantidad disponible</div>
-            </div>
-            <v-chip size="small" variant="tonal" class="chip-soft">
-              {{ topStocked.length }} productos
-            </v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="320" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
+            <div>
               <div class="stk-title">Rentabilidad del stock</div>
-              <div class="stk-sub">Costo vs Precio (margen estimado)</div>
+              <div class="stk-sub">Costo vs Precio · margen estimado</div>
             </div>
           </div>
           <v-divider />
           <div class="stk-body">
-            <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!stock.totalInventoryCostValue && !stock.totalInventoryPriceValue" class="empty-state">Sin datos.</div>
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!stock.totalInventoryCostValue && !stock.totalInventoryPriceValue" class="empty-state">Sin datos de valor.</div>
             <div v-else>
-              <ApexChart height="260" type="radialBar" :options="optMarginRadial" :series="seriesMarginRadial" />
+              <ApexChart height="200" type="radialBar" :options="optMarginRadial" :series="seriesMarginRadial" />
               <div class="margin-details px-4 pb-4">
                 <div class="margin-row">
                   <span class="margin-label">Costo total</span>
@@ -181,112 +242,23 @@
       </v-col>
     </v-row>
 
-    <!-- Row 4: Critical Stock Table -->
-    <v-row dense class="mt-2">
-      <v-col cols="12">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Productos críticos — Stock bajo / Sin stock</div>
-              <div class="stk-sub">Requieren reposición inmediata</div>
-            </div>
-            <div class="d-flex align-center gap-2">
-              <v-chip size="small" color="error" variant="tonal">
-                Sin stock: <b class="ml-1">{{ num(stock.outOfStockCount) }}</b>
-              </v-chip>
-              <v-chip size="small" color="warning" variant="tonal">
-                Bajo: <b class="ml-1">{{ num(stock.lowStockCount) }}</b>
-              </v-chip>
-              <v-chip size="small" variant="tonal" class="chip-soft">
-                Scope: <b class="ml-1">{{ scopeLabel || "Todas" }}</b>
-              </v-chip>
-            </div>
-          </div>
-          <v-divider />
-          <v-card-text>
-            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else>
-              <v-data-table
-                :headers="headers"
-                :items="lowItems"
-                item-key="product_id"
-                density="comfortable"
-                class="elevation-0 rounded-xl dash-table"
-                :sort-by="[{ key: 'stock', order: 'asc' }]"
-              >
-                <template #item.product="{ item }">
-                  <div class="font-weight-bold">{{ item.name || `Producto #${item.product_id}` }}</div>
-                  <div class="text-caption text-medium-emphasis">SKU: {{ item.sku || "—" }}</div>
-                </template>
-                <template #item.scope="{ item }">
-                  <div class="text-body-2 font-weight-medium">{{ item.branch_name || `Sucursal #${item.branch_id}` || "—" }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ item.warehouse_name || `Depósito #${item.warehouse_id}` || "—" }}</div>
-                </template>
-                <template #item.stock="{ item }">
-                  <v-chip size="small" variant="tonal" :color="Number(item.stock || 0) <= 0 ? 'error' : 'warning'">
-                    <v-icon start size="12">{{ Number(item.stock || 0) <= 0 ? 'mdi-close-octagon' : 'mdi-alert' }}</v-icon>
-                    {{ Number(item.stock || 0) }}
-                  </v-chip>
-                  <div class="text-caption text-medium-emphasis mt-1">Umbral: {{ Number(item.min_stock || stock.lowThreshold || 3) }}</div>
-                </template>
-                <template #item.status="{ item }">
-                  <v-chip size="x-small" :color="Number(item.stock || 0) <= 0 ? 'error' : 'warning'" variant="flat">
-                    {{ Number(item.stock || 0) <= 0 ? "Sin stock" : "Stock bajo" }}
-                  </v-chip>
-                </template>
-                <template #bottom />
-              </v-data-table>
-              <div v-if="!lowItems.length" class="text-caption text-success mt-2 pa-2">
-                <v-icon size="16" color="success">mdi-check-circle</v-icon>
-                Todo el stock está en buen estado.
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- ══ ANALYTICS: MOVIMIENTOS ════════════════════════════════════════════ -->
-
-    <!-- Row A1: Timeline movimientos (12) -->
-    <v-row dense class="mt-2">
-      <v-col cols="12">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Movimientos de stock en el tiempo</div>
-              <div class="stk-sub">Entradas vs Salidas ({{ movTimeline.length }} días)</div>
-            </div>
-            <v-chip v-if="loadingAnalytics" size="small" variant="tonal" class="chip-soft">Cargando…</v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!movTimeline.length" class="empty-state">Sin movimientos en el período.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optMovTimeline" :series="seriesMovTimeline" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Row A2: Stock por categoría (7) + Top Entradas (5) -->
-    <v-row dense class="mt-2">
+    <!-- ─── Row: Top alto stock + Valor por depósito ───────────────────────── -->
+    <v-row dense>
       <v-col cols="12" lg="7">
         <v-card class="stk-card" elevation="0">
           <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Stock por categoría</div>
-              <div class="stk-sub">Unidades y valor de precio en stock</div>
+            <div>
+              <div class="stk-title">Top 10 productos con más stock</div>
+              <div class="stk-sub">Por cantidad disponible</div>
             </div>
+            <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
           </div>
           <v-divider />
           <div class="stk-body">
-            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!stockByCategory.length" class="empty-state">Sin datos por categoría.</div>
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="300" type="bar" :options="optStockByCat" :series="seriesStockByCat" />
+              <ApexChart :height="Math.max(200, topStocked.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
             </div>
           </div>
         </v-card>
@@ -295,7 +267,114 @@
       <v-col cols="12" lg="5">
         <v-card class="stk-card" elevation="0">
           <div class="stk-head">
-            <div class="minw-0">
+            <div>
+              <div class="stk-title">Valor por depósito</div>
+              <div class="stk-sub">Precio venta × Qty en stock</div>
+            </div>
+            <v-chip size="small" variant="tonal" class="chip-soft">{{ money(stock.totalInventoryPriceValue) }}</v-chip>
+          </div>
+          <v-divider />
+          <div class="stk-body">
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!inventoryValueRows.length" class="empty-state">Sin datos de valor.</div>
+            <div v-else class="px-2 pb-2">
+              <ApexChart height="260" type="bar" :options="optValueBar" :series="seriesValueBar" />
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- ─── Movimientos de stock (timeline) ────────────────────────────────── -->
+    <v-card class="stk-card" elevation="0">
+      <div class="stk-head">
+        <div>
+          <div class="stk-title">Movimientos de stock en el tiempo</div>
+          <div class="stk-sub">Entradas vs Salidas · {{ movTimeline.length }} días</div>
+        </div>
+        <v-chip v-if="loadingAnalytics" size="small" variant="tonal" class="chip-soft">Cargando…</v-chip>
+      </div>
+      <v-divider />
+      <div class="stk-body">
+        <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
+        <div v-else-if="!movTimeline.length" class="empty-state">Sin movimientos en el período.</div>
+        <div v-else class="px-2 pb-2">
+          <ApexChart height="240" type="bar" :options="optMovTimeline" :series="seriesMovTimeline" />
+        </div>
+      </div>
+    </v-card>
+
+    <!-- ─── Row: Stock por categoría + Días inventario ─────────────────────── -->
+    <v-row dense>
+      <v-col cols="12" lg="7">
+        <v-card class="stk-card" elevation="0">
+          <div class="stk-head">
+            <div>
+              <div class="stk-title">Stock por categoría</div>
+              <div class="stk-sub">Unidades en stock por familia</div>
+            </div>
+          </div>
+          <v-divider />
+          <div class="stk-body">
+            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!stockByCategory.length" class="empty-state">Sin datos por categoría.</div>
+            <div v-else class="px-2 pb-2">
+              <ApexChart :height="Math.max(200, stockByCategory.length * 36)" type="bar" :options="optStockByCat" :series="seriesStockByCat" />
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" lg="5">
+        <v-card class="stk-card" elevation="0">
+          <div class="stk-head">
+            <div>
+              <div class="stk-title">Días de inventario estimados</div>
+              <div class="stk-sub">Stock ÷ venta diaria promedio (30 días)</div>
+            </div>
+            <v-chip v-if="daysOfInventory.length" size="small" variant="tonal" class="chip-soft">{{ daysOfInventory.length }} productos</v-chip>
+          </div>
+          <v-divider />
+          <div class="stk-body pa-0">
+            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!daysOfInventory.length" class="empty-state">Sin datos de rotación.</div>
+            <div v-else class="days-feed">
+              <div
+                v-for="item in daysOfInventory"
+                :key="item.id || item.product_id"
+                class="days-row"
+                :class="item.daysRemaining !== null && item.daysRemaining < 7 ? 'days-row--urgent' : item.daysRemaining !== null && item.daysRemaining < 30 ? 'days-row--warn' : ''"
+                @click="goToProduct(item.product_id || item.id)"
+              >
+                <div class="days-name">
+                  <div class="days-product">{{ item.name }}</div>
+                  <div class="days-sku">{{ item.sku }}</div>
+                </div>
+                <div class="days-mid">
+                  <span class="days-rate">{{ Number(item.avgDailySales).toFixed(2) }} u/día</span>
+                  <span class="days-stock">Stock: {{ item.currentStock }}</span>
+                </div>
+                <v-chip
+                  size="x-small"
+                  :color="item.daysRemaining === null ? 'success' : item.daysRemaining < 7 ? 'error' : item.daysRemaining < 30 ? 'warning' : 'success'"
+                  variant="flat"
+                  class="flex-shrink-0"
+                >
+                  {{ item.daysRemaining !== null ? Math.round(item.daysRemaining) + ' días' : '∞' }}
+                </v-chip>
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- ─── Row: Top entradas + Top salidas ────────────────────────────────── -->
+    <v-row dense>
+      <v-col cols="12" lg="6">
+        <v-card class="stk-card" elevation="0">
+          <div class="stk-head">
+            <div>
               <div class="stk-title">Top productos ingresados</div>
               <div class="stk-sub">Por cantidad · período seleccionado</div>
             </div>
@@ -305,19 +384,16 @@
             <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!topIn.length" class="empty-state">Sin ingresos registrados.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="300" type="bar" :options="optTopIn" :series="seriesTopIn" />
+              <ApexChart :height="Math.max(160, topIn.length * 38)" type="bar" :options="optTopIn" :series="seriesTopIn" />
             </div>
           </div>
         </v-card>
       </v-col>
-    </v-row>
 
-    <!-- Row A3: Top Salidas (5) + Días de inventario (7) -->
-    <v-row dense class="mt-2">
-      <v-col cols="12" lg="5">
+      <v-col cols="12" lg="6">
         <v-card class="stk-card" elevation="0">
           <div class="stk-head">
-            <div class="minw-0">
+            <div>
               <div class="stk-title">Top productos con más salidas</div>
               <div class="stk-sub">Por cantidad · período seleccionado</div>
             </div>
@@ -327,72 +403,39 @@
             <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!topOut.length" class="empty-state">Sin salidas registradas.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="280" type="bar" :options="optTopOut" :series="seriesTopOut" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="7">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div class="minw-0">
-              <div class="stk-title">Días de inventario estimados</div>
-              <div class="stk-sub">Stock actual ÷ venta diaria promedio (últimos 30 días)</div>
-            </div>
-            <v-chip v-if="daysOfInventory.length" size="small" variant="tonal" class="chip-soft">
-              {{ daysOfInventory.length }} productos con ventas
-            </v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!daysOfInventory.length" class="empty-state">Sin datos de rotación.</div>
-            <div v-else>
-              <v-data-table
-                :headers="daysHeaders"
-                :items="daysOfInventory"
-                item-key="id"
-                density="comfortable"
-                class="elevation-0 dash-table"
-                :sort-by="[{ key: 'daysRemaining', order: 'asc' }]"
-              >
-                <template #item.name="{ item }">
-                  <div class="font-weight-bold text-body-2">{{ item.name }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ item.sku }}</div>
-                </template>
-                <template #item.daysRemaining="{ item }">
-                  <v-chip size="small" :color="item.daysRemaining < 7 ? 'error' : item.daysRemaining < 30 ? 'warning' : 'success'" variant="flat">
-                    {{ item.daysRemaining !== null ? Math.round(item.daysRemaining) + ' días' : '∞' }}
-                  </v-chip>
-                </template>
-                <template #item.avgDailySales="{ item }">
-                  <span class="text-body-2">{{ Number(item.avgDailySales).toFixed(2) }} u/día</span>
-                </template>
-                <template #bottom />
-              </v-data-table>
+              <ApexChart :height="Math.max(160, topOut.length * 38)" type="bar" :options="optTopOut" :series="seriesTopOut" />
             </div>
           </div>
         </v-card>
       </v-col>
     </v-row>
+
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import ApexChart from "vue3-apexcharts";
-import KpiCard from "./KpiCard.vue";
 
 const props = defineProps({
-  loading: { type: Boolean, default: false },
+  loading:          { type: Boolean, default: false },
   loadingAnalytics: { type: Boolean, default: false },
-  isAdmin: { type: Boolean, default: false },
-  scopeLabel: { type: String, default: "" },
-  stock: { type: Object, default: () => ({}) },
-  analytics: { type: Object, default: null },
+  isAdmin:          { type: Boolean, default: false },
+  scopeLabel:       { type: String,  default: "" },
+  stock:            { type: Object,  default: () => ({}) },
+  analytics:        { type: Object,  default: null },
+  branches:         { type: Array,   default: () => [] },
+  selectedBranch:   { type: Number,  default: null },
 });
 
+const emit = defineEmits(["branch-change"]);
+
+const router = useRouter();
+const showAllOut = ref(false);
+const showAllLow = ref(false);
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
 function money(val) {
   const n = Number(val || 0);
@@ -402,35 +445,42 @@ function money(val) {
 function shortNumber(v) {
   const n = Number(v || 0);
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}k`;
   return `${Math.round(n)}`;
 }
 
-const headers = [
-  { title: "Producto", key: "product", sortable: false },
-  { title: "Sucursal / Depósito", key: "scope", sortable: false, width: 220 },
-  { title: "Stock actual", key: "stock", sortable: true, width: 140 },
-  { title: "Estado", key: "status", sortable: false, width: 110 },
-];
+function goToProduct(id) {
+  if (!id) return;
+  router.push({ name: "productEdit", params: { id } });
+}
+
+// ─── Branch filter ─────────────────────────────────────────────────────────────
+const currentBranchLabel = computed(() => {
+  if (!props.selectedBranch) return "Todas las sucursales";
+  const found = props.branches.find(b => b.id === props.selectedBranch);
+  return found?.name || `Sucursal #${props.selectedBranch}`;
+});
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
-const rows = computed(() => {
-  return (Array.isArray(props.stock?.stockByBranch) ? props.stock.stockByBranch : []).map((r) => {
+const allLowItems       = computed(() => Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []);
+const outItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) <= 0));
+const lowItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) > 0));
+const inventoryValueRows= computed(() => Array.isArray(props.stock?.inventoryValue) ? props.stock.inventoryValue : []);
+const topStocked        = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts.slice(0, 10) : []);
+
+const rows = computed(() =>
+  (Array.isArray(props.stock?.stockByBranch) ? props.stock.stockByBranch : []).map(r => {
     const out = num(r.out), low = num(r.low), ok = num(r.ok);
     return { key: String(r.branch_id ?? r.branch_name ?? ""), label: r.branch_name || `Sucursal #${r.branch_id}`, out, low, ok, total: out + low + ok };
-  });
-});
-const lowItems = computed(() => Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []);
-const inventoryValueRows = computed(() => Array.isArray(props.stock?.inventoryValue) ? props.stock.inventoryValue : []);
-const topStocked = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts : []);
+  })
+);
 
-// ─── Totals ────────────────────────────────────────────────────────────────────
-const sumOut = computed(() => rows.value.reduce((a, r) => a + r.out, 0));
-const sumLow = computed(() => rows.value.reduce((a, r) => a + r.low, 0));
-const sumOk = computed(() => rows.value.reduce((a, r) => a + r.ok, 0));
+const sumOut   = computed(() => rows.value.reduce((a, r) => a + r.out, 0));
+const sumLow   = computed(() => rows.value.reduce((a, r) => a + r.low, 0));
+const sumOk    = computed(() => rows.value.reduce((a, r) => a + r.ok, 0));
 const totalAll = computed(() => sumOut.value + sumLow.value + sumOk.value);
 
-// ─── Margin ────────────────────────────────────────────────────────────────────
+// ─── Margin radial ─────────────────────────────────────────────────────────────
 const marginPct = computed(() => {
   const cost = Number(props.stock?.totalInventoryCostValue || 0);
   const price = Number(props.stock?.totalInventoryPriceValue || 0);
@@ -442,10 +492,10 @@ const optMarginRadial = computed(() => ({
   chart: { type: "radialBar", toolbar: { show: false }, fontFamily: "inherit" },
   plotOptions: {
     radialBar: {
-      hollow: { size: "62%" },
+      hollow: { size: "58%" },
       dataLabels: {
-        name: { fontSize: "13px", color: "rgba(var(--v-theme-on-surface), 0.55)", offsetY: -8 },
-        value: { fontSize: "26px", fontWeight: 900, color: "rgb(var(--v-theme-on-surface))", formatter: (v) => `${v}%` },
+        name:  { fontSize: "12px", color: "rgba(var(--v-theme-on-surface), 0.50)", offsetY: -8 },
+        value: { fontSize: "24px", fontWeight: 900, color: "rgb(var(--v-theme-on-surface))", formatter: v => `${v}%` },
       },
       track: { background: "rgba(var(--v-theme-on-surface), 0.08)", strokeWidth: "100%" },
     },
@@ -455,271 +505,383 @@ const optMarginRadial = computed(() => ({
   stroke: { lineCap: "round" },
 }));
 
-// ─── Apex common ──────────────────────────────────────────────────────────────
+// ─── Apex common ───────────────────────────────────────────────────────────────
 const apexCommon = {
   chart: { toolbar: { show: false }, zoom: { enabled: false }, fontFamily: "inherit", foreColor: "rgba(var(--v-theme-on-surface), 0.75)" },
-  grid: { borderColor: "rgba(var(--v-theme-on-surface), 0.08)", padding: { left: 10, right: 12, top: 6, bottom: 0 } },
+  grid: { borderColor: "rgba(var(--v-theme-on-surface), 0.07)", padding: { left: 8, right: 12, top: 4, bottom: 0 } },
   dataLabels: { enabled: false },
 };
-const axisStyle = { colors: "rgba(var(--v-theme-on-surface), 0.60)" };
-const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.12)" };
+const axisStyle  = { colors: "rgba(var(--v-theme-on-surface), 0.55)" };
+const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.10)" };
 
-// ─── Stacked by Branch ────────────────────────────────────────────────────────
-const branchLabels = computed(() => rows.value.map((r) => r.label));
-const seriesStackByBranch = computed(() => [
-  { name: "Sin stock", data: rows.value.map((r) => r.out) },
-  { name: "Stock bajo", data: rows.value.map((r) => r.low) },
-  { name: "OK", data: rows.value.map((r) => r.ok) },
-]);
-const optStackByBranch = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", stacked: true, stackType: "100%" },
-  colors: ["#FF4560", "#FEB019", "#00E396"],
-  plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: "end", barHeight: "60%" } },
-  stroke: { width: 0 },
-  dataLabels: {
-    enabled: true,
-    formatter: (val, opts) => {
-      const r = rows.value[opts.dataPointIndex];
-      const raw = [r?.out, r?.low, r?.ok][opts.seriesIndex];
-      const pct = r?.total > 0 ? Math.round((raw / r.total) * 100) : 0;
-      return pct >= 10 ? `${pct}%` : "";
-    },
-    style: { fontSize: "11px", fontWeight: 800 },
-    dropShadow: { enabled: false },
-  },
-  xaxis: { categories: branchLabels.value, labels: { style: axisStyle, formatter: (v) => `${Math.round(Number(v||0))}%` }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: axisStyle, maxWidth: 150 } },
-  legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  tooltip: {
-    theme: "dark",
-    y: { formatter: (val, ctx) => {
-      const r = rows.value[ctx.dataPointIndex];
-      const raw = [r?.out, r?.low, r?.ok][ctx.seriesIndex];
-      const pct = r?.total > 0 ? Math.round((Number(raw||0) / r.total) * 100) : 0;
-      return `${raw} productos · ${pct}%`;
-    }},
-  },
-}));
-
-// ─── Global Donut ─────────────────────────────────────────────────────────────
-const seriesDonutGlobal = computed(() => [sumOut.value, sumLow.value, sumOk.value]);
-const optDonutGlobal = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "donut" },
-  labels: ["Sin stock", "Stock bajo", "OK"],
-  colors: ["#FF4560", "#FEB019", "#00E396"],
-  stroke: { width: 0 },
-  plotOptions: {
-    pie: { donut: { size: "68%", labels: { show: true, total: { show: true, label: "Total", formatter: () => `${totalAll.value}` } } } },
-  },
-  legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  tooltip: { theme: "dark", y: { formatter: (v) => `${v} productos · ${totalAll.value ? Math.round((v/totalAll.value)*100) : 0}%` } },
-}));
-
-// ─── Inventory Value Bar ──────────────────────────────────────────────────────
-const valueLabels = computed(() => inventoryValueRows.value.map((r) => r.warehouse_name || r.branch_name || `Dep. #${r.warehouse_id}`));
+// ─── Inventory value bar ────────────────────────────────────────────────────
+const valueLabels  = computed(() => inventoryValueRows.value.map(r => r.warehouse_name || r.branch_name || `Dep. #${r.warehouse_id}`));
 const seriesValueBar = computed(() => [
-  { name: "Valor precio", data: inventoryValueRows.value.map((r) => Math.round(r.price_value)) },
-  { name: "Valor costo", data: inventoryValueRows.value.map((r) => Math.round(r.cost_value)) },
+  { name: "Valor precio", data: inventoryValueRows.value.map(r => Math.round(r.price_value)) },
+  { name: "Valor costo",  data: inventoryValueRows.value.map(r => Math.round(r.cost_value)) },
 ]);
 const optValueBar = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
   colors: ["#00E396", "#FEB019"],
-  fill: { opacity: 0.9 },
-  stroke: { show: false },
-  plotOptions: { bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: "end", barHeight: "55%", grouped: true } },
-  xaxis: { categories: valueLabels.value, labels: { style: axisStyle, formatter: (v) => shortNumber(v) }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "10px" }, maxWidth: 120 } },
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", grouped: true } },
+  dataLabels: {
+    enabled: true,
+    formatter: v => shortNumber(v),
+    style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
+    offsetX: 4,
+  },
+  xaxis: { categories: valueLabels.value, labels: { style: axisStyle, formatter: shortNumber }, axisBorder, axisTicks: axisBorder },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 130 } },
   legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  tooltip: { theme: "dark", y: { formatter: (v) => money(v) } },
+  tooltip: { theme: "dark", y: { formatter: v => money(v) } },
 }));
 
-// ─── Top Stocked Products ─────────────────────────────────────────────────────
-const topStockedLabels = computed(() => topStocked.value.map((r) => r.product_name || `#${r.product_id}`));
-const seriesTopStocked = computed(() => [
-  { name: "Unidades", data: topStocked.value.map((r) => Number(r.total_qty || 0)) },
-]);
+// ─── Top stocked bar ──────────────────────────────────────────────────────────
+const seriesTopStocked = computed(() => [{
+  name: "Unidades",
+  data: topStocked.value.map(r => Number(r.total_qty || 0)),
+}]);
 const optTopStockedBar = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
   colors: ["#775DD0"],
-  fill: { opacity: 1 },
-  stroke: { show: false },
-  plotOptions: { bar: { horizontal: true, borderRadius: 6, borderRadiusApplication: "end", barHeight: "55%", dataLabels: { position: "bottom" } } },
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "62%", distributed: true, dataLabels: { position: "top" } } },
   dataLabels: {
     enabled: true, offsetX: 6,
-    style: { fontSize: "11px", colors: ["rgba(var(--v-theme-on-surface), 0.75)"] },
-    formatter: (v) => `${Math.round(Number(v||0))} u.`,
+    formatter: v => `${Math.round(Number(v || 0))} u.`,
+    style: { fontSize: "11.5px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
   },
-  xaxis: { categories: topStockedLabels.value, labels: { style: axisStyle, formatter: (v) => `${Math.round(Number(v||0))}` }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 200 } },
+  xaxis: {
+    categories: topStocked.value.map(r => {
+      const n = r.product_name || `#${r.product_id}`;
+      return n.length > 26 ? n.slice(0, 24) + "…" : n;
+    }),
+    labels: { style: axisStyle },
+    axisBorder, axisTicks: axisBorder,
+  },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 200 } },
+  legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, ctx) => {
     const r = topStocked.value[ctx.dataPointIndex];
-    return `${Math.round(Number(v||0))} unidades · ${money(r?.total_value)}`;
+    return `${Math.round(Number(v || 0))} unidades · ${money(r?.total_value)}`;
   }}},
+  colors: ["#775DD0","#8467D7","#9575CD","#A78BFA","#6D28D9","#7C3AED","#5B21B6","#4C1D95","#6366F1","#818CF8"],
 }));
 
-const daysHeaders = [
-  { title: "Producto", key: "name", sortable: false, minWidth: 160 },
-  { title: "Stock actual", key: "currentStock", sortable: true, width: 120 },
-  { title: "Venta/día", key: "avgDailySales", sortable: true, width: 120 },
-  { title: "Días restantes", key: "daysRemaining", sortable: true, width: 140 },
-];
-
-// ─── Analytics: Movimientos de stock ─────────────────────────────────────────
-const ana = computed(() => props.analytics || {});
+// ─── Analytics ────────────────────────────────────────────────────────────────
+const ana             = computed(() => props.analytics || {});
+const movTimeline     = computed(() => Array.isArray(ana.value?.timeline) ? ana.value.timeline : []);
+const stockByCategory = computed(() => Array.isArray(ana.value?.stockByCategory) ? ana.value.stockByCategory.slice(0, 14) : []);
+const daysOfInventory = computed(() => Array.isArray(ana.value?.daysOfInventory) ? ana.value.daysOfInventory.slice(0, 20) : []);
+const topIn           = computed(() => Array.isArray(ana.value?.topInProducts) ? ana.value.topInProducts.slice(0, 8) : []);
+const topOut          = computed(() => Array.isArray(ana.value?.topOutProducts) ? ana.value.topOutProducts.slice(0, 8) : []);
 
 // Timeline
-const movTimeline = computed(() => Array.isArray(ana.value?.timeline) ? ana.value.timeline : []);
 const seriesMovTimeline = computed(() => [
-  { name: "Entradas", data: movTimeline.value.map(r => num(r.qtyIn)), color: "#00E396" },
-  { name: "Salidas", data: movTimeline.value.map(r => num(r.qtyOut)), color: "#FF4560" },
+  { name: "Entradas", data: movTimeline.value.map(r => num(r.qtyIn)),  color: "#00E396" },
+  { name: "Salidas",  data: movTimeline.value.map(r => num(r.qtyOut)), color: "#FF4560" },
 ]);
 const optMovTimeline = computed(() => ({
   ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", stacked: false, toolbar: { show: false } },
-  plotOptions: { bar: { columnWidth: "70%", borderRadius: 3 } },
+  chart: { ...apexCommon.chart, type: "bar" },
+  plotOptions: { bar: { columnWidth: "68%", borderRadius: 3 } },
   dataLabels: { enabled: false },
-  xaxis: { categories: movTimeline.value.map(r => r.day?.slice(5) || ""), labels: { style: { ...axisStyle, fontSize: "9px" }, rotate: -45 } },
-  yaxis: { labels: { style: axisStyle, formatter: (v) => `${Math.round(v)}` } },
+  xaxis: { categories: movTimeline.value.map(r => r.day?.slice(5) || ""), labels: { style: { ...axisStyle, fontSize: "10px" }, rotate: -45 }, axisBorder, axisTicks: axisBorder },
+  yaxis: { labels: { style: axisStyle, formatter: v => `${Math.round(v)}` } },
   legend: { show: true, position: "top", labels: { colors: "rgba(var(--v-theme-on-surface), 0.7)" } },
-  tooltip: { theme: "dark", y: { formatter: (v) => `${Math.round(Number(v||0))} unidades` } },
+  tooltip: { theme: "dark", y: { formatter: v => `${Math.round(Number(v || 0))} unidades` } },
 }));
 
 // Stock por categoría
-const stockByCategory = computed(() => Array.isArray(ana.value?.stockByCategory) ? ana.value.stockByCategory.slice(0, 12) : []);
-const seriesStockByCat = computed(() => [
-  { name: "Unidades", data: stockByCategory.value.map(r => num(r.totalQty)), color: "#008FFB" },
-  { name: "Valor precio", data: stockByCategory.value.map(r => Math.round(num(r.priceValue))), color: "#00E396" },
-]);
+const seriesStockByCat = computed(() => [{
+  name: "Unidades en stock",
+  data: stockByCategory.value.map(r => num(r.totalQty)),
+}]);
 const optStockByCat = computed(() => ({
   ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "65%", dataLabels: { position: "bottom" } } },
-  dataLabels: { enabled: false },
-  xaxis: {
-    categories: stockByCategory.value.map(r => r.category?.length > 18 ? r.category.slice(0, 16) + "…" : r.category),
-    labels: { style: axisStyle },
+  chart: { ...apexCommon.chart, type: "bar" },
+  colors: ["#008FFB"],
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", distributed: true, dataLabels: { position: "top" } } },
+  dataLabels: {
+    enabled: true, offsetX: 5,
+    formatter: v => `${Math.round(Number(v || 0))} u.`,
+    style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
   },
-  yaxis: [
-    { seriesName: "Unidades", labels: { style: axisStyle } },
-    { seriesName: "Valor precio", opposite: true, labels: { style: axisStyle, formatter: shortNumber } },
-  ],
-  legend: { show: true, position: "top", labels: { colors: "rgba(var(--v-theme-on-surface), 0.7)" } },
-  tooltip: { theme: "dark", y: [{ formatter: v => `${Math.round(v)} u.` }, { formatter: v => money(v) }] },
-}));
-
-// Días de inventario restante
-const daysOfInventory = computed(() => Array.isArray(ana.value?.daysOfInventory) ? ana.value.daysOfInventory.slice(0, 15) : []);
-
-// Top entradas/salidas
-const topIn = computed(() => Array.isArray(ana.value?.topInProducts) ? ana.value.topInProducts.slice(0, 8) : []);
-const topOut = computed(() => Array.isArray(ana.value?.topOutProducts) ? ana.value.topOutProducts.slice(0, 8) : []);
-const seriesTopIn = computed(() => [{ name: "Unidades ingresadas", data: topIn.value.map(r => num(r.totalQty)), color: "#00E396" }]);
-const seriesTopOut = computed(() => [{ name: "Unidades salidas", data: topOut.value.map(r => num(r.totalQty)), color: "#FF4560" }]);
-const optTopIn = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "70%", distributed: true } },
-  dataLabels: { enabled: true, formatter: v => `${Math.round(Number(v||0))} u.`, style: { ...axisStyle, fontSize: "10px" } },
   xaxis: {
-    categories: topIn.value.map(r => r.name?.length > 18 ? r.name.slice(0, 16) + "…" : r.name),
-    labels: { style: axisStyle },
+    categories: stockByCategory.value.map(r => r.category?.length > 20 ? r.category.slice(0, 18) + "…" : r.category),
+    labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder,
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "10px" }, maxWidth: 150 } },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 170 } },
   legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
-    const r = topIn.value[dataPointIndex];
-    return `${Math.round(Number(v||0))} u. · ${money(r?.totalCost)}`;
-  } } },
-  colors: ["#00E396","#00BCD4","#26A69A","#43A047","#66BB6A","#A5D6A7","#B2DFDB","#80CBC4"],
+    const r = stockByCategory.value[dataPointIndex];
+    return `${Math.round(num(v))} unidades · ${money(r?.priceValue)}`;
+  }}},
+  colors: ["#008FFB","#00B4D8","#0096C7","#48CAE4","#90E0EF","#0077B6","#023E8A","#03045E","#ADE8F4","#CAF0F8","#00B4D8","#0096C7","#48CAE4","#0077B6"],
 }));
-const optTopOut = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "70%", distributed: true } },
-  dataLabels: { enabled: true, formatter: v => `${Math.round(Number(v||0))} u.`, style: { ...axisStyle, fontSize: "10px" } },
-  xaxis: {
-    categories: topOut.value.map(r => r.name?.length > 18 ? r.name.slice(0, 16) + "…" : r.name),
-    labels: { style: axisStyle },
-  },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "10px" }, maxWidth: 150 } },
-  legend: { show: false },
-  tooltip: { theme: "dark", y: { formatter: v => `${Math.round(Number(v||0))} u.` } },
-  colors: ["#FF4560","#FF7043","#FF5722","#E53935","#EF5350","#EF9A9A","#FFCCBC","#FFAB91"],
-}));
+
+// Top in / out
+const seriesTopIn  = computed(() => [{ name: "Ingresados",   data: topIn.value.map(r => num(r.totalQty)),  color: "#00E396" }]);
+const seriesTopOut = computed(() => [{ name: "Salidas",      data: topOut.value.map(r => num(r.totalQty)), color: "#FF4560" }]);
+
+function barOpts(color, items) {
+  return computed(() => ({
+    ...apexCommon,
+    chart: { ...apexCommon.chart, type: "bar" },
+    colors: [color],
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "65%", distributed: true, dataLabels: { position: "top" } } },
+    dataLabels: {
+      enabled: true, offsetX: 5,
+      formatter: v => `${Math.round(Number(v || 0))} u.`,
+      style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
+    },
+    xaxis: {
+      categories: items.value.map(r => r.name?.length > 20 ? r.name.slice(0, 18) + "…" : r.name),
+      labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder,
+    },
+    yaxis: { labels: { style: { ...axisStyle, fontSize: "11px", fontWeight: "600" }, maxWidth: 160 } },
+    legend: { show: false },
+    tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
+      const r = items.value[dataPointIndex];
+      return `${Math.round(Number(v || 0))} u.${r?.totalCost ? ` · ${money(r.totalCost)}` : ""}`;
+    }}},
+  }));
+}
+const optTopIn  = barOpts("#00E396", topIn);
+const optTopOut = barOpts("#FF4560", topOut);
 </script>
 
 <style scoped>
-.dstk { display: flex; flex-direction: column; }
+/* ─── Root ───────────────────────────────────────────────────────────────── */
+.dstk { display: flex; flex-direction: column; gap: 14px; }
 
+/* ─── Filter bar ─────────────────────────────────────────────────────────── */
+.stk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.15);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgb(var(--v-theme-on-surface));
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.stk-pill:hover { background: rgba(var(--v-theme-on-surface), 0.10); border-color: rgba(var(--v-theme-on-surface), 0.25); }
+.stk-pill--branch { border-color: rgba(99,102,241,.4); color: #818cf8; }
+
+/* ─── KPI strip ──────────────────────────────────────────────────────────── */
+.stk-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px) { .stk-kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .stk-kpi-strip { grid-template-columns: 1fr; } }
+
+.stk-kpi {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+}
+.stk-kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .05;
+  border-radius: inherit;
+}
+.stk-kpi--error::before   { background: #FF4560; }
+.stk-kpi--warning::before { background: #FEB019; }
+.stk-kpi--success::before { background: #00E396; }
+.stk-kpi--info::before    { background: #008FFB; }
+
+.stk-kpi--pulse { box-shadow: 0 0 0 0 rgba(255,69,96,.3); animation: kpi-pulse 2s infinite; }
+@keyframes kpi-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,69,96,.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(255,69,96,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,69,96,0); }
+}
+
+.stk-kpi__icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.stk-kpi__icon-wrap--error   { background: rgba(255,69,96,.15); }
+.stk-kpi__icon-wrap--warning { background: rgba(254,176,25,.15); }
+.stk-kpi__icon-wrap--success { background: rgba(0,227,150,.15); }
+.stk-kpi__icon-wrap--info    { background: rgba(0,143,251,.15); }
+
+.stk-kpi__body { min-width: 0; }
+.stk-kpi__num { font-size: 26px; font-weight: 900; line-height: 1.1; letter-spacing: -.02em; }
+.stk-kpi__num--sm { font-size: 15px; font-weight: 800; }
+.stk-kpi__lbl { font-size: 12px; font-weight: 700; opacity: .75; margin-top: 1px; }
+.stk-kpi__sub { font-size: 11px; opacity: .5; font-weight: 600; }
+
+/* ─── Alert feed ─────────────────────────────────────────────────────────── */
 .stk-card {
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
   border-radius: 16px !important;
   overflow: hidden;
 }
+.stk-card--urgent { border-color: rgba(255,69,96,.25) !important; }
+.stk-card--warn   { border-color: rgba(254,176,25,.20) !important; }
+.h-full { height: 100%; }
 
 .stk-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px 12px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
 }
+.stk-head--error   { background: rgba(255,69,96,.06); }
+.stk-head--warning { background: rgba(254,176,25,.06); }
 
-.stk-title {
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  font-size: 13.5px;
-  color: rgb(var(--v-theme-on-surface));
+.stk-title { font-weight: 900; font-size: 13.5px; letter-spacing: -.01em; }
+.stk-sub   { font-size: 11px; opacity: .5; font-weight: 600; margin-top: 2px; }
+
+.stk-alert-feed {
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+  overflow-y: auto;
 }
-.stk-sub {
-  margin-top: 3px;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.50);
-  font-weight: 600;
-}
+.stk-alert-feed--collapsed { max-height: 340px; }
 
-.stk-body { padding: 10px 10px 12px; }
-
-.chip-soft { border: 1px solid rgba(var(--v-theme-on-surface), 0.10); }
-
-.empty-state {
-  padding: 32px 20px;
-  text-align: center;
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  font-weight: 600;
-}
-
-.minw-0 { min-width: 0; }
-
-.margin-details {
-  display: grid;
-  gap: 6px;
-}
-.margin-row {
+.stk-alert-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity)*0.5));
+  transition: background .15s;
+}
+.stk-alert-row:last-child { border-bottom: none; }
+.stk-alert-row:hover { background: rgba(var(--v-theme-on-surface), .04); }
+.stk-alert-row--error:hover   { background: rgba(255,69,96,.06); }
+.stk-alert-row--warning:hover { background: rgba(254,176,25,.05); }
+
+.stk-alert-info { flex: 1; min-width: 0; }
+.stk-alert-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stk-alert-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.stk-alert-sku  { font-size: 11px; opacity: .55; font-weight: 600; }
+.stk-alert-branch, .stk-alert-wh { font-size: 11px; opacity: .6; font-weight: 600; display: flex; align-items: center; gap: 2px; }
+
+.stk-show-more {
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: .6;
+  cursor: pointer;
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.stk-show-more:hover { opacity: 1; background: rgba(var(--v-theme-on-surface), .03); }
+
+/* ─── All good state ─────────────────────────────────────────────────────── */
+.stk-allgood {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(0,227,150,.07);
+  border: 1px solid rgba(0,227,150,.2);
+  font-size: 13px;
+  font-weight: 700;
+  color: #00E396;
+}
+
+/* ─── Branch overview list ───────────────────────────────────────────────── */
+.stk-body { padding: 10px 12px 12px; }
+.stk-body.pa-0 { padding: 0; }
+
+.branch-list { display: flex; flex-direction: column; gap: 10px; padding: 6px 4px; }
+.branch-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+.branch-name { font-size: 13px; font-weight: 700; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.branch-bar-wrap { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: rgba(var(--v-theme-on-surface), .06); }
+.branch-seg { height: 100%; transition: width .4s ease; }
+.branch-seg--error   { background: #FF4560; }
+.branch-seg--warning { background: #FEB019; }
+.branch-seg--success { background: #00E396; }
+.branch-badges { display: flex; gap: 4px; }
+.branch-badge {
+  font-size: 11px; font-weight: 800;
+  padding: 1px 6px; border-radius: 20px;
+}
+.branch-badge--error   { background: rgba(255,69,96,.15);  color: #FF4560; }
+.branch-badge--warning { background: rgba(254,176,25,.15); color: #FEB019; }
+.branch-badge--success { background: rgba(0,227,150,.12);  color: #00E396; }
+.branch-total { font-size: 12px; font-weight: 700; opacity: .55; white-space: nowrap; }
+.branch-legend { display: flex; gap: 16px; padding-top: 8px; border-top: 1px solid rgba(var(--v-theme-on-surface),.06); margin-top: 4px; }
+.bl-item { display: flex; align-items: center; gap: 5px; font-size: 11px; opacity: .65; font-weight: 600; }
+.bl-dot  { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ─── Days inventory feed ────────────────────────────────────────────────── */
+.days-feed { display: flex; flex-direction: column; max-height: 460px; overflow-y: auto; }
+.days-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity)*0.5));
+  transition: background .15s;
+}
+.days-row:last-child { border-bottom: none; }
+.days-row:hover { background: rgba(var(--v-theme-on-surface), .04); }
+.days-row--urgent { border-left: 3px solid #FF4560; }
+.days-row--warn   { border-left: 3px solid #FEB019; }
+.days-name  { flex: 1; min-width: 0; }
+.days-product { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.days-sku   { font-size: 11px; opacity: .45; font-weight: 600; }
+.days-mid   { flex: 0 0 auto; text-align: right; }
+.days-rate  { display: block; font-size: 11.5px; font-weight: 700; opacity: .7; }
+.days-stock { display: block; font-size: 11px; opacity: .45; }
+
+/* ─── Misc ───────────────────────────────────────────────────────────────── */
+.chip-soft  { border: 1px solid rgba(var(--v-theme-on-surface), 0.10) !important; }
+.empty-state {
+  padding: 28px 20px; text-align: center; font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.40); font-weight: 600;
+}
+.margin-details { display: grid; gap: 6px; }
+.margin-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 10px; border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
-.margin-label { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.60); }
+.margin-label { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.55); }
 .margin-value { font-size: 13px; font-weight: 800; }
-
 .gap-2 { gap: 8px; }
-
-.dash-table :deep(.v-table__wrapper),
-.dash-table :deep(table),
-.dash-table :deep(.v-data-table__wrapper) {
-  background: transparent !important;
-}
+.op40  { opacity: 0.4; }
+.mr-px { margin-right: 1px; }
 </style>

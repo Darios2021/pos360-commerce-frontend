@@ -80,6 +80,9 @@
           :scope-label="scopeLabel"
           :stock="ui.stock"
           :analytics="analytics.stockMovements"
+          :branches="branches"
+          :selected-branch="effectiveBranchId"
+          @branch-change="onBranchChange"
         />
 
         <DashboardInventoryTab
