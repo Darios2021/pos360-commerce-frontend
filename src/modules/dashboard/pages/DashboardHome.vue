@@ -1,59 +1,37 @@
 <template>
   <div class="dash">
-    <v-alert v-if="error" type="error" variant="tonal" rounded="xl" class="mb-0" density="compact">
+    <v-alert v-if="error" type="error" variant="tonal" rounded="xl" class="mb-4" density="compact">
       {{ error }}
     </v-alert>
 
-    <!-- ── Layout: sidebar + content ──────────────────────────── -->
-    <div class="dash-layout">
-
-      <!-- Sidebar nav -->
-      <nav class="dash-nav">
-        <button
-          v-for="t in tabItems"
-          :key="t.value"
-          class="dash-nav__item"
-          :class="{ 'dash-nav__item--active': tab === t.value }"
-          @click="setTab(t.value)"
-        >
-          <v-icon :icon="t.icon" size="18" class="dash-nav__icon" />
-          <span class="dash-nav__label">{{ t.label }}</span>
-          <span v-if="t.badge" class="dash-nav__badge">{{ t.badge }}</span>
-        </button>
-      </nav>
-
-      <!-- Content area -->
-      <div class="dash-content">
-        <Transition name="tab-fade" mode="out-in">
-          <DashboardSalesTab
-            v-if="tab === 'sales'" key="sales"
-            :loading="loading" :loading-analytics="loadingAnalytics"
-            :is-admin="isAdmin" :scope-label="scopeLabel"
-            :sales="ui.sales" :analytics="analytics.sales"
-            :period="period" :branches="branches" :selected-branch="effectiveBranchId"
-            @period-change="onPeriodChange" @branch-change="onBranchChange"
-          />
-          <DashboardStockTab
-            v-else-if="tab === 'stock'" key="stock"
-            :loading="loading" :loading-analytics="loadingAnalytics"
-            :is-admin="isAdmin" :scope-label="scopeLabel"
-            :stock="ui.stock" :analytics="analytics.stockMovements"
-            :branches="branches" :selected-branch="effectiveBranchId"
-            @branch-change="onBranchChange"
-          />
-          <DashboardInventoryTab
-            v-else-if="tab === 'inventory'" key="inventory"
-            :loading="loading" :loading-analytics="loadingAnalytics"
-            :inv="ui.inventory" :analytics="analytics.products"
-          />
-          <DashboardCashTab
-            v-else-if="tab === 'cash'" key="cash"
-            :loading="loadingAnalytics" :analytics="analytics.cash"
-            :period="period" @period-change="onPeriodChange"
-          />
-        </Transition>
-      </div>
-    </div>
+    <Transition name="tab-fade" mode="out-in">
+      <DashboardSalesTab
+        v-if="tab === 'sales'" key="sales"
+        :loading="loading" :loading-analytics="loadingAnalytics"
+        :is-admin="isAdmin" :scope-label="scopeLabel"
+        :sales="ui.sales" :analytics="analytics.sales"
+        :period="period" :branches="branches" :selected-branch="effectiveBranchId"
+        @period-change="onPeriodChange" @branch-change="onBranchChange"
+      />
+      <DashboardStockTab
+        v-else-if="tab === 'stock'" key="stock"
+        :loading="loading" :loading-analytics="loadingAnalytics"
+        :is-admin="isAdmin" :scope-label="scopeLabel"
+        :stock="ui.stock" :analytics="analytics.stockMovements"
+        :branches="branches" :selected-branch="effectiveBranchId"
+        @branch-change="onBranchChange"
+      />
+      <DashboardInventoryTab
+        v-else-if="tab === 'inventory'" key="inventory"
+        :loading="loading" :loading-analytics="loadingAnalytics"
+        :inv="ui.inventory" :analytics="analytics.products"
+      />
+      <DashboardCashTab
+        v-else-if="tab === 'cash'" key="cash"
+        :loading="loadingAnalytics" :analytics="analytics.cash"
+        :period="period" @period-change="onPeriodChange"
+      />
+    </Transition>
   </div>
 </template>
 
@@ -74,6 +52,7 @@ import {
   analyticsProducts,
   analyticsStockMovements,
 } from "../service/dashboard.api";
+import { dashOutOfStockCount } from "@/app/store/dashboardNav";
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 function getAuthUser() {
@@ -269,6 +248,8 @@ function adaptOverviewToUi(payload) {
     totalInventoryPriceValue: Number(st?.totalInventoryPriceValue || 0),
     totalInventoryListValue: Number(st?.totalInventoryListValue || 0),
   };
+
+  dashOutOfStockCount.value = Number(st?.outCount || 0);
 }
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────

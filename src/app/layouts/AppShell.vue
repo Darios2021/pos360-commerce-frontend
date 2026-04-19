@@ -163,15 +163,78 @@
         </div>
 
         <v-list nav density="comfortable" class="pos-nav-list">
-          <v-list-item :to="{ name: 'home' }" exact>
+          <!-- Dashboard parent item -->
+          <v-list-item
+            :active="isDashboard"
+            link
+            @click="navigateDash(dashTab)"
+          >
             <template #prepend>
               <v-icon size="20">mdi-view-dashboard-outline</v-icon>
             </template>
             <v-list-item-title>Dashboard</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Dashboard
-            </v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
+
+          <!-- Dashboard sub-items (expanded when on dashboard, non-rail) -->
+          <template v-if="isDashboard && !rail">
+            <v-list-item
+              :active="dashTab === 'sales'"
+              class="dash-sub"
+              link
+              @click="navigateDash('sales')"
+            >
+              <template #prepend>
+                <v-icon size="18">mdi-chart-line</v-icon>
+              </template>
+              <v-list-item-title>Ventas</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item
+              :active="dashTab === 'stock'"
+              class="dash-sub"
+              link
+              @click="navigateDash('stock')"
+            >
+              <template #prepend>
+                <v-icon size="18">mdi-warehouse</v-icon>
+              </template>
+              <v-list-item-title class="d-flex align-center gap-2">
+                Stock
+                <v-badge
+                  v-if="dashOutOfStockCount > 0"
+                  :content="String(dashOutOfStockCount)"
+                  color="error"
+                  inline
+                  class="ml-1"
+                />
+              </v-list-item-title>
+            </v-list-item>
+
+            <v-list-item
+              :active="dashTab === 'inventory'"
+              class="dash-sub"
+              link
+              @click="navigateDash('inventory')"
+            >
+              <template #prepend>
+                <v-icon size="18">mdi-clipboard-list-outline</v-icon>
+              </template>
+              <v-list-item-title>Inventario</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item
+              :active="dashTab === 'cash'"
+              class="dash-sub"
+              link
+              @click="navigateDash('cash')"
+            >
+              <template #prepend>
+                <v-icon size="18">mdi-cash-multiple</v-icon>
+              </template>
+              <v-list-item-title>Caja</v-list-item-title>
+            </v-list-item>
+          </template>
 
           <v-list-item :to="{ name: 'pos' }" exact>
             <template #prepend>
@@ -487,12 +550,13 @@
 
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 import { useAuthStore } from "../store/auth.store";
 import { useThemeStore } from "../store/theme.store";
 import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
+import { dashOutOfStockCount } from "../store/dashboardNav";
 
 const drawer = ref(true);
 const rail = ref(false);
@@ -500,7 +564,15 @@ const accountMenu = ref(false);
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const themeStore = useThemeStore();
+
+const isDashboard = computed(() => route.name === "home");
+const dashTab = computed(() => route.query?.tab || "sales");
+
+function navigateDash(tab) {
+  router.push({ name: "home", query: { tab } });
+}
 
 /* ===== Dark Mode ===== */
 const isDark = computed(() => themeStore.isDark);
@@ -847,6 +919,22 @@ function onLogout() {
 .nav-divider {
   opacity: 0.18;
   color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Dashboard sub-items */
+.pos-drawer :deep(.v-list-item.dash-sub) {
+  margin-inline-start: 20px !important;
+  min-height: 38px !important;
+  opacity: 0.88;
+}
+
+.pos-drawer :deep(.v-list-item.dash-sub .v-list-item__prepend) {
+  min-width: 32px !important;
+  width: 32px !important;
+}
+
+.pos-drawer :deep(.v-list-item.dash-sub .v-list-item-title) {
+  font-size: 13px !important;
 }
 
 /* =========================
