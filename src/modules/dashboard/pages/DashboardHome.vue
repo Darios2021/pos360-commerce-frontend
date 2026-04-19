@@ -9,106 +9,74 @@
           {{ scopeText }}
         </div>
       </div>
-
       <div class="dash-header__right">
-        <v-btn
-          color="primary"
-          variant="flat"
-          size="small"
-          prepend-icon="mdi-refresh"
-          rounded="lg"
-          :loading="loading || loadingAnalytics"
-          @click="refresh"
-        >
+        <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-refresh"
+          rounded="lg" :loading="loading || loadingAnalytics" @click="refresh">
           Actualizar
         </v-btn>
       </div>
     </div>
 
-    <!-- ── Error ─────────────────────────────────────────────── -->
-    <v-alert
-      v-if="error"
-      type="error"
-      variant="tonal"
-      rounded="xl"
-      class="mb-4"
-      density="compact"
-    >
+    <v-alert v-if="error" type="error" variant="tonal" rounded="xl" class="mb-0" density="compact">
       {{ error }}
     </v-alert>
 
-    <!-- ── Custom Tab Bar ────────────────────────────────────── -->
-    <div class="dash-tabs">
-      <button
-        v-for="t in tabItems"
-        :key="t.value"
-        class="dash-tab"
-        :class="{ 'dash-tab--active': tab === t.value }"
-        @click="tab = t.value"
-      >
-        <v-icon :icon="t.icon" size="15" class="dash-tab__icon" />
-        <span>{{ t.label }}</span>
-        <span v-if="t.badge" class="dash-tab__badge">{{ t.badge }}</span>
-      </button>
-    </div>
+    <!-- ── Layout: sidebar + content ──────────────────────────── -->
+    <div class="dash-layout">
 
-    <!-- ── Tab Content ───────────────────────────────────────── -->
-    <div class="dash-body">
-      <Transition name="tab-fade" mode="out-in">
-        <DashboardSalesTab
-          v-if="tab === 'sales'"
-          key="sales"
-          :loading="loading"
-          :loading-analytics="loadingAnalytics"
-          :is-admin="isAdmin"
-          :scope-label="scopeLabel"
-          :sales="ui.sales"
-          :analytics="analytics.sales"
-          :period="period"
-          :branches="branches"
-          :selected-branch="effectiveBranchId"
-          @period-change="onPeriodChange"
-          @branch-change="onBranchChange"
-        />
+      <!-- Sidebar nav -->
+      <nav class="dash-nav">
+        <button
+          v-for="t in tabItems"
+          :key="t.value"
+          class="dash-nav__item"
+          :class="{ 'dash-nav__item--active': tab === t.value }"
+          @click="setTab(t.value)"
+        >
+          <v-icon :icon="t.icon" size="18" class="dash-nav__icon" />
+          <span class="dash-nav__label">{{ t.label }}</span>
+          <span v-if="t.badge" class="dash-nav__badge">{{ t.badge }}</span>
+        </button>
+      </nav>
 
-        <DashboardStockTab
-          v-else-if="tab === 'stock'"
-          key="stock"
-          :loading="loading"
-          :loading-analytics="loadingAnalytics"
-          :is-admin="isAdmin"
-          :scope-label="scopeLabel"
-          :stock="ui.stock"
-          :analytics="analytics.stockMovements"
-          :branches="branches"
-          :selected-branch="effectiveBranchId"
-          @branch-change="onBranchChange"
-        />
-
-        <DashboardInventoryTab
-          v-else-if="tab === 'inventory'"
-          key="inventory"
-          :loading="loading"
-          :loading-analytics="loadingAnalytics"
-          :inv="ui.inventory"
-          :analytics="analytics.products"
-        />
-
-        <DashboardCashTab
-          v-else-if="tab === 'cash'"
-          key="cash"
-          :loading="loadingAnalytics"
-          :analytics="analytics.cash"
-          :period="period"
-          @period-change="onPeriodChange"
-        />
-      </Transition>
+      <!-- Content area -->
+      <div class="dash-content">
+        <Transition name="tab-fade" mode="out-in">
+          <DashboardSalesTab
+            v-if="tab === 'sales'" key="sales"
+            :loading="loading" :loading-analytics="loadingAnalytics"
+            :is-admin="isAdmin" :scope-label="scopeLabel"
+            :sales="ui.sales" :analytics="analytics.sales"
+            :period="period" :branches="branches" :selected-branch="effectiveBranchId"
+            @period-change="onPeriodChange" @branch-change="onBranchChange"
+          />
+          <DashboardStockTab
+            v-else-if="tab === 'stock'" key="stock"
+            :loading="loading" :loading-analytics="loadingAnalytics"
+            :is-admin="isAdmin" :scope-label="scopeLabel"
+            :stock="ui.stock" :analytics="analytics.stockMovements"
+            :branches="branches" :selected-branch="effectiveBranchId"
+            @branch-change="onBranchChange"
+          />
+          <DashboardInventoryTab
+            v-else-if="tab === 'inventory'" key="inventory"
+            :loading="loading" :loading-analytics="loadingAnalytics"
+            :inv="ui.inventory" :analytics="analytics.products"
+          />
+          <DashboardCashTab
+            v-else-if="tab === 'cash'" key="cash"
+            :loading="loadingAnalytics" :analytics="analytics.cash"
+            :period="period" @period-change="onPeriodChange"
+          />
+        </Transition>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 import DashboardSalesTab from "../components/DashboardSalesTab.vue";
 import DashboardStockTab from "../components/DashboardStockTab.vue";
@@ -150,8 +118,24 @@ const user = ref(getAuthUser());
 const isAdmin = computed(() => isAdminUser(user.value));
 const userBranchId = computed(() => Number(user.value?.branch_id || 0) || null);
 
+// ─── Router ───────────────────────────────────────────────────────────────────
+const route = useRoute();
+const router = useRouter();
+
+const VALID_TABS = ["sales", "stock", "inventory", "cash"];
+
 // ─── UI state ────────────────────────────────────────────────────────────────
-const tab = ref("sales");
+const tab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : "sales");
+
+function setTab(value) {
+  if (tab.value === value) return;
+  tab.value = value;
+  router.replace({ query: { ...route.query, tab: value } });
+}
+
+watch(() => route.query.tab, (v) => {
+  if (VALID_TABS.includes(v) && v !== tab.value) tab.value = v;
+});
 const loading = ref(false);
 const loadingAnalytics = ref(false);
 const error = ref("");
@@ -386,7 +370,7 @@ watch(effectiveBranchId, () => refreshAll());
 .dash {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-height: 100%;
   padding-bottom: 32px;
 }
@@ -399,7 +383,6 @@ watch(effectiveBranchId, () => refreshAll());
   gap: 16px;
   flex-wrap: wrap;
 }
-
 .dash-header__title {
   font-size: 1.75rem;
   font-weight: 950;
@@ -407,7 +390,6 @@ watch(effectiveBranchId, () => refreshAll());
   line-height: 1;
   color: rgb(var(--v-theme-on-surface));
 }
-
 .dash-header__scope {
   display: flex;
   align-items: center;
@@ -417,112 +399,122 @@ watch(effectiveBranchId, () => refreshAll());
   color: rgba(var(--v-theme-on-surface), 0.50);
   margin-top: 5px;
 }
-
 .scope-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 7px; height: 7px;
   border-radius: 50%;
   background: rgb(var(--v-theme-success));
   box-shadow: 0 0 6px rgba(var(--v-theme-success), 0.7);
   flex-shrink: 0;
 }
+.dash-header__right { display: flex; align-items: center; gap: 10px; }
 
-.dash-header__right {
+/* ─── Layout ────────────────────────────────────────────── */
+.dash-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ─── Sidebar nav ───────────────────────────────────────── */
+.dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 156px;
+  padding: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  border-radius: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.dash-nav__item {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-/* ─── Custom Tab Bar ───────────────────────────────────── */
-.dash-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  border-radius: 14px;
-  width: fit-content;
-}
-
-.dash-tab {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 18px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: none;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.55);
+  color: rgba(var(--v-theme-on-surface), 0.50);
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
   position: relative;
-  white-space: nowrap;
 }
-
-.dash-tab:hover {
-  color: rgb(var(--v-theme-on-surface));
+.dash-nav__item:hover {
   background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
-
-.dash-tab--active {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(var(--v-theme-on-surface), 0.07);
-}
-
-.dash-tab__icon {
-  opacity: 0.7;
-}
-
-.dash-tab--active .dash-tab__icon {
-  opacity: 1;
+.dash-nav__item--active {
+  background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
+  font-weight: 700;
 }
-
-.dash-tab__badge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+.dash-nav__item--active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 25%; bottom: 25%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: rgb(var(--v-theme-primary));
+}
+.dash-nav__icon { flex-shrink: 0; }
+.dash-nav__item--active .dash-nav__icon { color: rgb(var(--v-theme-primary)); }
+.dash-nav__label { flex: 1; }
+.dash-nav__badge {
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
   border-radius: 999px;
   background: rgb(var(--v-theme-error));
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
 }
 
-/* ─── Tab Body ─────────────────────────────────────────── */
-.dash-body {
-  min-height: 0;
+/* ─── Content ───────────────────────────────────────────── */
+.dash-content {
+  flex: 1;
+  min-width: 0;
 }
 
-/* ─── Tab Transition ───────────────────────────────────── */
-.tab-fade-enter-active,
-.tab-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.tab-fade-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-.tab-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
+/* ─── Transition ────────────────────────────────────────── */
+.tab-fade-enter-active, .tab-fade-leave-active { transition: opacity 0.18s ease, transform 0.18s ease; }
+.tab-fade-enter-from { opacity: 0; transform: translateY(5px); }
+.tab-fade-leave-to { opacity: 0; transform: translateY(-3px); }
 
-@media (max-width: 640px) {
+/* ─── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dash-layout { flex-direction: column; }
+  .dash-nav {
+    flex-direction: row;
+    width: 100%;
+    position: static;
+    padding: 4px;
+    overflow-x: auto;
+  }
+  .dash-nav__item {
+    flex: 1;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 6px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .dash-nav__item--active::before { display: none; }
+  .dash-nav__label { display: none; }
   .dash-header { flex-direction: column; align-items: stretch; }
-  .dash-header__right { flex-wrap: wrap; }
-  .dash-branch-select { min-width: 100%; }
-  .dash-tabs { width: 100%; }
-  .dash-tab { flex: 1; justify-content: center; padding: 7px 10px; font-size: 12px; }
 }
 </style>
