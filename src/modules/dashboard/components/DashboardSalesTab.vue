@@ -22,8 +22,8 @@
 
       <div class="dv-bar-spacer" />
 
-      <!-- Branch selector (admin only) -->
-      <div v-if="isAdmin && branches.length" class="dv-branch-wrap">
+      <!-- Branch selector (visible si hay sucursales disponibles) -->
+      <div v-if="branches.length > 0" class="dv-branch-wrap">
         <v-icon size="15" class="dv-branch-icon">mdi-store-outline</v-icon>
         <select
           class="dv-branch-select"
@@ -36,7 +36,7 @@
         <v-icon size="13" class="dv-branch-chevron">mdi-chevron-down</v-icon>
       </div>
 
-      <!-- Non-admin fixed scope label -->
+      <!-- Fallback scope label cuando no hay sucursales cargadas -->
       <div v-else-if="scopeLabelChip" class="dv-scope">
         <v-icon size="13" class="mr-1">mdi-store-outline</v-icon>{{ props.scopeLabel }}
       </div>

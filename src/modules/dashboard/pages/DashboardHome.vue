@@ -300,7 +300,6 @@ function adaptOverviewToUi(payload) {
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 async function fetchBranchesIfAdmin() {
-  if (!isAdmin.value) return;
   try {
     const resp = await listBranches();
     const data = resp?.data;
@@ -373,7 +372,7 @@ onMounted(async () => {
   await Promise.all([fetchOverview(), fetchAnalytics()]);
 });
 
-watch(effectiveBranchId, () => { if (isAdmin.value) refreshAll(); });
+watch(effectiveBranchId, () => refreshAll());
 </script>
 
 <style scoped>
