@@ -700,9 +700,13 @@ async function doDisable() {
 async function doDelete() {
   if (!deleteItem.value?.id) return;
   const id = Number(deleteItem.value.id);
+  let needRefetch = false;
   try {
     const r = await callRemoveProduct(id);
     if (r.ok) {
+      // store.remove() already removed the item from products.items locally.
+      // Calling fetchNow() here would re-add soft-deleted items when admin
+      // has include_inactive=1 active (default "all" status filter).
       toast("Producto eliminado");
       return;
     }
@@ -710,15 +714,17 @@ async function doDelete() {
       const updated = await products.update(id, { is_active: false });
       if (!updated?.id) throw new Error(products.error || "No se pudo inactivar (fallback FK)");
       toast("No se pudo borrar (FK). Se inactivó.");
+      needRefetch = true;
       return;
     }
     throw new Error(r.message || products.error || "No se pudo eliminar");
   } catch (e) {
     toast(e?.message || "No se pudo eliminar");
+    needRefetch = true;
   } finally {
     deleteOpen.value = false;
     deleteItem.value = null;
-    await fetchNow();
+    if (needRefetch) await fetchNow();
   }
 }
 
