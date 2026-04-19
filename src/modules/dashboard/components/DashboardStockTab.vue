@@ -170,7 +170,7 @@
 
     <!-- ─── Row: Estado por sucursal ──────────────────────────────────────── -->
     <v-row dense>
-      <v-col cols="12" lg="8">
+      <v-col cols="12">
         <v-card class="stk-card h-full" elevation="0">
           <div class="stk-head">
             <div>
@@ -209,38 +209,6 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" lg="4">
-        <v-card class="stk-card h-full" elevation="0">
-          <div class="stk-head">
-            <div>
-              <div class="stk-title">Rentabilidad del stock</div>
-              <div class="stk-sub">Costo vs Precio · margen estimado</div>
-            </div>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!stock.totalInventoryCostValue && !stock.totalInventoryPriceValue" class="empty-state">Sin datos de valor.</div>
-            <div v-else>
-              <ApexChart height="200" type="radialBar" :options="optMarginRadial" :series="seriesMarginRadial" />
-              <div class="margin-details px-4 pb-4">
-                <div class="margin-row">
-                  <span class="margin-label">Costo total</span>
-                  <span class="margin-value text-warning">{{ money(stock.totalInventoryCostValue) }}</span>
-                </div>
-                <div class="margin-row">
-                  <span class="margin-label">Precio venta</span>
-                  <span class="margin-value text-success">{{ money(stock.totalInventoryPriceValue) }}</span>
-                </div>
-                <div class="margin-row">
-                  <span class="margin-label">Ganancia bruta</span>
-                  <span class="margin-value text-primary font-weight-black">{{ money(stock.totalInventoryPriceValue - stock.totalInventoryCostValue) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
     </v-row>
 
     <!-- ─── Ranking combinado qty + valor ─────────────────────────────────── -->
