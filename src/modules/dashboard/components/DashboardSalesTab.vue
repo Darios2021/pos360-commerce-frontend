@@ -14,12 +14,6 @@
         >{{ p.title }}</button>
       </div>
 
-      <!-- Hoy reference pill -->
-      <div class="dv-today-chip">
-        <span class="dv-today-dot" />
-        Hoy: <b>{{ num(today.count) }} ventas · {{ money(today.total) }}</b>
-      </div>
-
       <div class="dv-bar-spacer" />
 
       <!-- Branch selector (visible si hay sucursales disponibles) -->
