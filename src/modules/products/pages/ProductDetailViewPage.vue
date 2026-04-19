@@ -38,13 +38,16 @@
 
       <!-- HERO -->
       <div class="pv-hero">
+
+        <!-- Image -->
         <div class="pv-hero-img-wrap">
           <img v-if="heroImage" :src="heroImage" class="pv-hero-img" />
           <div v-else class="pv-hero-img-placeholder">
-            <v-icon size="42" color="medium-emphasis">mdi-image-outline</v-icon>
+            <v-icon size="48" color="medium-emphasis">mdi-image-outline</v-icon>
           </div>
         </div>
 
+        <!-- Info -->
         <div class="pv-hero-info">
           <div class="pv-hero-chips">
             <v-chip
@@ -67,30 +70,54 @@
 
           <div class="pv-hero-meta">
             <span v-if="productForUIFixed.brand" class="pv-brand">{{ productForUIFixed.brand }}</span>
-            <span v-if="productForUIFixed.model" class="pv-model">{{ productForUIFixed.model }}</span>
             <span v-if="productForUIFixed.sku || productForUIFixed.code" class="pv-sku">
               {{ productForUIFixed.sku || productForUIFixed.code }}
             </span>
           </div>
+        </div>
+      </div>
 
-          <!-- Quick stats -->
-          <div class="pv-stats">
-            <div class="pv-stat">
-              <div class="pv-stat-val">${{ fmtPrice(productForUIFixed.price) }}</div>
-              <div class="pv-stat-lbl">Precio</div>
+      <!-- KPI STRIP -->
+      <div class="pv-kpis">
+        <div class="pv-kpi">
+          <div class="pv-kpi-badge pv-kpi-badge--green">
+            <v-icon size="15" color="white">mdi-cash</v-icon>
+          </div>
+          <div class="pv-kpi-body">
+            <div class="pv-kpi-val">${{ fmtPrice(productForUIFixed.price_discount) }}</div>
+            <div class="pv-kpi-lbl">Contado</div>
+          </div>
+        </div>
+        <div class="pv-kpi-sep" />
+        <div class="pv-kpi">
+          <div class="pv-kpi-badge pv-kpi-badge--purple">
+            <v-icon size="15" color="white">mdi-credit-card-outline</v-icon>
+          </div>
+          <div class="pv-kpi-body">
+            <div class="pv-kpi-val">${{ fmtPrice(productForUIFixed.price_list) }}</div>
+            <div class="pv-kpi-lbl">Lista</div>
+          </div>
+        </div>
+        <div class="pv-kpi-sep" />
+        <div class="pv-kpi">
+          <div class="pv-kpi-badge" :class="totalStockAllBranches > 0 ? 'pv-kpi-badge--teal' : 'pv-kpi-badge--grey'">
+            <v-icon size="15" color="white">mdi-package-variant-closed</v-icon>
+          </div>
+          <div class="pv-kpi-body">
+            <div class="pv-kpi-val" :class="totalStockAllBranches > 0 ? 'clr-ok' : 'clr-zero'">
+              {{ totalStockAllBranches }}
             </div>
-            <div class="pv-stat-sep" />
-            <div class="pv-stat">
-              <div class="pv-stat-val" :class="totalStockAllBranches > 0 ? 'clr-ok' : 'clr-zero'">
-                {{ totalStockAllBranches }}
-              </div>
-              <div class="pv-stat-lbl">Stock total</div>
-            </div>
-            <div class="pv-stat-sep" />
-            <div class="pv-stat">
-              <div class="pv-stat-val">{{ branchesStock.length }}</div>
-              <div class="pv-stat-lbl">Sucursales</div>
-            </div>
+            <div class="pv-kpi-lbl">Stock</div>
+          </div>
+        </div>
+        <div class="pv-kpi-sep" />
+        <div class="pv-kpi">
+          <div class="pv-kpi-badge pv-kpi-badge--indigo">
+            <v-icon size="15" color="white">mdi-store-outline</v-icon>
+          </div>
+          <div class="pv-kpi-body">
+            <div class="pv-kpi-val">{{ branchesStock.length }}</div>
+            <div class="pv-kpi-lbl">Sucursales</div>
           </div>
         </div>
       </div>
@@ -395,7 +422,7 @@ function pickFirstNumber(obj, keys, def = 0) {
   for (const k of keys) {
     const v = obj?.[k];
     const n = toNum(v, NaN);
-    if (Number.isFinite(n)) return n;
+    if (Number.isFinite(n) && n > 0) return n;
   }
   return def;
 }
@@ -462,7 +489,7 @@ const productForUIFixed = computed(() => {
   const base = productForUI.value || {};
   const r = raw.value || {};
 
-  const price = pickFirstNumber(r, ["price", "price_list", "price_discount", "price_reseller"], 0);
+  const price = pickFirstNumber(r, ["price_discount", "price_list", "price", "price_reseller"], 0);
   const cost = pickFirstNumber(r, ["cost"], 0);
   const stock_total = Number.isFinite(totalStockAllBranches.value) ? totalStockAllBranches.value : 0;
   const stock_in_branch = toNum(currentBranchRow.value?.stock_qty ?? 0, 0);
@@ -648,24 +675,46 @@ watch(branchId, fetchProduct);
   flex-wrap: wrap;
 }
 .pv-brand { font-size: 12px; font-weight: 700; opacity: 0.7; }
-.pv-model { font-size: 12px; opacity: 0.5; }
 .pv-sku   { font-size: 11px; font-family: monospace; opacity: 0.4; }
 
-/* Stats row */
-.pv-stats {
+/* KPI strip */
+.pv-kpis {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-  padding: 10px 14px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border-radius: 10px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding: 12px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  gap: 0;
 }
-.pv-stat { text-align: center; min-width: 0; }
-.pv-stat-val { font-size: 18px; font-weight: 900; line-height: 1; }
-.pv-stat-lbl { font-size: 10px; opacity: 0.5; margin-top: 2px; }
-.pv-stat-sep { width: 1px; height: 28px; background: rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.5)); }
+.pv-kpi {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+}
+.pv-kpi-sep {
+  width: 1px;
+  height: 32px;
+  background: rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.5));
+  flex-shrink: 0;
+}
+.pv-kpi-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.pv-kpi-badge--green  { background: rgb(var(--v-theme-success)); }
+.pv-kpi-badge--purple { background: #9c27b0; }
+.pv-kpi-badge--teal   { background: #009688; }
+.pv-kpi-badge--indigo { background: #5c6bc0; }
+.pv-kpi-badge--grey   { background: rgba(var(--v-theme-on-surface), 0.25); }
+.pv-kpi-body { min-width: 0; }
+.pv-kpi-val { font-size: 15px; font-weight: 900; line-height: 1.1; }
+.pv-kpi-lbl { font-size: 10px; opacity: 0.5; margin-top: 1px; }
 
 .clr-ok   { color: rgb(var(--v-theme-success)); }
 .clr-zero { opacity: 0.4; }
