@@ -1109,32 +1109,32 @@ const optAvgDow    = computed(() => ({
 }
 .dv-period-pills {
   display: flex;
-  gap: 2px;
-  background: rgba(var(--v-theme-primary), 0.07);
-  border: 1px solid rgba(var(--v-theme-primary), 0.18);
-  border-radius: 10px;
-  padding: 3px;
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  padding: 0;
 }
 .dv-pill {
-  padding: 5px 14px;
-  border-radius: 7px;
+  padding: 6px 14px;
   border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.50);
-  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 .dv-pill:hover {
-  color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.80);
 }
 .dv-pill--active {
-  background: rgba(var(--v-theme-primary), 0.16);
   color: rgb(var(--v-theme-primary));
-  font-weight: 800;
+  border-bottom-color: rgb(var(--v-theme-primary));
+  font-weight: 700;
 }
 .dv-today-chip {
   display: flex;
