@@ -4,6 +4,21 @@
       {{ error }}
     </v-alert>
 
+    <!-- Tab bar -->
+    <div class="dash-tabs">
+      <button
+        v-for="item in tabItems"
+        :key="item.value"
+        class="dash-tab"
+        :class="{ 'dash-tab--active': tab === item.value }"
+        @click="setTab(item.value)"
+      >
+        <v-icon size="16" class="dash-tab__icon">{{ item.icon }}</v-icon>
+        <span class="dash-tab__label">{{ item.label }}</span>
+        <span v-if="item.badge" class="dash-tab__badge">{{ item.badge }}</span>
+      </button>
+    </div>
+
     <Transition name="tab-fade" mode="out-in">
       <DashboardSalesTab
         v-if="tab === 'sales'" key="sales"
@@ -334,72 +349,27 @@ watch(effectiveBranchId, () => refreshAll());
 .dash {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   min-height: 100%;
   padding-bottom: 32px;
 }
 
-/* ─── Header ───────────────────────────────────────────── */
-.dash-header {
+/* ─── Tab bar ───────────────────────────────────────────── */
+.dash-tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.dash-header__title {
-  font-size: 1.75rem;
-  font-weight: 950;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: rgb(var(--v-theme-on-surface));
-}
-.dash-header__scope {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.50);
-  margin-top: 5px;
-}
-.scope-dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-success));
-  box-shadow: 0 0 6px rgba(var(--v-theme-success), 0.7);
-  flex-shrink: 0;
-}
-.dash-header__right { display: flex; align-items: center; gap: 10px; }
-
-/* ─── Layout ────────────────────────────────────────────── */
-.dash-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-/* ─── Sidebar nav ───────────────────────────────────────── */
-.dash-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex-shrink: 0;
-  width: 156px;
-  padding: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
+  gap: 4px;
+  padding: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  border-radius: 16px;
-  position: sticky;
-  top: 16px;
+  border-radius: 14px;
+  width: fit-content;
 }
 
-.dash-nav__item {
-  display: flex;
+.dash-tab {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 8px 16px;
   border-radius: 10px;
   border: none;
   background: transparent;
@@ -407,78 +377,58 @@ watch(effectiveBranchId, () => refreshAll());
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-  width: 100%;
-  text-align: left;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
   position: relative;
 }
-.dash-nav__item:hover {
+.dash-tab:hover {
   background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), 0.85);
+  color: rgba(var(--v-theme-on-surface), 0.80);
 }
-.dash-nav__item--active {
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
+.dash-tab--active {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
-.dash-nav__item--active::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 25%; bottom: 25%;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: rgb(var(--v-theme-primary));
+.dash-tab__icon {
+  opacity: 0.70;
 }
-.dash-nav__icon { flex-shrink: 0; }
-.dash-nav__item--active .dash-nav__icon { color: rgb(var(--v-theme-primary)); }
-.dash-nav__label { flex: 1; }
-.dash-nav__badge {
-  min-width: 16px; height: 16px;
-  padding: 0 4px;
+.dash-tab--active .dash-tab__icon {
+  opacity: 1;
+  color: rgb(var(--v-theme-primary));
+}
+.dash-tab__badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   background: rgb(var(--v-theme-error));
   color: #fff;
-  font-size: 9px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  flex-shrink: 0;
-}
-
-/* ─── Content ───────────────────────────────────────────── */
-.dash-content {
-  flex: 1;
-  min-width: 0;
 }
 
 /* ─── Transition ────────────────────────────────────────── */
-.tab-fade-enter-active, .tab-fade-leave-active { transition: opacity 0.18s ease, transform 0.18s ease; }
-.tab-fade-enter-from { opacity: 0; transform: translateY(5px); }
-.tab-fade-leave-to { opacity: 0; transform: translateY(-3px); }
+.tab-fade-enter-active, .tab-fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.tab-fade-enter-from { opacity: 0; transform: translateY(4px); }
+.tab-fade-leave-to { opacity: 0; transform: translateY(-2px); }
 
 /* ─── Responsive ─────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .dash-layout { flex-direction: column; }
-  .dash-nav {
-    flex-direction: row;
+@media (max-width: 600px) {
+  .dash-tabs {
     width: 100%;
-    position: static;
-    padding: 4px;
     overflow-x: auto;
   }
-  .dash-nav__item {
+  .dash-tab {
     flex: 1;
     justify-content: center;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px 6px;
-    font-size: 11px;
-    text-align: center;
+    padding: 8px 10px;
+    font-size: 12px;
   }
-  .dash-nav__item--active::before { display: none; }
-  .dash-nav__label { display: none; }
-  .dash-header { flex-direction: column; align-items: stretch; }
 }
 </style>

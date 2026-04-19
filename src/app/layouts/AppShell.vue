@@ -172,72 +172,14 @@
         </div>
 
         <v-list nav density="comfortable" class="pos-nav-list">
-          <!-- Dashboard parent item -->
-          <v-list-item
-            :active="isDashboard"
-            link
-            @click="navigateDash(dashTab)"
-          >
+          <!-- Dashboard -->
+          <v-list-item :to="{ name: 'home' }" :active="isDashboard" link>
             <template #prepend>
               <v-icon size="20">mdi-view-dashboard-outline</v-icon>
             </template>
             <v-list-item-title>Dashboard</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
-
-          <!-- Dashboard sub-items: non-rail (with labels) -->
-          <template v-if="isDashboard && !rail">
-            <v-list-item :active="dashTab === 'sales'" class="dash-sub" link @click="navigateDash('sales')">
-              <template #prepend><v-icon size="18">mdi-chart-line</v-icon></template>
-              <v-list-item-title>Ventas</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'stock'" class="dash-sub" link @click="navigateDash('stock')">
-              <template #prepend><v-icon size="18">mdi-warehouse</v-icon></template>
-              <v-list-item-title class="d-flex align-center">
-                Stock
-                <v-badge v-if="dashOutOfStockCount > 0" :content="String(dashOutOfStockCount)" color="error" inline class="ml-1" />
-              </v-list-item-title>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'inventory'" class="dash-sub" link @click="navigateDash('inventory')">
-              <template #prepend><v-icon size="18">mdi-clipboard-list-outline</v-icon></template>
-              <v-list-item-title>Inventario</v-list-item-title>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'cash'" class="dash-sub" link @click="navigateDash('cash')">
-              <template #prepend><v-icon size="18">mdi-cash-multiple</v-icon></template>
-              <v-list-item-title>Caja</v-list-item-title>
-            </v-list-item>
-          </template>
-
-          <!-- Dashboard sub-items: rail mode (icon only + tooltip) -->
-          <template v-if="isDashboard && rail">
-            <v-list-item :active="dashTab === 'sales'" class="dash-sub-rail" link @click="navigateDash('sales')">
-              <template #prepend><v-icon size="16">mdi-chart-line</v-icon></template>
-              <v-tooltip activator="parent" location="right">Ventas</v-tooltip>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'stock'" class="dash-sub-rail" link @click="navigateDash('stock')">
-              <template #prepend>
-                <v-badge v-if="dashOutOfStockCount > 0" :content="String(dashOutOfStockCount)" color="error" floating offset-x="-2" offset-y="-2">
-                  <v-icon size="16">mdi-warehouse</v-icon>
-                </v-badge>
-                <v-icon v-else size="16">mdi-warehouse</v-icon>
-              </template>
-              <v-tooltip activator="parent" location="right">Stock</v-tooltip>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'inventory'" class="dash-sub-rail" link @click="navigateDash('inventory')">
-              <template #prepend><v-icon size="16">mdi-clipboard-list-outline</v-icon></template>
-              <v-tooltip activator="parent" location="right">Inventario</v-tooltip>
-            </v-list-item>
-
-            <v-list-item :active="dashTab === 'cash'" class="dash-sub-rail" link @click="navigateDash('cash')">
-              <template #prepend><v-icon size="16">mdi-cash-multiple</v-icon></template>
-              <v-tooltip activator="parent" location="right">Caja</v-tooltip>
-            </v-list-item>
-          </template>
 
           <v-list-item :to="{ name: 'pos' }" exact>
             <template #prepend>
@@ -559,7 +501,6 @@ import { useAuthStore } from "../store/auth.store";
 import { useThemeStore } from "../store/theme.store";
 import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
-import { dashOutOfStockCount } from "../store/dashboardNav";
 
 const drawer = ref(true);
 const rail = ref(false);
@@ -571,12 +512,6 @@ const route = useRoute();
 const themeStore = useThemeStore();
 
 const isDashboard = computed(() => route.name === "home");
-const dashTab = computed(() => route.query?.tab || "sales");
-
-function navigateDash(tab) {
-  router.push({ name: "home", query: { tab } });
-}
-
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 const ROUTE_TREE = {
   home:                     { label: "Dashboard" },
@@ -1061,33 +996,6 @@ function onLogout() {
   color: rgba(255, 255, 255, 0.18) !important;
 }
 
-/* Dashboard sub-items (expanded) */
-.pos-drawer :deep(.v-list-item.dash-sub) {
-  margin-inline-start: 20px !important;
-  min-height: 38px !important;
-  opacity: 0.88;
-}
-.pos-drawer :deep(.v-list-item.dash-sub .v-list-item__prepend) {
-  min-width: 32px !important;
-  width: 32px !important;
-}
-.pos-drawer :deep(.v-list-item.dash-sub .v-list-item-title) {
-  font-size: 13px !important;
-}
-
-/* Dashboard sub-items (rail / collapsed) */
-.pos-drawer :deep(.v-list-item.dash-sub-rail) {
-  min-height: 34px !important;
-  opacity: 0.80;
-  margin-inline: 8px !important;
-}
-.pos-drawer :deep(.v-list-item.dash-sub-rail.v-list-item--active) {
-  opacity: 1;
-}
-.pos-drawer :deep(.v-list-item.dash-sub-rail .v-list-item__prepend) {
-  min-width: 42px !important;
-  width: 42px !important;
-}
 
 /* =========================
    Focus off
