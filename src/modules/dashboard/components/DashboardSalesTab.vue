@@ -285,7 +285,7 @@
           <div class="dv-head">
             <div class="dv-head-left">
               <div class="dv-title">Por sucursal</div>
-              <div class="dv-sub">Participación en ventas</div>
+              <div class="dv-sub">Participación en ventas · {{ periodLabel }}</div>
             </div>
             <v-chip size="small" variant="tonal" class="chip-soft">{{ money(branchTotalSum) }}</v-chip>
           </div>
@@ -294,7 +294,18 @@
             <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
             <div v-else-if="!branchSeries.length" class="dv-empty">Sin datos por sucursal.</div>
             <div v-else>
-              <ApexChart height="280" type="donut" :options="optBranchDonut" :series="branchSeries" />
+              <ApexChart height="220" type="donut" :options="optBranchDonut" :series="branchSeries" />
+              <div class="bs-list">
+                <div v-for="(b, i) in branchTop" :key="b.branch_id || i" class="bs-item">
+                  <span class="bs-dot" :style="{ background: branchColors[i % branchColors.length] }" />
+                  <div class="bs-name">{{ b.branch_name || `Sucursal #${b.branch_id}` }}</div>
+                  <div class="bs-bar-wrap">
+                    <div class="bs-bar-fill" :style="{ width: branchTotalSum ? Math.round((Number(b.total||0)/branchTotalSum)*100)+'%' : '0%', background: branchColors[i % branchColors.length] }" />
+                  </div>
+                  <div class="bs-pct">{{ branchTotalSum ? Math.round((Number(b.total||0)/branchTotalSum)*100) : 0 }}%</div>
+                  <div class="bs-val">{{ money(b.total) }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </v-card>
@@ -307,42 +318,37 @@
               <div class="dv-title">Últimas ventas</div>
               <div class="dv-sub">{{ scopeLabelChip }}</div>
             </div>
+            <v-chip v-if="lastSales.length" size="small" variant="tonal" class="chip-soft">{{ lastSales.length }} registros</v-chip>
           </div>
           <v-divider class="dv-divider" />
-          <v-card-text class="pa-0">
+          <div class="dv-body pa-0">
             <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-            <div v-else>
-              <v-data-table
-                :headers="headers"
-                :items="lastSales"
-                item-key="id"
-                density="comfortable"
-                class="elevation-0 dv-table"
-              >
-                <template #item.id="{ item }">
-                  <span class="font-weight-bold text-primary">#{{ item.id }}</span>
-                </template>
-                <template #item.sold_at="{ item }">
-                  <span class="text-body-2 font-weight-medium">{{ dt(item.sold_at) }}</span>
-                </template>
-                <template #item.branch="{ item }">
-                  <span class="text-body-2">{{ item?.branch?.name || (item.branch_id ? `Sucursal #${item.branch_id}` : '—') }}</span>
-                </template>
-                <template #item.user="{ item }">
-                  <span class="text-body-2">{{ item?.user?.label || item?.user?.name || item?.user?.username || '—' }}</span>
-                </template>
-                <template #item.total="{ item }">
-                  <div class="font-weight-black">{{ money(item.total) }}</div>
-                  <div class="text-caption op60">{{ methodLabel(item?.payments?.[0]?.method) }}</div>
-                </template>
-                <template #item.invoice_type="{ item }">
-                  <v-chip size="x-small" variant="tonal" :color="invoiceColor(item.invoice_type)">{{ item.invoice_type || '—' }}</v-chip>
-                </template>
-                <template #bottom />
-              </v-data-table>
-              <div v-if="!lastSales.length" class="text-caption op60 pa-4">Sin ventas registradas.</div>
+            <div v-else-if="!lastSales.length" class="dv-empty">Sin ventas registradas.</div>
+            <div v-else class="ls-feed">
+              <div v-for="sale in lastSales" :key="sale.id" class="ls-row">
+                <div class="ls-id">#{{ sale.id }}</div>
+                <div class="ls-middle">
+                  <div class="ls-date">{{ dt(sale.sold_at) }}</div>
+                  <div class="ls-branch">{{ sale?.branch?.name || (sale.branch_id ? `Sucursal #${sale.branch_id}` : '—') }}</div>
+                </div>
+                <div class="ls-user">
+                  <v-icon size="13" class="op50 mr-1">mdi-account-outline</v-icon>
+                  {{ sale?.user?.label || sale?.user?.name || sale?.user?.username || '—' }}
+                </div>
+                <div class="ls-method-wrap">
+                  <span class="ls-method-badge" :class="methodBadgeClass(sale?.payments?.[0]?.method)">
+                    {{ methodLabel(sale?.payments?.[0]?.method) }}
+                  </span>
+                </div>
+                <div class="ls-right">
+                  <div class="ls-total">{{ money(sale.total) }}</div>
+                  <div class="ls-invoice">
+                    <v-chip size="x-small" variant="tonal" :color="invoiceColor(sale.invoice_type)">{{ sale.invoice_type || '—' }}</v-chip>
+                  </div>
+                </div>
+              </div>
             </div>
-          </v-card-text>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -480,6 +486,16 @@ function methodLabel(m) {
   if (["CREDIT", "CREDITO", "CREDIT_1", "CUOTAS"].includes(x))   return "Crédito";
   if (x === "OTHER")                                             return "Otro";
   return m || "—";
+}
+function methodBadgeClass(m) {
+  const x = String(m || "").toUpperCase().trim();
+  if (["CASH", "EFECTIVO"].includes(x))                        return "mb-cash";
+  if (["CARD", "TARJETA", "DEBIT", "DEBITO"].includes(x))      return "mb-card";
+  if (["TRANSFER", "TRANSFERENCIA"].includes(x))               return "mb-transfer";
+  if (["QR", "MERCADOPAGO", "MERCADO_PAGO", "MP"].includes(x)) return "mb-mp";
+  if (["CREDIT_SJT", "CREDITO_SJT", "CREDITSANJUAN"].includes(x)) return "mb-sjt";
+  if (["CREDIT", "CREDITO", "CREDIT_1", "CUOTAS"].includes(x)) return "mb-credit";
+  return "mb-other";
 }
 function invoiceColor(t) {
   const x = String(t || "").toUpperCase();
@@ -670,6 +686,7 @@ const salesByBranch = computed(() => {
   }
   return Array.from(map.values()).sort((a,b) => Number(b.total||0) - Number(a.total||0));
 });
+const branchColors   = ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316"];
 const branchTop      = computed(() => salesByBranch.value.slice(0,8));
 const branchLabels   = computed(() => branchTop.value.map(b => b.branch_name || `Sucursal #${b.branch_id}`));
 const branchSeries   = computed(() => branchTop.value.map(b => Number(b.total||0)));
@@ -1386,4 +1403,54 @@ const optAvgDow    = computed(() => ({
   .dv-period-bar { gap: 8px; }
   .dv-period-pills { flex-wrap: wrap; }
 }
+
+/* ── Branch summary list ─────────────────────────────────────────────────── */
+.bs-list { padding: 8px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.bs-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.bs-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.bs-name { flex: 0 0 110px; font-weight: 600; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-bar-wrap { flex: 1; height: 5px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .08); overflow: hidden; }
+.bs-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+.bs-pct  { flex: 0 0 34px; text-align: right; font-weight: 700; opacity: .7; font-size: 11px; }
+.bs-val  { flex: 0 0 90px; text-align: right; font-weight: 700; font-size: 12px; }
+
+/* ── Last-sales feed ─────────────────────────────────────────────────────── */
+.ls-feed { display: flex; flex-direction: column; }
+.ls-row  {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  transition: background .15s;
+}
+.ls-row:last-child { border-bottom: none; }
+.ls-row:hover { background: rgba(var(--v-theme-on-surface), .04); }
+
+.ls-id   { flex: 0 0 52px; font-weight: 800; font-size: 13px; color: rgb(var(--v-theme-primary)); }
+.ls-middle { flex: 0 0 170px; }
+.ls-date { font-size: 12.5px; font-weight: 600; opacity: .9; }
+.ls-branch { font-size: 11px; opacity: .55; margin-top: 1px; }
+.ls-user { flex: 1; font-size: 12.5px; opacity: .8; display: flex; align-items: center; }
+.ls-method-wrap { flex: 0 0 120px; }
+.ls-method-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
+.mb-cash     { background: rgba(16,185,129,.15);  color: #10b981; }
+.mb-card     { background: rgba(59,130,246,.15);  color: #3b82f6; }
+.mb-transfer { background: rgba(245,158,11,.15);  color: #f59e0b; }
+.mb-mp       { background: rgba(99,102,241,.15);  color: #818cf8; }
+.mb-sjt      { background: rgba(239,68,68,.15);   color: #f87171; }
+.mb-credit   { background: rgba(139,92,246,.15);  color: #a78bfa; }
+.mb-other    { background: rgba(var(--v-theme-on-surface), .08); opacity: .7; }
+
+.ls-right { flex: 0 0 130px; text-align: right; }
+.ls-total { font-size: 13.5px; font-weight: 900; }
+.ls-invoice { margin-top: 3px; }
 </style>
