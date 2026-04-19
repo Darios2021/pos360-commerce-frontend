@@ -242,48 +242,24 @@
       </v-col>
     </v-row>
 
-    <!-- ─── Row: Top alto stock + Valor por depósito ───────────────────────── -->
-    <v-row dense>
-      <v-col cols="12" lg="7">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div>
-              <div class="stk-title">Top 10 productos con más stock</div>
-              <div class="stk-sub">Por cantidad disponible</div>
-            </div>
-            <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart :height="Math.max(200, topStocked.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div>
-              <div class="stk-title">Valor por depósito</div>
-              <div class="stk-sub">Precio venta × Qty en stock</div>
-            </div>
-            <v-chip size="small" variant="tonal" class="chip-soft">{{ money(stock.totalInventoryPriceValue) }}</v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!inventoryValueRows.length" class="empty-state">Sin datos de valor.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optValueBar" :series="seriesValueBar" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- ─── Top alto stock (full width) ────────────────────────────────────── -->
+    <v-card class="stk-card" elevation="0">
+      <div class="stk-head">
+        <div>
+          <div class="stk-title">Top 10 productos con más stock</div>
+          <div class="stk-sub">Por cantidad disponible</div>
+        </div>
+        <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
+      </div>
+      <v-divider />
+      <div class="stk-body">
+        <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+        <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
+        <div v-else class="px-2 pb-2">
+          <ApexChart :height="Math.max(200, topStocked.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
+        </div>
+      </div>
+    </v-card>
 
     <!-- ─── Movimientos de stock (timeline) ────────────────────────────────── -->
     <v-card class="stk-card" elevation="0">
@@ -304,9 +280,9 @@
       </div>
     </v-card>
 
-    <!-- ─── Row: Stock por categoría + Días inventario ─────────────────────── -->
+    <!-- ─── Row: Stock por categoría + subcategoría ────────────────────────── -->
     <v-row dense>
-      <v-col cols="12" lg="7">
+      <v-col cols="12" lg="6">
         <v-card class="stk-card" elevation="0">
           <div class="stk-head">
             <div>
@@ -319,72 +295,7 @@
             <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!stockByCategory.length" class="empty-state">Sin datos por categoría.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart :height="Math.max(200, stockByCategory.length * 36)" type="bar" :options="optStockByCat" :series="seriesStockByCat" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div>
-              <div class="stk-title">Días de inventario estimados</div>
-              <div class="stk-sub">Stock ÷ venta diaria promedio (30 días)</div>
-            </div>
-            <v-chip v-if="daysOfInventory.length" size="small" variant="tonal" class="chip-soft">{{ daysOfInventory.length }} productos</v-chip>
-          </div>
-          <v-divider />
-          <div class="stk-body pa-0">
-            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!daysOfInventory.length" class="empty-state">Sin datos de rotación.</div>
-            <div v-else class="days-feed">
-              <div
-                v-for="item in daysOfInventory"
-                :key="item.id || item.product_id"
-                class="days-row"
-                :class="item.daysRemaining !== null && item.daysRemaining < 7 ? 'days-row--urgent' : item.daysRemaining !== null && item.daysRemaining < 30 ? 'days-row--warn' : ''"
-                @click="goToProduct(item.product_id || item.id)"
-              >
-                <div class="days-name">
-                  <div class="days-product">{{ item.name }}</div>
-                  <div class="days-sku">{{ item.sku }}</div>
-                </div>
-                <div class="days-mid">
-                  <span class="days-rate">{{ Number(item.avgDailySales).toFixed(2) }} u/día</span>
-                  <span class="days-stock">Stock: {{ item.currentStock }}</span>
-                </div>
-                <v-chip
-                  size="x-small"
-                  :color="item.daysRemaining === null ? 'success' : item.daysRemaining < 7 ? 'error' : item.daysRemaining < 30 ? 'warning' : 'success'"
-                  variant="flat"
-                  class="flex-shrink-0"
-                >
-                  {{ item.daysRemaining !== null ? Math.round(item.daysRemaining) + ' días' : '∞' }}
-                </v-chip>
-              </div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- ─── Row: Top entradas + Top salidas ────────────────────────────────── -->
-    <v-row dense>
-      <v-col cols="12" lg="6">
-        <v-card class="stk-card" elevation="0">
-          <div class="stk-head">
-            <div>
-              <div class="stk-title">Top productos ingresados</div>
-              <div class="stk-sub">Por cantidad · período seleccionado</div>
-            </div>
-          </div>
-          <v-divider />
-          <div class="stk-body">
-            <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!topIn.length" class="empty-state">Sin ingresos registrados.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart :height="Math.max(160, topIn.length * 38)" type="bar" :options="optTopIn" :series="seriesTopIn" />
+              <ApexChart :height="Math.max(200, stockByCategory.length * 38)" type="bar" :options="optStockByCat" :series="seriesStockByCat" />
             </div>
           </div>
         </v-card>
@@ -394,21 +305,64 @@
         <v-card class="stk-card" elevation="0">
           <div class="stk-head">
             <div>
-              <div class="stk-title">Top productos con más salidas</div>
-              <div class="stk-sub">Por cantidad · período seleccionado</div>
+              <div class="stk-title">Stock por subcategoría</div>
+              <div class="stk-sub">Unidades en stock por subfamilia</div>
             </div>
+            <v-chip v-if="stockBySubCategory.length" size="small" variant="tonal" class="chip-soft">{{ stockBySubCategory.length }} subcategorías</v-chip>
           </div>
           <v-divider />
           <div class="stk-body">
             <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else-if="!topOut.length" class="empty-state">Sin salidas registradas.</div>
+            <div v-else-if="!stockBySubCategory.length" class="empty-state">Sin datos por subcategoría.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart :height="Math.max(160, topOut.length * 38)" type="bar" :options="optTopOut" :series="seriesTopOut" />
+              <ApexChart :height="Math.max(200, stockBySubCategory.length * 38)" type="bar" :options="optStockBySubCat" :series="seriesStockBySubCat" />
             </div>
           </div>
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- ─── Días de inventario ───────────────────────────────────────────────── -->
+    <v-card class="stk-card" elevation="0">
+      <div class="stk-head">
+        <div>
+          <div class="stk-title">Días de inventario estimados</div>
+          <div class="stk-sub">Stock ÷ venta diaria promedio (30 días) · clic para editar producto</div>
+        </div>
+        <v-chip v-if="daysOfInventory.length" size="small" variant="tonal" class="chip-soft">{{ daysOfInventory.length }} productos</v-chip>
+      </div>
+      <v-divider />
+      <div class="stk-body pa-0">
+        <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
+        <div v-else-if="!daysOfInventory.length" class="empty-state">Sin datos de rotación.</div>
+        <div v-else class="days-feed">
+          <div
+            v-for="item in daysOfInventory"
+            :key="item.id || item.product_id"
+            class="days-row"
+            :class="item.daysRemaining !== null && item.daysRemaining < 7 ? 'days-row--urgent' : item.daysRemaining !== null && item.daysRemaining < 30 ? 'days-row--warn' : ''"
+            @click="goToProduct(item.product_id || item.id)"
+          >
+            <div class="days-name">
+              <div class="days-product">{{ item.name }}</div>
+              <div class="days-sku">{{ item.sku }}</div>
+            </div>
+            <div class="days-mid">
+              <span class="days-rate">{{ Number(item.avgDailySales).toFixed(2) }} u/día</span>
+              <span class="days-stock">Stock: {{ item.currentStock }}</span>
+            </div>
+            <v-chip
+              size="x-small"
+              :color="item.daysRemaining === null ? 'success' : item.daysRemaining < 7 ? 'error' : item.daysRemaining < 30 ? 'warning' : 'success'"
+              variant="flat"
+              class="flex-shrink-0"
+            >
+              {{ item.daysRemaining !== null ? Math.round(item.daysRemaining) + ' días' : '∞' }}
+            </v-chip>
+          </div>
+        </div>
+      </div>
+    </v-card>
 
   </div>
 </template>
@@ -465,7 +419,6 @@ const currentBranchLabel = computed(() => {
 const allLowItems       = computed(() => Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []);
 const outItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) <= 0));
 const lowItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) > 0));
-const inventoryValueRows= computed(() => Array.isArray(props.stock?.inventoryValue) ? props.stock.inventoryValue : []);
 const topStocked        = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts.slice(0, 10) : []);
 
 const rows = computed(() =>
@@ -514,29 +467,6 @@ const apexCommon = {
 const axisStyle  = { colors: "rgba(var(--v-theme-on-surface), 0.55)" };
 const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.10)" };
 
-// ─── Inventory value bar ────────────────────────────────────────────────────
-const valueLabels  = computed(() => inventoryValueRows.value.map(r => r.warehouse_name || r.branch_name || `Dep. #${r.warehouse_id}`));
-const seriesValueBar = computed(() => [
-  { name: "Valor precio", data: inventoryValueRows.value.map(r => Math.round(r.price_value)) },
-  { name: "Valor costo",  data: inventoryValueRows.value.map(r => Math.round(r.cost_value)) },
-]);
-const optValueBar = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#00E396", "#FEB019"],
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", grouped: true } },
-  dataLabels: {
-    enabled: true,
-    formatter: v => shortNumber(v),
-    style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
-    offsetX: 4,
-  },
-  xaxis: { categories: valueLabels.value, labels: { style: axisStyle, formatter: shortNumber }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 130 } },
-  legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  tooltip: { theme: "dark", y: { formatter: v => money(v) } },
-}));
-
 // ─── Top stocked bar ──────────────────────────────────────────────────────────
 const seriesTopStocked = computed(() => [{
   name: "Unidades",
@@ -572,10 +502,9 @@ const optTopStockedBar = computed(() => ({
 // ─── Analytics ────────────────────────────────────────────────────────────────
 const ana             = computed(() => props.analytics || {});
 const movTimeline     = computed(() => Array.isArray(ana.value?.timeline) ? ana.value.timeline : []);
-const stockByCategory = computed(() => Array.isArray(ana.value?.stockByCategory) ? ana.value.stockByCategory.slice(0, 14) : []);
-const daysOfInventory = computed(() => Array.isArray(ana.value?.daysOfInventory) ? ana.value.daysOfInventory.slice(0, 20) : []);
-const topIn           = computed(() => Array.isArray(ana.value?.topInProducts) ? ana.value.topInProducts.slice(0, 8) : []);
-const topOut          = computed(() => Array.isArray(ana.value?.topOutProducts) ? ana.value.topOutProducts.slice(0, 8) : []);
+const stockByCategory    = computed(() => Array.isArray(ana.value?.stockByCategory) ? ana.value.stockByCategory.slice(0, 14) : []);
+const stockBySubCategory = computed(() => Array.isArray(ana.value?.stockBySubCategory) ? ana.value.stockBySubCategory.slice(0, 20) : []);
+const daysOfInventory    = computed(() => Array.isArray(ana.value?.daysOfInventory) ? ana.value.daysOfInventory.slice(0, 20) : []);
 
 // Timeline
 const seriesMovTimeline = computed(() => [
@@ -621,35 +550,37 @@ const optStockByCat = computed(() => ({
   colors: ["#008FFB","#00B4D8","#0096C7","#48CAE4","#90E0EF","#0077B6","#023E8A","#03045E","#ADE8F4","#CAF0F8","#00B4D8","#0096C7","#48CAE4","#0077B6"],
 }));
 
-// Top in / out
-const seriesTopIn  = computed(() => [{ name: "Ingresados",   data: topIn.value.map(r => num(r.totalQty)),  color: "#00E396" }]);
-const seriesTopOut = computed(() => [{ name: "Salidas",      data: topOut.value.map(r => num(r.totalQty)), color: "#FF4560" }]);
 
-function barOpts(color, items) {
-  return computed(() => ({
-    ...apexCommon,
-    chart: { ...apexCommon.chart, type: "bar" },
-    colors: [color],
-    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "65%", distributed: true, dataLabels: { position: "top" } } },
-    dataLabels: {
-      enabled: true, offsetX: 5,
-      formatter: v => `${Math.round(Number(v || 0))} u.`,
-      style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
-    },
-    xaxis: {
-      categories: items.value.map(r => r.name?.length > 20 ? r.name.slice(0, 18) + "…" : r.name),
-      labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder,
-    },
-    yaxis: { labels: { style: { ...axisStyle, fontSize: "11px", fontWeight: "600" }, maxWidth: 160 } },
-    legend: { show: false },
-    tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
-      const r = items.value[dataPointIndex];
-      return `${Math.round(Number(v || 0))} u.${r?.totalCost ? ` · ${money(r.totalCost)}` : ""}`;
-    }}},
-  }));
-}
-const optTopIn  = barOpts("#00E396", topIn);
-const optTopOut = barOpts("#FF4560", topOut);
+// Stock por subcategoría
+const seriesStockBySubCat = computed(() => [{
+  name: "Unidades en stock",
+  data: stockBySubCategory.value.map(r => num(r.totalQty)),
+}]);
+const optStockBySubCat = computed(() => ({
+  ...apexCommon,
+  chart: { ...apexCommon.chart, type: "bar" },
+  colors: ["#f59e0b"],
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "62%", distributed: true, dataLabels: { position: "top" } } },
+  dataLabels: {
+    enabled: true, offsetX: 5,
+    formatter: v => `${Math.round(Number(v || 0))} u.`,
+    style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
+  },
+  xaxis: {
+    categories: stockBySubCategory.value.map(r => {
+      const label = r.subcategory?.length > 22 ? r.subcategory.slice(0, 20) + "…" : r.subcategory;
+      return label;
+    }),
+    labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder,
+  },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 170 } },
+  legend: { show: false },
+  tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
+    const r = stockBySubCategory.value[dataPointIndex];
+    return `${Math.round(num(v))} unidades · ${r?.category || ""} · ${money(r?.priceValue)}`;
+  }}},
+  colors: ["#f59e0b","#fbbf24","#fcd34d","#fde68a","#f97316","#fb923c","#fdba74","#fef3c7","#d97706","#b45309","#92400e","#78350f","#ef4444","#f87171","#fca5a5","#fee2e2","#84cc16","#a3e635","#bef264","#d9f99d"],
+}));
 </script>
 
 <style scoped>
