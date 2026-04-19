@@ -280,25 +280,6 @@
       </v-col>
     </v-row>
 
-    <!-- ─── Movimientos de stock (timeline) ────────────────────────────────── -->
-    <v-card class="stk-card" elevation="0">
-      <div class="stk-head">
-        <div>
-          <div class="stk-title">Movimientos de stock en el tiempo</div>
-          <div class="stk-sub">Entradas vs Salidas · {{ movTimeline.length }} días</div>
-        </div>
-        <v-chip v-if="loadingAnalytics" size="small" variant="tonal" class="chip-soft">Cargando…</v-chip>
-      </div>
-      <v-divider />
-      <div class="stk-body">
-        <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-        <div v-else-if="!movTimeline.length" class="empty-state">Sin movimientos en el período.</div>
-        <div v-else class="px-2 pb-2">
-          <ApexChart height="240" type="bar" :options="optMovTimeline" :series="seriesMovTimeline" />
-        </div>
-      </div>
-    </v-card>
-
     <!-- ─── Row: Stock por categoría + subcategoría ────────────────────────── -->
     <v-row dense>
       <v-col cols="12" lg="6">
