@@ -735,6 +735,7 @@ const topCashiers10 = computed(() =>
   [...(topCashiers.value || [])].sort((a,b) => Number(b.total||0) - Number(a.total||0)).slice(0,10)
 );
 const cashierCats   = computed(() => topCashiers10.value.map(x => String(x?.user_label || x?.user_name || x?.name || (x?.user_id ? `User #${x.user_id}` : "—"))));
+const cashierBranches = computed(() => topCashiers10.value.map(x => x?.branch_name || null));
 const seriesCashiers = computed(() => [{ name: "Total ($)", data: topCashiers10.value.map(x => Math.round(Number(x?.total||0))) }]);
 
 // ─── Invoice Type ─────────────────────────────────────────────────────────
@@ -887,7 +888,8 @@ const optCashiersBar = computed(() => ({
   yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 150 } },
   tooltip: { theme: "dark", y: { formatter: (v, ctx) => {
     const c = topCashiers10.value[ctx.dataPointIndex];
-    return `${money(v)} · ${c?.count||0} ventas`;
+    const branch = c?.branch_name ? ` · ${c.branch_name}` : "";
+    return `${money(v)} · ${c?.count||0} ventas${branch}`;
   }}},
 }));
 
@@ -1021,7 +1023,8 @@ const optCashierRanking = computed(() => ({
     theme: "dark",
     y: { formatter: (v, { dataPointIndex }) => {
       const c = topCashiers10.value[dataPointIndex];
-      return `${money(v)} · ${c?.count || 0} ventas`;
+      const branch = c?.branch_name ? ` · ${c.branch_name}` : "";
+      return `${money(v)} · ${c?.count || 0} ventas${branch}`;
     }},
   },
 }));
