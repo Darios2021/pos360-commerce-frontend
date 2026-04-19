@@ -38,15 +38,27 @@
 
     <!-- ── Row 1: Hero KPIs ───────────────────────────────────────────────────── -->
     <div class="dv-kpi-row">
-      <!-- Ventas hoy -->
+      <!-- Hoy -->
       <div class="dv-kpi" style="--kpi-accent:#3b82f6">
         <div class="dv-kpi-badge" style="background:#3b82f6">
-          <v-icon color="white" size="20">mdi-receipt-text-outline</v-icon>
+          <v-icon color="white" size="20">mdi-calendar-today</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Ventas hoy</div>
+          <div class="dv-kpi-label">Hoy</div>
           <div class="dv-kpi-value">{{ num(today.count) }}</div>
           <div class="dv-kpi-meta">{{ money(today.total) }}</div>
+        </div>
+      </div>
+
+      <!-- Semana -->
+      <div class="dv-kpi" style="--kpi-accent:#10b981">
+        <div class="dv-kpi-badge" style="background:#10b981">
+          <v-icon color="white" size="20">mdi-calendar-week</v-icon>
+        </div>
+        <div class="dv-kpi-body">
+          <div class="dv-kpi-label">Esta semana</div>
+          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(week.total) }}</div>
+          <div class="dv-kpi-meta">{{ num(week.count) }} ventas</div>
         </div>
         <div v-if="trendWeekPct" class="dv-kpi-trend" :class="trendWeekPct > 0 ? 'up' : 'dn'">
           <v-icon size="13">{{ trendWeekPct > 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}</v-icon>
@@ -54,13 +66,13 @@
         </div>
       </div>
 
-      <!-- Total mes -->
-      <div class="dv-kpi" style="--kpi-accent:#10b981">
-        <div class="dv-kpi-badge" style="background:#10b981">
+      <!-- Mes -->
+      <div class="dv-kpi" style="--kpi-accent:#8b5cf6">
+        <div class="dv-kpi-badge" style="background:#8b5cf6">
           <v-icon color="white" size="20">mdi-calendar-month</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Total mes</div>
+          <div class="dv-kpi-label">Este mes</div>
           <div class="dv-kpi-value dv-kpi-value--sm">{{ money(month.total) }}</div>
           <div class="dv-kpi-meta">{{ num(month.count) }} ventas</div>
         </div>
@@ -70,27 +82,17 @@
         </div>
       </div>
 
-      <!-- Ticket promedio período -->
-      <div class="dv-kpi" style="--kpi-accent:#8b5cf6">
-        <div class="dv-kpi-badge" style="background:#8b5cf6">
-          <v-icon color="white" size="20">mdi-ticket-percent-outline</v-icon>
-        </div>
-        <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Ticket promedio <span class="dv-kpi-period">({{ periodLabelShort }})</span></div>
-          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(avgTicketPeriod) }}</div>
-          <div class="dv-kpi-meta">{{ nonZeroDays }} días activos · {{ timelinePoints.length }} totales</div>
-        </div>
-      </div>
-
-      <!-- Mejor mes -->
+      <!-- Período seleccionado -->
       <div class="dv-kpi" style="--kpi-accent:#f59e0b">
         <div class="dv-kpi-badge" style="background:#f59e0b">
-          <v-icon color="white" size="20">mdi-calendar-star</v-icon>
+          <v-icon color="white" size="20">mdi-chart-line</v-icon>
         </div>
         <div class="dv-kpi-body">
-          <div class="dv-kpi-label">Mejor mes <span class="dv-kpi-period">({{ periodLabelShort }})</span></div>
-          <div class="dv-kpi-value dv-kpi-value--xs">{{ bestMonthLabel }}</div>
-          <div class="dv-kpi-meta">{{ bestMonth ? money(bestMonth.total) + ' · ' + num(bestMonth.count) + ' ventas' : '—' }}</div>
+          <div class="dv-kpi-label">{{ periodLabel }} <span class="dv-kpi-period">· ticket prom.</span></div>
+          <div class="dv-kpi-value dv-kpi-value--sm">{{ money(avgTicketPeriod) }}</div>
+          <div class="dv-kpi-meta">
+            {{ money(periodTotal) }} · {{ nonZeroDays }} días activos
+          </div>
         </div>
       </div>
     </div>
