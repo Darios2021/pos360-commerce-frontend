@@ -254,53 +254,29 @@
       </div>
     </v-card>
 
-    <!-- ── Row 5: Top productos (7) + Top vendedores (5) ─────────────────────── -->
-    <v-row dense>
-      <v-col cols="12" lg="7">
-        <v-card class="dv-card" elevation="0">
-          <div class="dv-head">
-            <div class="dv-head-left">
-              <div class="dv-title">Top 10 productos</div>
-              <div class="dv-sub">{{ productToggle === 'total' ? 'Por total recaudado' : 'Por unidades vendidas' }} · {{ periodLabel }}</div>
-            </div>
-            <div class="dv-head-right">
-              <div class="dv-toggle">
-                <button class="dv-toggle-btn" :class="{ active: productToggle === 'units' }" @click="productToggle = 'units'">Unidades</button>
-                <button class="dv-toggle-btn" :class="{ active: productToggle === 'total' }" @click="productToggle = 'total'">$ Total</button>
-              </div>
-            </div>
+    <!-- ── Row 5: Top productos (full) ──────────────────────────────────────── -->
+    <v-card class="dv-card" elevation="0">
+      <div class="dv-head">
+        <div class="dv-head-left">
+          <div class="dv-title">Top 10 productos</div>
+          <div class="dv-sub">{{ productToggle === 'total' ? 'Por total recaudado' : 'Por unidades vendidas' }} · {{ periodLabel }}</div>
+        </div>
+        <div class="dv-head-right">
+          <div class="dv-toggle">
+            <button class="dv-toggle-btn" :class="{ active: productToggle === 'units' }" @click="productToggle = 'units'">Unidades</button>
+            <button class="dv-toggle-btn" :class="{ active: productToggle === 'total' }" @click="productToggle = 'total'">$ Total</button>
           </div>
-          <v-divider class="dv-divider" />
-          <div class="dv-body">
-            <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-            <div v-else-if="!topProducts10.length" class="dv-empty">Sin productos vendidos en el período.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="300" type="bar" :options="optProductsBar" :series="seriesProducts" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="dv-card" elevation="0">
-          <div class="dv-head">
-            <div class="dv-head-left">
-              <div class="dv-title">Top vendedores</div>
-              <div class="dv-sub">Por total vendido · {{ periodLabel }}</div>
-            </div>
-            <v-chip v-if="topCashiers10.length" size="small" variant="tonal" class="chip-soft">{{ topCashiers10.length }} registrados</v-chip>
-          </div>
-          <v-divider class="dv-divider" />
-          <div class="dv-body">
-            <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-            <div v-else-if="!topCashiers10.length" class="dv-empty">Sin ventas por vendedor.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="300" type="bar" :options="optCashiersBar" :series="seriesCashiers" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+        </div>
+      </div>
+      <v-divider class="dv-divider" />
+      <div class="dv-body">
+        <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
+        <div v-else-if="!topProducts10.length" class="dv-empty">Sin productos vendidos en el período.</div>
+        <div v-else class="px-2 pb-2">
+          <ApexChart height="300" type="bar" :options="optProductsBar" :series="seriesProducts" />
+        </div>
+      </div>
+    </v-card>
 
     <!-- ── Row 7: Branch donut (4) + Últimas ventas (8) ──────────────────────── -->
     <v-row dense>
