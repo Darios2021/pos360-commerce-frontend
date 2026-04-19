@@ -1115,9 +1115,9 @@ const optAvgDow    = computed(() => ({
 }
 .dv-period-pills {
   display: flex;
-  gap: 4px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  gap: 2px;
+  background: rgba(var(--v-theme-primary), 0.07);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
   border-radius: 10px;
   padding: 3px;
 }
@@ -1126,18 +1126,21 @@ const optAvgDow    = computed(() => ({
   border-radius: 7px;
   border: none;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.55);
+  color: rgba(var(--v-theme-on-surface), 0.50);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
-.dv-pill:hover { color: rgb(var(--v-theme-on-surface)); }
+.dv-pill:hover {
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+}
 .dv-pill--active {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  box-shadow: 0 1px 6px rgba(0,0,0,.10), 0 0 0 1px rgba(var(--v-theme-on-surface), 0.07);
+  background: rgba(var(--v-theme-primary), 0.16);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 800;
 }
 .dv-today-chip {
   display: flex;
@@ -1178,20 +1181,23 @@ const optAvgDow    = computed(() => ({
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px 5px 10px;
+  padding: 5px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-primary), 0.20);
+  background: rgba(var(--v-theme-primary), 0.06);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
-.dv-branch-wrap:hover { border-color: rgba(var(--v-theme-on-surface), 0.25); }
-.dv-branch-icon    { color: rgba(var(--v-theme-on-surface), 0.50); flex-shrink: 0; }
-.dv-branch-chevron { color: rgba(var(--v-theme-on-surface), 0.40); flex-shrink: 0; }
+.dv-branch-wrap:hover {
+  border-color: rgba(var(--v-theme-primary), 0.40);
+  background: rgba(var(--v-theme-primary), 0.10);
+}
+.dv-branch-icon    { color: rgb(var(--v-theme-primary)); opacity: 0.70; flex-shrink: 0; }
+.dv-branch-chevron { color: rgb(var(--v-theme-primary)); opacity: 0.55; flex-shrink: 0; }
 .dv-branch-label {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.80);
+  color: rgb(var(--v-theme-primary));
   white-space: nowrap;
   max-width: 180px;
   overflow: hidden;
