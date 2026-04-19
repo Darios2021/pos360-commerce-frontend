@@ -129,7 +129,7 @@
             <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
             <div v-else-if="!branchTop.length" class="dv-empty">Sin datos por sucursal.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="220" type="bar" :options="optBranchBar" :series="seriesBranchBar" />
+              <ApexChart :height="branchBarHeight" type="bar" :options="optBranchBar" :series="seriesBranchBar" />
             </div>
           </div>
         </v-card>
@@ -151,7 +151,7 @@
             <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
             <div v-else-if="!topCashiers10.length" class="dv-empty">Sin datos de vendedores.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="220" type="bar" :options="optCashierRanking" :series="seriesCashierRanking" />
+              <ApexChart :height="cashierBarHeight" type="bar" :options="optCashierRanking" :series="seriesCashierRanking" />
             </div>
           </div>
         </v-card>
@@ -942,6 +942,10 @@ const optBranchDonut = computed(() => ({
   tooltip: { theme: "dark", y: { formatter: (v) => `${money(v)} · ${branchTotalSum.value ? Math.round((v/branchTotalSum.value)*100) : 0}%` } },
 }));
 
+// ─── Dynamic chart heights ────────────────────────────────────────────────
+const branchBarHeight   = computed(() => Math.max(180, branchTop.value.length * 44));
+const cashierBarHeight  = computed(() => Math.max(180, topCashiers10.value.length * 44));
+
 // ─── Branch ranking bar ───────────────────────────────────────────────────
 const seriesBranchBar = computed(() => [{
   name: "Total ($)",
@@ -966,16 +970,19 @@ const optBranchBar = computed(() => ({
   },
   dataLabels: {
     enabled: true,
-    offsetX: 8,
-    style: { fontSize: "11px", fontWeight: 700, colors: ["rgba(var(--v-theme-on-surface), 0.75)"] },
-    formatter: (v) => shortNumber(v),
+    offsetX: 10,
+    style: { fontSize: "12.5px", fontWeight: 800, colors: ["rgba(var(--v-theme-on-surface), 0.80)"] },
+    formatter: (v) => `$ ${shortNumber(v)}`,
   },
   xaxis: {
     categories: branchTop.value.map(b => b.branch_name || `Sucursal #${b.branch_id}`),
-    labels: { style: axisStyle, formatter: shortNumber },
+    labels: { style: { ...axisStyle, fontSize: "11px" }, formatter: shortNumber },
     axisBorder, axisTicks: axisBorder,
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: 700 }, maxWidth: 160 } },
+  yaxis: {
+    labels: { style: { ...axisStyle, fontSize: "13px", fontWeight: 700 }, maxWidth: 160 },
+  },
+  grid: { ...apexCommon.grid, padding: { ...apexCommon.grid.padding, left: 8, right: 20 } },
   legend: { show: false },
   tooltip: {
     theme: "dark",
@@ -1001,25 +1008,31 @@ const optCashierRanking = computed(() => ({
   plotOptions: {
     bar: {
       horizontal: true,
-      borderRadius: 6,
+      borderRadius: 7,
       borderRadiusApplication: "end",
-      barHeight: "58%",
+      barHeight: "52%",
       distributed: true,
       dataLabels: { position: "bottom" },
     },
   },
   dataLabels: {
     enabled: true,
-    offsetX: 8,
-    style: { fontSize: "11px", fontWeight: 700, colors: ["rgba(var(--v-theme-on-surface), 0.75)"] },
-    formatter: (v) => shortNumber(v),
+    offsetX: 10,
+    style: { fontSize: "12.5px", fontWeight: 800, colors: ["rgba(var(--v-theme-on-surface), 0.80)"] },
+    formatter: (v) => `$ ${shortNumber(v)}`,
   },
   xaxis: {
     categories: cashierCats.value,
-    labels: { style: axisStyle, formatter: shortNumber },
+    labels: { style: { ...axisStyle, fontSize: "11px" }, formatter: shortNumber },
     axisBorder, axisTicks: axisBorder,
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: 700 }, maxWidth: 150 } },
+  yaxis: {
+    labels: {
+      style: { ...axisStyle, fontSize: "13px", fontWeight: 700 },
+      maxWidth: 160,
+    },
+  },
+  grid: { ...apexCommon.grid, padding: { ...apexCommon.grid.padding, left: 8, right: 20 } },
   legend: { show: false },
   tooltip: {
     theme: "dark",
