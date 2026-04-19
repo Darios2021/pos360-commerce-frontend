@@ -1045,13 +1045,19 @@ const seriesTopCustomers = computed(() => [{ name: "Total $", data: topCustomers
 const optTopCustomers    = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "65%", distributed: true, dataLabels: { position: "top" } } },
-  dataLabels: { enabled: true, formatter: shortNumber, style: { ...axisStyle, fontSize: "10px" } },
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", distributed: true, dataLabels: { position: "top" } } },
+  dataLabels: {
+    enabled: true,
+    formatter: (v) => `$ ${shortNumber(v)}`,
+    style: { fontSize: "12px", fontWeight: "700", colors: ["rgba(255,255,255,0.92)"] },
+    offsetX: 6,
+    background: { enabled: true, foreColor: "#111", borderRadius: 4, padding: 3, borderWidth: 0, opacity: 0.15 },
+  },
   xaxis: {
-    categories: topCustomers.value.map(r => r.name?.length > 20 ? r.name.slice(0,18)+"…" : r.name),
+    categories: topCustomers.value.map(r => r.name?.length > 22 ? r.name.slice(0,20)+"…" : r.name),
     labels: { style: axisStyle, formatter: shortNumber },
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 180 } },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: "600" }, maxWidth: 190 } },
   legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
     const r = topCustomers.value[dataPointIndex];
@@ -1065,10 +1071,16 @@ const seriesAvgDow = computed(() => [{ name: "Ticket promedio", data: dowTicket.
 const optAvgDow    = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  plotOptions: { bar: { columnWidth: "58%", borderRadius: 5, distributed: true } },
-  dataLabels: { enabled: false },
-  xaxis: { categories: DOW_LABELS, labels: { style: axisStyle } },
-  yaxis: { labels: { style: axisStyle, formatter: shortNumber } },
+  plotOptions: { bar: { columnWidth: "58%", borderRadius: 6, distributed: true, dataLabels: { position: "top" } } },
+  dataLabels: {
+    enabled: true,
+    formatter: (v) => v > 0 ? `$ ${shortNumber(v)}` : "",
+    style: { fontSize: "11.5px", fontWeight: "700", colors: ["rgba(255,255,255,0.88)"] },
+    offsetY: -6,
+    background: { enabled: false },
+  },
+  xaxis: { categories: DOW_LABELS, labels: { style: { ...axisStyle, fontSize: "12.5px", fontWeight: "600" } } },
+  yaxis: { labels: { style: axisStyle, formatter: shortNumber }, tickAmount: 4 },
   legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
     const r = dowTicket.value[dataPointIndex];
