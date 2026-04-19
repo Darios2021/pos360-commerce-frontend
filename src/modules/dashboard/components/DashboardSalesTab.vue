@@ -475,10 +475,11 @@ const props = defineProps({
 const emit = defineEmits(["period-change", "branch-change"]);
 
 const periodItems = [
-  { title: "Último mes",   value: "30d" },
-  { title: "3 meses",      value: "90d" },
-  { title: "Último año",   value: "12m" },
-  { title: "Histórico",    value: "all" },
+  { title: "Última semana", value: "7d"  },
+  { title: "Último mes",    value: "30d" },
+  { title: "3 meses",       value: "90d" },
+  { title: "Último año",    value: "12m" },
+  { title: "Histórico",     value: "all" },
 ];
 
 const periodLocal   = ref(props.period || "30d");
@@ -549,12 +550,14 @@ function pctVal(v) { return Number(v || 0); }
 
 // ─── Period labels ─────────────────────────────────────────────────────────
 const periodLabel = computed(() => {
+  if (periodLocal.value === "7d")  return "Última semana";
   if (periodLocal.value === "90d") return "Últimos 3 meses";
   if (periodLocal.value === "12m") return "Último año";
   if (periodLocal.value === "all") return "Histórico";
   return "Último mes";
 });
 const periodLabelShort = computed(() => {
+  if (periodLocal.value === "7d")  return "7d";
   if (periodLocal.value === "90d") return "3m";
   if (periodLocal.value === "12m") return "12m";
   if (periodLocal.value === "all") return "Total";
