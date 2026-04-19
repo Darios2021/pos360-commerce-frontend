@@ -113,7 +113,7 @@
 
     <!-- ── Row 1b: Sucursal líder + Cajero líder ────────────────────────────── -->
     <v-row dense>
-      <v-col cols="12" md="6">
+      <v-col v-if="!selectedBranch" cols="12" md="6">
         <v-card class="dv-card" elevation="0">
           <div class="dv-head">
             <div class="dv-head-left">
@@ -135,7 +135,7 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="6">
+      <v-col cols="12" :md="selectedBranch ? 12 : 6">
         <v-card class="dv-card" elevation="0">
           <div class="dv-head">
             <div class="dv-head-left">
