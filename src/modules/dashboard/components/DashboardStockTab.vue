@@ -242,30 +242,74 @@
       </v-col>
     </v-row>
 
-    <!-- ─── Top alto stock (full width) ────────────────────────────────────── -->
-    <v-card class="stk-card" elevation="0">
-      <div class="stk-head">
-        <div>
-          <div class="stk-title">Top 10 productos con más stock</div>
-          <div class="stk-sub">{{ stockToggle === 'qty' ? 'Por unidades disponibles' : 'Por valor en stock (precio × qty)' }}</div>
-        </div>
-        <div class="d-flex align-center gap-2">
-          <div class="dv-toggle">
-            <button class="dv-toggle-btn" :class="{ active: stockToggle === 'qty' }"   @click="stockToggle = 'qty'">Unidades</button>
-            <button class="dv-toggle-btn" :class="{ active: stockToggle === 'value' }" @click="stockToggle = 'value'">$ Valor</button>
+    <!-- ─── Ranking combinado qty + valor ─────────────────────────────────── -->
+    <v-row dense>
+      <v-col cols="12" lg="6">
+        <v-card class="stk-card h-full" elevation="0">
+          <div class="stk-head">
+            <div>
+              <div class="stk-title">Ranking por cantidad en stock</div>
+              <div class="stk-sub">Productos con mayor cantidad disponible</div>
+            </div>
+            <v-chip size="small" variant="tonal" class="chip-soft">Top {{ topByQty.length }}</v-chip>
           </div>
-          <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
-        </div>
-      </div>
-      <v-divider />
-      <div class="stk-body">
-        <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
-        <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
-        <div v-else class="px-2 pb-2">
-          <ApexChart :height="Math.max(200, topStockedSorted.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
-        </div>
-      </div>
-    </v-card>
+          <v-divider />
+          <div class="stk-body pa-0">
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!topByQty.length" class="empty-state">Sin datos.</div>
+            <div v-else class="rank-feed">
+              <div v-for="(r, i) in topByQty" :key="`qty-${r.product_id}`" class="rank-row" @click="goToProduct(r.product_id)">
+                <div class="rank-num" :class="i < 3 ? 'rank-num--top' : ''">{{ i + 1 }}</div>
+                <div class="rank-info">
+                  <div class="rank-name">{{ r.product_name || `#${r.product_id}` }}</div>
+                  <div class="rank-bar-wrap">
+                    <div class="rank-bar-fill rank-bar-fill--qty" :style="{ width: topByQty[0]?.total_qty ? (Number(r.total_qty)/Number(topByQty[0].total_qty)*100)+'%' : '0%' }" />
+                  </div>
+                </div>
+                <div class="rank-meta">
+                  <div class="rank-primary">{{ Math.round(Number(r.total_qty || 0)) }} u.</div>
+                  <div class="rank-secondary">{{ money(r.total_value) }}</div>
+                </div>
+                <v-icon size="13" class="op30">mdi-chevron-right</v-icon>
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" lg="6">
+        <v-card class="stk-card h-full" elevation="0">
+          <div class="stk-head">
+            <div>
+              <div class="stk-title">Ranking por valor en stock</div>
+              <div class="stk-sub">Precio venta × cantidad disponible</div>
+            </div>
+            <v-chip size="small" variant="tonal" class="chip-soft">Top {{ topByValue.length }}</v-chip>
+          </div>
+          <v-divider />
+          <div class="stk-body pa-0">
+            <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
+            <div v-else-if="!topByValue.length" class="empty-state">Sin datos.</div>
+            <div v-else class="rank-feed">
+              <div v-for="(r, i) in topByValue" :key="`val-${r.product_id}`" class="rank-row" @click="goToProduct(r.product_id)">
+                <div class="rank-num" :class="i < 3 ? 'rank-num--top' : ''">{{ i + 1 }}</div>
+                <div class="rank-info">
+                  <div class="rank-name">{{ r.product_name || `#${r.product_id}` }}</div>
+                  <div class="rank-bar-wrap">
+                    <div class="rank-bar-fill rank-bar-fill--value" :style="{ width: topByValue[0]?.total_value ? (Number(r.total_value)/Number(topByValue[0].total_value)*100)+'%' : '0%' }" />
+                  </div>
+                </div>
+                <div class="rank-meta">
+                  <div class="rank-primary">{{ money(r.total_value) }}</div>
+                  <div class="rank-secondary">{{ Math.round(Number(r.total_qty || 0)) }} u.</div>
+                </div>
+                <v-icon size="13" class="op30">mdi-chevron-right</v-icon>
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- ─── Movimientos de stock (timeline) ────────────────────────────────── -->
     <v-card class="stk-card" elevation="0">
@@ -426,13 +470,10 @@ const currentBranchLabel = computed(() => {
 const allLowItems       = computed(() => Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []);
 const outItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) <= 0));
 const lowItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) > 0));
-const topStocked        = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts : []);
-const topStockedSorted  = computed(() => {
-  const arr = [...topStocked.value];
-  if (stockToggle.value === "value") arr.sort((a, b) => Number(b.total_value || 0) - Number(a.total_value || 0));
-  else arr.sort((a, b) => Number(b.total_qty || 0) - Number(a.total_qty || 0));
-  return arr.slice(0, 10);
-});
+const topStocked     = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts : []);
+const topByQty       = computed(() => [...topStocked.value].sort((a, b) => Number(b.total_qty || 0) - Number(a.total_qty || 0)).slice(0, 10));
+const topByValue     = computed(() => [...topStocked.value].sort((a, b) => Number(b.total_value || 0) - Number(a.total_value || 0)).slice(0, 10));
+const topStockedSorted = computed(() => stockToggle.value === "value" ? topByValue.value : topByQty.value);
 
 const rows = computed(() =>
   (Array.isArray(props.stock?.stockByBranch) ? props.stock.stockByBranch : []).map(r => {
@@ -570,10 +611,11 @@ const seriesStockBySubCat = computed(() => [{
   name: "Unidades en stock",
   data: stockBySubCategory.value.map(r => num(r.totalQty)),
 }]);
+const subCatColors = ["#f59e0b","#fbbf24","#fcd34d","#f97316","#fb923c","#d97706","#b45309","#84cc16","#a3e635","#10b981","#34d399","#06b6d4","#38bdf8","#818cf8","#a78bfa","#f472b6","#fb7185","#6366f1","#8b5cf6","#ec4899"];
 const optStockBySubCat = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#f59e0b"],
+  colors: subCatColors,
   plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "62%", distributed: true, dataLabels: { position: "top" } } },
   dataLabels: {
     enabled: true, offsetX: 5,
@@ -581,10 +623,7 @@ const optStockBySubCat = computed(() => ({
     style: { fontSize: "11px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
   },
   xaxis: {
-    categories: stockBySubCategory.value.map(r => {
-      const label = r.subcategory?.length > 22 ? r.subcategory.slice(0, 20) + "…" : r.subcategory;
-      return label;
-    }),
+    categories: stockBySubCategory.value.map(r => r.subcategory?.length > 22 ? r.subcategory.slice(0, 20) + "…" : r.subcategory),
     labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder,
   },
   yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 170 } },
@@ -593,7 +632,6 @@ const optStockBySubCat = computed(() => ({
     const r = stockBySubCategory.value[dataPointIndex];
     return `${Math.round(num(v))} unidades · ${r?.category || ""} · ${money(r?.priceValue)}`;
   }}},
-  colors: ["#f59e0b","#fbbf24","#fcd34d","#fde68a","#f97316","#fb923c","#fdba74","#fef3c7","#d97706","#b45309","#92400e","#78350f","#ef4444","#f87171","#fca5a5","#fee2e2","#84cc16","#a3e635","#bef264","#d9f99d"],
 }));
 </script>
 
@@ -827,6 +865,38 @@ const optStockBySubCat = computed(() => ({
 .margin-label { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.55); }
 .margin-value { font-size: 13px; font-weight: 800; }
 .gap-2 { gap: 8px; }
+
+/* ─── Ranking feed ───────────────────────────────────────────────────────── */
+.rank-feed { display: flex; flex-direction: column; }
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity)*0.5));
+  transition: background .15s;
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row:hover { background: rgba(var(--v-theme-on-surface), .04); }
+.rank-num {
+  flex: 0 0 26px;
+  font-size: 13px;
+  font-weight: 900;
+  opacity: .35;
+  text-align: center;
+}
+.rank-num--top { opacity: 1; color: #f59e0b; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.rank-bar-wrap { height: 4px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .07); overflow: hidden; }
+.rank-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+.rank-bar-fill--qty   { background: #775DD0; }
+.rank-bar-fill--value { background: #00E396; }
+.rank-meta { flex: 0 0 110px; text-align: right; }
+.rank-primary   { font-size: 13px; font-weight: 900; }
+.rank-secondary { font-size: 11px; opacity: .5; font-weight: 600; margin-top: 1px; }
+.op30 { opacity: 0.3; }
 
 /* ─── Toggle ─────────────────────────────────────────────────────────────── */
 .dv-toggle {
