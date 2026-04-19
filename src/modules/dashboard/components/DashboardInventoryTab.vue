@@ -65,17 +65,17 @@
               <ApexChart height="280" type="donut" :options="optStatusDonut" :series="seriesStatusDonut" />
               <div class="inv-stats px-4 pb-4">
                 <div class="inv-stat-row">
-                  <span class="stat-dot" style="background:#00E396"></span>
+                  <span class="stat-dot" style="background:#10B981"></span>
                   <span class="stat-label">Activos</span>
                   <span class="stat-value text-success">{{ activeProducts }}</span>
                 </div>
                 <div class="inv-stat-row">
-                  <span class="stat-dot" style="background:#775DD0"></span>
+                  <span class="stat-dot" style="background:#8B5CF6"></span>
                   <span class="stat-label">Inactivos</span>
                   <span class="stat-value">{{ inactiveProducts }}</span>
                 </div>
                 <div class="inv-stat-row">
-                  <span class="stat-dot" style="background:#FEB019"></span>
+                  <span class="stat-dot" style="background:#F59E0B"></span>
                   <span class="stat-label">Sin precio</span>
                   <span class="stat-value text-warning">{{ noPriceProducts }}</span>
                 </div>
@@ -108,7 +108,7 @@
       </v-col>
     </v-row>
 
-    <!-- Row 3: Data Quality Gauge + No-Price Detail -->
+    <!-- Row 3: Data Quality Stats + No-Price Detail -->
     <v-row dense class="mt-2">
       <v-col cols="12" lg="5">
         <v-card class="inv-card" elevation="0">
@@ -123,14 +123,33 @@
             <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!totalProducts" class="empty-state">Sin productos.</div>
             <div v-else>
-              <ApexChart height="200" type="radialBar" :options="optQualityRadial" :series="seriesQualityRadial" />
+              <div class="quality-stats">
+                <div class="qstat">
+                  <div class="qstat-header">
+                    <span class="qstat-label">Activos</span>
+                    <span class="qstat-val" :class="activePct >= 80 ? 'text-success' : 'text-warning'">{{ activePct }}%</span>
+                  </div>
+                  <div class="qstat-track">
+                    <div class="qstat-fill" :style="{ width: activePct + '%', background: activePct >= 80 ? '#10B981' : '#F59E0B' }"></div>
+                  </div>
+                </div>
+                <div class="qstat">
+                  <div class="qstat-header">
+                    <span class="qstat-label">Con precio</span>
+                    <span class="qstat-val" :class="(100 - noPricePct) >= 80 ? 'text-success' : 'text-warning'">{{ 100 - noPricePct }}%</span>
+                  </div>
+                  <div class="qstat-track">
+                    <div class="qstat-fill" :style="{ width: (100 - noPricePct) + '%', background: (100 - noPricePct) >= 80 ? '#10B981' : '#F59E0B' }"></div>
+                  </div>
+                </div>
+              </div>
               <div class="quality-grid px-4 pb-4">
                 <div class="quality-item">
                   <div class="quality-pct" :class="activePct >= 80 ? 'text-success' : 'text-warning'">{{ activePct }}%</div>
                   <div class="quality-label">Activos</div>
                 </div>
                 <div class="quality-item">
-                  <div class="quality-pct" :class="(100-noPricePct) >= 80 ? 'text-success' : 'text-warning'">{{ 100 - noPricePct }}%</div>
+                  <div class="quality-pct" :class="(100 - noPricePct) >= 80 ? 'text-success' : 'text-warning'">{{ 100 - noPricePct }}%</div>
                   <div class="quality-label">Con precio</div>
                 </div>
                 <div class="quality-item">
@@ -349,6 +368,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { useTheme } from "vuetify";
 import ApexChart from "vue3-apexcharts";
 import KpiCard from "./KpiCard.vue";
 
@@ -360,6 +380,13 @@ const props = defineProps({
 });
 
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
+
+// ─── Theme-aware colors ────────────────────────────────────────────────────────
+const theme = useTheme();
+const isDark = computed(() => theme.current.value.dark);
+const fg     = computed(() => isDark.value ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.65)");
+const fgDim  = computed(() => isDark.value ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.40)");
+const gridC  = computed(() => isDark.value ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)");
 
 // ─── Base data ─────────────────────────────────────────────────────────────────
 const lastProducts = computed(() => Array.isArray(props.inv?.lastProducts) ? props.inv.lastProducts : []);
@@ -386,28 +413,27 @@ function isNoPrice(p) {
   return lp <= 0 && sp <= 0;
 }
 
-// ─── Apex common ──────────────────────────────────────────────────────────────
-const apexCommon = {
-  chart: { toolbar: { show: false }, zoom: { enabled: false }, fontFamily: "inherit", foreColor: "rgba(var(--v-theme-on-surface), 0.75)" },
-  grid: { borderColor: "rgba(var(--v-theme-on-surface), 0.08)", padding: { left: 10, right: 14, top: 6, bottom: 0 } },
+// ─── Apex common (computed so it reacts to theme changes) ─────────────────────
+const apexCommon = computed(() => ({
+  chart: { toolbar: { show: false }, zoom: { enabled: false }, fontFamily: "inherit", foreColor: fg.value },
+  grid: { borderColor: gridC.value, padding: { left: 8, right: 16, top: 4, bottom: 0 } },
   dataLabels: { enabled: false },
-};
-const axisStyle = { colors: "rgba(var(--v-theme-on-surface), 0.60)" };
-const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.12)" };
+  tooltip: { theme: isDark.value ? "dark" : "light" },
+}));
 
 // ─── Status Donut ─────────────────────────────────────────────────────────────
 const seriesStatusDonut = computed(() => [activeProducts.value, inactiveProducts.value, noPriceProducts.value]);
 const optStatusDonut = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "donut" },
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "donut" },
   labels: ["Activos", "Inactivos", "Sin precio"],
-  colors: ["#00E396", "#775DD0", "#FEB019"],
-  stroke: { width: 0 },
+  colors: ["#10B981", "#8B5CF6", "#F59E0B"],
+  stroke: { width: 2, colors: [isDark.value ? "#1e1e2e" : "#ffffff"] },
   plotOptions: {
-    pie: { donut: { size: "68%", labels: { show: true, total: { show: true, label: "Total", formatter: () => `${totalProducts.value}` } } } },
+    pie: { donut: { size: "68%", labels: { show: true, total: { show: true, label: "Total", color: fg.value, formatter: () => `${totalProducts.value}` } } } },
   },
   legend: { show: false },
-  tooltip: { theme: "dark", y: { formatter: (v) => `${v} productos · ${totalProducts.value ? Math.round((v/totalProducts.value)*100) : 0}%` } },
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: (v) => `${v} productos · ${totalProducts.value ? Math.round((v / totalProducts.value) * 100) : 0}%` } },
 }));
 
 // ─── Category Bar ─────────────────────────────────────────────────────────────
@@ -417,56 +443,46 @@ const seriesCategoryBar = computed(() => [
   { name: "Activos", data: productsByCategory.value.map((c) => c.active_count) },
 ]);
 const optCategoryBar = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#008FFB", "#00E396"],
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "bar" },
+  colors: ["#3B82F6", "#10B981"],
   fill: { opacity: [0.85, 1] },
   stroke: { show: false },
-  plotOptions: { bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: "end", barHeight: "60%", grouped: true } },
-  dataLabels: { enabled: true, offsetX: 4, style: { fontSize: "10px", colors: ["rgba(var(--v-theme-on-surface), 0.70)"] } },
-  xaxis: { categories: catLabels.value, labels: { style: axisStyle, formatter: (v) => `${Math.round(Number(v||0))}` }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 160 } },
-  legend: { show: true, position: "top", horizontalAlign: "right", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  tooltip: { theme: "dark", y: { formatter: (v, ctx) => {
+  plotOptions: { bar: { horizontal: true, borderRadius: 3, borderRadiusApplication: "end", barHeight: "55%", stacked: false } },
+  dataLabels: { enabled: false },
+  xaxis: {
+    categories: catLabels.value,
+    labels: { style: { colors: fg.value }, formatter: (v) => `${Math.round(Number(v || 0))}` },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
+  },
+  yaxis: { labels: { maxWidth: 140, style: { fontSize: "11px", colors: fg.value } } },
+  legend: { show: true, position: "top", horizontalAlign: "right", labels: { colors: fg.value } },
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: (v, ctx) => {
     const c = productsByCategory.value[ctx.dataPointIndex];
     return `${v} productos ${ctx.seriesIndex === 0 ? `(${c?.no_price_count || 0} sin precio)` : "activos"}`;
-  }}},
-}));
-
-// ─── Quality Radial ───────────────────────────────────────────────────────────
-const seriesQualityRadial = computed(() => [activePct.value, 100 - noPricePct.value]);
-const optQualityRadial = computed(() => ({
-  chart: { type: "radialBar", toolbar: { show: false }, fontFamily: "inherit" },
-  plotOptions: {
-    radialBar: {
-      offsetY: 0,
-      startAngle: -140,
-      endAngle: 140,
-      hollow: { size: "40%" },
-      track: { background: "rgba(var(--v-theme-on-surface), 0.08)", strokeWidth: "100%", margin: 8 },
-      dataLabels: { name: { show: false }, value: { show: false } },
-    },
-  },
-  colors: ["#00E396", "#008FFB"],
-  labels: ["Activos %", "Con precio %"],
-  legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.75)" } },
-  stroke: { lineCap: "round" },
+  } } },
 }));
 
 // ─── No Price Bar ─────────────────────────────────────────────────────────────
 const noPriceCatLabels = computed(() => noPriceCats.value.map((c) => c.cat_name));
 const seriesNoPriceBar = computed(() => [{ name: "Sin precio", data: noPriceCats.value.map((c) => c.no_price_count) }]);
 const optNoPriceBar = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#FEB019"],
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "bar" },
+  colors: ["#F59E0B"],
   fill: { opacity: 1 },
   stroke: { show: false },
-  plotOptions: { bar: { borderRadius: 5, columnWidth: "55%", dataLabels: { position: "top" } } },
-  dataLabels: { enabled: true, style: { fontSize: "11px", colors: ["rgba(var(--v-theme-on-surface), 0.75)"] }, offsetY: -18, formatter: (v) => `${v}` },
-  xaxis: { categories: noPriceCatLabels.value, labels: { style: axisStyle, rotate: -20, trim: true }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: axisStyle } },
-  tooltip: { theme: "dark", y: { formatter: (v) => `${v} productos sin precio` } },
+  plotOptions: { bar: { borderRadius: 6, columnWidth: "45%", dataLabels: { position: "top" } } },
+  dataLabels: { enabled: true, style: { fontSize: "11px", colors: [fg.value] }, offsetY: -18, formatter: (v) => `${v}` },
+  xaxis: {
+    categories: noPriceCatLabels.value,
+    labels: { style: { colors: fg.value }, rotate: -20, trim: true },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
+  },
+  yaxis: { labels: { style: { colors: fg.value } } },
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: (v) => `${v} productos sin precio` } },
 }));
 
 // ─── Analytics products deep ──────────────────────────────────────────────────
@@ -475,21 +491,23 @@ const ana = computed(() => props.analytics || {});
 // Por marca
 const byBrand = computed(() => Array.isArray(ana.value?.byBrand) ? ana.value.byBrand.slice(0, 12) : []);
 const seriesBrand = computed(() => [
-  { name: "Total", data: byBrand.value.map(r => num(r.count)), color: "#008FFB" },
-  { name: "Activos", data: byBrand.value.map(r => num(r.activeCount)), color: "#00E396" },
+  { name: "Total", data: byBrand.value.map(r => num(r.count)), color: "#3B82F6" },
+  { name: "Activos", data: byBrand.value.map(r => num(r.activeCount)), color: "#10B981" },
 ]);
 const optBrand = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "bar", toolbar: { show: false } },
   plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: "65%", dataLabels: { position: "top" } } },
   dataLabels: { enabled: false },
   xaxis: {
     categories: byBrand.value.map(r => r.brand?.length > 18 ? r.brand.slice(0, 16) + "…" : r.brand),
-    labels: { style: axisStyle },
+    labels: { style: { colors: fg.value } },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 150 } },
-  legend: { show: true, position: "top", labels: { colors: "rgba(var(--v-theme-on-surface), 0.7)" } },
-  tooltip: { theme: "dark", y: [
+  yaxis: { labels: { style: { fontSize: "11px", colors: fg.value }, maxWidth: 150 } },
+  legend: { show: true, position: "top", labels: { colors: fg.value } },
+  tooltip: { theme: isDark.value ? "dark" : "light", y: [
     { formatter: (v, { dataPointIndex }) => {
       const r = byBrand.value[dataPointIndex];
       return `${v} productos · Precio promedio: ${money(r?.avgPrice)}`;
@@ -502,20 +520,22 @@ const optBrand = computed(() => ({
 const topMarginPct = computed(() => Array.isArray(ana.value?.topByMarginPct) ? ana.value.topByMarginPct.slice(0, 10) : []);
 const seriesMarginPct = computed(() => [{ name: "Margen %", data: topMarginPct.value.map(r => Math.round(num(r.marginPct))) }]);
 const optMarginPct = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "bar", toolbar: { show: false } },
   plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "70%", distributed: true } },
-  dataLabels: { enabled: true, formatter: v => `${Math.round(Number(v||0))}%`, style: { ...axisStyle, fontSize: "10px" } },
+  dataLabels: { enabled: true, formatter: v => `${Math.round(Number(v || 0))}%`, style: { colors: [fg.value], fontSize: "10px" } },
   xaxis: {
     categories: topMarginPct.value.map(r => r.name?.length > 18 ? r.name.slice(0, 16) + "…" : r.name),
-    labels: { style: axisStyle, formatter: v => `${v}%` },
+    labels: { style: { colors: fg.value }, formatter: v => `${v}%` },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "10px" }, maxWidth: 150 } },
+  yaxis: { labels: { style: { fontSize: "10px", colors: fg.value }, maxWidth: 150 } },
   legend: { show: false },
-  colors: ["#00E396","#26A69A","#43A047","#66BB6A","#A5D6A7","#FEB019","#FF7043","#AB47BC","#5C6BC0","#008FFB"],
-  tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
+  colors: ["#00E396", "#26A69A", "#43A047", "#66BB6A", "#A5D6A7", "#FEB019", "#FF7043", "#AB47BC", "#5C6BC0", "#008FFB"],
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: (v, { dataPointIndex }) => {
     const r = topMarginPct.value[dataPointIndex];
-    return `${Math.round(Number(v||0))}% · Costo: ${money(r?.cost)} · Precio: ${money(r?.price)}`;
+    return `${Math.round(Number(v || 0))}% · Costo: ${money(r?.cost)} · Precio: ${money(r?.price)}`;
   } } },
 }));
 
@@ -523,30 +543,40 @@ const optMarginPct = computed(() => ({
 const priceRanges = computed(() => Array.isArray(ana.value?.priceRanges) ? ana.value.priceRanges : []);
 const seriesPriceRanges = computed(() => [{ name: "Productos", data: priceRanges.value.map(r => num(r.count)) }]);
 const optPriceRanges = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "bar", toolbar: { show: false } },
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "bar", toolbar: { show: false } },
   plotOptions: { bar: { borderRadius: 5, columnWidth: "65%", distributed: true } },
-  dataLabels: { enabled: true, style: { ...axisStyle, fontSize: "10px" }, offsetY: -18 },
-  xaxis: { categories: priceRanges.value.map(r => r.range), labels: { style: { ...axisStyle, fontSize: "9px" }, rotate: -30 }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: axisStyle } },
+  dataLabels: { enabled: true, style: { colors: [fg.value], fontSize: "10px" }, offsetY: -18 },
+  xaxis: {
+    categories: priceRanges.value.map(r => r.range),
+    labels: { style: { colors: fg.value, fontSize: "9px" }, rotate: -30 },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
+  },
+  yaxis: { labels: { style: { colors: fg.value } } },
   legend: { show: false },
-  colors: ["#7C3AED","#6D28D9","#5B21B6","#4C1D95","#2196F3","#0288D1","#00838F","#00897B","#2E7D32"],
-  tooltip: { theme: "dark", y: { formatter: v => `${v} productos` } },
+  colors: ["#7C3AED", "#6D28D9", "#5B21B6", "#4C1D95", "#2196F3", "#0288D1", "#00838F", "#00897B", "#2E7D32"],
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: v => `${v} productos` } },
 }));
 
 // Crecimiento catálogo
 const catalogGrowth = computed(() => Array.isArray(ana.value?.catalogGrowth) ? ana.value.catalogGrowth : []);
 const seriesCatalogGrowth = computed(() => [{ name: "Nuevos productos", data: catalogGrowth.value.map(r => num(r.count)) }]);
 const optCatalogGrowth = computed(() => ({
-  ...apexCommon,
-  chart: { ...apexCommon.chart, type: "area", toolbar: { show: false } },
-  fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.05, stops: [0, 95] } },
-  colors: ["#008FFB"],
+  ...apexCommon.value,
+  chart: { ...apexCommon.value.chart, type: "area", toolbar: { show: false } },
+  fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.03, stops: [0, 100] } },
+  colors: ["#3B82F6"],
   dataLabels: { enabled: false },
   stroke: { curve: "smooth", width: 2 },
-  xaxis: { categories: catalogGrowth.value.map(r => r.ym?.slice(5) || ""), labels: { style: axisStyle }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: axisStyle } },
-  tooltip: { theme: "dark", y: { formatter: v => `${v} productos agregados` } },
+  xaxis: {
+    categories: catalogGrowth.value.map(r => r.ym?.slice(5) || ""),
+    labels: { style: { colors: fg.value } },
+    axisBorder: { color: gridC.value },
+    axisTicks: { color: gridC.value },
+  },
+  yaxis: { labels: { style: { colors: fg.value } } },
+  tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: v => `${v} productos agregados` } },
 }));
 
 // Nunca vendidos
@@ -575,14 +605,14 @@ function money(val) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 12px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  padding: 16px 20px 14px;
+  background: transparent;
 }
 
 .inv-title {
-  font-weight: 900;
+  font-weight: 800;
+  font-size: 14px;
   letter-spacing: -0.01em;
-  font-size: 13.5px;
   color: rgb(var(--v-theme-on-surface));
 }
 .inv-sub {
@@ -612,6 +642,14 @@ function money(val) {
 .stat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .stat-label { flex: 1; font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.65); }
 .stat-value { font-size: 13px; font-weight: 900; }
+
+/* Quality stats (progress bars) */
+.quality-stats { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.qstat-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.qstat-label { font-size: 12px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.60); }
+.qstat-val { font-size: 13px; font-weight: 800; }
+.qstat-track { height: 8px; background: rgba(var(--v-theme-on-surface), 0.08); border-radius: 99px; overflow: hidden; }
+.qstat-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
 
 /* Quality grid */
 .quality-grid { display: flex; gap: 8px; justify-content: space-around; }
