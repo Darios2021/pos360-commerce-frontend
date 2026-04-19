@@ -109,19 +109,20 @@
                 </span>
               </v-avatar>
 
-              <div class="text-h6 font-weight-bold">
+              <div class="text-h6 font-weight-bold mt-1">
                 {{ userFullName || "Usuario" }}
               </div>
-              <div class="text-caption text-medium-emphasis">
-                {{ userRoleLabel }}
+              <div class="d-flex align-center justify-center ga-1 mt-1 account-meta-row">
+                <span class="account-role-badge">{{ userRoleLabel }}</span>
+                <template v-if="userBranchLabel">
+                  <span class="account-meta-dot">·</span>
+                  <span class="account-branch-label">
+                    <v-icon size="11" class="mr-1" style="opacity:0.6">mdi-store-outline</v-icon>{{ userBranchLabel }}
+                  </span>
+                </template>
               </div>
-              <div class="text-caption text-medium-emphasis mt-1">
+              <div class="text-caption text-medium-emphasis mt-1" style="opacity:0.7">
                 {{ userEmailOrUsername }}
-              </div>
-              <div v-if="userBranchLabel" class="mt-2">
-                <v-chip size="x-small" color="primary" variant="tonal" prepend-icon="mdi-store-outline">
-                  {{ userBranchLabel }}
-                </v-chip>
               </div>
             </div>
 
@@ -777,11 +778,27 @@ const userInitials = computed(() => {
 });
 
 const userBranchLabel = computed(() => {
+  const roles = Array.isArray(auth.roles) ? auth.roles : [];
+  const isSuperAdmin = roles.includes("super_admin") || roles.includes("superadmin");
+
+  // Super admin tiene acceso a todas — no mostramos sucursal
+  if (isSuperAdmin) return null;
+
   const { u, su } = pickUser();
-  const bid = u.branch_id ?? u.branchId ?? su.branch_id ?? su.branchId;
+  const bid = Number(u.branch_id ?? u.branchId ?? su.branch_id ?? su.branchId ?? 0) || null;
   if (!bid) return null;
-  const bname = u.branch_name ?? u.branchName ?? su.branch_name ?? su.branchName;
-  return bname || `Sucursal #${bid}`;
+
+  // Buscar nombre en el array branches del auth store (viene del login)
+  const storeBranches = auth.branches || [];
+  const found = storeBranches.find((b) => Number(b.id) === bid);
+  if (found?.name) return found.name;
+
+  // Fallback: buscar en el objeto user directo
+  const rawBranches = [].concat(u.branches || su.branches || []);
+  const fromRaw = rawBranches.find((b) => Number(b?.id ?? b?.branch_id) === bid);
+  if (fromRaw?.name) return fromRaw.name;
+
+  return `Sucursal #${bid}`;
 });
 
 const userRoleLabel = computed(() => {
@@ -1239,6 +1256,33 @@ function onLogout() {
 
 .pos-account-card {
   overflow: hidden;
+}
+
+.account-meta-row {
+  flex-wrap: wrap;
+}
+
+.account-role-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-primary));
+  opacity: 0.85;
+}
+
+.account-meta-dot {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.3);
+  line-height: 1;
+}
+
+.account-branch-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  display: inline-flex;
+  align-items: center;
 }
 
 /* =========================
