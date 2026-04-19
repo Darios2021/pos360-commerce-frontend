@@ -10,7 +10,7 @@
     <!-- ✅ Preview -->
     <div class="plp-stage">
       <div class="plp-paper" :class="paperClass">
-        <div class="plp-scale">
+        <div class="plp-viewport">
           <component
             :is="labelComp"
             ref="printEl"
@@ -47,6 +47,11 @@ const printElRef = computed(() => printEl.value);
 const is58 = computed(() => String(props.size) === "58");
 const labelComp = computed(() => (is58.value ? ProductLabel58 : ProductLabel100));
 const paperClass = computed(() => (is58.value ? "is-58" : "is-100"));
+
+// Natural label width at 96dpi: 100mm≈378px, 58mm≈219px
+// The paper is set to this width in CSS so the label renders at 1:1 with no overflow
+const viewportStyle = computed(() => ({}));
+const labelNaturalStyle = computed(() => ({}));
 </script>
 
 <style scoped>
@@ -82,50 +87,32 @@ const paperClass = computed(() => (is58.value ? "is-58" : "is-100"));
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
-/* “Papel” de etiqueta */
+/* “Papel” de etiqueta: ancho fijo = tamaño natural del label en pantalla (96dpi) */
 .plp-paper{
-  width: 100%;
-  aspect-ratio: 100 / 60;
+  width: 378px;      /* 100mm at 96dpi */
+  height: 227px;     /* 60mm at 96dpi */
+  max-width: 100%;
   background: #fff;
   border-radius: 16px;
   border: 1px solid rgba(0,0,0,.10);
   box-shadow: 0 10px 22px rgba(0,0,0,.08);
   overflow: hidden;
-
-  display:flex;
-  align-items:center;
-  justify-content:center;
-
-  padding: 10px;
-  max-height: 320px;
+  margin: 0 auto;
 }
 
 .plp-paper.is-58{
-  aspect-ratio: 58 / 40;
+  width: 219px;      /* 58mm at 96dpi */
+  height: 151px;     /* 40mm at 96dpi */
 }
 
-@media (max-width: 900px){
-  .plp-paper{
-    padding: 8px;
-    max-height: 260px;
-  }
-}
-
-.plp-scale{
+.plp-viewport{
   width: 100%;
   height: 100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
 }
 
-/* el componente debe ocupar el “papel” */
 .plp-label{
   width: 100%;
   height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  transform-origin: center center;
 }
 
 /* =========================================================

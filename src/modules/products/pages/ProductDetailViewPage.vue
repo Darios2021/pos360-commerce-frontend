@@ -139,6 +139,10 @@
             {{ branchesStock.length }}
           </v-chip>
         </v-tab>
+        <v-tab value="barcode">
+          <v-icon start size="15">mdi-barcode</v-icon>
+          Cód. barras
+        </v-tab>
         <v-tab value="label">
           <v-icon start size="15">mdi-qrcode</v-icon>
           Etiqueta
@@ -273,6 +277,19 @@
                 {{ r.stock_qty > 0 ? r.stock_qty + ' uds' : 'Sin stock' }}
               </div>
             </div>
+          </div>
+        </v-tabs-window-item>
+
+        <!-- ── CÓDIGO DE BARRAS ── -->
+        <v-tabs-window-item value="barcode" class="pv-tab">
+          <div v-if="productForUIFixed.barcode" class="pv-bc-wrap">
+            <div class="pv-bc-label">Código de barras</div>
+            <div class="pv-bc-val">{{ productForUIFixed.barcode }}</div>
+            <div class="pv-bc-sub">{{ productForUIFixed.sku || productForUIFixed.code || '' }}</div>
+          </div>
+          <div v-else class="pv-empty">
+            <v-icon size="32" color="medium-emphasis">mdi-barcode-off</v-icon>
+            <span>Sin código de barras cargado</span>
           </div>
         </v-tabs-window-item>
 
@@ -442,7 +459,11 @@ const ui = computed(() =>
 
 const productForUI = computed(() => ui.value?.product || {});
 
-const allImages = computed(() => (Array.isArray(ui.value?.images) ? ui.value.images : []));
+// buildProductUI returns [{url, title}] objects — extract URL strings for <img :src>
+const allImages = computed(() => {
+  const imgs = ui.value?.images || [];
+  return imgs.map(img => (typeof img === 'string' ? img : img?.url || '')).filter(Boolean);
+});
 
 const printTitle = computed(() => {
   const nm = productForUI.value?.name || "Producto";
@@ -867,8 +888,29 @@ watch(branchId, fetchProduct);
 .pv-size-lbl { font-size: 12px; font-weight: 700; opacity: 0.55; white-space: nowrap; }
 .pv-label-actions { margin-top: 12px; }
 
+/* ── BARCODE tab ── */
+.pv-bc-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; }
+.pv-bc-label { font-size: 11px; font-weight: 700; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.06em; }
+.pv-bc-val {
+  font-family: monospace; font-size: 28px; font-weight: 900;
+  letter-spacing: 4px; padding: 16px 24px;
+  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+.pv-bc-sub { font-size: 12px; opacity: 0.45; font-family: monospace; }
+
 /* ── HIDDEN print area ── */
-.pv-hidden { position: fixed; left: -99999px; top: 0; visibility: hidden; pointer-events: none; }
+.pv-hidden {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
 .pv-a4 { width: 210mm; min-height: 297mm; background: #fff; }
 
 /* ── RESPONSIVE ── */
