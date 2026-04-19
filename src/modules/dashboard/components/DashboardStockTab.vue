@@ -247,16 +247,22 @@
       <div class="stk-head">
         <div>
           <div class="stk-title">Top 10 productos con más stock</div>
-          <div class="stk-sub">Por cantidad disponible</div>
+          <div class="stk-sub">{{ stockToggle === 'qty' ? 'Por unidades disponibles' : 'Por valor en stock (precio × qty)' }}</div>
         </div>
-        <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
+        <div class="d-flex align-center gap-2">
+          <div class="dv-toggle">
+            <button class="dv-toggle-btn" :class="{ active: stockToggle === 'qty' }"   @click="stockToggle = 'qty'">Unidades</button>
+            <button class="dv-toggle-btn" :class="{ active: stockToggle === 'value' }" @click="stockToggle = 'value'">$ Valor</button>
+          </div>
+          <v-chip size="small" variant="tonal" class="chip-soft">{{ topStocked.length }} productos</v-chip>
+        </div>
       </div>
       <v-divider />
       <div class="stk-body">
         <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
         <div v-else-if="!topStocked.length" class="empty-state">Sin datos de stock.</div>
         <div v-else class="px-2 pb-2">
-          <ApexChart :height="Math.max(200, topStocked.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
+          <ApexChart :height="Math.max(200, topStockedSorted.length * 38)" type="bar" :options="optTopStockedBar" :series="seriesTopStocked" />
         </div>
       </div>
     </v-card>
@@ -386,8 +392,9 @@ const props = defineProps({
 const emit = defineEmits(["branch-change"]);
 
 const router = useRouter();
-const showAllOut = ref(false);
-const showAllLow = ref(false);
+const showAllOut  = ref(false);
+const showAllLow  = ref(false);
+const stockToggle = ref("qty");
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
@@ -419,7 +426,13 @@ const currentBranchLabel = computed(() => {
 const allLowItems       = computed(() => Array.isArray(props.stock?.lowStockItems) ? props.stock.lowStockItems : []);
 const outItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) <= 0));
 const lowItems          = computed(() => allLowItems.value.filter(i => Number(i.stock ?? 0) > 0));
-const topStocked        = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts.slice(0, 10) : []);
+const topStocked        = computed(() => Array.isArray(props.stock?.topStockedProducts) ? props.stock.topStockedProducts : []);
+const topStockedSorted  = computed(() => {
+  const arr = [...topStocked.value];
+  if (stockToggle.value === "value") arr.sort((a, b) => Number(b.total_value || 0) - Number(a.total_value || 0));
+  else arr.sort((a, b) => Number(b.total_qty || 0) - Number(a.total_qty || 0));
+  return arr.slice(0, 10);
+});
 
 const rows = computed(() =>
   (Array.isArray(props.stock?.stockByBranch) ? props.stock.stockByBranch : []).map(r => {
@@ -469,32 +482,33 @@ const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.10)" };
 
 // ─── Top stocked bar ──────────────────────────────────────────────────────────
 const seriesTopStocked = computed(() => [{
-  name: "Unidades",
-  data: topStocked.value.map(r => Number(r.total_qty || 0)),
+  name: stockToggle.value === "value" ? "Valor ($)" : "Unidades",
+  data: topStockedSorted.value.map(r => stockToggle.value === "value" ? Math.round(Number(r.total_value || 0)) : Number(r.total_qty || 0)),
 }]);
 const optTopStockedBar = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#775DD0"],
   plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "62%", distributed: true, dataLabels: { position: "top" } } },
   dataLabels: {
     enabled: true, offsetX: 6,
-    formatter: v => `${Math.round(Number(v || 0))} u.`,
+    formatter: v => stockToggle.value === "value" ? `$ ${shortNumber(v)}` : `${Math.round(Number(v || 0))} u.`,
     style: { fontSize: "11.5px", fontWeight: "700", colors: ["rgba(255,255,255,0.85)"] },
   },
   xaxis: {
-    categories: topStocked.value.map(r => {
+    categories: topStockedSorted.value.map(r => {
       const n = r.product_name || `#${r.product_id}`;
       return n.length > 26 ? n.slice(0, 24) + "…" : n;
     }),
-    labels: { style: axisStyle },
+    labels: { style: axisStyle, formatter: v => stockToggle.value === "value" ? shortNumber(v) : `${Math.round(Number(v || 0))}` },
     axisBorder, axisTicks: axisBorder,
   },
   yaxis: { labels: { style: { ...axisStyle, fontSize: "11.5px", fontWeight: "600" }, maxWidth: 200 } },
   legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, ctx) => {
-    const r = topStocked.value[ctx.dataPointIndex];
-    return `${Math.round(Number(v || 0))} unidades · ${money(r?.total_value)}`;
+    const r = topStockedSorted.value[ctx.dataPointIndex];
+    return stockToggle.value === "value"
+      ? `${money(v)} · ${Math.round(Number(r?.total_qty || 0))} u.`
+      : `${Math.round(Number(v || 0))} unidades · ${money(r?.total_value)}`;
   }}},
   colors: ["#775DD0","#8467D7","#9575CD","#A78BFA","#6D28D9","#7C3AED","#5B21B6","#4C1D95","#6366F1","#818CF8"],
 }));
@@ -813,6 +827,31 @@ const optStockBySubCat = computed(() => ({
 .margin-label { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.55); }
 .margin-value { font-size: 13px; font-weight: 800; }
 .gap-2 { gap: 8px; }
+
+/* ─── Toggle ─────────────────────────────────────────────────────────────── */
+.dv-toggle {
+  display: flex;
+  background: rgba(var(--v-theme-on-surface), .06);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.dv-toggle-btn {
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), .55);
+  transition: all .15s;
+  border: none;
+  background: transparent;
+}
+.dv-toggle-btn.active {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
 .op40  { opacity: 0.4; }
 .mr-px { margin-right: 1px; }
 </style>
