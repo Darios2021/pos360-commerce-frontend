@@ -456,7 +456,7 @@ function shortNumber(v) {
 
 function goToProduct(id) {
   if (!id) return;
-  router.push({ name: "productEdit", params: { id } });
+  router.push({ name: "productView", params: { id } });
 }
 
 // ─── Branch filter ─────────────────────────────────────────────────────────────
