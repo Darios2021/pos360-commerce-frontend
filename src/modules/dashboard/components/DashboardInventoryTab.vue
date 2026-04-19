@@ -90,18 +90,32 @@
           <div class="inv-head">
             <div class="minw-0">
               <div class="inv-title">Productos por categoría</div>
-              <div class="inv-sub">Top {{ productsByCategory.length }} categorías · Total vs Activos</div>
+              <div class="inv-sub">Activos vs total · ordenado por cantidad</div>
             </div>
             <v-chip size="small" variant="tonal" class="chip-soft">
               {{ productsByCategory.length }} categorías
             </v-chip>
           </div>
           <v-divider />
-          <div class="inv-body">
+          <div class="inv-body pa-0">
             <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!productsByCategory.length" class="empty-state">Sin datos de categorías.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="280" type="bar" :options="optCategoryBar" :series="seriesCategoryBar" />
+            <div v-else class="cat-feed">
+              <div v-for="(c, i) in productsByCategory" :key="c.cat_name" class="cat-row">
+                <div class="cat-rank" :class="i < 3 ? 'cat-rank--top' : ''">{{ i + 1 }}</div>
+                <div class="cat-info">
+                  <div class="cat-name">{{ c.cat_name }}</div>
+                  <div class="cat-bar-wrap">
+                    <div class="cat-bar-fill cat-bar-fill--total" :style="{ width: productsByCategory[0]?.product_count ? (c.product_count / productsByCategory[0].product_count * 100) + '%' : '0%' }" />
+                    <div class="cat-bar-fill cat-bar-fill--active" :style="{ width: productsByCategory[0]?.product_count ? (c.active_count / productsByCategory[0].product_count * 100) + '%' : '0%' }" />
+                  </div>
+                </div>
+                <div class="cat-meta">
+                  <span class="cat-active">{{ c.active_count }}</span>
+                  <span class="cat-sep">/</span>
+                  <span class="cat-total">{{ c.product_count }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </v-card>
@@ -177,11 +191,19 @@
           <div class="inv-body">
             <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!noPriceCats.length" class="empty-state">
-              <v-icon color="success" class="mb-2">mdi-check-circle</v-icon>
-              <div>Todos los productos tienen precio asignado.</div>
+              <v-icon color="success" size="28" class="mb-2">mdi-check-circle-outline</v-icon>
+              <div>Todos los productos tienen precio.</div>
             </div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="220" type="bar" :options="optNoPriceBar" :series="seriesNoPriceBar" />
+            <div v-else class="noprice-feed">
+              <div v-for="c in noPriceCats" :key="c.cat_name" class="noprice-row">
+                <div class="noprice-bar-wrap">
+                  <div class="noprice-bar-fill" :style="{ width: noPriceCats[0]?.no_price_count ? (c.no_price_count / noPriceCats[0].no_price_count * 100) + '%' : '0%' }" />
+                </div>
+                <div class="noprice-name">{{ c.cat_name }}</div>
+                <v-chip size="x-small" color="warning" variant="flat" class="noprice-chip flex-shrink-0">
+                  {{ c.no_price_count }} sin precio
+                </v-chip>
+              </div>
             </div>
           </div>
         </v-card>
@@ -666,6 +688,83 @@ function money(val) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 .product-item:last-child { border-bottom: none; }
+/* ─── Category ranked feed ──────────────────────────────── */
+.cat-feed { display: flex; flex-direction: column; }
+.cat-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  transition: background 0.12s;
+}
+.cat-row:last-child { border-bottom: none; }
+.cat-row:hover { background: rgba(var(--v-theme-on-surface), 0.03); }
+.cat-rank {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.30);
+  text-align: center;
+}
+.cat-rank--top { color: rgb(var(--v-theme-primary)); }
+.cat-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+.cat-bar-wrap {
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  position: relative;
+  overflow: hidden;
+}
+.cat-bar-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.cat-bar-fill--total  { background: rgba(59,130,246,0.35); width: 100%; }
+.cat-bar-fill--active { background: #10B981; }
+.cat-meta {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.cat-active { font-size: 12px; font-weight: 800; color: #10B981; }
+.cat-sep    { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.25); margin: 0 1px; }
+.cat-total  { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.45); }
+
+/* ─── No-price feed ─────────────────────────────────────── */
+.noprice-feed { display: flex; flex-direction: column; padding: 8px 0; }
+.noprice-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+}
+.noprice-row:last-child { border-bottom: none; }
+.noprice-bar-wrap {
+  display: none;
+}
+.noprice-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.80);
+  grid-column: 1;
+}
+.noprice-chip { font-weight: 700; }
+
 .product-item--clickable {
   cursor: pointer;
   transition: background 0.12s;
