@@ -532,9 +532,9 @@ function monthLabel(ym) {
 function methodLabel(m) {
   const x = String(m || "").toUpperCase();
   if (x === "CASH")     return "Efectivo";
-  if (x === "CARD")     return "Tarjeta";
+  if (x === "CARD")     return "Tarjeta / Débito";
   if (x === "TRANSFER") return "Transferencia";
-  if (x === "QR")       return "QR / Billetera";
+  if (x === "QR")       return "Mercado Pago";
   if (x === "OTHER")    return "Otro";
   return x || "—";
 }
@@ -928,7 +928,7 @@ const paymentTrendMonths  = computed(() => [...new Set(paymentTrendRows.value.ma
 const paymentTrendMethods = computed(() => [...new Set(paymentTrendRows.value.map(r => r.method))]);
 const seriesPaymentTrend  = computed(() =>
   paymentTrendMethods.value.map(m => ({
-    name: m === "CASH" ? "Efectivo" : m === "CARD" ? "Tarjeta" : m === "TRANSFER" ? "Transferencia" : m === "QR" ? "QR" : "Otro",
+    name: m === "CASH" ? "Efectivo" : m === "CARD" ? "Tarjeta / Débito" : m === "TRANSFER" ? "Transferencia" : m === "QR" ? "Mercado Pago" : "Otro",
     data: paymentTrendMonths.value.map(ym => {
       const r = paymentTrendRows.value.find(x => x.ym === ym && x.method === m);
       return num(r?.total);
