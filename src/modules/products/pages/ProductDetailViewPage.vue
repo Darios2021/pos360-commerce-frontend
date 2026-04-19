@@ -79,47 +79,72 @@
 
       <!-- KPI STRIP -->
       <div class="pv-kpis">
+
+        <!-- Precio contado -->
         <div class="pv-kpi">
           <div class="pv-kpi-badge pv-kpi-badge--green">
             <v-icon size="15" color="white">mdi-cash</v-icon>
           </div>
           <div class="pv-kpi-body">
             <div class="pv-kpi-val">${{ fmtPrice(productForUIFixed.price_discount) }}</div>
-            <div class="pv-kpi-lbl">Contado</div>
+            <div class="pv-kpi-lbl">Contado / MP</div>
           </div>
         </div>
         <div class="pv-kpi-sep" />
+
+        <!-- Precio lista -->
         <div class="pv-kpi">
           <div class="pv-kpi-badge pv-kpi-badge--purple">
             <v-icon size="15" color="white">mdi-credit-card-outline</v-icon>
           </div>
           <div class="pv-kpi-body">
             <div class="pv-kpi-val">${{ fmtPrice(productForUIFixed.price_list) }}</div>
-            <div class="pv-kpi-lbl">Lista</div>
+            <div class="pv-kpi-lbl">Lista / Crédito</div>
           </div>
         </div>
         <div class="pv-kpi-sep" />
+
+        <!-- Stock total -->
         <div class="pv-kpi">
           <div class="pv-kpi-badge" :class="totalStockAllBranches > 0 ? 'pv-kpi-badge--teal' : 'pv-kpi-badge--grey'">
             <v-icon size="15" color="white">mdi-package-variant-closed</v-icon>
           </div>
           <div class="pv-kpi-body">
             <div class="pv-kpi-val" :class="totalStockAllBranches > 0 ? 'clr-ok' : 'clr-zero'">
-              {{ totalStockAllBranches }}
+              {{ totalStockAllBranches }} uds
             </div>
-            <div class="pv-kpi-lbl">Stock</div>
+            <div class="pv-kpi-lbl">Stock total</div>
           </div>
         </div>
         <div class="pv-kpi-sep" />
-        <div class="pv-kpi">
+
+        <!-- Sucursales con stock — lista compacta -->
+        <div class="pv-kpi pv-kpi--branches">
           <div class="pv-kpi-badge pv-kpi-badge--indigo">
             <v-icon size="15" color="white">mdi-store-outline</v-icon>
           </div>
-          <div class="pv-kpi-body">
-            <div class="pv-kpi-val">{{ branchesStock.length }}</div>
+          <div class="pv-kpi-body pv-kpi-body--branches" v-if="!mx.loading && branchesStock.length">
+            <div
+              v-for="b in branchesStock"
+              :key="b.branch_id"
+              class="pv-branch-row"
+            >
+              <span class="pv-branch-name">{{ b.branch_name }}</span>
+              <span class="pv-branch-qty" :class="b.stock_qty > 0 ? 'clr-ok' : 'clr-zero'">
+                {{ b.stock_qty > 0 ? b.stock_qty + ' uds' : 'sin stock' }}
+              </span>
+            </div>
+          </div>
+          <div class="pv-kpi-body" v-else-if="mx.loading">
+            <div class="pv-kpi-val" style="opacity:0.4">…</div>
+            <div class="pv-kpi-lbl">Cargando</div>
+          </div>
+          <div class="pv-kpi-body" v-else>
+            <div class="pv-kpi-val clr-zero">—</div>
             <div class="pv-kpi-lbl">Sucursales</div>
           </div>
         </div>
+
       </div>
 
       <!-- TABS -->
@@ -736,6 +761,13 @@ watch(branchId, fetchProduct);
 .pv-kpi-body { min-width: 0; }
 .pv-kpi-val { font-size: 15px; font-weight: 900; line-height: 1.1; }
 .pv-kpi-lbl { font-size: 10px; opacity: 0.5; margin-top: 1px; }
+
+/* Branch list inside KPI */
+.pv-kpi--branches { flex: 2; align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
+.pv-kpi-body--branches { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.pv-branch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pv-branch-name { font-size: 12px; font-weight: 700; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-branch-qty { font-size: 11px; font-weight: 800; flex-shrink: 0; }
 
 .clr-ok   { color: rgb(var(--v-theme-success)); }
 .clr-zero { opacity: 0.4; }
