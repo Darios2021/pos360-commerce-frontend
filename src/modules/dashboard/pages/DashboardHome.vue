@@ -218,9 +218,10 @@ const emptyUi = () => ({
 const ui = ref(emptyUi());
 
 // ─── Branch / scope ───────────────────────────────────────────────────────────
-const effectiveBranchId = computed(() =>
-  isAdmin.value ? (branchSelected.value ? Number(branchSelected.value) : null) : userBranchId.value
-);
+const effectiveBranchId = computed(() => {
+  if (branchSelected.value) return Number(branchSelected.value);
+  return userBranchId.value || null;
+});
 
 const branchOptions = computed(() => {
   const opts = [];

@@ -23,18 +23,36 @@
       <div class="dv-bar-spacer" />
 
       <!-- Branch selector (visible si hay sucursales disponibles) -->
-      <div v-if="branches.length > 0" class="dv-branch-wrap">
-        <v-icon size="15" class="dv-branch-icon">mdi-store-outline</v-icon>
-        <select
-          class="dv-branch-select"
-          :value="selectedBranch ?? ''"
-          @change="onBranchChange"
-        >
-          <option value="">Todas las sucursales</option>
-          <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
-        </select>
-        <v-icon size="13" class="dv-branch-chevron">mdi-chevron-down</v-icon>
-      </div>
+      <v-menu v-if="branches.length > 0" location="bottom end" :close-on-content-click="true">
+        <template #activator="{ props: menuProps }">
+          <div class="dv-branch-wrap" v-bind="menuProps">
+            <v-icon size="15" class="dv-branch-icon">mdi-store-outline</v-icon>
+            <span class="dv-branch-label">{{ currentBranchLabel }}</span>
+            <v-icon size="13" class="dv-branch-chevron">mdi-chevron-down</v-icon>
+          </div>
+        </template>
+        <v-list density="compact" rounded="lg" class="dv-branch-list" min-width="200">
+          <v-list-item
+            :value="null"
+            :active="!selectedBranch"
+            active-color="primary"
+            @click="onBranchChange({ target: { value: '' } })"
+          >
+            <v-list-item-title>Todas las sucursales</v-list-item-title>
+          </v-list-item>
+          <v-divider class="my-1" />
+          <v-list-item
+            v-for="b in branches"
+            :key="b.id"
+            :value="b.id"
+            :active="selectedBranch === b.id"
+            active-color="primary"
+            @click="onBranchChange({ target: { value: b.id } })"
+          >
+            <v-list-item-title>{{ b.name }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
 
       <!-- Fallback scope label cuando no hay sucursales cargadas -->
       <div v-else-if="scopeLabelChip" class="dv-scope">
@@ -489,8 +507,14 @@ watch(() => props.period, (v) => { if (v && v !== periodLocal.value) periodLocal
 function emitPeriod(v) { periodLocal.value = v; emit("period-change", v); }
 function onBranchChange(e) {
   const val = e.target.value;
-  emit("branch-change", val === "" ? null : Number(val));
+  emit("branch-change", val === "" || val === null ? null : Number(val));
 }
+
+const currentBranchLabel = computed(() => {
+  if (!props.selectedBranch) return "Todas las sucursales";
+  const found = props.branches.find(b => b.id === props.selectedBranch);
+  return found?.name || `Sucursal #${props.selectedBranch}`;
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
@@ -1086,25 +1110,16 @@ const optAvgDow    = computed(() => ({
   transition: border-color 0.15s;
 }
 .dv-branch-wrap:hover { border-color: rgba(var(--v-theme-on-surface), 0.25); }
-.dv-branch-icon   { color: rgba(var(--v-theme-on-surface), 0.50); flex-shrink: 0; }
-.dv-branch-chevron { color: rgba(var(--v-theme-on-surface), 0.40); flex-shrink: 0; pointer-events: none; }
-.dv-branch-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: none;
-  outline: none;
+.dv-branch-icon    { color: rgba(var(--v-theme-on-surface), 0.50); flex-shrink: 0; }
+.dv-branch-chevron { color: rgba(var(--v-theme-on-surface), 0.40); flex-shrink: 0; }
+.dv-branch-label {
   font-size: 12px;
   font-weight: 700;
   color: rgba(var(--v-theme-on-surface), 0.80);
-  cursor: pointer;
-  padding-right: 2px;
-  min-width: 130px;
-  max-width: 200px;
-}
-.dv-branch-select option {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── KPI row ─────────────────────────────────────────────────────────────── */
