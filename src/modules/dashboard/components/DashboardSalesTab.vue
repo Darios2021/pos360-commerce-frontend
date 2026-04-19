@@ -699,11 +699,35 @@ const timelineTickAmount = computed(() => {
 });
 
 // ─── Payment Method Donut ─────────────────────────────────────────────────
-const pmColors = { CASH: "#10b981", CARD: "#3b82f6", TRANSFER: "#8b5cf6", QR: "#06b6d4", OTHER: "#f59e0b" };
-const paymentPeriodSeries = computed(() => salesByPaymentPeriod.value.map(p => Number(p.total || 0)));
-const paymentPeriodLabels = computed(() => salesByPaymentPeriod.value.map(p => p.label || methodLabel(p.method)));
-const paymentPeriodColors = computed(() => salesByPaymentPeriod.value.map(p => pmColors[p.method] || "#94a3b8"));
-const paymentPeriodTotal  = computed(() => salesByPaymentPeriod.value.reduce((a,p) => a + Number(p.total||0), 0));
+const pmColors = { CASH: "#10b981", CARD: "#3b82f6", TRANSFER: "#8b5cf6", QR: "#06b6d4", CREDIT_SJT: "#a855f7", CREDIT: "#6366f1", OTHER: "#f59e0b" };
+function pmColor(method) {
+  const x = String(method || "").toUpperCase();
+  if (["QR","MERCADOPAGO","MERCADO_PAGO","MP"].includes(x)) return pmColors.QR;
+  if (["CASH","EFECTIVO"].includes(x))                      return pmColors.CASH;
+  if (["CARD","TARJETA","DEBIT","DEBITO"].includes(x))      return pmColors.CARD;
+  if (["TRANSFER","TRANSFERENCIA"].includes(x))             return pmColors.TRANSFER;
+  if (["CREDIT_SJT","CREDITO_SJT","CREDITSANJUAN"].includes(x)) return pmColors.CREDIT_SJT;
+  if (["CREDIT","CREDITO","CREDIT_1","CUOTAS"].includes(x)) return pmColors.CREDIT;
+  return pmColors[x] || "#94a3b8";
+}
+
+// Fusiona entradas con el mismo label normalizado (ej: QR + MERCADOPAGO → un solo grupo)
+const paymentPeriodMerged = computed(() => {
+  const map = new Map();
+  for (const p of salesByPaymentPeriod.value) {
+    const label = methodLabel(p.method);
+    const prev  = map.get(label) || { label, method: p.method, total: 0, count: 0 };
+    prev.total += Number(p.total || 0);
+    prev.count += Number(p.count || 0);
+    map.set(label, prev);
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+});
+
+const paymentPeriodSeries = computed(() => paymentPeriodMerged.value.map(p => p.total));
+const paymentPeriodLabels = computed(() => paymentPeriodMerged.value.map(p => p.label));
+const paymentPeriodColors = computed(() => paymentPeriodMerged.value.map(p => pmColor(p.method)));
+const paymentPeriodTotal  = computed(() => paymentPeriodMerged.value.reduce((a,p) => a + p.total, 0));
 
 // ─── Hourly ───────────────────────────────────────────────────────────────
 const hourlyHasData = computed(() => salesByHour.value.some(h => h.total > 0));
