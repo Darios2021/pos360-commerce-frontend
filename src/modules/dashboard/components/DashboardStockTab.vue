@@ -73,7 +73,7 @@
         <div class="stk-kpi__body">
           <div class="stk-kpi__num stk-kpi__num--sm">{{ money(stock.totalInventoryPriceValue) }}</div>
           <div class="stk-kpi__lbl">Valor inventario</div>
-          <div class="stk-kpi__sub">Precio venta × Qty</div>
+          <div class="stk-kpi__sub">{{ selectedBranchLabel }}</div>
         </div>
       </div>
     </div>
