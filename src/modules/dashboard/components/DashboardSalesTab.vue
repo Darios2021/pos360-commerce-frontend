@@ -302,25 +302,6 @@
       </v-col>
     </v-row>
 
-    <!-- ── Row 6: Mapa de actividad (full) ───────────────────────────────────── -->
-    <v-card class="dv-card" elevation="0">
-      <div class="dv-head">
-        <div class="dv-head-left">
-          <div class="dv-title">Mapa de actividad (hora × día)</div>
-          <div class="dv-sub">Intensidad de ventas por franja horaria · {{ periodLabel }}</div>
-        </div>
-        <v-chip v-if="loadingAnalytics" size="small" variant="tonal" class="chip-soft">Cargando…</v-chip>
-      </div>
-      <v-divider class="dv-divider" />
-      <div class="dv-body">
-        <div v-if="loadingAnalytics" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-        <div v-else-if="!heatmapHasData" class="dv-empty">Sin datos de actividad horaria.</div>
-        <div v-else class="px-2 pb-2">
-          <ApexChart height="240" type="heatmap" :options="optHeatmap" :series="heatmapData" />
-        </div>
-      </div>
-    </v-card>
-
     <!-- ── Row 7: Branch donut (4) + Últimas ventas (8) ──────────────────────── -->
     <v-row dense>
       <v-col cols="12" lg="4">
@@ -390,47 +371,6 @@
       </v-col>
     </v-row>
 
-    <!-- ── Row 8: Tendencia pagos (7) + Tipos comprobante (5) ────────────────── -->
-    <v-row dense>
-      <v-col cols="12" lg="7">
-        <v-card class="dv-card" elevation="0">
-          <div class="dv-head">
-            <div class="dv-head-left">
-              <div class="dv-title">Tendencia de medios de pago</div>
-              <div class="dv-sub">Evolución mensual · últimos 12 meses</div>
-            </div>
-          </div>
-          <v-divider class="dv-divider" />
-          <div class="dv-body">
-            <div v-if="loadingAnalytics" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-            <div v-else-if="!seriesPaymentTrend.length" class="dv-empty">Sin datos de tendencia.</div>
-            <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optPaymentTrend" :series="seriesPaymentTrend" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" lg="5">
-        <v-card class="dv-card" elevation="0">
-          <div class="dv-head">
-            <div class="dv-head-left">
-              <div class="dv-title">Tipos de comprobante</div>
-              <div class="dv-sub">{{ invoiceTypeTotal }} ventas · {{ periodLabel }}</div>
-            </div>
-          </div>
-          <v-divider class="dv-divider" />
-          <div class="dv-body">
-            <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-            <div v-else-if="!invoiceTypeSeries.length" class="dv-empty">Sin datos.</div>
-            <div v-else>
-              <ApexChart height="260" type="donut" :options="optInvoiceType" :series="invoiceTypeSeries" />
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- ── Row 9: Top clientes (6) + Ticket por día semana (6) ───────────────── -->
     <v-row dense>
       <v-col cols="12" lg="6">
@@ -472,52 +412,6 @@
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- ── Row 10: Descuentos & Devoluciones ─────────────────────────────────── -->
-    <v-card class="dv-card" elevation="0">
-      <div class="dv-head">
-        <div class="dv-head-left">
-          <div class="dv-title">Descuentos · Devoluciones · Cancelados</div>
-          <div class="dv-sub">Análisis del período seleccionado</div>
-        </div>
-      </div>
-      <v-divider class="dv-divider" />
-      <div class="dv-body px-4 py-3">
-        <div v-if="loadingAnalytics" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
-        <div v-else class="dv-ana-grid">
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Ventas con descuento</div>
-            <div class="dv-ana-val text-warning">{{ num(discounts.salesWithDiscount) }}</div>
-            <div class="dv-ana-sub">{{ money(discounts.totalDiscounted) }} descontados</div>
-          </div>
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Descuento promedio</div>
-            <div class="dv-ana-val text-warning">{{ money(discounts.avgDiscount) }}</div>
-            <div class="dv-ana-sub">Máx: {{ money(discounts.maxDiscount) }}</div>
-          </div>
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Devoluciones</div>
-            <div class="dv-ana-val text-error">{{ num(refunds.count) }}</div>
-            <div class="dv-ana-sub">{{ money(refunds.total) }} devueltos</div>
-          </div>
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Canceladas</div>
-            <div class="dv-ana-val text-error">{{ num(cancelled.count) }}</div>
-            <div class="dv-ana-sub">{{ money(cancelled.total) }}</div>
-          </div>
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Ítems por venta</div>
-            <div class="dv-ana-val text-primary">{{ Number(itemsStats.avgItemsPerSale || 0).toFixed(1) }}</div>
-            <div class="dv-ana-sub">Promedio de líneas</div>
-          </div>
-          <div class="dv-ana-item">
-            <div class="dv-ana-label">Impuestos</div>
-            <div class="dv-ana-val text-info">{{ money(discounts.totalTax) }}</div>
-            <div class="dv-ana-sub">Total período</div>
-          </div>
-        </div>
-      </div>
-    </v-card>
 
   </div>
 </template>
