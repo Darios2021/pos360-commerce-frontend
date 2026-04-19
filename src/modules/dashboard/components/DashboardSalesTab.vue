@@ -111,6 +111,53 @@
       </div>
     </div>
 
+    <!-- ── Row 1b: Sucursal líder + Cajero líder ────────────────────────────── -->
+    <v-row dense>
+      <v-col cols="12" md="6">
+        <v-card class="dv-card" elevation="0">
+          <div class="dv-head">
+            <div class="dv-head-left">
+              <div class="dv-title">Ranking de sucursales</div>
+              <div class="dv-sub">Por total vendido · {{ periodLabel }}</div>
+            </div>
+            <v-chip v-if="branchTop.length" size="small" variant="tonal" class="chip-soft">
+              {{ money(branchTotalSum) }} total
+            </v-chip>
+          </div>
+          <v-divider class="dv-divider" />
+          <div class="dv-body">
+            <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
+            <div v-else-if="!branchTop.length" class="dv-empty">Sin datos por sucursal.</div>
+            <div v-else class="px-2 pb-2">
+              <ApexChart height="220" type="bar" :options="optBranchBar" :series="seriesBranchBar" />
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="6">
+        <v-card class="dv-card" elevation="0">
+          <div class="dv-head">
+            <div class="dv-head-left">
+              <div class="dv-title">Ranking de cajeros</div>
+              <div class="dv-sub">Por total vendido · {{ periodLabel }}</div>
+            </div>
+            <v-chip v-if="topCashiers10.length" size="small" variant="tonal" class="chip-soft">
+              {{ topCashiers10.length }} vendedores
+            </v-chip>
+          </div>
+          <v-divider class="dv-divider" />
+          <div class="dv-body">
+            <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="28" /></div>
+            <div v-else-if="!topCashiers10.length" class="dv-empty">Sin datos de vendedores.</div>
+            <div v-else class="px-2 pb-2">
+              <ApexChart height="220" type="bar" :options="optCashierRanking" :series="seriesCashierRanking" />
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- ── Row 2: Timeline (full width) ──────────────────────────────────────── -->
     <v-card class="dv-card" elevation="0">
       <div class="dv-head">
@@ -889,6 +936,94 @@ const optBranchDonut = computed(() => ({
   },
   legend: { show: true, position: "bottom", labels: { colors: "rgba(var(--v-theme-on-surface), 0.70)" } },
   tooltip: { theme: "dark", y: { formatter: (v) => `${money(v)} · ${branchTotalSum.value ? Math.round((v/branchTotalSum.value)*100) : 0}%` } },
+}));
+
+// ─── Branch ranking bar ───────────────────────────────────────────────────
+const seriesBranchBar = computed(() => [{
+  name: "Total ($)",
+  data: branchTop.value.map(b => Math.round(Number(b.total || 0))),
+}]);
+
+const optBranchBar = computed(() => ({
+  ...apexCommon,
+  chart: { ...apexCommon.chart, type: "bar" },
+  colors: ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316"],
+  fill: { type: "solid", opacity: 1 },
+  stroke: { show: false },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 6,
+      borderRadiusApplication: "end",
+      barHeight: "58%",
+      distributed: true,
+      dataLabels: { position: "bottom" },
+    },
+  },
+  dataLabels: {
+    enabled: true,
+    offsetX: 8,
+    style: { fontSize: "11px", fontWeight: 700, colors: ["rgba(var(--v-theme-on-surface), 0.75)"] },
+    formatter: (v) => shortNumber(v),
+  },
+  xaxis: {
+    categories: branchTop.value.map(b => b.branch_name || `Sucursal #${b.branch_id}`),
+    labels: { style: axisStyle, formatter: shortNumber },
+    axisBorder, axisTicks: axisBorder,
+  },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: 700 }, maxWidth: 160 } },
+  legend: { show: false },
+  tooltip: {
+    theme: "dark",
+    y: { formatter: (v, { dataPointIndex }) => {
+      const b = branchTop.value[dataPointIndex];
+      return `${money(v)} · ${b?.count || 0} ventas`;
+    }},
+  },
+}));
+
+// ─── Cashier ranking bar ─────────────────────────────────────────────────
+const seriesCashierRanking = computed(() => [{
+  name: "Total ($)",
+  data: topCashiers10.value.map(x => Math.round(Number(x?.total || 0))),
+}]);
+
+const optCashierRanking = computed(() => ({
+  ...apexCommon,
+  chart: { ...apexCommon.chart, type: "bar" },
+  colors: ["#10b981","#06b6d4","#3b82f6","#8b5cf6","#f59e0b","#ef4444","#f97316","#ec4899","#14b8a6","#6366f1"],
+  fill: { type: "solid", opacity: 1 },
+  stroke: { show: false },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 6,
+      borderRadiusApplication: "end",
+      barHeight: "58%",
+      distributed: true,
+      dataLabels: { position: "bottom" },
+    },
+  },
+  dataLabels: {
+    enabled: true,
+    offsetX: 8,
+    style: { fontSize: "11px", fontWeight: 700, colors: ["rgba(var(--v-theme-on-surface), 0.75)"] },
+    formatter: (v) => shortNumber(v),
+  },
+  xaxis: {
+    categories: cashierCats.value,
+    labels: { style: axisStyle, formatter: shortNumber },
+    axisBorder, axisTicks: axisBorder,
+  },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: 700 }, maxWidth: 150 } },
+  legend: { show: false },
+  tooltip: {
+    theme: "dark",
+    y: { formatter: (v, { dataPointIndex }) => {
+      const c = topCashiers10.value[dataPointIndex];
+      return `${money(v)} · ${c?.count || 0} ventas`;
+    }},
+  },
 }));
 
 // ─── Table headers ───────────────────────────────────────────────────────
