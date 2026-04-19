@@ -206,7 +206,12 @@
             <div v-if="loading" class="py-8 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else>
               <div class="products-grid">
-                <div v-for="p in lastProducts" :key="p.id" class="product-item">
+                <div
+                  v-for="p in lastProducts"
+                  :key="p.id"
+                  class="product-item product-item--clickable"
+                  @click="goToProduct(p.id)"
+                >
                   <div class="product-icon">
                     <v-icon size="20">mdi-package-variant</v-icon>
                   </div>
@@ -220,13 +225,12 @@
                     </div>
                   </div>
                   <div class="product-chips">
-                    <v-chip v-if="isNoPrice(p)" size="x-small" color="warning" variant="tonal">
-                      Sin precio
-                    </v-chip>
+                    <v-chip v-if="isNoPrice(p)" size="x-small" color="warning" variant="tonal">Sin precio</v-chip>
                     <v-chip size="x-small" :color="String(p.is_active ?? 1) === '1' ? 'success' : 'default'" variant="tonal">
                       {{ String(p.is_active ?? 1) === "1" ? "Activo" : "Inactivo" }}
                     </v-chip>
                   </div>
+                  <v-icon size="14" class="op30 flex-shrink-0">mdi-chevron-right</v-icon>
                 </div>
               </div>
               <div v-if="!lastProducts.length" class="empty-state">Sin productos.</div>
@@ -264,33 +268,23 @@
         <v-card class="inv-card" elevation="0">
           <div class="inv-head">
             <div class="minw-0">
-              <div class="inv-title">Indicadores del catálogo</div>
-              <div class="inv-sub">Nunca vendidos, promos, novedades</div>
+              <div class="inv-title">Flags del catálogo</div>
+              <div class="inv-sub">Productos marcados con atributos especiales</div>
             </div>
           </div>
           <v-divider />
           <div class="inv-body">
             <div v-if="loadingAnalytics" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
-            <div v-else class="flags-grid">
-              <div class="flag-item">
-                <div class="flag-label">Nunca vendidos</div>
-                <div class="flag-value text-error">{{ neverSold }}</div>
-                <div class="flag-sub">activos sin venta</div>
-              </div>
-              <div class="flag-item">
-                <div class="flag-label">En promoción</div>
+            <div v-else class="flags-grid flags-grid--2col">
+              <div class="flag-item flag-item--promo">
+                <v-icon size="20" color="warning" class="mb-2">mdi-tag-outline</v-icon>
                 <div class="flag-value text-warning">{{ num(flags.promoCount) }}</div>
-                <div class="flag-sub">is_promo = true</div>
+                <div class="flag-label">En promoción</div>
               </div>
-              <div class="flag-item">
-                <div class="flag-label">Nuevos</div>
+              <div class="flag-item flag-item--new">
+                <v-icon size="20" color="success" class="mb-2">mdi-star-outline</v-icon>
                 <div class="flag-value text-success">{{ num(flags.newCount) }}</div>
-                <div class="flag-sub">is_new = true</div>
-              </div>
-              <div class="flag-item">
-                <div class="flag-label">Sin control stock</div>
-                <div class="flag-value text-info">{{ num(flags.noTrackStock) }}</div>
-                <div class="flag-sub">track_stock = false</div>
+                <div class="flag-label">Novedades</div>
               </div>
             </div>
           </div>
@@ -368,6 +362,7 @@
 
 <script setup>
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 import { useTheme } from "vuetify";
 import ApexChart from "vue3-apexcharts";
 import KpiCard from "./KpiCard.vue";
@@ -378,6 +373,9 @@ const props = defineProps({
   inv: { type: Object, default: () => ({}) },
   analytics: { type: Object, default: null },
 });
+
+const router = useRouter();
+function goToProduct(id) { if (id) router.push({ name: "productView", params: { id } }); }
 
 function num(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
 
@@ -668,6 +666,15 @@ function money(val) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 .product-item:last-child { border-bottom: none; }
+.product-item--clickable {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.product-item--clickable:hover {
+  background: rgba(var(--v-theme-primary), 0.05);
+  border-radius: 8px;
+}
+.op30 { opacity: 0.30; }
 .product-icon {
   width: 36px;
   height: 36px;
@@ -689,30 +696,30 @@ function money(val) {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.flags-grid--2col {
+  grid-template-columns: 1fr 1fr;
+  padding: 8px;
+}
 .flag-item {
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 16px 12px;
+  border-radius: 12px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 .flag-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(var(--v-theme-on-surface), 0.50);
-  margin-bottom: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  margin-top: 4px;
 }
 .flag-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 950;
   letter-spacing: -0.03em;
   line-height: 1;
-}
-.flag-sub {
-  font-size: 10.5px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  font-weight: 600;
-  margin-top: 3px;
 }
 </style>
