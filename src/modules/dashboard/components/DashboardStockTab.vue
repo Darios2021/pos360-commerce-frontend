@@ -1,35 +1,6 @@
 <template>
   <div class="dstk">
 
-    <!-- ─── Filter bar ──────────────────────────────────────────────────────── -->
-    <div class="stk-bar">
-      <v-menu v-if="branches.length" :close-on-content-click="true" offset-y>
-        <template #activator="{ props: mp }">
-          <button class="stk-pill stk-pill--branch" v-bind="mp">
-            <v-icon size="14" class="mr-1">mdi-store-outline</v-icon>
-            {{ currentBranchLabel }}
-            <v-icon size="13" class="ml-1">mdi-chevron-down</v-icon>
-          </button>
-        </template>
-        <v-list density="compact" rounded="lg" min-width="200" class="pa-1" bg-color="surface">
-          <v-list-item rounded="lg" class="mb-1" @click="$emit('branch-change', null)">
-            <v-list-item-title class="font-weight-bold text-body-2">Todas las sucursales</v-list-item-title>
-          </v-list-item>
-          <v-list-item v-for="b in branches" :key="b.id" rounded="lg" @click="$emit('branch-change', b.id)">
-            <v-list-item-title class="text-body-2">{{ b.name }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <v-chip v-if="loading" size="small" variant="tonal" class="chip-soft">
-        <v-progress-circular indeterminate size="10" class="mr-1" />
-        Cargando…
-      </v-chip>
-      <v-chip v-else-if="!branches.length" size="small" variant="tonal" class="chip-soft">
-        <v-icon size="12" class="mr-1">mdi-map-marker-outline</v-icon>
-        {{ currentBranchLabel }}
-      </v-chip>
-    </div>
 
     <!-- ─── KPI strip ──────────────────────────────────────────────────────── -->
     <div class="stk-kpi-strip">

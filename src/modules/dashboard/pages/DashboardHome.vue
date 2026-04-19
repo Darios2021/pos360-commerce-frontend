@@ -4,19 +4,47 @@
       {{ error }}
     </v-alert>
 
-    <!-- Tab bar -->
-    <div class="dash-tabs">
-      <button
-        v-for="item in tabItems"
-        :key="item.value"
-        class="dash-tab"
-        :class="{ 'dash-tab--active': tab === item.value }"
-        @click="setTab(item.value)"
-      >
-        <v-icon size="16" class="dash-tab__icon">{{ item.icon }}</v-icon>
-        <span class="dash-tab__label">{{ item.label }}</span>
-        <span v-if="item.badge" class="dash-tab__badge">{{ item.badge }}</span>
-      </button>
+    <!-- Tab bar + branch selector -->
+    <div class="dash-tabs-row">
+      <div class="dash-tabs">
+        <button
+          v-for="item in tabItems"
+          :key="item.value"
+          class="dash-tab"
+          :class="{ 'dash-tab--active': tab === item.value }"
+          @click="setTab(item.value)"
+        >
+          <v-icon size="16" class="dash-tab__icon">{{ item.icon }}</v-icon>
+          <span class="dash-tab__label">{{ item.label }}</span>
+          <span v-if="item.badge" class="dash-tab__badge">{{ item.badge }}</span>
+        </button>
+      </div>
+
+      <!-- Branch selector — siempre visible en la misma posición -->
+      <v-menu v-if="branches.length > 0" location="bottom end" :close-on-content-click="true">
+        <template #activator="{ props: menuProps }">
+          <div class="dh-branch-wrap" v-bind="menuProps">
+            <v-icon size="15" class="dh-branch-icon">mdi-store-outline</v-icon>
+            <span class="dh-branch-label">{{ scopeLabel }}</span>
+            <v-icon size="13" class="dh-branch-chevron">mdi-chevron-down</v-icon>
+          </div>
+        </template>
+        <v-list density="compact" rounded="lg" min-width="210" class="pa-1">
+          <v-list-item :active="!effectiveBranchId" active-color="primary" @click="onBranchChange(null)">
+            <v-list-item-title class="font-weight-bold">Todas las sucursales</v-list-item-title>
+          </v-list-item>
+          <v-divider class="my-1" />
+          <v-list-item
+            v-for="b in branches"
+            :key="b.id"
+            :active="effectiveBranchId === b.id"
+            active-color="primary"
+            @click="onBranchChange(b.id)"
+          >
+            <v-list-item-title>{{ b.name }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
     </div>
 
     <Transition name="tab-fade" mode="out-in">
@@ -354,12 +382,18 @@ watch(effectiveBranchId, () => refreshAll());
   padding-bottom: 32px;
 }
 
-/* ─── Tab bar ───────────────────────────────────────────── */
+/* ─── Tab bar row ───────────────────────────────────────── */
+.dash-tabs-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
 .dash-tabs {
   display: flex;
   gap: 0;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  width: 100%;
+  flex: 1;
 }
 
 .dash-tab {
@@ -407,6 +441,35 @@ watch(effectiveBranchId, () => refreshAll());
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+/* ─── Branch selector (shared) ─────────────────────────── */
+.dh-branch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.20);
+  background: rgba(var(--v-theme-primary), 0.06);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+  margin-bottom: 1px;
+}
+.dh-branch-wrap:hover {
+  border-color: rgba(var(--v-theme-primary), 0.40);
+  background: rgba(var(--v-theme-primary), 0.10);
+}
+.dh-branch-icon    { color: rgb(var(--v-theme-primary)); opacity: 0.70; flex-shrink: 0; }
+.dh-branch-chevron { color: rgb(var(--v-theme-primary)); opacity: 0.55; flex-shrink: 0; }
+.dh-branch-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Transition ────────────────────────────────────────── */

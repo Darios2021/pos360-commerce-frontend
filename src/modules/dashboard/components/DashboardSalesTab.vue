@@ -14,44 +14,6 @@
         >{{ p.title }}</button>
       </div>
 
-      <div class="dv-bar-spacer" />
-
-      <!-- Branch selector (visible si hay sucursales disponibles) -->
-      <v-menu v-if="branches.length > 0" location="bottom end" :close-on-content-click="true">
-        <template #activator="{ props: menuProps }">
-          <div class="dv-branch-wrap" v-bind="menuProps">
-            <v-icon size="15" class="dv-branch-icon">mdi-store-outline</v-icon>
-            <span class="dv-branch-label">{{ currentBranchLabel }}</span>
-            <v-icon size="13" class="dv-branch-chevron">mdi-chevron-down</v-icon>
-          </div>
-        </template>
-        <v-list density="compact" rounded="lg" class="dv-branch-list" min-width="200">
-          <v-list-item
-            :value="null"
-            :active="!selectedBranch"
-            active-color="primary"
-            @click="onBranchChange({ target: { value: '' } })"
-          >
-            <v-list-item-title>Todas las sucursales</v-list-item-title>
-          </v-list-item>
-          <v-divider class="my-1" />
-          <v-list-item
-            v-for="b in branches"
-            :key="b.id"
-            :value="b.id"
-            :active="selectedBranch === b.id"
-            active-color="primary"
-            @click="onBranchChange({ target: { value: b.id } })"
-          >
-            <v-list-item-title>{{ b.name }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <!-- Fallback scope label cuando no hay sucursales cargadas -->
-      <div v-else-if="scopeLabelChip" class="dv-scope">
-        <v-icon size="13" class="mr-1">mdi-store-outline</v-icon>{{ props.scopeLabel }}
-      </div>
     </div>
 
     <!-- ── Row 1: Hero KPIs (todas reaccionan al período) ───────────────────── -->
