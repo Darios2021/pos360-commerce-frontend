@@ -20,23 +20,26 @@
           />
         </template>
 
-        <div class="d-flex align-center ga-3 brand-wrap">
-          <v-avatar
-            color="secondary"
-            variant="flat"
-            size="40"
-            class="brand-avatar"
-          >
-            <span class="font-weight-bold">360</span>
-          </v-avatar>
-
-          <div class="d-flex flex-column brand-copy">
-            <div class="font-weight-bold">POS360</div>
-            <div class="text-caption brand-subtitle">
-              Inventario · Ecommerce · POS
-            </div>
-          </div>
+        <!-- Marca compacta -->
+        <div class="brand-mark" title="POS360">
+          <span class="brand-mark__text">360</span>
         </div>
+
+        <!-- Separador vertical -->
+        <div class="header-divider" />
+
+        <!-- Breadcrumbs de la ruta actual -->
+        <nav class="header-crumbs" aria-label="breadcrumb">
+          <template v-for="(crumb, i) in breadcrumbs" :key="i">
+            <span v-if="i > 0" class="header-crumb__sep">›</span>
+            <component
+              :is="crumb.to ? 'router-link' : 'span'"
+              :to="crumb.to || undefined"
+              class="header-crumb__label"
+              :class="{ 'header-crumb__label--last': i === breadcrumbs.length - 1 }"
+            >{{ crumb.label }}</component>
+          </template>
+        </nav>
 
         <v-spacer />
 
@@ -115,6 +118,11 @@
               <div class="text-caption text-medium-emphasis mt-1">
                 {{ userEmailOrUsername }}
               </div>
+              <div v-if="userBranchLabel" class="mt-2">
+                <v-chip size="x-small" color="primary" variant="tonal" prepend-icon="mdi-store-outline">
+                  {{ userBranchLabel }}
+                </v-chip>
+              </div>
             </div>
 
             <div class="px-4 pb-2">
@@ -176,63 +184,57 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
 
-          <!-- Dashboard sub-items (expanded when on dashboard, non-rail) -->
+          <!-- Dashboard sub-items: non-rail (with labels) -->
           <template v-if="isDashboard && !rail">
-            <v-list-item
-              :active="dashTab === 'sales'"
-              class="dash-sub"
-              link
-              @click="navigateDash('sales')"
-            >
-              <template #prepend>
-                <v-icon size="18">mdi-chart-line</v-icon>
-              </template>
+            <v-list-item :active="dashTab === 'sales'" class="dash-sub" link @click="navigateDash('sales')">
+              <template #prepend><v-icon size="18">mdi-chart-line</v-icon></template>
               <v-list-item-title>Ventas</v-list-item-title>
             </v-list-item>
 
-            <v-list-item
-              :active="dashTab === 'stock'"
-              class="dash-sub"
-              link
-              @click="navigateDash('stock')"
-            >
-              <template #prepend>
-                <v-icon size="18">mdi-warehouse</v-icon>
-              </template>
-              <v-list-item-title class="d-flex align-center gap-2">
+            <v-list-item :active="dashTab === 'stock'" class="dash-sub" link @click="navigateDash('stock')">
+              <template #prepend><v-icon size="18">mdi-warehouse</v-icon></template>
+              <v-list-item-title class="d-flex align-center">
                 Stock
-                <v-badge
-                  v-if="dashOutOfStockCount > 0"
-                  :content="String(dashOutOfStockCount)"
-                  color="error"
-                  inline
-                  class="ml-1"
-                />
+                <v-badge v-if="dashOutOfStockCount > 0" :content="String(dashOutOfStockCount)" color="error" inline class="ml-1" />
               </v-list-item-title>
             </v-list-item>
 
-            <v-list-item
-              :active="dashTab === 'inventory'"
-              class="dash-sub"
-              link
-              @click="navigateDash('inventory')"
-            >
-              <template #prepend>
-                <v-icon size="18">mdi-clipboard-list-outline</v-icon>
-              </template>
+            <v-list-item :active="dashTab === 'inventory'" class="dash-sub" link @click="navigateDash('inventory')">
+              <template #prepend><v-icon size="18">mdi-clipboard-list-outline</v-icon></template>
               <v-list-item-title>Inventario</v-list-item-title>
             </v-list-item>
 
-            <v-list-item
-              :active="dashTab === 'cash'"
-              class="dash-sub"
-              link
-              @click="navigateDash('cash')"
-            >
-              <template #prepend>
-                <v-icon size="18">mdi-cash-multiple</v-icon>
-              </template>
+            <v-list-item :active="dashTab === 'cash'" class="dash-sub" link @click="navigateDash('cash')">
+              <template #prepend><v-icon size="18">mdi-cash-multiple</v-icon></template>
               <v-list-item-title>Caja</v-list-item-title>
+            </v-list-item>
+          </template>
+
+          <!-- Dashboard sub-items: rail mode (icon only + tooltip) -->
+          <template v-if="isDashboard && rail">
+            <v-list-item :active="dashTab === 'sales'" class="dash-sub-rail" link @click="navigateDash('sales')">
+              <template #prepend><v-icon size="16">mdi-chart-line</v-icon></template>
+              <v-tooltip activator="parent" location="right">Ventas</v-tooltip>
+            </v-list-item>
+
+            <v-list-item :active="dashTab === 'stock'" class="dash-sub-rail" link @click="navigateDash('stock')">
+              <template #prepend>
+                <v-badge v-if="dashOutOfStockCount > 0" :content="String(dashOutOfStockCount)" color="error" floating offset-x="-2" offset-y="-2">
+                  <v-icon size="16">mdi-warehouse</v-icon>
+                </v-badge>
+                <v-icon v-else size="16">mdi-warehouse</v-icon>
+              </template>
+              <v-tooltip activator="parent" location="right">Stock</v-tooltip>
+            </v-list-item>
+
+            <v-list-item :active="dashTab === 'inventory'" class="dash-sub-rail" link @click="navigateDash('inventory')">
+              <template #prepend><v-icon size="16">mdi-clipboard-list-outline</v-icon></template>
+              <v-tooltip activator="parent" location="right">Inventario</v-tooltip>
+            </v-list-item>
+
+            <v-list-item :active="dashTab === 'cash'" class="dash-sub-rail" link @click="navigateDash('cash')">
+              <template #prepend><v-icon size="16">mdi-cash-multiple</v-icon></template>
+              <v-tooltip activator="parent" location="right">Caja</v-tooltip>
             </v-list-item>
           </template>
 
@@ -574,6 +576,57 @@ function navigateDash(tab) {
   router.push({ name: "home", query: { tab } });
 }
 
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
+const ROUTE_TREE = {
+  home:                     { label: "Dashboard" },
+  pos:                      { label: "Punto de Venta" },
+  posSales:                 { label: "Ventas" },
+  posSaleDetail:            { label: "Detalle", parent: { label: "Ventas", to: { name: "posSales" } } },
+  products:                 { label: "Productos", section: "Gestión" },
+  productNew:               { label: "Nuevo producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
+  productEdit:              { label: "Editar producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
+  productView:              { label: "Ver producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
+  productsImport:           { label: "Importar CSV", section: "Gestión" },
+  stock:                    { label: "Stock", section: "Configuración" },
+  inventory:                { label: "Inventario", section: "Configuración" },
+  categories:               { label: "Categorías", section: "Configuración" },
+  adminFiscal:              { label: "Fiscal", section: "Configuración" },
+  adminPaymentMethods:      { label: "Medios de pago", section: "Configuración" },
+  users:                    { label: "Usuarios", section: "Configuración" },
+  profile:                  { label: "Mi perfil" },
+  shopBranding:             { label: "Branding", section: "Tienda" },
+  shopOrders:               { label: "Pedidos", section: "Tienda" },
+  shopOrdersSettings:       { label: "Config. pedidos", section: "Tienda" },
+  shopShippingSettings:     { label: "Envíos", section: "Tienda" },
+  shopPickupSettings:       { label: "Retiros", section: "Tienda" },
+  shopPaymentsSettings:     { label: "Pagos", section: "Tienda" },
+  shopNotificationsSettings:{ label: "Notificaciones", section: "Tienda" },
+  shopLinks:                { label: "Links", section: "Tienda" },
+  adminGaleriaMultimedia:   { label: "Galería multimedia", section: "Tienda" },
+};
+
+const TAB_LABELS = { sales: "Ventas", stock: "Stock", inventory: "Inventario", cash: "Caja" };
+
+const breadcrumbs = computed(() => {
+  const name = String(route.name || "");
+  const tree = ROUTE_TREE[name];
+  if (!tree) return [];
+
+  const crumbs = [];
+
+  if (tree.section) crumbs.push({ label: tree.section });
+  if (tree.parent) crumbs.push(tree.parent);
+
+  crumbs.push({ label: tree.label });
+
+  if (name === "home") {
+    const tabLabel = TAB_LABELS[route.query?.tab];
+    if (tabLabel) crumbs.push({ label: tabLabel });
+  }
+
+  return crumbs;
+});
+
 /* ===== Dark Mode ===== */
 const isDark = computed(() => themeStore.isDark);
 
@@ -723,6 +776,14 @@ const userInitials = computed(() => {
   return (i1 + i2) || "U";
 });
 
+const userBranchLabel = computed(() => {
+  const { u, su } = pickUser();
+  const bid = u.branch_id ?? u.branchId ?? su.branch_id ?? su.branchId;
+  if (!bid) return null;
+  const bname = u.branch_name ?? u.branchName ?? su.branch_name ?? su.branchName;
+  return bname || `Sucursal #${bid}`;
+});
+
 const userRoleLabel = computed(() => {
   const roles = Array.isArray(auth.roles) ? auth.roles : auth.user?.roles || [];
   if (roles.includes("super_admin")) return "Super Admin";
@@ -774,6 +835,74 @@ function onLogout() {
 /* =========================
    COLOR FIJO NAVBAR + SIDEBAR
 ========================= */
+
+/* =========================
+   Brand mark compacta
+========================= */
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.brand-mark__text {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: #fff;
+  line-height: 1;
+}
+
+/* =========================
+   Header separator + breadcrumbs
+========================= */
+
+.header-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 14px 0 4px;
+  flex-shrink: 0;
+}
+
+.header-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-crumb__sep {
+  color: rgba(255, 255, 255, 0.40);
+  font-size: 13px;
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.header-crumb__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.60);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.header-crumb__label:hover {
+  color: rgba(255, 255, 255, 0.90);
+}
+.header-crumb__label--last {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
 
 .pos-appbar {
   background: #02498b !important;
@@ -837,12 +966,6 @@ function onLogout() {
   margin-inline-start: 2px;
 }
 
-.brand-wrap,
-.brand-copy {
-  min-width: 0;
-}
-
-.brand-subtitle,
 .section-caption,
 .drawer-version {
   opacity: 0.85;
@@ -921,20 +1044,32 @@ function onLogout() {
   color: rgba(255, 255, 255, 0.18) !important;
 }
 
-/* Dashboard sub-items */
+/* Dashboard sub-items (expanded) */
 .pos-drawer :deep(.v-list-item.dash-sub) {
   margin-inline-start: 20px !important;
   min-height: 38px !important;
   opacity: 0.88;
 }
-
 .pos-drawer :deep(.v-list-item.dash-sub .v-list-item__prepend) {
   min-width: 32px !important;
   width: 32px !important;
 }
-
 .pos-drawer :deep(.v-list-item.dash-sub .v-list-item-title) {
   font-size: 13px !important;
+}
+
+/* Dashboard sub-items (rail / collapsed) */
+.pos-drawer :deep(.v-list-item.dash-sub-rail) {
+  min-height: 34px !important;
+  opacity: 0.80;
+  margin-inline: 8px !important;
+}
+.pos-drawer :deep(.v-list-item.dash-sub-rail.v-list-item--active) {
+  opacity: 1;
+}
+.pos-drawer :deep(.v-list-item.dash-sub-rail .v-list-item__prepend) {
+  min-width: 42px !important;
+  width: 42px !important;
 }
 
 /* =========================
@@ -1147,8 +1282,8 @@ function onLogout() {
 ========================= */
 
 @media (max-width: 760px) {
-  .brand-copy {
-    min-width: 0;
+  .header-crumbs {
+    display: none;
   }
 }
 </style>
