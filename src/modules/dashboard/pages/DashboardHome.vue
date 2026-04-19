@@ -1,22 +1,5 @@
 <template>
   <div class="dash">
-    <!-- ── Header ────────────────────────────────────────────── -->
-    <div class="dash-header">
-      <div class="dash-header__left">
-        <div class="dash-header__title">Dashboard</div>
-        <div class="dash-header__scope">
-          <span class="scope-dot" />
-          {{ scopeText }}
-        </div>
-      </div>
-      <div class="dash-header__right">
-        <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-refresh"
-          rounded="lg" :loading="loading || loadingAnalytics" @click="refresh">
-          Actualizar
-        </v-btn>
-      </div>
-    </div>
-
     <v-alert v-if="error" type="error" variant="tonal" rounded="xl" class="mb-0" density="compact">
       {{ error }}
     </v-alert>
