@@ -601,13 +601,15 @@ function monthLabel(ym) {
     .toLocaleDateString("es-AR", { year: "numeric", month: "long" });
 }
 function methodLabel(m) {
-  const x = String(m || "").toUpperCase();
-  if (x === "CASH")     return "Efectivo";
-  if (x === "CARD")     return "Tarjeta / Débito";
-  if (x === "TRANSFER") return "Transferencia";
-  if (x === "QR")       return "Mercado Pago";
-  if (x === "OTHER")    return "Otro";
-  return x || "—";
+  const x = String(m || "").toUpperCase().trim();
+  if (["CASH", "EFECTIVO"].includes(x))                          return "Efectivo";
+  if (["CARD", "TARJETA", "DEBIT", "DEBITO"].includes(x))        return "Tarjeta / Débito";
+  if (["TRANSFER", "TRANSFERENCIA"].includes(x))                 return "Transferencia";
+  if (["QR", "MERCADOPAGO", "MERCADO_PAGO", "MP"].includes(x))   return "Mercado Pago";
+  if (["CREDIT_SJT", "CREDITO_SJT", "CREDITSANJUAN"].includes(x)) return "Crédito San Juan";
+  if (["CREDIT", "CREDITO", "CREDIT_1", "CUOTAS"].includes(x))   return "Crédito";
+  if (x === "OTHER")                                             return "Otro";
+  return m || "—";
 }
 function invoiceColor(t) {
   const x = String(t || "").toUpperCase();
@@ -1090,7 +1092,7 @@ const paymentTrendMonths  = computed(() => [...new Set(paymentTrendRows.value.ma
 const paymentTrendMethods = computed(() => [...new Set(paymentTrendRows.value.map(r => r.method))]);
 const seriesPaymentTrend  = computed(() =>
   paymentTrendMethods.value.map(m => ({
-    name: m === "CASH" ? "Efectivo" : m === "CARD" ? "Tarjeta / Débito" : m === "TRANSFER" ? "Transferencia" : m === "QR" ? "Mercado Pago" : "Otro",
+    name: methodLabel(m),
     data: paymentTrendMonths.value.map(ym => {
       const r = paymentTrendRows.value.find(x => x.ym === ym && x.method === m);
       return num(r?.total);
