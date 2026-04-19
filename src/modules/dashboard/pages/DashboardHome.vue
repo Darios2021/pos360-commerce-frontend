@@ -357,42 +357,38 @@ watch(effectiveBranchId, () => refreshAll());
 /* ─── Tab bar ───────────────────────────────────────────── */
 .dash-tabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  border-radius: 14px;
-  width: fit-content;
+  gap: 0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  width: 100%;
 }
 
 .dash-tab {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 16px;
-  border-radius: 10px;
+  padding: 8px 20px;
   border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.50);
+  color: rgba(var(--v-theme-on-surface), 0.45);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
-  position: relative;
+  letter-spacing: 0.01em;
 }
 .dash-tab:hover {
-  background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgba(var(--v-theme-on-surface), 0.80);
 }
 .dash-tab--active {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+  color: rgb(var(--v-theme-primary));
+  border-bottom-color: rgb(var(--v-theme-primary));
   font-weight: 700;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
 .dash-tab__icon {
-  opacity: 0.70;
+  opacity: 0.60;
 }
 .dash-tab--active .dash-tab__icon {
   opacity: 1;

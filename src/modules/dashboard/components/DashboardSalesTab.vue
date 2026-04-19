@@ -1116,17 +1116,18 @@ const optAvgDow    = computed(() => ({
   padding: 0;
 }
 .dv-pill {
-  padding: 6px 14px;
+  padding: 8px 18px;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.45);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 .dv-pill:hover {
   color: rgba(var(--v-theme-on-surface), 0.80);
