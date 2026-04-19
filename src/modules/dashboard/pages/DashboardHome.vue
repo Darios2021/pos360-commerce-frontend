@@ -214,7 +214,7 @@ const emptyUi = () => ({
   stock: {
     outOfStockCount: 0, lowStockCount: 0, okCount: 0, trackedProducts: 0, totalUnits: 0,
     stockByBranch: [], lowStockItems: [], lowThreshold: 3,
-    inventoryValue: [], topStockedProducts: [], totalInventoryCostValue: 0, totalInventoryPriceValue: 0,
+    inventoryValue: [], topStockedProducts: [], totalInventoryCostValue: 0, totalInventoryPriceValue: 0, totalInventoryListValue: 0,
   },
 });
 
@@ -300,6 +300,7 @@ function adaptOverviewToUi(payload) {
     topStockedProducts: Array.isArray(st?.topStockedProducts) ? st.topStockedProducts : [],
     totalInventoryCostValue: Number(st?.totalInventoryCostValue || 0),
     totalInventoryPriceValue: Number(st?.totalInventoryPriceValue || 0),
+    totalInventoryListValue: Number(st?.totalInventoryListValue || 0),
   };
 }
 

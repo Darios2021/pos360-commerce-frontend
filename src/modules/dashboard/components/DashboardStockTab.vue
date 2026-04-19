@@ -72,8 +72,9 @@
         </div>
         <div class="stk-kpi__body">
           <div class="stk-kpi__num stk-kpi__num--sm">{{ money(stock.totalInventoryPriceValue) }}</div>
-          <div class="stk-kpi__lbl">Valor inventario</div>
+          <div class="stk-kpi__lbl">Valor inventario <span class="inv-price-tag">P. descuento</span></div>
           <div class="stk-kpi__sub">{{ selectedBranchLabel }}</div>
+          <div class="stk-kpi__sub inv-list-val">Lista: {{ money(stock.totalInventoryListValue) }}</div>
         </div>
       </div>
     </div>
@@ -719,6 +720,8 @@ const optStockBySubCat = computed(() => ({
 .stk-kpi__num--sm { font-size: 15px; font-weight: 800; }
 .stk-kpi__lbl { font-size: 12px; font-weight: 700; opacity: .75; margin-top: 1px; }
 .stk-kpi__sub { font-size: 11px; opacity: .5; font-weight: 600; }
+.inv-price-tag { font-size: 10px; font-weight: 600; opacity: .6; background: rgba(99,102,241,.15); color: #818cf8; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+.inv-list-val { margin-top: 2px; opacity: .4; }
 
 /* ─── Alert feed ─────────────────────────────────────────────────────────── */
 .stk-card {
