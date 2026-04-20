@@ -1,18 +1,48 @@
 <template>
   <div class="tdet">
 
-    <!-- ══════════ BREADCRUMB / VOLVER ══════════════════════════ -->
-    <div class="tdet__breadcrumb">
-      <button class="tdet__back" @click="$emit('close')">
-        <v-icon size="15">mdi-arrow-left</v-icon>
-        <span>Derivaciones</span>
-      </button>
-      <v-icon size="13" color="medium-emphasis">mdi-chevron-right</v-icon>
-      <span class="tdet__breadcrumb-current">{{ tr.number }}</span>
-      <v-chip size="x-small" :color="statusColor(tr.status)" variant="tonal" class="ml-1">
-        <v-icon start size="10">{{ statusIcon(tr.status) }}</v-icon>
-        {{ statusLabel(tr.status) }}
-      </v-chip>
+    <!-- ══════════ BARRA DE CABECERA (breadcrumb + acciones) ═══ -->
+    <div class="tdet__topbar">
+      <!-- Izquierda: volver + título + chip estado -->
+      <div class="tdet__topbar-left">
+        <button class="tdet__back" @click="view !== 'detail' ? view = 'detail' : $emit('close')" :disabled="actioning">
+          <v-icon size="15">mdi-arrow-left</v-icon>
+          <span>{{ view !== 'detail' ? 'Volver al detalle' : 'Derivaciones' }}</span>
+        </button>
+        <template v-if="!loadingData">
+          <v-icon size="13" color="medium-emphasis">mdi-chevron-right</v-icon>
+          <span class="tdet__topbar-num">{{ tr.number }}</span>
+          <v-chip size="x-small" :color="statusColor(tr.status)" variant="tonal">
+            <v-icon start size="10">{{ statusIcon(tr.status) }}</v-icon>
+            {{ statusLabel(tr.status) }}
+          </v-chip>
+          <span v-if="view !== 'detail'" class="tdet__topbar-viewlabel">
+            <v-icon size="12" color="medium-emphasis">mdi-chevron-right</v-icon>
+            {{ view === 'dispatch' ? 'Despachar' : view === 'receive' ? 'Recepcionar' : 'Cancelar' }}
+          </span>
+        </template>
+      </div>
+
+      <!-- Derecha: botones de acción (solo en vista detalle) -->
+      <div v-if="view === 'detail' && !loadingData" class="tdet__topbar-actions">
+        <v-btn
+          v-if="canCancel"
+          size="small" variant="outlined" rounded="lg" color="error"
+          @click="openView('cancel')"
+        >Cancelar</v-btn>
+        <v-btn
+          v-if="canDispatch"
+          color="primary" size="small" variant="flat" rounded="lg"
+          prepend-icon="mdi-truck-fast-outline"
+          @click="openView('dispatch')"
+        >Despachar</v-btn>
+        <v-btn
+          v-if="canReceive"
+          color="success" size="small" variant="flat" rounded="lg"
+          prepend-icon="mdi-check-circle-outline"
+          @click="openView('receive')"
+        >Recepcionar</v-btn>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -25,27 +55,6 @@
 
       <!-- ══════════ VISTA: DETALLE ════════════════════════════ -->
       <div v-if="view === 'detail'" class="tdet__view">
-
-        <!-- Acciones -->
-        <div class="tdet__actions-bar">
-          <v-btn
-            v-if="canDispatch"
-            color="primary" size="small" variant="flat" rounded="lg"
-            prepend-icon="mdi-truck-fast-outline"
-            @click="openView('dispatch')"
-          >Despachar</v-btn>
-          <v-btn
-            v-if="canReceive"
-            color="success" size="small" variant="flat" rounded="lg"
-            prepend-icon="mdi-check-circle-outline"
-            @click="openView('receive')"
-          >Recepcionar</v-btn>
-          <v-btn
-            v-if="canCancel"
-            color="error" size="small" variant="outlined" rounded="lg"
-            @click="openView('cancel')"
-          >Cancelar</v-btn>
-        </div>
 
         <!-- Ruta card -->
         <v-card elevation="0" rounded="xl" class="tdet__route-card">
@@ -152,15 +161,6 @@
 
       <!-- ══════════ VISTA: DESPACHAR ══════════════════════════ -->
       <div v-else-if="view === 'dispatch'" class="tdet__view">
-        <!-- Cabecera de acción -->
-        <div class="tdet__action-header">
-          <button class="tdet__back tdet__back--sub" @click="view = 'detail'" :disabled="actioning">
-            <v-icon size="15">mdi-arrow-left</v-icon>
-            <span>Volver al detalle</span>
-          </button>
-          <span class="tdet__action-title">Confirmar despacho</span>
-        </div>
-
         <v-alert type="warning" variant="tonal" rounded="xl">
           <template #title>¿Confirmar el despacho?</template>
           El stock de <strong>{{ tr.fromWarehouse?.branch?.name }}</strong>
@@ -203,14 +203,6 @@
 
       <!-- ══════════ VISTA: RECEPCIONAR ════════════════════════ -->
       <div v-else-if="view === 'receive'" class="tdet__view">
-        <div class="tdet__action-header">
-          <button class="tdet__back tdet__back--sub" @click="view = 'detail'" :disabled="actioning">
-            <v-icon size="15">mdi-arrow-left</v-icon>
-            <span>Volver al detalle</span>
-          </button>
-          <span class="tdet__action-title">Confirmar recepción</span>
-        </div>
-
         <v-alert type="success" variant="tonal" rounded="xl">
           <template #title>Confirmar recepción</template>
           El stock ingresará en
@@ -297,14 +289,6 @@
 
       <!-- ══════════ VISTA: CANCELAR ═══════════════════════════ -->
       <div v-else-if="view === 'cancel'" class="tdet__view">
-        <div class="tdet__action-header">
-          <button class="tdet__back tdet__back--sub" @click="view = 'detail'" :disabled="actioning">
-            <v-icon size="15">mdi-arrow-left</v-icon>
-            <span>Volver al detalle</span>
-          </button>
-          <span class="tdet__action-title">Cancelar derivación</span>
-        </div>
-
         <v-alert type="error" variant="tonal" rounded="xl">
           <template #title>¿Cancelar esta derivación?</template>
           La derivación <strong>{{ tr.number }}</strong> pasará a estado
@@ -521,18 +505,42 @@ async function doCancel() {
 }
 
 /* ══════════════════════════════════════════════════
-   BREADCRUMB
+   TOPBAR — breadcrumb + acciones en una sola fila
 ══════════════════════════════════════════════════ */
-.tdet__breadcrumb {
+.tdet__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tdet__topbar-left {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
-.tdet__breadcrumb-current {
-  font-size: 13px;
-  font-weight: 700;
+.tdet__topbar-num {
+  font-size: 14px;
+  font-weight: 800;
   letter-spacing: .01em;
+  white-space: nowrap;
+}
+.tdet__topbar-viewlabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), .5);
+}
+.tdet__topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* ══════════════════════════════════════════════════
@@ -581,15 +589,6 @@ async function doCancel() {
   max-width: 820px;
 }
 
-/* ══════════════════════════════════════════════════
-   BAR DE ACCIONES (DESPACHAR / RECEPCIONAR / CANCELAR)
-══════════════════════════════════════════════════ */
-.tdet__actions-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
 /* ══════════════════════════════════════════════════
    CARD HEAD (igual a .stk-head del sistema)
@@ -743,20 +742,6 @@ async function doCancel() {
   padding: 20px 16px;
 }
 
-/* ══════════════════════════════════════════════════
-   CABECERA DE VISTAS DE ACCIÓN
-══════════════════════════════════════════════════ */
-.tdet__action-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.tdet__back--sub { font-size: 12px; }
-.tdet__action-title {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -.01em;
-}
 
 /* ══════════════════════════════════════════════════
    FILAS DE ACCIÓN (despacho / cancelar)
