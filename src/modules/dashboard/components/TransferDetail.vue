@@ -513,6 +513,7 @@ async function doCancel() {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  max-width: 820px;   /* mismo ancho que las cards de contenido */
 }
 .tdet__topbar-left {
   display: flex;

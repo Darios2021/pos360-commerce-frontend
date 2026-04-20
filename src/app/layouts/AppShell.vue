@@ -232,9 +232,10 @@
 
           <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact>
             <template #prepend>
+              <!-- Badge visible siempre que haya pendientes, incluso en rail mode -->
               <v-badge
-                v-if="transferUnreadCount > 0 && !rail"
-                :content="String(transferUnreadCount)"
+                v-if="transferUnreadCount > 0"
+                :content="transferUnreadCount > 9 ? '9+' : String(transferUnreadCount)"
                 color="warning"
                 floating
               >
@@ -244,10 +245,12 @@
             </template>
             <v-list-item-title>
               Derivaciones
-              <v-chip v-if="transferUnreadCount > 0" size="x-small" color="warning" class="ml-2">{{ transferUnreadCount }}</v-chip>
+              <v-chip v-if="transferUnreadCount > 0 && !rail" size="x-small" color="warning" class="ml-2">
+                {{ transferUnreadCount }}
+              </v-chip>
             </v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">
-              Derivaciones
+              Derivaciones{{ transferUnreadCount > 0 ? ` (${transferUnreadCount} pendiente${transferUnreadCount !== 1 ? 's' : ''})` : '' }}
             </v-tooltip>
           </v-list-item>
 
@@ -604,7 +607,10 @@ onMounted(() => {
 });
 
 /* ===== Transfer notifications badge in nav ===== */
-const { unreadCount: transferUnreadCount } = useTransferNotifications();
+// Muestra el badge mientras haya derivaciones pendientes (dispatched) para mi sucursal,
+// sin importar si ya las abrió — se va solo cuando se recepciona.
+const { pendingForMe: transferPending } = useTransferNotifications();
+const transferUnreadCount = computed(() => transferPending.value.length);
 
 /* ===== Admin ===== */
 const isAdmin = computed(() => {

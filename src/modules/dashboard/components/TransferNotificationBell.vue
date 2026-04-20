@@ -10,9 +10,9 @@
       <template #activator="{ props }">
         <v-btn icon variant="text" v-bind="props" @click="onOpenMenu">
           <v-badge
-            v-if="unreadCount > 0"
-            :content="unreadCount > 9 ? '9+' : String(unreadCount)"
-            color="error"
+            v-if="pendingForMe.length > 0"
+            :content="pendingForMe.length > 9 ? '9+' : String(pendingForMe.length)"
+            color="warning"
             floating
           >
             <v-icon>mdi-truck-fast-outline</v-icon>
