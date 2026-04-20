@@ -2,21 +2,26 @@
   <v-card rounded="xl">
     <v-card-title class="td-title">
       <div class="td-title__left">
-        <span class="td-number">{{ transfer.number }}</span>
-        <span class="td-status" :class="`td-st--${transfer.status}`">{{ statusLabel(transfer.status) }}</span>
+        <span class="td-number">{{ tr.number }}</span>
+        <span class="td-status" :class="`td-st--${tr.status}`">{{ statusLabel(tr.status) }}</span>
       </div>
       <v-btn icon size="small" variant="text" @click="$emit('close')"><v-icon>mdi-close</v-icon></v-btn>
     </v-card-title>
     <v-divider />
 
     <v-card-text class="td-body">
+      <!-- Cargando datos completos -->
+      <div v-if="loadingData" class="d-flex justify-center py-4">
+        <v-progress-circular indeterminate color="primary" size="28" />
+      </div>
+
       <!-- Ruta -->
       <div class="td-route">
         <div class="td-route__node">
           <v-icon size="16" color="primary">mdi-store-outline</v-icon>
           <div>
             <p class="td-route__label">Origen</p>
-            <p class="td-route__name">{{ transfer.fromWarehouse?.branch?.name || "—" }}</p>
+            <p class="td-route__name">{{ tr.fromWarehouse?.branch?.name || "—" }}</p>
           </div>
         </div>
         <div class="td-route__arrow"><v-icon>mdi-arrow-right</v-icon></div>
@@ -24,7 +29,7 @@
           <v-icon size="16" color="success">mdi-store</v-icon>
           <div>
             <p class="td-route__label">Destino</p>
-            <p class="td-route__name">{{ transfer.toBranch?.name || transfer.toWarehouse?.branch?.name || "—" }}</p>
+            <p class="td-route__name">{{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || "—" }}</p>
           </div>
         </div>
       </div>
@@ -33,24 +38,24 @@
       <div class="td-timeline">
         <div class="td-tl-item">
           <v-icon size="14" color="primary">mdi-pencil-outline</v-icon>
-          <span>Creado por {{ userName(transfer.creator) }} — {{ fmtDate(transfer.created_at) }}</span>
+          <span>Creado por {{ userName(tr.creator) }} — {{ fmtDate(tr.created_at) }}</span>
         </div>
-        <div v-if="transfer.dispatched_at" class="td-tl-item">
+        <div v-if="tr.dispatched_at" class="td-tl-item">
           <v-icon size="14" color="blue">mdi-truck-fast-outline</v-icon>
-          <span>Despachado por {{ userName(transfer.dispatcher) }} — {{ fmtDate(transfer.dispatched_at) }}</span>
+          <span>Despachado por {{ userName(tr.dispatcher) }} — {{ fmtDate(tr.dispatched_at) }}</span>
         </div>
-        <div v-if="transfer.received_at" class="td-tl-item">
+        <div v-if="tr.received_at" class="td-tl-item">
           <v-icon size="14" color="success">mdi-check-circle-outline</v-icon>
-          <span>Recepcionado por {{ userName(transfer.receiver) }} — {{ fmtDate(transfer.received_at) }}</span>
+          <span>Recepcionado por {{ userName(tr.receiver) }} — {{ fmtDate(tr.received_at) }}</span>
         </div>
       </div>
 
-      <p v-if="transfer.note" class="td-note">📝 {{ transfer.note }}</p>
+      <p v-if="tr.note" class="td-note">📝 {{ tr.note }}</p>
 
       <!-- Items -->
-      <div class="td-items-title">Productos ({{ transfer.items?.length || 0 }})</div>
+      <div class="td-items-title">Productos ({{ tr.items?.length || 0 }})</div>
       <div class="td-items">
-        <div v-for="item in transfer.items" :key="item.id" class="td-item">
+        <div v-for="item in tr.items" :key="item.id" class="td-item">
           <v-avatar size="36" rounded="md">
             <v-img v-if="item.product?.images?.[0]?.url" :src="item.product.images[0].url" />
             <v-icon v-else size="18" color="secondary">mdi-package-variant</v-icon>
@@ -137,8 +142,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { dispatchTransfer, receiveTransfer, cancelTransfer } from "../service/stockTransfer.api";
+import { ref, computed, onMounted } from "vue";
+import { getTransfer, dispatchTransfer, receiveTransfer, cancelTransfer } from "../service/stockTransfer.api";
 
 const props = defineProps({
   transfer:        { type: Object, required: true },
@@ -148,31 +153,45 @@ const props = defineProps({
 });
 const emit = defineEmits(["dispatch","receive","cancel","close"]);
 
-const actioning     = ref(false);
-const actionError   = ref("");
+// Datos completos cargados desde API (el prop del listado no incluye items)
+const fullData     = ref(props.transfer);
+const loadingData  = ref(false);
+const actioning    = ref(false);
+const actionError  = ref("");
 const showReceiveForm = ref(false);
-const receiveForm   = ref([]);
+const receiveForm  = ref([]);
+
+// Cargar datos completos al abrir — así siempre tenemos los items reales de DB
+onMounted(async () => {
+  loadingData.value = true;
+  try {
+    const { data } = await getTransfer(props.transfer.id);
+    if (data?.transfer) fullData.value = data.transfer;
+    else if (data?.id)  fullData.value = data;
+  } catch (e) { /* usa el prop inicial como fallback */ }
+  finally { loadingData.value = false; }
+});
 
 // ── computed helpers ──
-const hasItems = computed(() => (props.transfer.items?.length ?? 0) > 0);
+const tr       = computed(() => fullData.value);
+const hasItems = computed(() => (tr.value.items?.length ?? 0) > 0);
 
 // ── computed permissions ──
 const isDestination = computed(() =>
-  props.currentBranchId && props.transfer.to_branch_id === props.currentBranchId
+  props.currentBranchId && tr.value.to_branch_id === props.currentBranchId
 );
-// Puede despachar/cancelar: admin, o quien esté en la sucursal de origen
 const isOrigin = computed(() =>
   props.currentBranchId &&
-  props.transfer.fromWarehouse?.branch_id === props.currentBranchId
+  tr.value.fromWarehouse?.branch_id === props.currentBranchId
 );
 const canDispatch = computed(() =>
-  props.transfer.status === "draft" && (props.isAdmin || isOrigin.value)
+  tr.value.status === "draft" && (props.isAdmin || isOrigin.value)
 );
 const canCancel = computed(() =>
-  props.transfer.status === "draft" && (props.isAdmin || isOrigin.value)
+  tr.value.status === "draft" && (props.isAdmin || isOrigin.value)
 );
 const canReceive = computed(() =>
-  props.transfer.status === "dispatched" && (props.isAdmin || isDestination.value)
+  tr.value.status === "dispatched" && (props.isAdmin || isDestination.value)
 );
 
 // ── helpers ──
@@ -197,18 +216,18 @@ function fmt(v) {
 async function doDispatch() {
   actioning.value = true; actionError.value = "";
   try {
-    await dispatchTransfer(props.transfer.id);
-    emit("dispatch", props.transfer.id);
+    await dispatchTransfer(tr.value.id);
+    emit("dispatch", tr.value.id);
   } catch (e) { actionError.value = e?.response?.data?.message || "Error al despachar"; }
   finally { actioning.value = false; }
 }
 
 function initReceiveForm() {
-  receiveForm.value = (props.transfer.items || []).map((i) => ({
+  receiveForm.value = (tr.value.items || []).map((i) => ({
     item_id:      i.id,
     name:         i.product?.name || `Producto #${i.product_id}`,
     qty_sent:     parseFloat(i.qty_sent),
-    qty_received: parseFloat(i.qty_sent), // por defecto: todo llegó
+    qty_received: parseFloat(i.qty_sent),
     note:         "",
   }));
   showReceiveForm.value = true;
@@ -217,20 +236,20 @@ function initReceiveForm() {
 async function doReceive() {
   actioning.value = true; actionError.value = "";
   try {
-    await receiveTransfer(props.transfer.id, { receptions: receiveForm.value });
-    emit("receive", props.transfer.id);
+    await receiveTransfer(tr.value.id, { receptions: receiveForm.value });
+    emit("receive", tr.value.id);
     showReceiveForm.value = false;
   } catch (e) { actionError.value = e?.response?.data?.message || "Error al recepcionar"; }
   finally { actioning.value = false; }
 }
 
-// Recepción directa para transfers sin productos (confirma entrega sin form)
+// Recepción directa para transfers sin productos
 async function doReceiveDirect() {
   if (!confirm("¿Confirmar recepción del paquete? (sin productos)")) return;
   actioning.value = true; actionError.value = "";
   try {
-    await receiveTransfer(props.transfer.id, { receptions: [] });
-    emit("receive", props.transfer.id);
+    await receiveTransfer(tr.value.id, { receptions: [] });
+    emit("receive", tr.value.id);
   } catch (e) { actionError.value = e?.response?.data?.message || "Error al recepcionar"; }
   finally { actioning.value = false; }
 }
@@ -239,8 +258,8 @@ async function doCancel() {
   if (!confirm("¿Cancelar esta derivación?")) return;
   actioning.value = true; actionError.value = "";
   try {
-    await cancelTransfer(props.transfer.id);
-    emit("cancel", props.transfer.id);
+    await cancelTransfer(tr.value.id);
+    emit("cancel", tr.value.id);
   } catch (e) { actionError.value = e?.response?.data?.message || "Error al cancelar"; }
   finally { actioning.value = false; }
 }
