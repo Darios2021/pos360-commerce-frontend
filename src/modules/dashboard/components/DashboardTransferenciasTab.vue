@@ -84,85 +84,80 @@
       <div
         v-for="tr in transfers" :key="tr.id"
         class="tr-card"
-        :class="`tr-card--${tr.status}`"
         @click="openDetail(tr)"
       >
-        <!-- Indicador lateral de estado -->
+        <!-- Barra lateral coloreada por estado -->
         <div class="tr-card__bar" :class="`tr-bar--${tr.status}`" />
 
         <div class="tr-card__content">
-          <!-- Fila 1: Número + estado + tiempo -->
+
+          <!-- Fila superior: número · estado · fecha -->
           <div class="tr-card__top">
             <span class="tr-card__number">{{ tr.number }}</span>
-            <span class="tr-card__status" :class="`tr-status--${tr.status}`">
-              <v-icon size="11" class="mr-1">{{ statusIcon(tr.status) }}</v-icon>
+            <span class="tr-card__badge" :class="`tr-badge--${tr.status}`">
+              <v-icon size="12">{{ statusIcon(tr.status) }}</v-icon>
               {{ statusLabel(tr.status) }}
             </span>
-            <span class="tr-card__time">{{ fmtDate(tr.created_at) }}</span>
+            <span class="tr-card__date">{{ fmtDate(tr.created_at) }}</span>
           </div>
 
-          <!-- Fila 2: Ruta visual -->
+          <!-- Ruta: Origen → Destino -->
           <div class="tr-card__route">
-            <div class="tr-route-node">
-              <v-icon size="14" color="primary">mdi-store-outline</v-icon>
-              <span>{{ tr.fromWarehouse?.branch?.name || "—" }}</span>
+            <span class="tr-branch tr-branch--from">
+              <v-icon size="13">mdi-store-outline</v-icon>
+              {{ tr.fromWarehouse?.branch?.name || "—" }}
+            </span>
+            <v-icon size="16" class="tr-arrow">mdi-arrow-right</v-icon>
+            <span class="tr-branch tr-branch--to">
+              <v-icon size="13">mdi-store</v-icon>
+              {{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || "—" }}
+            </span>
+          </div>
+
+          <!-- Stepper de 3 pasos -->
+          <div v-if="tr.status !== 'cancelled'" class="tr-steps">
+            <div class="tr-step-item" :class="stepClass(tr.status, 1)">
+              <div class="tr-step-item__circle">
+                <v-icon size="11">mdi-pencil-outline</v-icon>
+              </div>
+              <span>Borrador</span>
             </div>
-            <div class="tr-route-line">
-              <div class="tr-route-line__track" />
-              <v-icon size="14" class="tr-route-line__icon"
-                :color="tr.status === 'received' ? 'success' : tr.status === 'dispatched' ? 'warning' : 'secondary'">
-                mdi-truck{{ tr.status === 'dispatched' ? '-fast' : '' }}-outline
-              </v-icon>
+            <div class="tr-step-track" :class="{ active: stepperStep(tr.status) >= 2 }" />
+            <div class="tr-step-item" :class="stepClass(tr.status, 2)">
+              <div class="tr-step-item__circle">
+                <v-icon size="11">mdi-truck-fast-outline</v-icon>
+              </div>
+              <span>En camino</span>
             </div>
-            <div class="tr-route-node tr-route-node--right">
-              <v-icon size="14" color="success">mdi-store</v-icon>
-              <span>{{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || "—" }}</span>
+            <div class="tr-step-track" :class="{ active: stepperStep(tr.status) >= 3 }" />
+            <div class="tr-step-item" :class="[stepClass(tr.status, 3), tr.status === 'partial' ? 'partial' : '']">
+              <div class="tr-step-item__circle">
+                <v-icon size="11">{{ tr.status === 'partial' ? 'mdi-alert' : 'mdi-check' }}</v-icon>
+              </div>
+              <span>{{ tr.status === 'partial' ? 'Parcial' : 'Recibido' }}</span>
             </div>
           </div>
 
-          <!-- Fila 2.5: Mini stepper -->
-          <div v-if="tr.status !== 'cancelled'" class="tr-stepper">
-            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 1, 'tr-step--active': stepperStep(tr.status) === 1 }">
-              <div class="tr-step__dot"><v-icon size="10">mdi-pencil</v-icon></div>
-              <span class="tr-step__label">Creada</span>
-            </div>
-            <div class="tr-step__line" :class="{ 'tr-step__line--done': stepperStep(tr.status) >= 2 }" />
-            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 2, 'tr-step--active': stepperStep(tr.status) === 2 }">
-              <div class="tr-step__dot"><v-icon size="10">mdi-truck-fast</v-icon></div>
-              <span class="tr-step__label">En camino</span>
-            </div>
-            <div class="tr-step__line" :class="{ 'tr-step__line--done': stepperStep(tr.status) >= 3 }" />
-            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 3, 'tr-step--active': stepperStep(tr.status) === 3, 'tr-step--partial': tr.status === 'partial' }">
-              <div class="tr-step__dot"><v-icon size="10">mdi-check</v-icon></div>
-              <span class="tr-step__label">{{ tr.status === 'partial' ? 'Con dif.' : 'Entregada' }}</span>
-            </div>
-          </div>
-
-          <!-- Fila 3: Meta info -->
-          <div class="tr-card__meta">
-            <div class="tr-meta-chip">
-              <v-icon size="12">mdi-package-variant</v-icon>
-              {{ tr.items?.length || 0 }} prod.
-            </div>
-            <template v-if="tr.dispatcher">
-              <div class="tr-meta-chip">
-                <v-icon size="12">mdi-truck-fast-outline</v-icon>
-                {{ userName(tr.dispatcher) }}
-                <span v-if="tr.dispatched_at" class="tr-meta-when">{{ fmtDate(tr.dispatched_at) }}</span>
-              </div>
-            </template>
-            <template v-if="tr.receiver">
-              <div class="tr-meta-chip tr-meta-chip--received">
-                <v-icon size="12">mdi-check-circle-outline</v-icon>
-                {{ userName(tr.receiver) }}
-                <span class="tr-meta-when">{{ fmtDate(tr.received_at) }}</span>
-              </div>
-            </template>
-            <div v-if="tr.note" class="tr-meta-note">
-              <v-icon size="12">mdi-text-short</v-icon>
+          <!-- Footer: items · quién despachó · quién recibió -->
+          <div class="tr-card__footer">
+            <span class="tr-foot-item">
+              <v-icon size="12">mdi-package-variant-closed</v-icon>
+              {{ tr.items?.length || 0 }} producto{{ tr.items?.length !== 1 ? "s" : "" }}
+            </span>
+            <span v-if="tr.dispatcher" class="tr-foot-item">
+              <v-icon size="12">mdi-account-arrow-right-outline</v-icon>
+              {{ userName(tr.dispatcher) }}
+            </span>
+            <span v-if="tr.receiver" class="tr-foot-item tr-foot-item--ok">
+              <v-icon size="12">mdi-account-check-outline</v-icon>
+              {{ userName(tr.receiver) }}
+            </span>
+            <span v-if="tr.note" class="tr-foot-item tr-foot-item--note">
+              <v-icon size="12">mdi-note-text-outline</v-icon>
               {{ tr.note }}
-            </div>
+            </span>
           </div>
+
         </div>
       </div>
     </div>
@@ -239,7 +234,7 @@ const counts = ref({});
 const statusFilters = computed(() => [
   { value: "",           label: "Todas",         icon: "mdi-view-list-outline",    count: null },
   { value: "dispatched", label: "En camino",      icon: "mdi-truck-fast-outline",   count: counts.value.dispatched || null },
-  { value: "draft",      label: "Por despachar",  icon: "mdi-clock-outline",        count: counts.value.draft      || null },
+  { value: "draft",      label: "Borrador",       icon: "mdi-clock-edit-outline",   count: counts.value.draft      || null },
   { value: "received",   label: "Entregadas",     icon: "mdi-check-circle-outline", count: counts.value.received   || null },
   { value: "partial",    label: "Con diferencia", icon: "mdi-alert-outline",        count: counts.value.partial    || null },
   { value: "cancelled",  label: "Canceladas",     icon: "mdi-cancel",               count: null },
@@ -251,17 +246,22 @@ const currentStatusLabel = computed(
 
 // ── helpers ──
 function statusLabel(s) {
-  return { draft:"Por despachar", dispatched:"En camino", received:"Entregada",
-           partial:"Con diferencia", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
+  return { draft:"Borrador", dispatched:"En camino", received:"Recibido",
+           partial:"Parcial", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
 }
 function statusIcon(s) {
-  return { draft:"mdi-clock-outline", dispatched:"mdi-truck-fast-outline",
-           received:"mdi-check-circle-outline", partial:"mdi-alert-outline",
+  return { draft:"mdi-clock-edit-outline", dispatched:"mdi-truck-fast-outline",
+           received:"mdi-check-circle-outline", partial:"mdi-alert-circle-outline",
            rejected:"mdi-close-circle-outline", cancelled:"mdi-cancel" }[s] || "mdi-help";
 }
-// Stepper: qué paso está activo para esta derivación
-function stepperStep(status) {
-  return { draft: 1, dispatched: 2, received: 3, partial: 3, rejected: 3, cancelled: 0 }[status] ?? 0;
+function stepperStep(s) {
+  return { draft:1, dispatched:2, received:3, partial:3, rejected:3, cancelled:0 }[s] ?? 0;
+}
+function stepClass(status, step) {
+  const cur = stepperStep(status);
+  if (cur > step)  return "done";
+  if (cur === step) return "active";
+  return "pending";
 }
 function userName(u) {
   if (!u) return "—";
@@ -420,120 +420,115 @@ onMounted(() => { loadList(); loadCounts(); });
 .tr-list { display: flex; flex-direction: column; gap: 8px; }
 
 .tr-card {
-  display: flex; border-radius: 14px; cursor: pointer; overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), .08);
-  background: rgba(var(--v-theme-surface-variant), .35);
-  transition: background .15s, box-shadow .15s;
+  display: flex; border-radius: 12px; cursor: pointer; overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-on-surface), .1);
+  background: rgb(var(--v-theme-surface));
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  transition: box-shadow .15s, transform .1s;
 }
 .tr-card:hover {
-  background: rgba(var(--v-theme-surface-variant), .7);
-  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  transform: translateY(-1px);
 }
-.tr-card--dispatched { border-color: rgba(var(--v-theme-warning), .3); }
-.tr-card--received   { border-color: rgba(var(--v-theme-success), .2); }
-.tr-card--partial    { border-color: rgba(var(--v-theme-warning), .25); }
 
+/* Barra lateral */
 .tr-card__bar { width: 4px; flex-shrink: 0; }
-.tr-bar--draft      { background: rgba(var(--v-theme-on-surface), .15); }
-.tr-bar--dispatched { background: rgb(var(--v-theme-warning)); }
-.tr-bar--received   { background: rgb(var(--v-theme-success)); }
+.tr-bar--draft      { background: #9e9e9e; }
+.tr-bar--dispatched { background: #ff9800; }
+.tr-bar--received   { background: #4caf50; }
 .tr-bar--partial    { background: #ff9800; }
-.tr-bar--rejected   { background: rgb(var(--v-theme-error)); }
-.tr-bar--cancelled  { background: rgba(var(--v-theme-on-surface), .1); }
+.tr-bar--rejected   { background: #f44336; }
+.tr-bar--cancelled  { background: #e0e0e0; }
 
-.tr-card__content { flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.tr-card__content {
+  flex: 1; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
 
+/* Top row */
 .tr-card__top {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
-.tr-card__number { font-weight: 700; font-size: 13px; }
-.tr-card__status {
-  display: flex; align-items: center;
-  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
-}
-.tr-card__time   { font-size: 11px; color: rgba(var(--v-theme-on-surface),.4); margin-left: auto; }
+.tr-card__number { font-weight: 700; font-size: 13px; letter-spacing: .01em; }
+.tr-card__date   { font-size: 11px; color: rgba(var(--v-theme-on-surface),.45); margin-left: auto; }
 
-.tr-status--draft      { background: rgba(var(--v-theme-on-surface),.08); }
-.tr-status--dispatched { background: rgba(255,152,0,.15); color: #e65100; }
-.tr-status--received   { background: rgba(76,175,80,.15); color: #2e7d32; }
-.tr-status--partial    { background: rgba(255,152,0,.12); color: #e65100; }
-.tr-status--rejected   { background: rgba(244,67,54,.12); color: #c62828; }
-.tr-status--cancelled  { background: rgba(var(--v-theme-on-surface),.06); color: rgba(var(--v-theme-on-surface),.4); }
+/* Badge de estado */
+.tr-card__badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px;
+  border: 1px solid transparent;
+}
+.tr-badge--draft     { background: rgba(var(--v-theme-on-surface),.07); border-color: rgba(var(--v-theme-on-surface),.12); color: rgba(var(--v-theme-on-surface),.6); }
+.tr-badge--dispatched{ background: #fff3e0; border-color: #ffb74d; color: #e65100; }
+.tr-badge--received  { background: #e8f5e9; border-color: #81c784; color: #2e7d32; }
+.tr-badge--partial   { background: #fff3e0; border-color: #ffb74d; color: #e65100; }
+.tr-badge--rejected  { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+.tr-badge--cancelled { background: rgba(var(--v-theme-on-surface),.04); border-color: rgba(var(--v-theme-on-surface),.08); color: rgba(var(--v-theme-on-surface),.35); }
 
-/* Ruta visual */
-.tr-card__route { display: flex; align-items: center; gap: 8px; }
-.tr-route-node  { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
-.tr-route-node--right { }
-.tr-route-line  {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  position: relative; min-width: 40px;
+/* Ruta */
+.tr-card__route {
+  display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
 }
-.tr-route-line__track {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: rgba(var(--v-theme-on-surface), .15);
-}
-.tr-route-line__icon { position: relative; z-index: 1;
-  background: rgb(var(--v-theme-surface-variant)); }
+.tr-branch { display: inline-flex; align-items: center; gap: 4px; }
+.tr-branch--from { color: rgb(var(--v-theme-primary)); }
+.tr-branch--to   { color: #388e3c; }
+.tr-arrow { color: rgba(var(--v-theme-on-surface),.3); }
 
-/* Meta chips */
-.tr-card__meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tr-meta-chip  {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: rgba(var(--v-theme-on-surface),.55);
-  background: rgba(var(--v-theme-on-surface),.05);
-  padding: 2px 8px; border-radius: 20px;
+/* Stepper de 3 pasos */
+.tr-steps {
+  display: flex; align-items: center; gap: 0; padding: 2px 0;
 }
-.tr-meta-chip--received { color: #2e7d32; background: rgba(76,175,80,.1); }
-.tr-meta-when { opacity: .6; margin-left: 4px; }
-.tr-meta-note {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: rgba(var(--v-theme-on-surface),.45);
-  font-style: italic; max-width: 200px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.tr-step-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 60px;
 }
-
-/* ═══ Mini stepper ══════════════════════════════════════════ */
-.tr-stepper {
-  display: flex; align-items: center; gap: 0;
-  padding: 2px 0;
-}
-.tr-step {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-}
-.tr-step__dot {
-  width: 22px; height: 22px; border-radius: 50%;
+.tr-step-item__circle {
+  width: 26px; height: 26px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(var(--v-theme-on-surface), .1);
-  color: rgba(var(--v-theme-on-surface), .3);
+  border: 2px solid rgba(var(--v-theme-on-surface),.15);
+  color: rgba(var(--v-theme-on-surface),.3);
   transition: all .2s;
 }
-.tr-step--done .tr-step__dot {
-  background: rgba(var(--v-theme-success), .2);
-  color: rgb(var(--v-theme-success));
-}
-.tr-step--active .tr-step__dot {
-  background: rgba(255,152,0,.25);
-  color: #e65100;
-  box-shadow: 0 0 0 3px rgba(255,152,0,.15);
-}
-.tr-step--partial .tr-step__dot {
-  background: rgba(255,152,0,.2);
-  color: #e65100;
-}
-.tr-step__label {
-  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
-  color: rgba(var(--v-theme-on-surface), .35);
+.tr-step-item > span {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: rgba(var(--v-theme-on-surface),.35);
   white-space: nowrap;
 }
-.tr-step--done .tr-step__label   { color: rgb(var(--v-theme-success)); }
-.tr-step--active .tr-step__label { color: #e65100; }
-.tr-step__line {
-  flex: 1; height: 2px; min-width: 24px;
-  background: rgba(var(--v-theme-on-surface), .1);
-  margin-bottom: 12px; /* alinea con el dot */
+/* done */
+.tr-step-item.done .tr-step-item__circle {
+  background: #e8f5e9; border-color: #4caf50; color: #2e7d32;
+}
+.tr-step-item.done > span { color: #2e7d32; }
+/* active */
+.tr-step-item.active .tr-step-item__circle {
+  background: #fff3e0; border-color: #ff9800; color: #e65100;
+  box-shadow: 0 0 0 3px rgba(255,152,0,.2);
+}
+.tr-step-item.active > span { color: #e65100; font-weight: 800; }
+/* partial */
+.tr-step-item.partial .tr-step-item__circle {
+  background: #fff3e0; border-color: #ff9800; color: #e65100;
+}
+
+.tr-step-track {
+  flex: 1; height: 2px; background: rgba(var(--v-theme-on-surface),.1);
+  margin-bottom: 16px; border-radius: 2px;
   transition: background .2s;
 }
-.tr-step__line--done { background: rgba(var(--v-theme-success), .4); }
+.tr-step-track.active { background: #4caf50; }
+
+/* Footer */
+.tr-card__footer {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface),.06);
+}
+.tr-foot-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: rgba(var(--v-theme-on-surface),.5);
+}
+.tr-foot-item--ok   { color: #2e7d32; }
+.tr-foot-item--note { font-style: italic; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ═══ Paginación ════════════════════════════════════════════ */
 .tr-pagination {
