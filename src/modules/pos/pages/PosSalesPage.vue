@@ -500,9 +500,16 @@
                   <v-list-item-title>Copiar ID</v-list-item-title>
                 </v-list-item>
                 <v-divider v-if="isAdmin" />
-                <v-list-item v-if="isAdmin" @click.stop="openDelete(item)">
-                  <template #prepend><v-icon size="16" color="red">mdi-trash-can-outline</v-icon></template>
-                  <v-list-item-title>Eliminar venta</v-list-item-title>
+                <v-list-item
+                  v-if="isAdmin && item.status !== 'CANCELLED'"
+                  @click.stop="openDelete(item)"
+                >
+                  <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
+                  <v-list-item-title>Anular venta</v-list-item-title>
+                </v-list-item>
+                <v-list-item v-else-if="item.status === 'CANCELLED'" disabled>
+                  <template #prepend><v-icon size="16" color="grey">mdi-cancel</v-icon></template>
+                  <v-list-item-title class="text-disabled">Ya anulada</v-list-item-title>
                 </v-list-item>
               </v-list>
             </v-menu>
@@ -538,25 +545,42 @@
       </v-data-table>
     </div>
 
-    <!-- ── DELETE DIALOG ── -->
-    <v-dialog v-model="deleteDialog.show" max-width="500">
+    <!-- ── ANULAR VENTA DIALOG ── -->
+    <v-dialog v-model="deleteDialog.show" max-width="480">
       <v-card rounded="xl">
-        <v-card-title class="d-flex align-center ga-2">
-          <v-icon color="red">mdi-alert</v-icon>
-          Eliminar venta
-        </v-card-title>
-        <v-card-text>
-          ¿Seguro que querés eliminar la venta <b>#{{ getSaleId(deleteDialog.sale) }}</b>?
-          <div class="text-caption text-medium-emphasis mt-2">
-            Puede fallar si hay items, pagos o devoluciones asociadas.
+        <div class="anular-dlg__head">
+          <div class="anular-dlg__icon-wrap">
+            <v-icon size="22" color="error">mdi-cancel</v-icon>
           </div>
-        </v-card-text>
-        <v-card-actions class="justify-end ga-2">
-          <v-btn variant="text" :disabled="!!deletingId" @click="deleteDialog = { show: false, sale: null }">Cancelar</v-btn>
-          <v-btn color="red" variant="flat" :loading="!!deletingId" @click="deleteSaleConfirmed">
-            <v-icon start>mdi-trash-can-outline</v-icon>Eliminar
+          <div>
+            <p class="anular-dlg__eyebrow">Venta #{{ getSaleId(deleteDialog.sale) }}</p>
+            <h3 class="anular-dlg__title">Anular venta</h3>
+          </div>
+        </div>
+
+        <div class="anular-dlg__body">
+          <div class="anular-dlg__info-row">
+            <v-icon size="16" color="success" class="flex-shrink-0">mdi-package-variant</v-icon>
+            <span>El stock de los productos será <strong>restaurado automáticamente</strong>.</span>
+          </div>
+          <div class="anular-dlg__info-row">
+            <v-icon size="16" color="primary" class="flex-shrink-0">mdi-history</v-icon>
+            <span>La venta quedará como <strong>Anulada</strong> en el historial (no se borra).</span>
+          </div>
+          <div class="anular-dlg__info-row">
+            <v-icon size="16" color="warning" class="flex-shrink-0">mdi-cash-remove</v-icon>
+            <span>El importe <strong>no se contará</strong> en el arqueo de esta sesión.</span>
+          </div>
+        </div>
+
+        <div class="anular-dlg__actions">
+          <v-btn variant="text" size="small" :disabled="!!deletingId" @click="deleteDialog = { show: false, sale: null }">
+            Volver
           </v-btn>
-        </v-card-actions>
+          <v-btn color="error" size="small" variant="flat" :loading="!!deletingId" @click="deleteSaleConfirmed">
+            <v-icon start size="14">mdi-cancel</v-icon>Confirmar anulación
+          </v-btn>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -1264,8 +1288,8 @@ async function deleteSaleConfirmed() {
   deletingId.value = id;
   try {
     const { data } = await http.delete(`/pos/sales/${id}`);
-    if (!data?.ok) throw new Error(data?.message || "No se pudo eliminar");
-    toast("Venta eliminada");
+    if (!data?.ok) throw new Error(data?.message || "No se pudo anular");
+    toast(data?.message || "Venta anulada. Stock restaurado.");
     deleteDialog.value = { show: false, sale: null };
     await refreshAll();
   } catch (e) {
@@ -1480,5 +1504,52 @@ onMounted(async () => {
   .vp-mc-val  { font-size: 13px; }
   .vp-status-field { width: 130px; }
   .vp-title { font-size: 18px; }
+}
+
+/* ── ANULAR DIALOG ─────────────────────────────────────────────────────── */
+.anular-dlg__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 12px;
+}
+.anular-dlg__icon-wrap {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-error), .1);
+  flex-shrink: 0;
+}
+.anular-dlg__eyebrow {
+  margin: 0;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), .5);
+}
+.anular-dlg__title {
+  margin: 2px 0 0;
+  font-size: 18px; font-weight: 800; line-height: 1.1;
+}
+.anular-dlg__body {
+  padding: 4px 18px 14px;
+  display: grid;
+  gap: 8px;
+}
+.anular-dlg__info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), .03);
+  border: 1px solid rgba(var(--v-theme-on-surface), .06);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.anular-dlg__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 18px 16px;
 }
 </style>

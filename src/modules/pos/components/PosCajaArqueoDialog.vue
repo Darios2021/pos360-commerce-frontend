@@ -36,6 +36,11 @@
           <span class="arq__pill-label">Ventas</span>
           <strong class="arq__pill-val">{{ totals.sales_count || 0 }}</strong>
         </div>
+        <div v-if="totals.sales_cancelled_count > 0" class="arq__pill arq__pill--warn">
+          <v-icon size="13" class="mr-1">mdi-cancel</v-icon>
+          <span class="arq__pill-label">Anuladas</span>
+          <strong class="arq__pill-val arq__pill-val--warn">{{ totals.sales_cancelled_count }}</strong>
+        </div>
       </div>
 
       <v-divider />
@@ -129,6 +134,14 @@
           </div>
 
           <div class="arq__totals">
+            <div class="arq__total-row">
+              <span>Ventas efectivas</span>
+              <strong>{{ totals.sales_count || 0 }}</strong>
+            </div>
+            <div v-if="totals.sales_cancelled_count > 0" class="arq__total-row arq__total-row--warn">
+              <span>Ventas anuladas (excluidas)</span>
+              <strong class="c-warning">{{ totals.sales_cancelled_count }}</strong>
+            </div>
             <div class="arq__total-row">
               <span>Efectivo esperado</span>
               <strong>{{ money(expectedCashValue) }}</strong>
@@ -361,8 +374,13 @@ function submit() {
   font-size: 12px;
   font-weight: 800;
 }
-.arq__pill-val--ok  { color: rgb(var(--v-theme-success)); }
-.arq__pill-val--err { color: rgb(var(--v-theme-error)); }
+.arq__pill-val--ok   { color: rgb(var(--v-theme-success)); }
+.arq__pill-val--err  { color: rgb(var(--v-theme-error)); }
+.arq__pill-val--warn { color: rgb(var(--v-theme-warning)); }
+.arq__pill--warn {
+  background: rgba(var(--v-theme-warning), .08);
+  border-color: rgba(var(--v-theme-warning), .2);
+}
 
 /* ── Body ────────────────────────────────────────────────────────────────── */
 .arq__body {
@@ -498,6 +516,10 @@ function submit() {
   font-size: 12px;
 }
 .arq__total-row strong { font-size: 13px; }
+.arq__total-row--warn {
+  background: rgba(var(--v-theme-warning), .06);
+  border: 1px solid rgba(var(--v-theme-warning), .15);
+}
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .arq__footer {
