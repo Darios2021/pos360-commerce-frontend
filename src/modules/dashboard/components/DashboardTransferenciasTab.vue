@@ -280,12 +280,11 @@ const statusCounts = computed(() => {
 
 // ── filters ──
 const statusFilters = computed(() => [
-  { value: "",           label: "Todas",       icon: "mdi-view-list-outline"    },
+  { value: "",           label: "Todas",       icon: "mdi-view-list-outline"                                                    },
   { value: "draft",      label: "Borrador",    icon: "mdi-clock-edit-outline",   count: statusCounts.value.draft      || null },
-  { value: "dispatched", label: "Enviadas",    icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
+  { value: "dispatched", label: "Pendientes",  icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
   { value: "received",   label: "Recibidas",   icon: "mdi-check-circle-outline", count: statusCounts.value.received   || null },
-  { value: "partial",    label: "Diferencia",  icon: "mdi-alert-outline",        count: statusCounts.value.partial    || null },
-  { value: "cancelled",  label: "Canceladas",  icon: "mdi-cancel"                },
+  { value: "cancelled",  label: "Canceladas",  icon: "mdi-cancel"                                                               },
 ]);
 
 const currentStatusLabel = computed(
