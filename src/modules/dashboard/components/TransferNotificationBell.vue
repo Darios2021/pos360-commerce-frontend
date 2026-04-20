@@ -70,6 +70,7 @@
             @click="openTransfer(t)"
           >
             <div v-if="!seenIds.has(t.id)" class="tnb-item__dot" />
+
             <div class="tnb-item__body">
               <div class="tnb-item__top">
                 <span class="tnb-item__number">{{ t.number }}</span>
@@ -127,36 +128,38 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useTransferNotifications } from "../composables/useTransferNotifications";
 import TransferDetail from "./TransferDetail.vue";
 
-const auth   = useAuthStore();
-const router = useRouter();
+const auth = useAuthStore();
 
-const { pendingForMe, unreadCount, soundEnabled, initialized, markSeen, markAllSeen, toggleSound, refresh } =
-  useTransferNotifications();
+const {
+  pendingForMe,
+  seenIds,
+  soundEnabled,
+  initialized,
+  markSeen,
+  markAllSeen,
+  toggleSound,
+  refresh,
+} = useTransferNotifications();
 
 const open       = ref(false);
 const showDetail = ref(false);
 const selected   = ref(null);
 
-// seenIds expuesto para el template
-const seenIds = computed(() => {
-  const s = new Set();
-  pendingForMe.value.filter((t) => unreadCount.value === 0 || true).forEach(() => {});
-  // Re-usar la misma lógica del composable: un transfer es "seen" si no está en unread
-  // Simplificamos: lo marcamos en markSeen()
-  return s;
-});
-
 const isCentral = computed(() =>
   auth.isAdmin || Number(auth.user?.branch_id) === 1
 );
 
+// Cantidad de items no vistos (punto azul)
+const unreadCount = computed(() =>
+  pendingForMe.value.filter((t) => !seenIds.value.has(t.id)).length
+);
+
 function onOpenMenu() {
-  // Al abrir, marcar todos como vistos después de 1.5s
+  // Marcar como vistos después de 1.5 s de abrir el panel
   setTimeout(() => markAllSeen(), 1500);
 }
 

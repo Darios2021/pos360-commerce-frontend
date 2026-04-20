@@ -246,6 +246,7 @@ export function useTransferNotifications() {
   return {
     pendingForMe,
     unreadCount,
+    seenIds,
     soundEnabled,
     initialized,
     markSeen,
