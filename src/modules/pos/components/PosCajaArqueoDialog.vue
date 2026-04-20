@@ -12,6 +12,10 @@
         <div>
           <p class="arq__eyebrow">Cierre de caja</p>
           <h3 class="arq__title">Arqueo</h3>
+          <p class="arq__head-note">
+            <v-icon size="11" class="mr-1">mdi-shield-check-outline</v-icon>
+            Solo incluye ventas activas. Las anuladas quedan en auditoría.
+          </p>
         </div>
         <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('update:open', false)" />
       </div>
@@ -32,15 +36,28 @@
             {{ isCajaOpen ? "Abierta" : "Cerrada" }}
           </strong>
         </div>
-        <div class="arq__pill">
-          <span class="arq__pill-label">Ventas</span>
-          <strong class="arq__pill-val">{{ totals.sales_count || 0 }}</strong>
+        <!-- Ventas: total / efectivas / anuladas -->
+        <div class="arq__pill arq__pill--sales-group">
+          <span class="arq__pill-label">Sesión</span>
+          <strong class="arq__pill-val">{{ totals.sales_total_created || totals.sales_count || 0 }}</strong>
+          <span class="arq__pill-sep">·</span>
+          <v-icon size="11" color="success">mdi-check-circle-outline</v-icon>
+          <span class="arq__pill-val arq__pill-val--ok">{{ totals.sales_count || 0 }}</span>
+          <template v-if="totals.sales_cancelled_count > 0">
+            <span class="arq__pill-sep">·</span>
+            <v-icon size="11" color="warning">mdi-cancel</v-icon>
+            <span class="arq__pill-val arq__pill-val--warn">{{ totals.sales_cancelled_count }}</span>
+          </template>
         </div>
-        <div v-if="totals.sales_cancelled_count > 0" class="arq__pill arq__pill--warn">
-          <v-icon size="13" class="mr-1">mdi-cancel</v-icon>
-          <span class="arq__pill-label">Anuladas</span>
-          <strong class="arq__pill-val arq__pill-val--warn">{{ totals.sales_cancelled_count }}</strong>
-        </div>
+      </div>
+
+      <!-- Alerta anuladas -->
+      <div v-if="totals.sales_cancelled_count > 0" class="arq__cancelled-alert">
+        <v-icon size="14" color="warning" class="mr-1">mdi-alert</v-icon>
+        <span>
+          <strong>{{ totals.sales_cancelled_count }} venta{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} anulada{{ totals.sales_cancelled_count !== 1 ? 's' : '' }}</strong>
+          en esta sesión — excluidas de los montos.
+        </span>
       </div>
 
       <v-divider />
@@ -349,6 +366,13 @@ function submit() {
   font-weight: 800;
   line-height: 1.1;
 }
+.arq__head-note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), .45);
+  display: flex;
+  align-items: center;
+}
 
 /* ── Info bar ────────────────────────────────────────────────────────────── */
 .arq__infobar {
@@ -380,6 +404,24 @@ function submit() {
 .arq__pill--warn {
   background: rgba(var(--v-theme-warning), .08);
   border-color: rgba(var(--v-theme-warning), .2);
+}
+.arq__pill--sales-group {
+  gap: 5px;
+}
+.arq__pill-sep {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), .3);
+}
+
+/* ── Alerta anuladas ─────────────────────────────────────────── */
+.arq__cancelled-alert {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(var(--v-theme-warning), .07);
+  border-bottom: 1px solid rgba(var(--v-theme-warning), .15);
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), .85);
 }
 
 /* ── Body ────────────────────────────────────────────────────────────────── */
