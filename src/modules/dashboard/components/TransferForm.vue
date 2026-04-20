@@ -73,13 +73,12 @@
                 {{ [p.sku, p.barcode].filter(Boolean).join(" · ") }}
               </span>
             </div>
-            <v-chip
-              v-if="p.stock_qty != null"
-              size="x-small"
-              :color="p.stock_qty > 0 ? 'success' : 'warning'"
-              variant="tonal"
-              class="ml-2 flex-shrink-0"
-            >{{ p.stock_qty }}</v-chip>
+            <div class="tf-search-item__stock ml-2 flex-shrink-0">
+              <v-icon size="11">mdi-package-variant</v-icon>
+              <span :class="p.stock_qty > 0 ? 'tf-stock--ok' : 'tf-stock--zero'">
+                {{ p.stock_qty ?? 0 }} en stock
+              </span>
+            </div>
             <v-icon size="18" color="primary" class="ml-2 flex-shrink-0">mdi-plus-circle-outline</v-icon>
           </div>
         </div>
@@ -91,19 +90,28 @@
       <!-- Items seleccionados -->
       <div v-if="form.items.length" class="tf-items">
         <label class="tf-label">Productos a derivar ({{ form.items.length }})</label>
-        <div class="tf-item" v-for="(item, idx) in form.items" :key="item.product_id">
+        <div class="tf-item" v-for="(item, idx) in form.items" :key="item.product_id"
+             :class="{ 'tf-item--over': item.qty_sent > item.stock_qty }">
           <div class="tf-item__info">
             <span class="tf-item__name">{{ item.name }}</span>
             <span class="tf-item__sku">{{ item.sku }}</span>
-            <span v-if="item.isNew" class="tf-item__new">Nuevo en sucursal</span>
+            <span class="tf-item__stock">
+              <v-icon size="11">mdi-package-variant</v-icon>
+              Disponible: {{ item.stock_qty ?? "?" }}
+              <span v-if="item.qty_sent > item.stock_qty" class="tf-item__over-warn">
+                — excede stock
+              </span>
+            </span>
           </div>
           <div class="tf-item__qty">
             <v-btn icon size="x-small" variant="text" @click="changeQty(idx, -1)"><v-icon>mdi-minus</v-icon></v-btn>
             <input
               type="number"
               class="tf-qty-input"
+              :class="{ 'tf-qty-input--over': item.qty_sent > item.stock_qty }"
               v-model.number="item.qty_sent"
               min="1"
+              :max="item.stock_qty || 9999"
               @change="item.qty_sent = Math.max(1, item.qty_sent)"
             />
             <v-btn icon size="x-small" variant="text" @click="changeQty(idx, 1)"><v-icon>mdi-plus</v-icon></v-btn>
@@ -169,7 +177,7 @@ function onSearch() {
   searching.value = true;
   searchTimer = setTimeout(async () => {
     try {
-      const { data } = await searchProducts({ search: q, limit: 12 });
+      const { data } = await searchProducts({ search: q, limit: 12, branchId: props.currentBranchId });
       const existing = new Set(form.value.items.map((i) => i.product_id));
       const results = (data.products || data.data || []).filter((p) => !existing.has(p.id));
       searchResults.value = results;
@@ -191,11 +199,13 @@ function onSearch() {
 }
 
 function addProduct(p) {
+  const stockQty = parseFloat(p.stock_qty ?? 0) || 0;
   form.value.items.push({
     product_id: p.id,
     name:       p.name,
     sku:        p.sku || p.barcode || "",
-    qty_sent:   1,
+    qty_sent:   Math.min(1, stockQty) || 1, // no superar el stock disponible
+    stock_qty:  stockQty,
     isNew:      false, // se determinará en recepción
   });
   searchQ.value = "";
@@ -204,7 +214,10 @@ function addProduct(p) {
 
 function removeItem(idx) { form.value.items.splice(idx, 1); }
 function changeQty(idx, delta) {
-  form.value.items[idx].qty_sent = Math.max(1, (form.value.items[idx].qty_sent || 1) + delta);
+  const item = form.value.items[idx];
+  const newQty = Math.max(1, (item.qty_sent || 1) + delta);
+  // Advertir si supera el stock, pero no bloquear (el backend valida al despachar)
+  item.qty_sent = newQty;
 }
 
 async function save() {
@@ -248,6 +261,11 @@ async function save() {
 .tf-search-item__sku  { font-size: 11px; color: rgba(var(--v-theme-on-surface),.45); }
 .tf-no-results { font-size: 12px; color: rgba(var(--v-theme-on-surface),.4);
   padding: 10px 12px; text-align: center; }
+.tf-search-item__stock { font-size: 10px; display: flex; align-items: center; gap: 2px;
+  white-space: nowrap; }
+.tf-stock--ok   { color: #2e7d32; font-weight: 600; }
+.tf-stock--zero { color: #c62828; font-weight: 600; }
+.tf-qty-input--over { border-color: #e65100 !important; color: #e65100; }
 
 .tf-items { display: flex; flex-direction: column; gap: 6px; }
 .tf-item {
@@ -259,6 +277,10 @@ async function save() {
 .tf-item__name  { font-size: 13px; font-weight: 500; }
 .tf-item__sku   { font-size: 11px; color: rgba(var(--v-theme-on-surface),.45); }
 .tf-item__new   { font-size: 10px; color: rgb(var(--v-theme-primary)); font-weight: 600; margin-top: 2px; }
+.tf-item__stock { font-size: 10px; color: rgba(var(--v-theme-on-surface),.45); margin-top: 2px;
+  display: flex; align-items: center; gap: 3px; }
+.tf-item__over-warn { color: #e65100; font-weight: 600; }
+.tf-item--over  { border-color: rgba(230,81,0,.4) !important; }
 .tf-item__qty   { display: flex; align-items: center; gap: 4px; }
 .tf-qty-input {
   width: 44px; text-align: center; font-size: 13px; font-weight: 600;
