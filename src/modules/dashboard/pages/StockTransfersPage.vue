@@ -17,43 +17,22 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
+import { useAuthStore } from "@/app/store/auth.store";
 import DashboardTransferenciasTab from "../components/DashboardTransferenciasTab.vue";
 
-// ── Auth helpers ───────────────────────────────────────────────
-function getAuthUser() {
-  try {
-    const raw = localStorage.getItem("pos360_user") || localStorage.getItem("user") || "";
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
-function isAdminUser(u) {
-  const email = String(u?.email || u?.identifier || u?.username || "").toLowerCase();
-  if (email.includes("admin@360pos.local")) return true;
-  if (u?.is_admin === true || u?.isAdmin === true || u?.admin === true) return true;
-  const roles = []
-    .concat(u?.role  ? [u.role]  : [])
-    .concat(u?.rol   ? [u.rol]   : [])
-    .concat(Array.isArray(u?.roles) ? u.roles : []);
-  return roles
-    .map((r) => (typeof r === "string" ? r : r?.name || r?.role || ""))
-    .map((s) => String(s).toLowerCase())
-    .some((x) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(x));
-}
+const auth = useAuthStore();
+if (auth.status === "idle") auth.hydrate();
 
-const user = ref(getAuthUser());
-
-const isAdmin         = computed(() => isAdminUser(user.value));
-const userBranchId    = computed(() => Number(user.value?.branch_id || 0) || null);
+const isAdmin         = computed(() => auth.isAdmin);
 const isCentral       = computed(() =>
-  isAdmin.value ||
-  user.value?.is_central === true ||
-  user.value?.branch_type === "central" ||
-  Number(user.value?.branch_id) === 1
+  auth.isAdmin ||
+  auth.user?.is_central === true ||
+  auth.user?.branch_type === "central" ||
+  Number(auth.user?.branch_id) === 1
 );
-const currentBranchId    = computed(() => userBranchId.value);
-const currentWarehouseId = computed(() => Number(user.value?.warehouse_id || 0) || null);
+const currentBranchId    = computed(() => auth.branchId);
+const currentWarehouseId = computed(() => Number(auth.user?.warehouse_id || 0) || null);
 </script>
 
 <style scoped>

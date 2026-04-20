@@ -87,6 +87,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+// (ref still used for loading/branches/ui state; onMounted/watch for data fetching)
 import { useRoute, useRouter } from "vue-router";
 
 import DashboardSalesTab from "../components/DashboardSalesTab.vue";
@@ -104,43 +105,23 @@ import {
   analyticsStockMovements,
 } from "../service/dashboard.api";
 import { dashOutOfStockCount } from "@/app/store/dashboardNav";
+import { useAuthStore } from "@/app/store/auth.store";
 
-// ─── Auth helpers ─────────────────────────────────────────────────────────────
-function getAuthUser() {
-  try {
-    const raw = localStorage.getItem("pos360_user") || localStorage.getItem("user") || "";
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
-function isAdminUser(u) {
-  const email = String(u?.email || u?.identifier || u?.username || "").toLowerCase();
-  if (email.includes("admin@360pos.local")) return true;
-  if (u?.is_admin === true || u?.isAdmin === true || u?.admin === true) return true;
-  const roles = []
-    .concat(u?.role ? [u.role] : [])
-    .concat(u?.rol ? [u.rol] : [])
-    .concat(Array.isArray(u?.roles) ? u.roles : []);
-  return roles
-    .map((r) => (typeof r === "string" ? r : r?.name || r?.role || ""))
-    .map((s) => String(s).toLowerCase())
-    .some((x) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(x));
-}
+// ─── Auth (via store — fuente de verdad) ──────────────────────────────────────
+const auth = useAuthStore();
+if (auth.status === "idle") auth.hydrate();
 
-const user = ref(getAuthUser());
-const isAdmin = computed(() => isAdminUser(user.value));
-const userBranchId = computed(() => Number(user.value?.branch_id || 0) || null);
+const isAdmin      = computed(() => auth.isAdmin);
+const userBranchId = computed(() => auth.branchId);
 
-// Central = admin, or explicitly flagged, or branch #1 (casa central)
 const isCentral = computed(() =>
-  isAdmin.value ||
-  user.value?.is_central === true ||
-  user.value?.branch_type === "central" ||
-  Number(user.value?.branch_id) === 1
+  auth.isAdmin ||
+  auth.user?.is_central === true ||
+  auth.user?.branch_type === "central" ||
+  Number(auth.user?.branch_id) === 1
 );
-// The user's own branch (used for transfer permission checks, not the dashboard scope selector)
-const currentBranchId = computed(() => userBranchId.value);
-const currentWarehouseId = computed(() => Number(user.value?.warehouse_id || 0) || null);
+const currentBranchId    = computed(() => auth.branchId);
+const currentWarehouseId = computed(() => Number(auth.user?.warehouse_id || 0) || null);
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 const route = useRoute();
