@@ -10,4 +10,7 @@ export const receiveTransfer  = (id, d)=> http.post(`stock/transfers/${id}/recei
 export const cancelTransfer   = (id)   => http.post(`stock/transfers/${id}/cancel`);
 
 export const listBranchesApi  = (p = {}) => http.get("branches", { params: { limit: 200, ...p } });
-export const searchProducts   = (p = {}) => http.get("products", { params: { limit: 50, ...p } });
+// Búsqueda de productos para el formulario de derivación
+// El controller de products usa el parámetro `q` para buscar por nombre/sku/barcode/código
+export const searchProducts = ({ search, limit = 12 } = {}) =>
+  http.get("products", { params: { q: search, limit, include_inactive: 0 } });

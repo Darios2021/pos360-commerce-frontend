@@ -43,13 +43,17 @@
         <div class="tf-search-row">
           <v-text-field
             v-model="searchQ"
-            placeholder="Buscar por nombre, SKU o código de barras..."
+            placeholder="Nombre, SKU o escanear código de barras..."
             variant="outlined"
             density="compact"
             rounded="lg"
             hide-details
-            prepend-inner-icon="mdi-magnify"
+            :prepend-inner-icon="searching ? undefined : 'mdi-barcode-scan'"
+            :loading="searching"
+            clearable
             @input="onSearch"
+            @click:clear="searchResults = []"
+            autofocus
           />
         </div>
         <!-- Resultados búsqueda -->
@@ -59,16 +63,28 @@
             class="tf-search-item"
             @click="addProduct(p)"
           >
-            <v-avatar size="32" rounded="md" class="mr-2">
-              <v-img v-if="p.images?.[0]?.url" :src="p.images[0].url" />
+            <v-avatar size="36" rounded="md" class="mr-2 flex-shrink-0">
+              <v-img v-if="p.images?.[0]?.url" :src="p.images[0].url" cover />
               <v-icon v-else size="18" color="secondary">mdi-package-variant</v-icon>
             </v-avatar>
             <div class="tf-search-item__info">
               <span class="tf-search-item__name">{{ p.name }}</span>
-              <span class="tf-search-item__sku">{{ p.sku || p.barcode || "" }}</span>
+              <span class="tf-search-item__sku">
+                {{ [p.sku, p.barcode].filter(Boolean).join(" · ") }}
+              </span>
             </div>
-            <v-icon size="18" color="primary">mdi-plus-circle-outline</v-icon>
+            <v-chip
+              v-if="p.stock_qty != null"
+              size="x-small"
+              :color="p.stock_qty > 0 ? 'success' : 'warning'"
+              variant="tonal"
+              class="ml-2 flex-shrink-0"
+            >{{ p.stock_qty }}</v-chip>
+            <v-icon size="18" color="primary" class="ml-2 flex-shrink-0">mdi-plus-circle-outline</v-icon>
           </div>
+        </div>
+        <div v-else-if="searchQ && !searching" class="tf-no-results">
+          Sin resultados para "{{ searchQ }}"
         </div>
       </div>
 
@@ -127,12 +143,13 @@ const props = defineProps({
 });
 const emit = defineEmits(["created", "close"]);
 
-const branches     = ref([]);
-const searchQ      = ref("");
+const branches      = ref([]);
+const searchQ       = ref("");
 const searchResults = ref([]);
-const saving       = ref(false);
-const error        = ref("");
-let   searchTimer  = null;
+const searching     = ref(false);
+const saving        = ref(false);
+const error         = ref("");
+let   searchTimer   = null;
 
 const form = ref({ to_branch_id: null, note: "", items: [] });
 
@@ -144,17 +161,33 @@ onMounted(async () => {
   );
 });
 
-// Buscar productos con debounce
+// Buscar productos con debounce (150ms — más ágil para código de barras)
 function onSearch() {
   clearTimeout(searchTimer);
-  if (!searchQ.value.trim()) { searchResults.value = []; return; }
+  const q = searchQ.value.trim();
+  if (!q) { searchResults.value = []; searching.value = false; return; }
+  searching.value = true;
   searchTimer = setTimeout(async () => {
     try {
-      const { data } = await searchProducts({ search: searchQ.value, limit: 8 });
+      const { data } = await searchProducts({ search: q, limit: 12 });
       const existing = new Set(form.value.items.map((i) => i.product_id));
-      searchResults.value = (data.products || data.data || []).filter((p) => !existing.has(p.id));
-    } catch {}
-  }, 300);
+      const results = (data.products || data.data || []).filter((p) => !existing.has(p.id));
+      searchResults.value = results;
+      // Si hay exactamente 1 resultado por código de barras → agregar automáticamente
+      if (results.length === 1) {
+        const p = results[0];
+        const barcode = String(p.barcode || p.code || "").trim();
+        if (barcode && barcode === q.trim()) {
+          addProduct(p);
+          return;
+        }
+      }
+    } catch {
+      searchResults.value = [];
+    } finally {
+      searching.value = false;
+    }
+  }, 150);
 }
 
 function addProduct(p) {
@@ -213,6 +246,8 @@ async function save() {
 .tf-search-item__info { flex: 1; display: flex; flex-direction: column; }
 .tf-search-item__name { font-size: 13px; font-weight: 500; }
 .tf-search-item__sku  { font-size: 11px; color: rgba(var(--v-theme-on-surface),.45); }
+.tf-no-results { font-size: 12px; color: rgba(var(--v-theme-on-surface),.4);
+  padding: 10px 12px; text-align: center; }
 
 .tf-items { display: flex; flex-direction: column; gap: 6px; }
 .tf-item {
