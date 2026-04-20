@@ -302,14 +302,15 @@ function statusTextClass(v) {
 // ── sync ──────────────────────────────────────────────────────────────────
 function syncFromSummary() {
   localNote.value = "";
+  const p = payments.value || {};
   declaredInputs.value = {
-    cash:       String(expectedCashValue.value || ""),
-    card:       String(toNum(payments.value?.card, 0) || ""),
-    transfer:   String(toNum(payments.value?.transfer, 0) || ""),
-    qr:         String(toNum(payments.value?.qr, 0) || ""),
-    mercadopago:String(toNum(payments.value?.mercadopago, 0) || ""),
-    credit_sjt: String(toNum(payments.value?.credit_sjt, 0) || ""),
-    other:      String(toNum(payments.value?.other, 0) || ""),
+    cash:        String(toNum(expectedCashValue.value, 0)),
+    card:        String(toNum(p.card, 0)),
+    transfer:    String(toNum(p.transfer, 0)),
+    qr:          String(toNum(p.qr, 0)),
+    mercadopago: String(toNum(p.mercadopago, 0)),
+    credit_sjt:  String(toNum(p.credit_sjt, 0)),
+    other:       String(toNum(p.other, 0)),
   };
 }
 
