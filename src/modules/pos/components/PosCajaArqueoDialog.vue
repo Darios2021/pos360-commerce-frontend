@@ -241,7 +241,7 @@ function round2(n) { return Number(Number(n || 0).toFixed(2)); }
 // ── state ─────────────────────────────────────────────────────────────────
 const localNote = ref("");
 const declaredInputs = ref({
-  cash: "", card: "", transfer: "", qr: "", mercadopago: "", credit_sjt: "", other: "",
+  cash: "", card: "", transfer: "", mercadopago: "", credit_sjt: "", other: "",
 });
 
 // ── computed ──────────────────────────────────────────────────────────────
@@ -258,7 +258,6 @@ const nonCashRows = computed(() => {
   const map = [
     { key: "card",       label: "Tarjeta" },
     { key: "transfer",   label: "Transferencia" },
-    { key: "qr",         label: "QR" },
     { key: "mercadopago",label: "Mercado Pago" },
     { key: "credit_sjt", label: "Crédito San Juan" },
     { key: "other",      label: "Otros" },
@@ -307,7 +306,6 @@ function syncFromSummary() {
     cash:        String(toNum(expectedCashValue.value, 0)),
     card:        String(toNum(p.card, 0)),
     transfer:    String(toNum(p.transfer, 0)),
-    qr:          String(toNum(p.qr, 0)),
     mercadopago: String(toNum(p.mercadopago, 0)),
     credit_sjt:  String(toNum(p.credit_sjt, 0)),
     other:       String(toNum(p.other, 0)),
@@ -326,7 +324,6 @@ function submit() {
       cash:       cashDeclared.value,
       card:       parseDeclared("card"),
       transfer:   parseDeclared("transfer"),
-      qr:         parseDeclared("qr"),
       mercadopago:parseDeclared("mercadopago"),
       credit_sjt: parseDeclared("credit_sjt"),
       other:      parseDeclared("other"),
