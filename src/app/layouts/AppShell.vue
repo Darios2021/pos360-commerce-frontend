@@ -43,6 +43,9 @@
 
         <v-spacer />
 
+        <!-- 🔔 Derivaciones bell -->
+        <TransferNotificationBell class="mr-1" />
+
         <!-- 🌙 Modo oscuro -->
         <v-btn
           icon
@@ -229,9 +232,20 @@
 
           <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact>
             <template #prepend>
-              <v-icon size="20">mdi-truck-fast-outline</v-icon>
+              <v-badge
+                v-if="transferUnreadCount > 0 && !rail"
+                :content="String(transferUnreadCount)"
+                color="warning"
+                floating
+              >
+                <v-icon size="20">mdi-truck-fast-outline</v-icon>
+              </v-badge>
+              <v-icon v-else size="20">mdi-truck-fast-outline</v-icon>
             </template>
-            <v-list-item-title>Derivaciones</v-list-item-title>
+            <v-list-item-title>
+              Derivaciones
+              <v-chip v-if="transferUnreadCount > 0" size="x-small" color="warning" class="ml-2">{{ transferUnreadCount }}</v-chip>
+            </v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">
               Derivaciones
             </v-tooltip>
@@ -509,6 +523,8 @@ import { useRouter, useRoute } from "vue-router";
 
 import { useAuthStore } from "../store/auth.store";
 import { useThemeStore } from "../store/theme.store";
+import TransferNotificationBell from "@/modules/dashboard/components/TransferNotificationBell.vue";
+import { useTransferNotifications } from "@/modules/dashboard/composables/useTransferNotifications";
 import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
 
@@ -586,6 +602,9 @@ function toggleDark() {
 onMounted(() => {
   themeStore.syncFromStorage?.();
 });
+
+/* ===== Transfer notifications badge in nav ===== */
+const { unreadCount: transferUnreadCount } = useTransferNotifications();
 
 /* ===== Admin ===== */
 const isAdmin = computed(() => {
