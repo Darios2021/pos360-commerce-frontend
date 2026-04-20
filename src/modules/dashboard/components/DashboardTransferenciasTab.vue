@@ -4,28 +4,32 @@
     <!-- ═══════════════════════ VISTA: LISTA ═══════════════════════ -->
     <template v-if="!selectedId">
 
-      <!-- Banner pendientes -->
-      <div v-if="pendingForMe.length && !isAdmin" class="transfers__pending">
-        <div class="transfers__pending-left">
-          <span class="transfers__pending-dot" />
-          <v-icon size="15" color="warning">mdi-package-variant-closed</v-icon>
-          <span class="transfers__pending-label">
-            <strong>{{ pendingForMe.length }}</strong>
-            pendiente{{ pendingForMe.length !== 1 ? 's' : '' }} de recepción
-          </span>
+      <!-- ═══ BANNER PERSISTENTE — pendientes de recepción ═══════════════
+           No tiene botón de cierre. Se va solo cuando todos se recepcionan. -->
+      <div v-if="pendingForMe.length && !isAdmin" class="transfers__alert">
+        <div class="transfers__alert-icon">
+          <span class="transfers__alert-dot" />
+          <v-icon size="22" color="warning">mdi-truck-delivery-outline</v-icon>
         </div>
-        <div class="transfers__pending-chips">
-          <button
-            v-for="t in pendingForMe.slice(0,3)" :key="t.id"
-            class="transfers__pending-chip"
-            @click="selectedId = t.id; selectedTransfer = t"
-          >
-            {{ t.fromWarehouse?.branch?.name || '—' }} · {{ t.number }}
-            <span class="transfers__pending-ago">{{ timeAgo(t.dispatched_at) }}</span>
-          </button>
-          <span v-if="pendingForMe.length > 3" class="transfers__pending-more">
-            +{{ pendingForMe.length - 3 }} más
-          </span>
+        <div class="transfers__alert-body">
+          <p class="transfers__alert-title">
+            {{ pendingForMe.length === 1
+              ? '1 paquete esperando recepción'
+              : `${pendingForMe.length} paquetes esperando recepción` }}
+          </p>
+          <div class="transfers__alert-list">
+            <button
+              v-for="t in pendingForMe" :key="t.id"
+              class="transfers__alert-item"
+              @click="openDetail(t)"
+            >
+              <v-icon size="12" color="warning">mdi-circle</v-icon>
+              <span class="transfers__alert-item-num">{{ t.number }}</span>
+              <span class="transfers__alert-item-from">desde {{ t.fromWarehouse?.branch?.name || '—' }}</span>
+              <span class="transfers__alert-item-ago">{{ timeAgo(t.dispatched_at) }}</span>
+              <v-chip size="x-small" color="success" variant="flat" class="ml-1">Recepcionar</v-chip>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -407,59 +411,71 @@ onMounted(() => { loadList(); });
 }
 
 /* ══════════════════════════════════════════════════════════
-   BANNER PENDIENTES
+   BANNER PERSISTENTE — pendientes de recepción
+   No tiene X de cierre. Se va solo cuando no hay más pendientes.
 ══════════════════════════════════════════════════════════ */
-.transfers__pending {
+.transfers__alert {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-warning), .3);
-  background: rgba(var(--v-theme-warning), .07);
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(var(--v-theme-warning), .45);
+  background: rgba(var(--v-theme-warning), .08);
 }
-.transfers__pending-left {
+.transfers__alert-icon {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   flex-shrink: 0;
+  padding-top: 2px;
 }
-.transfers__pending-dot {
+.transfers__alert-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: rgb(var(--v-theme-warning));
   animation: blink 1.4s infinite;
+  flex-shrink: 0;
 }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-.transfers__pending-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), .8);
+
+.transfers__alert-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
-.transfers__pending-chips {
+.transfers__alert-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), .9);
+  margin: 0;
+}
+.transfers__alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.transfers__alert-item {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-warning), .25);
+  background: rgba(var(--v-theme-warning), .07);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  transition: background .12s;
   flex-wrap: wrap;
 }
-.transfers__pending-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  border: 1px solid rgba(var(--v-theme-warning), .4);
-  background: rgba(var(--v-theme-warning), .1);
-  color: rgba(var(--v-theme-on-surface), .85);
-  cursor: pointer;
-  transition: background .12s;
-}
-.transfers__pending-chip:hover { background: rgba(var(--v-theme-warning), .2); }
-.transfers__pending-ago { color: rgba(var(--v-theme-on-surface), .4); font-weight: 400; }
-.transfers__pending-more { font-size: 11px; color: rgba(var(--v-theme-on-surface), .4); }
+.transfers__alert-item:hover { background: rgba(var(--v-theme-warning), .18); }
+.transfers__alert-item-num  { font-weight: 700; letter-spacing: .01em; }
+.transfers__alert-item-from { color: rgba(var(--v-theme-on-surface), .6); flex: 1; }
+.transfers__alert-item-ago  { font-size: 11px; color: rgba(var(--v-theme-on-surface), .4); }
 
 /* ══════════════════════════════════════════════════════════
    CARD — igual que las cards del sistema
