@@ -60,7 +60,6 @@
           <v-icon size="18">mdi-refresh</v-icon>
         </v-btn>
         <v-btn
-          v-if="isAdmin || isCentral"
           color="primary" size="small" variant="flat" rounded="lg"
           prepend-icon="mdi-plus"
           @click="openCreate"
@@ -233,8 +232,8 @@ const counts = ref({});
 
 const statusFilters = computed(() => [
   { value: "",           label: "Todas",         icon: "mdi-view-list-outline",    count: null },
-  { value: "dispatched", label: "En camino",      icon: "mdi-truck-fast-outline",   count: counts.value.dispatched || null },
   { value: "draft",      label: "Borrador",       icon: "mdi-clock-edit-outline",   count: counts.value.draft      || null },
+  { value: "dispatched", label: "En camino",      icon: "mdi-truck-fast-outline",   count: counts.value.dispatched || null },
   { value: "received",   label: "Entregadas",     icon: "mdi-check-circle-outline", count: counts.value.received   || null },
   { value: "partial",    label: "Con diferencia", icon: "mdi-alert-outline",        count: counts.value.partial    || null },
   { value: "cancelled",  label: "Canceladas",     icon: "mdi-cancel",               count: null },

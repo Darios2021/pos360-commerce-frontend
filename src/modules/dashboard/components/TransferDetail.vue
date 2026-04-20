@@ -156,11 +156,16 @@ const receiveForm   = ref([]);
 const isDestination = computed(() =>
   props.currentBranchId && props.transfer.to_branch_id === props.currentBranchId
 );
+// Puede despachar/cancelar: admin, o quien esté en la sucursal de origen
+const isOrigin = computed(() =>
+  props.currentBranchId &&
+  props.transfer.fromWarehouse?.branch_id === props.currentBranchId
+);
 const canDispatch = computed(() =>
-  props.transfer.status === "draft" && (props.isAdmin || props.isCentral)
+  props.transfer.status === "draft" && (props.isAdmin || isOrigin.value)
 );
 const canCancel = computed(() =>
-  props.transfer.status === "draft" && (props.isAdmin || props.isCentral)
+  props.transfer.status === "draft" && (props.isAdmin || isOrigin.value)
 );
 const canReceive = computed(() =>
   props.transfer.status === "dispatched" && (props.isAdmin || isDestination.value)
