@@ -126,7 +126,8 @@
       <!-- Sucursal: recepcionar -->
       <v-btn
         v-if="canReceive && !showReceiveForm" color="success" variant="flat" rounded="lg" size="small"
-        prepend-icon="mdi-check-circle-outline" @click="initReceiveForm"
+        prepend-icon="mdi-check-circle-outline"
+        @click="hasItems ? initReceiveForm() : doReceiveDirect()"
       >Recepcionar</v-btn>
 
       <v-spacer />
@@ -151,6 +152,9 @@ const actioning     = ref(false);
 const actionError   = ref("");
 const showReceiveForm = ref(false);
 const receiveForm   = ref([]);
+
+// ── computed helpers ──
+const hasItems = computed(() => (props.transfer.items?.length ?? 0) > 0);
 
 // ── computed permissions ──
 const isDestination = computed(() =>
@@ -216,6 +220,17 @@ async function doReceive() {
     await receiveTransfer(props.transfer.id, { receptions: receiveForm.value });
     emit("receive", props.transfer.id);
     showReceiveForm.value = false;
+  } catch (e) { actionError.value = e?.response?.data?.message || "Error al recepcionar"; }
+  finally { actioning.value = false; }
+}
+
+// Recepción directa para transfers sin productos (confirma entrega sin form)
+async function doReceiveDirect() {
+  if (!confirm("¿Confirmar recepción del paquete? (sin productos)")) return;
+  actioning.value = true; actionError.value = "";
+  try {
+    await receiveTransfer(props.transfer.id, { receptions: [] });
+    emit("receive", props.transfer.id);
   } catch (e) { actionError.value = e?.response?.data?.message || "Error al recepcionar"; }
   finally { actioning.value = false; }
 }
