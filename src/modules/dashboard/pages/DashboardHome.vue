@@ -74,6 +74,13 @@
         :loading="loadingAnalytics" :analytics="analytics.cash"
         :period="period" @period-change="onPeriodChange"
       />
+      <DashboardTransferenciasTab
+        v-else-if="tab === 'transfers'" key="transfers"
+        :is-admin="isAdmin"
+        :is-central="isCentral"
+        :current-branch-id="currentBranchId"
+        :current-warehouse-id="currentWarehouseId"
+      />
     </Transition>
   </div>
 </template>
@@ -86,6 +93,7 @@ import DashboardSalesTab from "../components/DashboardSalesTab.vue";
 import DashboardStockTab from "../components/DashboardStockTab.vue";
 import DashboardInventoryTab from "../components/DashboardInventoryTab.vue";
 import DashboardCashTab from "../components/DashboardCashTab.vue";
+import DashboardTransferenciasTab from "../components/DashboardTransferenciasTab.vue";
 
 import {
   dashboardOverview,
@@ -123,11 +131,22 @@ const user = ref(getAuthUser());
 const isAdmin = computed(() => isAdminUser(user.value));
 const userBranchId = computed(() => Number(user.value?.branch_id || 0) || null);
 
+// Central = admin, or explicitly flagged, or branch #1 (casa central)
+const isCentral = computed(() =>
+  isAdmin.value ||
+  user.value?.is_central === true ||
+  user.value?.branch_type === "central" ||
+  Number(user.value?.branch_id) === 1
+);
+// The user's own branch (used for transfer permission checks, not the dashboard scope selector)
+const currentBranchId = computed(() => userBranchId.value);
+const currentWarehouseId = computed(() => Number(user.value?.warehouse_id || 0) || null);
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["sales", "stock", "inventory", "cash"];
+const VALID_TABS = ["sales", "stock", "inventory", "cash", "transfers"];
 
 // ─── UI state ────────────────────────────────────────────────────────────────
 const tab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : "sales");
@@ -165,8 +184,9 @@ const tabItems = computed(() => [
     icon: "mdi-warehouse",
     badge: (ui.value.stock?.outOfStockCount || 0) > 0 ? String(ui.value.stock.outOfStockCount) : null,
   },
-  { value: "inventory", label: "Inventario", icon: "mdi-package-variant", badge: null },
-  { value: "cash", label: "Caja", icon: "mdi-cash-multiple", badge: null },
+  { value: "inventory",  label: "Inventario",  icon: "mdi-package-variant",  badge: null },
+  { value: "cash",       label: "Caja",        icon: "mdi-cash-multiple",    badge: null },
+  { value: "transfers",  label: "Derivaciones",icon: "mdi-truck-fast-outline",badge: null },
 ]);
 
 // ─── UI model ─────────────────────────────────────────────────────────────────
