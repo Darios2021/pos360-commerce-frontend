@@ -227,6 +227,16 @@
             </v-tooltip>
           </v-list-item>
 
+          <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-truck-fast-outline</v-icon>
+            </template>
+            <v-list-item-title>Derivaciones</v-list-item-title>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Derivaciones
+            </v-tooltip>
+          </v-list-item>
+
           <v-divider class="my-2 nav-divider" />
 
           <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
@@ -523,6 +533,7 @@ const ROUTE_TREE = {
   productEdit:              { label: "Editar producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   productView:              { label: "Ver producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   productsImport:           { label: "Importar CSV", section: "Gestión" },
+  transfers:                { label: "Derivaciones", section: "Gestión" },
   stock:                    { label: "Stock", section: "Configuración" },
   inventory:                { label: "Inventario", section: "Configuración" },
   categories:               { label: "Categorías", section: "Configuración" },

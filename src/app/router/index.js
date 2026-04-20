@@ -40,6 +40,7 @@ import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
 import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
 import StockPage from "@/modules/stock/pages/StockPage.vue";
 
+import StockTransfersPage from "@/modules/dashboard/pages/StockTransfersPage.vue";
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 import FiscalAdminPage from "@/modules/admin/pages/FiscalAdminPage.vue";
 import PaymentMethodsAdminPage from "@/modules/admin/pages/PaymentMethodsAdminPage.vue";
@@ -74,6 +75,8 @@ const routes = [
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
       { path: "products-import", name: "productsImport", component: ImportProductsPage },
+
+      { path: "transfers", name: "transfers", component: StockTransfersPage },
 
       { path: "stock", name: "stock", component: StockPage },
       {
