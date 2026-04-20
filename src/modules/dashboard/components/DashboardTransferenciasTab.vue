@@ -241,7 +241,6 @@ const { pendingForMe } = useTransferNotifications();
 // ── state ──
 const allTransfers    = ref([]);
 const loading         = ref(false);
-const counts          = ref({});
 const selectedId      = ref(null);
 const selectedTransfer = ref(null);
 const showCreate      = ref(false);
@@ -253,13 +252,35 @@ const sortDesc     = ref(true);
 const page         = ref(1);
 const limit        = ref(25);
 
+// ── transfers visibles (filtro de sucursal, sin status/search) ──
+// Se usa para calcular los contadores de cada chip
+const visibleTransfers = computed(() => {
+  if (props.isAdmin || !props.currentBranchId) return allTransfers.value;
+  return allTransfers.value.filter(t => {
+    const originBranchId = t.fromWarehouse?.branch_id ?? t.from_branch_id;
+    const destBranchId   = t.to_branch_id ?? t.toBranch?.id ?? t.toWarehouse?.branch_id;
+    const isOrigin = originBranchId === props.currentBranchId;
+    const isDest   = destBranchId   === props.currentBranchId;
+    if (!isOrigin && !isDest) return false;
+    if (isOrigin) return true;
+    return t.status !== "draft";
+  });
+});
+
+// Contadores calculados localmente (siempre en sync con lo visible)
+const statusCounts = computed(() => {
+  const c = {};
+  for (const t of visibleTransfers.value) c[t.status] = (c[t.status] || 0) + 1;
+  return c;
+});
+
 // ── filters ──
 const statusFilters = computed(() => [
   { value: "",           label: "Todas",       icon: "mdi-view-list-outline"    },
-  { value: "draft",      label: "Borrador",    icon: "mdi-clock-edit-outline",   count: counts.value.draft      || null },
-  { value: "dispatched", label: "Enviadas",    icon: "mdi-truck-fast-outline",   count: counts.value.dispatched || null },
-  { value: "received",   label: "Recibidas",   icon: "mdi-check-circle-outline", count: counts.value.received   || null },
-  { value: "partial",    label: "Diferencia",  icon: "mdi-alert-outline",        count: counts.value.partial    || null },
+  { value: "draft",      label: "Borrador",    icon: "mdi-clock-edit-outline",   count: statusCounts.value.draft      || null },
+  { value: "dispatched", label: "Enviadas",    icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
+  { value: "received",   label: "Recibidas",   icon: "mdi-check-circle-outline", count: statusCounts.value.received   || null },
+  { value: "partial",    label: "Diferencia",  icon: "mdi-alert-outline",        count: statusCounts.value.partial    || null },
   { value: "cancelled",  label: "Canceladas",  icon: "mdi-cancel"                },
 ]);
 
@@ -269,23 +290,8 @@ const currentStatusLabel = computed(
 
 // ── filtered / sorted / paginated ──
 const filtered = computed(() => {
-  let list = allTransfers.value;
-
-  // Filtro por sucursal para no-admins:
-  // - Soy origen: veo todo lo que envié (todos los estados)
-  // - Soy destino: veo todo excepto borradores (solo cuando ya fue despachado o cerrado)
-  // - No me involucra: no veo nada
-  if (!props.isAdmin && props.currentBranchId) {
-    list = list.filter(t => {
-      const originBranchId = t.fromWarehouse?.branch_id ?? t.from_branch_id;
-      const destBranchId   = t.to_branch_id ?? t.toBranch?.id ?? t.toWarehouse?.branch_id;
-      const isOrigin = originBranchId === props.currentBranchId;
-      const isDest   = destBranchId   === props.currentBranchId;
-      if (!isOrigin && !isDest) return false;          // no me involucra
-      if (isOrigin)             return true;           // soy origen → veo todo lo mío
-      return t.status !== "draft";                     // soy destino → oculto borradores
-    });
-  }
+  // Parte del conjunto ya filtrado por sucursal (visibleTransfers)
+  let list = visibleTransfers.value;
 
   if (statusFilter.value) list = list.filter(t => t.status === statusFilter.value);
   if (search.value.trim()) {
@@ -361,16 +367,6 @@ async function loadList() {
   finally { loading.value = false; }
 }
 
-async function loadCounts() {
-  try {
-    const statuses = ["draft", "dispatched", "received", "partial"];
-    const results  = await Promise.allSettled(statuses.map(s => listTransfers({ status: s, limit: 1, page: 1 })));
-    const c = {};
-    statuses.forEach((s, i) => { if (results[i].status === "fulfilled") c[s] = results[i].value.data.total || 0; });
-    counts.value = c;
-  } catch {}
-}
-
 // ── navegación ──
 function openDetail(tr) {
   selectedId.value = tr.id;
@@ -384,7 +380,6 @@ function closeDetail() {
 
 async function refreshAndReload(id) {
   await loadList();
-  loadCounts();
   if (id) {
     try {
       const { data } = await getTransfer(id);
@@ -395,10 +390,10 @@ async function refreshAndReload(id) {
 
 async function onDispatch(id) { await refreshAndReload(id); }
 async function onReceive(id)  { await refreshAndReload(id); }
-async function onCancel()     { closeDetail(); await loadList(); loadCounts(); }
-function onCreated()          { showCreate.value = false; loadList(); loadCounts(); }
+async function onCancel()     { closeDetail(); await loadList(); }
+function onCreated()          { showCreate.value = false; loadList(); }
 
-onMounted(() => { loadList(); loadCounts(); });
+onMounted(() => { loadList(); });
 </script>
 
 <style scoped>
