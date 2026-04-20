@@ -168,8 +168,8 @@ const canReceive = computed(() =>
 
 // ── helpers ──
 function statusLabel(s) {
-  return { draft:"Borrador", dispatched:"En tránsito", received:"Recibida",
-           partial:"Parcial", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
+  return { draft:"Por despachar", dispatched:"En camino", received:"Entregada",
+           partial:"Con diferencia", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
 }
 function userName(u) {
   if (!u) return "—";

@@ -74,13 +74,6 @@
         :loading="loadingAnalytics" :analytics="analytics.cash"
         :period="period" @period-change="onPeriodChange"
       />
-      <DashboardTransferenciasTab
-        v-else-if="tab === 'transfers'" key="transfers"
-        :is-admin="isAdmin"
-        :is-central="isCentral"
-        :current-branch-id="currentBranchId"
-        :current-warehouse-id="currentWarehouseId"
-      />
     </Transition>
   </div>
 </template>
@@ -94,7 +87,6 @@ import DashboardSalesTab from "../components/DashboardSalesTab.vue";
 import DashboardStockTab from "../components/DashboardStockTab.vue";
 import DashboardInventoryTab from "../components/DashboardInventoryTab.vue";
 import DashboardCashTab from "../components/DashboardCashTab.vue";
-import DashboardTransferenciasTab from "../components/DashboardTransferenciasTab.vue";
 
 import {
   dashboardOverview,
@@ -114,20 +106,12 @@ if (auth.status === "idle") auth.hydrate();
 const isAdmin      = computed(() => auth.isAdmin);
 const userBranchId = computed(() => auth.branchId);
 
-const isCentral = computed(() =>
-  auth.isAdmin ||
-  auth.user?.is_central === true ||
-  auth.user?.branch_type === "central" ||
-  Number(auth.user?.branch_id) === 1
-);
-const currentBranchId    = computed(() => auth.branchId);
-const currentWarehouseId = computed(() => Number(auth.user?.warehouse_id || 0) || null);
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["sales", "stock", "inventory", "cash", "transfers"];
+const VALID_TABS = ["sales", "stock", "inventory", "cash"];
 
 // ─── UI state ────────────────────────────────────────────────────────────────
 const tab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : "sales");
@@ -167,7 +151,6 @@ const tabItems = computed(() => [
   },
   { value: "inventory",  label: "Inventario",  icon: "mdi-package-variant",  badge: null },
   { value: "cash",       label: "Caja",        icon: "mdi-cash-multiple",    badge: null },
-  { value: "transfers",  label: "Derivaciones",icon: "mdi-truck-fast-outline",badge: null },
 ]);
 
 // ─── UI model ─────────────────────────────────────────────────────────────────

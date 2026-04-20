@@ -50,6 +50,7 @@
           :class="{ 'tr-filter-pill--active': statusFilter === s.value }"
           @click="statusFilter = s.value; page = 1; loadList()"
         >
+          <v-icon size="13">{{ s.icon }}</v-icon>
           <span class="tr-filter-pill__label">{{ s.label }}</span>
           <span v-if="s.count" class="tr-filter-pill__count">{{ s.count }}</span>
         </button>
@@ -116,6 +117,24 @@
             <div class="tr-route-node tr-route-node--right">
               <v-icon size="14" color="success">mdi-store</v-icon>
               <span>{{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || "—" }}</span>
+            </div>
+          </div>
+
+          <!-- Fila 2.5: Mini stepper -->
+          <div v-if="tr.status !== 'cancelled'" class="tr-stepper">
+            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 1, 'tr-step--active': stepperStep(tr.status) === 1 }">
+              <div class="tr-step__dot"><v-icon size="10">mdi-pencil</v-icon></div>
+              <span class="tr-step__label">Creada</span>
+            </div>
+            <div class="tr-step__line" :class="{ 'tr-step__line--done': stepperStep(tr.status) >= 2 }" />
+            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 2, 'tr-step--active': stepperStep(tr.status) === 2 }">
+              <div class="tr-step__dot"><v-icon size="10">mdi-truck-fast</v-icon></div>
+              <span class="tr-step__label">En camino</span>
+            </div>
+            <div class="tr-step__line" :class="{ 'tr-step__line--done': stepperStep(tr.status) >= 3 }" />
+            <div class="tr-step" :class="{ 'tr-step--done': stepperStep(tr.status) >= 3, 'tr-step--active': stepperStep(tr.status) === 3, 'tr-step--partial': tr.status === 'partial' }">
+              <div class="tr-step__dot"><v-icon size="10">mdi-check</v-icon></div>
+              <span class="tr-step__label">{{ tr.status === 'partial' ? 'Con dif.' : 'Entregada' }}</span>
             </div>
           </div>
 
@@ -218,12 +237,12 @@ const selected     = ref(null);
 const counts = ref({});
 
 const statusFilters = computed(() => [
-  { value: "",           label: "Todas",       count: null },
-  { value: "draft",      label: "Borrador",    count: counts.value.draft     || null },
-  { value: "dispatched", label: "En tránsito", count: counts.value.dispatched|| null },
-  { value: "received",   label: "Recibidas",   count: counts.value.received  || null },
-  { value: "partial",    label: "Parciales",   count: counts.value.partial   || null },
-  { value: "cancelled",  label: "Canceladas",  count: null },
+  { value: "",           label: "Todas",         icon: "mdi-view-list-outline",    count: null },
+  { value: "dispatched", label: "En camino",      icon: "mdi-truck-fast-outline",   count: counts.value.dispatched || null },
+  { value: "draft",      label: "Por despachar",  icon: "mdi-clock-outline",        count: counts.value.draft      || null },
+  { value: "received",   label: "Entregadas",     icon: "mdi-check-circle-outline", count: counts.value.received   || null },
+  { value: "partial",    label: "Con diferencia", icon: "mdi-alert-outline",        count: counts.value.partial    || null },
+  { value: "cancelled",  label: "Canceladas",     icon: "mdi-cancel",               count: null },
 ]);
 
 const currentStatusLabel = computed(
@@ -232,13 +251,17 @@ const currentStatusLabel = computed(
 
 // ── helpers ──
 function statusLabel(s) {
-  return { draft:"Borrador", dispatched:"En tránsito", received:"Recibida",
-           partial:"Parcial", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
+  return { draft:"Por despachar", dispatched:"En camino", received:"Entregada",
+           partial:"Con diferencia", rejected:"Rechazada", cancelled:"Cancelada" }[s] || s;
 }
 function statusIcon(s) {
-  return { draft:"mdi-pencil-outline", dispatched:"mdi-truck-fast-outline",
-           received:"mdi-check-circle-outline", partial:"mdi-alert-circle-outline",
+  return { draft:"mdi-clock-outline", dispatched:"mdi-truck-fast-outline",
+           received:"mdi-check-circle-outline", partial:"mdi-alert-outline",
            rejected:"mdi-close-circle-outline", cancelled:"mdi-cancel" }[s] || "mdi-help";
+}
+// Stepper: qué paso está activo para esta derivación
+function stepperStep(status) {
+  return { draft: 1, dispatched: 2, received: 3, partial: 3, rejected: 3, cancelled: 0 }[status] ?? 0;
 }
 function userName(u) {
   if (!u) return "—";
@@ -468,6 +491,49 @@ onMounted(() => { loadList(); loadCounts(); });
   font-style: italic; max-width: 200px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ═══ Mini stepper ══════════════════════════════════════════ */
+.tr-stepper {
+  display: flex; align-items: center; gap: 0;
+  padding: 2px 0;
+}
+.tr-step {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.tr-step__dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(var(--v-theme-on-surface), .1);
+  color: rgba(var(--v-theme-on-surface), .3);
+  transition: all .2s;
+}
+.tr-step--done .tr-step__dot {
+  background: rgba(var(--v-theme-success), .2);
+  color: rgb(var(--v-theme-success));
+}
+.tr-step--active .tr-step__dot {
+  background: rgba(255,152,0,.25);
+  color: #e65100;
+  box-shadow: 0 0 0 3px rgba(255,152,0,.15);
+}
+.tr-step--partial .tr-step__dot {
+  background: rgba(255,152,0,.2);
+  color: #e65100;
+}
+.tr-step__label {
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+  color: rgba(var(--v-theme-on-surface), .35);
+  white-space: nowrap;
+}
+.tr-step--done .tr-step__label   { color: rgb(var(--v-theme-success)); }
+.tr-step--active .tr-step__label { color: #e65100; }
+.tr-step__line {
+  flex: 1; height: 2px; min-width: 24px;
+  background: rgba(var(--v-theme-on-surface), .1);
+  margin-bottom: 12px; /* alinea con el dot */
+  transition: background .2s;
+}
+.tr-step__line--done { background: rgba(var(--v-theme-success), .4); }
 
 /* ═══ Paginación ════════════════════════════════════════════ */
 .tr-pagination {
