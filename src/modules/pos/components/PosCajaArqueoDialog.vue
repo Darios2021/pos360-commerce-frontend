@@ -1,113 +1,97 @@
 <template>
   <v-dialog
     :model-value="open"
-    max-width="600"
-    scrollable
+    max-width="680"
     @update:model-value="$emit('update:open', $event)"
   >
     <v-card class="arq" rounded="xl">
 
-      <!-- Header -->
+      <!-- ── Header ──────────────────────────────────────────────────────── -->
       <div class="arq__head">
-        <div>
-          <p class="arq__eyebrow">Cierre de caja</p>
+        <div class="arq__head-left">
+          <div class="arq__head-top">
+            <span class="arq__eyebrow">Cierre de caja</span>
+            <!-- pills inline -->
+            <div class="arq__pills">
+              <span class="arq__pill">
+                <span class="arq__pill-label">{{ cajaTypeLabel || "General" }}</span>
+              </span>
+              <span class="arq__pill">
+                <span class="arq__pill-label">{{ invoiceTypeLabel || "Ticket" }}</span>
+              </span>
+              <span class="arq__pill" :class="isCajaOpen ? 'arq__pill--ok' : 'arq__pill--err'">
+                <span class="arq__pill-label">{{ isCajaOpen ? "Abierta" : "Cerrada" }}</span>
+              </span>
+              <!-- sesión -->
+              <span class="arq__pill arq__pill--session">
+                <v-icon size="10">mdi-receipt-text-outline</v-icon>
+                <span>{{ totals.sales_total_created || totals.sales_count || 0 }}</span>
+                <span class="arq__pill-sep">·</span>
+                <v-icon size="10" color="success">mdi-check-circle-outline</v-icon>
+                <span class="c-ok">{{ totals.sales_count || 0 }}</span>
+                <template v-if="totals.sales_cancelled_count > 0">
+                  <span class="arq__pill-sep">·</span>
+                  <v-icon size="10" color="warning">mdi-cancel</v-icon>
+                  <span class="c-warning">{{ totals.sales_cancelled_count }}</span>
+                </template>
+              </span>
+            </div>
+          </div>
           <h3 class="arq__title">Arqueo</h3>
-          <p class="arq__head-note">
-            <v-icon size="11" class="mr-1">mdi-shield-check-outline</v-icon>
-            Solo incluye ventas activas. Las anuladas quedan en auditoría.
-          </p>
         </div>
         <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('update:open', false)" />
       </div>
 
-      <!-- Info bar -->
-      <div class="arq__infobar">
-        <div class="arq__pill">
-          <span class="arq__pill-label">Caja</span>
-          <strong class="arq__pill-val">{{ cajaTypeLabel || "—" }}</strong>
-        </div>
-        <div class="arq__pill">
-          <span class="arq__pill-label">Facturación</span>
-          <strong class="arq__pill-val">{{ invoiceTypeLabel || "—" }}</strong>
-        </div>
-        <div class="arq__pill">
-          <span class="arq__pill-label">Estado</span>
-          <strong class="arq__pill-val" :class="isCajaOpen ? 'arq__pill-val--ok' : 'arq__pill-val--err'">
-            {{ isCajaOpen ? "Abierta" : "Cerrada" }}
-          </strong>
-        </div>
-        <!-- Ventas: total / efectivas / anuladas -->
-        <div class="arq__pill arq__pill--sales-group">
-          <span class="arq__pill-label">Sesión</span>
-          <strong class="arq__pill-val">{{ totals.sales_total_created || totals.sales_count || 0 }}</strong>
-          <span class="arq__pill-sep">·</span>
-          <v-icon size="11" color="success">mdi-check-circle-outline</v-icon>
-          <span class="arq__pill-val arq__pill-val--ok">{{ totals.sales_count || 0 }}</span>
-          <template v-if="totals.sales_cancelled_count > 0">
-            <span class="arq__pill-sep">·</span>
-            <v-icon size="11" color="warning">mdi-cancel</v-icon>
-            <span class="arq__pill-val arq__pill-val--warn">{{ totals.sales_cancelled_count }}</span>
-          </template>
-        </div>
-      </div>
-
-      <!-- Alerta anuladas -->
+      <!-- alerta anuladas (compacta, solo si hay) -->
       <div v-if="totals.sales_cancelled_count > 0" class="arq__cancelled-alert">
-        <v-icon size="14" color="warning" class="mr-1">mdi-alert</v-icon>
-        <span>
-          <strong>{{ totals.sales_cancelled_count }} venta{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} anulada{{ totals.sales_cancelled_count !== 1 ? 's' : '' }}</strong>
-          en esta sesión — excluidas de los montos.
-        </span>
+        <v-icon size="13" color="warning">mdi-alert</v-icon>
+        <span><strong>{{ totals.sales_cancelled_count }} venta{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} anulada{{ totals.sales_cancelled_count !== 1 ? 's' : '' }}</strong> excluida{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} del arqueo.</span>
       </div>
 
       <v-divider />
 
+      <!-- ── Body: 2 columnas ────────────────────────────────────────────── -->
       <div class="arq__body">
 
-        <!-- ── EFECTIVO ─────────────────────────── -->
-        <section class="arq__section arq__section--cash">
-          <div class="arq__section-head">
-            <v-icon size="15" class="mr-1">mdi-cash</v-icon>
-            <span class="arq__section-title">Efectivo</span>
+        <!-- COL IZQUIERDA — efectivo -->
+        <div class="arq__col-cash">
+          <div class="arq__col-label">
+            <v-icon size="13" class="mr-1">mdi-cash</v-icon>Efectivo
           </div>
 
-          <div class="arq__cash-row">
-            <div class="arq__cash-expected">
-              <span class="arq__cash-label">Esperado en caja</span>
-              <strong class="arq__cash-amount">{{ money(expectedCashValue) }}</strong>
-            </div>
-
-            <div class="arq__cash-input-wrap">
-              <v-text-field
-                v-model="declaredInputs.cash"
-                label="Efectivo contado"
-                variant="outlined"
-                density="compact"
-                hide-details
-                prefix="$"
-                inputmode="decimal"
-                class="arq__input"
-              />
-              <div class="arq__diff-badge" :class="statusClass(cashDiff)">
-                <span class="arq__diff-label">Diferencia</span>
-                <strong class="arq__diff-val">{{ formatDiff(cashDiff) }}</strong>
-              </div>
-            </div>
+          <div class="arq__cash-expected-block">
+            <span class="arq__cash-sublabel">Esperado en caja</span>
+            <strong class="arq__cash-amount">{{ money(expectedCashValue) }}</strong>
           </div>
-        </section>
 
-        <!-- ── OTROS MEDIOS ───────────────────────── -->
-        <section class="arq__section">
-          <div class="arq__section-head">
-            <v-icon size="15" class="mr-1">mdi-credit-card-outline</v-icon>
-            <span class="arq__section-title">Otros medios</span>
+          <v-text-field
+            v-model="declaredInputs.cash"
+            label="Efectivo contado"
+            variant="outlined"
+            density="compact"
+            hide-details
+            prefix="$"
+            inputmode="decimal"
+            class="arq__input"
+          />
+
+          <div class="arq__diff-badge" :class="statusClass(cashDiff)">
+            <span class="arq__diff-label">Diferencia</span>
+            <strong class="arq__diff-val">{{ formatDiff(cashDiff) }}</strong>
+          </div>
+        </div>
+
+        <!-- COL DERECHA — otros medios -->
+        <div class="arq__col-medios">
+          <div class="arq__col-label">
+            <v-icon size="13" class="mr-1">mdi-credit-card-outline</v-icon>Otros medios
           </div>
 
           <div class="arq__medios">
             <div class="arq__medios-header">
-              <span>Medio</span>
-              <span>Esperado</span>
-              <span>Declarado</span>
+              <span></span>
+              <span>Esp.</span>
+              <span>Decl.</span>
               <span>Dif.</span>
             </div>
             <div
@@ -116,7 +100,7 @@
               class="arq__medio-row"
             >
               <span class="arq__medio-name">{{ row.label }}</span>
-              <span class="arq__medio-esp">{{ money(row.expected) }}</span>
+              <span class="arq__medio-esp">{{ moneyShort(row.expected) }}</span>
               <div class="arq__medio-input">
                 <v-text-field
                   v-model="declaredInputs[row.key]"
@@ -128,76 +112,39 @@
                   class="arq__input arq__input--sm"
                 />
               </div>
-              <span class="arq__medio-diff" :class="statusTextClass(row.diff)">
-                {{ formatDiff(row.diff) }}
-              </span>
+              <span class="arq__medio-diff" :class="statusTextClass(row.diff)">{{ formatDiff(row.diff) }}</span>
             </div>
           </div>
-        </section>
+        </div>
 
-        <!-- ── RESULTADO ──────────────────────────── -->
-        <section class="arq__section">
-          <div class="arq__section-head">
-            <v-icon size="15" class="mr-1">mdi-check-circle-outline</v-icon>
-            <span class="arq__section-title">Resultado</span>
+      </div>
+
+      <!-- ── Resultado + nota ───────────────────────────────────────────── -->
+      <div class="arq__bottom">
+        <div class="arq__result-banner" :class="resultStatus.className">
+          <v-icon size="15" class="mr-2">{{ resultStatus.icon }}</v-icon>
+          <div>
+            <strong class="arq__result-title">{{ resultStatus.title }}</strong>
+            <span class="arq__result-text">{{ resultStatus.text }}</span>
           </div>
+        </div>
 
-          <div class="arq__result-banner" :class="resultStatus.className">
-            <v-icon size="16" class="mr-2">{{ resultStatus.icon }}</v-icon>
-            <div>
-              <strong class="arq__result-title">{{ resultStatus.title }}</strong>
-              <span class="arq__result-text">{{ resultStatus.text }}</span>
-            </div>
-          </div>
-
-          <div class="arq__totals">
-            <div class="arq__total-row">
-              <span>Ventas efectivas</span>
-              <strong>{{ totals.sales_count || 0 }}</strong>
-            </div>
-            <div v-if="totals.sales_cancelled_count > 0" class="arq__total-row arq__total-row--warn">
-              <span>Ventas anuladas (excluidas)</span>
-              <strong class="c-warning">{{ totals.sales_cancelled_count }}</strong>
-            </div>
-            <div class="arq__total-row">
-              <span>Efectivo esperado</span>
-              <strong>{{ money(expectedCashValue) }}</strong>
-            </div>
-            <div class="arq__total-row">
-              <span>Efectivo declarado</span>
-              <strong :class="statusTextClass(cashDiff)">{{ money(cashDeclared) }}</strong>
-            </div>
-            <div class="arq__total-row">
-              <span>No cash esperado</span>
-              <strong>{{ money(nonCashExpectedTotal) }}</strong>
-            </div>
-            <div class="arq__total-row">
-              <span>No cash declarado</span>
-              <strong :class="statusTextClass(nonCashDiffTotal)">{{ money(nonCashDeclaredTotal) }}</strong>
-            </div>
-          </div>
-        </section>
-
-        <!-- ── OBSERVACION ────────────────────────── -->
-        <v-textarea
+        <v-text-field
           v-model="localNote"
           label="Observación (opcional)"
           variant="outlined"
           density="compact"
-          rows="2"
-          auto-grow
           hide-details
-          class="arq__input"
+          class="arq__input arq__note"
         />
-
       </div>
 
       <v-divider />
 
-      <!-- Footer -->
+      <!-- ── Footer ─────────────────────────────────────────────────────── -->
       <div class="arq__footer">
         <div class="arq__footer-diff">
-          <span class="arq__footer-diff-label">Diferencia efectivo</span>
+          <span class="arq__footer-diff-label">Dif. efectivo</span>
           <strong :class="statusTextClass(cashDiff)">{{ formatDiff(cashDiff) }}</strong>
         </div>
         <div class="arq__footer-actions">
@@ -236,6 +183,19 @@ function money(val) {
     minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(Number(val || 0));
 }
+// versión compacta para la tabla (sin "$ " prefix, solo número)
+function moneyShort(val) {
+  const n = Number(val || 0);
+  if (n === 0) return "$ 0";
+  if (Math.abs(n) >= 1000) {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency", currency: "ARS",
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
+      notation: "compact",
+    }).format(n);
+  }
+  return money(n);
+}
 function round2(n) { return Number(Number(n || 0).toFixed(2)); }
 
 // ── state ─────────────────────────────────────────────────────────────────
@@ -259,7 +219,7 @@ const nonCashRows = computed(() => {
     { key: "card",       label: "Tarjeta" },
     { key: "transfer",   label: "Transferencia" },
     { key: "mercadopago",label: "Mercado Pago" },
-    { key: "credit_sjt", label: "Crédito San Juan" },
+    { key: "credit_sjt", label: "Créd. SJT" },
     { key: "other",      label: "Otros" },
   ];
   return map.map((item) => {
@@ -275,12 +235,12 @@ const nonCashDiffTotal      = computed(() => round2(nonCashDeclaredTotal.value -
 
 const resultStatus = computed(() => {
   if (cashDiff.value === 0 && nonCashDiffTotal.value === 0)
-    return { title: "Arqueo correcto", text: "No se detectan diferencias.", className: "is-ok", icon: "mdi-check-circle" };
+    return { title: "Arqueo correcto", text: "Sin diferencias.", className: "is-ok", icon: "mdi-check-circle" };
   if (cashDiff.value < 0)
     return { title: "Faltante de efectivo", text: `Faltan ${money(Math.abs(cashDiff.value))}.`, className: "is-danger", icon: "mdi-alert-circle" };
   if (cashDiff.value > 0)
     return { title: "Sobrante de efectivo", text: `Sobran ${money(cashDiff.value)}.`, className: "is-warning", icon: "mdi-alert" };
-  return { title: "Diferencia en no cash", text: "El efectivo coincide, pero hay diferencias en otros medios.", className: "is-info", icon: "mdi-information" };
+  return { title: "Diferencia en no cash", text: "El efectivo coincide, diferencias en otros medios.", className: "is-info", icon: "mdi-information" };
 });
 
 // ── formatters ────────────────────────────────────────────────────────────
@@ -346,233 +306,209 @@ function submit() {
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .arq__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 14px 16px 10px;
+  padding: 12px 14px 10px;
+  gap: 8px;
+}
+.arq__head-left { flex: 1; min-width: 0; }
+.arq__head-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 .arq__eyebrow {
-  margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .5);
+  color: rgba(var(--v-theme-on-surface), .45);
+  white-space: nowrap;
 }
 .arq__title {
-  margin: 2px 0 0;
-  font-size: 20px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.1;
 }
-.arq__head-note {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .45);
-  display: flex;
-  align-items: center;
-}
 
-/* ── Info bar ────────────────────────────────────────────────────────────── */
-.arq__infobar {
+/* ── Pills inline ─────────────────────────────────────────────────────── */
+.arq__pills {
   display: flex;
-  gap: 8px;
-  padding: 0 16px 12px;
   flex-wrap: wrap;
+  gap: 4px;
 }
 .arq__pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
+  gap: 4px;
+  padding: 2px 8px;
   border-radius: 20px;
-  background: rgba(var(--v-theme-on-surface), .04);
-  border: 1px solid rgba(var(--v-theme-on-surface), .08);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(var(--v-theme-on-surface), .05);
+  border: 1px solid rgba(var(--v-theme-on-surface), .1);
+  color: rgba(var(--v-theme-on-surface), .7);
 }
-.arq__pill-label {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .55);
-}
-.arq__pill-val {
-  font-size: 12px;
-  font-weight: 800;
-}
-.arq__pill-val--ok   { color: rgb(var(--v-theme-success)); }
-.arq__pill-val--err  { color: rgb(var(--v-theme-error)); }
-.arq__pill-val--warn { color: rgb(var(--v-theme-warning)); }
-.arq__pill--warn {
-  background: rgba(var(--v-theme-warning), .08);
-  border-color: rgba(var(--v-theme-warning), .2);
-}
-.arq__pill--sales-group {
-  gap: 5px;
-}
-.arq__pill-sep {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .3);
-}
+.arq__pill--ok  { background: rgba(var(--v-theme-success),.1); border-color: rgba(var(--v-theme-success),.25); color: rgb(var(--v-theme-success)); }
+.arq__pill--err { background: rgba(var(--v-theme-error),.1);   border-color: rgba(var(--v-theme-error),.25);   color: rgb(var(--v-theme-error)); }
+.arq__pill--session { gap: 3px; }
+.arq__pill-sep { opacity: .4; }
+.arq__pill-label { font-size: 10px; font-weight: 700; }
 
-/* ── Alerta anuladas ─────────────────────────────────────────── */
+/* ── Alerta anuladas ─────────────────────────────────────────────────── */
 .arq__cancelled-alert {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 5px 14px;
   background: rgba(var(--v-theme-warning), .07);
   border-bottom: 1px solid rgba(var(--v-theme-warning), .15);
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), .85);
-}
-
-/* ── Body ────────────────────────────────────────────────────────────────── */
-.arq__body {
-  padding: 14px 16px;
-  display: grid;
-  gap: 16px;
-}
-
-/* ── Section ─────────────────────────────────────────────────────────────── */
-.arq__section {
-  display: grid;
-  gap: 10px;
-}
-.arq__section--cash {
-  background: rgba(var(--v-theme-primary), .04);
-  border: 1px solid rgba(var(--v-theme-primary), .12);
-  border-radius: 14px;
-  padding: 12px;
-}
-.arq__section-head {
-  display: flex;
-  align-items: center;
-}
-.arq__section-title {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .6);
-}
-
-/* ── Cash row ────────────────────────────────────────────────────────────── */
-.arq__cash-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.arq__cash-expected {
-  min-width: 140px;
-}
-.arq__cash-label {
-  display: block;
   font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .55);
-  margin-bottom: 4px;
-}
-.arq__cash-amount {
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.01em;
-}
-.arq__cash-input-wrap {
-  flex: 1;
-  min-width: 200px;
-  display: grid;
-  gap: 8px;
+  color: rgba(var(--v-theme-on-surface), .8);
 }
 
-/* ── Diff badge ──────────────────────────────────────────────────────────── */
-.arq__diff-badge {
+/* ── Body: 2 columnas ────────────────────────────────────────────────── */
+.arq__body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0;
+}
+
+/* col label compartido */
+.arq__col-label {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-}
-.arq__diff-label { font-size: 12px; font-weight: 600; }
-.arq__diff-val   { font-size: 14px; font-weight: 900; }
-
-/* ── Medios table ────────────────────────────────────────────────────────── */
-.arq__medios {
-  border: 1px solid rgba(var(--v-theme-on-surface), .07);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.arq__medios-header {
-  display: grid;
-  grid-template-columns: 1fr 90px 130px 70px;
-  gap: 8px;
-  padding: 7px 12px;
-  background: rgba(var(--v-theme-on-surface), .04);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), .5);
+  margin-bottom: 8px;
 }
-.arq__medio-row {
-  display: grid;
-  grid-template-columns: 1fr 90px 130px 70px;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 12px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), .05);
-  font-size: 12px;
-}
-.arq__medio-name  { font-weight: 600; }
-.arq__medio-esp   { color: rgba(var(--v-theme-on-surface), .65); font-size: 12px; }
-.arq__medio-diff  { font-size: 12px; font-weight: 700; text-align: right; }
 
-/* ── Result banner ───────────────────────────────────────────────────────── */
-.arq__result-banner {
+/* ── Columna EFECTIVO ────────────────────────────────────────────────── */
+.arq__col-cash {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 12px 14px 14px;
+  background: rgba(var(--v-theme-primary), .03);
+  border-right: 1px solid rgba(var(--v-theme-on-surface), .07);
+}
+.arq__cash-expected-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.arq__cash-sublabel {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), .5);
+}
+.arq__cash-amount {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+
+/* ── Diff badge ──────────────────────────────────────────────────────── */
+.arq__diff-badge {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
+  justify-content: space-between;
+  padding: 7px 10px;
   border-radius: 10px;
   border: 1px solid transparent;
 }
+.arq__diff-label { font-size: 11px; font-weight: 600; }
+.arq__diff-val   { font-size: 13px; font-weight: 900; }
+
+/* ── Columna OTROS MEDIOS ────────────────────────────────────────────── */
+.arq__col-medios {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 14px 14px 12px;
+}
+
+/* ── Tabla medios ────────────────────────────────────────────────────── */
+.arq__medios {
+  border: 1px solid rgba(var(--v-theme-on-surface), .07);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.arq__medios-header {
+  display: grid;
+  grid-template-columns: 1fr 55px 90px 60px;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(var(--v-theme-on-surface), .04);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), .45);
+}
+.arq__medio-row {
+  display: grid;
+  grid-template-columns: 1fr 55px 90px 60px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), .05);
+}
+.arq__medio-name  { font-size: 11px; font-weight: 600; }
+.arq__medio-esp   { font-size: 11px; color: rgba(var(--v-theme-on-surface), .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arq__medio-diff  { font-size: 11px; font-weight: 700; text-align: right; }
+
+/* ── Bottom: resultado + nota ────────────────────────────────────────── */
+.arq__bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), .06);
+  background: rgba(var(--v-theme-on-surface), .015);
+}
+.arq__result-banner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  min-width: 0;
+}
 .arq__result-title {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 .arq__result-text {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   margin-top: 1px;
   opacity: .85;
+  white-space: nowrap;
 }
+.arq__note { max-width: 200px; }
 
-/* ── Totals ──────────────────────────────────────────────────────────────── */
-.arq__totals { display: grid; gap: 4px; }
-.arq__total-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(var(--v-theme-on-surface), .025);
-  font-size: 12px;
-}
-.arq__total-row strong { font-size: 13px; }
-.arq__total-row--warn {
-  background: rgba(var(--v-theme-warning), .06);
-  border: 1px solid rgba(var(--v-theme-warning), .15);
-}
-
-/* ── Footer ──────────────────────────────────────────────────────────────── */
+/* ── Footer ──────────────────────────────────────────────────────────── */
 .arq__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px 14px;
+  padding: 8px 14px 12px;
   gap: 12px;
 }
 .arq__footer-diff {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 6px;
 }
 .arq__footer-diff-label {
   font-size: 10px;
@@ -581,30 +517,29 @@ function submit() {
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), .5);
 }
-.arq__footer-diff strong { font-size: 16px; font-weight: 900; }
+.arq__footer-diff strong { font-size: 15px; font-weight: 900; }
 .arq__footer-actions { display: flex; gap: 8px; }
 
-/* ── Status colors ───────────────────────────────────────────────────────── */
+/* ── Status colors ───────────────────────────────────────────────────── */
 .is-ok      { background: rgba(var(--v-theme-success),.08); border-color: rgba(var(--v-theme-success),.2);  color: rgb(var(--v-theme-success)); }
 .is-warning { background: rgba(var(--v-theme-warning),.1);  border-color: rgba(var(--v-theme-warning),.22); color: rgb(var(--v-theme-warning)); }
 .is-danger  { background: rgba(var(--v-theme-error),  .08); border-color: rgba(var(--v-theme-error),  .2);  color: rgb(var(--v-theme-error)); }
 .is-info    { background: rgba(var(--v-theme-info),   .08); border-color: rgba(var(--v-theme-info),   .2);  color: rgb(var(--v-theme-info)); }
-.c-ok       { color: rgb(var(--v-theme-success)); }
-.c-warning  { color: rgb(var(--v-theme-warning)); }
-.c-danger   { color: rgb(var(--v-theme-error)); }
+.c-ok      { color: rgb(var(--v-theme-success)); }
+.c-warning { color: rgb(var(--v-theme-warning)); }
+.c-danger  { color: rgb(var(--v-theme-error)); }
 
-/* ── Input ───────────────────────────────────────────────────────────────── */
-.arq :deep(.v-field) { border-radius: 10px; }
-.arq__input--sm :deep(.v-field__input) { font-size: 12px; min-height: 36px; padding: 4px 8px; }
-.arq__input--sm :deep(.v-field__prefix) { font-size: 12px; padding-left: 8px; }
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+.arq :deep(.v-field) { border-radius: 8px; }
+.arq__input--sm :deep(.v-field__input)  { font-size: 11px; min-height: 32px; padding: 2px 6px; }
+.arq__input--sm :deep(.v-field__prefix) { font-size: 11px; padding-left: 6px; }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .arq__medios-header,
-  .arq__medio-row {
-    grid-template-columns: 1fr 80px 110px 60px;
-  }
-  .arq__cash-row { flex-direction: column; }
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .arq__body { grid-template-columns: 1fr; }
+  .arq__col-cash { border-right: none; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .07); }
+  .arq__bottom { flex-direction: column; align-items: stretch; }
+  .arq__note { max-width: 100%; }
   .arq__footer { flex-direction: column; align-items: stretch; }
   .arq__footer-actions { justify-content: flex-end; }
 }
