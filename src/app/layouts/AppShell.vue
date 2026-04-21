@@ -220,15 +220,6 @@
             </v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'productsImport' }" exact>
-            <template #prepend>
-              <v-icon size="20">mdi-database-import-outline</v-icon>
-            </template>
-            <v-list-item-title>Importar CSV</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Importar CSV
-            </v-tooltip>
-          </v-list-item>
 
           <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact>
             <template #prepend>
