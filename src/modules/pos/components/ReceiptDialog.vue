@@ -300,14 +300,14 @@ function buildTicketWindow() {
     .tkt-meta-row strong { font-weight:700; text-align:right; max-width:60%; word-break:break-word; }
     .tkt-items { width:100%; border-collapse:collapse; margin:4px 0; }
     .tkt-th { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
-    .tkt-th--name  { text-align:left;  width:46%; }
-    .tkt-th--qty   { text-align:right; width:10%; }
-    .tkt-th--price { text-align:right; width:22%; }
-    .tkt-th--sub   { text-align:right; width:22%; }
+    .tkt-th--name  { text-align:left;  width:42%; }
+    .tkt-th--qty   { text-align:right; width:8%;  padding-right:10px; }
+    .tkt-th--price { text-align:right; width:25%; padding-right:10px; }
+    .tkt-th--sub   { text-align:right; width:25%; }
     .tkt-item-row td { padding:4px 0 2px; vertical-align:top; }
     .tkt-td--name  { text-align:left; }
-    .tkt-td--qty   { text-align:right; white-space:nowrap; }
-    .tkt-td--price { text-align:right; white-space:nowrap; font-size:11px; }
+    .tkt-td--qty   { text-align:right; white-space:nowrap; padding-right:10px; }
+    .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
     .tkt-td--sub   { text-align:right; white-space:nowrap; font-weight:700; }
     .tkt-item-name { font-size:11.5px; font-weight:700; word-break:break-word; }
     .tkt-item-sku  { font-size:9.5px; color:#666; margin-top:1px; }
@@ -372,11 +372,11 @@ function downloadTicket() {
     .tkt-meta-row strong { font-weight:700; text-align:right; max-width:60%; word-break:break-word; }
     .tkt-items { width:100%; border-collapse:collapse; margin:4px 0; }
     .tkt-th { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
-    .tkt-th--name { text-align:left; width:46%; } .tkt-th--qty { text-align:right; width:10%; }
-    .tkt-th--price { text-align:right; width:22%; } .tkt-th--sub { text-align:right; width:22%; }
+    .tkt-th--name { text-align:left; width:42%; } .tkt-th--qty { text-align:right; width:8%; padding-right:10px; }
+    .tkt-th--price { text-align:right; width:25%; padding-right:10px; } .tkt-th--sub { text-align:right; width:25%; }
     .tkt-item-row td { padding:4px 0 2px; vertical-align:top; }
-    .tkt-td--name { text-align:left; } .tkt-td--qty { text-align:right; white-space:nowrap; }
-    .tkt-td--price { text-align:right; white-space:nowrap; font-size:11px; }
+    .tkt-td--name { text-align:left; } .tkt-td--qty { text-align:right; white-space:nowrap; padding-right:10px; }
+    .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
     .tkt-td--sub { text-align:right; white-space:nowrap; font-weight:700; }
     .tkt-item-name { font-size:11.5px; font-weight:700; word-break:break-word; }
     .tkt-item-sku { font-size:9.5px; color:#666; margin-top:1px; }
@@ -507,15 +507,15 @@ function downloadTicket() {
   color: #555; padding: 4px 0;
   border-bottom: 1px dashed #bbb;
 }
-.tkt-th--name  { text-align: left; width: 46%; }
-.tkt-th--qty   { text-align: right; width: 10%; padding-right: 4px; }
-.tkt-th--price { text-align: right; width: 22%; padding-right: 4px; }
-.tkt-th--sub   { text-align: right; width: 22%; }
+.tkt-th--name  { text-align: left; width: 42%; }
+.tkt-th--qty   { text-align: right; width: 8%; padding-right: 10px; }
+.tkt-th--price { text-align: right; width: 25%; padding-right: 10px; }
+.tkt-th--sub   { text-align: right; width: 25%; }
 
 .tkt-item-row td { padding: 5px 0 3px; vertical-align: top; }
 .tkt-td--name  { text-align: left; }
-.tkt-td--qty   { text-align: right; white-space: nowrap; padding-right: 4px; color: #333; }
-.tkt-td--price { text-align: right; white-space: nowrap; padding-right: 4px; font-size: 11px; color: #333; }
+.tkt-td--qty   { text-align: right; white-space: nowrap; padding-right: 10px; color: #333; }
+.tkt-td--price { text-align: right; white-space: nowrap; padding-right: 10px; font-size: 11px; color: #333; }
 .tkt-td--sub   { text-align: right; white-space: nowrap; font-weight: 800; color: #000; }
 
 .tkt-item-name { font-size: 12px; font-weight: 700; word-break: break-word; color: #000; }
