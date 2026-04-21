@@ -1,193 +1,229 @@
 <template>
-  <div class="transfers">
+  <div class="tr">
 
-    <!-- ═══════════════════════ VISTA: LISTA ═══════════════════════ -->
-    <template v-if="!selectedId">
+    <!-- ── TOP BAR ── -->
+    <div class="tr-bar">
+      <div>
+        <div class="tr-title">Derivaciones</div>
+        <div class="tr-subtitle">{{ filtered.length }} resultado{{ filtered.length !== 1 ? 's' : '' }}</div>
+      </div>
+      <div class="tr-bar-right">
+        <v-btn variant="tonal" size="small" icon :loading="loading" @click="loadList" title="Actualizar">
+          <v-icon size="17">mdi-refresh</v-icon>
+        </v-btn>
+        <v-btn color="primary" size="small" variant="flat" prepend-icon="mdi-plus" @click="showCreate = true">
+          Nueva derivación
+        </v-btn>
+      </div>
+    </div>
 
-      <!-- ═══ BANNER PERSISTENTE — pendientes de recepción ═══════════════
-           No tiene botón de cierre. Se va solo cuando todos se recepcionan. -->
-      <div v-if="pendingForMe.length && !isAdmin" class="transfers__alert">
-        <div class="transfers__alert-icon">
-          <span class="transfers__alert-dot" />
-          <v-icon size="22" color="warning">mdi-truck-delivery-outline</v-icon>
-        </div>
-        <div class="transfers__alert-body">
-          <p class="transfers__alert-title">
-            {{ pendingForMe.length === 1
-              ? '1 paquete esperando recepción'
-              : `${pendingForMe.length} paquetes esperando recepción` }}
-          </p>
-          <div class="transfers__alert-list">
-            <button
-              v-for="t in pendingForMe" :key="t.id"
-              class="transfers__alert-item"
-              @click="openDetail(t)"
-            >
-              <v-icon size="12" color="warning">mdi-circle</v-icon>
-              <span class="transfers__alert-item-num">{{ t.number }}</span>
-              <span class="transfers__alert-item-from">desde {{ t.fromWarehouse?.branch?.name || '—' }}</span>
-              <span class="transfers__alert-item-ago">{{ timeAgo(t.dispatched_at) }}</span>
-              <v-chip size="x-small" color="success" variant="flat" class="ml-1">Recepcionar</v-chip>
-            </button>
-          </div>
+    <!-- ── BANNER pendientes de recepción ── -->
+    <div v-if="pendingForMe.length && !isAdmin" class="tr-alert">
+      <div class="tr-alert__icon">
+        <span class="tr-alert__dot" />
+        <v-icon size="20" color="warning">mdi-truck-delivery-outline</v-icon>
+      </div>
+      <div class="tr-alert__body">
+        <p class="tr-alert__title">
+          {{ pendingForMe.length === 1
+            ? '1 paquete esperando recepción'
+            : `${pendingForMe.length} paquetes esperando recepción` }}
+        </p>
+        <div class="tr-alert__list">
+          <button
+            v-for="t in pendingForMe" :key="t.id"
+            class="tr-alert__item"
+            @click="openDetail(t)"
+          >
+            <v-icon size="12" color="warning">mdi-circle</v-icon>
+            <span class="tr-alert__num">{{ t.number }}</span>
+            <span class="tr-alert__from">desde {{ t.fromWarehouse?.branch?.name || '—' }}</span>
+            <span class="tr-alert__ago">{{ timeAgo(t.dispatched_at) }}</span>
+            <v-chip size="x-small" color="success" variant="flat" class="ml-1">Recepcionar</v-chip>
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- Card principal -->
-      <v-card elevation="0" rounded="xl" class="transfers__card">
-
-        <!-- Cabecera de la card -->
-        <div class="transfers__head">
-          <div class="transfers__head-left">
-            <span class="transfers__title">Derivaciones</span>
-            <span class="transfers__sub">{{ filtered.length }} resultado{{ filtered.length !== 1 ? 's' : '' }}</span>
-          </div>
-          <div class="transfers__head-right">
-            <v-btn icon size="small" variant="text" :loading="loading" @click="loadList">
-              <v-icon size="17">mdi-refresh</v-icon>
-            </v-btn>
-            <v-btn color="primary" size="small" variant="flat" rounded="lg"
-              prepend-icon="mdi-plus" @click="showCreate = true">
-              Nueva derivación
-            </v-btn>
-          </div>
-        </div>
-
-        <!-- Toolbar filtros + búsqueda -->
-        <div class="transfers__toolbar">
-          <v-text-field
-            v-model="search"
-            placeholder="Buscar número, sucursal, nota…"
-            variant="outlined" density="compact" rounded="lg"
-            prepend-inner-icon="mdi-magnify"
-            hide-details clearable
-            style="max-width:260px; flex-shrink:0;"
-            @update:modelValue="page = 1"
-          />
-          <div class="transfers__filters">
-            <v-chip
-              v-for="f in statusFilters" :key="f.value"
-              :color="statusFilter === f.value ? statusChipColor(f.value) : undefined"
-              :variant="statusFilter === f.value ? 'flat' : 'outlined'"
-              size="small"
-              class="transfers__filter-chip"
-              @click="statusFilter = f.value; page = 1"
-            >
-              <v-icon start size="12">{{ f.icon }}</v-icon>
-              {{ f.label }}
-              <span v-if="f.count" class="transfers__filter-count">{{ f.count }}</span>
-            </v-chip>
-          </div>
-        </div>
-
-        <v-divider />
-
-        <!-- Loading -->
-        <div v-if="loading && !allTransfers.length" class="transfers__loading">
-          <v-progress-circular indeterminate color="primary" size="32" />
-        </div>
-
-        <!-- Empty -->
-        <div v-else-if="!paginated.length" class="transfers__empty">
-          <v-icon size="52" color="medium-emphasis">mdi-truck-outline</v-icon>
-          <p class="transfers__empty-title">Sin derivaciones</p>
-          <p class="transfers__empty-sub">
-            {{ search
-              ? `No hay resultados para "${search}"`
-              : statusFilter
-                ? `Ninguna con estado "${currentStatusLabel}"`
-                : 'Todavía no hay derivaciones registradas.' }}
-          </p>
-          <v-btn v-if="!search && !statusFilter" color="primary" variant="flat" rounded="lg"
-            size="small" prepend-icon="mdi-plus" @click="showCreate = true" class="mt-2">
-            Crear primera derivación
-          </v-btn>
-        </div>
-
-        <!-- Feed rows -->
-        <div v-else>
-          <div
-            v-for="tr in paginated" :key="tr.id"
-            class="transfers__row"
-            :class="{ 'transfers__row--cancelled': tr.status === 'cancelled' }"
-            @click="openDetail(tr)"
+    <!-- ── SEARCH + FILTER CHIPS ── -->
+    <div class="tr-search-area">
+      <div class="tr-search-row">
+        <v-text-field
+          v-model="search"
+          placeholder="Buscar número, sucursal, nota…"
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          class="tr-q-field"
+          @update:model-value="page = 1"
+        />
+        <div class="tr-filters">
+          <v-chip
+            v-for="f in statusFilters"
+            :key="f.value"
+            :color="statusFilter === f.value ? statusChipColor(f.value) : undefined"
+            :variant="statusFilter === f.value ? 'flat' : 'outlined'"
+            size="small"
+            class="tr-filter-chip"
+            @click="statusFilter = f.value; page = 1"
           >
-            <!-- Barra de estado lateral -->
-            <span class="transfers__bar" :class="`transfers__bar--${tr.status}`" />
-
-            <!-- Info principal -->
-            <div class="transfers__row-main">
-              <div class="transfers__row-top">
-                <span class="transfers__number">{{ tr.number }}</span>
-                <div class="transfers__route">
-                  <span class="transfers__route-from">
-                    {{ tr.fromWarehouse?.branch?.name || '—' }}
-                  </span>
-                  <v-icon size="12" color="medium-emphasis">mdi-arrow-right</v-icon>
-                  <span class="transfers__route-to">
-                    {{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || '—' }}
-                  </span>
-                </div>
-              </div>
-              <div class="transfers__row-bottom">
-                <span class="transfers__row-count">
-                  <v-icon size="11">mdi-package-variant-closed</v-icon>
-                  {{ tr.item_count ?? tr.items?.length ?? 0 }} prod.
-                </span>
-                <span v-if="tr.note" class="transfers__row-note">{{ tr.note }}</span>
-                <div v-if="tr.creator || tr.dispatcher || tr.receiver" class="transfers__people">
-                  <span v-if="tr.creator" class="transfers__person">
-                    <v-icon size="10">mdi-pencil-outline</v-icon>
-                    {{ shortName(tr.creator) }}
-                  </span>
-                  <span v-if="tr.dispatcher" class="transfers__person transfers__person--dispatch">
-                    <v-icon size="10">mdi-truck-fast-outline</v-icon>
-                    {{ shortName(tr.dispatcher) }}
-                  </span>
-                  <span v-if="tr.receiver" class="transfers__person transfers__person--receive">
-                    <v-icon size="10">mdi-check-circle-outline</v-icon>
-                    {{ shortName(tr.receiver) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Derecha: chip + fecha -->
-            <div class="transfers__row-right">
-              <v-chip size="x-small" :color="statusChipColor(tr.status)" variant="tonal">
-                <v-icon start size="10">{{ statusIcon(tr.status) }}</v-icon>
-                {{ statusLabel(tr.status) }}
-              </v-chip>
-              <span class="transfers__date">{{ fmtDate(tr.created_at) }}</span>
-            </div>
-
-            <v-icon size="15" color="medium-emphasis" class="flex-shrink-0">mdi-chevron-right</v-icon>
-          </div>
+            <v-icon start size="12">{{ f.icon }}</v-icon>
+            {{ f.label }}
+            <span v-if="f.count" class="tr-filter-count">{{ f.count }}</span>
+          </v-chip>
         </div>
+      </div>
+    </div>
 
-        <!-- Footer paginación -->
-        <template v-if="paginated.length && totalPages > 1">
-          <v-divider />
-          <div class="transfers__footer">
-            <span class="transfers__count-info">
-              {{ ((page-1)*limit)+1 }}–{{ Math.min(page*limit, filtered.length) }} de {{ filtered.length }}
+    <!-- ── TABLE ── -->
+    <div class="tr-table-wrap">
+      <div class="tr-table-head">
+        <div class="tr-table-head-left">
+          <span class="tr-table-title">Derivaciones</span>
+          <v-chip size="x-small" variant="tonal" class="ml-1">
+            {{ paginated.length }} de {{ filtered.length }}
+          </v-chip>
+        </div>
+        <v-btn size="x-small" variant="text" @click="toggleDense">
+          <v-icon start size="13">{{ dense ? 'mdi-format-line-spacing' : 'mdi-format-line-weight' }}</v-icon>
+          {{ dense ? 'Normal' : 'Compacta' }}
+        </v-btn>
+      </div>
+
+      <v-data-table
+        :headers="headers"
+        :items="paginated"
+        :loading="loading"
+        item-key="id"
+        :density="dense ? 'compact' : 'comfortable'"
+        hover
+        class="tr-table"
+        :items-per-page="-1"
+        hide-default-footer
+        @click:row="(_, row) => openDetail(row.item)"
+      >
+
+        <!-- Número / Fecha -->
+        <template #item.number="{ item }">
+          <div class="tr-number">{{ item.number }}</div>
+          <div class="tr-sub">{{ fmtDate(item.created_at) }}</div>
+        </template>
+
+        <!-- Ruta origen → destino -->
+        <template #item.route="{ item }">
+          <div class="tr-route">
+            <span class="tr-route-from">{{ item.fromWarehouse?.branch?.name || '—' }}</span>
+            <v-icon size="12" class="tr-route-arrow">mdi-arrow-right</v-icon>
+            <span class="tr-route-to">{{ item.toBranch?.name || item.toWarehouse?.branch?.name || '—' }}</span>
+          </div>
+        </template>
+
+        <!-- Productos + nota -->
+        <template #item.items="{ item }">
+          <div class="tr-bold">
+            <v-icon size="12" class="mr-1" style="opacity:.55">mdi-package-variant-closed</v-icon>
+            {{ item.item_count ?? item.items?.length ?? 0 }} producto{{ (item.item_count ?? item.items?.length ?? 0) !== 1 ? 's' : '' }}
+          </div>
+          <div v-if="item.note" class="tr-sub tr-note">{{ item.note }}</div>
+        </template>
+
+        <!-- Personas -->
+        <template #item.people="{ item }">
+          <div class="tr-people">
+            <span v-if="item.creator" class="tr-person">
+              <v-icon size="10">mdi-pencil-outline</v-icon>
+              {{ shortName(item.creator) }}
             </span>
-            <div class="transfers__pagination">
-              <button class="transfers__pgbtn" :disabled="page <= 1" @click="page--">
-                <v-icon size="15">mdi-chevron-left</v-icon>
-              </button>
-              <button
-                v-for="p in pageRange" :key="String(p)"
-                class="transfers__pgbtn"
-                :class="{ 'transfers__pgbtn--active': p === page }"
-                :disabled="p === '…'"
-                @click="typeof p === 'number' && (page = p)"
-              >{{ p }}</button>
-              <button class="transfers__pgbtn" :disabled="page >= totalPages" @click="page++">
-                <v-icon size="15">mdi-chevron-right</v-icon>
-              </button>
+            <span v-if="item.dispatcher" class="tr-person tr-person--dispatch">
+              <v-icon size="10">mdi-truck-fast-outline</v-icon>
+              {{ shortName(item.dispatcher) }}
+            </span>
+            <span v-if="item.receiver" class="tr-person tr-person--receive">
+              <v-icon size="10">mdi-check-circle-outline</v-icon>
+              {{ shortName(item.receiver) }}
+            </span>
+            <span v-if="!item.creator && !item.dispatcher && !item.receiver" class="tr-sub">—</span>
+          </div>
+        </template>
+
+        <!-- Estado -->
+        <template #item.status="{ item }">
+          <v-chip size="small" variant="tonal" :color="statusChipColor(item.status)">
+            <v-icon start size="10">{{ statusIcon(item.status) }}</v-icon>
+            {{ statusLabel(item.status) }}
+          </v-chip>
+        </template>
+
+        <!-- Acciones -->
+        <template #item.actions="{ item }">
+          <div class="tr-actions" @click.stop>
+            <v-btn
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              icon
+              @click.stop="openDetail(item)"
+              title="Ver detalle"
+            >
+              <v-icon size="15">mdi-eye</v-icon>
+            </v-btn>
+
+            <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" size="x-small" variant="tonal" icon>
+                  <v-icon size="15">mdi-dots-vertical</v-icon>
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item @click.stop="openDetail(item)">
+                  <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
+                  <v-list-item-title>Ver detalle</v-list-item-title>
+                </v-list-item>
+                <v-divider v-if="isAdmin || item.status === 'draft'" />
+                <v-list-item
+                  v-if="item.status === 'draft' || isCentral || isAdmin"
+                  @click.stop="openDispatch(item)"
+                >
+                  <template #prepend><v-icon size="16" color="warning">mdi-truck-fast-outline</v-icon></template>
+                  <v-list-item-title>Despachar</v-list-item-title>
+                </v-list-item>
+                <v-list-item
+                  v-if="item.status === 'dispatched'"
+                  @click.stop="openReceive(item)"
+                >
+                  <template #prepend><v-icon size="16" color="success">mdi-check-circle-outline</v-icon></template>
+                  <v-list-item-title>Recepcionar</v-list-item-title>
+                </v-list-item>
+                <v-divider v-if="isAdmin && item.status !== 'cancelled'" />
+                <v-list-item
+                  v-if="isAdmin && item.status !== 'cancelled'"
+                  @click.stop="confirmCancel(item)"
+                >
+                  <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
+                  <v-list-item-title>Cancelar derivación</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
+        </template>
+
+        <!-- Pagination -->
+        <template #bottom>
+          <div class="tr-pagination">
+            <div class="tr-pag-info">
+              Pág. <b>{{ page }}</b> de <b>{{ totalPages }}</b> · <b>{{ filtered.length }}</b> total
             </div>
-            <select class="transfers__perpage" v-model="limit" @change="page = 1">
+            <div class="tr-pag-btns">
+              <v-btn variant="text" size="small" :disabled="page <= 1 || loading" @click="page--">
+                <v-icon start>mdi-chevron-left</v-icon>Anterior
+              </v-btn>
+              <v-btn variant="text" size="small" :disabled="page >= totalPages || loading" @click="page++">
+                Siguiente<v-icon end>mdi-chevron-right</v-icon>
+              </v-btn>
+            </div>
+            <select class="tr-perpage" v-model="limit" @change="page = 1">
               <option :value="15">15 / pág</option>
               <option :value="25">25 / pág</option>
               <option :value="50">50 / pág</option>
@@ -195,11 +231,11 @@
           </div>
         </template>
 
-      </v-card>
-    </template>
+      </v-data-table>
+    </div>
 
-    <!-- ═══════════════════════ VISTA: DETALLE ══════════════════════ -->
-    <template v-else>
+    <!-- ── Dialog detalle ── -->
+    <v-dialog v-model="showDetail" max-width="680" scrollable>
       <TransferDetail
         v-if="selectedTransfer"
         :transfer="selectedTransfer"
@@ -209,11 +245,11 @@
         @dispatch="onDispatch"
         @receive="onReceive"
         @cancel="onCancel"
-        @close="closeDetail"
+        @close="showDetail = false"
       />
-    </template>
+    </v-dialog>
 
-    <!-- ═══════════════════════ MODAL: NUEVA DERIVACIÓN ═════════════ -->
+    <!-- ── Dialog nueva derivación ── -->
     <v-dialog v-model="showCreate" max-width="680" scrollable persistent>
       <TransferForm
         :current-warehouse-id="currentWarehouseId"
@@ -223,12 +259,40 @@
       />
     </v-dialog>
 
+    <!-- ── Dialog cancelar ── -->
+    <v-dialog v-model="cancelDialog.show" max-width="440">
+      <v-card rounded="xl">
+        <div class="cancel-dlg__head">
+          <div class="cancel-dlg__icon-wrap">
+            <v-icon size="22" color="error">mdi-cancel</v-icon>
+          </div>
+          <div>
+            <p class="cancel-dlg__eyebrow">{{ cancelDialog.item?.number }}</p>
+            <h3 class="cancel-dlg__title">Cancelar derivación</h3>
+          </div>
+        </div>
+        <div class="cancel-dlg__body">
+          <div class="cancel-dlg__info-row">
+            <v-icon size="16" color="warning" class="flex-shrink-0">mdi-information-outline</v-icon>
+            <span>La derivación quedará como <strong>Cancelada</strong> en el historial. El stock <strong>no se modifica</strong>.</span>
+          </div>
+        </div>
+        <div class="cancel-dlg__actions">
+          <v-btn variant="text" size="small" :disabled="cancelling" @click="cancelDialog.show = false">Volver</v-btn>
+          <v-btn color="error" size="small" variant="flat" :loading="cancelling" @click="doCancelConfirmed">
+            <v-icon start size="14">mdi-cancel</v-icon>Confirmar cancelación
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snack.show" :timeout="3200" rounded="xl">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { listTransfers, getTransfer } from "../service/stockTransfer.api";
+import { listTransfers, getTransfer, cancelTransfer } from "../service/stockTransfer.api";
 import { useTransferNotifications } from "../composables/useTransferNotifications";
 import TransferDetail from "./TransferDetail.vue";
 import TransferForm   from "./TransferForm.vue";
@@ -242,22 +306,35 @@ const props = defineProps({
 
 const { pendingForMe } = useTransferNotifications();
 
-// ── state ──
-const allTransfers    = ref([]);
-const loading         = ref(false);
-const selectedId      = ref(null);
+// ── state ──────────────────────────────────────────────────────────────────
+const allTransfers     = ref([]);
+const loading          = ref(false);
+const showDetail       = ref(false);
 const selectedTransfer = ref(null);
-const showCreate      = ref(false);
+const showCreate       = ref(false);
+const dense            = ref(false);
+const menuOpen         = ref({});
+const snack            = ref({ show: false, text: "" });
 
 const search       = ref("");
 const statusFilter = ref("");
-const sortBy       = ref("created_at");
-const sortDesc     = ref(true);
 const page         = ref(1);
 const limit        = ref(25);
 
-// ── transfers visibles (filtro de sucursal, sin status/search) ──
-// Se usa para calcular los contadores de cada chip
+const cancelDialog = ref({ show: false, item: null });
+const cancelling   = ref(false);
+
+// ── headers ────────────────────────────────────────────────────────────────
+const headers = [
+  { title: "Número",      key: "number",  sortable: false, width: 160 },
+  { title: "Ruta",        key: "route",   sortable: false, width: 260 },
+  { title: "Productos",   key: "items",   sortable: false, width: 180 },
+  { title: "Personas",    key: "people",  sortable: false, width: 200 },
+  { title: "Estado",      key: "status",  sortable: false, width: 130 },
+  { title: "",            key: "actions", sortable: false, width: 90  },
+];
+
+// ── visible transfers (filtro de sucursal) ─────────────────────────────────
 const visibleTransfers = computed(() => {
   if (props.isAdmin || !props.currentBranchId) return allTransfers.value;
   return allTransfers.value.filter(t => {
@@ -271,31 +348,23 @@ const visibleTransfers = computed(() => {
   });
 });
 
-// Contadores calculados localmente (siempre en sync con lo visible)
 const statusCounts = computed(() => {
   const c = {};
   for (const t of visibleTransfers.value) c[t.status] = (c[t.status] || 0) + 1;
   return c;
 });
 
-// ── filters ──
 const statusFilters = computed(() => [
-  { value: "",           label: "Todas",       icon: "mdi-view-list-outline"                                                    },
-  { value: "draft",      label: "Borrador",    icon: "mdi-clock-edit-outline",   count: statusCounts.value.draft      || null },
-  { value: "dispatched", label: "Pendientes",  icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
-  { value: "received",   label: "Recibidas",   icon: "mdi-check-circle-outline", count: statusCounts.value.received   || null },
-  { value: "cancelled",  label: "Canceladas",  icon: "mdi-cancel"                                                               },
+  { value: "",           label: "Todas",      icon: "mdi-view-list-outline"                                                    },
+  { value: "draft",      label: "Borrador",   icon: "mdi-clock-edit-outline",   count: statusCounts.value.draft      || null },
+  { value: "dispatched", label: "Pendientes", icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
+  { value: "received",   label: "Recibidas",  icon: "mdi-check-circle-outline", count: statusCounts.value.received   || null },
+  { value: "cancelled",  label: "Canceladas", icon: "mdi-cancel"                                                               },
 ]);
 
-const currentStatusLabel = computed(
-  () => statusFilters.value.find(s => s.value === statusFilter.value)?.label || ""
-);
-
-// ── filtered / sorted / paginated ──
+// ── filtered / paginated ───────────────────────────────────────────────────
 const filtered = computed(() => {
-  // Parte del conjunto ya filtrado por sucursal (visibleTransfers)
   let list = visibleTransfers.value;
-
   if (statusFilter.value) list = list.filter(t => t.status === statusFilter.value);
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase();
@@ -306,31 +375,22 @@ const filtered = computed(() => {
       (t.note || "").toLowerCase().includes(q)
     );
   }
-  return [...list].sort((a, b) => {
-    const va = String(a[sortBy.value] ?? "").toLowerCase();
-    const vb = String(b[sortBy.value] ?? "").toLowerCase();
-    return sortDesc.value ? vb.localeCompare(va) : va.localeCompare(vb);
-  });
+  return [...list].sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 });
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / limit.value)));
 const paginated  = computed(() =>
   filtered.value.slice((page.value - 1) * limit.value, page.value * limit.value)
 );
-const pageRange = computed(() => {
-  const t = totalPages.value, c = page.value;
-  if (t <= 7) return Array.from({ length: t }, (_, i) => i + 1);
-  const r = [1];
-  if (c > 3) r.push("…");
-  for (let p = Math.max(2, c - 1); p <= Math.min(t - 1, c + 1); p++) r.push(p);
-  if (c < t - 2) r.push("…");
-  r.push(t);
-  return r;
-});
 
 watch([statusFilter, search, limit], () => { page.value = 1; });
 
-// ── helpers ──
+// ── helpers ────────────────────────────────────────────────────────────────
+function toast(msg) { snack.value = { show: true, text: String(msg || "Error") }; }
+function toggleDense() { dense.value = !dense.value; }
+
 function statusLabel(s) {
   return { draft:"Borrador", dispatched:"Enviada", received:"Recibida",
            partial:"Diferencia", cancelled:"Cancelada", rejected:"Rechazada" }[s] || s;
@@ -360,7 +420,7 @@ function timeAgo(d) {
   const h = Math.floor(m / 60); return h < 24 ? `${h}h` : `${Math.floor(h/24)}d`;
 }
 
-// ── API ──
+// ── API ────────────────────────────────────────────────────────────────────
 async function loadList() {
   loading.value = true;
   try {
@@ -370,20 +430,44 @@ async function loadList() {
   finally { loading.value = false; }
 }
 
-// ── navegación ──
+// ── acciones ──────────────────────────────────────────────────────────────
 function openDetail(tr) {
-  selectedId.value = tr.id;
   selectedTransfer.value = tr;
+  showDetail.value = true;
 }
 
-function closeDetail() {
-  selectedId.value = null;
-  selectedTransfer.value = null;
+function openDispatch(tr) {
+  openDetail(tr);
+}
+function openReceive(tr) {
+  openDetail(tr);
+}
+
+function confirmCancel(item) {
+  cancelDialog.value = { show: true, item };
+}
+
+async function doCancelConfirmed() {
+  const id = cancelDialog.value.item?.id;
+  if (!id) return;
+  cancelling.value = true;
+  try {
+    if (typeof cancelTransfer === "function") {
+      await cancelTransfer(id);
+    }
+    cancelDialog.value.show = false;
+    await loadList();
+    toast("Derivación cancelada");
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "No se pudo cancelar");
+  } finally {
+    cancelling.value = false;
+  }
 }
 
 async function refreshAndReload(id) {
   await loadList();
-  if (id) {
+  if (id && showDetail.value) {
     try {
       const { data } = await getTransfer(id);
       selectedTransfer.value = data?.transfer || data || selectedTransfer.value;
@@ -393,27 +477,32 @@ async function refreshAndReload(id) {
 
 async function onDispatch(id) { await refreshAndReload(id); }
 async function onReceive(id)  { await refreshAndReload(id); }
-async function onCancel()     { closeDetail(); await loadList(); }
+async function onCancel()     { showDetail.value = false; await loadList(); }
 function onCreated()          { showCreate.value = false; loadList(); }
 
 onMounted(() => { loadList(); });
 </script>
 
 <style scoped>
-/* ══════════════════════════════════════════════════════════
-   RAÍZ
-══════════════════════════════════════════════════════════ */
-.transfers {
+.tr {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* ══════════════════════════════════════════════════════════
-   BANNER PERSISTENTE — pendientes de recepción
-   No tiene X de cierre. Se va solo cuando no hay más pendientes.
-══════════════════════════════════════════════════════════ */
-.transfers__alert {
+/* ── TOP BAR ── */
+.tr-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tr-title    { font-size: 22px; font-weight: 900; }
+.tr-subtitle { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+.tr-bar-right { display: flex; gap: 8px; align-items: center; }
+
+/* ── BANNER ── */
+.tr-alert {
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -422,330 +511,157 @@ onMounted(() => { loadList(); });
   border: 1.5px solid rgba(var(--v-theme-warning), .45);
   background: rgba(var(--v-theme-warning), .08);
 }
-.transfers__alert-icon {
+.tr-alert__icon {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
   padding-top: 2px;
 }
-.transfers__alert-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
+.tr-alert__dot {
+  width: 8px; height: 8px; border-radius: 50%;
   background: rgb(var(--v-theme-warning));
-  animation: blink 1.4s infinite;
-  flex-shrink: 0;
+  animation: tr-blink 1.4s infinite; flex-shrink: 0;
 }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-.transfers__alert-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-.transfers__alert-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), .9);
-  margin: 0;
-}
-.transfers__alert-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.transfers__alert-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px;
+@keyframes tr-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.tr-alert__body   { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tr-alert__title  { font-size: 13px; font-weight: 700; margin: 0; }
+.tr-alert__list   { display: flex; flex-direction: column; gap: 4px; }
+.tr-alert__item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 8px;
   border: 1px solid rgba(var(--v-theme-warning), .25);
   background: rgba(var(--v-theme-warning), .07);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: left;
-  transition: background .12s;
-  flex-wrap: wrap;
+  cursor: pointer; font-size: 12px; font-weight: 500;
+  text-align: left; transition: background .12s; flex-wrap: wrap;
 }
-.transfers__alert-item:hover { background: rgba(var(--v-theme-warning), .18); }
-.transfers__alert-item-num  { font-weight: 700; letter-spacing: .01em; }
-.transfers__alert-item-from { color: rgba(var(--v-theme-on-surface), .6); flex: 1; }
-.transfers__alert-item-ago  { font-size: 11px; color: rgba(var(--v-theme-on-surface), .4); }
+.tr-alert__item:hover { background: rgba(var(--v-theme-warning), .18); }
+.tr-alert__num  { font-weight: 700; letter-spacing: .01em; }
+.tr-alert__from { color: rgba(var(--v-theme-on-surface), .6); flex: 1; }
+.tr-alert__ago  { font-size: 11px; color: rgba(var(--v-theme-on-surface), .4); }
 
-/* ══════════════════════════════════════════════════════════
-   CARD — igual que las cards del sistema
-══════════════════════════════════════════════════════════ */
-.transfers__card {
-  border: 1px solid rgba(var(--v-theme-on-surface), .09) !important;
-  overflow: hidden;
+/* ── SEARCH AREA ── */
+.tr-search-area {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-
-/* Card head — igual a .stk-head */
-.transfers__head {
-  padding: 14px 16px 12px;
+.tr-search-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.transfers__head-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.transfers__title {
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: -0.01em;
-}
-.transfers__sub {
-  font-size: 11px;
-  opacity: 0.50;
-  font-weight: 600;
-}
-.transfers__head-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* ══════════════════════════════════════════════════════════
-   TOOLBAR FILTROS
-══════════════════════════════════════════════════════════ */
-.transfers__toolbar {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  padding: 8px 16px 12px;
-  flex-wrap: wrap;
-}
-.transfers__filters {
-  display: flex;
   align-items: center;
-  gap: 5px;
   flex-wrap: wrap;
-  flex: 1;
 }
-.transfers__filter-chip { cursor: pointer; font-weight: 600; }
-.transfers__filter-count {
-  margin-left: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 0 5px;
-  border-radius: 10px;
+.tr-q-field { flex: 0 0 260px; min-width: 180px; }
+.tr-filters { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; flex: 1; }
+.tr-filter-chip  { cursor: pointer; font-weight: 600; }
+.tr-filter-count {
+  margin-left: 4px; font-size: 10px; font-weight: 800;
+  padding: 0 5px; border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), .12);
 }
 
-/* ══════════════════════════════════════════════════════════
-   LOADING / EMPTY
-══════════════════════════════════════════════════════════ */
-.transfers__loading,
-.transfers__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 24px;
-  gap: 8px;
-  color: rgba(var(--v-theme-on-surface), .4);
-  text-align: center;
+/* ── TABLE ── */
+.tr-table-wrap {
+  border-radius: 14px; overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.transfers__empty-title { font-size: 15px; font-weight: 700; }
-.transfers__empty-sub   { font-size: 13px; max-width: 300px; }
-
-/* ══════════════════════════════════════════════════════════
-   FEED ROWS — igual a .stk-alert-row del sistema
-══════════════════════════════════════════════════════════ */
-.transfers__row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px 11px 16px;
-  cursor: pointer;
-  transition: background .12s;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), .07);
-}
-.transfers__row:last-child { border-bottom: none; }
-.transfers__row:hover { background: rgba(var(--v-theme-on-surface), .04); }
-.transfers__row--cancelled { opacity: .55; }
-
-/* Barra de color lateral */
-.transfers__bar {
-  display: inline-block;
-  width: 3px;
-  height: 36px;
-  border-radius: 2px;
-  flex-shrink: 0;
-  background: rgba(var(--v-theme-on-surface), .15);
-}
-.transfers__bar--draft      { background: rgba(var(--v-theme-on-surface), .2); }
-.transfers__bar--dispatched { background: rgb(var(--v-theme-warning)); }
-.transfers__bar--received   { background: rgb(var(--v-theme-success)); }
-.transfers__bar--partial    { background: rgb(var(--v-theme-warning)); }
-.transfers__bar--cancelled  { background: rgba(var(--v-theme-on-surface), .12); }
-.transfers__bar--rejected   { background: rgb(var(--v-theme-error)); }
-
-/* Info principal — ocupa el espacio */
-.transfers__row-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.transfers__row-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.transfers__number {
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: .01em;
-  flex-shrink: 0;
-}
-.transfers__route {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  min-width: 0;
-}
-.transfers__route-from {
-  color: rgb(var(--v-theme-primary));
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 160px;
-}
-.transfers__route-to {
-  color: rgb(var(--v-theme-success));
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 160px;
-}
-.transfers__row-bottom {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.transfers__row-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .45);
-  font-weight: 500;
-}
-.transfers__row-note {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .4);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
-}
-
-/* Personas */
-.transfers__people {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.transfers__person {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .45);
-  white-space: nowrap;
-}
-.transfers__person--dispatch { color: rgb(var(--v-theme-warning)); }
-.transfers__person--receive  { color: rgb(var(--v-theme-success)); }
-
-/* Derecha */
-.transfers__row-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.transfers__date {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .4);
-  white-space: nowrap;
-}
-
-/* ══════════════════════════════════════════════════════════
-   FOOTER PAGINACIÓN
-══════════════════════════════════════════════════════════ */
-.transfers__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+.tr-table-head {
+  display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.transfers__count-info {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), .45);
-  white-space: nowrap;
-}
-.transfers__pagination {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.transfers__pgbtn {
-  min-width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  padding: 0 5px;
-  border: 1px solid rgba(var(--v-theme-on-surface), .12);
-  background: transparent;
-  color: rgba(var(--v-theme-on-surface), .65);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .12s;
-}
-.transfers__pgbtn:hover:not([disabled]) {
-  background: rgba(var(--v-theme-primary), .1);
-  border-color: rgba(var(--v-theme-primary), .4);
-  color: rgb(var(--v-theme-primary));
-}
-.transfers__pgbtn--active {
-  background: rgb(var(--v-theme-primary));
-  border-color: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
-}
-.transfers__pgbtn[disabled] { opacity: .3; cursor: not-allowed; }
+.tr-table-head-left { display: flex; align-items: center; }
+.tr-table-title { font-size: 13px; font-weight: 800; }
+.tr-table { background: transparent; }
 
-.transfers__perpage {
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), .15);
-  background: transparent;
-  color: rgba(var(--v-theme-on-surface), .65);
-  cursor: pointer;
-  outline: none;
+/* Table cells */
+.tr-number  { font-size: 13px; font-weight: 800; letter-spacing: .01em; }
+.tr-bold    { font-size: 13px; font-weight: 700; }
+.tr-sub     { font-size: 11px; opacity: 0.5; }
+.tr-note    {
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 160px;
 }
-.transfers__perpage:focus { border-color: rgb(var(--v-theme-primary)); }
+
+.tr-route {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 600;
+}
+.tr-route-from {
+  color: rgb(var(--v-theme-primary));
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 120px;
+}
+.tr-route-to {
+  color: rgb(var(--v-theme-success));
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 120px;
+}
+.tr-route-arrow { color: rgba(var(--v-theme-on-surface), .4); flex-shrink: 0; }
+
+.tr-people {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.tr-person {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), .55);
+}
+.tr-person--dispatch { color: rgb(var(--v-theme-warning)); }
+.tr-person--receive  { color: rgb(var(--v-theme-success)); }
+
+.tr-actions { display: flex; gap: 4px; align-items: center; }
+
+/* Pagination */
+.tr-pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; flex-wrap: wrap; gap: 8px;
+}
+.tr-pag-info { font-size: 12px; opacity: .55; }
+.tr-pag-btns { display: flex; gap: 4px; }
+
+.tr-perpage {
+  padding: 5px 8px; border-radius: 6px; font-size: 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), .15);
+  background: transparent; color: rgba(var(--v-theme-on-surface), .65);
+  cursor: pointer; outline: none;
+}
+.tr-perpage:focus { border-color: rgb(var(--v-theme-primary)); }
+
+/* ── CANCEL DIALOG ── */
+.cancel-dlg__head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px 12px;
+}
+.cancel-dlg__icon-wrap {
+  width: 40px; height: 40px; display: flex; align-items: center;
+  justify-content: center; border-radius: 50%;
+  background: rgba(var(--v-theme-error), .1); flex-shrink: 0;
+}
+.cancel-dlg__eyebrow {
+  margin: 0; font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), .5);
+}
+.cancel-dlg__title { margin: 2px 0 0; font-size: 18px; font-weight: 800; line-height: 1.1; }
+.cancel-dlg__body  { padding: 4px 18px 14px; }
+.cancel-dlg__info-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), .03);
+  border: 1px solid rgba(var(--v-theme-on-surface), .06);
+  font-size: 13px; line-height: 1.4;
+}
+.cancel-dlg__actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 10px 18px 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tr-q-field { flex: 1; min-width: 160px; }
+}
 </style>
