@@ -165,7 +165,10 @@ export const useAuthStore = defineStore("auth", {
     branchId: (s) => Number(s.user?.branch_id || 0) || null,
     branches: (s) => normalizeBranches(s.user?.branches),
     roles: (s) => normalizeRoles(s.user),
-    isAdmin: (s) => normalizeRoles(s.user).includes("admin"),
+    isAdmin: (s) => {
+      const roles = normalizeRoles(s.user);
+      return roles.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r));
+    },
   },
 
   actions: {
