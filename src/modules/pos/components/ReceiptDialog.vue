@@ -344,13 +344,68 @@ function printTicket() {
   setTimeout(() => { w.print(); }, 500);
 }
 
-// ── download (print-to-PDF via browser) ───────────────────────────────────
+// ── download HTML file ────────────────────────────────────────────────────
 function downloadTicket() {
-  const w = buildTicketWindow();
-  if (!w) return;
-  w.focus();
-  // Abre el diálogo de impresión; el usuario puede elegir "Guardar como PDF"
-  setTimeout(() => { w.print(); }, 500);
+  const el = document.getElementById("pos-ticket");
+  if (!el) return;
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Ticket N° ${saleNumber.value}</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px; color: #000; background: #fff;
+      width: 80mm; padding: 4mm 3mm;
+    }
+    .tkt-header { text-align:center; padding-bottom:6px; }
+    .tkt-company { font-size:17px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
+    .tkt-branch  { font-size:12px; font-weight:700; margin-top:2px; }
+    .tkt-address, .tkt-phone { font-size:11px; color:#333; margin-top:1px; }
+    .tkt-rule { border:none; border-top:1px dashed #999; margin:6px 0; }
+    .tkt-rule--solid { border-top:2px solid #000; margin:6px 0; }
+    .tkt-meta { width:100%; }
+    .tkt-meta-row { display:flex; justify-content:space-between; align-items:baseline; margin:2px 0; font-size:11px; }
+    .tkt-meta-row span { color:#444; }
+    .tkt-meta-row strong { font-weight:700; text-align:right; max-width:60%; word-break:break-word; }
+    .tkt-items { width:100%; border-collapse:collapse; margin:4px 0; }
+    .tkt-th { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
+    .tkt-th--name { text-align:left; width:46%; } .tkt-th--qty { text-align:right; width:10%; }
+    .tkt-th--price { text-align:right; width:22%; } .tkt-th--sub { text-align:right; width:22%; }
+    .tkt-item-row td { padding:4px 0 2px; vertical-align:top; }
+    .tkt-td--name { text-align:left; } .tkt-td--qty { text-align:right; white-space:nowrap; }
+    .tkt-td--price { text-align:right; white-space:nowrap; font-size:11px; }
+    .tkt-td--sub { text-align:right; white-space:nowrap; font-weight:700; }
+    .tkt-item-name { font-size:11.5px; font-weight:700; word-break:break-word; }
+    .tkt-item-sku { font-size:9.5px; color:#666; margin-top:1px; }
+    .tkt-totals { margin:4px 0; }
+    .tkt-total-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
+    .tkt-total-row--discount { color:#c00; }
+    .tkt-total-row--main { font-size:16px; font-weight:900; padding-top:4px; }
+    .tkt-payments { margin:4px 0; }
+    .tkt-pay-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#666; margin-bottom:3px; }
+    .tkt-pay-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
+    .tkt-pay-row--change { font-weight:900; }
+    .tkt-pay-ref { font-size:10px; color:#555; }
+    .tkt-footer { text-align:center; margin-top:8px; }
+    .tkt-footer-thanks { font-size:13px; font-weight:900; }
+    .tkt-footer-ref { font-size:9px; color:#777; margin-top:3px; }
+    .tkt-footer-branch { font-size:10px; color:#555; margin-top:2px; }
+  </style>
+</head>
+<body>${el.outerHTML}</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `ticket-${saleNumber.value}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 </script>
 
