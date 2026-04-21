@@ -4,6 +4,25 @@
       {{ error }}
     </v-alert>
 
+    <!-- Analytics error banner con retry -->
+    <v-alert
+      v-if="analyticsError && !loadingAnalytics"
+      type="warning"
+      variant="tonal"
+      rounded="xl"
+      class="mb-4"
+      density="compact"
+      closable
+      @click:close="analyticsError = ''"
+    >
+      <div class="d-flex align-center justify-space-between gap-3">
+        <span>{{ analyticsError }}</span>
+        <v-btn size="x-small" variant="tonal" color="warning" prepend-icon="mdi-refresh" @click="retryAnalytics">
+          Reintentar
+        </v-btn>
+      </div>
+    </v-alert>
+
     <!-- Tab bar + branch selector -->
     <div class="dash-tabs-row">
       <div class="dash-tabs">
@@ -128,6 +147,7 @@ watch(() => route.query.tab, (v) => {
 const loading = ref(false);
 const loadingAnalytics = ref(false);
 const error = ref("");
+const analyticsError = ref("");
 const period = ref("30d");
 const branches = ref([]);
 const branchSelected = ref(null);
@@ -316,6 +336,7 @@ async function fetchOverview() {
 
 async function fetchAnalytics() {
   loadingAnalytics.value = true;
+  analyticsError.value = "";
   try {
     const params = buildParams();
     const [cashResp, salesResp, productsResp, stockResp] = await Promise.allSettled([
@@ -324,15 +345,40 @@ async function fetchAnalytics() {
       analyticsProducts(params),
       analyticsStockMovements(params),
     ]);
-    analytics.value.cash = cashResp.status === "fulfilled" ? (cashResp.value?.data?.data || null) : null;
-    analytics.value.sales = salesResp.status === "fulfilled" ? (salesResp.value?.data?.data || null) : null;
-    analytics.value.products = productsResp.status === "fulfilled" ? (productsResp.value?.data?.data || null) : null;
-    analytics.value.stockMovements = stockResp.status === "fulfilled" ? (stockResp.value?.data?.data || null) : null;
+
+    analytics.value.cash          = cashResp.status     === "fulfilled" ? (cashResp.value?.data?.data     || null) : null;
+    analytics.value.sales          = salesResp.status    === "fulfilled" ? (salesResp.value?.data?.data    || null) : null;
+    analytics.value.products       = productsResp.status === "fulfilled" ? (productsResp.value?.data?.data || null) : null;
+    analytics.value.stockMovements = stockResp.status    === "fulfilled" ? (stockResp.value?.data?.data    || null) : null;
+
+    // Si todos fallaron, mostrar aviso con retry
+    const allFailed = [cashResp, salesResp, productsResp, stockResp].every(r => r.status === "rejected");
+    const firstErr  = [cashResp, salesResp, productsResp, stockResp].find(r => r.status === "rejected");
+    if (allFailed) {
+      const msg = firstErr?.reason?.response?.data?.message || firstErr?.reason?.message || "Error de conexión";
+      analyticsError.value = `No se pudieron cargar los datos analíticos: ${msg}`;
+      console.error("❌ analytics: todos los endpoints fallaron", firstErr?.reason);
+    } else {
+      // Al menos uno funcionó — loguear los fallidos sin bloquear la UI
+      [
+        { name: "cash",          r: cashResp     },
+        { name: "sales",         r: salesResp    },
+        { name: "products",      r: productsResp },
+        { name: "stockMovements",r: stockResp    },
+      ].filter(x => x.r.status === "rejected")
+       .forEach(x => console.warn(`⚠️ analytics/${x.name} falló:`, x.r.reason?.message));
+    }
   } catch (e) {
+    analyticsError.value = "Error inesperado cargando analytics.";
     console.error("❌ analytics error", e);
   } finally {
     loadingAnalytics.value = false;
   }
+}
+
+function retryAnalytics() {
+  analyticsError.value = "";
+  fetchAnalytics();
 }
 
 async function refreshAll() {
