@@ -64,7 +64,38 @@
       </v-col>
     </v-row>
 
-    <!-- Row 2: Historial completo de sesiones de caja -->
+    <!-- Row 2: Top 5 cajeros por horas de sesión -->
+    <v-row dense class="mb-3">
+      <v-col cols="12" md="6" lg="5">
+        <v-card class="cash-card" elevation="0">
+          <div class="cash-head">
+            <div class="minw-0">
+              <div class="cash-title">Top 5 cajeros por horas de sesión</div>
+              <div class="cash-sub">Total de horas acumuladas en el período</div>
+            </div>
+          </div>
+          <v-divider />
+          <div class="cash-body">
+            <div v-if="loading" class="py-8 d-flex justify-center">
+              <v-progress-circular indeterminate />
+            </div>
+            <div v-else-if="!top5Cajeros.length" class="empty-state">
+              Sin datos de cajeros en el período.
+            </div>
+            <div v-else class="px-2 pb-2 pt-1">
+              <ApexChart
+                :height="top5Cajeros.length * 54 + 50"
+                type="bar"
+                :options="optTop5"
+                :series="seriesTop5"
+              />
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Row 3: Historial completo de sesiones de caja -->
     <v-row dense>
       <v-col cols="12">
         <v-card class="cash-card" elevation="0">
@@ -196,6 +227,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import ApexChart from "vue3-apexcharts";
 import KpiCard from "./KpiCard.vue";
 
 const props = defineProps({
@@ -253,10 +285,69 @@ const cajaTypeMap = { GENERAL: "General", SHIFT: "Turno", BRANCH: "Sucursal", MO
 function cajaTypeLabel(t) { return cajaTypeMap[t] || t || "General"; }
 
 // ── data ──────────────────────────────────────────────────────────────────────
-const ana       = computed(() => props.analytics || {});
-const sessions  = computed(() => ana.value?.sessions  || { total: 0, open: 0, closed: 0, avgDurationMin: 0, totalOpening: 0, totalClosing: 0, totalDifference: 0, totalDeficit: 0, totalSurplus: 0 });
-const movements = computed(() => ana.value?.movements || { totalIn: 0, totalOut: 0, countIn: 0, countOut: 0, net: 0 });
+const ana          = computed(() => props.analytics || {});
+const sessions     = computed(() => ana.value?.sessions  || { total: 0, open: 0, closed: 0, avgDurationMin: 0, totalOpening: 0, totalClosing: 0, totalDifference: 0, totalDeficit: 0, totalSurplus: 0 });
+const movements    = computed(() => ana.value?.movements || { totalIn: 0, totalOut: 0, countIn: 0, countOut: 0, net: 0 });
 const lastSessions = computed(() => Array.isArray(ana.value?.lastSessions) ? ana.value.lastSessions : []);
+const cajeroStats  = computed(() => Array.isArray(ana.value?.cajeroStats)  ? ana.value.cajeroStats  : []);
+
+// ── Top 5 cajeros por horas de sesión ────────────────────────────────────────
+const top5Cajeros = computed(() =>
+  [...cajeroStats.value]
+    .filter(c => c.total_duration_min > 0)
+    .sort((a, b) => b.total_duration_min - a.total_duration_min)
+    .slice(0, 5)
+);
+
+const apexCommon = {
+  chart: { background: "transparent", fontFamily: "inherit", toolbar: { show: false } },
+  theme: { mode: "dark" },
+  grid: { borderColor: "rgba(255,255,255,0.06)", strokeDashArray: 3 },
+};
+const axisStyle = { colors: "rgba(var(--v-theme-on-surface), 0.60)" };
+const axisBorder = { show: false };
+
+const seriesTop5 = computed(() => [{
+  name: "Horas de sesión",
+  data: top5Cajeros.value.map(c => +(c.total_duration_min / 60).toFixed(1)),
+}]);
+
+const optTop5 = computed(() => ({
+  ...apexCommon,
+  chart: { ...apexCommon.chart, type: "bar" },
+  colors: ["#7C3AED"],
+  plotOptions: {
+    bar: { horizontal: true, barHeight: "52%", borderRadius: 6, distributed: true },
+  },
+  colors: ["#7C3AED", "#00B4D8", "#00E396", "#FF9800", "#FF4560"],
+  dataLabels: {
+    enabled: true,
+    formatter: v => `${v}h`,
+    style: { fontSize: "12px", fontWeight: 700, colors: ["#fff"] },
+    offsetX: -6,
+  },
+  xaxis: {
+    labels: { style: { ...axisStyle, fontSize: "10px" }, formatter: v => `${v}h` },
+    axisBorder, axisTicks: axisBorder,
+  },
+  yaxis: {
+    labels: {
+      style: { ...axisStyle, fontSize: "12px", fontWeight: 700 },
+      maxWidth: 160,
+    },
+    categories: top5Cajeros.value.map(c => c.cajero_name),
+  },
+  legend: { show: false },
+  tooltip: {
+    theme: "dark",
+    y: {
+      formatter: (v, { dataPointIndex }) => {
+        const c = top5Cajeros.value[dataPointIndex];
+        return `${v}h · ${c?.sessions ?? 0} sesiones · prom ${formatMinutes(c?.avg_duration_min)}`;
+      },
+    },
+  },
+}));
 
 // ── table headers ─────────────────────────────────────────────────────────────
 const sessionHeaders = [
@@ -306,7 +397,16 @@ const sessionHeaders = [
 
 .cash-right { display: flex; align-items: center; gap: 10px; }
 .cash-period { min-width: 180px; }
+.cash-body { padding: 0; }
 .minw-0 { min-width: 0; }
+
+.empty-state {
+  padding: 32px 20px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-weight: 600;
+}
 
 /* ── Sessions table ──────────────────────────────────────────────────────── */
 .dash-table :deep(.v-table__wrapper),
