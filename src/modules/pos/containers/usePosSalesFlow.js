@@ -452,9 +452,9 @@ export function usePosSalesFlow() {
       checkoutDialog.value = false;
       showCartDialog.value = false;
 
-      // ✅ guardar para recibo / postventa si querés usarlo
+      // ✅ abrir recibo automáticamente después de cada venta
       receiptSale.value = result?.sale || posStore?.last_sale || null;
-      receiptOpen.value = false;
+      receiptOpen.value = true;
 
       // ✅ limpiar estado visual
       resetCheckoutUiState();
