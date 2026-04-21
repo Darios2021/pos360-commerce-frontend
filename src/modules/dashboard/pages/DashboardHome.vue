@@ -49,7 +49,7 @@
           </div>
         </template>
         <v-list density="compact" rounded="lg" min-width="210" class="pa-1">
-          <v-list-item :active="!effectiveBranchId" active-color="primary" @click="onBranchChange(null)">
+          <v-list-item :active="!effectiveBranchId" color="primary" @click="onBranchChange(null)">
             <v-list-item-title class="font-weight-bold">Todas las sucursales</v-list-item-title>
           </v-list-item>
           <v-divider class="my-1" />
@@ -57,7 +57,7 @@
             v-for="b in branches"
             :key="b.id"
             :active="effectiveBranchId === b.id"
-            active-color="primary"
+            color="primary"
             @click="onBranchChange(b.id)"
           >
             <v-list-item-title>{{ b.name }}</v-list-item-title>
