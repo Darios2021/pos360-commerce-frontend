@@ -20,8 +20,8 @@
         </button>
       </div>
 
-      <!-- Branch selector — siempre visible en la misma posición -->
-      <v-menu v-if="branches.length > 0" location="bottom end" :close-on-content-click="true">
+      <!-- Branch selector — solo admin con múltiples sucursales -->
+      <v-menu v-if="isAdmin && branches.length > 0" location="bottom end" :close-on-content-click="true">
         <template #activator="{ props: menuProps }">
           <div class="dh-branch-wrap" v-bind="menuProps">
             <v-icon size="15" class="dh-branch-icon">mdi-store-outline</v-icon>
@@ -195,8 +195,10 @@ const ui = ref(emptyUi());
 
 // ─── Branch / scope ───────────────────────────────────────────────────────────
 const effectiveBranchId = computed(() => {
-  if (branchSelected.value) return Number(branchSelected.value);
-  return userBranchId.value || null;
+  // Admin: su selección manda. null explícito = "todas las sucursales"
+  if (isAdmin.value) return branchSelected.value != null ? Number(branchSelected.value) : null;
+  // No-admin: siempre su sucursal asignada, sin opción de cambiar
+  return userBranchId.value ? Number(userBranchId.value) : null;
 });
 
 const branchOptions = computed(() => {
@@ -281,6 +283,7 @@ function adaptOverviewToUi(payload) {
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 async function fetchBranchesIfAdmin() {
+  if (!isAdmin.value) return; // no-admin usa siempre su sucursal asignada
   try {
     const resp = await listBranches();
     const data = resp?.data;
@@ -348,12 +351,9 @@ function onBranchChange(bid) {
 }
 
 onMounted(async () => {
-  if (!isAdmin.value && userBranchId.value) branchSelected.value = userBranchId.value;
   await fetchBranchesIfAdmin();
   await Promise.all([fetchOverview(), fetchAnalytics()]);
 });
-
-watch(effectiveBranchId, () => refreshAll());
 </script>
 
 <style scoped>
