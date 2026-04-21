@@ -371,8 +371,9 @@ export function usePosCajaUi() {
       }
 
       const closePayload = {
-        closing_cash: toNum(payload.closing_cash ?? 0),
-        closing_note: String(payload.closing_note || payload.note || ""),
+        closing_cash:     toNum(payload.closing_cash ?? 0),
+        closing_note:     String(payload.closing_note || payload.note || ""),
+        closing_declared: payload.declared ?? null,   // { cash, card, transfer, mercadopago, ... }
       };
 
       const res = await closeCashRegister(currentCashRegisterId.value, closePayload);
