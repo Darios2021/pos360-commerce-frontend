@@ -168,9 +168,9 @@
       </v-col>
     </v-row>
 
-    <!-- Row 4: Diferencias por sucursal (6) + Últimas sesiones (6) -->
+    <!-- Row 4: Diferencias por sucursal (full) -->
     <v-row dense class="mt-2">
-      <v-col cols="12" lg="6">
+      <v-col cols="12">
         <v-card class="cash-card" elevation="0">
           <div class="cash-head">
             <div class="minw-0">
@@ -183,18 +183,21 @@
             <div v-if="loading" class="py-10 d-flex justify-center"><v-progress-circular indeterminate /></div>
             <div v-else-if="!diffByBranch.length" class="empty-state">Sin sesiones cerradas.</div>
             <div v-else class="px-2 pb-2">
-              <ApexChart height="260" type="bar" :options="optDiffByBranch" :series="seriesDiffByBranch" />
+              <ApexChart height="220" type="bar" :options="optDiffByBranch" :series="seriesDiffByBranch" />
             </div>
           </div>
         </v-card>
       </v-col>
+    </v-row>
 
-      <v-col cols="12" lg="6">
+    <!-- Row 4b: Historial completo de sesiones de caja -->
+    <v-row dense class="mt-2">
+      <v-col cols="12">
         <v-card class="cash-card" elevation="0">
           <div class="cash-head">
             <div class="minw-0">
-              <div class="cash-title">Últimas sesiones de caja</div>
-              <div class="cash-sub">Historial reciente</div>
+              <div class="cash-title">Historial de sesiones de caja</div>
+              <div class="cash-sub">Auditoría · cajero · horarios · IP · estado arqueo</div>
             </div>
           </div>
           <v-divider />
@@ -204,34 +207,92 @@
               <v-data-table
                 :headers="sessionHeaders"
                 :items="lastSessions"
-                density="comfortable"
-                class="elevation-0 dash-table"
+                density="compact"
+                class="elevation-0 dash-table sessions-table"
                 :sort-by="[{ key: 'id', order: 'desc' }]"
               >
+                <!-- # -->
                 <template #item.id="{ item }">
                   <span class="font-weight-bold text-primary">#{{ item.id }}</span>
                 </template>
+
+                <!-- Estado -->
                 <template #item.status="{ item }">
                   <v-chip size="x-small" :color="item.status === 'OPEN' ? 'warning' : 'success'" variant="flat">
                     {{ item.status === 'OPEN' ? 'Abierta' : 'Cerrada' }}
                   </v-chip>
                 </template>
-                <template #item.opening_cash="{ item }">
-                  <span class="text-medium-emphasis">{{ money(item.opening_cash) }}</span>
+
+                <!-- Cajero -->
+                <template #item.opened_by="{ item }">
+                  <div class="sess-user">
+                    <v-icon size="13" class="mr-1 text-medium-emphasis">mdi-account-outline</v-icon>
+                    <span>{{ item.opened_by || '—' }}</span>
+                  </div>
                 </template>
-                <template #item.closing_cash="{ item }">
-                  <span :class="item.closing_cash > 0 ? 'font-weight-medium' : 'text-medium-emphasis'">
-                    {{ item.closing_cash > 0 ? money(item.closing_cash) : '—' }}
-                  </span>
+
+                <!-- Sucursal + tipo caja -->
+                <template #item.branch_name="{ item }">
+                  <div>
+                    <div class="font-weight-medium" style="font-size:12px">{{ item.branch_name }}</div>
+                    <v-chip size="x-small" variant="tonal" color="primary" class="mt-1" style="font-size:9px">{{ cajaTypeLabel(item.caja_type) }}</v-chip>
+                  </div>
                 </template>
+
+                <!-- Apertura: hora + monto -->
+                <template #item.opened_at="{ item }">
+                  <div class="sess-datetime">
+                    <span class="sess-date">{{ fmtDate(item.opened_at) }}</span>
+                    <span class="sess-time">{{ fmtTime(item.opened_at) }}</span>
+                    <span class="sess-amount">{{ money(item.opening_cash) }}</span>
+                  </div>
+                </template>
+
+                <!-- Cierre: hora + monto -->
+                <template #item.closed_at="{ item }">
+                  <div v-if="item.closed_at" class="sess-datetime">
+                    <span class="sess-date">{{ fmtDate(item.closed_at) }}</span>
+                    <span class="sess-time">{{ fmtTime(item.closed_at) }}</span>
+                    <span class="sess-amount">{{ item.closing_cash > 0 ? money(item.closing_cash) : '—' }}</span>
+                  </div>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </template>
+
+                <!-- Estado arqueo -->
                 <template #item.difference_cash="{ item }">
-                  <span :class="item.difference_cash < 0 ? 'text-error font-weight-bold' : item.difference_cash > 0 ? 'text-success font-weight-bold' : 'text-medium-emphasis'">
-                    {{ item.difference_cash !== 0 ? money(item.difference_cash) : '$ 0' }}
-                  </span>
+                  <template v-if="item.status === 'OPEN'">
+                    <v-chip size="x-small" variant="tonal" color="warning">En curso</v-chip>
+                  </template>
+                  <template v-else-if="item.difference_cash === 0">
+                    <v-chip size="x-small" variant="tonal" color="success">
+                      <v-icon start size="11">mdi-check-circle</v-icon>OK
+                    </v-chip>
+                  </template>
+                  <template v-else-if="item.difference_cash < 0">
+                    <v-chip size="x-small" variant="tonal" color="error">
+                      <v-icon start size="11">mdi-arrow-down-circle</v-icon>
+                      Faltante {{ money(Math.abs(item.difference_cash)) }}
+                    </v-chip>
+                  </template>
+                  <template v-else>
+                    <v-chip size="x-small" variant="tonal" color="warning">
+                      <v-icon start size="11">mdi-arrow-up-circle</v-icon>
+                      Sobrante {{ money(item.difference_cash) }}
+                    </v-chip>
+                  </template>
                 </template>
-                <template #item.duration="{ item }">
-                  {{ item.duration_min ? formatMinutes(item.duration_min) : '—' }}
+
+                <!-- Duración -->
+                <template #item.duration_min="{ item }">
+                  <span class="text-medium-emphasis text-caption">{{ item.duration_min ? formatMinutes(item.duration_min) : '—' }}</span>
                 </template>
+
+                <!-- IP -->
+                <template #item.opening_ip="{ item }">
+                  <span v-if="item.opening_ip" class="sess-ip">{{ item.opening_ip }}</span>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </template>
+
                 <template #bottom />
               </v-data-table>
             </div>
@@ -460,14 +521,32 @@ const optOpenClose = computed(() => ({
 
 // Table headers
 const sessionHeaders = [
-  { title: "#", key: "id", sortable: true, width: 70 },
-  { title: "Sucursal", key: "branch_name", sortable: false, width: 120 },
-  { title: "Estado", key: "status", sortable: false, width: 90 },
-  { title: "Apertura", key: "opening_cash", sortable: true, width: 110 },
-  { title: "Cierre", key: "closing_cash", sortable: true, width: 110 },
-  { title: "Diferencia", key: "difference_cash", sortable: true, width: 110 },
-  { title: "Duración", key: "duration", sortable: false, width: 90 },
+  { title: "#",          key: "id",              sortable: true,  width: 60  },
+  { title: "Estado",     key: "status",          sortable: false, width: 85  },
+  { title: "Cajero",     key: "opened_by",       sortable: false, width: 140 },
+  { title: "Sucursal",   key: "branch_name",     sortable: false, width: 150 },
+  { title: "Apertura",   key: "opened_at",       sortable: true,  width: 145 },
+  { title: "Cierre",     key: "closed_at",       sortable: true,  width: 145 },
+  { title: "Arqueo",     key: "difference_cash", sortable: true,  width: 160 },
+  { title: "Duración",   key: "duration_min",    sortable: false, width: 90  },
+  { title: "IP apertura",key: "opening_ip",      sortable: false, width: 130 },
 ];
+
+// ── date/time helpers ────────────────────────────────────────────────────
+function fmtDate(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (isNaN(d)) return "—";
+  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+function fmtTime(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+}
+const cajaTypeMap = { GENERAL: "General", SHIFT: "Turno", BRANCH: "Sucursal", MOBILE: "Móvil" };
+function cajaTypeLabel(t) { return cajaTypeMap[t] || t || "General"; }
 </script>
 
 <style scoped>
@@ -533,6 +612,43 @@ const sessionHeaders = [
 .dash-table :deep(table),
 .dash-table :deep(.v-data-table__wrapper) {
   background: transparent !important;
+}
+
+/* ── Sessions table ─────────────────────────────────────────────────── */
+.sessions-table :deep(th) {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), .5) !important;
+  white-space: nowrap;
+}
+.sessions-table :deep(td) { font-size: 12px !important; }
+
+.sess-datetime {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 0;
+}
+.sess-date   { font-size: 11px; color: rgba(var(--v-theme-on-surface), .55); }
+.sess-time   { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.sess-amount { font-size: 11px; color: rgba(var(--v-theme-on-surface), .6); margin-top: 1px; }
+
+.sess-user {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sess-ip {
+  font-family: monospace;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), .6);
+  background: rgba(var(--v-theme-on-surface), .05);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 :deep(.v-select .v-field__input) {
