@@ -1,233 +1,198 @@
 <template>
-  <v-dialog
-    v-model="openLocal"
-    max-width="980"
-    persistent
-    class="checkout-dialog"
-  >
-    <v-card class="ck-root" rounded="xl">
-      <div class="ck-header">
-        <div class="ck-header-left">
-          <div class="ck-title">Cobro POS</div>
+  <v-dialog v-model="openLocal" max-width="1100" persistent>
+    <v-card class="ck-root">
 
-          <div class="ck-stepper">
-            <template
-              v-for="(item, idx) in screenSteps"
-              :key="item.key"
-            >
+      <!-- HEADER: title + segmented progress + total + close -->
+      <div class="ck-hdr">
+        <div class="ck-hdr-left">
+          <span class="ck-hdr-title">COBRO POS</span>
+          <div class="ck-progress">
+            <template v-for="(item, idx) in screenSteps" :key="item.key">
               <div
-                class="ck-step"
+                class="ck-prog-step"
                 :class="{
-                  'ck-step--active': currentScreen === item.key,
-                  'ck-step--done': screenIndex(item.key) < currentScreenIndex
+                  active: currentScreen === item.key,
+                  done: screenIndex(item.key) < currentScreenIndex,
                 }"
               >
-                <div class="ck-step-circle">
-                  <v-icon v-if="screenIndex(item.key) < currentScreenIndex" size="11">mdi-check</v-icon>
-                  <span v-else class="ck-step-num">{{ idx + 1 }}</span>
+                <div class="ck-prog-dot">
+                  <v-icon v-if="screenIndex(item.key) < currentScreenIndex" size="10">mdi-check</v-icon>
+                  <span v-else>{{ idx + 1 }}</span>
                 </div>
-                <span class="ck-step-label">{{ item.label }}</span>
+                <span class="ck-prog-label">{{ item.label }}</span>
               </div>
-              <div v-if="idx < screenSteps.length - 1" class="ck-step-line" />
+              <div
+                v-if="idx < screenSteps.length - 1"
+                class="ck-prog-line"
+                :class="{ done: screenIndex(item.key) < currentScreenIndex }"
+              />
             </template>
           </div>
         </div>
 
-        <div class="ck-header-right">
-          <div class="ck-total-box">
-            <div class="ck-total-label">TOTAL</div>
-            <div class="ck-total-line">
-              <v-icon class="ck-total-icon" size="28">mdi-cash-multiple</v-icon>
-              <div class="ck-total">{{ money(totalSafe) }}</div>
-            </div>
+        <div class="ck-hdr-right">
+          <div class="ck-hdr-total">
+            <span class="ck-hdr-total-lbl">TOTAL</span>
+            <span class="ck-hdr-total-val">{{ money(totalSafe) }}</span>
           </div>
-
-          <v-btn
-            icon
-            variant="text"
-            density="comfortable"
-            class="ck-close"
-            :disabled="confirmBusy"
-            @click="closeNow"
-          >
+          <v-btn icon variant="text" size="small" :disabled="confirmBusy" @click="closeNow">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </div>
       </div>
 
-      <v-divider />
+      <!-- BODY: always split left + right -->
+      <div class="ck-body">
+        <section class="ck-body-main">
+          <PaymentMethodScreen
+            v-if="currentScreen === 'payment-method'"
+            ref="paymentMethodScreenRef"
+            :state="state"
+            :visible-payment-methods="visiblePaymentMethods"
+            :selected-method="selectedMethod"
+            :method-label="methodLabel"
+            :method-icon="methodIcon"
+            :cursor-index="methodCursor"
+            :cursor-target="methodCursorTarget"
+            :selector-active="paymentSelectorActive"
+            @select-single-method="selectSingleMethod"
+            @toggle-mixed-mode="toggleMixedMode"
+            @move-cursor="moveMethodCursor"
+            @next="goNextFromPaymentMethod"
+            @back="goPrevScreen"
+          />
 
-      <v-card-text class="ck-body">
-        <div
-          class="ck-body-layout"
-          :class="{ 'ck-body-layout--with-summary': showSummary }"
-        >
-          <section class="ck-main">
-            <PaymentMethodScreen
-              v-if="currentScreen === 'payment-method'"
-              ref="paymentMethodScreenRef"
-              :state="state"
-              :visible-payment-methods="visiblePaymentMethods"
-              :selected-method="selectedMethod"
-              :method-label="methodLabel"
-              :method-icon="methodIcon"
-              :cursor-index="methodCursor"
-              :cursor-target="methodCursorTarget"
-              :selector-active="paymentSelectorActive"
-              @select-single-method="selectSingleMethod"
-              @toggle-mixed-mode="toggleMixedMode"
-              @move-cursor="moveMethodCursor"
-              @next="goNextFromPaymentMethod"
-              @back="goPrevScreen"
-            />
+          <PaymentConfigScreen
+            v-else-if="currentScreen === 'payment-config'"
+            ref="paymentConfigScreenRef"
+            :state="state"
+            :selected-method="selectedMethod"
+            :single-installment-items="singleInstallmentItems"
+            :mixed-method-items="mixedMethodItems"
+            :single-uses-cash-entry="singleUsesCashEntry"
+            :single-missing="singleMissing"
+            :single-change="singleChange"
+            :total-safe="totalSafe"
+            :mixed-paid="mixedPaid"
+            :mixed-missing="mixedMissing"
+            :mixed-change="mixedChange"
+            :cash-error-final="cashErrorFinal"
+            :cash-error-msg-final="cashErrorMsgFinal"
+            :method-label="methodLabel"
+            :method-needs-card-kind="methodNeedsCardKind"
+            :method-supports-installments="methodSupportsInstallments"
+            :method-needs-reference="methodNeedsReference"
+            :row-method-needs-card-kind="rowMethodNeedsCardKind"
+            :row-method-supports-installments="rowMethodSupportsInstallments"
+            :row-method-needs-reference="rowMethodNeedsReference"
+            :mixed-installment-items="mixedInstallmentItems"
+            :mixed-row-amount-error="mixedRowAmountError"
+            :money="money"
+            :single-cash-ref="singleCashRef"
+            :set-mixed-amount-ref="setMixedAmountRef"
+            @quick-cash="quickCash"
+            @set-card-kind="setCardKind"
+            @add-mixed-row="addMixedRow"
+            @remove-mixed-row="removeMixedRow"
+            @next="goNextFromPaymentConfig"
+            @back="goPrevScreen"
+          />
 
-            <PaymentConfigScreen
-              v-else-if="currentScreen === 'payment-config'"
-              ref="paymentConfigScreenRef"
-              :state="state"
-              :selected-method="selectedMethod"
-              :single-installment-items="singleInstallmentItems"
-              :mixed-method-items="mixedMethodItems"
-              :single-uses-cash-entry="singleUsesCashEntry"
-              :single-missing="singleMissing"
-              :single-change="singleChange"
-              :total-safe="totalSafe"
-              :mixed-paid="mixedPaid"
-              :mixed-missing="mixedMissing"
-              :mixed-change="mixedChange"
-              :cash-error-final="cashErrorFinal"
-              :cash-error-msg-final="cashErrorMsgFinal"
-              :method-label="methodLabel"
-              :method-needs-card-kind="methodNeedsCardKind"
-              :method-supports-installments="methodSupportsInstallments"
-              :method-needs-reference="methodNeedsReference"
-              :row-method-needs-card-kind="rowMethodNeedsCardKind"
-              :row-method-supports-installments="rowMethodSupportsInstallments"
-              :row-method-needs-reference="rowMethodNeedsReference"
-              :mixed-installment-items="mixedInstallmentItems"
-              :mixed-row-amount-error="mixedRowAmountError"
-              :money="money"
-              :single-cash-ref="singleCashRef"
-              :set-mixed-amount-ref="setMixedAmountRef"
-              @quick-cash="quickCash"
-              @set-card-kind="setCardKind"
-              @add-mixed-row="addMixedRow"
-              @remove-mixed-row="removeMixedRow"
-              @next="goNextFromPaymentConfig"
-              @back="goPrevScreen"
-            />
+          <InvoiceModeScreen
+            v-else-if="currentScreen === 'invoice-mode'"
+            ref="invoiceModeScreenRef"
+            :state="state"
+            @next="goNextFromInvoiceMode"
+            @back="goPrevScreen"
+          />
 
-            <InvoiceModeScreen
-              v-else-if="currentScreen === 'invoice-mode'"
-              ref="invoiceModeScreenRef"
-              :state="state"
-              @next="goNextFromInvoiceMode"
-              @back="goPrevScreen"
-            />
+          <CustomerScreen
+            v-else-if="currentScreen === 'customer'"
+            ref="customerScreenRef"
+            :state="state"
+            :customer-name-ref="customerNameRef"
+            :customer-name="customerName"
+            :customer-doc="customerDoc"
+            :customer-phone="customerPhone"
+            @update:customer-name="customerName = $event"
+            @update:customer-doc="customerDoc = $event"
+            @update:customer-phone="customerPhone = $event"
+            @next="goNextFromCustomer"
+            @back="goPrevScreen"
+          />
 
-            <CustomerScreen
-              v-else-if="currentScreen === 'customer'"
-              ref="customerScreenRef"
-              :state="state"
-              :customer-name-ref="customerNameRef"
-              :customer-name="customerName"
-              :customer-doc="customerDoc"
-              :customer-phone="customerPhone"
-              @update:customer-name="customerName = $event"
-              @update:customer-doc="customerDoc = $event"
-              @update:customer-phone="customerPhone = $event"
-              @next="goNextFromCustomer"
-              @back="goPrevScreen"
-            />
+          <ConfirmScreen
+            v-else-if="currentScreen === 'confirm'"
+            ref="confirmScreenRef"
+            :state="state"
+            :selected-method="selectedMethod"
+            :payment-summary-label="paymentSummaryLabel"
+            :invoice-mode-label="invoiceModeLabel"
+            :customer-name="customerName"
+            :customer-doc="customerDoc"
+            :customer-phone="customerPhone"
+            :paid-safe="paidSafe"
+            :change-safe="changeSafe"
+            :preview-safe="previewSafe"
+            :total-safe="totalSafe"
+            :money="money"
+            @confirm="onConfirm"
+            @back="goPrevScreen"
+          />
+        </section>
 
-            <ConfirmScreen
-              v-else-if="currentScreen === 'confirm'"
-              ref="confirmScreenRef"
-              :state="state"
-              :selected-method="selectedMethod"
-              :payment-summary-label="paymentSummaryLabel"
-              :invoice-mode-label="invoiceModeLabel"
-              :customer-name="customerName"
-              :customer-doc="customerDoc"
-              :customer-phone="customerPhone"
-              :paid-safe="paidSafe"
-              :change-safe="changeSafe"
-              :preview-safe="previewSafe"
-              :total-safe="totalSafe"
-              :money="money"
-              @confirm="onConfirm"
-              @back="goPrevScreen"
-            />
-          </section>
+        <!-- RIGHT: receipt summary, always visible -->
+        <aside class="ck-body-aside">
+          <CheckoutSummary
+            :cart-ui="cartUi"
+            :total-safe="totalSafe"
+            :preview-safe="previewSafe"
+            :paid-safe="paidSafe"
+            :change-safe="changeSafe"
+            :money="money"
+            :to-num="toNum"
+            :show-items="true"
+            :show-prices="true"
+          />
+        </aside>
+      </div>
 
-          <aside v-if="showSummary" class="ck-summary-wrap">
-            <CheckoutSummary
-              :cart-ui="cartUi"
-              :total-safe="totalSafe"
-              :preview-safe="previewSafe"
-              :paid-safe="paidSafe"
-              :change-safe="changeSafe"
-              :money="money"
-              :to-num="toNum"
-              :show-items="true"
-              :show-prices="true"
-            />
-          </aside>
-        </div>
-      </v-card-text>
-
-      <v-divider />
-
-      <div class="ck-footer">
-        <div class="ck-footer-help">
+      <!-- FOOTER: keyboard hint + big action buttons -->
+      <div class="ck-ftr">
+        <div class="ck-ftr-hint">
+          <v-icon size="13">mdi-keyboard-outline</v-icon>
           {{ footerHint }}
         </div>
-
-        <div class="ck-footer-right">
+        <div class="ck-ftr-actions">
           <v-btn
+            class="ck-act ck-act--back"
             variant="outlined"
-            density="comfortable"
-            rounded="pill"
-            class="ck-btn-kbd ck-btn-kbd--back"
             :disabled="backDisabled || confirmBusy"
             @click="goPrevScreen"
           >
-            <span class="ck-kbd-box ck-kbd-box--back">
-              <v-icon size="30" class="ck-kbd-icon ck-kbd-icon--back">
-                mdi-keyboard-backspace
-              </v-icon>
-            </span>
-
-            <span class="ck-btn-stack">
-              <span class="ck-btn-main">BORRAR</span>
-              <span class="ck-btn-sub">Atrás</span>
-            </span>
+            <div class="ck-act-key"><v-icon size="22">mdi-keyboard-backspace</v-icon></div>
+            <div class="ck-act-text">
+              <span class="ck-act-main">BORRAR</span>
+              <span class="ck-act-sub">Atrás</span>
+            </div>
           </v-btn>
 
           <v-btn
+            class="ck-act ck-act--enter"
             color="primary"
-            density="comfortable"
-            rounded="pill"
-            class="ck-btn-kbd ck-btn-kbd--primary"
             :disabled="primaryDisabled || confirmBusy"
             :loading="confirmBusy && currentScreen === 'confirm'"
             @click="handlePrimaryAction"
           >
-            <span class="ck-kbd-box ck-kbd-box--enter">
-              <v-icon size="30" class="ck-kbd-icon ck-kbd-icon--enter">
-                mdi-keyboard-return
-              </v-icon>
-            </span>
-
-            <span class="ck-btn-stack">
-              <span class="ck-btn-main">ENTER</span>
-              <span class="ck-btn-sub">
-                {{ currentScreen === "confirm" ? "Aceptar" : primaryLabel }}
-              </span>
-            </span>
+            <div class="ck-act-key"><v-icon size="22">mdi-keyboard-return</v-icon></div>
+            <div class="ck-act-text">
+              <span class="ck-act-main">ENTER</span>
+              <span class="ck-act-sub">{{ currentScreen === 'confirm' ? 'Confirmar' : primaryLabel }}</span>
+            </div>
           </v-btn>
         </div>
       </div>
+
     </v-card>
   </v-dialog>
 </template>
@@ -979,10 +944,6 @@ const paymentSummaryLabel = computed(() => {
   return methodLabel(selectedMethod.value);
 });
 
-const showSummary = computed(() =>
-  currentScreen.value === "payment-method" || currentScreen.value === "confirm"
-);
-
 const backDisabled = computed(() => currentScreenIndex.value <= 0);
 
 const primaryLabel = computed(() => {
@@ -1103,7 +1064,7 @@ function moveMethodCursor(direction) {
     return;
   }
 
-  const cols = window.innerWidth <= 960 ? 1 : 2;
+  const cols = window.innerWidth <= 960 ? 2 : 3;
   const totalSlots = count + 1;
 
   let index =
@@ -1384,402 +1345,314 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 </script>
 
 <style scoped>
+/* ── Root card ── */
 .ck-root {
   display: flex;
   flex-direction: column;
-  min-height: min(700px, 92dvh);
-  max-height: min(700px, 92dvh);
+  min-height: min(86dvh, 760px);
+  max-height: min(86dvh, 760px);
   overflow: hidden;
-  background:
-    linear-gradient(
-      125deg,
-      rgba(var(--v-theme-on-surface), 0.02) 0%,
-      rgba(var(--v-theme-on-surface), 0.01) 38%,
-      rgba(var(--v-theme-on-surface), 0.03) 100%
-    ),
-    rgb(var(--v-theme-surface));
+  background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow:
-    0 10px 22px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.ck-header {
+/* ── Header ── */
+.ck-hdr {
   display: flex;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  flex: 0 0 auto;
+  gap: 12px;
+}
+
+.ck-hdr-left {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ck-hdr-title {
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  line-height: 1;
+}
+
+/* ── Segmented progress bar ── */
+.ck-progress {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+.ck-prog-step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+}
+
+.ck-prog-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  flex: 0 0 auto;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, color 0.18s;
+}
+
+.ck-prog-step.active .ck-prog-dot {
+  background: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.2);
+}
+
+.ck-prog-step.done .ck-prog-dot {
+  background: rgba(var(--v-theme-primary), 0.15);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+}
+
+.ck-prog-step.done .ck-prog-dot :deep(.v-icon) {
+  color: rgb(var(--v-theme-primary));
+}
+
+.ck-prog-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  white-space: nowrap;
+  transition: color 0.18s, font-weight 0.18s;
+}
+
+.ck-prog-step.active .ck-prog-label {
+  color: rgb(var(--v-theme-on-surface));
+  font-weight: 900;
+}
+
+.ck-prog-step.done .ck-prog-label {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.ck-prog-line {
+  width: 20px;
+  height: 2px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  margin: 0 3px;
+  flex: 0 0 auto;
+  transition: background 0.18s;
+}
+
+.ck-prog-line.done {
+  background: rgba(var(--v-theme-primary), 0.4);
+}
+
+/* ── Header right ── */
+.ck-hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 0 0 auto;
 }
 
-.ck-header-left {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
+.ck-hdr-total {
+  text-align: right;
 }
 
-.ck-title {
-  font-size: 0.98rem;
-  font-weight: 950;
+.ck-hdr-total-lbl {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  display: block;
   line-height: 1;
-  letter-spacing: -0.02em;
+  margin-bottom: 1px;
 }
 
-/* ── Stepper ── */
-.ck-stepper {
+.ck-hdr-total-val {
+  font-size: 1.22rem;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── Body: always split ── */
+.ck-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 300px);
+  overflow: hidden;
+}
+
+.ck-body-main {
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.ck-body-aside {
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Footer ── */
+.ck-ftr {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 0;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  flex: 0 0 auto;
+  gap: 12px;
 }
 
-.ck-step {
+.ck-ftr-hint {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.ck-step-circle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+.ck-ftr-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border: 2px solid rgba(var(--v-theme-on-surface), 0.15);
-  background: transparent;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-
-.ck-step-num {
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-}
-
-.ck-step--active .ck-step-circle {
-  background: rgb(var(--v-theme-primary));
-  border-color: rgb(var(--v-theme-primary));
-  box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.18);
-}
-
-.ck-step--active .ck-step-circle .ck-step-num {
-  color: #fff;
-}
-
-.ck-step--done .ck-step-circle {
-  background: rgba(var(--v-theme-primary), 0.14);
-  border-color: rgba(var(--v-theme-primary), 0.36);
-}
-
-.ck-step--done .ck-step-circle :deep(.v-icon) {
-  color: rgb(var(--v-theme-primary));
-}
-
-.ck-step-label {
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-  white-space: nowrap;
-}
-
-.ck-step--active .ck-step-label {
-  color: rgb(var(--v-theme-on-surface));
-  font-weight: 900;
-}
-
-.ck-step--done .ck-step-label {
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.ck-step-line {
-  width: 24px;
-  height: 1.5px;
-  background: rgba(var(--v-theme-on-surface), 0.1);
-  margin: 0 4px;
-  flex: 0 0 auto;
-}
-
-.ck-header-right {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  flex: 0 0 auto;
-}
-
-.ck-total-box {
-  text-align: right;
-}
-
-.ck-total-label {
-  font-size: 0.56rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  margin-bottom: 1px;
-}
-
-.ck-total-line {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.ck-total-icon {
-  opacity: 0.5;
-}
-
-.ck-total {
-  font-size: 1.18rem;
-  font-weight: 950;
-  line-height: 1;
-  white-space: nowrap;
-  letter-spacing: -0.035em;
-}
-
-.ck-close {
-  margin-top: -1px;
-}
-
-.ck-body {
-  padding: 10px 12px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.ck-body-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  height: 100%;
-  min-height: 0;
-}
-
-.ck-body-layout--with-summary {
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 320px);
-  align-items: stretch;
-}
-
-.ck-main,
-.ck-summary-wrap {
-  min-width: 0;
-  min-height: 0;
-}
-
-.ck-main {
-  height: 100%;
-  overflow: hidden;
-}
-
-.ck-summary-wrap {
-  height: 100%;
-  width: 100%;
-  max-width: 320px;
-  justify-self: end;
-}
-
-.ck-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  flex: 0 0 auto;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-
-.ck-footer-help {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  letter-spacing: 0.01em;
-}
-
-.ck-footer-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-left: auto;
-}
-
-.ck-btn-kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
   gap: 10px;
-  min-height: 52px;
-  padding: 6px 14px;
-  border-radius: 999px !important;
-  font-weight: 950;
-  text-transform: none;
-  letter-spacing: 0;
-  position: relative;
-  overflow: hidden;
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    filter 0.16s ease;
-}
-
-.ck-btn-kbd:hover {
-  transform: translateY(-1px);
-}
-
-.ck-btn-kbd:active {
-  transform: translateY(1px) scale(0.995);
-}
-
-.ck-btn-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  line-height: 1;
-  min-width: 0;
-  gap: 3px;
-}
-
-.ck-btn-main {
-  font-size: 0.88rem;
-  font-weight: 950;
-  line-height: 1;
-  letter-spacing: 0.01em;
-}
-
-.ck-btn-sub {
-  font-size: 0.68rem;
-  font-weight: 850;
-  line-height: 1;
-  opacity: 0.88;
-  letter-spacing: 0;
-}
-
-.ck-btn-kbd--back {
-  min-width: 168px;
-  color: #111827 !important;
-  border: 2px solid rgba(18, 24, 33, 0.28) !important;
-  background:
-    linear-gradient(180deg, #f4f4f4 0%, #dadada 54%, #cfcfcf 100%) !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.08),
-    0 10px 22px rgba(0, 0, 0, 0.22) !important;
-}
-
-.ck-btn-kbd--back::after {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  pointer-events: none;
-}
-
-.ck-btn-kbd--back .ck-btn-main {
-  color: #111111;
-}
-
-.ck-btn-kbd--back .ck-btn-sub {
-  color: rgba(17, 24, 39, 0.72);
-}
-
-.ck-btn-kbd--primary {
-  min-width: 188px;
-  color: #ffffff !important;
-  border: 2px solid rgba(4, 29, 59, 0.44) !important;
-  background:
-    linear-gradient(180deg, #0d6fd4 0%, #0358aa 42%, #02498b 100%) !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.26),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.16),
-    0 12px 26px rgba(2, 73, 139, 0.46),
-    0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-}
-
-.ck-btn-kbd--primary::after {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  pointer-events: none;
-}
-
-.ck-btn-kbd--primary .ck-btn-main {
-  color: #ffffff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
-}
-
-.ck-btn-kbd--primary .ck-btn-sub {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.ck-kbd-box {
-  min-width: 44px;
-  width: 44px;
-  height: 30px;
-  border-radius: 10px;
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
-  flex: 0 0 auto;
-  overflow: hidden;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.08);
 }
 
-.ck-kbd-box--back {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.6) 0%,
-      rgba(0, 0, 0, 0.05) 100%
-    );
-  border: 1px solid rgba(17, 24, 39, 0.08);
+/* ── Action buttons ── */
+.ck-act {
+  min-height: 54px !important;
+  padding: 6px 18px !important;
+  border-radius: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 950 !important;
+  transition: transform 0.14s ease, box-shadow 0.14s ease !important;
 }
 
-.ck-kbd-box--enter {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.14) 0%,
-      rgba(0, 0, 0, 0.12) 100%
-    );
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.ck-act:hover {
+  transform: translateY(-1px) !important;
 }
 
-.ck-kbd-icon {
-  line-height: 1;
+.ck-act:active {
+  transform: translateY(1px) !important;
 }
 
-.ck-kbd-icon--back {
-  color: #2b3139;
-}
-
-.ck-kbd-icon--enter {
-  color: #ffffff;
-}
-
-.ck-btn-kbd :deep(.v-icon) {
-  font-size: 19px !important;
-}
-
-.ck-btn-kbd:disabled {
-  opacity: 0.5;
+.ck-act:disabled,
+.ck-act.v-btn--disabled {
+  opacity: 0.5 !important;
   box-shadow: none !important;
   transform: none !important;
 }
 
+.ck-act-key {
+  width: 36px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ck-act-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1;
+}
+
+.ck-act-main {
+  font-size: 0.86rem;
+  font-weight: 950;
+  letter-spacing: 0.01em;
+}
+
+.ck-act-sub {
+  font-size: 0.64rem;
+  font-weight: 700;
+  opacity: 0.82;
+}
+
+/* BORRAR button */
+.ck-act--back {
+  min-width: 160px !important;
+  color: #111827 !important;
+  background: linear-gradient(180deg, #f0f0f0 0%, #d4d4d4 100%) !important;
+  border: 2px solid rgba(18, 24, 33, 0.22) !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.07),
+    0 8px 20px rgba(0, 0, 0, 0.18) !important;
+}
+
+.ck-act--back .ck-act-key {
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.ck-act--back .ck-act-main,
+.ck-act--back .ck-act-sub {
+  color: #111827;
+}
+
+.ck-act--back :deep(.v-icon) {
+  color: #111827 !important;
+}
+
+/* ENTER button */
+.ck-act--enter {
+  min-width: 180px !important;
+  color: #ffffff !important;
+  background: linear-gradient(180deg, #0d6fd4 0%, #0358aa 48%, #024d95 100%) !important;
+  border: 2px solid rgba(2, 49, 100, 0.5) !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.14),
+    0 10px 24px rgba(3, 88, 170, 0.44) !important;
+}
+
+.ck-act--enter .ck-act-key {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.ck-act--enter .ck-act-main,
+.ck-act--enter .ck-act-sub {
+  color: #ffffff;
+}
+
+.ck-act--enter :deep(.v-icon) {
+  color: #ffffff !important;
+}
+
+/* ── Dark theme active states ── */
 :global(.v-theme--dark) .ck-root :deep(.ck-pay.active),
 :global(.v-theme--dark) .ck-root :deep(.ck-option.active),
 :global(.v-theme--dark) .ck-root :deep(.ck-choice.active),
@@ -1834,139 +1707,59 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   color: rgba(255, 255, 255, 0.98) !important;
 }
 
-@media (max-width: 1200px) {
-  .ck-body-layout--with-summary {
-    grid-template-columns: minmax(0, 1.5fr) minmax(250px, 290px);
-  }
-
-  .ck-summary-wrap {
-    max-width: 290px;
-  }
-
-  .ck-total {
-    font-size: 1.08rem;
-  }
-
-  .ck-btn-kbd--back {
-    min-width: 154px;
-  }
-
-  .ck-btn-kbd--primary {
-    min-width: 170px;
-  }
-
-  .ck-kbd-box {
-    min-width: 42px;
-    width: 42px;
-    height: 28px;
-  }
-
-  .ck-btn-main {
-    font-size: 0.84rem;
-  }
-
-  .ck-btn-sub {
-    font-size: 0.66rem;
-  }
-
-  .ck-btn-kbd :deep(.v-icon) {
-    font-size: 17px !important;
-  }
-}
-
+/* ── Responsive ── */
 @media (max-width: 960px) {
-  .ck-root {
-    min-height: min(640px, 90dvh);
-    max-height: min(640px, 90dvh);
-  }
-
-  .ck-body-layout--with-summary {
+  .ck-body {
     grid-template-columns: 1fr;
   }
 
-  .ck-summary-wrap {
-    max-width: none;
-    justify-self: stretch;
+  .ck-body-aside {
+    display: none;
   }
 
-  .ck-total {
-    font-size: 1.02rem;
+  .ck-root {
+    min-height: min(86dvh, 700px);
+    max-height: min(86dvh, 700px);
   }
 }
 
 @media (max-width: 760px) {
-  .ck-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 8px 8px 6px;
-  }
-
-  .ck-header-left {
-    gap: 5px;
-  }
-
-  .ck-header-right {
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .ck-total-box {
-    text-align: left;
-  }
-
-  .ck-total-line {
-    justify-content: flex-start;
-  }
-
-  .ck-body {
-    padding: 8px;
-  }
-
-  .ck-footer {
+  .ck-hdr {
     flex-direction: column;
     align-items: stretch;
     padding: 8px 10px;
+    gap: 6px;
   }
 
-  .ck-footer-right {
-    width: 100%;
-    margin-left: 0;
-    gap: 10px;
+  .ck-hdr-right {
+    justify-content: space-between;
   }
 
-  .ck-footer-right :deep(.v-btn) {
-    flex: 1 1 auto;
+  .ck-hdr-total {
+    text-align: left;
   }
 
-  .ck-btn-kbd {
-    min-height: 48px;
-    justify-content: center;
+  .ck-ftr {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 10px;
     gap: 8px;
-    padding: 6px 12px;
   }
 
-  .ck-btn-kbd--back,
-  .ck-btn-kbd--primary {
-    min-width: 0;
+  .ck-ftr-actions {
+    width: 100%;
+    justify-content: stretch;
   }
 
-  .ck-kbd-box {
-    min-width: 40px;
-    width: 40px;
-    height: 28px;
-    border-radius: 8px;
+  .ck-ftr-actions .ck-act {
+    flex: 1 1 auto;
+    justify-content: center !important;
+    min-width: 0 !important;
   }
 
-  .ck-btn-main {
-    font-size: 0.84rem;
-  }
-
-  .ck-btn-sub {
-    font-size: 0.64rem;
-  }
-
-  .ck-btn-kbd :deep(.v-icon) {
-    font-size: 16px !important;
+  .ck-progress {
+    flex-wrap: wrap;
+    gap: 2px;
   }
 }
 </style>
