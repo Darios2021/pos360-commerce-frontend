@@ -1,243 +1,9 @@
 <template>
   <div class="tr">
 
-    <!-- ── TOP BAR ── -->
-    <div class="tr-bar">
-      <div>
-        <div class="tr-title">Derivaciones</div>
-        <div class="tr-subtitle">{{ filtered.length }} resultado{{ filtered.length !== 1 ? 's' : '' }}</div>
-      </div>
-      <div class="tr-bar-right">
-        <v-btn variant="tonal" size="small" icon :loading="loading" @click="loadList" title="Actualizar">
-          <v-icon size="17">mdi-refresh</v-icon>
-        </v-btn>
-        <v-btn color="primary" size="small" variant="flat" prepend-icon="mdi-plus" @click="showCreate = true">
-          Nueva derivación
-        </v-btn>
-      </div>
-    </div>
-
-    <!-- ── BANNER pendientes de recepción ── -->
-    <div v-if="pendingForMe.length && !isAdmin" class="tr-alert">
-      <div class="tr-alert__icon">
-        <span class="tr-alert__dot" />
-        <v-icon size="20" color="warning">mdi-truck-delivery-outline</v-icon>
-      </div>
-      <div class="tr-alert__body">
-        <p class="tr-alert__title">
-          {{ pendingForMe.length === 1
-            ? '1 paquete esperando recepción'
-            : `${pendingForMe.length} paquetes esperando recepción` }}
-        </p>
-        <div class="tr-alert__list">
-          <button
-            v-for="t in pendingForMe" :key="t.id"
-            class="tr-alert__item"
-            @click="openDetail(t)"
-          >
-            <v-icon size="12" color="warning">mdi-circle</v-icon>
-            <span class="tr-alert__num">{{ t.number }}</span>
-            <span class="tr-alert__from">desde {{ t.fromWarehouse?.branch?.name || '—' }}</span>
-            <span class="tr-alert__ago">{{ timeAgo(t.dispatched_at) }}</span>
-            <v-chip size="x-small" color="success" variant="flat" class="ml-1">Recepcionar</v-chip>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SEARCH + FILTER CHIPS ── -->
-    <div class="tr-search-area">
-      <div class="tr-search-row">
-        <v-text-field
-          v-model="search"
-          placeholder="Buscar número, sucursal, nota…"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="tr-q-field"
-          @update:model-value="page = 1"
-        />
-        <div class="tr-filters">
-          <v-chip
-            v-for="f in statusFilters"
-            :key="f.value"
-            :color="statusFilter === f.value ? statusChipColor(f.value) : undefined"
-            :variant="statusFilter === f.value ? 'flat' : 'outlined'"
-            size="small"
-            class="tr-filter-chip"
-            @click="statusFilter = f.value; page = 1"
-          >
-            <v-icon start size="12">{{ f.icon }}</v-icon>
-            {{ f.label }}
-            <span v-if="f.count" class="tr-filter-count">{{ f.count }}</span>
-          </v-chip>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── TABLE ── -->
-    <div class="tr-table-wrap">
-      <div class="tr-table-head">
-        <div class="tr-table-head-left">
-          <span class="tr-table-title">Derivaciones</span>
-          <v-chip size="x-small" variant="tonal" class="ml-1">
-            {{ paginated.length }} de {{ filtered.length }}
-          </v-chip>
-        </div>
-        <v-btn size="x-small" variant="text" @click="toggleDense">
-          <v-icon start size="13">{{ dense ? 'mdi-format-line-spacing' : 'mdi-format-line-weight' }}</v-icon>
-          {{ dense ? 'Normal' : 'Compacta' }}
-        </v-btn>
-      </div>
-
-      <v-data-table
-        :headers="headers"
-        :items="paginated"
-        :loading="loading"
-        item-key="id"
-        :density="dense ? 'compact' : 'comfortable'"
-        hover
-        class="tr-table"
-        :items-per-page="-1"
-        hide-default-footer
-        @click:row="(_, row) => openDetail(row.item)"
-      >
-
-        <!-- Número / Fecha -->
-        <template #item.number="{ item }">
-          <div class="tr-number">{{ item.number }}</div>
-          <div class="tr-sub">{{ fmtDate(item.created_at) }}</div>
-        </template>
-
-        <!-- Ruta origen → destino -->
-        <template #item.route="{ item }">
-          <div class="tr-route">
-            <span class="tr-route-from">{{ item.fromWarehouse?.branch?.name || '—' }}</span>
-            <v-icon size="12" class="tr-route-arrow">mdi-arrow-right</v-icon>
-            <span class="tr-route-to">{{ item.toBranch?.name || item.toWarehouse?.branch?.name || '—' }}</span>
-          </div>
-        </template>
-
-        <!-- Productos + nota -->
-        <template #item.items="{ item }">
-          <div class="tr-bold">
-            <v-icon size="12" class="mr-1" style="opacity:.55">mdi-package-variant-closed</v-icon>
-            {{ item.item_count ?? item.items?.length ?? 0 }} producto{{ (item.item_count ?? item.items?.length ?? 0) !== 1 ? 's' : '' }}
-          </div>
-          <div v-if="item.note" class="tr-sub tr-note">{{ item.note }}</div>
-        </template>
-
-        <!-- Personas -->
-        <template #item.people="{ item }">
-          <div class="tr-people">
-            <span v-if="item.creator" class="tr-person">
-              <v-icon size="10">mdi-pencil-outline</v-icon>
-              {{ shortName(item.creator) }}
-            </span>
-            <span v-if="item.dispatcher" class="tr-person tr-person--dispatch">
-              <v-icon size="10">mdi-truck-fast-outline</v-icon>
-              {{ shortName(item.dispatcher) }}
-            </span>
-            <span v-if="item.receiver" class="tr-person tr-person--receive">
-              <v-icon size="10">mdi-check-circle-outline</v-icon>
-              {{ shortName(item.receiver) }}
-            </span>
-            <span v-if="!item.creator && !item.dispatcher && !item.receiver" class="tr-sub">—</span>
-          </div>
-        </template>
-
-        <!-- Estado -->
-        <template #item.status="{ item }">
-          <v-chip size="small" variant="tonal" :color="statusChipColor(item.status)">
-            <v-icon start size="10">{{ statusIcon(item.status) }}</v-icon>
-            {{ statusLabel(item.status) }}
-          </v-chip>
-        </template>
-
-        <!-- Acciones -->
-        <template #item.actions="{ item }">
-          <div class="tr-actions" @click.stop>
-            <v-btn
-              size="x-small"
-              variant="tonal"
-              color="primary"
-              icon
-              @click.stop="openDetail(item)"
-              title="Ver detalle"
-            >
-              <v-icon size="15">mdi-eye</v-icon>
-            </v-btn>
-
-            <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" size="x-small" variant="tonal" icon>
-                  <v-icon size="15">mdi-dots-vertical</v-icon>
-                </v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item @click.stop="openDetail(item)">
-                  <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
-                  <v-list-item-title>Ver detalle</v-list-item-title>
-                </v-list-item>
-                <v-divider v-if="isAdmin || item.status === 'draft'" />
-                <v-list-item
-                  v-if="item.status === 'draft' || isCentral || isAdmin"
-                  @click.stop="openDispatch(item)"
-                >
-                  <template #prepend><v-icon size="16" color="warning">mdi-truck-fast-outline</v-icon></template>
-                  <v-list-item-title>Despachar</v-list-item-title>
-                </v-list-item>
-                <v-list-item
-                  v-if="item.status === 'dispatched'"
-                  @click.stop="openReceive(item)"
-                >
-                  <template #prepend><v-icon size="16" color="success">mdi-check-circle-outline</v-icon></template>
-                  <v-list-item-title>Recepcionar</v-list-item-title>
-                </v-list-item>
-                <v-divider v-if="isAdmin && item.status !== 'cancelled'" />
-                <v-list-item
-                  v-if="isAdmin && item.status !== 'cancelled'"
-                  @click.stop="confirmCancel(item)"
-                >
-                  <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
-                  <v-list-item-title>Cancelar derivación</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </div>
-        </template>
-
-        <!-- Pagination -->
-        <template #bottom>
-          <div class="tr-pagination">
-            <div class="tr-pag-info">
-              Pág. <b>{{ page }}</b> de <b>{{ totalPages }}</b> · <b>{{ filtered.length }}</b> total
-            </div>
-            <div class="tr-pag-btns">
-              <v-btn variant="text" size="small" :disabled="page <= 1 || loading" @click="page--">
-                <v-icon start>mdi-chevron-left</v-icon>Anterior
-              </v-btn>
-              <v-btn variant="text" size="small" :disabled="page >= totalPages || loading" @click="page++">
-                Siguiente<v-icon end>mdi-chevron-right</v-icon>
-              </v-btn>
-            </div>
-            <select class="tr-perpage" v-model="limit" @change="page = 1">
-              <option :value="15">15 / pág</option>
-              <option :value="25">25 / pág</option>
-              <option :value="50">50 / pág</option>
-            </select>
-          </div>
-        </template>
-
-      </v-data-table>
-    </div>
-
-    <!-- ── Dialog detalle ── -->
-    <v-dialog v-model="showDetail" max-width="680" scrollable>
+    <!-- ══════════════════ VISTA: DETALLE (inline, sin modal) ══════════════════ -->
+    <template v-if="selectedTransfer">
       <TransferDetail
-        v-if="selectedTransfer"
         :transfer="selectedTransfer"
         :is-admin="isAdmin"
         :is-central="isCentral"
@@ -245,48 +11,292 @@
         @dispatch="onDispatch"
         @receive="onReceive"
         @cancel="onCancel"
-        @close="showDetail = false"
+        @close="closeDetail"
       />
-    </v-dialog>
+    </template>
 
-    <!-- ── Dialog nueva derivación ── -->
-    <v-dialog v-model="showCreate" max-width="680" scrollable persistent>
-      <TransferForm
-        :current-warehouse-id="currentWarehouseId"
-        :current-branch-id="currentBranchId"
-        @created="onCreated"
-        @close="showCreate = false"
-      />
-    </v-dialog>
+    <!-- ══════════════════ VISTA: LISTA ══════════════════════════════════════ -->
+    <template v-else>
 
-    <!-- ── Dialog cancelar ── -->
-    <v-dialog v-model="cancelDialog.show" max-width="440">
-      <v-card rounded="xl">
-        <div class="cancel-dlg__head">
-          <div class="cancel-dlg__icon-wrap">
-            <v-icon size="22" color="error">mdi-cancel</v-icon>
-          </div>
-          <div>
-            <p class="cancel-dlg__eyebrow">{{ cancelDialog.item?.number }}</p>
-            <h3 class="cancel-dlg__title">Cancelar derivación</h3>
-          </div>
+      <!-- ── TOP BAR ── -->
+      <div class="tr-bar">
+        <div>
+          <div class="tr-title">Derivaciones</div>
+          <div class="tr-subtitle">{{ filtered.length }} resultado{{ filtered.length !== 1 ? 's' : '' }}</div>
         </div>
-        <div class="cancel-dlg__body">
-          <div class="cancel-dlg__info-row">
-            <v-icon size="16" color="warning" class="flex-shrink-0">mdi-information-outline</v-icon>
-            <span>La derivación quedará como <strong>Cancelada</strong> en el historial. El stock <strong>no se modifica</strong>.</span>
-          </div>
-        </div>
-        <div class="cancel-dlg__actions">
-          <v-btn variant="text" size="small" :disabled="cancelling" @click="cancelDialog.show = false">Volver</v-btn>
-          <v-btn color="error" size="small" variant="flat" :loading="cancelling" @click="doCancelConfirmed">
-            <v-icon start size="14">mdi-cancel</v-icon>Confirmar cancelación
+        <div class="tr-bar-right">
+          <v-btn variant="tonal" size="small" icon :loading="loading" @click="loadList" title="Actualizar">
+            <v-icon size="17">mdi-refresh</v-icon>
+          </v-btn>
+          <v-btn color="primary" size="small" variant="flat" prepend-icon="mdi-plus" @click="showCreate = true">
+            Nueva derivación
           </v-btn>
         </div>
-      </v-card>
-    </v-dialog>
+      </div>
 
-    <v-snackbar v-model="snack.show" :timeout="3200" rounded="xl">{{ snack.text }}</v-snackbar>
+      <!-- ── BANNER pendientes de recepción ── -->
+      <div v-if="pendingForMe.length && !isAdmin" class="tr-alert">
+        <div class="tr-alert__icon">
+          <span class="tr-alert__dot" />
+          <v-icon size="20" color="warning">mdi-truck-delivery-outline</v-icon>
+        </div>
+        <div class="tr-alert__body">
+          <p class="tr-alert__title">
+            {{ pendingForMe.length === 1
+              ? '1 paquete esperando recepción'
+              : `${pendingForMe.length} paquetes esperando recepción` }}
+          </p>
+          <div class="tr-alert__list">
+            <button
+              v-for="t in pendingForMe" :key="t.id"
+              class="tr-alert__item"
+              @click="openDetail(t)"
+            >
+              <v-icon size="12" color="warning">mdi-circle</v-icon>
+              <span class="tr-alert__num">{{ t.number }}</span>
+              <span class="tr-alert__from">desde {{ t.fromWarehouse?.branch?.name || '—' }}</span>
+              <span class="tr-alert__ago">{{ timeAgo(t.dispatched_at) }}</span>
+              <v-chip size="x-small" color="success" variant="flat" class="ml-1">Recepcionar</v-chip>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SEARCH + FILTER CHIPS ── -->
+      <div class="tr-search-area">
+        <div class="tr-search-row">
+          <v-text-field
+            v-model="search"
+            placeholder="Buscar número, sucursal, nota…"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            class="tr-q-field"
+            @update:model-value="page = 1"
+          />
+          <div class="tr-filters">
+            <v-chip
+              v-for="f in statusFilters"
+              :key="f.value"
+              :color="statusFilter === f.value ? statusChipColor(f.value) : undefined"
+              :variant="statusFilter === f.value ? 'flat' : 'outlined'"
+              size="small"
+              class="tr-filter-chip"
+              @click="statusFilter = f.value; page = 1"
+            >
+              <v-icon start size="12">{{ f.icon }}</v-icon>
+              {{ f.label }}
+              <span v-if="f.count" class="tr-filter-count">{{ f.count }}</span>
+            </v-chip>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TABLE ── -->
+      <div class="tr-table-wrap">
+        <div class="tr-table-head">
+          <div class="tr-table-head-left">
+            <span class="tr-table-title">Derivaciones</span>
+            <v-chip size="x-small" variant="tonal" class="ml-1">
+              {{ paginated.length }} de {{ filtered.length }}
+            </v-chip>
+          </div>
+          <v-btn size="x-small" variant="text" @click="toggleDense">
+            <v-icon start size="13">{{ dense ? 'mdi-format-line-spacing' : 'mdi-format-line-weight' }}</v-icon>
+            {{ dense ? 'Normal' : 'Compacta' }}
+          </v-btn>
+        </div>
+
+        <v-data-table
+          :headers="headers"
+          :items="paginated"
+          :loading="loading"
+          item-key="id"
+          :density="dense ? 'compact' : 'comfortable'"
+          hover
+          class="tr-table"
+          :items-per-page="-1"
+          hide-default-footer
+          @click:row="(_, row) => openDetail(row.item)"
+        >
+
+          <!-- Número / Fecha -->
+          <template #item.number="{ item }">
+            <div class="tr-number">{{ item.number }}</div>
+            <div class="tr-sub">{{ fmtDate(item.created_at) }}</div>
+          </template>
+
+          <!-- Origen / Destino como chips -->
+          <template #item.route="{ item }">
+            <div class="tr-route">
+              <v-chip size="x-small" variant="tonal" color="primary" class="tr-chip-branch">
+                <v-icon start size="10">mdi-store-outline</v-icon>
+                {{ item.fromWarehouse?.branch?.name || '—' }}
+              </v-chip>
+              <v-icon size="13" color="medium-emphasis">mdi-arrow-right</v-icon>
+              <v-chip size="x-small" variant="tonal" color="success" class="tr-chip-branch">
+                <v-icon start size="10">mdi-store</v-icon>
+                {{ item.toBranch?.name || item.toWarehouse?.branch?.name || '—' }}
+              </v-chip>
+            </div>
+          </template>
+
+          <!-- Productos + nota -->
+          <template #item.items="{ item }">
+            <div class="tr-bold">
+              <v-icon size="12" class="mr-1" style="opacity:.55">mdi-package-variant-closed</v-icon>
+              {{ itemCount(item) }} producto{{ itemCount(item) !== 1 ? 's' : '' }}
+            </div>
+            <div v-if="item.note" class="tr-sub tr-note">{{ item.note }}</div>
+          </template>
+
+          <!-- Personas -->
+          <template #item.people="{ item }">
+            <div class="tr-people">
+              <span v-if="item.creator" class="tr-person">
+                <v-icon size="10">mdi-pencil-outline</v-icon>
+                {{ shortName(item.creator) }}
+              </span>
+              <span v-if="item.dispatcher" class="tr-person tr-person--dispatch">
+                <v-icon size="10">mdi-truck-fast-outline</v-icon>
+                {{ shortName(item.dispatcher) }}
+              </span>
+              <span v-if="item.receiver" class="tr-person tr-person--receive">
+                <v-icon size="10">mdi-check-circle-outline</v-icon>
+                {{ shortName(item.receiver) }}
+              </span>
+              <span v-if="!item.creator && !item.dispatcher && !item.receiver" class="tr-sub">—</span>
+            </div>
+          </template>
+
+          <!-- Estado -->
+          <template #item.status="{ item }">
+            <v-chip size="small" variant="tonal" :color="statusChipColor(item.status)">
+              <v-icon start size="10">{{ statusIcon(item.status) }}</v-icon>
+              {{ statusLabel(item.status) }}
+            </v-chip>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <div class="tr-actions" @click.stop>
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                icon
+                @click.stop="openDetail(item)"
+                title="Ver detalle"
+              >
+                <v-icon size="15">mdi-eye</v-icon>
+              </v-btn>
+
+              <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" size="x-small" variant="tonal" icon>
+                    <v-icon size="15">mdi-dots-vertical</v-icon>
+                  </v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item @click.stop="openDetail(item)">
+                    <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
+                    <v-list-item-title>Ver detalle</v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item
+                    v-if="item.status === 'draft' && (isCentral || isAdmin)"
+                    @click.stop="openDetail(item)"
+                  >
+                    <template #prepend><v-icon size="16" color="warning">mdi-truck-fast-outline</v-icon></template>
+                    <v-list-item-title>Despachar</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item
+                    v-if="item.status === 'dispatched'"
+                    @click.stop="openDetail(item)"
+                  >
+                    <template #prepend><v-icon size="16" color="success">mdi-check-circle-outline</v-icon></template>
+                    <v-list-item-title>Recepcionar</v-list-item-title>
+                  </v-list-item>
+                  <v-divider v-if="isAdmin && !['cancelled','received'].includes(item.status)" />
+                  <v-list-item
+                    v-if="isAdmin && !['cancelled','received'].includes(item.status)"
+                    @click.stop="confirmCancel(item)"
+                  >
+                    <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
+                    <v-list-item-title>Cancelar derivación</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+
+          <!-- Pagination -->
+          <template #bottom>
+            <div class="tr-pagination">
+              <div class="tr-pag-info">
+                Pág. <b>{{ page }}</b> de <b>{{ totalPages }}</b> · <b>{{ filtered.length }}</b> total
+              </div>
+              <div class="tr-pag-btns">
+                <v-btn variant="text" size="small" :disabled="page <= 1 || loading" @click="page--">
+                  <v-icon start>mdi-chevron-left</v-icon>Anterior
+                </v-btn>
+                <v-btn variant="text" size="small" :disabled="page >= totalPages || loading" @click="page++">
+                  Siguiente<v-icon end>mdi-chevron-right</v-icon>
+                </v-btn>
+              </div>
+              <select class="tr-perpage" v-model="limit" @change="page = 1">
+                <option :value="15">15 / pág</option>
+                <option :value="25">25 / pág</option>
+                <option :value="50">50 / pág</option>
+              </select>
+            </div>
+          </template>
+
+        </v-data-table>
+      </div>
+
+      <!-- ── Dialog nueva derivación ── -->
+      <v-dialog v-model="showCreate" max-width="680" scrollable persistent>
+        <TransferForm
+          :current-warehouse-id="currentWarehouseId"
+          :current-branch-id="currentBranchId"
+          @created="onCreated"
+          @close="showCreate = false"
+        />
+      </v-dialog>
+
+      <!-- ── Dialog cancelar ── -->
+      <v-dialog v-model="cancelDialog.show" max-width="440">
+        <v-card rounded="xl">
+          <div class="cancel-dlg__head">
+            <div class="cancel-dlg__icon-wrap">
+              <v-icon size="22" color="error">mdi-cancel</v-icon>
+            </div>
+            <div>
+              <p class="cancel-dlg__eyebrow">{{ cancelDialog.item?.number }}</p>
+              <h3 class="cancel-dlg__title">Cancelar derivación</h3>
+            </div>
+          </div>
+          <div class="cancel-dlg__body">
+            <div class="cancel-dlg__info-row">
+              <v-icon size="16" color="warning" class="flex-shrink-0">mdi-information-outline</v-icon>
+              <span>La derivación quedará como <strong>Cancelada</strong> en el historial. El stock <strong>no se modifica</strong>.</span>
+            </div>
+          </div>
+          <div class="cancel-dlg__actions">
+            <v-btn variant="text" size="small" :disabled="cancelling" @click="cancelDialog.show = false">Volver</v-btn>
+            <v-btn color="error" size="small" variant="flat" :loading="cancelling" @click="doCancelConfirmed">
+              <v-icon start size="14">mdi-cancel</v-icon>Confirmar cancelación
+            </v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
+
+      <v-snackbar v-model="snack.show" :timeout="3200" rounded="xl">{{ snack.text }}</v-snackbar>
+
+    </template>
   </div>
 </template>
 
@@ -309,7 +319,6 @@ const { pendingForMe } = useTransferNotifications();
 // ── state ──────────────────────────────────────────────────────────────────
 const allTransfers     = ref([]);
 const loading          = ref(false);
-const showDetail       = ref(false);
 const selectedTransfer = ref(null);
 const showCreate       = ref(false);
 const dense            = ref(false);
@@ -326,13 +335,21 @@ const cancelling   = ref(false);
 
 // ── headers ────────────────────────────────────────────────────────────────
 const headers = [
-  { title: "Número",      key: "number",  sortable: false, width: 160 },
-  { title: "Ruta",        key: "route",   sortable: false, width: 260 },
-  { title: "Productos",   key: "items",   sortable: false, width: 180 },
-  { title: "Personas",    key: "people",  sortable: false, width: 200 },
-  { title: "Estado",      key: "status",  sortable: false, width: 130 },
-  { title: "",            key: "actions", sortable: false, width: 90  },
+  { title: "Número",    key: "number",  sortable: false, width: 150 },
+  { title: "Origen / Destino", key: "route",   sortable: false, width: 300 },
+  { title: "Productos", key: "items",   sortable: false, width: 160 },
+  { title: "Personas",  key: "people",  sortable: false, width: 190 },
+  { title: "Estado",    key: "status",  sortable: false, width: 130 },
+  { title: "",          key: "actions", sortable: false, width: 90  },
 ];
+
+// ── item count helper ──────────────────────────────────────────────────────
+function itemCount(t) {
+  // backend list returns items:[{id}] — usar length
+  if (Array.isArray(t.items)) return t.items.length;
+  if (typeof t.item_count === "number") return t.item_count;
+  return 0;
+}
 
 // ── visible transfers (filtro de sucursal) ─────────────────────────────────
 const visibleTransfers = computed(() => {
@@ -433,14 +450,9 @@ async function loadList() {
 // ── acciones ──────────────────────────────────────────────────────────────
 function openDetail(tr) {
   selectedTransfer.value = tr;
-  showDetail.value = true;
 }
-
-function openDispatch(tr) {
-  openDetail(tr);
-}
-function openReceive(tr) {
-  openDetail(tr);
+function closeDetail() {
+  selectedTransfer.value = null;
 }
 
 function confirmCancel(item) {
@@ -452,9 +464,7 @@ async function doCancelConfirmed() {
   if (!id) return;
   cancelling.value = true;
   try {
-    if (typeof cancelTransfer === "function") {
-      await cancelTransfer(id);
-    }
+    await cancelTransfer(id);
     cancelDialog.value.show = false;
     await loadList();
     toast("Derivación cancelada");
@@ -467,7 +477,7 @@ async function doCancelConfirmed() {
 
 async function refreshAndReload(id) {
   await loadList();
-  if (id && showDetail.value) {
+  if (id && selectedTransfer.value) {
     try {
       const { data } = await getTransfer(id);
       selectedTransfer.value = data?.transfer || data || selectedTransfer.value;
@@ -477,7 +487,7 @@ async function refreshAndReload(id) {
 
 async function onDispatch(id) { await refreshAndReload(id); }
 async function onReceive(id)  { await refreshAndReload(id); }
-async function onCancel()     { showDetail.value = false; await loadList(); }
+async function onCancel()     { closeDetail(); await loadList(); }
 function onCreated()          { showCreate.value = false; loadList(); }
 
 onMounted(() => { loadList(); });
@@ -512,11 +522,8 @@ onMounted(() => { loadList(); });
   background: rgba(var(--v-theme-warning), .08);
 }
 .tr-alert__icon {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding-top: 2px;
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0; padding-top: 2px;
 }
 .tr-alert__dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -548,10 +555,7 @@ onMounted(() => { loadList(); });
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .tr-search-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
 .tr-q-field { flex: 0 0 260px; min-width: 180px; }
 .tr-filters { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; flex: 1; }
@@ -581,26 +585,18 @@ onMounted(() => { loadList(); });
 .tr-number  { font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .tr-bold    { font-size: 13px; font-weight: 700; }
 .tr-sub     { font-size: 11px; opacity: 0.5; }
-.tr-note    {
-  overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; max-width: 160px;
-}
+.tr-note    { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 
+/* Origen / Destino chips */
 .tr-route {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
 }
-.tr-route-from {
-  color: rgb(var(--v-theme-primary));
-  overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; max-width: 120px;
+.tr-chip-branch {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  max-width: 120px;
+  overflow: hidden;
 }
-.tr-route-to {
-  color: rgb(var(--v-theme-success));
-  overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; max-width: 120px;
-}
-.tr-route-arrow { color: rgba(var(--v-theme-on-surface), .4); flex-shrink: 0; }
 
 .tr-people {
   display: flex; flex-direction: column; gap: 3px;
@@ -622,7 +618,6 @@ onMounted(() => { loadList(); });
 }
 .tr-pag-info { font-size: 12px; opacity: .55; }
 .tr-pag-btns { display: flex; gap: 4px; }
-
 .tr-perpage {
   padding: 5px 8px; border-radius: 6px; font-size: 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), .15);
@@ -633,8 +628,7 @@ onMounted(() => { loadList(); });
 
 /* ── CANCEL DIALOG ── */
 .cancel-dlg__head {
-  display: flex; align-items: center; gap: 12px;
-  padding: 16px 18px 12px;
+  display: flex; align-items: center; gap: 12px; padding: 16px 18px 12px;
 }
 .cancel-dlg__icon-wrap {
   width: 40px; height: 40px; display: flex; align-items: center;
@@ -656,11 +650,9 @@ onMounted(() => { loadList(); });
   font-size: 13px; line-height: 1.4;
 }
 .cancel-dlg__actions {
-  display: flex; justify-content: flex-end; gap: 8px;
-  padding: 10px 18px 16px;
+  display: flex; justify-content: flex-end; gap: 8px; padding: 10px 18px 16px;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .tr-q-field { flex: 1; min-width: 160px; }
 }
