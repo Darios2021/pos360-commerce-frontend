@@ -216,13 +216,21 @@
                     {{ item.status === 'OPEN' ? 'Abierta' : 'Cerrada' }}
                   </v-chip>
                 </template>
+                <template #item.opening_cash="{ item }">
+                  <span class="text-medium-emphasis">{{ money(item.opening_cash) }}</span>
+                </template>
+                <template #item.closing_cash="{ item }">
+                  <span :class="item.closing_cash > 0 ? 'font-weight-medium' : 'text-medium-emphasis'">
+                    {{ item.closing_cash > 0 ? money(item.closing_cash) : '—' }}
+                  </span>
+                </template>
                 <template #item.difference_cash="{ item }">
-                  <span :class="item.difference_cash < 0 ? 'text-error font-weight-bold' : item.difference_cash > 0 ? 'text-success font-weight-bold' : ''">
-                    {{ money(item.difference_cash) }}
+                  <span :class="item.difference_cash < 0 ? 'text-error font-weight-bold' : item.difference_cash > 0 ? 'text-success font-weight-bold' : 'text-medium-emphasis'">
+                    {{ item.difference_cash !== 0 ? money(item.difference_cash) : '$ 0' }}
                   </span>
                 </template>
                 <template #item.duration="{ item }">
-                  {{ item.duration_min ? `${item.duration_min} min` : '—' }}
+                  {{ item.duration_min ? formatMinutes(item.duration_min) : '—' }}
                 </template>
                 <template #bottom />
               </v-data-table>
@@ -317,9 +325,14 @@ function money(val) {
 function formatMinutes(min) {
   const m = Math.round(num(min));
   if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+  if (m < 1440) {                          // < 24h
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+  }
+  const d = Math.floor(m / 1440);         // días
+  const hRem = Math.floor((m % 1440) / 60);
+  return hRem > 0 ? `${d}d ${hRem}h` : `${d}d`;
 }
 
 const ana = computed(() => props.analytics || {});
