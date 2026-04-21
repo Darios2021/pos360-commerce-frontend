@@ -20,6 +20,9 @@
           }"
           @click="selectCard(card, idx)"
         >
+          <!-- number key badge -->
+          <span class="ck-inv-key">{{ idx + 1 }}</span>
+
           <span class="ck-inv-letter">{{ card.letter }}</span>
 
           <div class="ck-inv-info">
@@ -145,6 +148,16 @@ function focusCurrent() {
 function handleKeyboardAction(action) {
   const last = invoiceCards.length - 1;
 
+  // Number shortcuts: digit:N sent from CheckoutDialog
+  if (action.startsWith?.("digit:")) {
+    const n = parseInt(action.slice(6), 10);
+    if (Number.isFinite(n) && n >= 1 && n <= invoiceCards.length) {
+      selectCard(invoiceCards[n - 1], n - 1);
+      return true;
+    }
+    return false;
+  }
+
   if (action === "left" || action === "up") {
     if (cursorIndex.value > 0) {
       cursorIndex.value -= 1;
@@ -255,6 +268,33 @@ defineExpose({ focusCurrent, handleKeyboardAction });
   border-color: rgba(var(--cc), 0.4);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(var(--cc), 0.18);
+}
+
+/* ── Number key badge ── */
+.ck-inv-key {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.18) 100%);
+  border: 1px solid rgba(var(--cc), 0.3);
+  border-bottom-width: 2px;
+  color: rgb(var(--cc));
+  font-size: 0.62rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 2px rgba(0,0,0,0.2);
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.ck-inv-card.active .ck-inv-key {
+  background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%);
+  border-color: rgba(255,255,255,0.28);
+  color: #fff;
 }
 
 /* ── Letter ── */

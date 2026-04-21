@@ -997,10 +997,10 @@ const primaryDisabled = computed(() => {
 });
 
 const footerHint = computed(() => {
-  if (currentScreen.value === "payment-method") return "← → ↑ ↓ mover";
+  if (currentScreen.value === "payment-method") return "← → ↑ ↓ mover  ·  teclas 1-9 para elegir rápido";
   if (currentScreen.value === "payment-config") return "Enter seguir · Borrar volver";
-  if (currentScreen.value === "invoice-mode") return "flechas seleccionar";
-  if (currentScreen.value === "customer") return "completar y seguir";
+  if (currentScreen.value === "invoice-mode")   return "← → mover  ·  1=No fiscal  2=Fact.B  3=Fact.A  4=Fact.C";
+  if (currentScreen.value === "customer")       return "Tab / Enter avanzar campo · Borrar volver";
   return "Enter confirmar venta";
 });
 
@@ -1285,6 +1285,31 @@ function onKeydown(e) {
 
   if (typing) {
     return;
+  }
+
+  // ── Number shortcuts ──────────────────────────────────────────────────────
+  const digit = parseInt(key, 10);
+  if (Number.isFinite(digit) && digit >= 1 && digit <= 9) {
+    // Payment method selection (step 1)
+    if (currentScreen.value === "payment-method") {
+      e.preventDefault();
+      e.stopPropagation();
+      const methods = visiblePaymentMethods.value;
+      const idx = digit - 1;
+      if (idx < methods.length) {
+        selectSingleMethod(methods[idx].id);
+      } else if (idx === methods.length) {
+        toggleMixedMode();
+      }
+      return;
+    }
+    // Invoice mode selection (step 3)
+    if (currentScreen.value === "invoice-mode") {
+      e.preventDefault();
+      e.stopPropagation();
+      invoiceModeScreenRef.value?.handleKeyboardAction?.(`digit:${digit}`);
+      return;
+    }
   }
 
   if (key === "Backspace") {
