@@ -12,6 +12,8 @@
       :has-multi-branches="hasMultiBranches"
       :loading-global="loadingGlobal"
       :cart-count="cartCount"
+      :other-open-registers="otherOpenRegisters"
+      :current-cash-register-id="currentCashRegister?.id || 0"
       @open-config="openCajaConfig"
       @close-caja="onCloseCaja"
       @refresh="refresh"
@@ -27,6 +29,7 @@ import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 const {
   isCajaOpen,
   currentCashRegister,
+  otherOpenRegisters,
   openedAt,
   cashierName,
   branchChipLabel,

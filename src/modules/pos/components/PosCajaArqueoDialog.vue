@@ -1,156 +1,156 @@
 <template>
   <v-dialog
     :model-value="open"
-    max-width="680"
+    max-width="520"
     @update:model-value="$emit('update:open', $event)"
   >
     <v-card class="arq" rounded="xl">
-
-      <!-- ── Header ──────────────────────────────────────────────────────── -->
       <PosDialogHeader
         eyebrow="Cierre de caja"
         title="Arqueo"
+        :subtitle="subtitle"
         @close="$emit('update:open', false)"
-      >
-        <template #chips>
-          <span class="arq__pill">
-            <span class="arq__pill-label">{{ cajaTypeLabel || "General" }}</span>
-          </span>
-          <span class="arq__pill">
-            <span class="arq__pill-label">{{ invoiceTypeLabel || "Ticket" }}</span>
-          </span>
-          <span class="arq__pill" :class="isCajaOpen ? 'arq__pill--ok' : 'arq__pill--err'">
-            <span class="arq__pill-label">{{ isCajaOpen ? "Abierta" : "Cerrada" }}</span>
-          </span>
-          <!-- sesión -->
-          <span class="arq__pill arq__pill--session">
-            <v-icon size="10">mdi-receipt-text-outline</v-icon>
-            <span>{{ totals.sales_total_created || totals.sales_count || 0 }}</span>
-            <span class="arq__pill-sep">·</span>
-            <v-icon size="10" color="success">mdi-check-circle-outline</v-icon>
-            <span class="c-ok">{{ totals.sales_count || 0 }}</span>
-            <template v-if="totals.sales_cancelled_count > 0">
-              <span class="arq__pill-sep">·</span>
-              <v-icon size="10" color="warning">mdi-cancel</v-icon>
-              <span class="c-warning">{{ totals.sales_cancelled_count }}</span>
-            </template>
-          </span>
-        </template>
-      </PosDialogHeader>
+      />
 
-      <!-- alerta anuladas (compacta, solo si hay) -->
-      <div v-if="totals.sales_cancelled_count > 0" class="arq__cancelled-alert">
+      <!-- Alerta de ventas anuladas (solo si hay) -->
+      <div v-if="cancelledCount > 0" class="arq__cancelled-alert">
         <v-icon size="13" color="warning">mdi-alert</v-icon>
-        <span><strong>{{ totals.sales_cancelled_count }} venta{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} anulada{{ totals.sales_cancelled_count !== 1 ? 's' : '' }}</strong> excluida{{ totals.sales_cancelled_count !== 1 ? 's' : '' }} del arqueo.</span>
+        <span>
+          <strong>{{ cancelledCount }}</strong>
+          {{ cancelledCount === 1 ? "venta anulada excluida" : "ventas anuladas excluidas" }}
+          del arqueo.
+        </span>
+      </div>
+
+      <!-- Alerta de summary vacío — ayuda a detectar desfasaje entre venta y caja -->
+      <div v-if="summaryEmpty" class="arq__empty-alert">
+        <v-icon size="14" color="warning">mdi-alert-circle-outline</v-icon>
+        <div class="arq__empty-alert-text">
+          <strong>No se encontraron movimientos en esta caja.</strong>
+          <span>
+            Si hiciste ventas, puede haber un desfasaje de sucursal o la caja
+            estaba recién abierta. Recargá el resumen y probá de nuevo.
+          </span>
+        </div>
+        <v-btn
+          variant="tonal"
+          color="warning"
+          size="x-small"
+          prepend-icon="mdi-refresh"
+          @click="$emit('reload')"
+        >
+          Recargar
+        </v-btn>
       </div>
 
       <v-divider />
 
-      <!-- ── Body: 2 columnas ────────────────────────────────────────────── -->
       <div class="arq__body">
-
-        <!-- COL IZQUIERDA — efectivo -->
-        <div class="arq__col-cash">
-          <div class="arq__col-label">
-            <v-icon size="13" class="mr-1">mdi-cash</v-icon>Efectivo
+        <!-- Hero: efectivo -->
+        <section class="arq__cash">
+          <div class="arq__section-title">
+            <v-icon size="14">mdi-cash</v-icon>
+            Efectivo en caja
           </div>
 
-          <div class="arq__cash-expected-block">
-            <span class="arq__cash-sublabel">Esperado en caja</span>
-            <strong class="arq__cash-amount">{{ money(expectedCashValue) }}</strong>
+          <div class="arq__expected">
+            <span class="arq__expected-label">Esperado</span>
+            <strong class="arq__expected-amount">{{ money(expectedCashValue) }}</strong>
           </div>
 
           <v-text-field
-            v-model="declaredInputs.cash"
-            label="Efectivo contado"
+            v-model="cashInput"
+            label="Efectivo contado físicamente"
             variant="outlined"
-            density="compact"
+            density="comfortable"
             hide-details
             prefix="$"
             inputmode="decimal"
-            class="arq__input"
+            class="arq__cash-input"
+            @keyup.enter="submit"
           />
 
-          <div class="arq__diff-badge" :class="statusClass(cashDiff)">
-            <span class="arq__diff-label">Diferencia</span>
-            <strong class="arq__diff-val">{{ formatDiff(cashDiff) }}</strong>
-          </div>
-        </div>
-
-        <!-- COL DERECHA — otros medios -->
-        <div class="arq__col-medios">
-          <div class="arq__col-label">
-            <v-icon size="13" class="mr-1">mdi-credit-card-outline</v-icon>Otros medios
-          </div>
-
-          <div class="arq__medios">
-            <div class="arq__medios-header">
-              <span></span>
-              <span>Esp.</span>
-              <span>Decl.</span>
-              <span>Dif.</span>
+          <div class="arq__diff" :class="diffClass">
+            <v-icon size="15" class="arq__diff-icon">{{ diffIcon }}</v-icon>
+            <div class="arq__diff-text">
+              <strong>{{ diffTitle }}</strong>
+              <span>{{ diffDetail }}</span>
             </div>
-            <div
-              v-for="row in nonCashRows"
-              :key="row.key"
-              class="arq__medio-row"
-            >
-              <span class="arq__medio-name">{{ row.label }}</span>
-              <span class="arq__medio-esp">{{ moneyShort(row.expected) }}</span>
-              <div class="arq__medio-input">
-                <v-text-field
-                  v-model="declaredInputs[row.key]"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  prefix="$"
-                  inputmode="decimal"
-                  class="arq__input arq__input--sm"
-                />
-              </div>
-              <span class="arq__medio-diff" :class="statusTextClass(row.diff)">{{ formatDiff(row.diff) }}</span>
+            <strong class="arq__diff-amount">{{ formatDiff(cashDiff) }}</strong>
+          </div>
+        </section>
+
+        <!-- Resumen del turno (solo lectura, del sistema) -->
+        <section v-if="hasTurnInfo" class="arq__summary">
+          <div class="arq__section-title">
+            <v-icon size="14">mdi-receipt-text-outline</v-icon>
+            Resumen del turno
+          </div>
+
+          <div class="arq__metrics">
+            <div class="arq__metric">
+              <span class="arq__metric-label">Ventas</span>
+              <strong class="arq__metric-val">{{ salesCount }}</strong>
+            </div>
+            <div class="arq__metric">
+              <span class="arq__metric-label">Facturado</span>
+              <strong class="arq__metric-val">{{ money(salesTotal) }}</strong>
+            </div>
+            <div class="arq__metric">
+              <span class="arq__metric-label">Fondo inicial</span>
+              <strong class="arq__metric-val">{{ money(openingCash) }}</strong>
             </div>
           </div>
-        </div>
 
-      </div>
-
-      <!-- ── Resultado + nota ───────────────────────────────────────────── -->
-      <div class="arq__bottom">
-        <div class="arq__result-banner" :class="resultStatus.className">
-          <v-icon size="15" class="mr-2">{{ resultStatus.icon }}</v-icon>
-          <div>
-            <strong class="arq__result-title">{{ resultStatus.title }}</strong>
-            <span class="arq__result-text">{{ resultStatus.text }}</span>
+          <div v-if="paymentRows.length" class="arq__methods">
+            <span class="arq__methods-title">
+              Cobrado en el turno por medio de pago
+            </span>
+            <div class="arq__methods-list">
+              <span
+                v-for="row in paymentRows"
+                :key="row.key"
+                class="arq-method-chip"
+                :class="{ 'arq-method-chip--cash': row.key === 'cash' }"
+              >
+                <v-icon size="13">{{ row.icon }}</v-icon>
+                <span class="arq-method-chip__name">{{ row.label }}</span>
+                <strong>{{ money(row.expected) }}</strong>
+                <span v-if="row.count" class="arq-method-chip__count">
+                  {{ row.count }} {{ row.count === 1 ? "venta" : "ventas" }}
+                </span>
+              </span>
+            </div>
           </div>
-        </div>
+        </section>
 
+        <!-- Observación -->
         <v-text-field
           v-model="localNote"
           label="Observación (opcional)"
           variant="outlined"
-          density="compact"
+          density="comfortable"
           hide-details
-          class="arq__input arq__note"
+          prepend-inner-icon="mdi-note-text-outline"
+          class="arq__note"
         />
       </div>
 
       <v-divider />
 
-      <!-- ── Footer ─────────────────────────────────────────────────────── -->
       <div class="arq__footer">
-        <div class="arq__footer-diff">
-          <span class="arq__footer-diff-label">Dif. efectivo</span>
-          <strong :class="statusTextClass(cashDiff)">{{ formatDiff(cashDiff) }}</strong>
-        </div>
-        <div class="arq__footer-actions">
-          <v-btn variant="text" size="small" @click="$emit('update:open', false)">Cancelar</v-btn>
-          <v-btn color="primary" size="small" prepend-icon="mdi-check" @click="submit">
-            Registrar cierre
-          </v-btn>
-        </div>
+        <v-btn variant="text" size="small" @click="$emit('update:open', false)">
+          Cancelar
+        </v-btn>
+        <v-btn
+          color="primary"
+          size="small"
+          prepend-icon="mdi-check"
+          @click="submit"
+        >
+          Registrar cierre
+        </v-btn>
       </div>
-
     </v-card>
   </v-dialog>
 </template>
@@ -160,348 +160,511 @@ import { computed, ref, watch } from "vue";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
-  open:            { type: Boolean, default: false },
-  isCajaOpen:      { type: Boolean, default: false },
-  cajaTypeLabel:   { type: String,  default: "" },
-  invoiceTypeLabel:{ type: String,  default: "" },
-  summary:         { type: Object,  default: () => ({}) },
+  open: { type: Boolean, default: false },
+  isCajaOpen: { type: Boolean, default: false },
+  cajaTypeLabel: { type: String, default: "" },
+  invoiceTypeLabel: { type: String, default: "" },
+  summary: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["update:open", "save"]);
+const emit = defineEmits(["update:open", "save", "reload"]);
 
-// ── helpers ──────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────
 function toNum(v, d = 0) {
   const n = Number(String(v ?? "").replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) ? n : d;
 }
+
 function money(val) {
   return new Intl.NumberFormat("es-AR", {
-    style: "currency", currency: "ARS",
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Number(val || 0));
 }
-// versión compacta para la tabla (sin "$ " prefix, solo número)
-function moneyShort(val) {
-  const n = Number(val || 0);
-  if (n === 0) return "$ 0";
-  if (Math.abs(n) >= 1000) {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency", currency: "ARS",
-      minimumFractionDigits: 0, maximumFractionDigits: 0,
-      notation: "compact",
-    }).format(n);
-  }
-  return money(n);
+
+function round2(n) {
+  return Number(Number(n || 0).toFixed(2));
 }
-function round2(n) { return Number(Number(n || 0).toFixed(2)); }
 
-// ── state ─────────────────────────────────────────────────────────────────
+// ─── State ──────────────────────────────────────────────────────────────
+const cashInput = ref("");
 const localNote = ref("");
-const declaredInputs = ref({
-  cash: "", card: "", transfer: "", mercadopago: "", credit_sjt: "", other: "",
-});
 
-// ── computed ──────────────────────────────────────────────────────────────
+// ─── Computed ───────────────────────────────────────────────────────────
+const totals = computed(() => props.summary?.totals || {});
 const payments = computed(() => props.summary?.payments_by_method || {});
-const totals   = computed(() => props.summary?.totals || {});
+
 const expectedCashValue = computed(() => toNum(totals.value?.expected_cash, 0));
+const openingCash = computed(() => toNum(totals.value?.opening_cash, 0));
+const salesTotal = computed(() =>
+  toNum(
+    totals.value?.sales_total ??
+      totals.value?.sales_total_created ??
+      totals.value?.total_sales,
+    0
+  )
+);
+const salesCount = computed(() => toNum(totals.value?.sales_count, 0));
+const cancelledCount = computed(() =>
+  toNum(totals.value?.sales_cancelled_count, 0)
+);
 
-function parseDeclared(key) { return toNum(declaredInputs.value?.[key], 0); }
+const hasTurnInfo = computed(
+  () => salesCount.value > 0 || salesTotal.value > 0 || openingCash.value > 0
+);
 
-const cashDeclared = computed(() => parseDeclared("cash"));
-const cashDiff     = computed(() => round2(cashDeclared.value - expectedCashValue.value));
-
-const nonCashRows = computed(() => {
-  const map = [
-    { key: "card",       label: "Tarjeta" },
-    { key: "transfer",   label: "Transferencia" },
-    { key: "mercadopago",label: "Mercado Pago" },
-    { key: "credit_sjt", label: "Créd. SJT" },
-    { key: "other",      label: "Otros" },
-  ];
-  return map.map((item) => {
-    const expected = toNum(payments.value?.[item.key], 0);
-    const declared = parseDeclared(item.key);
-    return { ...item, expected, declared, diff: round2(declared - expected) };
-  });
+// Summary vacío: la caja está abierta pero no hay ningún dato numérico
+// (ni fondo inicial, ni ventas, ni expected_cash). Ayuda a detectar casos
+// donde la venta no quedó asociada a esta caja (desfasaje de branch_id).
+const summaryEmpty = computed(() => {
+  if (!props.isCajaOpen) return false;
+  const s = props.summary;
+  if (!s) return true;
+  return (
+    salesCount.value === 0 &&
+    salesTotal.value === 0 &&
+    openingCash.value === 0 &&
+    expectedCashValue.value === 0
+  );
 });
 
-const nonCashExpectedTotal  = computed(() => round2(nonCashRows.value.reduce((a, r) => a + r.expected, 0)));
-const nonCashDeclaredTotal  = computed(() => round2(nonCashRows.value.reduce((a, r) => a + r.declared, 0)));
-const nonCashDiffTotal      = computed(() => round2(nonCashDeclaredTotal.value - nonCashExpectedTotal.value));
+const cashDeclared = computed(() => toNum(cashInput.value, 0));
+const cashDiff = computed(() =>
+  round2(cashDeclared.value - expectedCashValue.value)
+);
 
-const resultStatus = computed(() => {
-  if (cashDiff.value === 0 && nonCashDiffTotal.value === 0)
-    return { title: "Arqueo correcto", text: "Sin diferencias.", className: "is-ok", icon: "mdi-check-circle" };
-  if (cashDiff.value < 0)
-    return { title: "Faltante de efectivo", text: `Faltan ${money(Math.abs(cashDiff.value))}.`, className: "is-danger", icon: "mdi-alert-circle" };
-  if (cashDiff.value > 0)
-    return { title: "Sobrante de efectivo", text: `Sobran ${money(cashDiff.value)}.`, className: "is-warning", icon: "mdi-alert" };
-  return { title: "Diferencia en no cash", text: "El efectivo coincide, diferencias en otros medios.", className: "is-info", icon: "mdi-information" };
+const diffClass = computed(() => {
+  const n = cashDiff.value;
+  if (n === 0) return "is-ok";
+  return n > 0 ? "is-warning" : "is-danger";
 });
 
-// ── formatters ────────────────────────────────────────────────────────────
+const diffIcon = computed(() => {
+  const n = cashDiff.value;
+  if (n === 0) return "mdi-check-circle";
+  return n > 0 ? "mdi-arrow-up-circle" : "mdi-arrow-down-circle";
+});
+
+const diffTitle = computed(() => {
+  const n = cashDiff.value;
+  if (n === 0) return "Arqueo correcto";
+  return n > 0 ? "Sobrante" : "Faltante";
+});
+
+const diffDetail = computed(() => {
+  const n = cashDiff.value;
+  if (n === 0) return "El efectivo contado coincide con lo esperado.";
+  if (n > 0) return `Hay ${money(Math.abs(n))} de más en caja.`;
+  return `Faltan ${money(Math.abs(n))} de efectivo.`;
+});
+
 function formatDiff(v) {
   const n = round2(v);
   if (n === 0) return "$ 0";
   return (n > 0 ? "+ " : "- ") + money(Math.abs(n));
 }
-function statusClass(v) {
-  const n = round2(v);
-  return n === 0 ? "is-ok" : n > 0 ? "is-warning" : "is-danger";
-}
-function statusTextClass(v) {
-  const n = round2(v);
-  return n === 0 ? "c-ok" : n > 0 ? "c-warning" : "c-danger";
-}
 
-// ── sync ──────────────────────────────────────────────────────────────────
-function syncFromSummary() {
-  localNote.value = "";
+const subtitle = computed(() => {
+  const parts = [];
+  if (salesCount.value > 0) {
+    parts.push(
+      `${salesCount.value} ${salesCount.value === 1 ? "venta" : "ventas"}`
+    );
+  }
+  if (salesTotal.value > 0) {
+    parts.push(`facturado ${money(salesTotal.value)}`);
+  }
+  if (!parts.length) return "Contá el efectivo físico y registrá el cierre.";
+  return parts.join(" · ");
+});
+
+// Efectivo cobrado en el turno = efectivo esperado - fondo inicial.
+// Si el backend ya expone `payments_by_method.cash`, lo usamos; si no, lo derivamos.
+const cashSales = computed(() => {
+  const direct = toNum(payments.value?.cash, NaN);
+  if (Number.isFinite(direct)) return Math.max(0, direct);
+  return Math.max(0, expectedCashValue.value - openingCash.value);
+});
+
+const paymentCounts = computed(
+  () => props.summary?.payments_count_by_method || {}
+);
+
+const paymentRows = computed(() => {
   const p = payments.value || {};
-  declaredInputs.value = {
-    cash:        String(toNum(expectedCashValue.value, 0)),
-    card:        String(toNum(p.card, 0)),
-    transfer:    String(toNum(p.transfer, 0)),
-    mercadopago: String(toNum(p.mercadopago, 0)),
-    credit_sjt:  String(toNum(p.credit_sjt, 0)),
-    other:       String(toNum(p.other, 0)),
-  };
+  const c = paymentCounts.value || {};
+  const rows = [
+    { key: "cash", label: "Efectivo", icon: "mdi-cash", expected: cashSales.value },
+    { key: "card", label: "Tarjeta", icon: "mdi-credit-card-outline", expected: toNum(p.card, 0) },
+    { key: "transfer", label: "Transferencia", icon: "mdi-bank-transfer", expected: toNum(p.transfer, 0) },
+    { key: "mercadopago", label: "Mercado Pago", icon: "mdi-cellphone", expected: toNum(p.mercadopago, 0) },
+    { key: "credit_sjt", label: "Créd. SJT", icon: "mdi-account-credit-card-outline", expected: toNum(p.credit_sjt, 0) },
+    { key: "other", label: "Otros", icon: "mdi-dots-horizontal-circle-outline", expected: toNum(p.other, 0) },
+  ];
+  return rows
+    .map((r) => ({ ...r, count: toNum(c[r.key], 0) }))
+    .filter((r) => r.expected > 0);
+});
+
+// ─── Sync ──────────────────────────────────────────────────────────────
+function syncFromSummary() {
+  // Pre-rellenamos con lo esperado para que el cajero solo confirme / corrija.
+  cashInput.value = String(expectedCashValue.value || 0);
+  localNote.value = "";
 }
 
-watch(() => props.open,    (v) => { if (v) syncFromSummary(); }, { immediate: true });
-watch(() => props.summary, ()  => { if (props.open) syncFromSummary(); }, { deep: true });
+watch(
+  () => props.open,
+  (v) => {
+    if (v) syncFromSummary();
+  },
+  { immediate: true }
+);
 
-// ── submit ────────────────────────────────────────────────────────────────
+watch(
+  () => props.summary,
+  () => {
+    if (props.open) syncFromSummary();
+  },
+  { deep: true }
+);
+
+// ─── Submit ────────────────────────────────────────────────────────────
 function submit() {
   emit("save", {
     closing_cash: cashDeclared.value,
     closing_note: String(localNote.value || "").trim(),
-    declared: {
-      cash:       cashDeclared.value,
-      card:       parseDeclared("card"),
-      transfer:   parseDeclared("transfer"),
-      mercadopago:parseDeclared("mercadopago"),
-      credit_sjt: parseDeclared("credit_sjt"),
-      other:      parseDeclared("other"),
-    },
-    difference: {
-      cash:    cashDiff.value,
-      non_cash:nonCashDiffTotal.value,
-    },
+    // Compatibilidad: también emitimos el diff y el declared.cash por si
+    // algún consumer lo usa. Backend solo usa closing_cash + closing_note.
+    declared: { cash: cashDeclared.value },
+    difference: { cash: cashDiff.value },
   });
 }
 </script>
 
 <style scoped>
-/* ── Card ──────────────────────────────────────────────────────────────── */
 .arq {
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
 }
 
-/* ── Pills inline (usados en slot #chips del PosDialogHeader) ─────────── */
-.arq__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 700;
-  background: rgba(var(--v-theme-on-surface), .05);
-  border: 1px solid rgba(var(--v-theme-on-surface), .1);
-  color: rgba(var(--v-theme-on-surface), .7);
-}
-.arq__pill--ok  { background: rgba(var(--v-theme-success),.1); border-color: rgba(var(--v-theme-success),.25); color: rgb(var(--v-theme-success)); }
-.arq__pill--err { background: rgba(var(--v-theme-error),.1);   border-color: rgba(var(--v-theme-error),.25);   color: rgb(var(--v-theme-error)); }
-.arq__pill--session { gap: 3px; }
-.arq__pill-sep { opacity: .4; }
-.arq__pill-label { font-size: 10px; font-weight: 700; }
-
-/* ── Alerta anuladas ─────────────────────────────────────────────────── */
 .arq__cancelled-alert {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 14px;
-  background: rgba(var(--v-theme-warning), .07);
-  border-bottom: 1px solid rgba(var(--v-theme-warning), .15);
+  padding: 6px 16px;
+  background: rgba(var(--v-theme-warning), 0.08);
+  border-bottom: 1px solid rgba(var(--v-theme-warning), 0.18);
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+}
+
+.arq__empty-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(var(--v-theme-warning), 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-warning), 0.22);
+}
+
+.arq__empty-alert-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.arq__empty-alert-text strong {
+  font-weight: 800;
+  color: rgb(var(--v-theme-warning));
+}
+
+.arq__empty-alert-text span {
   font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .8);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  line-height: 1.35;
 }
 
-/* ── Body: 2 columnas ────────────────────────────────────────────────── */
 .arq__body {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 0;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* col label compartido */
-.arq__col-label {
+.arq__section-title {
   display: flex;
   align-items: center;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .5);
+  color: rgba(var(--v-theme-on-surface), 0.55);
   margin-bottom: 8px;
 }
 
-/* ── Columna EFECTIVO ────────────────────────────────────────────────── */
-.arq__col-cash {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 12px 14px 14px;
-  background: rgba(var(--v-theme-primary), .03);
-  border-right: 1px solid rgba(var(--v-theme-on-surface), .07);
-}
-.arq__cash-expected-block {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.arq__cash-sublabel {
-  font-size: 10px;
-  color: rgba(var(--v-theme-on-surface), .5);
-}
-.arq__cash-amount {
-  font-size: 26px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.01em;
+/* ─── Hero: efectivo ─────────────────────────────────────────────── */
+.arq__cash {
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-primary), 0.05) 0%,
+    rgba(var(--v-theme-primary), 0.02) 100%
+  );
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
 }
 
-/* ── Diff badge ──────────────────────────────────────────────────────── */
-.arq__diff-badge {
+.arq__expected {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 7px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-}
-.arq__diff-label { font-size: 11px; font-weight: 600; }
-.arq__diff-val   { font-size: 13px; font-weight: 900; }
-
-/* ── Columna OTROS MEDIOS ────────────────────────────────────────────── */
-.arq__col-medios {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-  padding: 14px 14px 14px 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  margin-bottom: 10px;
 }
 
-/* ── Tabla medios ────────────────────────────────────────────────────── */
-.arq__medios {
-  border: 1px solid rgba(var(--v-theme-on-surface), .07);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.arq__medios-header {
-  display: grid;
-  grid-template-columns: 1fr 55px 90px 60px;
-  gap: 6px;
-  padding: 5px 10px;
-  background: rgba(var(--v-theme-on-surface), .04);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .05em;
+.arq__expected-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.65);
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .45);
+  letter-spacing: 0.02em;
 }
-.arq__medio-row {
-  display: grid;
-  grid-template-columns: 1fr 55px 90px 60px;
-  gap: 6px;
-  align-items: center;
-  padding: 4px 10px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), .05);
-}
-.arq__medio-name  { font-size: 11px; font-weight: 600; }
-.arq__medio-esp   { font-size: 11px; color: rgba(var(--v-theme-on-surface), .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.arq__medio-diff  { font-size: 11px; font-weight: 700; text-align: right; }
 
-/* ── Bottom: resultado + nota ────────────────────────────────────────── */
-.arq__bottom {
+.arq__expected-amount {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.arq__cash-input :deep(.v-field) {
+  border-radius: 10px;
+  background: rgb(var(--v-theme-surface));
+}
+
+.arq__cash-input :deep(.v-field__input) {
+  font-size: 20px;
+  font-weight: 800;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.arq__cash-input :deep(.v-field__prefix) {
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0.6;
+  padding-top: 10px;
+}
+
+.arq__diff {
+  margin-top: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), .06);
-  background: rgba(var(--v-theme-on-surface), .015);
-}
-.arq__result-banner {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid transparent;
+}
+
+.arq__diff.is-ok {
+  background: rgba(var(--v-theme-success), 0.08);
+  border-color: rgba(var(--v-theme-success), 0.24);
+  color: rgb(var(--v-theme-success));
+}
+
+.arq__diff.is-warning {
+  background: rgba(var(--v-theme-warning), 0.1);
+  border-color: rgba(var(--v-theme-warning), 0.28);
+  color: rgb(var(--v-theme-warning));
+}
+
+.arq__diff.is-danger {
+  background: rgba(var(--v-theme-error), 0.08);
+  border-color: rgba(var(--v-theme-error), 0.24);
+  color: rgb(var(--v-theme-error));
+}
+
+.arq__diff-icon {
+  flex-shrink: 0;
+}
+
+.arq__diff-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
-.arq__result-title {
-  display: block;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.arq__result-text {
-  display: block;
-  font-size: 11px;
-  margin-top: 1px;
-  opacity: .85;
-  white-space: nowrap;
-}
-.arq__note { max-width: 200px; }
 
-/* ── Footer ──────────────────────────────────────────────────────────── */
-.arq__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px 12px;
-  gap: 12px;
+.arq__diff-text strong {
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.1;
 }
-.arq__footer-diff {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+
+.arq__diff-text span {
+  font-size: 10.5px;
+  opacity: 0.88;
+  line-height: 1.2;
 }
-.arq__footer-diff-label {
+
+.arq__diff-amount {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Resumen del turno ────────────────────────────────────────────── */
+.arq__summary {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+}
+
+.arq__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.arq__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.arq__metric-label {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .5);
+  color: rgba(var(--v-theme-on-surface), 0.56);
 }
-.arq__footer-diff strong { font-size: 15px; font-weight: 900; }
-.arq__footer-actions { display: flex; gap: 8px; }
 
-/* ── Status colors ───────────────────────────────────────────────────── */
-.is-ok      { background: rgba(var(--v-theme-success),.08); border-color: rgba(var(--v-theme-success),.2);  color: rgb(var(--v-theme-success)); }
-.is-warning { background: rgba(var(--v-theme-warning),.1);  border-color: rgba(var(--v-theme-warning),.22); color: rgb(var(--v-theme-warning)); }
-.is-danger  { background: rgba(var(--v-theme-error),  .08); border-color: rgba(var(--v-theme-error),  .2);  color: rgb(var(--v-theme-error)); }
-.is-info    { background: rgba(var(--v-theme-info),   .08); border-color: rgba(var(--v-theme-info),   .2);  color: rgb(var(--v-theme-info)); }
-.c-ok      { color: rgb(var(--v-theme-success)); }
-.c-warning { color: rgb(var(--v-theme-warning)); }
-.c-danger  { color: rgb(var(--v-theme-error)); }
+.arq__metric-val {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
 
-/* ── Inputs ──────────────────────────────────────────────────────────── */
-.arq :deep(.v-field) { border-radius: 8px; }
-.arq__input--sm :deep(.v-field__input)  { font-size: 11px; min-height: 32px; padding: 2px 6px; }
-.arq__input--sm :deep(.v-field__prefix) { font-size: 11px; padding-left: 6px; }
+.arq__methods {
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-/* ── Responsive ──────────────────────────────────────────────────────── */
-@media (max-width: 560px) {
-  .arq__body { grid-template-columns: 1fr; }
-  .arq__col-cash { border-right: none; border-bottom: 1px solid rgba(var(--v-theme-on-surface), .07); }
-  .arq__bottom { flex-direction: column; align-items: stretch; }
-  .arq__note { max-width: 100%; }
-  .arq__footer { flex-direction: column; align-items: stretch; }
-  .arq__footer-actions { justify-content: flex-end; }
+.arq__methods-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  letter-spacing: 0.02em;
+}
+
+.arq__methods-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.arq-method-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.arq-method-chip :deep(.v-icon) {
+  opacity: 0.7;
+}
+
+.arq-method-chip__name {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.arq-method-chip strong {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.arq-method-chip__count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  line-height: 1.3;
+}
+
+/* Efectivo con acento verde para distinguirlo de los otros medios */
+.arq-method-chip--cash {
+  background: rgba(var(--v-theme-success), 0.08);
+  border-color: rgba(var(--v-theme-success), 0.28);
+}
+
+.arq-method-chip--cash :deep(.v-icon) {
+  color: rgb(var(--v-theme-success));
+  opacity: 0.9;
+}
+
+.arq-method-chip--cash strong {
+  color: rgb(var(--v-theme-success));
+}
+
+/* ─── Nota ─────────────────────────────────────────────────────────── */
+.arq__note :deep(.v-field) {
+  border-radius: 10px;
+}
+
+/* ─── Footer ────────────────────────────────────────────────────────── */
+.arq__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px 16px;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .arq__body {
+    padding: 14px;
+    gap: 12px;
+  }
+  .arq__metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .arq__expected-amount {
+    font-size: 16px;
+  }
+  .arq__cash-input :deep(.v-field__input) {
+    font-size: 18px;
+  }
 }
 </style>

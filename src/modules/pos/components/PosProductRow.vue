@@ -5,6 +5,7 @@
       disabled,
       'has-stock': hasStockValue && numericStock > 0,
       'no-stock': hasStockValue && numericStock <= 0,
+      'in-cart': isInCart,
     }"
     tabindex="0"
     @keydown="onKeydown"
@@ -25,24 +26,19 @@
 
       <!-- Badges flotantes sobre la imagen -->
       <div class="prow-badges-tl">
-        <span v-if="hasRealDiscount" class="badge-discount">
-          -{{ discountPercent }}%
-        </span>
-      </div>
-
-      <div class="prow-badges-tr">
         <span
           v-if="hasStockValue"
           class="badge-stock"
-          :class="numericStock > 0 ? 'in' : 'out'"
-          :title="numericStock > 0 ? `Stock: ${numericStock}` : 'Sin stock'"
+          :class="`level-${stockLevel}`"
+          :title="stockLevelTitle"
         >
-          <v-icon size="11">
-            {{ numericStock > 0 ? "mdi-check-circle" : "mdi-close-circle" }}
+          <v-icon size="14">
+            {{ stockLevel === "out" ? "mdi-close-circle" : "mdi-package-variant-closed" }}
           </v-icon>
-          {{ numericStock > 0 ? numericStock : "0" }}
+          {{ stockInt }}
         </span>
       </div>
+
     </div>
 
     <!-- Info compacta abajo -->
@@ -69,19 +65,28 @@
           </div>
         </div>
 
-        <v-btn
-          icon
-          size="small"
-          variant="flat"
-          class="btn-action"
-          tabindex="-1"
-          :disabled="disabled"
-          :ripple="false"
-          @click.stop="addToCart"
-          :title="`Agregar ${displayName} al carrito`"
-        >
-          <v-icon size="19">mdi-cart-plus</v-icon>
-        </v-btn>
+        <div class="btn-action-wrap">
+          <v-btn
+            icon
+            size="small"
+            variant="flat"
+            class="btn-action"
+            :class="{ 'btn-action--in-cart': isInCart }"
+            tabindex="-1"
+            :disabled="disabled"
+            :ripple="false"
+            @click.stop="addToCart"
+            :title="isInCart
+              ? `En carrito: ${cartQtyInt} · Agregar otra unidad`
+              : `Agregar ${displayName} al carrito`"
+          >
+            <v-icon size="19">
+              {{ isInCart ? 'mdi-cart-check' : 'mdi-cart-plus' }}
+            </v-icon>
+          </v-btn>
+
+          <span v-if="isInCart" class="btn-qty-badge">{{ cartQtyInt }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -105,7 +110,16 @@ const props = defineProps({
   priceDiscount: { type: Number, default: 0 },
   priceList: { type: Number, default: 0 },
 
+  // Cantidad de este producto que ya está en el carrito
+  cartQty: { type: Number, default: 0 },
+
   disabled: { type: Boolean, default: false },
+});
+
+const isInCart = computed(() => Number(props.cartQty) > 0);
+const cartQtyInt = computed(() => {
+  const n = Math.floor(Number(props.cartQty) || 0);
+  return n > 0 ? n : 0;
 });
 
 const emit = defineEmits(["add"]);
@@ -179,6 +193,10 @@ const skuValue = computed(() => {
 const stockRaw = computed(() => {
   const candidates = [
     props.stockLabel,
+    // Backend POS devuelve qty / stock_qty
+    itemSafe.value.qty,
+    itemSafe.value.stock_qty,
+    itemSafe.value.stockQty,
     itemSafe.value.stock,
     itemSafe.value.stock_actual,
     itemSafe.value.stockActual,
@@ -204,6 +222,31 @@ const hasStockValue = computed(() => {
 const numericStock = computed(() => {
   const n = Number(stockRaw.value);
   return Number.isFinite(n) ? n : 0;
+});
+
+// Stock como entero (1, 2, 3...) — ignora decimales típicos de stock (5.000 → 5).
+const stockInt = computed(() => {
+  const n = numericStock.value;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n));
+});
+
+// Semáforo de stock:
+//   > 10 → "high" (verde)  | 5..10 → "mid" (amarillo)  | 1..4 → "low" (rojo)  | 0 → "out" (rojo)
+const stockLevel = computed(() => {
+  const n = stockInt.value;
+  if (n <= 0) return "out";
+  if (n < 5) return "low";
+  if (n <= 10) return "mid";
+  return "high";
+});
+
+const stockLevelTitle = computed(() => {
+  const n = stockInt.value;
+  if (n <= 0) return "Sin stock";
+  if (n < 5) return `Stock bajo: ${n}`;
+  if (n <= 10) return `Stock medio: ${n}`;
+  return `Stock disponible: ${n}`;
 });
 
 const priceDiscountValue = computed(() => {
@@ -260,24 +303,28 @@ function onKeydown(e) {
 
   if (key === "ArrowDown") {
     e.preventDefault();
+    e.stopPropagation();
     moveGrid(0, 1);
     return;
   }
 
   if (key === "ArrowUp") {
     e.preventDefault();
+    e.stopPropagation();
     moveGrid(0, -1);
     return;
   }
 
   if (key === "ArrowRight") {
     e.preventDefault();
+    e.stopPropagation();
     moveGrid(1, 0);
     return;
   }
 
   if (key === "ArrowLeft") {
     e.preventDefault();
+    e.stopPropagation();
     moveGrid(-1, 0);
     return;
   }
@@ -285,6 +332,7 @@ function onKeydown(e) {
 
 // Navegación espacial en grid 2D.
 // dx: ±1 columna, dy: ±1 fila.
+// ↑ desde la primera fila → vuelve al buscador.
 function moveGrid(dx, dy) {
   const cards = Array.from(
     document.querySelectorAll(".prow[tabindex='0']")
@@ -303,6 +351,12 @@ function moveGrid(dx, dy) {
   if (dy !== 0) target = idx + dy * cols;
   if (dx !== 0) target = idx + dx;
 
+  // ↑ desde la primera fila → volver al buscador
+  if (dy === -1 && target < 0) {
+    focusSearchBar();
+    return;
+  }
+
   if (target < 0 || target >= cards.length) return;
 
   // Si el movimiento horizontal saltaría a otra fila, cancelar.
@@ -313,6 +367,21 @@ function moveGrid(dx, dy) {
 
   cards[target].focus();
   cards[target].scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+}
+
+function focusSearchBar() {
+  const input =
+    document.querySelector(".pos-search-bar .search-input input") ||
+    document.querySelector(".pos-search-bar input");
+  if (input) {
+    input.focus();
+    try {
+      input.select?.();
+    } catch (_e) {
+      /* noop */
+    }
+    input.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }
 }
 
 function detectColumnCount(cards) {
@@ -450,54 +519,98 @@ function money(v) {
   pointer-events: none;
 }
 
+/* Estilo "pill premium" inspirado en el botón del carrito:
+   fondo sólido, sombra coloreada, texto blanco bold, bordes suaves. */
 .badge-discount {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgb(var(--v-theme-success));
-  color: rgb(var(--v-theme-on-success));
-  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.01em;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-  line-height: 1.3;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 3px 10px rgba(var(--v-theme-error), 0.48),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+  line-height: 1.1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
 }
 
 .badge-stock {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-  line-height: 1;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.badge-stock.in {
-  background: rgba(var(--v-theme-success), 0.94);
-  color: rgb(var(--v-theme-on-success));
+.badge-stock .v-icon {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
 }
 
-.badge-stock.out {
-  background: rgba(var(--v-theme-error), 0.94);
-  color: rgb(var(--v-theme-on-error));
+/* Semáforo de stock: >10 verde | 5-10 amarillo | 1-4 rojo | 0 rojo */
+.badge-stock.level-high {
+  background: rgb(var(--v-theme-success));
+  box-shadow:
+    0 3px 10px rgba(var(--v-theme-success), 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.badge-stock.level-mid {
+  background: rgb(var(--v-theme-warning));
+  box-shadow:
+    0 3px 10px rgba(var(--v-theme-warning), 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.badge-stock.level-low,
+.badge-stock.level-out {
+  background: rgb(var(--v-theme-error));
+  box-shadow:
+    0 3px 10px rgba(var(--v-theme-error), 0.48),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Pulso sutil cuando el stock está crítico para llamar la atención */
+.badge-stock.level-out {
+  animation: stockOutPulse 2s ease-in-out infinite;
+}
+
+@keyframes stockOutPulse {
+  0%, 100% {
+    box-shadow:
+      0 3px 10px rgba(var(--v-theme-error), 0.48),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 3px 14px rgba(var(--v-theme-error), 0.75),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+  }
 }
 
 /* ── Info compacta ────────────────────────────────────────── */
 .prow-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 9px 10px 10px;
+  gap: 3px;
+  padding: 7px 9px 8px;
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .prow-title {
-  font-size: 13.5px;
+  font-size: 12.5px;
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.005em;
@@ -521,11 +634,11 @@ function money(v) {
 .meta-chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 5px;
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.82);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
@@ -537,7 +650,7 @@ function money(v) {
 }
 
 .meta-text {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--row-muted);
   font-weight: 500;
   white-space: nowrap;
@@ -566,7 +679,7 @@ function money(v) {
 }
 
 .price-current {
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -577,7 +690,7 @@ function money(v) {
 }
 
 .price-list {
-  font-size: 11.5px;
+  font-size: 10.5px;
   line-height: 1;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.42);
@@ -586,10 +699,10 @@ function money(v) {
 }
 
 .btn-action {
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
-  border-radius: 9px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 8px !important;
   background: var(--row-btn-bg) !important;
   color: var(--row-btn-text) !important;
   flex-shrink: 0;
@@ -600,6 +713,72 @@ function money(v) {
 .btn-action:hover {
   transform: scale(1.06);
   box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.48) !important;
+}
+
+/* Botón en estado "ya en carrito" (verde + ícono mdi-cart-check) */
+.btn-action--in-cart {
+  background: rgb(var(--v-theme-success)) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(var(--v-theme-success), 0.42) !important;
+}
+
+.btn-action--in-cart:hover {
+  box-shadow: 0 4px 12px rgba(var(--v-theme-success), 0.56) !important;
+}
+
+/* Contenedor del botón + badge de cantidad */
+.btn-action-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn-qty-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-error));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid rgb(var(--v-theme-surface));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  font-feature-settings: "tnum";
+}
+
+/* Card en estado "en carrito": borde verde + badge sutil en esquina */
+.prow.in-cart {
+  border-color: rgba(var(--v-theme-success), 0.55);
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-success), 0.28),
+    var(--row-shadow);
+}
+
+.prow.in-cart:hover {
+  border-color: rgba(var(--v-theme-success), 0.75);
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-success), 0.4),
+    var(--row-shadow-hover);
+}
+
+.prow.in-cart::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-success), 0.06) 0%,
+    rgba(var(--v-theme-success), 0) 50%
+  );
+  z-index: 1;
 }
 
 /* ── Dark mode ─────────────────────────────────────────────── */

@@ -33,12 +33,13 @@
         :image="productImage(p)"
         :name="p.name"
         :sku="p.sku || p.code"
-        :stkLabel="`STK ${p.stock_qty ?? p.qty ?? 0}`"
+        :stock-label="p.stock_qty ?? p.qty ?? 0"
         :offLabel="getOffLabel(p)"
         :rubro-label="rubroTitleFromProduct?.(p) || ''"
         :subrubro-label="subrubroTitleFromProduct?.(p) || ''"
         :price-discount="p.price_discount ?? p.effective_price ?? p.price ?? 0"
         :price-list="p.price_list ?? p.price ?? 0"
+        :cart-qty="cartQtyByProduct.get(Number(p.id)) || 0"
         :disabled="productsDisabled"
         @add="add"
         @details="openDetails"
@@ -272,6 +273,19 @@ const canSell = computed(() => true);
 
 const productsDisabled = computed(() => {
   return loading.value || !canSell.value || needsBranchPick.value;
+});
+
+// Mapa productId → cantidad en carrito, para mostrar estado "en carrito" en cada card.
+const cartQtyByProduct = computed(() => {
+  const map = new Map();
+  const cart = posStore?.cart || [];
+  for (const it of cart) {
+    const id = toInt(it?.id ?? it?.product_id ?? 0, 0);
+    if (!id) continue;
+    const qty = Number(it?.qty) || 0;
+    map.set(id, (map.get(id) || 0) + qty);
+  }
+  return map;
 });
 
 const { detailsOpen, openDetails, add } = usePosProductActions({

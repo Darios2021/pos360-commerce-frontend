@@ -77,7 +77,8 @@ defineProps({
 .pp-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-gutter: stable;
 
   padding: 8px 8px 0 8px;
@@ -108,8 +109,8 @@ defineProps({
   display: grid;
   /* Responsive: cada card mínimo 160px, se acomodan automáticamente.
      Panel ancho → 4 cols. Panel medio → 3 cols. Panel estrecho → 2 cols. */
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 9px;
   align-content: start;
 }
 

@@ -41,61 +41,85 @@
           class="cart-item"
         >
           <div class="item-shell">
-            <!-- Row 1: name + subtotal -->
-            <div class="item-row-top">
-              <div class="item-name" :title="it?.name || ''">
-                {{ it?.name || "—" }}
+            <!-- Miniatura cuadrada -->
+            <div class="item-media">
+              <v-img
+                v-if="itemImage(it)"
+                :src="itemImage(it)"
+                :aspect-ratio="1"
+                cover
+                class="item-media-img"
+              />
+              <div v-else class="item-media-placeholder">
+                <v-icon size="22">mdi-package-variant-closed</v-icon>
               </div>
-              <span class="item-total">{{ money(lineTotal(it)) }}</span>
+              <span class="item-media-qty">{{ qtyInt(it) }}</span>
             </div>
 
-            <!-- Row 2: price/stock + qty controls + trash -->
-            <div class="item-row-bot">
-              <span class="unit-price">{{ money(unitPriceEffective(it)) }}</span>
-              <span class="unit-suffix">c/u</span>
-              <span v-if="stockText(it)" class="stock-hint">{{ stockText(it) }}</span>
-              <div class="row-bot-spacer" />
-              <div class="qty-box">
+            <!-- Contenido -->
+            <div class="item-body">
+              <div class="item-row-top">
+                <div class="item-name" :title="it?.name || ''">
+                  {{ it?.name || "—" }}
+                </div>
+                <span class="item-total">{{ money(lineTotal(it)) }}</span>
+              </div>
+
+              <div class="item-meta">
+                <span class="unit-price">
+                  {{ money(unitPriceEffective(it)) }}
+                  <span class="unit-suffix">c/u</span>
+                </span>
+                <span v-if="it?.sku" class="item-sku" :title="`SKU: ${it.sku}`">
+                  {{ it.sku }}
+                </span>
+                <span v-if="stockText(it)" class="stock-hint">{{ stockText(it) }}</span>
+              </div>
+
+              <div class="item-actions">
+                <div class="qty-box">
+                  <v-btn
+                    class="qty-btn"
+                    size="small"
+                    density="compact"
+                    variant="tonal"
+                    icon="mdi-minus"
+                    :disabled="!canEdit"
+                    @click="dec(it)"
+                  />
+                  <v-text-field
+                    v-model="qtyDraft[itKey(it)]"
+                    class="qty-input"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    :disabled="!canEdit"
+                    inputmode="decimal"
+                    @blur="commit(it)"
+                    @keyup.enter="commit(it)"
+                  />
+                  <v-btn
+                    class="qty-btn"
+                    size="small"
+                    density="compact"
+                    variant="tonal"
+                    icon="mdi-plus"
+                    :disabled="!canEdit || isIncDisabled(it)"
+                    @click="inc(it)"
+                  />
+                </div>
                 <v-btn
-                  class="qty-btn"
+                  class="trash-btn"
                   size="small"
                   density="compact"
                   variant="tonal"
-                  icon="mdi-minus"
+                  icon="mdi-trash-can-outline"
+                  color="error"
                   :disabled="!canEdit"
-                  @click="dec(it)"
-                />
-                <v-text-field
-                  v-model="qtyDraft[itKey(it)]"
-                  class="qty-input"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                  :disabled="!canEdit"
-                  inputmode="decimal"
-                  @blur="commit(it)"
-                  @keyup.enter="commit(it)"
-                />
-                <v-btn
-                  class="qty-btn"
-                  size="small"
-                  density="compact"
-                  variant="tonal"
-                  icon="mdi-plus"
-                  :disabled="!canEdit || isIncDisabled(it)"
-                  @click="inc(it)"
+                  @click="remove(it)"
+                  :title="`Quitar ${it?.name || 'ítem'}`"
                 />
               </div>
-              <v-btn
-                class="trash-btn"
-                size="small"
-                density="compact"
-                variant="tonal"
-                icon="mdi-trash-can-outline"
-                color="error"
-                :disabled="!canEdit"
-                @click="remove(it)"
-              />
             </div>
           </div>
         </article>
@@ -138,6 +162,9 @@
 <script setup>
 import { reactive, watch } from "vue";
 import { useSnackbar } from "../composables/useSnackbar";
+import { usePosImages } from "../composables/usePosImages";
+
+const { productImage } = usePosImages();
 
 const props = defineProps({
   cart: { type: Array, default: () => [] },
@@ -165,6 +192,28 @@ function money(val) {
 
 function qty3(n) {
   return toNum(n).toFixed(3);
+}
+
+function qtyInt(it) {
+  const n = Math.floor(toNum(it?.qty));
+  return n > 0 ? n : 0;
+}
+
+function itemImage(it) {
+  const direct =
+    it?.image ||
+    it?.image_url ||
+    it?.imageUrl ||
+    it?.imagen ||
+    it?.thumbnail ||
+    "";
+  if (direct) return direct;
+
+  // Fallback: items agregados antes del fix pueden no tener imagen guardada.
+  // Resolvemos vía el caché/fetch compartido de usePosImages.
+  const id = Number(it?.id || it?.product_id || 0);
+  if (!id) return "";
+  return productImage({ id });
 }
 
 function itKey(it) {
@@ -598,7 +647,7 @@ function remove(it) {
 .cart-items {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .cart-item {
@@ -606,16 +655,79 @@ function remove(it) {
 }
 
 .item-shell {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
-  border-radius: 8px;
-  padding: 6px 8px;
-  background: rgba(var(--v-theme-surface), 1);
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgb(var(--v-theme-surface));
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.14s ease;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .item-shell:hover {
-  border-color: rgba(var(--v-theme-primary), 0.2);
+  border-color: rgba(var(--v-theme-primary), 0.32);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Miniatura con badge de cantidad */
+.item-media {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-media-img {
+  width: 100%;
+  height: 100%;
+}
+
+.item-media-img :deep(.v-img__img),
+.item-media-img :deep(img) {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.item-media-placeholder {
+  color: rgba(var(--v-theme-on-surface), 0.35);
+}
+
+.item-media-qty {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+  border: 2px solid rgb(var(--v-theme-surface));
+  box-shadow: 0 2px 6px rgba(var(--v-theme-primary), 0.4);
+  font-feature-settings: "tnum";
+}
+
+/* Contenido al costado */
+.item-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Row 1: name + subtotal */
@@ -629,7 +741,7 @@ function remove(it) {
 .item-name {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.2;
   font-weight: 700;
   white-space: nowrap;
@@ -639,68 +751,93 @@ function remove(it) {
 
 .item-total {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
-/* Row 2: price/stock + controls */
-.item-row-bot {
+/* Row 2: meta (precio unit / SKU / stock) */
+.item-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-top: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
 .unit-price {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
-  opacity: 0.7;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   white-space: nowrap;
 }
 
 .unit-suffix {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-left: 2px;
+}
+
+.item-sku {
   font-size: 10px;
-  opacity: 0.5;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  white-space: nowrap;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stock-hint {
   font-size: 10px;
-  opacity: 0.7;
-  padding: 1px 5px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-success), 0.85);
+  padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  border: 1px solid rgba(var(--v-theme-primary), 0.10);
+  background: rgba(var(--v-theme-success), 0.1);
+  border: 1px solid rgba(var(--v-theme-success), 0.2);
   white-space: nowrap;
 }
 
-.row-bot-spacer {
-  flex: 1 1 auto;
+/* Row 3: acciones (qty + trash) */
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .qty-box {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 30px 60px 30px;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
   gap: 4px;
   align-items: center;
+  max-width: 150px;
 }
 
 .qty-btn {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  border-radius: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 7px !important;
 }
 
 .trash-btn {
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  border-radius: 8px !important;
-  margin-left: 4px;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 7px !important;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .qty-input {
@@ -717,14 +854,15 @@ function remove(it) {
 }
 
 .qty-input :deep(.v-field__input) {
-  min-height: 30px;
-  padding-top: 2px;
-  padding-bottom: 2px;
+  min-height: 28px;
+  padding-top: 0;
+  padding-bottom: 0;
   padding-left: 4px;
   padding-right: 4px;
   text-align: center;
   font-size: 12px;
   font-weight: 700;
+  font-feature-settings: "tnum";
 }
 
 .cart-bottom-gap {

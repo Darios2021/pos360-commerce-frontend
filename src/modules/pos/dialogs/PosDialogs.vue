@@ -48,20 +48,17 @@
 
     <PosCajaConfigDialog
       v-model:open="cajaConfigOpen"
-      :caja-type="cajaType"
-      :invoice-mode="invoiceMode"
-      :invoice-type="invoiceType"
       :opening-amount="openingAmount"
       :note="openingNote"
-      :caja-type-options="cajaTypeOptions"
-      :invoice-mode-options="invoiceModeOptions"
-      :invoice-type-options="invoiceTypeOptions"
+      :cashier-name="cashierName"
+      :branch-label="branchChipLabel"
       @save="onSaveCajaConfig"
     />
 
     <PosCajaArqueoDialog
       v-model:open="cajaArqueoOpen"
       :is-caja-open="isCajaOpen"
+      @reload="reloadSummaryFromArqueo"
       :caja-type-label="cajaTypeLabel"
       :invoice-type-label="invoiceTypeLabel"
       :summary="summary"
@@ -185,6 +182,8 @@ const {
   invoiceModeOptions,
   invoiceTypeOptions,
   isCajaOpen,
+  cashierName,
+  branchChipLabel,
   cajaTypeLabel,
   invoiceTypeLabel,
   summary,
@@ -206,6 +205,7 @@ const {
   handleAddConsultaToCart,
   handleSelectConsultaItem,
   runScannerTest,
+  reloadSummaryFromArqueo,
 } = usePosSalesFlow();
 </script>
 

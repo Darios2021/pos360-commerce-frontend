@@ -66,6 +66,7 @@ function getInvoiceTypeLabel(v) {
 
 export function usePosCashRegister() {
   const currentCashRegister = ref(null);
+  const otherOpenRegisters = ref([]);
   const summary = ref(null);
 
   const loadingCurrent = ref(false);
@@ -226,6 +227,13 @@ const canSellWithCaja = computed(() => {
       const res = await getCurrentCashRegister();
       currentCashRegister.value = res?.data || null;
 
+      // Otras cajas abiertas del mismo user (zombies al cambiar de branch)
+      otherOpenRegisters.value = Array.isArray(res?.other_open_registers)
+        ? res.other_open_registers
+        : Array.isArray(res?.data?.other_open_registers)
+          ? res.data.other_open_registers
+          : [];
+
       if (!currentCashRegister.value) {
         summary.value = null;
       }
@@ -234,6 +242,7 @@ const canSellWithCaja = computed(() => {
     } catch (error) {
       setError(error);
       currentCashRegister.value = null;
+      otherOpenRegisters.value = [];
       summary.value = null;
       throw error;
     } finally {
@@ -405,6 +414,7 @@ const canSellWithCaja = computed(() => {
 
   return {
     currentCashRegister,
+    otherOpenRegisters,
     summary,
     lastError,
 

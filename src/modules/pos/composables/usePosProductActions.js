@@ -196,6 +196,25 @@ export function usePosProductActions({
     return patchCartFallback(product, qty);
   }
 
+  function enrichProductWithImage(product) {
+    if (!product) return product;
+
+    const existingImg = String(
+      product?.image || product?.image_url || product?.imageUrl || ""
+    ).trim();
+    if (existingImg) return product;
+
+    const img = typeof productImage === "function" ? productImage(product) : "";
+    if (!img) return product;
+
+    return {
+      ...product,
+      image: img,
+      image_url: img,
+      imageUrl: img,
+    };
+  }
+
   function add(product) {
     if (!product) return;
 
@@ -209,7 +228,11 @@ export function usePosProductActions({
       return;
     }
 
-    const ok = addToCartSafe(product, 1);
+    // Backend /pos/products no devuelve imagen; la resolvemos en el frontend
+    // vía productImage() y la inyectamos antes de guardar en el carrito.
+    const enriched = enrichProductWithImage(product);
+
+    const ok = addToCartSafe(enriched, 1);
 
     if (!ok) {
       toast?.("⚠️ No se pudo agregar el producto al carrito.");

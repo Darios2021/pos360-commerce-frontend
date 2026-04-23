@@ -85,6 +85,7 @@ export function usePosSalesFlow() {
   const {
     currentCashRegister,
     currentCashRegisterId,
+    otherOpenRegisters,
     summary,
     isBusy: cajaBusy,
     isCajaOpen,
@@ -336,6 +337,16 @@ export function usePosSalesFlow() {
     }
 
     await openCajaArqueo();
+  }
+
+  async function reloadSummaryFromArqueo() {
+    try {
+      await refreshCaja({ withSummary: true, silentSummaryError: false });
+      toast("Resumen actualizado");
+    } catch (err) {
+      console.error("[POS] reloadSummaryFromArqueo error", err);
+      toast(err?.message || "No se pudo recargar el resumen");
+    }
   }
 
   async function onSaveCajaConfig(payload) {
@@ -656,6 +667,7 @@ export function usePosSalesFlow() {
 
     currentCashRegister,
     currentCashRegisterId,
+    otherOpenRegisters,
     summary,
     cajaBusy,
     isCajaOpen,
@@ -740,6 +752,7 @@ export function usePosSalesFlow() {
     handleGoPayFromCart,
     refresh,
     onCloseCaja,
+    reloadSummaryFromArqueo,
     onSaveCajaConfig,
     onSaveArqueo,
     onCheckoutConfirm,

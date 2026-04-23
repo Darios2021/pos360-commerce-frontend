@@ -1,30 +1,28 @@
 <template>
   <v-dialog
     :model-value="open"
-    max-width="460"
+    max-width="420"
     @update:model-value="$emit('update:open', $event)"
   >
     <v-card class="ccd" rounded="xl">
-
-      <!-- Header -->
       <PosDialogHeader
         eyebrow="Caja"
         title="Apertura de caja"
-        subtitle="Configurá el fondo inicial y los parámetros de facturación."
+        subtitle="¿Cuánto dinero hay en caja para empezar el turno?"
         @close="$emit('update:open', false)"
       />
 
       <v-divider />
 
       <div class="ccd__body">
-
-        <!-- Monto inicial (protagonista) -->
+        <!-- Fondo inicial (único campo obligatorio) -->
         <div class="ccd__amount-section">
           <div class="ccd__amount-label">
             <v-icon size="16" class="mr-1">mdi-cash</v-icon>
             Fondo inicial de caja
           </div>
           <v-text-field
+            ref="amountInputRef"
             v-model="localOpeningAmount"
             variant="outlined"
             density="comfortable"
@@ -33,89 +31,70 @@
             inputmode="decimal"
             placeholder="0"
             class="ccd__amount-input"
+            autofocus
+            @keyup.enter="submit"
           />
-          <p class="ccd__amount-hint">Solo efectivo físico disponible para vuelto</p>
+          <p class="ccd__amount-hint">
+            Solo efectivo físico disponible para vuelto
+          </p>
         </div>
 
-        <!-- Configuración -->
-        <div class="ccd__config">
-          <div class="ccd__config-row">
-            <label class="ccd__label">Tipo de caja</label>
-            <v-select
-              :model-value="localCajaType"
-              :items="safeCajaTypeOptions"
-              item-title="title"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              @update:model-value="onCajaTypeChange"
-            />
+        <!-- Info automática -->
+        <div class="ccd__info">
+          <div class="ccd__info-title">
+            <v-icon size="13">mdi-information-outline</v-icon>
+            Se registrarán automáticamente
           </div>
-
-          <div class="ccd__config-row">
-            <label class="ccd__label">Modo de facturación</label>
-            <v-select
-              :model-value="localInvoiceMode"
-              :items="safeInvoiceModeOptions"
-              item-title="title"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              @update:model-value="onInvoiceModeChange"
-            />
+          <div class="ccd__info-chips">
+            <span class="ccd-chip">
+              <v-icon size="13">mdi-account-circle</v-icon>
+              <span>{{ cashierName || "Usuario" }}</span>
+            </span>
+            <span v-if="branchLabel" class="ccd-chip">
+              <v-icon size="13">mdi-store-outline</v-icon>
+              <span>{{ branchLabel }}</span>
+            </span>
+            <span class="ccd-chip">
+              <v-icon size="13">mdi-clock-outline</v-icon>
+              <span>{{ currentTimeLabel }}</span>
+            </span>
           </div>
+        </div>
 
-          <div class="ccd__config-row">
-            <label class="ccd__label">Comprobante</label>
-            <v-select
-              :model-value="localInvoiceType"
-              :items="filteredInvoiceTypeOptions"
-              item-title="title"
-              item-value="value"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              :disabled="localInvoiceMode === 'NO_FISCAL'"
-              @update:model-value="onInvoiceTypeChange"
-            />
-          </div>
+        <!-- Observación (opcional, colapsable) -->
+        <div class="ccd__note">
+          <button
+            type="button"
+            class="ccd__note-toggle"
+            @click="showNote = !showNote"
+            :aria-expanded="showNote ? 'true' : 'false'"
+          >
+            <v-icon size="14">
+              {{ showNote ? "mdi-chevron-down" : "mdi-chevron-right" }}
+            </v-icon>
+            <span>Agregar observación (opcional)</span>
+          </button>
 
-          <div class="ccd__config-row">
-            <label class="ccd__label">Observación</label>
+          <v-expand-transition>
             <v-text-field
+              v-if="showNote"
               v-model="localNote"
               variant="outlined"
               density="comfortable"
               hide-details
-              placeholder="Opcional"
+              placeholder="Ej: Cambié billetes de $10.000"
+              class="mt-2"
             />
-          </div>
+          </v-expand-transition>
         </div>
-
-        <!-- Resumen rápido -->
-        <div class="ccd__summary">
-          <div class="ccd__summary-item ccd__summary-item--highlight">
-            <span class="ccd__summary-label">Apertura</span>
-            <strong class="ccd__summary-val">{{ openingAmountPreview }}</strong>
-          </div>
-          <div class="ccd__summary-item">
-            <span class="ccd__summary-label">{{ selectedCajaTypeTitle }}</span>
-            <span class="ccd__summary-dot">·</span>
-            <span class="ccd__summary-label">{{ selectedInvoiceModeTitle }}</span>
-            <span class="ccd__summary-dot">·</span>
-            <span class="ccd__summary-label">{{ selectedInvoiceTypeTitle }}</span>
-          </div>
-        </div>
-
       </div>
 
       <v-divider />
 
-      <!-- Actions -->
       <div class="ccd__actions">
-        <v-btn variant="text" size="small" @click="$emit('update:open', false)">Cancelar</v-btn>
+        <v-btn variant="text" size="small" @click="$emit('update:open', false)">
+          Cancelar
+        </v-btn>
         <v-btn
           variant="flat"
           color="success"
@@ -126,242 +105,274 @@
           Abrir caja
         </v-btn>
       </div>
-
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
-  open:               { type: Boolean,           default: false },
-  cajaType:           { type: String,            default: "" },
-  invoiceMode:        { type: String,            default: "" },
-  invoiceType:        { type: String,            default: "" },
-  openingAmount:      { type: [String, Number],  default: "" },
-  note:               { type: String,            default: "" },
-  cajaTypeOptions:    { type: Array,             default: () => [] },
-  invoiceModeOptions: { type: Array,             default: () => [] },
-  invoiceTypeOptions: { type: Array,             default: () => [] },
+  open:         { type: Boolean,          default: false },
+  openingAmount:{ type: [String, Number], default: "" },
+  note:         { type: String,           default: "" },
+  cashierName:  { type: String,           default: "" },
+  branchLabel:  { type: String,           default: "" },
 });
 
 const emit = defineEmits(["update:open", "save"]);
 
-// ── normalizers ───────────────────────────────────────────────────────────
-function upper(v) { return String(v || "").trim().toUpperCase(); }
-function normalizeCajaType(v)    { const x = upper(v); return ["GENERAL","SHIFT","BRANCH","MOBILE"].includes(x) ? x : "GENERAL"; }
-function normalizeInvoiceMode(v) { const x = upper(v); return ["NO_FISCAL","FISCAL","MIXED","TICKET_ONLY"].includes(x) ? x : "NO_FISCAL"; }
-function normalizeInvoiceType(v) { const x = upper(v); return ["TICKET","A","B","C"].includes(x) ? x : "TICKET"; }
 function normalizeAmount(v) {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  const n = Number(String(v ?? "").replace(/\$/g,"").replace(/\s+/g,"").replace(/\./g,"").replace(",","."));
+  const n = Number(
+    String(v ?? "")
+      .replace(/\$/g, "")
+      .replace(/\s+/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+  );
   return Number.isFinite(n) ? n : 0;
 }
-function formatMoney(v) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency", currency: "ARS", minimumFractionDigits: 0,
-  }).format(Number(v || 0));
-}
 
-// ── options ───────────────────────────────────────────────────────────────
-const safeCajaTypeOptions = computed(() =>
-  (props.cajaTypeOptions?.length ? props.cajaTypeOptions : [
-    { title: "General", value: "GENERAL" },
-    { title: "Turno",   value: "SHIFT" },
-    { title: "Sucursal",value: "BRANCH" },
-    { title: "Móvil",   value: "MOBILE" },
-  ]).filter(Boolean)
-);
-const safeInvoiceModeOptions = computed(() =>
-  (props.invoiceModeOptions?.length ? props.invoiceModeOptions : [
-    { title: "Sin facturación", value: "NO_FISCAL" },
-    { title: "Fiscal",          value: "FISCAL" },
-    { title: "Mixta",           value: "MIXED" },
-    { title: "Solo ticket",     value: "TICKET_ONLY" },
-  ]).filter(Boolean)
-);
-const safeInvoiceTypeOptions = computed(() =>
-  (props.invoiceTypeOptions?.length ? props.invoiceTypeOptions : [
-    { title: "Ticket",    value: "TICKET" },
-    { title: "Factura A", value: "A" },
-    { title: "Factura B", value: "B" },
-    { title: "Factura C", value: "C" },
-  ]).filter(Boolean).filter((i) => ["TICKET","A","B","C"].includes(upper(i?.value)))
-);
-
-// ── local state ───────────────────────────────────────────────────────────
-const localCajaType      = ref("GENERAL");
-const localInvoiceMode   = ref("NO_FISCAL");
-const localInvoiceType   = ref("TICKET");
 const localOpeningAmount = ref("");
-const localNote          = ref("");
+const localNote = ref("");
+const showNote = ref(false);
 
-const filteredInvoiceTypeOptions = computed(() =>
-  localInvoiceMode.value === "NO_FISCAL"
-    ? safeInvoiceTypeOptions.value.filter((i) => upper(i.value) === "TICKET")
-    : safeInvoiceTypeOptions.value
+// Reloj en tiempo real mientras el dialog está abierto
+const now = ref(new Date());
+let clockTimer = null;
+
+const currentTimeLabel = computed(() =>
+  now.value.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 );
 
-// ── labels ────────────────────────────────────────────────────────────────
-const selectedCajaTypeTitle    = computed(() => safeCajaTypeOptions.value.find((x) => upper(x.value) === localCajaType.value)?.title    || "General");
-const selectedInvoiceModeTitle = computed(() => safeInvoiceModeOptions.value.find((x) => upper(x.value) === localInvoiceMode.value)?.title || "Sin facturación");
-const selectedInvoiceTypeTitle = computed(() => safeInvoiceTypeOptions.value.find((x) => upper(x.value) === localInvoiceType.value)?.title || "Ticket");
-const openingAmountPreview     = computed(() => formatMoney(normalizeAmount(localOpeningAmount.value)));
-
-// ── sync ──────────────────────────────────────────────────────────────────
-function ensureInvoiceTypeAllowed() {
-  const allowed = filteredInvoiceTypeOptions.value.map((x) => upper(x.value));
-  if (!allowed.includes(localInvoiceType.value)) localInvoiceType.value = allowed[0] || "TICKET";
-}
 function syncFromProps() {
-  localCajaType.value      = normalizeCajaType(props.cajaType);
-  localInvoiceMode.value   = normalizeInvoiceMode(props.invoiceMode);
-  localInvoiceType.value   = normalizeInvoiceType(props.invoiceType);
   localOpeningAmount.value = String(props.openingAmount ?? "");
-  localNote.value          = props.note || "";
-  if (localInvoiceMode.value === "NO_FISCAL") localInvoiceType.value = "TICKET";
-  ensureInvoiceTypeAllowed();
+  localNote.value = props.note || "";
+  showNote.value = !!(props.note && String(props.note).trim());
 }
 
-watch(() => props.open, (v) => { if (v) syncFromProps(); }, { immediate: true });
+watch(
+  () => props.open,
+  (v) => {
+    if (v) {
+      syncFromProps();
+      now.value = new Date();
+    }
+  },
+  { immediate: true }
+);
 
-// ── handlers ──────────────────────────────────────────────────────────────
-function onCajaTypeChange(v)    { localCajaType.value = normalizeCajaType(v); }
-function onInvoiceModeChange(v) {
-  localInvoiceMode.value = normalizeInvoiceMode(v);
-  if (localInvoiceMode.value === "NO_FISCAL") { localInvoiceType.value = "TICKET"; return; }
-  ensureInvoiceTypeAllowed();
-}
-function onInvoiceTypeChange(v) {
-  if (localInvoiceMode.value === "NO_FISCAL") { localInvoiceType.value = "TICKET"; return; }
-  const next = normalizeInvoiceType(v);
-  const allowed = filteredInvoiceTypeOptions.value.map((x) => upper(x.value));
-  localInvoiceType.value = allowed.includes(next) ? next : (allowed[0] || "TICKET");
-}
+onMounted(() => {
+  clockTimer = setInterval(() => {
+    if (props.open) now.value = new Date();
+  }, 30 * 1000);
+});
 
-// ── submit ────────────────────────────────────────────────────────────────
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer);
+});
+
 function submit() {
-  const cajaType     = normalizeCajaType(localCajaType.value);
-  const invoiceMode  = normalizeInvoiceMode(localInvoiceMode.value);
-  const invoiceType  = invoiceMode === "NO_FISCAL" ? "TICKET" : normalizeInvoiceType(localInvoiceType.value);
   const openingAmount = normalizeAmount(localOpeningAmount.value);
-  const note         = String(localNote.value || "").trim();
+  const noteText = String(localNote.value || "").trim();
 
+  // Defaults fijos para mantener compatibilidad con el backend.
+  // El modo de facturación se elige por venta, no por apertura de caja.
   emit("save", {
-    cajaType, invoiceMode, invoiceType, openingAmount, note,
-    caja_type: cajaType, invoice_mode: invoiceMode,
-    invoice_type: invoiceType, opening_amount: openingAmount,
+    openingAmount,
+    opening_amount: openingAmount,
+    opening_cash: openingAmount,
+    note: noteText,
+    opening_note: noteText,
+    cajaType: "GENERAL",
+    caja_type: "GENERAL",
+    invoiceMode: "NO_FISCAL",
+    invoice_mode: "NO_FISCAL",
+    invoiceType: "TICKET",
+    invoice_type: "TICKET",
   });
 }
 </script>
 
 <style scoped>
-/* ── Card ──────────────────────────────────────────────────────────────── */
 .ccd {
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
 }
 
-/* ── Body ────────────────────────────────────────────────────────────────── */
 .ccd__body {
-  padding: 16px;
+  padding: 18px;
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
-/* ── Amount section ──────────────────────────────────────────────────────── */
+/* ── Fondo inicial (hero) ─────────────────────────────────────── */
 .ccd__amount-section {
   display: grid;
   gap: 6px;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(var(--v-theme-primary), .05);
-  border: 1px solid rgba(var(--v-theme-primary), .14);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-primary), 0.07) 0%,
+    rgba(var(--v-theme-primary), 0.03) 100%
+  );
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
 }
+
 .ccd__amount-label {
   display: flex;
   align-items: center;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), .7);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
+
+.ccd__amount-input :deep(.v-field) {
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+}
+
 .ccd__amount-input :deep(.v-field__input) {
-  font-size: 22px;
-  font-weight: 800;
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-.ccd__amount-input :deep(.v-field__prefix) {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
   padding-top: 10px;
+  padding-bottom: 10px;
 }
+
+.ccd__amount-input :deep(.v-field__prefix) {
+  font-size: 20px;
+  font-weight: 700;
+  padding-top: 14px;
+  opacity: 0.7;
+}
+
 .ccd__amount-hint {
   margin: 0;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), .5);
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
-/* ── Config ──────────────────────────────────────────────────────────────── */
-.ccd__config {
+/* ── Info automática ──────────────────────────────────────────── */
+.ccd__info {
   display: grid;
-  gap: 10px;
-}
-.ccd__config-row {
-  display: grid;
-  gap: 4px;
-}
-.ccd__label {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), .7);
-}
-.ccd :deep(.v-field) { border-radius: 10px; }
-
-/* ── Summary strip ───────────────────────────────────────────────────────── */
-.ccd__summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), .03);
-  border: 1px solid rgba(var(--v-theme-on-surface), .07);
-  flex-wrap: wrap;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-.ccd__summary-item {
+
+.ccd__info-title {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-.ccd__summary-item--highlight .ccd__summary-val {
-  font-size: 15px;
-  font-weight: 900;
-  color: rgb(var(--v-theme-primary));
-}
-.ccd__summary-label {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), .65);
-}
-.ccd__summary-dot {
-  color: rgba(var(--v-theme-on-surface), .3);
-  font-size: 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
-/* ── Actions ─────────────────────────────────────────────────────────────── */
+.ccd__info-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ccd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 100%;
+}
+
+.ccd-chip :deep(.v-icon) {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.ccd-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Nota colapsable ──────────────────────────────────────────── */
+.ccd__note {
+  display: grid;
+  gap: 4px;
+}
+
+.ccd__note-toggle {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  transition: background 0.14s ease, color 0.14s ease;
+  width: fit-content;
+}
+
+.ccd__note-toggle:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.ccd__note-toggle:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+}
+
+.ccd :deep(.v-field) {
+  border-radius: 10px;
+}
+
+/* ── Actions ──────────────────────────────────────────────────── */
 .ccd__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 10px 16px 14px;
+  padding: 12px 18px 16px;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 460px) {
-  .ccd__body { padding: 12px; }
-  .ccd__summary { flex-direction: column; align-items: flex-start; }
+/* ── Dark mode ───────────────────────────────────────────────── */
+:global(.v-theme--dark) .ccd__info {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+:global(.v-theme--dark) .ccd-chip {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .ccd__body {
+    padding: 14px;
+  }
+  .ccd__amount-input :deep(.v-field__input) {
+    font-size: 22px;
+  }
 }
 </style>

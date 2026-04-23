@@ -374,18 +374,35 @@ function onEsc() {
 }
 
 function onArrowDown() {
-  if (!showDropdown.value) {
-    if (shouldShowSuggestions(qLocal.value)) {
-      scheduleSuggestionsFetch(0);
+  // Dropdown con sugerencias visibles → navegar dentro
+  if (showDropdown.value && suggestions.value.length) {
+    // Si ya estoy en la última sugerencia → saltar al grid
+    if (activeIdx.value >= suggestions.value.length - 1) {
+      closeDropdown();
+      focusFirstProduct();
+      return;
     }
+    moveActive(1);
     return;
   }
-  moveActive(1);
+  // Si está cargando, esperar
+  if (showDropdown.value && loadingSugg.value) return;
+  // Dropdown cerrado o vacío → saltar al grid de productos
+  closeDropdown();
+  focusFirstProduct();
 }
 
 function onArrowUp() {
   if (!showDropdown.value) return;
   moveActive(-1);
+}
+
+function focusFirstProduct() {
+  const first = document.querySelector(".prow[tabindex='0']:not(.disabled)");
+  if (first) {
+    first.focus();
+    first.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }
 }
 
 function moveActive(dir) {

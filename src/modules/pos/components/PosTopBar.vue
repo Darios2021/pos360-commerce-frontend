@@ -12,22 +12,29 @@
           v-for="item in group.items"
           :key="item.key"
           location="bottom"
-          open-delay="250"
+          open-delay="280"
         >
           <template #activator="{ props: tooltipProps }">
             <button
               v-bind="tooltipProps"
               type="button"
-              class="ptb-hotkey"
-              :class="[item.color, { active: activeHotkey === item.key }]"
+              class="ptb-tile"
+              :class="[item.color, {
+                active: activeHotkey === item.key,
+                'is-open': isStateActive(item),
+              }]"
               :aria-label="item.tooltip"
               :aria-keyshortcuts="item.key"
+              :aria-pressed="isStateActive(item) ? 'true' : 'false'"
               @click="activateAndDispatch(item)"
             >
-              <span class="ptb-hotkey-key">{{ item.key }}</span>
-              <div class="ptb-hotkey-icon">
+              <span class="ptb-tile-icon">
                 <v-icon>{{ item.icon }}</v-icon>
-              </div>
+              </span>
+              <span class="ptb-tile-key">{{ item.key }}</span>
+
+              <!-- Dot indicador: se enciende cuando el estado asociado está abierto -->
+              <span v-if="isStateActive(item)" class="ptb-tile-dot" aria-hidden="true" />
             </button>
           </template>
 
@@ -35,6 +42,9 @@
             <div class="ptb-tooltip__title">{{ item.label }} ({{ item.key }})</div>
             <div v-if="item.description" class="ptb-tooltip__desc">
               {{ item.description }}
+            </div>
+            <div v-if="isStateActive(item)" class="ptb-tooltip__hint">
+              Presioná {{ item.key }} de nuevo para cerrar
             </div>
           </div>
         </v-tooltip>
@@ -53,44 +63,49 @@ import {
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
 const props = defineProps({
-  // Se mantienen props existentes para no romper callers.
   isViewOnly: { type: Boolean, default: false },
   needsBranchPick: { type: Boolean, default: false },
   hasMultiBranches: { type: Boolean, default: false },
   loadingGlobal: { type: Boolean, default: false },
   cartCount: { type: Number, default: 0 },
+  // Mapa { F1: bool, F4: bool, ... } que indica qué shortcuts están "abiertos"
+  // — el padre lo provee desde el flow de sales.
+  activeStates: { type: Object, default: () => ({}) },
 });
 
-// Emitimos exactamente los eventos declarados en el config.
-// Eventos historicos + nuevos: help, find-product, clients, search, refresh,
-// show-cart, discount, cash-in, pay, pay-cash, pay-other.
-// (fullscreen se resuelve local, no se emite.)
 const emit = defineEmits([
   "help",
   "find-product",
-  "clients",
   "search",
   "refresh",
   "show-cart",
-  "discount",
-  "cash-in",
   "pay",
-  "pay-cash",
-  "pay-other",
 ]);
 
 const shortcuts = POS_SHORTCUTS;
 const renderedGroups = computed(() => groupShortcuts(shortcuts));
 
-// Cuando el checkout / branch-pick / caja-config esta abierto, solo
-// permitimos F1 (ayuda) y F11 (fullscreen). El resto lo maneja el
-// dialog activo (ej: F10 confirma venta en CheckoutDialog).
+// El padre decide cuándo una F-key queda "activa visualmente" porque su UI
+// asociada está abierta. Caemos a props.activeStates antes que a nada.
+function isStateActive(item) {
+  return !!props.activeStates?.[item.key];
+}
+
+// Fullscreen nativo: detectamos el estado para reflejarlo en el tile F11.
+const isFullscreen = ref(false);
+function syncFullscreenState() {
+  isFullscreen.value = !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.msFullscreenElement
+  );
+}
+
 const flow = usePosSalesFlow();
 const ALWAYS_ALLOWED_KEYS = new Set(["F1", "F11"]);
 
 function isBlockingDialogOpen() {
   return !!(
-    flow?.checkoutDialog?.value ||
     flow?.cajaConfigOpen?.value ||
     flow?.cajaArqueoOpen?.value ||
     flow?.branchPickOpen?.value ||
@@ -98,8 +113,7 @@ function isBlockingDialogOpen() {
   );
 }
 
-// Por defecto F2 (buscador) queda "holdActive" porque es el atajo de uso
-// mas frecuente y da feedback visual del estado "default" del cajero.
+// F2 queda resaltado por default porque es el atajo de uso más frecuente.
 const initialHold = shortcuts.find((s) => s.holdActive)?.key || null;
 const activeHotkey = ref(initialHold);
 let activeTimer = null;
@@ -194,15 +208,14 @@ function handleKeydown(e) {
   const editing = isEditableElement(e.target);
   if (editing && !item.allowInInput) return;
 
-  // Si hay un dialog bloqueante abierto, cedemos todas las F-keys al
-  // dialog (que ya escucha las que le importan con su propio listener).
-  // Solo mantenemos F1 (ayuda) y F11 (fullscreen) siempre activos.
+  // Dialogs bloqueantes (arqueo, config de caja, branch pick): solo dejamos
+  // pasar F1 (ayuda) y F11 (fullscreen).
   if (isBlockingDialogOpen() && !ALWAYS_ALLOWED_KEYS.has(item.key)) {
     return;
   }
 
-  // Bloqueamos la accion default del browser (F1 ayuda, F3 find,
-  // F5 reload, F11 fullscreen nativo, F12 devtools, etc.).
+  // Bloqueamos la acción default del browser (F1 ayuda, F3 find, F5 reload,
+  // F11 fullscreen nativo, F12 devtools, etc.).
   e.preventDefault();
   e.stopPropagation();
 
@@ -210,12 +223,16 @@ function handleKeydown(e) {
 }
 
 onMounted(() => {
-  // capture: true para ganarle al navegador y al resto del DOM.
   window.addEventListener("keydown", handleKeydown, { capture: true });
+  document.addEventListener("fullscreenchange", syncFullscreenState);
+  document.addEventListener("webkitfullscreenchange", syncFullscreenState);
+  syncFullscreenState();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown, { capture: true });
+  document.removeEventListener("fullscreenchange", syncFullscreenState);
+  document.removeEventListener("webkitfullscreenchange", syncFullscreenState);
 
   if (activeTimer) {
     clearTimeout(activeTimer);
@@ -235,7 +252,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
   flex-wrap: nowrap;
   padding: 0 10px;
   height: 100%;
@@ -247,105 +264,164 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* Separador vertical translucido entre grupos (sutil). */
 .ptb-sep {
   flex: 0 0 auto;
   width: 1px;
-  height: 20px;
-  margin: 0 6px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  height: 40px;
+  margin: 0 4px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 1px;
 }
 
-.ptb-hotkey {
+/* ─────────── App tile (cuadrado estilo launcher) ─────────── */
+.ptb-tile {
+  position: relative;
   display: inline-flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-width: 0;
-  height: 38px;
-  padding: 0 10px;
-  border-radius: 10px;
-  cursor: pointer;
+  gap: 4px;
   flex: 0 0 auto;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  width: 62px;
+  height: 62px;
+  padding: 8px 6px 6px;
+  border-radius: 14px;
+  cursor: pointer;
   color: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-on-surface), 0.04) 0%,
+    rgba(var(--v-theme-on-surface), 0.02) 100%
+  );
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition:
-    background 0.13s ease,
-    border-color 0.13s ease,
-    box-shadow 0.13s ease,
-    transform 0.08s ease;
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
-.ptb-hotkey:hover {
-  background: rgba(var(--v-theme-on-surface), 0.07);
-  border-color: rgba(var(--v-theme-on-surface), 0.16);
-  filter: brightness(1.05);
-}
-
-/* Foco visible por teclado (keyboard-first). */
-.ptb-hotkey:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 2px;
-  z-index: 1;
-}
-
-/* Pulsado: escala sutil + flash primary. */
-.ptb-hotkey:active {
-  transform: scale(0.97);
-}
-
-.ptb-hotkey.active {
-  background: rgba(var(--v-theme-primary), 0.12);
+.ptb-tile:hover {
+  transform: translateY(-2px);
   border-color: rgba(var(--v-theme-primary), 0.32);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.14);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.ptb-hotkey.active .ptb-hotkey-key {
-  color: rgb(var(--v-theme-primary));
+.ptb-tile:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.ptb-hotkey[disabled],
-.ptb-hotkey[aria-disabled="true"] {
+.ptb-tile:focus-visible {
+  outline: none;
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow:
+    0 0 0 3px rgba(var(--v-theme-primary), 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+/* Pulso momentáneo al activar */
+.ptb-tile.active {
+  border-color: rgba(var(--v-theme-primary), 0.38);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-primary), 0.12) 0%,
+    rgba(var(--v-theme-primary), 0.06) 100%
+  );
+}
+
+/* Estado "abierto": la UI asociada está visible → el tile queda resaltado */
+.ptb-tile.is-open {
+  border-color: rgb(var(--v-theme-primary));
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-primary), 0.22) 0%,
+    rgba(var(--v-theme-primary), 0.1) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-primary), 0.38),
+    0 4px 12px rgba(var(--v-theme-primary), 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ptb-tile[disabled],
+.ptb-tile[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.ptb-hotkey-icon {
+/* Ícono grande centrado — "cara" del app */
+.ptb-tile-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.95;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
 }
 
-.ptb-hotkey-icon :deep(.v-icon) {
-  font-size: 18px;
+.ptb-tile-icon :deep(.v-icon) {
+  font-size: 26px !important;
+  line-height: 1;
 }
 
-.ptb-hotkey-key {
+/* Chip F{número} — siempre visible, monoespacio */
+.ptb-tile-key {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
-  opacity: 0.82;
   line-height: 1;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  padding: 2px 5px;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  padding: 2px 6px;
   border-radius: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.ptb-hotkey.active .ptb-hotkey-icon {
-  opacity: 1;
+.ptb-tile.is-open .ptb-tile-key {
+  color: rgb(var(--v-theme-on-primary));
+  background: rgb(var(--v-theme-primary));
 }
 
-/* Contenido del tooltip (v-tooltip) */
+.ptb-tile.active .ptb-tile-key {
+  color: rgb(var(--v-theme-primary));
+}
+
+/* Dot indicador de estado abierto (esquina superior derecha del tile) */
+.ptb-tile-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-surface));
+  animation: ptbTileDotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ptbTileDotPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgb(var(--v-theme-surface)), 0 0 0 0 rgba(var(--v-theme-primary), 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgb(var(--v-theme-surface)), 0 0 0 5px rgba(var(--v-theme-primary), 0);
+  }
+}
+
+/* Tooltip */
 .ptb-tooltip {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   max-width: 260px;
 }
 
@@ -361,35 +437,48 @@ onBeforeUnmount(() => {
   line-height: 1.3;
 }
 
-/* Mobile: mas compacto, mantener scroll horizontal. */
+.ptb-tooltip__hint {
+  font-size: 10.5px;
+  opacity: 0.72;
+  font-style: italic;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+/* Mobile: tiles un toque más chicos pero aún square */
 @media (max-width: 599px) {
-  .ptb-hotkey {
-    padding: 0 8px;
-    gap: 5px;
-    height: 36px;
+  .ptb-tile {
+    width: 56px;
+    height: 56px;
+    padding: 6px 4px;
+    border-radius: 12px;
   }
-  .ptb-hotkey-key {
-    font-size: 10px;
-    padding: 2px 4px;
+  .ptb-tile-icon :deep(.v-icon) {
+    font-size: 22px !important;
+  }
+  .ptb-tile-key {
+    font-size: 9.5px;
+    padding: 1px 5px;
   }
   .ptb-hotkeys {
     justify-content: flex-start;
+    gap: 8px;
   }
 }
 
-/* COLORES semanticos por grupo / hotkey.
-   Se mapean a tokens del theme de Vuetify para que dark mode funcione
-   sin sombras invisibles. */
-.hk-help       { color: rgb(var(--v-theme-primary)); }
-.hk-find       { color: rgb(var(--v-theme-info)); }
-.hk-clients    { color: rgba(var(--v-theme-primary), 0.78); }
-.hk-search     { color: rgba(var(--v-theme-info), 0.78); }
-.hk-refresh    { color: rgba(var(--v-theme-info), 0.68); }
-.hk-cart       { color: rgb(var(--v-theme-primary)); }
-.hk-discount   { color: rgb(var(--v-theme-error)); }
-.hk-cash-in    { color: rgb(var(--v-theme-warning)); }
-.hk-pay        { color: rgb(var(--v-theme-success)); }
-.hk-cash       { color: rgba(var(--v-theme-success), 0.78); }
-.hk-other-pay  { color: rgba(var(--v-theme-on-surface), 0.72); }
-.hk-fullscreen { color: rgba(var(--v-theme-on-surface), 0.72); }
+/* Colores por grupo — para el tint de íconos.
+   El tile base ya resalta por fondo/borde; acá pintamos el ícono. */
+.hk-help       :deep(.v-icon) { color: rgb(var(--v-theme-primary)); }
+.hk-find       :deep(.v-icon) { color: rgb(var(--v-theme-info)); }
+.hk-search     :deep(.v-icon) { color: rgba(var(--v-theme-info), 0.82); }
+.hk-refresh    :deep(.v-icon) { color: rgba(var(--v-theme-info), 0.72); }
+.hk-cart       :deep(.v-icon) { color: rgb(var(--v-theme-primary)); }
+.hk-pay        :deep(.v-icon) { color: rgb(var(--v-theme-success)); }
+.hk-fullscreen :deep(.v-icon) { color: rgba(var(--v-theme-on-surface), 0.76); }
+
+/* Cuando el tile está "is-open", forzamos el ícono a blanco puro para máximo contraste */
+.ptb-tile.is-open :deep(.v-icon) {
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
 </style>
