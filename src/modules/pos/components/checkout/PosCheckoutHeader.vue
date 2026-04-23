@@ -137,12 +137,12 @@ function onStepClick(step, index) {
 <style scoped>
 .pdch {
   position: relative;
-  padding: 10px 16px;
+  padding: 8px 14px 10px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgba(var(--v-theme-on-surface), 0.02);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pdch__row--top {
@@ -191,19 +191,19 @@ function onStepClick(step, index) {
 .pdch__step--clickable:hover .pdch__dot { filter: brightness(1.1); }
 
 .pdch__dot {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--pos-text-xs, 11px);
-  font-weight: var(--pos-font-bold, 900);
+  font-size: 10.5px;
+  font-weight: 900;
   background: transparent;
   border: 1.5px solid rgba(var(--v-theme-on-surface), 0.20);
   color: rgba(var(--v-theme-on-surface), 0.62);
   transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-  flex: 0 0 22px;
+  flex: 0 0 20px;
 }
 
 .pdch__step--active .pdch__dot {
@@ -257,8 +257,8 @@ function onStepClick(step, index) {
 }
 
 .pdch__total-val {
-  font-size: var(--pos-text-xl, 20px);
-  font-weight: var(--pos-font-bold, 900);
+  font-size: 17px;
+  font-weight: 900;
   color: rgb(var(--v-theme-on-surface));
   letter-spacing: -0.01em;
   transition: color 180ms ease;

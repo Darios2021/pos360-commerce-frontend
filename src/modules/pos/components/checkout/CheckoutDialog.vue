@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="openLocal" max-width="1100" persistent>
+  <v-dialog v-model="openLocal" max-width="960" persistent>
     <v-card class="ck-root">
 
       <!-- HEADER: title + segmented progress + total + close -->
@@ -1454,13 +1454,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 .ck-root {
   display: flex;
   flex-direction: column;
-  min-height: min(86dvh, 760px);
-  max-height: min(86dvh, 760px);
+  min-height: min(68dvh, 540px);
+  max-height: min(86dvh, 720px);
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* ── Body: always split ── */
@@ -1516,16 +1519,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   background: rgba(var(--v-theme-on-surface), 0.02);
   flex: 0 0 auto;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ck-ftr-hint {
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.5);
   display: flex;
   align-items: center;
@@ -1534,18 +1537,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-ftr-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 /* ── Action buttons ── */
 .ck-act {
-  min-height: 54px !important;
-  padding: 6px 18px !important;
-  border-radius: 14px !important;
+  min-height: 40px !important;
+  padding: 4px 14px !important;
+  border-radius: 10px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 9px !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
   font-weight: 900 !important;
@@ -1568,9 +1571,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 .ck-act-key {
-  width: 36px;
-  height: 28px;
-  border-radius: 8px;
+  width: 28px;
+  height: 22px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1581,20 +1584,20 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 1px;
   line-height: 1;
 }
 
 .ck-act-main {
-  font-size: 0.86rem;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.01em;
 }
 
 .ck-act-sub {
-  font-size: 0.64rem;
+  font-size: 9.5px;
   font-weight: 700;
-  opacity: 0.82;
+  opacity: 0.75;
 }
 
 /* BORRAR button

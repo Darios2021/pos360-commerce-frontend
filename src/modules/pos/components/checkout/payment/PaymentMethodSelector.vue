@@ -18,7 +18,7 @@
 
         <!-- icon container -->
         <span class="pms-icon">
-          <v-icon size="24">{{ methodIcon(method) }}</v-icon>
+          <v-icon size="20">{{ methodIcon(method) }}</v-icon>
         </span>
 
         <!-- name -->
@@ -38,7 +38,7 @@
       >
         <span class="pms-kbadge">{{ methods.length + 1 }}</span>
         <span class="pms-icon">
-          <v-icon size="24">mdi-set-merge</v-icon>
+          <v-icon size="20">mdi-set-merge</v-icon>
         </span>
         <span class="pms-name">Mixto</span>
       </button>
@@ -81,7 +81,7 @@ function isActive(method) {
 /* ── Wrapper ── */
 .pms-wrap {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -89,95 +89,94 @@ function isActive(method) {
 .pms-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
-/* ── Tile base ── */
+/* ── Tile base (compacto y moderno) ── */
 .pms-tile {
   position: relative;
-  min-height: 88px;
-  padding: 14px 10px 10px;
-  border-radius: 16px;
-  border: 2px solid rgba(var(--pc), 0.2);
-  background: rgba(var(--pc), 0.06);
-  display: flex;
-  flex-direction: column;
+  min-height: 58px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  display: grid;
+  grid-template-columns: 32px 1fr;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
+  gap: 9px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition:
     background 0.14s ease,
     border-color 0.14s ease,
-    box-shadow 0.14s ease,
-    transform 0.12s ease;
+    box-shadow 0.14s ease;
   overflow: visible;
 }
 
-/* ── Keyboard number badge (top-right, physical key look) ── */
+/* ── Keyboard number badge (esquina superior derecha, sutil) ── */
 .pms-kbadge {
   position: absolute;
-  top: 6px;
+  top: 5px;
   right: 6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.18) 100%);
-  border: 1px solid rgba(var(--pc), 0.3);
-  border-bottom-width: 2px;
-  color: rgb(var(--pc));
-  font-family: 'Courier New', monospace;
-  font-size: 0.6rem;
-  font-weight: 900;
-  display: flex;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background 0.14s, border-color 0.14s, color 0.14s;
+  transition: background 0.14s, color 0.14s;
+  letter-spacing: 0.02em;
 }
 
 /* ── Icon container ── */
 .pms-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: rgba(var(--pc), 0.14);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(var(--pc), 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.14s, color 0.14s;
+  transition: background 0.14s;
 }
 .pms-icon :deep(.v-icon) {
-  font-size: 24px !important;
+  font-size: 19px !important;
   color: rgb(var(--pc)) !important;
   transition: color 0.14s;
 }
 
 /* ── Name ── */
 .pms-name {
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-align: center;
-  line-height: 1.15;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  line-height: 1.2;
   color: rgb(var(--v-theme-on-surface));
   word-break: break-word;
+  letter-spacing: -0.005em;
   transition: color 0.14s;
+  padding-right: 18px; /* espacio para el kbadge */
 }
 
-/* ── ACTIVE: solid fill ── */
+/* ── ACTIVE: fondo color sólido ── */
 .pms-tile--active {
   background: rgb(var(--pc)) !important;
   border-color: rgb(var(--pc)) !important;
   box-shadow:
-    0 0 0 3px rgba(var(--pc), 0.2),
-    0 6px 20px rgba(var(--pc), 0.3) !important;
-  transform: translateY(-2px);
+    0 0 0 1px rgba(var(--pc), 0.2),
+    0 3px 10px rgba(var(--pc), 0.32) !important;
 }
 
 .pms-tile--active .pms-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
 }
 .pms-tile--active .pms-icon :deep(.v-icon) {
   color: #fff !important;
@@ -187,48 +186,38 @@ function isActive(method) {
 }
 .pms-tile--active .pms-kbadge {
   background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
 
 /* ── CURSOR (keyboard focus) ── */
 .pms-tile--cursor:not(.pms-tile--active) {
   border-color: rgb(var(--pc)) !important;
-  background: rgba(var(--pc), 0.12) !important;
-  box-shadow:
-    0 0 0 3px rgba(var(--pc), 0.22),
-    0 4px 12px rgba(var(--pc), 0.15) !important;
-  transform: translateY(-2px);
+  background: rgba(var(--pc), 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(var(--pc), 0.28);
 }
 .pms-tile--cursor:not(.pms-tile--active) .pms-kbadge {
-  background: linear-gradient(180deg, rgba(var(--pc), 0.18) 0%, rgba(var(--pc), 0.08) 100%);
-  border-color: rgba(var(--pc), 0.5);
+  background: rgba(var(--pc), 0.18);
   color: rgb(var(--pc));
 }
 
-/* cursor + active combined ring */
+/* cursor + active combinado */
 .pms-tile--cursor.pms-tile--active {
   box-shadow:
-    0 0 0 3px rgb(var(--pc)),
-    0 0 0 5px rgba(var(--pc), 0.25),
-    0 8px 24px rgba(var(--pc), 0.38) !important;
+    0 0 0 2px rgb(var(--pc)),
+    0 0 0 4px rgba(var(--pc), 0.28),
+    0 4px 14px rgba(var(--pc), 0.4) !important;
 }
 
-/* ── Hover (mouse only) ── */
+/* ── Hover (mouse) ── */
 .pms-tile:not(.pms-tile--active):not(.pms-tile--cursor):hover {
-  background: rgba(var(--pc), 0.09);
-  border-color: rgba(var(--pc), 0.35);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(var(--pc), 0.14);
+  background: rgba(var(--pc), 0.06);
+  border-color: rgba(var(--pc), 0.32);
 }
 
-/* ── Responsive: 2 columns at narrow ── */
+/* ── Responsive ── */
 @media (max-width: 760px) {
   .pms-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .pms-tile {
-    min-height: 80px;
   }
 }
 </style>
