@@ -304,11 +304,11 @@ const density = computed(() => {
   min-height: 34px;
   padding-top: 4px;
   padding-bottom: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .pc-field :deep(input) {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .pc-field :deep(.v-field--focused) {
@@ -330,7 +330,7 @@ const density = computed(() => {
   }
 
   .pc-title {
-    font-size: 12.5px;
+    font-size: 13px;
   }
 
   .pc-field :deep(.v-field__input) {
@@ -344,7 +344,7 @@ const density = computed(() => {
 
   .pc-clear {
     height: 26px !important;
-    font-size: 10.75px !important;
+    font-size: 11px !important;
     padding-inline: 7px !important;
   }
 }

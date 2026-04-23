@@ -2,35 +2,22 @@
   <v-dialog
     :model-value="modelValue"
     max-width="1080"
-    persistent
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card class="consulta-shell">
-      <div class="consulta-header">
-        <div class="consulta-header__left">
-          <div class="consulta-icon-wrap">
-            <v-icon size="18">mdi-magnify</v-icon>
-          </div>
-
-          <div class="min-w-0">
-            <div class="consulta-title">Consulta POS</div>
-            <div class="consulta-subtitle">
-              Buscá un producto y visualizá toda su información en la misma pantalla
-            </div>
-          </div>
-        </div>
-
-        <div class="consulta-header__right">
+      <PosDialogHeader
+        eyebrow="Consulta"
+        title="Consulta POS"
+        subtitle="Buscá un producto y visualizá toda su información en la misma pantalla."
+        @close="closeDialog"
+      >
+        <template #chips>
           <v-chip size="small" variant="tonal" color="primary">
             {{ filteredItems.length }} resultado<span v-if="filteredItems.length !== 1">s</span>
           </v-chip>
-
-          <v-btn icon variant="text" size="small" @click="closeDialog">
-            <v-icon size="20">mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </div>
+        </template>
+      </PosDialogHeader>
 
       <v-divider />
 
@@ -72,7 +59,7 @@
                   </v-btn>
 
                   <v-btn
-                    variant="tonal"
+                    variant="text"
                     size="small"
                     @click="clearSearch"
                   >
@@ -339,6 +326,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -759,42 +747,12 @@ function formatMoney(value) {
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
 }
 
-.consulta-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-}
-
-.consulta-header__left,
-.consulta-header__right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.consulta-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: rgba(var(--v-theme-primary), 0.1);
-  border: 1px solid rgba(var(--v-theme-primary), 0.16);
-  color: rgb(var(--v-theme-primary));
-  flex: 0 0 auto;
-}
-
-.consulta-title,
 .detail-title {
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.1;
 }
 
-.consulta-subtitle,
 .detail-subtitle {
   font-size: 0.78rem;
   color: rgba(var(--v-theme-on-surface), 0.68);
@@ -1104,10 +1062,6 @@ function formatMoney(value) {
 }
 
 @media (max-width: 720px) {
-  .consulta-header {
-    padding: 12px;
-  }
-
   .consulta-body {
     padding: 12px !important;
   }
@@ -1123,7 +1077,6 @@ function formatMoney(value) {
     flex: 1 1 auto;
   }
 
-  .consulta-subtitle,
   .detail-subtitle {
     display: none;
   }

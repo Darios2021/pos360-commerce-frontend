@@ -7,13 +7,12 @@
     <v-card class="ccd" rounded="xl">
 
       <!-- Header -->
-      <div class="ccd__head">
-        <div>
-          <p class="ccd__eyebrow">Caja</p>
-          <h3 class="ccd__title">Abrir caja</h3>
-        </div>
-        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('update:open', false)" />
-      </div>
+      <PosDialogHeader
+        eyebrow="Caja"
+        title="Apertura de caja"
+        subtitle="Configurá el fondo inicial y los parámetros de facturación."
+        @close="$emit('update:open', false)"
+      />
 
       <v-divider />
 
@@ -48,7 +47,7 @@
               item-title="title"
               item-value="value"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               hide-details
               @update:model-value="onCajaTypeChange"
             />
@@ -62,7 +61,7 @@
               item-title="title"
               item-value="value"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               hide-details
               @update:model-value="onInvoiceModeChange"
             />
@@ -76,7 +75,7 @@
               item-title="title"
               item-value="value"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               hide-details
               :disabled="localInvoiceMode === 'NO_FISCAL'"
               @update:model-value="onInvoiceTypeChange"
@@ -88,7 +87,7 @@
             <v-text-field
               v-model="localNote"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               hide-details
               placeholder="Opcional"
             />
@@ -117,7 +116,13 @@
       <!-- Actions -->
       <div class="ccd__actions">
         <v-btn variant="text" size="small" @click="$emit('update:open', false)">Cancelar</v-btn>
-        <v-btn color="primary" size="small" prepend-icon="mdi-cash-register" @click="submit">
+        <v-btn
+          variant="flat"
+          color="success"
+          size="small"
+          prepend-icon="mdi-cash-register"
+          @click="submit"
+        >
           Abrir caja
         </v-btn>
       </div>
@@ -128,6 +133,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   open:               { type: Boolean,           default: false },
@@ -256,28 +262,6 @@ function submit() {
 .ccd {
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
-}
-
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.ccd__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 12px;
-}
-.ccd__eyebrow {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: rgb(var(--v-theme-primary));
-}
-.ccd__title {
-  margin: 2px 0 0;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.1;
 }
 
 /* ── Body ────────────────────────────────────────────────────────────────── */

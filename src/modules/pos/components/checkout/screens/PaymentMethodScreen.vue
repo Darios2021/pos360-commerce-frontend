@@ -1,6 +1,11 @@
 <template>
-  <div class="ck-screen">
- 
+  <div class="ck-screen" ref="rootRef" tabindex="-1">
+    <div class="ck-screen__head">
+      <div class="ck-screen__title">Elegí medio de pago</div>
+      <div class="ck-screen__subtitle">
+        Presioná 1-9 o usá las flechas para seleccionar
+      </div>
+    </div>
 
     <div class="ck-screen__body">
       <PaymentMethodSelector
@@ -20,8 +25,10 @@
 </template>
 
 <script setup>
-import { nextTick } from "vue";
+import { nextTick, ref } from "vue";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector.vue";
+
+const rootRef = ref(null);
 
 const props = defineProps({
   state: { type: Object, required: true },
@@ -46,7 +53,11 @@ const emit = defineEmits([
 ]);
 
 function focusCurrent() {
-  nextTick(() => {});
+  nextTick(() => {
+    // Foco al contenedor raíz para que el handler global capture teclas
+    // sin interferir con inputs (no hay inputs en esta pantalla)
+    rootRef.value?.focus?.();
+  });
 }
 
 function hasValidSelection() {
@@ -94,89 +105,40 @@ defineExpose({
   handleKeyboardAction,
 });
 </script>
+
 <style scoped>
-.ck-pay-grid {
+.ck-screen {
+  min-height: 100%;
+  height: 100%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 360px));
-  justify-content: start;
-  gap: 6px 8px;
-  width: 100%;
-  max-width: 760px;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+  padding: 4px 6px 6px;
+  outline: none;
 }
 
-.ck-pay {
-  position: relative;
-  min-height: 52px;
-  padding: 6px 8px;
-  border-radius: 12px;
-
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-
-  transition: all 0.12s ease;
+.ck-screen__head {
+  display: grid;
+  gap: 2px;
+  padding-inline: 2px;
 }
 
-.ck-pay-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.ck-screen__title {
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: rgb(var(--v-theme-on-surface));
 }
 
-.ck-pay-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.ck-screen__subtitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.12;
 }
 
-.ck-pay-icon :deep(.v-icon) {
-  font-size: 18px !important;
-}
-
-.ck-pay-name {
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.ck-pay-state {
-  font-size: 18px;
-}
-
-.ck-cursor-tag {
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  font-size: 0.48rem;
-  height: 14px;
-  padding: 0 4px;
-  border-radius: 999px;
-}
-
-.ck-pay.active {
-  border: 2px solid rgba(var(--v-theme-primary), 0.9);
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-/* responsive */
-@media (max-width: 960px) {
-  .ck-pay-grid {
-    grid-template-columns: repeat(2, 1fr);
-    max-width: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .ck-pay-grid {
-    grid-template-columns: 1fr;
-  }
+.ck-screen__body {
+  min-height: 0;
 }
 </style>

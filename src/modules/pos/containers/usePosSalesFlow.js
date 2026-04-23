@@ -10,6 +10,7 @@ import { usePosCustomer } from "../composables/usePosCustomer";
 import { usePosCheckout } from "../composables/usePosCheckout";
 import { usePosCashRegister } from "../composables/usePosCashRegister";
 import { usePosPricing } from "../composables/usePosPricing";
+import { useSnackbar } from "../composables/useSnackbar";
 
 let shared;
 let initPromise = null;
@@ -40,20 +41,29 @@ export function usePosSalesFlow() {
   const branchPickOpen = ref(false);
   const checkoutSubmitting = ref(false);
 
+  // Señales UI (contadores incrementales) para que secciones que no
+  // reciben props/emits directamente (PosLeftSection) puedan reaccionar
+  // a atajos del TopBar. Cada incremento dispara un watch en el consumidor.
+  const focusSearchSignal = ref(0);
+  const refreshCatalogSignal = ref(0);
+
+  function requestFocusSearch() {
+    focusSearchSignal.value += 1;
+  }
+
+  function requestRefreshCatalog() {
+    refreshCatalogSignal.value += 1;
+  }
+
   // compat / UI opcional
   const receiptOpen = ref(false);
   const receiptSale = ref(null);
   const receiptCompanyName = ref("POS360");
 
-  const snack = ref({
-    show: false,
-    text: "",
-  });
-
-  function toast(text) {
-    snack.value.text = String(text || "");
-    snack.value.show = true;
-  }
+  // Snackbar compartido (singleton module-level). Se mantiene la forma
+  // pública `snack` y `toast(text)` por backward compat con
+  // `PosDialogs.vue` (usa `snack.show` y `snack.text`).
+  const { state: snack, toast, close: closeSnack } = useSnackbar();
 
   const isViewOnly = computed(() => false);
   const canSell = computed(() => !isViewOnly.value);
@@ -634,6 +644,11 @@ export function usePosSalesFlow() {
     snack,
     checkoutSubmitting,
 
+    focusSearchSignal,
+    refreshCatalogSignal,
+    requestFocusSearch,
+    requestRefreshCatalog,
+
     branchName,
     branchChipLabel,
     needsBranchPick,
@@ -737,6 +752,7 @@ export function usePosSalesFlow() {
     runScannerTest,
     resetCheckoutUiState,
     toast,
+    closeSnack,
     initOnce,
   };
 

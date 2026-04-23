@@ -6,10 +6,13 @@
     <v-card rounded="xl" class="pdd-root">
       <!-- HEADER / HERO -->
       <div class="pdd-hero">
-        <div class="pdd-hero-left">
-          <div class="pdd-title-row">
-            <div class="pdd-title text-h6 font-weight-black">Detalle de producto</div>
-
+        <PosDialogHeader
+          eyebrow="Producto"
+          title="Detalle de producto"
+          subtitle="Elegí método y política: tarjeta en cuotas usa lista · revendedor pisa todo (si existe)."
+          @close="openLocal = false"
+        >
+          <template #chips>
             <v-chip size="small" variant="tonal" class="pdd-chip">
               <v-icon start size="16">mdi-barcode</v-icon>
               SKU: {{ item?.sku || item?.code || "—" }}
@@ -26,18 +29,8 @@
               <span v-if="subrubroLabelFinal" class="mx-1">·</span>
               <span v-if="subrubroLabelFinal">{{ subrubroLabelFinal }}</span>
             </v-chip>
-          </div>
-
-          <div class="pdd-sub text-caption text-medium-emphasis">
-            Elegí método y política: tarjeta en cuotas usa lista · revendedor pisa todo (si existe).
-          </div>
-        </div>
-
-        <v-spacer />
-
-        <v-btn icon variant="text" class="pdd-close" @click="openLocal = false" title="Cerrar">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
+          </template>
+        </PosDialogHeader>
       </div>
 
       <v-divider />
@@ -278,6 +271,7 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import http from "@/app/api/http";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -722,30 +716,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   --pdd-brand: 42, 133, 196; /* #2a85c4 */
 }
 
-/* HERO */
+/* HERO wrapper (gradiente conservado, el header real lo provee PosDialogHeader) */
 .pdd-hero {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 16px 14px;
   background: linear-gradient(
     180deg,
     rgba(var(--pdd-brand), 0.18),
     rgba(var(--pdd-brand), 0.06),
     rgba(var(--v-theme-surface), 0.92)
   );
-}
-.pdd-hero-left {
-  min-width: 0;
-}
-.pdd-title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.pdd-title {
-  margin-right: 6px;
 }
 .pdd-chip {
   border: 1px solid rgba(var(--pdd-brand), 0.18);
@@ -754,12 +732,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 .pdd-chip-soft {
   border-color: rgba(var(--pdd-brand), 0.14);
   background: rgba(var(--pdd-brand), 0.06) !important;
-}
-.pdd-sub {
-  margin-top: 6px;
-}
-.pdd-close {
-  margin-top: -2px;
 }
 
 /* BODY */
@@ -923,7 +895,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   color: rgba(var(--pdd-brand), 0.95);
 }
 .pdd-paycard .tx .t {
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1.1;
 }
 .pdd-paycard .tx .s {
@@ -971,7 +943,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   backdrop-filter: blur(10px);
 }
 .pdd-add-btn {
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: 0.5px;
   padding-inline: 28px;
   box-shadow: 0 8px 20px rgba(42, 133, 196, 0.25);
@@ -989,9 +961,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   .pdd-panel-left,
   .pdd-panel-right {
     padding: 12px;
-  }
-  .pdd-hero {
-    padding: 14px 14px 12px;
   }
   .pdd-media {
     grid-template-columns: 1fr;

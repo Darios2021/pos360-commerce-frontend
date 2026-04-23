@@ -1,9 +1,9 @@
 <template>
-  <div class="ck-screen">
+  <div class="ck-screen" ref="rootRef">
     <div class="ck-screen__head">
       <div class="ck-screen__title">Cliente</div>
       <div class="ck-screen__subtitle">
-        {{ isFacturaMode ? "Completá los datos" : "Cliente opcional" }}
+        {{ isFacturaMode ? "Completá los datos (Tab entre campos · Enter siguiente)" : "Cliente opcional" }}
       </div>
     </div>
 
@@ -31,9 +31,10 @@
             </div>
 
             <v-text-field
-              :ref="customerNameRef"
+              ref="nameFieldRef"
               :model-value="customerName"
               placeholder="Nombre o razón social"
+              autofocus
               variant="outlined"
               density="comfortable"
               hide-details="auto"
@@ -85,17 +86,6 @@
             </div>
           </div>
 
-          <div class="ck-help-row">
-            <div class="ck-help-pill">
-              <v-icon size="14">mdi-keyboard-return</v-icon>
-              <span>Enter seguir</span>
-            </div>
-
-            <div class="ck-help-pill">
-              <v-icon size="14">mdi-backspace-outline</v-icon>
-              <span>Borrar volver</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -103,7 +93,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick } from "vue";
+import { computed, nextTick, ref } from "vue";
 
 const props = defineProps({
   state: { type: Object, required: true },
@@ -112,6 +102,9 @@ const props = defineProps({
   customerDoc: { type: String, default: "" },
   customerPhone: { type: String, default: "" },
 });
+
+const rootRef = ref(null);
+const nameFieldRef = ref(null);
 
 const emit = defineEmits([
   "update:customer-name",
@@ -147,7 +140,8 @@ function emitNextIfValid() {
 
 function focusCurrent() {
   nextTick(() => {
-    const candidate = props.customerNameRef?.value;
+    // Foco al input de nombre (crítico para facturar)
+    const candidate = nameFieldRef.value || props.customerNameRef?.value;
     const input =
       candidate?.$el?.querySelector?.("input") ||
       candidate?.querySelector?.("input") ||
@@ -196,7 +190,7 @@ defineExpose({
 
 .ck-screen__title {
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1.1;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -324,27 +318,6 @@ defineExpose({
   padding-bottom: 0;
   font-weight: 600;
   font-size: 0.88rem;
-}
-
-.ck-help-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.ck-help-pill {
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  font-size: 0.66rem;
-  font-weight: 800;
-  line-height: 1;
 }
 
 @media (max-width: 760px) {

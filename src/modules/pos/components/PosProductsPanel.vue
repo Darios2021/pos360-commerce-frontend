@@ -80,7 +80,7 @@ defineProps({
   overflow: auto;
   scrollbar-gutter: stable;
 
-  padding: 10px 10px 0 10px;
+  padding: 8px 8px 0 8px;
 
   /* Firefox */
   scrollbar-width: auto;
@@ -105,9 +105,25 @@ defineProps({
 }
 
 .pp-items {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* Responsive: cada card mínimo 160px, se acomodan automáticamente.
+     Panel ancho → 4 cols. Panel medio → 3 cols. Panel estrecho → 2 cols. */
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
+  align-content: start;
+}
+
+@media (max-width: 520px) {
+  .pp-items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .pp-items {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ✅ ESTE es el aire final “real” (suma: footer + safe-area) */

@@ -242,7 +242,7 @@ function money(value) {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.01em;
-  color: #0f172a;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .sale-summary__meta {
@@ -259,13 +259,13 @@ function money(value) {
 }
 
 .sale-summary__chip--soft {
-  background: rgba(15, 23, 42, 0.06) !important;
-  color: #0f172a !important;
+  background: rgba(var(--v-theme-on-surface), 0.06) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
 .sale-summary__chip--amount {
-  background: rgba(14, 116, 144, 0.10) !important;
-  color: #0f172a !important;
+  background: rgba(var(--v-theme-success), 0.10) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
 .sale-summary__grid {
@@ -289,7 +289,7 @@ function money(value) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(15, 23, 42, 0.58);
+  color: rgba(var(--v-theme-on-surface), 0.58);
   margin-bottom: 5px;
 }
 
@@ -300,7 +300,7 @@ function money(value) {
   gap: 6px;
   font-size: 13px;
   font-weight: 800;
-  color: #111827;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .sale-summary__value span {
@@ -329,14 +329,14 @@ function money(value) {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 700;
-  color: rgba(15, 23, 42, 0.56);
+  color: rgba(var(--v-theme-on-surface), 0.56);
 }
 
 .sale-summary__footer-total-value {
   font-size: 18px;
   line-height: 1;
   font-weight: 900;
-  color: #0f172a;
+  color: rgb(var(--v-theme-on-surface));
   margin-top: 4px;
 }
 
@@ -351,15 +351,15 @@ function money(value) {
 }
 
 .sale-summary__status--ok {
-  color: #166534 !important;
+  color: rgb(var(--v-theme-success));
 }
 
 .sale-summary__status--warn {
-  color: #b45309 !important;
+  color: rgb(var(--v-theme-warning));
 }
 
 .sale-summary__status--muted {
-  color: #475569 !important;
+  color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
 :global(.v-theme--dark) .sale-summary {

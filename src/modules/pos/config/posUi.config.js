@@ -1,3 +1,43 @@
+// Tokens globales compartidos por todo el módulo POS.
+// Se inyectan como CSS variables a nivel del contenedor raíz del POS
+// (ver usePosUiConfig + PosPage.vue) para que queden disponibles en
+// cualquier componente hijo y puedan usarse también desde <style scoped>.
+export const posUiTokens = {
+  // Escala de radius
+  "--pos-radius-sm": "8px",
+  "--pos-radius-md": "12px",
+  "--pos-radius-lg": "16px",
+  "--pos-radius-xl": "20px",
+
+  // Superficie card
+  "--pos-card-border": "rgba(var(--v-theme-on-surface), 0.1)",
+  "--pos-card-shadow": "0 8px 24px rgba(0, 0, 0, 0.06)",
+
+  // Focus ring
+  "--pos-focus-ring": "2px solid rgb(var(--v-theme-primary))",
+  "--pos-focus-offset": "2px",
+
+  // Escala tipográfica
+  "--pos-text-xs": "11px",
+  "--pos-text-sm": "12px",
+  "--pos-text-base": "13px",
+  "--pos-text-md": "14px",
+  "--pos-text-lg": "16px",
+  "--pos-text-xl": "20px",
+
+  // Pesos tipográficos
+  "--pos-font-regular": "500",
+  "--pos-font-semibold": "700",
+  "--pos-font-bold": "900",
+
+  // KPI colors (usados por badges en PosSalesPage). Valores claros;
+  // el dark mode se maneja vía rgba/opacidad a nivel consumidor.
+  "--pos-kpi-color-1": "#f57c00", // warning-ish / naranja
+  "--pos-kpi-color-2": "#5c6bc0", // indigo / info alternativo
+  "--pos-kpi-color-3": "#9c27b0", // morado / secundario
+  "--pos-kpi-color-4": "#009688", // teal / alternativo
+};
+
 export const posUiConfig = {
   desktop: {
     layout: {

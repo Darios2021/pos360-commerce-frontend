@@ -10,18 +10,13 @@
     <v-card class="rcpt-card" rounded="xl" elevation="0">
 
       <!-- ── Header del dialog ── -->
-      <div class="rcpt-dlg-header">
-        <div class="rcpt-dlg-title">
-          <v-icon size="16" color="primary" class="mr-2">mdi-receipt-text-outline</v-icon>
-          Ticket de venta
-          <span v-if="saleNumber" class="rcpt-dlg-num">N° {{ saleNumber }}</span>
-        </div>
-        <div class="rcpt-dlg-actions">
-          <v-btn icon variant="text" size="small" @click="close">
-            <v-icon size="18">mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </div>
+      <PosDialogHeader
+        eyebrow="Venta"
+        title="Comprobante"
+        :subtitle="saleNumber ? `Ticket N° ${saleNumber}` : 'Ticket de venta'"
+        @close="close"
+      />
+      <v-divider />
 
       <!-- ── Cuerpo ── -->
       <v-card-text class="rcpt-body pa-4">
@@ -178,6 +173,7 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   open:        { type: Boolean, default: false },
@@ -309,8 +305,8 @@ function buildTicketWindow() {
     .tkt-td--qty   { text-align:right; white-space:nowrap; padding-right:10px; }
     .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
     .tkt-td--sub   { text-align:right; white-space:nowrap; font-weight:700; }
-    .tkt-item-name { font-size:11.5px; font-weight:700; word-break:break-word; }
-    .tkt-item-sku  { font-size:9.5px; color:#666; margin-top:1px; }
+    .tkt-item-name { font-size:12px; font-weight:700; word-break:break-word; }
+    .tkt-item-sku  { font-size:10px; color:#666; margin-top:1px; }
     .tkt-totals { margin:4px 0; }
     .tkt-total-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
     .tkt-total-row--discount { color:#c00; }
@@ -378,8 +374,8 @@ function downloadTicket() {
     .tkt-td--name { text-align:left; } .tkt-td--qty { text-align:right; white-space:nowrap; padding-right:10px; }
     .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
     .tkt-td--sub { text-align:right; white-space:nowrap; font-weight:700; }
-    .tkt-item-name { font-size:11.5px; font-weight:700; word-break:break-word; }
-    .tkt-item-sku { font-size:9.5px; color:#666; margin-top:1px; }
+    .tkt-item-name { font-size:12px; font-weight:700; word-break:break-word; }
+    .tkt-item-sku { font-size:10px; color:#666; margin-top:1px; }
     .tkt-totals { margin:4px 0; }
     .tkt-total-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
     .tkt-total-row--discount { color:#c00; }
@@ -415,22 +411,6 @@ function downloadTicket() {
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), .1);
 }
-.rcpt-dlg-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), .08);
-}
-.rcpt-dlg-title {
-  display: flex; align-items: center;
-  font-size: 14px; font-weight: 800;
-  color: rgb(var(--v-theme-on-surface));
-  gap: 6px;
-}
-.rcpt-dlg-num {
-  font-size: 11px; font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), .45);
-}
-.rcpt-dlg-actions { display: flex; align-items: center; gap: 8px; }
 .rcpt-body { max-height: 72vh; overflow-y: auto; background: #e8e8e8; }
 .rcpt-footer { padding: 10px 16px; }
 .rcpt-empty {
@@ -452,7 +432,7 @@ function downloadTicket() {
   background: #fff;
   color: #111;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
   width: 100%;
   max-width: 340px;
@@ -494,7 +474,7 @@ function downloadTicket() {
 .tkt-meta { width: 100%; }
 .tkt-meta-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  margin: 3px 0; font-size: 11.5px;
+  margin: 3px 0; font-size: 12px;
 }
 .tkt-meta-row span { color: #666; }
 .tkt-meta-row strong { font-weight: 800; color: #111; text-align: right; max-width: 58%; word-break: break-word; }
@@ -502,7 +482,7 @@ function downloadTicket() {
 /* Items table */
 .tkt-items { width: 100%; border-collapse: collapse; margin: 4px 0; }
 .tkt-th {
-  font-size: 9.5px; font-weight: 900;
+  font-size: 10px; font-weight: 900;
   text-transform: uppercase; letter-spacing: .05em;
   color: #555; padding: 4px 0;
   border-bottom: 1px dashed #bbb;
@@ -550,6 +530,6 @@ function downloadTicket() {
 /* Footer */
 .tkt-footer { text-align: center; padding-top: 6px; }
 .tkt-footer-thanks { font-size: 13px; font-weight: 900; color: #000; }
-.tkt-footer-ref { font-size: 9.5px; color: #999; margin-top: 4px; }
+.tkt-footer-ref { font-size: 10px; color: #999; margin-top: 4px; }
 .tkt-footer-branch { font-size: 10px; color: #777; margin-top: 2px; }
 </style>

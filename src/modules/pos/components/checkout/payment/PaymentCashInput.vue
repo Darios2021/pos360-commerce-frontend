@@ -323,6 +323,18 @@ function moveHorizontal(direction) {
 }
 
 function handleKeyboardAction(action) {
+  // Atajo: si el cajero tipea un dígito con los botones rápidos enfocados
+  // entramos directo a modo manual con ese dígito preescrito.
+  if (typeof action === "string" && action.startsWith("digit:")) {
+    const d = action.slice(6);
+    if (!manualMode.value) {
+      enableManualMode();
+      emit("update:modelValue", d);
+      return true;
+    }
+    return false;
+  }
+
   if (action === "left") return moveHorizontal("left");
   if (action === "right") return moveHorizontal("right");
 
@@ -371,6 +383,9 @@ function handleKeyboardAction(action) {
 
 function focusCurrent() {
   nextTick(() => {
+    // Preferimos siempre que el cajero pueda teclear el monto directo.
+    // Si ya había valor manual previo, mantenerlo.
+    // Si no, enfocar el botón "Exacto" (default más rápido).
     if (manualMode.value) {
       focusManualInput();
       return;
@@ -559,7 +574,7 @@ defineExpose({
   white-space: nowrap;
 
   font-size: 0.62rem;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
 
   color: white;

@@ -1,187 +1,76 @@
 <template>
   <div class="ptb">
-    <div class="ptb-hotkeys">
-      <!-- F1 -->
-      <v-tooltip location="top" text="Ayuda rápida (F1)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-help"
-            :class="{ active: activeHotkey === 'F1' }"
-            @click="activateAndEmit('F1', 'help')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-help-circle-outline</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F1</span>
-          </button>
-        </template>
-      </v-tooltip>
+    <div class="ptb-hotkeys" role="toolbar" aria-label="Atajos del POS">
+      <template v-for="(group, gi) in renderedGroups" :key="group.id">
+        <span
+          v-if="gi > 0"
+          class="ptb-sep"
+          aria-hidden="true"
+        />
 
-      <!-- F2 -->
-      <v-tooltip location="top" text="Buscar producto (F2)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-find"
-            :class="{ active: activeHotkey === 'F2' }"
-            @click="activateAndEmit('F2', 'find-product')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-barcode-scan</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F2</span>
-          </button>
-        </template>
-      </v-tooltip>
+        <v-tooltip
+          v-for="item in group.items"
+          :key="item.key"
+          location="bottom"
+          open-delay="250"
+        >
+          <template #activator="{ props: tooltipProps }">
+            <button
+              v-bind="tooltipProps"
+              type="button"
+              class="ptb-hotkey"
+              :class="[item.color, { active: activeHotkey === item.key }]"
+              :aria-label="item.tooltip"
+              :aria-keyshortcuts="item.key"
+              @click="activateAndDispatch(item)"
+            >
+              <span class="ptb-hotkey-key">{{ item.key }}</span>
+              <div class="ptb-hotkey-icon">
+                <v-icon>{{ item.icon }}</v-icon>
+              </div>
+            </button>
+          </template>
 
-      <!-- F3 -->
-      <v-tooltip location="top" text="Clientes (F3)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-clients"
-            :class="{ active: activeHotkey === 'F3' }"
-            @click="activateAndEmit('F3', 'clients')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-account-multiple-outline</v-icon>
+          <div class="ptb-tooltip">
+            <div class="ptb-tooltip__title">{{ item.label }} ({{ item.key }})</div>
+            <div v-if="item.description" class="ptb-tooltip__desc">
+              {{ item.description }}
             </div>
-            <span class="ptb-hotkey-key">F3</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F4 -->
-      <v-tooltip location="top" text="Consulta (F4)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-search"
-            :class="{ active: activeHotkey === 'F4' }"
-            @click="activateAndEmit('F4', 'search')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-magnify</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F4</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F6 -->
-      <v-tooltip location="top" text="Carrito (F6)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-cart"
-            :class="{ active: activeHotkey === 'F6' }"
-            @click="activateAndEmit('F6', 'show-cart')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-cart-outline</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F6</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F7 -->
-      <v-tooltip location="top" text="Descuento (F7)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-discount"
-            :class="{ active: activeHotkey === 'F7' }"
-            @click="activateAndEmit('F7', 'discount')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-percent-outline</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F7</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F8 -->
-      <v-tooltip location="top" text="Ingreso caja (F8)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-cash-in"
-            :class="{ active: activeHotkey === 'F8' }"
-            @click="activateAndEmit('F8', 'cash-in')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-cash-plus</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F8</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F9 -->
-      <v-tooltip location="top" text="Cobrar (F9)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-pay"
-            :class="{ active: activeHotkey === 'F9' }"
-            @click="activateAndEmit('F9', 'pay')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-cash-register</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F9</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F10 -->
-      <v-tooltip location="top" text="Pago efectivo (F10)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-cash"
-            :class="{ active: activeHotkey === 'F10' }"
-            @click="activateAndEmit('F10', 'pay-cash')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-cash</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F10</span>
-          </button>
-        </template>
-      </v-tooltip>
-
-      <!-- F12 -->
-      <v-tooltip location="top" text="Otros pagos (F12)">
-        <template #activator="{ props: tooltipProps }">
-          <button
-            v-bind="tooltipProps"
-            class="ptb-hotkey hk-other-pay"
-            :class="{ active: activeHotkey === 'F12' }"
-            @click="activateAndEmit('F12', 'pay-other')"
-          >
-            <div class="ptb-hotkey-icon">
-              <v-icon>mdi-qrcode-scan</v-icon>
-            </div>
-            <span class="ptb-hotkey-key">F12</span>
-          </button>
-        </template>
-      </v-tooltip>
+          </div>
+        </v-tooltip>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import {
+  POS_SHORTCUTS,
+  groupShortcuts,
+  getShortcutByKey,
+} from "../config/posShortcuts.config";
+import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
+const props = defineProps({
+  // Se mantienen props existentes para no romper callers.
+  isViewOnly: { type: Boolean, default: false },
+  needsBranchPick: { type: Boolean, default: false },
+  hasMultiBranches: { type: Boolean, default: false },
+  loadingGlobal: { type: Boolean, default: false },
+  cartCount: { type: Number, default: 0 },
+});
+
+// Emitimos exactamente los eventos declarados en el config.
+// Eventos historicos + nuevos: help, find-product, clients, search, refresh,
+// show-cart, discount, cash-in, pay, pay-cash, pay-other.
+// (fullscreen se resuelve local, no se emite.)
 const emit = defineEmits([
   "help",
-  "clients",
   "find-product",
+  "clients",
   "search",
+  "refresh",
   "show-cart",
   "discount",
   "cash-in",
@@ -190,16 +79,38 @@ const emit = defineEmits([
   "pay-other",
 ]);
 
-const activeHotkey = ref("F2");
+const shortcuts = POS_SHORTCUTS;
+const renderedGroups = computed(() => groupShortcuts(shortcuts));
+
+// Cuando el checkout / branch-pick / caja-config esta abierto, solo
+// permitimos F1 (ayuda) y F11 (fullscreen). El resto lo maneja el
+// dialog activo (ej: F10 confirma venta en CheckoutDialog).
+const flow = usePosSalesFlow();
+const ALWAYS_ALLOWED_KEYS = new Set(["F1", "F11"]);
+
+function isBlockingDialogOpen() {
+  return !!(
+    flow?.checkoutDialog?.value ||
+    flow?.cajaConfigOpen?.value ||
+    flow?.cajaArqueoOpen?.value ||
+    flow?.branchPickOpen?.value ||
+    flow?.receiptOpen?.value
+  );
+}
+
+// Por defecto F2 (buscador) queda "holdActive" porque es el atajo de uso
+// mas frecuente y da feedback visual del estado "default" del cajero.
+const initialHold = shortcuts.find((s) => s.holdActive)?.key || null;
+const activeHotkey = ref(initialHold);
 let activeTimer = null;
 
 function isEditableElement(target) {
   if (!target) return false;
-
   const tag = String(target.tagName || "").toLowerCase();
   return (
     tag === "input" ||
     tag === "textarea" ||
+    tag === "select" ||
     target.isContentEditable === true
   );
 }
@@ -214,93 +125,97 @@ function setActiveHotkey(key, hold = false) {
 
   if (!hold) {
     activeTimer = setTimeout(() => {
-      if (activeHotkey.value === key && key !== "F2") {
-        activeHotkey.value = "F2";
+      if (activeHotkey.value === key && key !== initialHold) {
+        activeHotkey.value = initialHold;
       }
       activeTimer = null;
     }, 1200);
   }
 }
 
-function activateAndEmit(key, eventName) {
-  const hold = key === "F2";
-  setActiveHotkey(key, hold);
-  emit(eventName);
-}
+function toggleFullscreen() {
+  try {
+    const doc = document;
+    const inFs =
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.msFullscreenElement;
 
-function handleKeydown(e) {
-  if (e.repeat) return;
-  if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-  const editing = isEditableElement(e.target);
-
-  switch (e.key) {
-    case "F1":
-      e.preventDefault();
-      activateAndEmit("F1", "help");
-      break;
-
-    case "F2":
-      e.preventDefault();
-      activateAndEmit("F2", "find-product");
-      break;
-
-    case "F3":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F3", "clients");
-      break;
-
-    case "F4":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F4", "search");
-      break;
-
-    case "F6":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F6", "show-cart");
-      break;
-
-    case "F7":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F7", "discount");
-      break;
-
-    case "F8":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F8", "cash-in");
-      break;
-
-    case "F9":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F9", "pay");
-      break;
-
-    case "F10":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F10", "pay-cash");
-      break;
-
-    case "F12":
-      if (editing) return;
-      e.preventDefault();
-      activateAndEmit("F12", "pay-other");
-      break;
+    if (!inFs) {
+      const el = doc.documentElement;
+      const req =
+        el.requestFullscreen ||
+        el.webkitRequestFullscreen ||
+        el.msRequestFullscreen;
+      if (req) req.call(el);
+    } else {
+      const exit =
+        doc.exitFullscreen ||
+        doc.webkitExitFullscreen ||
+        doc.msExitFullscreen;
+      if (exit) exit.call(doc);
+    }
+  } catch (err) {
+    console.warn("[POS] fullscreen toggle failed", err);
   }
 }
 
+function dispatch(item) {
+  if (!item) return;
+
+  if (item.localOnly) {
+    if (item.event === "fullscreen") {
+      toggleFullscreen();
+    }
+    return;
+  }
+
+  if (item.event) {
+    emit(item.event);
+  }
+}
+
+function activateAndDispatch(item) {
+  if (!item) return;
+  setActiveHotkey(item.key, !!item.holdActive);
+  dispatch(item);
+}
+
+function handleKeydown(e) {
+  if (!e || e.repeat) return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  const key = String(e.key || "");
+  if (!/^F([1-9]|1[0-2])$/.test(key)) return;
+
+  const item = getShortcutByKey(key);
+  if (!item) return;
+
+  const editing = isEditableElement(e.target);
+  if (editing && !item.allowInInput) return;
+
+  // Si hay un dialog bloqueante abierto, cedemos todas las F-keys al
+  // dialog (que ya escucha las que le importan con su propio listener).
+  // Solo mantenemos F1 (ayuda) y F11 (fullscreen) siempre activos.
+  if (isBlockingDialogOpen() && !ALWAYS_ALLOWED_KEYS.has(item.key)) {
+    return;
+  }
+
+  // Bloqueamos la accion default del browser (F1 ayuda, F3 find,
+  // F5 reload, F11 fullscreen nativo, F12 devtools, etc.).
+  e.preventDefault();
+  e.stopPropagation();
+
+  activateAndDispatch(item);
+}
+
 onMounted(() => {
-  window.addEventListener("keydown", handleKeydown);
+  // capture: true para ganarle al navegador y al resto del DOM.
+  window.addEventListener("keydown", handleKeydown, { capture: true });
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", handleKeydown);
+  window.removeEventListener("keydown", handleKeydown, { capture: true });
 
   if (activeTimer) {
     clearTimeout(activeTimer);
@@ -322,7 +237,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 6px;
   flex-wrap: nowrap;
-  padding: 0 12px;
+  padding: 0 10px;
   height: 100%;
   overflow-x: auto;
   scrollbar-width: none;
@@ -332,73 +247,149 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+/* Separador vertical translucido entre grupos (sutil). */
+.ptb-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 1px;
+}
+
 .ptb-hotkey {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 7px;
   min-width: 0;
-  height: 34px;
+  height: 38px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   flex: 0 0 auto;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  color: inherit;
   transition:
     background 0.13s ease,
     border-color 0.13s ease,
-    box-shadow 0.13s ease;
+    box-shadow 0.13s ease,
+    transform 0.08s ease;
 }
 
 .ptb-hotkey:hover {
   background: rgba(var(--v-theme-on-surface), 0.07);
-  border-color: rgba(var(--v-theme-on-surface), 0.14);
+  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  filter: brightness(1.05);
+}
+
+/* Foco visible por teclado (keyboard-first). */
+.ptb-hotkey:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+/* Pulsado: escala sutil + flash primary. */
+.ptb-hotkey:active {
+  transform: scale(0.97);
 }
 
 .ptb-hotkey.active {
-  background: rgba(var(--v-theme-primary), 0.1);
-  border-color: rgba(var(--v-theme-primary), 0.28);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-color: rgba(var(--v-theme-primary), 0.32);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.14);
 }
 
 .ptb-hotkey.active .ptb-hotkey-key {
   color: rgb(var(--v-theme-primary));
 }
 
+.ptb-hotkey[disabled],
+.ptb-hotkey[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .ptb-hotkey-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .ptb-hotkey-icon :deep(.v-icon) {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .ptb-hotkey-key {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
   letter-spacing: 0.02em;
-  opacity: 0.7;
+  opacity: 0.82;
   line-height: 1;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ptb-hotkey.active .ptb-hotkey-icon {
   opacity: 1;
 }
 
-/* COLORES */
-.hk-help { color: #3b82f6; }
-.hk-clients { color: #8b5cf6; }
-.hk-find { color: #06b6d4; }
-.hk-search { color: #0ea5e9; }
-.hk-cart { color: #2563eb; }
-.hk-discount { color: #ec4899; }
-.hk-cash-in { color: #f59e0b; }
-.hk-pay { color: #22c55e; }
-.hk-cash { color: #16a34a; }
-.hk-other-pay { color: #14b8a6; }
+/* Contenido del tooltip (v-tooltip) */
+.ptb-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+}
+
+.ptb-tooltip__title {
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.ptb-tooltip__desc {
+  font-size: 11px;
+  opacity: 0.85;
+  line-height: 1.3;
+}
+
+/* Mobile: mas compacto, mantener scroll horizontal. */
+@media (max-width: 599px) {
+  .ptb-hotkey {
+    padding: 0 8px;
+    gap: 5px;
+    height: 36px;
+  }
+  .ptb-hotkey-key {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+  .ptb-hotkeys {
+    justify-content: flex-start;
+  }
+}
+
+/* COLORES semanticos por grupo / hotkey.
+   Se mapean a tokens del theme de Vuetify para que dark mode funcione
+   sin sombras invisibles. */
+.hk-help       { color: rgb(var(--v-theme-primary)); }
+.hk-find       { color: rgb(var(--v-theme-info)); }
+.hk-clients    { color: rgba(var(--v-theme-primary), 0.78); }
+.hk-search     { color: rgba(var(--v-theme-info), 0.78); }
+.hk-refresh    { color: rgba(var(--v-theme-info), 0.68); }
+.hk-cart       { color: rgb(var(--v-theme-primary)); }
+.hk-discount   { color: rgb(var(--v-theme-error)); }
+.hk-cash-in    { color: rgb(var(--v-theme-warning)); }
+.hk-pay        { color: rgb(var(--v-theme-success)); }
+.hk-cash       { color: rgba(var(--v-theme-success), 0.78); }
+.hk-other-pay  { color: rgba(var(--v-theme-on-surface), 0.72); }
+.hk-fullscreen { color: rgba(var(--v-theme-on-surface), 0.72); }
 </style>

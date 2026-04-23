@@ -277,11 +277,11 @@ defineExpose({ focusSearch });
   min-height: 34px;
   padding-top: 4px;
   padding-bottom: 4px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .pf-field :deep(input) {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .pf-field :deep(.v-field--focused) {
@@ -306,7 +306,7 @@ defineExpose({ focusSearch });
 }
 
 .pf-stats {
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   line-height: 1.2;
 }
 
@@ -326,7 +326,7 @@ defineExpose({ focusSearch });
   min-height: 30px !important;
   padding: 0 10px !important;
   border-radius: 11px !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   font-weight: 800 !important;
   text-transform: none !important;
 }

@@ -204,7 +204,7 @@ function money(val) {
   min-width: 0;
 }
 .ptile-price-main {
-  font-weight: 1000;
+  font-weight: 900;
   font-size: 14px;
   line-height: 1.1;
   white-space: nowrap; /* ✅ NO wrap */

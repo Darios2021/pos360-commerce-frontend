@@ -99,7 +99,7 @@ const openedByLabel = computed(() => props.openedBy || "");
   padding: 12px 16px;
   border-radius: 18px;
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-border-color), 0.6);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -126,10 +126,10 @@ const openedByLabel = computed(() => props.openedBy || "");
 }
 
 .caja-inline.is-open .caja-inline__dot {
-  background: #22c55e;
+  background: rgb(var(--v-theme-success));
 }
 .caja-inline.is-closed .caja-inline__dot {
-  background: #ef4444;
+  background: rgb(var(--v-theme-error));
 }
 
 .caja-inline__badge {
@@ -140,12 +140,12 @@ const openedByLabel = computed(() => props.openedBy || "");
 }
 
 .caja-inline.is-open .caja-inline__badge {
-  color: #166534;
-  background: rgba(34, 197, 94, 0.1);
+  color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.12);
 }
 .caja-inline.is-closed .caja-inline__badge {
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.1);
+  color: rgb(var(--v-theme-error));
+  background: rgba(var(--v-theme-error), 0.12);
 }
 
 /* ===== FILA INFERIOR ===== */
@@ -175,7 +175,7 @@ const openedByLabel = computed(() => props.openedBy || "");
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-border-color), 0.4);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 /* variantes */
@@ -184,13 +184,13 @@ const openedByLabel = computed(() => props.openedBy || "");
 }
 
 .caja-inline__icon-btn--open {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  background: rgba(var(--v-theme-success), 0.12);
+  color: rgb(var(--v-theme-success));
 }
 
 .caja-inline__icon-btn--close {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
+  background: rgba(var(--v-theme-error), 0.12);
+  color: rgb(var(--v-theme-error));
 }
 
 /* quitar efectos */
@@ -199,23 +199,16 @@ const openedByLabel = computed(() => props.openedBy || "");
   opacity: 0 !important;
 }
 
-/* ===== DARK MODE FIX ===== */
+/* ===== DARK MODE FIX =====
+   Los colores ya usan tokens semánticos (on-surface / success / error),
+   así que dark mode funciona solo. Sólo ajustamos el borde del contenedor
+   y del botón neutral para que se vean bien sobre surface oscuro. */
 :global(.v-theme--dark) .caja-inline {
-  background: rgb(var(--v-theme-surface));
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-:global(.v-theme--dark) .caja-inline__meta {
-  color: rgba(255, 255, 255, 0.75);
-}
-
 :global(.v-theme--dark) .caja-inline__icon-btn {
-  color: white !important;
-  border-color: rgba(255,255,255,0.15);
-}
-
-:global(.v-theme--dark) .caja-inline__icon-btn .v-icon {
-  color: white !important;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* responsive */

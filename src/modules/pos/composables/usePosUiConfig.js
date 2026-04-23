@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
-import { posUiConfig } from "../config/posUi.config";
+import { posUiConfig, posUiTokens } from "../config/posUi.config";
 
 export function usePosUiConfig() {
   const { mdAndDown, smAndDown } = useDisplay();
@@ -12,6 +12,9 @@ export function usePosUiConfig() {
   });
 
   const cssVars = computed(() => ({
+    // Tokens globales del módulo POS (radius, bordes, shadows, focus ring)
+    ...posUiTokens,
+
     "--pos-root-padding": cfg.value.layout.rootPadding,
     "--pos-gap": cfg.value.layout.gap,
     "--pos-topbar-height": cfg.value.layout.topbarHeight,

@@ -100,3 +100,14 @@ const { cssVars } = usePosUiConfig();
   padding: var(--pos-shell-cart-padding, 0);
 }
 </style>
+
+<!-- Estilos globales del módulo POS (no scoped): clases compartidas
+     por múltiples sections/components. Definido una sola vez acá para
+     evitar duplicación y que dark mode funcione via tokens de Vuetify. -->
+<style>
+.pos-root .pos-surface {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid var(--pos-card-border, rgba(var(--v-theme-on-surface), 0.1));
+  box-shadow: var(--pos-card-shadow, 0 8px 24px rgba(0, 0, 0, 0.06));
+}
+</style>

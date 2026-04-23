@@ -190,7 +190,7 @@ const brandModel = computed(() => {
 }
 
 .pc-title {
-  font-weight: 950;
+  font-weight: 900;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;
@@ -202,7 +202,7 @@ const brandModel = computed(() => {
 
 .pc-sub {
   margin-top: 2px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: rgba(var(--v-theme-on-surface), 0.62);
   white-space: nowrap;
   overflow: hidden;
@@ -213,7 +213,7 @@ const brandModel = computed(() => {
   margin-top: 6px;
 }
 .pc-price-main {
-  font-weight: 1000;
+  font-weight: 900;
   font-size: 14px;
   line-height: 1;
   white-space: nowrap; /* ✅ NO se corta */

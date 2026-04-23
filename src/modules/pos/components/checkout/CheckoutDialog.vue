@@ -3,47 +3,22 @@
     <v-card class="ck-root">
 
       <!-- HEADER: title + segmented progress + total + close -->
-      <div class="ck-hdr">
-        <div class="ck-hdr-left">
-          <span class="ck-hdr-title">COBRO POS</span>
-          <div class="ck-progress">
-            <template v-for="(item, idx) in screenSteps" :key="item.key">
-              <div
-                class="ck-prog-step"
-                :class="{
-                  active: currentScreen === item.key,
-                  done: screenIndex(item.key) < currentScreenIndex,
-                }"
-              >
-                <div class="ck-prog-dot">
-                  <v-icon v-if="screenIndex(item.key) < currentScreenIndex" size="10">mdi-check</v-icon>
-                  <span v-else>{{ idx + 1 }}</span>
-                </div>
-                <span class="ck-prog-label">{{ item.label }}</span>
-              </div>
-              <div
-                v-if="idx < screenSteps.length - 1"
-                class="ck-prog-line"
-                :class="{ done: screenIndex(item.key) < currentScreenIndex }"
-              />
-            </template>
-          </div>
-        </div>
-
-        <div class="ck-hdr-right">
-          <div class="ck-hdr-total">
-            <span class="ck-hdr-total-lbl">TOTAL</span>
-            <span class="ck-hdr-total-val">{{ money(totalSafe) }}</span>
-          </div>
-          <v-btn icon variant="text" size="small" :disabled="confirmBusy" @click="closeNow">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </div>
+      <PosCheckoutHeader
+        :steps="screenSteps"
+        :current-step="currentScreen"
+        :total="totalSafe"
+        :confirm-busy="confirmBusy"
+        @close="closeNow"
+        @close:blocked="handleCloseBlocked"
+      />
 
       <!-- BODY: always split left + right -->
       <div class="ck-body">
-        <section class="ck-body-main">
+        <section
+          class="ck-body-main"
+          :class="{ 'ck-shake': shakeKey === currentScreen }"
+        >
+          <transition name="ck-screen-fade" mode="out-in">
           <PaymentMethodScreen
             v-if="currentScreen === 'payment-method'"
             ref="paymentMethodScreenRef"
@@ -139,6 +114,7 @@
             @confirm="onConfirm"
             @back="goPrevScreen"
           />
+          </transition>
         </section>
 
         <!-- RIGHT: receipt summary, always visible -->
@@ -208,6 +184,7 @@ import {
   nextTick,
 } from "vue";
 
+import PosCheckoutHeader from "./PosCheckoutHeader.vue";
 import PaymentMethodScreen from "./screens/PaymentMethodScreen.vue";
 import PaymentConfigScreen from "./screens/PaymentConfigScreen.vue";
 import InvoiceModeScreen from "./screens/InvoiceModeScreen.vue";
@@ -215,6 +192,14 @@ import CustomerScreen from "./screens/CustomerScreen.vue";
 import ConfirmScreen from "./screens/ConfirmScreen.vue";
 
 import CheckoutSummary from "./summary/CheckoutSummary.vue";
+
+import { useSnackbar } from "../../composables/useSnackbar";
+
+const { toast } = useSnackbar();
+
+function handleCloseBlocked() {
+  toast("Esperá, procesando venta…", { color: "info", timeout: 1500 });
+}
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -434,7 +419,7 @@ function makeMixedRow(input = {}) {
   };
 }
 
-const screenSteps = [
+const ALL_SCREEN_STEPS = [
   { key: "payment-method", label: "Pago" },
   { key: "payment-config", label: "Config." },
   { key: "invoice-mode", label: "Factura" },
@@ -444,8 +429,14 @@ const screenSteps = [
 
 const currentScreen = ref("payment-method");
 
+const screenSteps = computed(() => {
+  const isNoFiscal = String(state.invoiceMode || "").toUpperCase() === "NO_FISCAL";
+  if (!isNoFiscal) return ALL_SCREEN_STEPS;
+  return ALL_SCREEN_STEPS.filter((s) => s.key !== "customer");
+});
+
 function screenIndex(key) {
-  return screenSteps.findIndex((x) => x.key === key);
+  return screenSteps.value.findIndex((x) => x.key === key);
 }
 
 const currentScreenIndex = computed(() => screenIndex(currentScreen.value));
@@ -466,6 +457,11 @@ const confirmScreenRef = ref(null);
 
 const confirmingLocal = ref(false);
 const confirmBusy = computed(() => !!props.confirmLoading || !!confirmingLocal.value);
+
+// Controla la animación shake al fallar una validación de avance.
+// Se pone en el key del screen ("payment-method", "payment-config", "customer")
+// y se resetea tras 380ms.
+const shakeKey = ref("");
 
 function setMixedAmountRef(el) {
   if (el) mixedAmountRef.value = el;
@@ -958,15 +954,32 @@ const primaryDisabled = computed(() => {
 });
 
 const footerHint = computed(() => {
-  if (currentScreen.value === "payment-method") return "← → ↑ ↓ mover  ·  teclas 1-9 para elegir rápido";
-  if (currentScreen.value === "payment-config") return "Enter seguir · Borrar volver";
-  if (currentScreen.value === "invoice-mode")   return "← → mover  ·  1=No fiscal  2=Fact.B  3=Fact.A  4=Fact.C";
-  if (currentScreen.value === "customer")       return "Tab / Enter avanzar campo · Borrar volver";
-  return "Enter confirmar venta";
+  if (currentScreen.value === "payment-method") {
+    return "1-9 elegir medio · ← → ↑ ↓ navegar · Enter siguiente · Borrar atrás";
+  }
+  if (currentScreen.value === "payment-config") {
+    if (state.mixedMode) {
+      return "↑ ↓ filas · ← → medio/monto · tipeá el monto · Enter siguiente · Borrar atrás";
+    }
+    if (singleUsesCashEntry.value) {
+      return "← → opciones · tipeá número para monto manual · Enter siguiente · Borrar atrás";
+    }
+    if (selectedMethod.value && methodSupportsInstallments(selectedMethod.value, state.cardKind)) {
+      return "← → cuotas · ↑ ↓ tipo tarjeta · Enter siguiente · Borrar atrás";
+    }
+    return "Enter siguiente · Borrar atrás";
+  }
+  if (currentScreen.value === "invoice-mode") {
+    return "1 No fiscal · 2 Factura B · 3 Factura A · 4 Factura C · Enter siguiente · Borrar atrás";
+  }
+  if (currentScreen.value === "customer") {
+    return "Completá datos · Tab entre campos · Enter siguiente · Borrar atrás";
+  }
+  return "Enter o F10 confirmar venta · Borrar atrás · Esc cancelar";
 });
 
 function moveToScreen(key) {
-  if (!screenSteps.some((x) => x.key === key)) return;
+  if (!screenSteps.value.some((x) => x.key === key)) return;
   currentScreen.value = key;
   nextTick(() => focusActiveScreen());
 }
@@ -974,7 +987,7 @@ function moveToScreen(key) {
 function goPrevScreen() {
   if (backDisabled.value || confirmBusy.value) return;
   const prevIdx = currentScreenIndex.value - 1;
-  if (prevIdx >= 0) moveToScreen(screenSteps[prevIdx].key);
+  if (prevIdx >= 0) moveToScreen(screenSteps.value[prevIdx].key);
 }
 
 function handlePrimaryAction() {
@@ -987,21 +1000,67 @@ function handlePrimaryAction() {
   if (currentScreen.value === "confirm") return onConfirm();
 }
 
+function triggerShake(screenKey) {
+  shakeKey.value = screenKey;
+  // reset en el próximo tick para permitir re-disparo
+  setTimeout(() => {
+    if (shakeKey.value === screenKey) shakeKey.value = "";
+  }, 380);
+}
+
 function goNextFromPaymentMethod() {
-  if (!paymentMethodValid.value) return;
+  if (!paymentMethodValid.value) {
+    triggerShake("payment-method");
+    toast("Elegí un método de pago", { color: "warning", timeout: 1800 });
+    return;
+  }
   moveToScreen("payment-config");
 }
 
 function goNextFromPaymentConfig() {
-  if (!paymentConfigValid.value) return;
+  if (!paymentConfigValid.value) {
+    triggerShake("payment-config");
+    if (state.mixedMode) {
+      if (mixedMissing.value > 0) {
+        toast(`Monto insuficiente. Falta ${money(mixedMissing.value)}`, {
+          color: "warning",
+          timeout: 2200,
+        });
+      } else {
+        toast("Completá el pago mixto", { color: "warning", timeout: 1800 });
+      }
+    } else if (singleUsesCashEntry.value && singleMissing.value > 0) {
+      toast(`Monto insuficiente. Falta ${money(singleMissing.value)}`, {
+        color: "warning",
+        timeout: 2200,
+      });
+    } else {
+      toast("Completá la configuración del pago", { color: "warning", timeout: 1800 });
+    }
+    return;
+  }
   moveToScreen("invoice-mode");
 }
 
 function goNextFromInvoiceMode() {
-  moveToScreen("customer");
+  const isNoFiscal = String(state.invoiceMode || "").toUpperCase() === "NO_FISCAL";
+  moveToScreen(isNoFiscal ? "confirm" : "customer");
 }
 
 function goNextFromCustomer() {
+  const isFiscal = String(state.invoiceMode || "").toUpperCase() === "FISCAL";
+  if (isFiscal) {
+    const name = String(customerName.value || "").trim();
+    const doc = String(customerDoc.value || "").trim();
+    if (!name || !doc) {
+      triggerShake("customer");
+      toast("Completá nombre y DNI/CUIT para facturar", {
+        color: "warning",
+        timeout: 2200,
+      });
+      return;
+    }
+  }
   moveToScreen("confirm");
 }
 
@@ -1170,6 +1229,31 @@ function closeNow() {
 function onConfirm() {
   if (confirmBusy.value) return;
 
+  // Defensa: si algún dato crítico falta, no disparamos confirm al backend.
+  if (!paymentMethodValid.value) {
+    triggerShake("confirm");
+    toast("Falta el método de pago", { color: "error", timeout: 2200 });
+    moveToScreen("payment-method");
+    return;
+  }
+  if (!paymentConfigValid.value) {
+    triggerShake("confirm");
+    toast("Falta completar la configuración del pago", { color: "error", timeout: 2200 });
+    moveToScreen("payment-config");
+    return;
+  }
+  const isFiscal = String(state.invoiceMode || "").toUpperCase() === "FISCAL";
+  if (isFiscal) {
+    const name = String(customerName.value || "").trim();
+    const doc = String(customerDoc.value || "").trim();
+    if (!name || !doc) {
+      triggerShake("confirm");
+      toast("Falta el cliente para factura", { color: "error", timeout: 2200 });
+      moveToScreen("customer");
+      return;
+    }
+  }
+
   confirmingLocal.value = true;
 
   emit("confirm", {
@@ -1244,15 +1328,29 @@ function onKeydown(e) {
     return;
   }
 
+  // F10 confirma venta desde la última pantalla, sin importar dónde está el foco.
+  if (key === "F10") {
+    if (currentScreen.value === "confirm") {
+      e.preventDefault();
+      e.stopPropagation();
+      onConfirm();
+    }
+    return;
+  }
+
   if (typing) {
     return;
   }
 
   // ── Number shortcuts ──────────────────────────────────────────────────────
-  const digit = parseInt(key, 10);
-  if (Number.isFinite(digit) && digit >= 1 && digit <= 9) {
-    // Payment method selection (step 1)
-    if (currentScreen.value === "payment-method") {
+  // Aceptamos también el 0 y dígitos del numpad. En payment-config (cash)
+  // un dígito directo dispara modo manual con ese número.
+  const digitKey = /^[0-9]$/.test(key) ? key : null;
+  const digit = digitKey ? parseInt(digitKey, 10) : NaN;
+
+  if (Number.isFinite(digit)) {
+    // Payment method selection (step 1): 1-9
+    if (currentScreen.value === "payment-method" && digit >= 1 && digit <= 9) {
       e.preventDefault();
       e.stopPropagation();
       const methods = visiblePaymentMethods.value;
@@ -1264,11 +1362,18 @@ function onKeydown(e) {
       }
       return;
     }
-    // Invoice mode selection (step 3)
-    if (currentScreen.value === "invoice-mode") {
+    // Invoice mode selection (step 3): 1-4
+    if (currentScreen.value === "invoice-mode" && digit >= 1 && digit <= 9) {
       e.preventDefault();
       e.stopPropagation();
       invoiceModeScreenRef.value?.handleKeyboardAction?.(`digit:${digit}`);
+      return;
+    }
+    // Payment config cash: un dígito directo salta a modo manual
+    if (currentScreen.value === "payment-config" && !state.mixedMode && singleUsesCashEntry.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      paymentConfigScreenRef.value?.handleKeyboardAction?.(`digit:${digitKey}`);
       return;
     }
   }
@@ -1358,141 +1463,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* ── Header ── */
-.ck-hdr {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  flex: 0 0 auto;
-  gap: 12px;
-}
-
-.ck-hdr-left {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ck-hdr-title {
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.5;
-  line-height: 1;
-}
-
-/* ── Segmented progress bar ── */
-.ck-progress {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0;
-  flex-wrap: nowrap;
-}
-
-.ck-prog-step {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: default;
-}
-
-.ck-prog-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(var(--v-theme-on-surface), 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
-  font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-  flex: 0 0 auto;
-  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, color 0.18s;
-}
-
-.ck-prog-step.active .ck-prog-dot {
-  background: rgb(var(--v-theme-primary));
-  border-color: rgb(var(--v-theme-primary));
-  color: #fff;
-  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.2);
-}
-
-.ck-prog-step.done .ck-prog-dot {
-  background: rgba(var(--v-theme-primary), 0.15);
-  border-color: rgba(var(--v-theme-primary), 0.4);
-}
-
-.ck-prog-step.done .ck-prog-dot :deep(.v-icon) {
-  color: rgb(var(--v-theme-primary));
-}
-
-.ck-prog-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-  white-space: nowrap;
-  transition: color 0.18s, font-weight 0.18s;
-}
-
-.ck-prog-step.active .ck-prog-label {
-  color: rgb(var(--v-theme-on-surface));
-  font-weight: 900;
-}
-
-.ck-prog-step.done .ck-prog-label {
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.ck-prog-line {
-  width: 20px;
-  height: 2px;
-  background: rgba(var(--v-theme-on-surface), 0.1);
-  margin: 0 3px;
-  flex: 0 0 auto;
-  transition: background 0.18s;
-}
-
-.ck-prog-line.done {
-  background: rgba(var(--v-theme-primary), 0.4);
-}
-
-/* ── Header right ── */
-.ck-hdr-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.ck-hdr-total {
-  text-align: right;
-}
-
-.ck-hdr-total-lbl {
-  font-size: 0.55rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  display: block;
-  line-height: 1;
-  margin-bottom: 1px;
-}
-
-.ck-hdr-total-val {
-  font-size: 1.22rem;
-  font-weight: 950;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-  line-height: 1;
-}
-
 /* ── Body: always split ── */
 .ck-body {
   flex: 1 1 auto;
@@ -1506,6 +1476,33 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   min-height: 0;
   overflow: hidden;
   padding: 10px 12px;
+}
+
+/* Transición suave al cambiar de pantalla */
+.ck-screen-fade-enter-active,
+.ck-screen-fade-leave-active {
+  transition: opacity 140ms ease, transform 160ms ease;
+}
+.ck-screen-fade-enter-from {
+  opacity: 0;
+  transform: translateX(8px);
+}
+.ck-screen-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+/* Shake al fallar una validación */
+@keyframes ck-shake-kf {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-6px); }
+  30%      { transform: translateX(5px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(3px); }
+  75%      { transform: translateX(-2px); }
+}
+.ck-shake {
+  animation: ck-shake-kf 360ms ease;
 }
 
 .ck-body-aside {
@@ -1551,7 +1548,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   gap: 12px !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-weight: 950 !important;
+  font-weight: 900 !important;
   transition: transform 0.14s ease, box-shadow 0.14s ease !important;
 }
 
@@ -1590,7 +1587,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-act-main {
   font-size: 0.86rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: 0.01em;
 }
 
@@ -1600,42 +1597,53 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   opacity: 0.82;
 }
 
-/* BORRAR button */
+/* BORRAR button
+   Mantiene el efecto "tecla grande" (gradient + insets) pero
+   usa tokens de Vuetify para funcionar correctamente en dark mode. */
 .ck-act--back {
   min-width: 160px !important;
-  color: #111827 !important;
-  background: linear-gradient(180deg, #f0f0f0 0%, #d4d4d4 100%) !important;
-  border: 2px solid rgba(18, 24, 33, 0.22) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-on-surface), 0.04) 0%,
+    rgba(var(--v-theme-on-surface), 0.14) 100%
+  ) !important;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.22) !important;
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.07),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.08),
     0 8px 20px rgba(0, 0, 0, 0.18) !important;
 }
 
 .ck-act--back .ck-act-key {
-  background: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
 }
 
 .ck-act--back .ck-act-main,
 .ck-act--back .ck-act-sub {
-  color: #111827;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-act--back :deep(.v-icon) {
-  color: #111827 !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
-/* ENTER button */
+/* ENTER button
+   Misma lógica: efecto "tecla grande" tokenizado contra primary. */
 .ck-act--enter {
   min-width: 180px !important;
-  color: #ffffff !important;
-  background: linear-gradient(180deg, #0d6fd4 0%, #0358aa 48%, #024d95 100%) !important;
-  border: 2px solid rgba(2, 49, 100, 0.5) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-primary), 1) 0%,
+    rgba(var(--v-theme-primary), 0.88) 100%
+  ) !important;
+  border: 2px solid rgba(var(--v-theme-primary), 0.6) !important;
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.24),
     inset 0 -3px 0 rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(3, 88, 170, 0.44) !important;
+    0 10px 24px rgba(var(--v-theme-primary), 0.4) !important;
 }
 
 .ck-act--enter .ck-act-key {
@@ -1645,11 +1653,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-act--enter .ck-act-main,
 .ck-act--enter .ck-act-sub {
-  color: #ffffff;
+  color: rgb(var(--v-theme-on-primary));
 }
 
 .ck-act--enter :deep(.v-icon) {
-  color: #ffffff !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
 }
 
 /* ── Dark theme active states ── */
@@ -1724,21 +1732,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 @media (max-width: 760px) {
-  .ck-hdr {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 8px 10px;
-    gap: 6px;
-  }
-
-  .ck-hdr-right {
-    justify-content: space-between;
-  }
-
-  .ck-hdr-total {
-    text-align: left;
-  }
-
   .ck-ftr {
     flex-direction: column;
     align-items: stretch;
@@ -1755,11 +1748,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
     flex: 1 1 auto;
     justify-content: center !important;
     min-width: 0 !important;
-  }
-
-  .ck-progress {
-    flex-wrap: wrap;
-    gap: 2px;
   }
 }
 </style>

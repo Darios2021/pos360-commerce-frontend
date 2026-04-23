@@ -8,13 +8,16 @@
       :loading-global="loadingGlobal"
       :cart-count="cartCount"
       @help="handleHelp"
+      @find-product="handleFindProduct"
       @clients="handleClients"
       @search="handleSearch"
-      @show-cart="openCartDialog"
+      @refresh="handleRefresh"
+      @show-cart="handleShowCart"
+      @discount="handleDiscount"
       @cash-in="handleCashIn"
       @pay="handlePay"
-      @blocked-pay="handleBlockedPay"
-      @blocked-cash-in="handleBlockedCashIn"
+      @pay-cash="handlePayCash"
+      @pay-other="handlePayOther"
     />
   </div>
 </template>
@@ -28,6 +31,7 @@ const {
   hasMultiBranches,
   loadingGlobal,
   cartCount,
+  cartItems,
   helpOpen,
   consultaOpen,
   showCartDialog,
@@ -35,12 +39,17 @@ const {
   openCheckoutSafe,
   openCajaConfig,
   toast,
+  requestFocusSearch,
+  requestRefreshCatalog,
 } = usePosSalesFlow();
 
-function openCartDialog() {
-  showCartDialog.value = true;
-  helpOpen.value = false;
-  consultaOpen.value = false;
+// F6 toggle: abre/cierra el dialog de carrito con la misma tecla.
+function handleShowCart() {
+  showCartDialog.value = !showCartDialog.value;
+  if (showCartDialog.value) {
+    helpOpen.value = false;
+    consultaOpen.value = false;
+  }
 }
 
 function handleHelp() {
@@ -51,6 +60,15 @@ function handleHelp() {
   }
 }
 
+function handleFindProduct() {
+  // F2: enfocar el buscador de productos / scanner a la izquierda.
+  // Si un dialog esta abierto lo cerramos para que el foco llegue real.
+  helpOpen.value = false;
+  consultaOpen.value = false;
+  showCartDialog.value = false;
+  requestFocusSearch();
+}
+
 function handleSearch() {
   consultaOpen.value = !consultaOpen.value;
   if (consultaOpen.value) {
@@ -59,69 +77,57 @@ function handleSearch() {
   }
 }
 
+function handleRefresh() {
+  // F5: refrescar catalogo de productos.
+  requestRefreshCatalog();
+  toast("Actualizando catalogo...");
+}
+
 async function handlePay() {
+  await openCheckoutSafe();
+}
+
+async function handlePayCash() {
+  // F10: cobro rapido. Abre checkout; el modo efectivo queda como
+  // default del PaymentMethodSelector (kind CASH) definido en
+  // usePosSalesFlow.resetCheckoutUiState.
+  if (!cartItems.value.length) {
+    toast("Agrega productos al carrito antes de cobrar");
+    return;
+  }
+  await openCheckoutSafe();
+}
+
+async function handlePayOther() {
+  // F12: abrir checkout general. El cajero elige QR/transferencia/etc.
+  if (!cartItems.value.length) {
+    toast("Agrega productos al carrito antes de cobrar");
+    return;
+  }
   await openCheckoutSafe();
 }
 
 async function handleCashIn() {
   if (!isCajaOpen.value) {
-    toast("Primero abrí una caja");
+    toast("Primero abri una caja");
     openCajaConfig();
     return;
   }
 
-  toast("Ingreso de dinero: conectá este botón al modal de movimientos de caja");
+  toast("Ingreso de dinero: conecta este boton al modal de movimientos de caja");
 }
 
 function handleClients() {
-  toast("Clientes: usá el panel de cliente de la derecha");
+  toast("Cliente: usa el panel de la derecha");
 }
 
-function handleBlockedPay(payload) {
-  const reason = String(payload?.reason || "");
-
-  if (reason === "EMPTY_CART") {
-    toast("Agregá productos al carrito antes de cobrar");
+function handleDiscount() {
+  // F7: descuento manual. Todavia no hay UI dedicada en el dominio.
+  if (!cartItems.value.length) {
+    toast("Agrega productos antes de aplicar descuento");
     return;
   }
-
-  if (reason === "NEEDS_BRANCH") {
-    toast("Seleccioná una sucursal para operar");
-    return;
-  }
-
-  if (reason === "VIEW_ONLY") {
-    toast("La vista está en modo solo lectura");
-    return;
-  }
-
-  if (reason === "LOADING") {
-    toast("Esperá a que termine la operación actual");
-    return;
-  }
-
-  toast("No se puede iniciar el cobro todavía");
-}
-
-function handleBlockedCashIn(payload) {
-  const reason = String(payload?.reason || "");
-
-  if (reason === "NEEDS_BRANCH") {
-    toast("Seleccioná una sucursal para operar");
-    return;
-  }
-
-  if (reason === "VIEW_ONLY") {
-    toast("La vista está en modo solo lectura");
-    return;
-  }
-
-  if (reason === "LOADING") {
-    toast("Esperá a que termine la operación actual");
-    return;
-  }
-
-  toast("No se pudo abrir el ingreso de dinero");
+  toast("Descuento manual: proximamente");
 }
 </script>
 
@@ -143,13 +149,7 @@ function handleBlockedCashIn(payload) {
   overflow: hidden;
 }
 
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.05),
-    0 2px 8px rgba(15, 23, 42, 0.04);
-}
+/* .pos-surface se define globalmente en PosPage.vue (clases compartidas) */
 
 /* ===== FIX REAL DEL TOPBAR ===== */
 .pos-topbar-shell :deep(.ptb-root),
@@ -176,55 +176,5 @@ function handleBlockedCashIn(payload) {
   gap: clamp(8px, 1vw, 16px);
   justify-content: space-evenly;
   overflow: hidden;
-}
-
-/* botón / hotkey */
-.pos-topbar-shell :deep(.ptb-hotkey),
-.pos-topbar-shell :deep(.ptb-action),
-.pos-topbar-shell :deep(.ptb-item),
-.pos-topbar-shell :deep(.ptb-btn) {
-  min-height: 0;
-  height: var(--pos-topbar-button-height, 64px);
-  max-height: var(--pos-topbar-button-height, 64px);
-  padding: 4px 8px;
-  border-radius: 18px;
-}
-
-/* ícono */
-.pos-topbar-shell :deep(.ptb-icon),
-.pos-topbar-shell :deep(.v-icon) {
-  font-size: var(--pos-topbar-icon-size, 22px) !important;
-}
-
-/* tecla grande */
-.pos-topbar-shell :deep(.ptb-hotkey-key),
-.pos-topbar-shell :deep(.ptb-key),
-.pos-topbar-shell :deep(.ptb-title-text) {
-  font-size: var(--pos-topbar-key-size, 18px) !important;
-  line-height: 1.05 !important;
-  font-weight: 800;
-}
-
-/* textos chicos que lo estaban inflando */
-.pos-topbar-shell :deep(.ptb-subtitle),
-.pos-topbar-shell :deep(.ptb-hint),
-.pos-topbar-shell :deep(.ptb-label-small),
-.pos-topbar-shell :deep(.ptb-caption) {
-  display: none !important;
-}
-
-/* cualquier stack interno */
-.pos-topbar-shell :deep(.d-flex),
-.pos-topbar-shell :deep(.flex-column) {
-  min-height: 0;
-}
-
-@media (max-width: 960px) {
-  .pos-topbar-shell :deep(.ptb-wrap),
-  .pos-topbar-shell :deep(.ptb-list),
-  .pos-topbar-shell :deep(.ptb-row) {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
 }
 </style>

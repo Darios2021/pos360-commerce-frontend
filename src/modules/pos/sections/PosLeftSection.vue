@@ -4,35 +4,13 @@
       ref="filtersRef"
       class="pos-surface pos-left-section__search"
       v-model:q="q"
-      v-model:rubro-id="rubroId"
-      v-model:subrubro-id="subrubroId"
       :visual-state="scannerVisualState"
-      :icon-name="scannerIconName"
-      :icon-color="scannerIconColor"
-      :state-label="scannerStateLabel"
-      :last-scan="scannerLastScan"
-      :last-message="scannerLastMessage"
       :is-on="scannerIsOn"
-      :sound-enabled="true"
-      :vibration-enabled="true"
-      :show-test-button="false"
-      :rubro-items="rubroItems"
-      :subrubro-items="subrubroItems"
-      :subrubro-no-data-text="subrubroNoDataText"
-      :page="page"
-      :pages="pages"
-      :shown-count="items.length"
-      :total-count="total"
-      :stock-only-total="total"
-      :error="error"
       :disabled-all="loading"
       @toggle="toggleScanner"
       @typing="onTyping"
       @enter="onEnter"
       @clear="clearQuery"
-      @rubro-change="onRubroChange"
-      @prev="prevPage"
-      @next="nextPage"
     />
 
     <PosProductsPanel
@@ -87,6 +65,7 @@ import { usePosImages } from "../composables/usePosImages";
 import { usePosProductActions } from "../composables/usePosProductActions";
 import { usePosProductSearch } from "../composables/usePosProductSearch";
 import { usePosScannerInput } from "../composables/usePosScannerInput";
+import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
 const posStore = usePosStore();
 const auth = useAuthStore();
@@ -273,7 +252,7 @@ const {
   inStock: true,
   sellable: true,
   minSearchLength: 3,
-  debounceMs: 320,
+  debounceMs: 600,
   autoSearch: true,
   keepResultsOnShortQuery: true,
 });
@@ -514,6 +493,26 @@ watch(
   }
 );
 
+// Señales globales desde el TopBar (F2 foco / F5 refresh catalogo).
+const { focusSearchSignal, refreshCatalogSignal, toast: flowToast } =
+  usePosSalesFlow();
+
+watch(focusSearchSignal, () => {
+  nextTick(() => {
+    filtersRef.value?.focusSearch?.();
+  });
+});
+
+watch(refreshCatalogSignal, async () => {
+  try {
+    await refreshCatalog();
+    flowToast?.("Catalogo actualizado");
+  } catch (err) {
+    console.error("[POS] refresh catalog error", err);
+    flowToast?.("No se pudo actualizar el catalogo");
+  }
+});
+
 onMounted(async () => {
   await ensureBranchSelected().catch(() => {});
   await loadCategories();
@@ -559,13 +558,7 @@ defineExpose({
   box-sizing: border-box;
 }
 
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.05),
-    0 2px 8px rgba(15, 23, 42, 0.04);
-}
+/* .pos-surface se define globalmente en PosPage.vue (clases compartidas) */
 
 :deep(.pos-products-panel) {
   min-height: 0;

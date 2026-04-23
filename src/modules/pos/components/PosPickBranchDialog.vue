@@ -4,18 +4,16 @@
 <template>
   <v-dialog v-model="openLocal" max-width="640">
     <v-card class="rounded-xl">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="text-subtitle-1 font-weight-bold">¿De qué sucursal sale?</div>
-        <v-btn icon variant="text" @click="close">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </v-card-title>
+      <PosDialogHeader
+        eyebrow="Stock"
+        title="¿De qué sucursal sale?"
+        subtitle="Este producto tiene stock en más de una sucursal. Elegí desde cuál se descuenta."
+        @close="close"
+      />
 
-      <v-card-text>
-        <div class="text-caption text-medium-emphasis mb-4">
-          Este producto tiene stock en más de una sucursal. Elegí desde cuál se descuenta.
-        </div>
+      <v-divider />
 
+      <v-card-text class="pt-4">
         <v-select
           v-model="picked"
           :items="items"
@@ -33,7 +31,7 @@
 
       <v-card-actions class="px-6 pb-5">
         <v-spacer />
-        <v-btn variant="tonal" @click="close">Cancelar</v-btn>
+        <v-btn variant="text" @click="close">Cancelar</v-btn>
         <v-btn color="primary" variant="flat" @click="confirm">Confirmar</v-btn>
       </v-card-actions>
     </v-card>
@@ -42,6 +40,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   open: { type: Boolean, default: false },

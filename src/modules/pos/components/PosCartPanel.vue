@@ -132,14 +132,12 @@
       </div>
     </div>
 
-    <v-snackbar v-model="snack.show" :timeout="2400">
-      {{ snack.text }}
-    </v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { reactive, watch } from "vue";
+import { useSnackbar } from "../composables/useSnackbar";
 
 const props = defineProps({
   cart: { type: Array, default: () => [] },
@@ -391,12 +389,7 @@ function removeFromStore(it) {
   return true;
 }
 
-const snack = reactive({ show: false, text: "" });
-
-function toast(text) {
-  snack.text = text;
-  snack.show = true;
-}
+const { toast } = useSnackbar();
 
 function commit(it) {
   const k = itKey(it);
@@ -516,7 +509,7 @@ function remove(it) {
 }
 
 .cart-sub {
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.1;
   color: rgba(var(--v-theme-on-surface), 0.58);
 }
@@ -636,7 +629,7 @@ function remove(it) {
 .item-name {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.2;
   font-weight: 700;
   white-space: nowrap;
@@ -662,7 +655,7 @@ function remove(it) {
 }
 
 .unit-price {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   opacity: 0.7;
   white-space: nowrap;
@@ -674,7 +667,7 @@ function remove(it) {
 }
 
 .stock-hint {
-  font-size: 9.5px;
+  font-size: 10px;
   opacity: 0.7;
   padding: 1px 5px;
   border-radius: 999px;
@@ -730,7 +723,7 @@ function remove(it) {
   padding-left: 4px;
   padding-right: 4px;
   text-align: center;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -789,7 +782,7 @@ function remove(it) {
 .total-amt {
   font-size: 19px;
   line-height: 1;
-  font-weight: 1000;
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -798,7 +791,7 @@ function remove(it) {
   height: 42px !important;
   border-radius: 13px !important;
   font-size: 13px !important;
-  font-weight: 1000 !important;
+  font-weight: 900 !important;
   letter-spacing: 0.02em;
   text-transform: none !important;
 }
@@ -893,7 +886,7 @@ function remove(it) {
 
   .pay-btn {
     height: 38px !important;
-    font-size: 12.5px !important;
+    font-size: 13px !important;
   }
 }
 </style>

@@ -1,11 +1,5 @@
 <template>
   <div class="pms-wrap">
-    <!-- shortcut hint -->
-    <div class="pms-hint">
-      <v-icon size="13">mdi-keyboard-outline</v-icon>
-      Presioná <strong>1–{{ methods.length + 1 }}</strong> para seleccionar
-    </div>
-
     <div class="pms-grid">
       <button
         v-for="(method, idx) in methods"
@@ -89,22 +83,6 @@ function isActive(method) {
   display: grid;
   gap: 8px;
   width: 100%;
-}
-
-/* ── Hint bar ── */
-.pms-hint {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  padding-left: 2px;
-}
-.pms-hint strong {
-  font-weight: 900;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  margin: 0 1px;
 }
 
 /* ── Grid: 3 columns ── */

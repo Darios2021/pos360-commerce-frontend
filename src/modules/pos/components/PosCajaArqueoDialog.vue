@@ -7,40 +7,36 @@
     <v-card class="arq" rounded="xl">
 
       <!-- ── Header ──────────────────────────────────────────────────────── -->
-      <div class="arq__head">
-        <div class="arq__head-left">
-          <div class="arq__head-top">
-            <span class="arq__eyebrow">Cierre de caja</span>
-            <!-- pills inline -->
-            <div class="arq__pills">
-              <span class="arq__pill">
-                <span class="arq__pill-label">{{ cajaTypeLabel || "General" }}</span>
-              </span>
-              <span class="arq__pill">
-                <span class="arq__pill-label">{{ invoiceTypeLabel || "Ticket" }}</span>
-              </span>
-              <span class="arq__pill" :class="isCajaOpen ? 'arq__pill--ok' : 'arq__pill--err'">
-                <span class="arq__pill-label">{{ isCajaOpen ? "Abierta" : "Cerrada" }}</span>
-              </span>
-              <!-- sesión -->
-              <span class="arq__pill arq__pill--session">
-                <v-icon size="10">mdi-receipt-text-outline</v-icon>
-                <span>{{ totals.sales_total_created || totals.sales_count || 0 }}</span>
-                <span class="arq__pill-sep">·</span>
-                <v-icon size="10" color="success">mdi-check-circle-outline</v-icon>
-                <span class="c-ok">{{ totals.sales_count || 0 }}</span>
-                <template v-if="totals.sales_cancelled_count > 0">
-                  <span class="arq__pill-sep">·</span>
-                  <v-icon size="10" color="warning">mdi-cancel</v-icon>
-                  <span class="c-warning">{{ totals.sales_cancelled_count }}</span>
-                </template>
-              </span>
-            </div>
-          </div>
-          <h3 class="arq__title">Arqueo</h3>
-        </div>
-        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('update:open', false)" />
-      </div>
+      <PosDialogHeader
+        eyebrow="Cierre de caja"
+        title="Arqueo"
+        @close="$emit('update:open', false)"
+      >
+        <template #chips>
+          <span class="arq__pill">
+            <span class="arq__pill-label">{{ cajaTypeLabel || "General" }}</span>
+          </span>
+          <span class="arq__pill">
+            <span class="arq__pill-label">{{ invoiceTypeLabel || "Ticket" }}</span>
+          </span>
+          <span class="arq__pill" :class="isCajaOpen ? 'arq__pill--ok' : 'arq__pill--err'">
+            <span class="arq__pill-label">{{ isCajaOpen ? "Abierta" : "Cerrada" }}</span>
+          </span>
+          <!-- sesión -->
+          <span class="arq__pill arq__pill--session">
+            <v-icon size="10">mdi-receipt-text-outline</v-icon>
+            <span>{{ totals.sales_total_created || totals.sales_count || 0 }}</span>
+            <span class="arq__pill-sep">·</span>
+            <v-icon size="10" color="success">mdi-check-circle-outline</v-icon>
+            <span class="c-ok">{{ totals.sales_count || 0 }}</span>
+            <template v-if="totals.sales_cancelled_count > 0">
+              <span class="arq__pill-sep">·</span>
+              <v-icon size="10" color="warning">mdi-cancel</v-icon>
+              <span class="c-warning">{{ totals.sales_cancelled_count }}</span>
+            </template>
+          </span>
+        </template>
+      </PosDialogHeader>
 
       <!-- alerta anuladas (compacta, solo si hay) -->
       <div v-if="totals.sales_cancelled_count > 0" class="arq__cancelled-alert">
@@ -161,6 +157,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   open:            { type: Boolean, default: false },
@@ -303,43 +300,7 @@ function submit() {
   background: rgb(var(--v-theme-surface));
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.arq__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 12px 14px 10px;
-  gap: 8px;
-}
-.arq__head-left { flex: 1; min-width: 0; }
-.arq__head-top {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 2px;
-}
-.arq__eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .45);
-  white-space: nowrap;
-}
-.arq__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-/* ── Pills inline ─────────────────────────────────────────────────────── */
-.arq__pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
+/* ── Pills inline (usados en slot #chips del PosDialogHeader) ─────────── */
 .arq__pill {
   display: inline-flex;
   align-items: center;

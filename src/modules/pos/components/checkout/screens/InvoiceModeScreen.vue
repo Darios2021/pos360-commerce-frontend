@@ -1,8 +1,8 @@
 <template>
-  <div class="ck-screen">
+  <div class="ck-screen" ref="rootRef" tabindex="-1">
     <div class="ck-screen__head">
       <div class="ck-screen__title">Tipo de comprobante</div>
-      <div class="ck-screen__subtitle">Seleccioná cómo facturar esta venta</div>
+      <div class="ck-screen__subtitle">Presioná 1-4 o usá las flechas para seleccionar</div>
     </div>
 
     <div class="ck-screen__body">
@@ -49,6 +49,7 @@ const props = defineProps({
 const emit = defineEmits(["next", "back"]);
 
 const cursorIndex = ref(0);
+const rootRef = ref(null);
 
 const invoiceCards = [
   {
@@ -142,7 +143,9 @@ watch(
 );
 
 function focusCurrent() {
-  // focus is handled by click/keyboard, nothing to do
+  nextTick(() => {
+    rootRef.value?.focus?.();
+  });
 }
 
 function handleKeyboardAction(action) {
@@ -207,6 +210,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
   grid-template-rows: auto 1fr;
   gap: 14px;
   padding: 10px 12px;
+  outline: none;
 }
 
 .ck-screen__head {
@@ -217,7 +221,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
 .ck-screen__title {
   font-size: 1rem;
   line-height: 1.1;
-  font-weight: 950;
+  font-weight: 900;
   color: rgb(var(--v-theme-on-surface));
 }
 
@@ -308,7 +312,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
   align-items: center;
   justify-content: center;
   font-size: 1.9rem;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
   transition: background 0.15s, color 0.15s;
@@ -327,7 +331,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
 
 .ck-inv-title {
   font-size: 0.82rem;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   color: rgb(var(--v-theme-on-surface));
   white-space: nowrap;

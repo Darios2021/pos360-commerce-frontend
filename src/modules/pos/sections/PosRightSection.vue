@@ -117,13 +117,7 @@ const {
   padding: 0 6px;
 }
 
-.pos-surface {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow:
-    0 8px 20px rgba(15, 23, 42, 0.05),
-    0 2px 8px rgba(15, 23, 42, 0.04);
-}
+/* .pos-surface se define globalmente en PosPage.vue (clases compartidas) */
 
 @media (max-width: 960px) {
   .pos-right-section {

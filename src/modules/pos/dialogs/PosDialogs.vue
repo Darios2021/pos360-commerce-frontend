@@ -121,7 +121,11 @@
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snack.show" :timeout="3200">
+    <v-snackbar
+      v-model="snack.show"
+      :timeout="snack.timeout || 3200"
+      :color="snack.color || undefined"
+    >
       {{ snack.text }}
     </v-snackbar>
   </div>

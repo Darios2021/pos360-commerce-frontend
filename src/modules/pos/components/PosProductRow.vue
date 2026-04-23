@@ -8,93 +8,81 @@
     }"
     tabindex="0"
     @keydown="onKeydown"
+    @click="addToCart"
   >
+    <!-- Imagen cuadrada arriba -->
     <div class="prow-media">
-      <v-img v-if="image" :src="image" class="prow-img" cover />
+      <v-img
+        v-if="image"
+        :src="image"
+        :aspect-ratio="1"
+        class="prow-img"
+        cover
+      />
       <div v-else class="prow-noimg">
-        <v-icon size="22">mdi-package-variant-closed</v-icon>
+        <v-icon size="42">mdi-package-variant-closed</v-icon>
+      </div>
+
+      <!-- Badges flotantes sobre la imagen -->
+      <div class="prow-badges-tl">
+        <span v-if="hasRealDiscount" class="badge-discount">
+          -{{ discountPercent }}%
+        </span>
+      </div>
+
+      <div class="prow-badges-tr">
+        <span
+          v-if="hasStockValue"
+          class="badge-stock"
+          :class="numericStock > 0 ? 'in' : 'out'"
+          :title="numericStock > 0 ? `Stock: ${numericStock}` : 'Sin stock'"
+        >
+          <v-icon size="11">
+            {{ numericStock > 0 ? "mdi-check-circle" : "mdi-close-circle" }}
+          </v-icon>
+          {{ numericStock > 0 ? numericStock : "0" }}
+        </span>
       </div>
     </div>
 
-    <div class="prow-body">
-      <div class="prow-head">
-        <div class="prow-main">
-          <div class="prow-title" :title="displayName">
-            {{ displayName }}
-          </div>
+    <!-- Info compacta abajo -->
+    <div class="prow-info">
+      <div class="prow-title" :title="displayName">
+        {{ displayName }}
+      </div>
 
-          <div class="prow-meta-lines">
-            <span v-if="brandValue" class="meta-inline">
-              <span class="meta-inline__label">Marca:</span>
-              <span class="meta-inline__value">{{ brandValue }}</span>
-            </span>
+      <div v-if="brandValue || modelValue || categoryValue" class="prow-meta">
+        <span v-if="brandValue" class="meta-chip">{{ brandValue }}</span>
+        <span v-if="modelValue" class="meta-text">{{ modelValue }}</span>
+        <span v-if="categoryValue && !brandValue && !modelValue" class="meta-text">
+          {{ categoryValue }}
+        </span>
+      </div>
 
-            <span v-if="modelValue" class="meta-inline">
-              <span class="meta-inline__label">Modelo:</span>
-              <span class="meta-inline__value">{{ modelValue }}</span>
-            </span>
-
-            <span v-if="categoryValue" class="meta-inline">
-              <span class="meta-inline__label">Categoría:</span>
-              <span class="meta-inline__value">{{ categoryValue }}</span>
-            </span>
-
-            <span v-if="subCategoryValue" class="meta-inline">
-              <span class="meta-inline__label">Subcategoría:</span>
-              <span class="meta-inline__value">{{ subCategoryValue }}</span>
-            </span>
-
-            <span v-if="skuValue" class="meta-inline">
-              <span class="meta-inline__label">SKU:</span>
-              <span class="meta-inline__value">{{ skuValue }}</span>
-            </span>
-          </div>
-
-          <div v-if="hasStockValue" class="prow-stock-row">
-            <div
-              class="stock-badge"
-              :class="numericStock > 0 ? 'in-stock' : 'no-stock'"
-            >
-              <v-icon size="14">
-                {{ numericStock > 0 ? "mdi-check-circle" : "mdi-close-circle" }}
-              </v-icon>
-              <span class="stock-badge__text">
-                {{ numericStock > 0 ? `Stock: ${numericStock}` : "Sin stock" }}
-              </span>
-            </div>
-          </div>
-        </div>
-
+      <div class="prow-footer">
         <div class="prow-price-box">
           <div class="price-current">
             {{ money(priceDiscountValue) }}
           </div>
-
-          <div v-if="hasRealDiscount" class="price-subline">
-            <span class="price-list">
-              {{ money(priceListValue) }}
-            </span>
-
-            <span class="price-discount-chip">
-              -{{ discountPercent }}%
-            </span>
+          <div v-if="hasRealDiscount" class="price-list">
+            {{ money(priceListValue) }}
           </div>
         </div>
-      </div>
-    </div>
 
-    <div class="prow-actions">
-      <v-btn
-        icon
-        variant="text"
-        class="btn-action"
-        tabindex="-1"
-        :disabled="disabled"
-        :ripple="false"
-        @click.stop="addToCart"
-      >
-        <v-icon size="20">mdi-plus</v-icon>
-      </v-btn>
+        <v-btn
+          icon
+          size="small"
+          variant="flat"
+          class="btn-action"
+          tabindex="-1"
+          :disabled="disabled"
+          :ripple="false"
+          @click.stop="addToCart"
+          :title="`Agregar ${displayName} al carrito`"
+        >
+          <v-icon size="19">mdi-cart-plus</v-icon>
+        </v-btn>
+      </div>
     </div>
   </div>
 </template>
@@ -272,30 +260,73 @@ function onKeydown(e) {
 
   if (key === "ArrowDown") {
     e.preventDefault();
-    move(1);
+    moveGrid(0, 1);
     return;
   }
 
   if (key === "ArrowUp") {
     e.preventDefault();
-    move(-1);
+    moveGrid(0, -1);
+    return;
+  }
+
+  if (key === "ArrowRight") {
+    e.preventDefault();
+    moveGrid(1, 0);
+    return;
+  }
+
+  if (key === "ArrowLeft") {
+    e.preventDefault();
+    moveGrid(-1, 0);
     return;
   }
 }
 
-function move(dir) {
+// Navegación espacial en grid 2D.
+// dx: ±1 columna, dy: ±1 fila.
+function moveGrid(dx, dy) {
   const cards = Array.from(
     document.querySelectorAll(".prow[tabindex='0']")
   ).filter((el) => !el.classList.contains("disabled"));
 
-  const current = document.activeElement;
-  const i = cards.indexOf(current);
-  const next = cards[i + dir];
+  if (!cards.length) return;
 
-  if (next) {
-    next.focus();
-    next.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  const current = document.activeElement;
+  const idx = cards.indexOf(current);
+  if (idx < 0) return;
+
+  // Detectar cuántas columnas por fila a partir del DOM
+  const cols = detectColumnCount(cards);
+
+  let target = idx;
+  if (dy !== 0) target = idx + dy * cols;
+  if (dx !== 0) target = idx + dx;
+
+  if (target < 0 || target >= cards.length) return;
+
+  // Si el movimiento horizontal saltaría a otra fila, cancelar.
+  if (dx !== 0) {
+    const sameRow = Math.floor(idx / cols) === Math.floor(target / cols);
+    if (!sameRow) return;
   }
+
+  cards[target].focus();
+  cards[target].scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+}
+
+function detectColumnCount(cards) {
+  if (cards.length < 2) return 1;
+  const firstTop = cards[0].getBoundingClientRect().top;
+  let cols = 1;
+  for (let i = 1; i < cards.length; i++) {
+    if (Math.abs(cards[i].getBoundingClientRect().top - firstTop) < 2) {
+      cols++;
+    } else {
+      break;
+    }
+  }
+  return cols;
 }
 
 function money(v) {
@@ -310,36 +341,38 @@ function money(v) {
 <style scoped>
 .prow {
   --row-bg: rgb(var(--v-theme-surface));
-  --row-border: rgba(var(--v-theme-on-surface), 0.07);
-  --row-border-hover: rgba(var(--v-theme-on-surface), 0.13);
+  --row-border: rgba(var(--v-theme-on-surface), 0.08);
+  --row-border-hover: rgba(var(--v-theme-on-surface), 0.16);
   --row-text: rgb(var(--v-theme-on-surface));
-  --row-muted: rgba(var(--v-theme-on-surface), 0.5);
+  --row-muted: rgba(var(--v-theme-on-surface), 0.55);
   --row-media-bg: rgba(var(--v-theme-on-surface), 0.04);
-  --row-btn-bg: rgba(var(--v-theme-on-surface), 0.05);
-  --row-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --row-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.07);
+  --row-btn-bg: rgb(var(--v-theme-primary));
+  --row-btn-text: rgb(var(--v-theme-on-primary));
+  --row-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --row-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.1);
 
   position: relative;
-  display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 38px;
-  gap: 8px;
-  align-items: center;
-  min-height: 76px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
   background: var(--row-bg);
   border: 1px solid var(--row-border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
   box-shadow: var(--row-shadow);
   transition:
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .prow:hover {
   border-color: var(--row-border-hover);
   box-shadow: var(--row-shadow-hover);
+  transform: translateY(-2px);
 }
 
 .prow:focus {
@@ -347,29 +380,30 @@ function money(v) {
 }
 
 .prow:focus-visible {
-  border-color: rgba(var(--v-theme-primary), 0.95);
+  outline: none;
+  border-color: rgb(var(--v-theme-primary));
   box-shadow:
-    inset 0 0 0 2px rgba(var(--v-theme-primary), 0.95),
-    0 8px 18px rgba(0, 0, 0, 0.12);
+    0 0 0 3px rgb(var(--v-theme-primary)),
+    0 0 0 6px rgba(var(--v-theme-primary), 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+  z-index: 2;
 }
 
 .prow.disabled {
-  opacity: 0.56;
+  opacity: 0.55;
   pointer-events: none;
-  transform: none;
 }
 
+/* ── Imagen cuadrada (ocupa el ancho del card) ───────────── */
 .prow-media {
-  width: 62px;
-  height: 62px;
-  min-width: 62px;
-  border-radius: 8px;
-  overflow: hidden;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   background: var(--row-media-bg);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .prow-img {
@@ -377,227 +411,245 @@ function money(v) {
   height: 100%;
 }
 
-.prow-noimg {
+.prow-img :deep(.v-img__img),
+.prow-img :deep(img) {
+  object-fit: cover;
   width: 100%;
   height: 100%;
+}
+
+.prow-noimg {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(var(--v-theme-on-surface), 0.4);
+  color: rgba(var(--v-theme-on-surface), 0.35);
 }
 
-.prow-body {
-  min-width: 0;
+/* Badges flotantes sobre la imagen */
+.prow-badges-tl {
+  position: absolute;
+  top: 6px;
+  left: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.prow-head {
+.prow-badges-tr {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.prow-main {
-  min-width: 0;
+.badge-discount {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-success));
+  color: rgb(var(--v-theme-on-success));
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  line-height: 1.3;
+}
+
+.badge-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  line-height: 1;
+}
+
+.badge-stock.in {
+  background: rgba(var(--v-theme-success), 0.94);
+  color: rgb(var(--v-theme-on-success));
+}
+
+.badge-stock.out {
+  background: rgba(var(--v-theme-error), 0.94);
+  color: rgb(var(--v-theme-on-error));
+}
+
+/* ── Info compacta ────────────────────────────────────────── */
+.prow-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px 10px;
   flex: 1 1 auto;
+  min-height: 0;
 }
 
 .prow-title {
-  font-size: 13px;
-  line-height: 1.15;
+  font-size: 13.5px;
+  line-height: 1.2;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
   color: var(--row-text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
 }
 
-.prow-meta-lines {
+.prow-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px 8px;
-  margin-top: 4px;
+  align-items: center;
+  gap: 5px;
+  min-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.meta-inline {
+.meta-chip {
   display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  min-width: 0;
-  max-width: 100%;
-  font-size: 10.5px;
-  line-height: 1.1;
-}
-
-.meta-inline__label {
-  font-weight: 600;
-  color: var(--row-muted);
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
-.meta-inline__value {
-  font-weight: 600;
+.meta-text {
+  font-size: 12px;
+  color: var(--row-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ── Footer: precio + botón add ───────────────────────────── */
+.prow-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+
+.prow-price-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.price-current {
+  font-size: 17px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--row-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.prow-stock-row {
-  margin-top: 4px;
-}
-
-.stock-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 20px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  border: 1px solid transparent;
-}
-
-.stock-badge__text {
-  line-height: 1;
-}
-
-.stock-badge.in-stock {
-  background: rgba(var(--v-theme-success), 0.14);
-  color: rgb(var(--v-theme-success));
-  border-color: rgba(var(--v-theme-success), 0.26);
-}
-
-.stock-badge.no-stock {
-  background: rgba(var(--v-theme-error), 0.14);
-  color: rgb(var(--v-theme-error));
-  border-color: rgba(var(--v-theme-error), 0.26);
-}
-
-.prow-price-box {
-  min-width: 120px;
-  text-align: right;
-  flex: 0 0 auto;
-}
-
-.price-current {
-  font-size: 17px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--row-text);
-}
-
-.price-subline {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
 .price-list {
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1;
   font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+  color: rgba(var(--v-theme-on-surface), 0.42);
   text-decoration: line-through;
-}
-
-.price-discount-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 17px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-success), 0.1);
-  color: rgb(var(--v-theme-success));
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.prow-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  margin-top: 2px;
 }
 
 .btn-action {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  border-radius: 8px !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 9px !important;
   background: var(--row-btn-bg) !important;
-  color: var(--row-text) !important;
+  color: var(--row-btn-text) !important;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.32) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.btn-action:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.48) !important;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────── */
 :deep(.v-theme--dark) .prow {
-  --row-bg: rgba(10, 18, 32, 0.96);
-  --row-border: rgba(255, 255, 255, 0.12);
-  --row-border-hover: rgba(255, 255, 255, 0.2);
+  --row-bg: rgba(14, 22, 38, 0.96);
+  --row-border: rgba(255, 255, 255, 0.1);
+  --row-border-hover: rgba(255, 255, 255, 0.22);
   --row-text: rgba(255, 255, 255, 0.96);
-  --row-muted: rgba(255, 255, 255, 0.66);
-  --row-media-bg: rgba(255, 255, 255, 0.05);
-  --row-btn-bg: rgba(255, 255, 255, 0.07);
-  --row-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
-  --row-shadow-hover: 0 10px 24px rgba(0, 0, 0, 0.28);
+  --row-muted: rgba(255, 255, 255, 0.6);
+  --row-media-bg: rgba(255, 255, 255, 0.04);
+  --row-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  --row-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
 :deep(.v-theme--dark) .prow:focus-visible {
-  border-color: rgba(255, 255, 255, 0.98);
+  border-color: rgb(var(--v-theme-primary));
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.98),
-    0 10px 22px rgba(0, 0, 0, 0.28);
+    0 0 0 3px rgb(var(--v-theme-primary)),
+    0 0 0 6px rgba(var(--v-theme-primary), 0.28),
+    0 14px 30px rgba(0, 0, 0, 0.5);
 }
 
-:deep(.v-theme--dark) .btn-action {
-  background: rgba(255, 255, 255, 0.07) !important;
-  color: rgba(255, 255, 255, 0.96) !important;
+:deep(.v-theme--dark) .meta-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
 }
 
+/* ── Out of stock visual state ─────────────────────────────── */
+.prow.no-stock .prow-img {
+  filter: grayscale(0.55) brightness(0.85);
+}
+
+.prow.no-stock .price-current {
+  opacity: 0.72;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .prow {
-    grid-template-columns: 56px minmax(0, 1fr) 34px;
-    min-height: 68px;
-    gap: 7px;
-    padding: 7px 9px;
-  }
-
-  .prow-media {
-    width: 56px;
-    height: 56px;
-    min-width: 56px;
-  }
-
   .prow-title {
-    font-size: 12px;
+    font-size: 12.5px;
   }
 
-  .prow-meta-lines {
-    gap: 3px 7px;
-    margin-top: 3px;
+  .prow-info {
+    padding: 9px 10px 10px;
+    gap: 3px;
   }
 
-  .meta-inline {
+  .meta-chip,
+  .meta-text {
     font-size: 10px;
-  }
-
-  .stock-badge {
-    min-height: 18px;
-    padding: 2px 6px;
-    font-size: 9px;
-  }
-
-  .prow-price-box {
-    min-width: 100px;
   }
 
   .price-current {
@@ -608,75 +660,31 @@ function money(v) {
     font-size: 10px;
   }
 
-  .price-discount-chip {
-    min-height: 15px;
-    padding: 0 5px;
-    font-size: 9px;
+  .btn-action {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
   }
 }
 
-@media (max-width: 640px) {
-  .prow {
-    grid-template-columns: 68px minmax(0, 1fr) 38px;
-    min-height: 88px;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 14px;
-  }
-
-  .prow-media {
-    width: 68px;
-    height: 68px;
-    min-width: 68px;
-    border-radius: 12px;
-  }
-
+@media (max-width: 520px) {
   .prow-title {
     font-size: 13px;
+    -webkit-line-clamp: 2;
   }
 
-  .prow-meta-lines {
-    gap: 4px 8px;
-    margin-top: 6px;
-  }
-
-  .meta-inline {
-    font-size: 10px;
-  }
-
-  .prow-stock-row {
-    margin-top: 6px;
-  }
-
-  .stock-badge {
-    min-height: 22px;
-    padding: 3px 7px;
-    font-size: 9px;
-  }
-
-  .prow-price-box {
-    min-width: 106px;
+  .prow-info {
+    padding: 10px 12px 12px;
   }
 
   .price-current {
-    font-size: 17px;
-  }
-
-  .price-list {
-    font-size: 10px;
-  }
-
-  .price-discount-chip {
-    min-height: 16px;
-    padding: 0 6px;
-    font-size: 9px;
+    font-size: 16px;
   }
 
   .btn-action {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    border-radius: 10px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
   }
 }
 </style>

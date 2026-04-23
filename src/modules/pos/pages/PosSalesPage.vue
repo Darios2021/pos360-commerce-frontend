@@ -574,10 +574,21 @@
         </div>
 
         <div class="anular-dlg__actions">
-          <v-btn variant="text" size="small" :disabled="!!deletingId" @click="deleteDialog = { show: false, sale: null }">
+          <v-btn
+            variant="text"
+            size="small"
+            :disabled="!!deletingId"
+            @click="deleteDialog = { show: false, sale: null }"
+          >
             Volver
           </v-btn>
-          <v-btn color="error" size="small" variant="flat" :loading="!!deletingId" @click="deleteSaleConfirmed">
+          <v-btn
+            variant="flat"
+            color="error"
+            size="small"
+            :loading="!!deletingId"
+            @click="deleteSaleConfirmed"
+          >
             <v-icon start size="14">mdi-cancel</v-icon>Confirmar anulación
           </v-btn>
         </div>
@@ -1356,8 +1367,8 @@ onMounted(async () => {
 }
 .vp-kpi-badge--primary { background: rgb(var(--v-theme-primary)); }
 .vp-kpi-badge--green   { background: rgb(var(--v-theme-success)); }
-.vp-kpi-badge--orange  { background: #f57c00; }
-.vp-kpi-badge--indigo  { background: #5c6bc0; }
+.vp-kpi-badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
+.vp-kpi-badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
 
 .vp-kpi-body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .vp-kpi-lbl   { font-size: 11px; font-weight: 700; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -1388,10 +1399,10 @@ onMounted(async () => {
   display: grid; place-items: center;
 }
 .vp-mc-badge--cash     { background: rgb(var(--v-theme-success)); }
-.vp-mc-badge--transfer { background: #9c27b0; }
+.vp-mc-badge--transfer { background: var(--pos-kpi-color-3, #9c27b0); }
 .vp-mc-badge--card     { background: rgb(var(--v-theme-info)); }
-.vp-mc-badge--mp       { background: #f57c00; }
-.vp-mc-badge--sjt      { background: #009688; }
+.vp-mc-badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
+.vp-mc-badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
 .vp-mc-badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
 
 .vp-mc-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }

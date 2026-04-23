@@ -5,27 +5,12 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card class="cart-modal">
-      <div class="cart-modal__header">
-        <div class="cart-modal__title-wrap">
-          <div class="cart-modal__title">
-            <v-icon size="18">mdi-cart-outline</v-icon>
-            <span>Carrito actual</span>
-          </div>
-
-          <div class="cart-modal__subtitle">
-            {{ itemCountLabel }}
-          </div>
-        </div>
-
-        <v-btn
-          icon
-          variant="text"
-          size="small"
-          @click="emit('update:modelValue', false)"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </div>
+      <PosDialogHeader
+        eyebrow="Carrito"
+        title="Carrito actual"
+        :subtitle="itemCountLabel"
+        @close="emit('update:modelValue', false)"
+      />
 
       <v-divider />
 
@@ -110,6 +95,7 @@
 
 <script setup>
 import { computed } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -222,35 +208,6 @@ function handleGoPay() {
 .cart-modal {
   border-radius: 20px;
   overflow: hidden;
-}
-
-.cart-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px 14px;
-}
-
-.cart-modal__title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.cart-modal__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.cart-modal__subtitle {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .cart-modal__body {

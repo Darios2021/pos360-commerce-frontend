@@ -6,16 +6,16 @@
     @update:model-value="emitOpen"
   >
     <v-card class="pbs-dialog rounded-xl overflow-hidden">
-      <v-card-title class="pbs-head d-flex align-center ga-2">
-        <v-icon size="20">mdi-store-switch</v-icon>
-        <span class="font-weight-bold">Cambiar sucursal activa</span>
-      </v-card-title>
+      <PosDialogHeader
+        eyebrow="Sucursal"
+        title="Cambiar sucursal activa"
+        subtitle="La sucursal activa define desde dónde operás el stock y la venta actual."
+        @close="emitOpen(false)"
+      />
+
+      <v-divider />
 
       <v-card-text class="pbs-body pt-3">
-        <div class="pbs-text text-caption text-medium-emphasis mb-3">
-          La sucursal activa define desde dónde operás el stock y la venta actual.
-        </div>
-
         <v-alert
           v-if="cartCount > 0"
           type="warning"
@@ -45,7 +45,7 @@
 
       <v-card-actions class="pbs-actions pa-4">
         <v-btn
-          variant="tonal"
+          variant="text"
           @click="emitOpen(false)"
         >
           Cancelar
@@ -67,6 +67,8 @@
 </template>
 
 <script setup>
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
+
 defineProps({
   open: {
     type: Boolean,
@@ -106,18 +108,9 @@ function emitSelected(value) {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.pbs-head {
-  min-height: 58px;
-  padding: 14px 18px 10px;
-}
-
 .pbs-body {
   padding-inline: 18px;
   padding-bottom: 18px;
-}
-
-.pbs-text {
-  line-height: 1.35;
 }
 
 .pbs-actions {

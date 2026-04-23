@@ -1,99 +1,55 @@
 <template>
   <div class="ck-screen">
     <div class="ck-screen__head">
-      <div class="ck-screen__title">
-        {{ screenTitle }}
-      </div>
-
-      <div class="ck-screen__subtitle">
-        {{ screenSubtitle }}
-      </div>
+      <div class="ck-screen__title">{{ screenTitle }}</div>
+      <div class="ck-screen__subtitle">{{ screenSubtitle }}</div>
     </div>
 
     <div class="ck-screen__body">
-      <div
-        class="ck-config-shell"
-        :class="{ 'ck-config-shell--single': !showSide }"
-      >
-        <section class="ck-config-main">
-          <div class="ck-config-main__inner">
-            <template v-if="state.mixedMode">
-              <PaymentMixed
-                ref="paymentMixedRef"
-                :state="state"
-                :mixed-method-items="mixedMethodItems"
-                :mixed-paid="mixedPaid"
-                :mixed-missing="mixedMissing"
-                :mixed-change="mixedChange"
-                :total-safe="totalSafe"
-                :money="money"
-                :set-mixed-amount-ref="setMixedAmountRef"
-                @add-mixed-row="$emit('add-mixed-row')"
-                @remove-mixed-row="$emit('remove-mixed-row', $event)"
-                @ready="emitNextIfValid"
-              />
-            </template>
+      <section class="ck-config-main">
+        <div class="ck-config-main__inner">
+          <template v-if="state.mixedMode">
+            <PaymentMixed
+              ref="paymentMixedRef"
+              :state="state"
+              :mixed-method-items="mixedMethodItems"
+              :mixed-paid="mixedPaid"
+              :mixed-missing="mixedMissing"
+              :mixed-change="mixedChange"
+              :total-safe="totalSafe"
+              :money="money"
+              :set-mixed-amount-ref="setMixedAmountRef"
+              @add-mixed-row="$emit('add-mixed-row')"
+              @remove-mixed-row="$emit('remove-mixed-row', $event)"
+              @ready="emitNextIfValid"
+            />
+          </template>
 
-            <template v-else>
-              <PaymentSingle
-                ref="paymentSingleRef"
-                :state="state"
-                :selected-method="selectedMethod"
-                :single-installment-items="singleInstallmentItems"
-                :single-uses-cash-entry="singleUsesCashEntry"
-                :single-missing="singleMissing"
-                :single-change="singleChange"
-                :cash-error-final="cashErrorFinal"
-                :cash-error-msg-final="cashErrorMsgFinal"
-                :method-label="methodLabel"
-                :method-needs-card-kind="methodNeedsCardKind"
-                :method-supports-installments="methodSupportsInstallments"
-                :method-needs-reference="methodNeedsReference"
-                :money="money"
-                :single-cash-ref="singleCashRef"
-                :total-safe="totalSafe"
-                @quick-cash="$emit('quick-cash', $event)"
-                @set-card-kind="$emit('set-card-kind', $event)"
-                @primary-enter="emitNextIfValid"
-              />
-            </template>
-          </div>
-        </section>
-
-        <aside v-if="showSide" class="ck-config-side">
-          <div class="ck-side-total">
-            <div class="ck-side-total__label">TOTAL</div>
-            <div class="ck-side-total__value">
-              {{ money(totalSafe) }}
-            </div>
-          </div>
-
-          <div class="ck-side-list">
-            <div class="ck-side-row">
-              <span>Pagado</span>
-              <strong>{{ money(paidValue) }}</strong>
-            </div>
-
-            <div class="ck-side-row">
-              <span>Vuelto</span>
-              <strong>{{ money(changeValue) }}</strong>
-            </div>
-
-            <div
-              v-if="missingValue > 0"
-              class="ck-side-row ck-side-row--warn"
-            >
-              <span>Falta</span>
-              <strong>{{ money(missingValue) }}</strong>
-            </div>
-          </div>
-
-          <div v-if="errorText" class="ck-error-box">
-            <v-icon size="18">mdi-alert-circle-outline</v-icon>
-            <span>{{ errorText }}</span>
-          </div>
-        </aside>
-      </div>
+          <template v-else>
+            <PaymentSingle
+              ref="paymentSingleRef"
+              :state="state"
+              :selected-method="selectedMethod"
+              :single-installment-items="singleInstallmentItems"
+              :single-uses-cash-entry="singleUsesCashEntry"
+              :single-missing="singleMissing"
+              :single-change="singleChange"
+              :cash-error-final="cashErrorFinal"
+              :cash-error-msg-final="cashErrorMsgFinal"
+              :method-label="methodLabel"
+              :method-needs-card-kind="methodNeedsCardKind"
+              :method-supports-installments="methodSupportsInstallments"
+              :method-needs-reference="methodNeedsReference"
+              :money="money"
+              :single-cash-ref="singleCashRef"
+              :total-safe="totalSafe"
+              @quick-cash="$emit('quick-cash', $event)"
+              @set-card-kind="$emit('set-card-kind', $event)"
+              @primary-enter="emitNextIfValid"
+            />
+          </template>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -168,49 +124,17 @@ const screenTitle = computed(() => {
 
 const screenSubtitle = computed(() => {
   if (props.state?.mixedMode) {
-    return "Usá flechas para navegar, Enter para confirmar y números para importe";
+    return "Flechas para navegar · tipeá el importe · Enter siguiente";
   }
-
-  if (props.singleUsesCashEntry) return "Usá flechas y Enter";
+  if (props.singleUsesCashEntry) return "Elegí Exacto / Redondeado o tipeá un número para monto manual";
   if (props.selectedMethod && props.methodNeedsCardKind(props.selectedMethod)) {
-    return "Usá flechas para elegir las opciones";
+    return "↑ ↓ tipo de tarjeta · ← → cuotas · Enter siguiente";
   }
-  return "Configurá el cobro y seguí";
-});
-
-const singlePaid = computed(() => {
-  if (!props.singleUsesCashEntry) return props.totalSafe || 0;
-  return parseAmount(props.state?.cashInput);
-});
-
-const paidValue = computed(() => {
-  if (props.state?.mixedMode) return Number(props.mixedPaid || 0);
-  return Number(singlePaid.value || 0);
-});
-
-const changeValue = computed(() => {
-  if (props.state?.mixedMode) return Number(props.mixedChange || 0);
-  return Number(props.singleChange || 0);
-});
-
-const missingValue = computed(() => {
-  if (props.state?.mixedMode) return Number(props.mixedMissing || 0);
-  return Number(props.singleMissing || 0);
-});
-
-const errorText = computed(() => {
-  if (props.state?.mixedMode && props.mixedMissing > 0) {
-    return `Faltan ${props.money(props.mixedMissing)} para completar el total.`;
+  if (props.selectedMethod && props.methodSupportsInstallments(props.selectedMethod)) {
+    return "← → cuotas · Enter siguiente";
   }
-
-  if (!props.state?.mixedMode && props.cashErrorFinal) {
-    return props.cashErrorMsgFinal || "Revisá el monto recibido.";
-  }
-
-  return "";
+  return "Enter para continuar";
 });
-
-const showSide = computed(() => false);
 
 function isValid() {
   if (props.state?.mixedMode) {
@@ -223,10 +147,8 @@ function isValid() {
   if (!props.selectedMethod) return false;
 
   if (props.singleUsesCashEntry) {
-    return (
-      Number(singlePaid.value || 0) > 0 &&
-      Number(props.singleMissing || 0) <= 0
-    );
+    const paid = parseAmount(props.state?.cashInput);
+    return paid > 0 && Number(props.singleMissing || 0) <= 0;
   }
 
   return true;
@@ -244,17 +166,21 @@ function focusCurrent() {
       paymentMixedRef.value?.focusCurrent?.();
       return;
     }
-
     paymentSingleRef.value?.focusCurrent?.();
   });
 }
 
 function handleKeyboardAction(action) {
+  // Dígitos directos: sólo tienen sentido en single-cash (entran en manual)
+  if (typeof action === "string" && action.startsWith("digit:")) {
+    if (props.state?.mixedMode) return false;
+    return !!paymentSingleRef.value?.handleKeyboardAction?.(action);
+  }
+
   if (props.state?.mixedMode) {
     const handled = paymentMixedRef.value?.handleKeyboardAction?.(action);
     if (handled) return true;
 
-    // only allow backspace to go back when not handled by mixed component
     if (action === "backspace") {
       emit("back");
       return true;
@@ -303,7 +229,7 @@ defineExpose({
 
 .ck-screen__title {
   font-size: 0.98rem;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1.02;
   letter-spacing: -0.02em;
 }
@@ -319,18 +245,6 @@ defineExpose({
   min-height: 0;
 }
 
-.ck-config-shell {
-  height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 210px;
-  gap: 8px;
-  align-items: start;
-}
-
-.ck-config-shell--single {
-  grid-template-columns: 1fr;
-}
-
 .ck-config-main {
   min-width: 0;
   border-radius: 14px;
@@ -342,109 +256,13 @@ defineExpose({
       rgba(var(--v-theme-on-surface), 0.015) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(var(--v-theme-on-surface), 0.04),
     0 3px 10px rgba(0, 0, 0, 0.025);
   overflow: hidden;
 }
 
 .ck-config-main__inner {
   padding: 10px;
-}
-
-.ck-config-side {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-}
-
-.ck-side-total {
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(var(--v-theme-primary), 0.07) 0%,
-      rgba(var(--v-theme-primary), 0.04) 100%
-    );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 3px 8px rgba(0, 0, 0, 0.025);
-}
-
-.ck-side-total__label {
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.56);
-  margin-bottom: 4px;
-}
-
-.ck-side-total__value {
-  font-size: 1.22rem;
-  line-height: 1;
-  font-weight: 950;
-  letter-spacing: -0.03em;
-}
-
-.ck-side-list {
-  display: grid;
-  gap: 6px;
-}
-
-.ck-side-row {
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  background: rgba(var(--v-theme-surface), 0.58);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.78rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.ck-side-row strong {
-  font-weight: 900;
-  white-space: nowrap;
-  font-size: 0.8rem;
-}
-
-.ck-side-row--warn {
-  color: rgb(var(--v-theme-error));
-  border-color: rgba(var(--v-theme-error), 0.18);
-  background: rgba(var(--v-theme-error), 0.05);
-}
-
-.ck-error-box {
-  min-height: 38px;
-  padding: 0 10px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(var(--v-theme-error), 0.08);
-  color: rgb(var(--v-theme-error));
-  font-size: 0.72rem;
-  font-weight: 800;
-  border: 1px solid rgba(var(--v-theme-error), 0.14);
-}
-
-@media (max-width: 920px) {
-  .ck-config-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .ck-config-side {
-    grid-template-columns: 1fr;
-  }
-
-  .ck-side-total__value {
-    font-size: 1.1rem;
-  }
 }
 
 @media (max-width: 760px) {
@@ -455,10 +273,6 @@ defineExpose({
 
   .ck-config-main__inner {
     padding: 8px;
-  }
-
-  .ck-side-total {
-    padding: 10px 12px;
   }
 }
 </style>

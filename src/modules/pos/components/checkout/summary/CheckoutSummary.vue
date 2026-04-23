@@ -54,18 +54,48 @@
         <strong>{{ money(paidSafe) }}</strong>
       </div>
 
-      <div class="ck-total-row ck-total-row--change">
+      <!-- FALTA: destaque en vivo cuando falta pagar -->
+      <div
+        v-if="missingSafe > 0"
+        class="ck-total-row ck-total-row--missing ck-live"
+      >
         <span class="ck-total-row__left">
-          <v-icon size="13">mdi-cash-refund</v-icon>
+          <v-icon size="14">mdi-alert-circle</v-icon>
+          <span>Falta</span>
+        </span>
+        <strong>{{ money(missingSafe) }}</strong>
+      </div>
+
+      <!-- VUELTO: destaque en vivo, grande y verde -->
+      <div
+        v-else-if="changeSafe > 0"
+        class="ck-total-row ck-total-row--change ck-live"
+      >
+        <span class="ck-total-row__left">
+          <v-icon size="14">mdi-cash-refund</v-icon>
           <span>Vuelto</span>
         </span>
         <strong>{{ money(changeSafe) }}</strong>
       </div>
 
-      <div class="ck-total-row ck-total-row--preview">
+      <div
+        v-else-if="paidSafe > 0 && totalSafe > 0"
+        class="ck-total-row ck-total-row--exact"
+      >
         <span class="ck-total-row__left">
-          <v-icon size="13">mdi-timer-sand</v-icon>
-          <span>Pendiente</span>
+          <v-icon size="13">mdi-check-all</v-icon>
+          <span>Exacto</span>
+        </span>
+        <strong>&mdash;</strong>
+      </div>
+
+      <div
+        v-if="showListPrice"
+        class="ck-total-row ck-total-row--preview"
+      >
+        <span class="ck-total-row__left">
+          <v-icon size="13">mdi-tag-outline</v-icon>
+          <span>Lista</span>
         </span>
         <strong>{{ money(previewSafe) }}</strong>
       </div>
@@ -74,7 +104,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
   cartUi: { type: Array, default: () => [] },
   totalSafe: { type: Number, default: 0 },
   previewSafe: { type: Number, default: 0 },
@@ -84,6 +116,18 @@ defineProps({
   toNum: { type: Function, required: true },
   showItems: { type: Boolean, default: true },
   showPrices: { type: Boolean, default: true },
+});
+
+const showListPrice = computed(() => {
+  const total = Number(props.totalSafe || 0);
+  const preview = Number(props.previewSafe || 0);
+  return preview > 0 && Math.abs(preview - total) > 0.5;
+});
+
+// "Falta pagar" en vivo
+const missingSafe = computed(() => {
+  const diff = Number(props.totalSafe || 0) - Number(props.paidSafe || 0);
+  return diff > 0 ? diff : 0;
 });
 </script>
 
@@ -236,7 +280,7 @@ defineProps({
 .ck-total-card__value {
   font-size: 1.5rem;
   line-height: 1;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: -0.04em;
   color: rgb(var(--v-theme-primary));
 }
@@ -275,15 +319,78 @@ defineProps({
   color: rgb(var(--v-theme-success));
 }
 
-.ck-total-row--change strong {
+/* FALTA: destacado en rojo, pulso suave */
+.ck-total-row--missing {
+  background: rgba(var(--v-theme-error), 0.12);
+  border: 1px solid rgba(var(--v-theme-error), 0.3);
+  min-height: 34px;
+  color: rgb(var(--v-theme-error));
+}
+
+.ck-total-row--missing strong {
+  color: rgb(var(--v-theme-error));
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.ck-total-row--missing :deep(.v-icon) {
+  color: rgb(var(--v-theme-error)) !important;
+}
+
+/* VUELTO: destacado en verde, más grande */
+.ck-total-row--change {
+  background: rgba(var(--v-theme-success), 0.14);
+  border: 1px solid rgba(var(--v-theme-success), 0.32);
+  min-height: 38px;
   color: rgb(var(--v-theme-success));
 }
 
+.ck-total-row--change strong {
+  color: rgb(var(--v-theme-success));
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.ck-total-row--change :deep(.v-icon) {
+  color: rgb(var(--v-theme-success)) !important;
+}
+
+.ck-total-row--exact {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.ck-total-row--exact strong {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+/* Pulso sutil para cambios en vivo */
+@keyframes ck-live-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-primary), 0.18);
+  }
+  50% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.08);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-primary), 0);
+  }
+}
+
+.ck-live {
+  animation: ck-live-pulse 0.32s ease;
+}
+
 .ck-total-row--preview {
-  background: rgba(var(--v-theme-error), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .ck-total-row--preview strong {
-  color: rgb(var(--v-theme-error));
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--v-theme-on-surface), 0.35);
 }
 </style>

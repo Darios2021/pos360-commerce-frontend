@@ -1,5 +1,5 @@
 <template>
-  <div v-if="selectedMethod" class="ck-single">
+  <div v-if="selectedMethod" class="ck-single" ref="rootRef" tabindex="-1">
     <PaymentCashInput
       v-if="singleUsesCashEntry"
       ref="paymentCashRef"
@@ -173,6 +173,7 @@ const emit = defineEmits([
 const paymentCashRef = ref(null);
 const activeGroupKey = ref(null);
 const cursorIndex = ref(0);
+const rootRef = ref(null);
 
 const cardKindChoices = [
   {
@@ -346,12 +347,19 @@ function focusCurrent() {
     }
 
     initCursor();
+    // Enfocar contenedor para que el handler global reciba teclas
+    rootRef.value?.focus?.();
   });
 }
 
 function handleKeyboardAction(action) {
   if (props.singleUsesCashEntry) {
     return !!paymentCashRef.value?.handleKeyboardAction?.(action);
+  }
+
+  // Dígitos en métodos no-cash no hacen nada
+  if (typeof action === "string" && action.startsWith("digit:")) {
+    return false;
   }
 
   if (!interactiveGroups.value.length) {
@@ -397,6 +405,7 @@ defineExpose({
 .ck-single {
   display: grid;
   gap: 10px;
+  outline: none;
 }
 
 .ck-sections {

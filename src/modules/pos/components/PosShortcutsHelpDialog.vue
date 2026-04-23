@@ -1,73 +1,82 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
 <!-- src/modules/pos/components/PosShortcutsHelpDialog.vue -->
-
 <template>
-  <v-dialog v-model="openLocal" max-width="560" persistent>
+  <v-dialog v-model="openLocal" max-width="620">
     <v-card rounded="xl">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center ga-2">
-          <v-icon>mdi-keyboard</v-icon>
-          <span class="font-weight-bold">Atajos del POS</span>
-        </div>
-
-        <v-btn icon variant="text" @click="close">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </v-card-title>
+      <PosDialogHeader
+        eyebrow="Ayuda"
+        title="Atajos del POS"
+        subtitle="Teclas rapidas disponibles en toda la pantalla."
+        @close="close"
+      />
 
       <v-divider />
 
       <v-card-text>
         <div class="text-body-2 text-medium-emphasis mb-4">
-          Estos atajos funcionan en toda la pantalla (no dependés del foco).
+          Estos atajos funcionan en toda la pantalla (no dependes del foco).
+          Enter confirma, ESC cancela, Backspace vuelve cuando corresponde.
         </div>
 
-        <v-list density="compact" class="pa-0">
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">F1</v-chip>
-            </template>
-            <v-list-item-title>Abrir esta ayuda</v-list-item-title>
-          </v-list-item>
+        <div
+          v-for="group in shortcutGroups"
+          :key="group.id"
+          class="psh-group"
+        >
+          <div class="psh-group__title">{{ group.label }}</div>
 
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">F2</v-chip>
-            </template>
-            <v-list-item-title>Ir al buscador</v-list-item-title>
-          </v-list-item>
+          <v-list density="compact" class="pa-0 psh-list">
+            <v-list-item
+              v-for="item in group.items"
+              :key="item.key"
+              class="psh-item"
+            >
+              <template #prepend>
+                <v-chip size="small" variant="tonal" class="psh-chip">
+                  {{ item.key }}
+                </v-chip>
+              </template>
 
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">F8</v-chip>
-            </template>
-            <v-list-item-title>Cobrar</v-list-item-title>
-          </v-list-item>
+              <v-list-item-title class="psh-item__title">
+                {{ item.label }}
+              </v-list-item-title>
 
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">PgUp</v-chip>
-            </template>
-            <v-list-item-title>Página anterior</v-list-item-title>
-          </v-list-item>
+              <v-list-item-subtitle class="psh-item__desc">
+                {{ item.description }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </div>
 
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">PgDn</v-chip>
-            </template>
-            <v-list-item-title>Página siguiente</v-list-item-title>
-          </v-list-item>
+        <div class="psh-group">
+          <div class="psh-group__title">Navegacion</div>
 
-          <v-list-item>
-            <template #prepend>
-              <v-chip size="small" variant="tonal" class="mr-3">Ctrl + K</v-chip>
-            </template>
-            <v-list-item-title>Ir al buscador (alternativo)</v-list-item-title>
-          </v-list-item>
-        </v-list>
+          <v-list density="compact" class="pa-0 psh-list">
+            <v-list-item class="psh-item">
+              <template #prepend>
+                <v-chip size="small" variant="tonal" class="psh-chip">PgUp</v-chip>
+              </template>
+              <v-list-item-title class="psh-item__title">Pagina anterior</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item class="psh-item">
+              <template #prepend>
+                <v-chip size="small" variant="tonal" class="psh-chip">PgDn</v-chip>
+              </template>
+              <v-list-item-title class="psh-item__title">Pagina siguiente</v-list-item-title>
+            </v-list-item>
+
+            <v-list-item class="psh-item">
+              <template #prepend>
+                <v-chip size="small" variant="tonal" class="psh-chip">Ctrl + K</v-chip>
+              </template>
+              <v-list-item-title class="psh-item__title">Ir al buscador</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </div>
 
         <v-alert type="info" variant="tonal" class="mt-4" density="compact">
-          Tip: si el navegador te abría su ayuda con F1, ahora queda bloqueado para el POS.
+          F1, F4 y F6 funcionan como toggle: misma tecla para abrir y cerrar.
+          ESC tambien cierra cualquier ventana abierta.
         </v-alert>
       </v-card-text>
 
@@ -84,6 +93,11 @@
 
 <script setup>
 import { computed } from "vue";
+import PosDialogHeader from "./shared/PosDialogHeader.vue";
+import {
+  POS_SHORTCUTS,
+  groupShortcuts,
+} from "../config/posShortcuts.config";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -96,7 +110,55 @@ const openLocal = computed({
   set: (v) => emit("update:modelValue", !!v),
 });
 
+const shortcutGroups = computed(() => groupShortcuts(POS_SHORTCUTS));
+
 function close() {
   openLocal.value = false;
 }
 </script>
+
+<style scoped>
+.psh-group + .psh-group {
+  margin-top: 14px;
+}
+
+.psh-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  padding: 0 4px 6px;
+}
+
+.psh-list {
+  background: transparent;
+}
+
+.psh-item {
+  min-height: 40px;
+  border-radius: 8px;
+}
+
+.psh-item + .psh-item {
+  margin-top: 2px;
+}
+
+.psh-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 800;
+  margin-right: 10px;
+  min-width: 52px;
+  justify-content: center;
+}
+
+.psh-item__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.psh-item__desc {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+</style>
