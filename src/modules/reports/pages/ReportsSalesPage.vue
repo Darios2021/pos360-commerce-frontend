@@ -109,6 +109,18 @@
           </v-btn>
           <v-btn
             variant="flat"
+            color="error"
+            rounded="lg"
+            size="small"
+            prepend-icon="mdi-file-pdf-box"
+            :disabled="!sales.length"
+            :loading="exportingPdf"
+            @click="exportPdf"
+          >
+            PDF
+          </v-btn>
+          <v-btn
+            variant="flat"
             color="success"
             rounded="lg"
             size="small"
@@ -118,17 +130,6 @@
             @click="exportExcel"
           >
             Excel
-          </v-btn>
-          <v-btn
-            variant="tonal"
-            color="primary"
-            rounded="lg"
-            size="small"
-            prepend-icon="mdi-file-delimited-outline"
-            :disabled="!sales.length"
-            @click="exportCsv"
-          >
-            CSV
           </v-btn>
         </div>
       </div>
@@ -530,6 +531,7 @@ const reportNotes = ref("");
 
 const issuedAt = ref(new Date());
 const exporting = ref(false);
+const exportingPdf = ref(false);
 
 const snack = reactive({ show: false, text: "" });
 function toast(text) {
@@ -897,74 +899,459 @@ function buildFilenameBase() {
   return `reporte_ventas_${stamp}`;
 }
 
-/* ─── Export CSV ───────────────────────────────────────────────────── */
-function exportCsv() {
+/* ─── Export PDF (con gráficos) ────────────────────────────────────── */
+async function exportPdf() {
   if (!sales.value.length) return;
+  exportingPdf.value = true;
+  try {
+    const jsPDFmod = await import("jspdf");
+    const JsPDF = jsPDFmod.jsPDF || jsPDFmod.default || jsPDFmod;
+    const autoTableMod = await import("jspdf-autotable");
+    const autoTable = autoTableMod.default || autoTableMod.autoTable || autoTableMod;
 
-  // Cabecera informativa (comentarios con #)
-  const headerLines = [
-    `# Reporte de ventas — pos360`,
-    `# Generado: ${issuedAtLabel.value}`,
-    `# Emitido por: ${issuerName.value}${issuerEmail.value ? ` <${issuerEmail.value}>` : ""}`,
-    `# Rol: ${issuerRoles.value.join(", ") || "—"}`,
-    `# Periodo: ${monthLabel.value} ${f.year} (${fmtDate(periodFrom.value)} — ${fmtDate(periodToInclusive.value)})`,
-    `# Sucursal: ${selectedBranchName.value || "Todas"}`,
-    `# Estado: ${f.status === "ALL" ? "Todas las ventas" : "Solo pagadas"}`,
-    `# % Ganancia global: ${profitPct.value || 0}%`,
-    `# Overrides manuales: ${overrideCount.value}`,
-    `# Notas: ${reportNotes.value || "—"}`,
-    `# Ventas: ${summary.sales_count} · Total: ${summary.total_sum} · A liquidar: ${liquidationTotal.value.toFixed(2)}`,
-    "",
-  ];
+    const doc = new JsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const M = 40; // margen
+    let y = M;
 
-  const columns = [
-    "id",
-    "sale_number",
-    "sold_at_iso",
-    "branch",
-    "user",
-    "customer",
-    "customer_doc",
-    "items_qty",
-    "subtotal",
-    "discount",
-    "total",
-    "primary_method",
-    "methods_detail",
-    "profit_pct",
-    "profit_pct_source",
-    "liquidation",
-  ];
+    // Paleta
+    const COLORS = {
+      primary: [33, 97, 180],
+      primarySoft: [225, 235, 250],
+      success: [22, 163, 74],
+      successSoft: [220, 245, 230],
+      error: [220, 38, 38],
+      warning: [245, 158, 11],
+      text: [30, 30, 30],
+      muted: [120, 120, 120],
+      border: [220, 220, 220],
+      headerBg: [245, 247, 250],
+      rowAlt: [250, 251, 253],
+    };
 
-  const data = buildSalesRows();
-  const rows = [columns, ...data.map((r) => columns.map((c) => r[c]))];
+    // Helpers
+    function setText(rgb, size = 10, weight = "normal") {
+      doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+      doc.setFontSize(size);
+      doc.setFont("helvetica", weight);
+    }
+    function setDraw(rgb, w = 0.5) {
+      doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+      doc.setLineWidth(w);
+    }
+    function setFill(rgb) {
+      doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    }
+    function money(v) {
+      return fmtMoney(v);
+    }
+    function shortenText(txt, maxChars) {
+      const s = String(txt || "");
+      return s.length > maxChars ? s.slice(0, maxChars - 1) + "…" : s;
+    }
+    function ensureSpace(needed) {
+      if (y + needed > pageH - M - 30) {
+        drawFooter();
+        doc.addPage();
+        y = M;
+        drawHeaderStrip();
+      }
+    }
 
-  const csvBody = rows
-    .map((r) =>
-      r
-        .map((v) => {
-          const s = String(v ?? "");
-          if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes(";")) {
-            return `"${s.replace(/"/g, '""')}"`;
-          }
-          return s;
-        })
-        .join(",")
-    )
-    .join("\n");
+    function drawHeaderStrip() {
+      setFill(COLORS.primary);
+      doc.rect(0, 0, pageW, 28, "F");
+      setText([255, 255, 255], 10, "bold");
+      doc.text("REPORTE DE VENTAS — LIQUIDACIÓN FRANQUICIA", M, 18);
+      setText([255, 255, 255], 8, "normal");
+      doc.text(
+        `${monthLabel.value} ${f.year}  ·  ${selectedBranchName.value || "Todas las sucursales"}`,
+        pageW - M,
+        18,
+        { align: "right" }
+      );
+    }
 
-  const csv = headerLines.join("\n") + "\n" + csvBody;
+    function drawFooter() {
+      const pageNum = doc.internal.getNumberOfPages();
+      const total = doc.internal.getNumberOfPages();
+      setDraw(COLORS.border, 0.5);
+      doc.line(M, pageH - M - 20, pageW - M, pageH - M - 20);
+      setText(COLORS.muted, 8);
+      doc.text(
+        `Generado ${issuedAtLabel.value}  ·  ${issuerName.value}`,
+        M,
+        pageH - M - 8
+      );
+      doc.text(`Página ${pageNum} / ${total}`, pageW - M, pageH - M - 8, {
+        align: "right",
+      });
+    }
 
-  const bom = "﻿";
-  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${buildFilenameBase()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    /* ─── PORTADA / HEADER ─── */
+    drawHeaderStrip();
+    y = 52;
+
+    setText(COLORS.text, 18, "bold");
+    doc.text("Reporte de ventas", M, y);
+    y += 18;
+    setText(COLORS.muted, 9);
+    doc.text("Liquidación para franquicias", M, y);
+    y += 20;
+
+    /* Info del reporte — grid 2 columnas */
+    const leftCol = M;
+    const rightCol = M + (pageW - M * 2) / 2 + 8;
+    const labelStyle = () => setText(COLORS.muted, 8, "bold");
+    const valueStyle = () => setText(COLORS.text, 10, "normal");
+
+    function infoRow(x, label, value, ySlot) {
+      labelStyle();
+      doc.text(String(label).toUpperCase(), x, ySlot);
+      valueStyle();
+      doc.text(shortenText(value || "—", 54), x, ySlot + 11);
+    }
+
+    setFill(COLORS.primarySoft);
+    setDraw(COLORS.primary, 0.3);
+    doc.roundedRect(M, y, pageW - M * 2, 118, 6, 6, "FD");
+    let yi = y + 14;
+
+    infoRow(leftCol + 10, "Emitido por", issuerName.value, yi);
+    infoRow(rightCol, "Email", issuerEmail.value || "—", yi);
+    yi += 26;
+    infoRow(leftCol + 10, "Rol(es)", issuerRoles.value.join(", ") || "—", yi);
+    infoRow(rightCol, "Generado", issuedAtLabel.value, yi);
+    yi += 26;
+    infoRow(
+      leftCol + 10,
+      "Período",
+      `${monthLabel.value} ${f.year} (${fmtDate(periodFrom.value)} — ${fmtDate(periodToInclusive.value)})`,
+      yi
+    );
+    infoRow(
+      rightCol,
+      "Alcance",
+      `${selectedBranchName.value || "Todas las sucursales"} · ${f.status === "ALL" ? "Todas las ventas" : "Solo pagadas"}`,
+      yi
+    );
+    yi += 26;
+    infoRow(
+      leftCol + 10,
+      "% Ganancia global",
+      `${profitPct.value || 0}%${overrideCount.value ? `  ·  ${overrideCount.value} override${overrideCount.value === 1 ? "" : "s"}` : ""}`,
+      yi
+    );
+    infoRow(rightCol, "Notas", reportNotes.value || "—", yi);
+
+    y += 118 + 14;
+
+    /* ─── KPIs grandes ─── */
+    const kpiBoxes = [
+      {
+        label: "VENTAS",
+        value: fmtInt(summary.sales_count),
+        sub: `${fmtInt(summary.items_qty)} uds.`,
+        color: COLORS.text,
+      },
+      {
+        label: "TOTAL VENDIDO",
+        value: money(summary.total_sum),
+        sub: `Desc. ${money(summary.discount_sum)}`,
+        color: COLORS.primary,
+      },
+      {
+        label: `A LIQUIDAR (${profitPct.value || 0}%)`,
+        value: money(liquidationTotal.value),
+        sub: `Prom. ${money(avgTicket.value)}/venta`,
+        color: COLORS.success,
+      },
+    ];
+    const kpiGap = 12;
+    const kpiW = (pageW - M * 2 - kpiGap * (kpiBoxes.length - 1)) / kpiBoxes.length;
+    const kpiH = 72;
+    kpiBoxes.forEach((k, i) => {
+      const x = M + i * (kpiW + kpiGap);
+      setFill([255, 255, 255]);
+      setDraw(COLORS.border, 0.5);
+      doc.roundedRect(x, y, kpiW, kpiH, 5, 5, "FD");
+      setText(COLORS.muted, 8, "bold");
+      doc.text(k.label, x + 12, y + 18);
+      setText(k.color, 20, "bold");
+      doc.text(k.value, x + 12, y + 46);
+      setText(COLORS.muted, 8);
+      doc.text(k.sub, x + 12, y + 62);
+    });
+    y += kpiH + 18;
+
+    /* ─── SECCIÓN: GRÁFICOS ─── */
+    function sectionTitle(txt) {
+      ensureSpace(36);
+      setText(COLORS.text, 11, "bold");
+      doc.text(txt.toUpperCase(), M, y);
+      setDraw(COLORS.border, 0.5);
+      doc.line(M, y + 4, pageW - M, y + 4);
+      y += 14;
+    }
+
+    /**
+     * Dibuja un gráfico de barras horizontales.
+     * rows: [{ label, value, extra?, color? }]
+     */
+    function drawBarChart({ rows, height, title, formatter }) {
+      if (!rows.length) return;
+      sectionTitle(title);
+      const innerW = pageW - M * 2;
+      const labelW = 120;
+      const valueW = 90;
+      const barX = M + labelW + 6;
+      const barW = innerW - labelW - valueW - 10;
+      const rowH = 18;
+      const h = rows.length * rowH + 14;
+      ensureSpace(h + 10);
+
+      const max = rows.reduce((a, r) => (r.value > a ? r.value : a), 0) || 1;
+
+      setFill([255, 255, 255]);
+      setDraw(COLORS.border, 0.3);
+      doc.roundedRect(M, y, innerW, h, 4, 4, "FD");
+
+      let ry = y + 12;
+      for (const r of rows) {
+        setText(COLORS.text, 9, "bold");
+        doc.text(shortenText(r.label, 22), M + 8, ry + 5);
+
+        // bar bg
+        setFill([238, 242, 247]);
+        doc.roundedRect(barX, ry - 4, barW, 10, 2, 2, "F");
+
+        // bar fill
+        const w = Math.max(1, (r.value / max) * barW);
+        setFill(r.color || COLORS.primary);
+        doc.roundedRect(barX, ry - 4, w, 10, 2, 2, "F");
+
+        setText(COLORS.text, 9, "bold");
+        const valText = formatter ? formatter(r) : money(r.value);
+        doc.text(valText, pageW - M - 8, ry + 5, { align: "right" });
+
+        if (r.extra) {
+          setText(COLORS.muted, 7);
+          doc.text(r.extra, pageW - M - 8, ry + 12, { align: "right" });
+        }
+
+        ry += rowH;
+      }
+
+      y += h + 10;
+    }
+
+    /* 1) Por método de pago */
+    const methodRows = byMethod.value.map((m) => ({
+      label: methodLabel(m.method),
+      value: m.amount,
+      extra: `${m.pct.toFixed(1)}%`,
+      color: COLORS.primary,
+    }));
+    drawBarChart({
+      rows: methodRows,
+      title: "Ganancias por método de pago",
+      formatter: (r) => money(r.value),
+    });
+
+    /* 2) Por cajero */
+    const userRows = byUser.value.slice(0, 8).map((u) => ({
+      label: u.user_name,
+      value: u.total_sum,
+      extra: `${u.sales_count} v. · ${u.pct.toFixed(1)}%`,
+      color: COLORS.success,
+    }));
+    drawBarChart({
+      rows: userRows,
+      title: "Ventas por cajero",
+      formatter: (r) => money(r.value),
+    });
+
+    /* 3) Por sucursal */
+    if (byBranch.value.length) {
+      const maxBr = byBranch.value.reduce((a, b) => (b.total_sum > a ? b.total_sum : a), 0);
+      const brRows = byBranch.value.map((b) => ({
+        label: b.branch_name,
+        value: b.total_sum,
+        extra: `${b.sales_count} v. · Liq. ${money(b.total_sum * ((profitPct.value || 0) / 100))}`,
+        color: COLORS.warning,
+      }));
+      drawBarChart({
+        rows: brRows,
+        title: "Ventas por sucursal",
+        formatter: (r) => money(r.value),
+      });
+    }
+
+    /* 4) Por día — mini gráfico vertical */
+    if (byDay.value.length) {
+      sectionTitle("Ventas por día");
+      const innerW = pageW - M * 2;
+      const chartH = 100;
+      const padTop = 12;
+      const padBot = 22;
+      const chartY = y;
+      ensureSpace(chartH + padBot + padTop + 4);
+
+      setFill([255, 255, 255]);
+      setDraw(COLORS.border, 0.3);
+      doc.roundedRect(M, chartY, innerW, chartH + padBot, 4, 4, "FD");
+
+      const max = byDay.value.reduce((a, d) => (d.total_sum > a ? d.total_sum : a), 0) || 1;
+      const barCount = byDay.value.length;
+      const barGap = 2;
+      const barAreaW = innerW - 16;
+      const barW = Math.max(3, (barAreaW - barGap * (barCount - 1)) / barCount);
+
+      byDay.value.forEach((d, i) => {
+        const x = M + 8 + i * (barW + barGap);
+        const h = Math.max(2, (d.total_sum / max) * chartH);
+        const yTop = chartY + padTop + (chartH - h);
+        setFill(COLORS.primary);
+        doc.roundedRect(x, yTop, barW, h, 1, 1, "F");
+        // label cada N
+        if (barCount <= 31 && (i === 0 || i === barCount - 1 || i % Math.max(1, Math.floor(barCount / 6)) === 0)) {
+          setText(COLORS.muted, 6);
+          const [, mm, dd] = d.date.split("-");
+          doc.text(`${dd}/${mm}`, x + barW / 2, chartY + chartH + padTop + 12, {
+            align: "center",
+          });
+        }
+      });
+
+      y += chartH + padBot + 6;
+    }
+
+    /* ─── TABLA: Resumen por sucursal ─── */
+    if (byBranch.value.length > 1) {
+      ensureSpace(40);
+      sectionTitle("Resumen por sucursal");
+      autoTable(doc, {
+        startY: y,
+        margin: { left: M, right: M },
+        head: [["Sucursal", "Ventas", "Subtotal", "Desc.", "Total", "A liquidar"]],
+        body: byBranch.value.map((b) => [
+          b.branch_name,
+          fmtInt(b.sales_count),
+          money(b.subtotal_sum),
+          money(b.discount_sum),
+          money(b.total_sum),
+          money(b.total_sum * ((profitPct.value || 0) / 100)),
+        ]),
+        styles: { fontSize: 8, cellPadding: 5, textColor: COLORS.text },
+        headStyles: {
+          fillColor: COLORS.primary,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 8,
+        },
+        alternateRowStyles: { fillColor: COLORS.rowAlt },
+        columnStyles: {
+          1: { halign: "right" },
+          2: { halign: "right" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right", fontStyle: "bold", textColor: COLORS.success },
+        },
+        didDrawPage: () => {
+          drawHeaderStrip();
+        },
+      });
+      y = doc.lastAutoTable.finalY + 14;
+    }
+
+    /* ─── TABLA DETALLE DE VENTAS ─── */
+    ensureSpace(40);
+    sectionTitle(`Detalle de ventas (${fmtInt(sales.value.length)})`);
+
+    const rows = buildSalesRows();
+    const body = rows.map((r) => [
+      `${r.sold_at_date} ${r.sold_at_time}`,
+      r.sale_number || `#${r.id}`,
+      r.branch,
+      r.user,
+      r.customer || "—",
+      fmtInt(r.items_qty),
+      money(r.total),
+      r.primary_method,
+      `${r.profit_pct}%`,
+      money(r.liquidation),
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      head: [
+        ["Fecha", "N°", "Sucursal", "Cajero", "Cliente", "Uds.", "Total", "Pago", "%", "Liquida"],
+      ],
+      body,
+      foot: [
+        [
+          { content: "TOTAL PERÍODO", colSpan: 6, styles: { halign: "right", fontStyle: "bold" } },
+          { content: money(summary.total_sum), styles: { halign: "right", fontStyle: "bold" } },
+          "",
+          "",
+          {
+            content: money(liquidationTotal.value),
+            styles: {
+              halign: "right",
+              fontStyle: "bold",
+              textColor: COLORS.success,
+            },
+          },
+        ],
+      ],
+      styles: { fontSize: 7, cellPadding: 4, textColor: COLORS.text, overflow: "linebreak" },
+      headStyles: {
+        fillColor: COLORS.primary,
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 7.5,
+      },
+      footStyles: { fillColor: COLORS.headerBg, textColor: COLORS.text },
+      alternateRowStyles: { fillColor: COLORS.rowAlt },
+      columnStyles: {
+        0: { cellWidth: 64 },
+        1: { cellWidth: 48 },
+        2: { cellWidth: 60 },
+        3: { cellWidth: 60 },
+        4: { cellWidth: "auto" },
+        5: { halign: "right", cellWidth: 28 },
+        6: { halign: "right", cellWidth: 54, fontStyle: "bold" },
+        7: { cellWidth: 56 },
+        8: { halign: "right", cellWidth: 28 },
+        9: {
+          halign: "right",
+          cellWidth: 58,
+          fontStyle: "bold",
+          textColor: COLORS.success,
+        },
+      },
+      didDrawPage: () => {
+        drawHeaderStrip();
+      },
+    });
+
+    // Footer en todas las páginas
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter();
+    }
+
+    doc.save(`${buildFilenameBase()}.pdf`);
+    toast("Reporte PDF descargado");
+  } catch (e) {
+    console.error("[reports/exportPdf] error:", e);
+    toast("No se pudo generar el PDF.");
+  } finally {
+    exportingPdf.value = false;
+  }
 }
 
 /* ─── Export Excel (multihoja) ─────────────────────────────────────── */
