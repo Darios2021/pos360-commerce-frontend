@@ -527,7 +527,7 @@ export function usePosSalesFlow() {
         params: {
           q: raw || undefined,
           page: 1,
-          limit: raw ? 100 : 500,
+          limit: raw ? 80 : 300,
           branch_id: activeBranchId.value || undefined,
           in_stock: "false",
           sellable: "true",

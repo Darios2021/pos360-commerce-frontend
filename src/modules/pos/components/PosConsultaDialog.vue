@@ -933,32 +933,31 @@ async function copyBarcode(item) {
 .product-card {
   display: flex;
   flex-direction: column;
-  min-height: 320px;
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.92);
   overflow: hidden;
   transition:
     border-color 0.14s ease,
     box-shadow 0.14s ease,
     transform 0.14s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .product-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09);
+  border-color: rgba(var(--v-theme-primary), 0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-/* ─── Imagen cuadrada arriba ──────────────────────────────── */
+/* ─── Imagen arriba (5:4, más baja que cuadrada) ─────────── */
 .product-card__media {
   position: relative;
   width: 100%;
-  min-height: 140px;
-  aspect-ratio: 1 / 1;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  aspect-ratio: 5 / 4;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
   flex: 0 0 auto;
 }
@@ -1028,18 +1027,19 @@ async function copyBarcode(item) {
 .product-card__info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 10px 12px;
+  gap: 5px;
+  padding: 8px 9px 9px;
   flex: 1 1 auto;
-  min-height: 110px;
+  min-height: 0;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .product-card__name {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.005em;
-  color: rgb(var(--v-theme-on-surface));
+  color: rgba(255, 255, 255, 0.96);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1053,14 +1053,14 @@ async function copyBarcode(item) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 7px;
+  padding: 3px 7px;
   border-radius: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.82);
+  color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.02em;
   min-width: 0;
 }
@@ -1111,8 +1111,8 @@ async function copyBarcode(item) {
   align-items: center;
   padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.82);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -1125,14 +1125,14 @@ async function copyBarcode(item) {
 }
 
 .meta-chip--brand {
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
+  background: rgba(79, 140, 255, 0.18);
+  color: rgb(125, 170, 255);
 }
 
 .meta-chip--muted {
   background: transparent;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.65);
   text-transform: none;
 }
 
@@ -1150,7 +1150,7 @@ async function copyBarcode(item) {
   font-size: 15px;
   font-weight: 900;
   letter-spacing: -0.02em;
-  color: rgb(var(--v-theme-on-surface));
+  color: rgba(255, 255, 255, 0.96);
   font-feature-settings: "tnum";
   line-height: 1.1;
 }
