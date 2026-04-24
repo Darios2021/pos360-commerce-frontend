@@ -2,7 +2,7 @@
   <div class="ck-cash">
 
     <!-- =========================
-         QUICK OPTIONS
+         QUICK OPTIONS (app tiles)
     ========================= -->
     <div class="ck-cash__quick">
 
@@ -10,76 +10,57 @@
       <button
         ref="quickRefs"
         type="button"
-        class="ck-cash-btn"
+        class="ck-cash-tile"
         :class="{
-          active: quickMode === 'exact',
+          active: quickMode === 'exact' && !manualMode,
           cursor: cursorIndex === 0,
-          cursorActive: cursorIndex === 0
+          cursorActive: cursorIndex === 0 && !manualMode,
         }"
         @click="applyExactAndContinue"
       >
-        <span class="ck-cash-btn__label">Exacto</span>
-        <strong class="ck-cash-btn__value">
-          {{ money(total) }}
-        </strong>
-
-        <!-- TAG -->
-        <span
-          v-if="cursorIndex === 0"
-          class="ck-cursor-tag"
-        >
-          Elegir
+        <span class="ck-cash-tile__icon">
+          <v-icon size="22">mdi-cash</v-icon>
         </span>
+        <span class="ck-cash-tile__label">Exacto</span>
+        <strong class="ck-cash-tile__value">{{ money(total) }}</strong>
       </button>
 
       <!-- REDONDEADO -->
       <button
         ref="quickRefs"
         type="button"
-        class="ck-cash-btn ck-cash-btn--rounded"
+        class="ck-cash-tile ck-cash-tile--rounded"
         :class="{
-          active: quickMode === 'rounded',
+          active: quickMode === 'rounded' && !manualMode,
           cursor: cursorIndex === 1,
-          cursorActive: cursorIndex === 1
+          cursorActive: cursorIndex === 1 && !manualMode,
         }"
         @click="applyRoundedAndContinue"
       >
-        <span class="ck-cash-btn__label">Redondeado</span>
-        <strong class="ck-cash-btn__value">
-          {{ money(roundedAmount) }}
-        </strong>
-
-        <!-- TAG -->
-        <span
-          v-if="cursorIndex === 1"
-          class="ck-cursor-tag"
-        >
-          Elegir
+        <span class="ck-cash-tile__icon">
+          <v-icon size="22">mdi-arrow-up-bold-circle-outline</v-icon>
         </span>
+        <span class="ck-cash-tile__label">Redondeado</span>
+        <strong class="ck-cash-tile__value">{{ money(roundedAmount) }}</strong>
       </button>
 
       <!-- MANUAL -->
       <button
         ref="quickRefs"
         type="button"
-        class="ck-cash-btn ck-cash-btn--manual"
+        class="ck-cash-tile ck-cash-tile--manual"
         :class="{
           active: manualMode,
           cursor: cursorIndex === 2,
-          cursorActive: cursorIndex === 2
+          cursorActive: cursorIndex === 2 && manualMode,
         }"
         @click="enableManualMode"
       >
-        <span class="ck-cash-btn__label">Insertar</span>
-        <strong class="ck-cash-btn__value">Manual</strong>
-
-        <!-- TAG -->
-        <span
-          v-if="cursorIndex === 2"
-          class="ck-cursor-tag"
-        >
-          Elegir
+        <span class="ck-cash-tile__icon">
+          <v-icon size="22">mdi-pencil-outline</v-icon>
         </span>
+        <span class="ck-cash-tile__label">Manual</span>
+        <strong class="ck-cash-tile__value">Ingresar</strong>
       </button>
 
     </div>
@@ -456,140 +437,137 @@ defineExpose({
 }
 
 /* =========================
-   CARD BASE
-   MISMO ESTÁNDAR QUE FACTURACIÓN
+   APP TILE (centrado, ícono arriba)
 ========================= */
-/* Color token per button */
-.ck-cash-btn { --cc: 34, 197, 94; }                      /* exact = green */
-.ck-cash-btn.ck-cash-btn--rounded { --cc: 59, 130, 246; } /* rounded = blue */
-.ck-cash-btn.ck-cash-btn--manual { --cc: 139, 92, 246; }  /* manual = violet */
+.ck-cash-tile { --cc: 34, 197, 94; }                        /* exact = green */
+.ck-cash-tile.ck-cash-tile--rounded { --cc: 59, 130, 246; } /* rounded = blue */
+.ck-cash-tile.ck-cash-tile--manual { --cc: 139, 92, 246; }  /* manual = violet */
 
-.ck-cash-btn {
+.ck-cash-tile {
   appearance: none;
   -webkit-appearance: none;
   outline: none;
   cursor: pointer;
 
   position: relative;
-  z-index: 1;
 
   width: 100%;
   min-width: 0;
-  min-height: 72px;
-  padding: 12px 14px;
+  min-height: 112px;
+  padding: 14px 10px 12px;
 
   border-radius: 14px;
-  border: 1.5px solid rgba(var(--cc), 0.2);
-  background: rgba(var(--cc), 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
 
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
 
-  text-align: left;
+  text-align: center;
   overflow: visible;
 
   transition:
-    border-color 0.14s ease,
-    box-shadow 0.14s ease,
-    background 0.14s ease,
-    transform 0.13s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease;
 }
 
-.ck-cash-btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(var(--cc), 0.4);
-  box-shadow: 0 4px 14px rgba(var(--cc), 0.18);
+.ck-cash-tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--cc), 0.45);
+  background: rgba(var(--cc), 0.06);
+  box-shadow: 0 6px 18px rgba(var(--cc), 0.18);
 }
 
-.ck-cash-btn.active,
-.ck-cash-btn.cursorActive {
-  z-index: 3;
-  background: rgb(var(--cc));
+/* Cursor (foco por teclado) */
+.ck-cash-tile.cursor:not(.active) {
+  border-color: rgba(var(--cc), 0.6);
+  box-shadow: 0 0 0 2px rgba(var(--cc), 0.25);
+}
+
+/* Seleccionado / activo */
+.ck-cash-tile.active,
+.ck-cash-tile.cursorActive {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--cc)) 0%,
+    rgba(var(--cc), 0.88) 100%
+  );
   border-color: rgb(var(--cc));
   box-shadow:
-    0 0 0 3px rgba(var(--cc), 0.22),
-    0 6px 18px rgba(var(--cc), 0.28);
-  transform: translateY(-1px);
+    0 0 0 3px rgba(var(--cc), 0.25),
+    0 8px 20px rgba(var(--cc), 0.32);
+  transform: translateY(-2px);
 }
 
-.ck-cash-btn.cursor {
-  border-color: rgba(var(--cc), 0.5);
+.ck-cash-tile.active .ck-cash-tile__icon,
+.ck-cash-tile.cursorActive .ck-cash-tile__icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ck-cash-tile.active .ck-cash-tile__icon :deep(.v-icon),
+.ck-cash-tile.cursorActive .ck-cash-tile__icon :deep(.v-icon) {
+  color: #fff !important;
+}
+
+.ck-cash-tile.active .ck-cash-tile__label,
+.ck-cash-tile.cursorActive .ck-cash-tile__label {
+  color: #fff;
+}
+
+.ck-cash-tile.active .ck-cash-tile__value,
+.ck-cash-tile.cursorActive .ck-cash-tile__value {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* =========================
+   ÍCONO (chip grande arriba)
+========================= */
+.ck-cash-tile__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--cc), 0.14);
+  transition: background 0.15s ease;
+  flex: 0 0 40px;
+}
+
+.ck-cash-tile__icon :deep(.v-icon) {
+  color: rgb(var(--cc)) !important;
+  transition: color 0.15s ease;
+  font-size: 22px !important;
 }
 
 /* =========================
    TEXTOS
 ========================= */
-.ck-cash-btn__label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 900;
-  line-height: 1.05;
-  color: rgb(var(--cc));
-  transition: color 0.15s;
-}
-
-.ck-cash-btn.active .ck-cash-btn__label,
-.ck-cash-btn.cursorActive .ck-cash-btn__label {
-  color: #fff;
-}
-
-.ck-cash-btn__value {
+.ck-cash-tile__label {
   display: block;
   font-size: 0.72rem;
   font-weight: 800;
-  line-height: 1.05;
-  color: rgba(var(--v-theme-on-surface), 0.7);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.75);
   transition: color 0.15s;
 }
 
-.ck-cash-btn.active .ck-cash-btn__value,
-.ck-cash-btn.cursorActive .ck-cash-btn__value {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-/* Si querés que el valor se vea más fuerte como en efectivo viejo,
-   cambiá label/value en el template. Acá solo igualamos visual base. */
-
-/* =========================
-   TAG ELEGIR
-   MISMO QUE FACTURACIÓN
-========================= */
-.ck-cursor-tag {
-  position: absolute;
-  top: -10px;
-  right: 14px;
-
-  z-index: 5;
-
-  height: 22px;
-  padding: 0 10px;
-
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-
-  font-size: 0.62rem;
+.ck-cash-tile__value {
+  display: block;
+  font-size: 0.88rem;
   font-weight: 900;
-  line-height: 1;
-
-  color: white;
-
-  background: linear-gradient(
-    180deg,
-    rgba(120, 130, 150, 0.95),
-    rgba(90, 100, 120, 0.95)
-  );
-
-  border: 1px solid rgba(255, 255, 255, 0.2);
-
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.95);
+  font-feature-settings: "tnum";
+  transition: color 0.15s;
 }
 
 /* =========================
