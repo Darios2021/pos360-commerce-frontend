@@ -44,6 +44,8 @@ import StockTransfersPage from "@/modules/dashboard/pages/StockTransfersPage.vue
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 import FiscalAdminPage from "@/modules/admin/pages/FiscalAdminPage.vue";
 import PaymentMethodsAdminPage from "@/modules/admin/pages/PaymentMethodsAdminPage.vue";
+import CashRegistersAdminPage from "@/modules/admin/pages/CashRegistersAdminPage.vue";
+import CashRegisterDetailPage from "@/modules/admin/pages/CashRegisterDetailPage.vue";
 import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
 
 const routes = [
@@ -101,6 +103,19 @@ const routes = [
         path: "admin/payment-methods",
         name: "adminPaymentMethods",
         component: PaymentMethodsAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+
+      {
+        path: "admin/cash-registers",
+        name: "adminCashRegisters",
+        component: CashRegistersAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+      {
+        path: "admin/cash-registers/:id",
+        name: "adminCashRegisterDetail",
+        component: CashRegisterDetailPage,
         meta: { roles: ["admin", "super_admin"] },
       },
 

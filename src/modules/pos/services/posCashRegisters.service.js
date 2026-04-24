@@ -200,12 +200,36 @@ export async function closeCashRegister(id, payload) {
   });
 }
 
+// Listado admin de cajas con filtros y paginación.
+export async function adminListCashRegisters(filters = {}) {
+  const params = new URLSearchParams();
+  const add = (k, v) => {
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      params.append(k, String(v));
+    }
+  };
+  add("status", filters.status);
+  add("branch_id", filters.branch_id);
+  add("user_id", filters.user_id);
+  add("date_from", filters.date_from);
+  add("date_to", filters.date_to);
+  add("q", filters.q);
+  add("page", filters.page || 1);
+  add("limit", filters.limit || 25);
+
+  const qs = params.toString();
+  return request(`${CASH_REGISTERS_BASE}/admin/list${qs ? `?${qs}` : ""}`, {
+    method: "GET",
+  });
+}
+
 const posCashRegistersService = {
   getCurrentCashRegister,
   openCashRegister,
   getCashRegisterSummary,
   createCashRegisterMovement,
   closeCashRegister,
+  adminListCashRegisters,
 };
 
 export default posCashRegistersService;

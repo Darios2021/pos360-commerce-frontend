@@ -18,6 +18,12 @@
         @refresh="refresh"
         @open-branch-switch="openBranchSwitch"
       />
+
+      <PosBranchOpenRegistersPanel
+        v-if="!isCajaOpen && branchOpenRegisters?.length"
+        :registers="branchOpenRegisters"
+        class="pos-right-section__branch-open"
+      />
     </div>
 
     <div class="pos-surface pos-right-section__customer">
@@ -52,6 +58,7 @@
 
 <script setup>
 import PosCajaActionsBar from "../components/PosCajaActionsBar.vue";
+import PosBranchOpenRegistersPanel from "../components/PosBranchOpenRegistersPanel.vue";
 import PosCustomerPanel from "../components/PosCustomerPanel.vue";
 import PosCartPanel from "../components/PosCartPanel.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
@@ -59,6 +66,7 @@ import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 const {
   posStore,
   currentCashRegister,
+  branchOpenRegisters,
   openedAt,
   cashierName,
   branchChipLabel,
@@ -100,6 +108,16 @@ const {
 .pos-right-section__box,
 .pos-right-section__customer {
   padding: 8px;
+}
+
+.pos-right-section__box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-right-section__branch-open {
+  margin-top: 2px;
 }
 
 .pos-cart-wrap {

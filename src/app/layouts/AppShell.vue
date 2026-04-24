@@ -255,6 +255,16 @@
             </v-tooltip>
           </v-list-item>
 
+          <v-list-item v-if="isAdmin && hasRoute('adminCashRegisters')" :to="{ name: 'adminCashRegisters' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-cash-register</v-icon>
+            </template>
+            <v-list-item-title>Cajas</v-list-item-title>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Cajas
+            </v-tooltip>
+          </v-list-item>
+
           <v-divider class="my-2 nav-divider" />
 
           <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
@@ -560,6 +570,7 @@ const ROUTE_TREE = {
   categories:               { label: "Categorías", section: "Configuración" },
   adminFiscal:              { label: "Fiscal", section: "Configuración" },
   adminPaymentMethods:      { label: "Medios de pago", section: "Configuración" },
+  adminCashRegisters:       { label: "Cajas", section: "Gestión" },
   users:                    { label: "Usuarios", section: "Configuración" },
   profile:                  { label: "Mi perfil" },
   shopBranding:             { label: "Branding", section: "Tienda" },
