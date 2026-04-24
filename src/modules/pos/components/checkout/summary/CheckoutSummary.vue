@@ -12,7 +12,14 @@
       >
         <div class="ck-item__left">
           <div class="ck-item__icon">
-            <v-icon size="18">mdi-package-variant-closed</v-icon>
+            <v-img
+              v-if="itemImage(it)"
+              :src="itemImage(it)"
+              :aspect-ratio="1"
+              cover
+              class="ck-item__img"
+            />
+            <v-icon v-else size="16">mdi-package-variant-closed</v-icon>
           </div>
 
           <div class="ck-item__text">
@@ -105,6 +112,23 @@
 
 <script setup>
 import { computed } from "vue";
+import { usePosImages } from "../../../composables/usePosImages";
+
+const { productImage } = usePosImages();
+
+function itemImage(it) {
+  const direct =
+    it?.image ||
+    it?.image_url ||
+    it?.imageUrl ||
+    it?.imagen ||
+    it?.thumbnail ||
+    "";
+  if (direct) return direct;
+  const id = Number(it?.id || it?.product_id || 0);
+  if (!id) return "";
+  return productImage({ id });
+}
 
 const props = defineProps({
   cartUi: { type: Array, default: () => [] },
@@ -206,20 +230,35 @@ const missingSafe = computed(() => {
 }
 
 .ck-item__icon {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
   opacity: 1;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ck-item__icon :deep(.v-icon) {
   font-size: 16px !important;
+  opacity: 0.55;
+}
+
+.ck-item__img {
+  width: 100%;
+  height: 100%;
+}
+
+.ck-item__img :deep(.v-img__img),
+.ck-item__img :deep(img) {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 
 .ck-item__text {
