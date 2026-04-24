@@ -45,6 +45,7 @@
     </div>
 
     <div class="ck-summary__totals">
+      <!-- Total hero -->
       <div class="ck-total-card">
         <div class="ck-total-card__label">
           <v-icon size="13" class="ck-total-card__label-icon">mdi-cart-check</v-icon>
@@ -53,58 +54,52 @@
         <div class="ck-total-card__value">{{ money(totalSafe) }}</div>
       </div>
 
-      <div class="ck-total-row ck-total-row--paid">
-        <span class="ck-total-row__left">
-          <v-icon size="13">mdi-check-circle-outline</v-icon>
-          <span>Pagado</span>
-        </span>
-        <strong>{{ money(paidSafe) }}</strong>
+      <!-- Ahorro por descuento (solo si es relevante) -->
+      <div v-if="showListPrice" class="ck-savings">
+        <span>Precio de lista</span>
+        <strong>{{ money(previewSafe) }}</strong>
       </div>
 
-      <!-- FALTA: destaque en vivo cuando falta pagar -->
+      <!-- Banner de estado único -->
       <div
         v-if="missingSafe > 0"
-        class="ck-total-row ck-total-row--missing ck-live"
+        class="ck-status-banner ck-status-banner--missing ck-live"
       >
-        <span class="ck-total-row__left">
-          <v-icon size="14">mdi-alert-circle</v-icon>
-          <span>Falta</span>
-        </span>
-        <strong>{{ money(missingSafe) }}</strong>
+        <div class="ck-status-banner__head">
+          <v-icon size="16">mdi-alert-circle</v-icon>
+          <span>Falta pagar</span>
+        </div>
+        <strong class="ck-status-banner__amount">{{ money(missingSafe) }}</strong>
+        <div class="ck-status-banner__sub" v-if="paidSafe > 0">
+          Pagado {{ money(paidSafe) }} de {{ money(totalSafe) }}
+        </div>
       </div>
 
-      <!-- VUELTO: destaque en vivo, grande y verde -->
       <div
         v-else-if="changeSafe > 0"
-        class="ck-total-row ck-total-row--change ck-live"
+        class="ck-status-banner ck-status-banner--change ck-live"
       >
-        <span class="ck-total-row__left">
-          <v-icon size="14">mdi-cash-refund</v-icon>
-          <span>Vuelto</span>
-        </span>
-        <strong>{{ money(changeSafe) }}</strong>
+        <div class="ck-status-banner__head">
+          <v-icon size="16">mdi-cash-refund</v-icon>
+          <span>Vuelto a entregar</span>
+        </div>
+        <strong class="ck-status-banner__amount">{{ money(changeSafe) }}</strong>
+        <div class="ck-status-banner__sub">
+          Recibido {{ money(paidSafe) }}
+        </div>
       </div>
 
       <div
         v-else-if="paidSafe > 0 && totalSafe > 0"
-        class="ck-total-row ck-total-row--exact"
+        class="ck-status-banner ck-status-banner--exact"
       >
-        <span class="ck-total-row__left">
-          <v-icon size="13">mdi-check-all</v-icon>
-          <span>Exacto</span>
-        </span>
-        <strong>&mdash;</strong>
-      </div>
-
-      <div
-        v-if="showListPrice"
-        class="ck-total-row ck-total-row--preview"
-      >
-        <span class="ck-total-row__left">
-          <v-icon size="13">mdi-tag-outline</v-icon>
-          <span>Lista</span>
-        </span>
-        <strong>{{ money(previewSafe) }}</strong>
+        <div class="ck-status-banner__head">
+          <v-icon size="16">mdi-check-circle</v-icon>
+          <span>Pago exacto</span>
+        </div>
+        <div class="ck-status-banner__sub">
+          {{ money(paidSafe) }} cubre el total
+        </div>
       </div>
     </div>
   </div>
@@ -346,114 +341,116 @@ const missingSafe = computed(() => {
   color: rgb(var(--v-theme-primary));
 }
 
-.ck-total-row {
+/* ── Ahorro / precio de lista (sutil, solo si hay descuento real) ── */
+.ck-savings {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  min-height: 32px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.45);
 }
 
-.ck-total-row strong {
-  font-size: 0.92rem;
-  font-weight: 900;
-  white-space: nowrap;
-  letter-spacing: -0.005em;
-  color: rgba(var(--v-theme-on-surface), 0.9);
+.ck-savings strong {
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--v-theme-on-surface), 0.3);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   font-feature-settings: "tnum";
 }
 
-.ck-total-row__left {
+/* ── Banner único de estado (exacto / falta / vuelto) ──────── */
+.ck-status-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  margin-top: 4px;
+}
+
+.ck-status-banner__head {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
-.ck-total-row--paid {
-  background: rgba(var(--v-theme-success), 0.06);
+.ck-status-banner__amount {
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
 }
 
-.ck-total-row--paid strong {
-  color: rgb(var(--v-theme-success));
+.ck-status-banner__sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  line-height: 1.2;
+  margin-top: 2px;
+  font-feature-settings: "tnum";
 }
 
-/* FALTA: destacado en rojo, pulso suave */
-.ck-total-row--missing {
-  background: rgba(var(--v-theme-error), 0.12);
-  border: 1px solid rgba(var(--v-theme-error), 0.3);
-  min-height: 34px;
+/* Estados */
+.ck-status-banner--missing {
+  background: rgba(var(--v-theme-error), 0.1);
+  border-color: rgba(var(--v-theme-error), 0.32);
   color: rgb(var(--v-theme-error));
 }
 
-.ck-total-row--missing strong {
-  color: rgb(var(--v-theme-error));
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
-}
-
-.ck-total-row--missing :deep(.v-icon) {
+.ck-status-banner--missing :deep(.v-icon),
+.ck-status-banner--missing .ck-status-banner__amount {
   color: rgb(var(--v-theme-error)) !important;
 }
 
-/* VUELTO: destacado en verde, más grande */
-.ck-total-row--change {
-  background: rgba(var(--v-theme-success), 0.14);
-  border: 1px solid rgba(var(--v-theme-success), 0.32);
-  min-height: 38px;
+.ck-status-banner--change {
+  background: rgba(var(--v-theme-success), 0.12);
+  border-color: rgba(var(--v-theme-success), 0.36);
   color: rgb(var(--v-theme-success));
 }
 
-.ck-total-row--change strong {
-  color: rgb(var(--v-theme-success));
-  font-size: 1rem;
-  letter-spacing: -0.01em;
-}
-
-.ck-total-row--change :deep(.v-icon) {
+.ck-status-banner--change :deep(.v-icon),
+.ck-status-banner--change .ck-status-banner__amount {
   color: rgb(var(--v-theme-success)) !important;
 }
 
-.ck-total-row--exact {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  color: rgba(var(--v-theme-on-surface), 0.75);
+.ck-status-banner--exact {
+  background: rgba(var(--v-theme-success), 0.08);
+  border-color: rgba(var(--v-theme-success), 0.28);
+  color: rgb(var(--v-theme-success));
 }
 
-.ck-total-row--exact strong {
-  color: rgba(var(--v-theme-on-surface), 0.75);
+.ck-status-banner--exact :deep(.v-icon) {
+  color: rgb(var(--v-theme-success)) !important;
+}
+
+.ck-status-banner--exact .ck-status-banner__sub {
+  color: rgba(var(--v-theme-success), 0.82);
 }
 
 /* Pulso sutil para cambios en vivo */
 @keyframes ck-live-pulse {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(var(--v-theme-primary), 0.18);
   }
   50% {
-    transform: scale(1.01);
-    box-shadow: 0 0 0 4px rgba(var(--v-theme-primary), 0.08);
+    transform: scale(1.012);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(var(--v-theme-primary), 0);
   }
 }
 
 .ck-live {
-  animation: ck-live-pulse 0.32s ease;
-}
-
-.ck-total-row--preview {
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.ck-total-row--preview strong {
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  text-decoration: line-through;
-  text-decoration-color: rgba(var(--v-theme-on-surface), 0.35);
+  animation: ck-live-pulse 0.36s ease;
 }
 </style>
