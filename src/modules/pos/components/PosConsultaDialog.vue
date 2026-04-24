@@ -1,8 +1,8 @@
 <template>
   <v-dialog
     :model-value="modelValue"
+    :theme="activeThemeName"
     max-width="1100"
-    scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card class="consulta-shell">
@@ -294,10 +294,16 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import { useTheme } from "vuetify";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
 import { usePosImages } from "../composables/usePosImages";
 
 const { productImage } = usePosImages();
+
+// Vuetify monta los v-dialog en el body y puede perder el theme del app.
+// Forzamos que use el theme global activo (dark o light).
+const theme = useTheme();
+const activeThemeName = computed(() => theme?.global?.name?.value || "dark");
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -933,6 +939,7 @@ async function copyBarcode(item) {
 .product-card {
   display: flex;
   flex-direction: column;
+  min-height: 280px;
   border-radius: 12px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
@@ -954,6 +961,7 @@ async function copyBarcode(item) {
 .product-card__media {
   position: relative;
   width: 100%;
+  min-height: 140px;
   aspect-ratio: 1 / 1;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
