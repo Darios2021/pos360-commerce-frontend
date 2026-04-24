@@ -150,23 +150,26 @@ const missingSafe = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 10px 12px 8px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
 
 .ck-summary__title {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.52);
 }
 
 .ck-summary__items {
   min-height: 0;
   overflow: auto;
-  padding: 4px 0;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ck-summary__items::-webkit-scrollbar {
@@ -178,70 +181,89 @@ const missingSafe = computed(() => {
   border-radius: 999px;
 }
 
-/* Recibo-style: no borders, just rows with dividers */
+/* Items como cards con aire entre ellos */
 .ck-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  transition: background 0.14s ease;
 }
 
-.ck-item:last-child {
-  border-bottom: none;
+.ck-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ck-item__left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
 }
 
 .ck-item__icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  opacity: 0.35;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+  opacity: 1;
 }
 
 .ck-item__icon :deep(.v-icon) {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 .ck-item__text {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .ck-item__name {
-  font-size: 0.73rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-item__meta {
-  font-size: 0.64rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  line-height: 1;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  line-height: 1.2;
+  font-feature-settings: "tnum";
 }
 
 .ck-item__price {
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   text-align: right;
+  font-feature-settings: "tnum";
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-summary__totals {
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-  padding: 10px 12px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
+  padding: 14px 14px 16px;
   display: grid;
-  gap: 3px;
+  gap: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .ck-total-card {
@@ -249,9 +271,9 @@ const missingSafe = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 2px 0 8px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  margin-bottom: 4px;
+  padding: 6px 2px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  margin-bottom: 6px;
 }
 
 .ck-total-card__top {
@@ -290,19 +312,21 @@ const missingSafe = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  min-height: 24px;
-  padding: 2px 6px;
-  border-radius: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 8px;
 }
 
 .ck-total-row strong {
-  font-size: 0.76rem;
+  font-size: 0.92rem;
   font-weight: 900;
   white-space: nowrap;
-  color: rgba(var(--v-theme-on-surface), 0.8);
+  letter-spacing: -0.005em;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  font-feature-settings: "tnum";
 }
 
 .ck-total-row__left {

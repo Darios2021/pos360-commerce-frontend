@@ -1470,7 +1470,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 300px);
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 340px);
+  gap: 0;
   overflow: hidden;
 }
 
