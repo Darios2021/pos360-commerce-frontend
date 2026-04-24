@@ -114,108 +114,119 @@
       </div>
     </div>
 
-    <!-- GRID VIEW -->
+    <!-- GRID VIEW (estilo PosProductRow) -->
     <div v-else-if="viewMode === 'grid' || !smAndUp" class="plp-grid" :class="{ 'plp-grid--loading': loading }">
       <div v-for="item in items" :key="item.id" class="plp-card"
         :class="{ 'plp-card--inactive': isInactive(item) }" @click="openView(item.id)">
 
-        <div class="plp-card-accent" :style="{ background: getCategoryColor(item) }" />
-
-        <div class="plp-card-header">
-          <div class="plp-card-img-wrap">
-            <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
-            <v-icon v-else size="34" color="medium-emphasis">mdi-package-variant-closed</v-icon>
+        <!-- Imagen cuadrada arriba con badges flotantes -->
+        <div class="plp-card-media">
+          <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
+          <div v-else class="plp-card-noimg">
+            <v-icon size="38">mdi-package-variant-closed</v-icon>
           </div>
+
+          <!-- Badge stock semáforo arriba-izq -->
+          <span
+            class="plp-stock-badge"
+            :class="stockLevelClass(item)"
+            :title="getStockLabel(item)"
+          >
+            <v-icon size="12">
+              {{ getStockQty(item) > 0 ? 'mdi-package-variant-closed' : 'mdi-close-circle' }}
+            </v-icon>
+            {{ getStockQty(item) }}
+          </span>
+
+          <!-- Checkbox de selección arriba-der -->
           <div class="plp-card-check" @click.stop>
             <v-checkbox-btn :model-value="selectedIds.includes(item.id)" @update:modelValue="toggleSelect(item.id)"
               density="compact" hide-details />
           </div>
+
+          <!-- Badge inactivo -->
+          <span v-if="isInactive(item)" class="plp-inactive-badge">Inactivo</span>
         </div>
 
-        <div class="plp-card-body">
+        <!-- Info compacta -->
+        <div class="plp-card-info">
           <div class="plp-card-name" :title="item.name">{{ item.name }}</div>
-          <div class="plp-card-brand" v-if="item.brand || item.model">
-            {{ [item.brand, item.model].filter(Boolean).join(' · ') }}
+
+          <div v-if="item.sku || item.code" class="plp-card-sku">
+            <v-icon size="11">mdi-barcode</v-icon>
+            <span>{{ item.sku || item.code }}</span>
           </div>
-          <div class="plp-card-sku" v-if="item.sku || item.code">
-            <v-icon size="11" class="mr-1">mdi-barcode</v-icon>{{ item.sku || item.code }}
+
+          <div v-if="item.brand || item.model || item.category?.name || item.rubro" class="plp-card-meta">
+            <span v-if="item.brand" class="meta-chip meta-chip--brand">{{ item.brand }}</span>
+            <span v-if="item.model" class="meta-chip meta-chip--muted">{{ item.model }}</span>
+            <span v-if="item.category?.name || item.rubro" class="meta-chip meta-chip--cat">
+              {{ item.category?.name || item.rubro }}
+            </span>
           </div>
-        </div>
 
-        <div class="plp-card-tags">
-          <span class="plp-tag plp-tag--cat" v-if="item.category?.name || item.rubro">{{ item.category?.name || item.rubro }}</span>
-          <span class="plp-tag plp-tag--sub" v-if="item.subcategory?.name || item.subrubro">{{ item.subcategory?.name || item.subrubro }}</span>
-          <span class="plp-tag plp-tag--inactive" v-if="isInactive(item)">Inactivo</span>
-        </div>
-
-        <div class="plp-card-footer">
-          <div class="plp-card-price" v-if="Number(item.price_list) > 0">
-            $&nbsp;{{ fmtPrice(item.price_list) }}
-          </div>
-          <div class="plp-card-price plp-card-price--none" v-else>Sin precio</div>
-
-          <div class="plp-card-stock" :class="getStockClass(item)">
-            <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
-          </div>
-        </div>
-
-        <!-- Sucursales — visible para todos -->
-        <div class="plp-card-branches">
-          <!-- Multi-sucursal: chips con nombre -->
-          <template v-if="enabledBranches(item).length">
-            <v-chip
-              v-for="(b,i) in visibleBranches(enabledBranches(item))"
-              :key="`${item.id}-b${b.id}-${i}`"
-              size="small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip"
-            >
-              <v-icon start size="12">mdi-store-outline</v-icon>
-              {{ enabledBranches(item).length <= 3 ? b.name : branchInitials(b.name) }}
-            </v-chip>
-            <v-chip v-if="hiddenBranchesCount(enabledBranches(item)) > 0"
-              size="small" variant="tonal" label class="plp-br-chip">
-              +{{ hiddenBranchesCount(enabledBranches(item)) }}
-            </v-chip>
-          </template>
-          <!-- Fallback: solo sucursal dueña -->
-          <v-chip v-else-if="Number(item.branch_id || 0) > 0"
-            size="small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
-            <v-icon start size="12">mdi-store-outline</v-icon>
-            {{ branchName(item.branch_id) }}
-          </v-chip>
-          <span v-else class="plp-no-branch">
-            <v-icon size="12" class="mr-1">mdi-store-off-outline</v-icon>Sin sucursal
-          </span>
-        </div>
-
-        <div class="plp-card-actions" @click.stop>
-          <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
-            <v-icon size="16">mdi-eye-outline</v-icon>
-          </v-btn>
-          <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
-            <v-icon size="16">mdi-pencil-outline</v-icon>
-          </v-btn>
-          <v-menu location="bottom end" :close-on-content-click="true">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
-                <v-icon size="16">mdi-dots-vertical</v-icon>
-              </v-btn>
+          <!-- Sucursales como mini chips -->
+          <div v-if="enabledBranches(item).length || Number(item.branch_id || 0) > 0" class="plp-card-branches">
+            <template v-if="enabledBranches(item).length">
+              <span
+                v-for="(b,i) in visibleBranches(enabledBranches(item))"
+                :key="`${item.id}-b${b.id}-${i}`"
+                class="plp-br-pill"
+                :style="{ '--br-color': branchCssColor(b.id) }"
+              >
+                <v-icon size="10">mdi-store-outline</v-icon>
+                {{ branchInitials(b.name) }}
+              </span>
+              <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-br-pill plp-br-pill--more">
+                +{{ hiddenBranchesCount(enabledBranches(item)) }}
+              </span>
             </template>
-            <v-list density="compact" min-width="160">
-              <v-list-item @click="openEdit(item.id)">
-                <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
-                <v-list-item-title>Editar</v-list-item-title>
-              </v-list-item>
-              <v-divider />
-              <v-list-item v-if="!isAdmin" @click="askDisable(item)">
-                <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
-                <v-list-item-title>Inactivar</v-list-item-title>
-              </v-list-item>
-              <v-list-item v-else @click="askDelete(item)">
-                <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
-                <v-list-item-title class="text-error">Eliminar</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
+            <span v-else class="plp-br-pill" :style="{ '--br-color': branchCssColor(item.branch_id) }">
+              <v-icon size="10">mdi-store-outline</v-icon>
+              {{ branchInitials(branchName(item.branch_id)) }}
+            </span>
+          </div>
+
+          <!-- Footer: precio + acciones -->
+          <div class="plp-card-footer">
+            <div class="plp-card-price" v-if="Number(item.price_list) > 0">
+              {{ fmtPrice(item.price_list) }}
+            </div>
+            <div class="plp-card-price plp-card-price--none" v-else>
+              Sin precio
+            </div>
+
+            <div class="plp-card-actions" @click.stop>
+              <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
+                <v-icon size="16">mdi-eye-outline</v-icon>
+              </v-btn>
+              <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
+                <v-icon size="16">mdi-pencil-outline</v-icon>
+              </v-btn>
+              <v-menu location="bottom end" :close-on-content-click="true">
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
+                    <v-icon size="16">mdi-dots-vertical</v-icon>
+                  </v-btn>
+                </template>
+                <v-list density="compact" min-width="160">
+                  <v-list-item @click="openEdit(item.id)">
+                    <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
+                    <v-list-item-title>Editar</v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                    <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
+                    <v-list-item-title>Inactivar</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item v-else @click="askDelete(item)">
+                    <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
+                    <v-list-item-title class="text-error">Eliminar</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -858,6 +869,26 @@ function getStockLabel(item) {
   const qty = Number(item?.stock_total ?? item?.stock_qty ?? item?.stock ?? item?.qty ?? -1);
   if (qty < 0) return '—'; if (qty === 0) return 'Sin stock'; return `${qty} uds`;
 }
+function getStockQty(item) {
+  const qty = Number(item?.stock_total ?? item?.stock_qty ?? item?.stock ?? item?.qty ?? 0);
+  return Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 0;
+}
+// Semáforo de stock: >10 verde, 5-10 amarillo, <5 rojo, 0 rojo
+function stockLevelClass(item) {
+  const n = getStockQty(item);
+  if (n <= 0) return 'level-out';
+  if (n < 5) return 'level-low';
+  if (n <= 10) return 'level-mid';
+  return 'level-high';
+}
+// Devuelve un color CSS concreto (no token de Vuetify) para usar en --br-color
+function branchCssColor(id) {
+  const bid = Number(id || 0);
+  if (bid === 1) return 'rgb(var(--v-theme-primary))';
+  if (bid === 2) return '#16a34a';
+  if (bid === 3) return '#7c3aed';
+  return '#6b7280';
+}
 </script>
 
 <style scoped>
@@ -900,11 +931,11 @@ function getStockLabel(item) {
 .plp-empty-title { font-size: 17px; font-weight: 800; }
 .plp-empty-sub { font-size: 13px; opacity: 0.5; }
 
-/* GRID */
+/* GRID — compacto estilo PosProductRow */
 .plp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
   transition: opacity 0.2s;
 }
 .plp-grid--loading { opacity: 0.5; pointer-events: none; }
@@ -912,46 +943,276 @@ function getStockLabel(item) {
 /* CARD */
 .plp-card {
   position: relative;
-  display: flex; flex-direction: column;
-  border-radius: 16px; overflow: hidden;
-  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.2));
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 12px;
+  overflow: hidden;
   background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.12s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
 }
-.plp-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.14); transform: translateY(-2px); }
-.plp-card--inactive { opacity: 0.55; }
-.plp-card-accent { height: 5px; flex-shrink: 0; }
+.plp-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+.plp-card--inactive { opacity: 0.6; }
 
-.plp-card-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 14px 0; }
-.plp-card-img-wrap { width: 68px; height: 68px; border-radius: 12px; background: rgba(var(--v-theme-on-surface), 0.05); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
-.plp-card-img { width: 100%; height: 100%; object-fit: cover; }
-.plp-card-check { margin-top: -4px; margin-right: -6px; }
+/* ─── Media (imagen cuadrada + badges flotantes) ─────────── */
+.plp-card-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  overflow: hidden;
+}
 
-.plp-card-body { padding: 10px 14px 6px; flex: 1; min-width: 0; }
-.plp-card-name { font-size: 15px; font-weight: 800; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.plp-card-brand { font-size: 12px; opacity: 0.5; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plp-card-sku { display: flex; align-items: center; font-size: 11px; opacity: 0.45; margin-top: 4px; font-family: monospace; }
+.plp-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.plp-card-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 5px 14px; }
-.plp-tag { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-.plp-tag--cat { background: rgba(var(--v-theme-primary), 0.12); color: rgb(var(--v-theme-primary)); }
-.plp-tag--sub { background: rgba(var(--v-theme-on-surface), 0.08); opacity: 0.75; }
-.plp-tag--inactive { background: rgba(var(--v-theme-error), 0.1); color: rgb(var(--v-theme-error)); }
+.plp-card-noimg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.3);
+}
 
-.plp-card-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
-.plp-card-price { font-size: 16px; font-weight: 900; color: rgb(var(--v-theme-success)); }
-.plp-card-price--none { color: rgba(var(--v-theme-on-surface), 0.3); font-weight: 400; font-size: 12px; }
-.plp-card-stock { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; }
+/* Badge de stock flotante (semáforo) */
+.plp-stock-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-feature-settings: "tnum";
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+.plp-stock-badge.level-high  { background: rgb(var(--v-theme-success)); }
+.plp-stock-badge.level-mid   { background: rgb(var(--v-theme-warning)); }
+.plp-stock-badge.level-low,
+.plp-stock-badge.level-out   { background: rgb(var(--v-theme-error)); }
 
+/* Checkbox flotante arriba-derecha */
+.plp-card-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  padding: 2px;
+}
+
+/* Badge inactivo */
+.plp-inactive-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-error), 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+  z-index: 2;
+}
+
+/* ─── Info debajo de la imagen ──────────────────────────── */
+.plp-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 10px 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.plp-card-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: rgb(var(--v-theme-on-surface));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  min-height: 2.4em;
+}
+
+.plp-card-sku {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  letter-spacing: 0.02em;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plp-card-sku :deep(.v-icon) {
+  color: rgb(var(--v-theme-primary));
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.plp-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-chip--brand {
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.meta-chip--muted {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  text-transform: none;
+}
+
+.meta-chip--cat {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  text-transform: none;
+}
+
+/* Sucursales como pills compactas */
 .plp-card-branches {
-  display: flex; flex-wrap: wrap; gap: 5px;
-  padding: 6px 14px 2px;
-  border-top: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
 }
-.plp-br-chip { font-weight: 800 !important; font-size: 11px !important; }
-.plp-no-branch { display: flex; align-items: center; font-size: 11px; opacity: 0.35; padding: 2px 0; }
-.plp-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0px; padding: 2px 8px 8px; }
+
+.plp-br-pill {
+  --br-color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px 1px 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--br-color) 14%, transparent);
+  color: var(--br-color);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.plp-br-pill :deep(.v-icon) {
+  opacity: 0.72;
+}
+
+.plp-br-pill--more {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Footer: precio + acciones */
+.plp-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.plp-card-price {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: rgb(var(--v-theme-success));
+  font-feature-settings: "tnum";
+}
+
+.plp-card-price::before {
+  content: "$ ";
+  opacity: 0.72;
+  font-weight: 700;
+}
+
+.plp-card-price--none {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-style: italic;
+}
+
+.plp-card-price--none::before {
+  content: "";
+}
+
+.plp-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.plp-card-actions :deep(.v-btn) {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+}
 
 /* STOCK DOT */
 .st-dot { width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
@@ -1001,9 +1262,8 @@ function getStockLabel(item) {
 
 /* MOBILE */
 @media (max-width: 480px) {
-  .plp-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .plp-card-name { font-size: 13px; }
-  .plp-card-img-wrap { width: 56px; height: 56px; }
+  .plp-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plp-card-name { font-size: 12px; }
   .plp-card-price { font-size: 14px; }
   .plp-pagination { flex-direction: column; align-items: center; }
 }
