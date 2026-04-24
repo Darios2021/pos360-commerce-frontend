@@ -40,6 +40,7 @@
               :error-messages="nameError ? nameErrorMsg : ''"
               @update:model-value="$emit('update:customer-name', $event)"
               @keyup.enter="emitNextIfValid"
+              @keydown.backspace="onBackspaceEmpty($event, customerName)"
             />
           </div>
 
@@ -61,6 +62,7 @@
                 :error-messages="docError ? docErrorMsg : ''"
                 @update:model-value="$emit('update:customer-doc', $event)"
                 @keyup.enter="emitNextIfValid"
+                @keydown.backspace="onBackspaceEmpty($event, customerDoc)"
               />
             </div>
 
@@ -79,6 +81,7 @@
                 class="ck-field"
                 @update:model-value="$emit('update:customer-phone', $event)"
                 @keyup.enter="emitNextIfValid"
+                @keydown.backspace="onBackspaceEmpty($event, customerPhone)"
               />
             </div>
           </div>
@@ -133,6 +136,26 @@ function emitNextIfValid() {
   if (!isValid()) return true;
   emit("next");
   return true;
+}
+
+// Backspace en un campo vacío → volver al paso anterior (Factura).
+// Si el cajero está tipeando y borra hasta vaciar, el primer Backspace
+// en el campo vacío lo devuelve al paso 3.
+function onBackspaceEmpty(e, value) {
+  const input = e?.target;
+  const raw = String(value ?? "").trim();
+  const inputValue = String(input?.value ?? "");
+  const selectionStart = Number(input?.selectionStart ?? 0);
+  const selectionEnd = Number(input?.selectionEnd ?? 0);
+  const fullSelected =
+    selectionStart === 0 && selectionEnd === inputValue.length && inputValue.length > 0;
+
+  // Si el campo está totalmente vacío → volver atrás.
+  // Si todo el contenido está seleccionado (Ctrl+A), dejamos que Backspace borre primero.
+  if (!raw && !fullSelected) {
+    e.preventDefault();
+    emit("back");
+  }
 }
 
 function focusCurrent() {
