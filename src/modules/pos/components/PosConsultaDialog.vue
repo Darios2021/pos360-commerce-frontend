@@ -207,73 +207,81 @@
                 :key="getItemKey(item)"
                 class="product-card"
               >
-                <div class="product-card__head">
+                <!-- Imagen cuadrada arriba con badge de stock flotante -->
+                <div class="product-card__media">
+                  <v-img
+                    v-if="getImage(item)"
+                    :src="getImage(item)"
+                    :aspect-ratio="1"
+                    cover
+                    class="product-card__img"
+                  />
+                  <div v-else class="product-card__noimg">
+                    <v-icon size="38">mdi-package-variant-closed</v-icon>
+                  </div>
+
+                  <span
+                    v-if="getStock(item) >= 0"
+                    class="stock-badge"
+                    :class="stockLevelClass(getStock(item))"
+                    :title="getStock(item) > 0 ? `Stock: ${getStock(item)}` : 'Sin stock'"
+                  >
+                    <v-icon size="13">
+                      {{ getStock(item) > 0 ? "mdi-package-variant-closed" : "mdi-close-circle" }}
+                    </v-icon>
+                    {{ getStock(item) }}
+                  </span>
+                </div>
+
+                <!-- Info compacta -->
+                <div class="product-card__info">
                   <div class="product-card__name" :title="getName(item)">
                     {{ getName(item) }}
                   </div>
-                  <div class="product-card__price">
-                    {{ formatMoney(getPrice(item)) }}
+
+                  <!-- Barcode destacado -->
+                  <div v-if="getBarcode(item)" class="product-card__barcode">
+                    <v-icon size="12">mdi-barcode</v-icon>
+                    <span class="barcode-value">{{ getBarcode(item) }}</span>
+                    <button
+                      type="button"
+                      class="barcode-copy"
+                      :title="copiedKey === getItemKey(item) ? '¡Copiado!' : 'Copiar'"
+                      @click="copyBarcode(item)"
+                    >
+                      <v-icon size="11">
+                        {{ copiedKey === getItemKey(item) ? "mdi-check" : "mdi-content-copy" }}
+                      </v-icon>
+                    </button>
                   </div>
-                </div>
 
-                <!-- Barcode destacado -->
-                <div class="product-card__barcode" v-if="getBarcode(item)">
-                  <v-icon size="14">mdi-barcode</v-icon>
-                  <span class="barcode-value">{{ getBarcode(item) }}</span>
-                  <button
-                    type="button"
-                    class="barcode-copy"
-                    :title="copiedKey === getItemKey(item) ? '¡Copiado!' : 'Copiar código'"
-                    @click="copyBarcode(item)"
-                  >
-                    <v-icon size="12">
-                      {{ copiedKey === getItemKey(item) ? "mdi-check" : "mdi-content-copy" }}
-                    </v-icon>
-                  </button>
-                </div>
+                  <div v-if="getBrand(item) || getModel(item)" class="product-card__meta">
+                    <span v-if="getBrand(item)" class="meta-chip meta-chip--brand">
+                      {{ getBrand(item) }}
+                    </span>
+                    <span v-if="getModel(item)" class="meta-chip meta-chip--muted">
+                      {{ getModel(item) }}
+                    </span>
+                  </div>
 
-                <!-- Meta chips -->
-                <div class="product-card__meta">
-                  <span v-if="getBrand(item)" class="meta-chip meta-chip--brand">
-                    {{ getBrand(item) }}
-                  </span>
-                  <span v-if="getModel(item)" class="meta-chip">
-                    {{ getModel(item) }}
-                  </span>
-                  <span v-if="getCategory(item)" class="meta-chip meta-chip--muted">
-                    {{ getCategory(item) }}
-                  </span>
-                  <span v-if="getSubcategory(item)" class="meta-chip meta-chip--muted">
-                    {{ getSubcategory(item) }}
-                  </span>
-                  <span v-if="getSku(item)" class="meta-chip meta-chip--sku">
-                    SKU · {{ getSku(item) }}
-                  </span>
-                </div>
+                  <div class="product-card__footer">
+                    <div class="product-card__price">
+                      {{ formatMoney(getPrice(item)) }}
+                    </div>
 
-                <!-- Footer: stock + agregar -->
-                <div class="product-card__footer">
-                  <span
-                    class="stock-pill"
-                    :class="getStock(item) > 0 ? 'is-ok' : 'is-out'"
-                  >
-                    <v-icon size="12">
-                      {{ getStock(item) > 0 ? "mdi-package-variant-closed" : "mdi-package-variant-closed-remove" }}
-                    </v-icon>
-                    {{ getStock(item) > 0 ? `Stock: ${getStock(item)}` : "Sin stock" }}
-                  </span>
-
-                  <v-btn
-                    size="small"
-                    variant="flat"
-                    color="primary"
-                    :disabled="getStock(item) <= 0"
-                    @click="addToCart(item)"
-                    class="add-btn"
-                  >
-                    <v-icon start size="15">mdi-cart-plus</v-icon>
-                    Agregar
-                  </v-btn>
+                    <v-btn
+                      icon
+                      size="small"
+                      variant="flat"
+                      color="primary"
+                      :disabled="getStock(item) <= 0"
+                      @click="addToCart(item)"
+                      class="add-btn"
+                      :title="`Agregar ${getName(item)} al carrito`"
+                    >
+                      <v-icon size="17">mdi-cart-plus</v-icon>
+                    </v-btn>
+                  </div>
                 </div>
               </article>
             </div>
@@ -287,6 +295,9 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
+import { usePosImages } from "../composables/usePosImages";
+
+const { productImage } = usePosImages();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -475,6 +486,26 @@ function formatMoney(v) {
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(Number(v || 0));
+}
+
+function getImage(item) {
+  const direct = normalizeStr(
+    pick(item, ["image", "image_url", "imageUrl", "thumbnail", "imagen"])
+  );
+  if (direct) return direct;
+  // Fallback a resolver por id
+  const id = Number(item?.id || item?.product_id || 0);
+  if (!id) return "";
+  return productImage({ id });
+}
+
+// Semáforo consistente con PosProductRow: >10 verde, 5-10 amarillo, <5 rojo, 0 rojo
+function stockLevelClass(n) {
+  const v = Number(n || 0);
+  if (v <= 0) return "level-out";
+  if (v < 5) return "level-low";
+  if (v <= 10) return "level-mid";
+  return "level-high";
 }
 
 // ─── Facets dinámicos ───────────────────────────────────────
@@ -878,9 +909,9 @@ async function copyBarcode(item) {
 /* ─── Grid de resultados ───────────────────────────────────── */
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
-  max-height: 560px;
+  max-height: 600px;
   overflow-y: auto;
   padding: 2px;
   scrollbar-width: thin;
@@ -896,70 +927,137 @@ async function copyBarcode(item) {
   border-radius: 999px;
 }
 
+/* ─── Product card (estilo PosProductRow) ─────────────────── */
 .product-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
   border-radius: 12px;
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  overflow: hidden;
   transition:
     border-color 0.14s ease,
-    box-shadow 0.14s ease;
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .product-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.32);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.09);
+  transform: translateY(-2px);
 }
 
-.product-card__head {
+/* ─── Imagen cuadrada arriba ──────────────────────────────── */
+.product-card__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.product-card__img {
+  width: 100%;
+  height: 100%;
+}
+
+.product-card__img :deep(.v-img__img),
+.product-card__img :deep(img) {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.product-card__noimg {
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+/* Badge de stock flotante sobre la imagen (semáforo) */
+.stock-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  font-feature-settings: "tnum";
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+}
+
+.stock-badge :deep(.v-icon) {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.24));
+}
+
+.stock-badge.level-high {
+  background: rgb(var(--v-theme-success));
+}
+
+.stock-badge.level-mid {
+  background: rgb(var(--v-theme-warning));
+}
+
+.stock-badge.level-low,
+.stock-badge.level-out {
+  background: rgb(var(--v-theme-error));
+}
+
+/* ─── Info compacta debajo de la imagen ───────────────────── */
+.product-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px 10px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .product-card__name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   letter-spacing: -0.005em;
   color: rgb(var(--v-theme-on-surface));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+  min-height: 2.4em;
 }
 
-.product-card__price {
-  flex-shrink: 0;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: rgb(var(--v-theme-primary));
-  font-feature-settings: "tnum";
-  white-space: nowrap;
-}
-
-/* ─── Barcode destacado ────────────────────────────────────── */
+/* Barcode destacado */
 .product-card__barcode {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 4px 7px;
+  border-radius: 6px;
   background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.2);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  letter-spacing: 0.03em;
-  align-self: stretch;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  letter-spacing: 0.02em;
   min-width: 0;
 }
 
@@ -974,6 +1072,7 @@ async function copyBarcode(item) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .barcode-copy {
@@ -982,98 +1081,88 @@ async function copyBarcode(item) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   color: rgba(var(--v-theme-on-surface), 0.55);
   transition: background 0.14s ease, color 0.14s ease;
   flex-shrink: 0;
 }
 
 .barcode-copy:hover {
-  background: rgba(var(--v-theme-primary), 0.1);
+  background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
 }
 
-/* ─── Meta chips ───────────────────────────────────────────── */
+/* ─── Meta chips (marca/modelo) ───────────────────────────── */
 .product-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  align-items: center;
 }
 
 .meta-chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), 0.78);
-  font-size: 10.5px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .meta-chip--brand {
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
-  text-transform: uppercase;
 }
 
 .meta-chip--muted {
   background: transparent;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  color: rgba(var(--v-theme-on-surface), 0.58);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  color: rgba(var(--v-theme-on-surface), 0.62);
   text-transform: none;
 }
 
-.meta-chip--sku {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-/* ─── Footer del card ──────────────────────────────────────── */
+/* ─── Footer: precio + botón add ──────────────────────────── */
 .product-card__footer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   margin-top: auto;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
-.stock-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.stock-pill.is-ok {
-  background: rgba(var(--v-theme-success), 0.14);
-  color: rgb(var(--v-theme-success));
-}
-
-.stock-pill.is-out {
-  background: rgba(var(--v-theme-error), 0.14);
-  color: rgb(var(--v-theme-error));
+.product-card__price {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: rgb(var(--v-theme-on-surface));
+  font-feature-settings: "tnum";
+  line-height: 1.1;
 }
 
 .add-btn {
-  min-height: 32px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
   border-radius: 8px !important;
-  text-transform: none !important;
-  font-weight: 800 !important;
-  letter-spacing: 0 !important;
-  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.3) !important;
+  box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.32) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.add-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.48) !important;
 }
 
 /* ─── Estados vacíos ───────────────────────────────────────── */
