@@ -88,7 +88,7 @@
               label="Imágenes" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
           </v-col>
           <v-col cols="6" sm="4" md="2">
-            <v-select v-model="limit" :items="[10,20,50,100]" label="Por pág." variant="outlined"
+            <v-select v-model="limit" :items="[12, 24, 48, 96]" label="Por pág." variant="outlined"
               density="compact" hide-details @update:modelValue="onLimitChange" />
           </v-col>
         </v-row>
@@ -366,9 +366,9 @@ const isAdmin = computed(() => {
 const loading = ref(false);
 const items = computed(() => (Array.isArray(products.items) ? products.items : []));
 
-const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
+const meta = ref({ page: 1, limit: 24, total: 0, pages: 1 });
 const page = ref(1);
-const limit = ref(20);
+const limit = ref(24);
 const selectedIds = ref([]);
 
 const deleteOpen = ref(false);
@@ -573,7 +573,7 @@ async function fetchNow() {
   try {
     const params = {
       page: Number(page.value || 1),
-      limit: Number(limit.value || 20),
+      limit: Number(limit.value || 24),
       q: String(f.value.q || "").trim(),
 
       branch_id: isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null,
