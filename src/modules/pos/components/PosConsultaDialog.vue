@@ -702,18 +702,51 @@ async function copyBarcode(item) {
 
 <style scoped>
 .consulta-shell {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
   border-radius: 16px;
   overflow: hidden;
   background: rgb(var(--v-theme-surface)) !important;
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
 }
 
 .consulta-body {
-  padding: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
+
+  /* Scrollbar estilo app moderno */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.consulta-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.consulta-body::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.consulta-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+
+.consulta-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-primary), 0.6);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 
 .consulta-layout {
@@ -908,25 +941,12 @@ async function copyBarcode(item) {
   background: rgba(var(--v-theme-primary), 0.3);
 }
 
-/* ─── Grid de resultados ───────────────────────────────────── */
+/* ─── Grid de resultados (sin scroll interno) ──────────────── */
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
-  max-height: 600px;
-  overflow-y: auto;
   padding: 2px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--v-theme-primary), 0.4) transparent;
-}
-
-.results-grid::-webkit-scrollbar {
-  width: 8px;
-}
-
-.results-grid::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-primary), 0.4);
-  border-radius: 999px;
 }
 
 /* ─── Product card (estilo PosProductRow) ─────────────────── */
