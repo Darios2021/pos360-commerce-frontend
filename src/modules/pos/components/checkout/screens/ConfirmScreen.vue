@@ -2,9 +2,6 @@
   <div class="ck-screen" ref="rootRef" tabindex="-1">
     <div class="ck-screen__head">
       <div class="ck-screen__title">Confirmar venta</div>
-      <div class="ck-screen__subtitle">
-        Revisá antes de finalizar
-      </div>
     </div>
 
     <div class="ck-screen__body">

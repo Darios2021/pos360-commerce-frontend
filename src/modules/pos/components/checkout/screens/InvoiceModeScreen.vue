@@ -2,7 +2,6 @@
   <div class="ck-screen" ref="rootRef" tabindex="-1">
     <div class="ck-screen__head">
       <div class="ck-screen__title">Tipo de comprobante</div>
-      <div class="ck-screen__subtitle">Presioná 1-4 o usá las flechas para seleccionar</div>
     </div>
 
     <div class="ck-screen__body">

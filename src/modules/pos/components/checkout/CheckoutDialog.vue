@@ -135,10 +135,7 @@
 
       <!-- FOOTER: keyboard hint + big action buttons -->
       <div class="ck-ftr">
-        <div class="ck-ftr-hint">
-          <v-icon size="13">mdi-keyboard-outline</v-icon>
-          {{ footerHint }}
-        </div>
+        <div class="ck-ftr-hint"></div>
         <div class="ck-ftr-actions">
           <v-btn
             class="ck-act ck-act--back"

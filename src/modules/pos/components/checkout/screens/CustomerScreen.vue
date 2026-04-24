@@ -2,9 +2,6 @@
   <div class="ck-screen" ref="rootRef">
     <div class="ck-screen__head">
       <div class="ck-screen__title">Cliente</div>
-      <div class="ck-screen__subtitle">
-        {{ isFacturaMode ? "Completá los datos (Tab entre campos · Enter siguiente)" : "Cliente opcional" }}
-      </div>
     </div>
 
     <div class="ck-screen__body">

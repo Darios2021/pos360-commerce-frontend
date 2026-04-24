@@ -2,7 +2,6 @@
   <div class="ck-screen">
     <div class="ck-screen__head">
       <div class="ck-screen__title">{{ screenTitle }}</div>
-      <div class="ck-screen__subtitle">{{ screenSubtitle }}</div>
     </div>
 
     <div class="ck-screen__body">
