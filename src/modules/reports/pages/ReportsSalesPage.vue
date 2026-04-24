@@ -109,15 +109,93 @@
           </v-btn>
           <v-btn
             variant="flat"
+            color="success"
+            rounded="lg"
+            size="small"
+            prepend-icon="mdi-microsoft-excel"
+            :disabled="!sales.length"
+            :loading="exporting"
+            @click="exportExcel"
+          >
+            Excel
+          </v-btn>
+          <v-btn
+            variant="tonal"
             color="primary"
             rounded="lg"
             size="small"
-            prepend-icon="mdi-download-outline"
+            prepend-icon="mdi-file-delimited-outline"
             :disabled="!sales.length"
             @click="exportCsv"
           >
             CSV
           </v-btn>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFO DEL REPORTE (emisor + notas) -->
+    <div class="rpt-card rpt-card--info">
+      <div class="rpt-card__head">
+        <v-icon size="16">mdi-file-document-check-outline</v-icon>
+        <span class="rpt-card__title">Información del reporte</span>
+        <v-spacer />
+        <span class="rpt-card__count">Generado {{ issuedAtLabel }}</span>
+      </div>
+      <div class="rpt-info-grid">
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">Emitido por</div>
+          <div class="rpt-info-value">
+            <strong>{{ issuerName }}</strong>
+            <span v-if="issuerEmail" class="rpt-info-sub">{{ issuerEmail }}</span>
+          </div>
+        </div>
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">Rol</div>
+          <div class="rpt-info-value">
+            <span v-for="r in issuerRoles" :key="r" class="rpt-role-chip">{{ r }}</span>
+            <span v-if="!issuerRoles.length" class="rpt-info-sub">—</span>
+          </div>
+        </div>
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">Período</div>
+          <div class="rpt-info-value">
+            <strong>{{ monthLabel }} {{ f.year }}</strong>
+            <span class="rpt-info-sub">
+              {{ fmtDate(periodFrom) }} — {{ fmtDate(periodToInclusive) }}
+            </span>
+          </div>
+        </div>
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">Alcance</div>
+          <div class="rpt-info-value">
+            <strong>{{ selectedBranchName || 'Todas las sucursales' }}</strong>
+            <span class="rpt-info-sub">
+              Estado: {{ f.status === 'ALL' ? 'Todas las ventas' : 'Solo pagadas' }}
+            </span>
+          </div>
+        </div>
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">% Ganancia global</div>
+          <div class="rpt-info-value">
+            <strong class="rpt-info-pct">{{ profitPct || 0 }}%</strong>
+            <span v-if="overrideCount > 0" class="rpt-info-sub">
+              {{ overrideCount }} venta{{ overrideCount === 1 ? '' : 's' }} con % personalizado
+            </span>
+          </div>
+        </div>
+        <div class="rpt-info-row rpt-info-row--notes">
+          <div class="rpt-info-label">Notas</div>
+          <div class="rpt-info-value">
+            <v-text-field
+              v-model="reportNotes"
+              placeholder="Observaciones de esta liquidación (opcional)…"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -211,6 +289,85 @@
       </div>
     </div>
 
+    <!-- DESGLOSES (método, cajero, día) -->
+    <div v-if="sales.length" class="rpt-breakdowns">
+      <!-- Por método de pago -->
+      <div class="rpt-card">
+        <div class="rpt-card__head">
+          <v-icon size="16">mdi-credit-card-outline</v-icon>
+          <span class="rpt-card__title">Por método de pago</span>
+        </div>
+        <div class="rpt-breakdown-list">
+          <div v-for="m in byMethod" :key="m.method" class="rpt-breakdown-row">
+            <div class="rpt-breakdown-row__left">
+              <v-icon size="14" class="rpt-breakdown-row__icon">{{ methodIcon(m.method) }}</v-icon>
+              <span class="rpt-breakdown-row__label">{{ methodLabel(m.method) }}</span>
+            </div>
+            <div class="rpt-breakdown-row__bar">
+              <div class="rpt-breakdown-row__fill" :style="{ width: `${m.pct}%` }" />
+            </div>
+            <div class="rpt-breakdown-row__right">
+              <strong>{{ fmtMoney(m.amount) }}</strong>
+              <span>{{ m.pct.toFixed(1) }}%</span>
+            </div>
+          </div>
+          <div v-if="!byMethod.length" class="rpt-breakdown-empty">Sin pagos registrados.</div>
+        </div>
+      </div>
+
+      <!-- Por cajero -->
+      <div class="rpt-card">
+        <div class="rpt-card__head">
+          <v-icon size="16">mdi-account-cash-outline</v-icon>
+          <span class="rpt-card__title">Por cajero</span>
+        </div>
+        <div class="rpt-breakdown-list">
+          <div v-for="u in byUser" :key="u.user_id" class="rpt-breakdown-row">
+            <div class="rpt-breakdown-row__left">
+              <v-icon size="14" class="rpt-breakdown-row__icon">mdi-account-circle-outline</v-icon>
+              <span class="rpt-breakdown-row__label">{{ u.user_name }}</span>
+              <span class="rpt-breakdown-row__badge">{{ u.sales_count }}</span>
+            </div>
+            <div class="rpt-breakdown-row__bar">
+              <div class="rpt-breakdown-row__fill" :style="{ width: `${u.pct}%` }" />
+            </div>
+            <div class="rpt-breakdown-row__right">
+              <strong>{{ fmtMoney(u.total_sum) }}</strong>
+              <span>{{ u.pct.toFixed(1) }}%</span>
+            </div>
+          </div>
+          <div v-if="!byUser.length" class="rpt-breakdown-empty">Sin ventas.</div>
+        </div>
+      </div>
+
+      <!-- Por día -->
+      <div class="rpt-card">
+        <div class="rpt-card__head">
+          <v-icon size="16">mdi-calendar-text-outline</v-icon>
+          <span class="rpt-card__title">Por día</span>
+        </div>
+        <div class="rpt-day-list">
+          <div
+            v-for="d in byDay"
+            :key="d.date"
+            class="rpt-day-row"
+            :title="`${d.sales_count} ventas`"
+          >
+            <div class="rpt-day-row__date">{{ fmtDayShort(d.date) }}</div>
+            <div class="rpt-day-row__bar">
+              <div
+                class="rpt-day-row__fill"
+                :style="{ height: `${pctOfMaxDay(d.total_sum)}%` }"
+              />
+            </div>
+            <div class="rpt-day-row__value">{{ fmtMoney(d.total_sum) }}</div>
+            <div class="rpt-day-row__count">{{ d.sales_count }} v.</div>
+          </div>
+          <div v-if="!byDay.length" class="rpt-breakdown-empty">Sin días con ventas.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- TABLA DE VENTAS -->
     <div class="rpt-card">
       <div class="rpt-card__head">
@@ -241,8 +398,11 @@
               <th>Cajero</th>
               <th>Cliente</th>
               <th class="num">Items</th>
+              <th class="num">Subtotal</th>
+              <th class="num">Desc.</th>
               <th class="num">Total</th>
-              <th class="num">% Ganancia</th>
+              <th>Pago</th>
+              <th class="num">% Gan.</th>
               <th class="num">A liquidar</th>
             </tr>
           </thead>
@@ -269,7 +429,22 @@
                 </div>
               </td>
               <td class="num">{{ fmtInt(s.items_qty || 0) }}</td>
+              <td class="num">{{ fmtMoney(s.subtotal) }}</td>
+              <td class="num rpt-cell-discount">
+                {{ Number(s.discount_total) > 0 ? '-' + fmtMoney(s.discount_total) : '—' }}
+              </td>
               <td class="num rpt-cell-total">{{ fmtMoney(s.total) }}</td>
+              <td>
+                <div class="rpt-cell-payment">
+                  <span class="rpt-method-chip" :title="paymentBreakdown(s)">
+                    <v-icon size="10">{{ methodIcon(s.primary_method) }}</v-icon>
+                    {{ methodLabel(s.primary_method) }}
+                  </span>
+                  <span v-if="Object.keys(s.payments_by_method || {}).length > 1" class="rpt-cell-payment__more">
+                    +{{ Object.keys(s.payments_by_method).length - 1 }}
+                  </span>
+                </div>
+              </td>
               <td class="num rpt-cell-pct">
                 <input
                   type="number"
@@ -299,8 +474,11 @@
           <tfoot>
             <tr>
               <td colspan="6" class="rpt-foot-label">Total período</td>
+              <td class="num rpt-foot-val">{{ fmtMoney(summary.subtotal_sum) }}</td>
+              <td class="num rpt-foot-val">{{ fmtMoney(summary.discount_sum) }}</td>
               <td class="num rpt-foot-val">{{ fmtMoney(summary.total_sum) }}</td>
-              <td class="num"></td>
+              <td></td>
+              <td></td>
               <td class="num rpt-foot-val rpt-foot-val--success">{{ fmtMoney(liquidationTotal) }}</td>
             </tr>
           </tfoot>
@@ -317,6 +495,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import http from "@/app/api/http";
+import { useAuthStore } from "@/app/store/auth.store";
+
+const auth = useAuthStore();
 
 /* ─── Estado ──────────────────────────────────────────────────────── */
 const loading = ref(false);
@@ -345,6 +526,10 @@ const f = reactive({
 
 const profitPct = ref(0); // % global aplicado a todas las ventas
 const overridePct = reactive({}); // { [saleId]: number }
+const reportNotes = ref("");
+
+const issuedAt = ref(new Date());
+const exporting = ref(false);
 
 const snack = reactive({ show: false, text: "" });
 function toast(text) {
@@ -446,6 +631,97 @@ const avgTicket = computed(() => {
   return n > 0 ? Number(summary.total_sum || 0) / n : 0;
 });
 
+const overrideCount = computed(() => Object.keys(overridePct).length);
+
+/* ─── Info del emisor ──────────────────────────────────────────── */
+const issuerName = computed(() => {
+  const u = auth.user || {};
+  const full = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+  return full || u.username || u.email || "Usuario desconocido";
+});
+const issuerEmail = computed(() => auth.user?.email || "");
+const issuerRoles = computed(() => {
+  const arr = Array.isArray(auth.roles) ? auth.roles : [];
+  return arr.filter(Boolean);
+});
+const issuedAtLabel = computed(() => fmtDateTime(issuedAt.value));
+
+const periodFrom = computed(() => new Date(f.year, f.month - 1, 1));
+const periodToInclusive = computed(
+  () => new Date(f.year, f.month, 0) // último día del mes
+);
+
+/* ─── Desgloses auxiliares ─────────────────────────────────────── */
+const PAYMENT_METHOD_META = {
+  CASH:        { label: "Efectivo",     icon: "mdi-cash" },
+  TRANSFER:    { label: "Transferencia",icon: "mdi-bank-transfer" },
+  CARD:        { label: "Tarjeta",      icon: "mdi-credit-card-outline" },
+  QR:          { label: "QR",           icon: "mdi-qrcode" },
+  MERCADOPAGO: { label: "Mercado Pago", icon: "mdi-wallet-outline" },
+  CREDIT_SJT:  { label: "Crédito SJT",  icon: "mdi-account-credit-card-outline" },
+  OTHER:       { label: "Otro",         icon: "mdi-dots-horizontal-circle-outline" },
+};
+function methodLabel(code) {
+  if (!code) return "—";
+  return PAYMENT_METHOD_META[code]?.label || code;
+}
+function methodIcon(code) {
+  if (!code) return "mdi-help-circle-outline";
+  return PAYMENT_METHOD_META[code]?.icon || "mdi-credit-card-outline";
+}
+function paymentBreakdown(sale) {
+  const pm = sale?.payments_by_method || {};
+  const entries = Object.entries(pm);
+  if (!entries.length) return "Sin pagos";
+  return entries
+    .map(([m, amt]) => `${methodLabel(m)}: ${fmtMoney(amt)}`)
+    .join(" · ");
+}
+
+const byMethod = computed(() => {
+  const total = Number(summary.total_sum || 0);
+  const out = Object.entries(summary.by_method || {}).map(([method, amount]) => ({
+    method,
+    amount: Number(amount) || 0,
+    pct: total > 0 ? (Number(amount) / total) * 100 : 0,
+  }));
+  return out.sort((a, b) => b.amount - a.amount);
+});
+
+const byUser = computed(() => {
+  const map = new Map();
+  const total = Number(summary.total_sum || 0);
+  for (const s of sales.value) {
+    const key = Number(s.user_id) || 0;
+    const acc = map.get(key) || {
+      user_id: key,
+      user_name: s.user_name || `Usuario #${key}`,
+      sales_count: 0,
+      total_sum: 0,
+    };
+    acc.sales_count += 1;
+    acc.total_sum += Number(s.total) || 0;
+    map.set(key, acc);
+  }
+  const arr = Array.from(map.values()).map((u) => ({
+    ...u,
+    pct: total > 0 ? (u.total_sum / total) * 100 : 0,
+  }));
+  arr.sort((a, b) => b.total_sum - a.total_sum);
+  return arr;
+});
+
+const maxDayTotal = computed(() => {
+  let mx = 0;
+  for (const d of byDay.value) if (d.total_sum > mx) mx = d.total_sum;
+  return mx;
+});
+function pctOfMaxDay(v) {
+  const mx = maxDayTotal.value;
+  if (mx <= 0) return 0;
+  return Math.max(4, (Number(v) || 0) / mx * 100);
+}
+
 /* ─── Formatters ──────────────────────────────────────────────────── */
 const fmtMoneyInt = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -484,6 +760,31 @@ function fmtTime(iso) {
     }).format(d);
   } catch {
     return "";
+  }
+}
+function fmtDateTime(d) {
+  try {
+    const dt = d instanceof Date ? d : new Date(d);
+    return new Intl.DateTimeFormat("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(dt);
+  } catch {
+    return "—";
+  }
+}
+function fmtDayShort(dateStr) {
+  try {
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    return new Intl.DateTimeFormat("es-AR", {
+      day: "2-digit",
+      month: "short",
+    }).format(new Date(y, (m || 1) - 1, d || 1));
+  } catch {
+    return dateStr || "";
   }
 }
 
@@ -555,13 +856,71 @@ function filterByBranch(branchId) {
   reload();
 }
 
+/* ─── Data de filas preparada para export ────────────────────────── */
+function buildSalesRows() {
+  return sales.value.map((s) => {
+    const pct = Number(pctForSale(s.id)) || 0;
+    const total = Number(s.total) || 0;
+    const liq = total * (pct / 100);
+    const pm = s.payments_by_method || {};
+    const methodsStr = Object.entries(pm)
+      .map(([m, amt]) => `${methodLabel(m)}: ${Number(amt).toFixed(2)}`)
+      .join(" | ");
+    return {
+      id: s.id,
+      sale_number: s.sale_number || "",
+      sold_at_iso: new Date(s.sold_at).toISOString(),
+      sold_at_date: fmtDate(s.sold_at),
+      sold_at_time: fmtTime(s.sold_at),
+      branch: s.branch_name || `Sucursal #${s.branch_id}`,
+      branch_id: Number(s.branch_id) || 0,
+      user: s.user_name || "",
+      user_id: Number(s.user_id) || 0,
+      customer: s.customer_name || "",
+      customer_doc: s.customer_doc || "",
+      items_qty: Number(s.items_qty) || 0,
+      subtotal: Number(s.subtotal) || 0,
+      discount: Number(s.discount_total) || 0,
+      total,
+      primary_method: methodLabel(s.primary_method),
+      methods_detail: methodsStr,
+      profit_pct: pct,
+      profit_pct_source: hasOverride(s.id) ? "override" : "global",
+      liquidation: liq,
+    };
+  });
+}
+
+function buildFilenameBase() {
+  const branchTag = f.branch_id ? `_suc${f.branch_id}` : "_todas";
+  const stamp = `${f.year}-${String(f.month).padStart(2, "0")}${branchTag}`;
+  return `reporte_ventas_${stamp}`;
+}
+
 /* ─── Export CSV ───────────────────────────────────────────────────── */
 function exportCsv() {
   if (!sales.value.length) return;
-  const header = [
+
+  // Cabecera informativa (comentarios con #)
+  const headerLines = [
+    `# Reporte de ventas — pos360`,
+    `# Generado: ${issuedAtLabel.value}`,
+    `# Emitido por: ${issuerName.value}${issuerEmail.value ? ` <${issuerEmail.value}>` : ""}`,
+    `# Rol: ${issuerRoles.value.join(", ") || "—"}`,
+    `# Periodo: ${monthLabel.value} ${f.year} (${fmtDate(periodFrom.value)} — ${fmtDate(periodToInclusive.value)})`,
+    `# Sucursal: ${selectedBranchName.value || "Todas"}`,
+    `# Estado: ${f.status === "ALL" ? "Todas las ventas" : "Solo pagadas"}`,
+    `# % Ganancia global: ${profitPct.value || 0}%`,
+    `# Overrides manuales: ${overrideCount.value}`,
+    `# Notas: ${reportNotes.value || "—"}`,
+    `# Ventas: ${summary.sales_count} · Total: ${summary.total_sum} · A liquidar: ${liquidationTotal.value.toFixed(2)}`,
+    "",
+  ];
+
+  const columns = [
     "id",
     "sale_number",
-    "sold_at",
+    "sold_at_iso",
     "branch",
     "user",
     "customer",
@@ -570,36 +929,22 @@ function exportCsv() {
     "subtotal",
     "discount",
     "total",
+    "primary_method",
+    "methods_detail",
     "profit_pct",
+    "profit_pct_source",
     "liquidation",
   ];
 
-  const rows = sales.value.map((s) => {
-    const pct = Number(pctForSale(s.id)) || 0;
-    const liq = Number(s.total || 0) * (pct / 100);
-    return [
-      s.id,
-      s.sale_number || "",
-      new Date(s.sold_at).toISOString(),
-      s.branch_name || `Sucursal #${s.branch_id}`,
-      s.user_name || "",
-      s.customer_name || "",
-      s.customer_doc || "",
-      s.items_qty || 0,
-      Number(s.subtotal || 0).toFixed(2),
-      Number(s.discount_total || 0).toFixed(2),
-      Number(s.total || 0).toFixed(2),
-      pct.toFixed(2),
-      liq.toFixed(2),
-    ];
-  });
+  const data = buildSalesRows();
+  const rows = [columns, ...data.map((r) => columns.map((c) => r[c]))];
 
-  const csv = [header, ...rows]
+  const csvBody = rows
     .map((r) =>
       r
         .map((v) => {
           const s = String(v ?? "");
-          if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+          if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes(";")) {
             return `"${s.replace(/"/g, '""')}"`;
           }
           return s;
@@ -608,17 +953,162 @@ function exportCsv() {
     )
     .join("\n");
 
+  const csv = headerLines.join("\n") + "\n" + csvBody;
+
   const bom = "﻿";
   const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const branchTag = f.branch_id ? `_suc${f.branch_id}` : "_all";
-  a.download = `reporte_ventas_${f.year}-${String(f.month).padStart(2, "0")}${branchTag}.csv`;
+  a.download = `${buildFilenameBase()}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/* ─── Export Excel (multihoja) ─────────────────────────────────────── */
+async function exportExcel() {
+  if (!sales.value.length) return;
+  exporting.value = true;
+  try {
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+
+    /* Hoja 1: Resumen */
+    const resumenAoA = [
+      ["REPORTE DE VENTAS — LIQUIDACIÓN FRANQUICIA"],
+      [],
+      ["Generado", issuedAtLabel.value],
+      ["Emitido por", issuerName.value],
+      ["Email", issuerEmail.value || "—"],
+      ["Rol(es)", issuerRoles.value.join(", ") || "—"],
+      [],
+      ["Período", `${monthLabel.value} ${f.year}`],
+      ["Desde", fmtDate(periodFrom.value)],
+      ["Hasta", fmtDate(periodToInclusive.value)],
+      ["Sucursal", selectedBranchName.value || "Todas"],
+      ["Estado", f.status === "ALL" ? "Todas las ventas" : "Solo pagadas"],
+      ["% Ganancia global", `${profitPct.value || 0}%`],
+      ["Overrides manuales", overrideCount.value],
+      ["Notas", reportNotes.value || "—"],
+      [],
+      ["TOTALES"],
+      ["Cantidad de ventas", summary.sales_count],
+      ["Unidades vendidas", summary.items_qty],
+      ["Subtotal", summary.subtotal_sum],
+      ["Descuentos", summary.discount_sum],
+      ["Total vendido", summary.total_sum],
+      ["Total pagado", summary.paid_sum],
+      ["Ticket promedio", Number(avgTicket.value.toFixed(2))],
+      ["Total a liquidar", Number(liquidationTotal.value.toFixed(2))],
+    ];
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumenAoA);
+    wsResumen["!cols"] = [{ wch: 28 }, { wch: 38 }];
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+
+    /* Hoja 2: Ventas (detalle) */
+    const rows = buildSalesRows();
+    const detalle = rows.map((r) => ({
+      ID: r.id,
+      "N° Venta": r.sale_number,
+      Fecha: r.sold_at_date,
+      Hora: r.sold_at_time,
+      "Fecha ISO": r.sold_at_iso,
+      Sucursal: r.branch,
+      "Sucursal ID": r.branch_id,
+      Cajero: r.user,
+      "Cajero ID": r.user_id,
+      Cliente: r.customer,
+      "Doc. cliente": r.customer_doc,
+      "Items (uds)": r.items_qty,
+      Subtotal: r.subtotal,
+      Descuento: r.discount,
+      Total: r.total,
+      "Método principal": r.primary_method,
+      "Detalle de pagos": r.methods_detail,
+      "% Ganancia": r.profit_pct,
+      "Fuente %": r.profit_pct_source,
+      "A liquidar": Number(r.liquidation.toFixed(2)),
+    }));
+    const wsDetalle = XLSX.utils.json_to_sheet(detalle);
+    wsDetalle["!cols"] = [
+      { wch: 8 },  { wch: 14 }, { wch: 11 }, { wch: 7 },  { wch: 20 },
+      { wch: 22 }, { wch: 8 },  { wch: 22 }, { wch: 8 },  { wch: 26 },
+      { wch: 14 }, { wch: 11 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+      { wch: 16 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 13 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsDetalle, "Ventas");
+
+    /* Hoja 3: Por sucursal */
+    if (byBranch.value.length) {
+      const brRows = byBranch.value.map((b) => ({
+        "Sucursal ID": b.branch_id,
+        Sucursal: b.branch_name,
+        "Ventas": b.sales_count,
+        Subtotal: b.subtotal_sum,
+        Descuentos: b.discount_sum,
+        Total: b.total_sum,
+        "% Ganancia": profitPct.value || 0,
+        "A liquidar (aprox)": Number(
+          (b.total_sum * ((profitPct.value || 0) / 100)).toFixed(2)
+        ),
+      }));
+      const wsBr = XLSX.utils.json_to_sheet(brRows);
+      wsBr["!cols"] = [
+        { wch: 12 }, { wch: 26 }, { wch: 8 }, { wch: 14 },
+        { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 16 },
+      ];
+      XLSX.utils.book_append_sheet(wb, wsBr, "Por sucursal");
+    }
+
+    /* Hoja 4: Por método de pago */
+    if (byMethod.value.length) {
+      const mRows = byMethod.value.map((m) => ({
+        Método: methodLabel(m.method),
+        Código: m.method,
+        Monto: Number(m.amount.toFixed(2)),
+        "% del total": Number(m.pct.toFixed(2)),
+      }));
+      const wsM = XLSX.utils.json_to_sheet(mRows);
+      wsM["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsM, "Por método");
+    }
+
+    /* Hoja 5: Por cajero */
+    if (byUser.value.length) {
+      const uRows = byUser.value.map((u) => ({
+        "Cajero ID": u.user_id,
+        Cajero: u.user_name,
+        Ventas: u.sales_count,
+        Total: Number(u.total_sum.toFixed(2)),
+        "% del total": Number(u.pct.toFixed(2)),
+      }));
+      const wsU = XLSX.utils.json_to_sheet(uRows);
+      wsU["!cols"] = [{ wch: 10 }, { wch: 28 }, { wch: 8 }, { wch: 14 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsU, "Por cajero");
+    }
+
+    /* Hoja 6: Por día */
+    if (byDay.value.length) {
+      const dRows = byDay.value.map((d) => ({
+        Fecha: d.date,
+        Ventas: d.sales_count,
+        Total: d.total_sum,
+      }));
+      const wsD = XLSX.utils.json_to_sheet(dRows);
+      wsD["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsD, "Por día");
+    }
+
+    XLSX.writeFile(wb, `${buildFilenameBase()}.xlsx`);
+    toast("Reporte Excel descargado");
+  } catch (e) {
+    console.error("[reports/exportExcel] error:", e);
+    toast("No se pudo generar el Excel.");
+  } finally {
+    exporting.value = false;
+  }
 }
 
 /* ─── Init ─────────────────────────────────────────────────────────── */
@@ -764,6 +1254,248 @@ onMounted(async () => {
 }
 .rpt-kpi--success .rpt-kpi__value { color: rgb(var(--v-theme-success)); }
 .rpt-kpi--success .rpt-kpi__label { color: rgb(var(--v-theme-success)); opacity: 0.85; }
+
+/* INFO DEL REPORTE */
+.rpt-card--info {
+  background: rgba(var(--v-theme-primary), 0.03);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+.rpt-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 18px;
+  padding: 14px 16px;
+}
+.rpt-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rpt-info-row--notes {
+  grid-column: 1 / -1;
+}
+.rpt-info-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.48);
+}
+.rpt-info-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: rgb(var(--v-theme-on-surface));
+  min-width: 0;
+}
+.rpt-info-value strong { font-weight: 800; }
+.rpt-info-sub {
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-weight: 500;
+}
+.rpt-info-pct {
+  color: rgb(var(--v-theme-primary));
+  font-size: 15px !important;
+}
+.rpt-role-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+
+/* BREAKDOWNS */
+.rpt-breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+.rpt-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 4px;
+}
+.rpt-breakdown-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 120px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+}
+.rpt-breakdown-row:last-child { border-bottom: none; }
+.rpt-breakdown-row__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rpt-breakdown-row__icon {
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  flex-shrink: 0;
+}
+.rpt-breakdown-row__label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.rpt-breakdown-row__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 10px;
+  font-weight: 800;
+  font-feature-settings: "tnum";
+}
+.rpt-breakdown-row__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  overflow: hidden;
+  min-width: 80px;
+}
+.rpt-breakdown-row__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    rgb(var(--v-theme-primary)),
+    rgba(var(--v-theme-primary), 0.7));
+  transition: width 0.3s ease;
+}
+.rpt-breakdown-row__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  font-feature-settings: "tnum";
+}
+.rpt-breakdown-row__right strong {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgb(var(--v-theme-on-surface));
+}
+.rpt-breakdown-row__right span {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.rpt-breakdown-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Por día — barras verticales mini */
+.rpt-day-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(42px, 1fr);
+  gap: 6px;
+  padding: 12px 14px 14px;
+  overflow-x: auto;
+  align-items: end;
+  min-height: 160px;
+}
+.rpt-day-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  cursor: default;
+}
+.rpt-day-row__date {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  order: 3;
+}
+.rpt-day-row__bar {
+  width: 100%;
+  flex: 1 1 100px;
+  max-height: 100px;
+  min-height: 8px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  order: 1;
+}
+.rpt-day-row__fill {
+  width: 100%;
+  background: linear-gradient(180deg,
+    rgba(var(--v-theme-primary), 0.9),
+    rgba(var(--v-theme-primary), 0.55));
+  border-radius: 6px;
+  transition: height 0.3s ease;
+}
+.rpt-day-row__value {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: rgb(var(--v-theme-on-surface));
+  font-feature-settings: "tnum";
+  order: 2;
+}
+.rpt-day-row__count {
+  display: none;
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  order: 4;
+}
+
+/* Payment chip en tabla */
+.rpt-method-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: help;
+}
+.rpt-cell-payment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rpt-cell-payment__more {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(var(--v-theme-warning), 0.14);
+  color: rgb(var(--v-theme-warning));
+}
+.rpt-cell-discount {
+  color: rgba(var(--v-theme-error), 0.85);
+  font-weight: 700;
+}
 
 /* CARD genérico */
 .rpt-card {
@@ -1034,5 +1766,13 @@ onMounted(async () => {
   .rpt-kpi__value { font-size: 18px; }
   .rpt-kpi__value--sm { font-size: 15px; }
   .rpt-branch-grid { padding: 10px; }
+  .rpt-info-grid { grid-template-columns: 1fr; padding: 12px; }
+  .rpt-breakdown-row {
+    grid-template-columns: 1fr 100px;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .rpt-breakdown-row__bar { display: none; }
+  .rpt-day-list { min-height: 140px; }
 }
 </style>
