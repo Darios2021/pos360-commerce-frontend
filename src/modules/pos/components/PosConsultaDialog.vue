@@ -25,7 +25,7 @@
 
       <v-divider />
 
-      <v-card-text class="consulta-body">
+      <div class="consulta-body">
         <div class="consulta-layout">
           <!-- COLUMNA IZQUIERDA: filtros -->
           <aside class="consulta-filters">
@@ -287,7 +287,7 @@
             </div>
           </section>
         </div>
-      </v-card-text>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -704,14 +704,16 @@ async function copyBarcode(item) {
 .consulta-shell {
   border-radius: 16px;
   overflow: hidden;
-  background: rgb(var(--v-theme-surface));
+  background: rgb(var(--v-theme-surface)) !important;
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
 }
 
 .consulta-body {
-  padding: 14px !important;
+  padding: 14px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .consulta-layout {

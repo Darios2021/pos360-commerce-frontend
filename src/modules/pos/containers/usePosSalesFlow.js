@@ -515,11 +515,6 @@ export function usePosSalesFlow() {
   async function runConsultaSearch(query, { exact = false } = {}) {
     const raw = String(query || "").trim();
 
-    if (!raw) {
-      consultaItems.value = [];
-      return;
-    }
-
     if (needsBranchPick.value) {
       toast("Seleccioná una sucursal antes de consultar");
       return;
@@ -530,11 +525,11 @@ export function usePosSalesFlow() {
 
       const { data } = await http.get("/pos/products", {
         params: {
-          q: raw,
+          q: raw || undefined,
           page: 1,
-          limit: 50,
+          limit: raw ? 100 : 500,
           branch_id: activeBranchId.value || undefined,
-          in_stock: "true",
+          in_stock: "false",
           sellable: "true",
         },
       });
