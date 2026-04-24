@@ -63,11 +63,6 @@
         </li>
       </ol>
 
-      <div class="pdch__total">
-        <span class="pdch__total-lbl">{{ totalLabel }}</span>
-        <span class="pdch__total-val" aria-live="polite">{{ formattedTotal }}</span>
-      </div>
-
       <slot name="trailing" />
     </div>
 
@@ -168,9 +163,9 @@ function onStepClick(step, index) {
 .pdch__close[aria-disabled="true"] { cursor: not-allowed; opacity: 0.5; }
 
 .pdch__row--main {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 16px;
 }
 
