@@ -50,7 +50,7 @@
           @click="onStepClick(s, i)"
         >
           <span class="pdch__dot">
-            <v-icon v-if="i < currentIndex" size="14">mdi-check</v-icon>
+            <v-icon v-if="i < currentIndex" size="16">mdi-check-bold</v-icon>
             <template v-else>{{ i + 1 }}</template>
           </span>
           <span class="pdch__label">{{ s.label }}</span>
@@ -137,12 +137,16 @@ function onStepClick(step, index) {
 <style scoped>
 .pdch {
   position: relative;
-  padding: 8px 14px 10px;
+  padding: 10px 16px 14px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--v-theme-on-surface), 0.04) 0%,
+    rgba(var(--v-theme-on-surface), 0.015) 100%
+  );
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .pdch__row--top {
@@ -183,61 +187,123 @@ function onStepClick(step, index) {
 .pdch__step {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
+  position: relative;
 }
 
 .pdch__step--clickable { cursor: pointer; }
-.pdch__step--clickable:hover .pdch__dot { filter: brightness(1.1); }
+.pdch__step--clickable:hover .pdch__dot {
+  transform: scale(1.06);
+}
 
+/* ── Dot: estilo moderno con gradient ── */
 .pdch__dot {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 900;
-  background: transparent;
-  border: 1.5px solid rgba(var(--v-theme-on-surface), 0.20);
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-  flex: 0 0 20px;
+  font-feature-settings: "tnum";
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.18);
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 240ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
+  flex: 0 0 30px;
+  letter-spacing: -0.01em;
 }
 
+/* Activo: sólido primary con halo de presencia */
 .pdch__step--active .pdch__dot {
-  background: rgb(var(--v-theme-primary));
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgba(var(--v-theme-primary), 0.88) 100%
+  );
   border-color: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
-  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.22);
+  box-shadow:
+    0 0 0 4px rgba(var(--v-theme-primary), 0.2),
+    0 4px 12px rgba(var(--v-theme-primary), 0.38);
+  transform: scale(1.05);
 }
 
+/* Completado: fondo primary translúcido + check */
 .pdch__step--done .pdch__dot {
-  background: rgba(var(--v-theme-primary), 0.15);
-  border-color: rgba(var(--v-theme-primary), 0.45);
+  background: rgba(var(--v-theme-primary), 0.14);
+  border-color: rgba(var(--v-theme-primary), 0.55);
   color: rgb(var(--v-theme-primary));
 }
 
+.pdch__step--done .pdch__dot :deep(.v-icon) {
+  font-size: 16px !important;
+}
+
+/* ── Label ── */
 .pdch__label {
-  font-size: var(--pos-text-sm, 12px);
-  font-weight: var(--pos-font-semibold, 700);
-  color: rgba(var(--v-theme-on-surface), 0.70);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   white-space: nowrap;
+  transition: color 200ms ease;
 }
 
-.pdch__step--active .pdch__label { color: rgb(var(--v-theme-on-surface)); }
-.pdch__step--pending .pdch__label { color: rgba(var(--v-theme-on-surface), 0.45); }
+.pdch__step--active .pdch__label {
+  color: rgb(var(--v-theme-on-surface));
+}
 
+.pdch__step--done .pdch__label {
+  color: rgb(var(--v-theme-primary));
+}
+
+.pdch__step--pending .pdch__label {
+  color: rgba(var(--v-theme-on-surface), 0.42);
+}
+
+/* ── Connector: línea con transición suave ── */
 .pdch__line {
-  width: 22px;
-  height: 2px;
-  background: rgba(var(--v-theme-on-surface), 0.12);
-  margin: 0 8px;
-  flex: 0 0 22px;
+  width: 38px;
+  height: 3px;
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  margin: 0 12px;
+  flex: 0 0 38px;
   border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+  transition: background 240ms ease;
 }
-.pdch__line--done { background: rgba(var(--v-theme-primary), 0.45); }
+
+.pdch__line--done {
+  background: rgb(var(--v-theme-primary));
+}
+
+/* Animación sutil del conector al marcarse done */
+.pdch__line--done::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: pdchLineShine 2.2s ease-in-out infinite;
+}
+
+@keyframes pdchLineShine {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
 
 .pdch__total {
   display: flex;
