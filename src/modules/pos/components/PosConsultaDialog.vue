@@ -933,6 +933,7 @@ async function copyBarcode(item) {
 .product-card {
   display: flex;
   flex-direction: column;
+  min-height: 290px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -951,18 +952,20 @@ async function copyBarcode(item) {
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* ─── Imagen arriba (5:4, más baja que cuadrada) ─────────── */
+/* ─── Imagen arriba (altura fija) ─────────────────────────── */
 .product-card__media {
   position: relative;
   width: 100%;
-  aspect-ratio: 5 / 4;
+  height: 160px;
+  flex: 0 0 160px;
   background: rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
-  flex: 0 0 auto;
 }
 
 .product-card__img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
@@ -975,12 +978,12 @@ async function copyBarcode(item) {
 }
 
 .product-card__noimg {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(var(--v-theme-on-surface), 0.3);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 /* Badge de stock flotante sobre la imagen (semáforo) */
@@ -1028,9 +1031,9 @@ async function copyBarcode(item) {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 8px 9px 9px;
+  padding: 9px 10px 10px;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 130px;
   color: rgba(255, 255, 255, 0.92);
 }
 
