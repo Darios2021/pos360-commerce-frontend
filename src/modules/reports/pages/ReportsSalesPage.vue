@@ -94,6 +94,19 @@
             prepend-inner-icon="mdi-percent-outline"
           />
         </div>
+        <div class="rpt-filter-cell rpt-filter-cell--base">
+          <v-select
+            v-model="profitBase"
+            :items="profitBaseItems"
+            item-title="title"
+            item-value="value"
+            label="Base de cálculo"
+            variant="outlined"
+            density="compact"
+            hide-details
+            prepend-inner-icon="mdi-calculator-variant-outline"
+          />
+        </div>
 
         <div class="rpt-filter-cell rpt-filter-cell--actions">
           <v-btn
@@ -185,6 +198,13 @@
             </span>
           </div>
         </div>
+        <div class="rpt-info-row">
+          <div class="rpt-info-label">Base de cálculo</div>
+          <div class="rpt-info-value">
+            <strong>{{ profitBaseLabel }}</strong>
+            <span class="rpt-info-sub">{{ profitBaseHelp }}</span>
+          </div>
+        </div>
         <div class="rpt-info-row rpt-info-row--notes">
           <div class="rpt-info-label">Notas</div>
           <div class="rpt-info-value">
@@ -233,7 +253,7 @@
         </div>
         <div class="rpt-kpi__value">{{ fmtMoney(liquidationTotal) }}</div>
         <div class="rpt-kpi__sub">
-          Promedio {{ fmtMoney(avgTicket) }} por venta
+          Sobre {{ profitBaseLabel.toLowerCase() }}
         </div>
       </div>
 
@@ -374,6 +394,7 @@
       <div class="rpt-card__head">
         <v-icon size="16">mdi-format-list-bulleted</v-icon>
         <span class="rpt-card__title">Detalle de ventas</span>
+        <span class="rpt-card__hint">Ganancia aplicada sobre {{ profitBaseLabel.toLowerCase() }}</span>
         <v-spacer />
         <span class="rpt-card__count">{{ fmtInt(sales.length) }} resultado{{ sales.length === 1 ? '' : 's' }}</span>
       </div>
@@ -528,6 +549,7 @@ const f = reactive({
 const profitPct = ref(0); // % global aplicado a todas las ventas
 const overridePct = reactive({}); // { [saleId]: number }
 const reportNotes = ref("");
+const profitBase = ref("total"); // "total" | "subtotal"
 
 const issuedAt = ref(new Date());
 const exporting = ref(false);
@@ -566,6 +588,28 @@ const statusItems = [
   { title: "Pagadas", value: "PAID" },
   { title: "Todas", value: "ALL" },
 ];
+
+const profitBaseItems = [
+  { title: "Total (con descuento aplicado)", value: "total" },
+  { title: "Subtotal (precio de lista)", value: "subtotal" },
+];
+
+const profitBaseLabel = computed(() =>
+  profitBase.value === "subtotal"
+    ? "Subtotal (precio de lista)"
+    : "Total (con descuentos aplicados)"
+);
+
+const profitBaseHelp = computed(() =>
+  profitBase.value === "subtotal"
+    ? "El % se calcula sobre el precio de lista, antes de descuentos."
+    : "El % se calcula sobre el monto final pagado por el cliente."
+);
+
+function baseAmountOf(sale) {
+  if (profitBase.value === "subtotal") return Number(sale?.subtotal || 0);
+  return Number(sale?.total || 0);
+}
 
 const branchItems = computed(() => {
   const out = [{ title: "Todas las sucursales", value: null }];
@@ -619,7 +663,7 @@ function clearOverride(saleId) {
 
 function liquidationFor(sale) {
   const pct = Number(pctForSale(sale.id)) || 0;
-  return Number(sale.total || 0) * (pct / 100);
+  return baseAmountOf(sale) * (pct / 100);
 }
 
 const liquidationTotal = computed(() => {
@@ -863,7 +907,9 @@ function buildSalesRows() {
   return sales.value.map((s) => {
     const pct = Number(pctForSale(s.id)) || 0;
     const total = Number(s.total) || 0;
-    const liq = total * (pct / 100);
+    const subtotal = Number(s.subtotal) || 0;
+    const base = baseAmountOf(s);
+    const liq = base * (pct / 100);
     const pm = s.payments_by_method || {};
     const methodsStr = Object.entries(pm)
       .map(([m, amt]) => `${methodLabel(m)}: ${Number(amt).toFixed(2)}`)
@@ -881,9 +927,11 @@ function buildSalesRows() {
       customer: s.customer_name || "",
       customer_doc: s.customer_doc || "",
       items_qty: Number(s.items_qty) || 0,
-      subtotal: Number(s.subtotal) || 0,
+      subtotal,
       discount: Number(s.discount_total) || 0,
       total,
+      base_amount: base,
+      base_label: profitBaseLabel.value,
       primary_method: methodLabel(s.primary_method),
       methods_detail: methodsStr,
       profit_pct: pct,
@@ -1015,7 +1063,7 @@ async function exportPdf() {
 
     setFill(COLORS.primarySoft);
     setDraw(COLORS.primary, 0.3);
-    doc.roundedRect(M, y, pageW - M * 2, 118, 6, 6, "FD");
+    doc.roundedRect(M, y, pageW - M * 2, 144, 6, 6, "FD");
     let yi = y + 14;
 
     infoRow(leftCol + 10, "Emitido por", issuerName.value, yi);
@@ -1043,9 +1091,11 @@ async function exportPdf() {
       `${profitPct.value || 0}%${overrideCount.value ? `  ·  ${overrideCount.value} override${overrideCount.value === 1 ? "" : "s"}` : ""}`,
       yi
     );
-    infoRow(rightCol, "Notas", reportNotes.value || "—", yi);
+    infoRow(rightCol, "Base de cálculo", profitBaseLabel.value, yi);
+    yi += 26;
+    infoRow(leftCol + 10, "Notas", reportNotes.value || "—", yi);
 
-    y += 118 + 14;
+    y += 144 + 14;
 
     /* ─── KPIs grandes ─── */
     const kpiBoxes = [
@@ -1064,7 +1114,7 @@ async function exportPdf() {
       {
         label: `A LIQUIDAR (${profitPct.value || 0}%)`,
         value: money(liquidationTotal.value),
-        sub: `Prom. ${money(avgTicket.value)}/venta`,
+        sub: `Sobre ${profitBase.value === "subtotal" ? "subtotal" : "total"}`,
         color: COLORS.success,
       },
     ];
@@ -1174,16 +1224,19 @@ async function exportPdf() {
 
     /* 3) Por sucursal */
     if (byBranch.value.length) {
-      const maxBr = byBranch.value.reduce((a, b) => (b.total_sum > a ? b.total_sum : a), 0);
-      const brRows = byBranch.value.map((b) => ({
-        label: b.branch_name,
-        value: b.total_sum,
-        extra: `${b.sales_count} v. · Liq. ${money(b.total_sum * ((profitPct.value || 0) / 100))}`,
-        color: COLORS.warning,
-      }));
+      const baseKey = profitBase.value === "subtotal" ? "subtotal_sum" : "total_sum";
+      const brRows = byBranch.value.map((b) => {
+        const baseAmt = Number(b[baseKey] || 0);
+        return {
+          label: b.branch_name,
+          value: baseAmt,
+          extra: `${b.sales_count} v. · Liq. ${money(baseAmt * ((profitPct.value || 0) / 100))}`,
+          color: COLORS.warning,
+        };
+      });
       drawBarChart({
         rows: brRows,
-        title: "Ventas por sucursal",
+        title: `Ventas por sucursal (base: ${profitBase.value === "subtotal" ? "subtotal" : "total"})`,
         formatter: (r) => money(r.value),
       });
     }
@@ -1230,19 +1283,27 @@ async function exportPdf() {
     /* ─── TABLA: Resumen por sucursal ─── */
     if (byBranch.value.length > 1) {
       ensureSpace(40);
-      sectionTitle("Resumen por sucursal");
+      sectionTitle(
+        `Resumen por sucursal · Ganancia ${profitPct.value || 0}% sobre ${profitBase.value === "subtotal" ? "subtotal" : "total"}`
+      );
       autoTable(doc, {
         startY: y,
         margin: { left: M, right: M },
         head: [["Sucursal", "Ventas", "Subtotal", "Desc.", "Total", "A liquidar"]],
-        body: byBranch.value.map((b) => [
-          b.branch_name,
-          fmtInt(b.sales_count),
-          money(b.subtotal_sum),
-          money(b.discount_sum),
-          money(b.total_sum),
-          money(b.total_sum * ((profitPct.value || 0) / 100)),
-        ]),
+        body: byBranch.value.map((b) => {
+          const baseAmt =
+            profitBase.value === "subtotal"
+              ? Number(b.subtotal_sum || 0)
+              : Number(b.total_sum || 0);
+          return [
+            b.branch_name,
+            fmtInt(b.sales_count),
+            money(b.subtotal_sum),
+            money(b.discount_sum),
+            money(b.total_sum),
+            money(baseAmt * ((profitPct.value || 0) / 100)),
+          ];
+        }),
         styles: { fontSize: 8, cellPadding: 5, textColor: COLORS.text },
         headStyles: {
           fillColor: COLORS.primary,
@@ -1267,7 +1328,9 @@ async function exportPdf() {
 
     /* ─── TABLA DETALLE DE VENTAS ─── */
     ensureSpace(40);
-    sectionTitle(`Detalle de ventas (${fmtInt(sales.value.length)})`);
+    sectionTitle(
+      `Detalle de ventas (${fmtInt(sales.value.length)}) · Ganancia aplicada sobre ${profitBase.value === "subtotal" ? "subtotal (precio de lista)" : "total (con descuentos)"}`
+    );
 
     const rows = buildSalesRows();
     const body = rows.map((r) => [
@@ -1377,6 +1440,7 @@ async function exportExcel() {
       ["Sucursal", selectedBranchName.value || "Todas"],
       ["Estado", f.status === "ALL" ? "Todas las ventas" : "Solo pagadas"],
       ["% Ganancia global", `${profitPct.value || 0}%`],
+      ["Base de cálculo", profitBaseLabel.value],
       ["Overrides manuales", overrideCount.value],
       ["Notas", reportNotes.value || "—"],
       [],
@@ -1416,6 +1480,8 @@ async function exportExcel() {
       "Detalle de pagos": r.methods_detail,
       "% Ganancia": r.profit_pct,
       "Fuente %": r.profit_pct_source,
+      "Base cálculo": r.base_label,
+      "Monto base": Number(r.base_amount.toFixed(2)),
       "A liquidar": Number(r.liquidation.toFixed(2)),
     }));
     const wsDetalle = XLSX.utils.json_to_sheet(detalle);
@@ -1423,28 +1489,36 @@ async function exportExcel() {
       { wch: 8 },  { wch: 14 }, { wch: 11 }, { wch: 7 },  { wch: 20 },
       { wch: 22 }, { wch: 8 },  { wch: 22 }, { wch: 8 },  { wch: 26 },
       { wch: 14 }, { wch: 11 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-      { wch: 16 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 13 },
+      { wch: 16 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 34 },
+      { wch: 12 }, { wch: 13 },
     ];
     XLSX.utils.book_append_sheet(wb, wsDetalle, "Ventas");
 
     /* Hoja 3: Por sucursal */
     if (byBranch.value.length) {
-      const brRows = byBranch.value.map((b) => ({
-        "Sucursal ID": b.branch_id,
-        Sucursal: b.branch_name,
-        "Ventas": b.sales_count,
-        Subtotal: b.subtotal_sum,
-        Descuentos: b.discount_sum,
-        Total: b.total_sum,
-        "% Ganancia": profitPct.value || 0,
-        "A liquidar (aprox)": Number(
-          (b.total_sum * ((profitPct.value || 0) / 100)).toFixed(2)
-        ),
-      }));
+      const baseKey = profitBase.value === "subtotal" ? "subtotal_sum" : "total_sum";
+      const brRows = byBranch.value.map((b) => {
+        const baseAmt = Number(b[baseKey] || 0);
+        return {
+          "Sucursal ID": b.branch_id,
+          Sucursal: b.branch_name,
+          "Ventas": b.sales_count,
+          Subtotal: b.subtotal_sum,
+          Descuentos: b.discount_sum,
+          Total: b.total_sum,
+          "% Ganancia": profitPct.value || 0,
+          "Base cálculo": profitBaseLabel.value,
+          "Monto base": Number(baseAmt.toFixed(2)),
+          "A liquidar (aprox)": Number(
+            (baseAmt * ((profitPct.value || 0) / 100)).toFixed(2)
+          ),
+        };
+      });
       const wsBr = XLSX.utils.json_to_sheet(brRows);
       wsBr["!cols"] = [
         { wch: 12 }, { wch: 26 }, { wch: 8 }, { wch: 14 },
-        { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 16 },
+        { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 34 },
+        { wch: 14 }, { wch: 16 },
       ];
       XLSX.utils.book_append_sheet(wb, wsBr, "Por sucursal");
     }
@@ -1913,6 +1987,16 @@ onMounted(async () => {
   font-weight: 700;
   color: rgba(var(--v-theme-on-surface), 0.5);
   font-feature-settings: "tnum";
+}
+.rpt-card__hint {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 /* Resumen por sucursal */
