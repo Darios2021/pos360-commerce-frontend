@@ -7,13 +7,13 @@
     <div class="plp-top">
       <div class="plp-top-left">
         <div class="plp-title">Productos</div>
-        <div class="plp-meta">{{ meta.total.toLocaleString('es') }} productos · Pág. {{ meta.page }}/{{ meta.pages || 1 }}</div>
+        <div class="plp-meta">
+          <span class="plp-meta-strong">{{ meta.total.toLocaleString('es') }}</span>
+          <span class="plp-meta-sep">·</span>
+          <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
+        </div>
       </div>
       <div class="plp-top-right">
-        <v-btn v-if="selectedIds.length" :color="isAdmin ? 'error' : 'warning'" variant="tonal" size="small" rounded="lg"
-          :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'" @click="bulkDisableOrDelete">
-          {{ isAdmin ? 'Eliminar' : 'Inactivar' }} ({{ selectedIds.length }})
-        </v-btn>
         <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="lg" class="plp-view-toggle" v-if="smAndUp">
           <v-btn value="grid" size="small"><v-icon size="18">mdi-view-grid-outline</v-icon></v-btn>
           <v-btn value="list" size="small"><v-icon size="18">mdi-format-list-bulleted</v-icon></v-btn>
@@ -24,76 +24,111 @@
       </div>
     </div>
 
-    <!-- SEARCH + FILTER TOGGLE -->
+    <!-- SEARCH -->
     <div class="plp-searchbar">
       <v-text-field v-model="f.q" placeholder="Buscar por nombre, SKU, marca, modelo..." variant="outlined"
-        density="compact" hide-details clearable prepend-inner-icon="mdi-magnify" class="plp-search-input"
+        density="comfortable" hide-details clearable prepend-inner-icon="mdi-magnify" class="plp-search-input"
         @input="debouncedSearch" @click:clear="clearSearch" @keyup.enter="applyFilters" />
-      <v-btn :variant="filtersOpen ? 'flat' : 'tonal'" :color="activeFiltersCount > 0 ? 'primary' : undefined"
-        density="compact" rounded="lg" class="plp-filter-btn" @click="filtersOpen = !filtersOpen">
-        <v-icon start size="16">{{ filtersOpen ? 'mdi-filter-off' : 'mdi-filter-outline' }}</v-icon>
-        Filtros
-        <v-badge v-if="activeFiltersCount > 0" :content="String(activeFiltersCount)" color="primary" inline class="ml-1" />
-      </v-btn>
     </div>
 
-    <!-- ACTIVE CHIP ROW -->
-    <div class="plp-chips" v-if="activeFilterChips.length">
-      <v-chip v-for="chip in activeFilterChips" :key="chip.key" size="small" closable variant="tonal"
-        color="primary" class="plp-chip" @click:close="removeFilter(chip.key)">
-        {{ chip.label }}
-      </v-chip>
-      <button class="plp-chip-clear" @click="clearFilters">Limpiar todo</button>
-    </div>
-
-    <!-- FILTER PANEL -->
-    <v-expand-transition>
-      <div v-if="filtersOpen" class="plp-filter-panel">
-        <v-row dense>
-          <v-col v-if="isAdmin" cols="12" sm="6" md="3">
-            <v-select v-model="f.branch_id" :items="branchItems" item-title="title" item-value="value"
-              label="Sucursal" variant="outlined" density="compact" hide-details clearable @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
-            <v-select v-model="f.category_id" :items="categoryItems" item-title="title" item-value="value"
-              label="Rubro" variant="outlined" density="compact" hide-details clearable @update:modelValue="onCategoryChange" />
-          </v-col>
-          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
-            <v-select v-model="f.subcategory_id" :items="subcategoryItems" item-title="title" item-value="value"
-              label="Subrubro" variant="outlined" density="compact" hide-details clearable
-              :disabled="!f.category_id" @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="12" sm="6" :md="isAdmin ? 3 : 4">
-            <v-select v-model="f.status" :items="statusItems" item-title="title" item-value="value"
-              label="Estado" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="12" sm="4" md="2">
-            <v-select v-model="f.stock" :items="stockItems" item-title="title" item-value="value"
-              label="Stock" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="12" sm="4" md="2">
-            <v-select v-model="f.price_presence" :items="pricePresenceItems" item-title="title" item-value="value"
-              label="Precio" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-text-field v-model="f.price_min" label="Mín $" variant="outlined" density="compact"
-              type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-text-field v-model="f.price_max" label="Máx $" variant="outlined" density="compact"
-              type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-select v-model="f.images" :items="imagesItems" item-title="title" item-value="value"
-              label="Imágenes" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-select v-model="limit" :items="[12, 24, 48, 96]" label="Por pág." variant="outlined"
-              density="compact" hide-details @update:modelValue="onLimitChange" />
-          </v-col>
-        </v-row>
+    <!-- FILTER PANEL (siempre visible, agrupado) -->
+    <div class="plp-filter-panel">
+      <div class="plp-filter-head">
+        <div class="plp-filter-head-left">
+          <v-icon size="16" class="plp-filter-head-icon">mdi-filter-variant</v-icon>
+          <span class="plp-filter-head-title">Filtros</span>
+          <span v-if="activeFiltersCount > 0" class="plp-filter-count">{{ activeFiltersCount }}</span>
+        </div>
+        <button v-if="activeFiltersCount > 0" class="plp-filter-clear" @click="clearFilters">
+          <v-icon size="13">mdi-close</v-icon>
+          Limpiar
+        </button>
       </div>
-    </v-expand-transition>
+
+      <div class="plp-filter-grid">
+        <div v-if="isAdmin" class="plp-filter-cell">
+          <v-select v-model="f.branch_id" :items="branchItems" item-title="title" item-value="value"
+            label="Sucursal" variant="outlined" density="compact" hide-details clearable @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.category_id" :items="categoryItems" item-title="title" item-value="value"
+            label="Rubro" variant="outlined" density="compact" hide-details clearable @update:modelValue="onCategoryChange" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.subcategory_id" :items="subcategoryItems" item-title="title" item-value="value"
+            label="Subrubro" variant="outlined" density="compact" hide-details clearable
+            :disabled="!f.category_id" @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.status" :items="statusItems" item-title="title" item-value="value"
+            label="Estado" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.stock" :items="stockItems" item-title="title" item-value="value"
+            label="Stock" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.price_presence" :items="pricePresenceItems" item-title="title" item-value="value"
+            label="Precio" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell">
+          <v-select v-model="f.images" :items="imagesItems" item-title="title" item-value="value"
+            label="Imágenes" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
+        </div>
+        <div class="plp-filter-cell plp-filter-cell--range">
+          <v-text-field v-model="f.price_min" label="Mín $" variant="outlined" density="compact"
+            type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
+          <span class="plp-range-sep">—</span>
+          <v-text-field v-model="f.price_max" label="Máx $" variant="outlined" density="compact"
+            type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
+        </div>
+        <div class="plp-filter-cell plp-filter-cell--per-page">
+          <v-select v-model="limit" :items="[12, 24, 48, 96]" label="Por pág." variant="outlined"
+            density="compact" hide-details @update:modelValue="onLimitChange" />
+        </div>
+      </div>
+
+      <!-- Chips activos embebidos -->
+      <div v-if="activeFilterChips.length" class="plp-filter-chips">
+        <v-chip v-for="chip in activeFilterChips" :key="chip.key" size="small" closable variant="tonal"
+          color="primary" class="plp-chip" @click:close="removeFilter(chip.key)">
+          {{ chip.label }}
+        </v-chip>
+      </div>
+    </div>
+
+    <!-- BULK ACTION BAR (aparece al seleccionar) -->
+    <div class="plp-bulk-bar" v-if="items.length">
+      <label class="plp-bulk-select" @click.stop>
+        <v-checkbox-btn :model-value="allSelected" :indeterminate="someSelected" @update:modelValue="toggleSelectAll"
+          density="compact" hide-details />
+        <span class="plp-bulk-select-label">
+          <template v-if="selectedIds.length">
+            <strong>{{ selectedIds.length }}</strong> seleccionado{{ selectedIds.length === 1 ? '' : 's' }}
+          </template>
+          <template v-else>
+            Seleccionar todos de la página
+          </template>
+        </span>
+      </label>
+
+      <div v-if="selectedIds.length" class="plp-bulk-actions">
+        <v-btn variant="text" size="small" rounded="lg" @click="selectedIds = []">
+          <v-icon size="16" start>mdi-close</v-icon>
+          Cancelar
+        </v-btn>
+        <v-btn
+          :color="isAdmin ? 'error' : 'warning'"
+          variant="flat"
+          size="small"
+          rounded="lg"
+          :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'"
+          @click="bulkDisableOrDelete"
+        >
+          {{ isAdmin ? 'Eliminar' : 'Inactivar' }} {{ selectedIds.length }}
+        </v-btn>
+      </div>
+    </div>
 
     <!-- ERROR -->
     <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3" density="compact">{{ products.error }}</v-alert>
@@ -799,7 +834,6 @@ watch(
 
 /* ── NEW UI HELPERS ── */
 const viewMode = ref('grid'); // 'grid' | 'list'
-const filtersOpen = ref(false);
 let _searchTimer = null;
 function debouncedSearch() { clearTimeout(_searchTimer); _searchTimer = setTimeout(() => applyFilters(), 400); }
 function clearSearch() { f.value.q = ''; applyFilters(); }
@@ -848,6 +882,7 @@ function toggleSelect(id) {
 }
 
 const allSelected = computed(() => items.value.length > 0 && items.value.every(it => selectedIds.value.includes(it.id)));
+const someSelected = computed(() => selectedIds.value.length > 0 && !allSelected.value);
 function toggleSelectAll(val) { selectedIds.value = val ? items.value.map(it => it.id) : []; }
 
 const CAT_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
@@ -893,32 +928,198 @@ function branchCssColor(id) {
 
 <style scoped>
 /* root */
-.plp { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.plp { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
 /* TOP BAR */
-.plp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.plp-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 2px 2px;
+}
+.plp-top-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .plp-top-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.plp-title { font-size: 22px; font-weight: 900; line-height: 1.1; }
-.plp-meta { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+.plp-title {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.plp-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-weight: 500;
+}
+.plp-meta-strong {
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  font-feature-settings: "tnum";
+}
+.plp-meta-sep { opacity: 0.4; }
 .plp-view-toggle { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 
 /* SEARCH BAR */
 .plp-searchbar { display: flex; gap: 8px; align-items: center; }
 .plp-search-input { flex: 1; }
-.plp-filter-btn { height: 40px !important; flex-shrink: 0; }
-
-/* CHIPS */
-.plp-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.plp-chip { font-size: 11px !important; }
-.plp-chip-clear { font-size: 11px; opacity: 0.5; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 6px; color: inherit; }
-.plp-chip-clear:hover { opacity: 0.9; }
-
-/* FILTER PANEL */
-.plp-filter-panel {
-  padding: 14px 16px;
+.plp-search-input :deep(.v-field) {
   border-radius: 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.3);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+}
+.plp-search-input :deep(.v-field__prepend-inner .v-icon) {
+  opacity: 0.55;
+}
+
+/* FILTER PANEL (siempre visible) */
+.plp-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.6);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.plp-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+}
+.plp-filter-head-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.plp-filter-head-icon {
+  opacity: 0.6;
+}
+.plp-filter-head-title {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.plp-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-size: 10.5px;
+  font-weight: 900;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+.plp-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+.plp-filter-clear:hover {
+  background: rgba(var(--v-theme-error), 0.08);
+  color: rgb(var(--v-theme-error));
+  border-color: rgba(var(--v-theme-error), 0.28);
+}
+
+.plp-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 12px;
+  align-items: start;
+}
+.plp-filter-cell { min-width: 0; }
+.plp-filter-cell--range {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 6px;
+  align-items: center;
+  grid-column: span 2;
+}
+.plp-range-sep {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  line-height: 1;
+}
+.plp-filter-cell--per-page { max-width: 140px; }
+
+.plp-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+}
+.plp-chip { font-size: 11px !important; }
+
+/* BULK ACTION BAR */
+.plp-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  min-height: 52px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.plp-bulk-bar:has(.plp-bulk-actions) {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.36);
+  box-shadow: 0 4px 14px rgba(var(--v-theme-primary), 0.14);
+}
+.plp-bulk-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+}
+.plp-bulk-select-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+.plp-bulk-select-label strong {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 900;
+  font-feature-settings: "tnum";
+}
+.plp-bulk-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* SKELETON */
@@ -1255,9 +1456,14 @@ function branchCssColor(id) {
 
 /* TABLET */
 @media (max-width: 768px) {
+  .plp { gap: 14px; }
   .plp-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
   .plp-list-head, .plp-list-row { grid-template-columns: 32px 1fr 120px 70px 64px; }
   .plp-lh-cat,.plp-row-cat { display: none; }
+  .plp-filter-panel { padding: 14px; gap: 12px; }
+  .plp-filter-cell--range { grid-column: auto; }
+  .plp-bulk-bar { padding: 8px 12px; min-height: 48px; }
+  .plp-bulk-select-label { font-size: 12.5px; }
 }
 
 /* MOBILE */

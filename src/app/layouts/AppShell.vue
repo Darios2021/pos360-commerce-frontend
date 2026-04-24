@@ -245,6 +245,16 @@
             </v-tooltip>
           </v-list-item>
 
+          <v-list-item v-if="isAdmin && hasRoute('reports')" :to="{ name: 'reports' }" exact>
+            <template #prepend>
+              <v-icon size="20">mdi-chart-line</v-icon>
+            </template>
+            <v-list-item-title>Reportes</v-list-item-title>
+            <v-tooltip v-if="rail" activator="parent" location="right">
+              Reportes
+            </v-tooltip>
+          </v-list-item>
+
           <v-divider class="my-2 nav-divider" />
 
           <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
@@ -544,6 +554,7 @@ const ROUTE_TREE = {
   productView:              { label: "Ver producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   productsImport:           { label: "Importar CSV", section: "Gestión" },
   transfers:                { label: "Derivaciones", section: "Gestión" },
+  reports:                  { label: "Reportes", section: "Gestión" },
   stock:                    { label: "Stock", section: "Configuración" },
   inventory:                { label: "Inventario", section: "Configuración" },
   categories:               { label: "Categorías", section: "Configuración" },

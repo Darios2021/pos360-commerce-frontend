@@ -44,6 +44,7 @@ import StockTransfersPage from "@/modules/dashboard/pages/StockTransfersPage.vue
 import UsersPage from "@/modules/users/pages/UsersPage.vue";
 import FiscalAdminPage from "@/modules/admin/pages/FiscalAdminPage.vue";
 import PaymentMethodsAdminPage from "@/modules/admin/pages/PaymentMethodsAdminPage.vue";
+import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
 
 const routes = [
   ...shopRoutes,
@@ -107,6 +108,13 @@ const routes = [
         path: "users",
         name: "users",
         component: UsersPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+
+      {
+        path: "reports",
+        name: "reports",
+        component: ReportsShellPage,
         meta: { roles: ["admin", "super_admin"] },
       },
 
