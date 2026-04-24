@@ -8,13 +8,17 @@
     <v-card class="consulta-shell">
       <PosDialogHeader
         eyebrow="Consulta"
-        title="Consulta POS"
-        subtitle="Buscá un producto y visualizá toda su información en la misma pantalla."
+        title="Buscar producto"
         @close="closeDialog"
       >
         <template #chips>
-          <v-chip size="small" variant="tonal" color="primary">
-            {{ filteredItems.length }} resultado<span v-if="filteredItems.length !== 1">s</span>
+          <v-chip
+            v-if="filteredItems.length"
+            size="small"
+            variant="tonal"
+            color="primary"
+          >
+            {{ filteredItems.length }} {{ filteredItems.length === 1 ? "resultado" : "resultados" }}
           </v-chip>
         </template>
       </PosDialogHeader>
@@ -25,133 +29,108 @@
         <div class="consulta-layout">
           <!-- COLUMNA IZQUIERDA -->
           <div class="consulta-left">
-            <div class="panel-block">
-              <div class="panel-title">
-                <v-icon size="16" class="mr-2">mdi-magnify</v-icon>
-                Buscar producto
-              </div>
+            <!-- Search bar compacta -->
+            <div class="search-bar">
+              <v-text-field
+                ref="searchInputRef"
+                v-model="searchQuery"
+                placeholder="Nombre, SKU, código o código de barras…"
+                density="comfortable"
+                variant="outlined"
+                clearable
+                hide-details
+                prepend-inner-icon="mdi-magnify"
+                class="search-input"
+                :loading="loading"
+                @keydown.enter.prevent="runSearch"
+                @click:clear="clearSearch"
+              />
 
-              <div class="search-grid">
-                <v-text-field
-                  ref="searchInputRef"
-                  v-model="searchQuery"
-                  label="Buscar"
-                  placeholder="Nombre, código, SKU o código de barras"
-                  density="compact"
-                  variant="outlined"
-                  clearable
-                  hide-details
-                  prepend-inner-icon="mdi-magnify"
-                  append-inner-icon="mdi-barcode-scan"
-                  @keydown.enter.prevent="runSearch"
-                />
-
-                <div class="search-actions">
-                  <v-btn
-                    color="primary"
-                    variant="flat"
-                    size="small"
-                    :loading="loading"
-                    @click="runSearch"
-                  >
-                    <v-icon start size="15">mdi-magnify</v-icon>
-                    Buscar
-                  </v-btn>
-
-                  <v-btn
-                    variant="text"
-                    size="small"
-                    @click="clearSearch"
-                  >
-                    <v-icon start size="15">mdi-broom</v-icon>
-                    Limpiar
-                  </v-btn>
-                </div>
-
-                <v-switch
-                  v-model="onlyWithStock"
-                  color="success"
-                  density="compact"
-                  hide-details
-                  inset
-                  label="Solo con stock"
-                />
-              </div>
+              <v-btn
+                color="primary"
+                variant="flat"
+                :loading="loading"
+                :disabled="loading"
+                class="search-submit"
+                @click="runSearch"
+              >
+                <v-icon size="18">mdi-magnify</v-icon>
+              </v-btn>
             </div>
 
-            <div class="panel-block mt-3">
-              <div class="results-header">
-                <div class="panel-title mb-0">
-                  <v-icon size="16" class="mr-2">mdi-package-variant-closed</v-icon>
-                  Productos
-                </div>
+            <!-- Toggle de filtros -->
+            <div class="search-filters">
+              <button
+                type="button"
+                class="filter-chip"
+                :class="{ 'filter-chip--on': onlyWithStock }"
+                @click="onlyWithStock = !onlyWithStock"
+              >
+                <v-icon size="14">
+                  {{ onlyWithStock ? "mdi-check-circle" : "mdi-circle-outline" }}
+                </v-icon>
+                <span>Solo con stock</span>
+              </button>
+            </div>
 
-                <v-chip size="small" variant="tonal" color="primary">
-                  {{ filteredItems.length }}
-                </v-chip>
-              </div>
-
+            <!-- Resultados -->
+            <div class="results-section">
               <div v-if="loading" class="state-box">
-                <v-progress-circular indeterminate color="primary" size="24" />
-                <div class="state-box__text">Consultando productos...</div>
+                <v-progress-circular indeterminate color="primary" size="28" />
+                <div class="state-box__text">Buscando productos…</div>
               </div>
 
               <div v-else-if="!filteredItems.length" class="state-box state-box--empty">
-                <v-icon size="36">mdi-database-search-outline</v-icon>
-                <div class="state-box__title">Sin resultados</div>
+                <div class="state-box__icon-wrap">
+                  <v-icon size="32">mdi-magnify</v-icon>
+                </div>
+                <div class="state-box__title">
+                  {{ searchQuery ? "Sin resultados" : "Empezá tu búsqueda" }}
+                </div>
                 <div class="state-box__text">
-                  Escribí el producto que querés buscar y presioná Enter o Buscar.
+                  {{
+                    searchQuery
+                      ? "Probá con otro término o limpiá el filtro."
+                      : "Escribí nombre, SKU o escaneá el código."
+                  }}
                 </div>
               </div>
 
               <div v-else class="results-list">
-                <div
+                <button
                   v-for="item in filteredItems"
                   :key="getItemKey(item)"
+                  type="button"
                   class="result-card"
                   :class="{ 'result-card--selected': isSelected(item) }"
                   @click="selectItem(item)"
                 >
-                  <div class="result-card__top">
-                    <div class="result-card__identity">
-                      <div class="result-card__name">
-                        {{ getName(item) }}
-                      </div>
-
-                      <div class="result-card__meta">
-                        <span v-if="getCode(item)">Cód: {{ getCode(item) }}</span>
-                        <span v-if="getSku(item)">SKU: {{ getSku(item) }}</span>
-                        <span v-if="getBarcode(item)">Barras: {{ getBarcode(item) }}</span>
-                      </div>
+                  <div class="result-card__main">
+                    <div class="result-card__name" :title="getName(item)">
+                      {{ getName(item) }}
                     </div>
 
-                    <v-chip
-                      size="small"
-                      :color="getStock(item) > 0 ? 'success' : 'error'"
-                      variant="flat"
-                    >
-                      {{ getStockLabel(item) }}
-                    </v-chip>
-                  </div>
-
-                  <div class="result-card__bottom">
-                    <div class="info-pill">
-                      <v-icon size="14">mdi-currency-usd</v-icon>
-                      <span>{{ formatMoney(getPrice(item)) }}</span>
+                    <div class="result-card__meta">
+                      <span v-if="getSku(item)" class="result-meta-chip">
+                        {{ getSku(item) }}
+                      </span>
+                      <span
+                        class="result-stock-dot"
+                        :class="getStock(item) > 0 ? 'is-ok' : 'is-out'"
+                        :title="getStockLabel(item)"
+                      >
+                        <v-icon size="10">
+                          {{ getStock(item) > 0 ? "mdi-check-circle" : "mdi-close-circle" }}
+                        </v-icon>
+                        {{ getStock(item) > 0 ? getStock(item) : "0" }}
+                      </span>
                     </div>
-
-                    <v-btn
-                      size="small"
-                      variant="tonal"
-                      color="success"
-                      :disabled="getStock(item) <= 0"
-                      @click.stop="addToCart(item)"
-                    >
-                      <v-icon start size="15">mdi-cart-plus</v-icon>
-                      Agregar
-                    </v-btn>
                   </div>
-                </div>
+
+                  <div class="result-card__price">
+                    {{ formatMoney(getPrice(item)) }}
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -159,52 +138,50 @@
           <!-- COLUMNA DERECHA -->
           <div class="consulta-right">
             <div v-if="selectedItem" class="detail-shell-inline">
-              <div class="detail-inline-header">
-                <div class="min-w-0">
-                  <div class="detail-title">
-                    {{ getName(selectedItem) }}
+              <!-- Hero: nombre + chips + precio gigante -->
+              <div class="detail-hero">
+                <div class="detail-hero__top">
+                  <div class="detail-hero__title-wrap">
+                    <h2 class="detail-title" :title="getName(selectedItem)">
+                      {{ getName(selectedItem) }}
+                    </h2>
+                    <div class="detail-hero__chips">
+                      <span
+                        class="detail-chip"
+                        :class="getStock(selectedItem) > 0 ? 'is-ok' : 'is-out'"
+                      >
+                        <v-icon size="12">
+                          {{ getStock(selectedItem) > 0 ? "mdi-package-variant-closed" : "mdi-package-variant-closed-remove" }}
+                        </v-icon>
+                        Stock: {{ getStock(selectedItem) }}
+                      </span>
+                      <span
+                        v-if="getStatus(selectedItem)"
+                        class="detail-chip detail-chip--soft"
+                      >
+                        {{ getStatus(selectedItem) }}
+                      </span>
+                    </div>
                   </div>
-                  <div class="detail-subtitle">
-                    Información completa del producto seleccionado
-                  </div>
-                </div>
 
-                <div class="detail-inline-top">
-                  <v-chip
-                    size="small"
-                    :color="getStock(selectedItem) > 0 ? 'success' : 'error'"
+                  <v-btn
+                    color="primary"
                     variant="flat"
-                  >
-                    {{ getStockLabel(selectedItem) }}
-                  </v-chip>
-
-                  <v-chip
-                    v-if="getStatus(selectedItem)"
                     size="small"
-                    variant="tonal"
-                    :color="getStatusColor(selectedItem)"
+                    class="detail-hero__add"
+                    :disabled="getStock(selectedItem) <= 0"
+                    @click="addToCart(selectedItem)"
                   >
-                    {{ getStatus(selectedItem) }}
-                  </v-chip>
+                    <v-icon start size="16">mdi-cart-plus</v-icon>
+                    Agregar
+                  </v-btn>
                 </div>
-              </div>
 
-              <div class="hero-grid">
-                <div class="hero-price-card">
-                  <div class="hero-price-card__label">Precio</div>
-                  <div class="hero-price-card__value">
+                <div class="detail-hero__price">
+                  <span class="detail-hero__price-label">Precio</span>
+                  <span class="detail-hero__price-value">
                     {{ formatMoney(getPrice(selectedItem)) }}
-                  </div>
-                </div>
-
-                <div class="hero-mini-card">
-                  <div class="hero-mini-card__label">Stock</div>
-                  <div class="hero-mini-card__value">{{ getStock(selectedItem) }}</div>
-                </div>
-
-                <div class="hero-mini-card">
-                  <div class="hero-mini-card__label">Sucursal</div>
-                  <div class="hero-mini-card__value">{{ getBranch(selectedItem) || "—" }}</div>
+                  </span>
                 </div>
               </div>
 
@@ -296,25 +273,15 @@
                 </div>
               </div>
 
-              <div class="detail-inline-actions">
-                <v-btn
-                  color="success"
-                  variant="flat"
-                  size="small"
-                  :disabled="getStock(selectedItem) <= 0"
-                  @click="addToCart(selectedItem)"
-                >
-                  <v-icon start size="15">mdi-cart-plus</v-icon>
-                  Agregar
-                </v-btn>
-              </div>
             </div>
 
             <div v-else class="detail-empty">
-              <v-icon size="34">mdi-package-variant-closed</v-icon>
+              <div class="detail-empty__icon-wrap">
+                <v-icon size="36">mdi-package-variant-closed</v-icon>
+              </div>
               <div class="detail-empty__title">Detalle del producto</div>
               <div class="detail-empty__text">
-                Buscá un producto y tocá el resultado para ver todos sus datos acá mismo.
+                Buscá a la izquierda y seleccioná un producto para ver toda su información.
               </div>
             </div>
           </div>
@@ -739,25 +706,12 @@ function formatMoney(value) {
 
 <style scoped>
 .consulta-shell {
-  border-radius: 18px;
+  border-radius: 16px;
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
-}
-
-.detail-title {
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.detail-subtitle {
-  font-size: 0.78rem;
-  color: rgba(var(--v-theme-on-surface), 0.68);
-  margin-top: 3px;
-  line-height: 1.3;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
 }
 
 .consulta-body {
@@ -766,93 +720,104 @@ function formatMoney(value) {
 
 .consulta-layout {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
-.panel-block,
-.result-card,
-.detail-shell-inline,
-.detail-empty,
-.hero-price-card,
-.hero-mini-card,
-.kv-item,
-.payment-card {
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.panel-block,
-.detail-shell-inline,
-.detail-empty {
-  border-radius: 16px;
-  padding: 12px;
-}
-
-.panel-title,
-.detail-section__title {
+/* ─── Columna izquierda ─────────────────────────────────────── */
+.consulta-left {
   display: flex;
-  align-items: center;
-  font-size: 0.9rem;
-  font-weight: 800;
-  margin-bottom: 10px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.search-grid {
-  display: grid;
+  flex-direction: column;
   gap: 10px;
+  min-width: 0;
 }
 
-.search-actions,
-.detail-inline-actions,
-.detail-inline-top,
-.result-card__bottom,
-.result-card__meta,
-.payment-card__meta {
+.search-bar {
   display: flex;
   gap: 8px;
+  align-items: stretch;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search-input :deep(.v-field) {
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  min-height: 44px;
+}
+
+.search-input :deep(.v-field__input) {
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 44px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.search-submit {
+  min-width: 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 10px rgba(var(--v-theme-primary), 0.32) !important;
+}
+
+.search-filters {
+  display: flex;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.results-header {
-  display: flex;
+.filter-chip {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.state-box {
-  min-height: 260px;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  gap: 8px;
+.filter-chip:hover {
+  background: rgba(var(--v-theme-on-surface), 0.1);
 }
 
-.state-box--empty {
-  color: rgba(var(--v-theme-on-surface), 0.72);
+.filter-chip--on {
+  background: rgba(var(--v-theme-success), 0.14);
+  border-color: rgba(var(--v-theme-success), 0.4);
+  color: rgb(var(--v-theme-success));
 }
 
-.state-box__title {
-  font-size: 0.94rem;
-  font-weight: 800;
+.results-section {
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 8px;
+  min-height: 360px;
 }
 
-.state-box__text {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.68);
-  max-width: 320px;
-}
-
+/* ─── Result cards ──────────────────────────────────────────── */
 .results-list {
-  display: grid;
-  gap: 10px;
-  max-height: 560px;
-  overflow: auto;
-  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .results-list::-webkit-scrollbar {
@@ -860,134 +825,344 @@ function formatMoney(value) {
 }
 
 .results-list::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.16);
+  background: rgba(var(--v-theme-primary), 0.35);
   border-radius: 999px;
 }
 
 .result-card {
-  border-radius: 14px;
-  padding: 11px;
+  all: unset;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
   cursor: pointer;
-  transition: 0.16s ease;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .result-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.28);
+  border-color: rgba(var(--v-theme-primary), 0.35);
   background: rgba(var(--v-theme-primary), 0.04);
 }
 
 .result-card--selected {
-  border-color: rgba(var(--v-theme-primary), 0.42);
-  background: rgba(var(--v-theme-primary), 0.07);
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.16);
 }
 
-.result-card__top {
+.result-card:focus-visible {
+  outline: none;
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.32);
+}
+
+.result-card__main {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.result-card__identity {
+  flex-direction: column;
+  gap: 3px;
   min-width: 0;
 }
 
 .result-card__name {
-  font-size: 0.92rem;
-  font-weight: 800;
-  line-height: 1.18;
-  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
   color: rgb(var(--v-theme-on-surface));
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-card__meta {
-  font-size: 0.74rem;
-  color: rgba(var(--v-theme-on-surface), 0.66);
-}
-
-.result-card__bottom {
-  align-items: center;
-  justify-content: space-between;
-}
-
-.info-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.76rem;
-  color: rgba(var(--v-theme-on-surface), 0.9);
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.result-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.result-stock-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.4;
+  font-feature-settings: "tnum";
+}
+
+.result-stock-dot.is-ok {
+  background: rgba(var(--v-theme-success), 0.14);
+  color: rgb(var(--v-theme-success));
+}
+
+.result-stock-dot.is-out {
+  background: rgba(var(--v-theme-error), 0.14);
+  color: rgb(var(--v-theme-error));
+}
+
+.result-card__price {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: rgb(var(--v-theme-primary));
+  white-space: nowrap;
+  font-feature-settings: "tnum";
+}
+
+.result-card--selected .result-card__price {
+  color: rgb(var(--v-theme-primary));
+}
+
+/* ─── Empty/loading states ─────────────────────────────────── */
+.state-box {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.state-box__icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 4px;
+}
+
+.state-box__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.state-box__text {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  max-width: 260px;
+  line-height: 1.4;
+}
+
+/* ─── Columna derecha (detalle) ──────────────────────────────── */
+.consulta-right {
+  min-width: 0;
 }
 
 .detail-shell-inline {
   position: sticky;
   top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
-.detail-inline-header {
+.detail-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-primary), 0.08) 0%,
+    rgba(var(--v-theme-on-surface), 0.03) 100%
+  );
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+}
+
+.detail-hero__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
 }
 
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
-  gap: 10px;
+.detail-hero__title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.hero-price-card,
-.hero-mini-card {
-  border-radius: 14px;
-  padding: 12px;
-}
-
-.hero-price-card__label,
-.hero-mini-card__label,
-.kv-label {
-  font-size: 0.72rem;
-  color: rgba(var(--v-theme-on-surface), 0.64);
-  margin-bottom: 4px;
-}
-
-.hero-price-card__value {
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-.hero-mini-card__value,
-.kv-value {
-  font-size: 0.88rem;
-  font-weight: 700;
-  word-break: break-word;
+.detail-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
+.detail-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
+.detail-chip.is-ok {
+  background: rgba(var(--v-theme-success), 0.14);
+  color: rgb(var(--v-theme-success));
+}
+
+.detail-chip.is-out {
+  background: rgba(var(--v-theme-error), 0.14);
+  color: rgb(var(--v-theme-error));
+}
+
+.detail-chip--soft {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.detail-hero__add {
+  flex-shrink: 0;
+  min-height: 36px !important;
+  border-radius: 8px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 10px rgba(var(--v-theme-primary), 0.32) !important;
+}
+
+.detail-hero__price {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.detail-hero__price-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.detail-hero__price-value {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: rgb(var(--v-theme-primary));
+  font-feature-settings: "tnum";
+  margin-left: auto;
+}
+
+/* ─── Secciones de detalle ─────────────────────────────────── */
 .detail-section {
-  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.detail-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  margin-bottom: 10px;
 }
 
 .detail-kv-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .kv-item {
-  border-radius: 12px;
-  padding: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.kv-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  margin-bottom: 2px;
+}
+
+.kv-value {
+  font-size: 12.5px;
+  font-weight: 700;
+  word-break: break-word;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.25;
 }
 
 .payment-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .payment-card {
-  border-radius: 12px;
-  padding: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
 
 .payment-card__head {
@@ -995,53 +1170,76 @@ function formatMoney(value) {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .payment-card__name {
-  font-size: 0.85rem;
-  font-weight: 800;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 
 .payment-card__meta {
-  font-size: 0.76rem;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .detail-description {
-  font-size: 0.82rem;
+  font-size: 12.5px;
   line-height: 1.5;
-  color: rgba(var(--v-theme-on-surface), 0.88);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px;
-  padding: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
 
-.detail-inline-actions {
-  margin-top: 14px;
+.empty-mini {
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  padding: 8px 2px;
 }
 
+/* ─── Empty state de detalle ───────────────────────────────── */
 .detail-empty {
-  min-height: 100%;
-  display: grid;
-  place-content: center;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  gap: 8px;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  gap: 10px;
+  padding: 30px 20px;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.15);
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.detail-empty__icon-wrap {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 4px;
 }
 
 .detail-empty__title {
-  font-size: 0.92rem;
+  font-size: 14px;
   font-weight: 800;
+  color: rgb(var(--v-theme-on-surface));
 }
 
-.detail-empty__text,
-.empty-mini {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+.detail-empty__text {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  max-width: 280px;
+  line-height: 1.4;
 }
 
+/* ─── Responsive ───────────────────────────────────────────── */
 @media (max-width: 980px) {
   .consulta-layout {
     grid-template-columns: 1fr;
@@ -1051,13 +1249,12 @@ function formatMoney(value) {
     position: static;
   }
 
-  .hero-grid,
   .detail-kv-grid {
     grid-template-columns: 1fr;
   }
 
   .results-list {
-    max-height: 360px;
+    max-height: 320px;
   }
 }
 
@@ -1066,19 +1263,13 @@ function formatMoney(value) {
     padding: 12px !important;
   }
 
-  .result-card__top,
-  .result-card__bottom,
-  .detail-inline-header {
+  .detail-hero__top {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .detail-inline-actions :deep(.v-btn) {
-    flex: 1 1 auto;
-  }
-
-  .detail-subtitle {
-    display: none;
+  .detail-hero__price-value {
+    font-size: 22px;
   }
 }
 </style>
