@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    :theme="activeThemeName"
+    theme="adminDark"
     max-width="1100"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -294,16 +294,10 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
-import { useTheme } from "vuetify";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
 import { usePosImages } from "../composables/usePosImages";
 
 const { productImage } = usePosImages();
-
-// Vuetify monta los v-dialog en el body y puede perder el theme del app.
-// Forzamos que use el theme global activo (dark o light).
-const theme = useTheme();
-const activeThemeName = computed(() => theme?.global?.name?.value || "dark");
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -939,7 +933,7 @@ async function copyBarcode(item) {
 .product-card {
   display: flex;
   flex-direction: column;
-  min-height: 280px;
+  min-height: 320px;
   border-radius: 12px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
@@ -1035,9 +1029,9 @@ async function copyBarcode(item) {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 9px 10px 10px;
+  padding: 10px 10px 12px;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 110px;
 }
 
 .product-card__name {
