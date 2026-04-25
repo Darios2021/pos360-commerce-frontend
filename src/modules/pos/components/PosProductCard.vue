@@ -139,6 +139,9 @@ const brandModel = computed(() => {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   background: rgb(var(--v-theme-surface));
   overflow: hidden;
+  /* Contorno estático que NO puede ser pisado por Vuetify.
+     Usamos inset box-shadow que respeta el border-radius. */
+  box-shadow: inset 0 0 0 1.5px #64748b !important;  /* slate-500 */
 }
 
 /* thumb */

@@ -23,6 +23,31 @@ body,
 }
 
 /* =========================================================
+   CONTRASTE MODO CLARO
+   - El background admin es un slate claro (#dce4ef) y los surfaces
+     son blancos (#ffffff). Para que los cards se despeguen del fondo
+     subo la opacidad del border (+50%) y agrego una sombra sutil a
+     elementos con borde en modo claro.
+   - En modo oscuro no aplica: ya hay buen contraste.
+========================================================= */
+.v-theme--light {
+  --v-border-opacity: 0.17;
+}
+
+.v-theme--light .v-card,
+.v-theme--light .v-sheet {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+              0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.v-theme--light .v-card--variant-flat,
+.v-theme--light .v-card--variant-outlined,
+.v-theme--light .v-sheet--variant-flat,
+.v-theme--light .v-sheet--variant-outlined {
+  box-shadow: none;
+}
+
+/* =========================================================
    OVERLAY FIX TELEPORT
 ========================================================= */
 

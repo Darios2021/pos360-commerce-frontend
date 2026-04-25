@@ -214,6 +214,9 @@ export async function adminListCashRegisters(filters = {}) {
   add("date_from", filters.date_from);
   add("date_to", filters.date_to);
   add("q", filters.q);
+  if (filters.alerts_only) add("alerts_only", "1");
+  if (filters.overtime_only) add("overtime_only", "1");
+  if (filters.shortage_only) add("shortage_only", "1");
   add("page", filters.page || 1);
   add("limit", filters.limit || 25);
 

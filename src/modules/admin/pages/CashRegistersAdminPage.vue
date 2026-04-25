@@ -46,19 +46,53 @@
           <div class="cra-kpi__lbl">Ventas de hoy</div>
         </div>
       </div>
-      <div class="cra-kpi" :class="diffColorClass(kpis.difference_today)">
-        <div class="cra-kpi__badge">
-          <v-icon size="18" color="white">
-            {{ kpis.difference_today >= 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}
-          </v-icon>
-        </div>
+      <!-- ALERTAS -->
+      <button
+        type="button"
+        class="cra-kpi cra-kpi--alert cra-kpi--clickable"
+        :class="{ 'is-active': filters.alerts_only }"
+        @click="toggleAlertsOnly"
+        :title="filters.alerts_only ? 'Ver todas' : 'Filtrar: solo con alertas'"
+      >
+        <div class="cra-kpi__badge"><v-icon size="18" color="white">mdi-alert-decagram</v-icon></div>
         <div>
-          <div class="cra-kpi__val">
-            {{ kpis.difference_today > 0 ? '+' : '' }}${{ fmtNum(kpis.difference_today) }}
-          </div>
-          <div class="cra-kpi__lbl">Diferencia del día</div>
+          <div class="cra-kpi__val">{{ kpis.filtered_alerts || 0 }}</div>
+          <div class="cra-kpi__lbl">Con alertas</div>
         </div>
-      </div>
+      </button>
+      <!-- FALTANTES -->
+      <button
+        type="button"
+        class="cra-kpi cra-kpi--shortage cra-kpi--clickable"
+        :class="{ 'is-active': filters.shortage_only }"
+        @click="toggleShortageOnly"
+        :title="filters.shortage_only ? 'Ver todas' : 'Filtrar: solo con faltante'"
+      >
+        <div class="cra-kpi__badge"><v-icon size="18" color="white">mdi-cash-remove</v-icon></div>
+        <div>
+          <div class="cra-kpi__val">{{ kpis.filtered_shortage_count || 0 }}</div>
+          <div class="cra-kpi__lbl">
+            Faltantes
+            <span v-if="kpis.filtered_shortage_total" class="cra-kpi__detail">
+              ${{ fmtNum(Math.abs(kpis.filtered_shortage_total)) }}
+            </span>
+          </div>
+        </div>
+      </button>
+      <!-- EXCEDIDAS 8H -->
+      <button
+        type="button"
+        class="cra-kpi cra-kpi--overtime cra-kpi--clickable"
+        :class="{ 'is-active': filters.overtime_only }"
+        @click="toggleOvertimeOnly"
+        :title="filters.overtime_only ? 'Ver todas' : 'Filtrar: turno excedido'"
+      >
+        <div class="cra-kpi__badge"><v-icon size="18" color="white">mdi-clock-alert</v-icon></div>
+        <div>
+          <div class="cra-kpi__val">{{ kpis.filtered_overtime || 0 }}</div>
+          <div class="cra-kpi__lbl">Excedidas 8h</div>
+        </div>
+      </button>
     </div>
 
     <!-- FILTROS -->
@@ -150,22 +184,31 @@
             <th class="col-time">Apertura / Cierre</th>
             <th class="col-sales num">Ventas</th>
             <th class="col-diff num">Diferencia</th>
+            <th class="col-alerts">Alertas</th>
             <th class="col-action"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading && !items.length">
-            <td colspan="8" class="cra-td-loading">
+            <td colspan="9" class="cra-td-loading">
               <v-progress-circular size="22" indeterminate color="primary" />
             </td>
           </tr>
           <tr v-else-if="!items.length">
-            <td colspan="8" class="cra-td-empty">
+            <td colspan="9" class="cra-td-empty">
               <v-icon size="32" color="medium-emphasis">mdi-cash-register</v-icon>
               <div>Sin cajas para estos filtros</div>
             </td>
           </tr>
-          <tr v-for="r in items" :key="r.id" class="cra-row" @click="openDetail(r)">
+          <tr
+            v-for="r in items"
+            :key="r.id"
+            class="cra-row"
+            :class="[
+              topSeverityOf(r) ? `cra-row--sev-${topSeverityOf(r)}` : null,
+            ]"
+            @click="openDetail(r)"
+          >
             <td>
               <span class="cra-status" :class="r.status === 'OPEN' ? 'is-open' : 'is-closed'">
                 <span class="cra-status__dot" />
@@ -217,6 +260,23 @@
               </span>
               <span v-else class="cra-dash">—</span>
             </td>
+            <td>
+              <div v-if="r.audit?.flags?.length" class="cra-alerts">
+                <span
+                  v-for="f in r.audit.flags"
+                  :key="f.code"
+                  class="cra-alert"
+                  :class="`cra-alert--${f.severity}`"
+                  :title="`${f.label}: ${f.detail}`"
+                >
+                  <v-icon size="12">{{ flagIcon(f.code) }}</v-icon>
+                  <span class="cra-alert__lbl">{{ flagShortLabel(f.code) }}</span>
+                </span>
+              </div>
+              <span v-else class="cra-ok-ic" title="Sin alertas">
+                <v-icon size="14" color="success">mdi-shield-check</v-icon>
+              </span>
+            </td>
             <td class="cra-action">
               <v-icon size="18" class="cra-action__ic">mdi-chevron-right</v-icon>
             </td>
@@ -257,6 +317,10 @@ const kpis = ref({
   closed_today: 0,
   difference_today: 0,
   sales_total_today: 0,
+  filtered_alerts: 0,
+  filtered_shortage_count: 0,
+  filtered_shortage_total: 0,
+  filtered_overtime: 0,
 });
 
 const filters = reactive({
@@ -265,6 +329,9 @@ const filters = reactive({
   branch_id: null,
   date_from: "",
   date_to: "",
+  alerts_only: false,
+  overtime_only: false,
+  shortage_only: false,
   page: 1,
   limit: 25,
 });
@@ -300,6 +367,9 @@ async function reload() {
       branch_id: filters.branch_id || "",
       date_from: filters.date_from || "",
       date_to: filters.date_to || "",
+      alerts_only: filters.alerts_only,
+      overtime_only: filters.overtime_only,
+      shortage_only: filters.shortage_only,
       page: filters.page,
       limit: filters.limit,
     });
@@ -339,8 +409,61 @@ watch(
   () => { filters.page = 1; }
 );
 
+function toggleAlertsOnly() {
+  filters.alerts_only = !filters.alerts_only;
+  if (filters.alerts_only) {
+    filters.shortage_only = false;
+    filters.overtime_only = false;
+  }
+  filters.page = 1;
+  reload();
+}
+function toggleShortageOnly() {
+  filters.shortage_only = !filters.shortage_only;
+  if (filters.shortage_only) {
+    filters.alerts_only = false;
+    filters.overtime_only = false;
+  }
+  filters.page = 1;
+  reload();
+}
+function toggleOvertimeOnly() {
+  filters.overtime_only = !filters.overtime_only;
+  if (filters.overtime_only) {
+    filters.alerts_only = false;
+    filters.shortage_only = false;
+  }
+  filters.page = 1;
+  reload();
+}
+
 function openDetail(r) {
   router.push({ name: "adminCashRegisterDetail", params: { id: r.id } });
+}
+
+function topSeverityOf(r) {
+  return r?.audit?.top_severity || null;
+}
+
+function flagIcon(code) {
+  const map = {
+    SHORTAGE: "mdi-cash-remove",
+    SURPLUS: "mdi-cash-plus",
+    OVERTIME: "mdi-clock-alert",
+    LONG_OPEN: "mdi-clock-alert-outline",
+    BIG_MANUAL_OUT: "mdi-arrow-up-bold-circle-outline",
+  };
+  return map[code] || "mdi-alert-outline";
+}
+function flagShortLabel(code) {
+  const map = {
+    SHORTAGE: "Faltante",
+    SURPLUS: "Sobrante",
+    OVERTIME: "+8h",
+    LONG_OPEN: "+8h",
+    BIG_MANUAL_OUT: "Egresos",
+  };
+  return map[code] || code;
 }
 
 /* Formatters */
@@ -469,6 +592,31 @@ onMounted(() => {
 .cra-kpi--positive .cra-kpi__badge { background: linear-gradient(135deg, #22c55e, #16a34a); }
 .cra-kpi--negative .cra-kpi__badge { background: linear-gradient(135deg, #ef4444, #dc2626); }
 .cra-kpi--neutral .cra-kpi__badge  { background: linear-gradient(135deg, #94a3b8, #64748b); }
+.cra-kpi--alert .cra-kpi__badge     { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.cra-kpi--shortage .cra-kpi__badge  { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.cra-kpi--overtime .cra-kpi__badge  { background: linear-gradient(135deg, #f97316, #c2410c); }
+
+.cra-kpi--clickable {
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+.cra-kpi--clickable:hover {
+  border-color: rgba(var(--v-theme-primary), 0.35);
+}
+.cra-kpi--clickable.is-active {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.06);
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.25);
+}
+.cra-kpi__detail {
+  font-weight: 700;
+  opacity: 0.75;
+  margin-left: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .cra-kpi__val {
   font-size: 20px;
   font-weight: 900;
@@ -536,12 +684,13 @@ onMounted(() => {
 }
 
 .col-state   { width: 110px; }
-.col-caja    { width: 95px; }
-.col-cashier { width: 19%; }
-.col-branch  { width: 14%; }
-.col-time    { width: 18%; }
-.col-sales   { width: 140px; }
-.col-diff    { width: 120px; }
+.col-caja    { width: 90px; }
+.col-cashier { width: 16%; }
+.col-branch  { width: 12%; }
+.col-time    { width: 16%; }
+.col-sales   { width: 130px; }
+.col-diff    { width: 115px; }
+.col-alerts  { width: 170px; }
 .col-action  { width: 44px; }
 
 .cra-row td {
@@ -557,6 +706,54 @@ onMounted(() => {
   cursor: pointer;
 }
 .cra-row:last-child td { border-bottom: none; }
+
+/* Severidad — barra lateral izquierda */
+.cra-row--sev-high > td:first-child {
+  box-shadow: inset 3px 0 0 0 rgb(var(--v-theme-error));
+}
+.cra-row--sev-medium > td:first-child {
+  box-shadow: inset 3px 0 0 0 #f59e0b;
+}
+.cra-row--sev-low > td:first-child {
+  box-shadow: inset 3px 0 0 0 rgba(var(--v-theme-on-surface), 0.3);
+}
+
+/* Chips de alertas */
+.cra-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cra-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.cra-alert__lbl { line-height: 1; }
+.cra-alert--high {
+  background: rgba(var(--v-theme-error), 0.14);
+  color: rgb(var(--v-theme-error));
+}
+.cra-alert--medium {
+  background: rgba(245, 158, 11, 0.18);
+  color: #d97706;
+}
+.cra-alert--low {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+:global(.v-theme--dark) .cra-alert--medium { color: #fbbf24; }
+
+.cra-ok-ic {
+  display: inline-flex;
+  opacity: 0.7;
+}
 
 .cra-status {
   display: inline-flex;

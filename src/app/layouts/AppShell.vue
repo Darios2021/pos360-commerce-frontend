@@ -339,6 +339,17 @@
               </v-list-item>
 
               <v-list-item
+                v-if="isAdmin && hasRoute('adminTelegram')"
+                :to="{ name: 'adminTelegram' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-send-variant</v-icon>
+                </template>
+                <v-list-item-title>Alertas Telegram</v-list-item-title>
+              </v-list-item>
+
+              <v-list-item
                 v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
                 :to="{ name: 'shopBranding' }"
                 exact
@@ -571,6 +582,7 @@ const ROUTE_TREE = {
   adminFiscal:              { label: "Fiscal", section: "Configuración" },
   adminPaymentMethods:      { label: "Medios de pago", section: "Configuración" },
   adminCashRegisters:       { label: "Cajas", section: "Gestión" },
+  adminTelegram:            { label: "Alertas Telegram", section: "Configuración" },
   users:                    { label: "Usuarios", section: "Configuración" },
   profile:                  { label: "Mi perfil" },
   shopBranding:             { label: "Branding", section: "Tienda" },
@@ -647,6 +659,7 @@ const showConfig = computed(() => {
     hasRoute("categories") ||
     hasRoute("adminFiscal") ||
     hasRoute("adminPaymentMethods") ||
+    hasRoute("adminTelegram") ||
     hasRoute("shopBranding") ||
     hasRoute("users")
   );
@@ -671,6 +684,7 @@ const configLandingRoute = computed(() => {
   if (hasRoute("categories")) return { name: "categories" };
   if (hasRoute("adminFiscal")) return { name: "adminFiscal" };
   if (hasRoute("adminPaymentMethods")) return { name: "adminPaymentMethods" };
+  if (hasRoute("adminTelegram")) return { name: "adminTelegram" };
   if (hasRoute("shopBranding")) return { name: "shopBranding" };
   if (hasRoute("users")) return { name: "users" };
   return null;

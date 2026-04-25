@@ -83,6 +83,38 @@
         </div>
       </div>
 
+      <!-- Auditoría (si hay alertas) -->
+      <section v-if="auditFlags.length" class="crd-section crd-section--audit">
+        <div class="crd-section__title">
+          <v-icon size="16" color="error">mdi-alert-decagram</v-icon>
+          Auditoría
+          <v-chip size="x-small" class="ml-2" color="error" variant="flat">
+            {{ auditFlags.length }}
+            {{ auditFlags.length === 1 ? 'alerta' : 'alertas' }}
+          </v-chip>
+        </div>
+
+        <div class="crd-audit-list">
+          <div
+            v-for="f in auditFlags"
+            :key="f.code"
+            class="crd-audit"
+            :class="`crd-audit--${f.severity}`"
+          >
+            <div class="crd-audit__ic">
+              <v-icon size="20">{{ flagIcon(f.code) }}</v-icon>
+            </div>
+            <div class="crd-audit__body">
+              <div class="crd-audit__head">
+                <span class="crd-audit__label">{{ f.label }}</span>
+                <span class="crd-audit__sev">{{ severityLabel(f.severity) }}</span>
+              </div>
+              <div class="crd-audit__detail">{{ f.detail }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Totales -->
       <section class="crd-section">
         <div class="crd-section__title">
@@ -280,6 +312,7 @@ async function load() {
       totals_manual_in: t?.manual_in ?? row?.manual_in,
       totals_manual_out: t?.manual_out ?? row?.manual_out,
       totals_expected_cash: t?.expected_cash ?? row?.expected_cash,
+      audit: row?.audit || null,
     };
     movements.value = m;
     paymentsByMethod.value = pbm;
@@ -343,6 +376,26 @@ function diffTextClass(v) {
   if (n > 0) return "clr-ok";
   if (n < 0) return "clr-bad";
   return "";
+}
+
+const auditFlags = computed(() => {
+  const flags = data.value?.audit?.flags;
+  return Array.isArray(flags) ? flags : [];
+});
+
+function flagIcon(code) {
+  const map = {
+    SHORTAGE: "mdi-cash-remove",
+    SURPLUS: "mdi-cash-plus",
+    OVERTIME: "mdi-clock-alert",
+    LONG_OPEN: "mdi-clock-alert-outline",
+    BIG_MANUAL_OUT: "mdi-arrow-up-bold-circle-outline",
+  };
+  return map[code] || "mdi-alert-outline";
+}
+function severityLabel(sev) {
+  const map = { high: "Grave", medium: "Importante", low: "Aviso" };
+  return map[sev] || sev;
 }
 
 onMounted(load);
@@ -561,6 +614,107 @@ watch(id, load);
   font-size: 12px;
   opacity: 0.6;
   padding: 12px 0;
+}
+
+/* Auditoría */
+.crd-section--audit {
+  border-color: rgba(var(--v-theme-error), 0.4);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-error), 0.04), rgba(var(--v-theme-error), 0)),
+    rgb(var(--v-theme-surface));
+}
+.crd-audit-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.crd-audit {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid;
+}
+.crd-audit__ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.crd-audit__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.crd-audit__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.crd-audit__label {
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.crd-audit__sev {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.crd-audit__detail {
+  font-size: 12px;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.crd-audit--high {
+  background: rgba(var(--v-theme-error), 0.06);
+  border-color: rgba(var(--v-theme-error), 0.35);
+}
+.crd-audit--high .crd-audit__ic {
+  background: rgba(var(--v-theme-error), 0.14);
+  color: rgb(var(--v-theme-error));
+}
+.crd-audit--high .crd-audit__sev {
+  background: rgba(var(--v-theme-error), 0.14);
+  color: rgb(var(--v-theme-error));
+}
+
+.crd-audit--medium {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.crd-audit--medium .crd-audit__ic {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+.crd-audit--medium .crd-audit__sev {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+:global(.v-theme--dark) .crd-audit--medium .crd-audit__ic,
+:global(.v-theme--dark) .crd-audit--medium .crd-audit__sev { color: #fbbf24; }
+
+.crd-audit--low {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-color: rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.crd-audit--low .crd-audit__ic {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+.crd-audit--low .crd-audit__sev {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .clr-ok  { color: rgb(var(--v-theme-success)); }

@@ -30,7 +30,7 @@ const vuetify = createVuetify({
           primary: "#02498b",
           secondary: "#3483fa",
           sidebar: "#02498b",
-          background: "#e9eef5",
+          background: "#dce4ef",
           surface: "#ffffff",
         },
       },
@@ -51,7 +51,7 @@ const vuetify = createVuetify({
         colors: {
           primary: "#02498b",
           secondary: "#3483fa",
-          background: "#ebebeb",
+          background: "#e4e7ec",
           surface: "#ffffff",
         },
       },
