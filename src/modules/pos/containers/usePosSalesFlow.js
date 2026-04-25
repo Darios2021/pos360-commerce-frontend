@@ -87,6 +87,9 @@ export function usePosSalesFlow() {
     currentCashRegisterId,
     otherOpenRegisters,
     branchOpenRegisters,
+    zombieDialog,
+    closeZombieAndOpen,
+    cancelZombieDialog,
     summary,
     isBusy: cajaBusy,
     isCajaOpen,
@@ -365,7 +368,13 @@ export function usePosSalesFlow() {
       toast(`Caja iniciada • ${cajaTypeLabel.value} • ${invoiceTypeLabel.value}`);
     } catch (err) {
       if (err?.status === 409) {
-        toast("Ya hay una caja abierta, sincronizando...");
+        // Si openCaja detectó zombie, ya se abrió el PosZombieCashDialog.
+        // Cerramos el dialog de config de caja para que se vea el zombie limpio.
+        if (err?.code === "CAJA_USUARIO_YA_ABIERTA" || err?.data?.cash_register_id) {
+          closeCajaConfig();
+          return;
+        }
+        // Otros 409: sincronizar y salir silencioso.
         await refreshCaja().catch(() => {});
         closeCajaConfig();
         return;
@@ -665,6 +674,9 @@ export function usePosSalesFlow() {
     currentCashRegisterId,
     otherOpenRegisters,
     branchOpenRegisters,
+    zombieDialog,
+    closeZombieAndOpen,
+    cancelZombieDialog,
     summary,
     cajaBusy,
     isCajaOpen,

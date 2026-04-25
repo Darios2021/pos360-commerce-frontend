@@ -70,6 +70,15 @@ export function usePosCashRegister() {
   const branchOpenRegisters = ref([]);
   const summary = ref(null);
 
+  // Estado del dialog zombie (otra caja abierta del mismo user).
+  const zombieDialog = ref({
+    open: false,
+    data: null,
+    loading: false,
+    error: "",
+    pendingPayload: null,
+  });
+
   const loadingCurrent = ref(false);
   const loadingOpen = ref(false);
   const loadingSummary = ref(false);
@@ -287,6 +296,19 @@ const canSellWithCaja = computed(() => {
       return currentCashRegister.value;
     } catch (error) {
       if (error?.status === 409) {
+        // Caja zombie del mismo user. Exponemos data para que la UI pida
+        // confirmación y permita cerrarla + reintentar el open.
+        const isZombieOfUser = error?.code === "CAJA_USUARIO_YA_ABIERTA"
+          || String(error?.data?.cash_register_id || "").length > 0;
+        if (isZombieOfUser && error?.data?.cash_register_id) {
+          zombieDialog.value = {
+            open: true,
+            data: error.data,
+            loading: false,
+            error: "",
+            pendingPayload: payload,
+          };
+        }
         try {
           const current = await getCurrentCashRegister();
           currentCashRegister.value = current?.data || null;
@@ -298,6 +320,49 @@ const canSellWithCaja = computed(() => {
     } finally {
       loadingOpen.value = false;
     }
+  }
+
+  // Cierra la caja zombie (con cierre neutro) y reintenta abrir la nueva
+  // con el payload que el user había enviado.
+  async function closeZombieAndOpen() {
+    const state = zombieDialog.value;
+    if (!state?.data?.cash_register_id) return;
+
+    state.loading = true;
+    state.error = "";
+    try {
+      const openingCash = Number(state.data.opening_cash || 0);
+      // Cierre neutro: declarado = fondo inicial → diferencia 0.
+      await closeCashRegister(state.data.cash_register_id, {
+        closing_cash: openingCash,
+        closing_note: "Cierre neutro automático (zombie al abrir nueva caja)",
+      });
+
+      // Reintentar apertura con el payload original.
+      const payload = state.pendingPayload || {};
+      await openCaja(payload);
+
+      zombieDialog.value = {
+        open: false,
+        data: null,
+        loading: false,
+        error: "",
+        pendingPayload: null,
+      };
+    } catch (e) {
+      state.error = e?.friendlyMessage || e?.message || "No se pudo cerrar la caja zombie.";
+      state.loading = false;
+    }
+  }
+
+  function cancelZombieDialog() {
+    zombieDialog.value = {
+      open: false,
+      data: null,
+      loading: false,
+      error: "",
+      pendingPayload: null,
+    };
   }
 
   async function loadSummary(cashRegisterId = null) {
@@ -425,6 +490,9 @@ const canSellWithCaja = computed(() => {
     currentCashRegister,
     otherOpenRegisters,
     branchOpenRegisters,
+    zombieDialog,
+    closeZombieAndOpen,
+    cancelZombieDialog,
     summary,
     lastError,
 

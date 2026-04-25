@@ -55,6 +55,15 @@
       @save="onSaveCajaConfig"
     />
 
+    <PosZombieCashDialog
+      :open="zombieDialog.open"
+      :data="zombieDialog.data"
+      :loading="zombieDialog.loading"
+      :error="zombieDialog.error"
+      @confirm="closeZombieAndOpen"
+      @cancel="cancelZombieDialog"
+    />
+
     <PosCajaArqueoDialog
       v-model:open="cajaArqueoOpen"
       :is-caja-open="isCajaOpen"
@@ -134,6 +143,7 @@ import ReceiptDialog from "../components/ReceiptDialog.vue";
 import PosCartPreviewDialog from "../components/PosCartPreviewDialog.vue";
 import PosShortcutsHelpDialog from "../components/PosShortcutsHelpDialog.vue";
 import PosCajaConfigDialog from "../components/PosCajaConfigDialog.vue";
+import PosZombieCashDialog from "../components/PosZombieCashDialog.vue";
 import PosCajaArqueoDialog from "../components/PosCajaArqueoDialog.vue";
 import PosBranchSwitchDialog from "../components/PosBranchSwitchDialog.vue";
 import PosConsultaDialog from "../components/PosConsultaDialog.vue";
@@ -175,6 +185,9 @@ const {
   cartCount,
   cajaConfigOpen,
   cajaArqueoOpen,
+  zombieDialog,
+  closeZombieAndOpen,
+  cancelZombieDialog,
   cajaType,
   openingAmount,
   openingNote,
