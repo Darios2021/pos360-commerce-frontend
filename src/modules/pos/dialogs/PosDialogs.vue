@@ -62,6 +62,7 @@
       :error="zombieDialog.error"
       @confirm="closeZombieAndOpen"
       @cancel="cancelZombieDialog"
+      @switch-branch="onSwitchBranchFromZombie"
     />
 
     <PosCajaArqueoDialog
@@ -220,6 +221,19 @@ const {
   runScannerTest,
   reloadSummaryFromArqueo,
 } = usePosSalesFlow();
+
+// Cuando el dialog "caja abierta por otro" ofrece links a otras sucursales,
+// cerramos el dialog y disparamos el cambio de sucursal activa. Reutilizamos
+// el mismo flujo que el branch-switch del header.
+async function onSwitchBranchFromZombie(branchId) {
+  try {
+    cancelZombieDialog();
+    branchPickSelected.value = Number(branchId) || null;
+    await confirmActiveBranchChange();
+  } catch (e) {
+    console.warn("[POS] cambio de sucursal desde zombie dialog falló", e);
+  }
+}
 </script>
 
 <style scoped>

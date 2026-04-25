@@ -296,19 +296,46 @@ const canSellWithCaja = computed(() => {
       return currentCashRegister.value;
     } catch (error) {
       if (error?.status === 409) {
-        // Caja zombie del mismo user. Exponemos data para que la UI pida
-        // confirmación y permita cerrarla + reintentar el open.
-        const isZombieOfUser = error?.code === "CAJA_USUARIO_YA_ABIERTA"
-          || String(error?.data?.cash_register_id || "").length > 0;
-        if (isZombieOfUser && error?.data?.cash_register_id) {
+        // Distinguir DOS casos diferentes que ambos vienen como 409:
+        //   1) CAJA_USUARIO_YA_ABIERTA → el usuario actual tiene una caja
+        //      abierta (probablemente en otra sucursal). Puede cerrarla solo
+        //      con el cierre neutro. is_own=true en data.
+        //   2) CAJA_YA_ABIERTA → existe una caja en esta sucursal abierta
+        //      por OTRO usuario. NO puede cerrarla; debe pedirle al admin
+        //      o al dueño que la cierre. is_own=false en data.
+        // Antes el frontend trataba ambos casos como zombie del user actual
+        // y al confirmar el cierre el backend devolvía 403 "Solo podés
+        // cerrar tu propia caja". Ahora chequeamos `is_own`.
+        const code = error?.code;
+        const isOwn =
+          code === "CAJA_USUARIO_YA_ABIERTA" ||
+          error?.data?.is_own === true;
+
+        if (isOwn && error?.data?.cash_register_id) {
+          // Es la propia caja zombie → permitir cierre neutro desde el dialog.
           zombieDialog.value = {
             open: true,
-            data: error.data,
+            data: { ...error.data, is_own: true },
+            loading: false,
+            error: "",
+            pendingPayload: payload,
+          };
+        } else if (code === "CAJA_YA_ABIERTA" && error?.data?.cash_register_id) {
+          // Caja de OTRO usuario en esta sucursal. El dialog decide qué
+          // botones mostrar según el rol:
+          //   - admin/super_admin: puede cerrarla y abrir la suya (el backend
+          //     permite cerrar a admin de la sucursal). Por eso guardamos el
+          //     payload para que se pueda reintentar la apertura.
+          //   - resto: solo modo informativo, "Entendido" cierra el dialog.
+          zombieDialog.value = {
+            open: true,
+            data: { ...error.data, is_own: false },
             loading: false,
             error: "",
             pendingPayload: payload,
           };
         }
+
         try {
           const current = await getCurrentCashRegister();
           currentCashRegister.value = current?.data || null;
@@ -324,6 +351,12 @@ const canSellWithCaja = computed(() => {
 
   // Cierra la caja zombie (con cierre neutro) y reintenta abrir la nueva
   // con el payload que el user había enviado.
+  //
+  // Casos:
+  //   - is_own=true : el user cierra SU propia caja (de otra sesión).
+  //   - is_own=false: el user cierra la caja de OTRO operador. Solo funciona
+  //     si el caller es admin de la sucursal o super_admin (lo enforce el
+  //     backend; si no tiene permisos, recibe 403 y mostramos el error).
   async function closeZombieAndOpen() {
     const state = zombieDialog.value;
     if (!state?.data?.cash_register_id) return;
@@ -331,11 +364,20 @@ const canSellWithCaja = computed(() => {
     state.loading = true;
     state.error = "";
     try {
+      const isOwn = state.data?.is_own !== false;
       const openingCash = Number(state.data.opening_cash || 0);
+      const owner =
+        state.data?.opened_by_name ||
+        state.data?.opened_by_email ||
+        `usuario #${state.data?.opened_by || "?"}`;
+      const note = isOwn
+        ? "Cierre neutro automático (al abrir nueva caja del mismo usuario)"
+        : `Cierre administrativo: caja del cajero ${owner} cerrada por otro operador para liberar la sucursal.`;
+
       // Cierre neutro: declarado = fondo inicial → diferencia 0.
       await closeCashRegister(state.data.cash_register_id, {
         closing_cash: openingCash,
-        closing_note: "Cierre neutro automático (zombie al abrir nueva caja)",
+        closing_note: note,
       });
 
       // Reintentar apertura con el payload original.
@@ -350,7 +392,19 @@ const canSellWithCaja = computed(() => {
         pendingPayload: null,
       };
     } catch (e) {
-      state.error = e?.friendlyMessage || e?.message || "No se pudo cerrar la caja zombie.";
+      // Posibles errores:
+      //   - 403 FORBIDDEN_USER (no sos dueño y no sos admin de la sucursal)
+      //   - 403 FORBIDDEN_BRANCH (la caja es de otra sucursal)
+      //   - 409 algún reintento concurrente
+      const status = e?.status || e?.response?.status;
+      const code = e?.code || e?.response?.data?.code;
+      let msg = e?.friendlyMessage || e?.response?.data?.message || e?.message;
+      if (status === 403 && code === "FORBIDDEN_USER") {
+        msg = "No tenés permisos para cerrar la caja de otro operador. Pedile a un admin que la cierre.";
+      } else if (status === 403 && code === "FORBIDDEN_BRANCH") {
+        msg = "Esta caja está en otra sucursal. Cambiá de sucursal o pedile al admin que la cierre.";
+      }
+      state.error = msg || "No se pudo cerrar la caja.";
       state.loading = false;
     }
   }

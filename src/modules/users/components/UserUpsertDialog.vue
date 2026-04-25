@@ -178,12 +178,17 @@
               <div class="uud-section__head">
                 <v-icon size="16" color="primary">mdi-store</v-icon>
                 <span class="uud-section__title">Sucursales habilitadas</span>
-                <v-chip size="x-small" variant="tonal" class="ml-2">
-                  {{ allBranchesSelected ? 'Todas' : form.branch_ids.length }}
+                <v-chip
+                  size="x-small"
+                  :color="isSuperAdminSelected ? 'primary' : undefined"
+                  :variant="isSuperAdminSelected ? 'flat' : 'tonal'"
+                  class="ml-2"
+                >
+                  {{ isSuperAdminSelected || allBranchesSelected ? 'Todas' : form.branch_ids.length }}
                 </v-chip>
                 <v-spacer />
                 <v-btn
-                  v-if="!allBranchesSelected"
+                  v-if="!isSuperAdminSelected && !allBranchesSelected"
                   size="x-small"
                   variant="text"
                   @click="selectAllBranches"
@@ -192,7 +197,7 @@
                   Seleccionar todas
                 </v-btn>
                 <v-btn
-                  v-else
+                  v-else-if="!isSuperAdminSelected && allBranchesSelected"
                   size="x-small"
                   variant="text"
                   @click="form.branch_ids = []"
@@ -201,8 +206,20 @@
                   Limpiar
                 </v-btn>
               </div>
-              <div class="uud-section__hint">
-                Restringen las operaciones por sucursal. Si es <b>super_admin</b> conviene activar todas.
+
+              <!-- Banner explicativo cuando hay super_admin: el filtro no aplica. -->
+              <div v-if="isSuperAdminSelected" class="uud-super-banner">
+                <v-icon size="18" color="primary">mdi-shield-crown</v-icon>
+                <div>
+                  <div class="uud-super-banner__title">El rol Super admin ignora el filtro de sucursales</div>
+                  <div class="uud-super-banner__text">
+                    Habilitamos automáticamente todas las sucursales en este perfil para que coincida con el ámbito real.
+                    Si querés un acceso acotado a una sucursal, sacale Super admin y dejale Admin o Encargado.
+                  </div>
+                </div>
+              </div>
+              <div v-else class="uud-section__hint">
+                Restringen las operaciones por sucursal. Si necesitás acceso global, usá el rol <b>Super admin</b>.
               </div>
 
               <div v-if="!(branches || []).length" class="uud-empty">
@@ -210,23 +227,30 @@
                 <span>No hay sucursales configuradas.</span>
               </div>
 
-              <div v-else class="uud-branches">
+              <div
+                v-else
+                class="uud-branches"
+                :class="{ 'is-disabled': isSuperAdminSelected }"
+              >
                 <label
                   v-for="b in branches"
                   :key="b.id"
                   class="uud-branch-chip"
-                  :class="{ 'is-active': form.branch_ids.includes(b.id) }"
+                  :class="{
+                    'is-active': isSuperAdminSelected || form.branch_ids.includes(b.id),
+                  }"
                 >
                   <input
                     type="checkbox"
                     :value="b.id"
+                    :disabled="isSuperAdminSelected"
                     v-model="form.branch_ids"
                     class="uud-role-checkbox"
                   />
                   <v-icon size="14">mdi-store</v-icon>
                   <span>{{ b.name }}</span>
                   <v-icon
-                    v-if="form.branch_ids.includes(b.id)"
+                    v-if="isSuperAdminSelected || form.branch_ids.includes(b.id)"
                     size="14"
                     color="primary"
                     class="ml-1"
@@ -571,6 +595,31 @@ function selectAllBranches() {
   form.branch_ids = (props.branches || []).map((b) => b.id);
 }
 
+// Nombres (lowercase) de los roles seleccionados, para chequeos de UX.
+const selectedRoleNames = computed(() => {
+  const byId = new Map((props.roles || []).map((r) => [r.id, String(r.name || "").toLowerCase()]));
+  return form.role_ids
+    .map((id) => byId.get(id))
+    .filter(Boolean);
+});
+
+// El rol super_admin ignora el filtro de sucursales (acceso global). Lo detectamos
+// para mostrar un banner explicativo, autoseleccionar todas las sucursales y
+// evitar la inconsistencia de "veo Rivadavia habilitada pero accedo a todo".
+const isSuperAdminSelected = computed(() =>
+  selectedRoleNames.value.some((n) => ["super_admin", "superadmin"].includes(n))
+);
+
+// Cuando se activa super_admin, garantizamos que TODAS las sucursales queden
+// habilitadas en user_branches. Así el form no miente y el backend recibe el
+// scope coherente con el rol.
+watch(isSuperAdminSelected, (isSuper) => {
+  if (!isSuper) return;
+  if (!props.branches?.length) return;
+  if (allBranchesSelected.value) return;
+  form.branch_ids = props.branches.map((b) => b.id);
+});
+
 /* Password strength */
 function computeStrength(pwd) {
   const s = String(pwd || "");
@@ -904,6 +953,39 @@ async function onResetPassword() {
   background: rgba(var(--v-theme-primary), 0.1);
   border-color: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-primary));
+}
+
+/* Sucursales bloqueadas (cuando el rol super_admin las activa todas). */
+.uud-branches.is-disabled {
+  pointer-events: none;
+  opacity: 0.85;
+}
+.uud-branches.is-disabled .uud-branch-chip {
+  cursor: not-allowed;
+}
+
+/* Banner cuando se seleccionó super_admin. */
+.uud-super-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.07);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+}
+.uud-super-banner__title {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 2px;
+}
+.uud-super-banner__text {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.85;
 }
 
 /* Password */

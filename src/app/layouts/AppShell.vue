@@ -127,6 +127,14 @@
               <div class="text-caption text-medium-emphasis mt-1" style="opacity:0.7">
                 {{ userEmailOrUsername }}
               </div>
+              <!-- Hint de ámbito: explica claramente qué ve el usuario. -->
+              <div
+                v-if="userScopeHint"
+                class="account-scope-hint mt-2 px-3 py-2 text-caption"
+              >
+                <v-icon size="13" class="mr-1" color="primary">mdi-shield-account-outline</v-icon>
+                {{ userScopeHint }}
+              </div>
             </div>
 
             <div class="px-4 pb-2">
@@ -168,228 +176,209 @@
         rail-width="72"
         class="pos-drawer"
       >
-        <div class="pt-3" />
+        <!--
+          Navigation reorganizada en 3 secciones agrupadas:
+            1. OPERACIÓN  → tareas diarias (siempre visible).
+            2. GESTIÓN    → datos del negocio (colapsable, abierto por default).
+            3. SISTEMA    → config menos frecuente (colapsable, cerrado por default).
+          Las secciones colapsadas se persisten en localStorage para que
+          cada usuario mantenga su preferencia.
+        -->
+        <v-list nav density="compact" class="pos-nav-list">
+          <!-- ════════ OPERACIÓN ════════ -->
+          <!-- Esta sección no se colapsa: son las acciones diarias y deben estar
+               siempre visibles. Dejamos solo el caption para no agregar ruido. -->
+          <div v-if="!rail" class="nav-section-cap">
+            <v-icon size="14" class="nav-section-cap__ic">mdi-rocket-launch-outline</v-icon>
+            <span>Operación</span>
+          </div>
 
-        <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
-          Navegación
-        </div>
-
-        <v-list nav density="comfortable" class="pos-nav-list">
-          <!-- Dashboard -->
-          <v-list-item :to="{ name: 'home' }" :active="isDashboard" link>
+          <v-list-item :to="{ name: 'home' }" :active="isDashboard" link class="nav-item">
             <template #prepend>
-              <v-icon size="20">mdi-view-dashboard-outline</v-icon>
+              <v-icon size="18">mdi-view-dashboard-outline</v-icon>
             </template>
             <v-list-item-title>Dashboard</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'pos' }" exact>
+          <v-list-item :to="{ name: 'pos' }" exact class="nav-item">
             <template #prepend>
-              <v-icon size="20">mdi-point-of-sale</v-icon>
+              <v-icon size="18">mdi-point-of-sale</v-icon>
             </template>
             <v-list-item-title>Punto de Venta</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Punto de Venta
-            </v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'posSales' }" exact>
+          <v-list-item :to="{ name: 'posSales' }" exact class="nav-item">
             <template #prepend>
-              <v-icon size="20">mdi-receipt-text-outline</v-icon>
+              <v-icon size="18">mdi-receipt-text-outline</v-icon>
             </template>
             <v-list-item-title>Ventas</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Ventas
-            </v-tooltip>
+            <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
           </v-list-item>
 
-          <v-divider class="my-2 nav-divider" />
-
-          <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
-            Gestión
-          </div>
-
-          <v-list-item :to="{ name: 'products' }" exact>
+          <!-- ════════ GESTIÓN (colapsable, estilo igual a Tienda) ════════ -->
+          <v-list-item
+            v-if="!rail"
+            class="nav-item nav-section-head"
+            :aria-expanded="navOpen.gestion"
+            @click="toggleSection('gestion')"
+          >
             <template #prepend>
-              <v-icon size="20">mdi-package-variant-closed</v-icon>
+              <v-icon size="18">mdi-briefcase-outline</v-icon>
             </template>
-            <v-list-item-title>Productos</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Productos
-            </v-tooltip>
+            <v-list-item-title>Gestión</v-list-item-title>
+            <template #append>
+              <v-icon
+                size="18"
+                class="nav-section-head__chev"
+                :class="{ 'is-open': navOpen.gestion }"
+              >mdi-chevron-down</v-icon>
+            </template>
           </v-list-item>
 
-
-          <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact>
-            <template #prepend>
-              <!-- Badge visible siempre que haya pendientes, incluso en rail mode -->
-              <v-badge
-                v-if="transferUnreadCount > 0"
-                :content="transferUnreadCount > 9 ? '9+' : String(transferUnreadCount)"
-                color="warning"
-                floating
-              >
-                <v-icon size="20">mdi-truck-fast-outline</v-icon>
-              </v-badge>
-              <v-icon v-else size="20">mdi-truck-fast-outline</v-icon>
-            </template>
-            <v-list-item-title>
-              Derivaciones
-              <v-chip v-if="transferUnreadCount > 0 && !rail" size="x-small" color="warning" class="ml-2">
-                {{ transferUnreadCount }}
-              </v-chip>
-            </v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Derivaciones{{ transferUnreadCount > 0 ? ` (${transferUnreadCount} pendiente${transferUnreadCount !== 1 ? 's' : ''})` : '' }}
-            </v-tooltip>
-          </v-list-item>
-
-          <v-list-item v-if="isAdmin && hasRoute('reports')" :to="{ name: 'reports' }" exact>
-            <template #prepend>
-              <v-icon size="20">mdi-chart-line</v-icon>
-            </template>
-            <v-list-item-title>Reportes</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Reportes
-            </v-tooltip>
-          </v-list-item>
-
-          <v-list-item v-if="isAdmin && hasRoute('adminCashRegisters')" :to="{ name: 'adminCashRegisters' }" exact>
-            <template #prepend>
-              <v-icon size="20">mdi-cash-register</v-icon>
-            </template>
-            <v-list-item-title>Cajas</v-list-item-title>
-            <v-tooltip v-if="rail" activator="parent" location="right">
-              Cajas
-            </v-tooltip>
-          </v-list-item>
-
-          <v-divider class="my-2 nav-divider" />
-
-          <div v-if="!rail" class="px-4 py-2 text-caption section-caption">
-            Sistema
-          </div>
-
-          <!-- CONFIGURACIÓN -->
-          <template v-if="showConfig && !rail">
-            <v-list-group value="config">
-              <template #activator="{ props }">
-                <v-list-item v-bind="props">
-                  <template #prepend>
-                    <v-icon size="20">mdi-cog-outline</v-icon>
-                  </template>
-                  <v-list-item-title>Configuración</v-list-item-title>
-                </v-list-item>
-              </template>
-
-              <v-list-item
-                v-if="hasRoute('stock')"
-                :to="{ name: 'stock' }"
-                exact
-              >
+          <v-expand-transition>
+            <div v-show="rail || navOpen.gestion" class="nav-section">
+              <v-list-item :to="{ name: 'products' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-warehouse</v-icon>
+                  <v-icon size="18">mdi-package-variant-closed</v-icon>
                 </template>
-                <v-list-item-title>Stock</v-list-item-title>
+                <v-list-item-title>Productos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="isAdmin && hasRoute('inventory')"
-                :to="{ name: 'inventory' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-clipboard-list-outline</v-icon>
-                </template>
-                <v-list-item-title>Gestión de inventario</v-list-item-title>
-              </v-list-item>
+              <!-- Stock e Inventario removidos: la nueva vista de Productos
+                   ya cubre la matriz por sucursal y la gestión de stock. -->
 
-              <v-list-item
-                v-if="hasRoute('categories')"
-                :to="{ name: 'categories' }"
-                exact
-              >
+              <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-shape-outline</v-icon>
+                  <v-icon size="18">mdi-shape-outline</v-icon>
                 </template>
                 <v-list-item-title>Categorías</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Categorías</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="isAdmin && hasRoute('adminFiscal')"
-                :to="{ name: 'adminFiscal' }"
-                exact
-              >
+              <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-file-document-outline</v-icon>
+                  <v-badge
+                    v-if="transferUnreadCount > 0"
+                    :content="transferUnreadCount > 9 ? '9+' : String(transferUnreadCount)"
+                    color="warning"
+                    floating
+                  >
+                    <v-icon size="18">mdi-truck-fast-outline</v-icon>
+                  </v-badge>
+                  <v-icon v-else size="18">mdi-truck-fast-outline</v-icon>
                 </template>
-                <v-list-item-title>Fiscal</v-list-item-title>
+                <v-list-item-title>
+                  Derivaciones
+                  <v-chip v-if="transferUnreadCount > 0 && !rail" size="x-small" color="warning" class="ml-2">
+                    {{ transferUnreadCount }}
+                  </v-chip>
+                </v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">
+                  Derivaciones{{ transferUnreadCount > 0 ? ` (${transferUnreadCount})` : '' }}
+                </v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="isAdmin && hasRoute('adminPaymentMethods')"
-                :to="{ name: 'adminPaymentMethods' }"
-                exact
-              >
+              <v-list-item v-if="isAdmin && hasRoute('adminCashRegisters')" :to="{ name: 'adminCashRegisters' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-credit-card-cog-outline</v-icon>
+                  <v-icon size="18">mdi-cash-register</v-icon>
                 </template>
-                <v-list-item-title>Medios de pago</v-list-item-title>
+                <v-list-item-title>Cajas</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Cajas</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="isAdmin && hasRoute('adminTelegram')"
-                :to="{ name: 'adminTelegram' }"
-                exact
-              >
+              <v-list-item v-if="isAdmin && hasRoute('reports')" :to="{ name: 'reports' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-send-variant</v-icon>
+                  <v-icon size="18">mdi-chart-line</v-icon>
                 </template>
-                <v-list-item-title>Alertas Telegram</v-list-item-title>
+                <v-list-item-title>Reportes</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Reportes</v-tooltip>
               </v-list-item>
 
+              <!-- Clientes va en Gestión (no en Sistema) -->
               <v-list-item
-                v-if="isAdmin && hasRoute('shopBranding') && !showShopMenu"
-                :to="{ name: 'shopBranding' }"
+                v-if="isAdmin && hasRoute('adminCustomers')"
+                :to="{ name: 'adminCustomers' }"
                 exact
+                class="nav-item"
               >
                 <template #prepend>
-                  <v-icon size="20">mdi-storefront-outline</v-icon>
+                  <v-icon size="18">mdi-account-group-outline</v-icon>
                 </template>
-                <v-list-item-title>Tienda</v-list-item-title>
+                <v-list-item-title>Clientes</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Clientes</v-tooltip>
               </v-list-item>
+            </div>
+          </v-expand-transition>
 
-              <v-list-item
-                v-if="isAdmin && hasRoute('users')"
-                :to="{ name: 'users' }"
-                exact
-              >
+          <!-- ════════ SISTEMA (colapsable, estilo igual a Tienda) ════════ -->
+          <v-list-item
+            v-if="!rail && showSistemaSection"
+            class="nav-item nav-section-head"
+            :aria-expanded="navOpen.sistema"
+            @click="toggleSection('sistema')"
+          >
+            <template #prepend>
+              <v-icon size="18">mdi-cog-outline</v-icon>
+            </template>
+            <v-list-item-title>Sistema</v-list-item-title>
+            <template #append>
+              <v-icon
+                size="18"
+                class="nav-section-head__chev"
+                :class="{ 'is-open': navOpen.sistema }"
+              >mdi-chevron-down</v-icon>
+            </template>
+          </v-list-item>
+
+          <v-expand-transition>
+            <div v-show="rail || navOpen.sistema" class="nav-section">
+              <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-account-multiple-outline</v-icon>
+                  <v-icon size="18">mdi-account-multiple-outline</v-icon>
                 </template>
                 <v-list-item-title>Usuarios</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Usuarios</v-tooltip>
               </v-list-item>
-            </v-list-group>
-          </template>
 
-          <template v-else-if="showConfig && rail">
-            <v-list-item
-              v-if="configLandingRoute"
-              :to="configLandingRoute"
-              exact
-            >
-              <template #prepend>
-                <v-icon size="20">mdi-cog-outline</v-icon>
-              </template>
-              <v-tooltip activator="parent" location="right">
-                Configuración
-              </v-tooltip>
-            </v-list-item>
-          </template>
+              <v-list-item v-if="isAdmin && hasRoute('adminPaymentMethods')" :to="{ name: 'adminPaymentMethods' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-credit-card-cog-outline</v-icon>
+                </template>
+                <v-list-item-title>Medios de pago</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Medios de pago</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isAdmin && hasRoute('adminFiscal')" :to="{ name: 'adminFiscal' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-file-document-outline</v-icon>
+                </template>
+                <v-list-item-title>Fiscal</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Fiscal</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminTelegram')" :to="{ name: 'adminTelegram' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-send-variant</v-icon>
+                </template>
+                <v-list-item-title>Alertas Telegram</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Alertas Telegram</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding') && !showShopMenu" :to="{ name: 'shopBranding' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-storefront-outline</v-icon>
+                </template>
+                <v-list-item-title>Tienda</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
+              </v-list-item>
+            </div>
+          </v-expand-transition>
 
           <!-- TIENDA -->
-          <template v-if="isAdmin && showShopMenu && !rail">
+          <template v-if="isSuperAdmin && showShopMenu && !rail">
             <v-list-group value="shopAdmin">
               <template #activator="{ props }">
                 <v-list-item v-bind="props">
@@ -503,7 +492,7 @@
             </v-list-group>
           </template>
 
-          <template v-else-if="isAdmin && showShopMenu && rail">
+          <template v-else-if="isSuperAdmin && showShopMenu && rail">
             <v-list-item
               v-if="shopLandingRoute"
               :to="shopLandingRoute"
@@ -543,7 +532,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 import { useAuthStore } from "../store/auth.store";
@@ -637,11 +626,57 @@ onMounted(() => {
 const { pendingForMe: transferPending } = useTransferNotifications();
 const transferUnreadCount = computed(() => transferPending.value.length);
 
-/* ===== Admin ===== */
-const isAdmin = computed(() => {
-  const r = auth.roles || [];
-  return r.includes("admin") || r.includes("super_admin");
+/* ===== Roles / Ámbitos =====
+ * - isAdmin       → "puede actuar como admin" (super_admin O admin de sucursal).
+ *                   Habilita módulos administrativos (reportes, cajas, productos,
+ *                   inventario de SU sucursal, métodos de pago de SU sucursal, etc.).
+ * - isSuperAdmin  → SOLO super_admin/root/owner. Habilita módulos GLOBALES
+ *                   (configuración Telegram, branding del shop, sucursales, etc.).
+ * - isCajero      → ni admin ni super; ve solo sus ventas/caja.
+ *
+ * El backend ya scopea los datos. Esto es para que la UI no muestre opciones
+ * que sirvan de poco al rol del usuario.
+ */
+const isAdmin       = computed(() => auth.isAdmin === true);
+const isSuperAdmin  = computed(() => auth.isSuperAdmin === true);
+
+// ── Estado de secciones colapsables del nav drawer ────────────────────────
+// Persiste en localStorage para que el usuario mantenga sus preferencias
+// entre recargas / sesiones. Default: gestión abierto, sistema cerrado.
+const NAV_STATE_KEY = "pos.nav.sectionsOpen";
+function loadNavState() {
+  try {
+    const raw = localStorage.getItem(NAV_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (_) {}
+  return null;
+}
+const navOpen = reactive({
+  gestion: true,
+  sistema: false,
+  ...(loadNavState() || {}),
 });
+function toggleSection(name) {
+  navOpen[name] = !navOpen[name];
+  try {
+    localStorage.setItem(NAV_STATE_KEY, JSON.stringify({ ...navOpen }));
+  } catch (_) {}
+}
+
+// La sección Sistema solo aparece si el usuario tiene acceso a alguna ruta
+// dentro de ella; si no, no mostramos ni el header (evita una sección vacía).
+const showSistemaSection = computed(() => {
+  return (
+    (isAdmin.value && hasRoute("users")) ||
+    (isAdmin.value && hasRoute("adminPaymentMethods")) ||
+    (isAdmin.value && hasRoute("adminFiscal")) ||
+    (isSuperAdmin.value && hasRoute("adminTelegram")) ||
+    (isSuperAdmin.value && hasRoute("shopBranding") && !showShopMenu.value)
+  );
+});
+const isCajero      = computed(() => auth.isCajero === true);
 
 /* ===== Router helpers ===== */
 function hasRoute(name) {
@@ -661,7 +696,8 @@ const showConfig = computed(() => {
     hasRoute("adminPaymentMethods") ||
     hasRoute("adminTelegram") ||
     hasRoute("shopBranding") ||
-    hasRoute("users")
+    hasRoute("users") ||
+    hasRoute("adminCustomers")
   );
 });
 
@@ -801,11 +837,23 @@ const userBranchLabel = computed(() => {
 
 const userRoleLabel = computed(() => {
   const roles = Array.isArray(auth.roles) ? auth.roles : auth.user?.roles || [];
-  if (roles.includes("super_admin")) return "Super Admin";
+  if (roles.includes("super_admin") || roles.includes("superadmin")) return "Super Admin";
   if (roles.includes("admin")) return "Administrador";
   if (roles.includes("manager")) return "Supervisor";
-  if (roles.includes("seller")) return "Vendedor";
+  if (roles.includes("cajero") || roles.includes("cashier")) return "Cajero";
+  if (roles.includes("vendedor") || roles.includes("seller")) return "Vendedor";
   return roles?.[0] || "Usuario";
+});
+
+// Texto descriptivo del ámbito que ve el usuario, para que sea intuitivo
+// qué está mirando en cada vista. Se muestra como tooltip / hint.
+const userScopeHint = computed(() => {
+  if (auth.isSuperAdmin) return "Tenés acceso a todas las sucursales del sistema.";
+  if (auth.isBranchAdmin && userBranchLabel.value)
+    return `Administrás la sucursal ${userBranchLabel.value}. Solo vas a ver y gestionar datos de esa sucursal.`;
+  if (auth.isCajero && userBranchLabel.value)
+    return `Trabajás como cajero en ${userBranchLabel.value}. Solo vas a ver tus propias ventas y caja.`;
+  return null;
 });
 
 function onStorage() {
@@ -947,6 +995,33 @@ function onLogout() {
   background: #02498b !important;
   position: relative;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
+
+  /* Scroll interno con barra estilizada que aparece SOLO si el contenido excede.
+     Por defecto el contenido entra completo; si crece (más items, más roles)
+     aparece automáticamente sin ensanchar el drawer. */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar) {
+  width: 6px;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-track) {
+  background: transparent;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb) {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb:hover) {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Footer sticky abajo (la versión queda pegada al fondo aunque haya scroll). */
+.pos-drawer .drawer-version {
+  margin-top: auto;
 }
 
 .pos-drawer :deep(.v-navigation-drawer__content)::after {
@@ -988,6 +1063,71 @@ function onLogout() {
 
 .pos-nav-list {
   padding-top: 2px;
+  padding-bottom: 4px;
+}
+
+/* =========================
+   Sections compact / collapsable
+========================= */
+/* Caption fijo (Operación) — header decorativo con icono. */
+.nav-section-cap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(255, 255, 255, 0.55);
+}
+.nav-section-cap__ic { opacity: 0.6; }
+.nav-section-cap:first-child { padding-top: 6px; }
+
+/* Header colapsable (Gestión, Sistema, Tienda) — usa el mismo look que un
+   list-item normal pero con la chevron animada que rota al expandir. */
+.pos-drawer :deep(.v-list-item.nav-section-head) {
+  margin-top: 8px;
+  cursor: pointer;
+}
+/* El header colapsable no debe verse "activo" cuando el usuario está en
+   un sub-item de la sección — solo debe destacarse al hacer hover. */
+.pos-drawer :deep(.v-list-item.nav-section-head .v-list-item-title) {
+  font-weight: 700 !important;
+}
+.nav-section-head__chev {
+  opacity: 0.7;
+  transition: transform 0.22s ease;
+}
+.nav-section-head__chev.is-open {
+  transform: rotate(180deg);
+}
+
+/* Items dentro de la sección — quedan ligeramente indentados para mostrar
+   la jerarquía visual (header → items). */
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 4px;
+}
+.pos-drawer :deep(.nav-section .v-list-item.nav-item) {
+  margin-inline-start: 14px !important;
+}
+
+/* Items más densos en modo expandido */
+.pos-drawer :deep(.v-list-item.nav-item) {
+  min-height: 38px !important;
+  padding-inline: 12px !important;
+  margin-inline: 6px !important;
+  border-radius: 10px !important;
+}
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item-title) {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend) {
+  margin-inline-end: 8px !important;
 }
 
 /* =========================
@@ -1254,6 +1394,20 @@ function onLogout() {
   color: rgba(var(--v-theme-on-surface), 0.55);
   display: inline-flex;
   align-items: center;
+}
+
+.account-scope-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+  border-radius: 8px;
+  margin: 8px 16px 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: left;
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
 
 /* =========================

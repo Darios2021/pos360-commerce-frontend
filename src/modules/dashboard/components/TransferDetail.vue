@@ -1,48 +1,112 @@
 <template>
   <div class="tdet">
 
-    <!-- ══════════ BARRA DE CABECERA (breadcrumb + acciones) ═══ -->
+    <!-- ══════════ TOPBAR: navegación limpia ═══ -->
     <div class="tdet__topbar">
-      <!-- Izquierda: volver + título + chip estado -->
-      <div class="tdet__topbar-left">
-        <button class="tdet__back" @click="view !== 'detail' ? view = 'detail' : $emit('close')" :disabled="actioning">
-          <v-icon size="15">mdi-arrow-left</v-icon>
-          <span>{{ view !== 'detail' ? 'Volver al detalle' : 'Derivaciones' }}</span>
-        </button>
-        <template v-if="!loadingData">
-          <v-icon size="13" color="medium-emphasis">mdi-chevron-right</v-icon>
-          <span class="tdet__topbar-num">{{ tr.number }}</span>
-          <v-chip size="x-small" :color="statusColor(tr.status)" variant="tonal">
-            <v-icon start size="10">{{ statusIcon(tr.status) }}</v-icon>
-            {{ statusLabel(tr.status) }}
-          </v-chip>
-          <span v-if="view !== 'detail'" class="tdet__topbar-viewlabel">
-            <v-icon size="12" color="medium-emphasis">mdi-chevron-right</v-icon>
-            {{ view === 'dispatch' ? 'Despachar' : view === 'receive' ? 'Recepcionar' : 'Cancelar' }}
-          </span>
-        </template>
-      </div>
+      <AppBackButton
+        :label="view !== 'detail' ? 'detalle' : 'Derivaciones'"
+        emit-only
+        :disabled="actioning"
+        @back="view !== 'detail' ? view = 'detail' : $emit('close')"
+      />
 
-      <!-- Derecha: botones de acción (solo en vista detalle) -->
-      <div v-if="view === 'detail' && !loadingData" class="tdet__topbar-actions">
-        <v-btn
-          v-if="canCancel"
-          size="small" variant="outlined" rounded="lg" color="error"
-          @click="openView('cancel')"
-        >Cancelar</v-btn>
-        <v-btn
-          v-if="canDispatch"
-          color="primary" size="small" variant="flat" rounded="lg"
-          prepend-icon="mdi-truck-fast-outline"
-          @click="openView('dispatch')"
-        >Despachar</v-btn>
-        <v-btn
-          v-if="canReceive"
-          color="success" size="small" variant="flat" rounded="lg"
-          prepend-icon="mdi-check-circle-outline"
-          @click="openView('receive')"
-        >Recepcionar</v-btn>
+      <v-spacer />
+
+      <!-- Menú secundario (acciones no críticas) -->
+      <v-menu v-if="view === 'detail' && !loadingData && canCancel" :close-on-content-click="true">
+        <template #activator="{ props: menuProps }">
+          <v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" size="small" />
+        </template>
+        <v-list density="compact" nav>
+          <v-list-item
+            prepend-icon="mdi-cancel"
+            @click="openView('cancel')"
+            class="text-error"
+          >
+            <v-list-item-title>Cancelar derivación</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+
+    <!-- ══════════ HEADER: número + estado + ruta inline ═══ -->
+    <div v-if="!loadingData" class="tdet__header">
+      <div class="tdet__header-top">
+        <h1 class="tdet__number">{{ tr.number }}</h1>
+        <span class="tdet__status-chip" :class="`tdet__status-chip--${tr.status}`">
+          <v-icon size="12">{{ statusIcon(tr.status) }}</v-icon>
+          {{ statusLabel(tr.status) }}
+        </span>
       </div>
+      <div class="tdet__header-meta">
+        <span class="tdet__hroute">
+          <v-icon size="13">mdi-store-outline</v-icon>
+          <span class="tdet__hbranch">{{ tr.fromWarehouse?.branch?.name || '—' }}</span>
+          <v-icon size="13" class="tdet__hroute-arrow">mdi-arrow-right</v-icon>
+          <v-icon size="13" color="success">mdi-store</v-icon>
+          <span class="tdet__hbranch tdet__hbranch--to">
+            {{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || '—' }}
+          </span>
+        </span>
+        <span class="tdet__hsep">·</span>
+        <span class="tdet__hitems">
+          <v-icon size="13">mdi-package-variant-closed</v-icon>
+          {{ tr.items?.length || 0 }} {{ (tr.items?.length || 0) === 1 ? 'producto' : 'productos' }}
+        </span>
+        <span class="tdet__hsep">·</span>
+        <span class="tdet__hdate">
+          {{ fmtShortDate(tr.created_at) }}
+        </span>
+      </div>
+      <div v-if="view !== 'detail'" class="tdet__header-viewlabel">
+        <v-icon size="14">mdi-chevron-right</v-icon>
+        <span>
+          {{ view === 'dispatch' ? 'Preparar despacho'
+          : view === 'receive'  ? 'Confirmar recepción'
+          : 'Cancelar derivación' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- ══════════ ACTION CARD: CTA principal destacado ═══ -->
+    <div
+      v-if="view === 'detail' && !loadingData && (canDispatch || canReceive)"
+      class="tdet__cta"
+      :class="canReceive ? 'tdet__cta--receive' : 'tdet__cta--dispatch'"
+    >
+      <div class="tdet__cta-icon">
+        <v-icon size="24" color="white">
+          {{ canReceive ? 'mdi-package-down' : 'mdi-truck-fast' }}
+        </v-icon>
+      </div>
+      <div class="tdet__cta-body">
+        <h2 class="tdet__cta-title">
+          {{ canReceive ? 'Esperando recepción' : 'Listo para despachar' }}
+        </h2>
+        <p class="tdet__cta-desc">
+          <template v-if="canReceive">
+            Esta derivación está en tránsito hacia
+            <strong>{{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || 'destino' }}</strong>.
+            Al confirmar, el stock ingresa al depósito destino.
+          </template>
+          <template v-else>
+            Al despachar, el stock de
+            <strong>{{ tr.fromWarehouse?.branch?.name || 'origen' }}</strong>
+            se descuenta con las cantidades indicadas.
+          </template>
+        </p>
+      </div>
+      <v-btn
+        :color="canReceive ? 'success' : 'warning'"
+        variant="flat"
+        size="large"
+        rounded="lg"
+        class="tdet__cta-btn"
+        :prepend-icon="canReceive ? 'mdi-check-circle' : 'mdi-truck-fast'"
+        @click="openView(canReceive ? 'receive' : 'dispatch')"
+      >
+        {{ canReceive ? 'Recepcionar ahora' : 'Despachar ahora' }}
+      </v-btn>
     </div>
 
     <!-- Loading -->
@@ -56,68 +120,76 @@
       <!-- ══════════ VISTA: DETALLE ════════════════════════════ -->
       <div v-if="view === 'detail'" class="tdet__view">
 
-        <!-- Ruta card -->
-        <v-card elevation="0" rounded="xl" class="tdet__route-card">
-          <div class="tdet__route">
-            <div class="tdet__route-node">
-              <v-avatar size="40" rounded="lg" color="primary" variant="tonal">
-                <v-icon size="20">mdi-store-outline</v-icon>
-              </v-avatar>
-              <div>
-                <p class="tdet__route-label">Origen</p>
-                <p class="tdet__route-name">{{ tr.fromWarehouse?.branch?.name || '—' }}</p>
+        <!-- STEPPER visual: Borrador → Despachado → Recibido -->
+        <div class="tdet__stepper" :class="`tdet__stepper--${tr.status}`">
+          <div
+            class="tdet__step"
+            :class="stepClass('created')"
+          >
+            <div class="tdet__step-dot">
+              <v-icon size="16" color="white">mdi-file-document-edit-outline</v-icon>
+            </div>
+            <div class="tdet__step-body">
+              <div class="tdet__step-label">Creada</div>
+              <div class="tdet__step-meta" v-if="tr.created_at">
+                {{ userName(tr.creator) }} · {{ fmtShortDate(tr.created_at) }}
               </div>
+              <div class="tdet__step-meta tdet__step-meta--dim" v-else>—</div>
             </div>
+          </div>
 
-            <div class="tdet__route-middle">
-              <div class="tdet__route-line" :class="`tdet__route-line--${tr.status}`" />
-              <v-icon size="18" :color="routeIconColor">mdi-truck-fast-outline</v-icon>
-              <div class="tdet__route-line" :class="`tdet__route-line--${tr.status}`" />
+          <div class="tdet__step-line" :class="lineClass('dispatched')" />
+
+          <div
+            class="tdet__step"
+            :class="stepClass('dispatched')"
+          >
+            <div class="tdet__step-dot">
+              <v-icon size="16" color="white">mdi-truck-fast-outline</v-icon>
             </div>
-
-            <div class="tdet__route-node tdet__route-node--right">
-              <div style="text-align:right">
-                <p class="tdet__route-label">Destino</p>
-                <p class="tdet__route-name tdet__route-name--to">
-                  {{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || '—' }}
-                </p>
+            <div class="tdet__step-body">
+              <div class="tdet__step-label">Despachada</div>
+              <div class="tdet__step-meta" v-if="tr.dispatched_at">
+                {{ userName(tr.dispatcher) }} · {{ fmtShortDate(tr.dispatched_at) }}
               </div>
-              <v-avatar size="40" rounded="lg" color="success" variant="tonal">
-                <v-icon size="20">mdi-store</v-icon>
-              </v-avatar>
+              <div class="tdet__step-meta tdet__step-meta--dim" v-else>Pendiente</div>
             </div>
           </div>
-        </v-card>
 
-        <!-- Trazabilidad + nota -->
-        <v-card elevation="0" rounded="xl" class="tdet__meta-card">
-          <div class="tdet__meta-head">
-            <v-icon size="14" class="mr-1" color="medium-emphasis">mdi-timeline-outline</v-icon>
-            <span>Trazabilidad</span>
-          </div>
-          <v-divider />
-          <div class="tdet__timeline">
-            <div class="tdet__tl-item">
-              <v-icon size="14" color="medium-emphasis">mdi-pencil-circle-outline</v-icon>
-              <span>Creado por <strong>{{ userName(tr.creator) }}</strong> · {{ fmtDate(tr.created_at) }}</span>
+          <div class="tdet__step-line" :class="lineClass('received')" />
+
+          <div
+            class="tdet__step"
+            :class="stepClass('received')"
+          >
+            <div class="tdet__step-dot">
+              <v-icon size="16" color="white">mdi-check-bold</v-icon>
             </div>
-            <div v-if="tr.dispatched_at" class="tdet__tl-item">
-              <v-icon size="14" color="warning">mdi-truck-fast-outline</v-icon>
-              <span>Despachado por <strong>{{ userName(tr.dispatcher) }}</strong> · {{ fmtDate(tr.dispatched_at) }}</span>
-            </div>
-            <div v-if="tr.received_at" class="tdet__tl-item">
-              <v-icon size="14" color="success">mdi-check-circle-outline</v-icon>
-              <span>Recepcionado por <strong>{{ userName(tr.receiver) }}</strong> · {{ fmtDate(tr.received_at) }}</span>
+            <div class="tdet__step-body">
+              <div class="tdet__step-label">
+                {{ tr.status === 'partial' ? 'Recibida con diferencia' : 'Recibida' }}
+              </div>
+              <div class="tdet__step-meta" v-if="tr.received_at">
+                {{ userName(tr.receiver) }} · {{ fmtShortDate(tr.received_at) }}
+              </div>
+              <div class="tdet__step-meta tdet__step-meta--dim" v-else>Pendiente</div>
             </div>
           </div>
-          <template v-if="tr.note">
-            <v-divider />
-            <div class="tdet__note">
-              <v-icon size="14" color="medium-emphasis" class="mr-2">mdi-note-text-outline</v-icon>
-              <span>{{ tr.note }}</span>
-            </div>
+        </div>
+
+        <!-- Banner cancelado/rechazado si aplica -->
+        <v-alert
+          v-if="tr.status === 'cancelled' || tr.status === 'rejected'"
+          :type="tr.status === 'cancelled' ? 'error' : 'warning'"
+          variant="tonal"
+          rounded="xl"
+          density="compact"
+        >
+          <template #title>
+            {{ tr.status === 'cancelled' ? 'Derivación cancelada' : 'Derivación rechazada' }}
           </template>
-        </v-card>
+          El stock no fue modificado. Esta derivación queda en el historial.
+        </v-alert>
 
         <!-- Productos -->
         <v-card elevation="0" rounded="xl" class="tdet__items-card">
@@ -157,6 +229,12 @@
           </div>
           <div v-else class="tdet__empty-items">Sin productos registrados.</div>
         </v-card>
+
+        <!-- Nota (solo si existe) -->
+        <div v-if="tr.note" class="tdet__note-inline">
+          <v-icon size="14" color="medium-emphasis">mdi-note-text-outline</v-icon>
+          <span>{{ tr.note }}</span>
+        </div>
       </div>
 
       <!-- ══════════ VISTA: DESPACHAR ══════════════════════════ -->
@@ -345,6 +423,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { getTransfer, dispatchTransfer, receiveTransfer, cancelTransfer } from "../service/stockTransfer.api";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 const props = defineProps({
   transfer:        { type: Object, required: true },
@@ -424,6 +503,55 @@ function statusColor(s) {
   return { draft:"default", dispatched:"warning", received:"success",
            partial:"warning", cancelled:"default", rejected:"error" }[s] || "default";
 }
+function stepClass(step) {
+  const s = String(tr.value.status || "").toLowerCase();
+  // Mapa de qué steps están "completos" por estado.
+  const completed = {
+    draft: ["created"],
+    dispatched: ["created", "dispatched"],
+    received: ["created", "dispatched", "received"],
+    partial: ["created", "dispatched", "received"],
+    cancelled: [],
+    rejected: [],
+  };
+  const current = {
+    draft: "dispatched",
+    dispatched: "received",
+  };
+  const done = (completed[s] || []).includes(step);
+  const isCurrent = current[s] === step;
+  return {
+    "is-done": done,
+    "is-current": isCurrent && !done,
+    "is-partial": step === "received" && s === "partial",
+    "is-muted": !done && !isCurrent,
+    "is-dead": ["cancelled", "rejected"].includes(s),
+  };
+}
+function lineClass(toStep) {
+  const s = String(tr.value.status || "").toLowerCase();
+  const completed = {
+    draft: [],
+    dispatched: ["dispatched"],
+    received: ["dispatched", "received"],
+    partial: ["dispatched", "received"],
+    cancelled: [],
+    rejected: [],
+  };
+  const done = (completed[s] || []).includes(toStep);
+  return {
+    "is-done": done,
+    "is-dead": ["cancelled", "rejected"].includes(s),
+    "is-partial": toStep === "received" && s === "partial",
+  };
+}
+function fmtShortDate(d) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  return `${date.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 function userName(u) {
   if (!u) return "—";
   return [u.first_name, u.last_name].filter(Boolean).join(" ") || `#${u.id}`;
@@ -505,67 +633,209 @@ async function doCancel() {
 }
 
 /* ══════════════════════════════════════════════════
-   TOPBAR — breadcrumb + acciones en una sola fila
+   TOPBAR — navegación limpia (botón volver visible)
 ══════════════════════════════════════════════════ */
 .tdet__topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  max-width: 820px;   /* mismo ancho que las cards de contenido */
-}
-.tdet__topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-.tdet__topbar-num {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: .01em;
-  white-space: nowrap;
-}
-.tdet__topbar-viewlabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), .5);
-}
-.tdet__topbar-actions {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  max-width: 820px;
+  padding-bottom: 4px;
 }
 
 /* ══════════════════════════════════════════════════
-   BOTÓN VOLVER
+   HEADER — número grande + estado
 ══════════════════════════════════════════════════ */
-.tdet__back {
+.tdet__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 820px;
+}
+.tdet__header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tdet__number {
+  font-size: 24px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.1;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tdet__status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tdet__status-chip--draft {
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+.tdet__status-chip--dispatched {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+:global(.v-theme--dark) .tdet__status-chip--dispatched { color: #fbbf24; }
+.tdet__status-chip--received,
+.tdet__status-chip--partial {
+  background: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+}
+.tdet__status-chip--cancelled,
+.tdet__status-chip--rejected {
+  background: rgba(var(--v-theme-error), 0.12);
+  color: rgb(var(--v-theme-error));
+}
+
+.tdet__header-viewlabel {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), .55);
-  transition: color .12s, background .12s;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
-.tdet__back:hover {
-  color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), .07);
+
+.tdet__header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-weight: 500;
 }
-.tdet__back[disabled] { opacity: .4; cursor: not-allowed; }
+.tdet__hroute {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tdet__hbranch {
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tdet__hbranch--to { color: rgb(var(--v-theme-success)); }
+.tdet__hroute-arrow { opacity: 0.4; }
+.tdet__hsep { opacity: 0.3; }
+.tdet__hitems,
+.tdet__hdate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tdet__note-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.85;
+  max-width: 820px;
+}
+
+/* ══════════════════════════════════════════════════
+   ACTION CARD — CTA principal destacado
+══════════════════════════════════════════════════ */
+.tdet__cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  max-width: 820px;
+  border: 1.5px solid;
+  position: relative;
+  overflow: hidden;
+}
+.tdet__cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+.tdet__cta--receive {
+  background: linear-gradient(100deg,
+    rgba(var(--v-theme-success), 0.08) 0%,
+    rgba(var(--v-theme-success), 0.02) 100%);
+  border-color: rgba(var(--v-theme-success), 0.35);
+}
+.tdet__cta--receive::before { background: rgb(var(--v-theme-success)); }
+.tdet__cta--dispatch {
+  background: linear-gradient(100deg,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(245, 158, 11, 0.02) 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.tdet__cta--dispatch::before { background: #f59e0b; }
+
+.tdet__cta-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.3);
+}
+.tdet__cta--receive .tdet__cta-icon {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+.tdet__cta--dispatch .tdet__cta-icon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.tdet__cta-body {
+  flex: 1;
+  min-width: 0;
+}
+.tdet__cta-title {
+  font-size: 15px;
+  font-weight: 900;
+  margin: 0 0 2px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.tdet__cta-desc {
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+.tdet__cta-btn {
+  flex-shrink: 0;
+  font-weight: 800 !important;
+  min-width: 180px;
+}
+
+@media (max-width: 720px) {
+  .tdet__cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .tdet__cta-body { text-align: center; }
+  .tdet__cta-btn { width: 100%; }
+}
 
 /* ══════════════════════════════════════════════════
    LOADING
@@ -588,6 +858,121 @@ async function doCancel() {
   flex-direction: column;
   gap: 12px;
   max-width: 820px;
+}
+
+/* ══════════════════════════════════════════════════
+   STEPPER DE FLUJO
+══════════════════════════════════════════════════ */
+.tdet__stepper {
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr 40px 1fr;
+  align-items: stretch;
+  gap: 8px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.tdet__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+.tdet__step.is-current {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+.tdet__step-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  color: #fff;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.tdet__step.is-done .tdet__step-dot {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 3px 10px -2px rgba(34, 197, 94, 0.45);
+}
+.tdet__step.is-current .tdet__step-dot {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
+  animation: tdet-step-pulse 2s ease-in-out infinite;
+}
+.tdet__step.is-partial .tdet__step-dot {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.tdet__step.is-dead .tdet__step-dot {
+  background: rgba(var(--v-theme-on-surface), 0.2);
+}
+@keyframes tdet-step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.08); }
+}
+
+.tdet__step-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tdet__step-label {
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tdet__step.is-muted .tdet__step-label { opacity: 0.5; }
+.tdet__step-meta {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tdet__step-meta--dim {
+  opacity: 0.4;
+  font-style: italic;
+}
+
+.tdet__step-line {
+  align-self: center;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  position: relative;
+  overflow: hidden;
+}
+.tdet__step-line.is-done {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+.tdet__step-line.is-partial {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+@media (max-width: 720px) {
+  .tdet__stepper {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .tdet__step-line {
+    width: 3px;
+    height: 24px;
+    justify-self: start;
+    margin-left: 16px;
+  }
+  .tdet__step-line.is-done {
+    background: linear-gradient(180deg, #22c55e, #16a34a);
+  }
 }
 
 

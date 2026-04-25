@@ -264,7 +264,9 @@ export function usePosSalesFlow() {
   }
 
   function logCajaState(origin = "unknown") {
-    console.log(`[POS][${origin}] caja`, {
+    // Solo logueamos en dev — en producción ensucia la consola.
+    if (!import.meta.env?.DEV) return;
+    console.debug(`[POS][${origin}] caja`, {
       canProceedWithCaja: canProceedWithCaja.value,
       canSellWithCaja: canSellWithCaja?.value,
       isCajaOpen: isCajaOpen.value,

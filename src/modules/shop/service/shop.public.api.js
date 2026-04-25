@@ -115,8 +115,8 @@ function antiPreflight(config) {
 api.interceptors.request.use(antiPreflight);
 coreApi.interceptors.request.use(antiPreflight);
 
-if (typeof window !== "undefined") {
-  console.log("[SHOP API]", { basePath, apiBaseURL, coreBaseURL, assetBase });
+if (typeof window !== "undefined" && import.meta.env?.DEV) {
+  console.debug("[SHOP API]", { basePath, apiBaseURL, coreBaseURL, assetBase });
 }
 
 function toInt(v, d = 0) {

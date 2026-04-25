@@ -8,6 +8,11 @@ export const updateTransfer = (id, d)  => http.put(`stock/transfers/${id}`, d);
 export const dispatchTransfer = (id)   => http.post(`stock/transfers/${id}/dispatch`);
 export const receiveTransfer  = (id, d)=> http.post(`stock/transfers/${id}/receive`, d);
 export const cancelTransfer   = (id)   => http.post(`stock/transfers/${id}/cancel`);
+export const deleteTransfer   = (id)   => http.delete(`stock/transfers/${id}`);
+
+// Operaciones bulk
+export const bulkReceiveTransfers = (ids) => http.post("stock/transfers/bulk/receive", { ids });
+export const bulkDeleteTransfers  = (ids) => http.post("stock/transfers/bulk/delete",  { ids });
 
 export const listBranchesApi  = (p = {}) => http.get("branches", { params: { limit: 200, ...p } });
 // Búsqueda de productos para el formulario de derivación

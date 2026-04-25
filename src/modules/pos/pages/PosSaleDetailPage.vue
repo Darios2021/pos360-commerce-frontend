@@ -4,9 +4,7 @@
 
     <!-- ── TOP BAR ── -->
     <div class="sd-bar">
-      <v-btn icon variant="text" size="small" @click="$router.back()" class="sd-back">
-        <v-icon>mdi-arrow-left</v-icon>
-      </v-btn>
+      <AppBackButton label="Ventas" :to="{ name: 'posSales' }" />
       <div class="sd-bar-info">
         <div class="sd-bar-title">Venta #{{ sale?.id ?? id }}</div>
         <div class="sd-bar-sub" v-if="sale">{{ dt(sale.sold_at || sale.created_at) }}</div>
@@ -554,6 +552,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 const route = useRoute();
 const router = useRouter();

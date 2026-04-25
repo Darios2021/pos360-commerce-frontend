@@ -23,14 +23,19 @@
       </div>
     </v-alert>
 
-    <!-- Tab bar + branch selector -->
+    <!-- ── Tab bar + scope chip ────────────────────────────── -->
     <div class="dash-tabs-row">
-      <div class="dash-tabs">
+      <!-- Segmented control de tabs (estilo moderno tipo iOS) -->
+      <div class="dash-tabs" role="tablist" :style="tabIndicatorStyle">
         <button
-          v-for="item in tabItems"
+          v-for="(item, idx) in tabItems"
           :key="item.value"
+          ref="tabRefs"
           class="dash-tab"
           :class="{ 'dash-tab--active': tab === item.value }"
+          :data-idx="idx"
+          role="tab"
+          :aria-selected="tab === item.value"
           @click="setTab(item.value)"
         >
           <v-icon size="16" class="dash-tab__icon">{{ item.icon }}</v-icon>
@@ -39,16 +44,23 @@
         </button>
       </div>
 
-      <!-- Branch selector — solo admin con múltiples sucursales -->
-      <v-menu v-if="isAdmin && branches.length > 0" location="bottom end" :close-on-content-click="true">
+      <!-- SUPER_ADMIN: selector funcional para cambiar de sucursal -->
+      <v-menu
+        v-if="isSuperAdmin && branches.length > 0"
+        location="bottom end"
+        :close-on-content-click="true"
+      >
         <template #activator="{ props: menuProps }">
-          <div class="dh-branch-wrap" v-bind="menuProps">
-            <v-icon size="15" class="dh-branch-icon">mdi-store-outline</v-icon>
-            <span class="dh-branch-label">{{ scopeLabel }}</span>
-            <v-icon size="13" class="dh-branch-chevron">mdi-chevron-down</v-icon>
-          </div>
+          <button class="dh-scope dh-scope--clickable" v-bind="menuProps" type="button">
+            <v-icon size="15" class="dh-scope__icon">mdi-shield-crown-outline</v-icon>
+            <div class="dh-scope__body">
+              <span class="dh-scope__role">Super admin</span>
+              <span class="dh-scope__branch">{{ scopeLabel }}</span>
+            </div>
+            <v-icon size="14" class="dh-scope__chevron">mdi-chevron-down</v-icon>
+          </button>
         </template>
-        <v-list density="compact" rounded="lg" min-width="210" class="pa-1">
+        <v-list density="compact" rounded="lg" min-width="220" class="pa-1">
           <v-list-item :active="!effectiveBranchId" color="primary" @click="onBranchChange(null)">
             <v-list-item-title class="font-weight-bold">Todas las sucursales</v-list-item-title>
           </v-list-item>
@@ -64,6 +76,26 @@
           </v-list-item>
         </v-list>
       </v-menu>
+
+      <!-- BRANCH ADMIN / CAJERO: chip read-only mostrando su ámbito real -->
+      <div
+        v-else
+        class="dh-scope dh-scope--readonly"
+        :class="{ 'dh-scope--cashier': isCajero }"
+      >
+        <v-icon size="15" class="dh-scope__icon">{{ scopeIcon }}</v-icon>
+        <div class="dh-scope__body">
+          <span class="dh-scope__role">{{ roleBadge }}</span>
+          <span class="dh-scope__branch">{{ scopeLabel }}</span>
+        </div>
+        <v-tooltip activator="parent" location="bottom">{{ scopeTooltip }}</v-tooltip>
+      </div>
+    </div>
+
+    <!-- ── Mini banner explicando el ámbito (solo no-super_admin) ─────────── -->
+    <div v-if="!isSuperAdmin" class="dash-scope-hint">
+      <v-icon size="14" color="primary">mdi-information-outline</v-icon>
+      <span>{{ scopeHint }}</span>
     </div>
 
     <Transition name="tab-fade" mode="out-in">
@@ -122,8 +154,11 @@ import { useAuthStore } from "@/app/store/auth.store";
 const auth = useAuthStore();
 if (auth.status === "idle") auth.hydrate();
 
-const isAdmin      = computed(() => auth.isAdmin);
-const userBranchId = computed(() => auth.branchId);
+const isAdmin       = computed(() => auth.isAdmin);
+const isSuperAdmin  = computed(() => auth.isSuperAdmin === true);
+const isBranchAdmin = computed(() => auth.isBranchAdmin === true && !auth.isSuperAdmin);
+const isCajero      = computed(() => auth.isCajero === true);
+const userBranchId  = computed(() => auth.branchId);
 
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -134,6 +169,7 @@ const VALID_TABS = ["sales", "stock", "inventory", "cash"];
 
 // ─── UI state ────────────────────────────────────────────────────────────────
 const tab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : "sales");
+const tabRefs = ref([]);
 
 function setTab(value) {
   if (tab.value === value) return;
@@ -144,6 +180,22 @@ function setTab(value) {
 watch(() => route.query.tab, (v) => {
   if (VALID_TABS.includes(v) && v !== tab.value) tab.value = v;
 });
+
+// Indicador deslizante (la "pill" se mueve al tab activo). Calculamos posición
+// y ancho a partir del DOM del tab activo y lo exponemos como CSS vars.
+const tabIndicatorStyle = ref({ "--tab-x": "0px", "--tab-w": "0px" });
+function updateTabIndicator() {
+  const idx = tabItems.value.findIndex((t) => t.value === tab.value);
+  const el = tabRefs.value?.[idx];
+  if (!el) return;
+  tabIndicatorStyle.value = {
+    "--tab-x": `${el.offsetLeft}px`,
+    "--tab-w": `${el.offsetWidth}px`,
+  };
+}
+watch(tab, () => { setTimeout(updateTabIndicator, 0); });
+onMounted(() => { setTimeout(updateTabIndicator, 0); });
+window?.addEventListener?.("resize", () => updateTabIndicator());
 const loading = ref(false);
 const loadingAnalytics = ref(false);
 const error = ref("");
@@ -231,13 +283,71 @@ const branchOptions = computed(() => {
   return opts;
 });
 
+// Resuelve el nombre real de una sucursal desde TODAS las fuentes posibles:
+//   1) branches.value (lista completa /branches)
+//   2) auth.branches (cache del usuario logueado)
+//   3) último recurso: "Sucursal #N"
+// Excluye los placeholders ("Sucursal #N") al elegir entre fuentes para
+// evitar que un cache viejo gane sobre datos frescos con nombre real.
+function resolveBranchName(bid) {
+  if (!bid) return "";
+  const id = Number(bid);
+  const placeholder = `Sucursal #${id}`;
+
+  const fromList = branches.value.find((x) => Number(x.id) === id);
+  if (fromList?.name && fromList.name !== placeholder) return fromList.name;
+
+  const fromAuth = (auth.branches || []).find((x) => Number(x.id) === id);
+  if (fromAuth?.name && fromAuth.name !== placeholder) return fromAuth.name;
+
+  // Si el único nombre disponible es el placeholder, devolvemos el ID con
+  // formato distinto para que el usuario vea "Sucursal" sin parecer bug,
+  // pero sin mentir con un nombre falso.
+  return placeholder;
+}
+
 const scopeLabel = computed(() => {
   const bid = effectiveBranchId.value;
   if (!bid) return "Todas las sucursales";
-  const b = branches.value.find((x) => Number(x.id) === Number(bid));
-  return b?.name || `Sucursal #${bid}`;
+  return resolveBranchName(bid);
 });
 const scopeText = computed(() => scopeLabel.value);
+
+// Etiqueta corta de rol para el chip de scope.
+const roleBadge = computed(() => {
+  if (isSuperAdmin.value)  return "Super admin";
+  if (isBranchAdmin.value) return "Admin sucursal";
+  if (isCajero.value)      return "Cajero";
+  return "Usuario";
+});
+
+// Ícono semántico para el chip.
+const scopeIcon = computed(() => {
+  if (isSuperAdmin.value)  return "mdi-shield-crown-outline";
+  if (isBranchAdmin.value) return "mdi-shield-account-outline";
+  if (isCajero.value)      return "mdi-cash-register";
+  return "mdi-account-outline";
+});
+
+// Tooltip detallado al pasar el mouse sobre el chip.
+const scopeTooltip = computed(() => {
+  if (isSuperAdmin.value)
+    return "Super admin: ves datos de todas las sucursales del sistema.";
+  if (isBranchAdmin.value)
+    return `Admin de ${scopeLabel.value}: solo ves y administrás esta sucursal.`;
+  if (isCajero.value)
+    return `Cajero en ${scopeLabel.value}: solo ves tus propias ventas y caja.`;
+  return "Estás viendo solo los datos disponibles para tu rol.";
+});
+
+// Hint compacto que se muestra debajo de los tabs (no super_admin).
+const scopeHint = computed(() => {
+  if (isBranchAdmin.value)
+    return `Estás viendo los datos de ${scopeLabel.value}. Solo super admin puede ver otras sucursales.`;
+  if (isCajero.value)
+    return `Estás viendo tus ventas y tu caja en ${scopeLabel.value}. Para ver datos de otros operadores necesitás permisos de admin.`;
+  return `Estás viendo los datos disponibles según tus permisos.`;
+});
 
 // ─── Adapter ──────────────────────────────────────────────────────────────────
 function adaptOverviewToUi(payload) {
@@ -302,8 +412,11 @@ function adaptOverviewToUi(payload) {
 }
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
-async function fetchBranchesIfAdmin() {
-  if (!isAdmin.value) return; // no-admin usa siempre su sucursal asignada
+// Siempre intentamos cargar la lista — la usamos para resolver NOMBRES reales
+// (no IDs) en el chip de scope, incluso para cajero/branch admin que no tienen
+// selector. El backend ya restringe lo que devuelve por rol; si no devuelve
+// nada para ese rol, igual tenemos el fallback a `auth.branches`.
+async function fetchBranches() {
   try {
     const resp = await listBranches();
     const data = resp?.data;
@@ -311,6 +424,7 @@ async function fetchBranchesIfAdmin() {
     branches.value = rows.map((r) => ({ id: r.id, name: r.name })).filter((x) => x.id);
   } catch { branches.value = []; }
 }
+const fetchBranchesIfAdmin = fetchBranches; // alias por compat
 
 function buildParams() {
   const params = { period: period.value };
@@ -397,7 +511,7 @@ function onBranchChange(bid) {
 }
 
 onMounted(async () => {
-  await fetchBranchesIfAdmin();
+  await fetchBranches();
   await Promise.all([fetchOverview(), fetchAnalytics()]);
 });
 </script>
@@ -415,45 +529,65 @@ onMounted(async () => {
 /* ─── Tab bar row ───────────────────────────────────────── */
 .dash-tabs-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
+/* Segmented control con indicador deslizante */
 .dash-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  flex: 1;
+  position: relative;
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+/* Pill móvil que se desliza al tab activo */
+.dash-tabs::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: var(--tab-x, 0);
+  width: var(--tab-w, 0);
+  border-radius: 10px;
+  background: rgb(var(--v-theme-surface));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.18);
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
 }
 
 .dash-tab {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 20px;
+  padding: 8px 16px;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+  color: rgba(var(--v-theme-on-surface), 0.55);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s;
   white-space: nowrap;
   letter-spacing: 0.01em;
+  border-radius: 10px;
 }
 .dash-tab:hover {
-  color: rgba(var(--v-theme-on-surface), 0.80);
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
 .dash-tab--active {
   color: rgb(var(--v-theme-primary));
-  border-bottom-color: rgb(var(--v-theme-primary));
   font-weight: 700;
 }
-.dash-tab__icon {
-  opacity: 0.60;
-}
+.dash-tab__icon { opacity: 0.65; }
 .dash-tab--active .dash-tab__icon {
   opacity: 1;
   color: rgb(var(--v-theme-primary));
@@ -473,33 +607,77 @@ onMounted(async () => {
   line-height: 1;
 }
 
-/* ─── Branch selector (shared) ─────────────────────────── */
-.dh-branch-wrap {
-  display: flex;
+/* ─── Chip de scope (rol + sucursal activa) ─────────────── */
+.dh-scope {
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--v-theme-primary), 0.20);
+  gap: 9px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.22);
   background: rgba(var(--v-theme-primary), 0.06);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  white-space: nowrap;
-  margin-bottom: 1px;
-}
-.dh-branch-wrap:hover {
-  border-color: rgba(var(--v-theme-primary), 0.40);
-  background: rgba(var(--v-theme-primary), 0.10);
-}
-.dh-branch-icon    { color: rgb(var(--v-theme-primary)); opacity: 0.70; flex-shrink: 0; }
-.dh-branch-chevron { color: rgb(var(--v-theme-primary)); opacity: 0.55; flex-shrink: 0; }
-.dh-branch-label {
-  font-size: 12px;
-  font-weight: 700;
   color: rgb(var(--v-theme-primary));
-  max-width: 180px;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  font-family: inherit;
+}
+.dh-scope__icon { color: rgb(var(--v-theme-primary)); opacity: 0.85; flex-shrink: 0; }
+.dh-scope__chevron { color: rgb(var(--v-theme-primary)); opacity: 0.5; flex-shrink: 0; }
+.dh-scope__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  text-align: left;
+}
+.dh-scope__role {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.dh-scope__branch {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.dh-scope--clickable {
+  cursor: pointer;
+  border: 0;
+}
+.dh-scope--clickable:hover {
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  background: rgba(var(--v-theme-primary), 0.11);
+}
+.dh-scope--clickable:active { transform: translateY(1px); }
+.dh-scope--readonly {
+  cursor: default;
+}
+.dh-scope--cashier {
+  border-color: rgba(var(--v-theme-warning), 0.35);
+  background: rgba(var(--v-theme-warning), 0.08);
+  color: rgb(var(--v-theme-warning));
+}
+.dh-scope--cashier .dh-scope__icon { color: rgb(var(--v-theme-warning)); }
+
+/* Banner explicativo del scope (no super) */
+.dash-scope-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  align-self: flex-start;
 }
 
 /* ─── Transition ────────────────────────────────────────── */
@@ -508,7 +686,11 @@ onMounted(async () => {
 .tab-fade-leave-to { opacity: 0; transform: translateY(-2px); }
 
 /* ─── Responsive ─────────────────────────────────────────── */
-@media (max-width: 600px) {
+@media (max-width: 720px) {
+  .dash-tabs-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .dash-tabs {
     width: 100%;
     overflow-x: auto;
@@ -518,6 +700,10 @@ onMounted(async () => {
     justify-content: center;
     padding: 8px 10px;
     font-size: 12px;
+  }
+  .dh-scope {
+    margin-left: 0;
+    align-self: flex-end;
   }
 }
 </style>

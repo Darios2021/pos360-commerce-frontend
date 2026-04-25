@@ -55,14 +55,11 @@ if (typeof window !== "undefined") {
   const host = String(window.location.hostname || "").toLowerCase();
   const sameOrigin = !raw || baseURL.startsWith("/");
 
-  // log útil
-  // eslint-disable-next-line no-console
-  console.log("✅ [APP http]", {
-    host,
-    raw: raw || "(empty)",
-    baseURL,
-    sameOrigin,
-  });
+  // Log de bootstrap solo en dev — en producción ensucia la consola sin aportar.
+  if (import.meta.env?.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug("[APP http]", { host, raw: raw || "(empty)", baseURL, sameOrigin });
+  }
 }
 
 const http = axios.create({

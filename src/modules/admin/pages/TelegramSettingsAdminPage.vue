@@ -343,6 +343,8 @@ const form = reactive({
   bot_token: "",
   chat_id: "",
   enabled: false,
+  alert_cash_opened: true,
+  alert_cash_closed: true,
   alert_cash_shortage: true,
   alert_cash_surplus: true,
   alert_cash_long_open: true,
@@ -359,6 +361,8 @@ const form = reactive({
 });
 
 const cashAlerts = [
+  { key: "alert_cash_opened", label: "Apertura de caja" },
+  { key: "alert_cash_closed", label: "Cierre de caja" },
   { key: "alert_cash_shortage", label: "Faltante al cerrar caja" },
   { key: "alert_cash_surplus", label: "Sobrante atípico al cerrar" },
   { key: "alert_cash_long_open", label: "Caja abierta +8h" },
@@ -420,6 +424,8 @@ async function save() {
     const patch = {
       chat_id: form.chat_id || null,
       enabled: !!form.enabled,
+      alert_cash_opened: !!form.alert_cash_opened,
+      alert_cash_closed: !!form.alert_cash_closed,
       alert_cash_shortage: !!form.alert_cash_shortage,
       alert_cash_surplus: !!form.alert_cash_surplus,
       alert_cash_long_open: !!form.alert_cash_long_open,

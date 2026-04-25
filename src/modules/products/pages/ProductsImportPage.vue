@@ -14,9 +14,7 @@
           Descargar plantilla
         </v-btn>
 
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-arrow-left" @click="goBack">
-          Volver a productos
-        </v-btn>
+        <AppBackButton label="Productos" :to="{ name: 'products' }" />
       </div>
     </div>
 
@@ -157,6 +155,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { mapCsvRowToProductPayload } from "../utils/csvProductMapper";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 const router = useRouter();
 

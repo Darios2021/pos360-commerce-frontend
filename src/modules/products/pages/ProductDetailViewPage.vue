@@ -4,9 +4,7 @@
 
     <!-- TOP BAR -->
     <div class="pv-bar">
-      <v-btn icon variant="text" size="small" @click="goBack" class="pv-back">
-        <v-icon>mdi-arrow-left</v-icon>
-      </v-btn>
+      <AppBackButton label="Productos" :to="{ name: 'products' }" />
 
       <div v-if="raw" class="pv-breadcrumb">
         <v-icon size="14" class="pv-bc-ic">mdi-package-variant-closed</v-icon>
@@ -475,6 +473,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";

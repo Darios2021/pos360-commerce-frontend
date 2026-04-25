@@ -3,9 +3,7 @@
 
     <!-- Top bar -->
     <div class="crd-bar">
-      <v-btn icon variant="text" size="small" @click="goBack">
-        <v-icon>mdi-arrow-left</v-icon>
-      </v-btn>
+      <AppBackButton label="Cajas" :to="{ name: 'adminCashRegisters' }" />
 
       <div class="crd-bar__title">
         <v-icon size="18" color="primary">mdi-cash-register</v-icon>
@@ -240,6 +238,7 @@ import {
   adminListCashRegisters,
   getCashRegisterSummary,
 } from "@/modules/pos/services/posCashRegisters.service";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 const route = useRoute();
 const router = useRouter();

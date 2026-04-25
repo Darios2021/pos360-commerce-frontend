@@ -116,6 +116,42 @@ function pickAvatar(u) {
 /* ============================================================
    MERGE USER (PROTEGE AVATAR + BRANCHES)
 ============================================================ */
+// Detecta si un name viene del fallback "Sucursal #N" (no es real).
+function isPlaceholderBranchName(name, id) {
+  if (!name) return true;
+  return String(name).trim() === `Sucursal #${id}`;
+}
+
+// Mezcla dos listas de branches: misma id ⇒ mismo objeto, pero preferimos
+// el que tenga un name REAL sobre el placeholder. Así el refresco desde /me
+// (que puede devolver names null si la query falla) no pisa los nombres
+// que ya teníamos cacheados desde el login.
+function mergeBranchLists(prevList, nextList) {
+  const out = new Map();
+  for (const b of prevList || []) if (b?.id) out.set(b.id, b);
+
+  for (const b of nextList || []) {
+    if (!b?.id) continue;
+    const existing = out.get(b.id);
+    if (!existing) {
+      out.set(b.id, b);
+      continue;
+    }
+    // Si el next tiene un name real y el existing es placeholder, lo pisamos.
+    // Si ambos son reales, gana el next (es más fresco).
+    // Si el next es placeholder y el existing es real, mantenemos el existing.
+    const existingPlaceholder = isPlaceholderBranchName(existing.name, existing.id);
+    const nextPlaceholder = isPlaceholderBranchName(b.name, b.id);
+    if (existingPlaceholder && !nextPlaceholder) out.set(b.id, b);
+    else if (!existingPlaceholder && nextPlaceholder) {
+      // mantener existing
+    } else {
+      out.set(b.id, b);
+    }
+  }
+  return Array.from(out.values());
+}
+
 function mergeUser(prev, next) {
   const p = prev || {};
   const n = next || {};
@@ -133,11 +169,11 @@ function mergeUser(prev, next) {
     merged.avatar_url = prevAvatar;
   }
 
-  // Branches (NO se pisan si vienen vacías en fetchMe)
-  if (nextBranches.length) {
-    merged.branches = nextBranches;
-  } else if (prevBranches.length) {
-    merged.branches = prevBranches;
+  // Branches: combinamos prev + next preservando los nombres reales.
+  // Antes el next con name=null reemplazaba al prev con name="Rivadavia"
+  // y el chip de scope mostraba "Sucursal #3" — ahora se mantiene "Rivadavia".
+  if (nextBranches.length || prevBranches.length) {
+    merged.branches = mergeBranchLists(prevBranches, nextBranches);
   } else {
     merged.branches = [];
   }
@@ -165,6 +201,35 @@ export const useAuthStore = defineStore("auth", {
     branchId: (s) => Number(s.user?.branch_id || 0) || null,
     branches: (s) => normalizeBranches(s.user?.branches),
     roles: (s) => normalizeRoles(s.user),
+
+    // ÁMBITOS DE ROLES (alineados al backend src/utils/accessScope.js)
+    //   - super_admin / superadmin / root / owner: ven TODO el sistema.
+    //   - admin: ven y administran TODA su sucursal.
+    //   - cajero / cashier / vendedor / seller (o sin rol): ven SOLO lo suyo.
+    isSuperAdmin: (s) => {
+      const roles = normalizeRoles(s.user);
+      return roles.some((r) => ["super_admin", "superadmin", "root", "owner"].includes(r));
+    },
+    isBranchAdmin: (s) => {
+      const roles = normalizeRoles(s.user);
+      // Cualquier admin (incluido super) tiene poder de admin sobre su sucursal.
+      return roles.some((r) =>
+        ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)
+      );
+    },
+    isCajero: (s) => {
+      const roles = normalizeRoles(s.user);
+      const isAdminLike = roles.some((r) =>
+        ["admin", "super_admin", "superadmin", "root", "owner"].includes(r)
+      );
+      if (isAdminLike) return false;
+      const cajeroRoles = ["cajero", "cashier", "vendedor", "seller"];
+      if (roles.some((r) => cajeroRoles.includes(r))) return true;
+      return roles.length === 0; // sin roles claros → tratamos como cajero
+    },
+
+    // LEGACY: `isAdmin` se mantiene por compatibilidad con el código existente.
+    // Indica "puede actuar como admin" (super_admin O admin de sucursal).
     isAdmin: (s) => {
       const roles = normalizeRoles(s.user);
       return roles.some((r) => ["admin", "super_admin", "superadmin", "root", "owner"].includes(r));
@@ -188,6 +253,12 @@ export const useAuthStore = defineStore("auth", {
           branch_id: this.user?.branch_id,
           branches_len: this.branches.length,
         });
+
+        // ✅ IMPORTANTE: refrescar roles/branches desde la DB en cada hydrate.
+        // Sin esto, el localStorage (cacheado al loguear) podía mantener
+        // privilegios viejos cuando un admin le revocaba un rol al usuario.
+        // No bloqueamos la UI: si falla, queda con lo cacheado.
+        this.hydrateMeAfterLogin?.().catch(() => {});
       } else {
         this.status = "guest";
       }

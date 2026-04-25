@@ -9,8 +9,8 @@ import axios from "axios";
 const raw = String(import.meta.env.VITE_PUBLIC_API_BASE_URL || "").trim();
 const baseURL = raw || "/api/v1";
 
-if (!raw && typeof window !== "undefined") {
-  console.log("✅ httpPublic usando same-origin:", baseURL, "origin:", window.location.origin);
+if (!raw && typeof window !== "undefined" && import.meta.env?.DEV) {
+  console.debug("[httpPublic] same-origin:", baseURL, "origin:", window.location.origin);
 }
 
 const httpPublic = axios.create({

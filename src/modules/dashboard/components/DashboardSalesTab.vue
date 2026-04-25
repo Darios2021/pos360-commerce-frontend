@@ -1,19 +1,27 @@
 <template>
   <div class="dv">
 
-    <!-- ── Period selector bar ────────────────────────────────────────────────── -->
+    <!-- ── Period selector bar (moderno: segmented control + rango fechas) ───── -->
     <div class="dv-period-bar">
-      <span class="dv-period-label">Período</span>
-      <div class="dv-period-pills">
+      <div class="dv-period-bar__head">
+        <v-icon size="14" class="dv-period-icon">mdi-calendar-clock-outline</v-icon>
+        <span class="dv-period-label">Período</span>
+        <span v-if="periodRangeLabel" class="dv-period-range">· {{ periodRangeLabel }}</span>
+      </div>
+
+      <div class="dv-period-pills" :style="periodIndicatorStyle" role="tablist">
         <button
-          v-for="p in periodItems"
+          v-for="(p, idx) in periodItems"
           :key="p.value"
+          ref="periodRefs"
           class="dv-pill"
           :class="{ 'dv-pill--active': periodLocal === p.value }"
+          :data-idx="idx"
+          role="tab"
+          :aria-selected="periodLocal === p.value"
           @click="emitPeriod(p.value)"
         >{{ p.title }}</button>
       </div>
-
     </div>
 
     <!-- ── Row 1: Hero KPIs (todas reaccionan al período) ───────────────────── -->
@@ -355,7 +363,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick, onMounted } from "vue";
 import ApexChart from "vue3-apexcharts";
 
 const props = defineProps({
@@ -381,9 +389,41 @@ const periodItems = [
 
 const periodLocal   = ref(props.period || "30d");
 const productToggle = ref("total");
+const periodRefs    = ref([]);
 
 watch(() => props.period, (v) => { if (v && v !== periodLocal.value) periodLocal.value = v; });
 function emitPeriod(v) { periodLocal.value = v; emit("period-change", v); }
+
+// Indicador deslizante para los pills de período. Se posiciona sobre el pill
+// activo via CSS vars (--pill-x, --pill-w) que se recalculan al cambiar.
+const periodIndicatorStyle = ref({ "--pill-x": "0px", "--pill-w": "0px" });
+function updatePeriodIndicator() {
+  const idx = periodItems.findIndex((p) => p.value === periodLocal.value);
+  const el = periodRefs.value?.[idx];
+  if (!el) return;
+  periodIndicatorStyle.value = {
+    "--pill-x": `${el.offsetLeft}px`,
+    "--pill-w": `${el.offsetWidth}px`,
+  };
+}
+watch(periodLocal, () => { nextTick(updatePeriodIndicator); });
+onMounted(() => { nextTick(updatePeriodIndicator); });
+if (typeof window !== "undefined") {
+  window.addEventListener("resize", () => updatePeriodIndicator());
+}
+
+// Rango de fechas legible para el período seleccionado (ej: "1 abr → 30 abr").
+const periodRangeLabel = computed(() => {
+  const now = new Date();
+  const fmt = (d) => d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+  if (periodLocal.value === "all") return "todo el historial";
+  let from = new Date(now);
+  if (periodLocal.value === "7d")  from.setDate(now.getDate() - 6);
+  else if (periodLocal.value === "30d") from.setDate(now.getDate() - 29);
+  else if (periodLocal.value === "90d") from.setDate(now.getDate() - 89);
+  else if (periodLocal.value === "12m") { from = new Date(now); from.setMonth(now.getMonth() - 11); from.setDate(1); }
+  return `${fmt(from)} → ${fmt(now)}`;
+});
 function onBranchChange(e) {
   const val = e.target.value;
   emit("branch-change", val === "" || val === null ? null : Number(val));
@@ -1054,49 +1094,86 @@ const optAvgDow    = computed(() => ({
   gap: 14px;
 }
 
-/* ── Period bar ──────────────────────────────────────────────────────────── */
+/* ── Period bar (segmented control moderno) ────────────────────────────── */
 .dv-period-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-.dv-period-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.45);
+.dv-period-bar__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 6px;
   flex-shrink: 0;
 }
-.dv-period-pills {
-  display: flex;
-  gap: 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  padding: 0;
+.dv-period-icon {
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
-.dv-pill {
-  padding: 8px 18px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  font-size: 13px;
+.dv-period-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.dv-period-range {
+  font-size: 11.5px;
   font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.62);
   letter-spacing: 0.01em;
 }
+
+.dv-period-pills {
+  position: relative;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+.dv-period-pills::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: var(--pill-x, 0);
+  width: var(--pill-w, 0);
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.18);
+  transition: left 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+.dv-pill {
+  position: relative;
+  z-index: 1;
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  border-radius: 8px;
+}
 .dv-pill:hover {
-  color: rgba(var(--v-theme-on-surface), 0.80);
+  color: rgba(var(--v-theme-on-surface), 0.88);
 }
 .dv-pill--active {
   color: rgb(var(--v-theme-primary));
-  border-bottom-color: rgb(var(--v-theme-primary));
   font-weight: 700;
 }
 .dv-today-chip {

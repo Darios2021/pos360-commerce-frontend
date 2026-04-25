@@ -8,16 +8,13 @@
 
         <!-- Back + Title -->
         <div class="pfp-title-block">
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            @click="onCancel"
+          <AppBackButton
+            label="Productos"
+            :to="{ name: 'products' }"
             :disabled="busy"
-            class="pfp-back-btn"
-          >
-            <v-icon>mdi-arrow-left</v-icon>
-          </v-btn>
+            emit-only
+            @back="onCancel"
+          />
           <div class="pfp-badge">
             <v-icon size="16" color="white">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           </div>
@@ -544,6 +541,7 @@ import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { CategoriesService } from "../../../app/services/categories.service";
+import AppBackButton from "@/app/components/AppBackButton.vue";
 
 import ProductStockPanel from "../components/panels/ProductStockPanel.vue";
 import ProductImagesPanel from "../components/panels/ProductImagesPanel.vue";

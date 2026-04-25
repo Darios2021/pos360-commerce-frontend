@@ -1,8 +1,16 @@
 <template>
+  <!--
+    Este componente tiene 2 root nodes (el div principal + el <Teleport>), por lo
+    que Vue no puede auto-mergear la class/style que llega del padre. Lo manejamos
+    explícitamente en el div con `v-bind="$attrs"` y desactivamos el merge automático
+    abajo con `defineOptions({ inheritAttrs: false })`. Así el warning
+    "Extraneous non-props attributes" desaparece sin cambiar la estructura.
+  -->
   <div
     ref="rootRef"
     class="pos-search-bar"
     :class="{ 'hotkey-active': hotkeyActive, 'dd-open': showDropdown }"
+    v-bind="$attrs"
   >
     <div class="search-shell" ref="shellRef">
       <v-text-field
@@ -154,6 +162,12 @@ import {
   onBeforeUnmount,
 } from "vue";
 import http from "../../../app/api/http";
+
+// Necesario porque el <template> tiene 2 root nodes (div + Teleport).
+// Sin esto, Vue intenta inferir a cuál pegarle attrs y emite el warning
+// "Extraneous non-props attributes". Con inheritAttrs:false desactivamos el
+// merge automático y manejamos $attrs a mano en el div principal.
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps({
   q: { type: String, default: "" },

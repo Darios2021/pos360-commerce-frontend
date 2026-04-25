@@ -277,13 +277,192 @@
                 <v-icon size="14" color="success">mdi-shield-check</v-icon>
               </span>
             </td>
-            <td class="cra-action">
-              <v-icon size="18" class="cra-action__ic">mdi-chevron-right</v-icon>
+            <td class="cra-action" @click.stop>
+              <v-menu :close-on-content-click="true" location="bottom end">
+                <template #activator="{ props: menuProps }">
+                  <v-btn
+                    v-bind="menuProps"
+                    icon="mdi-dots-vertical"
+                    variant="text"
+                    size="small"
+                    @click.stop
+                  />
+                </template>
+                <v-list density="compact" nav min-width="220">
+                  <v-list-item
+                    prepend-icon="mdi-eye-outline"
+                    @click="onRowClick(r)"
+                  >
+                    <v-list-item-title>Ver detalle</v-list-item-title>
+                  </v-list-item>
+
+                  <!-- Cerrar caja OPEN (admin / super) -->
+                  <v-divider v-if="canAdminAct && r.status === 'OPEN'" />
+                  <v-list-item
+                    v-if="canAdminAct && r.status === 'OPEN'"
+                    prepend-icon="mdi-lock-reset"
+                    @click="confirmForceClose(r)"
+                    class="text-warning"
+                  >
+                    <v-list-item-title>Cerrar caja (admin)</v-list-item-title>
+                  </v-list-item>
+
+                  <!-- Eliminar caja CLOSED (admin / super) -->
+                  <v-divider v-if="canAdminAct && r.status === 'CLOSED'" />
+                  <v-list-item
+                    v-if="canAdminAct && r.status === 'CLOSED'"
+                    prepend-icon="mdi-trash-can-outline"
+                    @click="confirmDelete(r)"
+                    class="text-error"
+                  >
+                    <v-list-item-title>Eliminar registro</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- ── Dialog: Cierre administrativo (force-close) ─────────────────── -->
+    <v-dialog v-model="forceCloseDialog.show" max-width="500" persistent>
+      <v-card rounded="xl">
+        <div class="cra-dlg__head cra-dlg__head--warn">
+          <v-icon size="22" color="white">mdi-lock-reset</v-icon>
+          <div>
+            <p class="cra-dlg__eyebrow">Caja #{{ forceCloseDialog.row?.id }}</p>
+            <h3 class="cra-dlg__title">Cerrar caja administrativamente</h3>
+          </div>
+        </div>
+        <div class="cra-dlg__body">
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Cajero</span>
+            <span>{{ forceCloseDialog.row?.opened_by_name || '—' }}</span>
+          </div>
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Sucursal</span>
+            <span>{{ forceCloseDialog.row?.branch_name || '—' }}</span>
+          </div>
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Apertura</span>
+            <span>{{ fmtShort(forceCloseDialog.row?.opened_at) }} · ${{ fmtNum(forceCloseDialog.row?.opening_cash) }}</span>
+          </div>
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Ventas registradas</span>
+            <span>{{ forceCloseDialog.row?.sales_count || 0 }} ({{ '$' + fmtNum(forceCloseDialog.row?.sales_total) }})</span>
+          </div>
+
+          <v-radio-group
+            v-model="forceCloseDialog.mode"
+            density="compact"
+            hide-details
+            class="mt-3"
+          >
+            <v-radio value="neutral" label="Cierre neutro (declarado = apertura, diferencia 0)" />
+            <v-radio value="expected_real" label="Cierre con expected calculado (apertura + ventas en efectivo + ingresos − egresos)" />
+          </v-radio-group>
+
+          <v-text-field
+            v-model="forceCloseDialog.reason"
+            label="Motivo (opcional)"
+            placeholder="Ej: cajero olvidó cerrar, cierre de turno administrativo…"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="mt-3"
+          />
+        </div>
+        <div class="cra-dlg__actions">
+          <v-btn variant="text" :disabled="forceCloseDialog.busy" @click="forceCloseDialog.show = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            rounded="lg"
+            prepend-icon="mdi-lock-reset"
+            :loading="forceCloseDialog.busy"
+            @click="doForceClose"
+          >
+            Confirmar cierre
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <!-- ── Dialog: Eliminar caja ──────────────────────────────────────── -->
+    <v-dialog v-model="deleteDialog.show" max-width="500" persistent>
+      <v-card rounded="xl">
+        <div class="cra-dlg__head cra-dlg__head--error">
+          <v-icon size="22" color="white">mdi-trash-can-outline</v-icon>
+          <div>
+            <p class="cra-dlg__eyebrow">Caja #{{ deleteDialog.row?.id }}</p>
+            <h3 class="cra-dlg__title">Eliminar registro de caja</h3>
+          </div>
+        </div>
+        <div class="cra-dlg__body">
+          <v-alert
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            <strong>Acción irreversible.</strong> Se eliminará el registro de la caja
+            <b>#{{ deleteDialog.row?.id }}</b> junto con sus movimientos manuales.
+            <span v-if="(deleteDialog.row?.sales_count || 0) > 0">
+              También se borrarán las <b>{{ deleteDialog.row?.sales_count }} venta(s)</b> asociada(s)
+              y todos sus pagos / items. Esto puede afectar reportes y arqueos pasados.
+            </span>
+          </v-alert>
+
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Cajero</span>
+            <span>{{ deleteDialog.row?.opened_by_name || '—' }}</span>
+          </div>
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Sucursal</span>
+            <span>{{ deleteDialog.row?.branch_name || '—' }}</span>
+          </div>
+          <div class="cra-dlg__info">
+            <span class="cra-dlg__k">Diferencia</span>
+            <span :class="diffChipClass(deleteDialog.row?.difference_cash)">
+              {{ deleteDialog.row?.difference_cash != null
+                  ? (deleteDialog.row.difference_cash > 0 ? '+' : '') + '$' + fmtNum(deleteDialog.row.difference_cash)
+                  : '—' }}
+            </span>
+          </div>
+
+          <v-text-field
+            v-model="deleteDialog.confirmText"
+            :label="`Escribí ELIMINAR para confirmar`"
+            placeholder="ELIMINAR"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="mt-3"
+          />
+        </div>
+        <div class="cra-dlg__actions">
+          <v-btn variant="text" :disabled="deleteDialog.busy" @click="deleteDialog.show = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            rounded="lg"
+            prepend-icon="mdi-trash-can"
+            :loading="deleteDialog.busy"
+            :disabled="deleteDialog.confirmText.trim().toUpperCase() !== 'ELIMINAR'"
+            @click="doDelete"
+          >
+            Eliminar definitivamente
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snack.show" :timeout="3500" rounded="xl">{{ snack.text }}</v-snackbar>
 
     <!-- PAGINACIÓN -->
     <div class="cra-pager" v-if="(meta.total || 0) > filters.limit">
@@ -305,8 +484,89 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { adminListCashRegisters } from "@/modules/pos/services/posCashRegisters.service";
 import http from "@/app/api/http";
+import { useAuthStore } from "@/app/store/auth.store";
 
 const router = useRouter();
+const auth = useAuthStore();
+if (auth.status === "idle") auth.hydrate?.();
+
+// Solo admin / super_admin pueden ejecutar acciones administrativas (cerrar
+// cajas ajenas, eliminar registros). El backend tiene su propio guard, esto
+// solo controla la visibilidad de los botones.
+const canAdminAct = computed(() => auth.isBranchAdmin === true);
+
+// ── Dialogs ──────────────────────────────────────────────────────────────
+const forceCloseDialog = reactive({
+  show: false,
+  row: null,
+  mode: "neutral",
+  reason: "",
+  busy: false,
+});
+const deleteDialog = reactive({
+  show: false,
+  row: null,
+  confirmText: "",
+  busy: false,
+});
+const snack = reactive({ show: false, text: "" });
+function toast(text) {
+  snack.show = true;
+  snack.text = String(text || "");
+}
+
+function confirmForceClose(row) {
+  forceCloseDialog.row = row;
+  forceCloseDialog.mode = "neutral";
+  forceCloseDialog.reason = "";
+  forceCloseDialog.busy = false;
+  forceCloseDialog.show = true;
+}
+async function doForceClose() {
+  const row = forceCloseDialog.row;
+  if (!row?.id) return;
+  forceCloseDialog.busy = true;
+  try {
+    await http.post(`/pos/cash-registers/admin/${row.id}/force-close`, {
+      mode: forceCloseDialog.mode,
+      reason: forceCloseDialog.reason || null,
+    });
+    forceCloseDialog.show = false;
+    toast(`Caja #${row.id} cerrada`);
+    await reload();
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || "No se pudo cerrar la caja";
+    toast(msg);
+  } finally {
+    forceCloseDialog.busy = false;
+  }
+}
+
+function confirmDelete(row) {
+  deleteDialog.row = row;
+  deleteDialog.confirmText = "";
+  deleteDialog.busy = false;
+  deleteDialog.show = true;
+}
+async function doDelete() {
+  const row = deleteDialog.row;
+  if (!row?.id) return;
+  if (deleteDialog.confirmText.trim().toUpperCase() !== "ELIMINAR") return;
+  deleteDialog.busy = true;
+  try {
+    const hasSales = (row.sales_count || 0) > 0;
+    const url = `/pos/cash-registers/admin/${row.id}${hasSales ? "?force=1" : ""}`;
+    await http.delete(url);
+    deleteDialog.show = false;
+    toast(`Caja #${row.id} eliminada${hasSales ? ` (con ${row.sales_count} venta(s))` : ""}`);
+    await reload();
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || "No se pudo eliminar";
+    toast(msg);
+  } finally {
+    deleteDialog.busy = false;
+  }
+}
 
 const loading = ref(false);
 const error = ref("");
@@ -908,6 +1168,44 @@ onMounted(() => {
 }
 
 /* Pager */
+/* ── Dialogs (force close / delete) ────────────────────────── */
+.cra-dlg__head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; color: #fff;
+}
+.cra-dlg__head--warn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.cra-dlg__head--error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.cra-dlg__eyebrow {
+  margin: 0; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  opacity: 0.85;
+}
+.cra-dlg__title {
+  margin: 2px 0 0; font-size: 18px; font-weight: 800; line-height: 1.1;
+}
+.cra-dlg__body { padding: 18px 20px; }
+.cra-dlg__info {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+.cra-dlg__info:last-child { border-bottom: none; }
+.cra-dlg__k {
+  font-size: 11px; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  opacity: 0.6;
+}
+.cra-dlg__actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 18px 18px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
 .cra-pager {
   display: flex;
   align-items: center;

@@ -21,18 +21,25 @@ const socket = io(SOCKET_URL, {
   timeout:              20_000,
 });
 
-socket.on("connect",    () => console.log("🔌 [Socket] Conectado:", socket.id));
-socket.on("disconnect", (r) => console.log("🔌 [Socket] Desconectado:", r));
+// Logs solo en dev. En producción no necesitamos saber del lifecycle del socket
+// salvo que falle algo fatal — y los errores ya van por `connect_error`.
+const isDev = !!import.meta.env?.DEV;
+if (isDev) {
+  socket.on("connect",    () => console.debug("[Socket] Conectado:", socket.id));
+  socket.on("disconnect", (r) => console.debug("[Socket] Desconectado:", r));
+}
 
-// Suprimir errores repetidos — solo loguear el primero y luego silencio
+// Suprimir errores repetidos — solo loguear el primero y luego silencio.
+// Además, si no hay URL configurada (ej: dev sin backend de socket.io),
+// no intentamos siquiera conectar para no ensuciar la consola.
 let _socketErrCount = 0;
 socket.on("connect_error", (e) => {
   _socketErrCount++;
-  if (_socketErrCount === 1) {
-    console.warn("🔌 [Socket] No se pudo conectar:", e.message, "— reintentando en background.");
-  } else if (_socketErrCount === 5) {
-    console.warn("🔌 [Socket] Reintentos agotados. Socket desactivado hasta próxima sesión.");
+  if (_socketErrCount === 1 && isDev) {
+    console.debug("[Socket] No conecta:", e.message, "(reintentando en background)");
   }
+  // En producción y después del primer reintento no hay nada nuevo que
+  // reportar; el socket queda desactivado y la app sigue funcionando vía REST.
 });
 
 export default socket;

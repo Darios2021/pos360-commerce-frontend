@@ -25,8 +25,9 @@
           <div>
             <div class="tr-title">Derivaciones</div>
             <div class="tr-subtitle">
-              {{ filtered.length }} {{ filtered.length === 1 ? 'resultado' : 'resultados' }}
+              {{ totalCount }} {{ totalCount === 1 ? 'resultado' : 'resultados' }}
               <span v-if="statusFilter" class="tr-subtitle-filter"> · filtrado por estado</span>
+              <span v-if="search.trim()" class="tr-subtitle-filter"> · búsqueda</span>
             </div>
           </div>
         </div>
@@ -50,7 +51,7 @@
         >
           <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-view-list-outline</v-icon></div>
           <div>
-            <div class="tr-kpi__val">{{ visibleTransfers.length }}</div>
+            <div class="tr-kpi__val">{{ totalVisible }}</div>
             <div class="tr-kpi__lbl">Todas</div>
           </div>
         </button>
@@ -147,11 +148,54 @@
         />
       </div>
 
+      <!-- ── BARRA BULK (selección activa) ── -->
+      <div v-if="selectionCount > 0" class="tr-bulk">
+        <div class="tr-bulk__left">
+          <v-icon size="16" color="primary">mdi-checkbox-multiple-marked-outline</v-icon>
+          <span><b>{{ selectionCount }}</b> seleccionada{{ selectionCount === 1 ? '' : 's' }}</span>
+          <button class="tr-bulk__clear" type="button" @click="clearSelection">Limpiar</button>
+        </div>
+        <div class="tr-bulk__right">
+          <v-btn
+            v-if="selectedReceivable.length"
+            color="success"
+            size="small"
+            variant="flat"
+            rounded="lg"
+            prepend-icon="mdi-check-circle"
+            @click="bulkReceiveDialog.show = true"
+          >
+            Recepcionar {{ selectedReceivable.length }}
+          </v-btn>
+          <v-btn
+            v-if="canDelete && selectedDeletable.length"
+            color="error"
+            size="small"
+            variant="flat"
+            rounded="lg"
+            prepend-icon="mdi-trash-can-outline"
+            @click="bulkDeleteDialog.show = true"
+          >
+            Eliminar {{ selectedDeletable.length }}
+          </v-btn>
+        </div>
+      </div>
+
       <!-- ── TABLA ── -->
       <div class="tr-table-wrap">
         <table class="tr2">
           <thead>
             <tr>
+              <th class="col-check">
+                <v-checkbox
+                  :model-value="allOnPageSelected"
+                  :indeterminate="!allOnPageSelected && someOnPageSelected"
+                  hide-details
+                  density="compact"
+                  color="primary"
+                  @click.stop="toggleSelectAllOnPage"
+                />
+              </th>
               <th class="col-num">Número</th>
               <th class="col-route">Origen → Destino</th>
               <th class="col-products">Productos</th>
@@ -163,12 +207,12 @@
           </thead>
           <tbody>
             <tr v-if="loading && !paginated.length">
-              <td colspan="7" class="tr2-td-loading">
+              <td colspan="8" class="tr2-td-loading">
                 <v-progress-circular size="22" indeterminate color="primary" />
               </td>
             </tr>
             <tr v-else-if="!paginated.length">
-              <td colspan="7" class="tr2-td-empty">
+              <td colspan="8" class="tr2-td-empty">
                 <v-icon size="36" color="medium-emphasis">mdi-truck-remove-outline</v-icon>
                 <div>Sin derivaciones para estos filtros</div>
               </td>
@@ -177,9 +221,18 @@
               v-for="t in paginated"
               :key="t.id"
               class="tr2-row"
-              :class="`tr2-row--${t.status}`"
+              :class="[`tr2-row--${t.status}`, { 'is-selected': isSelected(t.id) }]"
               @click="openDetail(t)"
             >
+              <td class="tr2-check" @click.stop>
+                <v-checkbox
+                  :model-value="isSelected(t.id)"
+                  hide-details
+                  density="compact"
+                  color="primary"
+                  @update:model-value="toggleSelect(t.id)"
+                />
+              </td>
               <td>
                 <div class="tr2-num">{{ t.number }}</div>
                 <div class="tr2-date">{{ fmtDate(t.created_at) }}</div>
@@ -284,6 +337,15 @@
                     >
                       <v-list-item-title>Cancelar derivación</v-list-item-title>
                     </v-list-item>
+                    <v-divider v-if="canDelete" />
+                    <v-list-item
+                      v-if="canDelete"
+                      prepend-icon="mdi-trash-can-outline"
+                      @click="confirmDelete(t)"
+                      class="text-error"
+                    >
+                      <v-list-item-title>Eliminar derivación</v-list-item-title>
+                    </v-list-item>
                   </v-list>
                 </v-menu>
               </td>
@@ -291,10 +353,10 @@
           </tbody>
         </table>
 
-        <!-- Pagination -->
-        <div v-if="filtered.length > limit" class="tr-pagination">
+        <!-- Pagination (server-side) -->
+        <div v-if="totalCount > limit" class="tr-pagination">
           <div class="tr-pag-info">
-            Pág. <b>{{ page }}</b> de <b>{{ totalPages }}</b> · <b>{{ filtered.length }}</b> total
+            Pág. <b>{{ page }}</b> de <b>{{ totalPages }}</b> · <b>{{ totalCount }}</b> total
           </div>
           <div class="tr-pag-btns">
             <v-btn variant="tonal" size="small" rounded="lg" :disabled="page <= 1 || loading" @click="page--">
@@ -304,9 +366,9 @@
               Siguiente<v-icon end>mdi-chevron-right</v-icon>
             </v-btn>
           </div>
-          <select class="tr-perpage" v-model="limit" @change="page = 1">
-            <option :value="15">15 / pág</option>
-            <option :value="25">25 / pág</option>
+          <select class="tr-perpage" v-model.number="limit">
+            <option :value="10">10 / pág</option>
+            <option :value="20">20 / pág</option>
             <option :value="50">50 / pág</option>
           </select>
         </div>
@@ -349,6 +411,111 @@
         </v-card>
       </v-dialog>
 
+      <!-- ── Dialog eliminar ── -->
+      <v-dialog v-model="deleteDialog.show" max-width="460">
+        <v-card rounded="xl">
+          <div class="cancel-dlg__head">
+            <div class="cancel-dlg__icon-wrap">
+              <v-icon size="22" color="error">mdi-trash-can-outline</v-icon>
+            </div>
+            <div>
+              <p class="cancel-dlg__eyebrow">{{ deleteDialog.item?.number }}</p>
+              <h3 class="cancel-dlg__title">Eliminar derivación</h3>
+            </div>
+          </div>
+          <div class="cancel-dlg__body">
+            <div class="cancel-dlg__info-row">
+              <v-icon size="16" color="error" class="flex-shrink-0">mdi-alert-circle-outline</v-icon>
+              <span>
+                <strong>Esta acción es irreversible.</strong> La derivación se eliminará del historial.
+                <template v-if="deleteDialog.item?.status === 'dispatched'">
+                  Como ya estaba despachada, el stock enviado se <strong>devolverá al depósito de origen</strong>.
+                </template>
+                <template v-else-if="['received','partial'].includes(deleteDialog.item?.status)">
+                  Se <strong>restaurará el stock al origen</strong> y se <strong>descontará del destino</strong>
+                  lo que ya había sido recibido. Si en destino se vendieron productos de esta derivación,
+                  el balance puede quedar negativo.
+                </template>
+                <template v-else-if="deleteDialog.item?.status === 'cancelled'">
+                  La derivación está cancelada — no afecta stock.
+                </template>
+                <template v-else>
+                  Era un borrador, no afecta stock.
+                </template>
+              </span>
+            </div>
+          </div>
+          <div class="cancel-dlg__actions">
+            <v-btn variant="text" size="small" :disabled="deleting" @click="deleteDialog.show = false">Volver</v-btn>
+            <v-btn color="error" size="small" variant="flat" :loading="deleting" @click="doDeleteConfirmed">
+              <v-icon start size="14">mdi-trash-can</v-icon>Eliminar definitivamente
+            </v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
+
+      <!-- ── Dialog bulk receive ── -->
+      <v-dialog v-model="bulkReceiveDialog.show" max-width="460">
+        <v-card rounded="xl">
+          <div class="cancel-dlg__head">
+            <div class="cancel-dlg__icon-wrap" style="background: rgba(34, 197, 94, .12)">
+              <v-icon size="22" color="success">mdi-check-circle-outline</v-icon>
+            </div>
+            <div>
+              <p class="cancel-dlg__eyebrow">Recepción masiva</p>
+              <h3 class="cancel-dlg__title">Recepcionar {{ selectedReceivable.length }} derivaciones</h3>
+            </div>
+          </div>
+          <div class="cancel-dlg__body">
+            <div class="cancel-dlg__info-row">
+              <v-icon size="16" color="success" class="flex-shrink-0">mdi-information-outline</v-icon>
+              <span>
+                Se confirmarán todas las cantidades como <strong>recibidas según lo enviado</strong>
+                y el stock se sumará automáticamente al depósito de destino.
+                Solo se procesarán las que estén en estado <em>Enviada</em>.
+              </span>
+            </div>
+          </div>
+          <div class="cancel-dlg__actions">
+            <v-btn variant="text" size="small" :disabled="bulkBusy" @click="bulkReceiveDialog.show = false">Volver</v-btn>
+            <v-btn color="success" size="small" variant="flat" :loading="bulkBusy" @click="doBulkReceive">
+              <v-icon start size="14">mdi-check-circle</v-icon>Confirmar recepción
+            </v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
+
+      <!-- ── Dialog bulk delete ── -->
+      <v-dialog v-model="bulkDeleteDialog.show" max-width="460">
+        <v-card rounded="xl">
+          <div class="cancel-dlg__head">
+            <div class="cancel-dlg__icon-wrap">
+              <v-icon size="22" color="error">mdi-trash-can-outline</v-icon>
+            </div>
+            <div>
+              <p class="cancel-dlg__eyebrow">Eliminación masiva</p>
+              <h3 class="cancel-dlg__title">Eliminar {{ selectedDeletable.length }} derivaciones</h3>
+            </div>
+          </div>
+          <div class="cancel-dlg__body">
+            <div class="cancel-dlg__info-row">
+              <v-icon size="16" color="error" class="flex-shrink-0">mdi-alert-circle-outline</v-icon>
+              <span>
+                <strong>Acción irreversible.</strong> Para cada derivación se revertirá el stock según
+                corresponda (origen y/o destino). En las que ya estén recibidas, el balance del destino
+                puede quedar negativo si se vendieron productos.
+              </span>
+            </div>
+          </div>
+          <div class="cancel-dlg__actions">
+            <v-btn variant="text" size="small" :disabled="bulkBusy" @click="bulkDeleteDialog.show = false">Volver</v-btn>
+            <v-btn color="error" size="small" variant="flat" :loading="bulkBusy" @click="doBulkDelete">
+              <v-icon start size="14">mdi-trash-can</v-icon>Eliminar definitivamente
+            </v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
+
       <v-snackbar v-model="snack.show" :timeout="3200" rounded="xl">{{ snack.text }}</v-snackbar>
 
     </template>
@@ -357,7 +524,15 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { listTransfers, getTransfer, cancelTransfer } from "../service/stockTransfer.api";
+import { useAuthStore } from "@/app/store/auth.store";
+import {
+  listTransfers,
+  getTransfer,
+  cancelTransfer,
+  deleteTransfer,
+  bulkReceiveTransfers,
+  bulkDeleteTransfers,
+} from "../service/stockTransfer.api";
 import { useTransferNotifications } from "../composables/useTransferNotifications";
 import TransferDetail from "./TransferDetail.vue";
 import TransferForm   from "./TransferForm.vue";
@@ -370,9 +545,28 @@ const props = defineProps({
 });
 
 const { pendingForMe } = useTransferNotifications();
+const auth = useAuthStore();
+
+// Solo super_admin / admin pueden eliminar derivaciones.
+const canDelete = computed(() => {
+  const roles = (auth.user?.roles || []).map((r) =>
+    String(typeof r === "string" ? r : r?.name || r?.code || "").toLowerCase().trim()
+  );
+  return roles.some((r) => ["super_admin", "superadmin", "admin"].includes(r));
+});
+
+// Solo super_admin ve TODAS las sucursales. Cualquier otro queda scopeado.
+const isSuperAdmin = computed(() => {
+  const roles = (auth.user?.roles || []).map((r) =>
+    String(typeof r === "string" ? r : r?.name || r?.code || "").toLowerCase().trim()
+  );
+  return roles.some((r) => ["super_admin", "superadmin"].includes(r));
+});
 
 // ── state ──────────────────────────────────────────────────────────────────
 const allTransfers     = ref([]);
+const totalCount       = ref(0);                  // total que matchea filtros (status+search) en backend
+const countsByStatus   = ref({});                 // conteos por estado (sin filtro de status, scopeado por sucursal)
 const loading          = ref(false);
 const selectedTransfer = ref(null);
 const showCreate       = ref(false);
@@ -383,10 +577,19 @@ const snack            = ref({ show: false, text: "" });
 const search       = ref("");
 const statusFilter = ref("");
 const page         = ref(1);
-const limit        = ref(25);
+const limit        = ref(20);                     // límite máximo del backend
 
 const cancelDialog = ref({ show: false, item: null });
 const cancelling   = ref(false);
+
+const deleteDialog = ref({ show: false, item: null });
+const deleting     = ref(false);
+
+// Multi-selección (ids de la página actual seleccionados).
+const selectedIds = ref(new Set());
+const bulkReceiveDialog = ref({ show: false });
+const bulkDeleteDialog  = ref({ show: false });
+const bulkBusy          = ref(false);
 
 // ── headers ────────────────────────────────────────────────────────────────
 const headers = [
@@ -406,25 +609,18 @@ function itemCount(t) {
   return 0;
 }
 
-// ── visible transfers (filtro de sucursal) ─────────────────────────────────
-const visibleTransfers = computed(() => {
-  if (props.isAdmin || !props.currentBranchId) return allTransfers.value;
-  return allTransfers.value.filter(t => {
-    const originBranchId = t.fromWarehouse?.branch_id ?? t.from_branch_id;
-    const destBranchId   = t.to_branch_id ?? t.toBranch?.id ?? t.toWarehouse?.branch_id;
-    const isOrigin = originBranchId === props.currentBranchId;
-    const isDest   = destBranchId   === props.currentBranchId;
-    if (!isOrigin && !isDest) return false;
-    if (isOrigin) return true;
-    return t.status !== "draft";
-  });
-});
+// ── visible / paginated (server-driven) ───────────────────────────────────
+// El scope por sucursal ya lo aplica el backend. Mantengo este passthrough
+// para evitar tocar todas las referencias del template.
+const visibleTransfers = computed(() => allTransfers.value);
+const filtered  = computed(() => allTransfers.value);
+const paginated = computed(() => allTransfers.value);
 
-const statusCounts = computed(() => {
-  const c = {};
-  for (const t of visibleTransfers.value) c[t.status] = (c[t.status] || 0) + 1;
-  return c;
-});
+// KPIs: usar conteos del backend (no se ajustan a `search` para que no parpadeen).
+const statusCounts = computed(() => countsByStatus.value || {});
+const totalVisible = computed(() =>
+  Object.values(countsByStatus.value || {}).reduce((a, b) => a + Number(b || 0), 0)
+);
 
 const statusFilters = computed(() => [
   { value: "",           label: "Todas",      icon: "mdi-view-list-outline"                                                    },
@@ -434,30 +630,36 @@ const statusFilters = computed(() => [
   { value: "cancelled",  label: "Canceladas", icon: "mdi-cancel"                                                               },
 ]);
 
-// ── filtered / paginated ───────────────────────────────────────────────────
-const filtered = computed(() => {
-  let list = visibleTransfers.value;
-  if (statusFilter.value) list = list.filter(t => t.status === statusFilter.value);
-  if (search.value.trim()) {
-    const q = search.value.trim().toLowerCase();
-    list = list.filter(t =>
-      (t.number || "").toLowerCase().includes(q) ||
-      (t.fromWarehouse?.branch?.name || "").toLowerCase().includes(q) ||
-      (t.toBranch?.name || t.toWarehouse?.branch?.name || "").toLowerCase().includes(q) ||
-      (t.note || "").toLowerCase().includes(q)
-    );
+const totalPages = computed(() => Math.max(1, Math.ceil((totalCount.value || 0) / (limit.value || 20))));
+
+// Cambios que requieren reset de página → resetean y disparan loadList vía watch(page) o vía flag.
+let suppressPageWatch = false;
+function resetAndLoad() {
+  selectedIds.value = new Set();
+  if (page.value !== 1) {
+    suppressPageWatch = true;
+    page.value = 1;
+    // El watcher de page disparará loadList; ejecuto manualmente para no esperar.
+    loadList().finally(() => { suppressPageWatch = false; });
+  } else {
+    loadList();
   }
-  return [...list].sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+}
+
+watch([statusFilter, limit], resetAndLoad);
+
+// Búsqueda con debounce.
+let searchTimer = null;
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(resetAndLoad, 300);
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / limit.value)));
-const paginated  = computed(() =>
-  filtered.value.slice((page.value - 1) * limit.value, page.value * limit.value)
-);
-
-watch([statusFilter, search, limit], () => { page.value = 1; });
+// Cambio de página → reload (saltado si lo orquesta resetAndLoad).
+watch(page, () => {
+  if (suppressPageWatch) return;
+  loadList();
+});
 
 // ── helpers ────────────────────────────────────────────────────────────────
 function toast(msg) { snack.value = { show: true, text: String(msg || "Error") }; }
@@ -525,10 +727,107 @@ function timeAgo(d) {
 async function loadList() {
   loading.value = true;
   try {
-    const { data } = await listTransfers({ page: 1, limit: 500 });
-    allTransfers.value = data.transfers || [];
-  } catch (e) { console.error(e); }
-  finally { loading.value = false; }
+    const params = {
+      page: page.value,
+      limit: limit.value,
+    };
+    if (statusFilter.value) params.status = statusFilter.value;
+    const q = String(search.value || "").trim();
+    if (q) params.search = q;
+
+    const { data } = await listTransfers(params);
+    allTransfers.value  = data.transfers || [];
+    totalCount.value    = Number(data.total || 0);
+    countsByStatus.value = data.count_by_status || {};
+
+    // Si la página actual quedó vacía y hay datos en páginas previas, retroceder.
+    if (page.value > 1 && !allTransfers.value.length && totalCount.value > 0) {
+      page.value = Math.max(1, Math.ceil(totalCount.value / limit.value));
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// ── multi-selección ───────────────────────────────────────────────────────
+function isSelected(id) { return selectedIds.value.has(id); }
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value);
+  if (next.has(id)) next.delete(id); else next.add(id);
+  selectedIds.value = next;
+}
+const allOnPageSelected = computed(() => {
+  if (!paginated.value.length) return false;
+  return paginated.value.every((t) => selectedIds.value.has(t.id));
+});
+const someOnPageSelected = computed(() =>
+  paginated.value.some((t) => selectedIds.value.has(t.id))
+);
+function toggleSelectAllOnPage() {
+  const next = new Set(selectedIds.value);
+  if (allOnPageSelected.value) {
+    for (const t of paginated.value) next.delete(t.id);
+  } else {
+    for (const t of paginated.value) next.add(t.id);
+  }
+  selectedIds.value = next;
+}
+function clearSelection() { selectedIds.value = new Set(); }
+
+const selectedTransfers = computed(() =>
+  paginated.value.filter((t) => selectedIds.value.has(t.id))
+);
+const selectionCount = computed(() => selectedIds.value.size);
+const selectedReceivable = computed(() =>
+  selectedTransfers.value.filter((t) => t.status === "dispatched")
+);
+const selectedDeletable = computed(() =>
+  // admin/super_admin pueden borrar cualquier estado
+  canDelete.value ? selectedTransfers.value : []
+);
+
+async function doBulkReceive() {
+  const ids = selectedReceivable.value.map((t) => t.id);
+  if (!ids.length) return;
+  bulkBusy.value = true;
+  try {
+    const { data } = await bulkReceiveTransfers(ids);
+    const ok   = data?.summary?.ok   ?? 0;
+    const fail = data?.summary?.fail ?? 0;
+    bulkReceiveDialog.value.show = false;
+    clearSelection();
+    await loadList();
+    toast(fail
+      ? `Recepción: ${ok} ok · ${fail} con error`
+      : `Recepcionadas ${ok} derivaciones`);
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "No se pudo recepcionar");
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+async function doBulkDelete() {
+  const ids = selectedDeletable.value.map((t) => t.id);
+  if (!ids.length) return;
+  bulkBusy.value = true;
+  try {
+    const { data } = await bulkDeleteTransfers(ids);
+    const ok   = data?.summary?.ok   ?? 0;
+    const fail = data?.summary?.fail ?? 0;
+    bulkDeleteDialog.value.show = false;
+    clearSelection();
+    await loadList();
+    toast(fail
+      ? `Eliminación: ${ok} ok · ${fail} con error`
+      : `Eliminadas ${ok} derivaciones`);
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "No se pudo eliminar");
+  } finally {
+    bulkBusy.value = false;
+  }
 }
 
 // ── acciones ──────────────────────────────────────────────────────────────
@@ -556,6 +855,27 @@ async function doCancelConfirmed() {
     toast(e?.response?.data?.message || e?.message || "No se pudo cancelar");
   } finally {
     cancelling.value = false;
+  }
+}
+
+function confirmDelete(item) {
+  deleteDialog.value = { show: true, item };
+}
+
+async function doDeleteConfirmed() {
+  const id = deleteDialog.value.item?.id;
+  if (!id) return;
+  deleting.value = true;
+  try {
+    await deleteTransfer(id);
+    deleteDialog.value.show = false;
+    if (selectedTransfer.value?.id === id) closeDetail();
+    await loadList();
+    toast("Derivación eliminada");
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "No se pudo eliminar");
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -722,6 +1042,7 @@ onMounted(() => { loadList(); });
   background: rgba(var(--v-theme-on-surface), 0.02);
   white-space: nowrap;
 }
+.col-check    { width: 44px; padding-left: 12px !important; padding-right: 0 !important; }
 .col-num      { width: 150px; }
 .col-route    { width: 22%; min-width: 240px; }
 .col-products { width: 14%; min-width: 140px; }
@@ -729,6 +1050,43 @@ onMounted(() => { loadList(); });
 .col-status   { width: 130px; }
 .col-time     { width: 100px; }
 .col-action   { width: 160px; }
+
+.tr2-check { padding-left: 12px !important; padding-right: 0 !important; width: 44px; }
+.tr2-check :deep(.v-selection-control), .col-check :deep(.v-selection-control) {
+  min-height: 28px;
+}
+.tr2-row.is-selected {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+.tr2-row.is-selected:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+/* Barra de acciones bulk */
+.tr-bulk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1.5px solid rgba(var(--v-theme-primary), 0.35);
+  flex-wrap: wrap;
+}
+.tr-bulk__left {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600;
+}
+.tr-bulk__clear {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 11.5px; font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  padding: 4px 8px; border-radius: 6px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tr-bulk__clear:hover { background: rgba(var(--v-theme-primary), 0.12); }
+.tr-bulk__right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .tr2-row td {
   padding: 12px 14px;
