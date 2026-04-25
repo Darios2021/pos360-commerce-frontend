@@ -355,6 +355,7 @@ const form = reactive({
   alert_shop_new_order: false,
   alert_transfer_dispatched: true,
   alert_transfer_pending: true,
+  alert_transfer_received: true,
 });
 
 const cashAlerts = [
@@ -374,6 +375,7 @@ const stockAlerts = [
 
 const transferAlerts = [
   { key: "alert_transfer_dispatched", label: "Nueva derivación enviada" },
+  { key: "alert_transfer_received", label: "Derivación recibida" },
   { key: "alert_transfer_pending", label: "Pendiente de recibir +24h" },
 ];
 
@@ -430,6 +432,7 @@ async function save() {
       alert_shop_new_order: !!form.alert_shop_new_order,
       alert_transfer_dispatched: !!form.alert_transfer_dispatched,
       alert_transfer_pending: !!form.alert_transfer_pending,
+      alert_transfer_received: !!form.alert_transfer_received,
     };
     if (form.bot_token && form.bot_token.trim()) {
       patch.bot_token = form.bot_token.trim();
