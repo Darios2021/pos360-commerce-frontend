@@ -35,6 +35,11 @@ export async function runScansNow() {
   return data;
 }
 
+export async function scanLowStock(limit = 30) {
+  const { data } = await http.post(`${BASE}/scan-low-stock`, { limit });
+  return data;
+}
+
 export default {
   getTelegramConfig,
   updateTelegramConfig,

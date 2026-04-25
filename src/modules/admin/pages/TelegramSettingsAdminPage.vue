@@ -166,6 +166,18 @@
           >
             Forzar escaneo
           </v-btn>
+          <v-btn
+            variant="tonal"
+            color="error"
+            size="small"
+            rounded="lg"
+            prepend-icon="mdi-package-variant-remove"
+            :loading="scanningStock"
+            @click="onScanLowStock"
+            title="Manda al grupo un resumen de productos con stock 0 o negativo"
+          >
+            Reporte stock crítico
+          </v-btn>
         </div>
 
         <v-alert v-if="testResult" :type="testResult.type" variant="tonal" density="compact" class="mt-2">
@@ -308,6 +320,7 @@ import {
   pingTelegramBot,
   listTelegramLogs,
   runScansNow,
+  scanLowStock,
 } from "@/modules/admin/services/telegram.service";
 
 const loading = ref(false);
@@ -315,6 +328,7 @@ const saving = ref(false);
 const testing = ref(false);
 const pinging = ref(false);
 const scanning = ref(false);
+const scanningStock = ref(false);
 const loadingLogs = ref(false);
 const error = ref("");
 const testResult = ref(null);
@@ -485,6 +499,37 @@ async function onPing() {
     };
   } finally {
     pinging.value = false;
+  }
+}
+
+async function onScanLowStock() {
+  scanningStock.value = true;
+  testResult.value = null;
+  try {
+    const res = await scanLowStock(30);
+    if (res?.ok) {
+      const total = res.total || 0;
+      const neg = res.negative_count || 0;
+      testResult.value = {
+        type: total === 0 ? "success" : "info",
+        text: total === 0
+          ? "Sin productos en rotura."
+          : `Reporte enviado al grupo: ${total} productos sin stock (${neg} negativos).`,
+      };
+      setTimeout(reloadLogs, 1500);
+    } else {
+      testResult.value = {
+        type: "error",
+        text: `No se pudo enviar: ${res?.error || res?.reason || "error desconocido"}`,
+      };
+    }
+  } catch (e) {
+    testResult.value = {
+      type: "error",
+      text: e?.friendlyMessage || e?.message || "Error al disparar reporte",
+    };
+  } finally {
+    scanningStock.value = false;
   }
 }
 
