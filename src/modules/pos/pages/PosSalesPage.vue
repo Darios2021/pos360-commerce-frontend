@@ -859,11 +859,15 @@ function normalizeDate(v) {
 }
 function toStartOfDay(dateStr) {
   const d = normalizeDate(dateStr);
-  return d ? `${d} 00:00:00` : "";
+  if (!d) return "";
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day, 0, 0, 0, 0).toISOString();
 }
 function toEndOfDay(dateStr) {
   const d = normalizeDate(dateStr);
-  return d ? `${d} 23:59:59` : "";
+  if (!d) return "";
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day, 23, 59, 59, 999).toISOString();
 }
 function safeJsonParse(v) {
   if (!v) return null;
