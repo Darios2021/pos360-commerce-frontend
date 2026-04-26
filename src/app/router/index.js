@@ -48,6 +48,7 @@ import CashRegistersAdminPage from "@/modules/admin/pages/CashRegistersAdminPage
 import CashRegisterDetailPage from "@/modules/admin/pages/CashRegisterDetailPage.vue";
 import TelegramSettingsAdminPage from "@/modules/admin/pages/TelegramSettingsAdminPage.vue";
 import CustomersAdminPage from "@/modules/admin/pages/CustomersAdminPage.vue";
+import CustomerDetailView from "@/modules/admin/pages/CustomerDetailView.vue";
 import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
 
 const routes = [
@@ -140,6 +141,13 @@ const routes = [
         name: "adminCustomers",
         component: CustomersAdminPage,
         meta: { roles: ["admin", "super_admin"] },
+      },
+      {
+        path: "admin/clientes/:id",
+        name: "adminCustomerDetail",
+        component: CustomerDetailView,
+        meta: { roles: ["admin", "super_admin"] },
+        props: true,
       },
 
       {

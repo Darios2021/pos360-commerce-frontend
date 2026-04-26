@@ -203,11 +203,23 @@
             v-for="r in items"
             :key="r.id"
             class="cad-row"
-            :class="{ 'is-selected': isSelected(r.id), 'is-inactive': !r.is_active }"
+            :class="{
+              'is-selected': isSelected(r.id),
+              'is-inactive': !r.is_active,
+              'is-uncontactable': !hasContact(r),
+            }"
             @click="openEdit(r)"
           >
             <td class="cad-check" @click.stop>
+              <v-tooltip v-if="!hasContact(r)" location="right" text="Sin contacto cargado — agregale email o teléfono primero">
+                <template #activator="{ props: tipProps }">
+                  <span v-bind="tipProps" class="cad-check__disabled">
+                    <v-icon size="14" color="medium-emphasis">mdi-checkbox-blank-off-outline</v-icon>
+                  </span>
+                </template>
+              </v-tooltip>
               <v-checkbox
+                v-else
                 :model-value="isSelected(r.id)"
                 hide-details
                 density="compact"
@@ -258,25 +270,31 @@
                   <v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" size="small" />
                 </template>
                 <v-list density="compact" nav>
-                  <v-list-item prepend-icon="mdi-eye-outline" @click="openEdit(r)">
-                    <v-list-item-title>Ver / editar</v-list-item-title>
+                  <v-list-item prepend-icon="mdi-card-account-details-outline" @click="openEdit(r)">
+                    <v-list-item-title>Ver detalle</v-list-item-title>
                   </v-list-item>
                   <v-divider />
                   <v-list-item
-                    v-if="r.email"
+                    :disabled="!r.email"
                     prepend-icon="mdi-email-outline"
-                    @click="openSendDialogForOne(r, 'email')"
+                    @click="r.email && openSendDialogForOne(r, 'email')"
                   >
-                    <v-list-item-title>Enviar email</v-list-item-title>
+                    <v-list-item-title>
+                      Enviar email
+                      <span v-if="!r.email" class="text-caption text-medium-emphasis ms-1">(sin email)</span>
+                    </v-list-item-title>
                   </v-list-item>
                   <v-list-item
-                    v-if="r.phone"
+                    :disabled="!r.phone"
                     prepend-icon="mdi-whatsapp"
-                    @click="openSendDialogForOne(r, 'whatsapp')"
+                    @click="r.phone && openSendDialogForOne(r, 'whatsapp')"
                   >
-                    <v-list-item-title>Enviar WhatsApp</v-list-item-title>
+                    <v-list-item-title>
+                      Enviar WhatsApp
+                      <span v-if="!r.phone" class="text-caption text-medium-emphasis ms-1">(sin tel)</span>
+                    </v-list-item-title>
                   </v-list-item>
-                  <v-divider v-if="r.email || r.phone" />
+                  <v-divider />
                   <v-list-item
                     prepend-icon="mdi-bell-ring-outline"
                     @click="quickToggleAcceptsPromos(r)"
@@ -513,6 +531,9 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer,
   deleteCustomer, mergeCustomers, backfillCustomers,
@@ -631,11 +652,16 @@ const bulkEmailableCount = computed(() =>
 const bulkWhatsAppableCount = computed(() =>
   selectedRows.value.filter((r) => !!r.phone).length
 );
+// "Todos seleccionados en la página" considera SOLO los que tienen contacto.
+// Los sin email/teléfono no son seleccionables, así que no entran en el conteo.
+const contactableOnPage = computed(() =>
+  items.value.filter((r) => !!(r.email || r.phone))
+);
 const allOnPageSelected = computed(() =>
-  items.value.length > 0 && items.value.every((r) => selectedIds.value.has(r.id))
+  contactableOnPage.value.length > 0 && contactableOnPage.value.every((r) => selectedIds.value.has(r.id))
 );
 const someOnPageSelected = computed(() =>
-  items.value.some((r) => selectedIds.value.has(r.id))
+  contactableOnPage.value.some((r) => selectedIds.value.has(r.id))
 );
 
 function toast(text) { snack.show = true; snack.text = String(text || ""); }
@@ -693,9 +719,18 @@ function goPage(p) {
   reload();
 }
 
-// ── Selección (con cap anti-spam) ──
+// ── Selección (con cap anti-spam + validación de contacto) ──
+function hasContact(r) { return !!(r?.email || r?.phone); }
+
 function isSelected(id) { return selectedIds.value.has(id); }
 function toggleSelect(id) {
+  const row = items.value.find((r) => r.id === id);
+  if (!row) return;
+  // No permitir seleccionar a quien no tiene contacto.
+  if (!hasContact(row)) {
+    toast("Este cliente no tiene email ni teléfono. Editalo y agregale uno antes de incluirlo en envíos.");
+    return;
+  }
   const next = new Set(selectedIds.value);
   if (next.has(id)) {
     next.delete(id);
@@ -714,14 +749,19 @@ function toggleSelectAllOnPage() {
     for (const r of items.value) next.delete(r.id);
   } else {
     let added = 0;
-    let skipped = 0;
+    let skippedCap = 0;
+    let skippedNoContact = 0;
     for (const r of items.value) {
       if (next.has(r.id)) continue;
-      if (next.size >= MAX_BULK_RECIPIENTS) { skipped++; continue; }
+      if (!hasContact(r)) { skippedNoContact++; continue; }
+      if (next.size >= MAX_BULK_RECIPIENTS) { skippedCap++; continue; }
       next.add(r.id); added++;
     }
-    if (skipped > 0) {
-      toast(`Cap de ${MAX_BULK_RECIPIENTS} alcanzado. Se sumaron ${added} y se omitieron ${skipped} para evitar SPAM.`);
+    const reasons = [];
+    if (skippedNoContact > 0) reasons.push(`${skippedNoContact} sin contacto`);
+    if (skippedCap > 0) reasons.push(`${skippedCap} por cap de ${MAX_BULK_RECIPIENTS}`);
+    if (reasons.length) {
+      toast(`Se agregaron ${added} clientes. Omitidos: ${reasons.join(" · ")}.`);
     }
   }
   selectedIds.value = next;
@@ -735,7 +775,16 @@ function openCreate() {
   editDialog.stats = null;
   editDialog.show = true;
 }
-async function openEdit(row) {
+// Reemplazado: el modal de edit fue migrado a una vista propia
+// (/admin/clientes/:id). Acá solo navegamos a esa página.
+function openEdit(row) {
+  if (!row?.id) return;
+  router.push({ name: "adminCustomerDetail", params: { id: row.id } });
+}
+
+// Mantengo la función vieja como _openEditLegacy por si necesito referencia,
+// pero ya no se llama desde ningún lado. (Puede borrarse en limpieza posterior.)
+async function _openEditLegacy(row) {
   editDialog.id = row.id;
   editDialog.stats = row.stats || null;
   Object.assign(form, emptyForm(), {
@@ -1048,6 +1097,18 @@ onMounted(reload);
 .cad-bulk__clear:hover { background: rgba(var(--v-theme-primary), 0.12); }
 .cad-bulk__right {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+
+/* Checkbox deshabilitado para clientes sin contacto */
+.cad-check__disabled {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.is-uncontactable .cad-name__main {
+  opacity: 0.78;
 }
 
 /* Tabla */
