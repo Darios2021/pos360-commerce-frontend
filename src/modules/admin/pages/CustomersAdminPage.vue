@@ -14,6 +14,24 @@
           variant="tonal"
           size="small"
           rounded="lg"
+          prepend-icon="mdi-email-fast-outline"
+          @click="testEmailDialog.show = true"
+        >
+          Probar email
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          size="small"
+          rounded="lg"
+          prepend-icon="mdi-text-box-multiple-outline"
+          @click="templatesDialog.show = true"
+        >
+          Plantillas
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          size="small"
+          rounded="lg"
           prepend-icon="mdi-database-sync-outline"
           :loading="busyBackfill"
           @click="onBackfill"
@@ -72,19 +90,59 @@
       </span>
     </div>
 
-    <!-- BARRA DE BULK (selección) -->
-    <div v-if="selectionCount > 0" class="cad-bulk">
+    <!-- BARRA DE BULK (selección) — con cap anti-spam profesional -->
+    <div v-if="selectionCount > 0" class="cad-bulk" :class="{ 'cad-bulk--cap': bulkAtCap }">
       <div class="cad-bulk__left">
-        <v-icon size="16" color="primary">mdi-checkbox-multiple-marked-outline</v-icon>
-        <span><b>{{ selectionCount }}</b> seleccionado{{ selectionCount === 1 ? '' : 's' }}</span>
+        <div class="cad-bulk__counter" :class="{ 'cad-bulk__counter--cap': bulkAtCap }">
+          <div class="cad-bulk__counter-num">
+            <v-icon size="14">mdi-checkbox-multiple-marked-outline</v-icon>
+            <b>{{ selectionCount }}</b>
+            <span class="cad-bulk__counter-max">/ {{ MAX_BULK_RECIPIENTS }}</span>
+          </div>
+          <div class="cad-bulk__counter-bar">
+            <div
+              class="cad-bulk__counter-bar-fill"
+              :style="{ width: ((selectionCount / MAX_BULK_RECIPIENTS) * 100) + '%' }"
+            />
+          </div>
+        </div>
+        <div class="cad-bulk__hint">
+          <v-icon size="13" :color="bulkAtCap ? 'warning' : 'medium-emphasis'">
+            {{ bulkAtCap ? 'mdi-alert-circle' : 'mdi-shield-check-outline' }}
+          </v-icon>
+          <span v-if="bulkAtCap">Tope alcanzado · Para más enviá en otra tanda</span>
+          <span v-else>Envío profesional · máx {{ MAX_BULK_RECIPIENTS }} para evitar SPAM</span>
+        </div>
         <button class="cad-bulk__clear" type="button" @click="clearSelection">Limpiar</button>
       </div>
       <div class="cad-bulk__right">
         <v-btn
-          v-if="selectionCount >= 2"
           color="primary"
           size="small"
           variant="flat"
+          rounded="lg"
+          prepend-icon="mdi-email-outline"
+          :disabled="bulkEmailableCount === 0"
+          @click="openSendDialog('email', true)"
+        >
+          Email · {{ bulkEmailableCount }}
+        </v-btn>
+        <v-btn
+          color="success"
+          size="small"
+          variant="flat"
+          rounded="lg"
+          prepend-icon="mdi-whatsapp"
+          :disabled="bulkWhatsAppableCount === 0"
+          @click="openSendDialog('whatsapp', true)"
+        >
+          WhatsApp · {{ bulkWhatsAppableCount }}
+        </v-btn>
+        <v-btn
+          v-if="selectionCount >= 2"
+          color="primary"
+          size="small"
+          variant="tonal"
           rounded="lg"
           prepend-icon="mdi-set-merge"
           @click="openMerge"
@@ -203,6 +261,22 @@
                   <v-list-item prepend-icon="mdi-eye-outline" @click="openEdit(r)">
                     <v-list-item-title>Ver / editar</v-list-item-title>
                   </v-list-item>
+                  <v-divider />
+                  <v-list-item
+                    v-if="r.email"
+                    prepend-icon="mdi-email-outline"
+                    @click="openSendDialogForOne(r, 'email')"
+                  >
+                    <v-list-item-title>Enviar email</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item
+                    v-if="r.phone"
+                    prepend-icon="mdi-whatsapp"
+                    @click="openSendDialogForOne(r, 'whatsapp')"
+                  >
+                    <v-list-item-title>Enviar WhatsApp</v-list-item-title>
+                  </v-list-item>
+                  <v-divider v-if="r.email || r.phone" />
                   <v-list-item
                     prepend-icon="mdi-bell-ring-outline"
                     @click="quickToggleAcceptsPromos(r)"
@@ -409,6 +483,30 @@
       </v-card>
     </v-dialog>
 
+    <!-- CRM: dialog de envío de mensajes -->
+    <SendMessageDialog
+      :open="sendDialog.show"
+      :targets="sendDialog.targets"
+      :initial-channel="sendDialog.channel"
+      :initial-promo-ids="sendDialog.initialPromoIds"
+      @close="onSendDialogClose"
+      @sent="onMessagesSent"
+      @open-templates="templatesDialog.show = true"
+    />
+
+    <!-- CRM: dialog de plantillas -->
+    <MessageTemplatesDialog
+      :open="templatesDialog.show"
+      @close="templatesDialog.show = false"
+      @changed="onTemplatesChanged"
+    />
+
+    <!-- CRM: diagnóstico SMTP / test rápido de envío -->
+    <TestEmailDialog
+      :open="testEmailDialog.show"
+      @close="testEmailDialog.show = false"
+    />
+
     <v-snackbar v-model="snack.show" :timeout="3500" rounded="xl">{{ snack.text }}</v-snackbar>
   </div>
 </template>
@@ -419,6 +517,9 @@ import {
   listCustomers, getCustomer, createCustomer, updateCustomer,
   deleteCustomer, mergeCustomers, backfillCustomers,
 } from "../services/customers.service";
+import SendMessageDialog from "../components/SendMessageDialog.vue";
+import MessageTemplatesDialog from "../components/MessageTemplatesDialog.vue";
+import TestEmailDialog from "../components/TestEmailDialog.vue";
 
 const customerTypeItems = [
   { title: "Consumidor final", value: "CONSUMIDOR_FINAL" },
@@ -453,6 +554,40 @@ const busyMerge = ref(false);
 const busyDelete = ref(false);
 const busyBackfill = ref(false);
 
+// CRM: dialogs de envío y plantillas
+const sendDialog = reactive({ show: false, targets: [], channel: "email", initialPromoIds: [] });
+
+// Si veniste desde "Promociones email" con promos pre-seleccionadas, las
+// levantamos del sessionStorage para que el dialog las precargue.
+function consumePreselectedPromoIds() {
+  try {
+    const raw = sessionStorage.getItem("crm.preselectedPromoIds");
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(Number).filter(Boolean);
+  } catch { return []; }
+}
+
+const incomingPromoIds = consumePreselectedPromoIds();
+if (incomingPromoIds.length) {
+  // Mostramos un hint visible al usuario para que sepa qué pasó.
+  setTimeout(() => {
+    snack.show = true;
+    snack.text = `${incomingPromoIds.length} promo(s) listas. Seleccioná clientes y hacé click en "Email · N".`;
+  }, 200);
+}
+
+function onSendDialogClose() {
+  sendDialog.show = false;
+  // Después de cerrar limpiamos las promos pre-seleccionadas para que
+  // un siguiente envío manual desde acá no las arrastre por accidente.
+  sendDialog.initialPromoIds = [];
+  sessionStorage.removeItem("crm.preselectedPromoIds");
+}
+const templatesDialog = reactive({ show: false });
+const testEmailDialog = reactive({ show: false });
+
 function emptyForm() {
   return {
     first_name: "",
@@ -477,6 +612,25 @@ function emptyForm() {
 
 const totalPages = computed(() => Math.max(1, Math.ceil((meta.value.total || 0) / (filters.limit || 25))));
 const selectionCount = computed(() => selectedIds.value.size);
+
+// ── Cap anti-spam para envíos masivos ─────────────────────────────────────
+// Limitamos los envíos masivos para mantener una buena reputación de remitente
+// (Gmail/Outlook ranquean negativo si mandás de a 100 desde una IP nueva), y
+// para que la operación quede prolija desde el panel. Si necesitás llegar a más
+// clientes, se hace en tandas de 10.
+const MAX_BULK_RECIPIENTS = 10;
+const bulkAtCap = computed(() => selectionCount.value >= MAX_BULK_RECIPIENTS);
+
+// Filtro de los seleccionados con email/teléfono válido — para los botones bulk.
+const selectedRows = computed(() =>
+  items.value.filter((r) => selectedIds.value.has(r.id))
+);
+const bulkEmailableCount = computed(() =>
+  selectedRows.value.filter((r) => !!r.email).length
+);
+const bulkWhatsAppableCount = computed(() =>
+  selectedRows.value.filter((r) => !!r.phone).length
+);
 const allOnPageSelected = computed(() =>
   items.value.length > 0 && items.value.every((r) => selectedIds.value.has(r.id))
 );
@@ -539,17 +693,37 @@ function goPage(p) {
   reload();
 }
 
-// ── Selección ──
+// ── Selección (con cap anti-spam) ──
 function isSelected(id) { return selectedIds.value.has(id); }
 function toggleSelect(id) {
   const next = new Set(selectedIds.value);
-  if (next.has(id)) next.delete(id); else next.add(id);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    if (next.size >= MAX_BULK_RECIPIENTS) {
+      toast(`Máximo ${MAX_BULK_RECIPIENTS} destinatarios por envío. Quitá alguno antes de sumar otro.`);
+      return;
+    }
+    next.add(id);
+  }
   selectedIds.value = next;
 }
 function toggleSelectAllOnPage() {
   const next = new Set(selectedIds.value);
-  if (allOnPageSelected.value) for (const r of items.value) next.delete(r.id);
-  else for (const r of items.value) next.add(r.id);
+  if (allOnPageSelected.value) {
+    for (const r of items.value) next.delete(r.id);
+  } else {
+    let added = 0;
+    let skipped = 0;
+    for (const r of items.value) {
+      if (next.has(r.id)) continue;
+      if (next.size >= MAX_BULK_RECIPIENTS) { skipped++; continue; }
+      next.add(r.id); added++;
+    }
+    if (skipped > 0) {
+      toast(`Cap de ${MAX_BULK_RECIPIENTS} alcanzado. Se sumaron ${added} y se omitieron ${skipped} para evitar SPAM.`);
+    }
+  }
   selectedIds.value = next;
 }
 function clearSelection() { selectedIds.value = new Set(); }
@@ -679,6 +853,64 @@ async function doDelete() {
   }
 }
 
+// ── CRM: envío de mensajes ──────────────────────────────────────────────
+function openSendDialogForOne(row, channel) {
+  if (channel === "email" && !row.email) {
+    toast("Este cliente no tiene email cargado");
+    return;
+  }
+  if (channel === "whatsapp" && !row.phone) {
+    toast("Este cliente no tiene teléfono cargado");
+    return;
+  }
+  sendDialog.targets = [{
+    id: row.id,
+    display_name: row.display_name,
+    email: row.email,
+    phone: row.phone,
+  }];
+  sendDialog.channel = channel;
+  sendDialog.initialPromoIds = channel === "email" ? incomingPromoIds : [];
+  sendDialog.show = true;
+}
+
+function openSendDialog(channel, useSelection = false) {
+  // Si useSelection=true, usamos los seleccionados (filtrando por canal).
+  const rows = useSelection
+    ? selectedRows.value.filter((r) => channel === "email" ? !!r.email : !!r.phone)
+    : [];
+  if (!rows.length) {
+    toast(`No hay clientes seleccionados con ${channel === "email" ? "email" : "teléfono"}.`);
+    return;
+  }
+  sendDialog.targets = rows.map((r) => ({
+    id: r.id,
+    display_name: r.display_name,
+    email: r.email,
+    phone: r.phone,
+  }));
+  sendDialog.channel = channel;
+  // Si veniste desde Promos con promos pre-elegidas, las inyectamos al dialog.
+  sendDialog.initialPromoIds = channel === "email" ? incomingPromoIds : [];
+  sendDialog.show = true;
+}
+
+function onMessagesSent(payload) {
+  if (payload?.summary) {
+    const s = payload.summary;
+    toast(`Enviados ${s.ok} · Fallidos ${s.failed} · Sin contacto ${s.skipped}`);
+  } else if (payload?.link) {
+    toast("Link wa.me abierto en otra pestaña");
+  } else {
+    toast("Mensaje enviado");
+  }
+}
+
+function onTemplatesChanged() {
+  // Las plantillas se recargan dentro de cada dialog que las consume.
+  // Acá solo necesitamos cerrar el dialog si está abierto.
+}
+
 // ── Backfill ──
 async function onBackfill() {
   busyBackfill.value = true;
@@ -738,25 +970,85 @@ onMounted(reload);
 .cad-bulk {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
   background: rgba(var(--v-theme-primary), 0.08);
   border: 1.5px solid rgba(var(--v-theme-primary), 0.35);
   flex-wrap: wrap;
+  transition: background 0.18s, border-color 0.18s;
+}
+.cad-bulk--cap {
+  background: rgba(var(--v-theme-warning), 0.10);
+  border-color: rgba(var(--v-theme-warning), 0.5);
 }
 .cad-bulk__left {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   font-size: 13px; font-weight: 600;
+}
+.cad-bulk__counter {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 110px;
+}
+.cad-bulk__counter-num {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-size: 14px;
+  color: rgb(var(--v-theme-primary));
+}
+.cad-bulk__counter-num b {
+  font-size: 19px; font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.cad-bulk__counter-max {
+  font-size: 12px; opacity: 0.55; font-weight: 700;
+  margin-left: 1px;
+}
+.cad-bulk__counter--cap .cad-bulk__counter-num,
+.cad-bulk__counter--cap .cad-bulk__counter-max {
+  color: rgb(var(--v-theme-warning));
+}
+.cad-bulk__counter-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cad-bulk__counter-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg,
+    rgba(var(--v-theme-primary), 0.85),
+    rgba(var(--v-theme-primary), 1));
+  border-radius: 999px;
+  transition: width 0.2s ease, background 0.18s;
+}
+.cad-bulk__counter--cap .cad-bulk__counter-bar-fill {
+  background: linear-gradient(90deg,
+    rgba(var(--v-theme-warning), 0.85),
+    rgba(var(--v-theme-warning), 1));
+}
+.cad-bulk__hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  letter-spacing: 0.01em;
+}
+.cad-bulk--cap .cad-bulk__hint {
+  color: rgb(var(--v-theme-warning));
 }
 .cad-bulk__clear {
   background: transparent; border: none; cursor: pointer;
-  font-size: 11.5px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   color: rgb(var(--v-theme-primary));
-  padding: 4px 8px; border-radius: 6px;
-  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 4px 9px; border-radius: 6px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  transition: background 0.1s;
 }
 .cad-bulk__clear:hover { background: rgba(var(--v-theme-primary), 0.12); }
+.cad-bulk__right {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
 
 /* Tabla */
 .cad-table-wrap {

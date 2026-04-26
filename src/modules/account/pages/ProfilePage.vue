@@ -150,6 +150,136 @@
           </div>
         </div>
 
+        <!-- ════════════ FIRMA CRM EMAIL (full width) ════════════ -->
+        <div class="prof-section prof-section--full">
+          <div class="prof-section__header">
+            <div>
+              <div class="prof-section__title">
+                <v-icon size="14" class="me-1">mdi-draw-pen</v-icon>
+                Firma para emails del CRM
+              </div>
+              <div class="prof-section__sub">
+                Tu firma personal aparece al pie de los emails que envíes desde el módulo de clientes.
+              </div>
+            </div>
+            <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-content-save"
+                   :loading="savingSig" @click="saveSignature">
+              Guardar firma
+            </v-btn>
+          </div>
+
+          <div class="prof-section__body">
+            <v-alert v-if="sigError" type="error" variant="tonal" density="compact" class="mb-3">
+              {{ sigError }}
+            </v-alert>
+
+            <div class="prof-sig-grid">
+              <!-- Form -->
+              <div class="prof-sig-form">
+                <div class="prof-sig-photo-row">
+                  <v-avatar size="64" rounded="lg" class="elevation-1">
+                    <v-img v-if="sigForm.photo_url" :src="sigForm.photo_url" cover />
+                    <v-icon v-else size="32">mdi-account-outline</v-icon>
+                  </v-avatar>
+                  <div>
+                    <div class="d-flex ga-2 mb-1">
+                      <v-btn size="small" variant="tonal" prepend-icon="mdi-upload"
+                             :loading="uploadingSigPhoto" @click="pickSigPhoto">
+                        Subir foto
+                      </v-btn>
+                      <v-btn v-if="sigForm.photo_url" size="small" variant="text" color="error"
+                             prepend-icon="mdi-delete-outline" :loading="deletingSigPhoto"
+                             @click="removeSigPhoto">
+                        Quitar
+                      </v-btn>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      Recomendado: foto cuadrada (mínimo 200×200 px).
+                    </div>
+                    <input ref="sigPhotoInput" type="file" accept="image/*" class="d-none" @change="onSigPhotoFile" />
+                  </div>
+                </div>
+
+                <div class="prof-field-row">
+                  <div class="prof-field">
+                    <label class="prof-label">Nombre a mostrar</label>
+                    <v-text-field v-model="sigForm.display_name" variant="outlined" density="compact" hide-details
+                                  placeholder="Ej: Dario Pérez" />
+                  </div>
+                  <div class="prof-field">
+                    <label class="prof-label">Cargo / rol</label>
+                    <v-text-field v-model="sigForm.role_title" variant="outlined" density="compact" hide-details
+                                  placeholder="Ej: Asesor comercial" />
+                  </div>
+                </div>
+
+                <div class="prof-field mt-3">
+                  <label class="prof-label">Frase / tagline (opcional)</label>
+                  <v-text-field v-model="sigForm.tagline" variant="outlined" density="compact" hide-details
+                                placeholder="Ej: Disponible de lun a sáb para asesorarte" />
+                </div>
+
+                <div class="prof-field-row mt-3">
+                  <div class="prof-field">
+                    <label class="prof-label">Email de contacto</label>
+                    <v-text-field v-model="sigForm.email" type="email"
+                                  variant="outlined" density="compact" hide-details
+                                  placeholder="dario@ejemplo.com" />
+                  </div>
+                  <div class="prof-field">
+                    <label class="prof-label">Teléfono</label>
+                    <v-text-field v-model="sigForm.phone" variant="outlined" density="compact" hide-details
+                                  placeholder="+54 11 1234-5678" />
+                  </div>
+                </div>
+
+                <div class="prof-field mt-3">
+                  <label class="prof-label">WhatsApp (solo dígitos)</label>
+                  <v-text-field v-model="sigForm.whatsapp" variant="outlined" density="compact" hide-details
+                                placeholder="5491112345678" />
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    Se usa para armar el link <code>wa.me/&lt;número&gt;</code>.
+                  </div>
+                </div>
+
+                <v-switch v-model="sigForm.include_by_default" color="primary" density="compact" hide-details class="mt-3"
+                          :label="sigForm.include_by_default
+                            ? 'Incluir mi firma por defecto en cada envío'
+                            : 'No incluir por defecto (la activo manualmente al enviar)'" />
+              </div>
+
+              <!-- Preview -->
+              <div class="prof-sig-preview-wrap">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-2"
+                     style="letter-spacing: 0.06em; text-transform: uppercase;">
+                  Vista previa en el email
+                </div>
+                <div class="prof-sig-preview">
+                  <div class="prof-sig-preview__row">
+                    <div class="prof-sig-preview__avatar">
+                      <img v-if="sigForm.photo_url" :src="sigForm.photo_url" :alt="sigForm.display_name" />
+                      <span v-else>{{ sigInitials }}</span>
+                    </div>
+                    <div class="prof-sig-preview__info">
+                      <div v-if="sigForm.display_name" class="prof-sig-preview__name">{{ sigForm.display_name }}</div>
+                      <div v-else class="prof-sig-preview__name prof-sig-preview__name--placeholder">Tu nombre</div>
+                      <div v-if="sigForm.role_title" class="prof-sig-preview__role">{{ sigForm.role_title }}</div>
+                      <div v-if="sigForm.tagline" class="prof-sig-preview__tag">{{ sigForm.tagline }}</div>
+                      <div v-if="sigForm.email || sigForm.phone || sigForm.whatsapp" class="prof-sig-preview__contact">
+                        <a v-if="sigForm.email" :href="`mailto:${sigForm.email}`">{{ sigForm.email }}</a>
+                        <span v-if="sigForm.email && sigForm.phone" class="prof-sig-preview__sep">·</span>
+                        <span v-if="sigForm.phone">{{ sigForm.phone }}</span>
+                        <span v-if="(sigForm.email || sigForm.phone) && sigForm.whatsapp" class="prof-sig-preview__sep">·</span>
+                        <a v-if="sigForm.whatsapp" class="prof-sig-preview__wa">WhatsApp</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Seguridad (full width) -->
         <div class="prof-section prof-section--full">
           <div class="prof-section__header">
@@ -199,6 +329,12 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useAuthStore } from "@/app/store/auth.store";
 import { MeService } from "@/app/services/me.service";
+import {
+  getMySignature,
+  updateMySignature,
+  uploadMySignaturePhoto,
+  deleteMySignaturePhoto,
+} from "@/modules/admin/services/mySignature.api";
 
 const auth = useAuthStore();
 
@@ -218,6 +354,31 @@ const pwDialog  = ref(false);
 const pwLoading = ref(false);
 const pwError   = ref("");
 const pw = reactive({ current_password: "", new_password: "", new_password2: "" });
+
+// ── Firma CRM email ──────────────────────────────────────────────────────────
+const sigForm = reactive({
+  display_name: "",
+  role_title: "",
+  tagline: "",
+  email: "",
+  phone: "",
+  whatsapp: "",
+  photo_url: "",
+  include_by_default: true,
+});
+const savingSig = ref(false);
+const uploadingSigPhoto = ref(false);
+const deletingSigPhoto = ref(false);
+const sigError = ref("");
+const sigPhotoInput = ref(null);
+
+const sigInitials = computed(() => {
+  const n = String(sigForm.display_name || "").trim();
+  if (!n) return "?";
+  const parts = n.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+});
 
 const snack = reactive({ open: false, text: "", color: "success" });
 function toast(text, color = "success") { Object.assign(snack, { text, color, open: true }); }
@@ -302,9 +463,73 @@ async function loadMe() {
     form.last_name  = me.last_name  || "";
     auth.setUser?.(data);
     avatarBuster.value = Date.now();
+
+    // Cargar la firma CRM en paralelo (no bloquea el resto del perfil).
+    loadSignature().catch(() => {});
   } catch (e) {
     pageError.value = e?.response?.data?.message || e?.message || "No se pudo cargar el perfil";
   } finally { loadingMe.value = false; }
+}
+
+// ── Firma CRM email ──────────────────────────────────────────────────────────
+async function loadSignature() {
+  sigError.value = "";
+  try {
+    const sig = await getMySignature();
+    if (sig) {
+      Object.assign(sigForm, {
+        display_name: sig.display_name || "",
+        role_title: sig.role_title || "",
+        tagline: sig.tagline || "",
+        email: sig.email || "",
+        phone: sig.phone || "",
+        whatsapp: sig.whatsapp || "",
+        photo_url: sig.photo_url || "",
+        include_by_default: sig.include_by_default !== false,
+      });
+    }
+  } catch (e) {
+    sigError.value = e?.response?.data?.message || e?.message || "No se pudo cargar la firma.";
+  }
+}
+
+async function saveSignature() {
+  savingSig.value = true; sigError.value = "";
+  try {
+    const updated = await updateMySignature({ ...sigForm });
+    if (updated?.photo_url !== undefined) sigForm.photo_url = updated.photo_url || "";
+    toast("Firma guardada");
+  } catch (e) {
+    sigError.value = e?.response?.data?.message || e?.message || "No se pudo guardar la firma.";
+  } finally { savingSig.value = false; }
+}
+
+function pickSigPhoto() { sigPhotoInput.value?.click?.(); }
+
+async function onSigPhotoFile(ev) {
+  const f = ev?.target?.files?.[0] || null;
+  ev.target.value = "";
+  if (!f) return;
+  uploadingSigPhoto.value = true; sigError.value = "";
+  try {
+    const updated = await uploadMySignaturePhoto(f);
+    if (updated) sigForm.photo_url = updated.photo_url || "";
+    toast("Foto actualizada");
+  } catch (e) {
+    sigError.value = e?.response?.data?.message || e?.message || "No se pudo subir la foto.";
+  } finally { uploadingSigPhoto.value = false; }
+}
+
+async function removeSigPhoto() {
+  if (!window.confirm("¿Quitar la foto de la firma?")) return;
+  deletingSigPhoto.value = true; sigError.value = "";
+  try {
+    await deleteMySignaturePhoto();
+    sigForm.photo_url = "";
+    toast("Foto quitada");
+  } catch (e) {
+    sigError.value = e?.response?.data?.message || e?.message || "No se pudo quitar la foto.";
+  } finally { deletingSigPhoto.value = false; }
 }
 async function saveProfile() {
   saving.value = true; pageError.value = "";
@@ -590,4 +815,62 @@ onMounted(loadMe);
 
 /* gap utility (vue 3 Vuetify no siempre tiene gap en flex) */
 .gap-2 { gap: 8px; }
+
+/* ── Firma CRM ───────────────────────────────────────────── */
+.prof-sig-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 880px) {
+  .prof-sig-grid { grid-template-columns: 1fr; }
+}
+.prof-sig-form { display: flex; flex-direction: column; }
+.prof-sig-photo-row {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.prof-sig-preview-wrap {
+  display: flex; flex-direction: column;
+}
+.prof-sig-preview {
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.prof-sig-preview__row {
+  display: flex; align-items: flex-start; gap: 16px;
+}
+.prof-sig-preview__avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-primary));
+  color: #fff;
+  display: grid; place-items: center;
+  font-size: 18px; font-weight: 800;
+  flex-shrink: 0; overflow: hidden;
+}
+.prof-sig-preview__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prof-sig-preview__info { flex-grow: 1; min-width: 0; }
+.prof-sig-preview__name {
+  font-size: 15px; font-weight: 800; color: #111827; letter-spacing: -0.2px;
+}
+.prof-sig-preview__name--placeholder { opacity: .4; font-weight: 600; }
+.prof-sig-preview__role {
+  font-size: 12.5px;
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700; letter-spacing: 0.3px;
+  text-transform: uppercase; margin-top: 2px;
+}
+.prof-sig-preview__tag { font-size: 12.5px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+.prof-sig-preview__contact { font-size: 12.5px; color: #6b7280; margin-top: 8px; line-height: 1.6; }
+.prof-sig-preview__contact a {
+  color: rgb(var(--v-theme-primary)); text-decoration: none; font-weight: 600;
+}
+.prof-sig-preview__sep { margin: 0 8px; color: #d1d5db; }
+.prof-sig-preview__wa { color: #25D366 !important; font-weight: 700; }
 </style>

@@ -51,3 +51,26 @@ export async function uploadShopOgImage(file) {
   });
   return r.data?.item || null;
 }
+
+// ✅ Íconos custom de redes sociales (CRM email)
+export async function listSocialIcons() {
+  const r = await http.get("/admin/shop/branding/social-icons");
+  return {
+    items: Array.isArray(r.data?.items) ? r.data.items : [],
+    knownKinds: Array.isArray(r.data?.known_kinds) ? r.data.known_kinds : [],
+  };
+}
+
+export async function uploadSocialIcon(kind, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await http.post(`/admin/shop/branding/social-icons/${encodeURIComponent(kind)}`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return r.data?.item || null;
+}
+
+export async function deleteSocialIcon(kind) {
+  const r = await http.delete(`/admin/shop/branding/social-icons/${encodeURIComponent(kind)}`);
+  return r.data || null;
+}

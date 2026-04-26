@@ -232,6 +232,149 @@
           </v-card>
         </v-col>
       </v-row>
+
+      <!-- ====================== UBICACIÓN Y CONTACTO ====================== -->
+      <v-divider class="my-5" />
+
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+        <div>
+          <div class="text-subtitle-1 font-weight-bold">Ubicación y contacto</div>
+          <div class="text-caption text-medium-emphasis">
+            Datos del local que aparecen en el pie de cada email del CRM (dirección, mapa, horarios, teléfonos).
+          </div>
+        </div>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save"
+               @click="saveContactBlock" :loading="savingContact">
+          Guardar contacto
+        </v-btn>
+      </div>
+
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.address" label="Dirección del local"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="Av. Siempreviva 742, San Juan"
+            prepend-inner-icon="mdi-map-marker-outline"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.maps_url" label="URL de Google Maps"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="https://maps.google.com/?q=..."
+            prepend-inner-icon="mdi-google-maps"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.phone_display" label="Teléfono de contacto"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="+54 264 1234-567"
+            prepend-inner-icon="mdi-phone-outline"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.whatsapp_display" label="WhatsApp visible"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="+54 9 264 1234-567"
+            prepend-inner-icon="mdi-whatsapp"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.business_hours" label="Horario de atención"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="Lun a Sáb · 9 a 19hs"
+            prepend-inner-icon="mdi-clock-outline"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="contactForm.tagline" label="Slogan / tagline (header del email)"
+            variant="outlined" density="comfortable" hide-details
+            placeholder="Tecnología de confianza desde 2010"
+            prepend-inner-icon="mdi-format-quote-open-outline"
+          />
+        </v-col>
+        <v-col cols="12">
+          <v-textarea
+            v-model="contactForm.footer_note" label="Nota legal del pie del email (opcional)"
+            variant="outlined" density="comfortable" hide-details rows="2" auto-grow
+            placeholder="Recibís este correo porque sos cliente de San Juan Tecnología. Si querés dejar de recibirlos, respondé con 'BAJA'."
+          />
+        </v-col>
+      </v-row>
+
+      <!-- ====================== ÍCONOS DE REDES SOCIALES ====================== -->
+      <v-divider class="my-5" />
+
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+        <div>
+          <div class="text-subtitle-1 font-weight-bold">Íconos de redes sociales (CRM email)</div>
+          <div class="text-caption text-medium-emphasis">
+            Subí PNG/JPG por red social. Si no subís ninguno, los emails usan iniciales coloreadas como fallback.
+            Recomendado: PNG cuadrado de 64×64 o 128×128 px con fondo transparente.
+          </div>
+        </div>
+        <v-btn variant="text" size="small" prepend-icon="mdi-refresh" :loading="loadingSocialIcons" @click="loadSocialIcons">
+          Recargar íconos
+        </v-btn>
+      </div>
+
+      <v-row dense>
+        <v-col
+          v-for="kind in socialKinds"
+          :key="kind"
+          cols="12" sm="6" md="4" lg="3"
+        >
+          <v-card rounded="xl" variant="tonal" class="pa-3">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div>
+                <div class="font-weight-bold text-capitalize">{{ socialKindLabel(kind) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ socialIconUrl(kind) ? 'Configurado' : 'Sin ícono' }}</div>
+              </div>
+              <v-avatar size="48" rounded="lg" :color="socialIconUrl(kind) ? 'white' : socialFallbackColor(kind)" class="elevation-1">
+                <v-img v-if="socialIconUrl(kind)" :src="socialIconUrl(kind)" cover />
+                <span v-else class="text-white font-weight-bold" style="font-size: 13px;">
+                  {{ socialFallbackInitial(kind) }}
+                </span>
+              </v-avatar>
+            </div>
+            <div class="d-flex ga-2">
+              <v-btn
+                size="x-small"
+                color="primary"
+                variant="flat"
+                prepend-icon="mdi-upload"
+                :loading="uploadingSocial[kind]"
+                @click="pickSocialIcon(kind)"
+              >
+                Subir
+              </v-btn>
+              <v-btn
+                v-if="socialIconUrl(kind)"
+                size="x-small"
+                color="error"
+                variant="text"
+                prepend-icon="mdi-delete-outline"
+                :loading="deletingSocial[kind]"
+                @click="onDeleteSocialIcon(kind)"
+              >
+                Quitar
+              </v-btn>
+            </div>
+            <input
+              :ref="(el) => (socialFileRefs[kind] = el)"
+              type="file"
+              accept="image/*"
+              class="d-none"
+              @change="(e) => onSocialFile(kind, e)"
+            />
+          </v-card>
+        </v-col>
+      </v-row>
     </v-card>
 
     <v-snackbar v-model="snack.show" :timeout="3000">
@@ -248,6 +391,9 @@ import {
   uploadShopLogo,
   uploadShopFavicon,
   uploadShopOgImage,
+  listSocialIcons,
+  uploadSocialIcon,
+  deleteSocialIcon,
 } from "@/modules/shop/service/admin.shopBranding.api";
 
 import { getShopThemeAdmin, updateShopThemeAdmin } from "@/modules/shop/service/admin.shopTheme.api";
@@ -258,10 +404,23 @@ import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeT
 const loading = ref(false);
 const saving = ref(false);
 const savingTheme = ref(false);
+const savingContact = ref(false);
 const uploadingLogo = ref(false);
 const uploadingFav = ref(false);
 const uploadingOg = ref(false);
 const error = ref("");
+
+// Datos extendidos del shop_branding usados por el layout de email del CRM.
+// Se guardan en la misma fila id=1 vía PUT /admin/shop/branding.
+const contactForm = ref({
+  address: "",
+  maps_url: "",
+  phone_display: "",
+  whatsapp_display: "",
+  business_hours: "",
+  tagline: "",
+  footer_note: "",
+});
 
 const branding = ref({
   name: "San Juan Tecnología",
@@ -331,6 +490,16 @@ async function load() {
     if (it) {
       branding.value = { ...branding.value, ...it };
       form.value.name = branding.value.name || "San Juan Tecnología";
+      // Hidratar campos de contacto/ubicación para el form correspondiente.
+      contactForm.value = {
+        address: it.address || "",
+        maps_url: it.maps_url || "",
+        phone_display: it.phone_display || "",
+        whatsapp_display: it.whatsapp_display || "",
+        business_hours: it.business_hours || "",
+        tagline: it.tagline || "",
+        footer_note: it.footer_note || "",
+      };
     }
 
     const th = await getShopThemeAdmin();
@@ -360,6 +529,21 @@ async function saveName() {
     error.value = e?.response?.data?.message || e?.message || "No se pudo guardar.";
   } finally {
     saving.value = false;
+  }
+}
+
+// Guarda el bloque "Ubicación y contacto" (campos extendidos de shop_branding).
+async function saveContactBlock() {
+  savingContact.value = true;
+  error.value = "";
+  try {
+    const it = await updateShopBranding({ ...contactForm.value });
+    if (it) branding.value = { ...branding.value, ...it };
+    snack.value = { show: true, text: "Datos de contacto guardados" };
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo guardar el bloque de contacto.";
+  } finally {
+    savingContact.value = false;
   }
 }
 
@@ -457,5 +641,113 @@ async function onOgFile(ev) {
   }
 }
 
-onMounted(load);
+// ════════════════════════════════════════════════════════════════
+// ÍCONOS DE REDES SOCIALES
+// ════════════════════════════════════════════════════════════════
+const socialKinds = ref([
+  "instagram", "facebook", "whatsapp",
+  "twitter", "x", "tiktok", "youtube",
+  "linkedin", "telegram", "spotify", "github",
+  "email", "website",
+]);
+const socialItems = ref([]); // [{ kind, url, label }]
+const loadingSocialIcons = ref(false);
+const uploadingSocial = ref({});
+const deletingSocial = ref({});
+const socialFileRefs = {};
+
+// Mapeo visual para los placeholders cuando no hay ícono custom.
+const SOCIAL_FALLBACK = {
+  instagram: { initial: "IG", color: "#E4405F" },
+  facebook:  { initial: "f",  color: "#1877F2" },
+  whatsapp:  { initial: "WA", color: "#25D366" },
+  twitter:   { initial: "X",  color: "#000000" },
+  x:         { initial: "X",  color: "#000000" },
+  tiktok:    { initial: "TT", color: "#000000" },
+  youtube:   { initial: "YT", color: "#FF0000" },
+  linkedin:  { initial: "in", color: "#0A66C2" },
+  telegram:  { initial: "TG", color: "#26A5E4" },
+  spotify:   { initial: "♫",  color: "#1DB954" },
+  github:    { initial: "Gh", color: "#181717" },
+  email:     { initial: "@",  color: "#EA4335" },
+  website:   { initial: "W",  color: "#1f2937" },
+};
+
+const SOCIAL_LABELS = {
+  instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp",
+  twitter: "Twitter", x: "X", tiktok: "TikTok", youtube: "YouTube",
+  linkedin: "LinkedIn", telegram: "Telegram", spotify: "Spotify",
+  github: "GitHub", email: "Email", website: "Sitio web",
+};
+
+function socialKindLabel(kind) {
+  return SOCIAL_LABELS[kind] || kind;
+}
+function socialFallbackInitial(kind) {
+  return SOCIAL_FALLBACK[kind]?.initial || kind.slice(0, 2).toUpperCase();
+}
+function socialFallbackColor(kind) {
+  return SOCIAL_FALLBACK[kind]?.color || "#6b7280";
+}
+function socialIconUrl(kind) {
+  return socialItems.value.find((it) => it.kind === kind)?.url || "";
+}
+
+async function loadSocialIcons() {
+  loadingSocialIcons.value = true;
+  try {
+    const res = await listSocialIcons();
+    socialItems.value = res.items || [];
+    if (Array.isArray(res.knownKinds) && res.knownKinds.length) {
+      socialKinds.value = res.knownKinds;
+    }
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudieron cargar los íconos sociales.";
+  } finally {
+    loadingSocialIcons.value = false;
+  }
+}
+
+function pickSocialIcon(kind) {
+  socialFileRefs[kind]?.click?.();
+}
+
+async function onSocialFile(kind, ev) {
+  const file = ev?.target?.files?.[0];
+  if (!file) return;
+  uploadingSocial.value = { ...uploadingSocial.value, [kind]: true };
+  try {
+    const item = await uploadSocialIcon(kind, file);
+    if (item) {
+      const idx = socialItems.value.findIndex((x) => x.kind === kind);
+      if (idx >= 0) socialItems.value.splice(idx, 1, item);
+      else socialItems.value.push(item);
+      snack.value = { show: true, text: `Ícono de ${socialKindLabel(kind)} actualizado.` };
+    }
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo subir el ícono.";
+  } finally {
+    uploadingSocial.value = { ...uploadingSocial.value, [kind]: false };
+    if (ev?.target) ev.target.value = "";
+  }
+}
+
+async function onDeleteSocialIcon(kind) {
+  if (!window.confirm(`¿Quitar el ícono custom de ${socialKindLabel(kind)}? Volverá a usarse el estilo por defecto.`)) return;
+  deletingSocial.value = { ...deletingSocial.value, [kind]: true };
+  try {
+    await deleteSocialIcon(kind);
+    socialItems.value = socialItems.value.filter((x) => x.kind !== kind);
+    snack.value = { show: true, text: `Ícono de ${socialKindLabel(kind)} quitado.` };
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo eliminar el ícono.";
+  } finally {
+    deletingSocial.value = { ...deletingSocial.value, [kind]: false };
+  }
+}
+
+onMounted(async () => {
+  await load();
+  await loadSocialIcons();
+});
 </script>

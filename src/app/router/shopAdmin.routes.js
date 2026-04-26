@@ -21,6 +21,9 @@ import ShopLinksView from "@/modules/admin/pages/ShopLinksView.vue";
 // ✅ Galería Multimedia
 import GaleriaMultimediaView from "@/modules/admin/pages/GaleriaMultimediaView.vue";
 
+// ✅ CRM email PRO
+import EmailPromoBlocksView from "@/modules/admin/pages/EmailPromoBlocksView.vue";
+
 export const shopAdminRoutes = [
   {
     path: "admin/shop/branding",
@@ -81,6 +84,14 @@ export const shopAdminRoutes = [
     path: "admin/galeria-multimedia",
     name: "adminGaleriaMultimedia",
     component: GaleriaMultimediaView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
+  // ✅ CRM email PRO: bloques promocionales reutilizables
+  {
+    path: "admin/email/promociones",
+    name: "emailPromoBlocks",
+    component: EmailPromoBlocksView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 ];

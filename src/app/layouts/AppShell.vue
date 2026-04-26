@@ -489,6 +489,19 @@
                 </template>
                 <v-list-item-title>Galería multimedia</v-list-item-title>
               </v-list-item>
+
+              <v-divider class="my-2 nav-divider" />
+
+              <v-list-item
+                v-if="hasRoute('emailPromoBlocks')"
+                :to="{ name: 'emailPromoBlocks' }"
+                exact
+              >
+                <template #prepend>
+                  <v-icon size="20">mdi-tag-multiple-outline</v-icon>
+                </template>
+                <v-list-item-title>Promociones email</v-list-item-title>
+              </v-list-item>
             </v-list-group>
           </template>
 
@@ -583,6 +596,7 @@ const ROUTE_TREE = {
   shopNotificationsSettings:{ label: "Notificaciones", section: "Tienda" },
   shopLinks:                { label: "Links", section: "Tienda" },
   adminGaleriaMultimedia:   { label: "Galería multimedia", section: "Tienda" },
+  emailPromoBlocks:         { label: "Promociones email", section: "Tienda" },
 };
 
 const TAB_LABELS = { sales: "Ventas", stock: "Stock", inventory: "Inventario", cash: "Caja" };
