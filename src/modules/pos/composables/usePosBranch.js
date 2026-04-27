@@ -232,7 +232,7 @@ export function usePosBranch({ auth, posStore }) {
         posStore.setBranch(id);
       }
 
-      await posStore.ensureContext?.({ force: true });
+      await posStore.ensureContext?.({ force: true, user: auth?.user || null });
     } catch {}
   }
 
@@ -252,14 +252,18 @@ export function usePosBranch({ auth, posStore }) {
 
     let desired = toInt(activeBranchId.value, 0) || null;
 
+    // ✅ FIX: prioridad al PRINCIPAL del user actual (no al LS de otra sesión).
+    // El LS solo se usa si el user no tiene principal asignado o si el principal
+    // ya no está en sus sucursales permitidas.
+    if (!desired) {
+      const main = toInt(auth?.user?.branch_id, 0) || null;
+      if (main && isAllowedBranchId(main)) desired = main;
+    }
+
+    // Fallback al LS sólo si no hay principal válido (caso edge)
     if (!desired) {
       const stored = getStoredBranchId();
       if (stored && isAllowedBranchId(stored)) desired = stored;
-    }
-
-    if (!desired) {
-      const main = toInt(auth?.user?.branch_id, 0) || null;
-      if (main && (!multi || isAllowedBranchId(main))) desired = main;
     }
 
     if (!desired && branchItems.value.length) desired = toInt(branchItems.value[0].value, 0) || null;

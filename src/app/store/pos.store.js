@@ -689,9 +689,34 @@ export const usePosStore = defineStore("pos", {
       dbg("resetContext");
     },
 
-    async ensureContext({ force = false, isAdmin = false } = {}) {
-      const currB = toInt(this.branch_id, 0);
+    async ensureContext({ force = false, isAdmin = false, user = null } = {}) {
+      let currB = toInt(this.branch_id, 0);
       const currW = toInt(this.warehouse_id, 0);
+
+      // ✅ FIX: validar que el branch_id persistido en LS pertenezca al
+      // usuario actual. Si en este browser quedó la branch de OTRO user
+      // (o una branch que el actual ya no tiene), se resetea a la branch
+      // principal del user para evitar mostrar stock de una sucursal que
+      // no corresponde.
+      if (user && typeof user === "object") {
+        const userBranches = (Array.isArray(user.branches) ? user.branches : [])
+          .map((x) => Number(x))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        const principal = Number(user.branch_id || 0);
+
+        if (currB > 0 && userBranches.length && !userBranches.includes(currB)) {
+          dbg("ensureContext branch mismatch — reset", {
+            current: currB, user_branches: userBranches, principal,
+          });
+          const fallback = principal || userBranches[0] || null;
+          this.branch_id = fallback;
+          writeLSInt(LS_BRANCH, fallback);
+          // Warehouse del LS también puede ser de la branch vieja → limpiar
+          this.warehouse_id = null;
+          writeLSInt(LS_WAREHOUSE, null);
+          currB = toInt(this.branch_id, 0);
+        }
+      }
 
       if (!force && currB > 0 && (isAdmin || currW > 0)) {
         dbg("ensureContext skip", { isAdmin, branch_id: currB, warehouse_id: currW });
