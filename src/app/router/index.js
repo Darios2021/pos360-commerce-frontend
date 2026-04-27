@@ -140,13 +140,11 @@ const routes = [
         path: "admin/clientes",
         name: "adminCustomers",
         component: CustomersAdminPage,
-        meta: { roles: ["admin", "super_admin"] },
       },
       {
         path: "admin/clientes/:id",
         name: "adminCustomerDetail",
         component: CustomerDetailView,
-        meta: { roles: ["admin", "super_admin"] },
         props: true,
       },
 

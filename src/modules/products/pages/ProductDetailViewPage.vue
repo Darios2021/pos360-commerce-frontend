@@ -4,16 +4,28 @@
 
     <!-- TOP BAR -->
     <div class="pv-bar">
-      <AppBackButton label="Productos" :to="{ name: 'products' }" />
-
-      <div v-if="raw" class="pv-breadcrumb">
-        <v-icon size="14" class="pv-bc-ic">mdi-package-variant-closed</v-icon>
-        <span v-if="productForUIFixed.category_name" class="pv-bc-root">{{ productForUIFixed.category_name }}</span>
-        <v-icon v-if="productForUIFixed.subcategory_name" size="14" class="pv-bc-sep">mdi-chevron-right</v-icon>
-        <span v-if="productForUIFixed.subcategory_name" class="pv-bc-leaf">{{ productForUIFixed.subcategory_name }}</span>
-        <span v-if="!productForUIFixed.category_name && !productForUIFixed.subcategory_name">Detalle de producto</span>
+      <div v-if="raw" class="pv-cat-tags">
+        <v-chip
+          v-if="productForUIFixed.category_name"
+          size="small"
+          variant="tonal"
+          color="primary"
+          label
+          class="pv-cat-chip"
+        >
+          <v-icon start size="13">mdi-shape-outline</v-icon>
+          {{ productForUIFixed.category_name }}
+        </v-chip>
+        <v-chip
+          v-if="productForUIFixed.subcategory_name"
+          size="small"
+          variant="tonal"
+          label
+          class="pv-cat-chip"
+        >
+          {{ productForUIFixed.subcategory_name }}
+        </v-chip>
       </div>
-      <span v-else class="pv-breadcrumb">Detalle de producto</span>
 
       <v-spacer />
 
@@ -473,7 +485,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import AppBackButton from "@/app/components/AppBackButton.vue";
 
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -839,29 +850,17 @@ watch(branchId, fetchProduct);
   top: 0;
   z-index: 10;
 }
-.pv-back { flex-shrink: 0; margin-left: -4px; }
-.pv-breadcrumb {
+.pv-cat-tags {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 600;
+  gap: 6px;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
+  flex-wrap: wrap;
 }
-.pv-bc-ic { opacity: 0.45; }
-.pv-bc-root {
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pv-bc-sep { opacity: 0.4; flex-shrink: 0; }
-.pv-bc-leaf {
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  overflow: hidden;
-  text-overflow: ellipsis;
+.pv-cat-chip {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
 }
 
 /* ── SKELETON ── */
@@ -1486,7 +1485,7 @@ watch(branchId, fetchProduct);
 
 @media (max-width: 480px) {
   .pv-bar { padding: 8px 12px; }
-  .pv-breadcrumb { font-size: 12px; }
+  .pv-cat-chip { font-size: 11px !important; }
   .pv-card { padding: 14px; }
   .pv-card--identity { padding: 16px; }
   .pv-gallery-thumbs { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }

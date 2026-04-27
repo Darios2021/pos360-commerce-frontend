@@ -375,7 +375,13 @@
       </div>
 
       <!-- ── Dialog nueva derivación ── -->
-      <v-dialog v-model="showCreate" max-width="680" scrollable persistent>
+      <v-dialog
+        v-model="showCreate"
+        max-width="1100"
+        :fullscreen="$vuetify.display.smAndDown"
+        scrollable
+        persistent
+      >
         <TransferForm
           :current-warehouse-id="currentWarehouseId"
           :current-branch-id="currentBranchId"

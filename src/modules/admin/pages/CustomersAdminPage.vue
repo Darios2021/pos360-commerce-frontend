@@ -1,15 +1,17 @@
 <template>
-  <div class="cad">
-    <!-- HEADER -->
-    <div class="cad-head">
-      <div class="cad-head__left">
-        <v-icon size="22" color="primary">mdi-account-group-outline</v-icon>
-        <div>
-          <h1 class="cad-title">Clientes</h1>
-          <span class="cad-subtitle">Banco de datos para promociones, fidelización y reportes</span>
+  <div class="lp">
+
+    <!-- ── HEADER ───────────────────────────────────────── -->
+    <header class="lp-header">
+      <div class="lp-header__left">
+        <h1 class="lp-title">Clientes</h1>
+        <div class="lp-meta">
+          <span class="lp-meta__strong">{{ Number(meta.total || 0).toLocaleString('es') }}</span>
+          <span class="lp-meta__sep">·</span>
+          <span>Banco de datos para promociones, fidelización y reportes</span>
         </div>
       </div>
-      <div class="cad-head__right">
+      <div v-if="isAdmin" class="lp-header__right">
         <v-btn
           variant="tonal"
           size="small"
@@ -49,50 +51,105 @@
           Nuevo cliente
         </v-btn>
       </div>
-    </div>
+    </header>
 
-    <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3">
+    <!-- ── STATS KPI (reducido) ─────────────────────────── -->
+    <section class="lp-stats">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--primary">
+          <v-icon size="16" color="white">mdi-account-group-outline</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Total</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.total) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">Clientes en filtro actual</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--green">
+          <v-icon size="16" color="white">mdi-cellphone-check</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Con contacto</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.with_contact) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.with_contact, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--orange">
+          <v-icon size="16" color="white">mdi-bell-ring-outline</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Acepta promos</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.accepts_promos) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.accepts_promos, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--indigo">
+          <v-icon size="16" color="white">mdi-cart-check</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Compraron</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.with_purchases) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.with_purchases, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ALERT ─────────────────────────────────────────── -->
+    <v-alert v-if="error" type="error" variant="tonal" density="compact" class="lp-alert">
       {{ error }}
     </v-alert>
 
-    <!-- BARRA DE FILTROS -->
-    <div class="cad-filters">
-      <v-text-field
-        v-model="filters.q"
-        placeholder="Buscar por nombre, email, teléfono, documento…"
-        prepend-inner-icon="mdi-magnify"
-        variant="outlined"
-        density="compact"
-        hide-details
-        clearable
-        class="cad-search"
-        @update:model-value="onSearch"
-      />
-      <v-select
-        v-model="filters.customer_type"
-        :items="customerTypeItems"
-        label="Tipo"
-        variant="outlined"
-        density="compact"
-        hide-details
-        clearable
-        class="cad-type"
-      />
-      <v-checkbox
-        v-model="filters.accepts_promos"
-        label="Solo con promos"
-        density="compact"
-        hide-details
-      />
-      <v-spacer />
-      <span v-if="meta.total" class="cad-count">
-        {{ meta.total }} cliente{{ meta.total === 1 ? '' : 's' }}
-      </span>
-    </div>
+    <!-- ── FILTER BAR ───────────────────────────────────── -->
+    <section class="lp-filters">
+      <div class="lp-filters__primary">
+        <v-text-field
+          v-model="filters.q"
+          placeholder="Buscar por nombre, email, teléfono, documento…"
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          class="lp-filters__search"
+          @update:model-value="onSearch"
+        />
+        <v-select
+          v-model="filters.customer_type"
+          :items="customerTypeItems"
+          label="Tipo"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          class="lp-filters__primary-field"
+        />
+        <v-checkbox
+          v-model="filters.accepts_promos"
+          label="Solo con promos"
+          density="compact"
+          hide-details
+          class="lp-filters__check"
+        />
+      </div>
+    </section>
 
-    <!-- BARRA DE BULK (selección) — con cap anti-spam profesional -->
-    <div v-if="selectionCount > 0" class="cad-bulk" :class="{ 'cad-bulk--cap': bulkAtCap }">
-      <div class="cad-bulk__left">
+    <!-- ── BULK BAR (admin only, con cap anti-spam) ─────── -->
+    <div
+      v-if="isAdmin && selectionCount > 0"
+      class="lp-bulk lp-bulk--active"
+      :class="{ 'lp-bulk--cap': bulkAtCap }"
+    >
+      <div class="lp-bulk__select">
         <div class="cad-bulk__counter" :class="{ 'cad-bulk__counter--cap': bulkAtCap }">
           <div class="cad-bulk__counter-num">
             <v-icon size="14">mdi-checkbox-multiple-marked-outline</v-icon>
@@ -115,7 +172,8 @@
         </div>
         <button class="cad-bulk__clear" type="button" @click="clearSelection">Limpiar</button>
       </div>
-      <div class="cad-bulk__right">
+
+      <div class="lp-bulk__actions">
         <v-btn
           color="primary"
           size="small"
@@ -152,181 +210,196 @@
       </div>
     </div>
 
-    <!-- TABLA -->
-    <div class="cad-table-wrap">
-      <table class="cad-table">
-        <thead>
-          <tr>
-            <th class="col-check">
-              <v-checkbox
-                :model-value="allOnPageSelected"
-                :indeterminate="!allOnPageSelected && someOnPageSelected"
-                hide-details
-                density="compact"
-                color="primary"
-                @click.stop="toggleSelectAllOnPage"
-              />
-            </th>
-            <th>Nombre</th>
-            <th>Documento</th>
-            <th>Contacto</th>
-            <th>Tipo</th>
-            <th class="num">Compras</th>
-            <th class="num">Total</th>
-            <th>Última</th>
-            <th>Promos</th>
-            <th class="cad-action"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading && !items.length">
-            <td colspan="10" class="cad-loading">
-              <v-progress-circular indeterminate size="22" color="primary" />
-            </td>
-          </tr>
-          <tr v-else-if="!items.length">
-            <td colspan="10" class="cad-empty">
-              <v-icon size="36" color="medium-emphasis">mdi-account-search-outline</v-icon>
-              <div>Sin clientes para estos filtros.</div>
-              <v-btn
-                v-if="!filters.q"
-                size="small"
-                variant="tonal"
-                color="primary"
-                class="mt-2"
-                prepend-icon="mdi-database-sync-outline"
-                @click="onBackfill"
-              >Importar desde historial de ventas</v-btn>
-            </td>
-          </tr>
-          <tr
-            v-for="r in items"
-            :key="r.id"
-            class="cad-row"
-            :class="{
-              'is-selected': isSelected(r.id),
-              'is-inactive': !r.is_active,
-              'is-uncontactable': !hasContact(r),
-            }"
-            @click="openEdit(r)"
-          >
-            <td class="cad-check" @click.stop>
-              <v-tooltip v-if="!hasContact(r)" location="right" text="Sin contacto cargado — agregale email o teléfono primero">
-                <template #activator="{ props: tipProps }">
-                  <span v-bind="tipProps" class="cad-check__disabled">
-                    <v-icon size="14" color="medium-emphasis">mdi-checkbox-blank-off-outline</v-icon>
-                  </span>
-                </template>
-              </v-tooltip>
-              <v-checkbox
-                v-else
-                :model-value="isSelected(r.id)"
-                hide-details
-                density="compact"
-                color="primary"
-                @update:model-value="toggleSelect(r.id)"
-              />
-            </td>
-            <td>
-              <div class="cad-name">
-                <div class="cad-name__avatar">{{ initialsOf(r) }}</div>
-                <div>
-                  <div class="cad-name__main">{{ r.display_name }}</div>
-                  <div v-if="r.tags" class="cad-name__tags">{{ r.tags }}</div>
-                </div>
-              </div>
-            </td>
-            <td class="cad-doc">
-              <span v-if="r.doc_number">
-                <span class="cad-doc__type">{{ r.doc_type || 'DNI' }}</span>
-                <span class="cad-doc__num">{{ r.doc_number }}</span>
-              </span>
-              <span v-else class="cad-dim">—</span>
-            </td>
-            <td>
-              <div v-if="r.email" class="cad-contact">
-                <v-icon size="12">mdi-email-outline</v-icon>{{ r.email }}
-              </div>
-              <div v-if="r.phone" class="cad-contact">
-                <v-icon size="12">mdi-phone-outline</v-icon>{{ r.phone }}
-              </div>
-              <span v-if="!r.email && !r.phone" class="cad-dim">—</span>
-            </td>
-            <td>
-              <span class="cad-type-chip" :class="`cad-type-chip--${r.customer_type?.toLowerCase()}`">
-                {{ typeLabel(r.customer_type) }}
-              </span>
-            </td>
-            <td class="num">{{ r.stats?.sales_count || 0 }}</td>
-            <td class="num"><b>${{ fmtNum(r.stats?.sales_total) }}</b></td>
-            <td>{{ fmtDate(r.stats?.last_sold_at) }}</td>
-            <td>
-              <v-icon v-if="r.accepts_promos" size="16" color="success">mdi-bell-ring</v-icon>
-              <v-icon v-else size="16" color="medium-emphasis">mdi-bell-off-outline</v-icon>
-            </td>
-            <td class="cad-action" @click.stop>
-              <v-menu :close-on-content-click="true">
-                <template #activator="{ props: menuProps }">
-                  <v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" size="small" />
-                </template>
-                <v-list density="compact" nav>
-                  <v-list-item prepend-icon="mdi-card-account-details-outline" @click="openEdit(r)">
-                    <v-list-item-title>Ver detalle</v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item
-                    :disabled="!r.email"
-                    prepend-icon="mdi-email-outline"
-                    @click="r.email && openSendDialogForOne(r, 'email')"
-                  >
-                    <v-list-item-title>
-                      Enviar email
-                      <span v-if="!r.email" class="text-caption text-medium-emphasis ms-1">(sin email)</span>
-                    </v-list-item-title>
-                  </v-list-item>
-                  <v-list-item
-                    :disabled="!r.phone"
-                    prepend-icon="mdi-whatsapp"
-                    @click="r.phone && openSendDialogForOne(r, 'whatsapp')"
-                  >
-                    <v-list-item-title>
-                      Enviar WhatsApp
-                      <span v-if="!r.phone" class="text-caption text-medium-emphasis ms-1">(sin tel)</span>
-                    </v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item
-                    prepend-icon="mdi-bell-ring-outline"
-                    @click="quickToggleAcceptsPromos(r)"
-                  >
-                    <v-list-item-title>{{ r.accepts_promos ? 'Quitar de promos' : 'Marcar para promos' }}</v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item
-                    prepend-icon="mdi-trash-can-outline"
-                    @click="confirmDelete(r)"
-                    class="text-error"
-                  >
-                    <v-list-item-title>{{ r.is_active ? 'Desactivar' : 'Eliminar definitivo' }}</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- PAGINACIÓN -->
-      <div v-if="meta.total > filters.limit" class="cad-pager">
-        <v-btn size="small" variant="tonal" :disabled="filters.page <= 1" @click="goPage(filters.page - 1)">
-          <v-icon start>mdi-chevron-left</v-icon>Anterior
-        </v-btn>
-        <span class="cad-pager__info">Pág <b>{{ filters.page }}</b> de <b>{{ totalPages }}</b></span>
-        <v-btn size="small" variant="tonal" :disabled="filters.page >= totalPages" @click="goPage(filters.page + 1)">
-          Siguiente<v-icon end>mdi-chevron-right</v-icon>
-        </v-btn>
+    <!-- ── CONTENT ──────────────────────────────────────── -->
+    <section class="lp-content">
+      <div class="lp-content__head">
+        <div class="lp-content__head-left">
+          <span class="lp-content__title">Listado</span>
+          <v-chip size="x-small" variant="tonal">{{ items.length }} de {{ meta.total }}</v-chip>
+        </div>
       </div>
-    </div>
+
+      <div class="lp-content__body lp-content__body--flush" :class="{ 'lp-content__body--loading': loading && items.length }">
+        <table class="cad-table">
+          <thead>
+            <tr>
+              <th v-if="isAdmin" class="col-check">
+                <v-checkbox
+                  :model-value="allOnPageSelected"
+                  :indeterminate="!allOnPageSelected && someOnPageSelected"
+                  hide-details
+                  density="compact"
+                  color="primary"
+                  @click.stop="toggleSelectAllOnPage"
+                />
+              </th>
+              <th>Nombre</th>
+              <th>Documento</th>
+              <th>Contacto</th>
+              <th>Tipo</th>
+              <th class="num">Compras</th>
+              <th class="num">Total</th>
+              <th>Última</th>
+              <th>Promos</th>
+              <th class="cad-action"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading && !items.length">
+              <td :colspan="isAdmin ? 10 : 9" class="cad-loading">
+                <v-progress-circular indeterminate size="22" color="primary" />
+              </td>
+            </tr>
+            <tr v-else-if="!items.length">
+              <td :colspan="isAdmin ? 10 : 9" class="cad-empty">
+                <v-icon size="36" color="medium-emphasis">mdi-account-search-outline</v-icon>
+                <div>Sin clientes para estos filtros.</div>
+                <v-btn
+                  v-if="isAdmin && !filters.q"
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  class="mt-2"
+                  prepend-icon="mdi-database-sync-outline"
+                  @click="onBackfill"
+                >
+                  Importar desde historial de ventas
+                </v-btn>
+              </td>
+            </tr>
+            <tr
+              v-for="r in items"
+              :key="r.id"
+              class="cad-row"
+              :class="{
+                'is-selected': isSelected(r.id),
+                'is-inactive': !r.is_active,
+                'is-uncontactable': !hasContact(r),
+              }"
+              @click="openEdit(r)"
+            >
+              <td v-if="isAdmin" class="cad-check" @click.stop>
+                <v-tooltip v-if="!hasContact(r)" location="right" text="Sin contacto cargado — agregale email o teléfono primero">
+                  <template #activator="{ props: tipProps }">
+                    <span v-bind="tipProps" class="cad-check__disabled">
+                      <v-icon size="14" color="medium-emphasis">mdi-checkbox-blank-off-outline</v-icon>
+                    </span>
+                  </template>
+                </v-tooltip>
+                <v-checkbox
+                  v-else
+                  :model-value="isSelected(r.id)"
+                  hide-details
+                  density="compact"
+                  color="primary"
+                  @update:model-value="toggleSelect(r.id)"
+                />
+              </td>
+              <td>
+                <div class="cad-name">
+                  <div class="cad-name__avatar">{{ initialsOf(r) }}</div>
+                  <div>
+                    <div class="cad-name__main">{{ r.display_name }}</div>
+                    <div v-if="r.tags" class="cad-name__tags">{{ r.tags }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="cad-doc">
+                <span v-if="r.doc_number">
+                  <span class="cad-doc__type">{{ r.doc_type || 'DNI' }}</span>
+                  <span class="cad-doc__num">{{ r.doc_number }}</span>
+                </span>
+                <span v-else class="cad-dim">—</span>
+              </td>
+              <td>
+                <div v-if="r.email" class="cad-contact">
+                  <v-icon size="12">mdi-email-outline</v-icon>{{ r.email }}
+                </div>
+                <div v-if="r.phone" class="cad-contact">
+                  <v-icon size="12">mdi-phone-outline</v-icon>{{ r.phone }}
+                </div>
+                <span v-if="!r.email && !r.phone" class="cad-dim">—</span>
+              </td>
+              <td>
+                <span class="cad-type-chip" :class="`cad-type-chip--${r.customer_type?.toLowerCase()}`">
+                  {{ typeLabel(r.customer_type) }}
+                </span>
+              </td>
+              <td class="num">{{ r.stats?.sales_count || 0 }}</td>
+              <td class="num"><b>${{ fmtNum(r.stats?.sales_total) }}</b></td>
+              <td>{{ fmtDate(r.stats?.last_sold_at) }}</td>
+              <td>
+                <v-icon v-if="r.accepts_promos" size="16" color="success">mdi-bell-ring</v-icon>
+                <v-icon v-else size="16" color="medium-emphasis">mdi-bell-off-outline</v-icon>
+              </td>
+              <td class="cad-action" @click.stop>
+                <v-menu :close-on-content-click="true">
+                  <template #activator="{ props: menuProps }">
+                    <v-btn v-bind="menuProps" icon="mdi-dots-vertical" variant="text" size="small" />
+                  </template>
+                  <v-list density="compact" nav>
+                    <v-list-item prepend-icon="mdi-card-account-details-outline" @click="openEdit(r)">
+                      <v-list-item-title>Ver detalle</v-list-item-title>
+                    </v-list-item>
+                    <template v-if="isAdmin">
+                      <v-divider />
+                      <v-list-item
+                        :disabled="!r.email"
+                        prepend-icon="mdi-email-outline"
+                        @click="r.email && openSendDialogForOne(r, 'email')"
+                      >
+                        <v-list-item-title>
+                          Enviar email
+                          <span v-if="!r.email" class="text-caption text-medium-emphasis ms-1">(sin email)</span>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-list-item
+                        :disabled="!r.phone"
+                        prepend-icon="mdi-whatsapp"
+                        @click="r.phone && openSendDialogForOne(r, 'whatsapp')"
+                      >
+                        <v-list-item-title>
+                          Enviar WhatsApp
+                          <span v-if="!r.phone" class="text-caption text-medium-emphasis ms-1">(sin tel)</span>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-divider />
+                      <v-list-item
+                        prepend-icon="mdi-bell-ring-outline"
+                        @click="quickToggleAcceptsPromos(r)"
+                      >
+                        <v-list-item-title>{{ r.accepts_promos ? 'Quitar de promos' : 'Marcar para promos' }}</v-list-item-title>
+                      </v-list-item>
+                      <v-divider />
+                      <v-list-item
+                        prepend-icon="mdi-trash-can-outline"
+                        @click="confirmDelete(r)"
+                        class="text-error"
+                      >
+                        <v-list-item-title>{{ r.is_active ? 'Desactivar' : 'Eliminar definitivo' }}</v-list-item-title>
+                      </v-list-item>
+                    </template>
+                  </v-list>
+                </v-menu>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── PAGINATION ───────────────────────────────────── -->
+    <footer v-if="meta.total > 0" class="lp-pagination">
+      <span class="lp-pagination__info">{{ items.length }} de {{ meta.total }}</span>
+      <v-pagination
+        v-model="filters.page"
+        :length="totalPages"
+        :total-visible="7"
+        rounded="lg"
+        size="small"
+        @update:modelValue="reload"
+      />
+    </footer>
 
     <!-- DIALOG: edit/create -->
     <v-dialog v-model="editDialog.show" max-width="640" persistent>
@@ -390,7 +463,6 @@
             />
           </div>
 
-          <!-- Stats si es edición -->
           <div v-if="editDialog.id && editDialog.stats" class="cad-edit__stats">
             <div class="cad-edit__stat">
               <span class="cad-edit__stat-k">Compras</span>
@@ -525,22 +597,48 @@
       @close="testEmailDialog.show = false"
     />
 
-    <v-snackbar v-model="snack.show" :timeout="3500" rounded="xl">{{ snack.text }}</v-snackbar>
+    <v-snackbar v-model="snack.show" :timeout="3500" rounded="xl" location="bottom right">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useAuthStore } from "@/app/store/auth.store";
 
 const router = useRouter();
+const auth = useAuthStore();
+
 import {
   listCustomers, getCustomer, createCustomer, updateCustomer,
   deleteCustomer, mergeCustomers, backfillCustomers,
+  getCustomersStats,
 } from "../services/customers.service";
 import SendMessageDialog from "../components/SendMessageDialog.vue";
 import MessageTemplatesDialog from "../components/MessageTemplatesDialog.vue";
 import TestEmailDialog from "../components/TestEmailDialog.vue";
+
+const isAdmin = computed(() => {
+  const u = auth?.user || {};
+  if (u.is_admin === true || u.isAdmin === true || u.admin === true) return true;
+  const roleId = Number(u.role_id || u.roleId || u.perfil_id || 0);
+  if (Number.isFinite(roleId) && roleId === 1) return true;
+  const raw = [];
+  const push = (r) => {
+    if (!r) return;
+    if (typeof r === "string") raw.push(r);
+    else if (typeof r?.name === "string") raw.push(r.name);
+    else if (typeof r?.role === "string") raw.push(r.role);
+    else if (typeof r?.role?.name === "string") raw.push(r.role.name);
+  };
+  if (Array.isArray(u.roles)) u.roles.forEach(push);
+  if (u.role) push(u.role);
+  if (u.perfil) push(u.perfil);
+  const roles = raw.map((s) => String(s || "").trim().toLowerCase()).filter(Boolean);
+  return roles.some((r) =>
+    ["admin", "administrador", "administrator", "super_admin", "superadmin", "root", "owner", "dueño", "dueno"].includes(r),
+  );
+});
 
 const customerTypeItems = [
   { title: "Consumidor final", value: "CONSUMIDOR_FINAL" },
@@ -592,7 +690,6 @@ function consumePreselectedPromoIds() {
 
 const incomingPromoIds = consumePreselectedPromoIds();
 if (incomingPromoIds.length) {
-  // Mostramos un hint visible al usuario para que sepa qué pasó.
   setTimeout(() => {
     snack.show = true;
     snack.text = `${incomingPromoIds.length} promo(s) listas. Seleccioná clientes y hacé click en "Email · N".`;
@@ -601,8 +698,6 @@ if (incomingPromoIds.length) {
 
 function onSendDialogClose() {
   sendDialog.show = false;
-  // Después de cerrar limpiamos las promos pre-seleccionadas para que
-  // un siguiente envío manual desde acá no las arrastre por accidente.
   sendDialog.initialPromoIds = [];
   sessionStorage.removeItem("crm.preselectedPromoIds");
 }
@@ -634,15 +729,9 @@ function emptyForm() {
 const totalPages = computed(() => Math.max(1, Math.ceil((meta.value.total || 0) / (filters.limit || 25))));
 const selectionCount = computed(() => selectedIds.value.size);
 
-// ── Cap anti-spam para envíos masivos ─────────────────────────────────────
-// Limitamos los envíos masivos para mantener una buena reputación de remitente
-// (Gmail/Outlook ranquean negativo si mandás de a 100 desde una IP nueva), y
-// para que la operación quede prolija desde el panel. Si necesitás llegar a más
-// clientes, se hace en tandas de 10.
 const MAX_BULK_RECIPIENTS = 10;
 const bulkAtCap = computed(() => selectionCount.value >= MAX_BULK_RECIPIENTS);
 
-// Filtro de los seleccionados con email/teléfono válido — para los botones bulk.
 const selectedRows = computed(() =>
   items.value.filter((r) => selectedIds.value.has(r.id))
 );
@@ -652,8 +741,6 @@ const bulkEmailableCount = computed(() =>
 const bulkWhatsAppableCount = computed(() =>
   selectedRows.value.filter((r) => !!r.phone).length
 );
-// "Todos seleccionados en la página" considera SOLO los que tienen contacto.
-// Los sin email/teléfono no son seleccionables, así que no entran en el conteo.
 const contactableOnPage = computed(() =>
   items.value.filter((r) => !!(r.email || r.phone))
 );
@@ -666,6 +753,13 @@ const someOnPageSelected = computed(() =>
 
 function toast(text) { snack.show = true; snack.text = String(text || ""); }
 function fmtNum(v) { return new Intl.NumberFormat("es-AR").format(Number(v || 0)); }
+function fmtInt(v) { return Number(v || 0).toLocaleString('es'); }
+function pct(part, whole) {
+  const w = Number(whole || 0);
+  if (!w) return '0%';
+  const p = Math.round((Number(part || 0) / w) * 100);
+  return `${p}%`;
+}
 function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -682,6 +776,42 @@ function initialsOf(r) {
 function typeLabel(v) {
   const found = customerTypeItems.find((i) => i.value === v);
   return found?.title || v || "—";
+}
+
+/* ── STATS ── */
+const statsLoading = ref(false);
+const stats = ref({
+  ready: false,
+  total: 0,
+  with_contact: 0,
+  accepts_promos: 0,
+  with_purchases: 0,
+});
+
+async function fetchStats() {
+  statsLoading.value = true;
+  try {
+    const params = {
+      q: filters.q,
+      customer_type: filters.customer_type || "",
+    };
+    const { data } = await getCustomersStats(params);
+    if (data?.ok && data.data) {
+      stats.value = {
+        ready: true,
+        total: Number(data.data.total || 0),
+        with_contact: Number(data.data.with_contact || 0),
+        accepts_promos: Number(data.data.accepts_promos || 0),
+        with_purchases: Number(data.data.with_purchases || 0),
+      };
+    } else {
+      stats.value.ready = false;
+    }
+  } catch {
+    stats.value.ready = false;
+  } finally {
+    statsLoading.value = false;
+  }
 }
 
 async function reload() {
@@ -704,6 +834,7 @@ async function reload() {
   } finally {
     loading.value = false;
   }
+  fetchStats();
 }
 
 let searchTimer = null;
@@ -714,19 +845,12 @@ function onSearch() {
 watch(() => filters.customer_type, () => { filters.page = 1; reload(); });
 watch(() => filters.accepts_promos, () => { filters.page = 1; reload(); });
 
-function goPage(p) {
-  filters.page = Math.max(1, Math.min(totalPages.value, p));
-  reload();
-}
-
-// ── Selección (con cap anti-spam + validación de contacto) ──
+// Selección
 function hasContact(r) { return !!(r?.email || r?.phone); }
-
 function isSelected(id) { return selectedIds.value.has(id); }
 function toggleSelect(id) {
   const row = items.value.find((r) => r.id === id);
   if (!row) return;
-  // No permitir seleccionar a quien no tiene contacto.
   if (!hasContact(row)) {
     toast("Este cliente no tiene email ni teléfono. Editalo y agregale uno antes de incluirlo en envíos.");
     return;
@@ -768,22 +892,18 @@ function toggleSelectAllOnPage() {
 }
 function clearSelection() { selectedIds.value = new Set(); }
 
-// ── Crear / editar ──
+// Crear / editar
 function openCreate() {
   Object.assign(form, emptyForm());
   editDialog.id = null;
   editDialog.stats = null;
   editDialog.show = true;
 }
-// Reemplazado: el modal de edit fue migrado a una vista propia
-// (/admin/clientes/:id). Acá solo navegamos a esa página.
 function openEdit(row) {
   if (!row?.id) return;
   router.push({ name: "adminCustomerDetail", params: { id: row.id } });
 }
 
-// Mantengo la función vieja como _openEditLegacy por si necesito referencia,
-// pero ya no se llama desde ningún lado. (Puede borrarse en limpieza posterior.)
 async function _openEditLegacy(row) {
   editDialog.id = row.id;
   editDialog.stats = row.stats || null;
@@ -807,7 +927,6 @@ async function _openEditLegacy(row) {
     is_active:  row.is_active !== false,
   });
   editDialog.show = true;
-  // Stats frescos del backend (si la lista no los traía con detalle).
   try {
     const { data } = await getCustomer(row.id);
     if (data?.data) {
@@ -845,14 +964,13 @@ async function quickToggleAcceptsPromos(row) {
   }
 }
 
-// ── Merge ──
+// Merge
 function openMerge() {
   const cands = items.value.filter((r) => selectedIds.value.has(r.id));
   if (cands.length < 2) {
     toast("Seleccioná al menos 2 clientes para unificar");
     return;
   }
-  // Default target: el que más compras tiene.
   const sorted = [...cands].sort(
     (a, b) => (b.stats?.sales_count || 0) - (a.stats?.sales_count || 0)
   );
@@ -880,7 +998,7 @@ async function onMerge() {
   }
 }
 
-// ── Delete ──
+// Delete
 function confirmDelete(row) {
   deleteDialog.row = row;
   deleteDialog.show = true;
@@ -890,7 +1008,6 @@ async function doDelete() {
   if (!row?.id) return;
   busyDelete.value = true;
   try {
-    // Si ya está inactivo, hard-delete (force=1). Si está activo, soft-delete.
     await deleteCustomer(row.id, { force: !row.is_active });
     toast(row.is_active ? "Cliente desactivado" : "Cliente eliminado");
     deleteDialog.show = false;
@@ -902,7 +1019,7 @@ async function doDelete() {
   }
 }
 
-// ── CRM: envío de mensajes ──────────────────────────────────────────────
+// CRM: envío de mensajes
 function openSendDialogForOne(row, channel) {
   if (channel === "email" && !row.email) {
     toast("Este cliente no tiene email cargado");
@@ -924,7 +1041,6 @@ function openSendDialogForOne(row, channel) {
 }
 
 function openSendDialog(channel, useSelection = false) {
-  // Si useSelection=true, usamos los seleccionados (filtrando por canal).
   const rows = useSelection
     ? selectedRows.value.filter((r) => channel === "email" ? !!r.email : !!r.phone)
     : [];
@@ -939,7 +1055,6 @@ function openSendDialog(channel, useSelection = false) {
     phone: r.phone,
   }));
   sendDialog.channel = channel;
-  // Si veniste desde Promos con promos pre-elegidas, las inyectamos al dialog.
   sendDialog.initialPromoIds = channel === "email" ? incomingPromoIds : [];
   sendDialog.show = true;
 }
@@ -957,10 +1072,9 @@ function onMessagesSent(payload) {
 
 function onTemplatesChanged() {
   // Las plantillas se recargan dentro de cada dialog que las consume.
-  // Acá solo necesitamos cerrar el dialog si está abierto.
 }
 
-// ── Backfill ──
+// Backfill
 async function onBackfill() {
   busyBackfill.value = true;
   try {
@@ -978,63 +1092,165 @@ onMounted(reload);
 </script>
 
 <style scoped>
-.cad {
+/* ============================================================
+   LIST PAGE — patrón estandarizado (lp-*)
+   Compartido con Productos / Ventas / Categorías. Sincronizar.
+   ============================================================ */
+
+.lp {
+  --lp-gap: 14px;
+  --lp-radius: 14px;
+  --lp-radius-sm: 12px;
+  --lp-card-bg: rgb(var(--v-theme-surface));
+  --lp-card-border: rgba(var(--v-border-color), var(--v-border-opacity));
+  --lp-muted: rgba(var(--v-theme-on-surface), 0.55);
+  --lp-strong: rgba(var(--v-theme-on-surface), 0.9);
+
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-bottom: 24px;
+  gap: var(--lp-gap);
+  min-width: 0;
 }
 
-.cad-head {
+/* HEADER */
+.lp-header {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 2px 0;
+}
+.lp-header__left  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lp-title {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.lp-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-muted);
+  flex-wrap: wrap;
+}
+.lp-meta__strong {
+  font-weight: 800;
+  color: var(--lp-strong);
+  font-feature-settings: "tnum";
+}
+.lp-meta__sep { opacity: 0.4; }
+
+/* STATS KPI (4 únicos, sin method-cards) */
+.lp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.lp-kpi {
+  display: flex;
   align-items: flex-start;
   gap: 12px;
-  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
 }
-.cad-head__left { display: flex; align-items: center; gap: 12px; }
-.cad-title { font-size: 22px; font-weight: 900; line-height: 1.1; margin: 0; }
-.cad-subtitle { font-size: 12px; opacity: 0.65; font-weight: 500; }
-.cad-head__right { display: flex; gap: 8px; flex-wrap: wrap; }
+.lp-kpi__badge {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  margin-top: 2px;
+}
+.lp-kpi__badge--primary { background: rgb(var(--v-theme-primary)); }
+.lp-kpi__badge--green   { background: rgb(var(--v-theme-success)); }
+.lp-kpi__badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
+.lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
+.lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lp-kpi__lbl   {
+  font-size: 11px; font-weight: 700;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.lp-kpi__val   {
+  font-size: 20px; font-weight: 900;
+  line-height: 1.2;
+  margin-top: 4px;
+  font-feature-settings: "tnum";
+}
+.lp-kpi__sub   { font-size: 11px; opacity: 0.4; margin-top: 3px; }
+.lp-kpi__skel  {
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  margin-top: 4px;
+  animation: lp-pulse 1.4s ease infinite;
+}
+@keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-.cad-filters {
+/* ALERT */
+.lp-alert { margin-bottom: 0 !important; }
+
+/* FILTER BAR */
+.lp-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
+}
+.lp-filters__primary {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-.cad-search { flex: 1; min-width: 240px; max-width: 480px; }
-.cad-type { min-width: 200px; }
-.cad-count {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.65;
-  letter-spacing: 0.02em;
-}
+.lp-filters__search { flex: 1 1 280px; min-width: 220px; }
+.lp-filters__search :deep(.v-field) { border-radius: 10px; }
+.lp-filters__primary-field { flex: 0 0 200px; min-width: 160px; }
+.lp-filters__check { flex-shrink: 0; }
 
-.cad-bulk {
+/* BULK BAR */
+.lp-bulk {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  border-radius: 14px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  border: 1.5px solid rgba(var(--v-theme-primary), 0.35);
+  border-radius: var(--lp-radius);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid var(--lp-card-border);
   flex-wrap: wrap;
-  transition: background 0.18s, border-color 0.18s;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
 }
-.cad-bulk--cap {
+.lp-bulk--active {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.36);
+  box-shadow: 0 4px 14px rgba(var(--v-theme-primary), 0.14);
+}
+.lp-bulk--cap {
   background: rgba(var(--v-theme-warning), 0.10);
   border-color: rgba(var(--v-theme-warning), 0.5);
 }
-.cad-bulk__left {
+.lp-bulk__select {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   font-size: 13px; font-weight: 600;
+}
+.lp-bulk__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .cad-bulk__counter {
   display: flex; flex-direction: column; gap: 4px;
@@ -1083,7 +1299,7 @@ onMounted(reload);
   color: rgba(var(--v-theme-on-surface), 0.65);
   letter-spacing: 0.01em;
 }
-.cad-bulk--cap .cad-bulk__hint {
+.lp-bulk--cap .cad-bulk__hint {
   color: rgb(var(--v-theme-warning));
 }
 .cad-bulk__clear {
@@ -1095,29 +1311,48 @@ onMounted(reload);
   transition: background 0.1s;
 }
 .cad-bulk__clear:hover { background: rgba(var(--v-theme-primary), 0.12); }
-.cad-bulk__right {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-}
 
-/* Checkbox deshabilitado para clientes sin contacto */
-.cad-check__disabled {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.is-uncontactable .cad-name__main {
-  opacity: 0.78;
-}
-
-/* Tabla */
-.cad-table-wrap {
-  border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+/* CONTENT WRAPPER */
+.lp-content {
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
   overflow: hidden;
 }
+.lp-content__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--lp-card-border);
+  background: rgba(var(--v-theme-on-surface), 0.015);
+}
+.lp-content__head-left { display: flex; align-items: center; gap: 8px; }
+.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__body { padding: 12px; transition: opacity 0.2s; }
+.lp-content__body--flush { padding: 0; }
+.lp-content__body--loading { opacity: 0.7; pointer-events: none; }
+
+/* PAGINATION */
+.lp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 6px 8px;
+}
+.lp-pagination__info {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  font-feature-settings: "tnum";
+}
+
+/* ============================================================
+   CLIENTES — específico (tabla, avatares, chips)
+   ============================================================ */
+
 .cad-table {
   width: 100%;
   border-collapse: collapse;
@@ -1192,17 +1427,20 @@ onMounted(reload);
 .cad-type-chip--exento            { background: rgba(139, 92, 246, 0.14); color: #8b5cf6; }
 .cad-type-chip--otro              { background: rgba(var(--v-theme-on-surface), 0.08); color: rgba(var(--v-theme-on-surface), 0.7); }
 
-.cad-pager {
-  display: flex; justify-content: center; align-items: center;
-  gap: 12px; padding: 12px;
+.cad-check__disabled {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: not-allowed;
+  opacity: 0.55;
 }
-.cad-pager__info { font-size: 12px; opacity: 0.65; }
+.is-uncontactable .cad-name__main { opacity: 0.78; }
 
-/* Edit dialog */
+/* Edit dialog (sin tocar lógica) */
 .cad-edit__head {
   display: flex; align-items: center; gap: 12px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid var(--lp-card-border);
 }
 .cad-edit__eyebrow {
   margin: 0; font-size: 11px; font-weight: 700;
@@ -1224,7 +1462,7 @@ onMounted(reload);
 }
 .cad-edit__stat {
   background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid var(--lp-card-border);
   border-radius: 10px;
   padding: 8px 10px;
   display: flex;
@@ -1246,9 +1484,25 @@ onMounted(reload);
 }
 .cad-help { font-size: 12.5px; opacity: 0.85; line-height: 1.5; margin-bottom: 8px; }
 
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .lp-stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 960px) {
+  .lp { gap: 12px; }
+  .lp-filters { padding: 10px 12px; }
+}
 @media (max-width: 720px) {
   .cad-edit__grid { grid-template-columns: 1fr; }
   .cad-edit__full { grid-column: 1; }
   .cad-edit__stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .lp-title { font-size: 18px; }
+  .lp-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .lp-kpi__val { font-size: 16px; }
+  .lp-kpi__badge { width: 30px; height: 30px; }
+  .lp-filters__primary-field { flex: 0 0 100%; }
+  .lp-filters__check { width: 100%; }
 }
 </style>

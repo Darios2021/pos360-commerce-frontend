@@ -1,108 +1,347 @@
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 
 <template>
-  <div class="plp">
+  <div class="lp">
 
-    <!-- TOP BAR -->
-    <div class="plp-top">
-      <div class="plp-top-left">
-        <div class="plp-title">Productos</div>
-        <div class="plp-meta">
-          <span class="plp-meta-strong">{{ meta.total.toLocaleString('es') }}</span>
-          <span class="plp-meta-sep">·</span>
+    <!-- ── HEADER ───────────────────────────────────────── -->
+    <header class="lp-header">
+      <div class="lp-header__left">
+        <h1 class="lp-title">Productos</h1>
+        <div class="lp-meta">
+          <span class="lp-meta__strong">{{ meta.total.toLocaleString('es') }}</span>
+          <span class="lp-meta__sep">·</span>
           <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
         </div>
       </div>
-      <div class="plp-top-right">
-        <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="lg" class="plp-view-toggle" v-if="smAndUp">
-          <v-btn value="grid" size="small"><v-icon size="18">mdi-view-grid-outline</v-icon></v-btn>
-          <v-btn value="list" size="small"><v-icon size="18">mdi-format-list-bulleted</v-icon></v-btn>
+      <div class="lp-header__right">
+        <v-btn-toggle
+          v-if="smAndUp"
+          v-model="viewMode"
+          mandatory
+          density="compact"
+          rounded="lg"
+          class="lp-view-toggle"
+        >
+          <v-btn value="grid" size="small" title="Vista en tarjetas">
+            <v-icon size="18">mdi-view-grid-outline</v-icon>
+          </v-btn>
+          <v-btn value="list" size="small" title="Vista en lista">
+            <v-icon size="18">mdi-format-list-bulleted</v-icon>
+          </v-btn>
         </v-btn-toggle>
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate" rounded="lg" size="small">
+        <v-btn
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-plus"
+          rounded="lg"
+          size="small"
+          class="lp-cta"
+          @click="openCreate"
+        >
           Nuevo
         </v-btn>
       </div>
-    </div>
+    </header>
 
-    <!-- SEARCH -->
-    <div class="plp-searchbar">
-      <v-text-field v-model="f.q" placeholder="Buscar por nombre, SKU, marca, modelo..." variant="outlined"
-        density="comfortable" hide-details clearable prepend-inner-icon="mdi-magnify" class="plp-search-input"
-        @input="debouncedSearch" @click:clear="clearSearch" @keyup.enter="applyFilters" />
-    </div>
-
-    <!-- FILTER PANEL (siempre visible, agrupado) -->
-    <div class="plp-filter-panel">
-      <div class="plp-filter-head">
-        <div class="plp-filter-head-left">
-          <v-icon size="16" class="plp-filter-head-icon">mdi-filter-variant</v-icon>
-          <span class="plp-filter-head-title">Filtros</span>
-          <span v-if="activeFiltersCount > 0" class="plp-filter-count">{{ activeFiltersCount }}</span>
+    <!-- ── STATS KPI ────────────────────────────────────── -->
+    <section class="lp-stats">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--primary">
+          <v-icon size="16" color="white">mdi-package-variant-closed</v-icon>
         </div>
-        <button v-if="activeFiltersCount > 0" class="plp-filter-clear" @click="clearFilters">
-          <v-icon size="13">mdi-close</v-icon>
-          Limpiar
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Total</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.total) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">Productos en filtro actual</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--green">
+          <v-icon size="16" color="white">mdi-check-circle-outline</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Activos</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.active) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.active, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--orange">
+          <v-icon size="16" color="white">mdi-alert-circle-outline</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Sin stock</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.without_stock) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.without_stock, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--indigo">
+          <v-icon size="16" color="white">mdi-currency-usd-off</v-icon>
+        </div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Sin precio</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.without_price) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.without_price, stats.total)} del total` : '' }}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── METHOD-LIKE CARDS (cobertura) ────────────────── -->
+    <section class="lp-methods">
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--cash"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Con stock</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_stock) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--card"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Con precio</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_price) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--mp"><v-icon size="14" color="white">mdi-image-multiple-outline</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Con imágenes</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_images) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--transfer"><v-icon size="14" color="white">mdi-image-off-outline</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Sin imágenes</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.without_images) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--sjt"><v-icon size="14" color="white">mdi-eye-off-outline</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Inactivos</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.inactive) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FILTER BAR ───────────────────────────────────── -->
+    <section class="lp-filters">
+      <!-- Fila primaria: search + status + toggle más filtros -->
+      <div class="lp-filters__primary">
+        <v-text-field
+          v-model="f.q"
+          placeholder="Buscar por nombre, SKU, marca, modelo..."
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          class="lp-filters__search"
+          @input="debouncedSearch"
+          @click:clear="clearSearch"
+          @keyup.enter="applyFilters"
+        />
+        <v-select
+          v-model="f.status"
+          :items="statusItems"
+          item-title="title"
+          item-value="value"
+          label="Estado"
+          variant="outlined"
+          density="compact"
+          hide-details
+          class="lp-filters__primary-field"
+          @update:modelValue="applyFilters"
+        />
+        <button
+          type="button"
+          class="lp-filters__more"
+          :class="{ 'lp-filters__more--open': advancedOpen }"
+          @click="toggleAdvanced"
+        >
+          <v-icon size="15">mdi-tune-variant</v-icon>
+          <span>Más filtros</span>
+          <span v-if="activeAdvancedCount > 0" class="lp-filters__more-count">{{ activeAdvancedCount }}</span>
+          <v-icon size="14" class="lp-filters__more-chev">mdi-chevron-down</v-icon>
         </button>
       </div>
 
-      <div class="plp-filter-grid">
-        <div v-if="isAdmin" class="plp-filter-cell">
-          <v-select v-model="f.branch_id" :items="branchItems" item-title="title" item-value="value"
-            label="Sucursal" variant="outlined" density="compact" hide-details clearable @update:modelValue="applyFilters" />
+      <!-- Filtros avanzados colapsables -->
+      <v-expand-transition>
+        <div v-show="advancedOpen" class="lp-filters__advanced">
+          <div class="lp-filters__grid">
+            <div v-if="isAdmin" class="lp-filters__cell">
+              <v-select
+                v-model="f.branch_id"
+                :items="branchItems"
+                item-title="title"
+                item-value="value"
+                label="Sucursal"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                @update:modelValue="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.category_id"
+                :items="categoryItems"
+                item-title="title"
+                item-value="value"
+                label="Rubro"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                @update:modelValue="onCategoryChange"
+              />
+            </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.subcategory_id"
+                :items="subcategoryItems"
+                item-title="title"
+                item-value="value"
+                label="Subrubro"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                :disabled="!f.category_id"
+                @update:modelValue="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.stock"
+                :items="stockItems"
+                item-title="title"
+                item-value="value"
+                label="Stock"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:modelValue="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.price_presence"
+                :items="pricePresenceItems"
+                item-title="title"
+                item-value="value"
+                label="Precio"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:modelValue="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.images"
+                :items="imagesItems"
+                item-title="title"
+                item-value="value"
+                label="Imágenes"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:modelValue="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell lp-filters__cell--range">
+              <v-text-field
+                v-model="f.price_min"
+                label="Mín $"
+                type="number"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                @keyup.enter="applyFilters"
+                @blur="applyFilters"
+              />
+              <span class="lp-filters__range-sep">—</span>
+              <v-text-field
+                v-model="f.price_max"
+                label="Máx $"
+                type="number"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                @keyup.enter="applyFilters"
+                @blur="applyFilters"
+              />
+            </div>
+            <div class="lp-filters__cell lp-filters__cell--per-page">
+              <v-select
+                v-model="limit"
+                :items="[12, 24, 48, 96]"
+                label="Por página"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:modelValue="onLimitChange"
+              />
+            </div>
+          </div>
         </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.category_id" :items="categoryItems" item-title="title" item-value="value"
-            label="Rubro" variant="outlined" density="compact" hide-details clearable @update:modelValue="onCategoryChange" />
-        </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.subcategory_id" :items="subcategoryItems" item-title="title" item-value="value"
-            label="Subrubro" variant="outlined" density="compact" hide-details clearable
-            :disabled="!f.category_id" @update:modelValue="applyFilters" />
-        </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.status" :items="statusItems" item-title="title" item-value="value"
-            label="Estado" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-        </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.stock" :items="stockItems" item-title="title" item-value="value"
-            label="Stock" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-        </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.price_presence" :items="pricePresenceItems" item-title="title" item-value="value"
-            label="Precio" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-        </div>
-        <div class="plp-filter-cell">
-          <v-select v-model="f.images" :items="imagesItems" item-title="title" item-value="value"
-            label="Imágenes" variant="outlined" density="compact" hide-details @update:modelValue="applyFilters" />
-        </div>
-        <div class="plp-filter-cell plp-filter-cell--range">
-          <v-text-field v-model="f.price_min" label="Mín $" variant="outlined" density="compact"
-            type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
-          <span class="plp-range-sep">—</span>
-          <v-text-field v-model="f.price_max" label="Máx $" variant="outlined" density="compact"
-            type="number" hide-details clearable @keyup.enter="applyFilters" @blur="applyFilters" />
-        </div>
-        <div class="plp-filter-cell plp-filter-cell--per-page">
-          <v-select v-model="limit" :items="[12, 24, 48, 96]" label="Por pág." variant="outlined"
-            density="compact" hide-details @update:modelValue="onLimitChange" />
-        </div>
-      </div>
+      </v-expand-transition>
 
-      <!-- Chips activos embebidos -->
-      <div v-if="activeFilterChips.length" class="plp-filter-chips">
-        <v-chip v-for="chip in activeFilterChips" :key="chip.key" size="small" closable variant="tonal"
-          color="primary" class="plp-chip" @click:close="removeFilter(chip.key)">
+      <!-- Chips activos -->
+      <div v-if="activeFilterChips.length" class="lp-filters__chips">
+        <v-chip
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          size="small"
+          variant="tonal"
+          color="primary"
+          closable
+          class="lp-filters__chip"
+          @click:close="removeFilter(chip.key)"
+        >
           {{ chip.label }}
         </v-chip>
+        <button
+          v-if="activeFilterChips.length > 1"
+          type="button"
+          class="lp-filters__chips-clear"
+          @click="clearFilters"
+        >
+          Limpiar todo
+        </button>
       </div>
-    </div>
+    </section>
 
-    <!-- BULK ACTION BAR (aparece al seleccionar) -->
-    <div class="plp-bulk-bar" v-if="items.length">
-      <label class="plp-bulk-select" @click.stop>
-        <v-checkbox-btn :model-value="allSelected" :indeterminate="someSelected" @update:modelValue="toggleSelectAll"
-          density="compact" hide-details />
-        <span class="plp-bulk-select-label">
+    <!-- ── BULK ACTION BAR ──────────────────────────────── -->
+    <div v-if="items.length" class="lp-bulk" :class="{ 'lp-bulk--active': selectedIds.length }">
+      <label class="lp-bulk__select" @click.stop>
+        <v-checkbox-btn
+          :model-value="allSelected"
+          :indeterminate="someSelected"
+          density="compact"
+          hide-details
+          @update:modelValue="toggleSelectAll"
+        />
+        <span class="lp-bulk__label">
           <template v-if="selectedIds.length">
             <strong>{{ selectedIds.length }}</strong> seleccionado{{ selectedIds.length === 1 ? '' : 's' }}
           </template>
@@ -112,7 +351,7 @@
         </span>
       </label>
 
-      <div v-if="selectedIds.length" class="plp-bulk-actions">
+      <div v-if="selectedIds.length" class="lp-bulk__actions">
         <v-btn variant="text" size="small" rounded="lg" @click="selectedIds = []">
           <v-icon size="16" start>mdi-close</v-icon>
           Cancelar
@@ -130,113 +369,239 @@
       </div>
     </div>
 
-    <!-- ERROR -->
-    <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3" density="compact">{{ products.error }}</v-alert>
+    <!-- ── ERROR ────────────────────────────────────────── -->
+    <v-alert v-if="products.error" type="error" variant="tonal" density="compact" class="lp-alert">
+      {{ products.error }}
+    </v-alert>
 
-    <!-- SKELETON -->
-    <div v-if="loading && !items.length" class="plp-skeleton-grid">
-      <div v-for="n in 8" :key="n" class="plp-skeleton-card" />
-    </div>
-
-    <!-- EMPTY -->
-    <div v-else-if="!loading && !items.length" class="plp-empty">
-      <v-icon size="52" color="medium-emphasis">mdi-package-variant-closed</v-icon>
-      <div class="plp-empty-title">Sin resultados</div>
-      <div class="plp-empty-sub">Probá con otros filtros o creá un nuevo producto</div>
-      <div class="d-flex ga-2 mt-4">
-        <v-btn variant="tonal" rounded="lg" @click="clearFilters">Limpiar filtros</v-btn>
-        <v-btn color="primary" variant="flat" rounded="lg" @click="openCreate">Nuevo producto</v-btn>
+    <!-- ── CONTENT ──────────────────────────────────────── -->
+    <section class="lp-content">
+      <div class="lp-content__head">
+        <div class="lp-content__head-left">
+          <span class="lp-content__title">Resultados</span>
+          <v-chip size="x-small" variant="tonal">{{ items.length }} de {{ meta.total }}</v-chip>
+        </div>
       </div>
-    </div>
 
-    <!-- GRID VIEW (estilo PosProductRow) -->
-    <div v-else-if="viewMode === 'grid' || !smAndUp" class="plp-grid" :class="{ 'plp-grid--loading': loading }">
-      <div v-for="item in items" :key="item.id" class="plp-card"
-        :class="{ 'plp-card--inactive': isInactive(item) }" @click="openView(item.id)">
-
-        <!-- Imagen cuadrada arriba con badges flotantes -->
-        <div class="plp-card-media">
-          <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
-          <div v-else class="plp-card-noimg">
-            <v-icon size="38">mdi-package-variant-closed</v-icon>
-          </div>
-
-          <!-- Badge stock semáforo arriba-izq -->
-          <span
-            class="plp-stock-badge"
-            :class="stockLevelClass(item)"
-            :title="getStockLabel(item)"
-          >
-            <v-icon size="12">
-              {{ getStockQty(item) > 0 ? 'mdi-package-variant-closed' : 'mdi-close-circle' }}
-            </v-icon>
-            {{ getStockQty(item) }}
-          </span>
-
-          <!-- Checkbox de selección arriba-der -->
-          <div class="plp-card-check" @click.stop>
-            <v-checkbox-btn :model-value="selectedIds.includes(item.id)" @update:modelValue="toggleSelect(item.id)"
-              density="compact" hide-details />
-          </div>
-
-          <!-- Badge inactivo -->
-          <span v-if="isInactive(item)" class="plp-inactive-badge">Inactivo</span>
+      <div class="lp-content__body" :class="{ 'lp-content__body--loading': loading }">
+        <!-- SKELETON -->
+        <div v-if="loading && !items.length" class="lp-skeleton-grid">
+          <div v-for="n in 8" :key="n" class="lp-skeleton-card" />
         </div>
 
-        <!-- Info compacta -->
-        <div class="plp-card-info">
-          <div class="plp-card-name" :title="item.name">{{ item.name }}</div>
-
-          <div v-if="item.sku || item.code" class="plp-card-sku">
-            <v-icon size="11">mdi-barcode</v-icon>
-            <span>{{ item.sku || item.code }}</span>
+        <!-- EMPTY -->
+        <div v-else-if="!loading && !items.length" class="lp-empty">
+          <v-icon size="52" color="medium-emphasis">mdi-package-variant-closed</v-icon>
+          <div class="lp-empty__title">Sin resultados</div>
+          <div class="lp-empty__sub">Probá con otros filtros o creá un nuevo producto</div>
+          <div class="d-flex ga-2 mt-4">
+            <v-btn variant="tonal" rounded="lg" @click="clearFilters">Limpiar filtros</v-btn>
+            <v-btn color="primary" variant="flat" rounded="lg" @click="openCreate">Nuevo producto</v-btn>
           </div>
+        </div>
 
-          <div v-if="item.brand || item.model || item.category?.name || item.rubro" class="plp-card-meta">
-            <span v-if="item.brand" class="meta-chip meta-chip--brand">{{ item.brand }}</span>
-            <span v-if="item.model" class="meta-chip meta-chip--muted">{{ item.model }}</span>
-            <span v-if="item.category?.name || item.rubro" class="meta-chip meta-chip--cat">
-              {{ item.category?.name || item.rubro }}
-            </span>
-          </div>
+        <!-- GRID -->
+        <div
+          v-else-if="viewMode === 'grid' || !smAndUp"
+          class="plp-grid"
+        >
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="plp-card"
+            :class="{ 'plp-card--inactive': isInactive(item) }"
+            @click="openView(item.id)"
+          >
+            <div class="plp-card-media">
+              <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
+              <div v-else class="plp-card-noimg">
+                <v-icon size="38">mdi-package-variant-closed</v-icon>
+              </div>
 
-          <!-- Sucursales como mini chips -->
-          <div v-if="enabledBranches(item).length || Number(item.branch_id || 0) > 0" class="plp-card-branches">
-            <template v-if="enabledBranches(item).length">
               <span
-                v-for="(b,i) in visibleBranches(enabledBranches(item))"
-                :key="`${item.id}-b${b.id}-${i}`"
-                class="plp-br-pill"
-                :style="{ '--br-color': branchCssColor(b.id) }"
+                class="plp-stock-badge"
+                :class="stockLevelClass(item)"
+                :title="getStockLabel(item)"
               >
-                <v-icon size="10">mdi-store-outline</v-icon>
-                {{ branchInitials(b.name) }}
+                <v-icon size="12">
+                  {{ getStockQty(item) > 0 ? 'mdi-package-variant-closed' : 'mdi-close-circle' }}
+                </v-icon>
+                {{ getStockQty(item) }}
               </span>
-              <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-br-pill plp-br-pill--more">
-                +{{ hiddenBranchesCount(enabledBranches(item)) }}
-              </span>
-            </template>
-            <span v-else class="plp-br-pill" :style="{ '--br-color': branchCssColor(item.branch_id) }">
-              <v-icon size="10">mdi-store-outline</v-icon>
-              {{ branchInitials(branchName(item.branch_id)) }}
-            </span>
+
+              <div class="plp-card-check" @click.stop>
+                <v-checkbox-btn
+                  :model-value="selectedIds.includes(item.id)"
+                  density="compact"
+                  hide-details
+                  @update:modelValue="toggleSelect(item.id)"
+                />
+              </div>
+
+              <span v-if="isInactive(item)" class="plp-inactive-badge">Inactivo</span>
+            </div>
+
+            <div class="plp-card-info">
+              <div class="plp-card-name" :title="item.name">{{ item.name }}</div>
+
+              <div v-if="item.sku || item.code" class="plp-card-sku">
+                <v-icon size="11">mdi-barcode</v-icon>
+                <span>{{ item.sku || item.code }}</span>
+              </div>
+
+              <div v-if="item.brand || item.model || item.category?.name || item.rubro" class="plp-card-meta">
+                <span v-if="item.brand" class="meta-chip meta-chip--brand">{{ item.brand }}</span>
+                <span v-if="item.model" class="meta-chip meta-chip--muted">{{ item.model }}</span>
+                <span v-if="item.category?.name || item.rubro" class="meta-chip meta-chip--cat">
+                  {{ item.category?.name || item.rubro }}
+                </span>
+              </div>
+
+              <div v-if="enabledBranches(item).length || Number(item.branch_id || 0) > 0" class="plp-card-branches">
+                <template v-if="enabledBranches(item).length">
+                  <span
+                    v-for="(b, i) in visibleBranches(enabledBranches(item))"
+                    :key="`${item.id}-b${b.id}-${i}`"
+                    class="plp-br-pill"
+                    :style="{ '--br-color': branchCssColor(b.id) }"
+                  >
+                    <v-icon size="10">mdi-store-outline</v-icon>
+                    {{ branchInitials(b.name) }}
+                  </span>
+                  <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-br-pill plp-br-pill--more">
+                    +{{ hiddenBranchesCount(enabledBranches(item)) }}
+                  </span>
+                </template>
+                <span v-else class="plp-br-pill" :style="{ '--br-color': branchCssColor(item.branch_id) }">
+                  <v-icon size="10">mdi-store-outline</v-icon>
+                  {{ branchInitials(branchName(item.branch_id)) }}
+                </span>
+              </div>
+
+              <div class="plp-card-footer">
+                <div v-if="Number(item.price_list) > 0" class="plp-card-price">
+                  {{ fmtPrice(item.price_list) }}
+                </div>
+                <div v-else class="plp-card-price plp-card-price--none">
+                  Sin precio
+                </div>
+
+                <div class="plp-card-actions" @click.stop>
+                  <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
+                    <v-icon size="16">mdi-eye-outline</v-icon>
+                  </v-btn>
+                  <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
+                    <v-icon size="16">mdi-pencil-outline</v-icon>
+                  </v-btn>
+                  <v-menu location="bottom end" :close-on-content-click="true">
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
+                        <v-icon size="16">mdi-dots-vertical</v-icon>
+                      </v-btn>
+                    </template>
+                    <v-list density="compact" min-width="160">
+                      <v-list-item @click="openEdit(item.id)">
+                        <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
+                        <v-list-item-title>Editar</v-list-item-title>
+                      </v-list-item>
+                      <v-divider />
+                      <v-list-item v-if="!isAdmin" @click="askDisable(item)">
+                        <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
+                        <v-list-item-title>Inactivar</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item v-else @click="askDelete(item)">
+                        <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
+                        <v-list-item-title class="text-error">Eliminar</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <!-- Footer: precio + acciones -->
-          <div class="plp-card-footer">
-            <div class="plp-card-price" v-if="Number(item.price_list) > 0">
-              {{ fmtPrice(item.price_list) }}
+        <!-- LIST -->
+        <div v-else class="plp-list-wrap">
+          <div class="plp-list-head">
+            <div class="plp-lh-check">
+              <v-checkbox-btn
+                :model-value="allSelected"
+                density="compact"
+                hide-details
+                @update:modelValue="toggleSelectAll"
+              />
             </div>
-            <div class="plp-card-price plp-card-price--none" v-else>
-              Sin precio
+            <div class="plp-lh-name">Nombre</div>
+            <div class="plp-lh-cat">Rubro · Subrubro</div>
+            <div class="plp-lh-branches">Sucursales</div>
+            <div class="plp-lh-price">Precio</div>
+            <div class="plp-lh-stock">Stock</div>
+            <div class="plp-lh-actions"></div>
+          </div>
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="plp-list-row"
+            :class="{ 'plp-list-row--inactive': isInactive(item) }"
+            @click="openView(item.id)"
+          >
+            <div class="plp-lh-check" @click.stop>
+              <v-checkbox-btn
+                :model-value="selectedIds.includes(item.id)"
+                density="compact"
+                hide-details
+                @update:modelValue="toggleSelect(item.id)"
+              />
             </div>
-
-            <div class="plp-card-actions" @click.stop>
-              <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
+            <div class="plp-row-name">
+              <div class="plp-row-name-text">{{ item.name }}</div>
+              <div v-if="item.sku || item.brand" class="plp-row-sku">
+                {{ item.sku || '' }}{{ item.sku && item.brand ? ' · ' : '' }}{{ item.brand || '' }}
+              </div>
+            </div>
+            <div class="plp-row-cat">
+              <span v-if="item.category?.name || item.rubro" class="plp-tag plp-tag--cat">
+                {{ item.category?.name || item.rubro }}
+              </span>
+              <span v-if="item.subcategory?.name || item.subrubro" class="plp-tag plp-tag--sub">
+                {{ item.subcategory?.name || item.subrubro }}
+              </span>
+            </div>
+            <div class="plp-row-branches">
+              <template v-if="enabledBranches(item).length">
+                <v-chip
+                  v-for="(b, i) in visibleBranches(enabledBranches(item))"
+                  :key="`${item.id}-r${b.id}-${i}`"
+                  size="x-small"
+                  variant="tonal"
+                  :color="branchColor(b.id)"
+                  label
+                  class="plp-br-chip"
+                >
+                  {{ branchInitials(b.name) }}
+                </v-chip>
+                <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">
+                  +{{ hiddenBranchesCount(enabledBranches(item)) }}
+                </span>
+              </template>
+              <template v-else-if="Number(item.branch_id || 0) > 0">
+                <v-chip size="x-small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
+                  {{ branchInitials(branchName(item.branch_id)) }}
+                </v-chip>
+              </template>
+              <span v-else class="text-medium-emphasis text-caption">—</span>
+            </div>
+            <div class="plp-row-price">
+              <span v-if="Number(item.price_list) > 0" class="plp-price-val">${{ fmtPrice(item.price_list) }}</span>
+              <span v-else class="text-medium-emphasis text-caption">—</span>
+            </div>
+            <div class="plp-row-stock" :class="getStockClass(item)">
+              <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
+            </div>
+            <div class="plp-row-actions" @click.stop>
+              <v-btn icon size="x-small" variant="text" @click.stop="openView(item.id)">
                 <v-icon size="16">mdi-eye-outline</v-icon>
-              </v-btn>
-              <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
-                <v-icon size="16">mdi-pencil-outline</v-icon>
               </v-btn>
               <v-menu location="bottom end" :close-on-content-click="true">
                 <template #activator="{ props }">
@@ -264,100 +629,34 @@
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- LIST VIEW -->
-    <div v-else class="plp-list-wrap" :class="{ 'plp-list--loading': loading }">
-      <div class="plp-list-head">
-        <div class="plp-lh-check">
-          <v-checkbox-btn :model-value="allSelected" @update:modelValue="toggleSelectAll" density="compact" hide-details />
-        </div>
-        <div class="plp-lh-name">Nombre</div>
-        <div class="plp-lh-cat">Rubro · Subrubro</div>
-        <div class="plp-lh-branches">Sucursales</div>
-        <div class="plp-lh-price">Precio</div>
-        <div class="plp-lh-stock">Stock</div>
-        <div class="plp-lh-actions"></div>
-      </div>
-      <div v-for="item in items" :key="item.id" class="plp-list-row"
-        :class="{ 'plp-list-row--inactive': isInactive(item) }" @click="openView(item.id)">
-        <div class="plp-lh-check" @click.stop>
-          <v-checkbox-btn :model-value="selectedIds.includes(item.id)" @update:modelValue="toggleSelect(item.id)"
-            density="compact" hide-details />
-        </div>
-        <div class="plp-row-name">
-          <div class="plp-row-name-text">{{ item.name }}</div>
-          <div class="plp-row-sku" v-if="item.sku || item.brand">{{ item.sku || '' }}{{ item.sku && item.brand ? ' · ' : '' }}{{ item.brand || '' }}</div>
-        </div>
-        <div class="plp-row-cat">
-          <span class="plp-tag plp-tag--cat" v-if="item.category?.name || item.rubro">{{ item.category?.name || item.rubro }}</span>
-          <span class="plp-tag plp-tag--sub" v-if="item.subcategory?.name || item.subrubro">{{ item.subcategory?.name || item.subrubro }}</span>
-        </div>
-        <div class="plp-row-branches">
-          <template v-if="enabledBranches(item).length">
-            <v-chip v-for="(b,i) in visibleBranches(enabledBranches(item))" :key="`${item.id}-r${b.id}-${i}`"
-              size="x-small" variant="tonal" :color="branchColor(b.id)" label class="plp-br-chip">
-              {{ branchInitials(b.name) }}
-            </v-chip>
-            <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">+{{ hiddenBranchesCount(enabledBranches(item)) }}</span>
-          </template>
-          <template v-else-if="Number(item.branch_id || 0) > 0">
-            <v-chip size="x-small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
-              {{ branchInitials(branchName(item.branch_id)) }}
-            </v-chip>
-          </template>
-          <span v-else class="text-medium-emphasis text-caption">—</span>
-        </div>
-        <div class="plp-row-price">
-          <span v-if="Number(item.price_list) > 0" class="plp-price-val">${{ fmtPrice(item.price_list) }}</span>
-          <span v-else class="text-medium-emphasis text-caption">—</span>
-        </div>
-        <div class="plp-row-stock" :class="getStockClass(item)">
-          <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
-        </div>
-        <div class="plp-row-actions" @click.stop>
-          <v-btn icon size="x-small" variant="text" @click.stop="openView(item.id)"><v-icon size="16">mdi-eye-outline</v-icon></v-btn>
-          <v-menu location="bottom end" :close-on-content-click="true">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop><v-icon size="16">mdi-dots-vertical</v-icon></v-btn>
-            </template>
-            <v-list density="compact" min-width="160">
-              <v-list-item @click="openEdit(item.id)">
-                <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
-                <v-list-item-title>Editar</v-list-item-title>
-              </v-list-item>
-              <v-divider />
-              <v-list-item v-if="!isAdmin" @click="askDisable(item)">
-                <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
-                <v-list-item-title>Inactivar</v-list-item-title>
-              </v-list-item>
-              <v-list-item v-else @click="askDelete(item)">
-                <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
-                <v-list-item-title class="text-error">Eliminar</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </div>
-      </div>
-    </div>
+    <!-- ── PAGINATION ───────────────────────────────────── -->
+    <footer v-if="meta.total > 0" class="lp-pagination">
+      <span class="lp-pagination__info">{{ items.length }} de {{ meta.total }}</span>
+      <v-pagination
+        v-model="page"
+        :length="meta.pages || 1"
+        :total-visible="smAndUp ? 7 : 4"
+        rounded="lg"
+        size="small"
+        @update:modelValue="fetchNow"
+      />
+    </footer>
 
-    <!-- PAGINATION -->
-    <div class="plp-pagination" v-if="meta.total > 0">
-      <span class="plp-pag-info">{{ items.length }} de {{ meta.total }}</span>
-      <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="smAndUp ? 7 : 4"
-        rounded="lg" @update:modelValue="fetchNow" size="small" />
-    </div>
-
-    <!-- Dialogs -->
+    <!-- ── DIALOGS ──────────────────────────────────────── -->
     <v-dialog v-model="disableOpen" max-width="460">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold pt-5 px-5">Inactivar producto</v-card-title>
-        <v-card-text class="px-5">¿Inactivar <b>{{ disableItem?.name }}</b>?
+        <v-card-text class="px-5">
+          ¿Inactivar <b>{{ disableItem?.name }}</b>?
           <div class="text-caption text-medium-emphasis mt-1">Se oculta del catálogo y del POS. No se borra.</div>
         </v-card-text>
         <v-card-actions class="justify-end px-5 pb-5">
-          <v-btn variant="tonal" @click="disableOpen = false" :disabled="products.loading">Cancelar</v-btn>
-          <v-btn color="warning" variant="flat" rounded="lg" @click="doDisable" :loading="products.loading">Inactivar</v-btn>
+          <v-btn variant="tonal" :disabled="products.loading" @click="disableOpen = false">Cancelar</v-btn>
+          <v-btn color="warning" variant="flat" rounded="lg" :loading="products.loading" @click="doDisable">
+            Inactivar
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -365,12 +664,15 @@
     <v-dialog v-model="deleteOpen" max-width="460">
       <v-card rounded="xl">
         <v-card-title class="font-weight-bold pt-5 px-5">Eliminar producto</v-card-title>
-        <v-card-text class="px-5">¿Eliminar <b>{{ deleteItem?.name }}</b>?
+        <v-card-text class="px-5">
+          ¿Eliminar <b>{{ deleteItem?.name }}</b>?
           <div class="text-caption text-medium-emphasis mt-1">Si tiene ventas relacionadas, se inactiva automáticamente.</div>
         </v-card-text>
         <v-card-actions class="justify-end px-5 pb-5">
-          <v-btn variant="tonal" @click="deleteOpen = false" :disabled="products.loading">Cancelar</v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" @click="doDelete" :loading="products.loading">Eliminar</v-btn>
+          <v-btn variant="tonal" :disabled="products.loading" @click="deleteOpen = false">Cancelar</v-btn>
+          <v-btn color="error" variant="flat" rounded="lg" :loading="products.loading" @click="doDelete">
+            Eliminar
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -400,6 +702,30 @@ const isAdmin = computed(() => {
 
 const loading = ref(false);
 const items = computed(() => (Array.isArray(products.items) ? products.items : []));
+
+/* Stats agregadas */
+const statsLoading = ref(false);
+const stats = ref({
+  ready: false,
+  total: 0,
+  active: 0,
+  inactive: 0,
+  with_stock: 0,
+  without_stock: 0,
+  with_price: 0,
+  without_price: 0,
+  with_images: 0,
+  without_images: 0,
+});
+function fmtInt(n) {
+  return Number(n || 0).toLocaleString('es');
+}
+function pct(part, whole) {
+  const w = Number(whole || 0);
+  if (!w) return '0%';
+  const p = Math.round((Number(part || 0) / w) * 100);
+  return `${p}%`;
+}
 
 const meta = ref({ page: 1, limit: 24, total: 0, pages: 1 });
 const page = ref(1);
@@ -533,7 +859,7 @@ const f = ref({
   subcategory_id: null,
   stock: "all",
   price_presence: "all",
-  status: isAdmin.value ? "all" : "active", // admin ve TODO por defecto
+  status: isAdmin.value ? "all" : "active",
   price_min: null,
   price_max: null,
   images: "all",
@@ -599,6 +925,45 @@ async function clearFilters() {
   await fetchNow();
 }
 
+/* Fetch stats (mismos filtros base que el listado) */
+async function fetchStats() {
+  if (!auth.isAuthed) return;
+  statsLoading.value = true;
+  try {
+    const params = {
+      q: String(f.value.q || "").trim(),
+      branch_id: isAdmin.value ? (f.value.branch_id ? Number(f.value.branch_id) : null) : null,
+      category_id: f.value.category_id ? Number(f.value.category_id) : null,
+      subcategory_id: f.value.subcategory_id ? Number(f.value.subcategory_id) : null,
+    };
+    if (String(f.value.status) === "all") {
+      params.include_inactive = 1;
+    } else if (String(f.value.status) === "inactive") {
+      params.is_active = 0;
+    }
+
+    const data = await products.fetchStats(params);
+    if (data) {
+      stats.value = {
+        ready: true,
+        total: Number(data.total || 0),
+        active: Number(data.active || 0),
+        inactive: Number(data.inactive || 0),
+        with_stock: Number(data.with_stock || 0),
+        without_stock: Number(data.without_stock || 0),
+        with_price: Number(data.with_price || 0),
+        without_price: Number(data.without_price || 0),
+        with_images: Number(data.with_images || 0),
+        without_images: Number(data.without_images || 0),
+      };
+    } else {
+      stats.value.ready = false;
+    }
+  } finally {
+    statsLoading.value = false;
+  }
+}
+
 /* Fetch */
 async function fetchNow() {
   if (!auth.isAuthed) return;
@@ -623,16 +988,12 @@ async function fetchNow() {
       images: f.value.images,
     };
 
-    // Estado -> backend
-    // all => include_inactive=1
-    // inactive => is_active=0
-    // active => (no mandamos nada, backend default is_active=1)
     if (String(f.value.status) === "all") {
       params.include_inactive = 1;
     } else if (String(f.value.status) === "inactive") {
       params.is_active = 0;
     } else if (String(f.value.status) === "active") {
-      // opcional: params.is_active = 1;
+      // backend default
     }
 
     const r = await products.fetchList(params);
@@ -659,6 +1020,8 @@ async function fetchNow() {
   } finally {
     loading.value = false;
   }
+  // refresh stats agregadas en paralelo (no bloquea UI)
+  fetchStats();
 }
 
 function onRowClick(e, row) {
@@ -750,9 +1113,6 @@ async function doDelete() {
   try {
     const r = await callRemoveProduct(id);
     if (r.ok) {
-      // store.remove() already removed the item from products.items locally.
-      // Calling fetchNow() here would re-add soft-deleted items when admin
-      // has include_inactive=1 active (default "all" status filter).
       toast("Producto eliminado");
       return;
     }
@@ -832,11 +1192,23 @@ watch(
   }
 );
 
-/* ── NEW UI HELPERS ── */
-const viewMode = ref('grid'); // 'grid' | 'list'
+/* ── UI HELPERS ── */
+const viewMode = ref('grid');
 let _searchTimer = null;
 function debouncedSearch() { clearTimeout(_searchTimer); _searchTimer = setTimeout(() => applyFilters(), 400); }
 function clearSearch() { f.value.q = ''; applyFilters(); }
+
+/* Filtros avanzados (colapsable + persistencia) */
+const ADV_KEY = "lp.products.advancedOpen.v2";
+const advancedOpen = ref(false);
+try {
+  const saved = localStorage.getItem(ADV_KEY);
+  if (saved !== null) advancedOpen.value = saved === "1";
+} catch {}
+function toggleAdvanced() {
+  advancedOpen.value = !advancedOpen.value;
+  try { localStorage.setItem(ADV_KEY, advancedOpen.value ? "1" : "0"); } catch {}
+}
 
 const activeFiltersCount = computed(() => {
   let n = 0;
@@ -850,6 +1222,20 @@ const activeFiltersCount = computed(() => {
   if (f.value.price_max) n++;
   const defStatus = isAdmin.value ? 'all' : 'active';
   if (f.value.status !== defStatus) n++;
+  return n;
+});
+
+// Cuenta solo filtros que viven dentro del bloque "Más filtros"
+const activeAdvancedCount = computed(() => {
+  let n = 0;
+  if (f.value.branch_id) n++;
+  if (f.value.category_id) n++;
+  if (f.value.subcategory_id) n++;
+  if (f.value.stock !== 'all') n++;
+  if (f.value.price_presence !== 'all') n++;
+  if (f.value.images !== 'all') n++;
+  if (f.value.price_min) n++;
+  if (f.value.price_max) n++;
   return n;
 });
 
@@ -908,7 +1294,6 @@ function getStockQty(item) {
   const qty = Number(item?.stock_total ?? item?.stock_qty ?? item?.stock ?? item?.qty ?? 0);
   return Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 0;
 }
-// Semáforo de stock: >10 verde, 5-10 amarillo, <5 rojo, 0 rojo
 function stockLevelClass(item) {
   const n = getStockQty(item);
   if (n <= 0) return 'level-out';
@@ -916,7 +1301,6 @@ function stockLevelClass(item) {
   if (n <= 10) return 'level-mid';
   return 'level-high';
 }
-// Devuelve un color CSS concreto (no token de Vuetify) para usar en --br-color
 function branchCssColor(id) {
   const bid = Number(id || 0);
   if (bid === 1) return 'rgb(var(--v-theme-primary))';
@@ -927,93 +1311,204 @@ function branchCssColor(id) {
 </script>
 
 <style scoped>
-/* root */
-.plp { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+/* ============================================================
+   LIST PAGE — patrón estandarizado (lp-*)
+   Compartido con PosSalesPage. Mantener sincronizado.
+   ============================================================ */
 
-/* TOP BAR */
-.plp-top {
+.lp {
+  --lp-gap: 14px;
+  --lp-radius: 14px;
+  --lp-radius-sm: 12px;
+  --lp-card-pad: 16px;
+  --lp-card-bg: rgb(var(--v-theme-surface));
+  --lp-card-border: rgba(var(--v-border-color), var(--v-border-opacity));
+  --lp-muted: rgba(var(--v-theme-on-surface), 0.55);
+  --lp-strong: rgba(var(--v-theme-on-surface), 0.9);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--lp-gap);
+  min-width: 0;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.lp-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 4px 2px 2px;
+  padding: 4px 2px 0;
 }
-.plp-top-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.plp-top-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.plp-title {
-  font-size: 24px;
+.lp-header__left  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.lp-title {
+  font-size: 22px;
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  margin: 0;
 }
-.plp-meta {
+.lp-meta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
   font-weight: 500;
+  color: var(--lp-muted);
 }
-.plp-meta-strong {
+.lp-meta__strong {
   font-weight: 800;
-  color: rgba(var(--v-theme-on-surface), 0.85);
+  color: var(--lp-strong);
   font-feature-settings: "tnum";
 }
-.plp-meta-sep { opacity: 0.4; }
-.plp-view-toggle { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.lp-meta__sep { opacity: 0.4; }
 
-/* SEARCH BAR */
-.plp-searchbar { display: flex; gap: 8px; align-items: center; }
-.plp-search-input { flex: 1; }
-.plp-search-input :deep(.v-field) {
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
+.lp-view-toggle { border: 1px solid var(--lp-card-border); }
+
+/* ── STATS KPI ──────────────────────────────────────────── */
+.lp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
 }
-.plp-search-input :deep(.v-field__prepend-inner .v-icon) {
-  opacity: 0.55;
+.lp-kpi {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
+}
+.lp-kpi__badge {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  margin-top: 2px;
+}
+.lp-kpi__badge--primary { background: rgb(var(--v-theme-primary)); }
+.lp-kpi__badge--green   { background: rgb(var(--v-theme-success)); }
+.lp-kpi__badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
+.lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
+.lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lp-kpi__lbl   {
+  font-size: 11px; font-weight: 700;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.lp-kpi__val   {
+  font-size: 20px; font-weight: 900;
+  line-height: 1.2;
+  margin-top: 4px;
+  font-feature-settings: "tnum";
+}
+.lp-kpi__sub   { font-size: 11px; opacity: 0.4; margin-top: 3px; }
+.lp-kpi__skel  {
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  margin-top: 4px;
+  animation: lp-pulse 1.4s ease infinite;
 }
 
-/* FILTER PANEL (siempre visible) */
-.plp-filter-panel {
+/* ── METHOD CARDS ──────────────────────────────────────── */
+.lp-methods {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.lp-mc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--lp-radius-sm);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
+}
+.lp-mc__badge {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.lp-mc__badge--cash     { background: rgb(var(--v-theme-success)); }
+.lp-mc__badge--transfer { background: var(--pos-kpi-color-3, #9c27b0); }
+.lp-mc__badge--card     { background: rgb(var(--v-theme-info)); }
+.lp-mc__badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
+.lp-mc__badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
+.lp-mc__badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
+.lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lp-mc__lbl  {
+  font-size: 10px; font-weight: 700;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lp-mc__val  {
+  font-size: 14px; font-weight: 900;
+  margin-top: 2px;
+  font-feature-settings: "tnum";
+}
+
+/* ── FILTER BAR ─────────────────────────────────────────── */
+.lp-filters {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: 14px;
-  background: rgba(var(--v-theme-surface), 0.6);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
 }
-.plp-filter-head {
+
+.lp-filters__primary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+  flex-wrap: wrap;
 }
-.plp-filter-head-left {
+.lp-filters__search { flex: 1 1 280px; min-width: 220px; }
+.lp-filters__search :deep(.v-field) { border-radius: 10px; }
+.lp-filters__primary-field { flex: 0 0 160px; min-width: 140px; }
+
+.lp-filters__more {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid var(--lp-card-border);
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+  user-select: none;
 }
-.plp-filter-head-icon {
-  opacity: 0.6;
+.lp-filters__more:hover {
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  color: var(--lp-strong);
 }
-.plp-filter-head-title {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+.lp-filters__more--open {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  color: rgb(var(--v-theme-primary));
 }
-.plp-filter-count {
+.lp-filters__more-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 6px;
   border-radius: 999px;
   background: rgb(var(--v-theme-primary));
@@ -1023,80 +1518,89 @@ function branchCssColor(id) {
   line-height: 1;
   font-feature-settings: "tnum";
 }
-.plp-filter-clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s;
+.lp-filters__more-chev {
+  transition: transform 0.18s ease;
+  opacity: 0.7;
 }
-.plp-filter-clear:hover {
-  background: rgba(var(--v-theme-error), 0.08);
-  color: rgb(var(--v-theme-error));
-  border-color: rgba(var(--v-theme-error), 0.28);
-}
+.lp-filters__more--open .lp-filters__more-chev { transform: rotate(180deg); }
 
-.plp-filter-grid {
+/* Grid filtros avanzados */
+.lp-filters__advanced {
+  padding-top: 4px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+}
+.lp-filters__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px 12px;
   align-items: start;
+  padding-top: 12px;
 }
-.plp-filter-cell { min-width: 0; }
-.plp-filter-cell--range {
+.lp-filters__cell { min-width: 0; }
+.lp-filters__cell--range {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 6px;
   align-items: center;
   grid-column: span 2;
 }
-.plp-range-sep {
+.lp-filters__range-sep {
   font-size: 12px;
   font-weight: 800;
   color: rgba(var(--v-theme-on-surface), 0.35);
   line-height: 1;
 }
-.plp-filter-cell--per-page { max-width: 140px; }
+.lp-filters__cell--per-page { max-width: 160px; }
 
-.plp-filter-chips {
+/* Chips activos */
+.lp-filters__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-top: 4px;
+  align-items: center;
+  padding-top: 8px;
   border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
 }
-.plp-chip { font-size: 11px !important; }
+.lp-filters__chip { font-size: 11px !important; }
+.lp-filters__chips-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.lp-filters__chips-clear:hover {
+  background: rgba(var(--v-theme-error), 0.08);
+  color: rgb(var(--v-theme-error));
+  border-color: rgba(var(--v-theme-error), 0.3);
+}
 
-/* BULK ACTION BAR */
-.plp-bulk-bar {
+/* ── BULK BAR ───────────────────────────────────────────── */
+.lp-bulk {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  border-radius: 12px;
+  border-radius: var(--lp-radius-sm);
   background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid var(--lp-card-border);
   min-height: 52px;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
 }
-.plp-bulk-bar:has(.plp-bulk-actions) {
+.lp-bulk--active {
   background: rgba(var(--v-theme-primary), 0.08);
   border-color: rgba(var(--v-theme-primary), 0.36);
   box-shadow: 0 4px 14px rgba(var(--v-theme-primary), 0.14);
 }
-.plp-bulk-select {
+.lp-bulk__select {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1104,17 +1608,17 @@ function branchCssColor(id) {
   user-select: none;
   min-width: 0;
 }
-.plp-bulk-select-label {
+.lp-bulk__label {
   font-size: 13px;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.75);
 }
-.plp-bulk-select-label strong {
+.lp-bulk__label strong {
   color: rgb(var(--v-theme-primary));
   font-weight: 900;
   font-feature-settings: "tnum";
 }
-.plp-bulk-actions {
+.lp-bulk__actions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1122,41 +1626,94 @@ function branchCssColor(id) {
   justify-content: flex-end;
 }
 
-/* SKELETON */
-.plp-skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.plp-skeleton-card { height: 240px; border-radius: 14px; background: rgba(var(--v-theme-on-surface), 0.06); animation: plp-pulse 1.4s ease infinite; }
-@keyframes plp-pulse { 0%,100%{ opacity:.5 } 50%{ opacity:1 } }
+/* ── ALERT ──────────────────────────────────────────────── */
+.lp-alert { margin-bottom: 0 !important; }
 
-/* EMPTY */
-.plp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 8px; text-align: center; }
-.plp-empty-title { font-size: 17px; font-weight: 800; }
-.plp-empty-sub { font-size: 13px; opacity: 0.5; }
+/* ── CONTENT WRAPPER ───────────────────────────────────── */
+.lp-content {
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
+  overflow: hidden;
+}
+.lp-content__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--lp-card-border);
+  background: rgba(var(--v-theme-on-surface), 0.015);
+}
+.lp-content__head-left { display: flex; align-items: center; gap: 8px; }
+.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__body { padding: 12px; transition: opacity 0.2s; }
+.lp-content__body--loading { opacity: 0.5; pointer-events: none; }
 
-/* GRID — compacto estilo PosProductRow */
+/* ── PAGINATION ─────────────────────────────────────────── */
+.lp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 6px 8px;
+}
+.lp-pagination__info {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  font-feature-settings: "tnum";
+}
+
+/* ── EMPTY / SKELETON ──────────────────────────────────── */
+.lp-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.lp-skeleton-card {
+  height: 240px;
+  border-radius: var(--lp-radius-sm);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  animation: lp-pulse 1.4s ease infinite;
+}
+@keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.lp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 8px;
+  text-align: center;
+}
+.lp-empty__title { font-size: 16px; font-weight: 800; }
+.lp-empty__sub { font-size: 13px; opacity: 0.55; }
+
+/* ============================================================
+   PRODUCTOS — específico (grid de tarjetas + lista)
+   ============================================================ */
+
+/* GRID */
 .plp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
-  transition: opacity 0.2s;
 }
-.plp-grid--loading { opacity: 0.5; pointer-events: none; }
 
-/* CARD */
 .plp-card {
   position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border-radius: 12px;
+  border-radius: var(--lp-radius-sm);
   overflow: hidden;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition:
-    border-color 0.14s ease,
-    box-shadow 0.14s ease,
-    transform 0.14s ease;
+  transition: border-color 0.14s, box-shadow 0.14s, transform 0.14s;
 }
 .plp-card:hover {
   border-color: rgba(var(--v-theme-primary), 0.45);
@@ -1165,7 +1722,6 @@ function branchCssColor(id) {
 }
 .plp-card--inactive { opacity: 0.6; }
 
-/* ─── Media (imagen cuadrada + badges flotantes) ─────────── */
 .plp-card-media {
   position: relative;
   width: 100%;
@@ -1174,29 +1730,16 @@ function branchCssColor(id) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   overflow: hidden;
 }
-
-.plp-card-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+.plp-card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .plp-card-noimg {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
   color: rgba(var(--v-theme-on-surface), 0.3);
 }
 
-/* Badge de stock flotante (semáforo) */
 .plp-stock-badge {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 6px; left: 6px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1211,16 +1754,14 @@ function branchCssColor(id) {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   z-index: 2;
 }
-.plp-stock-badge.level-high  { background: rgb(var(--v-theme-success)); }
-.plp-stock-badge.level-mid   { background: rgb(var(--v-theme-warning)); }
+.plp-stock-badge.level-high { background: rgb(var(--v-theme-success)); }
+.plp-stock-badge.level-mid  { background: rgb(var(--v-theme-warning)); }
 .plp-stock-badge.level-low,
-.plp-stock-badge.level-out   { background: rgb(var(--v-theme-error)); }
+.plp-stock-badge.level-out  { background: rgb(var(--v-theme-error)); }
 
-/* Checkbox flotante arriba-derecha */
 .plp-card-check {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 4px; right: 4px;
   z-index: 2;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 6px;
@@ -1228,11 +1769,9 @@ function branchCssColor(id) {
   padding: 2px;
 }
 
-/* Badge inactivo */
 .plp-inactive-badge {
   position: absolute;
-  bottom: 6px;
-  left: 6px;
+  bottom: 6px; left: 6px;
   padding: 2px 8px;
   border-radius: 6px;
   background: rgba(var(--v-theme-error), 0.9);
@@ -1245,7 +1784,6 @@ function branchCssColor(id) {
   z-index: 2;
 }
 
-/* ─── Info debajo de la imagen ──────────────────────────── */
 .plp-card-info {
   display: flex;
   flex-direction: column;
@@ -1288,18 +1826,13 @@ function branchCssColor(id) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .plp-card-sku :deep(.v-icon) {
   color: rgb(var(--v-theme-primary));
   opacity: 0.8;
   flex-shrink: 0;
 }
 
-.plp-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
+.plp-card-meta { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .meta-chip {
   display: inline-flex;
@@ -1316,18 +1849,15 @@ function branchCssColor(id) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .meta-chip--brand {
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
 }
-
 .meta-chip--muted {
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.72);
   text-transform: none;
 }
-
 .meta-chip--cat {
   background: rgba(var(--v-theme-on-surface), 0.05);
   color: rgba(var(--v-theme-on-surface), 0.62);
@@ -1335,12 +1865,7 @@ function branchCssColor(id) {
   text-transform: none;
 }
 
-/* Sucursales como pills compactas */
-.plp-card-branches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-}
+.plp-card-branches { display: flex; flex-wrap: wrap; gap: 3px; }
 
 .plp-br-pill {
   --br-color: rgb(var(--v-theme-primary));
@@ -1357,17 +1882,12 @@ function branchCssColor(id) {
   line-height: 1.4;
   white-space: nowrap;
 }
-
-.plp-br-pill :deep(.v-icon) {
-  opacity: 0.72;
-}
-
+.plp-br-pill :deep(.v-icon) { opacity: 0.72; }
 .plp-br-pill--more {
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
-/* Footer: precio + acciones */
 .plp-card-footer {
   display: flex;
   align-items: center;
@@ -1384,31 +1904,16 @@ function branchCssColor(id) {
   color: rgb(var(--v-theme-success));
   font-feature-settings: "tnum";
 }
-
-.plp-card-price::before {
-  content: "$ ";
-  opacity: 0.72;
-  font-weight: 700;
-}
-
+.plp-card-price::before { content: "$ "; opacity: 0.72; font-weight: 700; }
 .plp-card-price--none {
   font-size: 11px;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.4);
   font-style: italic;
 }
+.plp-card-price--none::before { content: ""; }
 
-.plp-card-price--none::before {
-  content: "";
-}
-
-.plp-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
-}
-
+.plp-card-actions { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
 .plp-card-actions :deep(.v-btn) {
   width: 26px !important;
   height: 26px !important;
@@ -1424,19 +1929,43 @@ function branchCssColor(id) {
 .st-zero { opacity: 0.5; }
 .st-unknown { opacity: 0.35; }
 
-/* LIST VIEW */
-.plp-list-wrap { border-radius: 12px; overflow: hidden; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgb(var(--v-theme-surface)); }
-.plp-list--loading { opacity: 0.5; pointer-events: none; }
+/* LIST */
+.plp-list-wrap {
+  border-radius: var(--lp-radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--lp-card-border);
+  background: rgb(var(--v-theme-surface));
+}
 .plp-list-head, .plp-list-row { display: grid; align-items: center; gap: 8px; padding: 10px 14px; }
-.plp-list-head { grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px; background: rgba(var(--v-theme-surface-variant), 0.4); border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
-.plp-list-row { grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px; cursor: pointer; border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6)); transition: background 0.12s; }
+.plp-list-head {
+  grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px;
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-bottom: 1px solid var(--lp-card-border);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+}
+.plp-list-row {
+  grid-template-columns: 32px 1fr 180px 140px 90px 80px 64px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  transition: background 0.12s;
+}
 .plp-list-row:last-child { border-bottom: none; }
 .plp-list-row:hover { background: rgba(var(--v-theme-on-surface), 0.035); }
 .plp-list-row--inactive { opacity: 0.5; }
 
 .plp-lh-check { display: flex; align-items: center; justify-content: center; }
-.plp-lh-name,.plp-row-name { min-width: 0; }
-.plp-row-name-text { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plp-lh-name, .plp-row-name { min-width: 0; }
+.plp-row-name-text {
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .plp-row-sku { font-size: 10px; opacity: 0.45; font-family: monospace; }
 .plp-row-cat { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
 .plp-row-branches { display: flex; flex-wrap: wrap; gap: 3px; }
@@ -1444,34 +1973,65 @@ function branchCssColor(id) {
 .plp-row-stock { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
 .plp-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0; }
 
-/* LIST without admin branches */
+.plp-tag {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.plp-tag--cat {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+.plp-tag--sub {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+.plp-more { font-size: 10px; opacity: 0.5; font-weight: 700; }
+
+/* List sin sucursales (cuando no es admin) */
 .plp-list-head:not(:has(.plp-lh-branches)),
 .plp-list-row:not(:has(.plp-row-branches)) {
   grid-template-columns: 32px 1fr 200px 100px 90px 64px;
 }
 
-/* PAGINATION */
-.plp-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
-.plp-pag-info { font-size: 12px; opacity: 0.5; }
-
-/* TABLET */
-@media (max-width: 768px) {
-  .plp { gap: 14px; }
-  .plp-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-  .plp-list-head, .plp-list-row { grid-template-columns: 32px 1fr 120px 70px 64px; }
-  .plp-lh-cat,.plp-row-cat { display: none; }
-  .plp-filter-panel { padding: 14px; gap: 12px; }
-  .plp-filter-cell--range { grid-column: auto; }
-  .plp-bulk-bar { padding: 8px 12px; min-height: 48px; }
-  .plp-bulk-select-label { font-size: 12.5px; }
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .lp-methods { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 960px) {
+  .lp { gap: 12px; }
+  .lp-filters { padding: 10px 12px; }
+  .lp-filters__cell--range { grid-column: auto; }
+  .lp-stats   { grid-template-columns: repeat(2, 1fr); }
+  .lp-methods { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .lp-stats   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .lp-methods { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .lp-kpi__val { font-size: 16px; }
+  .lp-kpi__badge { width: 30px; height: 30px; }
+  .lp-mc__val  { font-size: 13px; }
 }
 
-/* MOBILE */
+@media (max-width: 768px) {
+  .plp-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .plp-list-head, .plp-list-row { grid-template-columns: 32px 1fr 120px 70px 64px; }
+  .plp-lh-cat, .plp-row-cat { display: none; }
+  .lp-bulk { padding: 8px 12px; min-height: 48px; }
+  .lp-bulk__label { font-size: 12.5px; }
+  .lp-filters__primary-field { flex: 0 0 100%; }
+}
+
 @media (max-width: 480px) {
+  .lp-title { font-size: 18px; }
   .plp-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .plp-card-name { font-size: 12px; }
   .plp-card-price { font-size: 14px; }
-  .plp-pagination { flex-direction: column; align-items: center; }
+  .lp-pagination { flex-direction: column; align-items: center; }
+  .lp-content__body { padding: 10px; }
 }
 
 @media (max-width: 360px) {

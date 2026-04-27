@@ -299,7 +299,7 @@
 
               <!-- Clientes va en Gestión (no en Sistema) -->
               <v-list-item
-                v-if="isAdmin && hasRoute('adminCustomers')"
+                v-if="hasRoute('adminCustomers')"
                 :to="{ name: 'adminCustomers' }"
                 exact
                 class="nav-item"

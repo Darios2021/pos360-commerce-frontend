@@ -461,6 +461,44 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
+    async fetchStats(paramsIn = {}) {
+      try {
+        const p = isPlainObject(paramsIn) ? { ...paramsIn } : {};
+
+        if ("branch_id" in p) {
+          const bid = toInt(p.branch_id, 0);
+          p.branch_id = bid > 0 ? bid : null;
+        }
+        if ("category_id" in p) {
+          const cid = toInt(p.category_id, 0);
+          p.category_id = cid > 0 ? cid : null;
+        }
+        if ("subcategory_id" in p) {
+          const sid = toInt(p.subcategory_id, 0);
+          p.subcategory_id = sid > 0 ? sid : null;
+        }
+
+        // Quitamos parámetros que no aplican a stats agregadas
+        delete p.page;
+        delete p.limit;
+        delete p.stock;
+        delete p.price_presence;
+        delete p.price_min;
+        delete p.price_max;
+        delete p.images;
+
+        const params = compactParams(p);
+        const { data } = await req("get", "/products/stats", { params });
+
+        if (!data || data.ok === false || !data.data) {
+          return null;
+        }
+        return data.data;
+      } catch (e) {
+        return null;
+      }
+    },
+
     async fetchOne(id, { force = false, branch_id = null } = {}) {
       const pid = toInt(id, 0);
       if (!pid) return null;

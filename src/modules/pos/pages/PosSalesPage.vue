@@ -1,143 +1,148 @@
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
 <template>
-  <div class="vp">
+  <div class="lp">
 
-    <!-- ── TOP BAR ── -->
-    <div class="vp-bar">
-      <div>
-        <div class="vp-title">Ventas</div>
-        <div class="vp-subtitle">{{ meta.total }} ventas · Pág. {{ meta.page }}/{{ meta.pages || 1 }}</div>
+    <!-- ── HEADER ───────────────────────────────────────── -->
+    <header class="lp-header">
+      <div class="lp-header__left">
+        <h1 class="lp-title">Ventas</h1>
+        <div class="lp-meta">
+          <span class="lp-meta__strong">{{ Number(meta.total || 0).toLocaleString('es') }}</span>
+          <span class="lp-meta__sep">·</span>
+          <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
+        </div>
       </div>
-      <div class="vp-bar-right">
+      <div class="lp-header__right">
         <v-btn
           variant="tonal"
           size="small"
-          icon
-          @click="exportCsv"
+          rounded="lg"
+          prepend-icon="mdi-file-delimited-outline"
           :disabled="loading || !sales.length"
           title="Exportar CSV"
+          @click="exportCsv"
         >
-          <v-icon size="17">mdi-file-delimited-outline</v-icon>
+          Exportar
         </v-btn>
         <v-btn
           color="primary"
+          variant="flat"
           size="small"
-          icon
-          @click="refreshAll"
+          rounded="lg"
+          prepend-icon="mdi-refresh"
           :loading="loading || statsLoading"
-          title="Actualizar"
+          @click="refreshAll"
         >
-          <v-icon size="17">mdi-refresh</v-icon>
+          Actualizar
         </v-btn>
       </div>
-    </div>
+    </header>
 
-    <!-- ── STATS ── -->
-    <div class="vp-stats">
-
-      <div class="vp-kpi">
-        <div class="vp-kpi-badge vp-kpi-badge--primary">
+    <!-- ── STATS KPI ────────────────────────────────────── -->
+    <section class="lp-stats">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--primary">
           <v-icon size="16" color="white">mdi-receipt-text-outline</v-icon>
         </div>
-        <div class="vp-kpi-body">
-          <div class="vp-kpi-lbl">Ventas</div>
-          <div class="vp-kpi-val" v-if="!statsLoading">{{ stats.ready ? stats.sales_count : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Ventas</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? stats.sales_count : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
         </div>
       </div>
 
-      <div class="vp-kpi">
-        <div class="vp-kpi-badge vp-kpi-badge--green">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--green">
           <v-icon size="16" color="white">mdi-trending-up</v-icon>
         </div>
-        <div class="vp-kpi-body">
-          <div class="vp-kpi-lbl">Bruto vendido</div>
-          <div class="vp-kpi-val" v-if="!statsLoading">{{ stats.ready ? money(stats.gross_total_sum) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-          <div class="vp-kpi-sub">Antes de devoluciones</div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Bruto vendido</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.gross_total_sum) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">Antes de devoluciones</div>
         </div>
       </div>
 
-      <div class="vp-kpi">
-        <div class="vp-kpi-badge vp-kpi-badge--orange">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--orange">
           <v-icon size="16" color="white">mdi-cash-refund</v-icon>
         </div>
-        <div class="vp-kpi-body">
-          <div class="vp-kpi-lbl">Devoluciones</div>
-          <div class="vp-kpi-val" v-if="!statsLoading">{{ stats.ready ? money(stats.refunds_sum) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-          <div class="vp-kpi-sub">Total reintegrado</div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Devoluciones</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.refunds_sum) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">Total reintegrado</div>
         </div>
       </div>
 
-      <div class="vp-kpi">
-        <div class="vp-kpi-badge vp-kpi-badge--indigo">
+      <div class="lp-kpi">
+        <div class="lp-kpi__badge lp-kpi__badge--indigo">
           <v-icon size="16" color="white">mdi-cash-check</v-icon>
         </div>
-        <div class="vp-kpi-body">
-          <div class="vp-kpi-lbl">Neto vendido</div>
-          <div class="vp-kpi-val" v-if="!statsLoading">{{ stats.ready ? money(stats.total_sum) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-          <div class="vp-kpi-sub">Bruto − devoluciones</div>
+        <div class="lp-kpi__body">
+          <div class="lp-kpi__lbl">Neto vendido</div>
+          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.total_sum) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+          <div class="lp-kpi__sub">Bruto − devoluciones</div>
         </div>
       </div>
+    </section>
 
-    </div>
+    <!-- ── PAYMENT METHODS ──────────────────────────────── -->
+    <section class="lp-methods">
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--cash"><v-icon size="14" color="white">mdi-cash</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Efectivo</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.cash) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--transfer"><v-icon size="14" color="white">mdi-bank-transfer</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Transferencia</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.transfer) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--card"><v-icon size="14" color="white">mdi-credit-card-outline</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Tarjeta</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.card) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--mp"><v-icon size="14" color="white">mdi-qrcode</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Mercado Pago</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.mercadopago) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--sjt"><v-icon size="14" color="white">mdi-wallet-outline</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">SJ Crédito</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.credit_sjt) : '—' }}</div>
+          <div v-else class="lp-kpi__skel" />
+        </div>
+      </div>
+      <div v-if="!statsLoading && stats.ready && stats.net_by_method.other > 0" class="lp-mc">
+        <div class="lp-mc__badge lp-mc__badge--other"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
+        <div class="lp-mc__body">
+          <div class="lp-mc__lbl">Otro</div>
+          <div class="lp-mc__val">{{ money(stats.net_by_method.other) }}</div>
+        </div>
+      </div>
+    </section>
 
-    <!-- ── PAYMENT METHODS CARDS ── -->
-    <div class="vp-methods">
-      <div class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--cash"><v-icon size="14" color="white">mdi-cash</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">Efectivo</div>
-          <div class="vp-mc-val" v-if="!statsLoading">{{ stats.ready ? money(stats.net_by_method.cash) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-        </div>
-      </div>
-      <div class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--transfer"><v-icon size="14" color="white">mdi-bank-transfer</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">Transferencia</div>
-          <div class="vp-mc-val" v-if="!statsLoading">{{ stats.ready ? money(stats.net_by_method.transfer) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-        </div>
-      </div>
-      <div class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--card"><v-icon size="14" color="white">mdi-credit-card-outline</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">Tarjeta</div>
-          <div class="vp-mc-val" v-if="!statsLoading">{{ stats.ready ? money(stats.net_by_method.card) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-        </div>
-      </div>
-      <div class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--mp"><v-icon size="14" color="white">mdi-qrcode</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">Mercado Pago</div>
-          <div class="vp-mc-val" v-if="!statsLoading">{{ stats.ready ? money(stats.net_by_method.mercadopago) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-        </div>
-      </div>
-      <div class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--sjt"><v-icon size="14" color="white">mdi-wallet-outline</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">SJ Crédito</div>
-          <div class="vp-mc-val" v-if="!statsLoading">{{ stats.ready ? money(stats.net_by_method.credit_sjt) : '—' }}</div>
-          <div v-else class="vp-kpi-skel" />
-        </div>
-      </div>
-      <div v-if="!statsLoading && stats.ready && stats.net_by_method.other > 0" class="vp-mc">
-        <div class="vp-mc-badge vp-mc-badge--other"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
-        <div class="vp-mc-body">
-          <div class="vp-mc-lbl">Otro</div>
-          <div class="vp-mc-val">{{ money(stats.net_by_method.other) }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SEARCH (always visible) ── -->
-    <div class="vp-search-area">
-      <div class="vp-search-row">
+    <!-- ── FILTER BAR ───────────────────────────────────── -->
+    <section class="lp-filters">
+      <!-- Fila primaria: search + estado + presets + toggle -->
+      <div class="lp-filters__primary">
         <v-text-field
           v-model="q"
           placeholder="Buscar por cliente, número, ID…"
@@ -146,7 +151,7 @@
           density="compact"
           hide-details
           clearable
-          class="vp-q-field"
+          class="lp-filters__search"
           @keyup.enter="applyFiltersImmediate"
           @click:clear="applyFiltersImmediate"
         />
@@ -157,213 +162,214 @@
           variant="outlined"
           density="compact"
           hide-details
-          class="vp-status-field"
+          class="lp-filters__primary-field"
           @update:model-value="applyFiltersImmediate"
         />
-        <div class="vp-presets">
+        <div class="lp-filters__presets">
           <v-btn
             size="small"
+            rounded="lg"
             :variant="isToday ? 'flat' : 'tonal'"
             :color="isToday ? 'primary' : undefined"
             @click="setToday"
-          >Hoy</v-btn>
-          <v-btn size="small" variant="tonal" @click="setThisWeek">Semana</v-btn>
-          <v-btn size="small" variant="tonal" @click="setThisMonth">Mes</v-btn>
-          <v-btn
-            v-if="from || to"
-            size="small"
-            variant="text"
-            @click="clearDates"
           >
-            <v-icon start size="13">mdi-close</v-icon>Fechas
+            Hoy
           </v-btn>
+          <v-btn size="small" rounded="lg" variant="tonal" @click="setThisWeek">Semana</v-btn>
+          <v-btn size="small" rounded="lg" variant="tonal" @click="setThisMonth">Mes</v-btn>
         </div>
+        <button
+          type="button"
+          class="lp-filters__more"
+          :class="{ 'lp-filters__more--open': advancedOpen }"
+          @click="toggleAdvanced"
+        >
+          <v-icon size="15">mdi-tune-variant</v-icon>
+          <span>Más filtros</span>
+          <span v-if="activeAdvancedCount > 0" class="lp-filters__more-count">{{ activeAdvancedCount }}</span>
+          <v-icon size="14" class="lp-filters__more-chev">mdi-chevron-down</v-icon>
+        </button>
       </div>
 
-      <div v-if="from || to" class="vp-date-range-badge">
+      <div v-if="from || to" class="lp-date-range">
         <v-icon size="13">mdi-calendar-range</v-icon>
         {{ normalizeDate(from) || '…' }} → {{ normalizeDate(to) || '…' }}
+        <button type="button" class="lp-date-range__clear" @click="clearDates">
+          <v-icon size="13">mdi-close</v-icon>
+          Limpiar fechas
+        </button>
       </div>
-    </div>
 
-    <!-- ── ACTIVE FILTER CHIPS ── -->
-    <div v-if="activeFilterChips.length" class="vp-chips">
-      <v-chip
-        v-for="chip in activeFilterChips"
-        :key="chip.key"
-        size="small"
-        variant="tonal"
-        closable
-        @click:close="removeChip(chip.key)"
-      >
-        {{ chip.label }}
-      </v-chip>
-      <v-btn
-        v-if="activeFilterChips.length > 1"
-        size="x-small"
-        variant="text"
-        @click="resetFilters"
-      >Limpiar todo</v-btn>
-    </div>
-
-    <!-- ── ADVANCED FILTERS TOGGLE ── -->
-    <div class="vp-adv-toggle" @click="filtersOpen = !filtersOpen">
-      <v-icon size="14" :style="filtersOpen ? 'transform:rotate(180deg)' : ''">mdi-chevron-down</v-icon>
-      Filtros avanzados
-      <v-chip v-if="advancedFiltersCount > 0" size="x-small" color="primary" variant="flat" class="ml-1">
-        {{ advancedFiltersCount }}
-      </v-chip>
-    </div>
-
-    <!-- ── ADVANCED FILTERS BODY ── -->
-    <v-expand-transition>
-      <div v-if="filtersOpen" class="vp-adv-body">
-        <v-row dense>
-          <v-col cols="12" sm="6" md="3">
-            <v-autocomplete
-              v-model="sellerId"
-              :items="sellerItems"
-              :loading="sellerLoading"
-              label="Cajero / Vendedor"
-              placeholder="Buscar vendedor"
-              prepend-inner-icon="mdi-account"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              item-title="title"
-              item-value="value"
-              :no-filter="true"
-              @update:search="onSellerSearch"
-              @update:model-value="applyFiltersImmediate"
-              @click:clear="sellerId = null; applyFiltersImmediate()"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" md="3">
-            <v-autocomplete
-              v-model="productPick"
-              :items="productItems"
-              :loading="productLoading"
-              label="Producto vendido"
-              placeholder="Buscar producto"
-              prepend-inner-icon="mdi-package-variant-closed"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              return-object
-              item-title="title"
-              item-value="value"
-              :no-filter="true"
-              @update:search="onProductSearch"
-              @update:model-value="applyFiltersImmediate"
-              @click:clear="productPick = null; applyFiltersImmediate()"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" md="2">
-            <v-select
-              v-model="payMethod"
-              :items="payMethodItems"
-              label="Método de pago"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              @update:model-value="applyFiltersImmediate"
-              @click:clear="payMethod = ''; applyFiltersImmediate()"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" md="2" v-if="isAdmin">
-            <v-select
-              v-model="selectedBranchId"
-              :items="branchSelectItems"
-              label="Sucursal"
-              variant="outlined"
-              density="compact"
-              hide-details
-              :loading="branchesLoading"
-              @update:model-value="onBranchChanged"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" md="2">
-            <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
-              <template #activator="{ props }">
-                <v-text-field
-                  v-bind="props"
-                  :model-value="normalizeDate(from) || ''"
-                  label="Desde"
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  readonly
-                  placeholder="Sin fecha"
-                />
-              </template>
-              <v-date-picker
-                v-model="from"
-                show-adjacent-months
-                @update:model-value="fromMenu = false; applyFiltersImmediate()"
+      <!-- Filtros avanzados colapsables -->
+      <v-expand-transition>
+        <div v-show="advancedOpen" class="lp-filters__advanced">
+          <div class="lp-filters__grid">
+            <div class="lp-filters__cell">
+              <v-autocomplete
+                v-model="sellerId"
+                :items="sellerItems"
+                :loading="sellerLoading"
+                label="Cajero / Vendedor"
+                placeholder="Buscar vendedor"
+                prepend-inner-icon="mdi-account"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                item-title="title"
+                item-value="value"
+                :no-filter="true"
+                @update:search="onSellerSearch"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="sellerId = null; applyFiltersImmediate()"
               />
-            </v-menu>
-          </v-col>
-
-          <v-col cols="12" sm="6" md="2">
-            <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
-              <template #activator="{ props }">
-                <v-text-field
-                  v-bind="props"
-                  :model-value="normalizeDate(to) || ''"
-                  label="Hasta"
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  readonly
-                  placeholder="Sin fecha"
-                />
-              </template>
-              <v-date-picker
-                v-model="to"
-                show-adjacent-months
-                @update:model-value="toMenu = false; applyFiltersImmediate()"
-              />
-            </v-menu>
-          </v-col>
-
-          <v-col cols="6" sm="3" md="2">
-            <v-select
-              v-model="meta.limit"
-              :items="[10, 20, 50, 100]"
-              label="Por página"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="meta.page = 1; refreshAll()"
-            />
-          </v-col>
-
-          <v-col v-if="isAdmin" cols="12" class="pt-0">
-            <div class="text-caption text-medium-emphasis">
-              Sucursal activa: <b>{{ effectiveBranchId ? `#${effectiveBranchId}` : 'Todas' }}</b>
             </div>
-          </v-col>
-        </v-row>
-      </div>
-    </v-expand-transition>
 
-    <!-- ── TABLE ── -->
-    <div class="vp-table-wrap">
-      <div class="vp-table-head">
-        <div class="vp-table-head-left">
-          <span class="vp-table-title">Ventas</span>
-          <v-chip size="x-small" variant="tonal" class="ml-1">
-            {{ sales.length }} de {{ meta.total }}
-          </v-chip>
+            <div class="lp-filters__cell">
+              <v-autocomplete
+                v-model="productPick"
+                :items="productItems"
+                :loading="productLoading"
+                label="Producto vendido"
+                placeholder="Buscar producto"
+                prepend-inner-icon="mdi-package-variant-closed"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                return-object
+                item-title="title"
+                item-value="value"
+                :no-filter="true"
+                @update:search="onProductSearch"
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="productPick = null; applyFiltersImmediate()"
+              />
+            </div>
+
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="payMethod"
+                :items="payMethodItems"
+                label="Método de pago"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                @update:model-value="applyFiltersImmediate"
+                @click:clear="payMethod = ''; applyFiltersImmediate()"
+              />
+            </div>
+
+            <div v-if="isAdmin" class="lp-filters__cell">
+              <v-select
+                v-model="selectedBranchId"
+                :items="branchSelectItems"
+                label="Sucursal"
+                variant="outlined"
+                density="compact"
+                hide-details
+                :loading="branchesLoading"
+                @update:model-value="onBranchChanged"
+              />
+            </div>
+
+            <div class="lp-filters__cell">
+              <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
+                <template #activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    :model-value="normalizeDate(from) || ''"
+                    label="Desde"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    readonly
+                    placeholder="Sin fecha"
+                  />
+                </template>
+                <v-date-picker
+                  v-model="from"
+                  show-adjacent-months
+                  @update:model-value="fromMenu = false; applyFiltersImmediate()"
+                />
+              </v-menu>
+            </div>
+
+            <div class="lp-filters__cell">
+              <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
+                <template #activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    :model-value="normalizeDate(to) || ''"
+                    label="Hasta"
+                    prepend-inner-icon="mdi-calendar"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    readonly
+                    placeholder="Sin fecha"
+                  />
+                </template>
+                <v-date-picker
+                  v-model="to"
+                  show-adjacent-months
+                  @update:model-value="toMenu = false; applyFiltersImmediate()"
+                />
+              </v-menu>
+            </div>
+
+            <div class="lp-filters__cell lp-filters__cell--per-page">
+              <v-select
+                v-model="meta.limit"
+                :items="[10, 20, 50, 100]"
+                label="Por página"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:model-value="meta.page = 1; refreshAll()"
+              />
+            </div>
+          </div>
+
+          <div v-if="isAdmin" class="lp-filters__hint">
+            Sucursal activa: <b>{{ effectiveBranchId ? `#${effectiveBranchId}` : 'Todas' }}</b>
+          </div>
+        </div>
+      </v-expand-transition>
+
+      <!-- Chips activos -->
+      <div v-if="activeFilterChips.length" class="lp-filters__chips">
+        <v-chip
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          size="small"
+          variant="tonal"
+          color="primary"
+          closable
+          class="lp-filters__chip"
+          @click:close="removeChip(chip.key)"
+        >
+          {{ chip.label }}
+        </v-chip>
+        <button
+          v-if="activeFilterChips.length > 1"
+          type="button"
+          class="lp-filters__chips-clear"
+          @click="resetFilters"
+        >
+          Limpiar todo
+        </button>
+      </div>
+    </section>
+
+    <!-- ── CONTENT ──────────────────────────────────────── -->
+    <section class="lp-content">
+      <div class="lp-content__head">
+        <div class="lp-content__head-left">
+          <span class="lp-content__title">Listado</span>
+          <v-chip size="x-small" variant="tonal">{{ sales.length }} de {{ meta.total }}</v-chip>
         </div>
         <v-btn size="x-small" variant="text" @click="toggleDense">
           <v-icon start size="13">{{ dense ? 'mdi-format-line-spacing' : 'mdi-format-line-weight' }}</v-icon>
@@ -371,181 +377,159 @@
         </v-btn>
       </div>
 
-      <v-data-table
-        :headers="headers"
-        :items="sales"
-        :loading="loading"
-        item-key="id"
-        :density="dense ? 'compact' : 'comfortable'"
-        hover
-        class="vp-table"
-        :items-per-page="-1"
-        hide-default-footer
-        @click:row="onRowClick"
-      >
+      <div class="lp-content__body lp-content__body--flush" :class="{ 'lp-content__body--loading': loading }">
+        <v-data-table
+          :headers="headers"
+          :items="sales"
+          :loading="loading"
+          item-key="id"
+          :density="dense ? 'compact' : 'comfortable'"
+          hover
+          class="vp-table"
+          :items-per-page="-1"
+          hide-default-footer
+          @click:row="onRowClick"
+        >
+          <template #item.sold_at="{ item }">
+            <div class="vp-date">{{ dt(item.sold_at) }}</div>
+            <div class="vp-id">
+              ID {{ item.id }}
+              <span v-if="item.sale_number"> · N° {{ item.sale_number }}</span>
+            </div>
+          </template>
 
-        <!-- Fecha/ID -->
-        <template #item.sold_at="{ item }">
-          <div class="vp-date">{{ dt(item.sold_at) }}</div>
-          <div class="vp-id">
-            ID {{ item.id }}
-            <span v-if="item.sale_number"> · N° {{ item.sale_number }}</span>
-          </div>
-        </template>
+          <template #item.seller="{ item }">
+            <div class="vp-bold">{{ item.user?.username || fullUserName(item.user) || `#${item.user_id}` }}</div>
+            <div class="vp-sub">{{ item.branch?.name || `Suc. #${item.branch_id}` }}</div>
+          </template>
 
-        <!-- Vendedor/Sucursal -->
-        <template #item.seller="{ item }">
-          <div class="vp-bold">{{ item.user?.username || fullUserName(item.user) || `#${item.user_id}` }}</div>
-          <div class="vp-sub">{{ item.branch?.name || `Suc. #${item.branch_id}` }}</div>
-        </template>
+          <template #item.customer="{ item }">
+            <div class="vp-bold">{{ item.customer_name || 'Consumidor Final' }}</div>
+            <div v-if="item.customer_doc || item.customer_phone" class="vp-sub">
+              <span v-if="item.customer_doc">{{ item.customer_doc }}</span>
+              <span v-if="item.customer_doc && item.customer_phone"> · </span>
+              <span v-if="item.customer_phone">{{ item.customer_phone }}</span>
+            </div>
+          </template>
 
-        <!-- Cliente -->
-        <template #item.customer="{ item }">
-          <div class="vp-bold">{{ item.customer_name || 'Consumidor Final' }}</div>
-          <div class="vp-sub" v-if="item.customer_doc || item.customer_phone">
-            <span v-if="item.customer_doc">{{ item.customer_doc }}</span>
-            <span v-if="item.customer_doc && item.customer_phone"> · </span>
-            <span v-if="item.customer_phone">{{ item.customer_phone }}</span>
-          </div>
-        </template>
+          <template #item.product="{ item }">
+            <div class="vp-bold">{{ primaryProductName(item) }}</div>
+            <div v-if="productExtraCount(item) > 0" class="vp-sub">
+              +{{ productExtraCount(item) }} más
+            </div>
+            <div v-else-if="primaryProductSku(item)" class="vp-sub">{{ primaryProductSku(item) }}</div>
+          </template>
 
-        <!-- Producto -->
-        <template #item.product="{ item }">
-          <div class="vp-bold">{{ primaryProductName(item) }}</div>
-          <div class="vp-sub" v-if="productExtraCount(item) > 0">
-            +{{ productExtraCount(item) }} más
-          </div>
-          <div class="vp-sub" v-else-if="primaryProductSku(item)">{{ primaryProductSku(item) }}</div>
-        </template>
+          <template #item.total="{ item }">
+            <div class="vp-amount">{{ money(item.total) }}</div>
+            <div class="vp-sub">
+              Pag: {{ money(item.paid_total) }}
+              <span v-if="Number(item.change_total) > 0"> · Vto: {{ money(item.change_total) }}</span>
+            </div>
+          </template>
 
-        <!-- Total -->
-        <template #item.total="{ item }">
-          <div class="vp-amount">{{ money(item.total) }}</div>
-          <div class="vp-sub">
-            Pag: {{ money(item.paid_total) }}
-            <span v-if="Number(item.change_total) > 0"> · Vto: {{ money(item.change_total) }}</span>
-          </div>
-        </template>
+          <template #item.method="{ item }">
+            <div class="vp-pay-row">
+              <v-chip
+                size="small"
+                variant="flat"
+                :color="payColor(primaryPayment(item)?.method)"
+                class="vp-pay-chip"
+              >
+                {{ methodLabel(primaryPayment(item)?.method) }}
+              </v-chip>
+              <span v-if="paymentInstallments(primaryPayment(item))" class="vp-cuotas">
+                {{ paymentInstallments(primaryPayment(item)) }}x
+              </span>
+              <span v-if="(item.payments || []).length > 1" class="vp-extra-pays">
+                +{{ item.payments.length - 1 }}
+              </span>
+            </div>
+            <div v-if="paymentReference(primaryPayment(item))" class="vp-sub vp-ref">
+              {{ paymentReference(primaryPayment(item)) }}
+            </div>
+          </template>
 
-        <!-- Método (simplificado) -->
-        <template #item.method="{ item }">
-          <div class="vp-pay-row">
-            <v-chip
-              size="small"
-              variant="flat"
-              :color="payColor(primaryPayment(item)?.method)"
-              class="vp-pay-chip"
-            >
-              {{ methodLabel(primaryPayment(item)?.method) }}
+          <template #item.status="{ item }">
+            <v-chip size="small" variant="tonal" :color="statusColor(item.status)">
+              {{ statusLabel(item.status) }}
             </v-chip>
-            <span
-              v-if="paymentInstallments(primaryPayment(item))"
-              class="vp-cuotas"
-            >{{ paymentInstallments(primaryPayment(item)) }}x</span>
-            <span
-              v-if="(item.payments || []).length > 1"
-              class="vp-extra-pays"
-            >+{{ item.payments.length - 1 }}</span>
-          </div>
-          <div
-            v-if="paymentReference(primaryPayment(item))"
-            class="vp-sub vp-ref"
-          >{{ paymentReference(primaryPayment(item)) }}</div>
-        </template>
+          </template>
 
-        <!-- Estado -->
-        <template #item.status="{ item }">
-          <v-chip size="small" variant="tonal" :color="statusColor(item.status)">
-            {{ statusLabel(item.status) }}
-          </v-chip>
-        </template>
-
-        <!-- Acciones -->
-        <template #item.actions="{ item }">
-          <div class="vp-actions">
-            <v-btn
-              size="x-small"
-              variant="tonal"
-              color="primary"
-              icon
-              @click.stop="goDetail(item.id)"
-              title="Ver detalle"
-            >
-              <v-icon size="15">mdi-eye</v-icon>
-            </v-btn>
-
-            <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" size="x-small" variant="tonal" icon>
-                  <v-icon size="15">mdi-dots-vertical</v-icon>
-                </v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item @click.stop="actView(item.id)">
-                  <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
-                  <v-list-item-title>Ver detalle</v-list-item-title>
-                </v-list-item>
-                <v-divider />
-                <v-list-item @click.stop="actRefund(item.id)">
-                  <template #prepend><v-icon size="16" color="orange">mdi-cash-refund</v-icon></template>
-                  <v-list-item-title>Registrar devolución</v-list-item-title>
-                </v-list-item>
-                <v-list-item @click.stop="actExchange(item.id)">
-                  <template #prepend><v-icon size="16" color="cyan">mdi-swap-horizontal</v-icon></template>
-                  <v-list-item-title>Registrar cambio</v-list-item-title>
-                </v-list-item>
-                <v-divider />
-                <v-list-item @click.stop="copyText(String(item.id))">
-                  <template #prepend><v-icon size="16">mdi-content-copy</v-icon></template>
-                  <v-list-item-title>Copiar ID</v-list-item-title>
-                </v-list-item>
-                <v-divider v-if="isAdmin" />
-                <v-list-item
-                  v-if="isAdmin && item.status !== 'CANCELLED'"
-                  @click.stop="openDelete(item)"
-                >
-                  <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
-                  <v-list-item-title>Anular venta</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-else-if="item.status === 'CANCELLED'" disabled>
-                  <template #prepend><v-icon size="16" color="grey">mdi-cancel</v-icon></template>
-                  <v-list-item-title class="text-disabled">Ya anulada</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </div>
-        </template>
-
-        <!-- Pagination -->
-        <template #bottom>
-          <div class="vp-pagination">
-            <div class="vp-pag-info">
-              Pág. <b>{{ meta.page }}</b> de <b>{{ meta.pages }}</b> · <b>{{ meta.total }}</b> total
-            </div>
-            <div class="vp-pag-btns">
+          <template #item.actions="{ item }">
+            <div class="vp-actions">
               <v-btn
-                variant="text"
-                size="small"
-                :disabled="meta.page <= 1 || loading"
-                @click="prevPage"
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                icon
+                title="Ver detalle"
+                @click.stop="goDetail(item.id)"
               >
-                <v-icon start>mdi-chevron-left</v-icon>Anterior
+                <v-icon size="15">mdi-eye</v-icon>
               </v-btn>
-              <v-btn
-                variant="text"
-                size="small"
-                :disabled="meta.page >= meta.pages || loading"
-                @click="nextPage"
-              >
-                Siguiente<v-icon end>mdi-chevron-right</v-icon>
-              </v-btn>
-            </div>
-          </div>
-        </template>
-      </v-data-table>
-    </div>
 
-    <!-- ── ANULAR VENTA DIALOG ── -->
+              <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" size="x-small" variant="tonal" icon>
+                    <v-icon size="15">mdi-dots-vertical</v-icon>
+                  </v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item @click.stop="actView(item.id)">
+                    <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
+                    <v-list-item-title>Ver detalle</v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item @click.stop="actRefund(item.id)">
+                    <template #prepend><v-icon size="16" color="orange">mdi-cash-refund</v-icon></template>
+                    <v-list-item-title>Registrar devolución</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click.stop="actExchange(item.id)">
+                    <template #prepend><v-icon size="16" color="cyan">mdi-swap-horizontal</v-icon></template>
+                    <v-list-item-title>Registrar cambio</v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item @click.stop="copyText(String(item.id))">
+                    <template #prepend><v-icon size="16">mdi-content-copy</v-icon></template>
+                    <v-list-item-title>Copiar ID</v-list-item-title>
+                  </v-list-item>
+                  <v-divider v-if="isAdmin" />
+                  <v-list-item
+                    v-if="isAdmin && item.status !== 'CANCELLED'"
+                    @click.stop="openDelete(item)"
+                  >
+                    <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
+                    <v-list-item-title>Anular venta</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item v-else-if="item.status === 'CANCELLED'" disabled>
+                    <template #prepend><v-icon size="16" color="grey">mdi-cancel</v-icon></template>
+                    <v-list-item-title class="text-disabled">Ya anulada</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+
+          <template #bottom><div /></template>
+        </v-data-table>
+      </div>
+    </section>
+
+    <!-- ── PAGINATION ───────────────────────────────────── -->
+    <footer v-if="meta.total > 0" class="lp-pagination">
+      <span class="lp-pagination__info">{{ sales.length }} de {{ meta.total }}</span>
+      <v-pagination
+        v-model="meta.page"
+        :length="meta.pages || 1"
+        :total-visible="7"
+        rounded="lg"
+        size="small"
+        @update:modelValue="refreshAll"
+      />
+    </footer>
+
+    <!-- ── ANULAR VENTA DIALOG ──────────────────────────── -->
     <v-dialog v-model="deleteDialog.show" max-width="480">
       <v-card rounded="xl">
         <div class="anular-dlg__head">
@@ -726,7 +710,18 @@ const to = ref("");
 const fromMenu = ref(false);
 const toMenu = ref(false);
 const snack = ref({ show: false, text: "" });
-const filtersOpen = ref(false);
+
+/* Filtros avanzados (colapsable + persistencia) */
+const ADV_KEY = "lp.sales.advancedOpen";
+const advancedOpen = ref(false);
+try {
+  const saved = localStorage.getItem(ADV_KEY);
+  if (saved !== null) advancedOpen.value = saved === "1";
+} catch {}
+function toggleAdvanced() {
+  advancedOpen.value = !advancedOpen.value;
+  try { localStorage.setItem(ADV_KEY, advancedOpen.value ? "1" : "0"); } catch {}
+}
 
 const q = ref("");
 const sellerId = ref(null);
@@ -814,7 +809,17 @@ const activeFilterChips = computed(() => {
   return chips;
 });
 
-const advancedFiltersCount = computed(() => activeFilterChips.value.length);
+// Cuenta solo filtros que viven en el bloque "Más filtros"
+const activeAdvancedCount = computed(() => {
+  let n = 0;
+  if (sellerId.value) n++;
+  if (productPick.value) n++;
+  if (String(payMethod.value || "").trim()) n++;
+  if (isAdmin.value && selectedBranchId.value) n++;
+  if (from.value) n++;
+  if (to.value) n++;
+  return n;
+});
 
 const isToday = computed(() => {
   const t = formatLocalDate(new Date());
@@ -1323,163 +1328,353 @@ onMounted(async () => {
   onProductSearch("");
   refreshAll();
 });
-
 </script>
 
 <style scoped>
-.vp {
+/* ============================================================
+   LIST PAGE — patrón estandarizado (lp-*)
+   Compartido con ProductsListPage. Mantener sincronizado.
+   ============================================================ */
+
+.lp {
+  --lp-gap: 14px;
+  --lp-radius: 14px;
+  --lp-radius-sm: 12px;
+  --lp-card-pad: 16px;
+  --lp-card-bg: rgb(var(--v-theme-surface));
+  --lp-card-border: rgba(var(--v-border-color), var(--v-border-opacity));
+  --lp-muted: rgba(var(--v-theme-on-surface), 0.55);
+  --lp-strong: rgba(var(--v-theme-on-surface), 0.9);
+
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  background: rgb(var(--v-theme-background));
-  min-height: 100%;
+  gap: var(--lp-gap);
+  min-width: 0;
 }
 
-/* ── TOP BAR ── */
-.vp-bar {
+/* ── HEADER ─────────────────────────────────────────────── */
+.lp-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 2px 0;
 }
-.vp-title    { font-size: 22px; font-weight: 900; }
-.vp-subtitle { font-size: 12px; opacity: 0.5; margin-top: 2px; }
-.vp-bar-right { display: flex; gap: 8px; align-items: center; }
+.lp-header__left  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-/* ── STATS ── */
-.vp-stats {
+.lp-title {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.lp-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-muted);
+}
+.lp-meta__strong {
+  font-weight: 800;
+  color: var(--lp-strong);
+  font-feature-settings: "tnum";
+}
+.lp-meta__sep { opacity: 0.4; }
+
+/* ── STATS KPI ──────────────────────────────────────────── */
+.lp-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
-
-.vp-kpi {
+.lp-kpi {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
 }
-
-.vp-kpi-badge {
-  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+.lp-kpi__badge {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
   display: grid; place-items: center;
   margin-top: 2px;
 }
-.vp-kpi-badge--primary { background: rgb(var(--v-theme-primary)); }
-.vp-kpi-badge--green   { background: rgb(var(--v-theme-success)); }
-.vp-kpi-badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
-.vp-kpi-badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
+.lp-kpi__badge--primary { background: rgb(var(--v-theme-primary)); }
+.lp-kpi__badge--green   { background: rgb(var(--v-theme-success)); }
+.lp-kpi__badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
+.lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
+.lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lp-kpi__lbl   {
+  font-size: 11px; font-weight: 700;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.lp-kpi__val   {
+  font-size: 20px; font-weight: 900;
+  line-height: 1.2;
+  margin-top: 4px;
+  font-feature-settings: "tnum";
+}
+.lp-kpi__sub   { font-size: 11px; opacity: 0.4; margin-top: 3px; }
+.lp-kpi__skel  {
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  margin-top: 4px;
+  animation: lp-pulse 1.4s ease infinite;
+}
+@keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-.vp-kpi-body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.vp-kpi-lbl   { font-size: 11px; font-weight: 700; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.05em; }
-.vp-kpi-val   { font-size: 20px; font-weight: 900; line-height: 1.2; margin-top: 4px; }
-.vp-kpi-sub   { font-size: 11px; opacity: 0.4; margin-top: 3px; }
-.vp-kpi-skel  { height: 22px; border-radius: 6px; background: rgba(var(--v-theme-on-surface), 0.08); margin-top: 4px; animation: vp-pulse 1.4s ease infinite; }
-@keyframes vp-pulse { 0%,100%{ opacity:0.5 } 50%{ opacity:1 } }
-
-/* ── METHOD CARDS ── */
-.vp-methods {
+/* ── METHOD CARDS ──────────────────────────────────────── */
+.lp-methods {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
-
-.vp-mc {
+.lp-mc {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 11px 14px;
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: var(--lp-radius-sm);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
 }
-
-.vp-mc-badge {
-  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+.lp-mc__badge {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
   display: grid; place-items: center;
 }
-.vp-mc-badge--cash     { background: rgb(var(--v-theme-success)); }
-.vp-mc-badge--transfer { background: var(--pos-kpi-color-3, #9c27b0); }
-.vp-mc-badge--card     { background: rgb(var(--v-theme-info)); }
-.vp-mc-badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
-.vp-mc-badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
-.vp-mc-badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
+.lp-mc__badge--cash     { background: rgb(var(--v-theme-success)); }
+.lp-mc__badge--transfer { background: var(--pos-kpi-color-3, #9c27b0); }
+.lp-mc__badge--card     { background: rgb(var(--v-theme-info)); }
+.lp-mc__badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
+.lp-mc__badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
+.lp-mc__badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
+.lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.lp-mc__lbl  {
+  font-size: 10px; font-weight: 700;
+  opacity: 0.45;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lp-mc__val  {
+  font-size: 14px; font-weight: 900;
+  margin-top: 2px;
+  font-feature-settings: "tnum";
+}
 
-.vp-mc-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.vp-mc-lbl  { font-size: 10px; font-weight: 700; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.04em; }
-.vp-mc-val  { font-size: 14px; font-weight: 900; margin-top: 2px; }
-
-/* ── SEARCH AREA ── */
-.vp-search-area {
+/* ── FILTER BAR ─────────────────────────────────────────── */
+.lp-filters {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   padding: 12px 14px;
-  border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
 }
-.vp-search-row {
+
+.lp-filters__primary {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
-.vp-q-field      { flex: 1; min-width: 200px; }
-.vp-status-field { width: 150px; flex-shrink: 0; }
-.vp-presets      { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
-.vp-date-range-badge {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 700; opacity: 0.5; padding: 2px 0;
+.lp-filters__search { flex: 1 1 280px; min-width: 220px; }
+.lp-filters__search :deep(.v-field) { border-radius: 10px; }
+.lp-filters__primary-field { flex: 0 0 160px; min-width: 140px; }
+
+.lp-filters__presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-/* ── ACTIVE CHIPS ── */
-.vp-chips {
-  display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 4px 0;
+.lp-filters__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid var(--lp-card-border);
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+  user-select: none;
+}
+.lp-filters__more:hover {
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  color: var(--lp-strong);
+}
+.lp-filters__more--open {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  color: rgb(var(--v-theme-primary));
+}
+.lp-filters__more-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-size: 10.5px;
+  font-weight: 900;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+.lp-filters__more-chev {
+  transition: transform 0.18s ease;
+  opacity: 0.7;
+}
+.lp-filters__more--open .lp-filters__more-chev { transform: rotate(180deg); }
+
+.lp-date-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  padding: 4px 0;
+}
+.lp-date-range__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  margin-left: 4px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.lp-date-range__clear:hover {
+  background: rgba(var(--v-theme-error), 0.08);
+  color: rgb(var(--v-theme-error));
+  border-color: rgba(var(--v-theme-error), 0.3);
 }
 
-/* ── ADVANCED TOGGLE ── */
-.vp-adv-toggle {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 700; opacity: 0.55;
-  cursor: pointer; padding: 4px 8px; border-radius: 8px;
-  width: fit-content; user-select: none;
-  transition: opacity 0.15s, background 0.15s;
+.lp-filters__advanced {
+  padding-top: 4px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
 }
-.vp-adv-toggle:hover { opacity: 0.85; background: rgba(var(--v-theme-on-surface), 0.05); }
+.lp-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 12px;
+  align-items: start;
+  padding-top: 12px;
+}
+.lp-filters__cell { min-width: 0; }
+.lp-filters__cell--per-page { max-width: 160px; }
+.lp-filters__hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--lp-muted);
+}
 
-/* ── ADVANCED BODY ── */
-.vp-adv-body {
-  padding: 12px 14px; border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+.lp-filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+}
+.lp-filters__chip { font-size: 11px !important; }
+.lp-filters__chips-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.lp-filters__chips-clear:hover {
+  background: rgba(var(--v-theme-error), 0.08);
+  color: rgb(var(--v-theme-error));
+  border-color: rgba(var(--v-theme-error), 0.3);
 }
 
-/* ── TABLE ── */
-.vp-table-wrap {
-  border-radius: 14px; overflow: hidden;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+/* ── CONTENT WRAPPER ───────────────────────────────────── */
+.lp-content {
+  border-radius: var(--lp-radius);
+  background: var(--lp-card-bg);
+  border: 1px solid var(--lp-card-border);
+  overflow: hidden;
 }
-.vp-table-head {
-  display: flex; align-items: center; justify-content: space-between;
+.lp-content__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid var(--lp-card-border);
+  background: rgba(var(--v-theme-on-surface), 0.015);
 }
-.vp-table-head-left { display: flex; align-items: center; }
-.vp-table-title { font-size: 13px; font-weight: 800; }
-.vp-table { background: transparent; }
+.lp-content__head-left { display: flex; align-items: center; gap: 8px; }
+.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__body { padding: 12px; transition: opacity 0.2s; }
+.lp-content__body--flush { padding: 0; }
+.lp-content__body--loading { opacity: 0.7; pointer-events: none; }
 
-/* Table cells */
+/* ── PAGINATION ─────────────────────────────────────────── */
+.lp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 6px 8px;
+}
+.lp-pagination__info {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  font-feature-settings: "tnum";
+}
+
+/* ============================================================
+   VENTAS — específico (data-table cells)
+   ============================================================ */
+.vp-table { background: transparent; }
 .vp-date   { font-size: 13px; font-weight: 700; }
 .vp-id     { font-size: 11px; opacity: 0.45; font-family: monospace; }
 .vp-bold   { font-size: 13px; font-weight: 700; }
 .vp-sub    { font-size: 11px; opacity: 0.5; }
-.vp-amount { font-size: 14px; font-weight: 900; }
+.vp-amount { font-size: 14px; font-weight: 900; font-feature-settings: "tnum"; }
 
 .vp-pay-row  { display: flex; align-items: center; gap: 6px; }
 .vp-pay-chip { font-size: 11px !important; }
@@ -1494,34 +1689,28 @@ onMounted(async () => {
 
 .vp-actions { display: flex; gap: 4px; align-items: center; }
 
-/* Pagination */
-.vp-pagination {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; flex-wrap: wrap; gap: 8px;
-}
-.vp-pag-info { font-size: 12px; opacity: 0.55; }
-.vp-pag-btns { display: flex; gap: 4px; }
-
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 1200px) {
-  .vp-methods { grid-template-columns: repeat(3, 1fr); }
+  .lp-methods { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 960px) {
-  .vp-stats   { grid-template-columns: repeat(2, 1fr); }
-  .vp-methods { grid-template-columns: repeat(3, 1fr); }
+  .lp { gap: 12px; }
+  .lp-stats   { grid-template-columns: repeat(2, 1fr); }
+  .lp-methods { grid-template-columns: repeat(3, 1fr); }
+  .lp-filters { padding: 10px 12px; }
 }
 @media (max-width: 600px) {
-  .vp { padding: 10px; gap: 8px; }
-  .vp-stats   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .vp-methods { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .vp-kpi-val { font-size: 16px; }
-  .vp-kpi-badge { width: 30px; height: 30px; }
-  .vp-mc-val  { font-size: 13px; }
-  .vp-status-field { width: 130px; }
-  .vp-title { font-size: 18px; }
+  .lp-title { font-size: 18px; }
+  .lp-stats   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .lp-methods { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .lp-kpi__val { font-size: 16px; }
+  .lp-kpi__badge { width: 30px; height: 30px; }
+  .lp-mc__val  { font-size: 13px; }
+  .lp-filters__primary-field { flex: 0 0 100%; }
+  .lp-filters__presets { width: 100%; justify-content: flex-start; }
 }
 
-/* ── ANULAR DIALOG ─────────────────────────────────────────────────────── */
+/* ── ANULAR DIALOG ─────────────────────────────────────── */
 .anular-dlg__head {
   display: flex;
   align-items: center;

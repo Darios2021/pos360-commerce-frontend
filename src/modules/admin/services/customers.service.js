@@ -4,6 +4,9 @@ import http from "@/app/api/http";
 export const listCustomers = (params = {}) =>
   http.get("/admin/customers", { params });
 
+export const getCustomersStats = (params = {}) =>
+  http.get("/admin/customers/stats", { params });
+
 export const getCustomer = (id) =>
   http.get(`/admin/customers/${id}`);
 
