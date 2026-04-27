@@ -29,7 +29,8 @@
     <section class="content">
       <div class="after-hero-spacer"></div>
 
-      <div class="mb-6">
+      <!-- Slider "Productos en promoción": sólo se muestra si hay promos reales activas -->
+      <div class="mb-6" v-if="promoItems.length > 0">
         <PromoSlider :items="promoItems" :perPage="promoPerPage" @seeAll="scrollToProducts" />
       </div>
 
@@ -270,15 +271,11 @@ const promoItems = computed(() => {
   const arr = Array.isArray(items.value) ? items.value : [];
   if (!arr.length) return [];
 
-  const promos = arr.filter((p) => {
-    const disc = toNum(p.price_discount);
-    // is_promo cuenta sólo si la ventana temporal está vigente.
-    // Promos vencidas (promo_ends_at < now) NO entran en este filtro.
-    return isPromoActive(p) || Boolean(p.is_new) || disc > 0;
-  });
+  // Sólo productos en promoción REAL (is_promo + ventana temporal vigente).
+  // No incluye productos nuevos ni precios con descuento — esos no son promos.
+  const promos = arr.filter((p) => isPromoActive(p));
 
-  const base = promos.length ? promos : arr;
-  return base.slice(0, 18);
+  return promos.slice(0, 18);
 });
 
 const hasMore = computed(() => {

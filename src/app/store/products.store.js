@@ -269,15 +269,22 @@ function sanitizeProductPayload(raw = {}) {
     const v = String(p.promo_qty_mode ?? "").trim().toLowerCase();
     p.promo_qty_mode = v === "amount" || v === "percent" ? v : null;
   }
-  // numéricos promo: "" o undefined → null; sino number
+  // numéricos promo: null/""/undefined → null; sino number
+  // (importante: null debe quedar null — sino el backend lo lee como "configurado")
   for (const f of ["promo_price", "promo_qty_discount"]) {
     if (!(f in p)) continue;
-    if (p[f] === "" || p[f] === undefined) p[f] = null;
-    else p[f] = toNum(p[f], 0);
+    if (p[f] === null || p[f] === "" || p[f] === undefined) {
+      p[f] = null;
+      continue;
+    }
+    p[f] = toNum(p[f], 0);
   }
   if ("promo_qty_threshold" in p) {
-    if (p.promo_qty_threshold === "" || p.promo_qty_threshold === undefined) p.promo_qty_threshold = null;
-    else p.promo_qty_threshold = toInt(p.promo_qty_threshold, 0) || null;
+    if (p.promo_qty_threshold === null || p.promo_qty_threshold === "" || p.promo_qty_threshold === undefined) {
+      p.promo_qty_threshold = null;
+    } else {
+      p.promo_qty_threshold = toInt(p.promo_qty_threshold, 0) || null;
+    }
   }
   // Fechas promo: "" → null; Date → ISO; sino conservar string
   for (const f of ["promo_starts_at", "promo_ends_at"]) {

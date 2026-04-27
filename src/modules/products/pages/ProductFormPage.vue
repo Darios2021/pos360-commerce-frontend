@@ -1221,6 +1221,31 @@ function buildPayload() {
   delete payload.sku;
   if (payload.barcode === "") payload.barcode = null;
   if (payload.branch_id === "" || payload.branch_id === 0) payload.branch_id = null;
+
+  // ── Promo: blindaje al guardar ─────────────────────────────────────────
+  // Si is_promo está OFF, limpiamos absolutamente todo lo de promo.
+  if (!payload.is_promo) {
+    payload.promo_price = null;
+    payload.promo_starts_at = null;
+    payload.promo_ends_at = null;
+    payload.promo_qty_threshold = null;
+    payload.promo_qty_discount = null;
+    payload.promo_qty_mode = null;
+  } else {
+    // Si la submodalidad "Por tiempo" no está activa, sus campos van null.
+    if (!promoTimeOn.value) {
+      payload.promo_price = null;
+      payload.promo_starts_at = null;
+      payload.promo_ends_at = null;
+    }
+    // Si la submodalidad "Por cantidad" no está activa, sus campos van null.
+    if (!promoQtyOn.value) {
+      payload.promo_qty_threshold = null;
+      payload.promo_qty_discount = null;
+      payload.promo_qty_mode = null;
+    }
+  }
+
   return payload;
 }
 function buildBranchIdsFromStockMatrix() {
