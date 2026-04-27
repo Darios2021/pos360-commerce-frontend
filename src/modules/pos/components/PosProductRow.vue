@@ -6,6 +6,7 @@
       'has-stock': hasStockValue && numericStock > 0,
       'no-stock': hasStockValue && numericStock <= 0,
       'in-cart': isInCart,
+      'is-promo': promoActive,
     }"
     tabindex="0"
     @keydown="onKeydown"
@@ -39,6 +40,19 @@
         </span>
       </div>
 
+      <!-- Badge PROMO (esquina superior derecha) -->
+      <div v-if="promoActive" class="prow-badges-tr">
+        <span class="badge-promo" title="Producto en promoción">
+          <v-icon size="13">mdi-tag-heart</v-icon>
+          PROMO
+        </span>
+      </div>
+
+      <!-- Hint promo por cantidad (overlay flotante abajo a la derecha) -->
+      <span v-if="qtyPromoHint" class="prow-qty-promo" :title="qtyPromoHint">
+        <v-icon size="11">mdi-tag-multiple</v-icon>
+        {{ qtyPromoHint }}
+      </span>
     </div>
 
     <!-- Info compacta abajo -->
@@ -57,11 +71,16 @@
 
       <div class="prow-footer">
         <div class="prow-price-box">
-          <div class="price-current">
-            {{ money(priceDiscountValue) }}
+          <div class="price-current" :class="{ 'is-promo': promoActive }">
+            {{ money(effectivePriceValue) }}
           </div>
-          <div v-if="hasRealDiscount" class="price-list">
-            {{ money(priceListValue) }}
+          <div class="price-meta">
+            <span v-if="hasRealDiscount" class="price-list">
+              {{ money(priceListValue) }}
+            </span>
+            <span v-if="offPctEffective > 0" class="price-off" :class="{ 'is-promo': promoActive }">
+              -{{ offPctEffective }}%
+            </span>
           </div>
         </div>
 
@@ -282,6 +301,50 @@ const discountPercent = computed(() => {
   return Math.round(
     ((priceListValue.value - priceDiscountValue.value) / priceListValue.value) * 100
   );
+});
+
+/* ─── PROMO ─── */
+function _toNum(v, d = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+const promoActive = computed(() => {
+  const it = itemSafe.value;
+  if (!it?.is_promo) return false;
+  const now = new Date();
+  const s = it.promo_starts_at ? new Date(it.promo_starts_at) : null;
+  const e = it.promo_ends_at   ? new Date(it.promo_ends_at)   : null;
+  if (s && Number.isFinite(s.getTime()) && now < s) return false;
+  if (e && Number.isFinite(e.getTime()) && now > e) return false;
+  return true;
+});
+
+// Precio efectivo: si hay promo por tiempo activa con promo_price → manda
+const effectivePriceValue = computed(() => {
+  if (promoActive.value) {
+    const pp = _toNum(itemSafe.value?.promo_price, 0);
+    if (pp > 0) return pp;
+  }
+  return priceDiscountValue.value;
+});
+
+// % OFF respecto a price_list (lo que el cliente "ahorra")
+const offPctEffective = computed(() => {
+  const list = priceListValue.value;
+  const eff = effectivePriceValue.value;
+  if (!(list > 0) || !(eff > 0) || eff >= list) return 0;
+  return Math.round(((list - eff) / list) * 100);
+});
+
+// Hint compacto de promo por cantidad (mismo formato que el shop)
+const qtyPromoHint = computed(() => {
+  if (!promoActive.value) return "";
+  const thr  = Number(itemSafe.value?.promo_qty_threshold) || 0;
+  const disc = _toNum(itemSafe.value?.promo_qty_discount, 0);
+  const mode = String(itemSafe.value?.promo_qty_mode || "").toLowerCase();
+  if (thr < 2 || disc <= 0) return "";
+  if (mode === "percent") return `${thr}+ unid · ${disc}% OFF`;
+  return `${thr}+ unid · -$${Math.round(disc)}`;
 });
 
 function addToCart() {
@@ -554,6 +617,50 @@ function money(v) {
     0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
+/* Badge PROMO (esquina superior derecha) */
+.badge-promo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  box-shadow:
+    0 3px 10px rgba(255, 87, 34, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+  text-transform: uppercase;
+}
+
+/* Chip flotante de promo por cantidad (abajo a la derecha del media) */
+.prow-qty-promo {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1.1;
+  box-shadow: 0 3px 8px rgba(255, 87, 34, 0.40);
+  z-index: 2;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .badge-stock .v-icon {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
 }
@@ -688,14 +795,35 @@ function money(v) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Precio en naranja cuando es promo activa */
+.price-current.is-promo { color: #ff5722; }
 
+.price-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
 .price-list {
   font-size: 10.5px;
   line-height: 1;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.42);
   text-decoration: line-through;
-  margin-top: 2px;
+}
+.price-off {
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 800;
+  color: #00a650; /* verde — descuento contado normal */
+}
+.price-off.is-promo {
+  color: #fff;
+  background: #ff5722;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.2px;
 }
 
 .btn-action {
@@ -750,6 +878,44 @@ function money(v) {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
   pointer-events: none;
   font-feature-settings: "tnum";
+}
+
+/* Card en estado PROMO: borde naranja + glow sutil para que se distinga */
+.prow.is-promo {
+  border-color: rgba(255, 87, 34, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 87, 34, 0.25),
+    0 4px 14px rgba(255, 87, 34, 0.12),
+    var(--row-shadow);
+}
+.prow.is-promo:hover {
+  border-color: rgba(255, 87, 34, 0.75);
+  box-shadow:
+    0 0 0 1px rgba(255, 87, 34, 0.40),
+    0 8px 22px rgba(255, 87, 34, 0.18),
+    var(--row-shadow-hover);
+}
+.prow.is-promo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 87, 34, 0.06) 0%,
+    rgba(255, 87, 34, 0) 50%
+  );
+  z-index: 1;
+}
+
+/* Si está en carrito Y en promo, prevalece el verde (cart) pero con tint naranja sutil */
+.prow.in-cart.is-promo {
+  border-color: rgba(255, 87, 34, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 87, 34, 0.30),
+    0 0 0 2px rgba(var(--v-theme-success), 0.18),
+    var(--row-shadow);
 }
 
 /* Card en estado "en carrito": borde verde + badge sutil en esquina */

@@ -80,31 +80,67 @@
 
         <!-- Badge -->
         <div class="ps-badge-wrap">
-          <span v-if="getQty(row) > 0" class="ps-badge ps-badge--green">
-            <v-icon size="10">mdi-check</v-icon>
-            {{ getQty(row) }} uds
-          </span>
-          <span v-else class="ps-badge ps-badge--grey">sin stock</span>
+          <!-- Modo edición: badge según diferencia con stock actual -->
+          <template v-if="showCurrent">
+            <span v-if="getDiff(row) === 0" class="ps-badge ps-badge--neutral" title="No cambia">
+              <v-icon size="10">mdi-equal</v-icon>
+              Sin cambios
+            </span>
+            <span v-else-if="getDiff(row) > 0" class="ps-badge ps-badge--up" :title="`Aumenta ${getDiff(row)}`">
+              <v-icon size="10">mdi-arrow-up-bold</v-icon>
+              +{{ getDiff(row) }}
+            </span>
+            <span v-else class="ps-badge ps-badge--down" :title="`Baja ${Math.abs(getDiff(row))}`">
+              <v-icon size="10">mdi-arrow-down-bold</v-icon>
+              {{ getDiff(row) }}
+            </span>
+          </template>
+          <!-- Modo creación: badge clásico -->
+          <template v-else>
+            <span v-if="getQty(row) > 0" class="ps-badge ps-badge--green">
+              <v-icon size="10">mdi-check</v-icon>
+              {{ getQty(row) }} uds
+            </span>
+            <span v-else class="ps-badge ps-badge--grey">sin stock</span>
+          </template>
         </div>
       </div>
     </div>
 
-    <!-- Footer: total + reset -->
+    <!-- Footer: total + acciones -->
     <div v-if="rows.length && !loading" class="ps-footer">
       <div class="ps-total">
         <v-icon size="14" color="primary">mdi-sigma</v-icon>
         Total: <strong>{{ totalQty }}</strong> unidades en {{ activeBranches }} sucursal{{ activeBranches !== 1 ? 'es' : '' }}
+        <span v-if="showCurrent && hasChanges" class="ps-changes-badge" title="Hay cambios sin guardar">
+          <v-icon size="11">mdi-pencil</v-icon>
+          {{ changedCount }} cambio{{ changedCount !== 1 ? 's' : '' }}
+        </span>
       </div>
-      <v-btn
-        v-if="totalQty > 0"
-        size="x-small"
-        variant="text"
-        @click="resetAll"
-        :disabled="disabled"
-        class="ps-reset-btn"
-      >
-        Limpiar todo
-      </v-btn>
+      <div class="ps-footer-actions">
+        <v-btn
+          v-if="showCurrent && hasChanges"
+          size="x-small"
+          variant="text"
+          @click="restoreCurrent"
+          :disabled="disabled"
+          class="ps-reset-btn"
+          title="Volver a los valores actuales en DB"
+        >
+          <v-icon size="14" start>mdi-restore</v-icon>
+          Restaurar al actual
+        </v-btn>
+        <v-btn
+          v-if="totalQty > 0"
+          size="x-small"
+          variant="text"
+          @click="resetAll"
+          :disabled="disabled"
+          class="ps-reset-btn"
+        >
+          Limpiar todo
+        </v-btn>
+      </div>
     </div>
 
   </div>
@@ -127,6 +163,10 @@ const products = useProductsStore();
 const loading = ref(false);
 const error = ref(null);
 const qtyMap = ref({});
+// Track del productId que cargó las rows actuales — para detectar carga stale
+let lastLoadedPid = 0;
+// Flag por row: true cuando el usuario tocó el input (no pisar al re-cargar)
+const touched = ref({});
 
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
@@ -155,8 +195,18 @@ function getQty(row) {
   return num(qtyMap.value[bid], 0);
 }
 
+// Diferencia entre el input actual y el stock real en DB
+function getDiff(row) {
+  return getQty(row) - num(row.current_qty, 0);
+}
+
 const totalQty = computed(() => rows.value.reduce((s, r) => s + getQty(r), 0));
 const activeBranches = computed(() => rows.value.filter((r) => getQty(r) > 0).length);
+
+const changedCount = computed(() =>
+  rows.value.filter((r) => getDiff(r) !== 0).length
+);
+const hasChanges = computed(() => changedCount.value > 0);
 
 function syncQtyMapFromRows() {
   const map = { ...qtyMap.value };
@@ -179,11 +229,17 @@ function writeBack() {
   rows.value = next;
 }
 
+function markTouched(bid) {
+  if (!bid) return;
+  touched.value = { ...touched.value, [bid]: true };
+}
+
 function onInput(branchId, raw) {
   const bid = toInt(branchId, 0);
   if (!bid) return;
   const v = Math.max(0, num(raw, 0));
   qtyMap.value = { ...qtyMap.value, [bid]: v };
+  markTouched(bid);
   writeBack();
 }
 
@@ -192,6 +248,7 @@ function increment(branchId) {
   if (!bid) return;
   const cur = num(qtyMap.value[bid], 0);
   qtyMap.value = { ...qtyMap.value, [bid]: cur + 1 };
+  markTouched(bid);
   writeBack();
 }
 
@@ -201,6 +258,7 @@ function decrement(branchId) {
   const cur = num(qtyMap.value[bid], 0);
   if (cur <= 0) return;
   qtyMap.value = { ...qtyMap.value, [bid]: cur - 1 };
+  markTouched(bid);
   writeBack();
 }
 
@@ -211,6 +269,18 @@ function resetAll() {
     if (bid) map[bid] = 0;
   }
   qtyMap.value = map;
+  writeBack();
+}
+
+// Vuelve los inputs a los valores reales actuales (deshace cambios sin guardar)
+function restoreCurrent() {
+  const map = {};
+  for (const r of rows.value) {
+    const bid = toInt(r.branch_id, 0);
+    if (bid) map[bid] = num(r.current_qty, 0);
+  }
+  qtyMap.value = map;
+  touched.value = {}; // limpiar marcas de "tocado"
   writeBack();
 }
 
@@ -236,11 +306,47 @@ async function refresh() {
         qty: num(x.assign_qty ?? x.qty_to_set ?? 0, 0),
         enabled: toBool(x.enabled ?? x.is_active ?? 0, false),
       }));
+
+      // ✅ Solo respetamos los valores locales si:
+      //   - ya cargamos para ESTE producto antes (no son de un load stale), Y
+      //   - el usuario tocó el input (touched=true).
+      // Sino, pre-cargamos el stock ACTUAL real para que no se pise con 0.
+      const sameProduct = lastLoadedPid === pid;
       const local = Array.isArray(rows.value) ? rows.value : [];
-      const localMap = new Map(local.map((r) => [toInt(r.branch_id, 0), { qty: num(r.qty, 0), enabled: toBool(r.enabled, false) }]));
+      const localMap = sameProduct
+        ? new Map(
+            local
+              .filter((r) => touched.value[toInt(r.branch_id, 0)])
+              .map((r) => [
+                toInt(r.branch_id, 0),
+                { qty: num(r.qty, 0), enabled: toBool(r.enabled, false) },
+              ])
+          )
+        : new Map();
+
       rows.value = arr
-        .map((r) => ({ ...r, qty: localMap.has(r.branch_id) ? localMap.get(r.branch_id).qty : num(r.qty, 0), enabled: localMap.has(r.branch_id) ? localMap.get(r.branch_id).enabled : toBool(r.enabled, false) }))
+        .map((r) => {
+          if (localMap.has(r.branch_id)) {
+            const lo = localMap.get(r.branch_id);
+            return { ...r, qty: lo.qty, enabled: lo.enabled };
+          }
+          const initialQty = num(r.current_qty, 0);
+          return { ...r, qty: initialQty, enabled: initialQty > 0 };
+        })
         .filter((r) => r.branch_id > 0 && r.branch_name);
+
+      lastLoadedPid = pid;
+      // Reset touched al cargar un producto nuevo (sino se carga sólo el que tocó)
+      if (!sameProduct) {
+        touched.value = {};
+        // ✅ Forzar regeneración de qtyMap desde rows.qty (sino quedan los 0 viejos)
+        const fresh = {};
+        for (const r of rows.value) {
+          const bid = toInt(r.branch_id, 0);
+          if (bid) fresh[bid] = num(r.qty, 0);
+        }
+        qtyMap.value = fresh;
+      }
     } else {
       const bs = await fetchBranchesSafe();
       const arr = (Array.isArray(bs) ? bs : []).map((b) => ({
@@ -346,6 +452,19 @@ watch(() => props.productId, () => refresh(), { immediate: true });
 }
 .ps-badge--green { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
 .ps-badge--grey  { background: rgba(var(--v-theme-on-surface), 0.07); opacity: 0.55; }
+/* Badges modo edición */
+.ps-badge--neutral {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.ps-badge--up {
+  background: rgba(var(--v-theme-success), 0.15);
+  color: rgb(var(--v-theme-success));
+}
+.ps-badge--down {
+  background: rgba(var(--v-theme-warning), 0.18);
+  color: rgb(var(--v-theme-warning));
+}
 
 /* Footer */
 .ps-footer {
@@ -356,8 +475,23 @@ watch(() => props.productId, () => refresh(), { immediate: true });
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgba(var(--v-theme-surface-variant), 0.2);
 }
-.ps-total { font-size: 11px; opacity: 0.65; display: flex; align-items: center; gap: 5px; }
-.ps-reset-btn { font-size: 11px; opacity: 0.55; }
+.ps-total { font-size: 11px; opacity: 0.65; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.ps-changes-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(var(--v-theme-warning), 0.15);
+  color: rgb(var(--v-theme-warning));
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  opacity: 1;
+  margin-left: 4px;
+}
+.ps-footer-actions { display: flex; align-items: center; gap: 4px; }
+.ps-reset-btn { font-size: 11px; opacity: 0.7; }
+.ps-reset-btn:hover { opacity: 1; }
 
 /* Mobile */
 @media (max-width: 480px) {

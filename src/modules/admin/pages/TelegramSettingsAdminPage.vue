@@ -257,6 +257,22 @@
             @update:model-value="autosave(a.key)"
           />
         </div>
+
+        <div class="tg-group">
+          <div class="tg-group__title">
+            <v-icon size="14" color="primary">mdi-tag-heart-outline</v-icon> Productos
+          </div>
+          <v-switch
+            v-for="a in productAlerts"
+            :key="a.key"
+            v-model="form[a.key]"
+            color="primary"
+            hide-details
+            density="compact"
+            :label="a.label"
+            @update:model-value="autosave(a.key)"
+          />
+        </div>
       </div>
     </section>
 
@@ -358,6 +374,7 @@ const form = reactive({
   alert_transfer_dispatched: true,
   alert_transfer_pending: true,
   alert_transfer_received: true,
+  alert_promo_change: true,
 });
 
 const cashAlerts = [
@@ -387,6 +404,10 @@ const shopAlerts = [
   { key: "alert_shop_new_order", label: "Nueva orden en la tienda" },
 ];
 
+const productAlerts = [
+  { key: "alert_promo_change", label: "Promoción activada / desactivada / modificada" },
+];
+
 async function reload() {
   loading.value = true;
   error.value = "";
@@ -401,6 +422,7 @@ async function reload() {
         ...stockAlerts.map((a) => a.key),
         ...transferAlerts.map((a) => a.key),
         ...shopAlerts.map((a) => a.key),
+        ...productAlerts.map((a) => a.key),
       ]) {
         if (Object.prototype.hasOwnProperty.call(cfg.value, key)) {
           form[key] = !!cfg.value[key];
@@ -439,6 +461,7 @@ async function save() {
       alert_transfer_dispatched: !!form.alert_transfer_dispatched,
       alert_transfer_pending: !!form.alert_transfer_pending,
       alert_transfer_received: !!form.alert_transfer_received,
+      alert_promo_change: !!form.alert_promo_change,
     };
     if (form.bot_token && form.bot_token.trim()) {
       patch.bot_token = form.bot_token.trim();

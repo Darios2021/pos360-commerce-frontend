@@ -6,7 +6,7 @@
     <div class="pfp-topbar">
       <div class="pfp-topbar-inner">
 
-        <!-- Back + Title -->
+        <!-- Slot izquierdo: solo back (la página y el contexto los da el header global) -->
         <div class="pfp-title-block">
           <AppBackButton
             label="Productos"
@@ -15,14 +15,6 @@
             emit-only
             @back="onCancel"
           />
-          <div class="pfp-badge">
-            <v-icon size="16" color="white">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          </div>
-          <div>
-            <div class="pfp-title">{{ isEdit ? 'Editar producto' : 'Nuevo producto' }}</div>
-            <div class="pfp-title-sub" v-if="draft?.id">#{{ draft.id }}</div>
-            <div class="pfp-title-sub" v-else>Productos / Nuevo</div>
-          </div>
         </div>
 
         <!-- Steps (desktop) -->
@@ -56,8 +48,19 @@
           </div>
         </div>
 
-        <!-- Loading indicator -->
-        <v-progress-circular v-if="busy" indeterminate size="20" width="2" color="primary" class="mr-2" />
+        <!-- Slot derecho del grid: contexto útil que no está en el breadcrumb -->
+        <div class="pfp-topbar-right">
+          <v-progress-circular v-if="busy" indeterminate size="20" width="2" color="primary" />
+          <div v-if="isEdit && draft?.id" class="pfp-ctx-chip" :title="draft?.sku || ''">
+            <v-icon size="13">mdi-pound</v-icon>
+            <span class="pfp-ctx-id">{{ draft.id }}</span>
+            <span v-if="draft?.sku" class="pfp-ctx-sku">{{ draft.sku }}</span>
+          </div>
+          <div v-else-if="!isEdit" class="pfp-ctx-chip pfp-ctx-chip--new">
+            <v-icon size="13">mdi-plus</v-icon>
+            <span>Nuevo</span>
+          </div>
+        </div>
       </div>
 
       <!-- Progress bar -->
@@ -68,57 +71,6 @@
 
     <!-- ══ LAYOUT ══ -->
     <div class="pfp-layout">
-
-      <!-- SIDEBAR (large screens) -->
-      <aside class="pfp-sidebar" v-if="lgAndUp">
-        <div class="pfp-sidebar-inner">
-          <nav class="pfp-sidenav">
-            <button
-              v-for="s in STEPS"
-              :key="s.value"
-              class="pfp-sidenav-item"
-              :class="{ active: step === s.value, done: step > s.value, disabled: !canGoTo(s.value) }"
-              :disabled="!canGoTo(s.value)"
-              @click="goToStep(s.value)"
-              type="button"
-            >
-              <span class="pfp-sidenav-icon">
-                <v-icon v-if="step > s.value" size="14" color="white">mdi-check</v-icon>
-                <v-icon v-else size="14" :color="step === s.value ? 'white' : 'inherit'">{{ s.icon }}</v-icon>
-              </span>
-              <div class="pfp-sidenav-text">
-                <div class="pfp-sidenav-title">{{ s.title }}</div>
-                <div class="pfp-sidenav-sub">{{ s.sub }}</div>
-              </div>
-            </button>
-          </nav>
-
-          <!-- Quick info -->
-          <div class="pfp-side-info" v-if="draft?.name">
-            <div class="pfp-side-info-label">Producto</div>
-            <div class="pfp-side-info-name">{{ draft.name }}</div>
-            <div class="pfp-side-info-row" v-if="getCategoryNameById(getCategoryIdFromDraft(draft))">
-              <v-icon size="12">mdi-tag-outline</v-icon>
-              {{ getCategoryNameById(getCategoryIdFromDraft(draft)) }}
-            </div>
-            <div class="pfp-side-info-row" v-if="skuPreview">
-              <v-icon size="12">mdi-barcode</v-icon>
-              {{ skuPreview }}
-            </div>
-            <div class="pfp-side-info-chips">
-              <span class="pfp-side-chip" :class="draft.is_active ? 'green' : 'grey'">
-                {{ draft.is_active ? 'Activo' : 'Inactivo' }}
-              </span>
-              <span class="pfp-side-chip blue" v-if="queuedImages.length">
-                {{ queuedImages.length }} imgs
-              </span>
-              <span class="pfp-side-chip amber" v-if="stockPreviewList.length">
-                Stock ✓
-              </span>
-            </div>
-          </div>
-        </div>
-      </aside>
 
       <!-- ══ MAIN ══ -->
       <main class="pfp-main" ref="mainRef">
@@ -583,22 +535,102 @@
                 {{ products.error }}
               </v-alert>
 
+              <!-- ════ HERO PREVIEW ════ -->
+              <div class="pfp-hero">
+                <!-- Galería: foto principal + miniaturas -->
+                <div class="pfp-hero-gallery">
+                  <div class="pfp-hero-main">
+                    <img v-if="summaryHero" :src="summaryHero.url" alt="" />
+                    <div v-else class="pfp-hero-empty">
+                      <v-icon size="48">mdi-image-off-outline</v-icon>
+                      <span>Sin imagen</span>
+                    </div>
+                    <span v-if="draft.is_promo" class="pfp-hero-promo-badge">PROMO</span>
+                  </div>
+                  <div v-if="summaryImages.length > 1" class="pfp-hero-thumbs">
+                    <div
+                      v-for="(im, i) in summaryImages.slice(0, 6)"
+                      :key="i"
+                      class="pfp-hero-thumb"
+                      :class="{ 'is-primary': im === summaryHero }"
+                    >
+                      <img :src="im.url" alt="" />
+                    </div>
+                    <div v-if="summaryImages.length > 6" class="pfp-hero-thumb pfp-hero-thumb--more">
+                      +{{ summaryImages.length - 6 }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Info principal -->
+                <div class="pfp-hero-info">
+                  <div class="pfp-hero-cat" v-if="getCategoryNameById(getCategoryIdFromDraft(draft))">
+                    {{ getCategoryNameById(getCategoryIdFromDraft(draft)) }}
+                    <span v-if="getSubcategoryNameById(getSubcategoryIdFromDraft(draft))">
+                      · {{ getSubcategoryNameById(getSubcategoryIdFromDraft(draft)) }}
+                    </span>
+                  </div>
+                  <div class="pfp-hero-name">{{ safe(draft.name) || "Producto sin nombre" }}</div>
+                  <div class="pfp-hero-brand" v-if="draft.brand || draft.model">
+                    <span v-if="draft.brand">{{ draft.brand }}</span>
+                    <span v-if="draft.brand && draft.model"> · </span>
+                    <span v-if="draft.model">{{ draft.model }}</span>
+                  </div>
+
+                  <!-- Precio destacado -->
+                  <div class="pfp-hero-price-block">
+                    <div v-if="num(draft.price_list) > num(draft.price_discount) && num(draft.price_discount) > 0" class="pfp-hero-price-old">
+                      $ {{ fmtNum(draft.price_list) }}
+                    </div>
+                    <div class="pfp-hero-price-row">
+                      <div class="pfp-hero-price-main">$ {{ fmtNum(num(draft.price_discount) || num(draft.price_list)) }}</div>
+                      <div v-if="num(draft.price_list) > num(draft.price_discount) && num(draft.price_discount) > 0" class="pfp-hero-price-off">
+                        {{ Math.round(((num(draft.price_list) - num(draft.price_discount)) / num(draft.price_list)) * 100) }}% OFF
+                      </div>
+                    </div>
+                    <div v-if="num(draft.price_reseller) > 0" class="pfp-hero-price-reseller">
+                      Revendedor: <b>$ {{ fmtNum(draft.price_reseller) }}</b>
+                    </div>
+                  </div>
+
+                  <!-- Chips de estado -->
+                  <div class="pfp-hero-chips">
+                    <v-chip :color="draft.is_active ? 'success' : 'warning'" size="small" variant="flat">
+                      <v-icon start size="14">{{ draft.is_active ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                      {{ draft.is_active ? 'Activo' : 'Inactivo' }}
+                    </v-chip>
+                    <v-chip v-if="draft.is_promo" color="warning" size="small" variant="flat">
+                      <v-icon start size="14">mdi-tag-heart</v-icon>
+                      En promoción
+                    </v-chip>
+                    <v-chip v-if="draft.track_stock" size="small" variant="tonal">
+                      <v-icon start size="14">mdi-package-check</v-icon>
+                      Controla stock
+                    </v-chip>
+                    <v-chip v-if="stockPreviewList.length" size="small" variant="tonal" color="cyan">
+                      <v-icon start size="14">mdi-warehouse</v-icon>
+                      {{ totalStockSummary }} unidades
+                    </v-chip>
+                  </div>
+
+                  <!-- Identificadores -->
+                  <div class="pfp-hero-ids">
+                    <span class="pfp-hero-id"><b>SKU:</b> {{ safe(finalSku) }}</span>
+                    <span class="pfp-hero-id"><b>Código:</b> {{ safe(draft.code || nextCodePreview) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ════ DETALLES ════ -->
               <div class="pfp-summary-grid">
                 <div class="d-flex flex-column ga-4">
-                  <div class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="primary">mdi-package-variant</v-icon> Producto</div>
-                    <div class="pfp-kv">
-                      <span class="k">Nombre</span><span class="v">{{ safe(draft.name) }}</span>
-                      <span class="k">SKU</span><span class="v pfp-mono">{{ safe(finalSku) }}</span>
-                      <span class="k">Código</span><span class="v pfp-mono">{{ safe(draft.code || nextCodePreview) }}</span>
-                      <span class="k">Rubro</span><span class="v">{{ safe(getCategoryNameById(getCategoryIdFromDraft(draft))) }}</span>
-                      <span class="k">Subrubro</span><span class="v">{{ safe(getSubcategoryNameById(getSubcategoryIdFromDraft(draft))) }}</span>
-                      <span class="k">Marca</span><span class="v">{{ safe(draft.brand) }}</span>
-                      <span class="k">Estado</span>
-                      <span class="v"><v-chip :color="draft.is_active ? 'success' : 'warning'" size="x-small" variant="tonal">{{ draft.is_active ? 'Activo' : 'Inactivo' }}</v-chip></span>
-                    </div>
-                    <div class="pfp-sum-desc" v-if="draft.description">{{ draft.description }}</div>
+                  <!-- Descripción -->
+                  <div v-if="draft.description" class="pfp-sum-card">
+                    <div class="pfp-sum-card-head"><v-icon size="16">mdi-text-long</v-icon> Descripción</div>
+                    <div class="pfp-sum-desc-block">{{ draft.description }}</div>
                   </div>
+
+                  <!-- Precios desglosados -->
                   <div class="pfp-sum-card">
                     <div class="pfp-sum-card-head"><v-icon size="16" color="success">mdi-cash-multiple</v-icon> Precios</div>
                     <div class="pfp-price-row-grid">
@@ -608,13 +640,13 @@
                       </div>
                     </div>
                   </div>
+
+                  <!-- Promoción -->
                   <div class="pfp-sum-card" v-if="draft.is_promo">
-                    <div class="pfp-sum-card-head">
-                      <v-icon size="16" color="primary">mdi-tag-heart</v-icon> Promoción
-                    </div>
+                    <div class="pfp-sum-card-head"><v-icon size="16" color="warning">mdi-tag-heart</v-icon> Promoción</div>
                     <div class="pfp-promo-summary">
                       <div v-if="promoTimeOn" class="pfp-promo-summary-row">
-                        <v-icon size="14" color="primary">mdi-clock-outline</v-icon>
+                        <v-icon size="14" color="warning">mdi-clock-outline</v-icon>
                         <span>
                           Por tiempo:
                           <b v-if="num(draft.promo_price)">$ {{ fmtNum(draft.promo_price) }}</b>
@@ -625,7 +657,7 @@
                         </span>
                       </div>
                       <div v-if="promoQtyOn" class="pfp-promo-summary-row">
-                        <v-icon size="14" color="primary">mdi-package-variant-closed</v-icon>
+                        <v-icon size="14" color="warning">mdi-package-variant-closed</v-icon>
                         <span>
                           Por cantidad: desde <b>{{ draft.promo_qty_threshold || '?' }}</b> u.
                           <span v-if="draft.promo_qty_discount">
@@ -640,28 +672,34 @@
                       </div>
                     </div>
                   </div>
+
+                  <!-- Media -->
                   <div class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="pink">mdi-image-multiple</v-icon> Media en cola</div>
+                    <div class="pfp-sum-card-head"><v-icon size="16" color="pink">mdi-image-multiple</v-icon> Media</div>
                     <div class="pfp-media-badges">
-                      <span class="pfp-media-badge" :class="{ active: queuedImages.length }"><v-icon size="14">mdi-image</v-icon> {{ queuedImages.length }} imágenes</span>
+                      <span class="pfp-media-badge" :class="{ active: summaryImages.length }"><v-icon size="14">mdi-image</v-icon> {{ summaryImages.length }} imágenes</span>
                       <span class="pfp-media-badge" :class="{ active: queuedYoutubeVideos.length }"><v-icon size="14">mdi-youtube</v-icon> {{ queuedYoutubeVideos.length }} YouTube</span>
                       <span class="pfp-media-badge" :class="{ active: queuedVideoFiles.length }"><v-icon size="14">mdi-file-video</v-icon> {{ queuedVideoFiles.length }} archivos</span>
                     </div>
                   </div>
                 </div>
+
                 <div class="d-flex flex-column ga-4">
+                  <!-- Stock por sucursal -->
+                  <div v-if="stockPreviewList.length" class="pfp-sum-card">
+                    <div class="pfp-sum-card-head"><v-icon size="16" color="cyan">mdi-warehouse</v-icon> Stock por sucursal</div>
+                    <div class="pfp-stock-list">
+                      <div v-for="r in stockPreviewList" :key="r.branch_id" class="pfp-stock-item">
+                        <span><v-icon size="13" class="mr-1">mdi-store-outline</v-icon>{{ r.branch_name }}</span>
+                        <span class="font-weight-bold">{{ r.qty }} u.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Código de barras -->
                   <div class="pfp-sum-card">
                     <div class="pfp-sum-card-head"><v-icon size="16">mdi-barcode</v-icon> Código de barras</div>
                     <ProductBarcodeCard :value="draft?.code || ''" :preview="nextCodePreview || ''" :label="draft?.id ? 'REAL' : 'PREVIEW'" />
-                  </div>
-                  <div class="pfp-sum-card" v-if="stockPreviewList.length">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="cyan">mdi-warehouse</v-icon> Stock cargado</div>
-                    <div class="pfp-stock-list">
-                      <div v-for="r in stockPreviewList" :key="r.branch_id" class="pfp-stock-item">
-                        <span>{{ r.branch_name }}</span>
-                        <span class="font-weight-bold">{{ r.qty }}</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1106,6 +1144,48 @@ const stockPreviewList = computed(() =>
 
 const imagesCount = computed(() => arr(queuedImages.value).length);
 
+/* Cache de blob URLs para los archivos en cola (no recrear en cada render) */
+const queuedBlobMap = new Map();
+function blobUrlForFile(f) {
+  if (!f) return "";
+  const key = `${f.name}__${f.size}__${f.lastModified}`;
+  let u = queuedBlobMap.get(key);
+  if (!u) {
+    u = URL.createObjectURL(f);
+    queuedBlobMap.set(key, u);
+  }
+  return u;
+}
+
+/* Imágenes para mostrar en el resumen final (existentes + queued) */
+const summaryImages = computed(() => {
+  const out = [];
+  // 1) Imágenes ya guardadas en el producto (modo edit)
+  const existing = Array.isArray(draft.value?.images) ? draft.value.images : [];
+  for (const x of existing) {
+    const url = String(x?.url ?? x?.image_url ?? x?.path ?? "").trim();
+    if (url) out.push({ url, primary: !!x?.is_primary, source: "existing" });
+  }
+  // 2) Imágenes nuevas en cola (no subidas aún)
+  const queued = arr(queuedImages.value);
+  for (const f of queued) {
+    if (!f || typeof f !== "object") continue;
+    const url = blobUrlForFile(f);
+    if (url) out.push({ url, primary: false, source: "queued" });
+  }
+  return out;
+});
+
+const summaryHero = computed(() => {
+  const list = summaryImages.value;
+  if (!list.length) return null;
+  return list.find((x) => x.primary) || list[0];
+});
+
+const totalStockSummary = computed(() =>
+  stockPreviewList.value.reduce((acc, r) => acc + (Number(r.qty) || 0), 0)
+);
+
 /* ── Navigation ── */
 function canGoTo(target) { const t = toInt(target, 1); if (t <= 1) return true; return !!canGoAfterStep1.value; }
 
@@ -1335,13 +1415,15 @@ async function saveAll() {
 
 <style scoped>
 /* ══ ROOT — ocupa todo el v-main ══ */
+/* El root usa "background" (más oscuro/claro que surface) para que las
+   cards de surface se vean como bloques sólidos elevados sobre él. */
 .pfp-root {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: rgb(var(--v-theme-surface));
+  background: rgb(var(--v-theme-background));
   color: rgb(var(--v-theme-on-surface));
 }
 
@@ -1353,10 +1435,14 @@ async function saveAll() {
   z-index: 5;
 }
 .pfp-topbar-inner {
-  display: flex;
+  /* 3 columnas: título (izq) — pasos (centro real) — slot derecho.
+     Con minmax(0,1fr) en los costados, los pasos quedan exactamente
+     centrados al ancho del topbar, sin importar el largo del título. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: 16px;
+  padding: 10px 20px;
 }
 .pfp-back-btn { margin-left: -6px; }
 
@@ -1367,18 +1453,12 @@ async function saveAll() {
   flex-shrink: 0;
   min-width: 0;
 }
-.pfp-badge {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: rgb(var(--v-theme-primary));
-  display: grid; place-items: center; flex-shrink: 0;
-}
-.pfp-title      { font-size: 15px; font-weight: 800; line-height: 1.2; }
-.pfp-title-sub  { font-size: 11px; opacity: 0.5; line-height: 1; }
 
-/* Steps row */
+/* Steps row — col centro del grid del topbar */
 .pfp-steps-row {
-  display: flex; align-items: center; gap: 4px;
-  flex: 1; justify-content: center; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 6px;
+  justify-content: center; flex-wrap: wrap;
+  min-width: 0;
 }
 .pfp-step-btn {
   display: flex; align-items: center; gap: 8px;
@@ -1401,8 +1481,44 @@ async function saveAll() {
 .pfp-step-btn.done   .pfp-step-num { background: rgb(var(--v-theme-success));  color: #fff; }
 .pfp-step-label { font-size: 13px; }
 
-/* Mobile steps */
-.pfp-steps-mobile { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+/* Mobile steps — sigue en columna central del grid */
+.pfp-steps-mobile { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+
+/* Slot derecho del topbar — balancea el grid y aloja contexto + spinner */
+.pfp-topbar-right {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px;
+  min-height: 30px;
+}
+.pfp-ctx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pfp-ctx-id { font-weight: 800; }
+.pfp-ctx-sku {
+  font-family: monospace;
+  font-size: 11px;
+  opacity: 0.65;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-ctx-chip--new {
+  background: rgba(var(--v-theme-primary), 0.10);
+  color: rgb(var(--v-theme-primary));
+  border-color: rgba(var(--v-theme-primary), 0.25);
+}
 .pfp-step-mobile-info { display: flex; align-items: center; gap: 5px; }
 .pfp-step-mobile-count { font-size: 11px; opacity: 0.4; font-weight: 600; }
 .pfp-step-mobile-name  { font-size: 13px; font-weight: 800; }
@@ -1418,52 +1534,6 @@ async function saveAll() {
 /* ══ LAYOUT ══ */
 .pfp-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 
-/* ══ SIDEBAR ══ */
-.pfp-sidebar {
-  width: 220px; flex-shrink: 0;
-  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  overflow-y: auto; overflow-x: hidden;
-  background: rgba(var(--v-theme-surface-variant), 0.25);
-  scrollbar-width: none;
-}
-.pfp-sidebar::-webkit-scrollbar { display: none; }
-.pfp-sidebar-inner { padding: 14px 10px; display: flex; flex-direction: column; gap: 20px; }
-
-.pfp-sidenav { display: flex; flex-direction: column; gap: 4px; }
-.pfp-sidenav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 10px; border-radius: 10px; border: none;
-  background: transparent; cursor: pointer; color: inherit; width: 100%;
-  text-align: left; transition: background 0.15s; opacity: 0.55;
-}
-.pfp-sidenav-item:hover:not(:disabled) { background: rgba(var(--v-theme-on-surface), 0.06); opacity: 0.85; }
-.pfp-sidenav-item.active  { background: rgba(var(--v-theme-primary), 0.15); opacity: 1; }
-.pfp-sidenav-item.done    { opacity: 0.8; }
-.pfp-sidenav-item.disabled{ cursor: not-allowed; opacity: 0.3; }
-.pfp-sidenav-icon {
-  width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0;
-  background: rgba(var(--v-theme-on-surface), 0.1);
-}
-.pfp-sidenav-item.active .pfp-sidenav-icon { background: rgb(var(--v-theme-primary)); }
-.pfp-sidenav-item.done   .pfp-sidenav-icon { background: rgb(var(--v-theme-success));  }
-.pfp-sidenav-title { font-size: 13px; font-weight: 700; line-height: 1.2; }
-.pfp-sidenav-sub   { font-size: 11px; opacity: 0.6; line-height: 1.2; }
-
-.pfp-side-info {
-  padding: 10px; border-radius: 10px;
-  background: rgba(var(--v-theme-surface-variant), 0.5);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.pfp-side-info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.45; margin-bottom: 4px; }
-.pfp-side-info-name  { font-size: 12px; font-weight: 800; line-height: 1.3; margin-bottom: 5px; word-break: break-word; }
-.pfp-side-info-row   { display: flex; align-items: center; gap: 4px; font-size: 11px; opacity: 0.65; margin-bottom: 2px; }
-.pfp-side-info-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
-.pfp-side-chip       { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(var(--v-theme-on-surface), 0.12); }
-.pfp-side-chip.green { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
-.pfp-side-chip.grey  { background: rgba(var(--v-theme-on-surface), 0.08); }
-.pfp-side-chip.blue  { background: rgba(var(--v-theme-primary), 0.15); color: rgb(var(--v-theme-primary)); }
-.pfp-side-chip.amber { background: rgba(255,193,7, 0.15); color: #f59e0b; }
-
 /* ══ MAIN ══ */
 .pfp-main {
   flex: 1; overflow-y: auto; overflow-x: hidden;
@@ -1472,7 +1542,11 @@ async function saveAll() {
 }
 .pfp-main::-webkit-scrollbar { display: none; }
 
-.pfp-content { padding: 18px 24px 24px; }
+.pfp-content {
+  padding: 24px 28px 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
 
 .pfp-init-loading {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1483,55 +1557,72 @@ async function saveAll() {
 .pfp-step1-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 22px;
 }
-@media (max-width: 860px) { .pfp-step1-grid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .pfp-step1-grid { grid-template-columns: 1fr; gap: 18px; } }
 
 /* ══ STEP 2 — 2-col: stock + images, videos full width ══ */
 .pfp-step2-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 22px;
 }
 .pfp-step2-videos { grid-column: 1 / -1; }
-@media (max-width: 780px) { .pfp-step2-grid { grid-template-columns: 1fr; } .pfp-step2-videos { grid-column: auto; } }
+@media (max-width: 780px) { .pfp-step2-grid { grid-template-columns: 1fr; gap: 18px; } .pfp-step2-videos { grid-column: auto; } }
 
 /* ══ SECTION CARDS ══ */
+/* Cards sólidas con elevación: surface + borde sutil + sombra suave para
+   que se lean como bloques únicos sobre el background del root. */
 .pfp-section {
-  border-radius: 12px; overflow: hidden;
-  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.2));
+  border-radius: 14px;
+  overflow: hidden;
   background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.9));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.18s, border-color 0.18s;
+}
+.pfp-section:hover {
+  border-color: rgba(var(--v-theme-primary), 0.15);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.07),
+    0 6px 22px rgba(0, 0, 0, 0.08);
 }
 .pfp-section-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px;
+  padding: 12px 14px;
   background:
     linear-gradient(90deg,
-      rgba(var(--v-theme-primary), 0.06) 0%,
-      rgba(var(--v-theme-surface-variant), 0.30) 100%);
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+      rgba(var(--v-theme-primary), 0.05) 0%,
+      rgba(var(--v-theme-on-surface), 0.02) 100%);
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.7));
   position: relative;
 }
 .pfp-section-head::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: var(--accent, rgb(var(--v-theme-primary)));
-  opacity: 0.85;
+  opacity: 0.9;
 }
-.pfp-section-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); }
-.pfp-section-title { font-size: 13px; font-weight: 800; line-height: 1.2; }
+.pfp-section-icon { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
+.pfp-section-title { font-size: 13.5px; font-weight: 800; line-height: 1.2; letter-spacing: 0.1px; }
 .pfp-section-sub   { font-size: 11px; opacity: 0.55; }
-.pfp-section-body  { padding: 10px 12px; }
+.pfp-section-body  { padding: 14px; }
 .pfp-section-body.pa-0 { padding: 0; }
 .pfp-section :deep(.v-field) { border-radius: 9px; }
 
 /* ══ PROMO ══ */
 .pfp-promo-section {
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  /* Hereda los estilos de .pfp-section (borde + shadow + bg sólido).
+     Sólo overrideamos el efecto activo para destacar cuando is_promo=true. */
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .pfp-promo-section.pfp-promo-on {
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-primary), 0.10),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 8px 22px rgba(2, 73, 139, 0.10);
 }
 .pfp-promo-hint {
   display: flex; align-items: flex-start; gap: 6px;
@@ -1634,10 +1725,125 @@ async function saveAll() {
 @media (max-width: 700px) { .pfp-video-grid { grid-template-columns: 1fr; } }
 
 /* ══ SUMMARY ══ */
-.pfp-summary-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+/* HERO estilo ecommerce: galería + info principal */
+.pfp-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) 1fr;
+  gap: 24px;
+  padding: 20px;
+  margin-bottom: 22px;
+  border-radius: 16px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.9));
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 8px 28px rgba(0, 0, 0, 0.06);
+}
+@media (max-width: 860px) {
+  .pfp-hero { grid-template-columns: 1fr; gap: 16px; padding: 14px; }
+}
+
+.pfp-hero-gallery { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pfp-hero-main {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-hero-main img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pfp-hero-empty {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; opacity: 0.4; font-size: 12px;
+}
+.pfp-hero-promo-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  background: linear-gradient(135deg, #ff5722, #ff9100);
+  color: #fff;
+  font-size: 11px; font-weight: 900; letter-spacing: 0.7px;
+  padding: 4px 10px; border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(255, 87, 34, 0.40);
+}
+
+.pfp-hero-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px;
+}
+.pfp-hero-thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s;
+}
+.pfp-hero-thumb:hover { border-color: rgba(var(--v-theme-primary), 0.4); }
+.pfp-hero-thumb.is-primary { border-color: rgb(var(--v-theme-primary)); }
+.pfp-hero-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pfp-hero-thumb--more {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; opacity: 0.6;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.pfp-hero-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pfp-hero-cat {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; opacity: 0.6;
+  color: rgb(var(--v-theme-primary));
+}
+.pfp-hero-name {
+  font-size: 22px; font-weight: 900; line-height: 1.2;
+  word-break: break-word;
+}
+.pfp-hero-brand { font-size: 13px; font-weight: 700; opacity: 0.7; }
+.pfp-hero-price-block {
+  margin-top: 8px; padding: 12px 14px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+}
+.pfp-hero-price-old { font-size: 13px; color: rgba(var(--v-theme-on-surface), 0.5); text-decoration: line-through; }
+.pfp-hero-price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pfp-hero-price-main { font-size: 32px; font-weight: 900; line-height: 1.1; letter-spacing: -0.5px; }
+.pfp-hero-price-off {
+  font-size: 13px; font-weight: 800; color: #00a650;
+}
+.pfp-hero-price-reseller { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+.pfp-hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.pfp-hero-ids {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  font-size: 12px; opacity: 0.7;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-hero-id b { font-weight: 700; opacity: 0.85; }
+
+.pfp-summary-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; }
 @media (max-width: 860px) { .pfp-summary-grid { grid-template-columns: 1fr; } }
 
-.pfp-sum-card { padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); background: rgb(var(--v-theme-surface)); }
+.pfp-sum-desc-block {
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+
+.pfp-sum-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.9));
+  background: rgb(var(--v-theme-surface));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.05);
+}
 .pfp-sum-card-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.65; margin-bottom: 10px; }
 .pfp-kv { display: grid; grid-template-columns: 100px 1fr; gap: 5px 10px; align-items: baseline; }
 .pfp-kv .k { font-size: 11px; opacity: 0.5; }
@@ -1704,20 +1910,21 @@ async function saveAll() {
 
 /* ══ LAPTOP / NOTEBOOK HEIGHT (≤ 820px viewport height) ══ */
 @media (max-height: 820px) {
-  .pfp-content       { padding: 12px 20px 16px; }
-  .pfp-step1-grid    { gap: 10px; }
-  .pfp-step2-grid    { gap: 10px; }
-  .pfp-section-head  { padding: 7px 11px; }
-  .pfp-section-body  { padding: 8px 11px; }
+  .pfp-content       { padding: 18px 24px 20px; }
+  .pfp-step1-grid    { gap: 16px; }
+  .pfp-step2-grid    { gap: 16px; }
+  .pfp-section-head  { padding: 8px 12px; }
+  .pfp-section-body  { padding: 9px 12px; }
   .pfp-topbar-inner  { padding: 7px 14px; }
 }
 
 /* ══ VERY SHORT SCREENS (≤ 700px height, phones landscape) ══ */
 @media (max-height: 700px) {
-  .pfp-content      { padding: 8px 14px 12px; }
-  .pfp-section-head { padding: 6px 10px; }
-  .pfp-section-body { padding: 7px 10px; }
-  .pfp-step1-grid   { gap: 8px; }
+  .pfp-content      { padding: 12px 18px 14px; }
+  .pfp-section-head { padding: 7px 11px; }
+  .pfp-section-body { padding: 8px 11px; }
+  .pfp-step1-grid   { gap: 12px; }
+  .pfp-step2-grid   { gap: 12px; }
   .pfp-footer-inner { padding: 7px 14px; }
 }
 </style>

@@ -1,12 +1,8 @@
 <template>
   <div class="stp">
-    <div class="stp-header">
-      <div class="stp-header__left">
-        <v-icon size="22" color="primary" class="mr-2">mdi-truck-fast-outline</v-icon>
-        <span class="stp-title">Derivaciones de stock</span>
-      </div>
-    </div>
-
+    <!-- Sin header duplicado: el breadcrumb global ya muestra la sección.
+         La identidad visual (icono + título + KPIs + acciones) se mantiene
+         en el componente embebido. -->
     <DashboardTransferenciasTab
       :is-admin="isAdmin"
       :is-central="isCentral"
@@ -36,12 +32,5 @@ const currentWarehouseId = computed(() => Number(auth.user?.warehouse_id || 0) |
 </script>
 
 <style scoped>
-.stp { display: flex; flex-direction: column; gap: 16px; }
-.stp-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-.stp-header__left { display: flex; align-items: center; }
-.stp-title { font-size: 18px; font-weight: 700; }
+.stp { display: flex; flex-direction: column; }
 </style>

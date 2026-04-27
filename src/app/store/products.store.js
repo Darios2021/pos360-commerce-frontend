@@ -506,6 +506,38 @@ export const useProductsStore = defineStore("products", {
       }
     },
 
+    async pauseAllPromos() {
+      this.error = null;
+      try {
+        const { data } = await req("post", "/products/promos/pause-all");
+        const res = unwrapOk(data);
+        if (!res.ok) {
+          this.setError({ message: res.message || "No se pudieron pausar las promos" });
+          return null;
+        }
+        return res.data || data?.data || { paused: 0 };
+      } catch (e) {
+        this.setError(e);
+        return null;
+      }
+    },
+
+    async resumeAllPromos() {
+      this.error = null;
+      try {
+        const { data } = await req("post", "/products/promos/resume-all");
+        const res = unwrapOk(data);
+        if (!res.ok) {
+          this.setError({ message: res.message || "No se pudieron reactivar las promos" });
+          return null;
+        }
+        return res.data || data?.data || { resumed: 0 };
+      } catch (e) {
+        this.setError(e);
+        return null;
+      }
+    },
+
     async fetchStats(paramsIn = {}) {
       try {
         const p = isPlainObject(paramsIn) ? { ...paramsIn } : {};

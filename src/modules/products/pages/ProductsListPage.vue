@@ -29,6 +29,40 @@
             <v-icon size="18">mdi-format-list-bulleted</v-icon>
           </v-btn>
         </v-btn-toggle>
+
+        <!-- Acción masiva sobre promociones -->
+        <v-menu offset-y>
+          <template #activator="{ props: btnProps }">
+            <v-btn
+              v-bind="btnProps"
+              variant="tonal"
+              rounded="lg"
+              size="small"
+              prepend-icon="mdi-tag-heart-outline"
+              append-icon="mdi-menu-down"
+              class="lp-cta"
+              :loading="bulkPromoBusy"
+              :disabled="bulkPromoBusy"
+            >
+              Promos
+            </v-btn>
+          </template>
+          <v-list density="compact" class="lp-promo-menu">
+            <v-list-item
+              prepend-icon="mdi-pause-circle-outline"
+              title="Pausar todas las promos"
+              subtitle="Apaga is_promo en todos los productos activos"
+              @click="onPauseAllPromos"
+            />
+            <v-list-item
+              prepend-icon="mdi-play-circle-outline"
+              title="Reactivar promos configuradas"
+              subtitle="Solo los que tienen precio o reglas configuradas"
+              @click="onResumeAllPromos"
+            />
+          </v-list>
+        </v-menu>
+
         <v-btn
           color="primary"
           variant="flat"
@@ -42,6 +76,37 @@
         </v-btn>
       </div>
     </header>
+
+    <!-- Confirmación de acción masiva sobre promos -->
+    <v-dialog v-model="bulkPromoDialog.open" max-width="440" persistent>
+      <v-card rounded="xl" class="pa-2">
+        <v-card-title class="d-flex align-center ga-2 pt-4 px-4">
+          <v-icon :color="bulkPromoDialog.action === 'pause' ? 'warning' : 'success'">
+            {{ bulkPromoDialog.action === 'pause' ? 'mdi-pause-circle' : 'mdi-play-circle' }}
+          </v-icon>
+          <span class="font-weight-black">{{ bulkPromoDialog.title }}</span>
+        </v-card-title>
+        <v-card-text class="px-4 pb-2 text-body-2">
+          {{ bulkPromoDialog.message }}
+          <div v-if="bulkPromoDialog.action === 'pause'" class="mt-2 text-caption text-medium-emphasis">
+            Esto NO borra los datos de configuración (precio, fechas, reglas). Solo apaga el flag.
+            Podés volver a activar después con "Reactivar promos configuradas".
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-end px-4 pb-4">
+          <v-btn variant="text" @click="bulkPromoDialog.open = false">Cancelar</v-btn>
+          <v-btn
+            :color="bulkPromoDialog.action === 'pause' ? 'warning' : 'success'"
+            variant="flat"
+            rounded="lg"
+            :loading="bulkPromoBusy"
+            @click="confirmBulkPromo"
+          >
+            {{ bulkPromoDialog.action === 'pause' ? 'Sí, pausar' : 'Sí, reactivar' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- ── STATS KPI ────────────────────────────────────── -->
     <section class="lp-stats">
@@ -128,14 +193,20 @@
           <div v-else class="lp-kpi__skel" />
         </div>
       </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--sjt"><v-icon size="14" color="white">mdi-eye-off-outline</v-icon></div>
+      <button
+        type="button"
+        class="lp-mc lp-mc--clickable"
+        :class="{ 'is-active': f.promo === 'active' }"
+        title="Filtrar por promociones vigentes"
+        @click="onPromoActiveKpiClick"
+      >
+        <div class="lp-mc__badge lp-mc__badge--promo"><v-icon size="14" color="white">mdi-tag-heart</v-icon></div>
         <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Inactivos</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.inactive) : '—' }}</div>
+          <div class="lp-mc__lbl">Promos activas</div>
+          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.promo_active) : '—' }}</div>
           <div v-else class="lp-kpi__skel" />
         </div>
-      </div>
+      </button>
     </section>
 
     <!-- ── FILTER BAR ───────────────────────────────────── -->
@@ -730,6 +801,7 @@ const stats = ref({
   without_price: 0,
   with_images: 0,
   without_images: 0,
+  promo_active: 0,
 });
 function fmtInt(n) {
   return Number(n || 0).toLocaleString('es');
@@ -979,6 +1051,7 @@ async function fetchStats() {
         without_price: Number(data.without_price || 0),
         with_images: Number(data.with_images || 0),
         without_images: Number(data.without_images || 0),
+        promo_active: Number(data.promo_active || 0),
       };
     } else {
       stats.value.ready = false;
@@ -1083,6 +1156,72 @@ function openEdit(id) {
 }
 function openCreate() {
   router.push({ name: "productNew" });
+}
+
+/* Click en KPI "Promos activas" → toggle filtro promo=active */
+function onPromoActiveKpiClick() {
+  if (f.value.promo === "active") {
+    f.value.promo = "all";
+  } else {
+    f.value.promo = "active";
+  }
+  applyFilters();
+}
+
+/* ── Bulk promo (pausar / reactivar todas) ── */
+const bulkPromoBusy = ref(false);
+const bulkPromoDialog = ref({
+  open: false,
+  action: "",       // 'pause' | 'resume'
+  title: "",
+  message: "",
+});
+
+function onPauseAllPromos() {
+  bulkPromoDialog.value = {
+    open: true,
+    action: "pause",
+    title: "Pausar todas las promociones",
+    message: "Vas a apagar el flag de promoción en TODOS los productos que lo tengan activo. La configuración (precio promo, fechas, reglas) se mantiene — solo se apaga la visualización en la tienda.",
+  };
+}
+
+function onResumeAllPromos() {
+  bulkPromoDialog.value = {
+    open: true,
+    action: "resume",
+    title: "Reactivar promos configuradas",
+    message: "Se va a prender el flag de promoción en los productos que tengan precio promo, ventana o regla por cantidad configurada y no estén activas hoy. No se afectan productos sin configuración previa.",
+  };
+}
+
+async function confirmBulkPromo() {
+  const action = bulkPromoDialog.value.action;
+  if (!action) return;
+  bulkPromoBusy.value = true;
+  try {
+    const res = action === "pause"
+      ? await products.pauseAllPromos()
+      : await products.resumeAllPromos();
+
+    if (!res) {
+      toast(`⚠️ ${products.error || "No se pudo completar la acción"}`);
+      return;
+    }
+
+    const n = action === "pause" ? Number(res.paused || 0) : Number(res.resumed || 0);
+    if (action === "pause") {
+      toast(n > 0 ? `⏸️ ${n} promoción${n === 1 ? "" : "es"} pausada${n === 1 ? "" : "s"}` : "No había promos activas para pausar");
+    } else {
+      toast(n > 0 ? `▶️ ${n} promoción${n === 1 ? "" : "es"} reactivada${n === 1 ? "" : "s"}` : "No se encontraron promos configuradas para reactivar");
+    }
+
+    bulkPromoDialog.value.open = false;
+    // Refrescar listado y stats para reflejar el cambio
+    await Promise.all([fetchNow(), fetchStats()]);
+  } finally {
+    bulkPromoBusy.value = false;
+  }
 }
 function askDelete(item) {
   deleteItem.value = item;
@@ -1469,7 +1608,29 @@ function branchCssColor(id) {
 .lp-mc__badge--card     { background: rgb(var(--v-theme-info)); }
 .lp-mc__badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
 .lp-mc__badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
+.lp-mc__badge--promo    {
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  box-shadow: 0 2px 6px rgba(255, 87, 34, 0.35);
+}
 .lp-mc__badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
+
+/* KPI clickeable (filtra) */
+.lp-mc--clickable {
+  cursor: pointer;
+  border: 1px solid var(--lp-card-border);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  text-align: left;
+  font-family: inherit;
+}
+.lp-mc--clickable:hover {
+  border-color: rgba(255, 87, 34, 0.45);
+  box-shadow: 0 2px 10px rgba(255, 87, 34, 0.12);
+}
+.lp-mc--clickable.is-active {
+  border-color: rgb(255, 87, 34);
+  background: rgba(255, 87, 34, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 87, 34, 0.30);
+}
 .lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-mc__lbl  {
   font-size: 10px; font-weight: 700;
