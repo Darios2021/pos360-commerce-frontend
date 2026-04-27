@@ -19,18 +19,18 @@
         <v-slide-group ref="sg" v-model="model" show-arrows class="promo-slide" :mandatory="false">
           <v-slide-group-item v-for="(p, idx) in items" :key="p.product_id ?? p.id ?? idx" :value="idx">
             <div class="promo-item">
-              <button class="promo-card" type="button" @click="open(p)">
+              <button class="promo-card" type="button" :class="{ 'is-promo': isPromoOn(p) }" @click="open(p)">
                 <div class="promo-img">
                   <img :src="p.image_url" alt="" />
-                  <div v-if="badgeText(p)" class="promo-badge">
+                  <div v-if="badgeText(p)" class="promo-badge" :class="`promo-badge--${badgeKind(p)}`">
                     {{ badgeText(p) }}
                   </div>
                 </div>
 
                 <div class="promo-info">
                   <div class="promo-price-row">
-                    <div class="promo-price">$ {{ fmtMoney(finalPrice(p)) }}</div>
-                    <div class="promo-off" v-if="offPct(p)">{{ offPct(p) }}% OFF</div>
+                    <div class="promo-price" :class="{ 'is-promo': isPromoOn(p) }">$ {{ fmtMoney(finalPrice(p)) }}</div>
+                    <div class="promo-off" v-if="offPct(p)" :class="{ 'is-promo': isPromoOn(p) }">{{ offPct(p) }}% OFF</div>
                   </div>
 
                   <div v-if="showOldPrice(p)" class="promo-old">$ {{ fmtMoney(oldPrice(p)) }}</div>
@@ -103,7 +103,15 @@ function toNum(v) {
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(toNum(v)));
 }
+function isPromoOn(p) {
+  return isPromoActive(p);
+}
 function finalPrice(p) {
+  // Promo activa con promo_price → manda
+  if (isPromoOn(p)) {
+    const pp = toNum(p.promo_price);
+    if (pp > 0) return pp;
+  }
   const d = toNum(p.price_discount);
   if (d > 0) return d;
   const l = toNum(p.price_list);
@@ -116,21 +124,27 @@ function oldPrice(p) {
   return base;
 }
 function showOldPrice(p) {
-  const d = toNum(p.price_discount);
+  const f = finalPrice(p);
   const o = oldPrice(p);
-  return d > 0 && o > d;
+  return f > 0 && o > 0 && o > f;
 }
 function offPct(p) {
   if (!showOldPrice(p)) return 0;
   const o = oldPrice(p);
-  const d = toNum(p.price_discount);
-  const pct = Math.round(((o - d) / o) * 100);
+  const f = finalPrice(p);
+  const pct = Math.round(((o - f) / o) * 100);
   return pct > 0 ? pct : 0;
 }
 function badgeText(p) {
-  if (isPromoActive(p)) return "OFERTA";
+  if (isPromoOn(p)) return "PROMOCIÓN";
   if (toNum(p.price_discount) > 0) return "DESCUENTO";
   if (p.is_new) return "NUEVO";
+  return "";
+}
+function badgeKind(p) {
+  if (isPromoOn(p)) return "promo";
+  if (toNum(p.price_discount) > 0) return "discount";
+  if (p.is_new) return "new";
   return "";
 }
 function freeShip(p) {
@@ -454,13 +468,23 @@ watch(
   position: absolute;
   top: 10px;
   left: 10px;
-  background: rgba(0, 166, 80, 0.95);
   color: #fff;
   font-weight: 950;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  letter-spacing: 0.4px;
+}
+/* Variantes por tipo */
+.promo-badge--discount { background: rgba(0, 166, 80, 0.95); }   /* verde — cash discount */
+.promo-badge--new      { background: rgba(2, 73, 139, 0.95); }   /* azul marca — nuevo */
+.promo-badge--promo    {
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%); /* bordó — PROMOCIÓN */
+  letter-spacing: 0.7px;
+  font-size: 11.5px;
+  padding: 7px 12px;
+  box-shadow: 0 6px 14px rgba(255, 87, 34, 0.40);
 }
 
 .promo-info {
@@ -482,12 +506,26 @@ watch(
   line-height: 1.1;
   white-space: nowrap;
 }
+.promo-price.is-promo { color: #ff5722; } /* bordó cuando es promo */
 
 .promo-off {
   font-size: 12px;
   font-weight: 950;
   color: #00a650;
   white-space: nowrap;
+}
+.promo-off.is-promo {
+  color: #fff;
+  background: #ff5722;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+/* Borde sutil bordó en la card cuando es promo (no invasivo) */
+.promo-card.is-promo {
+  border: 1px solid rgba(255, 87, 34, 0.30);
 }
 
 .promo-old {

@@ -38,22 +38,46 @@
         <span class="ml-rating-count">({{ ratingCount }})</span>
       </div>
 
-      <!-- ✅ Precio estilo ML -->
-      <div class="ml-price-block">
+      <!-- 🏷️ Banner de PROMOCIÓN (sólo si is_promo + ventana vigente) -->
+      <div v-if="promoOn" class="ml-promo-banner">
+        <div class="ml-promo-banner-left">
+          <v-icon size="18" color="white">mdi-tag-heart</v-icon>
+          <span class="ml-promo-banner-title">PROMOCIÓN</span>
+        </div>
+        <div v-if="promoVigencia" class="ml-promo-banner-vig">
+          {{ promoVigencia }}
+        </div>
+      </div>
+
+      <!-- 📦 Hint promo por cantidad (si está configurado) -->
+      <div v-if="promoOn && qtyPromoHint" class="ml-promo-qty-hint">
+        <v-icon size="16">mdi-package-variant-closed</v-icon>
+        <span>{{ qtyPromoHint }}</span>
+      </div>
+
+      <!-- ✅ Precio (estilo varía si es promo o cash discount) -->
+      <div class="ml-price-block" :class="{ 'is-promo': promoOn }">
         <!-- Precio lista + OFF -->
         <div v-if="hasDiscount" class="ml-price-top">
           <span class="ml-price-list">$ {{ fmtMoney(priceList) }}</span>
-          <span class="ml-discount-badge">{{ discountPct }}% OFF</span>
+          <span class="ml-discount-badge" :class="{ 'is-promo': promoOn }">
+            {{ discountPct }}% OFF
+          </span>
         </div>
 
         <!-- Precio final -->
-        <div class="ml-price-wrap">
+        <div class="ml-price-wrap" :class="{ 'is-promo': promoOn }">
           <span class="ml-currency">$</span>
           <span class="ml-price-int">{{ priceInt }}</span>
           <span v-if="priceDec" class="ml-price-dec">{{ priceDec }}</span>
         </div>
 
-        <!-- ✅ Cuotas: 6x si display > 300 | 3x si 150..300 | base de cálculo: LISTA -->
+        <!-- Ahorro destacado solo en promo -->
+        <div v-if="promoOn && savingsAmount > 0" class="ml-promo-savings">
+          Ahorrás <b>$ {{ fmtMoney(savingsAmount) }}</b>
+        </div>
+
+        <!-- ✅ Cuotas (siempre verde, no es promo) -->
         <div v-if="installmentHint" class="ml-installment-hint">
           {{ installmentHint }}
         </div>
@@ -63,10 +87,29 @@
 
       <!-- Stock -->
       <div class="ml-stock">
-        <div class="ml-stock-title">Stock disponible</div>
-        <div class="ml-muted">
-          <span v-if="trackStock">{{ stockQtyLabel }}</span>
-          <span v-else>Disponible</span>
+        <div class="ml-stock-row">
+          <div>
+            <div class="ml-stock-title">Stock disponible</div>
+            <div class="ml-muted">
+              <span v-if="!trackStock">Disponible</span>
+              <span v-else-if="totalStock <= 0" class="ml-stock-zero">Sin stock</span>
+              <span v-else>
+                <b>{{ totalStock }}</b> {{ totalStock === 1 ? 'unidad' : 'unidades' }} disponibles
+              </span>
+            </div>
+          </div>
+          <span
+            v-if="trackStock && totalStock > 0"
+            class="ml-stock-pill ml-stock-pill--ok"
+          >
+            En stock
+          </span>
+          <span
+            v-else-if="trackStock && totalStock <= 0"
+            class="ml-stock-pill ml-stock-pill--out"
+          >
+            Sin stock
+          </span>
         </div>
       </div>
 
@@ -119,6 +162,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { isPromoActive } from "@/modules/shop/utils/promo";
 
 const props = defineProps({
   product: { type: Object, default: null },
@@ -143,14 +187,21 @@ function cleanOneLine(s) {
 
 /* ================= precios =================
    - priceList: lista (tachado)
-   - priceFinal: con descuento (grande)
-   Regla: siempre mostrar descuento si existe; cuotas se calculan sobre lista.
+   - priceFinal: con descuento o promo (grande)
+   - promoOn: si is_promo y ventana vigente, manda promo_price (si existe)
 */
+const promoOn = computed(() => isPromoActive(props.product || {}));
+
 const priceList = computed(() =>
   Math.max(toNum(props.product?.price_list, 0), toNum(props.product?.price, 0))
 );
 
 const priceFinal = computed(() => {
+  // 1) Si hay promo activa con promo_price, manda
+  if (promoOn.value) {
+    const pp = toNum(props.product?.promo_price, 0);
+    if (pp > 0) return pp;
+  }
   const d = toNum(props.product?.price_discount, 0);
   if (d > 0) return d;
   const l = toNum(props.product?.price_list, 0);
@@ -163,6 +214,35 @@ const hasDiscount = computed(() => priceList.value > 0 && priceFinal.value < pri
 const discountPct = computed(() => {
   if (!hasDiscount.value) return 0;
   return Math.round(((priceList.value - priceFinal.value) / priceList.value) * 100);
+});
+
+const savingsAmount = computed(() => {
+  if (!hasDiscount.value) return 0;
+  return Math.max(0, priceList.value - priceFinal.value);
+});
+
+const promoVigencia = computed(() => {
+  if (!promoOn.value) return "";
+  const e = props.product?.promo_ends_at;
+  if (!e) return ""; // sin ventana → no decir "por tiempo limitado", puede ser solo qty
+  const d = new Date(e);
+  if (!Number.isFinite(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `Vigente hasta ${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+});
+
+// Hint para promo POR CANTIDAD (si está configurada)
+const qtyPromoHint = computed(() => {
+  const p = props.product || {};
+  if (!promoOn.value) return "";
+  const thr = Number(p.promo_qty_threshold) || 0;
+  const disc = toNum(p.promo_qty_discount, 0);
+  const mode = String(p.promo_qty_mode || "").toLowerCase();
+  if (thr < 2 || disc <= 0) return "";
+  if (mode === "percent") {
+    return `Llevando ${thr} o más, obtenés ${disc}% OFF en cada unidad`;
+  }
+  return `Llevando ${thr} o más, ahorrás $ ${fmtMoney(disc)} por unidad`;
 });
 
 const priceInt = computed(() => {
@@ -257,17 +337,23 @@ const shortDesc = computed(() => {
 const trackStock = computed(() => !!props.product?.track_stock);
 const stockQty = computed(() => Math.max(0, Math.floor(toNum(props.product?.stock_qty ?? 0, 0))));
 
-const stockQtyLabel = computed(() => {
-  if (!trackStock.value) return "Disponible";
-  const s = stockQty.value;
-  if (s <= 0) return "Sin stock";
-  if (s === 1) return "Queda 1 unidad";
-  return `${s} unidades`;
+// Total real (suma de todas las sucursales)
+const totalStock = computed(() => {
+  const p = props.product || {};
+  const explicit = toNum(p.stock_total ?? p.stock_qty ?? 0, 0);
+  if (Array.isArray(p.stock_by_branch) && p.stock_by_branch.length) {
+    return p.stock_by_branch.reduce(
+      (acc, r) => acc + Math.max(0, Math.floor(toNum(r?.qty ?? r?.stock_qty ?? 0, 0))),
+      0
+    );
+  }
+  return Math.max(0, Math.floor(explicit));
 });
 
 const disabledAdd = computed(() => {
   const p = props.product || {};
-  return !!(p.track_stock && Number(p.stock_qty) <= 0);
+  if (!p.track_stock) return false;
+  return totalStock.value <= 0;
 });
 
 /* qty */
@@ -280,16 +366,15 @@ watch(
   }
 );
 
+// Sin tope artificial: si el producto trackea stock, max = stock real.
+// Si no trackea, dejamos un techo alto (99) sólo para el dropdown.
 const maxQty = computed(() => {
   const p = props.product || {};
-  const limit = Math.max(1, Math.floor(toNum(p.max_qty ?? p.max_purchase_qty ?? 2, 2)));
-
   if (p.track_stock) {
-    const stock = Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)));
-    return Math.max(1, Math.min(limit, stock || 1));
+    const stock = totalStock.value;
+    return Math.max(1, stock || 1);
   }
-
-  return limit;
+  return 99;
 });
 
 const qtyItems = computed(() => {
@@ -301,17 +386,12 @@ const qtyItems = computed(() => {
 
 const qtyHint = computed(() => {
   const p = props.product || {};
-  const limit = maxQty.value;
-
   if (p.track_stock) {
-    const s = Math.max(0, Math.floor(toNum(p.stock_qty ?? 0, 0)));
-    if (s <= 0) return "Sin stock";
-
-    const limTxt = limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
-    return s > limit ? `${s} disponibles · ${limTxt}` : `${s} disponibles`;
+    const s = totalStock.value;
+    if (s <= 0) return ""; // "Sin stock" ya se muestra en el bloque de arriba
+    return `${s} ${s === 1 ? 'disponible' : 'disponibles'}`;
   }
-
-  return limit <= 2 ? "Podés comprar hasta 2 unidades" : `Podés comprar hasta ${limit} unidades`;
+  return "";
 });
 
 /* ================= actions ================= */
@@ -370,6 +450,39 @@ function onBuyNow() {
   overflow: hidden;
 }
 
+/* ===== Banner PROMO ===== */
+.ml-promo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 13px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.30);
+}
+.ml-promo-banner-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.ml-promo-banner-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+.ml-promo-banner-vig {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.92;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* ===== Precio estilo ML ===== */
 .ml-price-block { margin-bottom: 6px; }
 
@@ -390,7 +503,16 @@ function onBuyNow() {
 .ml-discount-badge {
   font-size: 13px;
   font-weight: 900;
-  color: #00a650;
+  color: #00a650; /* verde = cash discount default */
+}
+/* Bordó cuando es promo real */
+.ml-discount-badge.is-promo {
+  color: #fff;
+  background: #ff5722;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
 }
 
 .ml-price-wrap {
@@ -405,6 +527,36 @@ function onBuyNow() {
 .ml-price-int { font-size: 46px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.05; }
 .ml-price-dec { font-size: 16px; font-weight: 900; margin-top: 10px; opacity: .9; }
 
+/* Precio en bordó cuando es promo */
+.ml-price-wrap.is-promo .ml-currency,
+.ml-price-wrap.is-promo .ml-price-int,
+.ml-price-wrap.is-promo .ml-price-dec {
+  color: #ff5722;
+}
+
+.ml-promo-savings {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ff5722;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+.ml-promo-qty-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ff5722;
+  background: rgba(255, 87, 34, 0.10);
+  border: 1px solid rgba(255, 87, 34, 0.28);
+  padding: 7px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
 .ml-installment-hint {
   font-size: 13px;
   font-weight: 700;
@@ -413,7 +565,38 @@ function onBuyNow() {
 }
 
 /* Stock / qty */
+.ml-stock-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
 .ml-stock-title { font-size: 15px; font-weight: 900; margin-bottom: 2px; }
+.ml-stock-zero { color: #d23f3f; font-weight: 700; }
+
+.ml-stock-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ml-stock-pill--ok {
+  background: rgba(0, 166, 80, 0.12);
+  color: #00a650;
+  border: 1px solid rgba(0, 166, 80, 0.25);
+}
+.ml-stock-pill--out {
+  background: rgba(210, 63, 63, 0.10);
+  color: #d23f3f;
+  border: 1px solid rgba(210, 63, 63, 0.25);
+}
+
 .ml-qty { margin-top: 14px; }
 .ml-qty-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .ml-qty-hint { font-size: 12px; }

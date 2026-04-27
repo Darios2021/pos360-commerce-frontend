@@ -266,6 +266,20 @@
                 @update:modelValue="applyFilters"
               />
             </div>
+            <div class="lp-filters__cell">
+              <v-select
+                v-model="f.promo"
+                :items="promoItems"
+                item-title="title"
+                item-value="value"
+                label="Promoción"
+                prepend-inner-icon="mdi-tag-heart"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:modelValue="applyFilters"
+              />
+            </div>
             <div class="lp-filters__cell lp-filters__cell--range">
               <v-text-field
                 v-model="f.price_min"
@@ -863,6 +877,7 @@ const f = ref({
   price_min: null,
   price_max: null,
   images: "all",
+  promo: "all",
 });
 
 const stockItems = [
@@ -879,6 +894,14 @@ const imagesItems = [
   { title: "Todas", value: "all" },
   { title: "Con imágenes", value: "with" },
   { title: "Sin imágenes", value: "without" },
+];
+const promoItems = [
+  { title: "Todos",          value: "all" },
+  { title: "En promo (vigente)", value: "active" },
+  { title: "En promo (todas)",   value: "any" },
+  { title: "Sin promo",      value: "none" },
+  { title: "Promo programada", value: "scheduled" },
+  { title: "Promo vencida",  value: "expired" },
 ];
 const statusItems = computed(() => {
   if (!isAdmin.value) {
@@ -919,6 +942,7 @@ async function clearFilters() {
     price_min: null,
     price_max: null,
     images: "all",
+    promo: "all",
   };
   page.value = 1;
   selectedIds.value = [];
@@ -986,6 +1010,7 @@ async function fetchNow() {
       price_min: f.value.price_min !== "" && f.value.price_min != null ? Number(f.value.price_min) : null,
       price_max: f.value.price_max !== "" && f.value.price_max != null ? Number(f.value.price_max) : null,
       images: f.value.images,
+      promo: f.value.promo && f.value.promo !== "all" ? f.value.promo : null,
     };
 
     if (String(f.value.status) === "all") {
@@ -1234,6 +1259,7 @@ const activeAdvancedCount = computed(() => {
   if (f.value.stock !== 'all') n++;
   if (f.value.price_presence !== 'all') n++;
   if (f.value.images !== 'all') n++;
+  if (f.value.promo !== 'all') n++;
   if (f.value.price_min) n++;
   if (f.value.price_max) n++;
   return n;
@@ -1247,6 +1273,7 @@ const activeFilterChips = computed(() => {
   if (f.value.stock !== 'all') chips.push({ key: 'stock', label: stockItems.find(x => x.value === f.value.stock)?.title });
   if (f.value.price_presence !== 'all') chips.push({ key: 'price_presence', label: pricePresenceItems.find(x => x.value === f.value.price_presence)?.title });
   if (f.value.images !== 'all') chips.push({ key: 'images', label: imagesItems.find(x => x.value === f.value.images)?.title });
+  if (f.value.promo !== 'all') chips.push({ key: 'promo', label: `Promo: ${promoItems.find(x => x.value === f.value.promo)?.title}` });
   if (f.value.price_min) chips.push({ key: 'price_min', label: `Mín $${f.value.price_min}` });
   if (f.value.price_max) chips.push({ key: 'price_max', label: `Máx $${f.value.price_max}` });
   const defStatus = isAdmin.value ? 'all' : 'active';
@@ -1255,7 +1282,7 @@ const activeFilterChips = computed(() => {
 });
 
 function removeFilter(key) {
-  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', price_min: null, price_max: null, status: isAdmin.value ? 'all' : 'active' };
+  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', promo: 'all', price_min: null, price_max: null, status: isAdmin.value ? 'all' : 'active' };
   f.value[key] = defaults[key];
   if (key === 'category_id') f.value.subcategory_id = null;
   applyFilters();

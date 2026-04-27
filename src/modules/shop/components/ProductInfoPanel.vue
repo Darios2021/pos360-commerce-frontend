@@ -256,15 +256,16 @@ const bullets = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: linear-gradient(135deg, #02498b, #036ec1);
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
   color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  padding: 6px 12px;
   border-radius: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   text-transform: uppercase;
+  box-shadow: 0 3px 10px rgba(255, 87, 34, 0.30);
 }
 .mi-old-price {
   font-size: 14px;
@@ -285,11 +286,11 @@ const bullets = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(2, 73, 139, 0.08);
-  border: 1px solid rgba(2, 73, 139, 0.2);
-  color: #02498b;
+  background: rgba(255, 87, 34, 0.10);
+  border: 1px solid rgba(255, 87, 34, 0.28);
+  color: #ff5722;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 8px 11px;
   border-radius: 8px;
   margin-top: 10px;

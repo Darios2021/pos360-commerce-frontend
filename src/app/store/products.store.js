@@ -407,6 +407,7 @@ export const useProductsStore = defineStore("products", {
         if ("stock" in p && p.stock != null) p.stock = String(p.stock).toLowerCase().trim();
         if ("images" in p && p.images != null) p.images = String(p.images).toLowerCase().trim();
         if ("price_presence" in p && p.price_presence != null) p.price_presence = String(p.price_presence).toLowerCase().trim();
+        if ("promo" in p && p.promo != null) p.promo = String(p.promo).toLowerCase().trim();
 
         p.page = page;
         p.limit = limit;

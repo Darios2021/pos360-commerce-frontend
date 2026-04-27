@@ -9,6 +9,12 @@
 
       <!-- Badge PROMO (esquina superior izquierda) -->
       <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
+
+      <!-- Hint promo por cantidad — overlay flotante sobre la imagen -->
+      <span v-if="qtyPromoHint" class="mlx-qty-promo-overlay">
+        <v-icon size="11">mdi-tag-multiple</v-icon>
+        {{ qtyPromoHint }}
+      </span>
     </button>
 
     <div class="mlx-body">
@@ -31,8 +37,8 @@
 
         <!-- price + off -->
         <div class="mlx-price-row">
-          <div class="mlx-price">$ {{ fmtMoney(displayPrice) }}</div>
-          <div class="mlx-off" v-if="offPct">{{ offPct }}% OFF</div>
+          <div class="mlx-price" :class="{ 'is-promo': promoActive }">$ {{ fmtMoney(displayPrice) }}</div>
+          <div class="mlx-off" v-if="offPct" :class="{ 'is-promo': promoActive }">{{ offPct }}% OFF</div>
         </div>
 
         <!-- installments -->
@@ -42,11 +48,6 @@
           </template>
           <template v-else> </template>
         </div>
-      </div>
-
-      <!-- hint promo por cantidad -->
-      <div v-if="qtyPromoHint" class="mlx-qty-promo">
-        <span>🏷️</span> {{ qtyPromoHint }}
       </div>
 
       <!-- shipping -->
@@ -133,7 +134,7 @@ const offPct = computed(() => {
   return pct > 0 ? pct : 0;
 });
 
-/* hint promo por cantidad */
+/* hint promo por cantidad — texto compacto para chip flotante */
 const qtyPromoHint = computed(() => {
   if (!promoActive.value) return "";
   const thr = Number(props.p?.promo_qty_threshold) || 0;
@@ -141,9 +142,9 @@ const qtyPromoHint = computed(() => {
   const mode = String(props.p?.promo_qty_mode || "").toLowerCase();
   if (thr < 2 || disc <= 0) return "";
   if (mode === "percent") {
-    return `Llevando ${thr}+ obtenés ${disc}% OFF`;
+    return `${thr}+ unid · ${disc}% OFF`;
   }
-  return `Llevando ${thr}+ ahorrás $ ${fmtMoney(disc)} c/u`;
+  return `${thr}+ unid · -$${fmtMoney(disc)}`;
 });
 
 /* installments */
@@ -217,38 +218,44 @@ function openProduct() {
   position: relative;
 }
 
-/* badge PROMO */
+/* badge PROMO — bordó destacado */
 .mlx-promo-badge {
   position: absolute;
   top: 8px;
   left: 8px;
-  background: linear-gradient(135deg, #02498b, #036ec1);
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
   color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  padding: 4px 10px;
   border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(2,73,139,.35);
+  box-shadow: 0 3px 8px rgba(255, 87, 34, 0.45);
   z-index: 1;
   text-transform: uppercase;
 }
 
-/* hint promo por cantidad */
-.mlx-qty-promo {
-  font-size: 11px;
-  font-weight: 700;
-  color: #02498b;
-  background: rgba(2, 73, 139, 0.08);
-  border: 1px solid rgba(2, 73, 139, 0.18);
-  border-radius: 6px;
-  padding: 4px 7px;
+/* hint promo por cantidad — chip flotante compacto sobre la imagen */
+.mlx-qty-promo-overlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  align-self: flex-start;
-  line-height: 1.2;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  border-radius: 999px;
+  padding: 3px 8px;
+  line-height: 1.1;
+  box-shadow: 0 3px 8px rgba(255, 87, 34, 0.40);
+  z-index: 1;
+  white-space: nowrap;
 }
+.mlx-qty-promo-overlay .v-icon { opacity: 0.9; }
 .mlx-media img {
   width: 100%;
   height: 100%;
@@ -331,6 +338,7 @@ function openProduct() {
   white-space: nowrap;
   min-width: 0;
 }
+.mlx-price.is-promo { color: #ff5722; font-weight: 700; }
 
 .mlx-off {
   display: inline-flex;
@@ -345,6 +353,12 @@ function openProduct() {
   padding: 2px 6px;
   white-space: nowrap;
   margin-top: 4px;
+}
+.mlx-off.is-promo {
+  color: #fff;
+  background: #ff5722;
+  font-weight: 800;
+  letter-spacing: 0.3px;
 }
 
 /* installments */

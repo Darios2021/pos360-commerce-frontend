@@ -251,30 +251,42 @@ export function setCatalogBranchId(branchId) {
 function normalizeStockQty(item, branchId) {
   if (!item) return item;
 
-  // stock_qty directo
-  let qty = toNum(item.stock_qty, NaN);
-
-  // fallback: otros nombres comunes
-  if (!Number.isFinite(qty)) qty = toNum(item.qty, NaN);
-  if (!Number.isFinite(qty)) qty = toNum(item.stock, NaN);
-  if (!Number.isFinite(qty)) qty = toNum(item.stock_total, NaN);
-  if (!Number.isFinite(qty)) qty = toNum(item.total_stock, NaN);
-
-  // fallback: stock_by_branch (si existiera)
   const bid = toInt(branchId, 0);
-  if ((!Number.isFinite(qty) || qty <= 0) && Array.isArray(item.stock_by_branch) && bid > 0) {
-    const row =
-      item.stock_by_branch.find((x) => toInt(x.branch_id ?? x.branchId, 0) === bid) || null;
-    if (row) {
-      const q2 = toNum(row.qty ?? row.stock_qty ?? row.stock ?? row.quantity, 0);
-      if (q2 > 0) qty = q2;
-    }
+  const sbb = Array.isArray(item.stock_by_branch) ? item.stock_by_branch : [];
+
+  // ✅ Stock total (suma de todas las sucursales) si tenemos el desglose.
+  // Sino, fallback a los campos directos del producto.
+  let totalQty = NaN;
+  if (sbb.length) {
+    totalQty = sbb.reduce(
+      (acc, x) => acc + Math.max(0, toNum(x.qty ?? x.stock_qty ?? x.stock ?? x.quantity, 0)),
+      0
+    );
+  }
+  if (!Number.isFinite(totalQty) || totalQty <= 0) {
+    let q = toNum(item.stock_qty, NaN);
+    if (!Number.isFinite(q)) q = toNum(item.qty, NaN);
+    if (!Number.isFinite(q)) q = toNum(item.stock, NaN);
+    if (!Number.isFinite(q)) q = toNum(item.stock_total, NaN);
+    if (!Number.isFinite(q)) q = toNum(item.total_stock, NaN);
+    if (Number.isFinite(q) && q > totalQty) totalQty = q;
+  }
+  if (!Number.isFinite(totalQty) || totalQty < 0) totalQty = 0;
+
+  // ✅ Stock de la sucursal seleccionada (si hay branch_id).
+  let branchQty = 0;
+  if (bid > 0 && sbb.length) {
+    const row = sbb.find((x) => toInt(x.branch_id ?? x.branchId, 0) === bid) || null;
+    if (row) branchQty = Math.max(0, toNum(row.qty ?? row.stock_qty ?? row.stock ?? row.quantity, 0));
+  } else {
+    branchQty = totalQty;
   }
 
-  if (!Number.isFinite(qty) || qty < 0) qty = 0;
-
-  item.stock_qty = qty;
-  item.is_in_stock = qty > 0;
+  // stock_qty = lo que aplica al contexto (sucursal si hay; sino total)
+  item.stock_qty = bid > 0 ? branchQty : totalQty;
+  item.stock_total = totalQty;
+  item.stock_branch_qty = branchQty;
+  item.is_in_stock = item.stock_qty > 0;
 
   return item;
 }
@@ -399,6 +411,7 @@ export async function getCatalog(params = {}) {
     price_min: Number.isFinite(price_min) ? price_min : null,
     price_max: Number.isFinite(price_max) ? price_max : null,
     sort: sort || "",
+    promo: params.promo || null,
   });
 
   const r = await api.get("/catalog", { params: q });

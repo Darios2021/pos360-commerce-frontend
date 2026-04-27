@@ -184,6 +184,10 @@ const shortsLoading = ref(false);
 const shortsError = ref(null);
 const shortsItems = ref([]);
 
+// Productos en promoción (carga dedicada, NO depende de la paginación del catálogo)
+const promoLoading = ref(false);
+const promoOnlyItems = ref([]);
+
 const aurisLoading = ref(false);
 const aurisItems = ref([]);
 
@@ -268,14 +272,12 @@ function scrollToProducts() {
 const promoPerPage = computed(() => 5);
 
 const promoItems = computed(() => {
-  const arr = Array.isArray(items.value) ? items.value : [];
-  if (!arr.length) return [];
-
-  // Sólo productos en promoción REAL (is_promo + ventana temporal vigente).
-  // No incluye productos nuevos ni precios con descuento — esos no son promos.
-  const promos = arr.filter((p) => isPromoActive(p));
-
-  return promos.slice(0, 18);
+  // ✅ Usa la lista dedicada de promos (traída por API con filtro promo=active),
+  // NO filtra del catálogo paginado — sino sólo veríamos las promos que cayeron
+  // en la primera página de productos.
+  const arr = Array.isArray(promoOnlyItems.value) ? promoOnlyItems.value : [];
+  // Doble seguridad: revalidar window en cliente por si la lista quedó cacheada.
+  return arr.filter((p) => isPromoActive(p)).slice(0, 18);
 });
 
 const hasMore = computed(() => {
@@ -333,6 +335,26 @@ function loadMore() {
   fetchCatalog({ append: true });
 }
 
+async function fetchPromoItems() {
+  promoLoading.value = true;
+  try {
+    const r = await getCatalog({
+      promo: "active",
+      page: 1,
+      limit: 30,
+      // sin filtros de stock para no excluir productos sin track_stock
+    });
+    const arr = Array.isArray(r?.items) ? r.items : [];
+    promoOnlyItems.value = arr;
+  } catch (e) {
+    // sección decorativa: si falla, vacío y la sección desaparece
+    console.warn("[ShopHome] no se pudieron cargar promos:", e?.message || e);
+    promoOnlyItems.value = [];
+  } finally {
+    promoLoading.value = false;
+  }
+}
+
 async function fetchHomeShorts() {
   shortsLoading.value = true;
   shortsError.value = null;
@@ -384,6 +406,8 @@ onMounted(async () => {
     allCats.value = [];
   }
 
+  // Promos en paralelo (no bloqueantes)
+  fetchPromoItems();
   await fetchHomeShorts();
   dispatchPrerenderReadySafe();
 
@@ -396,6 +420,7 @@ watch(
     isRestoringHome.value = true;
     page.value = Number(route.query.page || 1);
     await fetchCatalog({ append: false });
+    fetchPromoItems();
     await fetchHomeShorts();
     dispatchPrerenderReadySafe();
     await hideOverlaySoon();
