@@ -207,17 +207,29 @@ export function usePosCheckout({
     return buildPaymentMethodMeta(getMethodById(id));
   }
 
-  function methodUsesListPrice(meta, effectiveCardKind = null) {
+  // ✅ Regla de negocio:
+  //  - CRÉDITO EN 1 PAGO → se trata como CONTADO (precio descuento).
+  //  - CRÉDITO EN 2+ CUOTAS → precio lista (compensa la financiación).
+  //  - Débito / Prepaid / efectivo → siempre precio descuento.
+  //  - Si el método tiene pricing_mode="LIST_PRICE" forzado, lo respeta.
+  function methodUsesListPrice(meta, effectiveCardKind = null, installmentsCount = 1) {
     if (!meta) return false;
     const kind = String(meta.kind || "").toUpperCase();
     const pricingMode = String(meta.pricing_mode || "SALE_PRICE").toUpperCase();
     if (kind !== "CARD") return pricingMode === "LIST_PRICE";
+
     const configuredCardKind = String(meta.card_kind || "CREDIT").toUpperCase();
     const effective = String(effectiveCardKind || configuredCardKind || "CREDIT").toUpperCase();
-    if (configuredCardKind === "DEBIT") return false;
+    const n = Math.max(1, Number(installmentsCount) || 1);
+
+    if (configuredCardKind === "DEBIT")   return false;
     if (configuredCardKind === "PREPAID") return false;
-    if (configuredCardKind === "CREDIT") return true;
-    if (configuredCardKind === "BOTH") return effective !== "DEBIT";
+    // Crédito: solo precio lista si hay financiación (2+ cuotas)
+    if (configuredCardKind === "CREDIT")  return n > 1;
+    if (configuredCardKind === "BOTH") {
+      if (effective === "DEBIT") return false;
+      return n > 1;
+    }
     return pricingMode === "LIST_PRICE";
   }
 
@@ -226,12 +238,18 @@ export function usePosCheckout({
     if (payload?.mixed_mode && Array.isArray(payload?.mixed_payments)) {
       return payload.mixed_payments.some((row) => {
         if (toSafeNum(row.amount, 0) <= 0) return false;
-        return methodUsesListPrice(getMethodMetaById(row?.payment_method_id), row.card_kind);
+        const rowInstallments = Math.max(1, Number(row?.installments || 1) || 1);
+        return methodUsesListPrice(
+          getMethodMetaById(row?.payment_method_id),
+          row.card_kind,
+          rowInstallments
+        );
       });
     }
     const methodId = payload?.payment_method_id ?? paymentMethodId.value;
     const cardKindVal = payload?.card_kind ?? cardKind.value;
-    return methodUsesListPrice(getMethodMetaById(methodId), cardKindVal);
+    const installmentsVal = Math.max(1, Number(payload?.installments ?? installments.value) || 1);
+    return methodUsesListPrice(getMethodMetaById(methodId), cardKindVal, installmentsVal);
   }
 
   function pickItemPrice(it, saleUsesListPrice) {

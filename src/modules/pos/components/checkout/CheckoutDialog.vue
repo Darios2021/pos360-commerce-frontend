@@ -346,7 +346,11 @@ function methodSupportsInstallments(method, effectiveCardKind = null) {
   return !!method.supports_installments;
 }
 
-function methodUsesListPrice(method, effectiveCardKind = null) {
+// ✅ Regla de negocio (en sync con usePosCheckout.js):
+//  - CRÉDITO 1 PAGO   → CONTADO (precio descuento).
+//  - CRÉDITO 2+ CUOTAS → LISTA (compensa la financiación).
+//  - Débito / Prepaid / efectivo → siempre descuento.
+function methodUsesListPrice(method, effectiveCardKind = null, installmentsCount = 1) {
   if (!method) return false;
 
   const kind = String(method.kind || "").toUpperCase();
@@ -359,12 +363,14 @@ function methodUsesListPrice(method, effectiveCardKind = null) {
   const configuredCardKind = String(method.card_kind || "CREDIT").toUpperCase();
   const effective =
     String(effectiveCardKind || configuredCardKind || "CREDIT").toUpperCase();
+  const n = Math.max(1, Number(installmentsCount) || 1);
 
   if (configuredCardKind === "DEBIT") return false;
   if (configuredCardKind === "PREPAID") return false;
-  if (configuredCardKind === "CREDIT") return true;
+  if (configuredCardKind === "CREDIT") return n > 1;
   if (configuredCardKind === "BOTH") {
-    return effective !== "DEBIT";
+    if (effective === "DEBIT") return false;
+    return n > 1;
   }
 
   return pricingMode === "LIST_PRICE";
@@ -797,13 +803,14 @@ const computedSaleUsesListPrice = computed(() => {
       const method = rowMethod(row);
       if (!method) return false;
       if (parseAmount(row.amount) <= 0) return false;
-
-      return methodUsesListPrice(method, rowEffectiveCardKind(row));
+      const rowInstallments = Math.max(1, Number(row?.installments || 1) || 1);
+      return methodUsesListPrice(method, rowEffectiveCardKind(row), rowInstallments);
     });
   }
 
   if (!selectedMethod.value) return false;
-  return methodUsesListPrice(selectedMethod.value, state.cardKind);
+  const installmentsVal = Math.max(1, Number(state.installments || 1) || 1);
+  return methodUsesListPrice(selectedMethod.value, state.cardKind, installmentsVal);
 });
 
 const totalSafe = computed(
