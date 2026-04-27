@@ -79,6 +79,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { isPromoActive } from "@/modules/shop/utils/promo";
 
 const props = defineProps({
   title:    { type: String, default: "Seguridad Electrónica" },
@@ -135,7 +136,7 @@ function offPct(p) {
   return pct > 0 ? pct : 0;
 }
 function badgeText(p) {
-  if (p?.is_promo) return "OFERTA";
+  if (isPromoActive(p)) return "OFERTA";
   if (toNum(p?.price_discount) > 0) return "DESCUENTO";
   if (p?.is_new) return "NUEVO";
   return "";

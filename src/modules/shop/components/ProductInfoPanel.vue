@@ -29,10 +29,34 @@
         <span class="mi-rating-count">({{ ratingCount }})</span>
       </div>
 
+      <!-- Badge promo -->
+      <div v-if="promoActive" class="mi-promo-badge">
+        <v-icon size="14">mdi-tag-heart</v-icon>
+        Producto en promoción
+      </div>
+
+      <!-- Precio anterior tachado -->
+      <div v-if="oldPriceVisible" class="mi-old-price">
+        $ {{ fmtMoney(oldPrice) }}
+      </div>
+
       <div class="mi-price">
         <span class="mi-currency">$</span>
         <span class="mi-price-int">{{ priceInt }}</span>
         <span v-if="priceDec" class="mi-price-dec">{{ priceDec }}</span>
+        <span v-if="offPct > 0" class="mi-off">{{ offPct }}% OFF</span>
+      </div>
+
+      <!-- Hint de promo por cantidad -->
+      <div v-if="qtyPromoHint" class="mi-qty-promo">
+        <v-icon size="16" color="primary">mdi-package-variant-closed</v-icon>
+        {{ qtyPromoHint }}
+      </div>
+
+      <!-- Vigencia de la promo por tiempo -->
+      <div v-if="promoEndsLabel" class="mi-promo-ends">
+        <v-icon size="14">mdi-clock-outline</v-icon>
+        {{ promoEndsLabel }}
       </div>
 
       <a class="mi-link" href="javascript:void(0)" @click.prevent="emit('go-payments')">
@@ -55,6 +79,7 @@
 <script setup>
 import { computed } from "vue";
 import ProductDetailsTabs from "@/modules/shop/components/ProductDetailsTabs.vue";
+import { isPromoActive as _isPromoActive } from "@/modules/shop/utils/promo";
 
 const props = defineProps({
   product: { type: Object, default: null },
@@ -73,7 +98,15 @@ function asText(v) {
   return s ? s : "";
 }
 
+/* promo activa (respeta ventana temporal) */
+const promoActive = computed(() => _isPromoActive(props.product || {}));
+
 function priceValue(p) {
+  // Si hay promo por tiempo activa con promo_price > 0 → manda
+  if (promoActive.value) {
+    const pp = Number(p?.promo_price || 0);
+    if (pp > 0) return pp;
+  }
   const d = Number(p?.price_discount || 0);
   if (d > 0) return d;
   const l = Number(p?.price_list || 0);
@@ -82,6 +115,39 @@ function priceValue(p) {
 }
 
 const price = computed(() => priceValue(props.product));
+
+const oldPrice = computed(() => {
+  const p = props.product || {};
+  const l = Number(p.price_list || 0);
+  return l > 0 ? l : Number(p.price || 0);
+});
+const oldPriceVisible = computed(() => oldPrice.value > 0 && oldPrice.value > price.value);
+const offPct = computed(() => {
+  if (!oldPriceVisible.value) return 0;
+  return Math.round(((oldPrice.value - price.value) / oldPrice.value) * 100);
+});
+
+const qtyPromoHint = computed(() => {
+  const p = props.product || {};
+  if (!promoActive.value) return "";
+  const thr = Number(p.promo_qty_threshold) || 0;
+  const disc = Number(p.promo_qty_discount) || 0;
+  const mode = String(p.promo_qty_mode || "").toLowerCase();
+  if (thr < 2 || disc <= 0) return "";
+  if (mode === "percent") {
+    return `Llevando ${thr} o más, obtenés ${disc}% OFF en cada unidad`;
+  }
+  return `Llevando ${thr} o más, ahorrás $ ${fmtMoney(disc)} por unidad`;
+});
+
+const promoEndsLabel = computed(() => {
+  const p = props.product || {};
+  if (!promoActive.value) return "";
+  const e = p.promo_ends_at ? new Date(p.promo_ends_at) : null;
+  if (!e || !Number.isFinite(e.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `Promoción válida hasta ${pad(e.getDate())}/${pad(e.getMonth() + 1)} ${pad(e.getHours())}:${pad(e.getMinutes())}`;
+});
 
 const priceInt = computed(() => {
   const v = toNum(price.value, 0);
@@ -184,6 +250,58 @@ const bullets = computed(() => {
 .mi-rating-count {
   font-size: 13px;
   color: rgba(0,0,0,.55);
+}
+
+.mi-promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #02498b, #036ec1);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.mi-old-price {
+  font-size: 14px;
+  color: rgba(0,0,0,.45);
+  text-decoration: line-through;
+  margin-top: 6px;
+}
+.mi-off {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #00a650;
+  margin-left: 8px;
+  margin-top: 14px;
+}
+.mi-qty-promo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(2, 73, 139, 0.08);
+  border: 1px solid rgba(2, 73, 139, 0.2);
+  color: #02498b;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 11px;
+  border-radius: 8px;
+  margin-top: 10px;
+  line-height: 1.3;
+}
+.mi-promo-ends {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: rgba(0,0,0,.55);
+  margin-top: 6px;
 }
 
 .mi-price {

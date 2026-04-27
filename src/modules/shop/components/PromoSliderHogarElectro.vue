@@ -97,6 +97,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
+import { isPromoActive } from "@/modules/shop/utils/promo";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
@@ -185,7 +186,7 @@ function offPct(p) {
 }
 
 function badgeText(p) {
-  if (p.is_promo) return "OFERTA";
+  if (isPromoActive(p)) return "OFERTA";
   if (toNum(p.price_discount) > 0) return "DESCUENTO";
   if (p.is_new) return "NUEVO";
   return "";

@@ -37,7 +37,9 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <div class="mb-6">
+      <!-- Video shorts: solo se renderiza si hay videos o se están cargando.
+           Si el endpoint falla, esta sección desaparece (no rompe la home). -->
+      <div class="mb-6" v-if="shortsLoading || shortsItems.length > 0">
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
@@ -139,6 +141,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import { isPromoActive } from "@/modules/shop/utils/promo";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 import { getHomeShorts } from "@/modules/shop/service/shop.media.api";
@@ -269,7 +272,9 @@ const promoItems = computed(() => {
 
   const promos = arr.filter((p) => {
     const disc = toNum(p.price_discount);
-    return Boolean(p.is_promo) || Boolean(p.is_new) || disc > 0;
+    // is_promo cuenta sólo si la ventana temporal está vigente.
+    // Promos vencidas (promo_ends_at < now) NO entran en este filtro.
+    return isPromoActive(p) || Boolean(p.is_new) || disc > 0;
   });
 
   const base = promos.length ? promos : arr;
@@ -339,12 +344,11 @@ async function fetchHomeShorts() {
     const list = await getHomeShorts({ limit: 18 });
     shortsItems.value = Array.isArray(list) ? list : [];
   } catch (e) {
-    const msg =
-      e?.response?.status
-        ? `${e.response.status} ${e.response.statusText || ""}`.trim()
-        : e?.message || String(e);
-
-    shortsError.value = msg;
+    // ⚠️ Los video shorts son una sección decorativa: si el endpoint falla
+    // (500, timeout, etc.) NO debemos romper visualmente la home. Logueamos
+    // y dejamos la lista vacía → el carousel se oculta solo (v-if).
+    console.warn("[ShopHome] no se pudieron cargar video shorts:", e?.message || e);
+    shortsError.value = null;
     shortsItems.value = [];
   } finally {
     shortsLoading.value = false;

@@ -6,6 +6,9 @@
     <button class="mlx-media" type="button" @click="openProduct" :title="p?.name || ''">
       <img v-if="img" :src="img" alt="" loading="lazy" />
       <div v-else class="mlx-media-empty">Sin imagen</div>
+
+      <!-- Badge PROMO (esquina superior izquierda) -->
+      <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
     </button>
 
     <div class="mlx-body">
@@ -41,6 +44,11 @@
         </div>
       </div>
 
+      <!-- hint promo por cantidad -->
+      <div v-if="qtyPromoHint" class="mlx-qty-promo">
+        <span>🏷️</span> {{ qtyPromoHint }}
+      </div>
+
       <!-- shipping -->
       <div class="mlx-ship" :class="{ 'is-empty': !shipText }">
         <template v-if="shipText">
@@ -57,6 +65,7 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { isPromoActive } from "@/modules/shop/utils/promo";
 
 const props = defineProps({
   p: { type: Object, required: true },
@@ -93,8 +102,11 @@ const brandModel = computed(() => {
 const priceList = computed(() => toNum(props.p?.price_list));
 const priceDiscount = computed(() => toNum(props.p?.price_discount));
 const priceBase = computed(() => toNum(props.p?.price));
+const promoPrice = computed(() => toNum(props.p?.promo_price));
 
 const displayPrice = computed(() => {
+  // 1) Promo por tiempo activa → manda
+  if (promoActive.value && promoPrice.value > 0) return promoPrice.value;
   if (priceDiscount.value > 0) return priceDiscount.value;
   if (priceList.value > 0) return priceList.value;
   return priceBase.value;
@@ -103,6 +115,10 @@ const displayPrice = computed(() => {
 const oldPrice = computed(() => (priceList.value > 0 ? priceList.value : priceBase.value));
 
 const showOldPrice = computed(() => {
+  // Si hay promo activa, comparar contra precio lista
+  if (promoActive.value && promoPrice.value > 0) {
+    return oldPrice.value > promoPrice.value;
+  }
   const d = priceDiscount.value;
   const o = oldPrice.value;
   return d > 0 && o > d;
@@ -111,9 +127,23 @@ const showOldPrice = computed(() => {
 const offPct = computed(() => {
   if (!showOldPrice.value) return 0;
   const o = oldPrice.value;
-  const d = priceDiscount.value;
+  const d = displayPrice.value;
+  if (o <= 0 || d <= 0 || o <= d) return 0;
   const pct = Math.round(((o - d) / o) * 100);
   return pct > 0 ? pct : 0;
+});
+
+/* hint promo por cantidad */
+const qtyPromoHint = computed(() => {
+  if (!promoActive.value) return "";
+  const thr = Number(props.p?.promo_qty_threshold) || 0;
+  const disc = toNum(props.p?.promo_qty_discount);
+  const mode = String(props.p?.promo_qty_mode || "").toLowerCase();
+  if (thr < 2 || disc <= 0) return "";
+  if (mode === "percent") {
+    return `Llevando ${thr}+ obtenés ${disc}% OFF`;
+  }
+  return `Llevando ${thr}+ ahorrás $ ${fmtMoney(disc)} c/u`;
 });
 
 /* installments */
@@ -121,6 +151,9 @@ const INSTALLMENTS_MIN = 150000;
 const installmentsBase = computed(() => (priceList.value > 0 ? priceList.value : oldPrice.value));
 const show3Installments = computed(() => installmentsBase.value >= INSTALLMENTS_MIN);
 const installment3 = computed(() => installmentsBase.value / 3);
+
+/* promo activa (respeta ventana temporal si está definida) */
+const promoActive = computed(() => isPromoActive(props.p));
 
 /* shipping */
 const shipFull = computed(() => Boolean(props.p?.is_full || props.p?.full || props.p?.shipping_full));
@@ -181,6 +214,40 @@ function openProduct() {
   border: 0;
   padding: 0;
   display: block;
+  position: relative;
+}
+
+/* badge PROMO */
+.mlx-promo-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #02498b, #036ec1);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(2,73,139,.35);
+  z-index: 1;
+  text-transform: uppercase;
+}
+
+/* hint promo por cantidad */
+.mlx-qty-promo {
+  font-size: 11px;
+  font-weight: 700;
+  color: #02498b;
+  background: rgba(2, 73, 139, 0.08);
+  border: 1px solid rgba(2, 73, 139, 0.18);
+  border-radius: 6px;
+  padding: 4px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  line-height: 1.2;
 }
 .mlx-media img {
   width: 100%;

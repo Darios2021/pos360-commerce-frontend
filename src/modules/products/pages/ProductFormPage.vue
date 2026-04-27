@@ -310,6 +310,169 @@
 
                 </div><!-- /right col -->
               </div><!-- /step1-grid -->
+
+              <!-- ══ PROMOCIÓN (ancho completo) ══ -->
+              <div class="pfp-section pfp-promo-section mt-4" :class="{ 'pfp-promo-on': draft.is_promo }">
+                <div class="pfp-section-head" style="--accent:#02498b">
+                  <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-tag-heart</v-icon></div>
+                  <div>
+                    <div class="pfp-section-title">Promoción</div>
+                    <div class="pfp-section-sub">
+                      {{ draft.is_promo
+                        ? 'Mostrá el producto como promoción en la tienda'
+                        : 'Activá para configurar precio especial o descuento por cantidad' }}
+                    </div>
+                  </div>
+                  <v-switch
+                    v-model="draft.is_promo"
+                    inset density="compact" hide-details
+                    :disabled="busy"
+                    color="primary"
+                    class="ml-auto"
+                  />
+                </div>
+
+                <div v-if="draft.is_promo" class="pfp-section-body">
+                  <!-- Hint general -->
+                  <div class="pfp-promo-hint">
+                    <v-icon size="14" color="primary">mdi-information-outline</v-icon>
+                    <span>Podés activar las dos modalidades a la vez. La etiqueta <b>"PROMO"</b> se mostrará en la tienda virtual mientras el producto esté en promoción.</span>
+                  </div>
+
+                  <div class="pfp-promo-grid">
+
+                    <!-- ── Promo por TIEMPO ── -->
+                    <div class="pfp-promo-card" :class="{ on: promoTimeOn }">
+                      <div class="pfp-promo-card-head">
+                        <div class="pfp-promo-card-title">
+                          <v-icon size="18" color="primary">mdi-clock-outline</v-icon>
+                          <span>Precio promocional por tiempo</span>
+                        </div>
+                        <v-switch
+                          :model-value="promoTimeOn"
+                          @update:model-value="togglePromoTime"
+                          inset density="compact" hide-details
+                          color="primary"
+                          :disabled="busy"
+                        />
+                      </div>
+
+                      <div v-if="promoTimeOn" class="pfp-promo-card-body">
+                        <div class="text-caption text-medium-emphasis mb-2">
+                          Mientras dure la ventana, el producto se vende a este precio.
+                        </div>
+
+                        <v-text-field
+                          v-model="draft.promo_price"
+                          label="Precio en promoción *"
+                          prepend-inner-icon="mdi-currency-usd"
+                          variant="outlined" density="comfortable" hide-details="auto"
+                          type="number" min="0" :disabled="busy"
+                          class="mb-3"
+                        />
+
+                        <div class="pfp-promo-dates">
+                          <v-text-field
+                            v-model="draft.promo_starts_at"
+                            label="Desde"
+                            prepend-inner-icon="mdi-calendar-start"
+                            type="datetime-local"
+                            variant="outlined" density="comfortable" hide-details="auto"
+                            :disabled="busy"
+                          />
+                          <v-text-field
+                            v-model="draft.promo_ends_at"
+                            label="Hasta"
+                            prepend-inner-icon="mdi-calendar-end"
+                            type="datetime-local"
+                            variant="outlined" density="comfortable" hide-details="auto"
+                            :disabled="busy"
+                            :error-messages="promoDatesError"
+                          />
+                        </div>
+
+                        <div v-if="promoTimeSavings" class="pfp-promo-savings">
+                          <v-icon size="14" color="success">mdi-trending-down</v-icon>
+                          Ahorro vs lista: <b>$ {{ fmtNum(promoTimeSavings) }}</b>
+                          <span class="ml-1 text-medium-emphasis">({{ promoTimeSavingsPct }}%)</span>
+                        </div>
+                      </div>
+
+                      <div v-else class="pfp-promo-card-empty">
+                        Activá para definir precio y vigencia.
+                      </div>
+                    </div>
+
+                    <!-- ── Promo por CANTIDAD ── -->
+                    <div class="pfp-promo-card" :class="{ on: promoQtyOn }">
+                      <div class="pfp-promo-card-head">
+                        <div class="pfp-promo-card-title">
+                          <v-icon size="18" color="primary">mdi-package-variant-closed</v-icon>
+                          <span>Descuento por cantidad</span>
+                        </div>
+                        <v-switch
+                          :model-value="promoQtyOn"
+                          @update:model-value="togglePromoQty"
+                          inset density="compact" hide-details
+                          color="primary"
+                          :disabled="busy"
+                        />
+                      </div>
+
+                      <div v-if="promoQtyOn" class="pfp-promo-card-body">
+                        <div class="text-caption text-medium-emphasis mb-2">
+                          A partir de N unidades en una misma venta, se aplica el descuento a todas las unidades.
+                        </div>
+
+                        <div class="pfp-promo-qty-row">
+                          <v-text-field
+                            v-model="draft.promo_qty_threshold"
+                            label="Desde N unidades *"
+                            prepend-inner-icon="mdi-counter"
+                            type="number" min="2" step="1"
+                            variant="outlined" density="comfortable" hide-details="auto"
+                            :disabled="busy"
+                          />
+
+                          <v-btn-toggle
+                            v-model="draft.promo_qty_mode"
+                            mandatory density="comfortable"
+                            color="primary" variant="outlined" rounded="lg"
+                            class="pfp-promo-mode"
+                          >
+                            <v-btn value="amount" :disabled="busy">$ Monto</v-btn>
+                            <v-btn value="percent" :disabled="busy">% Porcentaje</v-btn>
+                          </v-btn-toggle>
+                        </div>
+
+                        <v-text-field
+                          v-model="draft.promo_qty_discount"
+                          :label="draft.promo_qty_mode === 'percent' ? 'Porcentaje de descuento *' : 'Monto de descuento *'"
+                          :prepend-inner-icon="draft.promo_qty_mode === 'percent' ? 'mdi-percent' : 'mdi-currency-usd'"
+                          :suffix="draft.promo_qty_mode === 'percent' ? '%' : ''"
+                          type="number" min="0" :max="draft.promo_qty_mode === 'percent' ? 100 : undefined"
+                          variant="outlined" density="comfortable" hide-details="auto"
+                          :disabled="busy"
+                          class="mt-3"
+                        />
+
+                        <div v-if="promoQtyExample" class="pfp-promo-savings">
+                          <v-icon size="14" color="success">mdi-tag-multiple</v-icon>
+                          Ej: comprando <b>{{ draft.promo_qty_threshold }}</b>, c/u sale
+                          <b>$ {{ fmtNum(promoQtyExample.unitPrice) }}</b>
+                          <span class="ml-1 text-medium-emphasis">(ahorro $ {{ fmtNum(promoQtyExample.totalSaving) }})</span>
+                        </div>
+                      </div>
+
+                      <div v-else class="pfp-promo-card-empty">
+                        Activá para configurar volumen.
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- ══ STEP 2 ══ -->
@@ -442,6 +605,38 @@
                       <div class="pfp-price-item" v-for="p in priceItems" :key="p.label">
                         <div class="pfp-price-label">{{ p.label }}</div>
                         <div class="pfp-price-val" :class="{ muted: !p.val }">{{ p.val ? `$ ${fmtNum(p.val)}` : '—' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pfp-sum-card" v-if="draft.is_promo">
+                    <div class="pfp-sum-card-head">
+                      <v-icon size="16" color="primary">mdi-tag-heart</v-icon> Promoción
+                    </div>
+                    <div class="pfp-promo-summary">
+                      <div v-if="promoTimeOn" class="pfp-promo-summary-row">
+                        <v-icon size="14" color="primary">mdi-clock-outline</v-icon>
+                        <span>
+                          Por tiempo:
+                          <b v-if="num(draft.promo_price)">$ {{ fmtNum(draft.promo_price) }}</b>
+                          <span v-else class="text-medium-emphasis">precio sin definir</span>
+                          <span v-if="draft.promo_starts_at || draft.promo_ends_at" class="text-medium-emphasis">
+                            ({{ fmtPromoRange }})
+                          </span>
+                        </span>
+                      </div>
+                      <div v-if="promoQtyOn" class="pfp-promo-summary-row">
+                        <v-icon size="14" color="primary">mdi-package-variant-closed</v-icon>
+                        <span>
+                          Por cantidad: desde <b>{{ draft.promo_qty_threshold || '?' }}</b> u.
+                          <span v-if="draft.promo_qty_discount">
+                            – descuento
+                            <b v-if="draft.promo_qty_mode === 'percent'">{{ draft.promo_qty_discount }}%</b>
+                            <b v-else>$ {{ fmtNum(draft.promo_qty_discount) }}</b>
+                          </span>
+                        </span>
+                      </div>
+                      <div v-if="!promoTimeOn && !promoQtyOn" class="text-caption text-medium-emphasis">
+                        Marcado en promoción pero sin reglas configuradas — sólo se mostrará la etiqueta.
                       </div>
                     </div>
                   </div>
@@ -689,9 +884,19 @@ function setSubcategoryIdOnDraft(id) {
   draft.value = { ...draft.value, subcategory_id: v, subcategoryId: v, sub_category_id: v, subrubro_id: v };
 }
 function defaultDraft() {
-  return { id: null, name: "", sku: "", code: null, barcode: null, branch_id: null, description: "",
+  return {
+    id: null, name: "", sku: "", code: null, barcode: null, branch_id: null, description: "",
     category_id: null, subcategory_id: null, is_active: true, track_stock: true,
-    brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0 };
+    brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0,
+    // Promoción
+    is_promo: false,
+    promo_price: null,
+    promo_starts_at: null,
+    promo_ends_at: null,
+    promo_qty_threshold: null,
+    promo_qty_discount: null,
+    promo_qty_mode: "amount",
+  };
 }
 const draft = ref(defaultDraft());
 
@@ -795,6 +1000,103 @@ const priceItems = computed(() => [
   { label: "Descuento",  val: num(draft.value?.price_discount) },
   { label: "Revendedor", val: num(draft.value?.price_reseller) },
 ]);
+
+/* ── Promo: helpers ── */
+const promoTimeOn = computed(() =>
+  num(draft.value?.promo_price) > 0 ||
+  !!draft.value?.promo_starts_at ||
+  !!draft.value?.promo_ends_at
+);
+const promoQtyOn = computed(() =>
+  num(draft.value?.promo_qty_threshold) > 0 ||
+  num(draft.value?.promo_qty_discount) > 0
+);
+
+function togglePromoTime(on) {
+  if (on) {
+    if (!draft.value.promo_price) draft.value.promo_price = num(draft.value.price_list) || 0;
+  } else {
+    draft.value.promo_price = null;
+    draft.value.promo_starts_at = null;
+    draft.value.promo_ends_at = null;
+  }
+}
+function togglePromoQty(on) {
+  if (on) {
+    if (!draft.value.promo_qty_threshold) draft.value.promo_qty_threshold = 2;
+    if (!draft.value.promo_qty_mode) draft.value.promo_qty_mode = "amount";
+  } else {
+    draft.value.promo_qty_threshold = null;
+    draft.value.promo_qty_discount = null;
+  }
+}
+
+const promoDatesError = computed(() => {
+  const s = draft.value?.promo_starts_at;
+  const e = draft.value?.promo_ends_at;
+  if (!s || !e) return "";
+  const sd = new Date(s); const ed = new Date(e);
+  if (Number.isFinite(sd.getTime()) && Number.isFinite(ed.getTime()) && ed <= sd) {
+    return "Debe ser posterior al inicio.";
+  }
+  return "";
+});
+
+const promoTimeSavings = computed(() => {
+  const list = num(draft.value?.price_list);
+  const promo = num(draft.value?.promo_price);
+  if (list <= 0 || promo <= 0 || promo >= list) return 0;
+  return list - promo;
+});
+const promoTimeSavingsPct = computed(() => {
+  const list = num(draft.value?.price_list);
+  const save = promoTimeSavings.value;
+  if (list <= 0 || save <= 0) return 0;
+  return Math.round((save / list) * 100);
+});
+
+const promoQtyExample = computed(() => {
+  const thr = toInt(draft.value?.promo_qty_threshold, 0);
+  const disc = num(draft.value?.promo_qty_discount);
+  const list = num(draft.value?.price_list);
+  if (thr < 2 || disc <= 0 || list <= 0) return null;
+
+  let unitPrice;
+  if (draft.value?.promo_qty_mode === "percent") {
+    unitPrice = list * (1 - Math.min(100, disc) / 100);
+  } else {
+    unitPrice = Math.max(0, list - disc);
+  }
+  const totalSaving = (list - unitPrice) * thr;
+  return { unitPrice, totalSaving };
+});
+
+function fmtDateShort(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (!Number.isFinite(d.getTime())) return String(v);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+const fmtPromoRange = computed(() => {
+  const s = fmtDateShort(draft.value?.promo_starts_at);
+  const e = fmtDateShort(draft.value?.promo_ends_at);
+  if (s && e) return `${s} → ${e}`;
+  if (s) return `desde ${s}`;
+  if (e) return `hasta ${e}`;
+  return "";
+});
+
+// Si toggle is_promo se apaga, limpiamos todo
+watch(() => draft.value?.is_promo, (v) => {
+  if (!v) {
+    draft.value.promo_price = null;
+    draft.value.promo_starts_at = null;
+    draft.value.promo_ends_at = null;
+    draft.value.promo_qty_threshold = null;
+    draft.value.promo_qty_discount = null;
+  }
+});
 
 const stockPreviewList = computed(() =>
   arr(stockMatrix.value)
@@ -1178,8 +1480,17 @@ async function saveAll() {
 .pfp-section-head {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.35);
+  background:
+    linear-gradient(90deg,
+      rgba(var(--v-theme-primary), 0.06) 0%,
+      rgba(var(--v-theme-surface-variant), 0.30) 100%);
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  position: relative;
+}
+.pfp-section-head::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent, rgb(var(--v-theme-primary)));
+  opacity: 0.85;
 }
 .pfp-section-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); }
 .pfp-section-title { font-size: 13px; font-weight: 800; line-height: 1.2; }
@@ -1187,6 +1498,91 @@ async function saveAll() {
 .pfp-section-body  { padding: 10px 12px; }
 .pfp-section-body.pa-0 { padding: 0; }
 .pfp-section :deep(.v-field) { border-radius: 9px; }
+
+/* ══ PROMO ══ */
+.pfp-promo-section {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pfp-promo-section.pfp-promo-on {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+}
+.pfp-promo-hint {
+  display: flex; align-items: flex-start; gap: 6px;
+  padding: 9px 11px; border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+  font-size: 12px; line-height: 1.4;
+  margin-bottom: 12px;
+}
+.pfp-promo-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+@media (max-width: 860px) {
+  .pfp-promo-grid { grid-template-columns: 1fr; }
+}
+.pfp-promo-card {
+  border: 1.5px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface-variant), 0.15);
+  transition: border-color 0.15s, background 0.15s;
+}
+.pfp-promo-card.on {
+  border-style: solid;
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+.pfp-promo-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-promo-card.on .pfp-promo-card-head {
+  border-bottom-color: rgba(var(--v-theme-primary), 0.25);
+}
+.pfp-promo-card-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700;
+}
+.pfp-promo-card-body {
+  padding: 12px;
+}
+.pfp-promo-card-empty {
+  padding: 18px 12px; text-align: center;
+  font-size: 12px; opacity: 0.55;
+}
+.pfp-promo-dates {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+@media (max-width: 520px) {
+  .pfp-promo-dates { grid-template-columns: 1fr; }
+}
+.pfp-promo-qty-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: stretch;
+}
+@media (max-width: 520px) {
+  .pfp-promo-qty-row { grid-template-columns: 1fr; }
+}
+.pfp-promo-mode :deep(.v-btn) { font-size: 11px; font-weight: 700; }
+.pfp-promo-savings {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 10px; padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(var(--v-theme-success), 0.08);
+  border: 1px solid rgba(var(--v-theme-success), 0.2);
+  font-size: 12px;
+}
+.pfp-promo-summary {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pfp-promo-summary-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px;
+  padding: 7px 9px; border-radius: 7px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+}
 
 /* ══ TOGGLES ══ */
 .pfp-toggle-row { display: flex; gap: 10px; flex-wrap: wrap; }

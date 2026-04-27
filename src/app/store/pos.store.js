@@ -754,10 +754,61 @@ export const usePosStore = defineStore("pos", {
       this.cart = [];
     },
 
+    _isPromoTimeActive(it) {
+      if (!it?.is_promo) return false;
+      const now = new Date();
+      const s = it.promo_starts_at ? new Date(it.promo_starts_at) : null;
+      const e = it.promo_ends_at   ? new Date(it.promo_ends_at)   : null;
+      if (s && Number.isFinite(s.getTime()) && now < s) return false;
+      if (e && Number.isFinite(e.getTime()) && now > e) return false;
+      return true;
+    },
+
+    _computeEffectiveUnit(it) {
+      // Precio base sin promo
+      const baseDiscount = toNum(it.price_discount, 0);
+      const baseList = toNum(it.price_list, 0);
+      const basePrice = toNum(it.price, 0);
+      let unit = baseDiscount > 0 ? baseDiscount : (baseList > 0 ? baseList : basePrice);
+
+      if (!it?.is_promo) return Math.max(0, unit);
+
+      // 1) Promo por tiempo: si está vigente y promo_price > 0, reemplaza el precio base
+      if (this._isPromoTimeActive(it)) {
+        const pp = toNum(it.promo_price, 0);
+        if (pp > 0) unit = pp;
+      }
+
+      // 2) Promo por cantidad: si qty >= threshold, aplicar descuento
+      const qty = toNum(it.qty, 0);
+      const thr = toInt(it.promo_qty_threshold, 0);
+      const disc = toNum(it.promo_qty_discount, 0);
+      const mode = String(it.promo_qty_mode || "").toLowerCase();
+      if (thr >= 2 && disc > 0 && qty >= thr) {
+        if (mode === "percent") {
+          const pct = Math.min(100, Math.max(0, disc));
+          unit = unit * (1 - pct / 100);
+        } else {
+          unit = Math.max(0, unit - disc);
+        }
+      }
+
+      return Math.max(0, Math.round(unit * 100) / 100);
+    },
+
     _recalcLine(it) {
       const qty = toNum(it.qty, 0);
-      const price = toNum(it.price_discount, 0) || toNum(it.price, 0);
-      it.subtotal = qty * price;
+      const unit = this._computeEffectiveUnit(it);
+      // Persistimos el unit_price efectivo para que el checkout y el resumen lo usen
+      it.price = unit;
+      it.unit_price = unit;
+      it.promo_applied = Boolean(it.is_promo) && (
+        this._isPromoTimeActive(it) ||
+        (toInt(it.promo_qty_threshold, 0) >= 2 &&
+         toNum(it.promo_qty_discount, 0) > 0 &&
+         qty >= toInt(it.promo_qty_threshold, 0))
+      );
+      it.subtotal = qty * unit;
     },
 
     addToCart(product) {
@@ -803,6 +854,14 @@ export const usePosStore = defineStore("pos", {
           price_discount: toNum(product?.price_discount, 0),
           price_reseller: toNum(product?.price_reseller, 0),
           price_label: product?.price_label || "Precio",
+          // Promo (snapshot del producto al momento de agregar)
+          is_promo: Boolean(product?.is_promo),
+          promo_price: toNum(product?.promo_price, 0) || null,
+          promo_starts_at: product?.promo_starts_at || null,
+          promo_ends_at: product?.promo_ends_at || null,
+          promo_qty_threshold: toInt(product?.promo_qty_threshold, 0) || null,
+          promo_qty_discount: toNum(product?.promo_qty_discount, 0) || null,
+          promo_qty_mode: product?.promo_qty_mode || null,
           subtotal: 0,
         };
 

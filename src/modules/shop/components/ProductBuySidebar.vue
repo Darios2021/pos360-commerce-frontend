@@ -82,6 +82,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { isPromoActive } from "@/modules/shop/utils/promo";
 
 const props = defineProps({
   product: { type: Object, default: null },
@@ -96,6 +97,10 @@ function toNum(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 function priceValue(p) {
+  if (isPromoActive(p)) {
+    const pp = Number(p?.promo_price || 0);
+    if (pp > 0) return pp;
+  }
   const d = Number(p?.price_discount || 0);
   if (d > 0) return d;
   const l = Number(p?.price_list || 0);

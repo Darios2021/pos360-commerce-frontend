@@ -263,9 +263,46 @@ function sanitizeProductPayload(raw = {}) {
     else if (s === "false" || s === "0") p[f] = false;
   }
 
+  // ── Promo: normalización ───────────────────────────────────────────────
+  // promo_qty_mode debe ser 'amount' | 'percent' | null
+  if ("promo_qty_mode" in p) {
+    const v = String(p.promo_qty_mode ?? "").trim().toLowerCase();
+    p.promo_qty_mode = v === "amount" || v === "percent" ? v : null;
+  }
+  // numéricos promo: "" o undefined → null; sino number
+  for (const f of ["promo_price", "promo_qty_discount"]) {
+    if (!(f in p)) continue;
+    if (p[f] === "" || p[f] === undefined) p[f] = null;
+    else p[f] = toNum(p[f], 0);
+  }
+  if ("promo_qty_threshold" in p) {
+    if (p.promo_qty_threshold === "" || p.promo_qty_threshold === undefined) p.promo_qty_threshold = null;
+    else p.promo_qty_threshold = toInt(p.promo_qty_threshold, 0) || null;
+  }
+  // Fechas promo: "" → null; Date → ISO; sino conservar string
+  for (const f of ["promo_starts_at", "promo_ends_at"]) {
+    if (!(f in p)) continue;
+    if (p[f] === "" || p[f] === undefined) p[f] = null;
+    else if (p[f] instanceof Date) p[f] = p[f].toISOString();
+  }
+
   if ("code" in p) delete p.code;
 
-  return compactParams(p);
+  // compactParams elimina null/"". Para los campos de promo SÍ queremos
+  // poder enviar null (limpiar) → reinyectamos después de compactar.
+  const promoKeys = [
+    "promo_price",
+    "promo_starts_at",
+    "promo_ends_at",
+    "promo_qty_threshold",
+    "promo_qty_discount",
+    "promo_qty_mode",
+  ];
+  const compacted = compactParams(p);
+  for (const k of promoKeys) {
+    if (Object.prototype.hasOwnProperty.call(p, k)) compacted[k] = p[k];
+  }
+  return compacted;
 }
 
 export const useProductsStore = defineStore("products", {

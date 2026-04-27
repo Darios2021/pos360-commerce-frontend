@@ -61,12 +61,16 @@
               <div class="item-row-top">
                 <div class="item-name" :title="it?.name || ''">
                   {{ it?.name || "—" }}
+                  <span v-if="it?.is_promo" class="promo-tag">PROMO</span>
                 </div>
                 <span class="item-total">{{ money(lineTotal(it)) }}</span>
               </div>
 
               <div class="item-meta">
                 <span class="unit-price">
+                  <span v-if="it?.promo_applied && unitPriceList(it) > unitPriceEffective(it)" class="unit-old">
+                    {{ money(unitPriceList(it)) }}
+                  </span>
                   {{ money(unitPriceEffective(it)) }}
                   <span class="unit-suffix">c/u</span>
                 </span>
@@ -74,6 +78,12 @@
                   {{ it.sku }}
                 </span>
                 <span v-if="stockText(it)" class="stock-hint">{{ stockText(it) }}</span>
+              </div>
+
+              <!-- Hint promo por cantidad cuando aún no llegó al umbral -->
+              <div v-if="qtyPromoHint(it)" class="qty-promo-hint">
+                <v-icon size="13">mdi-tag-multiple</v-icon>
+                {{ qtyPromoHint(it) }}
               </div>
 
               <div class="item-actions">
@@ -251,6 +261,13 @@ function pickFirstNumber(obj, keys) {
 function unitPriceEffective(it) {
   if (!it) return 0;
 
+  // Si el store ya marcó la línea con promo aplicada, usamos el unit_price
+  // efectivo persistido (no price_discount, que es el original)
+  if (it?.promo_applied) {
+    const eff = toNum(it?.unit_price) || toNum(it?.price);
+    if (eff > 0) return eff;
+  }
+
   const meta =
     it?.__pos_pricing && typeof it.__pos_pricing === "object"
       ? it.__pos_pricing
@@ -328,6 +345,28 @@ function unitPriceEffective(it) {
 
 function lineTotal(it) {
   return round3(toNum(it?.qty) * toNum(unitPriceEffective(it)));
+}
+
+function unitPriceList(it) {
+  // Precio "antes" para mostrar tachado: price_list o price_discount original
+  const list = toNum(it?.price_list);
+  if (list > 0) return list;
+  const disc = toNum(it?.price_discount);
+  if (disc > 0) return disc;
+  return 0;
+}
+
+function qtyPromoHint(it) {
+  if (!it?.is_promo) return "";
+  const thr = Number(it?.promo_qty_threshold) || 0;
+  const disc = toNum(it?.promo_qty_discount);
+  const mode = String(it?.promo_qty_mode || "").toLowerCase();
+  if (thr < 2 || disc <= 0) return "";
+  const qty = toNum(it?.qty);
+  if (qty >= thr) return ""; // ya aplicado
+  const falta = thr - qty;
+  const off = mode === "percent" ? `${disc}% OFF` : `$ ${money(disc)}`;
+  return `Sumá ${falta} u. más para ${off} c/u`;
 }
 
 function maxQtyForItem(it) {
@@ -779,6 +818,45 @@ function remove(it) {
   font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.5);
   margin-left: 2px;
+}
+
+.unit-old {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  text-decoration: line-through;
+  margin-right: 4px;
+}
+
+.promo-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  background: linear-gradient(135deg, #02498b, #036ec1);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+.qty-promo-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+  padding: 2px 7px;
+  border-radius: 5px;
+  align-self: flex-start;
+  line-height: 1.2;
+  width: fit-content;
 }
 
 .item-sku {
