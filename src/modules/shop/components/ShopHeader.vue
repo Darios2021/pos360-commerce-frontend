@@ -624,8 +624,11 @@ watch(
 .ml-wa-fab {
   position: fixed;
   right: 14px;
+  /* Por defecto en desktop queda a 14px del borde inferior.
+     En mobile (con bottom nav visible) lo levantamos sobre la barra
+     usando la variable que expone el layout (--ml-bottom-nav-h). */
   bottom: 14px;
-  z-index: 140;
+  z-index: 260;
   width: 54px;
   height: 54px;
   border-radius: 999px;
@@ -641,6 +644,22 @@ watch(
   box-shadow: 0 12px 24px rgba(0,0,0,0.32);
 
   text-decoration: none;
+
+  transition: transform 0.15s ease;
+}
+.ml-wa-fab:active {
+  transform: scale(0.94);
+}
+
+@media (max-width: 600px) {
+  .ml-wa-fab {
+    /* Bottom nav (~62px) + safe-area + 12px de aire */
+    bottom: calc(var(--ml-bottom-nav-h, 62px) + env(safe-area-inset-bottom) + 12px);
+    right: 12px;
+    width: 50px;
+    height: 50px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+  }
 }
 
 /* =========================
@@ -661,12 +680,40 @@ watch(
 
 @media (max-width:600px) {
 
+  /* Header más compacto: ahorra altura en pantalla chica */
+  .ml-row-top {
+    padding: 8px 0 8px;
+  }
+
+  .ml-container {
+    width: min(var(--shop-max,1240px), calc(100% - 16px));
+  }
+
+  .ml-top-grid {
+    gap: 10px;
+  }
+
   .ml-search {
     justify-content: stretch;
   }
 
   .ml-search > * {
     width: 100%;
+  }
+
+  /* Buscador más bajo para acompañar el placeholder más chico */
+  .ml-search :deep(.v-field) {
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  .ml-search :deep(.v-field__input) {
+    min-height: 36px;
+    font-size: 13px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .ml-search :deep(.v-field__prepend-inner .v-icon) {
+    font-size: 18px;
   }
 
   .ml-row-bottom {
@@ -678,8 +725,14 @@ watch(
   }
 
   .ml-logo-icon {
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
+  }
+
+  /* Botones de cuenta/carrito más compactos */
+  .ml-top-icon-btn,
+  .ml-account-btn-mobile {
+    padding: 4px;
   }
 
   .ml-header :deep(.v-icon) {

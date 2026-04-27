@@ -136,7 +136,6 @@
               color="primary" density="compact" hide-details
               :label="form.includeSignature ? 'Incluir mi firma' : 'Sin firma'"
               :disabled="!hasSignature"
-              @update:model-value="loadPreviewLayout"
             />
             <v-btn v-if="!hasSignature" size="x-small" variant="text" prepend-icon="mdi-cog-outline"
                    :to="{ name: 'profile' }" target="_blank">
@@ -153,7 +152,6 @@
               v-model="form.includeLocation"
               color="primary" density="compact" hide-details
               label="Incluir bloque de ubicación"
-              @update:model-value="loadPreviewLayout"
             />
           </div>
 
@@ -217,41 +215,97 @@
             </div>
           </div>
 
-          <div class="smd-extras__row">
-            <v-btn size="small" variant="tonal" prepend-icon="mdi-eye-outline"
-                   :loading="busyLayoutPreview" @click="loadPreviewLayout">
-              Vista previa del email completo
-            </v-btn>
-            <v-btn v-if="layoutHtml" size="small" variant="text" prepend-icon="mdi-open-in-new"
-                   @click="openLayoutPreviewWindow">
-              Abrir en nueva pestaña
-            </v-btn>
-          </div>
-
-          <!-- Preview del HTML wrappeado -->
-          <div v-if="layoutHtml" class="smd-iframe-wrap">
-            <iframe :srcdoc="layoutHtml" class="smd-iframe" />
-          </div>
         </div>
 
-        <!-- PREVIEW (1 cliente) -->
-        <div v-if="targets.length === 1" class="smd-preview">
+        <!-- ═══ VISTA PREVIA UNIFICADA ═══ -->
+        <div v-if="canShowPreview" class="smd-preview">
           <div class="smd-preview__head">
-            <v-icon size="14">mdi-eye-outline</v-icon>
+            <v-icon size="14" color="primary">mdi-eye-outline</v-icon>
             <span>Vista previa</span>
+            <v-chip
+              v-if="targets.length > 1 && targets[0]"
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              class="ml-2"
+            >
+              Ejemplo con {{ targets[0]?.display_name || ('#' + targets[0]?.id) }}
+            </v-chip>
             <v-spacer />
-            <v-btn size="x-small" variant="text" prepend-icon="mdi-refresh" :loading="busyPreview" @click="loadPreview">Actualizar</v-btn>
+            <v-btn
+              v-if="layoutHtml"
+              size="x-small"
+              variant="text"
+              prepend-icon="mdi-open-in-new"
+              @click="openLayoutPreviewWindow"
+            >
+              Pestaña
+            </v-btn>
+            <v-btn
+              size="x-small"
+              variant="text"
+              prepend-icon="mdi-refresh"
+              :loading="busyPreview || busyLayoutPreview"
+              @click="reloadPreviewAll"
+            >
+              Actualizar
+            </v-btn>
           </div>
-          <div v-if="preview" class="smd-preview__body">
-            <div v-if="channel === 'email' && preview.subject" class="smd-preview__subject">
-              <b>Asunto:</b> {{ preview.subject }}
-            </div>
-            <div class="smd-preview__text" v-html="renderPreviewBody(preview.body)"></div>
-            <div class="smd-preview__to">
-              <v-icon size="12">{{ channel === 'email' ? 'mdi-email-outline' : 'mdi-whatsapp' }}</v-icon>
-              {{ preview.to || '(sin destinatario)' }}
+
+          <!-- Estado: vacío -->
+          <div v-if="!form.body?.trim()" class="smd-preview__empty">
+            <v-icon size="32" color="medium-emphasis">mdi-text-box-outline</v-icon>
+            <div>
+              <div class="smd-preview__empty-title">Escribí un mensaje para ver la vista previa</div>
+              <div class="smd-preview__empty-sub">Podés usar variables como {{ varTag('first_name') }} y aparecerán resueltas acá.</div>
             </div>
           </div>
+
+          <template v-else>
+            <!-- Texto plano resuelto (subject + body con variables del primer destinatario) -->
+            <div v-if="busyPreview && !preview" class="smd-preview__loading">
+              <v-progress-circular size="20" indeterminate color="primary" />
+              <span>Resolviendo variables…</span>
+            </div>
+            <div v-else-if="previewError" class="smd-preview__error">
+              <v-icon size="14" color="error">mdi-alert-circle</v-icon>
+              {{ previewError }}
+            </div>
+            <div v-else-if="preview" class="smd-preview__body">
+              <div v-if="channel === 'email' && preview.subject" class="smd-preview__subject">
+                <b>Asunto:</b> {{ preview.subject }}
+              </div>
+              <div class="smd-preview__text" v-html="renderPreviewBody(preview.body)"></div>
+              <div class="smd-preview__to">
+                <v-icon size="12">{{ channel === 'email' ? 'mdi-email-outline' : 'mdi-whatsapp' }}</v-icon>
+                {{ preview.to || '(sin destinatario)' }}
+              </div>
+            </div>
+
+            <!-- Email render completo (HTML con layout, firma, promos, ubicación) -->
+            <template v-if="channel === 'email'">
+              <div class="smd-preview__iframe-head">
+                <v-icon size="13">mdi-monitor-screenshot</v-icon>
+                <span>Email tal como lo recibirá</span>
+                <v-spacer />
+                <span v-if="busyLayoutPreview" class="smd-preview__loading-inline">
+                  <v-progress-circular size="13" width="2" indeterminate color="primary" />
+                  Generando…
+                </span>
+              </div>
+              <div v-if="layoutError" class="smd-preview__error">
+                <v-icon size="14" color="error">mdi-alert-circle</v-icon>
+                {{ layoutError }}
+              </div>
+              <div v-else-if="layoutHtml" class="smd-iframe-wrap">
+                <iframe :srcdoc="layoutHtml" class="smd-iframe" />
+              </div>
+              <div v-else-if="!busyLayoutPreview" class="smd-preview__empty smd-preview__empty--small">
+                <v-icon size="22" color="medium-emphasis">mdi-image-broken-variant</v-icon>
+                <span>Generando vista del email completo…</span>
+              </div>
+            </template>
+          </template>
         </div>
 
         <!-- BULK info -->
@@ -408,6 +462,13 @@ const result = ref(null);
 const manualLinks = ref([]);
 const errorMsg = ref("");
 const bodyRef = ref(null);
+// Estados específicos del bloque de vista previa
+const previewError = ref("");
+const layoutError = ref("");
+
+// La preview se muestra siempre que haya al menos 1 destinatario.
+// Para campañas masivas (>1) se renderiza el ejemplo con targets[0].
+const canShowPreview = computed(() => Array.isArray(props.targets) && props.targets.length >= 1);
 
 const canEmail = computed(() => messagingStatus.value?.email?.configured === true);
 const canWhatsAppCloud = computed(() => messagingStatus.value?.whatsapp?.cloud_api_configured === true);
@@ -508,14 +569,14 @@ function onTemplateChange(id) {
   if (!t) return;
   form.subject = t.subject || "";
   form.body = t.body || "";
-  if (props.targets.length === 1) loadPreview();
+  // El watcher de form.body se encarga de re-renderizar la preview con debounce.
 }
 
 function insertVariable(key) {
   const tag = `{{${key}}}`;
   // Insertar al final del body (si no hay caret accesible).
   form.body = (form.body || "") + tag;
-  if (props.targets.length === 1) loadPreview();
+  // Idem: watcher se encarga.
 }
 
 // Helper para mostrar el tag con doble llave en el template sin que Vue lo
@@ -525,11 +586,12 @@ function varTag(key) {
 }
 
 async function loadPreview() {
-  if (props.targets.length !== 1 || !form.body?.trim()) {
+  if (!props.targets.length || !form.body?.trim()) {
     preview.value = null;
     return;
   }
   busyPreview.value = true;
+  previewError.value = "";
   try {
     const { data } = await previewMessage({
       customer_id: props.targets[0].id,
@@ -541,38 +603,82 @@ async function loadPreview() {
     preview.value = data?.data || null;
   } catch (e) {
     preview.value = null;
+    previewError.value = e?.response?.data?.message || e?.message || "No se pudo armar la vista previa.";
   } finally {
     busyPreview.value = false;
   }
 }
 
 // Vista previa del HTML completo del email (con layout, firma, promos, ubicación).
-// Se renderiza dentro de un iframe para que el CSS del email no afecte al admin.
+// Si hay un destinatario, primero resolvemos las variables (subject/body) usando
+// previewMessage para que el HTML wrappeado se vea con datos reales.
 async function loadPreviewLayout() {
   if (channel.value !== "email") {
     layoutHtml.value = "";
     return;
   }
-  if (!form.body?.trim()) return;
+  if (!form.body?.trim()) {
+    layoutHtml.value = "";
+    return;
+  }
   busyLayoutPreview.value = true;
+  layoutError.value = "";
   try {
+    let renderedSubject = form.subject || "Vista previa";
+    let renderedBody = form.body;
+
+    // Resolver variables con el primer destinatario (si hay).
+    if (props.targets.length >= 1 && props.targets[0]?.id) {
+      try {
+        const { data: prevData } = await previewMessage({
+          customer_id: props.targets[0].id,
+          channel: "email",
+          template_id: selectedTemplateId.value || undefined,
+          subject: form.subject || undefined,
+          body: form.body,
+        });
+        const d = prevData?.data || null;
+        if (d?.subject) renderedSubject = d.subject;
+        if (d?.body) renderedBody = d.body;
+      } catch {
+        // si falla la resolución, seguimos con form crudo
+      }
+    }
+
     const { data } = await previewEmailLayout({
-      subject: form.subject || "Vista previa",
-      body: form.body,
+      subject: renderedSubject,
+      body: renderedBody,
       include_signature: form.includeSignature,
       include_location: form.includeLocation,
       promo_block_ids: form.promoBlockIds,
     });
     layoutHtml.value = data?.data?.html || "";
   } catch (e) {
-    errorMsg.value = e?.response?.data?.message || e?.message || "No se pudo armar el preview.";
+    layoutError.value = e?.response?.data?.message || e?.message || "No se pudo armar la vista previa del email.";
+    layoutHtml.value = "";
   } finally {
     busyLayoutPreview.value = false;
   }
 }
 
 function onPromosChange() {
-  if (layoutHtml.value) loadPreviewLayout();
+  schedulePreview();
+}
+
+// Refresh manual del preview (botón "Actualizar")
+async function reloadPreviewAll() {
+  await loadPreview();
+  if (channel.value === "email") await loadPreviewLayout();
+}
+
+// Auto-render con debounce — se dispara desde watchers de form/channel/targets.
+let _previewTimer = null;
+function schedulePreview() {
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(() => {
+    loadPreview();
+    if (channel.value === "email") loadPreviewLayout();
+  }, 500);
 }
 
 function openLayoutPreviewWindow() {
@@ -584,19 +690,35 @@ function openLayoutPreviewWindow() {
   w.document.close();
 }
 
-watch(() => form.body, () => {
-  if (props.targets.length === 1) {
-    // Debounce mínimo para no spamear el endpoint mientras tipea.
-    clearTimeout(window.__smdPrevTimer);
-    window.__smdPrevTimer = setTimeout(loadPreview, 350);
+// Auto-render del preview ante cualquier cambio relevante (debounce 500 ms).
+watch(
+  () => [
+    form.body,
+    form.subject,
+    form.includeSignature,
+    form.includeLocation,
+    form.promoBlockIds,
+    channel.value,
+    selectedTemplateId.value,
+  ],
+  () => {
+    if (canShowPreview.value) schedulePreview();
+  },
+  { deep: true }
+);
+watch(
+  () => props.targets,
+  () => {
+    if (canShowPreview.value) schedulePreview();
+  },
+  { deep: true }
+);
+watch(
+  () => props.open,
+  (v) => {
+    if (v && canShowPreview.value) schedulePreview();
   }
-});
-watch(() => form.subject, () => {
-  if (props.targets.length === 1 && channel.value === "email") {
-    clearTimeout(window.__smdPrevTimer);
-    window.__smdPrevTimer = setTimeout(loadPreview, 350);
-  }
-});
+);
 
 function renderPreviewBody(body) {
   // Si el body tiene tags HTML, lo dejamos como está. Si es texto plano,
@@ -746,18 +868,22 @@ async function onSend() {
 }
 
 .smd-preview {
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 8px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-primary), 0.18);
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 .smd-preview__head {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 800; opacity: 0.7;
+  font-size: 11px; font-weight: 800; opacity: 0.85;
   letter-spacing: 0.04em; text-transform: uppercase;
+  color: rgb(var(--v-theme-primary));
 }
 .smd-preview__subject { font-size: 12.5px; }
+.smd-preview__body {
+  display: flex; flex-direction: column; gap: 6px;
+}
 .smd-preview__text {
   font-size: 13px; line-height: 1.5;
   background: rgb(var(--v-theme-surface));
@@ -768,6 +894,77 @@ async function onSend() {
 .smd-preview__to {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11.5px; opacity: 0.7;
+}
+.smd-preview__empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
+}
+.smd-preview__empty--small {
+  padding: 10px 12px;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.smd-preview__empty-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.smd-preview__empty-sub {
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  margin-top: 2px;
+}
+.smd-preview__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.04);
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+.smd-preview__loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+  text-transform: none;
+  letter-spacing: 0;
+}
+.smd-preview__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-error), 0.06);
+  border: 1px solid rgba(var(--v-theme-error), 0.32);
+  font-size: 12px;
+  color: rgb(var(--v-theme-error));
+  font-weight: 600;
+}
+.smd-preview__iframe-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 .smd-bulk-info {

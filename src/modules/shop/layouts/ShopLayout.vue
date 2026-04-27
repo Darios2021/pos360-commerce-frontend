@@ -100,3 +100,11 @@ onMounted(() => {
   padding-bottom: calc(var(--ml-bottom-nav-h, 64px) + env(safe-area-inset-bottom)) !important;
 }
 </style>
+
+<!-- Variable global para que componentes externos al layout (FAB de WhatsApp,
+     burbujas de chat, etc.) puedan despejar el espacio del bottom nav. -->
+<style>
+.scope-shop {
+  --ml-bottom-nav-h: 64px;
+}
+</style>

@@ -7,7 +7,7 @@
       hide-details
       clearable
       class="sb-input"
-      placeholder="Buscar productos..."
+      :placeholder="placeholderText"
       prepend-inner-icon="mdi-magnify"
       autocomplete="new-password"
       autocorrect="off"
@@ -81,6 +81,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 import { getSuggestions } from "@/modules/shop/service/shop.public.api";
 
 const props = defineProps({
@@ -88,6 +89,12 @@ const props = defineProps({
   mode: { type: String, default: "home" },
   categoryId: { type: Number, default: null },
 });
+
+// Placeholder en minúscula y compacto en mobile, normal en desktop.
+const { smAndDown } = useDisplay();
+const placeholderText = computed(() =>
+  smAndDown.value ? "buscar productos..." : "Buscar productos..."
+);
 
 const router = useRouter();
 const route = useRoute();
@@ -416,6 +423,22 @@ watch(
   }
   .sb-row-text {
     font-size: 13px;
+  }
+
+  /* Placeholder más chico y siempre en minúscula en mobile */
+  .sb-input :deep(input::placeholder),
+  .sb-input :deep(.v-field__input::placeholder) {
+    font-size: 12px !important;
+    text-transform: lowercase !important;
+    letter-spacing: 0.1px;
+    opacity: 0.55 !important;
+  }
+  /* Lo que escribe el usuario también queda en minúscula visualmente
+     (no afecta la query, sólo el render del campo) */
+  .sb-input :deep(input),
+  .sb-input :deep(.v-field__input) {
+    font-size: 13px !important;
+    text-transform: lowercase;
   }
 }
 </style>

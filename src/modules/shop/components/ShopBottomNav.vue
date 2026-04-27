@@ -6,8 +6,8 @@
     <!-- Inicio -->
     <button
       type="button"
-      class="ml-nav-item ml-nav-button"
-      :class="{ active: isActive('/shop', true) }"
+      class="ml-nav-item"
+      :class="{ active: isHomeActive }"
       aria-label="Inicio"
       @click="goHome"
     >
@@ -16,20 +16,24 @@
     </button>
 
     <!-- Categorías -->
-    <router-link
-      to="/shop/categories"
+    <button
+      type="button"
       class="ml-nav-item"
       :class="{ active: isCategoriesActive }"
+      aria-label="Categorías"
+      @click="goPath('/shop/categories')"
     >
       <v-icon>mdi-view-grid-outline</v-icon>
       <span>Categorías</span>
-    </router-link>
+    </button>
 
     <!-- Carrito -->
-    <router-link
-      to="/shop/cart"
+    <button
+      type="button"
       class="ml-nav-item is-cart"
-      :class="{ active: isActive('/shop/cart') }"
+      :class="{ active: isCartActive }"
+      aria-label="Carrito"
+      @click="goPath('/shop/cart')"
     >
       <div class="ml-cart-bubble">
         <v-badge v-if="cart.count > 0" :content="cart.count" color="red">
@@ -38,27 +42,31 @@
         <v-icon v-else>mdi-cart-outline</v-icon>
       </div>
       <span class="ml-cart-label">Carrito</span>
-    </router-link>
+    </button>
 
     <!-- Clips -->
-    <router-link
-      to="/shop/clips"
+    <button
+      type="button"
       class="ml-nav-item"
-      :class="{ active: isActive('/shop/clips') }"
+      :class="{ active: isClipsActive }"
+      aria-label="Clips"
+      @click="goPath('/shop/clips')"
     >
       <v-icon>mdi-lightning-bolt-outline</v-icon>
       <span>Clips</span>
-    </router-link>
+    </button>
 
     <!-- Más -->
-    <router-link
-      to="/shop/more"
+    <button
+      type="button"
       class="ml-nav-item"
-      :class="{ active: isActive('/shop/more') }"
+      :class="{ active: isMoreActive }"
+      aria-label="Más"
+      @click="goPath('/shop/more')"
     >
       <v-icon>mdi-menu</v-icon>
       <span>Más</span>
-    </router-link>
+    </button>
   </nav>
 </template>
 
@@ -71,16 +79,30 @@ const route = useRoute();
 const router = useRouter();
 const cart = useShopCartStore();
 
-function isActive(path, exact = false) {
-  const p = route.path || "";
-  if (exact) return p === path;
-  return p.startsWith(path);
-}
+/* ── Active state por pestaña — todas las computeds dependen de
+   route.path, que es reactivo en useRoute(). ─────────────────────── */
+
+const isHomeActive = computed(() => (route.path || "") === "/shop");
 
 const isCategoriesActive = computed(() => {
   const p = route.path || "";
-  return p.startsWith("/shop/categories") || p.startsWith("/shop/c/") || p.startsWith("/shop/category/");
+  return (
+    p.startsWith("/shop/categories") ||
+    p.startsWith("/shop/c/") ||
+    p.startsWith("/shop/category/")
+  );
 });
+
+const isCartActive = computed(() => (route.path || "").startsWith("/shop/cart"));
+const isClipsActive = computed(() => (route.path || "").startsWith("/shop/clips"));
+const isMoreActive = computed(() => (route.path || "").startsWith("/shop/more"));
+
+/* ── Navegación ──────────────────────────────────────────────────── */
+
+function goPath(path) {
+  if (route.fullPath === path) return; // ya estás ahí — no romper scroll
+  router.push(path);
+}
 
 function canGoBackToShopHome() {
   try {
@@ -94,21 +116,28 @@ function canGoBackToShopHome() {
 function goHome() {
   if (route.fullPath === "/shop") return;
 
-  // ✅ si venimos de una navegación desde el home, volver conserva el scroll real
+  // Si venimos de una navegación desde el home, volver conserva el scroll real
   if (canGoBackToShopHome()) {
     router.back();
     return;
   }
 
-  // ✅ fallback estable
+  // Fallback estable
   router.push("/shop");
 }
 </script>
 
 <style scoped>
+/*
+  Bottom nav estilo Mercado Libre:
+  - 5 items equiproporcionales (1/5 del ancho cada uno).
+  - Carrito centrado con burbuja sutilmente elevada (no domina).
+  - Active state con punto + label en azul ML.
+*/
 .ml-bottom-nav{
   --ml-nav-h:64px;
   --ml-safe:env(safe-area-inset-bottom);
+  --ml-active:#3483fa;
 
   position:fixed;
   left:0;
@@ -119,21 +148,37 @@ function goHome() {
   padding-bottom:var(--ml-safe);
 
   display:flex;
-  align-items:center;
-  justify-content:space-around;
+  align-items:stretch;
+  justify-content:space-between;
 
   background:#fff;
-  border-top:1px solid rgba(0,0,0,.12);
-  box-shadow:0 -4px 12px rgba(0,0,0,.08);
+  border-top:1px solid rgba(0,0,0,.10);
+  box-shadow:0 -2px 10px rgba(0,0,0,.06);
 
   z-index:250;
 }
 
+
+/* Reset uniforme para <button> que actúa como tab del nav.
+   Esto neutraliza los estilos default del browser para que TODOS los
+   items se rendericen exactamente igual (mismo line-height, mismo
+   baseline, mismo padding) — antes "Inicio" era <button> y los otros
+   <a>, lo que provocaba pequeñas diferencias visuales. */
 .ml-nav-item{
-  flex:1 1 0;
-  min-width:64px;
-  min-height:64px;
+  appearance:none;
+  -webkit-appearance:none;
+  background:transparent;
+  border:0;
+  outline:0;
+  cursor:pointer;
+  margin:0;
+
+  flex:1 1 20%;
+  width:20%;
+  min-width:0;
   box-sizing:border-box;
+
+  position:relative;
 
   display:flex;
   flex-direction:column;
@@ -141,18 +186,24 @@ function goHome() {
   justify-content:center;
 
   gap:3px;
-  padding:8px 0 6px;
+  padding:6px 0 4px;
 
   text-decoration:none;
-  color:#6f6f6f;
+  color:#737373;
 
   font-family:inherit;
-  font-size:11px;
+  font-size:10.5px;
   font-weight:500;
   line-height:1.1;
-  letter-spacing:0;
+  letter-spacing:0.05px;
 
   -webkit-tap-highlight-color:transparent;
+  transition:color .14s ease;
+}
+
+.ml-nav-item::-moz-focus-inner{
+  border:0;
+  padding:0;
 }
 
 .ml-nav-item > span{
@@ -165,90 +216,87 @@ function goHome() {
   white-space:nowrap;
 }
 
-.ml-nav-button{
-  appearance:none;
-  -webkit-appearance:none;
-  background:transparent;
-  border:0;
-  border-radius:0;
-  padding:8px 0 6px;
-  margin:0;
-  outline:none;
-  box-shadow:none;
-  cursor:pointer;
-  color:inherit;
-  font:inherit;
-}
-
-.ml-nav-button::-moz-focus-inner{
-  border:0;
-  padding:0;
-}
-
 .ml-nav-item :deep(.v-icon){
   font-size:22px;
   line-height:1;
   flex:0 0 auto;
+  color:inherit;
 }
 
+/* Active — color ML, simple, sin indicador adicional para no fragmentar
+   la barra en dos planos visuales. El cambio de color ya marca la pestaña. */
 .ml-nav-item.active{
-  color:#1976d2;
+  color:var(--ml-active);
 }
-
 .ml-nav-item.active > span{
-  font-weight:500;
+  font-weight:600;
 }
 
+/* Carrito — sutilmente elevado dentro del propio nav (sin transform).
+   Antes salía -8px arriba y, junto con el badge rojo, generaba la
+   sensación de "dos navs apilados" leídos por separado. */
 .ml-nav-item.is-cart{
   position:relative;
-  transform:translateY(-14px);
   z-index:5;
 }
 
 .ml-cart-bubble{
-  width:60px;
-  height:60px;
+  width:42px;
+  height:42px;
   border-radius:50%;
 
-  background:#fff;
-  border:1px solid rgba(0,0,0,.10);
+  background:#f4f6f8;
+  border:1px solid rgba(0,0,0,.06);
 
   display:flex;
   align-items:center;
   justify-content:center;
 
-  box-shadow:0 12px 20px rgba(0,0,0,.18);
+  transition:background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.ml-nav-item.is-cart.active .ml-cart-bubble{
+  background:rgba(52,131,250,0.10);
+  border-color:rgba(52,131,250,0.30);
+}
+.ml-nav-item.is-cart:active .ml-cart-bubble{
+  transform:scale(0.96);
 }
 
 .ml-cart-bubble :deep(.v-icon){
-  font-size:26px;
+  font-size:22px;
+  color:#3a3a3a;
+}
+.ml-nav-item.is-cart.active .ml-cart-bubble :deep(.v-icon){
+  color:var(--ml-active);
 }
 
 .ml-cart-bubble :deep(.v-badge__badge){
-  top:6px;
-  right:6px;
-  font-size:10px;
-  min-width:18px;
-  height:18px;
+  top:2px;
+  right:2px;
+  font-size:9.5px;
+  min-width:15px;
+  height:15px;
+  padding:0 4px;
 }
 
 .ml-cart-label{
-  margin-top:4px;
+  margin-top:2px;
 }
 
 @media (max-width:380px){
   .ml-nav-item{
-    min-width:60px;
-    font-size:10.5px;
+    font-size:10px;
+    padding:6px 0 4px;
   }
-
   .ml-nav-item :deep(.v-icon){
     font-size:21px;
   }
-
   .ml-cart-bubble{
-    width:58px;
-    height:58px;
+    width:40px;
+    height:40px;
+  }
+  .ml-cart-bubble :deep(.v-icon){
+    font-size:21px;
   }
 }
 </style>

@@ -12,24 +12,45 @@
         </div>
       </div>
       <div v-if="isAdmin" class="lp-header__right">
-        <v-btn
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-email-fast-outline"
-          @click="testEmailDialog.show = true"
-        >
-          Probar email
-        </v-btn>
-        <v-btn
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-text-box-multiple-outline"
-          @click="templatesDialog.show = true"
-        >
-          Plantillas
-        </v-btn>
+        <v-menu location="bottom end">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              color="primary"
+              variant="flat"
+              size="small"
+              rounded="lg"
+              prepend-icon="mdi-bullhorn-outline"
+              append-icon="mdi-chevron-down"
+              class="lp-cta-campaign"
+            >
+              Nueva campaña
+            </v-btn>
+          </template>
+          <v-list density="compact" min-width="220">
+            <v-list-subheader>Enviar a clientes con "Acepta promos"</v-list-subheader>
+            <v-list-item @click="openCampaign('email')">
+              <template #prepend><v-icon color="primary">mdi-email-outline</v-icon></template>
+              <v-list-item-title>Por email</v-list-item-title>
+              <v-list-item-subtitle>{{ stats.ready ? `${campaignReachable.email} listos` : '...' }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item @click="openCampaign('whatsapp')">
+              <template #prepend><v-icon color="success">mdi-whatsapp</v-icon></template>
+              <v-list-item-title>Por WhatsApp</v-list-item-title>
+              <v-list-item-subtitle>{{ stats.ready ? `${campaignReachable.whatsapp} listos` : '...' }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-divider />
+            <v-list-item @click="templatesDialog.show = true">
+              <template #prepend><v-icon size="16">mdi-text-box-multiple-outline</v-icon></template>
+              <v-list-item-title>Plantillas</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="testEmailDialog.show = true">
+              <template #prepend><v-icon size="16">mdi-email-fast-outline</v-icon></template>
+              <v-list-item-title>Probar email</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
         <v-btn
           variant="tonal"
           size="small"
@@ -38,7 +59,7 @@
           :loading="busyBackfill"
           @click="onBackfill"
         >
-          Backfill desde ventas
+          Backfill
         </v-btn>
         <v-btn
           color="primary"
@@ -79,17 +100,32 @@
         </div>
       </div>
 
-      <div class="lp-kpi">
+      <button
+        type="button"
+        class="lp-kpi lp-kpi--clickable"
+        :disabled="!isAdmin || !stats.ready || stats.accepts_promos === 0"
+        :title="isAdmin ? 'Iniciar campaña a estos clientes' : 'Acepta promos'"
+        @click="onPromosKpiClick"
+      >
         <div class="lp-kpi__badge lp-kpi__badge--orange">
           <v-icon size="16" color="white">mdi-bell-ring-outline</v-icon>
         </div>
         <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Acepta promos</div>
+          <div class="lp-kpi__lbl">
+            Acepta promos
+            <v-icon v-if="isAdmin && stats.ready && stats.accepts_promos > 0" size="11" class="lp-kpi__cta-ic">mdi-bullhorn-outline</v-icon>
+          </div>
           <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.accepts_promos) : '—' }}</div>
           <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.accepts_promos, stats.total)} del total` : '' }}</div>
+          <div class="lp-kpi__sub">
+            <span v-if="!stats.ready">&nbsp;</span>
+            <span v-else-if="isAdmin && stats.accepts_promos > 0" class="lp-kpi__cta-text">
+              Click para enviar campaña →
+            </span>
+            <span v-else>{{ pct(stats.accepts_promos, stats.total) }} del total</span>
+          </div>
         </div>
-      </div>
+      </button>
 
       <div class="lp-kpi">
         <div class="lp-kpi__badge lp-kpi__badge--indigo">
@@ -573,6 +609,84 @@
       </v-card>
     </v-dialog>
 
+    <!-- DIALOG: preview de campaña masiva -->
+    <v-dialog v-model="campaignPreview.show" max-width="560" persistent>
+      <v-card rounded="xl">
+        <div class="cad-edit__head">
+          <v-icon size="22" color="primary">mdi-bullhorn-outline</v-icon>
+          <div>
+            <p class="cad-edit__eyebrow">Nueva campaña</p>
+            <h3 class="cad-edit__title">
+              {{ campaignPreview.channel === 'email' ? 'Envío por email' : 'Envío por WhatsApp' }}
+            </h3>
+          </div>
+        </div>
+        <div class="cad-edit__body">
+          <div v-if="campaignPreview.loading" class="cmp-loading">
+            <v-progress-circular indeterminate size="22" color="primary" />
+            <span class="ml-2">Buscando destinatarios…</span>
+          </div>
+
+          <template v-else>
+            <div v-if="!campaignPreview.targets.length" class="cmp-empty">
+              <v-icon size="40" color="medium-emphasis">mdi-bell-off-outline</v-icon>
+              <div class="cmp-empty__title">Sin destinatarios</div>
+              <div class="cmp-empty__sub">
+                No hay clientes con
+                <b>{{ campaignPreview.channel === 'email' ? 'email' : 'teléfono' }}</b>
+                y "Acepta promos" activado.
+              </div>
+            </div>
+
+            <template v-else>
+              <div class="cmp-summary">
+                <div class="cmp-summary__big">
+                  <v-icon size="20" color="primary">mdi-account-multiple-check</v-icon>
+                  <span><b>{{ campaignPreview.targets.length }}</b> destinatarios listos</span>
+                </div>
+                <div v-if="campaignPreview.skippedNoContact > 0" class="cmp-summary__warn">
+                  <v-icon size="14" color="warning">mdi-alert-circle-outline</v-icon>
+                  {{ campaignPreview.skippedNoContact }} omitidos (sin {{ campaignPreview.channel === 'email' ? 'email' : 'teléfono' }})
+                </div>
+              </div>
+
+              <div class="cmp-list">
+                <div class="cmp-list__head">Vista previa de los primeros {{ Math.min(8, campaignPreview.targets.length) }}</div>
+                <ul class="cmp-list__body">
+                  <li v-for="t in campaignPreview.targets.slice(0, 8)" :key="t.id">
+                    <span class="cmp-list__name">{{ t.display_name }}</span>
+                    <span class="cmp-list__contact">
+                      {{ campaignPreview.channel === 'email' ? t.email : t.phone }}
+                    </span>
+                  </li>
+                </ul>
+                <div v-if="campaignPreview.targets.length > 8" class="cmp-list__more">
+                  + {{ campaignPreview.targets.length - 8 }} más
+                </div>
+              </div>
+
+              <v-alert type="info" variant="tonal" density="compact" class="mt-3">
+                En el siguiente paso vas a poder elegir
+                <b>plantilla y promociones</b> antes de enviar.
+              </v-alert>
+            </template>
+          </template>
+        </div>
+        <div class="cad-edit__actions">
+          <v-btn variant="text" @click="campaignPreview.show = false">Cancelar</v-btn>
+          <v-btn
+            v-if="campaignPreview.targets.length"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-send-outline"
+            @click="confirmCampaign"
+          >
+            Continuar →
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
     <!-- CRM: dialog de envío de mensajes -->
     <SendMessageDialog
       :open="sendDialog.show"
@@ -788,6 +902,78 @@ const stats = ref({
   with_purchases: 0,
 });
 
+/* ── CAMPAÑAS MASIVAS ── */
+// Cuántos clientes con accepts_promos tienen email/whatsapp en cache.
+// Se actualiza al hacer fetchStats() y al abrir la preview de campaña.
+const campaignReachable = ref({ email: 0, whatsapp: 0 });
+
+const campaignPreview = reactive({
+  show: false,
+  loading: false,
+  channel: "email",     // 'email' | 'whatsapp'
+  targets: [],          // [{id, display_name, email, phone}]
+  skippedNoContact: 0,  // accepts_promos pero sin canal correspondiente
+});
+
+async function openCampaign(channel = "email") {
+  campaignPreview.show = true;
+  campaignPreview.loading = true;
+  campaignPreview.channel = channel;
+  campaignPreview.targets = [];
+  campaignPreview.skippedNoContact = 0;
+
+  try {
+    // Trae todos los clientes que aceptan promos (cap razonable de 500).
+    // Respetamos los filtros visibles q + customer_type.
+    const params = {
+      accepts_promos: 1,
+      page: 1,
+      limit: 500,
+    };
+    if (filters.q) params.q = filters.q;
+    if (filters.customer_type) params.customer_type = filters.customer_type;
+
+    const { data } = await listCustomers(params);
+    const all = Array.isArray(data?.data) ? data.data : [];
+
+    const has = (r) => channel === "email" ? !!r.email : !!r.phone;
+    const filtered = all.filter(has);
+
+    campaignPreview.targets = filtered.map((r) => ({
+      id: r.id,
+      display_name: r.display_name,
+      email: r.email,
+      phone: r.phone,
+    }));
+    campaignPreview.skippedNoContact = all.length - filtered.length;
+
+    // Actualizo cache para mostrar contadores en el menú "Nueva campaña".
+    campaignReachable.value[channel] = filtered.length;
+  } catch (e) {
+    toast(e?.response?.data?.message || e?.message || "No se pudieron cargar destinatarios");
+    campaignPreview.show = false;
+  } finally {
+    campaignPreview.loading = false;
+  }
+}
+
+function confirmCampaign() {
+  if (!campaignPreview.targets.length) return;
+  sendDialog.targets = [...campaignPreview.targets];
+  sendDialog.channel = campaignPreview.channel;
+  sendDialog.initialPromoIds = campaignPreview.channel === "email" ? incomingPromoIds : [];
+  campaignPreview.show = false;
+  sendDialog.show = true;
+}
+
+function onPromosKpiClick() {
+  if (!isAdmin.value) return;
+  if (!stats.value.ready || stats.value.accepts_promos === 0) return;
+  // Atajo: abrir campaña por email (canal más común). Desde el menú "Nueva
+  // campaña" siempre se puede elegir WhatsApp también.
+  openCampaign("email");
+}
+
 async function fetchStats() {
   statsLoading.value = true;
   try {
@@ -811,6 +997,33 @@ async function fetchStats() {
     stats.value.ready = false;
   } finally {
     statsLoading.value = false;
+  }
+  // Pre-cargo cuántos destinatarios reales hay para email / whatsapp
+  // (background, no bloqueante).
+  prefetchCampaignReach();
+}
+
+async function prefetchCampaignReach() {
+  if (!isAdmin.value || !stats.value.ready || stats.value.accepts_promos === 0) {
+    campaignReachable.value = { email: 0, whatsapp: 0 };
+    return;
+  }
+  try {
+    const params = {
+      accepts_promos: 1,
+      page: 1,
+      limit: 500,
+    };
+    if (filters.q) params.q = filters.q;
+    if (filters.customer_type) params.customer_type = filters.customer_type;
+    const { data } = await listCustomers(params);
+    const all = Array.isArray(data?.data) ? data.data : [];
+    campaignReachable.value = {
+      email: all.filter((r) => !!r.email).length,
+      whatsapp: all.filter((r) => !!r.phone).length,
+    };
+  } catch {
+    // mantengo el cache previo si falla
   }
 }
 
@@ -1194,6 +1407,156 @@ onMounted(reload);
   animation: lp-pulse 1.4s ease infinite;
 }
 @keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* KPI clickable (CTA contextual) */
+.lp-kpi--clickable {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
+}
+.lp-kpi--clickable:not(:disabled):hover {
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  box-shadow: 0 6px 18px rgba(var(--v-theme-primary), 0.14);
+  transform: translateY(-2px);
+}
+.lp-kpi--clickable:not(:disabled):active { transform: translateY(0); }
+.lp-kpi--clickable:disabled { cursor: default; opacity: 0.85; }
+.lp-kpi__cta-ic {
+  margin-left: 4px;
+  vertical-align: -1px;
+  color: rgb(var(--v-theme-primary));
+  opacity: 0.85;
+}
+.lp-kpi__cta-text {
+  color: rgb(var(--v-theme-primary)) !important;
+  font-weight: 700 !important;
+  opacity: 0.85;
+}
+
+/* CTA principal "Nueva campaña" — destaque sutil */
+.lp-cta-campaign {
+  box-shadow: 0 4px 14px rgba(var(--v-theme-primary), 0.22);
+}
+
+/* Campaign preview dialog */
+.cmp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--lp-muted, rgba(var(--v-theme-on-surface), 0.55));
+}
+.cmp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px 12px;
+  gap: 6px;
+}
+.cmp-empty__title {
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+.cmp-empty__sub {
+  font-size: 12.5px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.4;
+  max-width: 320px;
+}
+.cmp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-primary), 0.08);
+  border: 1px solid rgba(var(--v-theme-primary), 0.32);
+  margin-bottom: 12px;
+}
+.cmp-summary__big {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.cmp-summary__big b {
+  font-size: 18px;
+  font-weight: 900;
+  color: rgb(var(--v-theme-primary));
+  font-feature-settings: "tnum";
+}
+.cmp-summary__warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: rgb(var(--v-theme-warning));
+  font-weight: 700;
+}
+.cmp-list {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cmp-list__head {
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+.cmp-list__body {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cmp-list__body li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+}
+.cmp-list__body li:last-child { border-bottom: none; }
+.cmp-list__name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.cmp-list__contact {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+.cmp-list__more {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  background: rgba(var(--v-theme-on-surface), 0.025);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  text-align: center;
+}
 
 /* ALERT */
 .lp-alert { margin-bottom: 0 !important; }

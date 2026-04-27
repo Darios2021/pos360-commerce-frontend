@@ -8,12 +8,8 @@ import ShopOrdersView from "@/modules/admin/pages/ShopOrdersView.vue";
 // (si preferís la otra, cambiá ShopOrdersView por ShopOrdersInboxView)
 // import ShopOrdersInboxView from "@/modules/admin/pages/ShopOrdersInboxView.vue";
 
-// ✅ Settings (si existen)
-import ShopOrdersSettingsView from "@/modules/admin/pages/ShopOrdersSettingsView.vue";
-import ShopShippingSettingsView from "@/modules/admin/pages/ShopShippingSettingsView.vue";
-import ShopPickupSettingsView from "@/modules/admin/pages/ShopPickupSettingsView.vue";
+// ✅ Settings (solo los que tienen backend real)
 import ShopPaymentsSettingsView from "@/modules/admin/pages/ShopPaymentsSettingsView.vue";
-import ShopNotificationsSettingsView from "@/modules/admin/pages/ShopNotificationsSettingsView.vue";
 
 // ✅ Links Tienda
 import ShopLinksView from "@/modules/admin/pages/ShopLinksView.vue";
@@ -40,36 +36,10 @@ export const shopAdminRoutes = [
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 
-  // ✅ (Opcional) Settings de pedidos
-  {
-    path: "admin/shop/orders-settings",
-    name: "shopOrdersSettings",
-    component: ShopOrdersSettingsView,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
-  },
-
-  {
-    path: "admin/shop/shipping",
-    name: "shopShippingSettings",
-    component: ShopShippingSettingsView,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
-  },
-  {
-    path: "admin/shop/pickup",
-    name: "shopPickupSettings",
-    component: ShopPickupSettingsView,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
-  },
   {
     path: "admin/shop/payments",
     name: "shopPaymentsSettings",
     component: ShopPaymentsSettingsView,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
-  },
-  {
-    path: "admin/shop/notifications",
-    name: "shopNotificationsSettings",
-    component: ShopNotificationsSettingsView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 

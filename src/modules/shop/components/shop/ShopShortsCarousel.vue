@@ -58,7 +58,27 @@
                   :title="it.title || 'Reproducir'"
                   @click="play(it.key)"
                 >
-                  <img v-if="it.thumb" class="shc-thumb" :src="it.thumb" alt="" loading="lazy" />
+                  <!-- 1) Thumb explícito (típico de YouTube) -->
+                  <img
+                    v-if="it.thumb"
+                    class="shc-thumb"
+                    :src="it.thumb"
+                    alt=""
+                    loading="lazy"
+                  />
+                  <!-- 2) Video propio del server: primer fotograma como poster
+                       (preload metadata + #t=0.5 para forzar el frame visible) -->
+                  <video
+                    v-else-if="isOwnVideo(it.url)"
+                    class="shc-thumb shc-thumb--video"
+                    :src="firstFrameUrl(it.url)"
+                    preload="metadata"
+                    muted
+                    playsinline
+                    disablepictureinpicture
+                    aria-hidden="true"
+                  />
+                  <!-- 3) Fallback: sin info de preview disponible -->
                   <div v-else class="shc-thumbEmpty">Video</div>
 
                   <div class="shc-play">
@@ -70,7 +90,19 @@
 
                 <div v-else class="shc-iframeWrap">
                   <div class="shc-ytStage">
+                    <!-- Video propio del server: <video> nativo con controles -->
+                    <video
+                      v-if="isOwnVideo(it.url)"
+                      class="shc-iframe shc-iframe--ytCover shc-iframe--native"
+                      :src="it.url"
+                      autoplay
+                      controls
+                      playsinline
+                      preload="metadata"
+                    />
+                    <!-- YouTube y otros embeds: iframe -->
                     <iframe
+                      v-else
                       class="shc-iframe"
                       :class="{ 'shc-iframe--ytCover': shouldCoverYouTube(it.url) }"
                       :src="cleanAutoplayUrl(it.url)"
@@ -311,6 +343,34 @@ function cleanAutoplayUrl(u) {
     });
   }
   return addParams(base, { autoplay: 1, mute: 0 });
+}
+
+/* ===== VIDEO PROPIO DEL SERVER ===== */
+// Detecta si la URL apunta a un archivo de video subido al servidor
+// (no embed de YouTube/Vimeo). Esto permite mostrar el primer fotograma
+// como preview en lugar del cuadro negro genérico.
+function isOwnVideo(u) {
+  const t = s(u);
+  if (!t) return false;
+  if (isYouTube(t)) return false;
+  if (/vimeo\.com|player\.vimeo/i.test(t)) return false;
+  // Archivos de video servidos directos
+  if (/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(t)) return true;
+  // Paths típicos del propio servidor (storage, uploads, media, videos)
+  if (/\/(storage|uploads|media|videos)\//i.test(t)) {
+    return !/\.(jpe?g|png|gif|webp|svg|avif)(\?|#|$)/i.test(t);
+  }
+  return false;
+}
+
+// Append `#t=0.5` para que el browser fuerce el render del primer fotograma
+// como poster del <video preload="metadata">. La mayoría de browsers
+// modernos respetan este offset y muestran el frame estático.
+function firstFrameUrl(u) {
+  const t = s(u);
+  if (!t) return t;
+  if (t.includes("#")) return t;
+  return `${t}#t=0.5`;
 }
 
 /* ===== precios ===== */
@@ -751,6 +811,24 @@ watch(
   object-position:center;
   display:block;
   transform:scale(1.06);
+}
+
+/* Video como póster (preload metadata + #t=0.5 para mostrar primer fotograma).
+   Usa los mismos estilos que .shc-thumb pero sin el scale para evitar que se
+   vea pixelado el frame nativo del archivo. */
+.shc-thumb--video{
+  transform:none;
+  background:#000;
+  pointer-events:none;
+}
+
+/* <video> nativo cuando se reproduce un archivo del propio server */
+.shc-iframe--native{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#000;
+  display:block;
 }
 
 .shc-thumbEmpty{

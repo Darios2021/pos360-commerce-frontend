@@ -297,7 +297,31 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Reportes</v-tooltip>
               </v-list-item>
 
-              <!-- Clientes va en Gestión (no en Sistema) -->
+            </div>
+          </v-expand-transition>
+
+          <!-- ════════ CRM (colapsable) ════════ -->
+          <v-list-item
+            v-if="!rail && showCrmSection"
+            class="nav-item nav-section-head"
+            :aria-expanded="navOpen.crm"
+            @click="toggleSection('crm')"
+          >
+            <template #prepend>
+              <v-icon size="18">mdi-account-heart-outline</v-icon>
+            </template>
+            <v-list-item-title>CRM</v-list-item-title>
+            <template #append>
+              <v-icon
+                size="18"
+                class="nav-section-head__chev"
+                :class="{ 'is-open': navOpen.crm }"
+              >mdi-chevron-down</v-icon>
+            </template>
+          </v-list-item>
+
+          <v-expand-transition>
+            <div v-show="rail || navOpen.crm" class="nav-section">
               <v-list-item
                 v-if="hasRoute('adminCustomers')"
                 :to="{ name: 'adminCustomers' }"
@@ -309,6 +333,19 @@
                 </template>
                 <v-list-item-title>Clientes</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Clientes</v-tooltip>
+              </v-list-item>
+
+              <v-list-item
+                v-if="isSuperAdmin && hasRoute('emailPromoBlocks')"
+                :to="{ name: 'emailPromoBlocks' }"
+                exact
+                class="nav-item"
+              >
+                <template #prepend>
+                  <v-icon size="18">mdi-tag-multiple-outline</v-icon>
+                </template>
+                <v-list-item-title>Promociones email</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Promociones email</v-tooltip>
               </v-list-item>
             </div>
           </v-expand-transition>
@@ -412,39 +449,6 @@
               </v-list-item>
 
               <v-list-item
-                v-if="hasRoute('shopOrdersSettings')"
-                :to="{ name: 'shopOrdersSettings' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-tune-variant</v-icon>
-                </template>
-                <v-list-item-title>Pedidos (config)</v-list-item-title>
-              </v-list-item>
-
-              <v-list-item
-                v-if="hasRoute('shopShippingSettings')"
-                :to="{ name: 'shopShippingSettings' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-truck-delivery-outline</v-icon>
-                </template>
-                <v-list-item-title>Envíos</v-list-item-title>
-              </v-list-item>
-
-              <v-list-item
-                v-if="hasRoute('shopPickupSettings')"
-                :to="{ name: 'shopPickupSettings' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-store-marker-outline</v-icon>
-                </template>
-                <v-list-item-title>Retiros</v-list-item-title>
-              </v-list-item>
-
-              <v-list-item
                 v-if="hasRoute('shopPaymentsSettings')"
                 :to="{ name: 'shopPaymentsSettings' }"
                 exact
@@ -453,17 +457,6 @@
                   <v-icon size="20">mdi-credit-card-outline</v-icon>
                 </template>
                 <v-list-item-title>Pagos</v-list-item-title>
-              </v-list-item>
-
-              <v-list-item
-                v-if="hasRoute('shopNotificationsSettings')"
-                :to="{ name: 'shopNotificationsSettings' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-bell-outline</v-icon>
-                </template>
-                <v-list-item-title>Notificaciones</v-list-item-title>
               </v-list-item>
 
               <v-divider class="my-2 nav-divider" />
@@ -488,19 +481,6 @@
                   <v-icon size="20">mdi-image-multiple-outline</v-icon>
                 </template>
                 <v-list-item-title>Galería multimedia</v-list-item-title>
-              </v-list-item>
-
-              <v-divider class="my-2 nav-divider" />
-
-              <v-list-item
-                v-if="hasRoute('emailPromoBlocks')"
-                :to="{ name: 'emailPromoBlocks' }"
-                exact
-              >
-                <template #prepend>
-                  <v-icon size="20">mdi-tag-multiple-outline</v-icon>
-                </template>
-                <v-list-item-title>Promociones email</v-list-item-title>
               </v-list-item>
             </v-list-group>
           </template>
@@ -589,14 +569,12 @@ const ROUTE_TREE = {
   profile:                  { label: "Mi perfil" },
   shopBranding:             { label: "Branding", section: "Tienda" },
   shopOrders:               { label: "Pedidos", section: "Tienda" },
-  shopOrdersSettings:       { label: "Config. pedidos", section: "Tienda" },
-  shopShippingSettings:     { label: "Envíos", section: "Tienda" },
-  shopPickupSettings:       { label: "Retiros", section: "Tienda" },
   shopPaymentsSettings:     { label: "Pagos", section: "Tienda" },
-  shopNotificationsSettings:{ label: "Notificaciones", section: "Tienda" },
   shopLinks:                { label: "Links", section: "Tienda" },
   adminGaleriaMultimedia:   { label: "Galería multimedia", section: "Tienda" },
-  emailPromoBlocks:         { label: "Promociones email", section: "Tienda" },
+  adminCustomers:           { label: "Clientes", section: "CRM" },
+  adminCustomerDetail:      { label: "Detalle cliente", section: "CRM", parent: { label: "Clientes", to: { name: "adminCustomers" } } },
+  emailPromoBlocks:         { label: "Promociones email", section: "CRM" },
 };
 
 const TAB_LABELS = { sales: "Ventas", stock: "Stock", inventory: "Inventario", cash: "Caja" };
@@ -669,6 +647,7 @@ function loadNavState() {
 }
 const navOpen = reactive({
   gestion: true,
+  crm: true,
   sistema: false,
   ...(loadNavState() || {}),
 });
@@ -688,6 +667,14 @@ const showSistemaSection = computed(() => {
     (isAdmin.value && hasRoute("adminFiscal")) ||
     (isSuperAdmin.value && hasRoute("adminTelegram")) ||
     (isSuperAdmin.value && hasRoute("shopBranding") && !showShopMenu.value)
+  );
+});
+
+// La sección CRM aparece si hay al menos una ruta del grupo accesible.
+const showCrmSection = computed(() => {
+  return (
+    hasRoute("adminCustomers") ||
+    (isSuperAdmin.value && hasRoute("emailPromoBlocks"))
   );
 });
 const isCajero      = computed(() => auth.isCajero === true);
@@ -718,11 +705,7 @@ const showConfig = computed(() => {
 const showShopMenu = computed(() => {
   return (
     hasRoute("shopOrders") ||
-    hasRoute("shopOrdersSettings") ||
-    hasRoute("shopShippingSettings") ||
-    hasRoute("shopPickupSettings") ||
     hasRoute("shopPaymentsSettings") ||
-    hasRoute("shopNotificationsSettings") ||
     hasRoute("shopLinks") ||
     hasRoute("adminGaleriaMultimedia")
   );
@@ -743,11 +726,7 @@ const configLandingRoute = computed(() => {
 const shopLandingRoute = computed(() => {
   if (hasRoute("shopBranding")) return { name: "shopBranding" };
   if (hasRoute("shopOrders")) return { name: "shopOrders" };
-  if (hasRoute("shopOrdersSettings")) return { name: "shopOrdersSettings" };
-  if (hasRoute("shopShippingSettings")) return { name: "shopShippingSettings" };
-  if (hasRoute("shopPickupSettings")) return { name: "shopPickupSettings" };
   if (hasRoute("shopPaymentsSettings")) return { name: "shopPaymentsSettings" };
-  if (hasRoute("shopNotificationsSettings")) return { name: "shopNotificationsSettings" };
   if (hasRoute("shopLinks")) return { name: "shopLinks" };
   if (hasRoute("adminGaleriaMultimedia")) return { name: "adminGaleriaMultimedia" };
   return null;
