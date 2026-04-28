@@ -47,5 +47,9 @@ const {
 .pos-caja-only {
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 </style>

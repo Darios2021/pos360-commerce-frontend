@@ -13,20 +13,28 @@
 -->
 <template>
   <v-container class="cust-detail" fluid>
-    <!-- BACK + ACCIONES -->
-    <div class="cust-detail__topbar">
-      <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="goBack">
-        Volver al listado
-      </v-btn>
-      <v-spacer />
-      <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="load" :loading="loading">
+    <!-- HEADER -->
+    <AppPageHeader
+      icon="mdi-account-group-outline"
+      :title="customer?.display_name || 'Cliente'"
+      :subtitle="customer ? typeLabel(customer.customer_type) : ''"
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
         Recargar
       </v-btn>
-      <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save" @click="save" :loading="saving"
-             :disabled="!form.display_name?.trim()">
+      <v-btn
+        color="primary"
+        variant="flat"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-content-save"
+        :loading="saving"
+        :disabled="!form.display_name?.trim()"
+        @click="save"
+      >
         Guardar
       </v-btn>
-    </div>
+    </AppPageHeader>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
 
@@ -296,6 +304,7 @@ import { getCustomerMessageLogs } from "@/modules/admin/services/messaging.servi
 import { listPromoBlocks } from "@/modules/admin/services/emailPromoBlocks.api";
 import SendMessageDialog from "@/modules/admin/components/SendMessageDialog.vue";
 import PromoSendDialog from "@/modules/admin/components/PromoSendDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const route = useRoute();
 const router = useRouter();

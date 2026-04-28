@@ -1,22 +1,15 @@
 <template>
   <v-container fluid class="pa-4 bg-grey-lighten-4" style="min-height:100vh;">
-    <div class="d-flex align-center justify-space-between mb-4">
-      <div>
-        <div class="text-h5 font-weight-bold">Perfil de Producto</div>
-        <div class="text-caption text-medium-emphasis">
-          ID: {{ id }} · {{ product?.sku || "—" }}
-        </div>
-      </div>
-
-      <div class="d-flex ga-2">
-        <v-btn variant="tonal" @click="$router.back()">
-          <v-icon start>mdi-arrow-left</v-icon> Volver
-        </v-btn>
-        <v-btn color="primary" variant="flat" :loading="loading" @click="load">
-          <v-icon start>mdi-refresh</v-icon> Actualizar
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-package-variant-closed"
+      title="Perfil de Producto"
+      :subtitle="`ID: ${id} · ${product?.sku || '—'}`"
+      :back-to="{ name: 'products' }"
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
+        Actualizar
+      </v-btn>
+    </AppPageHeader>
 
     <v-card class="rounded-xl" elevation="1">
       <v-card-text v-if="loading" class="py-10 d-flex justify-center">
@@ -176,6 +169,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import http from "../../../app/api/http";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const route = useRoute();
 const id = computed(() => route.params.id);

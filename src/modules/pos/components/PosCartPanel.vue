@@ -153,6 +153,7 @@
           block
           color="success"
           class="pay-btn"
+          data-tour="checkout"
           :disabled="(cart || []).length === 0 || !canEdit"
           @click="$emit('checkout')"
         >

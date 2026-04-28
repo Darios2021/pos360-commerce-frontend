@@ -2,17 +2,13 @@
   <div class="cra">
 
     <!-- HEADER -->
-    <div class="cra-header">
-      <div class="cra-header__title">
-        <v-icon size="22" color="primary">mdi-cash-register</v-icon>
-        <div>
-          <h1 class="cra-title">Cajas</h1>
-          <span class="cra-subtitle">Control y supervisión total de cajas</span>
-        </div>
-      </div>
+    <AppPageHeader
+      icon="mdi-cash-register"
+      title="Cajas"
+      subtitle="Control y supervisión total de cajas"
+    >
       <v-btn
-        color="primary"
-        variant="flat"
+        variant="tonal"
         size="small"
         rounded="lg"
         prepend-icon="mdi-refresh"
@@ -21,7 +17,7 @@
       >
         Actualizar
       </v-btn>
-    </div>
+    </AppPageHeader>
 
     <!-- KPIs -->
     <div class="cra-kpis">
@@ -485,6 +481,7 @@ import { useRouter } from "vue-router";
 import { adminListCashRegisters } from "@/modules/pos/services/posCashRegisters.service";
 import http from "@/app/api/http";
 import { useAuthStore } from "@/app/store/auth.store";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -1225,5 +1222,10 @@ onMounted(() => {
 @media (max-width: 960px) {
   .cra-filters { grid-template-columns: 1fr 1fr; }
   .cra-filter--search { grid-column: 1 / -1; }
+}
+
+/* ── Mobile app-like ── */
+@media (max-width: 600px) {
+  .cra-kpis { display: none !important; }
 }
 </style>

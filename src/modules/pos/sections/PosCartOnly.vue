@@ -27,5 +27,11 @@ const {
 .pos-cart-only {
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pos-cart-only > * {
+  flex: 1 1 0;
+  min-height: 0;
 }
 </style>

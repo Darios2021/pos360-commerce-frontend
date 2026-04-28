@@ -22,8 +22,8 @@
     <!-- ── Row 1: Hero KPIs (todas reaccionan al período) ───────────────────── -->
     <div class="dv-kpi-row">
       <!-- Total recaudado -->
-      <div class="dv-kpi" style="--kpi-accent:#3b82f6">
-        <div class="dv-kpi-badge" style="background:#3b82f6">
+      <div class="dv-kpi" style="--kpi-accent:#1488d1">
+        <div class="dv-kpi-badge" style="background:#1488d1">
           <v-icon color="white" size="20">mdi-cash-multiple</v-icon>
         </div>
         <div class="dv-kpi-body">
@@ -34,8 +34,8 @@
       </div>
 
       <!-- Promedio diario -->
-      <div class="dv-kpi" style="--kpi-accent:#10b981">
-        <div class="dv-kpi-badge" style="background:#10b981">
+      <div class="dv-kpi" style="--kpi-accent:#1488d1">
+        <div class="dv-kpi-badge" style="background:#1488d1">
           <v-icon color="white" size="20">mdi-trending-up</v-icon>
         </div>
         <div class="dv-kpi-body">
@@ -46,8 +46,8 @@
       </div>
 
       <!-- Ticket promedio -->
-      <div class="dv-kpi" style="--kpi-accent:#8b5cf6">
-        <div class="dv-kpi-badge" style="background:#8b5cf6">
+      <div class="dv-kpi" style="--kpi-accent:#1488d1">
+        <div class="dv-kpi-badge" style="background:#1488d1">
           <v-icon color="white" size="20">mdi-ticket-percent-outline</v-icon>
         </div>
         <div class="dv-kpi-body">
@@ -58,8 +58,8 @@
       </div>
 
       <!-- Mejor mes del período -->
-      <div class="dv-kpi" style="--kpi-accent:#f59e0b">
-        <div class="dv-kpi-badge" style="background:#f59e0b">
+      <div class="dv-kpi" style="--kpi-accent:#1488d1">
+        <div class="dv-kpi-badge" style="background:#1488d1">
           <v-icon color="white" size="20">mdi-calendar-star</v-icon>
         </div>
         <div class="dv-kpi-body">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- ── Row 1b: Sucursal líder + Cajero líder ────────────────────────────── -->
-    <v-row dense>
+    <v-row dense align="start">
       <v-col v-if="!selectedBranch" cols="12" md="6">
         <v-card class="dv-card" elevation="0">
           <div class="dv-head">
@@ -122,7 +122,7 @@
       <div class="dv-head">
         <div class="dv-head-left">
           <div class="dv-title">Evolución de ventas</div>
-          <div class="dv-sub">{{ periodLabel }}</div>
+          <div class="dv-sub">{{ periodLabel }} · {{ timelineGranularityLabel }}</div>
         </div>
         <div class="dv-head-right">
           <v-chip v-if="peakMax > 0" size="small" variant="tonal" class="chip-soft">
@@ -135,7 +135,7 @@
         <div v-if="loading" class="dv-loading"><v-progress-circular indeterminate size="32" /></div>
         <div v-else-if="!timelinePoints.length" class="dv-empty">Sin datos de ventas en el período seleccionado.</div>
         <div v-else class="px-2 pb-1">
-          <ApexChart height="260" type="line" :options="optTimeline" :series="seriesTimeline" />
+          <ApexChart height="260" type="area" :options="optTimeline" :series="seriesTimeline" />
           <div class="dv-foot">
             <span>Promedio/día <b>{{ money(avgPerDay) }}</b></span>
             <span class="dot">·</span>
@@ -550,6 +550,10 @@ const timelinePoints = computed(() =>
 const peakPoint   = computed(() => timelinePoints.value.reduce((best,p) => (!best || p.total > best.total) ? p : best, null));
 const peakMax     = computed(() => Number(peakPoint.value?.total || 0));
 const peakDateFmt = computed(() => fmtDMFromMs(peakPoint.value?.ms));
+// Pico ajustado al bucket visible del chart (para alinear la anotación)
+const peakDisplayPoint = computed(() => timelineDisplayPoints.value.reduce(
+  (best, p) => (!best || p.total > best.total) ? p : best, null,
+));
 const avgPerDay   = computed(() => {
   const arr = timelinePoints.value;
   return arr.length ? arr.reduce((a,p) => a + p.total, 0) / arr.length : 0;
@@ -564,17 +568,60 @@ const avgTicketPeriod = computed(() => {
 });
 const bestMonthLabel = computed(() => bestMonth.value ? monthLabel(bestMonth.value.ym) : "—");
 
+// Agrupa puntos según volumen para evitar gráficos saturados:
+//   ≤35 puntos  → por día (semana / mes)
+//   ≤90 puntos  → por semana (3 meses)
+//   >90 puntos  → por mes (año o más)
+const timelineGranularity = computed(() => {
+  const n = timelinePoints.value.length;
+  if (n <= 35) return "day";
+  if (n <= 90) return "week";
+  return "month";
+});
+const timelineGranularityLabel = computed(() => ({
+  day: "Por día",
+  week: "Por semana",
+  month: "Por mes",
+}[timelineGranularity.value] || "Por día"));
+function startOfWeekMs(ms) {
+  const d = new Date(ms);
+  const dow = d.getDay();
+  const diff = (dow === 0 ? -6 : 1 - dow);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+function startOfMonthMs(ms) {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+const timelineDisplayPoints = computed(() => {
+  const g = timelineGranularity.value;
+  if (g === "day") return timelinePoints.value;
+  const bucketKey = g === "week" ? startOfWeekMs : startOfMonthMs;
+  const map = new Map();
+  for (const p of timelinePoints.value) {
+    const k = bucketKey(p.ms);
+    const acc = map.get(k) || { ms: k, total: 0, count: 0 };
+    acc.total += p.total;
+    acc.count += p.count;
+    map.set(k, acc);
+  }
+  return [...map.values()].sort((a, b) => a.ms - b.ms);
+});
 const seriesTimeline = computed(() => [
-  { name: "Ventas ($)", type: "area", data: timelinePoints.value.map(p => [p.ms, Math.round(p.total)]) },
-  { name: "Transacciones", type: "line", data: timelinePoints.value.map(p => [p.ms, p.count]) },
+  { name: "Ventas", type: "area", data: timelineDisplayPoints.value.map(p => [p.ms, Math.round(p.total)]) },
 ]);
 const timelineTickAmount = computed(() => {
-  const n = timelinePoints.value.length;
-  if (n <= 14) return 6; if (n <= 35) return 8; if (n <= 90) return 10; return 12;
+  const n = timelineDisplayPoints.value.length;
+  if (n <= 7) return n;
+  if (n <= 14) return 7;
+  if (n <= 35) return 10;
+  return 12;
 });
 
 // ─── Payment Method Donut ─────────────────────────────────────────────────
-const pmColors = { CASH: "#10b981", CARD: "#3b82f6", TRANSFER: "#8b5cf6", QR: "#06b6d4", CREDIT_SJT: "#a855f7", CREDIT: "#6366f1", OTHER: "#f59e0b" };
+const pmColors = { CASH: "#1488d1", CARD: "#2a96d6", TRANSFER: "#3fa3db", QR: "#54b0e0", CREDIT_SJT: "#1078bb", CREDIT: "#1387cd", OTHER: "#69bde5" };
 function pmColor(method) {
   const x = String(method || "").toUpperCase();
   if (["QR","MERCADOPAGO","MERCADO_PAGO","MP"].includes(x)) return pmColors.QR;
@@ -583,7 +630,7 @@ function pmColor(method) {
   if (["TRANSFER","TRANSFERENCIA"].includes(x))             return pmColors.TRANSFER;
   if (["CREDIT_SJT","CREDITO_SJT","CREDITSANJUAN"].includes(x)) return pmColors.CREDIT_SJT;
   if (["CREDIT","CREDITO","CREDIT_1","CUOTAS"].includes(x)) return pmColors.CREDIT;
-  return pmColors[x] || "#94a3b8";
+  return pmColors[x] || "#a8def5";
 }
 
 // Fusiona entradas con el mismo label normalizado (ej: QR + MERCADOPAGO → un solo grupo)
@@ -641,10 +688,10 @@ const seriesCashiers = computed(() => [{ name: "Total ($)", data: topCashiers10.
 
 // ─── Invoice Type ─────────────────────────────────────────────────────────
 const invoiceTypeMap    = { TICKET:"Ticket", A:"Factura A", B:"Factura B", C:"Factura C", M:"Factura M", NC:"Nota Crédito", ND:"Nota Débito", NO_FISCAL:"No Fiscal" };
-const invoiceTypeColors = { TICKET:"#f59e0b", B:"#10b981", A:"#3b82f6", C:"#8b5cf6", M:"#ef4444", NC:"#06b6d4", ND:"#f97316", NO_FISCAL:"#94a3b8" };
+const invoiceTypeColors = { TICKET:"#1488d1", B:"#2a96d6", A:"#1078bb", C:"#3fa3db", M:"#1387cd", NC:"#54b0e0", ND:"#69bde5", NO_FISCAL:"#7ec9ea" };
 const invoiceTypeSeries = computed(() => salesByInvoiceType.value.map(t => Number(t.count||0)));
 const invoiceTypeLabels = computed(() => salesByInvoiceType.value.map(t => invoiceTypeMap[t.invoice_type] || t.invoice_type));
-const invoiceTypeClrs   = computed(() => salesByInvoiceType.value.map(t => invoiceTypeColors[t.invoice_type] || "#94a3b8"));
+const invoiceTypeClrs   = computed(() => salesByInvoiceType.value.map(t => invoiceTypeColors[t.invoice_type] || "#7ec9ea"));
 const invoiceTypeTotal  = computed(() => salesByInvoiceType.value.reduce((a,t) => a + Number(t.count||0), 0));
 
 // ─── Top Products ─────────────────────────────────────────────────────────
@@ -675,7 +722,7 @@ const salesByBranch = computed(() => {
   }
   return Array.from(map.values()).sort((a,b) => Number(b.total||0) - Number(a.total||0));
 });
-const branchColors   = ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316"];
+const branchColors   = ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea"];
 const branchTop      = computed(() => salesByBranch.value.slice(0,8));
 const branchLabels   = computed(() => branchTop.value.map(b => b.branch_name || `Sucursal #${b.branch_id}`));
 const branchSeries   = computed(() => branchTop.value.map(b => Number(b.total||0)));
@@ -692,37 +739,60 @@ const axisStyle  = { colors: "rgba(var(--v-theme-on-surface), 0.55)" };
 const axisBorder = { color: "rgba(var(--v-theme-on-surface), 0.10)" };
 
 // ─── Chart options ────────────────────────────────────────────────────────
-const optTimeline = computed(() => ({
+const optTimeline = computed(() => {
+  const g = timelineGranularity.value;
+  const fmtX = (val) => {
+    const d = new Date(Number(val));
+    if (g === "month") return d.toLocaleDateString("es-AR", { month: "short", year: "2-digit" });
+    if (g === "week")  return `Sem ${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })}`;
+    return fmtDMFromMs(Number(val));
+  };
+  const fmtTooltipX = (val) => {
+    const d = new Date(Number(val));
+    if (g === "month") return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+    if (g === "week")  return `Semana del ${d.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}`;
+    return d.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit" });
+  };
+  return {
   ...apexCommon,
-  chart: { ...apexCommon.chart, type: "line" },
-  colors: ["#6366f1", "#10b981"],
-  stroke: { width: [2.5, 2], curve: "smooth", dashArray: [0, 5] },
+  chart: { ...apexCommon.chart, type: "area" },
+  colors: ["#1488d1"],
+  stroke: { width: 2.5, curve: "smooth" },
   fill: {
-    type: ["gradient", "solid"],
-    gradient: { shade: "dark", type: "vertical", opacityFrom: 0.30, opacityTo: 0.02, stops: [0, 85, 100] },
+    type: "gradient",
+    gradient: { shade: "dark", type: "vertical", opacityFrom: 0.32, opacityTo: 0.02, stops: [0, 90, 100] },
   },
-  markers: { size: [2, 0], strokeWidth: 2, hover: { size: 5 } },
+  markers: { size: 0, strokeWidth: 0, hover: { size: 6 } },
   xaxis: {
     type: "datetime",
     tickAmount: timelineTickAmount.value,
-    labels: { style: axisStyle, datetimeUTC: false, formatter: (val) => fmtDMFromMs(Number(val)) },
+    labels: { style: axisStyle, datetimeUTC: false, formatter: fmtX },
     axisBorder, axisTicks: axisBorder,
     tooltip: { enabled: false },
   },
-  yaxis: [
-    { tickAmount: 5, labels: { style: axisStyle, formatter: (v) => shortNumber(v) } },
-    { opposite: true, tickAmount: 5, labels: { style: axisStyle, formatter: (v) => `${Math.round(Number(v||0))}` } },
-  ],
+  yaxis: { tickAmount: 5, labels: { style: axisStyle, formatter: (v) => shortNumber(v) } },
   tooltip: {
-    theme: "dark", shared: true,
-    x: { formatter: (val) => new Date(Number(val)).toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit" }) },
-    y: [{ formatter: (v) => money(v) }, { formatter: (v) => `${Math.round(Number(v||0))} transacciones` }],
+    theme: "dark", shared: true, intersect: false,
+    x: { formatter: fmtTooltipX },
+    y: {
+      formatter: (v, { dataPointIndex }) => {
+        const p = timelineDisplayPoints.value[dataPointIndex];
+        const txCount = p?.count || 0;
+        return `${money(v)} · ${txCount} ${txCount === 1 ? "venta" : "ventas"}`;
+      },
+    },
   },
-  legend: { show: true, position: "top", horizontalAlign: "right", labels: { colors: "rgba(var(--v-theme-on-surface), 0.70)" } },
-  annotations: peakMax.value > 0 ? {
-    points: [{ x: peakPoint.value?.ms, y: peakMax.value, marker: { size: 5, fillColor: "#6366f1" }, label: { text: `Pico ${money(peakMax.value)}`, style: { fontSize: "11px", background: "#6366f120", color: "#6366f1", border: "none" } } }],
+  legend: { show: false },
+  annotations: peakDisplayPoint.value && peakDisplayPoint.value.total > 0 ? {
+    points: [{
+      x: peakDisplayPoint.value.ms,
+      y: peakDisplayPoint.value.total,
+      marker: { size: 5, fillColor: "#1488d1" },
+      label: { text: `Pico ${money(peakMax.value)}`, style: { fontSize: "11px", background: "#1488d120", color: "#1488d1", border: "none" } },
+    }],
   } : {},
-}));
+};
+});
 
 const optPaymentDonut = computed(() => ({
   ...apexCommon,
@@ -740,8 +810,8 @@ const optPaymentDonut = computed(() => ({
 const optMonthsBar = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#6366f1"],
-  fill: { type: "gradient", gradient: { type: "vertical", opacityFrom: 1, opacityTo: 0.65 } },
+  colors: ["#1488d1"],
+  fill: { type: "solid", opacity: 1 },
   stroke: { show: false },
   plotOptions: { bar: { borderRadius: 5, columnWidth: "56%", dataLabels: { position: "top" } } },
   xaxis: { categories: monthsLabels.value, labels: { style: { ...axisStyle, fontSize: "11px" }, rotate: -20, trim: true }, axisBorder, axisTicks: axisBorder },
@@ -753,15 +823,15 @@ const optHourly = computed(() => {
   const maxT = Math.max(...salesByHour.value.map(h => h.total), 1);
   const colors = salesByHour.value.map(h => {
     const r = h.total / maxT;
-    if (r > 0.7)  return "#6366f1";
-    if (r > 0.4)  return "#818cf8";
-    if (r > 0.1)  return "#a5b4fc";
+    if (r > 0.7)  return "#1488d1";
+    if (r > 0.4)  return "rgba(20, 136, 209, 0.75)";
+    if (r > 0.1)  return "rgba(20, 136, 209, 0.45)";
     return "rgba(var(--v-theme-on-surface), 0.10)";
   });
   return {
     ...apexCommon,
     chart: { ...apexCommon.chart, type: "bar" },
-    colors: ["#6366f1"],
+    colors: ["#1488d1"],
     fill: { opacity: 1, colors },
     stroke: { show: false },
     plotOptions: { bar: { borderRadius: 3, columnWidth: "70%", distributed: true } },
@@ -778,22 +848,29 @@ const optHourly = computed(() => {
   };
 });
 
-const optCashiersBar = computed(() => ({
+const optCashiersBar = computed(() => {
+  const data = topCashiers10.value.map(x => Math.round(Number(x?.total || 0)));
+  const maxVal = Math.max(...data, 1);
+  const labelColors = data.map(v => v / maxVal >= 0.18
+    ? "#ffffff"
+    : "rgba(var(--v-theme-on-surface), 0.85)");
+  return {
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#3b82f6"],
-  fill: { type: "gradient", gradient: { type: "horizontal", opacityFrom: 1, opacityTo: 0.6 } },
+  colors: ["#1488d1"],
+  fill: { type: "solid", opacity: 1 },
   stroke: { show: false },
   plotOptions: { bar: { horizontal: true, borderRadius: 5, borderRadiusApplication: "end", barHeight: "55%", dataLabels: { position: "bottom" } } },
-  dataLabels: { enabled: true, offsetX: 8, style: { fontSize: "11px", colors: ["rgba(var(--v-theme-on-surface), 0.7)"] }, formatter: (v) => shortNumber(v) },
+  dataLabels: { enabled: true, offsetX: 8, style: { fontSize: "12px", fontWeight: 500, fontFamily: "inherit", colors: labelColors }, formatter: (v) => shortNumber(v) },
   xaxis: { categories: cashierCats.value, labels: { style: axisStyle, formatter: (v) => shortNumber(v) }, axisBorder, axisTicks: axisBorder },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 150 } },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontFamily: "inherit" }, maxWidth: 150 } },
   tooltip: { theme: "dark", y: { formatter: (v, ctx) => {
     const c = topCashiers10.value[ctx.dataPointIndex];
     const branch = c?.branch_name ? ` · ${c.branch_name}` : "";
     return `${money(v)} · ${c?.count||0} ventas${branch}`;
   }}},
-}));
+};
+});
 
 const optInvoiceType = computed(() => ({
   ...apexCommon,
@@ -808,16 +885,22 @@ const optInvoiceType = computed(() => ({
   tooltip: { theme: "dark", y: { formatter: (v) => `${v} ventas · ${invoiceTypeTotal.value ? Math.round((v/invoiceTypeTotal.value)*100) : 0}%` } },
 }));
 
-const optProductsBar = computed(() => ({
+const optProductsBar = computed(() => {
+  const data = (seriesProducts.value?.[0]?.data || []).map(v => Number(v) || 0);
+  const maxVal = Math.max(...data, 1);
+  const labelColors = data.map(v => v / maxVal >= 0.18
+    ? "#ffffff"
+    : "rgba(var(--v-theme-on-surface), 0.85)");
+  return {
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: productToggle.value === "units" ? ["#10b981"] : ["#8b5cf6"],
-  fill: { type: "gradient", gradient: { type: "horizontal", opacityFrom: 1, opacityTo: 0.55 } },
+  colors: ["#1488d1"],
+  fill: { type: "solid", opacity: 1 },
   stroke: { show: false },
   plotOptions: { bar: { horizontal: true, borderRadius: 5, borderRadiusApplication: "end", barHeight: "52%", dataLabels: { position: "bottom" } } },
   dataLabels: {
     enabled: true, offsetX: 6,
-    style: { fontSize: "11px", colors: ["rgba(var(--v-theme-on-surface), 0.70)"] },
+    style: { fontSize: "12px", fontWeight: 500, fontFamily: "inherit", colors: labelColors },
     formatter: (v) => productToggle.value === "units" ? `${Math.round(Number(v||0))} u.` : shortNumber(v),
   },
   xaxis: {
@@ -825,15 +908,16 @@ const optProductsBar = computed(() => ({
     labels: { style: axisStyle, formatter: (v) => productToggle.value === "units" ? `${Math.round(Number(v||0))}` : shortNumber(v) },
     axisBorder, axisTicks: axisBorder,
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "11px" }, maxWidth: 200 } },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontFamily: "inherit" }, maxWidth: 200 } },
   tooltip: { theme: "dark", y: { formatter: (v) => productToggle.value === "units" ? `${Math.round(Number(v||0))} unidades` : money(v) } },
-}));
+};
+});
 
 const optBranchDonut = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "donut" },
   labels: branchLabels.value,
-  colors: ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea"],
   stroke: { width: 0 },
   plotOptions: {
     pie: { donut: { size: "66%", labels: { show: true, total: { show: true, label: "Total", formatter: () => money(branchTotalSum.value) } } } },
@@ -843,8 +927,15 @@ const optBranchDonut = computed(() => ({
 }));
 
 // ─── Dynamic chart heights ────────────────────────────────────────────────
-const branchBarHeight   = computed(() => Math.max(180, branchTop.value.length * 44));
-const cashierBarHeight  = computed(() => Math.max(180, topCashiers10.value.length * 44));
+// Ambos charts comparten la altura del que tenga más items para que las cards
+// queden alineadas sin espacios muertos. Las barras se distribuyen automáticamente.
+const sharedRankingHeight = computed(() => Math.max(
+  180,
+  branchTop.value.length * 44,
+  topCashiers10.value.length * 44,
+));
+const branchBarHeight   = sharedRankingHeight;
+const cashierBarHeight  = sharedRankingHeight;
 
 // ─── Branch ranking bar ───────────────────────────────────────────────────
 const seriesBranchBar = computed(() => [{
@@ -852,10 +943,16 @@ const seriesBranchBar = computed(() => [{
   data: branchTop.value.map(b => Math.round(Number(b.total || 0))),
 }]);
 
-const optBranchBar = computed(() => ({
+const optBranchBar = computed(() => {
+  const data = branchTop.value.map(b => Math.round(Number(b.total || 0)));
+  const maxVal = Math.max(...data, 1);
+  const labelColors = data.map(v => v / maxVal >= 0.18
+    ? "#ffffff"
+    : "rgba(var(--v-theme-on-surface), 0.85)");
+  return {
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316"],
+  colors: ["#1488d1"],
   fill: { type: "solid", opacity: 1 },
   stroke: { show: false },
   plotOptions: {
@@ -864,14 +961,14 @@ const optBranchBar = computed(() => ({
       borderRadius: 6,
       borderRadiusApplication: "end",
       barHeight: "58%",
-      distributed: true,
+      distributed: false,
       dataLabels: { position: "bottom" },
     },
   },
   dataLabels: {
     enabled: true,
     offsetX: 10,
-    style: { fontSize: "12.5px", fontWeight: 800, colors: ["rgba(var(--v-theme-on-surface), 0.80)"] },
+    style: { fontSize: "12px", fontWeight: 500, fontFamily: "inherit", colors: labelColors },
     formatter: (v) => `$ ${shortNumber(v)}`,
   },
   xaxis: {
@@ -880,7 +977,7 @@ const optBranchBar = computed(() => ({
     axisBorder, axisTicks: axisBorder,
   },
   yaxis: {
-    labels: { style: { ...axisStyle, fontSize: "13px", fontWeight: 700 }, maxWidth: 160 },
+    labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: 500, fontFamily: "inherit" }, maxWidth: 160 },
   },
   grid: { ...apexCommon.grid, padding: { ...apexCommon.grid.padding, left: 8, right: 20 } },
   legend: { show: false },
@@ -891,7 +988,8 @@ const optBranchBar = computed(() => ({
       return `${money(v)} · ${b?.count || 0} ventas`;
     }},
   },
-}));
+};
+});
 
 // ─── Cashier ranking bar ─────────────────────────────────────────────────
 const seriesCashierRanking = computed(() => [{
@@ -899,10 +997,16 @@ const seriesCashierRanking = computed(() => [{
   data: topCashiers10.value.map(x => Math.round(Number(x?.total || 0))),
 }]);
 
-const optCashierRanking = computed(() => ({
+const optCashierRanking = computed(() => {
+  const data = topCashiers10.value.map(x => Math.round(Number(x?.total || 0)));
+  const maxVal = Math.max(...data, 1);
+  const labelColors = data.map(v => v / maxVal >= 0.18
+    ? "#ffffff"
+    : "rgba(var(--v-theme-on-surface), 0.85)");
+  return {
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#10b981","#06b6d4","#3b82f6","#8b5cf6","#f59e0b","#ef4444","#f97316","#ec4899","#14b8a6","#6366f1"],
+  colors: ["#1488d1"],
   fill: { type: "solid", opacity: 1 },
   stroke: { show: false },
   plotOptions: {
@@ -911,14 +1015,14 @@ const optCashierRanking = computed(() => ({
       borderRadius: 7,
       borderRadiusApplication: "end",
       barHeight: "52%",
-      distributed: true,
+      distributed: false,
       dataLabels: { position: "bottom" },
     },
   },
   dataLabels: {
     enabled: true,
     offsetX: 10,
-    style: { fontSize: "12.5px", fontWeight: 800, colors: ["rgba(var(--v-theme-on-surface), 0.80)"] },
+    style: { fontSize: "12px", fontWeight: 500, fontFamily: "inherit", colors: labelColors },
     formatter: (v) => `$ ${shortNumber(v)}`,
   },
   xaxis: {
@@ -928,7 +1032,7 @@ const optCashierRanking = computed(() => ({
   },
   yaxis: {
     labels: {
-      style: { ...axisStyle, fontSize: "13px", fontWeight: 700 },
+      style: { ...axisStyle, fontSize: "12px", fontWeight: 500, fontFamily: "inherit" },
       maxWidth: 160,
     },
   },
@@ -942,7 +1046,8 @@ const optCashierRanking = computed(() => ({
       return `${money(v)} · ${c?.count || 0} ventas${branch}`;
     }},
   },
-}));
+};
+});
 
 // ─── Table headers ───────────────────────────────────────────────────────
 const headers = [
@@ -983,9 +1088,9 @@ const optHeatmap = computed(() => ({
       colorScale: {
         ranges: [
           { from: 0, to: 0,      color: "rgba(var(--v-theme-on-surface), 0.04)", name: "Sin ventas" },
-          { from: 1, to: 3,      color: "#a5b4fc", name: "Bajo" },
-          { from: 4, to: 10,     color: "#6366f1", name: "Medio" },
-          { from: 11, to: 99999, color: "#4338ca", name: "Alto" },
+          { from: 1, to: 3,      color: "rgba(20, 136, 209, 0.30)", name: "Bajo" },
+          { from: 4, to: 10,     color: "rgba(20, 136, 209, 0.65)", name: "Medio" },
+          { from: 11, to: 99999, color: "#1488d1", name: "Alto" },
         ],
       },
     },
@@ -999,7 +1104,7 @@ const optHeatmap = computed(() => ({
   }}},
 }));
 
-const methodColors2 = { CASH: "#10b981", CARD: "#3b82f6", TRANSFER: "#f59e0b", QR: "#ef4444", OTHER: "#8b5cf6" };
+const methodColors2 = { CASH: "#1488d1", CARD: "#2a96d6", TRANSFER: "#3fa3db", QR: "#54b0e0", OTHER: "#1078bb" };
 const paymentTrendRows    = computed(() => Array.isArray(ana.value?.paymentTrend) ? ana.value.paymentTrend : []);
 const paymentTrendMonths  = computed(() => [...new Set(paymentTrendRows.value.map(r => r.ym))].sort());
 const paymentTrendMethods = computed(() => [...new Set(paymentTrendRows.value.map(r => r.method))]);
@@ -1010,7 +1115,7 @@ const seriesPaymentTrend  = computed(() =>
       const r = paymentTrendRows.value.find(x => x.ym === ym && x.method === m);
       return num(r?.total);
     }),
-    color: methodColors2[m] || "#94a3b8",
+    color: methodColors2[m] || "#7ec9ea",
   }))
 );
 const optPaymentTrend = computed(() => ({
@@ -1031,29 +1136,35 @@ const itemsStats  = computed(() => ana.value?.items       || {});
 
 const topCustomers       = computed(() => Array.isArray(ana.value?.topCustomers) ? ana.value.topCustomers.slice(0,10) : []);
 const seriesTopCustomers = computed(() => [{ name: "Total $", data: topCustomers.value.map(r => num(r.total)) }]);
-const optTopCustomers    = computed(() => ({
+const optTopCustomers    = computed(() => {
+  const data = topCustomers.value.map(r => num(r.total));
+  const maxVal = Math.max(...data, 1);
+  const labelColors = data.map(v => v / maxVal >= 0.18
+    ? "#ffffff"
+    : "rgba(var(--v-theme-on-surface), 0.85)");
+  return {
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", distributed: true, dataLabels: { position: "top" } } },
+  plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", distributed: true, dataLabels: { position: "bottom" } } },
   dataLabels: {
     enabled: true,
     formatter: (v) => `$ ${shortNumber(v)}`,
-    style: { fontSize: "12px", fontWeight: "700", colors: ["rgba(255,255,255,0.92)"] },
-    offsetX: 6,
-    background: { enabled: true, foreColor: "#111", borderRadius: 4, padding: 3, borderWidth: 0, opacity: 0.15 },
+    style: { fontSize: "12px", fontWeight: 500, fontFamily: "inherit", colors: labelColors },
+    offsetX: 8,
   },
   xaxis: {
     categories: topCustomers.value.map(r => r.name?.length > 22 ? r.name.slice(0,20)+"…" : r.name),
     labels: { style: axisStyle, formatter: shortNumber },
   },
-  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontWeight: "600" }, maxWidth: 190 } },
+  yaxis: { labels: { style: { ...axisStyle, fontSize: "12px", fontFamily: "inherit" }, maxWidth: 190 } },
   legend: { show: false },
   tooltip: { theme: "dark", y: { formatter: (v, { dataPointIndex }) => {
     const r = topCustomers.value[dataPointIndex];
     return `${money(v)} · ${r?.count} visitas`;
   }}},
-  colors: ["#6366f1","#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#ec4899","#14b8a6"],
-}));
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea","#0d70b1","#92d4ee"],
+};
+});
 
 const dowTicket    = computed(() => Array.isArray(ana.value?.avgTicketByDow) ? ana.value.avgTicketByDow : []);
 const seriesAvgDow = computed(() => [{ name: "Ticket promedio", data: dowTicket.value.map(r => Math.round(num(r.avgTicket))) }]);
@@ -1075,7 +1186,7 @@ const optAvgDow    = computed(() => ({
     const r = dowTicket.value[dataPointIndex];
     return `${money(v)} · ${r?.count} ventas`;
   }}},
-  colors: ["#6366f1","#818cf8","#a5b4fc","#c7d2fe","#3b82f6","#60a5fa","#93c5fd"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5"],
 }));
 </script>
 
@@ -1250,7 +1361,7 @@ const optAvgDow    = computed(() => ({
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: var(--kpi-accent, #6366f1);
+  background: var(--kpi-accent, #1488d1);
   border-radius: 3px 0 0 3px;
 }
 .dv-kpi-badge {
@@ -1307,9 +1418,16 @@ const optAvgDow    = computed(() => ({
 /* ── Card ────────────────────────────────────────────────────────────────── */
 .dv-card {
   background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.09) !important;
+  border: none !important;
   border-radius: 16px !important;
   overflow: hidden;
+}
+.v-theme--light .dv-card,
+.v-theme--adminLight .dv-card,
+.v-theme--shopLight .dv-card {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 1px 3px rgba(15, 23, 42, 0.06);
 }
 .h-full { height: 100%; }
 
@@ -1480,12 +1598,12 @@ const optAvgDow    = computed(() => ({
   letter-spacing: .2px;
   white-space: nowrap;
 }
-.mb-cash     { background: rgba(16,185,129,.15);  color: #10b981; }
-.mb-card     { background: rgba(59,130,246,.15);  color: #3b82f6; }
-.mb-transfer { background: rgba(245,158,11,.15);  color: #f59e0b; }
-.mb-mp       { background: rgba(99,102,241,.15);  color: #818cf8; }
-.mb-sjt      { background: rgba(239,68,68,.15);   color: #f87171; }
-.mb-credit   { background: rgba(139,92,246,.15);  color: #a78bfa; }
+.mb-cash     { background: rgba(20,136,209,.15);  color: #1488d1; }
+.mb-card     { background: rgba(14,107,168,.15);  color: #0e6ba8; }
+.mb-transfer { background: rgba(58,165,230,.15);  color: #3aa5e6; }
+.mb-mp       { background: rgba(94,185,227,.15);  color: #5eb9e3; }
+.mb-sjt      { background: rgba(8,44,91,.15);     color: #082c5b; }
+.mb-credit   { background: rgba(10,77,125,.15);   color: #0a4d7d; }
 .mb-other    { background: rgba(var(--v-theme-on-surface), .08); opacity: .7; }
 
 .ls-right { flex: 0 0 130px; text-align: right; }

@@ -23,6 +23,24 @@
       </div>
     </v-alert>
 
+    <!-- ── HEADER ─────────────────────────────────────────── -->
+    <AppPageHeader
+      icon="mdi-view-dashboard-outline"
+      title="Dashboard"
+      subtitle="Resumen operativo y métricas en tiempo real"
+    >
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-refresh"
+        :loading="loading || loadingAnalytics"
+        @click="refresh"
+      >
+        Actualizar
+      </v-btn>
+    </AppPageHeader>
+
     <!-- ── Tab bar + scope chip ────────────────────────────── -->
     <div class="dash-tabs-row">
       <!-- Segmented control de tabs (estilo moderno tipo iOS) -->
@@ -138,6 +156,7 @@ import DashboardSalesTab from "../components/DashboardSalesTab.vue";
 import DashboardStockTab from "../components/DashboardStockTab.vue";
 import DashboardInventoryTab from "../components/DashboardInventoryTab.vue";
 import DashboardCashTab from "../components/DashboardCashTab.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 import {
   dashboardOverview,
@@ -706,5 +725,13 @@ onMounted(async () => {
     margin-left: 0;
     align-self: flex-end;
   }
+}
+
+/* ─── Mobile app-like ─────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Liberar espacio: hint de scope + chip de scope read-only */
+  .dash-scope-hint { display: none; }
+  /* Header del dashboard más compacto: ocultar subtítulo (ya hay tabs claros) */
+  .dash :deep(.app-page-header__subtitle) { display: none; }
 }
 </style>

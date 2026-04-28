@@ -3,40 +3,34 @@
   <div class="lp">
 
     <!-- ── HEADER ───────────────────────────────────────── -->
-    <header class="lp-header">
-      <div class="lp-header__left">
-        <h1 class="lp-title">Ventas</h1>
-        <div class="lp-meta">
-          <span class="lp-meta__strong">{{ Number(meta.total || 0).toLocaleString('es') }}</span>
-          <span class="lp-meta__sep">·</span>
-          <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
-        </div>
-      </div>
-      <div class="lp-header__right">
-        <v-btn
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-file-delimited-outline"
-          :disabled="loading || !sales.length"
-          title="Exportar CSV"
-          @click="exportCsv"
-        >
-          Exportar
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-refresh"
-          :loading="loading || statsLoading"
-          @click="refreshAll"
-        >
-          Actualizar
-        </v-btn>
-      </div>
-    </header>
+    <AppPageHeader icon="mdi-receipt-text-outline" title="Ventas">
+      <template #subtitle>
+        <span>{{ Number(meta.total || 0).toLocaleString('es') }}</span>
+        <span class="mx-1">·</span>
+        <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
+      </template>
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-file-delimited-outline"
+        :disabled="loading || !sales.length"
+        title="Exportar CSV"
+        @click="exportCsv"
+      >
+        Exportar
+      </v-btn>
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-refresh"
+        :loading="loading || statsLoading"
+        @click="refreshAll"
+      >
+        Actualizar
+      </v-btn>
+    </AppPageHeader>
 
     <!-- ── STATS KPI ────────────────────────────────────── -->
     <section class="lp-stats">
@@ -588,6 +582,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -1701,11 +1696,9 @@ onMounted(async () => {
 }
 @media (max-width: 600px) {
   .lp-title { font-size: 18px; }
-  .lp-stats   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .lp-methods { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .lp-kpi__val { font-size: 16px; }
-  .lp-kpi__badge { width: 30px; height: 30px; }
-  .lp-mc__val  { font-size: 13px; }
+  /* MOBILE app-like: ocultar KPIs y métodos; el listado de ventas es lo importante */
+  .lp-stats,
+  .lp-methods { display: none !important; }
   .lp-filters__primary-field { flex: 0 0 100%; }
   .lp-filters__presets { width: 100%; justify-content: flex-start; }
 }

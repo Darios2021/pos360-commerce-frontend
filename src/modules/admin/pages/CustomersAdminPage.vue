@@ -2,27 +2,25 @@
   <div class="lp">
 
     <!-- ── HEADER ───────────────────────────────────────── -->
-    <header class="lp-header">
-      <div class="lp-header__left">
-        <h1 class="lp-title">Clientes</h1>
-        <div class="lp-meta">
-          <span class="lp-meta__strong">{{ Number(meta.total || 0).toLocaleString('es') }}</span>
-          <span class="lp-meta__sep">·</span>
-          <span>Banco de datos para promociones, fidelización y reportes</span>
-        </div>
-      </div>
-      <div v-if="isAdmin" class="lp-header__right">
+    <AppPageHeader
+      icon="mdi-account-group-outline"
+      title="Clientes"
+    >
+      <template #subtitle>
+        <span>{{ Number(meta.total || 0).toLocaleString('es') }}</span>
+        <span class="mx-1">·</span>
+        <span>Banco de datos para promociones, fidelización y reportes</span>
+      </template>
+      <template v-if="isAdmin">
         <v-menu location="bottom end">
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
-              color="primary"
-              variant="flat"
+              variant="tonal"
               size="small"
               rounded="lg"
               prepend-icon="mdi-bullhorn-outline"
               append-icon="mdi-chevron-down"
-              class="lp-cta-campaign"
             >
               Nueva campaña
             </v-btn>
@@ -71,8 +69,8 @@
         >
           Nuevo cliente
         </v-btn>
-      </div>
-    </header>
+      </template>
+    </AppPageHeader>
 
     <!-- ── STATS KPI (reducido) ─────────────────────────── -->
     <section class="lp-stats">
@@ -731,6 +729,7 @@ import {
 import SendMessageDialog from "../components/SendMessageDialog.vue";
 import MessageTemplatesDialog from "../components/MessageTemplatesDialog.vue";
 import TestEmailDialog from "../components/TestEmailDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const isAdmin = computed(() => {
   const u = auth?.user || {};
@@ -1862,9 +1861,8 @@ onMounted(reload);
 }
 @media (max-width: 600px) {
   .lp-title { font-size: 18px; }
-  .lp-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .lp-kpi__val { font-size: 16px; }
-  .lp-kpi__badge { width: 30px; height: 30px; }
+  /* MOBILE: ocultar KPIs — el listado es lo que importa */
+  .lp-stats { display: none !important; }
   .lp-filters__primary-field { flex: 0 0 100%; }
   .lp-filters__check { width: 100%; }
 }

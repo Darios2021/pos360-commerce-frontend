@@ -1,19 +1,11 @@
 <!-- src/modules/reports/pages/ReportsShellPage.vue -->
 <template>
   <div class="rpt-shell">
-    <div class="rpt-shell__head">
-      <div class="rpt-shell__title-wrap">
-        <div class="rpt-shell__icon">
-          <v-icon size="22">mdi-chart-line</v-icon>
-        </div>
-        <div>
-          <div class="rpt-shell__title">Reportes</div>
-          <div class="rpt-shell__subtitle">
-            Ventas por sucursal, stock, auditoría de cajas y liquidación de franquicias
-          </div>
-        </div>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-chart-line"
+      title="Reportes"
+      subtitle="Ventas por sucursal, stock, auditoría de cajas y liquidación de franquicias"
+    />
 
     <v-tabs
       v-model="activeTab"
@@ -47,6 +39,7 @@
 <script setup>
 import { ref } from "vue";
 import ReportsSalesPage from "./ReportsSalesPage.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const activeTab = ref("sales");
 </script>

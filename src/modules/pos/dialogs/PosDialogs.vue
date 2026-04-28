@@ -77,6 +77,8 @@
 
     <PosShortcutsHelpDialog v-model="helpOpen" />
 
+    <PosWizardDialog v-model="wizardOpen" :first-run="wizardFirstRun" />
+
     <PosConsultaDialog
       v-model="consultaOpen"
       :items="consultaItems"
@@ -143,12 +145,40 @@ import CheckoutDialog from "../components/checkout/CheckoutDialog.vue";
 import ReceiptDialog from "../components/ReceiptDialog.vue";
 import PosCartPreviewDialog from "../components/PosCartPreviewDialog.vue";
 import PosShortcutsHelpDialog from "../components/PosShortcutsHelpDialog.vue";
+import PosWizardDialog from "../components/PosWizardDialog.vue";
 import PosCajaConfigDialog from "../components/PosCajaConfigDialog.vue";
 import PosZombieCashDialog from "../components/PosZombieCashDialog.vue";
 import PosCajaArqueoDialog from "../components/PosCajaArqueoDialog.vue";
 import PosBranchSwitchDialog from "../components/PosBranchSwitchDialog.vue";
 import PosConsultaDialog from "../components/PosConsultaDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
+import { ref, onMounted, onBeforeUnmount } from "vue";
+
+// ── Mini wizard del POS ───────────────────────────────────────────────
+// Auto-show la primera vez (flag en localStorage). Se relanza desde el
+// dialog de atajos (F1) vía CustomEvent("pos:open-wizard").
+const wizardOpen = ref(false);
+const wizardFirstRun = ref(false);
+function openWizard() {
+  wizardFirstRun.value = false;
+  wizardOpen.value = true;
+}
+onMounted(() => {
+  try {
+    if (!localStorage.getItem("pos.wizard.seen")) {
+      wizardFirstRun.value = true;
+      wizardOpen.value = true;
+    }
+  } catch {}
+  if (typeof window !== "undefined") {
+    window.addEventListener("pos:open-wizard", openWizard);
+  }
+});
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("pos:open-wizard", openWizard);
+  }
+});
 
 const {
   showCartDialog,

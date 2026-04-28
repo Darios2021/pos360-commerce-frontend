@@ -1,14 +1,11 @@
 <template>
   <div class="tg">
     <!-- HEADER -->
-    <div class="tg-header">
-      <div class="tg-header__title">
-        <v-icon size="22" color="primary">mdi-send-variant</v-icon>
-        <div>
-          <h1 class="tg-title">Telegram · Alertas</h1>
-          <span class="tg-subtitle">Notificá eventos críticos del sistema a un grupo de Telegram</span>
-        </div>
-      </div>
+    <AppPageHeader
+      icon="mdi-send-variant"
+      title="Alertas Telegram"
+      subtitle="Notificá eventos críticos del sistema a un grupo de Telegram"
+    >
       <v-btn
         variant="tonal"
         size="small"
@@ -19,7 +16,7 @@
       >
         Actualizar
       </v-btn>
-    </div>
+    </AppPageHeader>
 
     <!-- STATUS -->
     <div class="tg-status" v-if="cfg">
@@ -338,6 +335,7 @@ import {
   runScansNow,
   scanLowStock,
 } from "@/modules/admin/services/telegram.service";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const loading = ref(false);
 const saving = ref(false);

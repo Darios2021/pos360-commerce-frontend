@@ -472,7 +472,7 @@ const optTopStockedBar = computed(() => ({
       ? `${money(v)} · ${Math.round(Number(r?.total_qty || 0))} u.`
       : `${Math.round(Number(v || 0))} unidades · ${money(r?.total_value)}`;
   }}},
-  colors: ["#775DD0","#8467D7","#9575CD","#A78BFA","#6D28D9","#7C3AED","#5B21B6","#4C1D95","#6366F1","#818CF8"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea","#0d70b1","#92d4ee"],
 }));
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -506,7 +506,7 @@ const seriesStockByCat = computed(() => [{
 const optStockByCat = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
-  colors: ["#008FFB"],
+  colors: ["#1488d1"],
   plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "60%", distributed: true, dataLabels: { position: "top" } } },
   dataLabels: {
     enabled: true, offsetX: 5,
@@ -523,7 +523,7 @@ const optStockByCat = computed(() => ({
     const r = stockByCategory.value[dataPointIndex];
     return `${Math.round(num(v))} unidades · ${money(r?.priceValue)}`;
   }}},
-  colors: ["#008FFB","#00B4D8","#0096C7","#48CAE4","#90E0EF","#0077B6","#023E8A","#03045E","#ADE8F4","#CAF0F8","#00B4D8","#0096C7","#48CAE4","#0077B6"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea","#0d70b1","#92d4ee","#1488d1","#2a96d6","#3fa3db","#54b0e0"],
 }));
 
 
@@ -532,7 +532,7 @@ const seriesStockBySubCat = computed(() => [{
   name: "Unidades en stock",
   data: stockBySubCategory.value.map(r => num(r.totalQty)),
 }]);
-const subCatColors = ["#f59e0b","#fbbf24","#fcd34d","#f97316","#fb923c","#d97706","#b45309","#84cc16","#a3e635","#10b981","#34d399","#06b6d4","#38bdf8","#818cf8","#a78bfa","#f472b6","#fb7185","#6366f1","#8b5cf6","#ec4899"];
+const subCatColors = ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#69bde5","#7ec9ea","#92d4ee","#1078bb","#1387cd","#0d70b1","#1488d1","#2a96d6","#3fa3db","#54b0e0","#69bde5","#7ec9ea","#92d4ee","#1078bb","#1387cd","#0d70b1"];
 const optStockBySubCat = computed(() => ({
   ...apexCommon,
   chart: { ...apexCommon.chart, type: "bar" },
@@ -583,7 +583,7 @@ const optStockBySubCat = computed(() => ({
   white-space: nowrap;
 }
 .stk-pill:hover { background: rgba(var(--v-theme-on-surface), 0.10); border-color: rgba(var(--v-theme-on-surface), 0.25); }
-.stk-pill--branch { border-color: rgba(99,102,241,.4); color: #818cf8; }
+.stk-pill--branch { border-color: rgba(20,136,209,.4); color: #1488d1; }
 
 /* ─── KPI strip ──────────────────────────────────────────────────────────── */
 .stk-kpi-strip {
@@ -615,7 +615,7 @@ const optStockBySubCat = computed(() => ({
 .stk-kpi--error::before   { background: #FF4560; }
 .stk-kpi--warning::before { background: #FEB019; }
 .stk-kpi--success::before { background: #00E396; }
-.stk-kpi--info::before    { background: #008FFB; }
+.stk-kpi--info::before    { background: #1488d1; }
 
 .stk-kpi--pulse { box-shadow: 0 0 0 0 rgba(255,69,96,.3); animation: kpi-pulse 2s infinite; }
 @keyframes kpi-pulse {
@@ -633,14 +633,14 @@ const optStockBySubCat = computed(() => ({
 .stk-kpi__icon-wrap--error   { background: rgba(255,69,96,.15); }
 .stk-kpi__icon-wrap--warning { background: rgba(254,176,25,.15); }
 .stk-kpi__icon-wrap--success { background: rgba(0,227,150,.15); }
-.stk-kpi__icon-wrap--info    { background: rgba(0,143,251,.15); }
+.stk-kpi__icon-wrap--info    { background: rgba(20,136,209,.15); }
 
 .stk-kpi__body { min-width: 0; }
 .stk-kpi__num { font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -.02em; }
 .stk-kpi__num--sm { font-size: 15px; font-weight: 500; }
 .stk-kpi__lbl { font-size: 12px; font-weight: 400; opacity: .75; margin-top: 1px; }
 .stk-kpi__sub { font-size: 11px; opacity: .5; font-weight: 400; }
-.inv-price-tag { font-size: 10px; font-weight: 400; opacity: .6; background: rgba(99,102,241,.15); color: #818cf8; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+.inv-price-tag { font-size: 10px; font-weight: 400; opacity: .6; background: rgba(20,136,209,.15); color: #1488d1; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
 .inv-list-val { margin-top: 2px; opacity: .4; }
 
 /* ─── Alert feed ─────────────────────────────────────────────────────────── */
@@ -809,13 +809,13 @@ const optStockBySubCat = computed(() => ({
   opacity: .35;
   text-align: center;
 }
-.rank-num--top { opacity: 1; color: #f59e0b; }
+.rank-num--top { opacity: 1; color: #1488d1; }
 .rank-info { flex: 1; min-width: 0; }
 .rank-name { font-size: 12.5px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
 .rank-bar-wrap { height: 4px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .07); overflow: hidden; }
 .rank-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
-.rank-bar-fill--qty   { background: #775DD0; }
-.rank-bar-fill--value { background: #00E396; }
+.rank-bar-fill--qty   { background: #1488d1; }
+.rank-bar-fill--value { background: #2a96d6; }
 .rank-meta { flex: 0 0 110px; text-align: right; }
 .rank-primary   { font-size: 13px; font-weight: 500; }
 .rank-secondary { font-size: 11px; opacity: .5; font-weight: 400; margin-top: 1px; }

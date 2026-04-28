@@ -1,16 +1,37 @@
 <template>
   <div class="tdet">
 
-    <!-- ══════════ TOPBAR: navegación limpia ═══ -->
-    <div class="tdet__topbar">
-      <AppBackButton
-        :label="view !== 'detail' ? 'detalle' : 'Derivaciones'"
-        emit-only
-        :disabled="actioning"
-        @back="view !== 'detail' ? view = 'detail' : $emit('close')"
-      />
-
-      <v-spacer />
+    <!-- HEADER -->
+    <AppPageHeader
+      icon="mdi-truck-fast-outline"
+      :title="loadingData ? 'Cargando…' : (tr?.number || 'Derivación')"
+      show-back
+      :hide-crumbs="true"
+      @back="onBack"
+    >
+      <template v-if="!loadingData && tr" #subtitle>
+        <v-chip size="x-small" variant="tonal" :color="statusColor(tr.status)" class="mr-2">
+          <v-icon start size="11">{{ statusIcon(tr.status) }}</v-icon>
+          {{ statusLabel(tr.status) }}
+        </v-chip>
+        <v-icon size="12">mdi-store-outline</v-icon>
+        <span class="ml-1">{{ tr.fromWarehouse?.branch?.name || '—' }}</span>
+        <v-icon size="12" class="mx-1">mdi-arrow-right</v-icon>
+        <v-icon size="12" color="success">mdi-store</v-icon>
+        <span class="ml-1">{{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || '—' }}</span>
+        <span class="mx-2">·</span>
+        <span>{{ tr.items?.length || 0 }} {{ (tr.items?.length || 0) === 1 ? 'producto' : 'productos' }}</span>
+        <span class="mx-2">·</span>
+        <span>{{ fmtShortDate(tr.created_at) }}</span>
+        <span v-if="view !== 'detail'" class="ml-2">
+          <v-icon size="12">mdi-chevron-right</v-icon>
+          <span class="ml-1">
+            {{ view === 'dispatch' ? 'Preparar despacho'
+            : view === 'receive'  ? 'Confirmar recepción'
+            : 'Cancelar derivación' }}
+          </span>
+        </span>
+      </template>
 
       <!-- Menú secundario (acciones no críticas) -->
       <v-menu v-if="view === 'detail' && !loadingData && canCancel" :close-on-content-click="true">
@@ -27,46 +48,7 @@
           </v-list-item>
         </v-list>
       </v-menu>
-    </div>
-
-    <!-- ══════════ HEADER: número + estado + ruta inline ═══ -->
-    <div v-if="!loadingData" class="tdet__header">
-      <div class="tdet__header-top">
-        <h1 class="tdet__number">{{ tr.number }}</h1>
-        <span class="tdet__status-chip" :class="`tdet__status-chip--${tr.status}`">
-          <v-icon size="12">{{ statusIcon(tr.status) }}</v-icon>
-          {{ statusLabel(tr.status) }}
-        </span>
-      </div>
-      <div class="tdet__header-meta">
-        <span class="tdet__hroute">
-          <v-icon size="13">mdi-store-outline</v-icon>
-          <span class="tdet__hbranch">{{ tr.fromWarehouse?.branch?.name || '—' }}</span>
-          <v-icon size="13" class="tdet__hroute-arrow">mdi-arrow-right</v-icon>
-          <v-icon size="13" color="success">mdi-store</v-icon>
-          <span class="tdet__hbranch tdet__hbranch--to">
-            {{ tr.toBranch?.name || tr.toWarehouse?.branch?.name || '—' }}
-          </span>
-        </span>
-        <span class="tdet__hsep">·</span>
-        <span class="tdet__hitems">
-          <v-icon size="13">mdi-package-variant-closed</v-icon>
-          {{ tr.items?.length || 0 }} {{ (tr.items?.length || 0) === 1 ? 'producto' : 'productos' }}
-        </span>
-        <span class="tdet__hsep">·</span>
-        <span class="tdet__hdate">
-          {{ fmtShortDate(tr.created_at) }}
-        </span>
-      </div>
-      <div v-if="view !== 'detail'" class="tdet__header-viewlabel">
-        <v-icon size="14">mdi-chevron-right</v-icon>
-        <span>
-          {{ view === 'dispatch' ? 'Preparar despacho'
-          : view === 'receive'  ? 'Confirmar recepción'
-          : 'Cancelar derivación' }}
-        </span>
-      </div>
-    </div>
+    </AppPageHeader>
 
     <!-- ══════════ ACTION CARD: CTA principal destacado ═══ -->
     <div
@@ -423,7 +405,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { getTransfer, dispatchTransfer, receiveTransfer, cancelTransfer } from "../service/stockTransfer.api";
-import AppBackButton from "@/app/components/AppBackButton.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const props = defineProps({
   transfer:        { type: Object, required: true },
@@ -444,6 +426,18 @@ const snack        = ref({ show: false, message: "", color: "success", icon: "md
 
 function showSnack(msg, color = "success", icon = "mdi-check-circle") {
   snack.value = { show: true, message: msg, color, icon };
+}
+
+// Back custom: si hay sub-vista (despacho/recepción/cancel) vuelve al detalle;
+// si está en detalle, cierra el componente y vuelve al listado del padre.
+function onBack(ev) {
+  ev?.preventDefault?.();
+  if (actioning.value) return;
+  if (view.value !== "detail") {
+    view.value = "detail";
+  } else {
+    emit("close");
+  }
 }
 
 onMounted(async () => {

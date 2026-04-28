@@ -1,20 +1,15 @@
 <!-- src/modules/import/pages/ImportProductsPage.vue -->
 <template>
   <div class="page">
-    <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
-      <div>
-        <div class="text-h5 font-weight-bold">Importar productos</div>
-        <div class="text-caption text-medium-emphasis">
-          Subí un CSV y el backend lo importa por <b>SKU</b> (actualiza si existe, crea si no).
-        </div>
-      </div>
-
-      <div class="d-flex ga-2">
-        <v-btn variant="tonal" prepend-icon="mdi-file-download-outline" @click="downloadTemplate">
-          Plantilla CSV
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-file-upload-outline"
+      title="Importar productos"
+      subtitle="Subí un CSV y el backend lo importa por SKU (actualiza si existe, crea si no)."
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-file-download-outline" @click="downloadTemplate">
+        Plantilla CSV
+      </v-btn>
+    </AppPageHeader>
 
     <v-alert type="info" variant="tonal" class="mb-4">
       Field esperado: <b>file</b> en multipart. Endpoint: <b>/import/products</b>.
@@ -154,6 +149,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { ImportService } from "../../../app/services/import.service";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const file = ref(null);
 const loading = ref(false);

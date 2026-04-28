@@ -10,6 +10,7 @@
     ref="rootRef"
     class="pos-search-bar"
     :class="{ 'hotkey-active': hotkeyActive, 'dd-open': showDropdown }"
+    data-tour="search"
     v-bind="$attrs"
   >
     <div class="search-shell" ref="shellRef">

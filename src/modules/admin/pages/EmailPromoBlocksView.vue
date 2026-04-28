@@ -12,27 +12,20 @@
 -->
 <template>
   <v-container class="mx-auto" style="max-width: 1300px">
+    <AppPageHeader
+      icon="mdi-tag-multiple-outline"
+      title="Promociones de productos"
+      subtitle="Elegí productos del catálogo y se arman las piezas automáticamente. Imagen, nombre y precio se sincronizan en tiempo real con tu inventario."
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
+        Recargar
+      </v-btn>
+      <v-btn color="primary" variant="flat" size="small" rounded="lg" prepend-icon="mdi-plus" @click="openPicker">
+        Agregar productos
+      </v-btn>
+    </AppPageHeader>
+
     <v-card rounded="xl" elevation="3" class="pa-4">
-      <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
-        <div>
-          <div class="text-h6 font-weight-bold">CRM · Promociones de productos</div>
-          <div class="text-caption text-medium-emphasis">
-            Elegí productos del catálogo y se arman las piezas automáticamente. Imagen, nombre y precio
-            se sincronizan en tiempo real con tu inventario.
-          </div>
-        </div>
-
-        <div class="d-flex ga-2">
-          <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="load" :loading="loading">
-            Recargar
-          </v-btn>
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openPicker">
-            Agregar productos
-          </v-btn>
-        </div>
-      </v-card-title>
-
-      <v-divider class="my-3" />
 
       <!-- ════════ Barra de envío múltiple ════════ -->
       <div v-if="selectedPromoIds.length" class="promos-bulk">
@@ -422,6 +415,7 @@ import {
   deletePromoBlock,
 } from "@/modules/admin/services/emailPromoBlocks.api";
 import PromoSendDialog from "@/modules/admin/components/PromoSendDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 // Selección para envío múltiple ("agrupar varias promos en un mismo mensaje")
 const selectedPromoIds = ref([]);

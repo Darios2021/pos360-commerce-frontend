@@ -3,40 +3,32 @@
   <div class="up">
 
     <!-- HEADER -->
-    <div class="up-header">
-      <div class="up-header__title">
-        <v-icon size="22" color="primary">mdi-account-multiple</v-icon>
-        <div>
-          <h1 class="up-title">Usuarios</h1>
-          <span class="up-subtitle">
-            Gestión de cuentas, roles y sucursales habilitadas
-          </span>
-        </div>
-      </div>
-
-      <div class="up-header__actions">
-        <v-btn
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-refresh"
-          :loading="usersStore.loading"
-          @click="refresh"
-        >
-          Actualizar
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-account-plus"
-          @click="openCreate"
-        >
-          Nuevo usuario
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-account-multiple-outline"
+      title="Usuarios"
+      subtitle="Gestión de cuentas, roles y sucursales habilitadas"
+    >
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-refresh"
+        :loading="usersStore.loading"
+        @click="refresh"
+      >
+        Actualizar
+      </v-btn>
+      <v-btn
+        color="primary"
+        variant="flat"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-account-plus"
+        @click="openCreate"
+      >
+        Nuevo usuario
+      </v-btn>
+    </AppPageHeader>
 
     <!-- KPIs -->
     <div class="up-kpis">
@@ -260,6 +252,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useUsersStore } from "@/app/store/users.store";
 import UserUpsertDialog from "../components/UserUpsertDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const usersStore = useUsersStore();
 const q = ref("");
@@ -771,5 +764,10 @@ onMounted(async () => {
 @media (max-width: 900px) {
   .up-filters { grid-template-columns: 1fr 1fr; }
   .up-filter--search { grid-column: 1 / -1; }
+}
+
+/* ── Mobile app-like ── */
+@media (max-width: 600px) {
+  .up-kpis { display: none !important; }
 }
 </style>

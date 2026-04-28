@@ -2,20 +2,17 @@
 <template>
   <div class="pfp-root">
 
-    <!-- ══ TOP BAR ══ -->
+    <!-- ══ HEADER ══ -->
+    <AppPageHeader
+      :icon="isEdit ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline'"
+      :title="isEdit ? 'Editar producto' : 'Nuevo producto'"
+      :subtitle="isEdit && draft?.sku ? `SKU ${draft.sku}` : ''"
+      class="px-4 pt-3"
+    />
+
+    <!-- ══ TOP BAR (steps) ══ -->
     <div class="pfp-topbar">
       <div class="pfp-topbar-inner">
-
-        <!-- Slot izquierdo: solo back (la página y el contexto los da el header global) -->
-        <div class="pfp-title-block">
-          <AppBackButton
-            label="Productos"
-            :to="{ name: 'products' }"
-            :disabled="busy"
-            emit-only
-            @back="onCancel"
-          />
-        </div>
 
         <!-- Steps (desktop) -->
         <div class="pfp-steps-row" v-if="mdAndUp">
@@ -953,7 +950,7 @@ import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { CategoriesService } from "../../../app/services/categories.service";
-import AppBackButton from "@/app/components/AppBackButton.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 import ProductStockPanel from "../components/panels/ProductStockPanel.vue";
 import ProductImagesPanel from "../components/panels/ProductImagesPanel.vue";
@@ -2247,11 +2244,14 @@ async function saveAll() {
   .pfp-section-body { padding: 8px 10px; }
   .pfp-toggle-row { flex-direction: column; }
   .pfp-toggle-card { min-width: 0; }
-  .pfp-footer-inner { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 14px; }
-  .pfp-footer-btns  { gap: 8px; }
+  .pfp-footer-inner { flex-direction: row; align-items: center; gap: 6px; padding: 8px 12px; flex-wrap: nowrap; }
+  .pfp-footer-info { display: none; }
+  .pfp-footer-btns  { gap: 6px; flex: 1; justify-content: flex-end; }
   .pfp-btn-nav, .pfp-btn-save { flex: 1; min-width: 0; }
   .pfp-price-row-grid { grid-template-columns: 1fr 1fr; }
   .pfp-kv { grid-template-columns: 80px 1fr; }
+  /* AppPageHeader interno reducido */
+  .pfp-root .app-page-header { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
 /* ══ LAPTOP / NOTEBOOK HEIGHT (≤ 820px viewport height) ══ */

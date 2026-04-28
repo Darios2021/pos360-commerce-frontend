@@ -1,25 +1,20 @@
 <template>
   <div class="crd">
 
-    <!-- Top bar -->
-    <div class="crd-bar">
-      <AppBackButton label="Cajas" :to="{ name: 'adminCashRegisters' }" />
-
-      <div class="crd-bar__title">
-        <v-icon size="18" color="primary">mdi-cash-register</v-icon>
-        <span class="crd-bar__id">Caja #{{ id }}</span>
+    <!-- HEADER -->
+    <AppPageHeader
+      icon="mdi-cash-register"
+      :title="`Caja #${id}`"
+    >
+      <template v-if="data" #subtitle>
         <v-chip
-          v-if="data"
-          size="small"
+          size="x-small"
           :color="data.status === 'OPEN' ? 'success' : 'grey'"
           variant="flat"
         >
           {{ data.status === 'OPEN' ? 'Abierta' : 'Cerrada' }}
         </v-chip>
-      </div>
-
-      <v-spacer />
-
+      </template>
       <v-btn
         variant="tonal"
         size="small"
@@ -30,7 +25,7 @@
       >
         Actualizar
       </v-btn>
-    </div>
+    </AppPageHeader>
 
     <!-- Error -->
     <v-alert v-if="error" type="error" variant="tonal" class="ma-4">{{ error }}</v-alert>
@@ -238,7 +233,7 @@ import {
   adminListCashRegisters,
   getCashRegisterSummary,
 } from "@/modules/pos/services/posCashRegisters.service";
-import AppBackButton from "@/app/components/AppBackButton.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const route = useRoute();
 const router = useRouter();

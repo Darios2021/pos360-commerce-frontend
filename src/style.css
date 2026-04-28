@@ -181,44 +181,58 @@ body,
 }
 
 /* =========================================================
-   CONTRASTE MODO OSCURO REAL (estilo Linear / GitHub / Vercel)
-   - Fondo casi negro (definido en vuetify.js).
-   - Cards/sheets: borde fino blanco al 6-8% en lugar de sombras pesadas.
-     Las sombras no funcionan en dark — se camuflan. Los bordes sutiles
-     son la convención moderna para crear profundidad.
+   MODO OSCURO — estética flotante
+   - Background: gris oscuro (definido en vuetify.js → #1a1d23).
+   - Surface (cards/sheets): negro más profundo (#0d0f13).
+     El contraste natural entre ambos crea el efecto "flotante" sin
+     necesidad de bordes — las cards se despegan solas del fondo.
 ========================================================= */
-.v-theme--dark {
-  --v-border-opacity: 0.10;
+.v-theme--dark,
+.v-theme--adminDark,
+.v-theme--shopDark {
+  --v-border-opacity: 0.08;
 }
 
+/* Cards y sheets: SIN borde, con radius y sombra sutil para flotar */
 .v-theme--dark .v-card,
-.v-theme--dark .v-sheet {
-  border: 1px solid rgba(255, 255, 255, 0.07);
+.v-theme--dark .v-sheet,
+.v-theme--adminDark .v-card,
+.v-theme--adminDark .v-sheet,
+.v-theme--shopDark .v-card,
+.v-theme--shopDark .v-sheet {
+  border: none !important;
   box-shadow: none;
 }
 
-.v-theme--dark .v-card--variant-flat,
-.v-theme--dark .v-sheet--variant-flat {
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
-/* Tablas en dark: separadores más visibles que el default Vuetify */
+/* Tablas en dark: sin borde exterior — flotan sobre el fondo */
 .v-theme--dark .v-data-table,
-.v-theme--dark .v-table {
-  border: 1px solid rgba(255, 255, 255, 0.07);
+.v-theme--dark .v-table,
+.v-theme--adminDark .v-data-table,
+.v-theme--adminDark .v-table,
+.v-theme--shopDark .v-data-table,
+.v-theme--shopDark .v-table {
+  border: none;
 }
 .v-theme--dark .v-data-table thead th,
-.v-theme--dark .v-table thead th {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
-  background: rgba(255, 255, 255, 0.02) !important;
+.v-theme--dark .v-table thead th,
+.v-theme--adminDark .v-data-table thead th,
+.v-theme--adminDark .v-table thead th,
+.v-theme--shopDark .v-data-table thead th,
+.v-theme--shopDark .v-table thead th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: transparent !important;
 }
-.v-theme--dark .v-data-table tbody tr:hover {
+.v-theme--dark .v-data-table tbody tr:hover,
+.v-theme--adminDark .v-data-table tbody tr:hover,
+.v-theme--shopDark .v-data-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Inputs en dark: borde más visible para mejor accesibilidad */
-.v-theme--dark .v-field--variant-outlined .v-field__outline {
-  --v-field-border-opacity: 0.18;
+.v-theme--dark .v-field--variant-outlined .v-field__outline,
+.v-theme--adminDark .v-field--variant-outlined .v-field__outline,
+.v-theme--shopDark .v-field--variant-outlined .v-field__outline {
+  --v-field-border-opacity: 0.16;
 }
 
 /* =========================================================

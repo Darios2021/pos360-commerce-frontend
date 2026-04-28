@@ -2,14 +2,12 @@
 <template>
   <div class="sd">
 
-    <!-- ── TOP BAR ── -->
-    <div class="sd-bar">
-      <AppBackButton label="Ventas" :to="{ name: 'posSales' }" />
-      <div class="sd-bar-info">
-        <div class="sd-bar-title">Venta #{{ sale?.id ?? id }}</div>
-        <div class="sd-bar-sub" v-if="sale">{{ dt(sale.sold_at || sale.created_at) }}</div>
-      </div>
-      <v-spacer />
+    <!-- HEADER -->
+    <AppPageHeader
+      icon="mdi-receipt-text-outline"
+      :title="`Venta #${sale?.id ?? id}`"
+      :subtitle="sale ? dt(sale.sold_at || sale.created_at) : ''"
+    >
       <v-chip
         v-if="sale?.status"
         size="small"
@@ -17,7 +15,7 @@
         :color="statusColor(sale.status)"
         class="font-weight-bold"
       >{{ statusLabel(sale.status) }}</v-chip>
-    </div>
+    </AppPageHeader>
 
     <!-- ── LOADING ── -->
     <div v-if="loading" class="sd-loading">
@@ -552,7 +550,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
-import AppBackButton from "@/app/components/AppBackButton.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const route = useRoute();
 const router = useRouter();

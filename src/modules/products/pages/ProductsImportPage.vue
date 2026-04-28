@@ -1,22 +1,15 @@
 <!-- src/modules/products/pages/ProductsImportPage.vue -->
 <template>
   <div class="page">
-    <div class="topbar">
-      <div>
-        <div class="text-h5 font-weight-bold">Importar productos (CSV)</div>
-        <div class="text-caption text-medium-emphasis">
-          Subí un CSV, revisá el preview y ejecutá la importación. Rubro/Subrubro se crean en <b>categories</b>.
-        </div>
-      </div>
-
-      <div class="actions">
-        <v-btn variant="tonal" prepend-icon="mdi-download" @click="downloadTemplate">
-          Descargar plantilla
-        </v-btn>
-
-        <AppBackButton label="Productos" :to="{ name: 'products' }" />
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-file-upload-outline"
+      title="Importar productos (CSV)"
+      subtitle="Subí un CSV, revisá el preview y ejecutá la importación. Rubro/Subrubro se crean automáticamente."
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-download" @click="downloadTemplate">
+        Descargar plantilla
+      </v-btn>
+    </AppPageHeader>
 
     <v-card rounded="xl" class="pa-4">
       <v-row dense class="align-center">
@@ -155,7 +148,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { mapCsvRowToProductPayload } from "../utils/csvProductMapper";
-import AppBackButton from "@/app/components/AppBackButton.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
 

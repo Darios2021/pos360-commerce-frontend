@@ -70,7 +70,7 @@
                   <span class="stat-value text-success">{{ activeProducts }}</span>
                 </div>
                 <div class="inv-stat-row">
-                  <span class="stat-dot" style="background:#8B5CF6"></span>
+                  <span class="stat-dot" style="background:#1488d1"></span>
                   <span class="stat-label">Inactivos</span>
                   <span class="stat-value">{{ inactiveProducts }}</span>
                 </div>
@@ -447,7 +447,7 @@ const optStatusDonut = computed(() => ({
   ...apexCommon.value,
   chart: { ...apexCommon.value.chart, type: "donut" },
   labels: ["Activos", "Inactivos", "Sin precio"],
-  colors: ["#10B981", "#8B5CF6", "#F59E0B"],
+  colors: ["#10B981", "#1488d1", "#F59E0B"],
   stroke: { width: 2, colors: [isDark.value ? "#1e1e2e" : "#ffffff"] },
   plotOptions: {
     pie: { donut: { size: "68%", labels: { show: true, total: { show: true, label: "Total", color: fg.value, formatter: () => `${totalProducts.value}` } } } },
@@ -465,7 +465,7 @@ const seriesCategoryBar = computed(() => [
 const optCategoryBar = computed(() => ({
   ...apexCommon.value,
   chart: { ...apexCommon.value.chart, type: "bar" },
-  colors: ["#3B82F6", "#10B981"],
+  colors: ["#1488d1", "#10B981"],
   fill: { opacity: [0.85, 1] },
   stroke: { show: false },
   plotOptions: { bar: { horizontal: true, borderRadius: 3, borderRadiusApplication: "end", barHeight: "55%", stacked: false } },
@@ -511,7 +511,7 @@ const ana = computed(() => props.analytics || {});
 // Por marca
 const byBrand = computed(() => Array.isArray(ana.value?.byBrand) ? ana.value.byBrand.slice(0, 12) : []);
 const seriesBrand = computed(() => [
-  { name: "Total", data: byBrand.value.map(r => num(r.count)), color: "#3B82F6" },
+  { name: "Total", data: byBrand.value.map(r => num(r.count)), color: "#1488d1" },
   { name: "Activos", data: byBrand.value.map(r => num(r.activeCount)), color: "#10B981" },
 ]);
 const optBrand = computed(() => ({
@@ -552,7 +552,7 @@ const optMarginPct = computed(() => ({
   },
   yaxis: { labels: { style: { fontSize: "10px", colors: fg.value }, maxWidth: 150 } },
   legend: { show: false },
-  colors: ["#00E396", "#26A69A", "#43A047", "#66BB6A", "#A5D6A7", "#FEB019", "#FF7043", "#AB47BC", "#5C6BC0", "#008FFB"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea","#0d70b1","#92d4ee"],
   tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: (v, { dataPointIndex }) => {
     const r = topMarginPct.value[dataPointIndex];
     return `${Math.round(Number(v || 0))}% · Costo: ${money(r?.cost)} · Precio: ${money(r?.price)}`;
@@ -575,7 +575,7 @@ const optPriceRanges = computed(() => ({
   },
   yaxis: { labels: { style: { colors: fg.value } } },
   legend: { show: false },
-  colors: ["#7C3AED", "#6D28D9", "#5B21B6", "#4C1D95", "#2196F3", "#0288D1", "#00838F", "#00897B", "#2E7D32"],
+  colors: ["#1488d1","#2a96d6","#3fa3db","#54b0e0","#1078bb","#1387cd","#69bde5","#7ec9ea","#0d70b1"],
   tooltip: { theme: isDark.value ? "dark" : "light", y: { formatter: v => `${v} productos` } },
 }));
 
@@ -586,7 +586,7 @@ const optCatalogGrowth = computed(() => ({
   ...apexCommon.value,
   chart: { ...apexCommon.value.chart, type: "area", toolbar: { show: false } },
   fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.03, stops: [0, 100] } },
-  colors: ["#3B82F6"],
+  colors: ["#1488d1"],
   dataLabels: { enabled: false },
   stroke: { curve: "smooth", width: 2 },
   xaxis: {

@@ -1,37 +1,32 @@
 <template>
   <v-container fluid class="fiscal-admin-page">
-    <div class="page-head">
-      <div>
-        <div class="page-eyebrow">Administración</div>
-        <h1 class="page-title">Configuración fiscal</h1>
-        <p class="page-subtitle">
-          Gestioná configuración, certificados y prueba de conexión por sucursal.
-        </p>
-      </div>
-
-      <div class="page-head-actions">
-        <v-select
-          v-model="selectedBranchId"
-          :items="branchItems"
-          item-title="name"
-          item-value="id"
-          label="Sucursal"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          class="branch-select"
-        />
-        <v-btn
-          color="primary"
-          variant="flat"
-          :loading="loadingAll"
-          prepend-icon="mdi-refresh"
-          @click="loadAll"
-        >
-          Recargar
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-file-document-outline"
+      title="Configuración fiscal"
+      subtitle="Gestioná configuración, certificados y prueba de conexión por sucursal."
+    >
+      <v-select
+        v-model="selectedBranchId"
+        :items="branchItems"
+        item-title="name"
+        item-value="id"
+        label="Sucursal"
+        variant="outlined"
+        density="compact"
+        hide-details
+        style="min-width: 220px;"
+      />
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        :loading="loadingAll"
+        prepend-icon="mdi-refresh"
+        @click="loadAll"
+      >
+        Recargar
+      </v-btn>
+    </AppPageHeader>
 
     <v-row class="mt-1" dense>
       <v-col cols="12" lg="8">
@@ -420,6 +415,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useAuthStore } from "@/app/store/auth.store";
 import fiscalAdminService from "@/app/services/fiscalAdmin.service";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const auth = useAuthStore();
 

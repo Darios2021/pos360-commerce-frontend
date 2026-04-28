@@ -4,78 +4,87 @@
   <div class="lp">
 
     <!-- ── HEADER ───────────────────────────────────────── -->
-    <header class="lp-header">
-      <div class="lp-header__left">
-        <h1 class="lp-title">Productos</h1>
-        <div class="lp-meta">
-          <span class="lp-meta__strong">{{ meta.total.toLocaleString('es') }}</span>
-          <span class="lp-meta__sep">·</span>
-          <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
-        </div>
-      </div>
-      <div class="lp-header__right">
-        <v-btn-toggle
-          v-if="smAndUp"
-          v-model="viewMode"
-          mandatory
-          density="compact"
-          rounded="lg"
-          class="lp-view-toggle"
-        >
-          <v-btn value="grid" size="small" title="Vista en tarjetas">
-            <v-icon size="18">mdi-view-grid-outline</v-icon>
-          </v-btn>
-          <v-btn value="list" size="small" title="Vista en lista">
-            <v-icon size="18">mdi-format-list-bulleted</v-icon>
-          </v-btn>
-        </v-btn-toggle>
+    <AppPageHeader
+      icon="mdi-package-variant-closed"
+      title="Productos"
+    >
+      <template #subtitle>
+        <span>{{ meta.total.toLocaleString('es') }}</span>
+        <span class="mx-1">·</span>
+        <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
+      </template>
 
-        <!-- Acción masiva sobre promociones -->
-        <v-menu offset-y>
-          <template #activator="{ props: btnProps }">
-            <v-btn
-              v-bind="btnProps"
-              variant="tonal"
-              rounded="lg"
-              size="small"
-              prepend-icon="mdi-tag-heart-outline"
-              append-icon="mdi-menu-down"
-              class="lp-cta"
-              :loading="bulkPromoBusy"
-              :disabled="bulkPromoBusy"
-            >
-              Promos
-            </v-btn>
-          </template>
-          <v-list density="compact" class="lp-promo-menu">
-            <v-list-item
-              prepend-icon="mdi-pause-circle-outline"
-              title="Pausar todas las promos"
-              subtitle="Apaga is_promo en todos los productos activos"
-              @click="onPauseAllPromos"
-            />
-            <v-list-item
-              prepend-icon="mdi-play-circle-outline"
-              title="Reactivar promos configuradas"
-              subtitle="Solo los que tienen precio o reglas configuradas"
-              @click="onResumeAllPromos"
-            />
-          </v-list>
-        </v-menu>
-
-        <v-btn
-          color="primary"
-          variant="flat"
-          prepend-icon="mdi-plus"
-          rounded="lg"
-          size="small"
-          class="lp-cta"
-          @click="openCreate"
-        >
-          Nuevo
+      <v-btn-toggle
+        v-if="smAndUp"
+        v-model="viewMode"
+        mandatory
+        density="compact"
+        rounded="lg"
+        class="lp-view-toggle"
+      >
+        <v-btn value="grid" size="small" title="Vista en tarjetas">
+          <v-icon size="18">mdi-view-grid-outline</v-icon>
         </v-btn>
-      </div>
-    </header>
+        <v-btn value="list" size="small" title="Vista en lista">
+          <v-icon size="18">mdi-format-list-bulleted</v-icon>
+        </v-btn>
+      </v-btn-toggle>
+
+      <!-- Acción masiva sobre promociones -->
+      <v-menu offset-y>
+        <template #activator="{ props: btnProps }">
+          <v-btn
+            v-bind="btnProps"
+            variant="tonal"
+            rounded="lg"
+            size="small"
+            prepend-icon="mdi-tag-heart-outline"
+            append-icon="mdi-menu-down"
+            :loading="bulkPromoBusy"
+            :disabled="bulkPromoBusy"
+          >
+            Promos
+          </v-btn>
+        </template>
+        <v-list density="compact" class="lp-promo-menu">
+          <v-list-item
+            prepend-icon="mdi-pause-circle-outline"
+            title="Pausar todas las promos"
+            subtitle="Apaga is_promo en todos los productos activos"
+            @click="onPauseAllPromos"
+          />
+          <v-list-item
+            prepend-icon="mdi-play-circle-outline"
+            title="Reactivar promos configuradas"
+            subtitle="Solo los que tienen precio o reglas configuradas"
+            @click="onResumeAllPromos"
+          />
+        </v-list>
+      </v-menu>
+
+      <v-btn
+        color="primary"
+        variant="flat"
+        prepend-icon="mdi-plus"
+        rounded="lg"
+        size="small"
+        class="lp-cta-new-mobile-hide"
+        @click="openCreate"
+      >
+        Nuevo
+      </v-btn>
+    </AppPageHeader>
+
+    <!-- FAB "+ Nuevo" solo en mobile -->
+    <button
+      v-if="!smAndUp"
+      type="button"
+      class="lp-fab-new"
+      title="Nuevo producto"
+      @click="openCreate"
+    >
+      <v-icon size="24">mdi-plus</v-icon>
+    </button>
 
     <!-- Confirmación de acción masiva sobre promos -->
     <v-dialog v-model="bulkPromoDialog.open" max-width="440" persistent>
@@ -782,6 +791,7 @@ import { useDisplay } from "vuetify";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
 const products = useProductsStore();
@@ -954,7 +964,7 @@ const f = ref({
   subcategory_id: null,
   stock: "all",
   price_presence: "all",
-  status: isAdmin.value ? "all" : "active",
+  status: "active",
   price_min: null,
   price_max: null,
   images: "all",
@@ -1019,7 +1029,7 @@ async function clearFilters() {
     subcategory_id: null,
     stock: "all",
     price_presence: "all",
-    status: isAdmin.value ? "all" : "active",
+    status: "active",
     price_min: null,
     price_max: null,
     images: "all",
@@ -1430,7 +1440,7 @@ const activeFilterChips = computed(() => {
 });
 
 function removeFilter(key) {
-  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', promo: 'all', price_min: null, price_max: null, status: isAdmin.value ? 'all' : 'active' };
+  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', promo: 'all', price_min: null, price_max: null, status: 'active' };
   f.value[key] = defaults[key];
   if (key === 'category_id') f.value.subcategory_id = null;
   applyFilters();
@@ -2205,12 +2215,43 @@ function branchCssColor(id) {
   .lp-stats   { grid-template-columns: repeat(2, 1fr); }
   .lp-methods { grid-template-columns: repeat(3, 1fr); }
 }
+/* ── FAB Nuevo producto (solo mobile) ──────────────────────────── */
+.lp-fab-new {
+  position: fixed;
+  right: 16px;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 14px 32px rgba(20, 136, 209, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1004;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.lp-fab-new:active {
+  transform: scale(0.95);
+}
+
 @media (max-width: 600px) {
-  .lp-stats   { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .lp-methods { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .lp-kpi__val { font-size: 16px; }
-  .lp-kpi__badge { width: 30px; height: 30px; }
-  .lp-mc__val  { font-size: 13px; }
+  /* MOBILE: ocultar KPIs/stats — saturan la vista en pantalla chica.
+     La info importante (total) ya está en el subtitle del header. */
+  .lp-stats,
+  .lp-methods { display: none !important; }
+
+  /* Header simplificado: solo título + FAB "+ Nuevo" abajo (no en header).
+     Ocultamos toggle de vista (siempre grid en mobile) y el botón Nuevo
+     del header (lo reemplaza el FAB). */
+  .lp-view-toggle { display: none !important; }
+  .lp-header__right .lp-cta-new-mobile-hide { display: none !important; }
 }
 
 @media (max-width: 768px) {
@@ -2227,12 +2268,19 @@ function branchCssColor(id) {
   .plp-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .plp-card-name { font-size: 12px; }
   .plp-card-price { font-size: 14px; }
-  .lp-pagination { flex-direction: column; align-items: center; }
+  .lp-pagination { flex-direction: column; align-items: center; gap: 6px; }
   .lp-content__body { padding: 10px; }
+  /* En mobile el botón "Promos" ocupa demasiado: lo reducimos a icono */
+  .lp-cta-promos .v-btn__content,
+  .lp-promo-btn-text { display: none; }
 }
 
+/* Mobile pequeño: 2 columnas siempre (la app debe sentirse densa pero usable) */
 @media (max-width: 360px) {
-  .plp-grid { grid-template-columns: 1fr; }
+  .plp-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .plp-card-info { padding: 8px; }
+  .plp-card-meta { display: none; }
+  .plp-card-branches { display: none; }
 }
 
 /* ── KIT badges ── */

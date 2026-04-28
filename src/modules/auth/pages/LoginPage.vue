@@ -159,7 +159,7 @@ const auth = useAuthStore();
 
 // Logo POS 360 — Versión final (logo redondo con gradiente brand #1488d1 → #121e47)
 // Es el mismo logo en ambos paneles para mantener consistencia de marca.
-const LOGO_FINAL = "https://storage-files.cingulado.org/pos360/media/1777339156015-9b15336ec844fc3e.webp";
+const LOGO_FINAL = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
 const LOGO_BLUE  = LOGO_FINAL; // card derecha (fondo claro)
 const LOGO_WHITE = LOGO_FINAL; // panel izquierdo (fondo navy)
 
@@ -207,6 +207,10 @@ async function submit() {
   --brand-light: #1488d1;
   --brand-deep-rgb:  18, 30, 71;
   --brand-light-rgb: 20, 136, 209;
+
+  /* Login siempre en modo claro: ignorar tema global */
+  color-scheme: light;
+  color: #1a1a1a;
 
   position: relative;
   min-height: 100vh;
@@ -287,9 +291,7 @@ async function submit() {
   justify-content: center;
   padding: 40px;
   border-radius: 24px;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(20, 136, 209, 0.55), transparent 55%),
-    linear-gradient(135deg, #121e47 0%, #1a2a5c 50%, #1488d1 130%);
+  background: #1488d1;
   color: #fff;
   box-shadow:
     0 20px 60px rgba(18, 30, 71, 0.35),
@@ -297,14 +299,6 @@ async function submit() {
   position: relative;
   overflow: hidden;
   min-height: 580px;
-}
-.login-side::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at top right, rgba(255,255,255,0.14), transparent 60%);
-  pointer-events: none;
 }
 
 @media (max-width: 960px) {
@@ -421,9 +415,9 @@ async function submit() {
   width: 100%;
   max-width: 460px;
   padding: 36px 32px;
-  background: rgb(var(--v-theme-surface));
+  background: #ffffff;
   border-radius: 22px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid rgba(18, 30, 71, 0.08);
   box-shadow:
     0 20px 60px rgba(0,0,0,0.10),
     0 4px 12px rgba(0,0,0,0.06);
@@ -432,29 +426,22 @@ async function submit() {
   text-align: center;
   margin-bottom: 22px;
 }
-/* Logo brand flotante en la card derecha (fondo claro) */
 .login-logo {
-  width: 96px; height: 96px;
+  width: 160px; height: 160px;
   margin: 0 auto 16px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 8px 22px rgba(20, 136, 209, 0.35))
-          drop-shadow(0 2px 4px rgba(18, 30, 71, 0.20));
-  animation: logoFloat 6s ease-in-out infinite;
-}
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
 }
 .login-title {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.3px;
   margin-bottom: 4px;
+  color: #121e47;
 }
 .login-sub {
   font-size: 13px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: rgba(18, 30, 71, 0.6);
   margin: 0;
 }
 
@@ -492,8 +479,7 @@ async function submit() {
   font-weight: 500 !important;
   letter-spacing: 0.3px;
   text-transform: none;
-  /* Gradiente brand: navy → celeste */
-  background: linear-gradient(135deg, #121e47 0%, #1488d1 100%) !important;
+  background: #1488d1 !important;
   color: #fff !important;
   box-shadow: 0 8px 22px rgba(20, 136, 209, 0.35) !important;
   transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
@@ -513,11 +499,11 @@ async function submit() {
   text-align: center;
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: 1px dashed rgba(18, 30, 71, 0.18);
 }
 .login-foot__hint {
   font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
+  color: rgba(18, 30, 71, 0.55);
 }
 .login-foot__hint a {
   color: #1488d1;
@@ -526,12 +512,20 @@ async function submit() {
 }
 .login-foot__hint a:hover { text-decoration: underline; }
 
-/* ══ DARK MODE — paleta brand ══ */
+/* Login forzado a tema claro: tokens Vuetify locales para que inputs,
+   checkbox, alerts y demás componentes no hereden el dark mode global. */
+.login-shell,
 .v-theme--dark .login-shell {
+  --v-theme-surface: 255, 255, 255;
+  --v-theme-on-surface: 26, 26, 26;
+  --v-theme-background: 255, 255, 255;
+  --v-theme-on-background: 26, 26, 26;
+  --v-border-color: 18, 30, 71;
+  --v-border-opacity: 0.12;
   background:
-    radial-gradient(ellipse at top left,  rgba(20, 136, 209, 0.30), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(18, 30, 71, 0.45), transparent 55%),
-    linear-gradient(135deg, #08102a 0%, #0d1840 100%);
+    radial-gradient(ellipse at top left,  rgba(var(--brand-light-rgb), 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(var(--brand-deep-rgb),  0.10), transparent 55%),
+    linear-gradient(135deg, #f4f7fb 0%, #e8eef8 100%);
 }
 
 @media (max-width: 600px) {

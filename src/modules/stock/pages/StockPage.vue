@@ -1,19 +1,14 @@
 <template>
   <div class="page">
-    <div class="topbar">
-      <div>
-        <div class="text-h5 font-weight-bold">Stock</div>
-        <div class="text-caption text-medium-emphasis">
-          Existencias y movimientos (próximo paso)
-        </div>
-      </div>
-
-      <div class="actions">
-        <v-btn color="primary" prepend-icon="mdi-swap-vertical">
-          Nuevo movimiento
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-warehouse"
+      title="Stock"
+      subtitle="Existencias y movimientos (próximo paso)"
+    >
+      <v-btn color="primary" variant="flat" size="small" rounded="lg" prepend-icon="mdi-swap-vertical">
+        Nuevo movimiento
+      </v-btn>
+    </AppPageHeader>
 
     <v-alert type="info" variant="tonal" class="mb-4">
       Esta pantalla la dejamos estable y después armamos: <b>Existencias</b>, <b>Movimientos</b>, <b>Kardex</b>.
@@ -27,7 +22,9 @@
   </div>
 </template>
 
-<script setup></script>
+<script setup>
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
+</script>
 
 <style scoped>
 .page {

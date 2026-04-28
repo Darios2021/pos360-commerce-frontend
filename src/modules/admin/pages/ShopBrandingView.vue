@@ -2,26 +2,20 @@
 <!-- src/modules/admin/pages/ShopBrandingView.vue -->
 <template>
   <v-container class="mx-auto" style="max-width: 1100px">
+    <AppPageHeader
+      icon="mdi-storefront-outline"
+      title="Branding"
+      subtitle="Configurá nombre, logo, favicon y OG (preview WhatsApp) del ecommerce público."
+    >
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
+        Recargar
+      </v-btn>
+      <v-btn color="primary" variant="flat" size="small" rounded="lg" prepend-icon="mdi-content-save" :loading="saving" @click="saveName">
+        Guardar nombre
+      </v-btn>
+    </AppPageHeader>
+
     <v-card rounded="xl" elevation="3" class="pa-4">
-      <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
-        <div>
-          <div class="text-h6 font-weight-bold">Tienda · Branding</div>
-          <div class="text-caption text-medium-emphasis">
-            Configurá nombre, logo, favicon y OG (preview WhatsApp) del ecommerce público.
-          </div>
-        </div>
-
-        <div class="d-flex ga-2">
-          <v-btn variant="tonal" prepend-icon="mdi-refresh" @click="load" :loading="loading">
-            Recargar
-          </v-btn>
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save" @click="saveName" :loading="saving">
-            Guardar nombre
-          </v-btn>
-        </div>
-      </v-card-title>
-
-      <v-divider class="my-3" />
 
       <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
         {{ error }}
@@ -400,6 +394,7 @@ import { getShopThemeAdmin, updateShopThemeAdmin } from "@/modules/shop/service/
 
 // ✅ ahora applyRuntimeTheme soporta scope
 import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeTheme";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const loading = ref(false);
 const saving = ref(false);

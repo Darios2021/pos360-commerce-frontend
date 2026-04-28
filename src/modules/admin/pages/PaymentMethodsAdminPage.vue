@@ -3,20 +3,15 @@
 
 <template>
   <v-container fluid class="payment-methods-page pa-4 pa-md-6">
-    <div class="page-head mb-4">
-      <div>
-        <div class="text-h5 font-weight-bold">Medios de pago</div>
-        <div class="text-body-2 text-medium-emphasis">
-          Creá medios simples como efectivo, transferencia, QR, tarjeta o crédito.
-        </div>
-      </div>
-
-      <div class="page-head-actions">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate">
-          Nuevo medio
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-credit-card-outline"
+      title="Medios de pago"
+      subtitle="Creá medios simples como efectivo, transferencia, QR, tarjeta o crédito."
+    >
+      <v-btn color="primary" variant="flat" size="small" rounded="lg" prepend-icon="mdi-plus" @click="openCreate">
+        Nuevo medio
+      </v-btn>
+    </AppPageHeader>
 
     <v-card rounded="xl" elevation="0" class="mb-4 border-card">
       <v-card-text>
@@ -373,6 +368,7 @@ import {
   normalizePaymentMethod,
   buildPaymentMethodPayload,
 } from "@/app/services/paymentMethod.service";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const KIND_OPTIONS = [
   { title: "Efectivo", value: "CASH" },

@@ -19,27 +19,19 @@
     <template v-else>
 
       <!-- ── TOP BAR ── -->
-      <div class="tr-bar">
-        <div class="tr-bar-left">
-          <v-icon size="22" color="primary">mdi-truck-fast</v-icon>
-          <div>
-            <div class="tr-title">Derivaciones</div>
-            <div class="tr-subtitle">
-              {{ totalCount }} {{ totalCount === 1 ? 'resultado' : 'resultados' }}
-              <span v-if="statusFilter" class="tr-subtitle-filter"> · filtrado por estado</span>
-              <span v-if="search.trim()" class="tr-subtitle-filter"> · búsqueda</span>
-            </div>
-          </div>
-        </div>
-        <div class="tr-bar-right">
-          <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="loadList">
-            Actualizar
-          </v-btn>
-          <v-btn color="primary" size="small" variant="flat" rounded="lg" prepend-icon="mdi-plus" @click="showCreate = true">
-            Nueva derivación
-          </v-btn>
-        </div>
-      </div>
+      <AppPageHeader icon="mdi-truck-fast-outline" title="Derivaciones">
+        <template #subtitle>
+          {{ totalCount }} {{ totalCount === 1 ? 'resultado' : 'resultados' }}
+          <span v-if="statusFilter" class="tr-subtitle-filter"> · filtrado por estado</span>
+          <span v-if="search.trim()" class="tr-subtitle-filter"> · búsqueda</span>
+        </template>
+        <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="loadList">
+          Actualizar
+        </v-btn>
+        <v-btn color="primary" size="small" variant="flat" rounded="lg" prepend-icon="mdi-plus" @click="showCreate = true">
+          Nueva derivación
+        </v-btn>
+      </AppPageHeader>
 
       <!-- ── KPIs (clickeables: filtran) ── -->
       <div class="tr-kpis">
@@ -181,7 +173,86 @@
         </div>
       </div>
 
-      <!-- ── TABLA ── -->
+      <!-- ── LISTA MOBILE (cards) ── -->
+      <div class="tr-mobile-list">
+        <div v-if="loading && !paginated.length" class="tr-mobile-empty">
+          <v-progress-circular size="22" indeterminate color="primary" />
+        </div>
+        <div v-else-if="!paginated.length" class="tr-mobile-empty">
+          <v-icon size="36" color="medium-emphasis">mdi-truck-remove-outline</v-icon>
+          <div>Sin derivaciones para estos filtros</div>
+        </div>
+        <button
+          v-for="t in paginated"
+          :key="`m-${t.id}`"
+          type="button"
+          class="tr-mcard"
+          :class="`tr-mcard--${t.status}`"
+          @click="openDetail(t)"
+        >
+          <div class="tr-mcard__row1">
+            <div class="tr-mcard__num">{{ t.number }}</div>
+            <span class="tr2-status" :class="`tr2-status--${t.status}`">
+              <v-icon size="10">{{ statusIcon(t.status) }}</v-icon>
+              {{ statusLabel(t.status) }}
+            </span>
+          </div>
+          <div class="tr-mcard__route">
+            <v-icon size="13">mdi-store-outline</v-icon>
+            <span class="tr-mcard__br">{{ t.fromWarehouse?.branch?.name || '—' }}</span>
+            <v-icon size="14" class="tr-mcard__arrow">mdi-arrow-right</v-icon>
+            <v-icon size="13" color="success">mdi-store</v-icon>
+            <span class="tr-mcard__br">{{ t.toBranch?.name || t.toWarehouse?.branch?.name || '—' }}</span>
+          </div>
+          <div class="tr-mcard__meta">
+            <span class="tr-mcard__items">
+              <v-icon size="12" color="primary">mdi-package-variant-closed</v-icon>
+              <b>{{ itemCount(t) }}</b> {{ itemCount(t) === 1 ? 'producto' : 'productos' }}
+            </span>
+            <span class="tr-mcard__time" :class="timeUrgencyClass(t)">
+              {{ timeLabelOf(t) }}
+            </span>
+          </div>
+          <div v-if="t.note" class="tr-mcard__note">{{ t.note }}</div>
+
+          <div class="tr-mcard__actions" @click.stop>
+            <v-btn
+              v-if="t.status === 'draft' && (isCentral || isAdmin)"
+              size="small"
+              color="warning"
+              variant="flat"
+              rounded="lg"
+              prepend-icon="mdi-truck-fast"
+              @click.stop="openDetail(t)"
+            >
+              Despachar
+            </v-btn>
+            <v-btn
+              v-else-if="t.status === 'dispatched'"
+              size="small"
+              color="success"
+              variant="flat"
+              rounded="lg"
+              prepend-icon="mdi-check-circle"
+              @click.stop="openDetail(t)"
+            >
+              Recepcionar
+            </v-btn>
+            <v-btn
+              v-else
+              size="small"
+              variant="tonal"
+              rounded="lg"
+              prepend-icon="mdi-eye-outline"
+              @click.stop="openDetail(t)"
+            >
+              Ver detalle
+            </v-btn>
+          </div>
+        </button>
+      </div>
+
+      <!-- ── TABLA (desktop / tablet) ── -->
       <div class="tr-table-wrap">
         <table class="tr2">
           <thead>
@@ -542,6 +613,7 @@ import {
 import { useTransferNotifications } from "../composables/useTransferNotifications";
 import TransferDetail from "./TransferDetail.vue";
 import TransferForm   from "./TransferForm.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const props = defineProps({
   isAdmin:            { type: Boolean, default: false },
@@ -1359,5 +1431,124 @@ onMounted(() => { loadList(); });
 
 @media (max-width: 768px) {
   .tr-q-field { flex: 1; min-width: 160px; }
+}
+
+/* ── MOBILE LIST: cards (oculto en desktop) ─────────────────────── */
+.tr-mobile-list { display: none; }
+.tr-mcard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  border-left-width: 3px;
+}
+.tr-mcard:active { transform: scale(0.99); }
+.tr-mcard--draft      { border-left-color: rgba(var(--v-theme-on-surface), 0.20); }
+.tr-mcard--dispatched { border-left-color: #f59e0b; }
+.tr-mcard--received   { border-left-color: #10b981; }
+.tr-mcard--partial    { border-left-color: #f59e0b; }
+.tr-mcard--cancelled  { border-left-color: rgba(var(--v-theme-on-surface), 0.20); opacity: 0.65; }
+.tr-mcard--rejected   { border-left-color: #ef4444; }
+
+.tr-mcard__row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tr-mcard__num {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tr-mcard__route {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  flex-wrap: wrap;
+}
+.tr-mcard__br { font-weight: 500; }
+.tr-mcard__arrow { color: rgba(var(--v-theme-on-surface), 0.40); }
+
+.tr-mcard__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.tr-mcard__items {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+.tr-mcard__items b { color: rgb(var(--v-theme-on-surface)); font-weight: 600; }
+.tr-mcard__time {
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.tr-mcard__note {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-style: italic;
+  padding: 6px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 8px;
+}
+.tr-mcard__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.tr-mobile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 36px 16px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── MOBILE app-like ────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Ocultar KPIs grandes — saturan la vista. El filtrado se hace via
+     el chip de estado que ya existe en la barra de búsqueda. */
+  .tr-kpis { display: none !important; }
+  /* Botón "Actualizar" del header reducido a icono (espacio en mobile) */
+  .tr-bar-right .v-btn--variant-tonal :deep(.v-btn__content) > span:not(.v-icon) {
+    display: none;
+  }
+}
+
+/* En mobile/tablet usar cards en lugar de tabla — la tabla se rompe */
+@media (max-width: 900px) {
+  .tr-table-wrap { display: none !important; }
+  .tr-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 6px 8px 16px;
+  }
+  /* Ocultar bulk bar de selección masiva en mobile (no aplica al flow táctil) */
+  .tr-bulkbar { display: none !important; }
 }
 </style>

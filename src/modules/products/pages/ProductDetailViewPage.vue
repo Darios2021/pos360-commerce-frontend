@@ -2,32 +2,32 @@
 <template>
   <div class="pv">
 
-    <!-- TOP BAR -->
-    <div class="pv-bar">
-      <div v-if="raw" class="pv-cat-tags">
+    <!-- HEADER -->
+    <AppPageHeader
+      icon="mdi-package-variant-closed"
+      :title="raw?.name || 'Producto'"
+    >
+      <template v-if="raw" #subtitle>
         <v-chip
           v-if="productForUIFixed.category_name"
-          size="small"
+          size="x-small"
           variant="tonal"
           color="primary"
           label
-          class="pv-cat-chip"
+          class="mr-1"
         >
-          <v-icon start size="13">mdi-shape-outline</v-icon>
+          <v-icon start size="12">mdi-shape-outline</v-icon>
           {{ productForUIFixed.category_name }}
         </v-chip>
         <v-chip
           v-if="productForUIFixed.subcategory_name"
-          size="small"
+          size="x-small"
           variant="tonal"
           label
-          class="pv-cat-chip"
         >
           {{ productForUIFixed.subcategory_name }}
         </v-chip>
-      </div>
-
-      <v-spacer />
+      </template>
 
       <v-btn
         v-if="raw"
@@ -35,12 +35,10 @@
         size="small"
         prepend-icon="mdi-qrcode"
         rounded="lg"
-        class="mr-2"
         @click="printDlg = true"
       >
         Etiqueta / QR
       </v-btn>
-
       <v-btn
         v-if="raw"
         color="primary"
@@ -52,7 +50,7 @@
       >
         Editar
       </v-btn>
-    </div>
+    </AppPageHeader>
 
     <!-- ERROR -->
     <v-alert v-if="error" type="error" variant="tonal" class="ma-3">{{ error }}</v-alert>
@@ -554,6 +552,7 @@ import http from "@/app/api/http";
 import ProductLabelPreview from "@/modules/products/components/label/ProductLabelPreview.vue";
 import ProductLabelSheetA4 from "@/modules/products/components/label/ProductLabelSheetA4.vue";
 import ProductPrintActions from "@/modules/products/components/actions/ProductPrintActions.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 import { buildProductUI } from "@/modules/products/utils/productUi.adapter.js";
 import { downloadLabelPdfA4 } from "@/modules/products/utils/labelPdfA4.js";
@@ -1583,6 +1582,30 @@ watch(branchId, fetchProduct);
   .pv-card { padding: 14px; }
   .pv-card--identity { padding: 16px; }
   .pv-gallery-thumbs { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+}
+
+/* ── MOBILE app-like ────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .pv-layout { padding: 8px; gap: 10px; }
+  /* Galería full-width sin máximo, ratio cuadrado */
+  .pv-gallery-main {
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+  }
+  .pv-gallery-thumbs { max-width: 100%; }
+  /* Cards más compactas */
+  .pv-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .pv-card--identity { padding: 14px; }
+  /* Tipografía mobile */
+  .pv-name { font-size: 19px !important; line-height: 1.25 !important; }
+  .pv-price-big { font-size: 28px !important; }
+  .pv-card-title { font-size: 13px; }
+  /* Las flechas de la galería en mobile siempre visibles (sin hover) */
+  .pv-gallery-nav { opacity: 1 !important; }
 }
 
 /* ── KIT / COMBO ── */

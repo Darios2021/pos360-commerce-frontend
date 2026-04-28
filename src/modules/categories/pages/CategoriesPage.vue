@@ -3,53 +3,48 @@
   <div class="lp">
 
     <!-- ── HEADER ───────────────────────────────────────── -->
-    <header class="lp-header">
-      <div class="lp-header__left">
-        <h1 class="lp-title">Categorías</h1>
-        <div class="lp-meta">
-          <span class="lp-meta__strong">{{ totalRubros }}</span>
-          <span class="lp-meta__sep">·</span>
-          <span>{{ totalSubrubros }} subrubros</span>
-          <span class="lp-meta__sep">·</span>
-          <span>Ecommerce: Rubro → Subrubro</span>
-        </div>
-      </div>
-      <div class="lp-header__right">
-        <v-btn
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-refresh"
-          :disabled="busyAny"
-          :loading="busyKey === '__reload__'"
-          @click="reload"
-        >
-          Recargar
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-plus"
-          :disabled="busyAny"
-          @click="openCreateRoot"
-        >
-          Nuevo rubro
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="tonal"
-          size="small"
-          rounded="lg"
-          prepend-icon="mdi-plus-box"
-          :disabled="busyAny || !selectedParentId"
-          @click="openCreateChild"
-        >
-          Nueva subcategoría
-        </v-btn>
-      </div>
-    </header>
+    <AppPageHeader icon="mdi-shape-outline" title="Categorías">
+      <template #subtitle>
+        <span>{{ totalRubros }}</span>
+        <span class="mx-1">·</span>
+        <span>{{ totalSubrubros }} subrubros</span>
+        <span class="mx-1">·</span>
+        <span>Ecommerce: Rubro → Subrubro</span>
+      </template>
+      <v-btn
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-refresh"
+        :disabled="busyAny"
+        :loading="busyKey === '__reload__'"
+        @click="reload"
+      >
+        Recargar
+      </v-btn>
+      <v-btn
+        color="primary"
+        variant="tonal"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-plus-box"
+        :disabled="busyAny || !selectedParentId"
+        @click="openCreateChild"
+      >
+        Nueva subcategoría
+      </v-btn>
+      <v-btn
+        color="primary"
+        variant="flat"
+        size="small"
+        rounded="lg"
+        prepend-icon="mdi-plus"
+        :disabled="busyAny"
+        @click="openCreateRoot"
+      >
+        Nuevo rubro
+      </v-btn>
+    </AppPageHeader>
 
     <!-- Loader global -->
     <v-progress-linear v-if="busyAny" indeterminate rounded class="lp-loader" />
@@ -293,6 +288,7 @@ import { computed, onMounted, ref } from "vue";
 import http from "../../../app/api/http";
 import { useCategoriesStore } from "../../../app/store/categories.store";
 import CategoryFormDialog from "../components/CategoryFormDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const cats = useCategoriesStore();
 const q = ref("");

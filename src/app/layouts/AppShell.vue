@@ -10,7 +10,7 @@
         height="72"
         class="pos-appbar"
       >
-        <template #prepend>
+        <template v-if="!mobile" #prepend>
           <v-btn
             icon="mdi-menu"
             variant="text"
@@ -30,6 +30,12 @@
         </div>
 
         <v-spacer />
+
+        <!-- 📅 Fecha y hora actual -->
+        <div class="appbar-datetime mr-3" :title="currentDateTime">
+          <v-icon size="16" class="appbar-datetime__icon">mdi-calendar-clock-outline</v-icon>
+          <span class="appbar-datetime__text">{{ currentDateTime }}</span>
+        </div>
 
         <!-- 🔔 Derivaciones bell -->
         <TransferNotificationBell class="mr-1" />
@@ -175,8 +181,9 @@
         </v-menu>
       </v-app-bar>
 
-      <!-- ================= DRAWER ================= -->
+      <!-- ================= DRAWER (solo desktop / tablet) ================= -->
       <v-navigation-drawer
+        v-if="!mobile"
         v-model="drawer"
         permanent
         :rail="rail"
@@ -488,7 +495,10 @@
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
-      <v-main class="pos-main" :class="{ 'pos-main--full': $route.meta.fullPage }">
+      <v-main
+        class="pos-main"
+        :class="{ 'pos-main--full': $route.meta.fullPage, 'pos-main--mobile': mobile }"
+      >
         <template v-if="$route.meta.fullPage">
           <router-view />
         </template>
@@ -496,6 +506,12 @@
           <router-view />
         </v-container>
       </v-main>
+
+      <!-- ================= BOTTOM NAV (solo mobile) ================= -->
+      <AppBottomNav
+        v-if="mobile"
+        :transfer-unread-count="transferUnreadCount"
+      />
     </v-layout>
   </v-app>
 </template>
@@ -510,10 +526,27 @@ import TransferNotificationBell from "@/modules/dashboard/components/TransferNot
 import { useTransferNotifications } from "@/modules/dashboard/composables/useTransferNotifications";
 import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
+import { getBreadcrumbs } from "@/app/utils/routeTree";
+import AppBottomNav from "@/app/components/AppBottomNav.vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const drawer = ref(true);
 const rail = ref(false);
 const accountMenu = ref(false);
+
+// ─── Reloj del header (Martes 28 de Abril 15:58) ────────────────────────
+const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const currentDateTime = ref("");
+let clockTimer = null;
+function updateClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  currentDateTime.value = `${DAY_NAMES[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${hh}:${mm}`;
+}
 
 // Marca POS 360 — versión optimizada para el header.
 const BRAND_LOGO_HEADER = "https://storage-files.cingulado.org/pos360/media/1777345911123-fc15363786567e40.webp";
@@ -526,58 +559,9 @@ const themeStore = useThemeStore();
 
 const isDashboard = computed(() => route.name === "home");
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
-const ROUTE_TREE = {
-  home:                     { label: "Dashboard" },
-  pos:                      { label: "Punto de Venta" },
-  posSales:                 { label: "Ventas" },
-  posSaleDetail:            { label: "Detalle", parent: { label: "Ventas", to: { name: "posSales" } } },
-  products:                 { label: "Productos", section: "Gestión" },
-  productNew:               { label: "Nuevo producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
-  productEdit:              { label: "Editar producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
-  productView:              { label: "Ver producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
-  productsImport:           { label: "Importar CSV", section: "Gestión" },
-  transfers:                { label: "Derivaciones", section: "Gestión" },
-  reports:                  { label: "Reportes", section: "Gestión" },
-  stock:                    { label: "Stock", section: "Configuración" },
-  inventory:                { label: "Inventario", section: "Configuración" },
-  categories:               { label: "Categorías", section: "Configuración" },
-  adminFiscal:              { label: "Fiscal", section: "Configuración" },
-  adminPaymentMethods:      { label: "Medios de pago", section: "Configuración" },
-  adminCashRegisters:       { label: "Cajas", section: "Gestión" },
-  adminTelegram:            { label: "Alertas Telegram", section: "Configuración" },
-  users:                    { label: "Usuarios", section: "Configuración" },
-  profile:                  { label: "Mi perfil" },
-  shopBranding:             { label: "Branding", section: "Tienda" },
-  shopOrders:               { label: "Pedidos", section: "Tienda" },
-  shopPaymentsSettings:     { label: "Pagos", section: "Tienda" },
-  shopLinks:                { label: "Links", section: "Tienda" },
-  adminGaleriaMultimedia:   { label: "Galería multimedia", section: "Tienda" },
-  adminCustomers:           { label: "Clientes", section: "CRM" },
-  adminCustomerDetail:      { label: "Detalle cliente", section: "CRM", parent: { label: "Clientes", to: { name: "adminCustomers" } } },
-  emailPromoBlocks:         { label: "Promociones email", section: "CRM" },
-};
-
+// Árbol de rutas centralizado en utils/routeTree.js (también lo usa AppPageHeader).
 const TAB_LABELS = { sales: "Ventas", stock: "Stock", inventory: "Inventario", cash: "Caja" };
-
-const breadcrumbs = computed(() => {
-  const name = String(route.name || "");
-  const tree = ROUTE_TREE[name];
-  if (!tree) return [];
-
-  const crumbs = [];
-
-  if (tree.section) crumbs.push({ label: tree.section });
-  if (tree.parent) crumbs.push(tree.parent);
-
-  crumbs.push({ label: tree.label });
-
-  if (name === "home") {
-    const tabLabel = TAB_LABELS[route.query?.tab];
-    if (tabLabel) crumbs.push({ label: tabLabel });
-  }
-
-  return crumbs;
-});
+const breadcrumbs = computed(() => getBreadcrumbs(route.name, route.query, TAB_LABELS));
 
 /* ===== Dark Mode ===== */
 const isDark = computed(() => themeStore.isDark);
@@ -868,12 +852,15 @@ onMounted(() => {
   window.addEventListener("storage", onStorage);
   window.addEventListener("focus", onFocus);
   document.addEventListener("visibilitychange", onVisibility);
+  updateClock();
+  clockTimer = setInterval(updateClock, 30000);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("storage", onStorage);
   window.removeEventListener("focus", onFocus);
   document.removeEventListener("visibilitychange", onVisibility);
+  if (clockTimer) clearInterval(clockTimer);
 });
 
 function toggleRail() {
@@ -903,6 +890,13 @@ function onLogout() {
   height: 60px;
   flex-shrink: 0;
   margin-right: 8px;
+}
+@media (max-width: 600px) {
+  .brand-mark {
+    height: 44px;
+    margin-right: 4px;
+    margin-left: 6px;
+  }
 }
 .brand-mark__img {
   height: 100%;
@@ -952,16 +946,16 @@ function onLogout() {
 }
 
 .pos-appbar {
-  background: #02498b !important;
+  background: #1488d1 !important;
   color: #fff !important;
   border-bottom: none !important;
   position: relative;
 }
-/* Dark real: app-bar en gris casi negro neutro (estilo Linear/GitHub) */
+/* Dark: app-bar en negro profundo (mismo que surface) — flota sobre background */
 .v-theme--dark .pos-appbar,
 .v-theme--adminDark .pos-appbar,
 .v-theme--shopDark .pos-appbar {
-  background: #0e0f12 !important;
+  background: #0d0f13 !important;
 }
 
 .pos-appbar::after {
@@ -976,7 +970,7 @@ function onLogout() {
 }
 
 .pos-drawer {
-  background: #02498b !important;
+  background: #1488d1 !important;
   color: #fff !important;
   border-right: none !important;
 
@@ -985,19 +979,19 @@ function onLogout() {
   display: flex !important;
   flex-direction: column !important;
 }
-/* Dark real: drawer en gris casi negro neutro */
+/* Dark: drawer en negro profundo (mismo que surface) — flota sobre background */
 .v-theme--dark .pos-drawer,
 .v-theme--adminDark .pos-drawer,
 .v-theme--shopDark .pos-drawer {
-  background: #0a0a0c !important;
+  background: #0d0f13 !important;
 }
 
 /* Dejamos que Vuetify maneje la altura del drawer (se adapta al layout
    con o sin app-bar). El __content lo posicionamos absoluto para que
    llene completamente el drawer y dispare overflow correctamente. */
 .pos-drawer :deep(.v-navigation-drawer__content) {
-  background: #02498b !important;
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
+  background: #1488d1 !important;
+  box-shadow: none;
 
   /* Como flex-item dentro del drawer: ocupa el alto restante.
      min-height: 0 es CRÍTICO para que pueda shrinkear y disparar overflow. */
@@ -1014,12 +1008,12 @@ function onLogout() {
   scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.08);
   scrollbar-gutter: stable;
 }
-/* Dark real: drawer content también */
+/* Dark: drawer content match surface */
 .v-theme--dark .pos-drawer :deep(.v-navigation-drawer__content),
 .v-theme--adminDark .pos-drawer :deep(.v-navigation-drawer__content),
 .v-theme--shopDark .pos-drawer :deep(.v-navigation-drawer__content) {
-  background: #0a0a0c !important;
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06);
+  background: #0d0f13 !important;
+  box-shadow: none;
 }
 
 /* Webkit (Chrome/Edge/Safari): scrollbar más gruesa y con buen contraste */
@@ -1054,21 +1048,6 @@ function onLogout() {
   opacity: 0.6;
 }
 
-.pos-drawer :deep(.v-navigation-drawer__content)::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 1px;
-  height: 100%;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.06),
-    rgba(255, 255, 255, 0.16),
-    rgba(255, 255, 255, 0.06)
-  );
-}
 
 /* =========================
    Texto general navbar/drawer
@@ -1084,6 +1063,29 @@ function onLogout() {
 
 .pos-appbar-toggle {
   margin-inline-start: 2px;
+}
+
+/* Reloj del header: fecha + hora actual */
+.appbar-datetime {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+.appbar-datetime__icon {
+  opacity: 0.85;
+}
+@media (max-width: 720px) {
+  .appbar-datetime__text { display: none; }
+  .appbar-datetime { padding: 6px 8px; }
 }
 
 .section-caption,
@@ -1434,6 +1436,19 @@ function onLogout() {
   padding-top: 16px;
   padding-bottom: 24px;
   max-width: 1400px;
+}
+
+/* ─── Mobile: reservar espacio para el bottom-nav ────────────────────────── */
+.pos-main--mobile .pos-container {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+/* fullPage en mobile (POS, ProductFormPage): el child ya gestiona su altura.
+   Sumamos un bottom-padding al contenedor del main para que el bottom-nav
+   no tape el contenido. */
+.pos-main--mobile.pos-main--full {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 /* =========================

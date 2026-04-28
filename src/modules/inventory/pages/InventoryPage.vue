@@ -2,43 +2,28 @@
 <template>
   <div>
     <!-- HEADER -->
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
-      <div>
-        <div class="text-h5 font-weight-bold">Inventario</div>
-        <div class="text-caption text-medium-emphasis">
-          Total: {{ filteredCount }} · Página {{ page }}/{{ pages }}
-        </div>
-      </div>
-
-      <div class="d-flex ga-2 align-center flex-wrap">
-        <v-text-field
-          v-model="q"
-          density="comfortable"
-          variant="outlined"
-          hide-details
-          style="min-width: 360px"
-          prepend-inner-icon="mdi-magnify"
-          placeholder="Buscar (nombre / sku / barcode / code / marca / modelo)"
-          @keyup.enter="search"
-        />
-
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="search">
-          Buscar
-        </v-btn>
-
-        <v-btn variant="tonal" @click="clear">
-          Limpiar
-        </v-btn>
-
-        <v-btn variant="tonal" prepend-icon="mdi-filter-variant" @click="advanced = !advanced">
-          Más filtros
-        </v-btn>
-
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="openCreate">
-          Nuevo producto
-        </v-btn>
-      </div>
-    </div>
+    <AppPageHeader
+      icon="mdi-clipboard-list-outline"
+      title="Inventario"
+      :subtitle="`Total: ${filteredCount} · Página ${page}/${pages}`"
+    >
+      <v-text-field
+        v-model="q"
+        density="compact"
+        variant="outlined"
+        hide-details
+        style="min-width: 320px"
+        prepend-inner-icon="mdi-magnify"
+        placeholder="Buscar nombre, SKU, marca, modelo…"
+        @keyup.enter="search"
+      />
+      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-filter-variant" @click="advanced = !advanced">
+        Filtros
+      </v-btn>
+      <v-btn color="primary" variant="flat" size="small" rounded="lg" prepend-icon="mdi-plus" @click="openCreate">
+        Nuevo producto
+      </v-btn>
+    </AppPageHeader>
 
     <v-alert v-if="products.error" type="error" variant="tonal" class="mb-3">
       {{ products.error }}
@@ -365,6 +350,7 @@ import { useAuthStore } from "../../../app/store/auth.store";
 
 import ProductDetailsDialog from "../../products/components/ProductDetailsDialog.vue";
 import ProductFormDialog from "../../products/components/ProductFormDialog.vue";
+import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const products = useProductsStore();
 const auth = useAuthStore();
