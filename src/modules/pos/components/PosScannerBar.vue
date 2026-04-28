@@ -343,7 +343,7 @@ watch(
 
 .pos-scanner-title {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -365,7 +365,7 @@ watch(
 
 .pos-scanner-status {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .pos-scanner-status.is-ready {

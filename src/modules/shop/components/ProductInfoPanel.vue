@@ -231,7 +231,7 @@ const bullets = computed(() => {
 
 .mi-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   margin-bottom: 8px;
 }
@@ -244,7 +244,7 @@ const bullets = computed(() => {
 }
 .mi-rating-num {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgba(0,0,0,.75);
 }
 .mi-rating-count {
@@ -259,7 +259,7 @@ const bullets = computed(() => {
   background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
   color: #fff;
   font-size: 11.5px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.7px;
   padding: 6px 12px;
   border-radius: 6px;
@@ -277,7 +277,7 @@ const bullets = computed(() => {
   display: inline-flex;
   align-items: center;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 500;
   color: #00a650;
   margin-left: 8px;
   margin-top: 14px;
@@ -290,7 +290,7 @@ const bullets = computed(() => {
   border: 1px solid rgba(255, 87, 34, 0.28);
   color: #ff5722;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   padding: 8px 11px;
   border-radius: 8px;
   margin-top: 10px;
@@ -313,19 +313,19 @@ const bullets = computed(() => {
 }
 .mi-currency {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.2;
   margin-top: 6px;
 }
 .mi-price-int {
   font-size: 46px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.5px;
   line-height: 1.05;
 }
 .mi-price-dec {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.2;
   margin-top: 10px;
   opacity: 0.9;
@@ -336,14 +336,14 @@ const bullets = computed(() => {
   margin-top: 8px;
   color: #1a73e8;
   text-decoration: none;
-  font-weight: 800;
+  font-weight: 500;
 }
 .mi-link:hover { text-decoration: underline; }
 
 .mi-know { margin-top: 14px; }
 .mi-know-title {
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 500;
   margin-bottom: 6px;
 }
 .mi-know-list {

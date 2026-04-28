@@ -124,7 +124,7 @@ color:#fff;
 font-size:10px;
 letter-spacing:4px;
 text-transform:uppercase;
-font-weight:800;
+font-weight: 500;
 color:rgba(255,255,255,.7);
 }
 
@@ -132,7 +132,7 @@ color:rgba(255,255,255,.7);
 margin:0;
 font-size:30px;
 line-height:1.05;
-font-weight:800;
+font-weight: 500;
 letter-spacing:-0.6px;
 max-width:420px;
 }
@@ -164,7 +164,7 @@ border:0;
 background:#ffffff;
 color:#02498b;
 font-size:14px;
-font-weight:700;
+font-weight: 400;
 cursor:pointer;
 }
 

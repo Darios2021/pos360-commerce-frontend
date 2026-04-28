@@ -201,6 +201,10 @@
             </v-chip>
             <v-chip v-if="productForUIFixed.is_new" size="small" color="primary" variant="tonal" rounded="md">Nuevo</v-chip>
             <v-chip v-if="productForUIFixed.is_promo" size="small" color="warning" variant="tonal" rounded="md">Promo</v-chip>
+            <v-chip v-if="productForUIFixed.is_kit" size="small" color="#7c3aed" variant="flat" rounded="md">
+              <v-icon start size="13">mdi-package-variant</v-icon>
+              Kit · {{ kitItemsList.length }}
+            </v-chip>
             <v-chip v-if="productForUIFixed.track_stock === false" size="small" variant="tonal" rounded="md">Sin control stock</v-chip>
           </div>
 
@@ -281,6 +285,62 @@
             <div class="pv-pg-item pv-pg-item--margin" v-if="productForUIFixed.margin !== null && productForUIFixed.margin !== undefined">
               <span class="pv-pg-k">Margen</span>
               <span class="pv-pg-v pv-pg-v--ok">{{ Number(productForUIFixed.margin || 0).toFixed(1) }}%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Kit / Combo -->
+        <section v-if="productForUIFixed.is_kit" class="pv-card pv-card--kit">
+          <div class="pv-card-head">
+            <div class="pv-card-title">
+              <v-icon size="16" color="#7c3aed">mdi-package-variant</v-icon>
+              ¿Qué incluye este kit?
+              <v-chip size="x-small" class="ml-2" color="#7c3aed" variant="flat">
+                {{ kitItemsList.length }} {{ kitItemsList.length === 1 ? 'producto' : 'productos' }}
+              </v-chip>
+            </div>
+          </div>
+
+          <div v-if="!kitItemsList.length" class="pv-empty pv-empty--sm">
+            <v-icon size="28" color="warning">mdi-alert-circle-outline</v-icon>
+            <span>El kit todavía no tiene componentes definidos</span>
+          </div>
+
+          <div v-else class="pv-kit-grid">
+            <div
+              v-for="it in kitItemsList"
+              :key="it.component_id"
+              class="pv-kit-card"
+              @click="$router.push({ name: 'productView', params: { id: it.component_id } })"
+            >
+              <div class="pv-kit-img">
+                <img v-if="it.image_url" :src="it.image_url" :alt="it.name" />
+                <v-icon v-else size="28" color="medium-emphasis">mdi-package-variant-closed</v-icon>
+                <span class="pv-kit-qty">×{{ it.qty }}</span>
+              </div>
+              <div class="pv-kit-info">
+                <div class="pv-kit-name" :title="it.name">{{ it.name }}</div>
+                <div class="pv-kit-meta">
+                  <span v-if="it.sku">SKU {{ it.sku }}</span>
+                  <span v-if="it.price_list" class="pv-kit-price">$ {{ Number(it.price_list).toLocaleString('es-AR') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="kitSavingsView" class="pv-kit-savings-block">
+            <div class="pv-kit-savings-row">
+              <span class="text-medium-emphasis">Suelto:</span>
+              <b class="text-decoration-line-through text-medium-emphasis">$ {{ Number(kitSavingsView.componentsTotal).toLocaleString('es-AR') }}</b>
+            </div>
+            <div class="pv-kit-savings-row">
+              <span class="text-medium-emphasis">Kit:</span>
+              <b>$ {{ Number(kitSavingsView.kitPrice).toLocaleString('es-AR') }}</b>
+            </div>
+            <div v-if="kitSavingsView.savings > 0" class="pv-kit-savings-final">
+              <v-icon size="14" color="success">mdi-trending-down</v-icon>
+              <span>Ahorro vs suelto:</span>
+              <b class="text-success">$ {{ Number(kitSavingsView.savings).toLocaleString('es-AR') }} ({{ kitSavingsView.savingsPct }}%)</b>
             </div>
           </div>
         </section>
@@ -762,6 +822,7 @@ const productForUIFixed = computed(() => {
     price_list: pickFirstNumber(r, ["price_list"], price),
     price_discount: pickFirstNumber(r, ["price_discount"], price),
     price_reseller: pickFirstNumber(r, ["price_reseller"], price),
+    is_kit: Number(r.is_kit ?? base.is_kit ?? 0) === 1,
     branches_matrix: branchesStock.value,
     stock_total,
     stock_in_branch,
@@ -770,6 +831,39 @@ const productForUIFixed = computed(() => {
     stock_qty: stock_total,
     qty: stock_total,
   };
+});
+
+/* ── Kit items ── */
+const kitItemsList = computed(() => {
+  const r = raw.value || {};
+  const arr = Array.isArray(r.kitItems) ? r.kitItems : Array.isArray(r.kit_items) ? r.kit_items : [];
+  return arr.map((ki) => {
+    const c = ki?.component || ki?.product || ki;
+    const cid = Number(ki?.component_id ?? c?.id ?? ki?.id ?? 0);
+    const firstImg = Array.isArray(c?.images)
+      ? (c.images[0]?.url || c.images[0]?.image_url || null)
+      : (c?.image_url || null);
+    return {
+      component_id: cid,
+      name: String(c?.name || "—"),
+      sku: String(c?.sku || ""),
+      qty: Number(ki?.qty || 1),
+      price_list: Number(c?.price_list || c?.price || 0),
+      image_url: firstImg,
+    };
+  }).filter((x) => x.component_id > 0);
+});
+
+const kitSavingsView = computed(() => {
+  const items = kitItemsList.value;
+  if (!items.length) return null;
+  const componentsTotal = items.reduce((acc, it) => acc + Number(it.price_list || 0) * Number(it.qty || 1), 0);
+  const r = raw.value || {};
+  const kitPrice = Number(r.price_discount || r.price_list || r.price || 0);
+  if (!componentsTotal && !kitPrice) return null;
+  const savings = componentsTotal - kitPrice;
+  const savingsPct = componentsTotal > 0 ? Math.round((savings / componentsTotal) * 100) : 0;
+  return { componentsTotal, kitPrice, savings, savingsPct };
 });
 
 async function refreshBranchesMatrix() {
@@ -859,7 +953,7 @@ watch(branchId, fetchProduct);
 }
 .pv-cat-chip {
   font-size: 11.5px !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   letter-spacing: 0.01em;
 }
 
@@ -918,7 +1012,7 @@ watch(branchId, fetchProduct);
   align-items: center;
   opacity: 0.4;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .pv-gallery-count {
   position: absolute;
@@ -927,7 +1021,7 @@ watch(branchId, fetchProduct);
   background: rgba(0, 0, 0, 0.65);
   color: #fff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   padding: 4px 10px;
   border-radius: 999px;
   letter-spacing: 0.03em;
@@ -1009,7 +1103,7 @@ watch(branchId, fetchProduct);
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.75;
@@ -1024,10 +1118,10 @@ watch(branchId, fetchProduct);
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
-.pv-chip-status { font-weight: 700; }
+.pv-chip-status { font-weight: 400; }
 .pv-name {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.01em;
   margin: 0 0 8px;
@@ -1042,7 +1136,7 @@ watch(branchId, fetchProduct);
 }
 .pv-meta-brand {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.95);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1050,7 +1144,7 @@ watch(branchId, fetchProduct);
 .pv-meta-sep { opacity: 0.35; }
 .pv-meta-model {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
@@ -1071,7 +1165,7 @@ watch(branchId, fetchProduct);
 }
 .pv-code-ic { opacity: 0.5; }
 .pv-code-k {
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 10px;
@@ -1079,7 +1173,7 @@ watch(branchId, fetchProduct);
 }
 .pv-code-v {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12.5px;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -1098,7 +1192,7 @@ watch(branchId, fetchProduct);
 }
 .pv-price-cash-lbl {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1111,13 +1205,13 @@ watch(branchId, fetchProduct);
 }
 .pv-price-cur {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.5;
   padding-bottom: 8px;
 }
 .pv-price-big {
   font-size: 44px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: -0.02em;
   color: rgb(var(--v-theme-success));
@@ -1128,7 +1222,7 @@ watch(branchId, fetchProduct);
   gap: 4px;
   margin-bottom: 10px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-success));
   padding: 4px 10px;
   border-radius: 999px;
@@ -1140,11 +1234,11 @@ watch(branchId, fetchProduct);
   opacity: 0.65;
 }
 .pv-price-compare-k {
-  font-weight: 700;
+  font-weight: 400;
   margin-right: 6px;
 }
 .pv-price-compare-v {
-  font-weight: 800;
+  font-weight: 500;
   text-decoration: line-through;
   opacity: 0.7;
 }
@@ -1163,12 +1257,12 @@ watch(branchId, fetchProduct);
 }
 .pv-pg-k {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   opacity: 0.65;
 }
 .pv-pg-v {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 .pv-pg-v--dim { opacity: 0.7; }
@@ -1202,7 +1296,7 @@ watch(branchId, fetchProduct);
   display: grid;
   place-items: center;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.75);
 }
@@ -1219,7 +1313,7 @@ watch(branchId, fetchProduct);
 }
 .pv-stock-name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-on-surface));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1227,7 +1321,7 @@ watch(branchId, fetchProduct);
 }
 .pv-stock-qty {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .clr-ok   { color: rgb(var(--v-theme-success)); }
@@ -1242,7 +1336,7 @@ watch(branchId, fetchProduct);
 }
 .pv-dl dt {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1253,7 +1347,7 @@ watch(branchId, fetchProduct);
   margin: 0;
   padding: 8px 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgb(var(--v-theme-on-surface));
   border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.5));
 }
@@ -1290,7 +1384,7 @@ watch(branchId, fetchProduct);
   padding: 40px 20px;
   opacity: 0.5;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .pv-empty--sm { padding: 20px; }
 
@@ -1392,7 +1486,7 @@ watch(branchId, fetchProduct);
 }
 .pv-video-title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-on-surface));
   line-height: 1.35;
   overflow: hidden;
@@ -1427,7 +1521,7 @@ watch(branchId, fetchProduct);
   gap: 10px;
   color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Label dialog */
@@ -1438,7 +1532,7 @@ watch(branchId, fetchProduct);
 }
 .pv-size-lbl {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.6;
   white-space: nowrap;
 }
@@ -1489,5 +1583,84 @@ watch(branchId, fetchProduct);
   .pv-card { padding: 14px; }
   .pv-card--identity { padding: 16px; }
   .pv-gallery-thumbs { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+}
+
+/* ── KIT / COMBO ── */
+.pv-card--kit {
+  border-color: rgba(124, 58, 237, 0.30) !important;
+  background: linear-gradient(180deg,
+    rgba(124, 58, 237, 0.04),
+    rgba(124, 58, 237, 0.01)
+  ) !important;
+}
+.pv-kit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.pv-kit-card {
+  display: flex; flex-direction: column;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface), 0.6);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  overflow: hidden;
+}
+.pv-kit-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.12);
+}
+.pv-kit-img {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  display: flex; align-items: center; justify-content: center;
+}
+.pv-kit-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.pv-kit-qty {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(124, 58, 237, 0.95);
+  color: #fff;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.4);
+}
+.pv-kit-info { padding: 8px 10px 10px; }
+.pv-kit-name {
+  font-size: 12.5px; font-weight: 500; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 30px;
+}
+.pv-kit-meta {
+  margin-top: 4px;
+  font-size: 10.5px; opacity: 0.65;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+}
+.pv-kit-price { font-weight: 500; opacity: 0.85; }
+
+.pv-kit-savings-block {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  font-size: 12.5px;
+}
+.pv-kit-savings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 0;
+}
+.pv-kit-savings-final {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.25);
+  font-size: 13px;
 }
 </style>

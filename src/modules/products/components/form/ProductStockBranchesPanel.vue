@@ -335,7 +335,7 @@ defineExpose({ refresh, applyReparto });
 }
 
 .psb-table :deep(th) {
-  font-weight: 900;
+  font-weight: 500;
 }
 
 /* ✅ celda Habilitada: chip + switch alineados */
@@ -349,7 +349,7 @@ defineExpose({ refresh, applyReparto });
 
 /* chip Sí/No legible en dark y light */
 .psb-yn {
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.2px;
   border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 22%, transparent) !important;
 }
@@ -435,7 +435,7 @@ defineExpose({ refresh, applyReparto });
   border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 22%, transparent) !important;
   background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 12%, transparent) !important;
   color: rgb(var(--v-theme-on-surface)) !important;
-  font-weight: 800;
+  font-weight: 500;
 }
 /* =========================================================
    ✅ FIX OFF STATE: que el switch apagado se vea en DARK

@@ -154,13 +154,13 @@ watch(qrUrl, buildQr);
 }
 
 .l-name{
-  font-weight: 900;
+  font-weight: 500;
   font-size: 22px;
   line-height: 1.05;
 }
 .l-sub{
   margin-top: 6px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: .75;
 }
 
@@ -176,7 +176,7 @@ watch(qrUrl, buildQr);
   display:flex;
   gap: 18px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .l-oldrow{
@@ -184,11 +184,11 @@ watch(qrUrl, buildQr);
   align-items: baseline;
   gap: 12px;
 }
-.l-old{ opacity:.65; text-decoration: line-through; font-weight: 900; }
-.l-off{ font-weight: 900; }
+.l-old{ opacity:.65; text-decoration: line-through; font-weight: 500; }
+.l-off{ font-weight: 500; }
 
 .l-price{
-  font-weight: 900;
+  font-weight: 500;
   font-size: 44px;
   line-height: 1;
 }
@@ -196,7 +196,7 @@ watch(qrUrl, buildQr);
 .l-cat{
   font-size: 12px;
   opacity: .75;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: .2px;
 }
 </style>

@@ -265,7 +265,7 @@ function applyVolume() {
 .mlf-sec + .mlf-sec{ margin-top:16px; }
 
 .mlf-title{
-  font-weight:900;font-size:14px;color:#111;margin-bottom:10px;
+  font-weight: 500;font-size:14px;color:#111;margin-bottom:10px;
 }
 .mlf-list{ display:grid; gap:6px; }
 
@@ -275,7 +275,7 @@ function applyVolume() {
   font-size:13px;color:#222;
 }
 .mlf-item:hover{ background:rgba(0,0,0,.04); }
-.mlf-item.on{ background:rgba(0,0,0,.06); font-weight:900; }
+.mlf-item.on{ background:rgba(0,0,0,.06); font-weight: 500; }
 .mlf-name{ overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
 .mlf-row{
@@ -285,13 +285,13 @@ function applyVolume() {
   font-size:13px;color:#222;
 }
 .mlf-row:hover{ background:rgba(0,0,0,.04); }
-.mlf-row.on{ background:rgba(0,0,0,.06); font-weight:900; }
+.mlf-row.on{ background:rgba(0,0,0,.06); font-weight: 500; }
 .mlf-row-name{ overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .mlf-row-count{ opacity:.7; flex:0 0 auto; }
 
 .mlf-more{
   margin-top:10px;border:0;background:transparent;color:#3483fa;
-  font-weight:800;cursor:pointer;padding:2px 2px;text-align:left;
+  font-weight: 500;cursor:pointer;padding:2px 2px;text-align:left;
 }
 
 .mlf-minmax{
@@ -301,7 +301,7 @@ function applyVolume() {
   width:100%;border:1px solid rgba(0,0,0,.18);background:#fff;border-radius:10px;
   padding:10px 12px;font-size:13px;outline:none;
 }
-.mlf-sep{ opacity:.6; font-weight:900; }
+.mlf-sep{ opacity:.6; font-weight: 500; }
 .mlf-go{
   width:34px;height:34px;border-radius:999px;border:1px solid rgba(0,0,0,.18);
   background:#fff;cursor:pointer;display:grid;place-items:center;
@@ -313,6 +313,6 @@ function applyVolume() {
 .mlf-bottom{ margin-top:16px; }
 .mlf-reset{
   width:100%;border:0;background:transparent;padding:10px 0;cursor:pointer;
-  font-weight:900;letter-spacing:.4px;color:#111;text-transform:uppercase;
+  font-weight: 500;letter-spacing:.4px;color:#111;text-transform:uppercase;
 }
 </style>

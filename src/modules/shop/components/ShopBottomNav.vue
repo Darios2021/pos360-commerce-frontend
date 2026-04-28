@@ -229,7 +229,7 @@ function goHome() {
   color:var(--ml-active);
 }
 .ml-nav-item.active > span{
-  font-weight:600;
+  font-weight: 400;
 }
 
 /* Carrito — sutilmente elevado dentro del propio nav (sin transform).

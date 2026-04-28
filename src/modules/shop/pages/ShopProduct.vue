@@ -22,7 +22,7 @@
       </div>
 
       <v-alert v-else-if="error" type="error" variant="tonal" class="mt-4">
-        <div style="font-weight: 700">No pudimos cargar el producto</div>
+        <div style="font-weight: 400">No pudimos cargar el producto</div>
         <div class="mt-1" style="white-space: pre-wrap">{{ error }}</div>
 
         <div class="mt-3 d-flex" style="gap: 10px; flex-wrap: wrap">

@@ -78,7 +78,7 @@ const displayValue = computed(() => {
 
 .kc__label {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.50);
@@ -88,7 +88,7 @@ const displayValue = computed(() => {
 
 .kc__value {
   font-size: 1.65rem;
-  font-weight: 950;
+  font-weight: 500;
   line-height: 1.05;
   letter-spacing: -0.04em;
   color: rgb(var(--v-theme-on-surface));
@@ -102,7 +102,7 @@ const displayValue = computed(() => {
 
 .kc__sub {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.48);
   margin-top: 6px;
   line-height: 1.3;

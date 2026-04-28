@@ -494,6 +494,6 @@ onMounted(() => {
   border-color: rgb(var(--v-theme-primary));
 }
 .pi-dropzone-icon { opacity: 0.5; }
-.pi-dropzone-text { font-size: 14px; font-weight: 600; opacity: 0.8; }
+.pi-dropzone-text { font-size: 14px; font-weight: 400; opacity: 0.8; }
 .pi-dropzone-hint { font-size: 12px; opacity: 0.45; }
 </style>

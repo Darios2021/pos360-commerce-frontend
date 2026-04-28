@@ -174,7 +174,7 @@ function openProduct() {
   background: #fff;
   box-shadow: 0 1px 4px rgba(0,0,0,.25);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
   cursor: pointer;
   display: grid;
@@ -234,7 +234,7 @@ function openProduct() {
   background: #00a650;
   color: #fff;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   padding: 4px 8px;
   border-radius: 999px;
 }
@@ -245,11 +245,11 @@ function openProduct() {
 }
 .ml-price {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 500;
 }
 .ml-title {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: uppercase;
   display: -webkit-box;
   -webkit-line-clamp: 2;

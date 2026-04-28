@@ -190,7 +190,7 @@ function onKeyDownNumeric(e) {
 }
 
 .pp-chip {
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .pp-grid {
@@ -211,14 +211,14 @@ function onKeyDownNumeric(e) {
 }
 
 .pp-prefix {
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.75;
   padding-right: 6px;
 }
 
 .pp-input :deep(input) {
   text-align: right;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.2px;
   font-variant-numeric: tabular-nums;
 }

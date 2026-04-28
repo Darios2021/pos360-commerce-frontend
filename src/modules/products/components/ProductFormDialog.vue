@@ -1431,7 +1431,7 @@ async function saveAll() {
 
 .pf-title {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -1462,7 +1462,7 @@ async function saveAll() {
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.5);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
@@ -1475,7 +1475,7 @@ async function saveAll() {
 .pf-step-btn.active {
   background: rgba(var(--v-theme-primary), 0.15);
   color: rgb(var(--v-theme-primary));
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .pf-step-btn.done {
@@ -1494,7 +1494,7 @@ async function saveAll() {
   display: grid;
   place-items: center;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   background: currentColor;
   color: rgb(var(--v-theme-surface));
   flex-shrink: 0;
@@ -1519,8 +1519,8 @@ async function saveAll() {
   gap: 4px;
   line-height: 1;
 }
-.pf-step-mobile-count { font-size: 11px; opacity: 0.45; font-weight: 600; }
-.pf-step-mobile-name  { font-size: 13px; font-weight: 800; }
+.pf-step-mobile-count { font-size: 11px; opacity: 0.45; font-weight: 400; }
+.pf-step-mobile-name  { font-size: 13px; font-weight: 500; }
 
 .pf-dots-row {
   display: flex;
@@ -1626,7 +1626,7 @@ async function saveAll() {
 .pf-sidenav-item.active .pf-sidenav-icon { background: rgb(var(--v-theme-primary)); }
 .pf-sidenav-item.done .pf-sidenav-icon { background: rgb(var(--v-theme-success)); }
 
-.pf-sidenav-title { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.pf-sidenav-title { font-size: 13px; font-weight: 400; line-height: 1.2; }
 .pf-sidenav-sub { font-size: 11px; opacity: 0.7; line-height: 1.2; }
 
 /* Sidebar quick info */
@@ -1636,11 +1636,11 @@ async function saveAll() {
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.pf-side-info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 4px; }
-.pf-side-info-name { font-size: 13px; font-weight: 800; line-height: 1.3; margin-bottom: 6px; word-break: break-word; }
+.pf-side-info-label { font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 4px; }
+.pf-side-info-name { font-size: 13px; font-weight: 500; line-height: 1.3; margin-bottom: 6px; word-break: break-word; }
 .pf-side-info-row { display: flex; align-items: center; gap: 4px; font-size: 11px; opacity: 0.7; margin-bottom: 2px; }
 .pf-side-info-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.pf-side-chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.pf-side-chip { font-size: 10px; font-weight: 400; padding: 2px 7px; border-radius: 999px; }
 .pf-side-chip.green { background: rgba(76,175,80,0.15); color: #4caf50; }
 .pf-side-chip.grey { background: rgba(158,158,158,0.15); color: #9e9e9e; }
 .pf-side-chip.blue { background: rgba(var(--v-theme-primary), 0.15); color: rgb(var(--v-theme-primary)); }
@@ -1690,7 +1690,7 @@ async function saveAll() {
   background: var(--accent, rgb(var(--v-theme-primary)));
 }
 
-.pf-section-title { font-size: 14px; font-weight: 800; line-height: 1.2; }
+.pf-section-title { font-size: 14px; font-weight: 500; line-height: 1.2; }
 .pf-section-sub { font-size: 11px; opacity: 0.6; }
 
 .pf-reload-btn { opacity: 0.6; }
@@ -1731,7 +1731,7 @@ async function saveAll() {
 .pf-toggle-card.on { border-color: rgba(var(--v-theme-primary), 0.35); background: rgba(var(--v-theme-primary), 0.04); }
 .pf-toggle-icon { flex-shrink: 0; }
 .pf-toggle-text { flex: 1; }
-.pf-toggle-label { font-size: 13px; font-weight: 700; }
+.pf-toggle-label { font-size: 13px; font-weight: 400; }
 .pf-toggle-sub { font-size: 11px; opacity: 0.6; }
 
 /* Alert error */
@@ -1748,7 +1748,7 @@ async function saveAll() {
 /* Videos */
 .pf-video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 700px) { .pf-video-grid { grid-template-columns: 1fr; } }
-.pf-video-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.pf-video-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 400; }
 .pf-queue-list { display: flex; flex-direction: column; gap: 6px; }
 .pf-queue-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(var(--v-theme-surface-variant), 0.5); }
 .pf-queue-url { flex: 1; font-size: 11px; opacity: 0.8; min-width: 0; }
@@ -1772,7 +1772,7 @@ async function saveAll() {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   opacity: 0.7;
@@ -1781,7 +1781,7 @@ async function saveAll() {
 
 .pf-kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; align-items: baseline; }
 .pf-kv .k { font-size: 11px; opacity: 0.55; }
-.pf-kv .v { font-size: 13px; font-weight: 700; word-break: break-word; }
+.pf-kv .v { font-size: 13px; font-weight: 400; word-break: break-word; }
 .pf-mono { font-family: monospace; font-size: 12px; }
 
 .pf-sum-desc {
@@ -1799,7 +1799,7 @@ async function saveAll() {
 .pf-price-row-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pf-price-item { text-align: center; }
 .pf-price-label { font-size: 10px; opacity: 0.55; margin-bottom: 2px; }
-.pf-price-val { font-size: 15px; font-weight: 900; color: rgb(var(--v-theme-success)); }
+.pf-price-val { font-size: 15px; font-weight: 500; color: rgb(var(--v-theme-success)); }
 .pf-price-val.muted { color: rgba(var(--v-theme-on-surface), 0.35); font-size: 13px; }
 
 .pf-media-badges { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1837,13 +1837,13 @@ async function saveAll() {
   opacity: 0.6;
   flex-wrap: wrap;
 }
-.pf-footer-step { font-weight: 800; }
+.pf-footer-step { font-weight: 500; }
 .pf-footer-dot { opacity: 0.4; }
 
 .pf-footer-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .pf-btn-nav { min-width: 110px; }
-.pf-btn-save { min-width: 160px; font-weight: 800; }
+.pf-btn-save { min-width: 160px; font-weight: 500; }
 
 /* ══════════════════════════════
    VALIDATION MODAL

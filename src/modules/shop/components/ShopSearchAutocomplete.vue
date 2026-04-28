@@ -231,7 +231,7 @@ watch(selected, async (val) => {
 }
 
 .ml-title {
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .ml-sub {

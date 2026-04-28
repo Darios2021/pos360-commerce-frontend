@@ -248,7 +248,7 @@ function openCategory(c) {
 }
 .hc-title {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.2px;
 }
 
@@ -336,7 +336,7 @@ function openCategory(c) {
 .hc-name {
   padding: 0 12px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.15;
   color: rgba(0, 0, 0, 0.85);
 
@@ -399,7 +399,7 @@ function openCategory(c) {
   }
   .hc-title {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
   }
 
   .hc-dots {

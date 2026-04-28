@@ -284,6 +284,6 @@ function noRefs(p) {
 .detail-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
 @media (max-width:900px){ .detail-grid{ grid-template-columns:1fr; } }
 .box { border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:12px; background:rgba(255,255,255,.03); }
-.box-title { font-weight:900; margin-bottom:6px; }
+.box-title { font-weight: 500; margin-bottom:6px; }
 .muted { opacity:.72; font-size:12px; }
 </style>

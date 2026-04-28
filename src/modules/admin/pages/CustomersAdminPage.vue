@@ -1338,7 +1338,7 @@ onMounted(reload);
 .lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lp-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
@@ -1353,7 +1353,7 @@ onMounted(reload);
   flex-wrap: wrap;
 }
 .lp-meta__strong {
-  font-weight: 800;
+  font-weight: 500;
   color: var(--lp-strong);
   font-feature-settings: "tnum";
 }
@@ -1387,13 +1387,13 @@ onMounted(reload);
 .lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
 .lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-kpi__lbl   {
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 400;
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .lp-kpi__val   {
-  font-size: 20px; font-weight: 900;
+  font-size: 20px; font-weight: 500;
   line-height: 1.2;
   margin-top: 4px;
   font-feature-settings: "tnum";
@@ -1431,7 +1431,7 @@ onMounted(reload);
 }
 .lp-kpi__cta-text {
   color: rgb(var(--v-theme-primary)) !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   opacity: 0.85;
 }
 
@@ -1459,7 +1459,7 @@ onMounted(reload);
 }
 .cmp-empty__title {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   margin-top: 4px;
 }
 .cmp-empty__sub {
@@ -1483,11 +1483,11 @@ onMounted(reload);
   align-items: center;
   gap: 8px;
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 400;
 }
 .cmp-summary__big b {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-primary));
   font-feature-settings: "tnum";
 }
@@ -1497,7 +1497,7 @@ onMounted(reload);
   gap: 5px;
   font-size: 11.5px;
   color: rgb(var(--v-theme-warning));
-  font-weight: 700;
+  font-weight: 400;
 }
 .cmp-list {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
@@ -1507,7 +1507,7 @@ onMounted(reload);
 .cmp-list__head {
   padding: 8px 12px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.55);
@@ -1532,7 +1532,7 @@ onMounted(reload);
 }
 .cmp-list__body li:last-child { border-bottom: none; }
 .cmp-list__name {
-  font-weight: 700;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1551,7 +1551,7 @@ onMounted(reload);
 .cmp-list__more {
   padding: 6px 12px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
   background: rgba(var(--v-theme-on-surface), 0.025);
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.05);
@@ -1606,7 +1606,7 @@ onMounted(reload);
 }
 .lp-bulk__select {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  font-size: 13px; font-weight: 600;
+  font-size: 13px; font-weight: 400;
 }
 .lp-bulk__actions {
   display: inline-flex;
@@ -1625,11 +1625,11 @@ onMounted(reload);
   color: rgb(var(--v-theme-primary));
 }
 .cad-bulk__counter-num b {
-  font-size: 19px; font-weight: 900;
+  font-size: 19px; font-weight: 500;
   letter-spacing: -0.02em;
 }
 .cad-bulk__counter-max {
-  font-size: 12px; opacity: 0.55; font-weight: 700;
+  font-size: 12px; opacity: 0.55; font-weight: 400;
   margin-left: 1px;
 }
 .cad-bulk__counter--cap .cad-bulk__counter-num,
@@ -1658,7 +1658,7 @@ onMounted(reload);
 }
 .cad-bulk__hint {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11.5px; font-weight: 600;
+  font-size: 11.5px; font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.65);
   letter-spacing: 0.01em;
 }
@@ -1667,7 +1667,7 @@ onMounted(reload);
 }
 .cad-bulk__clear {
   background: transparent; border: none; cursor: pointer;
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 400;
   color: rgb(var(--v-theme-primary));
   padding: 4px 9px; border-radius: 6px;
   text-transform: uppercase; letter-spacing: 0.06em;
@@ -1691,7 +1691,7 @@ onMounted(reload);
   background: rgba(var(--v-theme-on-surface), 0.015);
 }
 .lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
 .lp-content__body { padding: 12px; transition: opacity 0.2s; }
 .lp-content__body--flush { padding: 0; }
 .lp-content__body--loading { opacity: 0.7; pointer-events: none; }
@@ -1707,7 +1707,7 @@ onMounted(reload);
 }
 .lp-pagination__info {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--lp-muted);
   font-feature-settings: "tnum";
 }
@@ -1723,7 +1723,7 @@ onMounted(reload);
 .cad-table thead th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1750,20 +1750,20 @@ onMounted(reload);
   text-align: center; padding: 40px 20px; opacity: 0.65;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
-.cad-empty { font-size: 13px; font-weight: 600; }
+.cad-empty { font-size: 13px; font-weight: 400; }
 
 .cad-name { display: flex; align-items: center; gap: 10px; }
 .cad-name__avatar {
   width: 32px; height: 32px; border-radius: 50%;
   display: grid; place-items: center;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff; font-size: 11px; font-weight: 800;
+  color: #fff; font-size: 11px; font-weight: 500;
 }
-.cad-name__main { font-weight: 700; font-size: 13px; }
+.cad-name__main { font-weight: 400; font-size: 13px; }
 .cad-name__tags { font-size: 10.5px; opacity: 0.6; margin-top: 1px; }
 
 .cad-doc__type {
-  font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em;
+  font-size: 9.5px; font-weight: 500; letter-spacing: 0.05em;
   text-transform: uppercase; opacity: 0.55; margin-right: 4px;
 }
 .cad-doc__num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
@@ -1780,7 +1780,7 @@ onMounted(reload);
   padding: 3px 9px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1806,11 +1806,11 @@ onMounted(reload);
   border-bottom: 1px solid var(--lp-card-border);
 }
 .cad-edit__eyebrow {
-  margin: 0; font-size: 11px; font-weight: 700;
+  margin: 0; font-size: 11px; font-weight: 400;
   letter-spacing: 0.06em; text-transform: uppercase;
   opacity: 0.6;
 }
-.cad-edit__title { margin: 2px 0 0; font-size: 18px; font-weight: 800; line-height: 1.1; }
+.cad-edit__title { margin: 2px 0 0; font-size: 18px; font-weight: 500; line-height: 1.1; }
 .cad-edit__body { padding: 16px 20px; }
 .cad-edit__grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
@@ -1833,12 +1833,12 @@ onMounted(reload);
   align-items: center;
 }
 .cad-edit__stat-k {
-  font-size: 9.5px; font-weight: 800;
+  font-size: 9.5px; font-weight: 500;
   letter-spacing: 0.06em; text-transform: uppercase;
   opacity: 0.55;
 }
 .cad-edit__stat-v {
-  font-size: 14px; font-weight: 800; margin-top: 2px;
+  font-size: 14px; font-weight: 500; margin-top: 2px;
 }
 .cad-edit__actions {
   display: flex; justify-content: flex-end; gap: 8px;

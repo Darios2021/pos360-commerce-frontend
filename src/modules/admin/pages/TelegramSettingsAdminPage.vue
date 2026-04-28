@@ -640,7 +640,7 @@ onMounted(reload);
 }
 .tg-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   margin: 0;
   letter-spacing: -0.01em;
@@ -658,7 +658,7 @@ onMounted(reload);
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   border: 1px solid;
 }
 .tg-status__dot {
@@ -703,7 +703,7 @@ onMounted(reload);
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-primary));
   margin-bottom: 6px;
 }
@@ -733,7 +733,7 @@ onMounted(reload);
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.75;
@@ -793,7 +793,7 @@ onMounted(reload);
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.75;
@@ -807,7 +807,7 @@ onMounted(reload);
   text-align: center;
   font-size: 12.5px;
   opacity: 0.5;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .tg-logs {
@@ -821,7 +821,7 @@ onMounted(reload);
 .tg-logs-table th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -846,7 +846,7 @@ onMounted(reload);
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   background: rgba(var(--v-theme-primary), 0.1);
   color: rgb(var(--v-theme-primary));
 }
@@ -856,7 +856,7 @@ onMounted(reload);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

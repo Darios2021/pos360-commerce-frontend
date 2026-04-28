@@ -402,7 +402,7 @@ watch(
 
 .promo-title {
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
   line-height: 1.1;
 }
@@ -413,7 +413,7 @@ watch(
 }
 
 .promo-more {
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.9;
 }
 
@@ -520,7 +520,7 @@ watch(
   left: 10px;
   background: rgba(0, 166, 80, 0.95);
   color: #fff;
-  font-weight: 950;
+  font-weight: 500;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
@@ -541,7 +541,7 @@ watch(
 
 .promo-price {
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
   line-height: 1.1;
   white-space: nowrap;
@@ -549,7 +549,7 @@ watch(
 
 .promo-off {
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 500;
   color: #00a650;
   white-space: nowrap;
 }
@@ -563,7 +563,7 @@ watch(
 
 .promo-name {
   margin-top: 8px;
-  font-weight: 850;
+  font-weight: 400;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;
@@ -585,7 +585,7 @@ watch(
 .promo-free {
   margin-top: 6px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   color: #00a650;
 }
 
@@ -623,7 +623,7 @@ watch(
 
   .promo-title {
     font-size: 14px;
-    font-weight: 950;
+    font-weight: 500;
   }
 
   .promo-sub {

@@ -369,12 +369,12 @@ function toggleFav() {
 }
 .ml-price {
   font-size: 20px;
-  font-weight: 950;
+  font-weight: 500;
   color: #111;
 }
 .ml-off {
   font-size: 11px;
-  font-weight: 950;
+  font-weight: 500;
   color: #00a650;
   white-space: nowrap;
 }
@@ -386,7 +386,7 @@ function toggleFav() {
 }
 .ml-title {
   margin-top: 4px;
-  font-weight: 950;
+  font-weight: 500;
   font-size: 13px;
   text-transform: uppercase;
   line-height: 1.15;

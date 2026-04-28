@@ -949,7 +949,7 @@ watch(
 }
 
 .prodTitle{
-  font-weight:900;
+  font-weight: 500;
   font-size:11px;
   letter-spacing:.2px;
   text-transform:uppercase;
@@ -971,12 +971,12 @@ watch(
 
 .prodPrice{
   font-size:14px;
-  font-weight:900;
+  font-weight: 500;
 }
 
 .prodOff{
   font-size:10px;
-  font-weight:900;
+  font-weight: 500;
   color:#00a650;
 }
 
@@ -1000,7 +1000,7 @@ watch(
   border:none;
   border-radius:12px;
   padding:7px 8px;
-  font-weight:900;
+  font-weight: 500;
   font-size:11px;
   cursor:pointer;
   color:#fff;
@@ -1019,7 +1019,7 @@ watch(
   border:1px solid rgba(0,0,0,.15);
   border-radius:12px;
   padding:7px 8px;
-  font-weight:900;
+  font-weight: 500;
   font-size:11px;
   cursor:pointer;
   color:#222;

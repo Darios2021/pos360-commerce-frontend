@@ -749,7 +749,7 @@ watch(viewerIdx, (v) => {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -787,7 +787,7 @@ watch(viewerIdx, (v) => {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .thumbs-mobile {
@@ -838,7 +838,7 @@ watch(viewerIdx, (v) => {
   color: #fff;
 }
 .mlv-title {
-  font-weight: 900;
+  font-weight: 500;
 }
 .mlv-right {
   display: inline-flex;
@@ -846,7 +846,7 @@ watch(viewerIdx, (v) => {
   gap: 10px;
 }
 .mlv-counter {
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.95;
 }
 .mlv-close {

@@ -112,7 +112,7 @@ const hasSubtitle = computed(() => !!props.subtitle || !!slots.subtitle);
 .pdh__title {
   margin: 0;
   font-size: var(--pos-text-xl, 20px);
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.15;
   color: rgb(var(--v-theme-on-surface));
   min-width: 0;

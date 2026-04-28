@@ -175,7 +175,7 @@ const missingSafe = computed(() => {
 
 .ck-summary__title {
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -265,7 +265,7 @@ const missingSafe = computed(() => {
 
 .ck-item__name {
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -276,7 +276,7 @@ const missingSafe = computed(() => {
 
 .ck-item__meta {
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
   line-height: 1.2;
   font-feature-settings: "tnum";
@@ -284,7 +284,7 @@ const missingSafe = computed(() => {
 
 .ck-item__price {
   font-size: 0.88rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   white-space: nowrap;
   text-align: right;
@@ -319,7 +319,7 @@ const missingSafe = computed(() => {
   align-items: center;
   gap: 4px;
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.4);
@@ -336,7 +336,7 @@ const missingSafe = computed(() => {
 .ck-total-card__value {
   font-size: 1.5rem;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.04em;
   color: rgb(var(--v-theme-primary));
 }
@@ -349,12 +349,12 @@ const missingSafe = computed(() => {
   gap: 8px;
   padding: 2px 10px;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.45);
 }
 
 .ck-savings strong {
-  font-weight: 700;
+  font-weight: 400;
   text-decoration: line-through;
   text-decoration-color: rgba(var(--v-theme-on-surface), 0.3);
   color: rgba(var(--v-theme-on-surface), 0.5);
@@ -377,7 +377,7 @@ const missingSafe = computed(() => {
   align-items: center;
   gap: 6px;
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1;
@@ -385,7 +385,7 @@ const missingSafe = computed(() => {
 
 .ck-status-banner__amount {
   font-size: 1.25rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   font-feature-settings: "tnum";
@@ -393,7 +393,7 @@ const missingSafe = computed(() => {
 
 .ck-status-banner__sub {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
   line-height: 1.2;
   margin-top: 2px;

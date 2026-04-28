@@ -7,8 +7,14 @@
       <img v-if="img" :src="img" alt="" loading="lazy" />
       <div v-else class="mlx-media-empty">Sin imagen</div>
 
-      <!-- Badge PROMO (esquina superior izquierda) -->
-      <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
+      <!-- Badges (esquina superior izquierda apilados) -->
+      <div class="mlx-badge-stack">
+        <span v-if="isKit" class="mlx-kit-badge" :title="`Kit con ${kitItemsCount} productos`">
+          <v-icon size="11">mdi-package-variant</v-icon>
+          KIT<span v-if="kitItemsCount" class="mlx-kit-badge-count"> · {{ kitItemsCount }}</span>
+        </span>
+        <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
+      </div>
 
       <!-- Hint promo por cantidad — overlay flotante sobre la imagen -->
       <span v-if="qtyPromoHint" class="mlx-qty-promo-overlay">
@@ -156,6 +162,16 @@ const installment3 = computed(() => installmentsBase.value / 3);
 /* promo activa (respeta ventana temporal si está definida) */
 const promoActive = computed(() => isPromoActive(props.p));
 
+/* kit / combo */
+const isKit = computed(() => {
+  const v = props.p?.is_kit;
+  return v === true || Number(v) === 1;
+});
+const kitItemsCount = computed(() => {
+  const arr = props.p?.kit_items || props.p?.kitItems;
+  return Array.isArray(arr) ? arr.length : 0;
+});
+
 /* shipping */
 const shipFull = computed(() => Boolean(props.p?.is_full || props.p?.full || props.p?.shipping_full));
 const shipFree = computed(() => Boolean(props.p?.free_shipping || props.p?.shipping_free || props.p?.is_free_shipping));
@@ -218,20 +234,40 @@ function openProduct() {
   position: relative;
 }
 
+/* badges apilados (esquina superior izquierda) */
+.mlx-badge-stack {
+  position: absolute;
+  top: 8px; left: 8px;
+  display: flex; flex-direction: column; gap: 5px;
+  z-index: 1;
+  align-items: flex-start;
+}
+
+/* badge KIT — violeta */
+.mlx-kit-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  box-shadow: 0 3px 8px rgba(124, 58, 237, 0.45);
+  text-transform: uppercase;
+}
+.mlx-kit-badge-count { opacity: 0.9; font-weight: 600; }
+
 /* badge PROMO — bordó destacado */
 .mlx-promo-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
   background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
   color: #fff;
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.7px;
   padding: 4px 10px;
   border-radius: 4px;
   box-shadow: 0 3px 8px rgba(255, 87, 34, 0.45);
-  z-index: 1;
   text-transform: uppercase;
 }
 
@@ -244,7 +280,7 @@ function openProduct() {
   align-items: center;
   gap: 3px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.1px;
   color: #fff;
   background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
@@ -338,14 +374,14 @@ function openProduct() {
   white-space: nowrap;
   min-width: 0;
 }
-.mlx-price.is-promo { color: #ff5722; font-weight: 700; }
+.mlx-price.is-promo { color: #ff5722; font-weight: 400; }
 
 .mlx-off {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1;
   color: #00a650;
   background: rgba(0,166,80,.10);
@@ -357,7 +393,7 @@ function openProduct() {
 .mlx-off.is-promo {
   color: #fff;
   background: #ff5722;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.3px;
 }
 
@@ -385,9 +421,9 @@ function openProduct() {
   min-height: 1.12em;
 }
 .mlx-ship.is-empty { opacity: 0; }
-.mlx-ship-free { font-weight: 700; }
-.mlx-ship-bolt { font-weight: 800; }
-.mlx-ship-full { font-weight: 900; letter-spacing: 0.02em; }
+.mlx-ship-free { font-weight: 400; }
+.mlx-ship-bolt { font-weight: 500; }
+.mlx-ship-full { font-weight: 500; letter-spacing: 0.02em; }
 
 @media (max-width: 420px) {
   .mlx-price-row { grid-template-columns: 1fr; row-gap: 4px; }

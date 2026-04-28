@@ -85,7 +85,7 @@ const icons = {
 
 .pm-title {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
   margin-bottom: 14px;
 }
 
@@ -95,7 +95,7 @@ const icons = {
 
 .pm-sub {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   margin-bottom: 10px;
 }
 
@@ -128,7 +128,7 @@ const icons = {
 /* efectivo */
 .pm-cash {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(0, 0, 0, 0.85);
 }
 
@@ -137,7 +137,7 @@ const icons = {
   display: inline-block;
   margin-top: 18px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: #1a73e8;
   text-decoration: none;
 }

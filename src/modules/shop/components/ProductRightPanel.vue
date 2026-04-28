@@ -50,7 +50,7 @@ function onBuy(p, qty = 1) {
   font-size: 14px;
   color: #3483fa;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
 }
 .rp-link:hover {
   text-decoration: underline;

@@ -174,7 +174,7 @@ const brandModel = computed(() => {
 }
 .pc-pill {
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 500;
   padding: 3px 7px;
   border-radius: 999px;
   color: #fff;
@@ -193,7 +193,7 @@ const brandModel = computed(() => {
 }
 
 .pc-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;
@@ -216,7 +216,7 @@ const brandModel = computed(() => {
   margin-top: 6px;
 }
 .pc-price-main {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
   line-height: 1;
   white-space: nowrap; /* ✅ NO se corta */

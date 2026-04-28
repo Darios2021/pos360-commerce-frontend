@@ -201,7 +201,7 @@ function onStepClick(step, index) {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   font-feature-settings: "tnum";
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 2px solid rgba(var(--v-theme-on-surface), 0.18);
@@ -245,7 +245,7 @@ function onStepClick(step, index) {
 /* ── Label ── */
 .pdch__label {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.005em;
   color: rgba(var(--v-theme-on-surface), 0.7);
   white-space: nowrap;
@@ -319,7 +319,7 @@ function onStepClick(step, index) {
 
 .pdch__total-val {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
   letter-spacing: -0.01em;
   transition: color 180ms ease;

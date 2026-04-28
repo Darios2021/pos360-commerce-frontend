@@ -210,14 +210,14 @@ defineExpose({
 
 .ck-screen__title {
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-screen__subtitle {
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.1;
   color: rgba(var(--v-theme-on-surface), 0.55);
 }
@@ -247,7 +247,7 @@ defineExpose({
   align-items: center;
   gap: 5px;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
   border: 1px solid transparent;
 }
@@ -295,7 +295,7 @@ defineExpose({
 
 .ck-field-label {
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.7);
   letter-spacing: 0.01em;
   line-height: 1.05;
@@ -309,7 +309,7 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 500;
   white-space: nowrap;
   line-height: 1;
 }
@@ -336,7 +336,7 @@ defineExpose({
   min-height: 40px;
   padding-top: 0;
   padding-bottom: 0;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 0.88rem;
 }
 

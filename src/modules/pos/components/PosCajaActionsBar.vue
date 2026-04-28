@@ -370,7 +370,7 @@ onBeforeUnmount(() => {
 }
 
 .caja-card__title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14.5px;
   letter-spacing: -0.005em;
   line-height: 1.1;
@@ -393,7 +393,7 @@ onBeforeUnmount(() => {
   background: rgba(var(--v-theme-success), 0.14);
   color: rgb(var(--v-theme-success));
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.4;
 }
 
@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
   background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgb(var(--v-theme-on-surface));
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.4;
   max-width: 100%;
 }
@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
   color: rgb(var(--v-theme-warning));
   border: 1px solid rgba(var(--v-theme-warning), 0.32);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.2;
 }
 
@@ -464,7 +464,7 @@ onBeforeUnmount(() => {
 }
 
 .caja-alert--danger .caja-alert__text strong {
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .caja-alert__icon {

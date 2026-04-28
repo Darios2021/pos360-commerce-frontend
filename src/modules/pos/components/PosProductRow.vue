@@ -592,7 +592,7 @@ function money(v) {
   background: rgb(var(--v-theme-error));
   color: #fff;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   box-shadow:
     0 3px 10px rgba(var(--v-theme-error), 0.48),
@@ -608,7 +608,7 @@ function money(v) {
   padding: 5px 10px;
   border-radius: 9px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.1;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
@@ -625,7 +625,7 @@ function money(v) {
   padding: 5px 10px;
   border-radius: 9px;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.6px;
   color: #fff;
   background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
@@ -645,7 +645,7 @@ function money(v) {
   align-items: center;
   gap: 3px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.1px;
   color: #fff;
   background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
@@ -719,7 +719,7 @@ function money(v) {
 .prow-title {
   font-size: 12.5px;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.005em;
   color: var(--row-text);
   display: -webkit-box;
@@ -746,7 +746,7 @@ function money(v) {
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.82);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -788,7 +788,7 @@ function money(v) {
 .price-current {
   font-size: 15px;
   line-height: 1.05;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--row-text);
   white-space: nowrap;
@@ -808,14 +808,14 @@ function money(v) {
 .price-list {
   font-size: 10.5px;
   line-height: 1;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.42);
   text-decoration: line-through;
 }
 .price-off {
   font-size: 10.5px;
   line-height: 1;
-  font-weight: 800;
+  font-weight: 500;
   color: #00a650; /* verde — descuento contado normal */
 }
 .price-off.is-promo {
@@ -871,7 +871,7 @@ function money(v) {
   background: rgb(var(--v-theme-error));
   color: #fff;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 18px;
   text-align: center;
   border: 2px solid rgb(var(--v-theme-surface));

@@ -327,7 +327,7 @@ defineExpose({ focusSearch });
   padding: 0 10px !important;
   border-radius: 11px !important;
   font-size: 12px !important;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   text-transform: none !important;
 }
 

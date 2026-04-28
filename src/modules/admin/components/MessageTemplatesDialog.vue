@@ -248,8 +248,8 @@ async function confirmDelete(t) {
   padding: 14px 18px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
-.mtd-eyebrow { font-size: 11px; font-weight: 700; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
-.mtd-title { font-size: 17px; font-weight: 800; margin: 2px 0 0; line-height: 1.1; }
+.mtd-eyebrow { font-size: 11px; font-weight: 400; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
+.mtd-title { font-size: 17px; font-weight: 500; margin: 2px 0 0; line-height: 1.1; }
 
 .mtd-body {
   padding: 16px 18px;
@@ -281,7 +281,7 @@ async function confirmDelete(t) {
   flex-shrink: 0;
 }
 .mtd-item__main { flex: 1; min-width: 0; }
-.mtd-item__name { font-size: 13px; font-weight: 700; }
+.mtd-item__name { font-size: 13px; font-weight: 400; }
 .mtd-item__cat { opacity: 0.6; font-weight: 500; }
 .mtd-item__desc { font-size: 11.5px; opacity: 0.65; margin-top: 1px; }
 
@@ -289,10 +289,10 @@ async function confirmDelete(t) {
 .mtd-row--2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .mtd-vars { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.mtd-vars__lbl { font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.65; }
+.mtd-vars__lbl { font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.65; }
 .mtd-var {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10.5px; font-weight: 700;
+  font-size: 10.5px; font-weight: 400;
   padding: 3px 7px;
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-primary), 0.25);

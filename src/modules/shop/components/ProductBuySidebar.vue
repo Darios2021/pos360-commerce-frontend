@@ -217,7 +217,7 @@ function onBuyNow() {
 
 .ms-green {
   color: #00a650;
-  font-weight: 900;
+  font-weight: 500;
   font-size: 16px;
 }
 .ms-muted {
@@ -228,13 +228,13 @@ function onBuyNow() {
   display: inline-block;
   color: #1a73e8;
   text-decoration: none;
-  font-weight: 800;
+  font-weight: 500;
   margin-top: 4px;
 }
 .ms-link:hover { text-decoration: underline; }
 
 .ms-stock-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
 }
 
@@ -245,7 +245,7 @@ function onBuyNow() {
   gap: 10px;
   margin-bottom: 8px;
 }
-.ms-strong { font-weight: 900; }
+.ms-strong { font-weight: 500; }
 
 .ms-select { border-radius: 12px; }
 
@@ -256,14 +256,14 @@ function onBuyNow() {
 }
 .ms-btn {
   border-radius: 12px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: none;
 }
 
 .ms-installments { margin-top: 16px; }
 .ms-inst-title {
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 500;
   margin-bottom: 8px;
 }
 .ms-inst-grid {
@@ -277,8 +277,8 @@ function onBuyNow() {
   padding: 10px;
   background: rgba(0,0,0,.02);
 }
-.ms-inst-n { font-weight: 900; font-size: 12px; }
-.ms-inst-val { font-weight: 900; font-size: 14px; margin-top: 2px; }
+.ms-inst-n { font-weight: 500; font-size: 12px; }
+.ms-inst-val { font-weight: 500; font-size: 14px; margin-top: 2px; }
 .ms-inst-note { font-size: 11px; opacity: .7; margin-top: 2px; }
 
 .ms-footnote {

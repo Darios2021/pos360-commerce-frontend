@@ -200,8 +200,8 @@ async function onSend() {
   padding: 14px 18px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
-.ted-eyebrow { font-size: 11px; font-weight: 700; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
-.ted-title { font-size: 17px; font-weight: 800; margin: 2px 0 0; line-height: 1.1; }
+.ted-eyebrow { font-size: 11px; font-weight: 400; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
+.ted-title { font-size: 17px; font-weight: 500; margin: 2px 0 0; line-height: 1.1; }
 
 .ted-body {
   display: flex; flex-direction: column; gap: 12px;
@@ -214,7 +214,7 @@ async function onSend() {
   padding: 8px 12px;
   border-radius: 10px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 400;
   border: 1px solid;
 }
 .ted-status--ok {
@@ -233,7 +233,7 @@ async function onSend() {
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
-.ted-result__title { font-weight: 800; font-size: 13.5px; }
+.ted-result__title { font-weight: 500; font-size: 13.5px; }
 .ted-result__body  { font-size: 12.5px; margin-top: 4px; }
 .ted-result__meta  { margin-top: 4px; opacity: 0.75; }
 

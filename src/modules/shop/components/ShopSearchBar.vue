@@ -79,7 +79,7 @@ function emitClear() {
 
 .count {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.75;
 }
 

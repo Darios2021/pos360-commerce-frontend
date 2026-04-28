@@ -149,7 +149,7 @@ function onImgError(url) {
   border-radius:14px;
   background: rgba(0,0,0,.04);
   opacity:.8;
-  font-weight:800;
+  font-weight: 500;
 }
 
 .pg-grid{
@@ -215,6 +215,6 @@ function onImgError(url) {
 }
 .pg-main-empty-txt{
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

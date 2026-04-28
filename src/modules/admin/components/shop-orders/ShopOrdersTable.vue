@@ -103,7 +103,7 @@ defineEmits(["page", "limit", "view"]);
 <style scoped>
 .orders-table :deep(.v-data-table__td) { vertical-align: top; }
 .code { display:flex; align-items:center; gap:8px; }
-.cust-name { font-weight:900; line-height:1.1; }
+.cust-name { font-weight: 500; line-height:1.1; }
 .cust-email { font-size:12px; opacity:.75; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .payline { margin-top:4px; font-size:12px; opacity:.85; }
 .right { text-align:right; }

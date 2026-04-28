@@ -383,7 +383,7 @@ const sessionHeaders = [
 }
 
 .cash-title {
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   font-size: 13.5px;
   color: rgb(var(--v-theme-on-surface));
@@ -392,7 +392,7 @@ const sessionHeaders = [
   margin-top: 3px;
   font-size: 11px;
   color: rgba(var(--v-theme-on-surface), 0.50);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .cash-right { display: flex; align-items: center; gap: 10px; }
@@ -405,7 +405,7 @@ const sessionHeaders = [
   text-align: center;
   font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.45);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* ── Sessions table ──────────────────────────────────────────────────────── */
@@ -416,7 +416,7 @@ const sessionHeaders = [
 }
 .sessions-table :deep(th) {
   font-size: 10px !important;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), .5) !important;
@@ -431,14 +431,14 @@ const sessionHeaders = [
   padding: 3px 0;
 }
 .sess-date   { font-size: 11px; color: rgba(var(--v-theme-on-surface), .55); }
-.sess-time   { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.sess-time   { font-size: 13px; font-weight: 400; line-height: 1.2; }
 .sess-amount { font-size: 11px; color: rgba(var(--v-theme-on-surface), .6); margin-top: 1px; }
 
 .sess-user {
   display: flex;
   align-items: center;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .sess-ip {

@@ -524,6 +524,10 @@
               </div>
 
               <span v-if="isInactive(item)" class="plp-inactive-badge">Inactivo</span>
+              <span v-if="Number(item.is_kit) === 1 || item.is_kit === true" class="plp-kit-badge" title="Es un kit / combo">
+                <v-icon size="11">mdi-package-variant</v-icon>
+                KIT
+              </span>
             </div>
 
             <div class="plp-card-info">
@@ -640,7 +644,12 @@
               />
             </div>
             <div class="plp-row-name">
-              <div class="plp-row-name-text">{{ item.name }}</div>
+              <div class="plp-row-name-text">
+                <span v-if="Number(item.is_kit) === 1 || item.is_kit === true" class="plp-kit-pill" title="Kit / combo">
+                  <v-icon size="11">mdi-package-variant</v-icon>KIT
+                </span>
+                {{ item.name }}
+              </div>
               <div v-if="item.sku || item.brand" class="plp-row-sku">
                 {{ item.sku || '' }}{{ item.sku && item.brand ? ' · ' : '' }}{{ item.brand || '' }}
               </div>
@@ -1512,7 +1521,7 @@ function branchCssColor(id) {
 
 .lp-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
@@ -1526,7 +1535,7 @@ function branchCssColor(id) {
   color: var(--lp-muted);
 }
 .lp-meta__strong {
-  font-weight: 800;
+  font-weight: 500;
   color: var(--lp-strong);
   font-feature-settings: "tnum";
 }
@@ -1562,13 +1571,13 @@ function branchCssColor(id) {
 .lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
 .lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-kpi__lbl   {
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 400;
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .lp-kpi__val   {
-  font-size: 20px; font-weight: 900;
+  font-size: 20px; font-weight: 500;
   line-height: 1.2;
   margin-top: 4px;
   font-feature-settings: "tnum";
@@ -1633,13 +1642,13 @@ function branchCssColor(id) {
 }
 .lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-mc__lbl  {
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 400;
   opacity: 0.45;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 .lp-mc__val  {
-  font-size: 14px; font-weight: 900;
+  font-size: 14px; font-weight: 500;
   margin-top: 2px;
   font-feature-settings: "tnum";
 }
@@ -1676,7 +1685,7 @@ function branchCssColor(id) {
   border: 1px solid var(--lp-card-border);
   color: rgba(var(--v-theme-on-surface), 0.78);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 0.14s, border-color 0.14s, color 0.14s;
@@ -1702,7 +1711,7 @@ function branchCssColor(id) {
   background: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   font-feature-settings: "tnum";
 }
@@ -1734,7 +1743,7 @@ function branchCssColor(id) {
 }
 .lp-filters__range-sep {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.35);
   line-height: 1;
 }
@@ -1760,7 +1769,7 @@ function branchCssColor(id) {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   color: rgba(var(--v-theme-on-surface), 0.65);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
@@ -1798,12 +1807,12 @@ function branchCssColor(id) {
 }
 .lp-bulk__label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.75);
 }
 .lp-bulk__label strong {
   color: rgb(var(--v-theme-primary));
-  font-weight: 900;
+  font-weight: 500;
   font-feature-settings: "tnum";
 }
 .lp-bulk__actions {
@@ -1833,7 +1842,7 @@ function branchCssColor(id) {
   background: rgba(var(--v-theme-on-surface), 0.015);
 }
 .lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
 .lp-content__body { padding: 12px; transition: opacity 0.2s; }
 .lp-content__body--loading { opacity: 0.5; pointer-events: none; }
 
@@ -1848,7 +1857,7 @@ function branchCssColor(id) {
 }
 .lp-pagination__info {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--lp-muted);
   font-feature-settings: "tnum";
 }
@@ -1876,7 +1885,7 @@ function branchCssColor(id) {
   gap: 8px;
   text-align: center;
 }
-.lp-empty__title { font-size: 16px; font-weight: 800; }
+.lp-empty__title { font-size: 16px; font-weight: 500; }
 .lp-empty__sub { font-size: 13px; opacity: 0.55; }
 
 /* ============================================================
@@ -1935,7 +1944,7 @@ function branchCssColor(id) {
   border-radius: 8px;
   color: #fff;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
   font-feature-settings: "tnum";
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
@@ -1965,7 +1974,7 @@ function branchCssColor(id) {
   background: rgba(var(--v-theme-error), 0.9);
   color: #fff;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
@@ -1983,7 +1992,7 @@ function branchCssColor(id) {
 
 .plp-card-name {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.005em;
   color: rgb(var(--v-theme-on-surface));
@@ -2005,7 +2014,7 @@ function branchCssColor(id) {
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.75);
   letter-spacing: 0.02em;
   width: fit-content;
@@ -2028,7 +2037,7 @@ function branchCssColor(id) {
   padding: 1px 6px;
   border-radius: 5px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   line-height: 1.4;
@@ -2065,7 +2074,7 @@ function branchCssColor(id) {
   background: color-mix(in srgb, var(--br-color) 14%, transparent);
   color: var(--br-color);
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1.4;
   white-space: nowrap;
@@ -2087,15 +2096,15 @@ function branchCssColor(id) {
 
 .plp-card-price {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: rgb(var(--v-theme-success));
   font-feature-settings: "tnum";
 }
-.plp-card-price::before { content: "$ "; opacity: 0.72; font-weight: 700; }
+.plp-card-price::before { content: "$ "; opacity: 0.72; font-weight: 400; }
 .plp-card-price--none {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.4);
   font-style: italic;
 }
@@ -2130,7 +2139,7 @@ function branchCssColor(id) {
   background: rgba(var(--v-theme-surface-variant), 0.4);
   border-bottom: 1px solid var(--lp-card-border);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   opacity: 0.7;
@@ -2149,7 +2158,7 @@ function branchCssColor(id) {
 .plp-lh-name, .plp-row-name { min-width: 0; }
 .plp-row-name-text {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2157,8 +2166,8 @@ function branchCssColor(id) {
 .plp-row-sku { font-size: 10px; opacity: 0.45; font-family: monospace; }
 .plp-row-cat { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
 .plp-row-branches { display: flex; flex-wrap: wrap; gap: 3px; }
-.plp-row-price .plp-price-val { font-size: 13px; font-weight: 800; color: rgb(var(--v-theme-success)); }
-.plp-row-stock { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
+.plp-row-price .plp-price-val { font-size: 13px; font-weight: 500; color: rgb(var(--v-theme-success)); }
+.plp-row-stock { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 400; }
 .plp-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0; }
 
 .plp-tag {
@@ -2166,7 +2175,7 @@ function branchCssColor(id) {
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.4;
 }
 .plp-tag--cat {
@@ -2177,7 +2186,7 @@ function branchCssColor(id) {
   background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgba(var(--v-theme-on-surface), 0.65);
 }
-.plp-more { font-size: 10px; opacity: 0.5; font-weight: 700; }
+.plp-more { font-size: 10px; opacity: 0.5; font-weight: 400; }
 
 /* List sin sucursales (cuando no es admin) */
 .plp-list-head:not(:has(.plp-lh-branches)),
@@ -2224,5 +2233,28 @@ function branchCssColor(id) {
 
 @media (max-width: 360px) {
   .plp-grid { grid-template-columns: 1fr; }
+}
+
+/* ── KIT badges ── */
+.plp-kit-badge {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  display: inline-flex; align-items: center; gap: 3px;
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #fff;
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+  padding: 3px 7px; border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.45);
+  text-transform: uppercase;
+}
+.plp-kit-pill {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #fff;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.4px;
+  padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase;
+  margin-right: 6px;
+  vertical-align: 1px;
 }
 </style>

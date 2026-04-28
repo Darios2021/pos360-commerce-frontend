@@ -126,7 +126,7 @@ function isActive(method) {
   color: rgba(var(--v-theme-on-surface), 0.62);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 400;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,7 +156,7 @@ function isActive(method) {
 /* ── Name ── */
 .pms-name {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   text-align: left;
   line-height: 1.2;
   color: rgb(var(--v-theme-on-surface));

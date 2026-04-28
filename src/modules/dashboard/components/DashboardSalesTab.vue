@@ -1,14 +1,9 @@
 <template>
   <div class="dv">
 
-    <!-- ── Period selector bar (moderno: segmented control + rango fechas) ───── -->
+    <!-- ── Period selector (chips de filtro) ────────────────────────────────── -->
+    <!-- Sin label "PERÍODO" ni icono: los chips ya son autoexplicativos. -->
     <div class="dv-period-bar">
-      <div class="dv-period-bar__head">
-        <v-icon size="14" class="dv-period-icon">mdi-calendar-clock-outline</v-icon>
-        <span class="dv-period-label">Período</span>
-        <span v-if="periodRangeLabel" class="dv-period-range">· {{ periodRangeLabel }}</span>
-      </div>
-
       <div class="dv-period-pills" :style="periodIndicatorStyle" role="tablist">
         <button
           v-for="(p, idx) in periodItems"
@@ -373,7 +368,7 @@ const props = defineProps({
   scopeLabel:       { type: String,  default: "" },
   sales:            { type: Object,  default: () => ({}) },
   analytics:        { type: Object,  default: null },
-  period:           { type: String,  default: "30d" },
+  period:           { type: String,  default: "12m" },
   branches:         { type: Array,   default: () => [] },
   selectedBranch:   { type: Number,  default: null },
 });
@@ -384,10 +379,10 @@ const periodItems = [
   { title: "Último mes",    value: "30d" },
   { title: "3 meses",       value: "90d" },
   { title: "Último año",    value: "12m" },
-  { title: "Histórico",     value: "all" },
 ];
 
-const periodLocal   = ref(props.period || "30d");
+// Default: "Último año" — visión amplia al entrar al dashboard.
+const periodLocal   = ref(props.period || "12m");
 const productToggle = ref("total");
 const periodRefs    = ref([]);
 
@@ -508,14 +503,12 @@ const periodLabel = computed(() => {
   if (periodLocal.value === "7d")  return "Última semana";
   if (periodLocal.value === "90d") return "Últimos 3 meses";
   if (periodLocal.value === "12m") return "Último año";
-  if (periodLocal.value === "all") return "Histórico";
   return "Último mes";
 });
 const periodLabelShort = computed(() => {
   if (periodLocal.value === "7d")  return "7d";
   if (periodLocal.value === "90d") return "3m";
   if (periodLocal.value === "12m") return "12m";
-  if (periodLocal.value === "all") return "Total";
   return "Mes";
 });
 const scopeLabelChip = computed(() => props.scopeLabel || "");
@@ -1094,94 +1087,87 @@ const optAvgDow    = computed(() => ({
   gap: 14px;
 }
 
-/* ── Period bar (segmented control moderno) ────────────────────────────── */
+/* ── Period bar (FILTRO de chips, NO tabs) ─────────────────────────────────
+   Estilo distinto al header (Ventas/Stock/Inventario/Caja) para evitar
+   confusión: sin contenedor de fondo, sin indicador deslizante. Cada chip
+   es un filtro pill discreto, el activo se rellena con primary. */
 .dv-period-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
-  padding: 6px 8px;
-  border-radius: 14px;
-  background: rgba(var(--v-theme-on-surface), 0.025);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 .dv-period-bar__head {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding-left: 6px;
   flex-shrink: 0;
 }
 .dv-period-icon {
-  color: rgba(var(--v-theme-on-surface), 0.55);
+  color: rgba(var(--v-theme-on-surface), 0.50);
 }
 .dv-period-label {
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.55);
 }
-.dv-period-range {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  letter-spacing: 0.01em;
-}
 
+/* Sin contenedor con fondo (eso lo hacía parecer una tabbar). */
 .dv-period-pills {
   position: relative;
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 11px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
 }
-.dv-period-pills::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: var(--pill-x, 0);
-  width: var(--pill-w, 0);
-  border-radius: 8px;
-  background: rgb(var(--v-theme-surface));
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.05),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.18);
-  transition: left 0.26s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.26s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 0;
-}
+/* Indicador deslizante eliminado: cada chip se autoexplica. */
+.dv-period-pills::before { content: none; }
+
 .dv-pill {
   position: relative;
   z-index: 1;
-  padding: 7px 14px;
-  border: none;
+  padding: 5px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   background: transparent;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-size: 12.5px;
-  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 12px;
+  font-weight: 400;
   cursor: pointer;
-  transition: color 0.15s;
   white-space: nowrap;
   letter-spacing: 0.01em;
-  border-radius: 8px;
+  border-radius: 999px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .dv-pill:hover {
-  color: rgba(var(--v-theme-on-surface), 0.88);
+  border-color: rgba(var(--v-theme-primary), 0.45);
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 .dv-pill--active {
-  color: rgb(var(--v-theme-primary));
-  font-weight: 700;
+  background: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(var(--v-theme-primary), 0.25);
+}
+.dv-pill--active:hover {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
 }
 .dv-today-chip {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.50);
   padding: 4px 10px;
   border-radius: 8px;
@@ -1189,7 +1175,7 @@ const optAvgDow    = computed(() => ({
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   white-space: nowrap;
 }
-.dv-today-chip b { color: rgba(var(--v-theme-on-surface), 0.80); font-weight: 800; }
+.dv-today-chip b { color: rgba(var(--v-theme-on-surface), 0.80); font-weight: 500; }
 .dv-today-dot {
   display: inline-block;
   width: 6px; height: 6px;
@@ -1205,7 +1191,7 @@ const optAvgDow    = computed(() => ({
   display: flex;
   align-items: center;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.45);
 }
 
@@ -1230,7 +1216,7 @@ const optAvgDow    = computed(() => ({
 .dv-branch-chevron { color: rgb(var(--v-theme-primary)); opacity: 0.55; flex-shrink: 0; }
 .dv-branch-label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
   white-space: nowrap;
   max-width: 180px;
@@ -1279,7 +1265,7 @@ const optAvgDow    = computed(() => ({
 .dv-kpi-body  { flex: 1; min-width: 0; }
 .dv-kpi-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(var(--v-theme-on-surface), 0.50);
@@ -1288,7 +1274,7 @@ const optAvgDow    = computed(() => ({
 .dv-kpi-period { text-transform: none; opacity: 0.7; }
 .dv-kpi-value {
   font-size: 1.8rem;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.04em;
   line-height: 1;
   color: rgb(var(--v-theme-on-surface));
@@ -1298,7 +1284,7 @@ const optAvgDow    = computed(() => ({
 .dv-kpi-meta {
   margin-top: 4px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.50);
   white-space: nowrap;
   overflow: hidden;
@@ -1311,7 +1297,7 @@ const optAvgDow    = computed(() => ({
   align-items: center;
   gap: 2px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   padding: 2px 7px;
   border-radius: 20px;
 }
@@ -1337,7 +1323,7 @@ const optAvgDow    = computed(() => ({
 .dv-head-left { min-width: 0; }
 .dv-head-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .dv-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13.5px;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
@@ -1345,7 +1331,7 @@ const optAvgDow    = computed(() => ({
 .dv-sub {
   margin-top: 2px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.45);
 }
 .dv-divider { border-color: rgba(var(--v-theme-on-surface), 0.07) !important; }
@@ -1361,7 +1347,7 @@ const optAvgDow    = computed(() => ({
   padding: 36px 20px;
   text-align: center;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.40);
 }
 
@@ -1371,7 +1357,7 @@ const optAvgDow    = computed(() => ({
   gap: 8px;
   padding: 6px 16px 12px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.50);
 }
 .dv-foot b  { color: rgba(var(--v-theme-on-surface), 0.80); }
@@ -1397,7 +1383,7 @@ const optAvgDow    = computed(() => ({
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.55);
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -1424,7 +1410,7 @@ const optAvgDow    = computed(() => ({
 }
 .dv-ana-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(var(--v-theme-on-surface), 0.45);
@@ -1432,13 +1418,13 @@ const optAvgDow    = computed(() => ({
 }
 .dv-ana-val {
   font-size: 1.35rem;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1;
 }
 .dv-ana-sub {
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.45);
   margin-top: 3px;
 }
@@ -1460,11 +1446,11 @@ const optAvgDow    = computed(() => ({
 .bs-list { padding: 8px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
 .bs-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
 .bs-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.bs-name { flex: 0 0 110px; font-weight: 600; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-name { flex: 0 0 110px; font-weight: 400; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bs-bar-wrap { flex: 1; height: 5px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .08); overflow: hidden; }
 .bs-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
-.bs-pct  { flex: 0 0 34px; text-align: right; font-weight: 700; opacity: .7; font-size: 11px; }
-.bs-val  { flex: 0 0 90px; text-align: right; font-weight: 700; font-size: 12px; }
+.bs-pct  { flex: 0 0 34px; text-align: right; font-weight: 400; opacity: .7; font-size: 11px; }
+.bs-val  { flex: 0 0 90px; text-align: right; font-weight: 400; font-size: 12px; }
 
 /* ── Last-sales feed ─────────────────────────────────────────────────────── */
 .ls-feed { display: flex; flex-direction: column; }
@@ -1479,9 +1465,9 @@ const optAvgDow    = computed(() => ({
 .ls-row:last-child { border-bottom: none; }
 .ls-row:hover { background: rgba(var(--v-theme-on-surface), .04); }
 
-.ls-id   { flex: 0 0 52px; font-weight: 800; font-size: 13px; color: rgb(var(--v-theme-primary)); }
+.ls-id   { flex: 0 0 52px; font-weight: 500; font-size: 13px; color: rgb(var(--v-theme-primary)); }
 .ls-middle { flex: 0 0 170px; }
-.ls-date { font-size: 12.5px; font-weight: 600; opacity: .9; }
+.ls-date { font-size: 12.5px; font-weight: 400; opacity: .9; }
 .ls-branch { font-size: 11px; opacity: .55; margin-top: 1px; }
 .ls-user { flex: 1; font-size: 12.5px; opacity: .8; display: flex; align-items: center; }
 .ls-method-wrap { flex: 0 0 120px; }
@@ -1490,7 +1476,7 @@ const optAvgDow    = computed(() => ({
   padding: 2px 9px;
   border-radius: 20px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: .2px;
   white-space: nowrap;
 }
@@ -1503,6 +1489,6 @@ const optAvgDow    = computed(() => ({
 .mb-other    { background: rgba(var(--v-theme-on-surface), .08); opacity: .7; }
 
 .ls-right { flex: 0 0 130px; text-align: right; }
-.ls-total { font-size: 13.5px; font-weight: 900; }
+.ls-total { font-size: 13.5px; font-weight: 500; }
 .ls-invoice { margin-top: 3px; }
 </style>

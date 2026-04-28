@@ -201,7 +201,7 @@ const moreLink = computed(() => {
 .more-btn {
   text-transform: none;
   border-radius: 999px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .similar-card {

@@ -228,14 +228,14 @@ defineExpose({
 
 .ck-screen__title {
   font-size: 0.98rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.02em;
 }
 
 .ck-screen__subtitle {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.6);
   line-height: 1.12;
 }

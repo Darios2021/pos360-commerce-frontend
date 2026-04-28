@@ -43,7 +43,7 @@ const sku = computed(() => String(props.product?.sku || props.product?.product_c
 .ph{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
 .ph-left{ display:flex; align-items:flex-start; gap:10px; min-width:0; }
 .ph-title{ min-width:0; }
-.ph-name{ font-weight:900; font-size:18px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:62vw; }
+.ph-name{ font-weight: 500; font-size:18px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:62vw; }
 .ph-meta{ margin-top:6px; display:flex; gap:12px; flex-wrap:wrap; font-size:12px; opacity:.8; }
 .ph-right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 </style>

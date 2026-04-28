@@ -569,7 +569,7 @@ async function onSaved() {
 .lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lp-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
@@ -584,7 +584,7 @@ async function onSaved() {
   flex-wrap: wrap;
 }
 .lp-meta__strong {
-  font-weight: 800;
+  font-weight: 500;
   color: var(--lp-strong);
   font-feature-settings: "tnum";
 }
@@ -631,7 +631,7 @@ async function onSaved() {
   background: rgba(var(--v-theme-on-surface), 0.015);
 }
 .lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
 .lp-content__body { padding: 12px; flex: 1; min-height: 0; }
 .lp-content--md { min-height: 480px; }
 
@@ -681,7 +681,7 @@ async function onSaved() {
 }
 .cat-row__name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.005em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -730,7 +730,7 @@ async function onSaved() {
 }
 .cat-detail-empty__title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 4px;
 }
 .cat-detail-empty__sub {
@@ -747,14 +747,14 @@ async function onSaved() {
 .cat-detail__field { display: flex; flex-direction: column; gap: 3px; }
 .cat-detail__label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--lp-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 .cat-detail__value {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 .cat-detail__path {

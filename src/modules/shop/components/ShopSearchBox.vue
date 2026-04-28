@@ -388,13 +388,13 @@ watch(
   white-space: nowrap;
 }
 .sb-row-text :deep(strong) {
-  font-weight: 700;
+  font-weight: 400;
   color: #111 !important;
 }
 
 /* "buscar esto" hint */
 .sb-row-typed {
-  font-weight: 600;
+  font-weight: 400;
   color: #3483fa !important;
 }
 .sb-row-hint {

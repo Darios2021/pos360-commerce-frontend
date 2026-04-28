@@ -178,19 +178,19 @@ const highlights = computed(() => {
 
 .mi-title {
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   margin-bottom: 8px;
 }
 
 .mi-rating { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.mi-rating-num { font-size: 13px; font-weight: 900; color: rgba(0,0,0,.75); }
+.mi-rating-num { font-size: 13px; font-weight: 500; color: rgba(0,0,0,.75); }
 .mi-rating-count { font-size: 13px; color: rgba(0,0,0,.55); }
 
 .mi-price-wrap { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
-.mi-currency { font-size: 22px; font-weight: 900; }
-.mi-price-int { font-size: 48px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.05; }
-.mi-price-dec { font-size: 16px; font-weight: 900; opacity: .9; }
+.mi-currency { font-size: 22px; font-weight: 500; }
+.mi-price-int { font-size: 48px; font-weight: 500; letter-spacing: -0.5px; line-height: 1.05; }
+.mi-price-dec { font-size: 16px; font-weight: 500; opacity: .9; }
 
 .mi-subtext { margin-top: 6px; color: rgba(0,0,0,.55); font-size: 12px; }
 
@@ -199,12 +199,12 @@ const highlights = computed(() => {
   margin-top: 8px;
   color: #1a73e8;
   text-decoration: none;
-  font-weight: 900;
+  font-weight: 500;
 }
 .mi-link:hover { text-decoration: underline; }
 
 .mi-know { margin-top: 16px; }
-.mi-know-title { font-size: 14px; font-weight: 900; margin-bottom: 6px; }
+.mi-know-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
 .mi-know-list {
   margin: 0;
   padding-left: 18px;

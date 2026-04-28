@@ -136,7 +136,7 @@ const bestBranchQtyFmt = computed(() => fmtQty(bestRow.value?.qty || 0));
   margin-bottom: 10px;
 }
 .ps-title {
-  font-weight: 900;
+  font-weight: 500;
 }
 .ps-grid {
   display: grid;
@@ -152,11 +152,11 @@ const bestBranchQtyFmt = computed(() => fmtQty(bestRow.value?.qty || 0));
 .k {
   font-size: 12px;
   opacity: 0.7;
-  font-weight: 800;
+  font-weight: 500;
 }
 .v {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 500;
 }
 .v.danger {
   color: rgb(var(--v-theme-error));

@@ -119,7 +119,7 @@ function formatDate(s) {
   padding: 12px;
 }
 .mm-filename {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 0.95rem;
   line-height: 1.15;
   white-space: nowrap;

@@ -435,9 +435,9 @@ watch(() => props.productId, () => refresh(), { immediate: true });
   transition: background 0.2s;
 }
 .ps-branch-icon.active { background: rgb(var(--v-theme-success)); }
-.ps-branch-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.ps-branch-name { font-size: 13px; font-weight: 400; line-height: 1.2; }
 .ps-branch-sub  { font-size: 11px; opacity: 0.55; }
-.ps-stock-ok   { color: rgb(var(--v-theme-success)); font-weight: 700; }
+.ps-stock-ok   { color: rgb(var(--v-theme-success)); font-weight: 400; }
 .ps-stock-zero { opacity: 0.4; }
 
 /* Stepper */
@@ -463,7 +463,7 @@ watch(() => props.productId, () => refresh(), { immediate: true });
 
 .ps-qty-input {
   width: 52px; height: 36px;
-  text-align: center; font-size: 14px; font-weight: 800;
+  text-align: center; font-size: 14px; font-weight: 500;
   border: none; outline: none; background: transparent; color: inherit;
   -moz-appearance: textfield;
 }
@@ -474,7 +474,7 @@ watch(() => props.productId, () => refresh(), { immediate: true });
 .ps-badge-wrap { flex-shrink: 0; min-width: 64px; text-align: right; }
 .ps-badge {
   display: inline-flex; align-items: center; gap: 3px;
-  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 400; padding: 2px 7px; border-radius: 999px;
 }
 .ps-badge--green { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
 .ps-badge--grey  { background: rgba(var(--v-theme-on-surface), 0.07); opacity: 0.55; }
@@ -511,7 +511,7 @@ watch(() => props.productId, () => refresh(), { immediate: true });
   padding: 2px 7px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 1;
   margin-left: 4px;
 }

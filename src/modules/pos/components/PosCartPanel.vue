@@ -590,7 +590,7 @@ function remove(it) {
 }
 
 .cart-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.1;
   letter-spacing: 0.01em;
@@ -606,7 +606,7 @@ function remove(it) {
   height: 24px !important;
   min-height: 24px !important;
   border-radius: 999px !important;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
 }
 
 .cart-divider {
@@ -672,7 +672,7 @@ function remove(it) {
 
 .empty-title {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.05;
 }
 
@@ -753,7 +753,7 @@ function remove(it) {
   background: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 22px;
   text-align: center;
   border: 2px solid rgb(var(--v-theme-surface));
@@ -782,7 +782,7 @@ function remove(it) {
   min-width: 0;
   font-size: 13px;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -792,7 +792,7 @@ function remove(it) {
   flex: 0 0 auto;
   font-size: 14px;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
@@ -808,7 +808,7 @@ function remove(it) {
 
 .unit-price {
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.7);
   white-space: nowrap;
 }
@@ -822,7 +822,7 @@ function remove(it) {
 
 .unit-old {
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.45);
   text-decoration: line-through;
   margin-right: 4px;
@@ -832,7 +832,7 @@ function remove(it) {
   display: inline-block;
   margin-left: 6px;
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.6px;
   background: linear-gradient(135deg, #02498b, #036ec1);
   color: #fff;
@@ -848,7 +848,7 @@ function remove(it) {
   gap: 4px;
   margin-top: 4px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
   background: rgba(var(--v-theme-primary), 0.08);
   border: 1px solid rgba(var(--v-theme-primary), 0.2);
@@ -861,7 +861,7 @@ function remove(it) {
 
 .item-sku {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.02em;
   color: rgba(var(--v-theme-on-surface), 0.6);
   padding: 1px 6px;
@@ -876,7 +876,7 @@ function remove(it) {
 
 .stock-hint {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-success), 0.85);
   padding: 1px 6px;
   border-radius: 999px;
@@ -939,7 +939,7 @@ function remove(it) {
   padding-right: 4px;
   text-align: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   font-feature-settings: "tnum";
 }
 
@@ -984,7 +984,7 @@ function remove(it) {
 
 .total-label {
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .total-price-mode {
@@ -998,7 +998,7 @@ function remove(it) {
 .total-amt {
   font-size: 19px;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -1007,7 +1007,7 @@ function remove(it) {
   height: 42px !important;
   border-radius: 13px !important;
   font-size: 13px !important;
-  font-weight: 900 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.02em;
   text-transform: none !important;
 }

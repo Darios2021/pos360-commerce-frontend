@@ -172,7 +172,7 @@ function printBarcode() {
           }
           .code {
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 400;
             letter-spacing: 0.8px;
             text-align: center;
           }
@@ -241,7 +241,7 @@ onMounted(async () => {
 }
 
 .pbc-title {
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.2px;
   font-size: 15px;
 }
@@ -298,7 +298,7 @@ onMounted(async () => {
 
 .pbc-code {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 1px;
   color: #111;
 }

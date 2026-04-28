@@ -240,7 +240,7 @@ function money(value) {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -254,7 +254,7 @@ function money(value) {
 }
 
 .sale-summary__chip {
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 
@@ -286,7 +286,7 @@ function money(value) {
 .sale-summary__label {
   font-size: 11px;
   line-height: 1.1;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: rgba(var(--v-theme-on-surface), 0.58);
@@ -299,7 +299,7 @@ function money(value) {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 
@@ -328,14 +328,14 @@ function money(value) {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.56);
 }
 
 .sale-summary__footer-total-value {
   font-size: 18px;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
   margin-top: 4px;
 }
@@ -347,7 +347,7 @@ function money(value) {
 }
 
 .sale-summary__status {
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .sale-summary__status--ok {

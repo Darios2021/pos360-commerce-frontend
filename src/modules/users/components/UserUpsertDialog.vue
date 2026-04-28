@@ -728,7 +728,7 @@ async function onResetPassword() {
   display: grid;
   place-items: center;
   color: #fff;
-  font-weight: 900;
+  font-weight: 500;
   font-size: 16px;
   flex-shrink: 0;
   box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.2);
@@ -736,7 +736,7 @@ async function onResetPassword() {
 .uud-head__text { min-width: 0; }
 .uud-title {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   margin: 0;
   letter-spacing: -0.01em;
@@ -761,7 +761,7 @@ async function onResetPassword() {
 .uud-tabs :deep(.v-tab) {
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 13px;
   padding: 0 14px;
 }
@@ -787,13 +787,13 @@ async function onResetPassword() {
 .uud-label {
   display: block;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.7;
   margin-bottom: 6px;
 }
-.uud-required { color: rgb(var(--v-theme-error)); font-weight: 900; }
+.uud-required { color: rgb(var(--v-theme-error)); font-weight: 500; }
 .uud-hint {
   font-size: 11px;
   opacity: 0.55;
@@ -804,7 +804,7 @@ async function onResetPassword() {
   font-size: 11px;
   color: rgb(var(--v-theme-error));
   margin-top: 4px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .uud-switch-box {
@@ -817,7 +817,7 @@ async function onResetPassword() {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .uud-switch-title {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13.5px;
 }
 .uud-switch-sub {
@@ -839,7 +839,7 @@ async function onResetPassword() {
 }
 .uud-section__title {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -901,7 +901,7 @@ async function onResetPassword() {
   margin-bottom: 2px;
 }
 .uud-role-card__name {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13.5px;
 }
 .uud-role-card__desc {
@@ -942,7 +942,7 @@ async function onResetPassword() {
   border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
   cursor: pointer;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   transition: all 0.15s;
   position: relative;
 }
@@ -977,7 +977,7 @@ async function onResetPassword() {
 }
 .uud-super-banner__title {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: rgb(var(--v-theme-primary));
   margin-bottom: 2px;
@@ -1018,7 +1018,7 @@ async function onResetPassword() {
 .uud-strength__fill--strong   { background: rgb(var(--v-theme-success)); }
 .uud-strength__lbl {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1049,7 +1049,7 @@ async function onResetPassword() {
 .uud-rules li.ok {
   color: rgb(var(--v-theme-success));
   opacity: 1;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .uud-actions-inline {
@@ -1065,7 +1065,7 @@ async function onResetPassword() {
   gap: 5px;
   font-size: 12.5px;
   color: rgb(var(--v-theme-success));
-  font-weight: 700;
+  font-weight: 400;
 }
 .uud-pass-msg.is-error { color: rgb(var(--v-theme-error)); }
 

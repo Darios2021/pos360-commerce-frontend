@@ -89,7 +89,7 @@ const activeTab = ref("sales");
 
 .rpt-shell__title {
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
@@ -106,7 +106,7 @@ const activeTab = ref("sales");
 
 .rpt-tab {
   text-transform: none !important;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0;
   font-size: 13px;
 }

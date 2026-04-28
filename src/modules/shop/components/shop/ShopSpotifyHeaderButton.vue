@@ -138,7 +138,7 @@ const embedUrl = computed(() => {
 }
 
 .sj-t1 {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 13px;
   white-space: nowrap;
 }

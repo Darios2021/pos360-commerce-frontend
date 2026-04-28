@@ -226,7 +226,7 @@ function timeAgo(d) {
 }
 .tnb-title {
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -241,7 +241,7 @@ function timeAgo(d) {
   background: rgb(var(--v-theme-primary));
   color: #fff;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
 }
 .tnb-header__actions {
@@ -294,7 +294,7 @@ function timeAgo(d) {
   gap: 6px;
   color: rgba(var(--v-theme-on-surface), 0.4);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* ── Item ────────────────────────────────────────────────── */
@@ -336,14 +336,14 @@ function timeAgo(d) {
 }
 .tnb-item__number {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: rgb(var(--v-theme-on-surface));
 }
 .tnb-item__time {
   font-size: 10.5px;
   color: rgba(var(--v-theme-on-surface), 0.4);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .tnb-item__route {
@@ -351,7 +351,7 @@ function timeAgo(d) {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.78);
   margin-bottom: 4px;
 }
@@ -381,7 +381,7 @@ function timeAgo(d) {
   display: inline-flex;
   align-items: center;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   border: none;

@@ -39,7 +39,7 @@ const items = computed(() => {
 </script>
 
 <style scoped>
-.pg-title{ font-weight:900; margin-bottom:10px; }
+.pg-title{ font-weight: 500; margin-bottom:10px; }
 .pg-grid{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
 .pg-img{ border-radius: 14px; border:1px solid rgba(0,0,0,.06); overflow:hidden; background:#f3f3f3; }
 @media (max-width: 1200px){ .pg-grid{ grid-template-columns: repeat(3, 1fr); } }

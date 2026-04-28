@@ -387,7 +387,7 @@ watch(
 }
 .promo-head{padding:16px 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .promo-head-left{display:flex;flex-direction:column;gap:4px}
-.promo-title{font-size:16px;font-weight:950;letter-spacing:-.2px;line-height:1.1}
+.promo-title{font-size:16px;font-weight: 500;letter-spacing:-.2px;line-height:1.1}
 .promo-sub{font-size:12px;opacity:.72}
 .promo-divider{opacity:.65}
 .promo-body{padding:10px}
@@ -409,15 +409,15 @@ watch(
 }
 .promo-img{position:relative;width:100%;height:150px;background:#f5f5f5}
 .promo-img img{width:100%;height:100%;object-fit:cover;display:block}
-.promo-badge{position:absolute;top:10px;left:10px;background:rgba(0,166,80,.95);color:#fff;font-weight:950;font-size:11px;padding:6px 10px;border-radius:999px}
+.promo-badge{position:absolute;top:10px;left:10px;background:rgba(0,166,80,.95);color:#fff;font-weight: 500;font-size:11px;padding:6px 10px;border-radius:999px}
 .promo-info{padding:10px 12px 12px}
 .promo-price-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.promo-price{font-size:18px;font-weight:950;white-space:nowrap}
-.promo-off{font-size:12px;font-weight:950;color:#00a650;white-space:nowrap}
+.promo-price{font-size:18px;font-weight: 500;white-space:nowrap}
+.promo-off{font-size:12px;font-weight: 500;color:#00a650;white-space:nowrap}
 .promo-old{margin-top:2px;font-size:12px;opacity:.6;text-decoration:line-through}
-.promo-name{margin-top:8px;font-weight:850;font-size:12px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.promo-name{margin-top:8px;font-weight: 400;font-size:12px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .promo-meta{margin-top:6px;font-size:11px;opacity:.7;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
-.promo-free{margin-top:6px;font-size:12px;font-weight:900;color:#00a650}
+.promo-free{margin-top:6px;font-size:12px;font-weight: 500;color:#00a650}
 .promo-dots{display:flex;justify-content:center;gap:8px;padding:8px 0 6px}
 .dot{width:7px;height:7px;border-radius:999px;border:0;background:rgba(0,0,0,.16);cursor:pointer}
 .dot.active{background:rgba(0,0,0,.55)}

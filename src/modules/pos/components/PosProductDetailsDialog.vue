@@ -776,7 +776,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   min-width: 0;
 }
 .pdd-name {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 1.02rem;
   line-height: 1.15;
   color: rgba(var(--v-theme-on-surface), 0.92);
@@ -809,7 +809,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 }
 .pdd-kv .v {
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 500;
   text-align: right;
   min-width: 0;
   overflow: hidden;
@@ -839,7 +839,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
 }
 .off {
   color: rgb(var(--v-theme-success));
-  font-weight: 900;
+  font-weight: 500;
 }
 
 /* RIGHT */
@@ -895,7 +895,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   color: rgba(var(--pdd-brand), 0.95);
 }
 .pdd-paycard .tx .t {
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
 }
 .pdd-paycard .tx .s {
@@ -943,7 +943,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
   backdrop-filter: blur(10px);
 }
 .pdd-add-btn {
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.5px;
   padding-inline: 28px;
   box-shadow: 0 8px 20px rgba(42, 133, 196, 0.25);

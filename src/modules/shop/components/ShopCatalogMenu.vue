@@ -462,7 +462,7 @@ onMounted(async () => {
 
 .scm-left-kicker {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(17, 24, 39, 0.42);
@@ -554,7 +554,7 @@ onMounted(async () => {
   background: rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.65);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .scm-left-item.active .scm-left-badge {
@@ -587,7 +587,7 @@ onMounted(async () => {
 
 .scm-right-kicker {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(17, 24, 39, 0.42);
@@ -653,7 +653,7 @@ onMounted(async () => {
 }
 
 .scm-group-title {
-  font-weight: 600;
+  font-weight: 400;
   font-size: 14px;
   color: rgba(17, 24, 39, 0.78);
   margin-bottom: 12px;
@@ -736,7 +736,7 @@ onMounted(async () => {
 
 .scm-drawer-kicker {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(17, 24, 39, 0.42);
@@ -808,7 +808,7 @@ onMounted(async () => {
   background: rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.66);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   flex-shrink: 0;
 }
 
@@ -862,7 +862,7 @@ onMounted(async () => {
   padding: 11px 12px;
   border-radius: 14px;
   cursor: pointer;
-  font-weight: 550;
+  font-weight: 400;
   font-size: 13px;
   color: rgba(21, 101, 192, 0.95);
   transition:

@@ -370,7 +370,7 @@ watch(
 }
 .title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   color: #333;
   display: -webkit-box;
@@ -416,7 +416,7 @@ watch(
   border-radius: 6px;
   background: #e7f0ff;
   color: #2968c8;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 12px;
 }
 
@@ -431,7 +431,7 @@ watch(
   border: 1px solid #e6e6e6;
   background: rgba(255, 255, 255, 0.96);
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
   display: grid;
   place-items: center;

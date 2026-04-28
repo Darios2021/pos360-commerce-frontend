@@ -515,7 +515,7 @@ onMounted(() => reload());
 }
 
 .sl-table :deep(th) {
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .sl-title {

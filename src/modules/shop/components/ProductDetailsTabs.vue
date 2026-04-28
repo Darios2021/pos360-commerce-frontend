@@ -86,7 +86,7 @@ const subcategory = computed(() =>
 
 .md-tabs :deep(.v-tab) {
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .md-body { padding-top: 4px; }
@@ -113,7 +113,7 @@ const subcategory = computed(() =>
   align-items: baseline;
 }
 .md-k {
-  font-weight: 900;
+  font-weight: 500;
   color: rgba(0,0,0,.75);
   font-size: 13px;
 }

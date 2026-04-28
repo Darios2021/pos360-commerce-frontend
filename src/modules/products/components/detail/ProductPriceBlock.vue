@@ -119,7 +119,7 @@ const gainResellerPctTxt = computed(() => {
 </script>
 
 <style scoped>
-.pp-title{ font-weight:900; margin-bottom:10px; }
+.pp-title{ font-weight: 500; margin-bottom:10px; }
 
 .pp-row{
   display:flex;
@@ -134,8 +134,8 @@ const gainResellerPctTxt = computed(() => {
   gap:6px;
 }
 
-.pp-currency{ font-weight:900; font-size:20px; }
-.pp-amount{ font-weight:900; font-size:34px; letter-spacing:-0.4px; }
+.pp-currency{ font-weight: 500; font-size:20px; }
+.pp-amount{ font-weight: 500; font-size:34px; letter-spacing:-0.4px; }
 
 .pp-side{
   display:flex;
@@ -161,9 +161,9 @@ const gainResellerPctTxt = computed(() => {
   background: rgba(0,150,0,.08);
 }
 
-.k{ font-size:12px; opacity:.7; font-weight:800; }
-.v{ font-size:14px; font-weight:900; }
-.sub{ font-size:12px; font-weight:700; opacity:.8; }
+.k{ font-size:12px; opacity:.7; font-weight: 500; }
+.v{ font-size:14px; font-weight: 500; }
+.sub{ font-size:12px; font-weight: 400; opacity:.8; }
 
 .pp-grid{
   display:grid;
@@ -178,8 +178,8 @@ const gainResellerPctTxt = computed(() => {
   background:rgba(0,0,0,.03);
 }
 
-.kk{ font-size:12px; opacity:.7; font-weight:800; }
-.vv{ font-size:14px; font-weight:900; margin-top:2px; }
+.kk{ font-size:12px; opacity:.7; font-weight: 500; }
+.vv{ font-size:14px; font-weight: 500; margin-top:2px; }
 
 @media (max-width: 900px){
   .pp-row{ flex-direction:column; }

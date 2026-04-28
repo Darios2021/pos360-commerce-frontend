@@ -782,7 +782,7 @@ async function copyBarcode(item) {
   align-items: center;
   gap: 5px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.6);
@@ -792,7 +792,7 @@ async function copyBarcode(item) {
   all: unset;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
   padding: 2px 6px;
   border-radius: 5px;
@@ -829,7 +829,7 @@ async function copyBarcode(item) {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.66);
@@ -856,7 +856,7 @@ async function copyBarcode(item) {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   color: rgba(var(--v-theme-on-surface), 0.72);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   transition:
     background 0.14s ease,
     border-color 0.14s ease,
@@ -898,7 +898,7 @@ async function copyBarcode(item) {
 .results-summary__count strong {
   font-size: 14px;
   color: rgb(var(--v-theme-on-surface));
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -918,7 +918,7 @@ async function copyBarcode(item) {
   border: 1px solid rgba(var(--v-theme-primary), 0.22);
   color: rgb(var(--v-theme-primary));
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   line-height: 1.3;
 }
@@ -1018,7 +1018,7 @@ async function copyBarcode(item) {
   border-radius: 8px;
   color: #fff;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.2;
   font-feature-settings: "tnum";
@@ -1059,7 +1059,7 @@ async function copyBarcode(item) {
 
 .product-card__name {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.005em;
   color: rgba(255, 255, 255, 0.96);
@@ -1082,7 +1082,7 @@ async function copyBarcode(item) {
   border: 1px dashed rgba(255, 255, 255, 0.18);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.02em;
   min-width: 0;
@@ -1137,7 +1137,7 @@ async function copyBarcode(item) {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   line-height: 1.4;
@@ -1171,7 +1171,7 @@ async function copyBarcode(item) {
 
 .product-card__price {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.96);
   font-feature-settings: "tnum";
@@ -1221,7 +1221,7 @@ async function copyBarcode(item) {
 
 .state-box__title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 

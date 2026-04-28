@@ -983,6 +983,6 @@ async function bulkDelete() {
 
 <style scoped>
 .pos-table :deep(th) {
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

@@ -1535,7 +1535,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-ftr-hint {
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.5);
   display: flex;
   align-items: center;
@@ -1558,7 +1558,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   gap: 9px !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-weight: 900 !important;
+  font-weight: 500 !important;
   transition: transform 0.14s ease, box-shadow 0.14s ease !important;
 }
 
@@ -1597,13 +1597,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 
 .ck-act-main {
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 
 .ck-act-sub {
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.75;
 }
 

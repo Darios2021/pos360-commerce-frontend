@@ -213,7 +213,7 @@ const density = computed(() => {
 .pc-title {
   font-size: 13px;
   line-height: 1.1;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -235,7 +235,7 @@ const density = computed(() => {
   padding-inline: 8px !important;
   border-radius: 10px !important;
   font-size: 11px !important;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.01em;
   text-transform: none !important;
   white-space: nowrap;

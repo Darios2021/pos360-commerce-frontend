@@ -630,7 +630,7 @@ function money(val) {
 }
 
 .inv-title {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
@@ -639,7 +639,7 @@ function money(val) {
   margin-top: 3px;
   font-size: 11px;
   color: rgba(var(--v-theme-on-surface), 0.50);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .inv-body { padding: 10px 10px 12px; }
@@ -651,7 +651,7 @@ function money(val) {
   text-align: center;
   font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.45);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .minw-0 { min-width: 0; }
@@ -660,22 +660,22 @@ function money(val) {
 .inv-stats { display: grid; gap: 6px; }
 .inv-stat-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .stat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.stat-label { flex: 1; font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.65); }
-.stat-value { font-size: 13px; font-weight: 900; }
+.stat-label { flex: 1; font-size: 12px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.65); }
+.stat-value { font-size: 13px; font-weight: 500; }
 
 /* Quality stats (progress bars) */
 .quality-stats { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
 .qstat-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.qstat-label { font-size: 12px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.60); }
-.qstat-val { font-size: 13px; font-weight: 800; }
+.qstat-label { font-size: 12px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.60); }
+.qstat-val { font-size: 13px; font-weight: 500; }
 .qstat-track { height: 8px; background: rgba(var(--v-theme-on-surface), 0.08); border-radius: 99px; overflow: hidden; }
 .qstat-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
 
 /* Quality grid */
 .quality-grid { display: flex; gap: 8px; justify-content: space-around; }
 .quality-item { text-align: center; }
-.quality-pct { font-size: 22px; font-weight: 950; line-height: 1.1; letter-spacing: -0.04em; }
-.quality-label { font-size: 11px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.55); margin-top: 2px; }
+.quality-pct { font-size: 22px; font-weight: 500; line-height: 1.1; letter-spacing: -0.04em; }
+.quality-label { font-size: 11px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.55); margin-top: 2px; }
 
 /* Products grid */
 .products-grid { display: grid; gap: 0; }
@@ -703,14 +703,14 @@ function money(val) {
 .cat-row:hover { background: rgba(var(--v-theme-on-surface), 0.03); }
 .cat-rank {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.30);
   text-align: center;
 }
 .cat-rank--top { color: rgb(var(--v-theme-primary)); }
 .cat-name {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.85);
   white-space: nowrap;
   overflow: hidden;
@@ -739,9 +739,9 @@ function money(val) {
   gap: 2px;
   white-space: nowrap;
 }
-.cat-active { font-size: 12px; font-weight: 800; color: #10B981; }
+.cat-active { font-size: 12px; font-weight: 500; color: #10B981; }
 .cat-sep    { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.25); margin: 0 1px; }
-.cat-total  { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.45); }
+.cat-total  { font-size: 12px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.45); }
 
 /* ─── No-price feed ─────────────────────────────────────── */
 .noprice-feed { display: flex; flex-direction: column; padding: 8px 0; }
@@ -759,11 +759,11 @@ function money(val) {
 }
 .noprice-name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.80);
   grid-column: 1;
 }
-.noprice-chip { font-weight: 700; }
+.noprice-chip { font-weight: 400; }
 
 .product-item--clickable {
   cursor: pointer;
@@ -785,8 +785,8 @@ function money(val) {
   justify-content: center;
   opacity: 0.7;
 }
-.product-name { font-size: 12.5px; font-weight: 700; line-height: 1.2; }
-.product-meta { font-size: 11px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.5); margin-top: 2px; }
+.product-name { font-size: 12.5px; font-weight: 400; line-height: 1.2; }
+.product-meta { font-size: 11px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.5); margin-top: 2px; }
 .product-chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .sep { opacity: 0.5; }
 
@@ -811,13 +811,13 @@ function money(val) {
 }
 .flag-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
   margin-top: 4px;
 }
 .flag-value {
   font-size: 2rem;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1;
 }

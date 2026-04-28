@@ -130,7 +130,7 @@ const specsList = computed(() => {
 .ti-pad { padding: 14px 16px; }
 
 .ti-tabs :deep(.v-tab) {
-  font-weight: 900;
+  font-weight: 500;
   text-transform: none;
 }
 
@@ -162,7 +162,7 @@ const specsList = computed(() => {
   background: rgba(0,0,0,.01);
 }
 
-.ti-k { font-weight: 900; color: rgba(0,0,0,.78); }
+.ti-k { font-weight: 500; color: rgba(0,0,0,.78); }
 .ti-v { color: rgba(0,0,0,.78); }
 
 .ti-list {

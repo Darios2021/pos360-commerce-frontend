@@ -189,7 +189,7 @@ function goHeadphones(){
   font-size:11px;
   letter-spacing:4px;
   text-transform:uppercase;
-  font-weight:700;
+  font-weight: 400;
   color:#333;
 }
 
@@ -197,7 +197,7 @@ function goHeadphones(){
   margin:0;
   font-size:27px;
   line-height:1.05;
-  font-weight:700;
+  font-weight: 400;
   letter-spacing:-0.4px;
   color:#333;
 }
@@ -221,7 +221,7 @@ function goHeadphones(){
   background:#02498b;
   color:#fff;
   font-size:15px;
-  font-weight:700;
+  font-weight: 400;
   cursor:pointer;
 }
 

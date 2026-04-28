@@ -919,9 +919,9 @@ onMounted(() => { loadList(); });
   flex-wrap: wrap;
 }
 .tr-bar-left { display: flex; align-items: center; gap: 12px; }
-.tr-title    { font-size: 22px; font-weight: 900; line-height: 1.1; letter-spacing: -0.01em; }
+.tr-title    { font-size: 22px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
 .tr-subtitle { font-size: 12px; opacity: 0.6; margin-top: 2px; font-weight: 500; }
-.tr-subtitle-filter { color: rgb(var(--v-theme-primary)); font-weight: 700; }
+.tr-subtitle-filter { color: rgb(var(--v-theme-primary)); font-weight: 400; }
 .tr-bar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* ── KPIs ── */
@@ -965,13 +965,13 @@ onMounted(() => { loadList(); });
 .tr-kpi--cancelled .tr-kpi__badge { background: linear-gradient(135deg, #ef4444, #dc2626); }
 .tr-kpi__val {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
 .tr-kpi__lbl {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.6;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -998,7 +998,7 @@ onMounted(() => { loadList(); });
 }
 @keyframes tr-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 .tr-alert__body   { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.tr-alert__title  { font-size: 13px; font-weight: 700; margin: 0; }
+.tr-alert__title  { font-size: 13px; font-weight: 400; margin: 0; }
 .tr-alert__list   { display: flex; flex-direction: column; gap: 4px; }
 .tr-alert__item {
   display: flex; align-items: center; gap: 6px;
@@ -1009,7 +1009,7 @@ onMounted(() => { loadList(); });
   text-align: left; transition: background .12s; flex-wrap: wrap;
 }
 .tr-alert__item:hover { background: rgba(var(--v-theme-warning), .18); }
-.tr-alert__num  { font-weight: 700; letter-spacing: .01em; }
+.tr-alert__num  { font-weight: 400; letter-spacing: .01em; }
 .tr-alert__from { color: rgba(var(--v-theme-on-surface), .6); flex: 1; }
 .tr-alert__ago  { font-size: 11px; color: rgba(var(--v-theme-on-surface), .4); }
 
@@ -1039,7 +1039,7 @@ onMounted(() => { loadList(); });
 .tr2 thead th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1082,11 +1082,11 @@ onMounted(() => { loadList(); });
 }
 .tr-bulk__left {
   display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 600;
+  font-size: 13px; font-weight: 400;
 }
 .tr-bulk__clear {
   background: transparent; border: none; cursor: pointer;
-  font-size: 11.5px; font-weight: 700;
+  font-size: 11.5px; font-weight: 400;
   color: rgb(var(--v-theme-primary));
   padding: 4px 8px; border-radius: 6px;
   text-transform: uppercase; letter-spacing: 0.04em;
@@ -1128,13 +1128,13 @@ onMounted(() => { loadList(); });
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .tr2-num {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -1159,7 +1159,7 @@ onMounted(() => { loadList(); });
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1180,7 +1180,7 @@ onMounted(() => { loadList(); });
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
 }
 .tr2-note {
   font-size: 11px;
@@ -1204,7 +1204,7 @@ onMounted(() => { loadList(); });
   display: grid;
   place-items: center;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 500;
   color: #fff;
   border: 2px solid rgb(var(--v-theme-surface));
   margin-left: -6px;
@@ -1224,7 +1224,7 @@ onMounted(() => { loadList(); });
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1265,19 +1265,19 @@ onMounted(() => { loadList(); });
 
 .tr2-time {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   opacity: 0.7;
   white-space: nowrap;
 }
 .tr2-time.is-warning {
   color: #d97706;
   opacity: 1;
-  font-weight: 800;
+  font-weight: 500;
 }
 .tr2-time.is-critical {
   color: rgb(var(--v-theme-error));
   opacity: 1;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .tr2-action {
@@ -1286,8 +1286,8 @@ onMounted(() => { loadList(); });
 }
 
 /* Table cells */
-.tr-number  { font-size: 13px; font-weight: 800; letter-spacing: .01em; }
-.tr-bold    { font-size: 13px; font-weight: 700; }
+.tr-number  { font-size: 13px; font-weight: 500; letter-spacing: .01em; }
+.tr-bold    { font-size: 13px; font-weight: 400; }
 .tr-sub     { font-size: 11px; opacity: 0.5; }
 .tr-note    { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
 
@@ -1297,7 +1297,7 @@ onMounted(() => { loadList(); });
 }
 .tr-chip-branch {
   font-size: 11px !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   max-width: 120px;
   overflow: hidden;
 }
@@ -1307,7 +1307,7 @@ onMounted(() => { loadList(); });
 }
 .tr-person {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11.5px; font-weight: 600;
+  font-size: 11.5px; font-weight: 400;
   color: rgba(var(--v-theme-on-surface), .55);
 }
 .tr-person--dispatch { color: rgb(var(--v-theme-warning)); }
@@ -1340,11 +1340,11 @@ onMounted(() => { loadList(); });
   background: rgba(var(--v-theme-error), .1); flex-shrink: 0;
 }
 .cancel-dlg__eyebrow {
-  margin: 0; font-size: 11px; font-weight: 700;
+  margin: 0; font-size: 11px; font-weight: 400;
   letter-spacing: .06em; text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), .5);
 }
-.cancel-dlg__title { margin: 2px 0 0; font-size: 18px; font-weight: 800; line-height: 1.1; }
+.cancel-dlg__title { margin: 2px 0 0; font-size: 18px; font-weight: 500; line-height: 1.1; }
 .cancel-dlg__body  { padding: 4px 18px 14px; }
 .cancel-dlg__info-row {
   display: flex; align-items: flex-start; gap: 10px;

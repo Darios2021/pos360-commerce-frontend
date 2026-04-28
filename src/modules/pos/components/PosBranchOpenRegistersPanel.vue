@@ -122,15 +122,15 @@ const rows = computed(() =>
 .branch-open__icon { opacity: 0.65; }
 .branch-open__title {
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.75;
 }
-.branch-open__count { font-weight: 800; }
+.branch-open__count { font-weight: 500; }
 .branch-open__mode {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: lowercase;
   letter-spacing: 0.02em;
   opacity: 0.7;
@@ -164,7 +164,7 @@ const rows = computed(() =>
   display: grid;
   place-items: center;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
   flex-shrink: 0;
@@ -179,7 +179,7 @@ const rows = computed(() =>
 
 .branch-open__name {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
   color: rgb(var(--v-theme-on-surface));
   overflow: hidden;
@@ -199,7 +199,7 @@ const rows = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .branch-open__meta-item :deep(.v-icon) { opacity: 0.7; }
 .branch-open__meta-item--id {

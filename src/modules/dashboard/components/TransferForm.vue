@@ -540,7 +540,7 @@ async function save() {
 .tf-head__eyebrow {
   margin: 0;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tf-muted);
@@ -548,7 +548,7 @@ async function save() {
 .tf-head__title {
   margin: 1px 0 0;
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
@@ -568,7 +568,7 @@ async function save() {
   align-items: center;
   gap: 5px;
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--tf-muted);
@@ -603,7 +603,7 @@ async function save() {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 .tf-search {
@@ -630,7 +630,7 @@ async function save() {
 }
 .tf-empty__title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 4px;
 }
 .tf-empty__sub {
@@ -699,7 +699,7 @@ async function save() {
   border-radius: 7px;
   color: #fff;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
   font-feature-settings: "tnum";
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
@@ -720,7 +720,7 @@ async function save() {
 }
 .tf-card__name {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.25;
   letter-spacing: -0.005em;
   display: -webkit-box;
@@ -749,7 +749,7 @@ async function save() {
   background: rgba(var(--v-theme-on-surface), 0.05);
   color: rgba(var(--v-theme-on-surface), 0.65);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   transition: background 0.14s, color 0.14s;
@@ -776,7 +776,7 @@ async function save() {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.01em;
 }
 .tf-package__body {
@@ -806,7 +806,7 @@ async function save() {
 }
 .tf-package__empty-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
 }
 .tf-package__empty-sub {
   font-size: 12px;
@@ -839,7 +839,7 @@ async function save() {
 .tf-line__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .tf-line__name {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -864,7 +864,7 @@ async function save() {
   align-items: center;
   gap: 3px;
   color: rgb(var(--v-theme-warning));
-  font-weight: 700;
+  font-weight: 400;
 }
 .tf-line__qty {
   display: inline-flex;
@@ -877,7 +877,7 @@ async function save() {
   height: 26px;
   text-align: center;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   border-radius: 6px;
   background: transparent;
@@ -915,10 +915,10 @@ async function save() {
 }
 .tf-summary__lbl {
   color: var(--tf-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 .tf-summary__val {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
   font-feature-settings: "tnum";
 }
@@ -932,7 +932,7 @@ async function save() {
   background: rgba(var(--v-theme-warning), 0.1);
   color: rgb(var(--v-theme-warning));
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 /* ERROR */
@@ -956,7 +956,7 @@ async function save() {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--tf-muted);
 }
 .tf-footer__actions {

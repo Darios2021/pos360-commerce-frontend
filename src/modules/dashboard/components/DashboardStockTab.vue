@@ -574,7 +574,7 @@ const optStockBySubCat = computed(() => ({
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.15);
   background: rgba(var(--v-theme-on-surface), 0.05);
@@ -636,11 +636,11 @@ const optStockBySubCat = computed(() => ({
 .stk-kpi__icon-wrap--info    { background: rgba(0,143,251,.15); }
 
 .stk-kpi__body { min-width: 0; }
-.stk-kpi__num { font-size: 26px; font-weight: 900; line-height: 1.1; letter-spacing: -.02em; }
-.stk-kpi__num--sm { font-size: 15px; font-weight: 800; }
-.stk-kpi__lbl { font-size: 12px; font-weight: 700; opacity: .75; margin-top: 1px; }
-.stk-kpi__sub { font-size: 11px; opacity: .5; font-weight: 600; }
-.inv-price-tag { font-size: 10px; font-weight: 600; opacity: .6; background: rgba(99,102,241,.15); color: #818cf8; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+.stk-kpi__num { font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -.02em; }
+.stk-kpi__num--sm { font-size: 15px; font-weight: 500; }
+.stk-kpi__lbl { font-size: 12px; font-weight: 400; opacity: .75; margin-top: 1px; }
+.stk-kpi__sub { font-size: 11px; opacity: .5; font-weight: 400; }
+.inv-price-tag { font-size: 10px; font-weight: 400; opacity: .6; background: rgba(99,102,241,.15); color: #818cf8; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
 .inv-list-val { margin-top: 2px; opacity: .4; }
 
 /* ─── Alert feed ─────────────────────────────────────────────────────────── */
@@ -664,8 +664,8 @@ const optStockBySubCat = computed(() => ({
 .stk-head--error   { background: rgba(255,69,96,.06); }
 .stk-head--warning { background: rgba(254,176,25,.06); }
 
-.stk-title { font-weight: 900; font-size: 13.5px; letter-spacing: -.01em; }
-.stk-sub   { font-size: 11px; opacity: .5; font-weight: 600; margin-top: 2px; }
+.stk-title { font-weight: 500; font-size: 13.5px; letter-spacing: -.01em; }
+.stk-sub   { font-size: 11px; opacity: .5; font-weight: 400; margin-top: 2px; }
 
 .stk-alert-feed {
   display: flex;
@@ -690,16 +690,16 @@ const optStockBySubCat = computed(() => ({
 .stk-alert-row--warning:hover { background: rgba(254,176,25,.05); }
 
 .stk-alert-info { flex: 1; min-width: 0; }
-.stk-alert-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stk-alert-name { font-size: 13px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stk-alert-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
-.stk-alert-sku  { font-size: 11px; opacity: .55; font-weight: 600; }
-.stk-alert-branch, .stk-alert-wh { font-size: 11px; opacity: .6; font-weight: 600; display: flex; align-items: center; gap: 2px; }
+.stk-alert-sku  { font-size: 11px; opacity: .55; font-weight: 400; }
+.stk-alert-branch, .stk-alert-wh { font-size: 11px; opacity: .6; font-weight: 400; display: flex; align-items: center; gap: 2px; }
 
 .stk-show-more {
   text-align: center;
   padding: 8px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: .6;
   cursor: pointer;
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
@@ -716,7 +716,7 @@ const optStockBySubCat = computed(() => ({
   background: rgba(0,227,150,.07);
   border: 1px solid rgba(0,227,150,.2);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: #00E396;
 }
 
@@ -731,7 +731,7 @@ const optStockBySubCat = computed(() => ({
   align-items: center;
   gap: 12px;
 }
-.branch-name { font-size: 13px; font-weight: 700; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.branch-name { font-size: 13px; font-weight: 400; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .branch-bar-wrap { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: rgba(var(--v-theme-on-surface), .06); }
 .branch-seg { height: 100%; transition: width .4s ease; }
 .branch-seg--error   { background: #FF4560; }
@@ -739,15 +739,15 @@ const optStockBySubCat = computed(() => ({
 .branch-seg--success { background: #00E396; }
 .branch-badges { display: flex; gap: 4px; }
 .branch-badge {
-  font-size: 11px; font-weight: 800;
+  font-size: 11px; font-weight: 500;
   padding: 1px 6px; border-radius: 20px;
 }
 .branch-badge--error   { background: rgba(255,69,96,.15);  color: #FF4560; }
 .branch-badge--warning { background: rgba(254,176,25,.15); color: #FEB019; }
 .branch-badge--success { background: rgba(0,227,150,.12);  color: #00E396; }
-.branch-total { font-size: 12px; font-weight: 700; opacity: .55; white-space: nowrap; }
+.branch-total { font-size: 12px; font-weight: 400; opacity: .55; white-space: nowrap; }
 .branch-legend { display: flex; gap: 16px; padding-top: 8px; border-top: 1px solid rgba(var(--v-theme-on-surface),.06); margin-top: 4px; }
-.bl-item { display: flex; align-items: center; gap: 5px; font-size: 11px; opacity: .65; font-weight: 600; }
+.bl-item { display: flex; align-items: center; gap: 5px; font-size: 11px; opacity: .65; font-weight: 400; }
 .bl-dot  { width: 8px; height: 8px; border-radius: 50%; }
 
 /* ─── Days inventory feed ────────────────────────────────────────────────── */
@@ -766,17 +766,17 @@ const optStockBySubCat = computed(() => ({
 .days-row--urgent { border-left: 3px solid #FF4560; }
 .days-row--warn   { border-left: 3px solid #FEB019; }
 .days-name  { flex: 1; min-width: 0; }
-.days-product { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.days-sku   { font-size: 11px; opacity: .45; font-weight: 600; }
+.days-product { font-size: 12.5px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.days-sku   { font-size: 11px; opacity: .45; font-weight: 400; }
 .days-mid   { flex: 0 0 auto; text-align: right; }
-.days-rate  { display: block; font-size: 11.5px; font-weight: 700; opacity: .7; }
+.days-rate  { display: block; font-size: 11.5px; font-weight: 400; opacity: .7; }
 .days-stock { display: block; font-size: 11px; opacity: .45; }
 
 /* ─── Misc ───────────────────────────────────────────────────────────────── */
 .chip-soft  { border: 1px solid rgba(var(--v-theme-on-surface), 0.10) !important; }
 .empty-state {
   padding: 28px 20px; text-align: center; font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.40); font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.40); font-weight: 400;
 }
 .margin-details { display: grid; gap: 6px; }
 .margin-row {
@@ -785,8 +785,8 @@ const optStockBySubCat = computed(() => ({
   background: rgba(var(--v-theme-on-surface), 0.04);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
 }
-.margin-label { font-size: 12px; font-weight: 600; color: rgba(var(--v-theme-on-surface), 0.55); }
-.margin-value { font-size: 13px; font-weight: 800; }
+.margin-label { font-size: 12px; font-weight: 400; color: rgba(var(--v-theme-on-surface), 0.55); }
+.margin-value { font-size: 13px; font-weight: 500; }
 .gap-2 { gap: 8px; }
 
 /* ─── Ranking feed ───────────────────────────────────────────────────────── */
@@ -805,20 +805,20 @@ const optStockBySubCat = computed(() => ({
 .rank-num {
   flex: 0 0 26px;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   opacity: .35;
   text-align: center;
 }
 .rank-num--top { opacity: 1; color: #f59e0b; }
 .rank-info { flex: 1; min-width: 0; }
-.rank-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.rank-name { font-size: 12.5px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
 .rank-bar-wrap { height: 4px; border-radius: 4px; background: rgba(var(--v-theme-on-surface), .07); overflow: hidden; }
 .rank-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
 .rank-bar-fill--qty   { background: #775DD0; }
 .rank-bar-fill--value { background: #00E396; }
 .rank-meta { flex: 0 0 110px; text-align: right; }
-.rank-primary   { font-size: 13px; font-weight: 900; }
-.rank-secondary { font-size: 11px; opacity: .5; font-weight: 600; margin-top: 1px; }
+.rank-primary   { font-size: 13px; font-weight: 500; }
+.rank-secondary { font-size: 11px; opacity: .5; font-weight: 400; margin-top: 1px; }
 .op30 { opacity: 0.3; }
 
 /* ─── Toggle ─────────────────────────────────────────────────────────────── */
@@ -833,7 +833,7 @@ const optStockBySubCat = computed(() => ({
   padding: 4px 12px;
   border-radius: 8px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   color: rgba(var(--v-theme-on-surface), .55);
   transition: all .15s;

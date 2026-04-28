@@ -878,7 +878,7 @@ function submit() {
   background: rgba(var(--v-theme-on-surface), 0.07);
   color: rgb(var(--v-theme-on-surface));
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.3;
 }
 
@@ -917,7 +917,7 @@ function submit() {
 }
 
 .arq__empty-alert-text strong {
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-warning));
 }
 
@@ -958,7 +958,7 @@ function submit() {
   align-items: center;
   gap: 6px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.55);
@@ -976,7 +976,7 @@ function submit() {
   background: rgba(var(--v-theme-primary), 0.14);
   color: rgb(var(--v-theme-primary));
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1006,7 +1006,7 @@ function submit() {
 
 .arq__expected-label {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.65);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -1014,7 +1014,7 @@ function submit() {
 
 .arq__expected-amount {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -1025,14 +1025,14 @@ function submit() {
 
 .arq__cash-input :deep(.v-field__input) {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 500;
   padding-top: 6px;
   padding-bottom: 6px;
 }
 
 .arq__cash-input :deep(.v-field__prefix) {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.6;
   padding-top: 10px;
 }
@@ -1079,7 +1079,7 @@ function submit() {
 
 .arq__diff-text strong {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.1;
 }
 
@@ -1091,7 +1091,7 @@ function submit() {
 
 .arq__diff-amount {
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1124,7 +1124,7 @@ function submit() {
 
 .arq__metric-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.56);
@@ -1132,7 +1132,7 @@ function submit() {
 
 .arq__metric-val {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -1146,7 +1146,7 @@ function submit() {
 
 .arq__methods-title {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
   letter-spacing: 0.02em;
 }
@@ -1174,18 +1174,18 @@ function submit() {
 }
 
 .arq-method-chip__name {
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.75);
 }
 
 .arq-method-chip strong {
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
 .arq-method-chip__count {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.5);
   padding: 1px 6px;
   border-radius: 999px;
@@ -1261,7 +1261,7 @@ function submit() {
 
 .arq__sale-id {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-primary));
   font-feature-settings: "tnum";
   letter-spacing: -0.01em;
@@ -1287,7 +1287,7 @@ function submit() {
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgba(var(--v-theme-on-surface), 0.82);
@@ -1312,7 +1312,7 @@ function submit() {
 
 .arq__sale-installments {
   margin-left: 2px;
-  font-weight: 600;
+  font-weight: 400;
   opacity: 0.85;
   font-feature-settings: "tnum";
 }
@@ -1320,7 +1320,7 @@ function submit() {
 .arq__sale-total {
   margin-left: auto;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
   white-space: nowrap;
@@ -1351,7 +1351,7 @@ function submit() {
 
 .arq__item-name {
   color: rgba(var(--v-theme-on-surface), 0.82);
-  font-weight: 600;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1360,7 +1360,7 @@ function submit() {
 
 .arq__item-qty {
   color: rgb(var(--v-theme-primary));
-  font-weight: 800;
+  font-weight: 500;
   font-feature-settings: "tnum";
   flex-shrink: 0;
 }

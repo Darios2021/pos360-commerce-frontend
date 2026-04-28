@@ -179,7 +179,7 @@ watch(
 }
 
 .bc-value {
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.5px;
   margin-top: 4px;
   word-break: break-all;

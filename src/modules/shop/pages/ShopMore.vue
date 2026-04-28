@@ -103,7 +103,7 @@ function goBack() {
 }
 
 .headTitle {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 16px;
   color: #111;
 }
@@ -152,7 +152,7 @@ function goBack() {
 }
 
 .txt { min-width: 0; }
-.t1 { font-weight: 950; font-size: 13px; color: #111; }
+.t1 { font-weight: 500; font-size: 13px; color: #111; }
 .t2 { font-size: 12px; opacity: .72; margin-top: 2px; }
 
 .chev { opacity: .45; }

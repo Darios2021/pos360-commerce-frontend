@@ -87,7 +87,7 @@ const taxesEstimated = computed(() => {
 /* Header */
 .ml-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   margin-bottom: 14px;
 }
 
@@ -106,7 +106,7 @@ const taxesEstimated = computed(() => {
 /* Gratis */
 .ml-free {
   color: #00a650;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Total */
@@ -114,7 +114,7 @@ const taxesEstimated = computed(() => {
   display: flex;
   justify-content: space-between;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 400;
   margin: 10px 0 14px;
 }
 

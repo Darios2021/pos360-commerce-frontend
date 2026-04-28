@@ -83,6 +83,47 @@
         </div>
       </div>
 
+      <!-- 📦 KIT: ¿Qué incluye? + ahorro -->
+      <div v-if="isKit" class="ml-kit-block">
+        <div class="ml-kit-head">
+          <v-icon size="16" color="#7c3aed">mdi-package-variant</v-icon>
+          <span class="ml-kit-title">¿Qué incluye este kit?</span>
+          <span class="ml-kit-count">{{ kitItemsList.length }} {{ kitItemsList.length === 1 ? 'producto' : 'productos' }}</span>
+        </div>
+
+        <div v-if="kitItemsList.length" class="ml-kit-list">
+          <div
+            v-for="it in kitItemsList"
+            :key="it.component_id"
+            class="ml-kit-row"
+            @click="onKitItemClick(it)"
+          >
+            <div class="ml-kit-thumb">
+              <img v-if="it.image_url" :src="it.image_url" :alt="it.name" />
+              <v-icon v-else size="20">mdi-package-variant-closed</v-icon>
+            </div>
+            <div class="ml-kit-info">
+              <div class="ml-kit-name">{{ it.name }}</div>
+              <div class="ml-kit-meta" v-if="it.price_list">
+                <span>$ {{ fmtMoney(it.price_list) }} c/u</span>
+              </div>
+            </div>
+            <span class="ml-kit-qty">×{{ it.qty }}</span>
+          </div>
+        </div>
+
+        <div v-if="kitSavings && kitSavings.savings > 0" class="ml-kit-savings">
+          <div class="ml-kit-savings-row">
+            <span class="ml-muted">Comprándolo suelto:</span>
+            <b class="ml-kit-savings-old">$ {{ fmtMoney(kitSavings.componentsTotal) }}</b>
+          </div>
+          <div class="ml-kit-savings-final">
+            <v-icon size="14" color="success">mdi-trending-down</v-icon>
+            <span>Ahorrás <b>$ {{ fmtMoney(kitSavings.savings) }}</b> ({{ kitSavings.savingsPct }}%)</span>
+          </div>
+        </div>
+      </div>
+
       <v-divider class="my-4" />
 
       <!-- Stock -->
@@ -191,6 +232,50 @@ function cleanOneLine(s) {
    - promoOn: si is_promo y ventana vigente, manda promo_price (si existe)
 */
 const promoOn = computed(() => isPromoActive(props.product || {}));
+
+/* ================= KIT / COMBO ================= */
+const isKit = computed(() => {
+  const v = props.product?.is_kit;
+  return v === true || Number(v) === 1;
+});
+const kitItemsList = computed(() => {
+  const arr = props.product?.kit_items || props.product?.kitItems;
+  if (!Array.isArray(arr)) return [];
+  return arr.map((ki) => {
+    const c = ki?.component || ki?.product || ki;
+    const cid = Number(ki?.component_id ?? c?.id ?? ki?.id ?? 0);
+    const firstImg = Array.isArray(c?.images)
+      ? (c.images[0]?.url || c.images[0]?.image_url || null)
+      : (c?.image_url || ki?.image_url || null);
+    return {
+      component_id: cid,
+      name: String(c?.name || ki?.name || "—"),
+      sku: String(c?.sku || ki?.sku || ""),
+      qty: Number(ki?.qty || 1),
+      price_list: Number(c?.price_list || c?.price || ki?.price_list || 0),
+      image_url: firstImg,
+    };
+  }).filter((x) => x.component_id > 0);
+});
+const kitSavings = computed(() => {
+  if (!isKit.value) return null;
+  const items = kitItemsList.value;
+  if (!items.length) return null;
+  const componentsTotal = items.reduce((acc, it) => acc + Number(it.price_list || 0) * Number(it.qty || 1), 0);
+  const kitPrice = priceFinal.value;
+  if (!componentsTotal && !kitPrice) return null;
+  const savings = componentsTotal - kitPrice;
+  const savingsPct = componentsTotal > 0 ? Math.round((savings / componentsTotal) * 100) : 0;
+  return { componentsTotal, kitPrice, savings, savingsPct };
+});
+function onKitItemClick(it) {
+  if (!it?.component_id) return;
+  // Navegamos al producto componente dentro del shop. El consumidor ve
+  // la PDP del componente individual.
+  if (typeof window !== "undefined") {
+    window.location.href = `/shop/product/${it.component_id}`;
+  }
+}
 
 const priceList = computed(() =>
   Math.max(toNum(props.product?.price_list, 0), toNum(props.product?.price, 0))
@@ -422,18 +507,18 @@ function onBuyNow() {
 }
 
 .ml-muted { color: rgba(0,0,0,.6); font-size: 13px; }
-.ml-strong { font-weight: 900; color: rgba(0,0,0,.9); }
+.ml-strong { font-weight: 500; color: rgba(0,0,0,.9); }
 
 .ml-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   margin-bottom: 6px;
 }
 
 .ml-brandmodel{
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgba(0,0,0,.72);
   margin-bottom: 6px;
 }
@@ -471,13 +556,13 @@ function onBuyNow() {
 }
 .ml-promo-banner-title {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 1.3px;
   text-transform: uppercase;
 }
 .ml-promo-banner-vig {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.92;
   text-align: right;
   flex-shrink: 0;
@@ -497,12 +582,12 @@ function onBuyNow() {
   font-size: 14px;
   color: rgba(0,0,0,.55);
   text-decoration: line-through;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .ml-discount-badge {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   color: #00a650; /* verde = cash discount default */
 }
 /* Bordó cuando es promo real */
@@ -523,9 +608,9 @@ function onBuyNow() {
   white-space: nowrap;
   margin-bottom: 2px;
 }
-.ml-currency { font-size: 22px; font-weight: 900; }
-.ml-price-int { font-size: 46px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.05; }
-.ml-price-dec { font-size: 16px; font-weight: 900; margin-top: 10px; opacity: .9; }
+.ml-currency { font-size: 22px; font-weight: 500; }
+.ml-price-int { font-size: 46px; font-weight: 500; letter-spacing: -0.5px; line-height: 1.05; }
+.ml-price-dec { font-size: 16px; font-weight: 500; margin-top: 10px; opacity: .9; }
 
 /* Precio en bordó cuando es promo */
 .ml-price-wrap.is-promo .ml-currency,
@@ -536,7 +621,7 @@ function onBuyNow() {
 
 .ml-promo-savings {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   color: #ff5722;
   margin-top: 2px;
   margin-bottom: 4px;
@@ -547,7 +632,7 @@ function onBuyNow() {
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: #ff5722;
   background: rgba(255, 87, 34, 0.10);
   border: 1px solid rgba(255, 87, 34, 0.28);
@@ -559,7 +644,7 @@ function onBuyNow() {
 
 .ml-installment-hint {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: #00a650;
   margin-top: 2px;
 }
@@ -571,14 +656,14 @@ function onBuyNow() {
   justify-content: space-between;
   gap: 10px;
 }
-.ml-stock-title { font-size: 15px; font-weight: 900; margin-bottom: 2px; }
-.ml-stock-zero { color: #d23f3f; font-weight: 700; }
+.ml-stock-title { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+.ml-stock-zero { color: #d23f3f; font-weight: 400; }
 
 .ml-stock-pill {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   padding: 3px 9px;
   border-radius: 999px;
   letter-spacing: 0.3px;
@@ -604,9 +689,105 @@ function onBuyNow() {
 
 /* Botones */
 .ml-actions { margin-top: 14px; display: grid; gap: 10px; }
-.ml-btn { border-radius: 12px; font-weight: 900; text-transform: none; }
+.ml-btn { border-radius: 12px; font-weight: 500; text-transform: none; }
 
 @media (max-width: 980px) {
   .ml-price-int { font-size: 40px; }
+}
+
+/* ── KIT / COMBO en PDP ── */
+.ml-kit-block {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg,
+    rgba(124, 58, 237, 0.08),
+    rgba(124, 58, 237, 0.02)
+  );
+  border: 1px solid rgba(124, 58, 237, 0.25);
+}
+.ml-kit-head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px;
+}
+.ml-kit-title {
+  font-size: 14px; font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+}
+.ml-kit-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.ml-kit-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ml-kit-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(124, 58, 237, 0.10);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.ml-kit-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.10);
+}
+.ml-kit-thumb {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ml-kit-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ml-kit-info { min-width: 0; }
+.ml-kit-name {
+  font-size: 13px; font-weight: 500;
+  line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ml-kit-meta { font-size: 11px; opacity: 0.65; margin-top: 2px; }
+.ml-kit-qty {
+  font-size: 14px; font-weight: 600;
+  color: #7c3aed;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.1);
+}
+.ml-kit-savings {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.25);
+  font-size: 12.5px;
+}
+.ml-kit-savings-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 2px 0;
+}
+.ml-kit-savings-old {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.ml-kit-savings-final {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.20);
+  font-size: 13.5px;
+  color: rgb(var(--v-theme-success));
 }
 </style>

@@ -104,7 +104,7 @@ onMounted(async () => {
 }
 .fav-h-title {
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: 0.2px;
 }
 .fav-h-sub {
@@ -132,7 +132,7 @@ onMounted(async () => {
 }
 
 .fav-empty-title {
-  font-weight: 950;
+  font-weight: 500;
   margin-top: 8px;
 }
 .fav-empty-sub {
@@ -195,7 +195,7 @@ onMounted(async () => {
 
 .fav-title {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.2;
   min-height: 32px;
   display: -webkit-box;
@@ -206,7 +206,7 @@ onMounted(async () => {
 
 .fav-price {
   margin-top: 6px;
-  font-weight: 950;
+  font-weight: 500;
 }
 
 .fav-actions {

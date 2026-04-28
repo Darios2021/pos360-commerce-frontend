@@ -220,14 +220,14 @@ defineExpose({ focusCurrent, handleKeyboardAction });
 .ck-screen__title {
   font-size: 1rem;
   line-height: 1.1;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-screen__subtitle {
   font-size: 0.76rem;
   line-height: 1.1;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
@@ -286,7 +286,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
   border-bottom-width: 2px;
   color: rgb(var(--cc));
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 500;
   font-family: 'Courier New', monospace;
   display: flex;
   align-items: center;
@@ -311,7 +311,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
   align-items: center;
   justify-content: center;
   font-size: 1.9rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: -0.03em;
   transition: background 0.15s, color 0.15s;
@@ -330,7 +330,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
 
 .ck-inv-title {
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   color: rgb(var(--v-theme-on-surface));
   white-space: nowrap;
@@ -339,7 +339,7 @@ defineExpose({ focusCurrent, handleKeyboardAction });
 
 .ck-inv-desc {
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   text-align: center;
   color: rgba(var(--v-theme-on-surface), 0.55);

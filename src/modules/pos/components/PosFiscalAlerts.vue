@@ -153,7 +153,7 @@ const visibleAlerts = computed(() => {
 .fiscal-alerts__title {
   font-size: 13px;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .fiscal-alerts__body {

@@ -296,7 +296,7 @@ function onCancel() { emit("cancel"); }
 }
 .zcd-title {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.15;
   margin: 0;
   letter-spacing: -0.01em;
@@ -336,14 +336,14 @@ function onCancel() { emit("cancel"); }
 .zcd-card__row:last-child { border-bottom: none; }
 .zcd-k {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.6;
 }
 .zcd-v {
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 500;
 }
 .zcd-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -363,12 +363,12 @@ function onCancel() { emit("cancel"); }
   background: rgba(var(--v-theme-error), 0.1);
   color: rgb(var(--v-theme-error));
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .zcd-branch-link {
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
   text-decoration: underline dotted;
   text-underline-offset: 3px;

@@ -159,7 +159,7 @@ watch(
 
 .cat-title {
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
 }
 
@@ -168,7 +168,7 @@ watch(
   background: transparent;
   cursor: pointer;
   color: #1a73e8;
-  font-weight: 800;
+  font-weight: 500;
   font-size: 12px;
   padding: 0;
 }
@@ -244,7 +244,7 @@ watch(
 }
 
 .cat-name {
-  font-weight: 850;
+  font-weight: 400;
   font-size: 13px;
   line-height: 1.15;
 

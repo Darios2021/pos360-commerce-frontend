@@ -714,7 +714,7 @@ background:#eaeef2;
 .mlc-left-item.active{
 background:#ffffff;
 color:#1d2a3a;
-font-weight:700;
+font-weight: 400;
 }
 .mlc-left-item.active::before{
 content:"";
@@ -771,12 +771,12 @@ font-size:9.5px;
 text-transform:uppercase;
 color:#8a96a3;
 letter-spacing:.08em;
-font-weight:700;
+font-weight: 400;
 }
 
 .mlc-right-title{
 font-size:14px;
-font-weight:700;
+font-weight: 400;
 color:#1c2736;
 margin-top:2px;
 letter-spacing:-0.01em;
@@ -788,7 +788,7 @@ background:transparent;
 font-size:12px;
 color:#3483fa;
 cursor:pointer;
-font-weight:600;
+font-weight: 400;
 
 display:flex;
 align-items:center;
@@ -874,7 +874,7 @@ display:block;
 
 .mlc-icon-ph{
 font-size:13px;
-font-weight:800;
+font-weight: 500;
 color:#3483fa;
 letter-spacing:0.5px;
 }
@@ -887,7 +887,7 @@ min-width:0;
 
 .mlc-row-name{
 font-size:13.5px;
-font-weight:600;
+font-weight: 400;
 color:#1d2a3a;
 letter-spacing:-0.01em;
 line-height:1.3;
@@ -921,7 +921,7 @@ gap:6px;
 }
 .mlc-empty-title{
 font-size:13px;
-font-weight:700;
+font-weight: 400;
 color:#3a4858;
 margin-top:4px;
 }
@@ -1004,7 +1004,7 @@ border-radius:4px;
 background:#16a34a;
 color:#ffffff;
 font-size:9.5px;
-font-weight:800;
+font-weight: 500;
 letter-spacing:0.4px;
 line-height:1.2;
 }
@@ -1018,7 +1018,7 @@ min-height:64px;
 }
 .mlc-prod-name{
 font-size:11.5px;
-font-weight:600;
+font-weight: 400;
 color:#1d2a3a;
 line-height:1.3;
 display:-webkit-box;
@@ -1040,7 +1040,7 @@ line-height:1;
 }
 .mlc-prod-price{
 font-size:14px;
-font-weight:800;
+font-weight: 500;
 color:#1d2a3a;
 letter-spacing:-0.2px;
 line-height:1.1;
@@ -1075,7 +1075,7 @@ gap:5px;
 border:0;
 background:transparent;
 font-size:12.5px;
-font-weight:700;
+font-weight: 400;
 color:#3483fa;
 padding:10px 14px;
 border-radius:8px;

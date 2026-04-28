@@ -805,7 +805,7 @@ defineExpose({
   border: 1px solid rgba(var(--v-theme-primary), 0.24);
   color: rgb(var(--v-theme-primary));
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   box-shadow: 0 6px 18px rgba(var(--v-theme-primary), 0.14);
   backdrop-filter: blur(4px);
@@ -1001,7 +1001,7 @@ defineExpose({
 
 .pos-dd-prefix {
   color: rgb(var(--v-theme-primary));
-  font-weight: 700;
+  font-weight: 400;
   background: rgba(var(--v-theme-primary), 0.08);
   border-radius: 3px;
   padding: 0 2px;
@@ -1027,7 +1027,7 @@ defineExpose({
 .pos-dd-row--search {
   background: rgba(var(--v-theme-primary), 0.06);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .pos-dd-row--search:hover,
@@ -1041,7 +1041,7 @@ defineExpose({
 
 .pos-dd-typed {
   color: rgb(var(--v-theme-primary));
-  font-weight: 800;
+  font-weight: 500;
   margin: 0 3px;
 }
 
@@ -1057,7 +1057,7 @@ defineExpose({
   background: rgba(var(--v-theme-primary), 0.14);
   color: rgb(var(--v-theme-primary));
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0;
   border: 1px solid rgba(var(--v-theme-primary), 0.22);
 }
@@ -1093,7 +1093,7 @@ defineExpose({
   border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
   color: rgba(var(--v-theme-on-surface), 0.72);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
@@ -1134,7 +1134,7 @@ defineExpose({
 
 .pos-dd-empty-text strong {
   color: rgb(var(--v-theme-on-surface));
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .pos-dd-empty-text span {

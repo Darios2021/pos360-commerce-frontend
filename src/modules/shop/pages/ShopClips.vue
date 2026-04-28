@@ -965,7 +965,7 @@ onBeforeUnmount(() => {
 .pbar-title {
   font-size: 12px;
   line-height: 1.18;
-  font-weight: 900;
+  font-weight: 500;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -983,13 +983,13 @@ onBeforeUnmount(() => {
 .pbar-price {
   font-size: 14px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: 500;
 }
 
 .pbar-off {
   font-size: 11px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: 500;
   color: #00a650;
 }
 

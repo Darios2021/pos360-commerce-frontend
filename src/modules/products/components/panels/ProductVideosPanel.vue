@@ -274,7 +274,7 @@ watch(
 
 .pv-subtitle {
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   opacity: 0.9;
 }
 
@@ -312,7 +312,7 @@ watch(
 }
 
 .pv-meta .pv-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
 }
 
@@ -351,7 +351,7 @@ watch(
 }
 
 .pv-queue-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12px;
 }
 

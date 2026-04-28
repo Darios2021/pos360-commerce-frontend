@@ -335,7 +335,7 @@ function applyPreset(r) {
 }
 .mlf-active-title {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: #999;
@@ -356,7 +356,7 @@ function applyPreset(r) {
   background: rgba(52, 131, 250, 0.08);
   color: #3483fa;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   padding: 4px 10px 4px 12px;
   cursor: pointer;
   transition: background 0.12s;
@@ -368,7 +368,7 @@ function applyPreset(r) {
   background: transparent;
   color: #3483fa;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
@@ -392,7 +392,7 @@ function applyPreset(r) {
 }
 .mlf-sec-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: #333;
   letter-spacing: -0.1px;
 }
@@ -401,7 +401,7 @@ function applyPreset(r) {
   background: transparent;
   color: #3483fa;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   padding: 0;
 }
@@ -452,7 +452,7 @@ function applyPreset(r) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mlf-cat-item.active .mlf-cat-name { font-weight: 600; }
+.mlf-cat-item.active .mlf-cat-name { font-weight: 400; }
 .mlf-cat-count {
   font-size: 12px;
   color: #999;
@@ -512,7 +512,7 @@ function applyPreset(r) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mlf-brand-item.active .mlf-brand-name { font-weight: 600; }
+.mlf-brand-item.active .mlf-brand-name { font-weight: 400; }
 .mlf-brand-count {
   font-size: 12px;
   color: #999;
@@ -527,7 +527,7 @@ function applyPreset(r) {
   background: transparent;
   color: #3483fa;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   padding: 4px 6px;
   display: block;
@@ -559,7 +559,7 @@ function applyPreset(r) {
   transition: background 0.1s;
 }
 .mlf-price-range-btn:hover { background: #f5f5f5; }
-.mlf-price-range-btn.active { color: #3483fa; font-weight: 600; }
+.mlf-price-range-btn.active { color: #3483fa; font-weight: 400; }
 .mlf-price-dot {
   width: 8px;
   height: 8px;
@@ -575,7 +575,7 @@ function applyPreset(r) {
 
 .mlf-price-custom-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #aaa;
@@ -601,7 +601,7 @@ function applyPreset(r) {
   padding: 0 6px;
   font-size: 13px;
   color: #999;
-  font-weight: 600;
+  font-weight: 400;
   border-right: 1px solid #eee;
   line-height: 34px;
 }
@@ -616,7 +616,7 @@ function applyPreset(r) {
   width: 0;
   min-width: 0;
 }
-.mlf-price-dash { color: #bbb; font-size: 16px; font-weight: 700; flex: 0 0 auto; }
+.mlf-price-dash { color: #bbb; font-size: 16px; font-weight: 400; flex: 0 0 auto; }
 .mlf-price-apply {
   width: 34px;
   height: 34px;
@@ -643,7 +643,7 @@ function applyPreset(r) {
   background: transparent;
   color: #666;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   cursor: pointer;

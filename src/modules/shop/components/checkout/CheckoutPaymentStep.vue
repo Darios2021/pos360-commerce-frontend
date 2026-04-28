@@ -239,7 +239,7 @@ const canContinue = computed(() => {
   margin-bottom: 14px;
 }
 .ml-step-title {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 18px;
 }
 .ml-step-sub {
@@ -304,7 +304,7 @@ const canContinue = computed(() => {
 
 .ml-pay-txt { min-width: 0; }
 .ml-pay-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
   color: #111;
   display: flex;
@@ -326,7 +326,7 @@ const canContinue = computed(() => {
 
 .ml-chip {
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   padding: 3px 8px;
   border-radius: 999px;
   line-height: 1;
@@ -343,7 +343,7 @@ const canContinue = computed(() => {
   margin-top: 8px;
 }
 
-.ml-panel-title { font-weight: 900; font-size: 14px; margin-bottom: 6px; }
+.ml-panel-title { font-weight: 500; font-size: 14px; margin-bottom: 6px; }
 .ml-panel-sub { color: #737373; font-size: 13px; }
 
 .ml-panel-grid {
@@ -353,7 +353,7 @@ const canContinue = computed(() => {
   margin-top: 8px;
 }
 .ml-kv .k { font-size: 12px; color: #737373; }
-.ml-kv .v { font-size: 13.5px; font-weight: 900; color: #111; word-break: break-word; }
+.ml-kv .v { font-size: 13.5px; font-weight: 500; color: #111; word-break: break-word; }
 
 .ml-actions {
   margin-top: 16px;
@@ -365,7 +365,7 @@ const canContinue = computed(() => {
 .ml-cta {
   border-radius: 10px;
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 @media (max-width: 600px) {

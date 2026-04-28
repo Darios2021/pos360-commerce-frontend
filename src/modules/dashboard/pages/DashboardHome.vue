@@ -200,7 +200,8 @@ const loading = ref(false);
 const loadingAnalytics = ref(false);
 const error = ref("");
 const analyticsError = ref("");
-const period = ref("30d");
+// Default: "Último año" (12 meses) — visión amplia al entrar al dashboard.
+const period = ref("12m");
 const branches = ref([]);
 const branchSelected = ref(null);
 
@@ -573,7 +574,7 @@ onMounted(async () => {
   background: transparent;
   color: rgba(var(--v-theme-on-surface), 0.55);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: color 0.15s;
   white-space: nowrap;
@@ -585,7 +586,7 @@ onMounted(async () => {
 }
 .dash-tab--active {
   color: rgb(var(--v-theme-primary));
-  font-weight: 700;
+  font-weight: 400;
 }
 .dash-tab__icon { opacity: 0.65; }
 .dash-tab--active .dash-tab__icon {
@@ -600,7 +601,7 @@ onMounted(async () => {
   background: rgb(var(--v-theme-error));
   color: #fff;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -633,14 +634,14 @@ onMounted(async () => {
 }
 .dh-scope__role {
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.72;
 }
 .dh-scope__branch {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   max-width: 200px;
   overflow: hidden;

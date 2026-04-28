@@ -199,7 +199,7 @@ const activePermalink = computed(() => normalizedUrls.value[idx.value] || "");
 }
 
 .igc-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
   line-height: 1.1;
   white-space: nowrap;

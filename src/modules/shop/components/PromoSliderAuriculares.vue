@@ -325,7 +325,7 @@ function jumpTo(pageIdx) {
   align-items: center;
   gap: 10px;
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
   line-height: 1.1;
 }
@@ -346,7 +346,7 @@ function jumpTo(pageIdx) {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: 0.6px;
   opacity: 0.9;
 }
@@ -435,7 +435,7 @@ function jumpTo(pageIdx) {
   left: 10px;
   background: rgba(0, 166, 80, 0.95);
   color: #fff;
-  font-weight: 950;
+  font-weight: 500;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 999px;
@@ -456,7 +456,7 @@ function jumpTo(pageIdx) {
 
 .auris-price {
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
   line-height: 1.1;
   white-space: nowrap;
@@ -464,7 +464,7 @@ function jumpTo(pageIdx) {
 
 .auris-off {
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 500;
   color: #00a650;
   white-space: nowrap;
 }
@@ -478,7 +478,7 @@ function jumpTo(pageIdx) {
 
 .auris-name {
   margin-top: 8px;
-  font-weight: 850;
+  font-weight: 400;
   font-size: 12px;
   line-height: 1.15;
   display: -webkit-box;

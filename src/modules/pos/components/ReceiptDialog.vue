@@ -285,17 +285,17 @@ function buildTicketWindow() {
       padding: 4mm 3mm;
     }
     .tkt-header { text-align:center; padding-bottom:6px; }
-    .tkt-company { font-size:17px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
-    .tkt-branch  { font-size:12px; font-weight:700; margin-top:2px; }
+    .tkt-company { font-size:17px; font-weight: 500; text-transform:uppercase; letter-spacing:.06em; }
+    .tkt-branch  { font-size:12px; font-weight: 400; margin-top:2px; }
     .tkt-address, .tkt-phone { font-size:11px; color:#333; margin-top:1px; }
     .tkt-rule { border:none; border-top:1px dashed #999; margin:6px 0; }
     .tkt-rule--solid { border-top:2px solid #000; margin:6px 0; }
     .tkt-meta { width:100%; }
     .tkt-meta-row { display:flex; justify-content:space-between; align-items:baseline; margin:2px 0; font-size:11px; }
     .tkt-meta-row span { color:#444; }
-    .tkt-meta-row strong { font-weight:700; text-align:right; max-width:60%; word-break:break-word; }
+    .tkt-meta-row strong { font-weight: 400; text-align:right; max-width:60%; word-break:break-word; }
     .tkt-items { width:100%; border-collapse:collapse; margin:4px 0; }
-    .tkt-th { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
+    .tkt-th { font-size:10px; font-weight: 500; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
     .tkt-th--name  { text-align:left;  width:42%; }
     .tkt-th--qty   { text-align:right; width:8%;  padding-right:10px; }
     .tkt-th--price { text-align:right; width:25%; padding-right:10px; }
@@ -304,20 +304,20 @@ function buildTicketWindow() {
     .tkt-td--name  { text-align:left; }
     .tkt-td--qty   { text-align:right; white-space:nowrap; padding-right:10px; }
     .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
-    .tkt-td--sub   { text-align:right; white-space:nowrap; font-weight:700; }
-    .tkt-item-name { font-size:12px; font-weight:700; word-break:break-word; }
+    .tkt-td--sub   { text-align:right; white-space:nowrap; font-weight: 400; }
+    .tkt-item-name { font-size:12px; font-weight: 400; word-break:break-word; }
     .tkt-item-sku  { font-size:10px; color:#666; margin-top:1px; }
     .tkt-totals { margin:4px 0; }
     .tkt-total-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
     .tkt-total-row--discount { color:#c00; }
-    .tkt-total-row--main { font-size:16px; font-weight:900; padding-top:4px; }
+    .tkt-total-row--main { font-size:16px; font-weight: 500; padding-top:4px; }
     .tkt-payments { margin:4px 0; }
-    .tkt-pay-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#666; margin-bottom:3px; }
+    .tkt-pay-title { font-size:9px; font-weight: 500; text-transform:uppercase; letter-spacing:.05em; color:#666; margin-bottom:3px; }
     .tkt-pay-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
-    .tkt-pay-row--change { font-weight:900; }
+    .tkt-pay-row--change { font-weight: 500; }
     .tkt-pay-ref { font-size:10px; color:#555; }
     .tkt-footer { text-align:center; margin-top:8px; }
-    .tkt-footer-thanks { font-size:13px; font-weight:900; }
+    .tkt-footer-thanks { font-size:13px; font-weight: 500; }
     .tkt-footer-ref { font-size:9px; color:#777; margin-top:3px; }
     .tkt-footer-branch { font-size:10px; color:#555; margin-top:2px; }
     @media print {
@@ -357,36 +357,36 @@ function downloadTicket() {
       width: 80mm; padding: 4mm 3mm;
     }
     .tkt-header { text-align:center; padding-bottom:6px; }
-    .tkt-company { font-size:17px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
-    .tkt-branch  { font-size:12px; font-weight:700; margin-top:2px; }
+    .tkt-company { font-size:17px; font-weight: 500; text-transform:uppercase; letter-spacing:.06em; }
+    .tkt-branch  { font-size:12px; font-weight: 400; margin-top:2px; }
     .tkt-address, .tkt-phone { font-size:11px; color:#333; margin-top:1px; }
     .tkt-rule { border:none; border-top:1px dashed #999; margin:6px 0; }
     .tkt-rule--solid { border-top:2px solid #000; margin:6px 0; }
     .tkt-meta { width:100%; }
     .tkt-meta-row { display:flex; justify-content:space-between; align-items:baseline; margin:2px 0; font-size:11px; }
     .tkt-meta-row span { color:#444; }
-    .tkt-meta-row strong { font-weight:700; text-align:right; max-width:60%; word-break:break-word; }
+    .tkt-meta-row strong { font-weight: 400; text-align:right; max-width:60%; word-break:break-word; }
     .tkt-items { width:100%; border-collapse:collapse; margin:4px 0; }
-    .tkt-th { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
+    .tkt-th { font-size:10px; font-weight: 500; text-transform:uppercase; letter-spacing:.04em; padding:2px 0; border-bottom:1px dashed #999; }
     .tkt-th--name { text-align:left; width:42%; } .tkt-th--qty { text-align:right; width:8%; padding-right:10px; }
     .tkt-th--price { text-align:right; width:25%; padding-right:10px; } .tkt-th--sub { text-align:right; width:25%; }
     .tkt-item-row td { padding:4px 0 2px; vertical-align:top; }
     .tkt-td--name { text-align:left; } .tkt-td--qty { text-align:right; white-space:nowrap; padding-right:10px; }
     .tkt-td--price { text-align:right; white-space:nowrap; padding-right:10px; font-size:11px; }
-    .tkt-td--sub { text-align:right; white-space:nowrap; font-weight:700; }
-    .tkt-item-name { font-size:12px; font-weight:700; word-break:break-word; }
+    .tkt-td--sub { text-align:right; white-space:nowrap; font-weight: 400; }
+    .tkt-item-name { font-size:12px; font-weight: 400; word-break:break-word; }
     .tkt-item-sku { font-size:10px; color:#666; margin-top:1px; }
     .tkt-totals { margin:4px 0; }
     .tkt-total-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
     .tkt-total-row--discount { color:#c00; }
-    .tkt-total-row--main { font-size:16px; font-weight:900; padding-top:4px; }
+    .tkt-total-row--main { font-size:16px; font-weight: 500; padding-top:4px; }
     .tkt-payments { margin:4px 0; }
-    .tkt-pay-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#666; margin-bottom:3px; }
+    .tkt-pay-title { font-size:9px; font-weight: 500; text-transform:uppercase; letter-spacing:.05em; color:#666; margin-bottom:3px; }
     .tkt-pay-row { display:flex; justify-content:space-between; font-size:11px; padding:2px 0; }
-    .tkt-pay-row--change { font-weight:900; }
+    .tkt-pay-row--change { font-weight: 500; }
     .tkt-pay-ref { font-size:10px; color:#555; }
     .tkt-footer { text-align:center; margin-top:8px; }
-    .tkt-footer-thanks { font-size:13px; font-weight:900; }
+    .tkt-footer-thanks { font-size:13px; font-weight: 500; }
     .tkt-footer-ref { font-size:9px; color:#777; margin-top:3px; }
     .tkt-footer-branch { font-size:10px; color:#555; margin-top:2px; }
   </style>
@@ -454,11 +454,11 @@ function downloadTicket() {
 /* Header */
 .tkt-header { text-align: center; padding-bottom: 8px; }
 .tkt-company {
-  font-size: 17px; font-weight: 900;
+  font-size: 17px; font-weight: 500;
   text-transform: uppercase; letter-spacing: .05em;
   color: #000;
 }
-.tkt-branch  { font-size: 12px; font-weight: 700; color: #222; margin-top: 2px; }
+.tkt-branch  { font-size: 12px; font-weight: 400; color: #222; margin-top: 2px; }
 .tkt-address { font-size: 11px; color: #555; margin-top: 2px; }
 .tkt-phone   { font-size: 11px; color: #555; margin-top: 1px; }
 
@@ -477,12 +477,12 @@ function downloadTicket() {
   margin: 3px 0; font-size: 12px;
 }
 .tkt-meta-row span { color: #666; }
-.tkt-meta-row strong { font-weight: 800; color: #111; text-align: right; max-width: 58%; word-break: break-word; }
+.tkt-meta-row strong { font-weight: 500; color: #111; text-align: right; max-width: 58%; word-break: break-word; }
 
 /* Items table */
 .tkt-items { width: 100%; border-collapse: collapse; margin: 4px 0; }
 .tkt-th {
-  font-size: 10px; font-weight: 900;
+  font-size: 10px; font-weight: 500;
   text-transform: uppercase; letter-spacing: .05em;
   color: #555; padding: 4px 0;
   border-bottom: 1px dashed #bbb;
@@ -496,9 +496,9 @@ function downloadTicket() {
 .tkt-td--name  { text-align: left; }
 .tkt-td--qty   { text-align: right; white-space: nowrap; padding-right: 10px; color: #333; }
 .tkt-td--price { text-align: right; white-space: nowrap; padding-right: 10px; font-size: 11px; color: #333; }
-.tkt-td--sub   { text-align: right; white-space: nowrap; font-weight: 800; color: #000; }
+.tkt-td--sub   { text-align: right; white-space: nowrap; font-weight: 500; color: #000; }
 
-.tkt-item-name { font-size: 12px; font-weight: 700; word-break: break-word; color: #000; }
+.tkt-item-name { font-size: 12px; font-weight: 400; word-break: break-word; color: #000; }
 .tkt-item-sku  { font-size: 10px; color: #888; margin-top: 1px; }
 
 /* Totals */
@@ -509,14 +509,14 @@ function downloadTicket() {
 }
 .tkt-total-row--discount { color: #c00; }
 .tkt-total-row--main {
-  font-size: 18px; font-weight: 900;
+  font-size: 18px; font-weight: 500;
   color: #000; padding-top: 4px;
 }
 
 /* Payments */
 .tkt-payments { margin: 4px 0; }
 .tkt-pay-title {
-  font-size: 9px; font-weight: 900;
+  font-size: 9px; font-weight: 500;
   text-transform: uppercase; letter-spacing: .06em;
   color: #888; margin-bottom: 4px;
 }
@@ -524,12 +524,12 @@ function downloadTicket() {
   display: flex; justify-content: space-between;
   font-size: 12px; padding: 2px 0; color: #333;
 }
-.tkt-pay-row--change { font-weight: 900; color: #000; }
+.tkt-pay-row--change { font-weight: 500; color: #000; }
 .tkt-pay-ref { font-size: 10px; color: #888; }
 
 /* Footer */
 .tkt-footer { text-align: center; padding-top: 6px; }
-.tkt-footer-thanks { font-size: 13px; font-weight: 900; color: #000; }
+.tkt-footer-thanks { font-size: 13px; font-weight: 500; color: #000; }
 .tkt-footer-ref { font-size: 10px; color: #999; margin-top: 4px; }
 .tkt-footer-branch { font-size: 10px; color: #777; margin-top: 2px; }
 </style>

@@ -377,7 +377,7 @@ onBeforeUnmount(() => {
 .ptb-tile-key {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1;
   color: rgba(var(--v-theme-on-surface), 0.72);
@@ -426,7 +426,7 @@ onBeforeUnmount(() => {
 }
 
 .ptb-tooltip__title {
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12px;
   line-height: 1.2;
 }

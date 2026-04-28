@@ -386,7 +386,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
 .pmx-method__name {
   flex: 1 1 auto;
   font-size: 0.83rem;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
   color: rgb(var(--mc));
   white-space: nowrap;
@@ -397,7 +397,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
 .pmx-method__hint {
   flex: 0 0 auto;
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--mc), 0.55);
   letter-spacing: 0.03em;
 }
@@ -423,7 +423,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
 
 .pmx-amount__sym {
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.4);
   flex: 0 0 auto;
 }
@@ -434,7 +434,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
   border: none;
   outline: none;
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: rgb(var(--v-theme-on-surface));
   width: 100%;
@@ -486,7 +486,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
   border: 1.5px dashed rgba(var(--v-theme-on-surface), 0.2);
   background: transparent;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.48);
   cursor: pointer;
   transition: border-color 0.1s, color 0.1s, background 0.1s;
@@ -500,7 +500,7 @@ defineExpose({ handleKeyboardAction, focusCurrent });
 
 .pmx-badge {
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 500;
   padding: 4px 10px;
   border-radius: 999px;
 }

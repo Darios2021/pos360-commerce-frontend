@@ -24,45 +24,69 @@ const vuetify = createVuetify({
     options: { customProperties: true },
 
     themes: {
+      // ── Paleta brand POS 360 ─────────────────────────────────────────────
+      // Tomada del logo oficial (gradiente):
+      //   primary   = #1488d1  (celeste vivo, CTAs y acentos)
+      //   secondary = #121e47  (navy profundo, sidebar / hover oscuro)
+      // ----------------------------------------------------------------------
       adminLight: {
         dark: false,
         colors: {
-          primary: "#02498b",
-          secondary: "#3483fa",
-          sidebar: "#02498b",
-          background: "#dce4ef",
-          surface: "#ffffff",
+          primary:   "#1488d1",
+          secondary: "#121e47",
+          sidebar:   "#121e47",
+          background: "#eef3f9",
+          surface:    "#ffffff",
         },
       },
 
+      // ── Dark mode REAL (estilo Linear / Vercel / GitHub) ──────────────────
+      // Grises neutros casi negros con un tinte frío sutil. NO navy saturado.
+      //   background      → casi negro, tinte cool muy leve
+      //   surface         → cards / sheets, un escalón arriba
+      //   surface-bright  → modales, popovers, overlays elevados
+      //   primary         → brand un poco más vivo para contraste sobre dark
+      // ----------------------------------------------------------------------
       adminDark: {
         dark: true,
         colors: {
-          primary: "#02498b",
-          secondary: "#4f8cff",
-          sidebar: "#02498b",
-          background: "#0b1320",
-          surface: "#111a2e",
+          primary:          "#3aa5e6",
+          secondary:        "#1488d1",
+          sidebar:          "#0d1840",
+          background:       "#0b0c0f",
+          surface:          "#16181d",
+          "surface-bright": "#1f2228",
+          "surface-light":  "#1f2228",
+          "surface-variant":"#2a2d34",
+          "on-background":  "#e6e7eb",
+          "on-surface":     "#e6e7eb",
+          "on-surface-variant": "#a1a4ab",
         },
       },
 
       shopLight: {
         dark: false,
         colors: {
-          primary: "#02498b",
-          secondary: "#3483fa",
-          background: "#e4e7ec",
-          surface: "#ffffff",
+          primary:   "#1488d1",
+          secondary: "#121e47",
+          background: "#eef3f9",
+          surface:    "#ffffff",
         },
       },
 
       shopDark: {
         dark: true,
         colors: {
-          primary: "#02498b",
-          secondary: "#4f8cff",
-          background: "#0b1320",
-          surface: "#111a2e",
+          primary:          "#3aa5e6",
+          secondary:        "#1488d1",
+          background:       "#0b0c0f",
+          surface:          "#16181d",
+          "surface-bright": "#1f2228",
+          "surface-light":  "#1f2228",
+          "surface-variant":"#2a2d34",
+          "on-background":  "#e6e7eb",
+          "on-surface":     "#e6e7eb",
+          "on-surface-variant": "#a1a4ab",
         },
       },
     },

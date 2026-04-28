@@ -99,7 +99,7 @@ function isActive(path) {
 }
 
 .acc-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 15px;
   letter-spacing: 0.2px;
 }
@@ -127,7 +127,7 @@ function isActive(path) {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  font-weight: 950;
+  font-weight: 500;
   font-size: 12px;
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -138,7 +138,7 @@ function isActive(path) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 /* ✅ Tabs */
@@ -162,7 +162,7 @@ function isActive(path) {
   text-decoration: none;
 
   color: rgba(var(--v-theme-on-surface), 0.72);
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13px;
   position: relative;
 }

@@ -188,7 +188,7 @@ function goCheckout() {
 
 .cd-title {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .cd-body {
@@ -226,7 +226,7 @@ function goCheckout() {
 }
 
 .cd-name {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.2;
   display: -webkit-box;
@@ -248,7 +248,7 @@ function goCheckout() {
 .cd-qty {
   width: 26px;
   text-align: center;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .cd-right {
@@ -258,7 +258,7 @@ function goCheckout() {
 }
 
 .cd-price {
-  font-weight: 900;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -276,13 +276,13 @@ function goCheckout() {
 .cd-cta {
   margin-top: 12px;
   border-radius: 999px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: none;
 }
 
 .cd-continue {
   margin-top: 6px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: none;
 }
 

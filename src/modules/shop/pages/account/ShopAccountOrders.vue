@@ -433,7 +433,7 @@ onMounted(() => {
 
 .orders-title {
   font-size: 18px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: 0.2px;
 }
 
@@ -460,7 +460,7 @@ onMounted(() => {
   font-size: 13px;
 }
 .orders-search :deep(input) {
-  font-weight: 650;
+  font-weight: 400;
 }
 
 /* ✅ botón compacto */
@@ -468,7 +468,7 @@ onMounted(() => {
   height: 38px;
   min-height: 38px;
   border-radius: 10px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.3px;
 }
 
@@ -495,7 +495,7 @@ onMounted(() => {
 }
 
 .orders-empty-title {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 16px;
   margin-top: 10px;
 }
@@ -532,7 +532,7 @@ onMounted(() => {
 
 .order-date {
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 400;
   opacity: 0.78;
 }
 
@@ -543,12 +543,12 @@ onMounted(() => {
 }
 
 .order-total {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 13px;
 }
 
 .order-chip {
-  font-weight: 950;
+  font-weight: 500;
 }
 
 .order-body {
@@ -588,7 +588,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 500;
   margin-bottom: 6px;
 }
 
@@ -605,12 +605,12 @@ onMounted(() => {
 
 .order-title {
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 500;
   line-height: 1.2;
 }
 
 .order-code {
-  font-weight: 850;
+  font-weight: 400;
   opacity: 0.65;
   margin-left: 6px;
 }
@@ -652,7 +652,7 @@ onMounted(() => {
   min-height: 36px;
   border-radius: 10px;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: 0.2px;
 }
 
@@ -666,7 +666,7 @@ onMounted(() => {
 
 .orders-pager-info {
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 500;
   opacity: 0.75;
 }
 
@@ -684,7 +684,7 @@ onMounted(() => {
   gap: 10px;
 }
 .detail-title {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 15px;
 }
 .detail-sub {
@@ -742,7 +742,7 @@ onMounted(() => {
   opacity: 0.55;
 }
 .detail-item-name {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.2;
 }
@@ -756,7 +756,7 @@ onMounted(() => {
   margin: 0 6px;
 }
 .detail-item-total {
-  font-weight: 950;
+  font-weight: 500;
   font-size: 13px;
 }
 .detail-summary {
@@ -794,7 +794,7 @@ onMounted(() => {
   border-radius: 999px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
   background: rgba(var(--v-theme-on-surface), 0.02);
-  font-weight: 850;
+  font-weight: 400;
   font-size: 12px;
   opacity: 0.9;
 }

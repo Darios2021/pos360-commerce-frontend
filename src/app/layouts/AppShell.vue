@@ -12,7 +12,7 @@
       >
         <template #prepend>
           <v-btn
-            :icon="rail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
+            icon="mdi-menu"
             variant="text"
             class="pos-appbar-toggle"
             :title="rail ? 'Expandir menú' : 'Contraer menú'"
@@ -20,26 +20,14 @@
           />
         </template>
 
-        <!-- Marca compacta -->
-        <div class="brand-mark" title="POS360">
-          <span class="brand-mark__text">360</span>
+        <!-- Marca: logo final con texto integrado -->
+        <div class="brand-mark" title="POS 360">
+          <img
+            :src="BRAND_LOGO_WHITE"
+            alt="POS 360"
+            class="brand-mark__img"
+          />
         </div>
-
-        <!-- Separador vertical -->
-        <div class="header-divider" />
-
-        <!-- Breadcrumbs de la ruta actual -->
-        <nav class="header-crumbs" aria-label="breadcrumb">
-          <template v-for="(crumb, i) in breadcrumbs" :key="i">
-            <span v-if="i > 0" class="header-crumb__sep">›</span>
-            <component
-              :is="crumb.to ? 'router-link' : 'span'"
-              :to="crumb.to || undefined"
-              class="header-crumb__label"
-              :class="{ 'header-crumb__label--last': i === breadcrumbs.length - 1 }"
-            >{{ crumb.label }}</component>
-          </template>
-        </nav>
 
         <v-spacer />
 
@@ -87,81 +75,101 @@
             </v-btn>
           </template>
 
-          <v-card rounded="xl" class="pos-account-card" min-width="340">
-            <div class="d-flex align-center justify-space-between px-4 pt-4">
-              <div class="text-caption text-medium-emphasis">Cuenta</div>
+          <v-card rounded="xl" class="pos-account-card" min-width="380">
+            <!-- Header: email centrado + cerrar -->
+            <div class="account-header">
+              <span class="account-header__spacer" />
+              <span class="account-header__email">{{ userEmailOrUsername }}</span>
               <v-btn
                 icon="mdi-close"
                 variant="text"
                 density="comfortable"
+                size="small"
+                class="account-header__close"
                 @click="accountMenu = false"
               />
             </div>
 
-            <div class="px-4 pt-3 pb-2 text-center">
-              <v-avatar size="84" class="mx-auto mb-3 pos-account-avatar">
-                <v-img
-                  v-if="userAvatarFinal"
-                  :key="userAvatarKey + '-big'"
-                  :src="userAvatarFinal"
-                  class="avatar-img"
-                  cover
-                />
-                <span v-else class="text-h6 font-weight-bold">
-                  {{ userInitials }}
-                </span>
-              </v-avatar>
-
-              <div class="text-h6 font-weight-bold mt-1">
-                {{ userFullName || "Usuario" }}
-              </div>
-              <div class="d-flex align-center justify-center ga-1 mt-1 account-meta-row">
-                <span class="account-role-badge">{{ userRoleLabel }}</span>
-                <template v-if="userBranchLabel">
-                  <span class="account-meta-dot">·</span>
-                  <span class="account-branch-label">
-                    <v-icon size="11" class="mr-1" style="opacity:0.6">mdi-store-outline</v-icon>{{ userBranchLabel }}
+            <!-- Avatar centrado con anillo de marca -->
+            <div class="account-avatar-wrap">
+              <div class="account-avatar-ring">
+                <v-avatar size="92" class="account-avatar">
+                  <v-img
+                    v-if="userAvatarFinal"
+                    :key="userAvatarKey + '-big'"
+                    :src="userAvatarFinal"
+                    class="avatar-img"
+                    cover
+                  />
+                  <span v-else class="account-avatar-fallback">
+                    {{ userInitials }}
                   </span>
-                </template>
+                </v-avatar>
               </div>
-              <div class="text-caption text-medium-emphasis mt-1" style="opacity:0.7">
-                {{ userEmailOrUsername }}
-              </div>
-              <!-- Hint de ámbito: explica claramente qué ve el usuario. -->
-              <div
-                v-if="userScopeHint"
-                class="account-scope-hint mt-2 px-3 py-2 text-caption"
+              <router-link
+                :to="{ name: 'profile' }"
+                class="account-avatar-edit"
+                title="Editar perfil"
+                @click="accountMenu = false"
               >
-                <v-icon size="13" class="mr-1" color="primary">mdi-shield-account-outline</v-icon>
-                {{ userScopeHint }}
-              </div>
+                <v-icon size="14">mdi-camera-outline</v-icon>
+              </router-link>
             </div>
 
-            <div class="px-4 pb-2">
+            <!-- Saludo grande -->
+            <div class="account-greeting">
+              ¡Hola, {{ userFirstName || "usuario" }}!
+            </div>
+
+            <!-- CTA principal -->
+            <div class="px-4">
               <v-btn
                 block
-                variant="tonal"
-                color="primary"
-                prepend-icon="mdi-account-edit-outline"
+                variant="outlined"
+                class="account-cta-btn"
                 :to="{ name: 'profile' }"
                 @click="accountMenu = false"
               >
-                Mi perfil
+                Gestionar mi cuenta
               </v-btn>
             </div>
 
-            <v-divider class="my-3" />
-
-            <div class="px-4 pb-4">
+            <!-- Dos acciones secundarias -->
+            <div class="account-actions">
               <v-btn
-                block
-                color="red"
-                variant="tonal"
+                variant="outlined"
+                class="account-action-btn"
+                :prepend-icon="isDark ? 'mdi-white-balance-sunny' : 'mdi-weather-night'"
+                @click="toggleDark"
+              >
+                {{ isDark ? "Modo claro" : "Modo oscuro" }}
+              </v-btn>
+              <v-btn
+                variant="outlined"
+                class="account-action-btn"
                 prepend-icon="mdi-logout-variant"
                 @click="onLogout"
               >
                 Cerrar sesión
               </v-btn>
+            </div>
+
+            <!-- Info card: rol + sucursal -->
+            <div v-if="userRoleLabel || userBranchLabel" class="account-info-card">
+              <v-icon size="20" color="primary">mdi-shield-account-outline</v-icon>
+              <div class="account-info-text">
+                <strong>{{ userRoleLabel }}</strong>
+                <span v-if="userBranchLabel" class="account-info-branch">
+                  · {{ userBranchLabel }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="account-footer">
+              <span>POS 360</span>
+              <span class="account-footer-dot">·</span>
+              <span>SAN JUAN TECNOLOGÍA</span>
             </div>
           </v-card>
         </v-menu>
@@ -186,12 +194,8 @@
         -->
         <v-list nav density="compact" class="pos-nav-list">
           <!-- ════════ OPERACIÓN ════════ -->
-          <!-- Esta sección no se colapsa: son las acciones diarias y deben estar
-               siempre visibles. Dejamos solo el caption para no agregar ruido. -->
-          <div v-if="!rail" class="nav-section-cap">
-            <v-icon size="14" class="nav-section-cap__ic">mdi-rocket-launch-outline</v-icon>
-            <span>Operación</span>
-          </div>
+          <!-- Caption removido por pedido del cliente: el sidebar arranca
+               directo con los items, sin label de sección encima. -->
 
           <v-list-item :to="{ name: 'home' }" :active="isDashboard" link class="nav-item">
             <template #prepend>
@@ -217,12 +221,11 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
           </v-list-item>
 
-          <!-- ════════ GESTIÓN (colapsable, estilo igual a Tienda) ════════ -->
+          <!-- ════════ GESTIÓN (colapsable) ════════ -->
           <v-list-item
-            v-if="!rail"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.gestion"
-            @click="toggleSection('gestion')"
+            @click="onSectionHeadClick('gestion')"
           >
             <template #prepend>
               <v-icon size="18">mdi-briefcase-outline</v-icon>
@@ -235,10 +238,11 @@
                 :class="{ 'is-open': navOpen.gestion }"
               >mdi-chevron-down</v-icon>
             </template>
+            <v-tooltip v-if="rail" activator="parent" location="right">Gestión</v-tooltip>
           </v-list-item>
 
           <v-expand-transition>
-            <div v-show="rail || navOpen.gestion" class="nav-section">
+            <div v-show="navOpen.gestion" class="nav-section">
               <v-list-item :to="{ name: 'products' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-package-variant-closed</v-icon>
@@ -302,10 +306,10 @@
 
           <!-- ════════ CRM (colapsable) ════════ -->
           <v-list-item
-            v-if="!rail && showCrmSection"
+            v-if="showCrmSection"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.crm"
-            @click="toggleSection('crm')"
+            @click="onSectionHeadClick('crm')"
           >
             <template #prepend>
               <v-icon size="18">mdi-account-heart-outline</v-icon>
@@ -318,10 +322,11 @@
                 :class="{ 'is-open': navOpen.crm }"
               >mdi-chevron-down</v-icon>
             </template>
+            <v-tooltip v-if="rail" activator="parent" location="right">CRM</v-tooltip>
           </v-list-item>
 
           <v-expand-transition>
-            <div v-show="rail || navOpen.crm" class="nav-section">
+            <div v-show="navOpen.crm" class="nav-section">
               <v-list-item
                 v-if="hasRoute('adminCustomers')"
                 :to="{ name: 'adminCustomers' }"
@@ -350,12 +355,12 @@
             </div>
           </v-expand-transition>
 
-          <!-- ════════ SISTEMA (colapsable, estilo igual a Tienda) ════════ -->
+          <!-- ════════ SISTEMA (colapsable) ════════ -->
           <v-list-item
-            v-if="!rail && showSistemaSection"
+            v-if="showSistemaSection"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.sistema"
-            @click="toggleSection('sistema')"
+            @click="onSectionHeadClick('sistema')"
           >
             <template #prepend>
               <v-icon size="18">mdi-cog-outline</v-icon>
@@ -368,10 +373,11 @@
                 :class="{ 'is-open': navOpen.sistema }"
               >mdi-chevron-down</v-icon>
             </template>
+            <v-tooltip v-if="rail" activator="parent" location="right">Sistema</v-tooltip>
           </v-list-item>
 
           <v-expand-transition>
-            <div v-show="rail || navOpen.sistema" class="nav-section">
+            <div v-show="navOpen.sistema" class="nav-section">
               <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-account-multiple-outline</v-icon>
@@ -382,7 +388,7 @@
 
               <v-list-item v-if="isAdmin && hasRoute('adminPaymentMethods')" :to="{ name: 'adminPaymentMethods' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="18">mdi-credit-card-cog-outline</v-icon>
+                  <v-icon size="18">mdi-credit-card-outline</v-icon>
                 </template>
                 <v-list-item-title>Medios de pago</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Medios de pago</v-tooltip>
@@ -414,101 +420,71 @@
             </div>
           </v-expand-transition>
 
-          <!-- TIENDA -->
-          <template v-if="isSuperAdmin && showShopMenu && !rail">
-            <v-list-group value="shopAdmin">
-              <template #activator="{ props }">
-                <v-list-item v-bind="props">
-                  <template #prepend>
-                    <v-icon size="20">mdi-storefront-outline</v-icon>
-                  </template>
-                  <v-list-item-title>Tienda</v-list-item-title>
-                </v-list-item>
-              </template>
+          <!-- ════════ TIENDA (colapsable, mismo patrón que Gestión) ════════ -->
+          <v-list-item
+            v-if="isSuperAdmin && showShopMenu"
+            class="nav-item nav-section-head"
+            :aria-expanded="navOpen.tienda"
+            @click="onSectionHeadClick('tienda')"
+          >
+            <template #prepend>
+              <v-icon size="18">mdi-storefront-outline</v-icon>
+            </template>
+            <v-list-item-title>Tienda</v-list-item-title>
+            <template #append>
+              <v-icon
+                size="18"
+                class="nav-section-head__chev"
+                :class="{ 'is-open': navOpen.tienda }"
+              >mdi-chevron-down</v-icon>
+            </template>
+            <v-tooltip v-if="rail" activator="parent" location="right">Tienda</v-tooltip>
+          </v-list-item>
 
-              <v-list-item
-                v-if="hasRoute('shopBranding')"
-                :to="{ name: 'shopBranding' }"
-                exact
-              >
+          <v-expand-transition>
+            <div v-show="navOpen.tienda" class="nav-section">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-palette-outline</v-icon>
+                  <v-icon size="18">mdi-palette-outline</v-icon>
                 </template>
                 <v-list-item-title>Branding</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Branding</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="hasRoute('shopOrders')"
-                :to="{ name: 'shopOrders' }"
-                exact
-              >
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-receipt-text-outline</v-icon>
+                  <v-icon size="18">mdi-receipt-text-outline</v-icon>
                 </template>
                 <v-list-item-title>Pedidos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Pedidos</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="hasRoute('shopPaymentsSettings')"
-                :to="{ name: 'shopPaymentsSettings' }"
-                exact
-              >
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-credit-card-outline</v-icon>
+                  <v-icon size="18">mdi-credit-card-outline</v-icon>
                 </template>
                 <v-list-item-title>Pagos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Pagos</v-tooltip>
               </v-list-item>
 
-              <v-divider class="my-2 nav-divider" />
-
-              <v-list-item
-                v-if="hasRoute('shopLinks')"
-                :to="{ name: 'shopLinks' }"
-                exact
-              >
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-link-variant</v-icon>
+                  <v-icon size="18">mdi-link-variant</v-icon>
                 </template>
                 <v-list-item-title>Links Tienda</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Links Tienda</v-tooltip>
               </v-list-item>
 
-              <v-list-item
-                v-if="hasRoute('adminGaleriaMultimedia')"
-                :to="{ name: 'adminGaleriaMultimedia' }"
-                exact
-              >
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" exact class="nav-item">
                 <template #prepend>
-                  <v-icon size="20">mdi-image-multiple-outline</v-icon>
+                  <v-icon size="18">mdi-image-multiple-outline</v-icon>
                 </template>
                 <v-list-item-title>Galería multimedia</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Galería multimedia</v-tooltip>
               </v-list-item>
-            </v-list-group>
-          </template>
-
-          <template v-else-if="isSuperAdmin && showShopMenu && rail">
-            <v-list-item
-              v-if="shopLandingRoute"
-              :to="shopLandingRoute"
-              exact
-            >
-              <template #prepend>
-                <v-icon size="20">mdi-storefront-outline</v-icon>
-              </template>
-              <v-tooltip activator="parent" location="right">
-                Tienda
-              </v-tooltip>
-            </v-list-item>
-          </template>
+            </div>
+          </v-expand-transition>
         </v-list>
-
-        <v-spacer />
-
-        <div class="pa-4 text-caption drawer-version" v-if="!rail">
-          v1 · 2025
-        </div>
-        <div class="px-2 pb-4 text-caption text-center drawer-version" v-else>
-          v1
-        </div>
       </v-navigation-drawer>
 
       <!-- ================= MAIN ================= -->
@@ -538,6 +514,10 @@ import { setDarkMode } from "@/app/theme/darkMode";
 const drawer = ref(true);
 const rail = ref(false);
 const accountMenu = ref(false);
+
+// Marca POS 360 — versión optimizada para el header.
+const BRAND_LOGO_HEADER = "https://storage-files.cingulado.org/pos360/media/1777345911123-fc15363786567e40.webp";
+const BRAND_LOGO_WHITE = BRAND_LOGO_HEADER; // alias para el template existente
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -635,7 +615,7 @@ const isSuperAdmin  = computed(() => auth.isSuperAdmin === true);
 // ── Estado de secciones colapsables del nav drawer ────────────────────────
 // Persiste en localStorage para que el usuario mantenga sus preferencias
 // entre recargas / sesiones. Default: gestión abierto, sistema cerrado.
-const NAV_STATE_KEY = "pos.nav.sectionsOpen";
+const NAV_STATE_KEY = "pos.nav.sectionsOpen.v2";
 function loadNavState() {
   try {
     const raw = localStorage.getItem(NAV_STATE_KEY);
@@ -649,6 +629,7 @@ const navOpen = reactive({
   gestion: true,
   crm: true,
   sistema: false,
+  tienda: false,
   ...(loadNavState() || {}),
 });
 function toggleSection(name) {
@@ -656,6 +637,17 @@ function toggleSection(name) {
   try {
     localStorage.setItem(NAV_STATE_KEY, JSON.stringify({ ...navOpen }));
   } catch (_) {}
+}
+
+// En rail: clic en header de grupo expande el drawer (no togglea hijos
+// porque no hay espacio para mostrarlos). En expandido: togglea normal.
+function onSectionHeadClick(name) {
+  if (rail.value) {
+    rail.value = false;
+    if (!navOpen[name]) toggleSection(name);
+  } else {
+    toggleSection(name);
+  }
 }
 
 // La sección Sistema solo aparece si el usuario tiene acceso a alguna ruta
@@ -791,6 +783,14 @@ const userFullName = computed(() => {
   return [first, last].filter(Boolean).join(" ").trim();
 });
 
+const userFirstName = computed(() => {
+  const { u, su } = pickUser();
+  const first = String(
+    u.first_name ?? u.firstName ?? su.first_name ?? su.firstName ?? ""
+  ).trim();
+  return first;
+});
+
 const userInitials = computed(() => {
   const { u, su } = pickUser();
   const first = String(
@@ -896,24 +896,19 @@ function onLogout() {
    Brand mark compacta
 ========================= */
 
+/* Logo brand del header — versión con texto integrado, formato horizontal. */
 .brand-mark {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  height: 60px;
   flex-shrink: 0;
-  margin-right: 2px;
+  margin-right: 8px;
 }
-.brand-mark__text {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: -0.5px;
-  color: #fff;
-  line-height: 1;
+.brand-mark__img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 /* =========================
@@ -928,36 +923,32 @@ function onLogout() {
   flex-shrink: 0;
 }
 
-.header-crumbs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.header-crumb__sep {
-  color: rgba(255, 255, 255, 0.40);
-  font-size: 13px;
-  margin: 0 6px;
-  flex-shrink: 0;
-}
-
-.header-crumb__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.60);
+/* Wordmark "POS 360" — composición tipográfica con dos pesos / dos colores.
+   "POS" delicado en blanco · "360" en celeste con énfasis. */
+.header-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   white-space: nowrap;
-  text-decoration: none;
-  transition: color 0.15s;
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1;
 }
-.header-crumb__label:hover {
-  color: rgba(255, 255, 255, 0.90);
-}
-.header-crumb__label--last {
-  font-size: 14px;
-  font-weight: 700;
+.header-wordmark__pos {
+  font-size: 19px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
   color: rgba(255, 255, 255, 0.95);
+  text-transform: uppercase;
+}
+.header-wordmark__num {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #4fb6f5;
+  background: linear-gradient(135deg, #4fb6f5 0%, #2bb0f3 50%, #c8e8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .pos-appbar {
@@ -965,6 +956,12 @@ function onLogout() {
   color: #fff !important;
   border-bottom: none !important;
   position: relative;
+}
+/* Dark real: app-bar en gris casi negro neutro (estilo Linear/GitHub) */
+.v-theme--dark .pos-appbar,
+.v-theme--adminDark .pos-appbar,
+.v-theme--shopDark .pos-appbar {
+  background: #0e0f12 !important;
 }
 
 .pos-appbar::after {
@@ -982,39 +979,79 @@ function onLogout() {
   background: #02498b !important;
   color: #fff !important;
   border-right: none !important;
+
+  /* Drawer como contenedor flex column → permite que el __content
+     ocupe el alto restante con scroll interno cuando excede. */
+  display: flex !important;
+  flex-direction: column !important;
+}
+/* Dark real: drawer en gris casi negro neutro */
+.v-theme--dark .pos-drawer,
+.v-theme--adminDark .pos-drawer,
+.v-theme--shopDark .pos-drawer {
+  background: #0a0a0c !important;
 }
 
+/* Dejamos que Vuetify maneje la altura del drawer (se adapta al layout
+   con o sin app-bar). El __content lo posicionamos absoluto para que
+   llene completamente el drawer y dispare overflow correctamente. */
 .pos-drawer :deep(.v-navigation-drawer__content) {
   background: #02498b !important;
-  position: relative;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
 
-  /* Scroll interno con barra estilizada que aparece SOLO si el contenido excede.
-     Por defecto el contenido entra completo; si crece (más items, más roles)
-     aparece automáticamente sin ensanchar el drawer. */
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  /* Como flex-item dentro del drawer: ocupa el alto restante.
+     min-height: 0 es CRÍTICO para que pueda shrinkear y disparar overflow. */
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+
+  /* Firefox */
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.08);
+  scrollbar-gutter: stable;
 }
-.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar) {
-  width: 6px;
-}
-.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-track) {
-  background: transparent;
-}
-.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb) {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-}
-.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb:hover) {
-  background: rgba(255, 255, 255, 0.35);
+/* Dark real: drawer content también */
+.v-theme--dark .pos-drawer :deep(.v-navigation-drawer__content),
+.v-theme--adminDark .pos-drawer :deep(.v-navigation-drawer__content),
+.v-theme--shopDark .pos-drawer :deep(.v-navigation-drawer__content) {
+  background: #0a0a0c !important;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Footer sticky abajo (la versión queda pegada al fondo aunque haya scroll). */
+/* Webkit (Chrome/Edge/Safari): scrollbar más gruesa y con buen contraste */
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar) {
+  width: 12px;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-track) {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  margin-block: 4px;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb) {
+  background-color: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 40px;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb:hover) {
+  background-color: rgba(255, 255, 255, 0.75);
+  background-clip: padding-box;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar-thumb:active) {
+  background-color: rgba(255, 255, 255, 0.9);
+  background-clip: padding-box;
+}
+
+/* Footer del drawer: simplemente al final del contenido. Cuando el
+   contenido cabe entero, queda al final visible; cuando excede, queda
+   accesible al hacer scroll hasta abajo (Gmail también funciona así). */
 .pos-drawer .drawer-version {
-  margin-top: auto;
+  opacity: 0.6;
 }
 
 .pos-drawer :deep(.v-navigation-drawer__content)::after {
@@ -1055,8 +1092,8 @@ function onLogout() {
 }
 
 .pos-nav-list {
-  padding-top: 2px;
-  padding-bottom: 4px;
+  padding-top: 6px;
+  padding-bottom: 8px;
 }
 
 /* =========================
@@ -1069,7 +1106,7 @@ function onLogout() {
   gap: 6px;
   padding: 14px 18px 4px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: rgba(255, 255, 255, 0.55);
@@ -1083,10 +1120,10 @@ function onLogout() {
   margin-top: 8px;
   cursor: pointer;
 }
-/* El header colapsable no debe verse "activo" cuando el usuario está en
-   un sub-item de la sección — solo debe destacarse al hacer hover. */
+/* Header de grupo (Gestión, CRM, Sistema, Tienda) — mismo peso fino que
+   los demás items para que la jerarquía la marque solo el indicador. */
 .pos-drawer :deep(.v-list-item.nav-section-head .v-list-item-title) {
-  font-weight: 700 !important;
+  font-weight: 300 !important;
 }
 .nav-section-head__chev {
   opacity: 0.7;
@@ -1096,31 +1133,107 @@ function onLogout() {
   transform: rotate(180deg);
 }
 
-/* Items dentro de la sección — quedan ligeramente indentados para mostrar
-   la jerarquía visual (header → items). */
+/* Items dentro de la sección — estilo Gmail: simplemente indentados
+   con padding-left mayor para alinear iconos con el texto del padre,
+   sin línea guía. La jerarquía la marca el indent y el chevron del padre. */
 .nav-section {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding-left: 4px;
+  gap: 0;
+  margin: 0 0 4px 0;
 }
 .pos-drawer :deep(.nav-section .v-list-item.nav-item) {
-  margin-inline-start: 14px !important;
+  padding-inline-start: 32px !important;
 }
 
-/* Items más densos en modo expandido */
+/* Items principales — pill, padding generoso, tamaño coherente con rail */
 .pos-drawer :deep(.v-list-item.nav-item) {
-  min-height: 38px !important;
-  padding-inline: 12px !important;
-  margin-inline: 6px !important;
-  border-radius: 10px !important;
+  min-height: 40px !important;
+  padding-inline: 14px !important;
+  margin-inline: 8px !important;
+  margin-block: 3px !important;
+  border-radius: 999px !important;
 }
 .pos-drawer :deep(.v-list-item.nav-item .v-list-item-title) {
-  font-size: 13px;
-  letter-spacing: 0.01em;
+  font-size: 13.5px;
+  letter-spacing: 0.005em;
+  line-height: 1.2;
 }
 .pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend) {
-  margin-inline-end: 8px !important;
+  min-width: 24px !important;
+  width: 24px !important;
+  margin-inline-end: 14px !important;
+}
+/* FORZAR tamaño de iconos uniforme (override de size="18" del template). */
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend > .v-icon),
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend .v-icon) {
+  font-size: 22px !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+
+/* Header de grupo expandido: sin tinte de fondo (Gmail no lo usa),
+   solo la chevron rotada lo marca. */
+
+/* =========================
+   Modo RAIL (drawer colapsado a 72px)
+   - Items como CÁPSULAS CIRCULARES de 40×40, centradas en el rail.
+   - Esconde título/contenido (Vuetify normalmente lo hace, pero con
+     nuestros overrides hay que forzarlo).
+========================= */
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item.nav-item) {
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  margin-block: 3px !important;
+  margin-inline: auto !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+}
+/* Iconos del rail al mismo tamaño que en expandido (continuidad visual) */
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item__prepend > .v-icon),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item__prepend .v-icon) {
+  font-size: 22px !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item .v-list-item__prepend),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item.nav-item .v-list-item__prepend) {
+  min-width: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* Ocultar título y append en rail: solo ícono visible */
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item .v-list-item-title),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item .v-list-item__content),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item .v-list-item__append) {
+  display: none !important;
+}
+/* Asegurar que el ícono SÍ se vea (a veces queda con opacity 0) */
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item__prepend > .v-icon),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item__prepend .v-icon) {
+  display: inline-flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+/* En rail: items hijos sin indent (no hay tree-line ni padding-left) */
+.pos-drawer.v-navigation-drawer--rail :deep(.nav-section .v-list-item.nav-item) {
+  padding-inline-start: 0 !important;
+}
+/* En rail: contenedor de sección sin margins extra */
+.pos-drawer.v-navigation-drawer--rail :deep(.nav-section) {
+  margin: 0 !important;
 }
 
 /* =========================
@@ -1142,10 +1255,10 @@ function onLogout() {
   background: transparent !important;
   background-color: transparent !important;
   border: 0 !important;
-  border-radius: 14px !important;
+  border-radius: 999px !important;
   margin-inline: 8px !important;
-  min-height: 46px !important;
-  color: rgba(255, 255, 255, 0.95) !important;
+  min-height: 32px !important;
+  color: rgba(255, 255, 255, 0.88) !important;
 }
 
 .pos-drawer :deep(.v-list-group__items .v-list-item) {
@@ -1161,29 +1274,30 @@ function onLogout() {
    Hover / Active
 ========================= */
 
+/* Hover súper sutil — estilo Gmail */
 .pos-drawer :deep(.v-list-item:hover) {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
+/* Active: pill con buen contraste, SIN barra lateral.
+   El pill ocupa todo el item y por sí solo marca el activo. */
 .pos-drawer :deep(.v-list-item--active),
 .pos-drawer :deep(.v-list-item--active:hover) {
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
 }
 
-.pos-drawer :deep(.v-list-item--active)::before {
-  content: "";
-  position: absolute;
-  left: -2px;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+/* Texto del activo en peso 400 para leve énfasis (Gmail usa bold). */
+.pos-drawer :deep(.v-list-item--active .v-list-item-title) {
+  font-weight: 400 !important;
+  color: #ffffff !important;
 }
 
+/* Item activo: SOLO la barra lateral (::before de arriba) lo marca.
+   No subimos el peso de la fuente — todos quedan al mismo nivel. */
 .pos-drawer :deep(.v-list-item--active .v-list-item-title),
 .pos-drawer :deep(.v-list-item--active .v-list-item__content) {
-  font-weight: 800 !important;
+  font-weight: 300 !important;
   color: rgba(255, 255, 255, 1) !important;
 }
 
@@ -1221,9 +1335,9 @@ function onLogout() {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-width: 42px !important;
-  width: 42px !important;
-  margin-inline-end: 10px !important;
+  min-width: 30px !important;
+  width: 30px !important;
+  margin-inline-end: 8px !important;
 }
 
 .pos-drawer :deep(.v-list-item__prepend > .v-icon),
@@ -1332,9 +1446,13 @@ function onLogout() {
   overflow: hidden;
 }
 
-.pos-account-avatar {
-  border: 3px solid rgba(var(--v-theme-on-surface), 0.08);
+/* =========================
+   Account menu (estilo Google account)
+========================= */
+
+.pos-account-card {
   overflow: hidden;
+  padding-bottom: 8px;
 }
 
 .avatar-img :deep(img) {
@@ -1342,65 +1460,171 @@ function onLogout() {
   object-position: center !important;
 }
 
-.avatar-fallback {
+/* Header con email centrado + close X */
+.account-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 14px 0;
+  gap: 8px;
+}
+.account-header__spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+.account-header__email {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-header__close {
+  flex-shrink: 0;
+}
+
+/* Avatar centrado con anillo de marca + botón cámara */
+.account-avatar-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 16px 0 6px;
+}
+.account-avatar-ring {
+  padding: 3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1488d1 0%, #2bb0f3 35%, #1488d1 65%, #121e47 100%);
+  display: inline-flex;
+}
+.account-avatar {
+  border: 3px solid rgb(var(--v-theme-surface));
+}
+.account-avatar-fallback {
   display: inline-flex;
   width: 100%;
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 400;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(var(--v-theme-on-surface), 0.85);
   text-transform: uppercase;
+  background: rgba(var(--v-theme-primary), 0.10);
 }
-
-.brand-avatar {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-}
-
-.pos-account-card {
-  overflow: hidden;
-}
-
-.account-meta-row {
-  flex-wrap: wrap;
-}
-
-.account-role-badge {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  color: rgb(var(--v-theme-primary));
-  opacity: 0.85;
-}
-
-.account-meta-dot {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.3);
-  line-height: 1;
-}
-
-.account-branch-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), 0.55);
+.account-avatar-edit {
+  position: absolute;
+  bottom: 4px;
+  left: calc(50% + 22px);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.account-avatar-edit:hover {
+  background: rgba(var(--v-theme-primary), 0.10);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  color: rgb(var(--v-theme-primary));
 }
 
-.account-scope-hint {
+/* Saludo grande */
+.account-greeting {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 8px 16px 18px;
+  color: rgba(var(--v-theme-on-surface), 0.95);
+}
+
+/* CTA principal — pill outlined */
+.account-cta-btn {
+  border-radius: 999px !important;
+  height: 44px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.account-cta-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.06) !important;
+  border-color: rgba(var(--v-theme-primary), 0.4) !important;
+}
+
+/* Dos acciones secundarias side-by-side */
+.account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 16px 0;
+}
+.account-action-btn {
+  border-radius: 999px !important;
+  height: 44px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
+  color: rgba(var(--v-theme-on-surface), 0.85) !important;
+}
+.account-action-btn:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
+}
+
+/* Info card: rol + sucursal */
+.account-info-card {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  background: rgba(var(--v-theme-primary), 0.08);
-  border: 1px solid rgba(var(--v-theme-primary), 0.2);
-  border-radius: 8px;
-  margin: 8px 16px 0;
-  font-size: 11.5px;
-  line-height: 1.35;
-  text-align: left;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 16px 0;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  border-radius: 999px;
+  font-size: 13px;
+}
+.account-info-text {
+  flex: 1;
+  min-width: 0;
   color: rgba(var(--v-theme-on-surface), 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-info-text strong {
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.95);
+}
+.account-info-branch {
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  font-weight: 400;
+}
+
+/* Footer */
+.account-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: rgba(var(--v-theme-on-surface), 0.50);
+  letter-spacing: 0.02em;
+}
+.account-footer-dot {
+  opacity: 0.7;
 }
 
 /* =========================
@@ -1443,8 +1667,8 @@ function onLogout() {
    Responsive
 ========================= */
 
-@media (max-width: 760px) {
-  .header-crumbs {
+@media (max-width: 600px) {
+  .header-wordmark {
     display: none;
   }
 }

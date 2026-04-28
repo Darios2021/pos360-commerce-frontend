@@ -477,7 +477,7 @@ onMounted(async () => {
 }
 .up-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin: 0;
@@ -523,13 +523,13 @@ onMounted(async () => {
 .up-kpi--admins .up-kpi__badge   { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 .up-kpi__val {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
 .up-kpi__lbl {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -549,7 +549,7 @@ onMounted(async () => {
   font-size: 12px;
   opacity: 0.75;
 }
-.up-info__count { font-weight: 700; }
+.up-info__count { font-weight: 400; }
 
 /* Tabla */
 .up-table-wrap {
@@ -566,7 +566,7 @@ onMounted(async () => {
 .up-table thead th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -608,7 +608,7 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 500;
   color: #fff;
   flex-shrink: 0;
   box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.2);
@@ -620,7 +620,7 @@ onMounted(async () => {
   gap: 2px;
 }
 .up-user__name {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13.5px;
   line-height: 1.25;
   overflow: hidden;
@@ -637,7 +637,7 @@ onMounted(async () => {
 .up-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   opacity: 0.45;
-  font-weight: 700;
+  font-weight: 400;
 }
 .up-handle {
   opacity: 0.6;
@@ -670,7 +670,7 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -701,7 +701,7 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   background: rgba(var(--v-theme-on-surface), 0.07);
   color: rgba(var(--v-theme-on-surface), 0.82);
   white-space: nowrap;
@@ -721,7 +721,7 @@ onMounted(async () => {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -761,7 +761,7 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 @media (max-width: 1200px) {

@@ -72,7 +72,7 @@ const labelNaturalStyle = computed(() => ({}));
 }
 
 .plp-title{
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
   letter-spacing: .2px;
 }

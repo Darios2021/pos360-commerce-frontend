@@ -138,7 +138,7 @@ watch(qrUrl, buildQr);
 }
 
 .t-name{
-  font-weight: 900;
+  font-weight: 500;
   font-size: 18px;
   line-height: 1.05;
 }
@@ -156,11 +156,11 @@ watch(qrUrl, buildQr);
   gap: 10px;
   align-items: baseline;
 }
-.t-old{ opacity:.65; text-decoration: line-through; font-weight: 900; font-size: 12px; }
-.t-off{ font-weight: 900; font-size: 12px; }
+.t-old{ opacity:.65; text-decoration: line-through; font-weight: 500; font-size: 12px; }
+.t-off{ font-weight: 500; font-size: 12px; }
 
 .t-price{
-  font-weight: 900;
+  font-weight: 500;
   font-size: 34px;
   line-height: 1;
   margin-top: 2px;
@@ -169,7 +169,7 @@ watch(qrUrl, buildQr);
 .t-meta{
   margin-top: 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: .9;
   display:grid;
   gap: 4px;
@@ -187,6 +187,6 @@ watch(qrUrl, buildQr);
 .t-foot{
   font-size: 11px;
   opacity: .75;
-  font-weight: 800;
+  font-weight: 500;
 }
 </style>

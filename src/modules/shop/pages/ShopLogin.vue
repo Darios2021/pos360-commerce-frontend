@@ -297,7 +297,7 @@ onBeforeUnmount(() => {
 }
 
 .sl-left-brand {
-  font-weight: 700;
+  font-weight: 400;
   font-size: 14px;
   color: rgba(17, 24, 39, 0.78);
   letter-spacing: 0.1px;
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
   margin: 14px 0 10px;
   font-size: 42px;   /* ML grande */
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: 500;
   color: #111827;
   max-width: 18ch;
 }
@@ -337,7 +337,7 @@ onBeforeUnmount(() => {
 }
 
 .sl-mini-title {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 14px;
   color: #111827;
 }
@@ -371,7 +371,7 @@ onBeforeUnmount(() => {
 
 .sl-title {
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 500;
   margin-bottom: 8px;
   color: #111827;
 }
@@ -434,12 +434,12 @@ onBeforeUnmount(() => {
 .sl-btn-back {
   background: #e6e6e6 !important;
   color: #111 !important;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.8px;
 }
 
 .sl-btn-main {
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.6px;
 }
 

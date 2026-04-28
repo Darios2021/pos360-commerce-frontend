@@ -359,7 +359,7 @@ function handleGoPay() {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
   color: #fff;
   font-feature-settings: "tnum";
@@ -390,7 +390,7 @@ function handleGoPay() {
 
 .cart-item__name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.2;
   color: rgba(255, 255, 255, 0.95);
   letter-spacing: -0.005em;
@@ -416,7 +416,7 @@ function handleGoPay() {
   color: rgba(255, 255, 255, 0.65);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.02em;
   line-height: 1.5;
   white-space: nowrap;
@@ -425,7 +425,7 @@ function handleGoPay() {
 .cart-item__unit {
   font-size: 11.5px;
   color: rgba(255, 255, 255, 0.7);
-  font-weight: 700;
+  font-weight: 400;
   font-feature-settings: "tnum";
   white-space: nowrap;
 }
@@ -452,7 +452,7 @@ function handleGoPay() {
 
 .cart-item__qty-label {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);
@@ -460,7 +460,7 @@ function handleGoPay() {
 
 .cart-item__qty strong {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-primary));
   letter-spacing: -0.01em;
   font-feature-settings: "tnum";
@@ -470,7 +470,7 @@ function handleGoPay() {
 /* Total línea */
 .cart-item__total {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: rgba(255, 255, 255, 0.96);
   font-feature-settings: "tnum";
@@ -505,7 +505,7 @@ function handleGoPay() {
 
 .cart-modal__empty-title {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -540,7 +540,7 @@ function handleGoPay() {
 
 .cart-stat__label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);
@@ -548,7 +548,7 @@ function handleGoPay() {
 
 .cart-stat__value {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.95);
   letter-spacing: -0.01em;
   font-feature-settings: "tnum";
@@ -556,7 +556,7 @@ function handleGoPay() {
 
 .cart-stat--grand .cart-stat__value {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-primary));
 }
 

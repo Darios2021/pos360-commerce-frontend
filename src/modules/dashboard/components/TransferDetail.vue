@@ -660,7 +660,7 @@ async function doCancel() {
 }
 .tdet__number {
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 500;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: -0.01em;
   margin: 0;
@@ -674,7 +674,7 @@ async function doCancel() {
   padding: 4px 11px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -704,7 +704,7 @@ async function doCancel() {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
@@ -724,7 +724,7 @@ async function doCancel() {
   gap: 5px;
 }
 .tdet__hbranch {
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-on-surface));
 }
 .tdet__hbranch--to { color: rgb(var(--v-theme-success)); }
@@ -810,7 +810,7 @@ async function doCancel() {
 }
 .tdet__cta-title {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   margin: 0 0 2px;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -823,7 +823,7 @@ async function doCancel() {
 }
 .tdet__cta-btn {
   flex-shrink: 0;
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   min-width: 180px;
 }
 
@@ -925,7 +925,7 @@ async function doCancel() {
 }
 .tdet__step-label {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -933,7 +933,7 @@ async function doCancel() {
 .tdet__step-meta {
   font-size: 11px;
   opacity: 0.7;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -991,7 +991,7 @@ async function doCancel() {
   align-items: center;
   padding: 12px 16px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: rgba(var(--v-theme-on-surface), .5);
@@ -1015,7 +1015,7 @@ async function doCancel() {
 .tdet__route-node--right { justify-content: flex-end; }
 .tdet__route-label {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .07em;
   color: rgba(var(--v-theme-on-surface), .45);
@@ -1023,7 +1023,7 @@ async function doCancel() {
 }
 .tdet__route-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   margin: 0;
 }
 .tdet__route-name--to { color: rgb(var(--v-theme-success)); }
@@ -1089,7 +1089,7 @@ async function doCancel() {
 .tdet__item-info { flex: 1; min-width: 0; }
 .tdet__item-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   margin: 0 0 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1109,14 +1109,14 @@ async function doCancel() {
 .tdet__qty { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
 .tdet__qty-label {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: rgba(var(--v-theme-on-surface), .4);
 }
 .tdet__qty-val {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
 }
 .tdet__qty--diff .tdet__qty-val { color: rgb(var(--v-theme-warning)); }
@@ -1146,7 +1146,7 @@ async function doCancel() {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-weight: 800;
+  font-weight: 500;
   font-size: 15px;
 }
 .tdet__action-row-qty--out { color: rgb(var(--v-theme-error)); }
@@ -1171,7 +1171,7 @@ async function doCancel() {
   gap: 8px;
   flex-wrap: wrap;
 }
-.tdet__recv-name { font-size: 13px; font-weight: 600; }
+.tdet__recv-name { font-size: 13px; font-weight: 400; }
 
 .tdet__recv-controls {
   display: flex;
@@ -1186,14 +1186,14 @@ async function doCancel() {
 }
 .tdet__recv-sent-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: rgba(var(--v-theme-on-surface), .4);
 }
 .tdet__recv-sent-val {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), .35);
 }
 .tdet__recv-stepper {
@@ -1205,7 +1205,7 @@ async function doCancel() {
   width: 52px;
   text-align: center;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 500;
   border: 2px solid rgba(var(--v-theme-on-surface), .2);
   border-radius: 8px;
   padding: 4px 2px;

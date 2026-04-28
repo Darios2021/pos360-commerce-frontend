@@ -229,7 +229,7 @@ function submit() {
   display: flex;
   align-items: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.72);
   letter-spacing: 0.01em;
   text-transform: uppercase;
@@ -242,7 +242,7 @@ function submit() {
 
 .ccd__amount-input :deep(.v-field__input) {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   padding-top: 10px;
   padding-bottom: 10px;
@@ -250,7 +250,7 @@ function submit() {
 
 .ccd__amount-input :deep(.v-field__prefix) {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 400;
   padding-top: 14px;
   opacity: 0.7;
 }
@@ -276,7 +276,7 @@ function submit() {
   align-items: center;
   gap: 5px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.58);
@@ -297,7 +297,7 @@ function submit() {
   background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgb(var(--v-theme-on-surface));
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.3;
   max-width: 100%;
 }
@@ -328,7 +328,7 @@ function submit() {
   padding: 4px 6px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.68);
   transition: background 0.14s ease, color 0.14s ease;
   width: fit-content;

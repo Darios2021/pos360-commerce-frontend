@@ -661,7 +661,7 @@ function fmtMoney(v) {
 }
 
 .cs-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 18px;
 }
 .cs-sub {
@@ -682,7 +682,7 @@ function fmtMoney(v) {
   margin-top: 10px;
 }
 .cs-box-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
 }
 .cs-box-sub {
@@ -706,7 +706,7 @@ function fmtMoney(v) {
 .cs-cta {
   border-radius: 10px;
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 /* =========================
@@ -772,7 +772,7 @@ function fmtMoney(v) {
   min-width: 0;
 }
 .cs-line-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13.5px;
   line-height: 1.15;
   word-break: break-word;
@@ -782,7 +782,7 @@ function fmtMoney(v) {
   flex: 0 0 auto;
 }
 .cs-line-price {
-  font-weight: 900;
+  font-weight: 500;
 }
 .cs-line-sub {
   color: #737373;
@@ -804,7 +804,7 @@ function fmtMoney(v) {
   margin-top: 6px;
   padding-top: 10px;
   border-top: 1px solid #e6e6e6;
-  font-weight: 900;
+  font-weight: 500;
   font-size: 16px;
 }
 

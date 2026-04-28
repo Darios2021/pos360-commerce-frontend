@@ -797,8 +797,8 @@ async function onSend() {
   padding: 14px 18px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
-.smd-eyebrow { font-size: 11px; font-weight: 700; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
-.smd-title { font-size: 17px; font-weight: 800; margin: 2px 0 0; line-height: 1.1; }
+.smd-eyebrow { font-size: 11px; font-weight: 400; opacity: 0.65; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
+.smd-title { font-size: 17px; font-weight: 500; margin: 2px 0 0; line-height: 1.1; }
 
 .smd-tabs {
   display: flex; gap: 4px;
@@ -814,7 +814,7 @@ async function onSend() {
   background: transparent;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.65);
   transition: all 0.12s;
 }
@@ -826,7 +826,7 @@ async function onSend() {
 }
 .smd-tab:disabled { opacity: 0.5; cursor: not-allowed; }
 .smd-tab__badge {
-  font-size: 9.5px; font-weight: 800;
+  font-size: 9.5px; font-weight: 500;
   padding: 2px 6px; border-radius: 999px;
   background: rgba(var(--v-theme-warning), 0.18);
   color: rgb(var(--v-theme-warning));
@@ -842,7 +842,7 @@ async function onSend() {
 
 .smd-row { display: flex; flex-direction: column; gap: 4px; }
 .smd-row--inline { flex-direction: row; align-items: center; }
-.smd-label { font-size: 11px; font-weight: 800; opacity: 0.7; letter-spacing: 0.05em; text-transform: uppercase; }
+.smd-label { font-size: 11px; font-weight: 500; opacity: 0.7; letter-spacing: 0.05em; text-transform: uppercase; }
 .smd-label-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
 
 .smd-vars { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -850,7 +850,7 @@ async function onSend() {
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   padding: 3px 7px;
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-primary), 0.25);
@@ -876,7 +876,7 @@ async function onSend() {
 }
 .smd-preview__head {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 800; opacity: 0.85;
+  font-size: 11px; font-weight: 500; opacity: 0.85;
   letter-spacing: 0.04em; text-transform: uppercase;
   color: rgb(var(--v-theme-primary));
 }
@@ -912,7 +912,7 @@ async function onSend() {
 }
 .smd-preview__empty-title {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
 }
 .smd-preview__empty-sub {
   font-size: 11.5px;
@@ -928,7 +928,7 @@ async function onSend() {
   background: rgba(var(--v-theme-primary), 0.04);
   border: 1px solid rgba(var(--v-theme-primary), 0.16);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
 }
 .smd-preview__loading-inline {
@@ -936,7 +936,7 @@ async function onSend() {
   align-items: center;
   gap: 4px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgb(var(--v-theme-primary));
   text-transform: none;
   letter-spacing: 0;
@@ -951,7 +951,7 @@ async function onSend() {
   border: 1px solid rgba(var(--v-theme-error), 0.32);
   font-size: 12px;
   color: rgb(var(--v-theme-error));
-  font-weight: 600;
+  font-weight: 400;
 }
 .smd-preview__iframe-head {
   display: flex;
@@ -961,7 +961,7 @@ async function onSend() {
   padding-top: 8px;
   border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.6);
@@ -987,7 +987,7 @@ async function onSend() {
 }
 .smd-bulk-info__warn {
   color: rgb(var(--v-theme-warning));
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .smd-link {
@@ -1015,7 +1015,7 @@ async function onSend() {
 }
 .smd-extras__head {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 800; opacity: 0.75;
+  font-size: 11px; font-weight: 500; opacity: 0.75;
   letter-spacing: 0.06em; text-transform: uppercase;
   color: rgb(var(--v-theme-primary));
 }
@@ -1027,7 +1027,7 @@ async function onSend() {
 }
 .smd-extras__label {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; font-weight: 800;
+  font-size: 11px; font-weight: 500;
   letter-spacing: 0.05em; text-transform: uppercase;
   opacity: 0.75;
   margin-bottom: 4px;

@@ -720,7 +720,7 @@ onMounted(() => {
 }
 
 .sc-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 16px;
   line-height: 1.25;
   color: #111827;
@@ -742,7 +742,7 @@ onMounted(() => {
 
 .sc-btn {
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
   border-radius: 10px;
 }
 
@@ -766,7 +766,7 @@ onMounted(() => {
 }
 
 .sc-panel-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
   margin-bottom: 8px;
   color: #111827;
@@ -787,7 +787,7 @@ onMounted(() => {
 
 .sc-v {
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 500;
   color: #111827;
   min-width: 0;
   word-break: break-word;
@@ -800,7 +800,7 @@ onMounted(() => {
 }
 
 .sc-alert-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12.8px;
   margin-bottom: 4px;
 }
@@ -828,7 +828,7 @@ onMounted(() => {
 }
 
 .sc-pickup-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12.8px;
   color: #0f172a;
 }
@@ -850,7 +850,7 @@ onMounted(() => {
 
 .sc-map-btn {
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
   border-radius: 10px;
 }
 
@@ -890,7 +890,7 @@ onMounted(() => {
   border: 1px solid rgba(0, 0, 0, 0.06);
   color: #0f172a;
   font-size: 12.5px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 /* =========================
@@ -946,13 +946,13 @@ onMounted(() => {
 }
 
 .sc-qty {
-  font-weight: 900;
+  font-weight: 500;
   margin-right: 6px;
 }
 
 .sc-item-name {
   font-size: 12.8px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.25;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -969,7 +969,7 @@ onMounted(() => {
 }
 
 .sc-item-right {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12.8px;
   white-space: nowrap;
   flex: 0 0 auto;
@@ -990,12 +990,12 @@ onMounted(() => {
 .sc-row > span:last-child {
   text-align: right;
   white-space: nowrap;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .sc-free {
   color: #00a650;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .sc-total {
@@ -1003,14 +1003,14 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   margin-top: 6px;
-  font-weight: 900;
+  font-weight: 500;
   font-size: 15px;
 }
 
 .sc-total > span:last-child {
   text-align: right;
   white-space: nowrap;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 /* =========================
@@ -1026,7 +1026,7 @@ onMounted(() => {
 
 .sc-share {
   text-transform: none;
-  font-weight: 900;
+  font-weight: 500;
   border-radius: 10px;
 }
 
@@ -1047,7 +1047,7 @@ onMounted(() => {
 }
 
 .sc-help-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
 }
 
@@ -1059,7 +1059,7 @@ onMounted(() => {
 
 .sc-wa {
   border-radius: 10px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: none;
 }
 

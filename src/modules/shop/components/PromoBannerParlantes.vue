@@ -114,7 +114,7 @@ function go(){
 .pb-kicker{
   font-size:11px;
   letter-spacing:2px;
-  font-weight:700;
+  font-weight: 400;
   opacity:.7;
   color:white;
 }
@@ -124,7 +124,7 @@ function go(){
   color:white;
   font-size:40px;
   line-height:1;
-  font-weight:800;
+  font-weight: 500;
 }
 
 .pb-sub{
@@ -146,7 +146,7 @@ function go(){
 .pb-link{
   margin-top:6px;
   color:white;
-  font-weight:600;
+  font-weight: 400;
   display:flex;
   align-items:center;
   gap:6px;

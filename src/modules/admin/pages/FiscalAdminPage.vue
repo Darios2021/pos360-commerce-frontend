@@ -743,7 +743,7 @@ onMounted(async () => {
 
 .page-eyebrow {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -754,7 +754,7 @@ onMounted(async () => {
   margin: 0;
   font-size: 28px;
   line-height: 1.1;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .page-subtitle {
@@ -832,7 +832,7 @@ onMounted(async () => {
 
 .cert-row__title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .cert-row__meta {

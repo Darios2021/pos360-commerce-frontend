@@ -85,7 +85,7 @@ const desc = computed(() =>
 </script>
 
 <style scoped>
-.pi-title{ font-weight:900; margin-bottom:10px; }
+.pi-title{ font-weight: 500; margin-bottom:10px; }
 
 .pi-grid{
   display:grid;
@@ -106,12 +106,12 @@ const desc = computed(() =>
 .k{
   font-size:12px;
   opacity:.7;
-  font-weight:700;
+  font-weight: 400;
 }
 
 .v{
   font-size:14px;
-  font-weight:800;
+  font-weight: 500;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;

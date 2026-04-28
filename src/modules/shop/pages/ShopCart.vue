@@ -361,7 +361,7 @@ function goCheckout() {
 
 .ml-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   margin-bottom: 12px;
 }
 
@@ -374,7 +374,7 @@ function goCheckout() {
 .ml-cta {
   border-radius: 6px;
   text-transform: none;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .ml-item-row {
@@ -397,7 +397,7 @@ function goCheckout() {
 
 .ml-name {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: #111;
   line-height: 1.2;
   white-space: nowrap;
@@ -469,7 +469,7 @@ function goCheckout() {
   display: grid;
   place-items: center;
   height: 34px;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 13px;
 }
 
@@ -483,7 +483,7 @@ function goCheckout() {
 }
 .ml-price-main {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 500;
   color: #111;
 }
 .ml-price-sub {

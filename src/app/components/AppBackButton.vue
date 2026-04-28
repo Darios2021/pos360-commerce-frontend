@@ -109,7 +109,7 @@ function handleClick() {
 
 <style scoped>
 .app-back {
-  font-weight: 600 !important;
+  font-weight: 400 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
 }

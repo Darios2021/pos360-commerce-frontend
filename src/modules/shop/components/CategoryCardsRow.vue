@@ -124,7 +124,7 @@ function imgFor(c) {
   font-size: 12px;
   opacity: .75;
 }
-.row-more { font-weight: 900; }
+.row-more { font-weight: 500; }
 
 .row-body {
   padding: 12px 10px 10px;
@@ -172,7 +172,7 @@ function imgFor(c) {
 }
 .cat-pill {
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(25,118,210,.10);

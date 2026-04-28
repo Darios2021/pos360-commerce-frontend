@@ -79,7 +79,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick, true));
 .ml-sort-label {
   font-size: 13px;
   color: rgba(0,0,0,.7);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .ml-sort-btn {
@@ -96,7 +96,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick, true));
 
 .ml-sort-value {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(0,0,0,.82);
   white-space: nowrap;
 }
@@ -142,6 +142,6 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick, true));
 
 .ml-sort-item.on {
   background: rgba(52,131,250,.12);
-  font-weight: 900;
+  font-weight: 500;
 }
 </style>

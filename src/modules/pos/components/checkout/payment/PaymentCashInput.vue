@@ -551,7 +551,7 @@ defineExpose({
 .ck-cash-tile__label {
   display: block;
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1;
@@ -562,7 +562,7 @@ defineExpose({
 .ck-cash-tile__value {
   display: block;
   font-size: 0.88rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.1;
   color: rgba(255, 255, 255, 0.95);
@@ -580,7 +580,7 @@ defineExpose({
 
 .ck-cash__manual-label {
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.6);
@@ -635,7 +635,7 @@ defineExpose({
   background: transparent;
 
   font-size: 1.15rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.05;
   color: #f4f7fb;
 }
@@ -646,7 +646,7 @@ defineExpose({
 
 .ck-cash__error {
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-error));
 }
 
@@ -667,7 +667,7 @@ defineExpose({
 
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
 }
 

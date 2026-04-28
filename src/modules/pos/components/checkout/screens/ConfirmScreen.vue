@@ -154,14 +154,14 @@ defineExpose({
 .ck-screen__title {
   font-size: 0.98rem;
   line-height: 1.05;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .ck-screen__subtitle {
   font-size: 0.74rem;
   line-height: 1.05;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
@@ -198,7 +198,7 @@ defineExpose({
 .ck-total-card__label {
   font-size: 0.7rem;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.62);
@@ -208,7 +208,7 @@ defineExpose({
 .ck-total-card__value {
   font-size: clamp(1.55rem, 3vw, 2.1rem);
   line-height: 1;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
   word-break: break-word;
 }
@@ -225,13 +225,13 @@ defineExpose({
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .ck-total-card__change strong {
   margin-left: auto;
   font-size: 1.1rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -264,14 +264,14 @@ defineExpose({
 .ck-summary-row span {
   min-width: 0;
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .ck-summary-row strong {
   min-width: 0;
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
   text-align: right;
   white-space: nowrap;
@@ -297,7 +297,7 @@ defineExpose({
   border: 1px solid rgba(var(--v-theme-success), 0.2);
   background: rgba(var(--v-theme-success), 0.1);
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: 500;
   color: rgb(var(--v-theme-success));
 }
 

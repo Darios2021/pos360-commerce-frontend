@@ -425,6 +425,130 @@
                 </div>
               </div>
 
+              <!-- ══ KIT / COMBO (ancho completo) ══ -->
+              <div class="pfp-section pfp-kit-section mt-4" :class="{ 'pfp-kit-on': draft.is_kit }">
+                <div class="pfp-section-head" style="--accent:#7c3aed">
+                  <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-package-variant</v-icon></div>
+                  <div>
+                    <div class="pfp-section-title">Kit / Combo</div>
+                    <div class="pfp-section-sub">
+                      {{ draft.is_kit
+                        ? 'Este producto agrupa otros que se descuentan al vender'
+                        : 'Activá para vender varios productos como un solo paquete' }}
+                    </div>
+                  </div>
+                  <v-switch
+                    v-model="draft.is_kit"
+                    inset density="compact" hide-details
+                    :disabled="busy"
+                    color="primary"
+                    class="ml-auto"
+                  />
+                </div>
+
+                <div v-if="draft.is_kit" class="pfp-section-body">
+                  <div class="pfp-kit-hint">
+                    <v-icon size="14" color="primary">mdi-information-outline</v-icon>
+                    <span>El kit se vende a un <b>precio único</b> (configurado arriba). Al confirmar la venta, se descuenta stock de cada componente individualmente.</span>
+                  </div>
+
+                  <!-- Buscador de productos -->
+                  <v-autocomplete
+                    v-model="kitProductPicker"
+                    :items="kitSearchItems"
+                    :loading="kitSearchLoading"
+                    :search-input.sync="kitSearchTerm"
+                    @update:search="onKitSearch"
+                    item-title="label"
+                    item-value="id"
+                    label="Buscar producto para agregar al kit"
+                    prepend-inner-icon="mdi-magnify"
+                    placeholder="Nombre, SKU, código..."
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details
+                    no-data-text="Escribí al menos 2 caracteres"
+                    :disabled="busy"
+                    return-object
+                    @update:model-value="addKitComponent"
+                    class="mb-3"
+                  >
+                    <template #item="{ props, item }">
+                      <v-list-item v-bind="props" :title="item.raw.name" :subtitle="`SKU ${item.raw.sku || '—'} · $ ${fmtNum(item.raw.price_list)}`">
+                        <template #prepend>
+                          <v-avatar size="36" rounded="lg">
+                            <v-img v-if="item.raw.image_url" :src="item.raw.image_url" cover />
+                            <v-icon v-else size="20">mdi-package-variant-closed</v-icon>
+                          </v-avatar>
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
+
+                  <!-- Lista de componentes -->
+                  <div v-if="!arr(draft.kit_items).length" class="pfp-kit-empty">
+                    <v-icon size="32" color="primary" class="mb-2">mdi-package-variant-closed</v-icon>
+                    <div class="text-body-2">Sin componentes aún</div>
+                    <div class="text-caption text-medium-emphasis">Buscá productos arriba para agregarlos al kit</div>
+                  </div>
+
+                  <div v-else class="pfp-kit-list">
+                    <div v-for="(it, idx) in draft.kit_items" :key="it.component_id" class="pfp-kit-row">
+                      <v-avatar size="44" rounded="lg" class="pfp-kit-thumb">
+                        <v-img v-if="it.image_url" :src="it.image_url" cover />
+                        <v-icon v-else size="22">mdi-package-variant-closed</v-icon>
+                      </v-avatar>
+                      <div class="pfp-kit-info">
+                        <div class="pfp-kit-name">{{ it.name }}</div>
+                        <div class="pfp-kit-meta">
+                          <span>SKU {{ it.sku || '—' }}</span>
+                          <span class="pfp-kit-dot">·</span>
+                          <span>$ {{ fmtNum(it.price_list) }} c/u</span>
+                        </div>
+                      </div>
+                      <v-text-field
+                        v-model.number="it.qty"
+                        type="number" min="1" step="1"
+                        label="Cantidad"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        class="pfp-kit-qty"
+                        :disabled="busy"
+                      />
+                      <v-btn
+                        icon="mdi-trash-can-outline"
+                        variant="text"
+                        size="small"
+                        color="error"
+                        :disabled="busy"
+                        @click="removeKitComponent(idx)"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Resumen ahorro -->
+                  <div v-if="kitSavings" class="pfp-kit-savings">
+                    <div class="pfp-kit-savings-row">
+                      <span>Suma componentes (suelto):</span>
+                      <b>$ {{ fmtNum(kitSavings.componentsTotal) }}</b>
+                    </div>
+                    <div class="pfp-kit-savings-row">
+                      <span>Precio del kit:</span>
+                      <b>$ {{ fmtNum(kitSavings.kitPrice) }}</b>
+                    </div>
+                    <div class="pfp-kit-savings-row pfp-kit-savings-final" v-if="kitSavings.savings > 0">
+                      <span><v-icon size="14" color="success">mdi-trending-down</v-icon> Ahorro vs suelto:</span>
+                      <b class="text-success">$ {{ fmtNum(kitSavings.savings) }} ({{ kitSavings.savingsPct }}%)</b>
+                    </div>
+                    <div class="pfp-kit-savings-row pfp-kit-savings-warn" v-else-if="kitSavings.savings < 0">
+                      <span><v-icon size="14" color="warning">mdi-alert</v-icon> El kit cuesta más que la suma:</span>
+                      <b class="text-warning">+$ {{ fmtNum(-kitSavings.savings) }}</b>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- ══ STEP 2 ══ -->
@@ -545,7 +669,13 @@
                       <v-icon size="48">mdi-image-off-outline</v-icon>
                       <span>Sin imagen</span>
                     </div>
-                    <span v-if="draft.is_promo" class="pfp-hero-promo-badge">PROMO</span>
+                    <div class="pfp-hero-badges">
+                      <span v-if="draft.is_kit" class="pfp-hero-kit-badge">
+                        <v-icon size="13" color="white">mdi-package-variant</v-icon>
+                        KIT · {{ arr(draft.kit_items).length }} productos
+                      </span>
+                      <span v-if="draft.is_promo" class="pfp-hero-promo-badge">PROMO</span>
+                    </div>
                   </div>
                   <div v-if="summaryImages.length > 1" class="pfp-hero-thumbs">
                     <div
@@ -598,6 +728,10 @@
                     <v-chip :color="draft.is_active ? 'success' : 'warning'" size="small" variant="flat">
                       <v-icon start size="14">{{ draft.is_active ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                       {{ draft.is_active ? 'Activo' : 'Inactivo' }}
+                    </v-chip>
+                    <v-chip v-if="draft.is_kit" color="#7c3aed" size="small" variant="flat">
+                      <v-icon start size="14">mdi-package-variant</v-icon>
+                      Kit · {{ arr(draft.kit_items).length }} productos
                     </v-chip>
                     <v-chip v-if="draft.is_promo" color="warning" size="small" variant="flat">
                       <v-icon start size="14">mdi-tag-heart</v-icon>
@@ -680,6 +814,51 @@
                       <span class="pfp-media-badge" :class="{ active: summaryImages.length }"><v-icon size="14">mdi-image</v-icon> {{ summaryImages.length }} imágenes</span>
                       <span class="pfp-media-badge" :class="{ active: queuedYoutubeVideos.length }"><v-icon size="14">mdi-youtube</v-icon> {{ queuedYoutubeVideos.length }} YouTube</span>
                       <span class="pfp-media-badge" :class="{ active: queuedVideoFiles.length }"><v-icon size="14">mdi-file-video</v-icon> {{ queuedVideoFiles.length }} archivos</span>
+                    </div>
+                  </div>
+
+                  <!-- Kit / combo -->
+                  <div class="pfp-sum-card pfp-sum-kit" v-if="draft.is_kit">
+                    <div class="pfp-sum-card-head">
+                      <v-icon size="16" color="#7c3aed">mdi-package-variant</v-icon>
+                      Kit / Combo
+                      <v-chip size="x-small" color="#7c3aed" variant="flat" class="ml-auto">
+                        {{ arr(draft.kit_items).length }} {{ arr(draft.kit_items).length === 1 ? 'producto' : 'productos' }}
+                      </v-chip>
+                    </div>
+
+                    <div v-if="!arr(draft.kit_items).length" class="pfp-sum-kit-empty">
+                      <v-icon size="14" color="warning">mdi-alert</v-icon>
+                      El kit no tiene componentes definidos.
+                    </div>
+
+                    <div v-else class="pfp-sum-kit-list">
+                      <div v-for="it in draft.kit_items" :key="it.component_id" class="pfp-sum-kit-row">
+                        <v-avatar size="32" rounded="lg" class="pfp-sum-kit-thumb">
+                          <v-img v-if="it.image_url" :src="it.image_url" cover />
+                          <v-icon v-else size="16">mdi-package-variant-closed</v-icon>
+                        </v-avatar>
+                        <div class="pfp-sum-kit-info">
+                          <div class="pfp-sum-kit-name">{{ it.name }}</div>
+                          <div class="pfp-sum-kit-meta">SKU {{ it.sku || '—' }} · $ {{ fmtNum(it.price_list) }} c/u</div>
+                        </div>
+                        <span class="pfp-sum-kit-qty">×{{ it.qty || 1 }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="kitSavings" class="pfp-sum-kit-savings">
+                      <div class="pfp-sum-kit-savings-row">
+                        <span class="text-medium-emphasis">Suelto:</span>
+                        <b class="text-decoration-line-through text-medium-emphasis">$ {{ fmtNum(kitSavings.componentsTotal) }}</b>
+                      </div>
+                      <div class="pfp-sum-kit-savings-row">
+                        <span class="text-medium-emphasis">Kit:</span>
+                        <b>$ {{ fmtNum(kitSavings.kitPrice) }}</b>
+                      </div>
+                      <div v-if="kitSavings.savings > 0" class="pfp-sum-kit-savings-final">
+                        <v-icon size="14" color="success">mdi-trending-down</v-icon>
+                        Ahorro: <b class="text-success">$ {{ fmtNum(kitSavings.savings) }} ({{ kitSavings.savingsPct }}%)</b>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -921,6 +1100,121 @@ function setSubcategoryIdOnDraft(id) {
   const v = toInt(id, 0) || null;
   draft.value = { ...draft.value, subcategory_id: v, subcategoryId: v, sub_category_id: v, subrubro_id: v };
 }
+/* ────────────────────────────────────────────────────────────────────────
+   KIT / COMBO — búsqueda + componentes + ahorro
+──────────────────────────────────────────────────────────────────────── */
+const kitSearchTerm = ref("");
+const kitSearchLoading = ref(false);
+const kitSearchItems = ref([]);
+const kitProductPicker = ref(null);
+let kitSearchAbort = null;
+let kitSearchTimer = null;
+
+function onKitSearch(term) {
+  kitSearchTerm.value = String(term || "").trim();
+  if (kitSearchTimer) clearTimeout(kitSearchTimer);
+  kitSearchTimer = setTimeout(runKitSearch, 220);
+}
+
+async function runKitSearch() {
+  const q = String(kitSearchTerm.value || "").trim();
+  if (q.length < 2) { kitSearchItems.value = []; return; }
+  if (kitSearchAbort) { try { kitSearchAbort.abort(); } catch {} }
+  kitSearchAbort = new AbortController();
+  kitSearchLoading.value = true;
+  try {
+    // Reusamos el mismo endpoint que ya consume el listado de productos
+    const r = await http.get("/products", {
+      params: { q, limit: 20, page: 1 },
+      signal: kitSearchAbort.signal,
+    });
+    const items = arr(r?.data?.items || r?.data?.data || r?.data);
+    // Excluimos el propio producto que estamos editando (no auto-referenciar)
+    const myId = toInt(draft.value?.id, 0);
+    // Excluimos los que ya están agregados
+    const existing = new Set(arr(draft.value?.kit_items).map((x) => toInt(x?.component_id, 0)));
+    kitSearchItems.value = items
+      .map((p) => {
+        const id = toInt(p?.id, 0);
+        const firstImg = Array.isArray(p?.images)
+          ? (p.images[0]?.url || p.images[0]?.image_url || null)
+          : (p?.image_url || null);
+        return {
+          id,
+          name: String(p?.name || ""),
+          sku: String(p?.sku || ""),
+          price_list: num(p?.price_list || p?.price, 0),
+          image_url: firstImg,
+          label: `${p?.name || "—"} · SKU ${p?.sku || "—"}`,
+        };
+      })
+      .filter((x) => x.id > 0 && x.id !== myId && !existing.has(x.id));
+  } catch (e) {
+    if (e?.name !== "CanceledError" && e?.name !== "AbortError") {
+      kitSearchItems.value = [];
+    }
+  } finally {
+    kitSearchLoading.value = false;
+  }
+}
+
+function addKitComponent(item) {
+  const c = item && typeof item === "object" ? item : null;
+  if (!c) return;
+  const cid = toInt(c.id, 0);
+  if (!cid) return;
+  if (toInt(draft.value?.id, 0) === cid) {
+    toast("⚠️ Un kit no puede contenerse a sí mismo");
+    kitProductPicker.value = null;
+    return;
+  }
+  const list = arr(draft.value?.kit_items);
+  if (list.some((x) => toInt(x?.component_id, 0) === cid)) {
+    toast("⚠️ Ya está agregado");
+    kitProductPicker.value = null;
+    return;
+  }
+  draft.value = {
+    ...draft.value,
+    kit_items: [
+      ...list,
+      {
+        component_id: cid,
+        name: c.name,
+        sku: c.sku,
+        image_url: c.image_url,
+        price_list: c.price_list,
+        qty: 1,
+      },
+    ],
+  };
+  // Limpiar picker
+  kitProductPicker.value = null;
+  kitSearchTerm.value = "";
+  kitSearchItems.value = [];
+}
+
+function removeKitComponent(idx) {
+  const list = arr(draft.value?.kit_items).slice();
+  list.splice(idx, 1);
+  draft.value = { ...draft.value, kit_items: list };
+}
+
+const kitSavings = computed(() => {
+  if (!draft.value?.is_kit) return null;
+  const items = arr(draft.value?.kit_items);
+  if (!items.length) return null;
+  const componentsTotal = items.reduce((acc, it) => acc + num(it?.price_list, 0) * num(it?.qty, 1), 0);
+  // Precio del kit: usamos price_discount si está definido, sino price_list
+  const kitPrice = num(draft.value?.price_discount, 0) > 0
+    ? num(draft.value?.price_discount, 0)
+    : num(draft.value?.price_list, 0);
+  if (!componentsTotal && !kitPrice) return null;
+  const savings = componentsTotal - kitPrice;
+  const savingsPct = componentsTotal > 0 ? Math.round((savings / componentsTotal) * 100) : 0;
+  return { componentsTotal, kitPrice, savings, savingsPct };
+});
+
 function defaultDraft() {
   return {
     id: null, name: "", sku: "", code: null, barcode: null, branch_id: null, description: "",
@@ -934,6 +1228,9 @@ function defaultDraft() {
     promo_qty_threshold: null,
     promo_qty_discount: null,
     promo_qty_mode: "amount",
+    // Kit / combo
+    is_kit: false,
+    kit_items: [], // [{ component_id, name, sku, image_url, qty, price_list }]
   };
 }
 const draft = ref(defaultDraft());
@@ -1240,6 +1537,28 @@ async function init() {
       const full = await products.fetchOne(productId.value, { force: true, branch_id: bid });
       if (!full) { toast("❌ No se encontró el producto"); router.push({ name: "products" }); return; }
       draft.value = { ...defaultDraft(), ...deepClone(full) };
+
+      // Mapear kitItems → kit_items con shape uniforme para la UI.
+      const rawKit = arr(full?.kitItems || full?.kit_items);
+      draft.value.kit_items = rawKit
+        .map((ki) => {
+          const c = ki?.component || ki?.product || ki;
+          const cid = toInt(ki?.component_id ?? c?.id ?? ki?.id, 0);
+          if (!cid) return null;
+          const firstImg = Array.isArray(c?.images)
+            ? (c.images[0]?.url || c.images[0]?.image_url || null)
+            : (c?.image_url || null);
+          return {
+            component_id: cid,
+            name: String(c?.name || "—"),
+            sku: String(c?.sku || ""),
+            image_url: firstImg,
+            qty: num(ki?.qty, 1),
+            price_list: num(c?.price_list || c?.price, 0),
+          };
+        })
+        .filter(Boolean);
+
       normalizeDraftTaxonomy();
       if (Array.isArray(draft.value?.stock_matrix)) stockMatrix.value = deepClone(draft.value.stock_matrix);
     } else {
@@ -1324,6 +1643,21 @@ function buildPayload() {
       payload.promo_qty_discount = null;
       payload.promo_qty_mode = null;
     }
+  }
+
+  // ── Kit / combo: enviar solo los datos mínimos al backend ──────────────
+  // Si is_kit=true, mandamos kit_items normalizado.
+  // Si is_kit=false, vaciamos kit_items para que el backend borre componentes.
+  if (payload.is_kit) {
+    payload.kit_items = arr(draft.value?.kit_items)
+      .map((it, idx) => ({
+        component_id: toInt(it?.component_id ?? it?.id, 0),
+        qty: num(it?.qty, 1),
+        sort_order: idx,
+      }))
+      .filter((it) => it.component_id > 0 && it.qty > 0);
+  } else {
+    payload.kit_items = [];
   }
 
   return payload;
@@ -1468,12 +1802,12 @@ async function saveAll() {
   transition: all 0.15s;
 }
 .pfp-step-btn:hover:not(:disabled) { opacity: 0.75; background: rgba(var(--v-theme-on-surface), 0.06); }
-.pfp-step-btn.active   { opacity: 1; font-weight: 700; color: rgb(var(--v-theme-primary)); }
+.pfp-step-btn.active   { opacity: 1; font-weight: 400; color: rgb(var(--v-theme-primary)); }
 .pfp-step-btn.done     { opacity: 0.8; }
 .pfp-step-btn.disabled { cursor: not-allowed; opacity: 0.3; }
 .pfp-step-num {
   width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center;
-  font-size: 11px; font-weight: 800; flex-shrink: 0;
+  font-size: 11px; font-weight: 500; flex-shrink: 0;
   background: rgba(var(--v-theme-on-surface), 0.12);
   transition: background 0.15s;
 }
@@ -1499,13 +1833,13 @@ async function saveAll() {
   background: rgba(var(--v-theme-on-surface), 0.06);
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 400;
   white-space: nowrap;
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.pfp-ctx-id { font-weight: 800; }
+.pfp-ctx-id { font-weight: 500; }
 .pfp-ctx-sku {
   font-family: monospace;
   font-size: 11px;
@@ -1520,8 +1854,8 @@ async function saveAll() {
   border-color: rgba(var(--v-theme-primary), 0.25);
 }
 .pfp-step-mobile-info { display: flex; align-items: center; gap: 5px; }
-.pfp-step-mobile-count { font-size: 11px; opacity: 0.4; font-weight: 600; }
-.pfp-step-mobile-name  { font-size: 13px; font-weight: 800; }
+.pfp-step-mobile-count { font-size: 11px; opacity: 0.4; font-weight: 400; }
+.pfp-step-mobile-name  { font-size: 13px; font-weight: 500; }
 .pfp-dots-row { display: flex; align-items: center; gap: 5px; }
 .pfp-dot { width: 7px; height: 7px; border-radius: 999px; background: rgba(var(--v-theme-on-surface), 0.2); transition: all 0.2s; }
 .pfp-dot.active { width: 20px; background: rgb(var(--v-theme-primary)); }
@@ -1605,7 +1939,7 @@ async function saveAll() {
   opacity: 0.9;
 }
 .pfp-section-icon { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent, rgb(var(--v-theme-primary))); box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
-.pfp-section-title { font-size: 13.5px; font-weight: 800; line-height: 1.2; letter-spacing: 0.1px; }
+.pfp-section-title { font-size: 13.5px; font-weight: 500; line-height: 1.2; letter-spacing: 0.1px; }
 .pfp-section-sub   { font-size: 11px; opacity: 0.55; }
 .pfp-section-body  { padding: 14px; }
 .pfp-section-body.pa-0 { padding: 0; }
@@ -1659,7 +1993,7 @@ async function saveAll() {
 }
 .pfp-promo-card-title {
   display: flex; align-items: center; gap: 8px;
-  font-size: 13px; font-weight: 700;
+  font-size: 13px; font-weight: 400;
 }
 .pfp-promo-card-body {
   padding: 12px;
@@ -1680,7 +2014,7 @@ async function saveAll() {
 @media (max-width: 520px) {
   .pfp-promo-qty-row { grid-template-columns: 1fr; }
 }
-.pfp-promo-mode :deep(.v-btn) { font-size: 11px; font-weight: 700; }
+.pfp-promo-mode :deep(.v-btn) { font-size: 11px; font-weight: 400; }
 .pfp-promo-savings {
   display: flex; align-items: center; gap: 5px;
   margin-top: 10px; padding: 7px 9px;
@@ -1712,12 +2046,12 @@ async function saveAll() {
 .pfp-toggle-card:hover { border-color: rgba(var(--v-theme-primary), 0.4); }
 .pfp-toggle-card.on { border-color: rgba(var(--v-theme-primary), 0.35); background: rgba(var(--v-theme-primary), 0.04); }
 .pfp-toggle-text  { flex: 1; }
-.pfp-toggle-label { font-size: 13px; font-weight: 700; }
+.pfp-toggle-label { font-size: 13px; font-weight: 400; }
 .pfp-toggle-sub   { font-size: 11px; opacity: 0.6; }
 
 /* ══ VIDEOS ══ */
 .pfp-video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.pfp-video-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.pfp-video-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 400; }
 .pfp-queue-list  { display: flex; flex-direction: column; gap: 5px; }
 .pfp-queue-item  { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; background: rgba(var(--v-theme-surface-variant), 0.5); }
 .pfp-queue-url   { flex: 1; font-size: 11px; opacity: 0.8; min-width: 0; }
@@ -1758,14 +2092,26 @@ async function saveAll() {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; opacity: 0.4; font-size: 12px;
 }
-.pfp-hero-promo-badge {
+.pfp-hero-badges {
   position: absolute;
   top: 10px; left: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-start;
+}
+.pfp-hero-promo-badge {
   background: linear-gradient(135deg, #ff5722, #ff9100);
   color: #fff;
-  font-size: 11px; font-weight: 900; letter-spacing: 0.7px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.7px;
   padding: 4px 10px; border-radius: 4px;
   box-shadow: 0 3px 10px rgba(255, 87, 34, 0.40);
+}
+.pfp-hero-kit-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: linear-gradient(135deg, #7c3aed, #9333ea);
+  color: #fff;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.5px;
+  padding: 4px 10px; border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.40);
 }
 
 .pfp-hero-thumbs {
@@ -1786,21 +2132,21 @@ async function saveAll() {
 .pfp-hero-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pfp-hero-thumb--more {
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 800; opacity: 0.6;
+  font-size: 12px; font-weight: 500; opacity: 0.6;
   background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .pfp-hero-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .pfp-hero-cat {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  font-size: 11px; font-weight: 400; text-transform: uppercase;
   letter-spacing: 0.5px; opacity: 0.6;
   color: rgb(var(--v-theme-primary));
 }
 .pfp-hero-name {
-  font-size: 22px; font-weight: 900; line-height: 1.2;
+  font-size: 22px; font-weight: 500; line-height: 1.2;
   word-break: break-word;
 }
-.pfp-hero-brand { font-size: 13px; font-weight: 700; opacity: 0.7; }
+.pfp-hero-brand { font-size: 13px; font-weight: 400; opacity: 0.7; }
 .pfp-hero-price-block {
   margin-top: 8px; padding: 12px 14px;
   background: rgba(var(--v-theme-on-surface), 0.03);
@@ -1809,9 +2155,9 @@ async function saveAll() {
 }
 .pfp-hero-price-old { font-size: 13px; color: rgba(var(--v-theme-on-surface), 0.5); text-decoration: line-through; }
 .pfp-hero-price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.pfp-hero-price-main { font-size: 32px; font-weight: 900; line-height: 1.1; letter-spacing: -0.5px; }
+.pfp-hero-price-main { font-size: 32px; font-weight: 500; line-height: 1.1; letter-spacing: -0.5px; }
 .pfp-hero-price-off {
-  font-size: 13px; font-weight: 800; color: #00a650;
+  font-size: 13px; font-weight: 500; color: #00a650;
 }
 .pfp-hero-price-reseller { font-size: 12px; opacity: 0.7; margin-top: 4px; }
 
@@ -1823,7 +2169,7 @@ async function saveAll() {
   padding-top: 12px;
   border-top: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
 }
-.pfp-hero-id b { font-weight: 700; opacity: 0.85; }
+.pfp-hero-id b { font-weight: 400; opacity: 0.85; }
 
 .pfp-summary-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; }
 @media (max-width: 860px) { .pfp-summary-grid { grid-template-columns: 1fr; } }
@@ -1844,16 +2190,16 @@ async function saveAll() {
     0 1px 2px rgba(0, 0, 0, 0.06),
     0 4px 16px rgba(0, 0, 0, 0.05);
 }
-.pfp-sum-card-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.65; margin-bottom: 10px; }
+.pfp-sum-card-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.65; margin-bottom: 10px; }
 .pfp-kv { display: grid; grid-template-columns: 100px 1fr; gap: 5px 10px; align-items: baseline; }
 .pfp-kv .k { font-size: 11px; opacity: 0.5; }
-.pfp-kv .v { font-size: 13px; font-weight: 700; word-break: break-word; }
+.pfp-kv .v { font-size: 13px; font-weight: 400; word-break: break-word; }
 .pfp-mono { font-family: monospace; font-size: 12px; }
 .pfp-sum-desc { margin-top: 9px; font-size: 12px; opacity: 0.7; padding: 9px; border-radius: 7px; background: rgba(var(--v-theme-surface-variant), 0.5); white-space: pre-wrap; max-height: 90px; overflow-y: auto; }
 .pfp-price-row-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
 .pfp-price-item { text-align: center; }
 .pfp-price-label { font-size: 10px; opacity: 0.5; margin-bottom: 2px; }
-.pfp-price-val  { font-size: 15px; font-weight: 900; color: rgb(var(--v-theme-success)); }
+.pfp-price-val  { font-size: 15px; font-weight: 500; color: rgb(var(--v-theme-success)); }
 .pfp-price-val.muted { color: rgba(var(--v-theme-on-surface), 0.3); font-size: 13px; }
 .pfp-media-badges { display: flex; flex-wrap: wrap; gap: 7px; }
 .pfp-media-badge { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(var(--v-theme-surface-variant), 0.6); opacity: 0.45; }
@@ -1876,11 +2222,11 @@ async function saveAll() {
   padding-bottom: calc(9px + env(safe-area-inset-bottom, 0px));
 }
 .pfp-footer-info  { display: flex; align-items: center; gap: 5px; font-size: 12px; opacity: 0.55; }
-.pfp-footer-step  { font-weight: 800; }
+.pfp-footer-step  { font-weight: 500; }
 .pfp-footer-dot   { opacity: 0.4; }
 .pfp-footer-btns  { display: flex; gap: 8px; }
 .pfp-btn-nav  { min-width: 110px; }
-.pfp-btn-save { min-width: 160px; font-weight: 800; }
+.pfp-btn-save { min-width: 160px; font-weight: 500; }
 
 /* ══ VALIDATION ══ */
 .pfp-validation-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1926,5 +2272,163 @@ async function saveAll() {
   .pfp-step1-grid   { gap: 12px; }
   .pfp-step2-grid   { gap: 12px; }
   .pfp-footer-inner { padding: 7px 14px; }
+}
+
+/* ══ KIT / COMBO ══ */
+.pfp-kit-section {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pfp-kit-section.pfp-kit-on {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.10),
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 8px 22px rgba(124, 58, 237, 0.10);
+}
+.pfp-kit-hint {
+  display: flex; align-items: flex-start; gap: 6px;
+  padding: 9px 11px; border-radius: 8px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  font-size: 12px; line-height: 1.4;
+  margin-bottom: 12px;
+}
+.pfp-kit-empty {
+  text-align: center;
+  padding: 24px 16px;
+  border: 1px dashed rgba(var(--v-border-color), 0.3);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.pfp-kit-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pfp-kit-row {
+  display: grid;
+  grid-template-columns: auto 1fr 110px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+.pfp-kit-thumb {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-kit-info { min-width: 0; }
+.pfp-kit-name {
+  font-size: 13px; font-weight: 500; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pfp-kit-meta {
+  font-size: 11px; opacity: 0.65; margin-top: 2px;
+  display: flex; align-items: center; gap: 4px;
+}
+.pfp-kit-dot { opacity: 0.5; }
+.pfp-kit-qty :deep(.v-field) { border-radius: 8px; }
+
+.pfp-kit-savings {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  font-size: 12.5px;
+}
+.pfp-kit-savings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 0;
+}
+.pfp-kit-savings-final {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.25);
+  font-size: 13px;
+}
+.pfp-kit-savings-warn {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(245, 158, 11, 0.4);
+}
+
+@media (max-width: 720px) {
+  .pfp-kit-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "thumb info"
+      "qty   actions";
+  }
+  .pfp-kit-thumb { grid-area: thumb; }
+  .pfp-kit-info  { grid-area: info; }
+  .pfp-kit-qty   { grid-area: qty; }
+  .pfp-kit-row > .v-btn { grid-area: actions; }
+}
+
+/* ══ KIT en RESUMEN (step 3) ══ */
+.pfp-sum-kit {
+  border-color: rgba(124, 58, 237, 0.30) !important;
+  background: linear-gradient(180deg,
+    rgba(124, 58, 237, 0.04),
+    rgba(124, 58, 237, 0.01)
+  );
+}
+.pfp-sum-kit-empty {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.05);
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+.pfp-sum-kit-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pfp-sum-kit-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.025);
+}
+.pfp-sum-kit-thumb {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.pfp-sum-kit-info { min-width: 0; }
+.pfp-sum-kit-name {
+  font-size: 12.5px; font-weight: 500; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pfp-sum-kit-meta {
+  font-size: 10.5px; opacity: 0.6; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pfp-sum-kit-qty {
+  font-size: 13px; font-weight: 600;
+  color: rgb(124, 58, 237);
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(124, 58, 237, 0.08);
+}
+.pfp-sum-kit-savings {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.20);
+  font-size: 12px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.pfp-sum-kit-savings-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.pfp-sum-kit-savings-final {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(124, 58, 237, 0.20);
+  font-size: 12.5px;
 }
 </style>

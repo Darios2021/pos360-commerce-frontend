@@ -339,14 +339,14 @@ watch(
   background: var(--igs-brand-soft);
   color: var(--igs-brand);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
 .igs-head-title {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.25px;
   color: var(--igs-text);
   line-height: 1.15;
@@ -422,7 +422,7 @@ watch(
 
 .igs-loaderText {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--igs-text-soft);
 }
 
@@ -509,7 +509,7 @@ watch(
 .igs-hint {
   margin-top: 8px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(2, 73, 139, 0.66);
   text-align: center;
 }
@@ -528,7 +528,7 @@ watch(
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   color: #1f2937;
 }
 
@@ -547,14 +547,14 @@ watch(
 
 .igs-confirm-no {
   color: #5b6470 !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   min-width: 72px !important;
 }
 
 .igs-confirm-yes {
   background: #02498b !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   min-width: 72px !important;
   box-shadow: 0 6px 14px rgba(2, 73, 139, 0.18);
 }

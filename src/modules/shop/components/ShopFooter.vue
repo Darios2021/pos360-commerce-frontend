@@ -256,7 +256,7 @@ onMounted(async()=>{
 }
 
 .footer-title{
-  font-weight:700;
+  font-weight: 400;
   margin-bottom:14px;
 }
 
@@ -300,7 +300,7 @@ onMounted(async()=>{
 }
 
 .branch-name{
-  font-weight:700;
+  font-weight: 400;
   font-size:.95rem;
 }
 

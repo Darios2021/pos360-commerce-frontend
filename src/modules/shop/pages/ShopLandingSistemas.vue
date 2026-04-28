@@ -276,8 +276,8 @@ const techs = ["Vue.js", "Node.js", "React", "MySQL", "Docker", "AWS", "MercadoP
   align-items: center;
   gap: 24px;
 }
-.hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 700; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
-.hero-title { margin: 0 0 12px; color: white; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.1; font-weight: 800; }
+.hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 400; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
+.hero-title { margin: 0 0 12px; color: white; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.1; font-weight: 500; }
 .hero-sub { margin: 0 0 10px; color: rgba(255,255,255,0.85); font-size: 15px; line-height: 1.6; }
 
 /* Hero deco */

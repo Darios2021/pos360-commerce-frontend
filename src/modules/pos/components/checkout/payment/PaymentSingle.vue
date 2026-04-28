@@ -425,7 +425,7 @@ defineExpose({
 
 .ck-section__label {
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
@@ -544,7 +544,7 @@ defineExpose({
 
 .ck-pay__title {
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 500;
   transition: color 0.15s;
 }
 
@@ -555,7 +555,7 @@ defineExpose({
 
 .ck-pay__hint {
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.6);
   transition: color 0.15s;
 }
@@ -599,7 +599,7 @@ defineExpose({
 
   border-radius: 999px;
   font-size: 0.7rem;
-  font-weight: 900;
+  font-weight: 500;
 
   background: rgba(255, 255, 255, 0.2);
   color: white;

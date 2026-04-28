@@ -117,7 +117,7 @@ async function doPdfA4() {
   gap:10px;
   margin-bottom: 10px;
 }
-.pa-title{ font-weight: 900; }
+.pa-title{ font-weight: 500; }
 .pa-row{
   display:flex;
   align-items:flex-end;
@@ -126,7 +126,7 @@ async function doPdfA4() {
   flex-wrap: wrap;
 }
 .pa-copies{ display:flex; flex-direction:column; gap:6px; }
-.pa-copies-lbl{ font-size: 12px; opacity: .8; font-weight: 800; }
+.pa-copies-lbl{ font-size: 12px; opacity: .8; font-weight: 500; }
 
 .pa-actions{
   margin-top: 12px;

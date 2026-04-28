@@ -1366,7 +1366,7 @@ onMounted(async () => {
 
 .lp-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
@@ -1380,7 +1380,7 @@ onMounted(async () => {
   color: var(--lp-muted);
 }
 .lp-meta__strong {
-  font-weight: 800;
+  font-weight: 500;
   color: var(--lp-strong);
   font-feature-settings: "tnum";
 }
@@ -1414,13 +1414,13 @@ onMounted(async () => {
 .lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
 .lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-kpi__lbl   {
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 400;
   opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .lp-kpi__val   {
-  font-size: 20px; font-weight: 900;
+  font-size: 20px; font-weight: 500;
   line-height: 1.2;
   margin-top: 4px;
   font-feature-settings: "tnum";
@@ -1464,13 +1464,13 @@ onMounted(async () => {
 .lp-mc__badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
 .lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-mc__lbl  {
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 400;
   opacity: 0.45;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 .lp-mc__val  {
-  font-size: 14px; font-weight: 900;
+  font-size: 14px; font-weight: 500;
   margin-top: 2px;
   font-feature-settings: "tnum";
 }
@@ -1515,7 +1515,7 @@ onMounted(async () => {
   border: 1px solid var(--lp-card-border);
   color: rgba(var(--v-theme-on-surface), 0.78);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 0.14s, border-color 0.14s, color 0.14s;
@@ -1541,7 +1541,7 @@ onMounted(async () => {
   background: rgb(var(--v-theme-primary));
   color: rgb(var(--v-theme-on-primary));
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   font-feature-settings: "tnum";
 }
@@ -1556,7 +1556,7 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   color: rgba(var(--v-theme-on-surface), 0.65);
   padding: 4px 0;
 }
@@ -1571,7 +1571,7 @@ onMounted(async () => {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   color: rgba(var(--v-theme-on-surface), 0.6);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
@@ -1619,7 +1619,7 @@ onMounted(async () => {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   color: rgba(var(--v-theme-on-surface), 0.65);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
@@ -1645,7 +1645,7 @@ onMounted(async () => {
   background: rgba(var(--v-theme-on-surface), 0.015);
 }
 .lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 800; letter-spacing: 0.01em; }
+.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
 .lp-content__body { padding: 12px; transition: opacity 0.2s; }
 .lp-content__body--flush { padding: 0; }
 .lp-content__body--loading { opacity: 0.7; pointer-events: none; }
@@ -1661,7 +1661,7 @@ onMounted(async () => {
 }
 .lp-pagination__info {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--lp-muted);
   font-feature-settings: "tnum";
 }
@@ -1670,21 +1670,21 @@ onMounted(async () => {
    VENTAS — específico (data-table cells)
    ============================================================ */
 .vp-table { background: transparent; }
-.vp-date   { font-size: 13px; font-weight: 700; }
+.vp-date   { font-size: 13px; font-weight: 400; }
 .vp-id     { font-size: 11px; opacity: 0.45; font-family: monospace; }
-.vp-bold   { font-size: 13px; font-weight: 700; }
+.vp-bold   { font-size: 13px; font-weight: 400; }
 .vp-sub    { font-size: 11px; opacity: 0.5; }
-.vp-amount { font-size: 14px; font-weight: 900; font-feature-settings: "tnum"; }
+.vp-amount { font-size: 14px; font-weight: 500; font-feature-settings: "tnum"; }
 
 .vp-pay-row  { display: flex; align-items: center; gap: 6px; }
 .vp-pay-chip { font-size: 11px !important; }
 .vp-cuotas {
-  font-size: 11px; font-weight: 900;
+  font-size: 11px; font-weight: 500;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
   padding: 1px 6px; border-radius: 999px;
 }
-.vp-extra-pays { font-size: 11px; font-weight: 700; opacity: 0.55; }
+.vp-extra-pays { font-size: 11px; font-weight: 400; opacity: 0.55; }
 .vp-ref { font-family: monospace; font-size: 10px; }
 
 .vp-actions { display: flex; gap: 4px; align-items: center; }
@@ -1726,13 +1726,13 @@ onMounted(async () => {
 }
 .anular-dlg__eyebrow {
   margin: 0;
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 400;
   letter-spacing: .06em; text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), .5);
 }
 .anular-dlg__title {
   margin: 2px 0 0;
-  font-size: 18px; font-weight: 800; line-height: 1.1;
+  font-size: 18px; font-weight: 500; line-height: 1.1;
 }
 .anular-dlg__body {
   padding: 4px 18px 14px;

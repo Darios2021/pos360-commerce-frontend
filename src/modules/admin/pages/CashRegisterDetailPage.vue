@@ -428,7 +428,7 @@ watch(id, load);
 }
 .crd-bar__id {
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.005em;
 }
 
@@ -463,7 +463,7 @@ watch(id, load);
   align-items: center;
   gap: 4px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.55;
@@ -471,7 +471,7 @@ watch(id, load);
 }
 .crd-v {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
   line-height: 1.3;
 }
@@ -494,7 +494,7 @@ watch(id, load);
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   opacity: 0.75;
@@ -513,11 +513,11 @@ watch(id, load);
   padding: 8px 0;
   border-bottom: 1px dashed rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.5));
 }
-.crd-total-k { font-size: 12.5px; font-weight: 600; opacity: 0.7; }
-.crd-total-v { font-size: 14px; font-weight: 800; }
+.crd-total-k { font-size: 12.5px; font-weight: 400; opacity: 0.7; }
+.crd-total-v { font-size: 14px; font-weight: 500; }
 .crd-total-v--ok  { color: rgb(var(--v-theme-success)); }
 .crd-total-v--bad { color: rgb(var(--v-theme-error)); }
-.crd-total--big .crd-total-k { font-size: 13px; font-weight: 800; opacity: 0.88; }
+.crd-total--big .crd-total-k { font-size: 13px; font-weight: 500; opacity: 0.88; }
 .crd-total--big .crd-total-v { font-size: 18px; }
 
 .crd-pmethods {
@@ -533,7 +533,7 @@ watch(id, load);
 }
 .crd-pmethod__k {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.55;
@@ -541,7 +541,7 @@ watch(id, load);
 }
 .crd-pmethod__v {
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 500;
 }
 
 .crd-subtable-wrap { overflow-x: auto; }
@@ -552,7 +552,7 @@ watch(id, load);
 .crd-subtable th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.55;
@@ -575,7 +575,7 @@ watch(id, load);
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
 }
 .crd-mtype.is-in  { background: rgba(var(--v-theme-success), 0.12); color: rgb(var(--v-theme-success)); }
@@ -598,7 +598,7 @@ watch(id, load);
 }
 .crd-note-k {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.55;
@@ -657,13 +657,13 @@ watch(id, load);
   flex-wrap: wrap;
 }
 .crd-audit__label {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.2;
 }
 .crd-audit__sev {
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 6px;

@@ -574,7 +574,7 @@ watch(
   margin:0;
   font-size: 20px;
   line-height: 1.15;
-  font-weight: 900;
+  font-weight: 500;
   color:#0e2134;
 }
 .cat-count{

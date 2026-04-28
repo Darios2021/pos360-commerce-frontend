@@ -473,7 +473,7 @@ watch(
 
 .ml-loc-bottom {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* =========================
@@ -566,7 +566,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 12px;
 
   background: rgba(255,255,255,0.18);
@@ -599,7 +599,7 @@ watch(
 }
 
 .ml-account-title {
-  font-weight: 700;
+  font-weight: 400;
   font-size: 13.5px;
 }
 

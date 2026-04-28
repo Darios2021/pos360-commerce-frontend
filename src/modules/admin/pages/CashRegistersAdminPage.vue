@@ -809,7 +809,7 @@ onMounted(() => {
 }
 .cra-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
   margin: 0;
@@ -871,7 +871,7 @@ onMounted(() => {
   box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.25);
 }
 .cra-kpi__detail {
-  font-weight: 700;
+  font-weight: 400;
   opacity: 0.75;
   margin-left: 4px;
   text-transform: none;
@@ -879,14 +879,14 @@ onMounted(() => {
 }
 .cra-kpi__val {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
 }
 .cra-kpi__lbl {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -910,7 +910,7 @@ onMounted(() => {
   font-size: 12px;
   opacity: 0.75;
 }
-.cra-info__count { font-weight: 700; }
+.cra-info__count { font-weight: 400; }
 .cra-info__loading { display: flex; align-items: center; }
 
 /* Tabla — densidad mejorada, 8 columnas en lugar de 13 */
@@ -928,7 +928,7 @@ onMounted(() => {
 .cra-table thead th {
   text-align: left;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -991,7 +991,7 @@ onMounted(() => {
   padding: 3px 7px;
   border-radius: 6px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -1022,7 +1022,7 @@ onMounted(() => {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1049,13 +1049,13 @@ onMounted(() => {
 .cra-caja__id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }
 .cra-caja__type {
   font-size: 10px;
   opacity: 0.55;
-  font-weight: 700;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-top: 2px;
@@ -1074,13 +1074,13 @@ onMounted(() => {
   display: grid;
   place-items: center;
   font-size: 10.5px;
-  font-weight: 900;
+  font-weight: 500;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
   flex-shrink: 0;
 }
 .cra-user__name {
-  font-weight: 700;
+  font-weight: 400;
   font-size: 13px;
   line-height: 1.25;
   overflow: hidden;
@@ -1090,7 +1090,7 @@ onMounted(() => {
 }
 
 .cra-branch {
-  font-weight: 600;
+  font-weight: 400;
   font-size: 13px;
   opacity: 0.85;
   overflow: hidden;
@@ -1113,18 +1113,18 @@ onMounted(() => {
 .cra-time__ic { opacity: 0.65; }
 .cra-time__row--live {
   opacity: 0.7;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .cra-sales__amount {
-  font-weight: 800;
+  font-weight: 500;
   font-size: 13.5px;
   color: rgb(var(--v-theme-on-surface));
 }
 .cra-sales__count {
   font-size: 10.5px;
   opacity: 0.55;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .cra-dash { opacity: 0.3; }
@@ -1134,7 +1134,7 @@ onMounted(() => {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   white-space: nowrap;
 }
 .cra-diff--positive { background: rgba(var(--v-theme-success), 0.14); color: rgb(var(--v-theme-success)); }
@@ -1164,7 +1164,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Pager */
@@ -1180,12 +1180,12 @@ onMounted(() => {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 .cra-dlg__eyebrow {
-  margin: 0; font-size: 11px; font-weight: 700;
+  margin: 0; font-size: 11px; font-weight: 400;
   letter-spacing: 0.06em; text-transform: uppercase;
   opacity: 0.85;
 }
 .cra-dlg__title {
-  margin: 2px 0 0; font-size: 18px; font-weight: 800; line-height: 1.1;
+  margin: 2px 0 0; font-size: 18px; font-weight: 500; line-height: 1.1;
 }
 .cra-dlg__body { padding: 18px 20px; }
 .cra-dlg__info {
@@ -1196,7 +1196,7 @@ onMounted(() => {
 }
 .cra-dlg__info:last-child { border-bottom: none; }
 .cra-dlg__k {
-  font-size: 11px; font-weight: 800;
+  font-size: 11px; font-weight: 500;
   letter-spacing: 0.05em; text-transform: uppercase;
   opacity: 0.6;
 }

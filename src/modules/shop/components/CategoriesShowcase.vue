@@ -139,7 +139,7 @@ watch(
 
 .cat-title {
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 500;
   letter-spacing: -0.2px;
 }
 
@@ -147,7 +147,7 @@ watch(
   border: 0;
   background: transparent;
   color: #1a73e8;
-  font-weight: 900;
+  font-weight: 500;
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -199,7 +199,7 @@ watch(
 }
 
 .tile-name {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.15;
   max-width: 150px;

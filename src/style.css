@@ -12,6 +12,139 @@ body {
 }
 
 /* =========================================================
+   TIPOGRAFÍA BRAND — Inter, fina y refinada.
+   Aplicada con alta especificidad para ganar a Vuetify (Roboto default)
+   y a estilos scoped que usan font-weight bold.
+========================================================= */
+
+/* 1) Forzar Inter en TODO (incluyendo dentro de Vuetify) */
+html,
+html body,
+html body #app,
+html body .v-application,
+html body .v-application * {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* 2) Pesos base — MUY finos */
+html body,
+html body .v-application {
+  font-weight: 300 !important;
+  letter-spacing: 0.005em !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 3) NEUTRALIZAR pesos altos legacy en estilos inline → 400.
+   Componentes con font-weight inline pesados se ven gruesos.
+   Los traemos a 400 (regular). */
+html body .v-application [style*="font-weight: 600"],
+html body .v-application [style*="font-weight: 700"],
+html body .v-application [style*="font-weight: 800"],
+html body .v-application [style*="font-weight: 900"],
+html body .v-application [style*="font-weight: 500"],
+html body .v-application [style*="font-weight:600"],
+html body .v-application [style*="font-weight:700"],
+html body .v-application [style*="font-weight:800"],
+html body .v-application [style*="font-weight:900"] {
+  font-weight: 400 !important;
+}
+
+/* Utility clases Vuetify */
+html body .v-application .font-weight-black,
+html body .v-application .font-weight-bold {
+  font-weight: 500 !important;
+}
+html body .v-application .font-weight-medium {
+  font-weight: 400 !important;
+}
+html body .v-application .font-weight-regular,
+html body .v-application .font-weight-light,
+html body .v-application .font-weight-thin {
+  font-weight: 300 !important;
+}
+
+/* 4) Headers Vuetify — más livianos */
+html body .v-application .text-h1,
+html body .v-application .text-h2 {
+  font-weight: 500 !important;
+  letter-spacing: -0.025em !important;
+}
+html body .v-application .text-h3,
+html body .v-application .text-h4 {
+  font-weight: 500 !important;
+  letter-spacing: -0.018em !important;
+}
+html body .v-application .text-h5,
+html body .v-application .text-h6 {
+  font-weight: 400 !important;
+  letter-spacing: -0.012em !important;
+}
+
+/* 5) Botones */
+html body .v-application .v-btn,
+html body .v-application .v-btn .v-btn__content {
+  font-weight: 400 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none;
+}
+
+/* 6) Navigation Drawer / Sidebar — TODO al mismo peso fino (300).
+   Sin distinción por bold entre items, grupos o activos. El item activo
+   se marca SOLO con el indicador lateral (la barra a la izquierda),
+   no con peso de fuente. */
+html body .v-application .v-navigation-drawer,
+html body .v-application .v-navigation-drawer * {
+  font-weight: 300 !important;
+}
+html body .v-application .v-navigation-drawer .v-list-item-title,
+html body .v-application .v-navigation-drawer .v-list-group__header .v-list-item-title,
+html body .v-application .v-navigation-drawer .v-list-item--active .v-list-item-title,
+html body .v-application .v-navigation-drawer .v-list-item.v-list-item--active .v-list-item-title,
+html body .v-application .v-navigation-drawer .v-list-group .v-list-item-title {
+  font-weight: 300 !important;
+  letter-spacing: 0.015em !important;
+  font-size: 14px !important;
+}
+
+/* Subheaders del drawer ("OPERACIÓN") — label industrial fino */
+html body .v-application .v-navigation-drawer .v-list-subheader {
+  font-size: 10.5px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase;
+  opacity: 0.50;
+}
+
+/* 7) App bar — título refinado */
+html body .v-application .v-app-bar .text-h6,
+html body .v-application .v-app-bar .v-toolbar-title {
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* 8) Cards y otros títulos */
+html body .v-application .v-card-title {
+  font-weight: 400 !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* 9) Tabs, chips, badges */
+html body .v-application .v-tab,
+html body .v-application .v-chip,
+html body .v-application .v-badge {
+  font-weight: 400 !important;
+}
+
+/* 10) Tablas: encabezados finos */
+html body .v-application .v-data-table-header,
+html body .v-application .v-data-table thead th {
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+}
+
+
+/* =========================================================
    BASE APP
 ========================================================= */
 html,
@@ -45,6 +178,47 @@ body,
 .v-theme--light .v-sheet--variant-flat,
 .v-theme--light .v-sheet--variant-outlined {
   box-shadow: none;
+}
+
+/* =========================================================
+   CONTRASTE MODO OSCURO REAL (estilo Linear / GitHub / Vercel)
+   - Fondo casi negro (definido en vuetify.js).
+   - Cards/sheets: borde fino blanco al 6-8% en lugar de sombras pesadas.
+     Las sombras no funcionan en dark — se camuflan. Los bordes sutiles
+     son la convención moderna para crear profundidad.
+========================================================= */
+.v-theme--dark {
+  --v-border-opacity: 0.10;
+}
+
+.v-theme--dark .v-card,
+.v-theme--dark .v-sheet {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+
+.v-theme--dark .v-card--variant-flat,
+.v-theme--dark .v-sheet--variant-flat {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tablas en dark: separadores más visibles que el default Vuetify */
+.v-theme--dark .v-data-table,
+.v-theme--dark .v-table {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.v-theme--dark .v-data-table thead th,
+.v-theme--dark .v-table thead th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+.v-theme--dark .v-data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Inputs en dark: borde más visible para mejor accesibilidad */
+.v-theme--dark .v-field--variant-outlined .v-field__outline {
+  --v-field-border-opacity: 0.18;
 }
 
 /* =========================================================

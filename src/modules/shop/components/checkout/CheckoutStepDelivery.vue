@@ -163,13 +163,13 @@ function fmtMoney(v) {
 
 <style scoped>
 .section-title {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 18px;
   margin-bottom: 2px;
 }
 
 .section-subtitle {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 14px;
 }
 </style>

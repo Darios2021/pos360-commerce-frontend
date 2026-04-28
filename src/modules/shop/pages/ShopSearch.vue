@@ -547,7 +547,7 @@ onMounted(() => {
 .srp-bc-link {
   color: #3483fa;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
 }
 .srp-bc-link:hover { text-decoration: underline; }
 .srp-bc-sep { opacity: 0.45; }
@@ -569,7 +569,7 @@ onMounted(() => {
   border-radius: 999px;
   padding: 8px 18px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   background: #fff;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0,0,0,.06);
@@ -578,7 +578,7 @@ onMounted(() => {
   background: #3483fa;
   color: #fff;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 500;
   border-radius: 999px;
   width: 18px;
   height: 18px;
@@ -616,8 +616,8 @@ onMounted(() => {
   line-height: 1.35;
   color: #444;
 }
-.srp-count { font-weight: 900; color: #111; }
-.srp-term { font-style: normal; font-weight: 700; color: #111; }
+.srp-count { font-weight: 500; color: #111; }
+.srp-term { font-style: normal; font-weight: 400; color: #111; }
 
 /* ── RELAXED QUERY NOTICE ── */
 .srp-relaxed-notice {
@@ -647,7 +647,7 @@ onMounted(() => {
   background: transparent;
   color: #3483fa;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   padding: 0 4px;
   text-decoration: underline;
@@ -674,7 +674,7 @@ onMounted(() => {
 }
 .srp-empty-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 500;
   color: #222;
   margin-bottom: 8px;
 }
@@ -692,7 +692,7 @@ onMounted(() => {
   padding: 14px 20px;
   margin-top: 8px;
 }
-.srp-empty-tips p { font-weight: 700; margin-bottom: 6px; }
+.srp-empty-tips p { font-weight: 400; margin-bottom: 6px; }
 .srp-empty-tips ul { margin: 0; padding-left: 18px; }
 .srp-empty-tips li { margin-bottom: 4px; }
 
@@ -710,7 +710,7 @@ onMounted(() => {
   min-width: 80px;
   text-align: center;
 }
-.srp-pager-page { font-weight: 900; font-size: 15px; color: #111; }
+.srp-pager-page { font-weight: 500; font-size: 15px; color: #111; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) {
