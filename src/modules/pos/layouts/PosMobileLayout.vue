@@ -13,58 +13,56 @@
 -->
 <template>
   <div class="pos-mobile">
-    <!-- ── Header compacto ────────────────────────────── -->
-    <header class="pos-mobile__head">
+    <!-- ── Estado de caja (compacto, esquina superior izquierda) ── -->
+    <header class="pos-mobile__head" data-tour="topbar">
       <button
         type="button"
         class="pos-mobile__caja-pill"
         :class="{ 'is-open': isCajaOpen, 'is-closed': !isCajaOpen }"
+        data-tour="caja"
         @click="cajaSheet = true"
-        :title="isCajaOpen ? 'Caja abierta' : 'Caja cerrada'"
+        :title="isCajaOpen ? `Caja abierta · ${cashierName || ''}` : 'Caja cerrada'"
       >
         <v-icon size="14">{{ isCajaOpen ? 'mdi-lock-open-variant' : 'mdi-lock' }}</v-icon>
-        <span class="pos-mobile__caja-text">
-          {{ isCajaOpen ? 'Caja abierta' : 'Caja cerrada' }}
+        <span class="pos-mobile__caja-info">
+          <span class="pos-mobile__caja-text">
+            {{ isCajaOpen ? 'Caja abierta' : 'Caja cerrada' }}
+          </span>
+          <span v-if="isCajaOpen && cashierName" class="pos-mobile__caja-cashier">
+            {{ cashierName }}
+          </span>
         </span>
         <v-icon size="14" class="pos-mobile__caja-chev">mdi-chevron-down</v-icon>
       </button>
-
-      <v-spacer />
-
-      <v-btn
-        icon
-        variant="text"
-        size="small"
-        :title="`Refrescar catálogo (F5)`"
-        @click="onRefresh"
-      >
-        <v-icon>mdi-refresh</v-icon>
-      </v-btn>
-
-      <v-btn
-        icon
-        variant="text"
-        size="small"
-        title="Buscar / consultar (F2)"
-        @click="onConsulta"
-      >
-        <v-icon>mdi-magnify</v-icon>
-      </v-btn>
-
-      <v-btn
-        icon
-        variant="text"
-        size="small"
-        title="Ayuda (F1)"
-        @click="onHelp"
-      >
-        <v-icon>mdi-help-circle-outline</v-icon>
-      </v-btn>
     </header>
 
+    <!-- Lector de código (cámara) que agrega al carrito.
+         Modo continuo: el operador escanea varios productos del cliente
+         sin reabrir la cámara. El contador del header muestra cuántos lleva. -->
+    <BarcodeScannerDialog
+      v-model="scannerOpen"
+      mode="emit-product"
+      continuous
+      title="Escanear para vender"
+      @product="onScanProduct"
+      @scanned="onScanCode"
+    />
+
     <!-- ── Catálogo (search + grid) ocupando toda la pantalla ── -->
-    <main class="pos-mobile__main">
+    <main class="pos-mobile__main" data-tour="catalog">
       <PosLeftSection />
+
+      <!-- Botón scanner cámara: superpuesto al lado del buscador.
+           El teléfono actúa como pistola: al detectar, agrega al carrito. -->
+      <button
+        type="button"
+        class="pos-mobile__scan-btn"
+        title="Escanear con cámara"
+        aria-label="Escanear código"
+        @click="scannerOpen = true"
+      >
+        <v-icon size="22">mdi-barcode-scan</v-icon>
+      </button>
     </main>
 
     <!-- ── FAB del carrito ────────────────────────────── -->
@@ -73,6 +71,7 @@
         v-if="cartCount > 0 && !cartSheet"
         type="button"
         class="pos-mobile__cart-fab"
+        data-tour="cart"
         @click="cartSheet = true"
         aria-label="Abrir carrito"
       >
@@ -136,32 +135,59 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import PosLeftSection from "../sections/PosLeftSection.vue";
 import PosCajaOnly from "../sections/PosCajaOnly.vue";
 import PosCartOnly from "../sections/PosCartOnly.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
+import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
 
 const {
   cartCount,
   isCajaOpen,
+  cashierName,
   checkoutTotalPreview,
-  helpOpen,
-  consultaOpen,
-  requestRefreshCatalog,
+  handleAddConsultaToCart,
 } = usePosSalesFlow();
 
 const cartSheet = ref(false);
 const cajaSheet = ref(false);
+const scannerOpen = ref(false);
+
+function onScanProduct(product) {
+  if (!product) return;
+  // Reusa el flujo de "agregar al carrito desde consulta": verifica caja
+  // abierta, sucursal seleccionada, y muestra toast de confirmación.
+  if (typeof handleAddConsultaToCart === "function") {
+    handleAddConsultaToCart(product);
+  }
+}
+function onScanCode(code) {
+  // Si llegó un código pero no había producto en el catálogo, el dialog
+  // ya muestra "Código X no está en el catálogo". Sin acción extra acá.
+  if (!code) return;
+}
+
+// Listener: el FAB del bottom-nav puede disparar este evento para abrir
+// el scanner desde fuera (cuando el usuario elige "Vender en POS" en el
+// selector de propósito).
+function openScannerExternal() { scannerOpen.value = true; }
+onMounted(() => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("pos:open-scanner", openScannerExternal);
+  }
+});
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("pos:open-scanner", openScannerExternal);
+  }
+});
 
 function money(v) {
   const n = Number(v || 0);
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 }
 
-function onHelp()     { helpOpen.value = !helpOpen.value; }
-function onConsulta() { consultaOpen.value = !consultaOpen.value; }
-function onRefresh()  { requestRefreshCatalog?.(); }
 </script>
 
 <style scoped>
@@ -176,13 +202,13 @@ function onRefresh()  { requestRefreshCatalog?.(); }
   overflow: hidden;
 }
 
-/* ── HEADER COMPACTO ───────────────────────────── */
+/* ── HEADER ESTADO DE CAJA (compacto, sin botones extra) ── */
 .pos-mobile__head {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
+  padding: 6px 10px;
   background: rgb(var(--v-theme-surface));
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   z-index: 5;
@@ -216,13 +242,65 @@ function onRefresh()  { requestRefreshCatalog?.(); }
 .pos-mobile__caja-pill:active {
   filter: brightness(0.95);
 }
+.pos-mobile__caja-info {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  min-width: 0;
+}
 .pos-mobile__caja-text {
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
+.pos-mobile__caja-cashier {
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
+  margin-top: 1px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pos-mobile__caja-chev {
   opacity: 0.65;
+}
+
+/* ── Botón scanner: superpuesto a la derecha del buscador ──
+   El teléfono = pistola. Único punto de entrada visible para escanear
+   en el POS mobile (además del FAB del bottom-nav). */
+.pos-mobile__scan-btn {
+  position: absolute;
+  /* Posicionado dentro del shell del buscador (PosLeftSection lo tiene
+     en la parte superior). top calculado para que quede vertical-centro
+     del input del scanner. */
+  top: 14px;
+  right: 16px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 8px 18px rgba(20, 136, 209, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.pos-mobile__scan-btn:active {
+  transform: scale(0.92);
+  box-shadow:
+    0 4px 10px rgba(20, 136, 209, 0.32),
+    0 1px 3px rgba(0, 0, 0, 0.10);
 }
 
 /* ── MAIN: catálogo full-screen ───────────────── */
@@ -232,11 +310,24 @@ function onRefresh()  { requestRefreshCatalog?.(); }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative; /* anchor para el botón scanner superpuesto */
 }
 .pos-mobile__main :deep(.pos-left-section),
 .pos-mobile__main :deep(.pos-search-shell) {
   height: 100%;
   min-height: 0;
+}
+/* Ocultamos el toggle del scanner USB del PosScannerSearchBar en mobile:
+   el scanner-toggle (chip verde con switch) sirve para activar pistola
+   USB física. En mobile el equivalente es la cámara, ya cubierta por
+   nuestro botón superpuesto. Tener ambos confunde. */
+.pos-mobile__main :deep(.pos-search-bar .scanner-toggle) {
+  display: none !important;
+}
+/* El input ahora ocupa todo el ancho del shell del search; reservamos
+   el espacio para nuestro botón cámara absoluto (~56px). */
+.pos-mobile__main :deep(.pos-search-bar .search-shell) {
+  padding-right: 56px;
 }
 
 /* ── FAB DEL CARRITO ──────────────────────────── */

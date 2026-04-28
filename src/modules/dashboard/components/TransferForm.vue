@@ -1,5 +1,265 @@
 <template>
-  <v-card rounded="xl" class="tf">
+  <!-- ════════════════════════════════════════════════════════════════
+       MOBILE: layout dedicado, app-like.
+       Eje del flow: armar el paquete escaneando o buscando.
+       Todo lo demás (destino, nota) son chips compactos.
+  ════════════════════════════════════════════════════════════════ -->
+  <v-card v-if="isMobile" rounded="0" class="tfm" flat>
+    <!-- Header sticky -->
+    <header class="tfm-head">
+      <button class="tfm-head__close" @click="$emit('close')" aria-label="Cerrar">
+        <v-icon size="22">mdi-close</v-icon>
+      </button>
+      <div class="tfm-head__title">Nueva derivación</div>
+      <div class="tfm-head__count" v-if="form.items.length">
+        {{ form.items.length }}
+      </div>
+      <span v-else class="tfm-head__count-spacer" />
+    </header>
+
+    <!-- Chips de configuración: destino + nota (clicables para editar) -->
+    <div class="tfm-setup">
+      <button
+        class="tfm-chip tfm-chip--destino"
+        :class="{ 'is-empty': !form.to_branch_id }"
+        @click="openDestinoSheet"
+      >
+        <v-icon size="16">mdi-store-marker-outline</v-icon>
+        <span class="tfm-chip__label">Destino</span>
+        <span class="tfm-chip__value">
+          {{ destinoLabel || 'Elegir sucursal' }}
+        </span>
+        <v-icon size="14" class="tfm-chip__chev">mdi-chevron-down</v-icon>
+      </button>
+      <button
+        class="tfm-chip tfm-chip--nota"
+        :class="{ 'is-empty': !form.note }"
+        @click="openNotaSheet"
+      >
+        <v-icon size="16">mdi-text</v-icon>
+        <span class="tfm-chip__label">Nota</span>
+        <span class="tfm-chip__value">
+          {{ form.note || 'Sin nota' }}
+        </span>
+      </button>
+    </div>
+
+    <!-- Cuerpo principal: paquete (foco) -->
+    <div class="tfm-body">
+      <!-- Empty hero: invitación clara -->
+      <div v-if="!form.items.length" class="tfm-hero">
+        <button class="tfm-hero__scan" @click="scanDialogOpen = true">
+          <v-icon size="42">mdi-barcode-scan</v-icon>
+        </button>
+        <div class="tfm-hero__title">Empezá a escanear</div>
+        <div class="tfm-hero__sub">
+          Apuntá la cámara al código y los productos se suman al paquete.
+        </div>
+        <button class="tfm-hero__alt" @click="searchSheetOpen = true">
+          <v-icon size="14">mdi-magnify</v-icon>
+          O buscalo manualmente
+        </button>
+      </div>
+
+      <!-- Lista de items del paquete -->
+      <div v-else class="tfm-list">
+        <div
+          v-for="(item, idx) in form.items"
+          :key="`${item.product_id}-${idx}`"
+          class="tfm-item"
+        >
+          <div class="tfm-item__main">
+            <div class="tfm-item__name">{{ item.name }}</div>
+            <div class="tfm-item__meta">
+              <span v-if="item.sku">{{ item.sku }}</span>
+              <span v-if="item.stock_qty != null" class="tfm-item__stock">
+                Disp. {{ item.stock_qty }}
+              </span>
+              <span v-if="item.qty_sent > item.stock_qty" class="tfm-item__over">
+                <v-icon size="11">mdi-alert</v-icon> excede
+              </span>
+            </div>
+          </div>
+          <div class="tfm-item__qty">
+            <button
+              class="tfm-qty-btn"
+              :disabled="item.qty_sent <= 1"
+              @click="changeQty(idx, -1)"
+              aria-label="Restar"
+            >
+              <v-icon size="16">mdi-minus</v-icon>
+            </button>
+            <input
+              type="number"
+              class="tfm-qty-input"
+              :class="{ 'is-over': item.qty_sent > item.stock_qty }"
+              v-model.number="item.qty_sent"
+              min="1"
+              @change="item.qty_sent = Math.max(1, Number(item.qty_sent) || 1)"
+            />
+            <button
+              class="tfm-qty-btn"
+              @click="changeQty(idx, 1)"
+              aria-label="Sumar"
+            >
+              <v-icon size="16">mdi-plus</v-icon>
+            </button>
+          </div>
+          <button
+            class="tfm-item__del"
+            @click="removeItem(idx)"
+            aria-label="Quitar"
+          >
+            <v-icon size="18">mdi-close</v-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAB: agregar más productos cuando ya hay items -->
+    <button
+      v-if="form.items.length"
+      class="tfm-fab"
+      @click="scanDialogOpen = true"
+      aria-label="Escanear más"
+    >
+      <v-icon size="22">mdi-barcode-scan</v-icon>
+      <span>Escanear más</span>
+    </button>
+
+    <!-- Footer con CTA primario grande -->
+    <footer class="tfm-foot">
+      <div v-if="error" class="tfm-foot__error">
+        <v-icon size="14">mdi-alert-circle</v-icon> {{ error }}
+      </div>
+      <button
+        class="tfm-foot__cta"
+        :class="{ 'is-disabled': !canSave }"
+        :disabled="!canSave || saving"
+        @click="save"
+      >
+        <v-progress-circular v-if="saving" size="18" width="2" indeterminate color="white" />
+        <template v-else>
+          <v-icon size="18">mdi-check-bold</v-icon>
+          <span>{{ canSave ? 'Crear borrador' : ctaHint }}</span>
+        </template>
+      </button>
+    </footer>
+
+    <!-- Bottom sheets para editar destino y nota -->
+    <v-bottom-sheet v-model="destinoSheetOpen" :scrim="true" inset>
+      <div class="tfm-sheet">
+        <div class="tfm-sheet__handle" />
+        <div class="tfm-sheet__title">Sucursal destino</div>
+        <div class="tfm-sheet__body">
+          <button
+            v-for="b in branches"
+            :key="b.id"
+            class="tfm-branch"
+            :class="{ 'is-selected': form.to_branch_id === b.id }"
+            @click="form.to_branch_id = b.id; destinoSheetOpen = false"
+          >
+            <v-icon size="18">mdi-store-outline</v-icon>
+            <span>{{ b.name }}</span>
+            <v-icon
+              v-if="form.to_branch_id === b.id"
+              size="20"
+              color="primary"
+              class="ml-auto"
+            >mdi-check-circle</v-icon>
+          </button>
+        </div>
+      </div>
+    </v-bottom-sheet>
+
+    <v-bottom-sheet v-model="notaSheetOpen" :scrim="true" inset>
+      <div class="tfm-sheet">
+        <div class="tfm-sheet__handle" />
+        <div class="tfm-sheet__title">Nota / Referencia</div>
+        <div class="tfm-sheet__body">
+          <v-text-field
+            v-model="form.note"
+            placeholder="Nº de orden, observación..."
+            variant="outlined"
+            autofocus
+            hide-details
+            @keyup.enter="notaSheetOpen = false"
+          />
+          <v-btn block color="primary" rounded="lg" class="mt-3" @click="notaSheetOpen = false">
+            Guardar
+          </v-btn>
+        </div>
+      </div>
+    </v-bottom-sheet>
+
+    <!-- Bottom sheet para búsqueda manual -->
+    <v-bottom-sheet v-model="searchSheetOpen" :scrim="true" inset>
+      <div class="tfm-sheet tfm-sheet--search">
+        <div class="tfm-sheet__handle" />
+        <div class="tfm-sheet__title">Buscar producto</div>
+        <div class="tfm-sheet__body">
+          <v-text-field
+            v-model="searchQ"
+            placeholder="Nombre, SKU o código…"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            autofocus
+            prepend-inner-icon="mdi-magnify"
+            :loading="searching"
+            @input="onSearch"
+            @click:clear="clearSearch"
+          />
+          <div class="tfm-sresults">
+            <div v-if="!searchQ" class="tfm-sresults__hint">
+              Escribí para buscar productos del catálogo.
+            </div>
+            <div v-else-if="searching" class="tfm-sresults__hint">
+              Buscando…
+            </div>
+            <div v-else-if="!searchResults.length" class="tfm-sresults__hint">
+              Sin resultados para "{{ searchQ }}".
+            </div>
+            <button
+              v-for="p in searchResults"
+              :key="p.id"
+              class="tfm-sresult"
+              @click="addProduct(p); searchSheetOpen = false"
+            >
+              <div class="tfm-sresult__media">
+                <img v-if="getProductImage(p)" :src="getProductImage(p)" />
+                <v-icon v-else size="22">mdi-package-variant-closed</v-icon>
+              </div>
+              <div class="tfm-sresult__info">
+                <div class="tfm-sresult__name">{{ p.name }}</div>
+                <div class="tfm-sresult__meta">
+                  <span v-if="p.sku">{{ p.sku }}</span>
+                  <span class="tfm-sresult__stock">Stock: {{ p.stock_qty ?? 0 }}</span>
+                </div>
+              </div>
+              <v-icon size="20" color="primary">mdi-plus-circle</v-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </v-bottom-sheet>
+
+    <!-- Scanner (compartido) -->
+    <BarcodeScannerDialog
+      v-model="scanDialogOpen"
+      mode="emit-product"
+      continuous
+      title="Armar paquete"
+      @product="onScanProductForTransfer"
+      @scanned="onScanCodeForTransfer"
+    />
+  </v-card>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       DESKTOP: layout original (sin cambios).
+  ════════════════════════════════════════════════════════════════ -->
+  <v-card v-else rounded="xl" class="tf">
     <!-- ── HEADER ───────────────────────────────────────── -->
     <header class="tf-head">
       <div class="tf-head__left">
@@ -55,6 +315,7 @@
 
       <!-- ── CATÁLOGO ───────────────────────────────────── -->
       <section class="tf-catalog">
+        <!-- Header del catálogo (oculto en mobile para liberar espacio) -->
         <div class="tf-catalog__head">
           <div class="tf-catalog__title">
             <v-icon size="16" color="primary">mdi-package-variant</v-icon>
@@ -63,7 +324,9 @@
               {{ searchResults.length }} resultado{{ searchResults.length === 1 ? '' : 's' }}
             </v-chip>
           </div>
+          <!-- Crear producto: solo en desktop. En mobile se accede via la nav. -->
           <v-btn
+            class="tf-create-product"
             variant="tonal"
             size="x-small"
             rounded="lg"
@@ -75,23 +338,41 @@
           </v-btn>
         </div>
 
-        <!-- Search -->
+        <!-- Search manual + botón scanner inline (mobile) -->
         <div class="tf-search">
           <v-text-field
             v-model="searchQ"
-            :placeholder="searchQ ? '' : 'Buscar por nombre, SKU o escanear código…'"
+            :placeholder="searchQ ? '' : 'Buscar por nombre, SKU o código…'"
             variant="outlined"
             density="compact"
             hide-details
             clearable
             rounded="lg"
-            :prepend-inner-icon="searching ? undefined : 'mdi-barcode-scan'"
+            :prepend-inner-icon="searching ? undefined : 'mdi-magnify'"
             :loading="searching"
             autofocus
             @input="onSearch"
             @click:clear="clearSearch"
           />
+          <button
+            v-if="isMobile"
+            type="button"
+            class="tf-search__scan-btn"
+            title="Escanear código de barras"
+            aria-label="Escanear"
+            @click="scanDialogOpen = true"
+          >
+            <v-icon size="20">mdi-barcode-scan</v-icon>
+          </button>
         </div>
+        <BarcodeScannerDialog
+          v-model="scanDialogOpen"
+          mode="emit-product"
+          continuous
+          title="Armar paquete"
+          @product="onScanProductForTransfer"
+          @scanned="onScanCodeForTransfer"
+        />
 
         <!-- Resultados -->
         <div class="tf-catalog__body">
@@ -344,9 +625,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { useDisplay } from "vuetify";
 import { createTransfer, listBranchesApi, searchProducts } from "../service/stockTransfer.api";
 import ProductFormDialog from "@/modules/products/components/ProductFormDialog.vue";
+import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
+
+const { mobile: isMobile } = useDisplay();
+const scanDialogOpen   = ref(false);
+const destinoSheetOpen = ref(false);
+const notaSheetOpen    = ref(false);
+const searchSheetOpen  = ref(false);
+
+function openDestinoSheet() { destinoSheetOpen.value = true; }
+function openNotaSheet()    { notaSheetOpen.value = true; }
+
+// Permite abrir el scanner externamente (ej: desde el FAB del bottom-nav
+// cuando el usuario eligió "Armar derivación").
+function openScannerExternal() { scanDialogOpen.value = true; }
 
 const props = defineProps({
   currentWarehouseId: { type: Number, default: null },
@@ -370,6 +666,14 @@ onMounted(async () => {
   branches.value = (data.branches || data.data || []).filter(
     (b) => b.id !== props.currentBranchId
   );
+  if (typeof window !== "undefined") {
+    window.addEventListener("transfer-form:open-scanner", openScannerExternal);
+  }
+});
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("transfer-form:open-scanner", openScannerExternal);
+  }
 });
 
 const totalUnits = computed(() =>
@@ -381,6 +685,18 @@ const hasOverStock = computed(() =>
 );
 
 const canSave = computed(() => !!form.value.to_branch_id && form.value.items.length > 0 && !saving.value);
+
+/* ── Helpers para el layout mobile ────────────────────────── */
+const destinoLabel = computed(() => {
+  if (!form.value.to_branch_id) return "";
+  const b = branches.value.find(x => x.id === form.value.to_branch_id);
+  return b?.name || "";
+});
+const ctaHint = computed(() => {
+  if (!form.value.to_branch_id) return "Elegí destino";
+  if (!form.value.items.length) return "Agregá productos";
+  return "Crear borrador";
+});
 
 function getProductImage(p) {
   const imgs = p?.images;
@@ -447,6 +763,30 @@ function addProduct(p) {
 }
 
 function removeItem(idx) { form.value.items.splice(idx, 1); }
+
+/* ── Escaneo cámara (mobile) ──────────────────────────────────────
+   Si el código mapea a un producto existente, lo agrega al paquete.
+   Si no se encontró, deja el código pegado en el buscador para que
+   el usuario decida (crear nuevo, etc.). */
+function onScanProductForTransfer(product) {
+  if (!product) return;
+  // Evitar duplicados: si ya está en el paquete, sumá 1 en vez de duplicar
+  const exists = form.value.items.find(it => it.product_id === product.id);
+  if (exists) {
+    exists.qty_sent = (Number(exists.qty_sent) || 0) + 1;
+    searchQ.value = "";
+    searchResults.value = [];
+    return;
+  }
+  addProduct(product);
+}
+function onScanCodeForTransfer(code) {
+  // Si no encontró producto, deja el código en el buscador para que
+  // el usuario vea el flujo de "crear producto nuevo"
+  if (!code) return;
+  searchQ.value = String(code);
+  onSearch?.();
+}
 
 function changeQty(idx, delta) {
   const item = form.value.items[idx];
@@ -607,10 +947,162 @@ async function save() {
   letter-spacing: 0.01em;
 }
 .tf-search {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
   padding: 0 16px 12px;
   flex-shrink: 0;
 }
 .tf-search :deep(.v-field) { border-radius: 10px; }
+.tf-search :deep(.v-text-field) { flex: 1 1 auto; min-width: 0; }
+
+/* Botón scanner inline al lado del input (mobile). Compacto y sutil. */
+.tf-search__scan-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(20, 136, 209, 0.30);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.tf-search__scan-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(20, 136, 209, 0.30);
+}
+
+/* ─────────────────────────────────────────────────────────
+   MOBILE: rediseño app-like.
+   - El foco es el PAQUETE (lo que estás armando).
+   - El catálogo no ocupa espacio cuando no hay búsqueda activa.
+   - Cuando se busca, los resultados aparecen como dropdown ABSOLUTO
+     debajo del search (no roba espacio al paquete).
+   - Footer fijo abajo con CTA primario destacado.
+───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Header compacto: solo título grande */
+  .tf-head { padding: 12px 12px 10px; }
+  .tf-head__eyebrow { display: none; }
+  .tf-head__title { font-size: 17px; }
+  .tf-head__icon { width: 36px; height: 36px; border-radius: 10px; }
+
+  /* Setup row: solo destino y nota, compactos */
+  .tf-setup { padding: 8px 12px 10px; gap: 8px; }
+  .tf-label { font-size: 11px; }
+
+  /* Header del catálogo: no aporta en mobile */
+  .tf-catalog__head { display: none; }
+  .tf-create-product { display: none !important; }
+
+  /* El catálogo se vuelve un container relativo para anclar el dropdown */
+  .tf-catalog {
+    position: relative;
+    flex: 0 0 auto !important;     /* no expande verticalmente */
+    border: none !important;
+    background: transparent !important;
+  }
+  .tf-search { padding: 6px 12px 4px; }
+
+  /* El body del catálogo (resultados / empty) se convierte en DROPDOWN
+     absoluto: sólo aparece cuando hay búsqueda activa. Si está vacío
+     (sin q), no se muestra y el paquete ocupa todo el espacio disponible. */
+  .tf-catalog__body {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 100%;
+    z-index: 5;
+    max-height: 320px;
+    overflow-y: auto;
+    background: rgb(var(--v-theme-surface));
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+    border-radius: 14px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.20);
+    padding: 6px !important;
+  }
+  /* Si no hay query, no hay resultados que mostrar → ocultamos el dropdown
+     entero (incluido el empty state grande "Buscá un producto..."). */
+  .tf-catalog__body:has(.tf-empty:first-child:nth-last-child(1)):not(:has(.tf-grid)) {
+    display: none;
+  }
+  /* Fallback para browsers sin :has(): ocultamos directamente el empty
+     "sin búsqueda". El empty "sin resultados" sí queremos verlo. */
+  .tf-empty:first-child {
+    /* "Buscá un producto..." aparece sólo cuando NO hay query.
+       Lo ocultamos en mobile y dejamos que el paquete sea el foco. */
+    display: none;
+  }
+
+  /* Grid mobile: 1 columna apilada (más legible al tapear) */
+  .tf-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+  .tf-card {
+    flex-direction: row !important;
+    align-items: center;
+    padding: 6px !important;
+    gap: 10px;
+  }
+  .tf-card__media {
+    width: 56px !important;
+    height: 56px !important;
+    flex-shrink: 0;
+  }
+  .tf-card__info { flex: 1 1 auto; min-width: 0; }
+  .tf-card__add { padding: 8px !important; }
+
+  /* PAQUETE: ahora es el foco principal de la pantalla */
+  .tf-package {
+    flex: 1 1 auto !important;
+    min-height: 240px;
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  }
+
+  /* Empty del paquete: invitación clara y simple, no decorativa */
+  .tf-package__empty {
+    padding: 22px 16px !important;
+  }
+  .tf-package__empty-box {
+    width: 52px !important;
+    height: 52px !important;
+    margin-bottom: 10px !important;
+  }
+  .tf-package__empty-title {
+    font-size: 14px !important;
+    font-weight: 500;
+  }
+  .tf-package__empty-sub {
+    font-size: 12px !important;
+    line-height: 1.45;
+  }
+
+  /* Body 2-col → 1-col stack en mobile */
+  .tf-body {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  /* Footer compacto: CTA primario más prominente */
+  .tf-footer {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 8px !important;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  }
+  .tf-footer__check { justify-content: center; font-size: 11.5px; }
+  .tf-footer__actions { justify-content: space-between; gap: 8px; }
+  .tf-footer__actions :deep(.v-btn) { flex: 1; min-height: 42px; }
+}
 .tf-catalog__body {
   flex: 1;
   overflow-y: auto;
@@ -1001,5 +1493,499 @@ async function save() {
     gap: 8px;
   }
   .tf-footer__actions { justify-content: flex-end; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   LAYOUT MOBILE DEDICADO (.tfm)
+   App-like: header sticky, chips de configuración, hero CTA
+   con scanner, lista de items, FAB, footer con CTA primario.
+════════════════════════════════════════════════════════════ */
+.tfm {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: rgb(var(--v-theme-background));
+  overflow: hidden;
+}
+
+/* ─── Header ─────────────────────── */
+.tfm-head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.tfm-head__close {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tfm-head__close:active { background: rgba(var(--v-theme-on-surface), 0.06); }
+.tfm-head__title {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  text-align: center;
+}
+.tfm-head__count {
+  width: 36px; height: 28px;
+  margin: 0 auto;
+  border-radius: 14px;
+  background: #1488d1;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tfm-head__count-spacer { width: 40px; }
+
+/* ─── Setup chips (destino + nota) ─────────── */
+.tfm-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 6px;
+  flex-shrink: 0;
+}
+.tfm-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tfm-chip:active {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+.tfm-chip.is-empty {
+  border-color: rgba(20, 136, 209, 0.30);
+  border-style: dashed;
+}
+.tfm-chip.is-empty .tfm-chip__value {
+  color: rgba(var(--v-theme-on-surface), 0.50);
+  font-style: italic;
+}
+.tfm-chip > .v-icon:first-child {
+  color: #1488d1;
+  flex-shrink: 0;
+}
+.tfm-chip__label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  flex-shrink: 0;
+}
+.tfm-chip__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tfm-chip__chev {
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+/* ─── Body (paquete) ─────────────────────── */
+.tfm-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 12px 100px; /* deja espacio para el FAB y footer */
+}
+
+/* Empty hero */
+.tfm-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  text-align: center;
+  min-height: 320px;
+}
+.tfm-hero__scan {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  border: none;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 16px 40px rgba(20, 136, 209, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+  margin-bottom: 18px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+.tfm-hero__scan::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 28px;
+  background: rgba(20, 136, 209, 0.22);
+  opacity: 0;
+  z-index: -1;
+  animation: tfm-pulse 2.4s ease-in-out infinite;
+}
+@keyframes tfm-pulse {
+  0%, 100% { transform: scale(1); opacity: 0; }
+  50% { transform: scale(1.18); opacity: 0.55; }
+}
+.tfm-hero__scan:active { transform: scale(0.94); }
+.tfm-hero__title {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 6px;
+}
+.tfm-hero__sub {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  max-width: 280px;
+  margin-bottom: 18px;
+}
+.tfm-hero__alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #1488d1;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 999px;
+  -webkit-tap-highlight-color: transparent;
+}
+.tfm-hero__alt:active { background: rgba(20, 136, 209, 0.10); }
+
+/* Lista de items */
+.tfm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tfm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+.tfm-item__main { flex: 1 1 auto; min-width: 0; }
+.tfm-item__name {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tfm-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.tfm-item__stock { color: rgba(var(--v-theme-on-surface), 0.45); }
+.tfm-item__over {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.tfm-item__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 999px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.tfm-qty-btn {
+  width: 28px; height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.tfm-qty-btn:active { background: rgba(20, 136, 209, 0.18); }
+.tfm-qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.tfm-qty-input {
+  width: 36px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tfm-qty-input.is-over { color: #f59e0b; }
+
+.tfm-item__del {
+  width: 30px; height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.tfm-item__del:active {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* FAB para escanear más */
+.tfm-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 12px 30px rgba(20, 136, 209, 0.45),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+  -webkit-tap-highlight-color: transparent;
+  z-index: 6;
+}
+.tfm-fab:active { transform: scale(0.96); }
+
+/* Footer con CTA grande */
+.tfm-foot {
+  flex: 0 0 auto;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+.tfm-foot__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.10);
+  border-radius: 8px;
+}
+.tfm-foot__cta {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(20, 136, 209, 0.32);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.tfm-foot__cta:active { transform: scale(0.99); }
+.tfm-foot__cta.is-disabled,
+.tfm-foot__cta:disabled {
+  background: rgba(var(--v-theme-on-surface), 0.10);
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ─── Bottom sheets ─────────────────── */
+.tfm-sheet {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 20px 20px 0 0;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tfm-sheet__handle {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.18);
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+.tfm-sheet__title {
+  padding: 8px 16px 12px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  color: rgb(var(--v-theme-on-surface));
+  flex-shrink: 0;
+}
+.tfm-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 16px;
+}
+
+/* Lista de sucursales */
+.tfm-branch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.tfm-branch:active { background: rgba(20, 136, 209, 0.06); }
+.tfm-branch.is-selected {
+  border-color: #1488d1;
+  background: rgba(20, 136, 209, 0.06);
+}
+
+/* Resultados de búsqueda en sheet */
+.tfm-sresults {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+.tfm-sresults__hint {
+  text-align: center;
+  padding: 22px 12px;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.tfm-sresult {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.tfm-sresult:active { background: rgba(20, 136, 209, 0.10); }
+.tfm-sresult__media {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+.tfm-sresult__media img { width: 100%; height: 100%; object-fit: cover; }
+.tfm-sresult__info { flex: 1 1 auto; min-width: 0; }
+.tfm-sresult__name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--v-theme-on-surface));
+}
+.tfm-sresult__meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.tfm-sresult__stock { color: rgba(var(--v-theme-on-surface), 0.45); }
+
+/* Ajustes en dark mode */
+.v-theme--adminDark .tfm-chip,
+.v-theme--shopDark .tfm-chip,
+.v-theme--dark .tfm-chip {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.v-theme--adminDark .tfm-item,
+.v-theme--shopDark .tfm-item,
+.v-theme--dark .tfm-item {
+  border-color: rgba(255, 255, 255, 0.06);
 }
 </style>

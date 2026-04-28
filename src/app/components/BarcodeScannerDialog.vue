@@ -23,7 +23,12 @@
         <button type="button" class="bsc__close" aria-label="Cerrar" @click="close">
           <v-icon size="24">mdi-close</v-icon>
         </button>
-        <div class="bsc__title">Lector de código</div>
+        <div class="bsc__title">
+          {{ title }}
+          <span v-if="continuous && captureCount > 0" class="bsc__counter">
+            +{{ captureCount }}
+          </span>
+        </div>
         <button
           v-if="hasNativeApi"
           type="button"
@@ -125,8 +130,22 @@ import { useProductsStore } from "@/app/store/products.store";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
+  /**
+   * "navigate"      → busca el producto y navega a su vista de detalle (default).
+   * "emit-code"     → no busca, solo emite el código crudo escaneado.
+   * "emit-product"  → busca el producto y emite el objeto encontrado.
+   */
+  mode: { type: String, default: "navigate" },
+  /** Texto del título del header. */
+  title: { type: String, default: "Lector de código" },
+  /**
+   * Si true, el dialog NO se cierra al detectar un código. Permite escanear
+   * múltiples productos consecutivos para armar paquetes (derivaciones,
+   * inventarios, etc.). El usuario lo cierra manualmente con la X.
+   */
+  continuous: { type: Boolean, default: false },
 });
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "scanned", "product"]);
 
 const open = computed({
   get: () => !!props.modelValue,
@@ -144,6 +163,7 @@ const searching = ref(false);
 const lastResult = ref(null);
 const torchOn = ref(false);
 const torchSupported = ref(false);
+const captureCount = ref(0);
 
 const hasNativeApi = computed(
   () => typeof window !== "undefined" && "BarcodeDetector" in window
@@ -221,11 +241,25 @@ async function toggleTorch() {
   } catch {}
 }
 
-// ── Lookup ───────────────────────────────────────────────────────────
+// ── Lookup / Emit según modo ──────────────────────────────────────────
 async function handleCode(code) {
   if (searching.value) return;
   const q = String(code || "").trim();
   if (!q) return;
+
+  // Vibración suave para feedback (mobile)
+  try { navigator.vibrate?.(80); } catch {}
+
+  // Modo "emit-code": no consulta nada, devuelve el código crudo
+  if (props.mode === "emit-code") {
+    setResult("ok", `Código capturado: ${q}`);
+    emit("scanned", q);
+    if (props.continuous) captureCount.value++;
+    if (!props.continuous) setTimeout(() => close(), 250);
+    return;
+  }
+
+  // Modo "navigate" o "emit-product": busca el producto en el catálogo
   searching.value = true;
   setResult("info", `Buscando ${q}…`);
   try {
@@ -233,15 +267,42 @@ async function handleCode(code) {
     const items = (r?.items || r?.data || (Array.isArray(r) ? r : [])) ?? [];
     const found = items[0];
     if (found?.id) {
-      // Vibración suave para feedback (mobile)
-      try { navigator.vibrate?.(80); } catch {}
-      setResult("ok", `${found.name} — abriendo…`);
-      setTimeout(() => {
-        close();
-        router.push({ name: "productView", params: { id: found.id } });
-      }, 300);
+      if (props.mode === "emit-product") {
+        emit("product", found);
+        emit("scanned", q);
+        if (props.continuous) {
+          captureCount.value++;
+          // En modo continuo: feedback breve y seguimos escaneando.
+          setResult("ok", `+ ${found.name}`);
+          setTimeout(() => { lastResult.value = null; }, 1100);
+        } else {
+          setResult("ok", `${found.name} — abriendo…`);
+          setTimeout(() => close(), 250);
+        }
+      } else {
+        // navigate (default)
+        setResult("ok", `${found.name} — abriendo…`);
+        setTimeout(() => {
+          close();
+          router.push({ name: "productView", params: { id: found.id } });
+        }, 300);
+      }
     } else {
-      setResult("error", `No se encontró producto con código “${q}”`);
+      // emit-product también devuelve el código si no encontró producto,
+      // útil para que el form lo cargue como "código nuevo".
+      if (props.mode === "emit-product") {
+        emit("scanned", q);
+        emit("product", null);
+        if (props.continuous) {
+          setResult("error", `“${q}” no está en el catálogo`);
+          setTimeout(() => { lastResult.value = null; }, 1500);
+        } else {
+          setResult("info", `Código “${q}” no está en el catálogo. Lo cargué en el form.`);
+          setTimeout(() => close(), 1000);
+        }
+      } else {
+        setResult("error", `No se encontró producto con código “${q}”`);
+      }
     }
   } catch (e) {
     setResult("error", "Error de conexión. Probá de nuevo.");
@@ -271,6 +332,7 @@ watch(open, async (v) => {
   if (v) {
     manualCode.value = "";
     lastResult.value = null;
+    captureCount.value = 0;
     if (hasNativeApi.value) {
       await nextTick();
       await startCamera();
@@ -336,6 +398,24 @@ function close() {
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bsc__counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.20);
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Cámara ── */

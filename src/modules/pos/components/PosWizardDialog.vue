@@ -258,6 +258,9 @@
 
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -312,7 +315,8 @@ const SimCheckout = () => h("div", { class: "sim-pay" }, [
 ]);
 
 // ── Definición de pasos del tour ──────────────────────────────────────
-const steps = [
+// Pasos para DESKTOP (con F-keys, paneles, etc.)
+const stepsDesktop = [
   {
     id: "topbar",
     target: '[data-tour="topbar"]',
@@ -398,7 +402,95 @@ const steps = [
   },
 ];
 
-const currentStep = computed(() => steps[stepIndex.value]);
+// Pasos para MOBILE (sin F-keys, con FAB y bottom-sheets)
+const stepsMobile = [
+  {
+    id: "topbar",
+    target: '[data-tour="topbar"]',
+    icon: "mdi-cellphone-cog",
+    title: "Barra superior",
+    description:
+      "Acá ves el estado de la caja y los accesos rápidos: refrescar catálogo, buscador y ayuda.",
+    tips: [
+      { icon: "mdi-magnify", text: "Tocá la lupa para abrir el buscador avanzado." },
+      { icon: "mdi-help-circle-outline", text: "Tocá el signo de pregunta para volver a ver este tour." },
+    ],
+    demoLabel: { icon: "mdi-arrow-up-bold", text: "Tu barra de control" },
+  },
+  {
+    id: "search",
+    target: '[data-tour="search"]',
+    icon: "mdi-magnify",
+    title: "1. Buscar producto",
+    description:
+      "Escribí nombre, SKU o código del producto. También podés tocar el icono del scanner para usar la cámara.",
+    simulation: SimSearchHit,
+    tips: [
+      { icon: "mdi-barcode-scan", text: "Si hay un único match, el producto entra solo al carrito." },
+      { icon: "mdi-cellphone-screenshot", text: "El scanner del bottom-nav también funciona acá." },
+    ],
+    demoLabel: { icon: "mdi-cursor-default-click-outline", text: "Tocá para buscar" },
+  },
+  {
+    id: "catalog",
+    target: '[data-tour="catalog"]',
+    icon: "mdi-view-grid-outline",
+    title: "2. Tocar producto del catálogo",
+    description:
+      "Toda la pantalla está dedicada al catálogo. Tocá una tarjeta y el producto se suma al carrito al instante.",
+    tips: [
+      { icon: "mdi-package-variant-closed", text: "Solo ves productos de la sucursal activa." },
+      { icon: "mdi-tag-outline", text: "Los productos en promo muestran el precio rebajado." },
+    ],
+    demoLabel: { icon: "mdi-gesture-tap", text: "Tocá una tarjeta" },
+  },
+  {
+    id: "caja",
+    target: '[data-tour="caja"]',
+    icon: "mdi-cash-register",
+    title: "3. Estado de caja",
+    description:
+      "Esta pastilla muestra si la caja está abierta. Tocala para abrir/cerrar caja, ver el cajero y arqueo.",
+    tips: [
+      { icon: "mdi-lock-open-variant-outline", text: "Verde = caja abierta, lista para cobrar." },
+      { icon: "mdi-lock", text: "Rojo = cerrada. Tocá para abrirla con saldo inicial." },
+    ],
+    demoLabel: { icon: "mdi-cursor-default-click-outline", text: "Tocá para gestionar caja" },
+  },
+  {
+    id: "cart",
+    target: '[data-tour="cart"]',
+    icon: "mdi-cart-outline",
+    title: "4. Carrito flotante",
+    description:
+      "Cuando agregues productos aparece acá abajo un botón flotante con el total. Tocalo y se abre el carrito completo desde abajo.",
+    simulation: SimCartLine,
+    tips: [
+      { icon: "mdi-cart-arrow-up", text: "El FAB muestra cantidad de items y total acumulado." },
+      { icon: "mdi-pencil-outline", text: "Dentro podés editar cantidades y precios." },
+    ],
+    demoLabel: { icon: "mdi-arrow-down-bold", text: "Tu carrito flota acá abajo" },
+  },
+  {
+    id: "checkout",
+    target: '[data-tour="cart"]',
+    icon: "mdi-cash-multiple",
+    title: "5. Cobrar venta",
+    description:
+      "Abrí el carrito desde el botón flotante y abajo encontrás un botón gigante \"COBRAR\". Tocalo para abrir el flujo de pago: efectivo, tarjeta, QR, transferencia o combinado.",
+    simulation: SimCheckout,
+    tips: [
+      { icon: "mdi-cash", text: "Pago en efectivo con cálculo de vuelto." },
+      { icon: "mdi-credit-card-multiple-outline", text: "Pago combinado: mezclá medios de pago." },
+      { icon: "mdi-printer-outline", text: "Imprime ticket o factura al confirmar." },
+    ],
+    demoLabel: { icon: "mdi-cart-check", text: "Abrí el carrito y tocá COBRAR" },
+  },
+];
+
+const steps = computed(() => mobile.value ? stepsMobile : stepsDesktop);
+
+const currentStep = computed(() => steps.value[stepIndex.value]);
 const hasTarget = computed(() => !!currentStep.value?.target && targetRect.value);
 
 // ── Spotlight ─────────────────────────────────────────────────────────
@@ -534,7 +626,7 @@ onBeforeUnmount(() => {
 // ── Acciones ──────────────────────────────────────────────────────────
 function startTour()    { mode.value = "tour"; stepIndex.value = 0; }
 function goTo(i)        { stepIndex.value = i; }
-function next()         { if (stepIndex.value < steps.length - 1) stepIndex.value++; }
+function next()         { if (stepIndex.value < steps.value.length - 1) stepIndex.value++; }
 function prev()         { if (stepIndex.value > 0) stepIndex.value--; }
 function goCompleted()  { mode.value = "completed"; }
 function finish() {

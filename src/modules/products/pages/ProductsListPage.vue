@@ -30,8 +30,8 @@
         </v-btn>
       </v-btn-toggle>
 
-      <!-- Acción masiva sobre promociones -->
-      <v-menu offset-y>
+      <!-- Acción masiva sobre promociones (oculta en mobile, accesible vía menu/sidebar) -->
+      <v-menu v-if="smAndUp" offset-y>
         <template #activator="{ props: btnProps }">
           <v-btn
             v-bind="btnProps"
@@ -63,12 +63,12 @@
       </v-menu>
 
       <v-btn
+        v-if="smAndUp"
         color="primary"
         variant="flat"
         prepend-icon="mdi-plus"
         rounded="lg"
         size="small"
-        class="lp-cta-new-mobile-hide"
         @click="openCreate"
       >
         Nuevo
@@ -235,6 +235,18 @@
           @click:clear="clearSearch"
           @keyup.enter="applyFilters"
         />
+        <!-- Botón cámara: aparece solo en mobile junto al buscador.
+             Al detectar producto navega a su vista de detalle. -->
+        <button
+          v-if="!smAndUp"
+          type="button"
+          class="lp-filters__scan"
+          title="Escanear código"
+          aria-label="Escanear código"
+          @click="lpScanOpen = true"
+        >
+          <v-icon size="20">mdi-barcode-scan</v-icon>
+        </button>
         <v-select
           v-model="f.status"
           :items="statusItems"
@@ -259,6 +271,13 @@
           <v-icon size="14" class="lp-filters__more-chev">mdi-chevron-down</v-icon>
         </button>
       </div>
+
+      <!-- Lector de código (mobile, modo navigate → abre productView) -->
+      <BarcodeScannerDialog
+        v-if="!smAndUp"
+        v-model="lpScanOpen"
+        title="Buscar producto"
+      />
 
       <!-- Filtros avanzados colapsables -->
       <v-expand-transition>
@@ -792,6 +811,7 @@ import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
 
 const router = useRouter();
 const products = useProductsStore();
@@ -1384,6 +1404,9 @@ function clearSearch() { f.value.q = ''; applyFilters(); }
 /* Filtros avanzados (colapsable + persistencia) */
 const ADV_KEY = "lp.products.advancedOpen.v2";
 const advancedOpen = ref(false);
+
+/* Scanner cámara (mobile): abre lector y navega al producto encontrado */
+const lpScanOpen = ref(false);
 try {
   const saved = localStorage.getItem(ADV_KEY);
   if (saved !== null) advancedOpen.value = saved === "1";
@@ -2241,17 +2264,47 @@ function branchCssColor(id) {
   transform: scale(0.95);
 }
 
+/* Botón cámara inline en el buscador (solo mobile) */
+.lp-filters__scan {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(20, 136, 209, 0.30);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.lp-filters__scan:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(20, 136, 209, 0.30);
+}
+
 @media (max-width: 600px) {
-  /* MOBILE: ocultar KPIs/stats — saturan la vista en pantalla chica.
-     La info importante (total) ya está en el subtitle del header. */
+  /* MOBILE: ocultar KPIs/stats — saturan la vista en pantalla chica. */
   .lp-stats,
   .lp-methods { display: none !important; }
 
-  /* Header simplificado: solo título + FAB "+ Nuevo" abajo (no en header).
-     Ocultamos toggle de vista (siempre grid en mobile) y el botón Nuevo
-     del header (lo reemplaza el FAB). */
+  /* MOBILE: filtros simplificados — solo buscador + cámara.
+     Ocultamos status select, "Más filtros", filtros avanzados y chips. */
+  .lp-filters__primary-field,           /* select de Estado */
+  .lp-filters__more,                    /* botón "Más filtros" */
+  .lp-filters__advanced,                /* sección avanzada colapsada */
+  .lp-filters__chips { display: none !important; }
+
+  /* Layout del buscador + scanner en una sola fila */
+  .lp-filters__primary {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px;
+  }
+
   .lp-view-toggle { display: none !important; }
-  .lp-header__right .lp-cta-new-mobile-hide { display: none !important; }
 }
 
 @media (max-width: 768px) {

@@ -45,17 +45,15 @@
           </div>
         </div>
 
-        <!-- Slot derecho del grid: contexto útil que no está en el breadcrumb -->
+        <!-- Slot derecho: solo loader y chip de contexto en edición.
+             En creación NO mostramos un chip "Nuevo" porque ya quedó claro
+             desde el AppPageHeader ("Nuevo producto") arriba. -->
         <div class="pfp-topbar-right">
           <v-progress-circular v-if="busy" indeterminate size="20" width="2" color="primary" />
           <div v-if="isEdit && draft?.id" class="pfp-ctx-chip" :title="draft?.sku || ''">
             <v-icon size="13">mdi-pound</v-icon>
             <span class="pfp-ctx-id">{{ draft.id }}</span>
             <span v-if="draft?.sku" class="pfp-ctx-sku">{{ draft.sku }}</span>
-          </div>
-          <div v-else-if="!isEdit" class="pfp-ctx-chip pfp-ctx-chip--new">
-            <v-icon size="13">mdi-plus</v-icon>
-            <span>Nuevo</span>
           </div>
         </div>
       </div>
@@ -92,6 +90,25 @@
                       • <b>{{ field }}</b>: {{ msg }}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- ── ESCANEAR para autocompletar (solo mobile, solo en creación) ── -->
+              <div v-if="!isEdit" class="pfp-scan-row">
+                <BarcodeScanButton
+                  mode="emit-product"
+                  label="Escanear código de barras"
+                  title="Escanear producto"
+                  icon="mdi-barcode-scan"
+                  color="primary"
+                  variant="flat"
+                  size="large"
+                  block
+                  @product="onScannedProduct"
+                  @scanned="onScannedCode"
+                />
+                <div class="pfp-scan-hint">
+                  Si el código ya existe en tu catálogo, completa los datos automáticamente. Si no, lo guarda como código del nuevo producto.
                 </div>
               </div>
 
@@ -951,6 +968,7 @@ import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { CategoriesService } from "../../../app/services/categories.service";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import BarcodeScanButton from "@/app/components/BarcodeScanButton.vue";
 
 import ProductStockPanel from "../components/panels/ProductStockPanel.vue";
 import ProductImagesPanel from "../components/panels/ProductImagesPanel.vue";
@@ -1503,6 +1521,34 @@ function nextStep() {
 /* ── Cancel / back ── */
 function onCancel() { router.push({ name: "products" }); }
 
+/* ── Escaneo de código de barras (mobile) ──────────────────────────
+   - emit-product: si el código ya existe en el catálogo, recibimos el
+     producto. Si no, recibimos null pero igual guardamos el código.
+   - El barcode se carga en draft.barcode para que quede asociado al
+     nuevo producto. Si encontró un producto existente, completamos
+     los campos básicos en el draft (no edita el existente).
+*/
+function onScannedCode(code) {
+  if (!code) return;
+  // Setea siempre el código escaneado al barcode del draft
+  if (draft.value) draft.value.barcode = String(code);
+  snack.value = { open: true, text: `Código ${code} cargado en el formulario` };
+}
+function onScannedProduct(product) {
+  if (!product) return;
+  // Pre-llena el form con los datos del producto encontrado para acelerar
+  // la carga (el usuario puede ajustar lo que quiera antes de guardar).
+  if (!draft.value) return;
+  if (product.name && !draft.value.name)        draft.value.name = product.name;
+  if (product.brand && !draft.value.brand)      draft.value.brand = product.brand;
+  if (product.model && !draft.value.model)      draft.value.model = product.model;
+  if (product.description && !draft.value.description) draft.value.description = product.description;
+  if (product.barcode && !draft.value.barcode)  draft.value.barcode = product.barcode;
+  // Precio sugerido
+  if (product.price_list && !draft.value.price_list) draft.value.price_list = product.price_list;
+  snack.value = { open: true, text: `Datos cargados desde "${product.name}"` };
+}
+
 /* ── Next code ── */
 async function reloadNextCode() {
   if (isEdit.value) return;
@@ -1813,7 +1859,20 @@ async function saveAll() {
 .pfp-step-label { font-size: 13px; }
 
 /* Mobile steps — sigue en columna central del grid */
-.pfp-steps-mobile { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.pfp-steps-mobile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 136, 209, 0.10);
+}
+.v-theme--adminDark .pfp-steps-mobile,
+.v-theme--shopDark .pfp-steps-mobile,
+.v-theme--dark .pfp-steps-mobile {
+  background: rgba(20, 136, 209, 0.16);
+}
 
 /* Slot derecho del topbar — balancea el grid y aloja contexto + spinner */
 .pfp-topbar-right {
@@ -1850,13 +1909,30 @@ async function saveAll() {
   color: rgb(var(--v-theme-primary));
   border-color: rgba(var(--v-theme-primary), 0.25);
 }
-.pfp-step-mobile-info { display: flex; align-items: center; gap: 5px; }
-.pfp-step-mobile-count { font-size: 11px; opacity: 0.4; font-weight: 400; }
-.pfp-step-mobile-name  { font-size: 13px; font-weight: 500; }
-.pfp-dots-row { display: flex; align-items: center; gap: 5px; }
-.pfp-dot { width: 7px; height: 7px; border-radius: 999px; background: rgba(var(--v-theme-on-surface), 0.2); transition: all 0.2s; }
-.pfp-dot.active { width: 20px; background: rgb(var(--v-theme-primary)); }
-.pfp-dot.done   { background: rgb(var(--v-theme-success)); }
+.pfp-step-mobile-info { display: inline-flex; align-items: baseline; gap: 6px; }
+.pfp-step-mobile-count {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #1488d1;
+  font-variant-numeric: tabular-nums;
+}
+.pfp-step-mobile-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgb(var(--v-theme-on-surface));
+}
+.pfp-dots-row { display: inline-flex; align-items: center; gap: 4px; }
+.pfp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(20, 136, 209, 0.30);
+  transition: all 0.2s;
+}
+.pfp-dot.active { width: 18px; background: #1488d1; }
+.pfp-dot.done   { background: rgba(20, 136, 209, 0.65); }
 
 /* Progress bar */
 .pfp-prog-wrap { height: 3px; background: rgba(var(--v-theme-on-surface), 0.08); }
@@ -2233,6 +2309,31 @@ async function saveAll() {
 @media (max-width: 959px) {
   .pfp-content { padding: 14px 16px 20px; }
   .pfp-summary-grid { grid-template-columns: 1fr; }
+}
+
+/* ══ Escaneo (solo mobile) ══ */
+.pfp-scan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 136, 209, 0.10), rgba(20, 136, 209, 0.04));
+  border: 1px dashed rgba(20, 136, 209, 0.30);
+}
+.v-theme--adminDark .pfp-scan-row,
+.v-theme--shopDark .pfp-scan-row,
+.v-theme--dark .pfp-scan-row {
+  background: linear-gradient(135deg, rgba(20, 136, 209, 0.16), rgba(20, 136, 209, 0.06));
+  border-color: rgba(20, 136, 209, 0.40);
+}
+.pfp-scan-hint {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  text-align: center;
+  padding: 0 6px;
 }
 
 /* ══ MOBILE ══ */

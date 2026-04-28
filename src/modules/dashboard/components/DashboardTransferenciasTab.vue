@@ -600,7 +600,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { useAuthStore } from "@/app/store/auth.store";
 import {
   listTransfers,
@@ -973,6 +973,30 @@ async function onCancel()     { closeDetail(); await loadList(); }
 function onCreated()          { showCreate.value = false; loadList(); }
 
 onMounted(() => { loadList(); });
+
+// Listener: el FAB del bottom-nav puede pedir "armar derivación" desde
+// otra pantalla. Abrimos el form (con scanner) directamente.
+function openTransferScannerExternal() {
+  showCreate.value = true;
+  // El TransferForm escucha el mismo evento para abrir su scanner una
+  // vez que se haya seleccionado origen/destino. Re-emitimos por si el
+  // form ya estaba montado (caso edge: usuario ya tenía showCreate=true).
+  setTimeout(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("transfer-form:open-scanner"));
+    }
+  }, 250);
+}
+onMounted(() => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("transfer:open-scanner", openTransferScannerExternal);
+  }
+});
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("transfer:open-scanner", openTransferScannerExternal);
+  }
+});
 </script>
 
 <style scoped>
