@@ -149,6 +149,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useProductsStore } from "../../../../app/store/products.store";
+import { useAuthStore } from "../../../../app/store/auth.store";
 import http from "../../../../app/api/http";
 
 const props = defineProps({
@@ -159,6 +160,26 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue"]);
 const products = useProductsStore();
+const auth = useAuthStore();
+
+// ✅ Set de branches que el user puede operar.
+// - super_admin / admin sin scope: vacío → no se filtra (ve todas).
+// - user con scope: solo las que tiene en auth.user.branches.
+function getUserBranchIdsSet() {
+  const user = auth?.user || {};
+  const isSuperAdmin = String(user?.role || "").toLowerCase() === "super_admin"
+    || (Array.isArray(user?.roles) && user.roles.map((r) => String(r).toLowerCase()).includes("super_admin"));
+  if (isSuperAdmin) return null; // null = sin filtro
+
+  const arr = Array.isArray(user?.branches) ? user.branches : [];
+  const ids = arr.map((x) => {
+    if (typeof x === "object") return Number(x?.id ?? x?.branch_id ?? 0);
+    return Number(x) || 0;
+  }).filter((n) => n > 0);
+
+  if (!ids.length) return null; // sin info → no filtrar (que decida el backend)
+  return new Set(ids);
+}
 
 const loading = ref(false);
 const error = ref(null);
@@ -295,6 +316,9 @@ async function refresh() {
   loading.value = true;
   error.value = null;
   try {
+    // ✅ Filtro por scope del user actual (admin = ve todo, user = sus branches)
+    const allowedSet = getUserBranchIdsSet();
+
     const pid = toInt(props.productId, 0);
     if (pid > 0) {
       const matrix = await products.fetchBranchesMatrix(pid);
@@ -305,7 +329,7 @@ async function refresh() {
         current_qty: num(x.current_qty ?? x.qty ?? 0, 0),
         qty: num(x.assign_qty ?? x.qty_to_set ?? 0, 0),
         enabled: toBool(x.enabled ?? x.is_active ?? 0, false),
-      }));
+      })).filter((r) => !allowedSet || allowedSet.has(r.branch_id));
 
       // ✅ Solo respetamos los valores locales si:
       //   - ya cargamos para ESTE producto antes (no son de un load stale), Y
@@ -349,10 +373,12 @@ async function refresh() {
       }
     } else {
       const bs = await fetchBranchesSafe();
-      const arr = (Array.isArray(bs) ? bs : []).map((b) => ({
-        branch_id: toInt(b.id, 0), branch_name: b.name || "",
-        warehouse_id: toInt(b.warehouse_id ?? 0, 0), current_qty: 0, qty: 0, enabled: false,
-      }));
+      const arr = (Array.isArray(bs) ? bs : [])
+        .map((b) => ({
+          branch_id: toInt(b.id, 0), branch_name: b.name || "",
+          warehouse_id: toInt(b.warehouse_id ?? 0, 0), current_qty: 0, qty: 0, enabled: false,
+        }))
+        .filter((r) => !allowedSet || allowedSet.has(r.branch_id));
       const local = Array.isArray(rows.value) ? rows.value : [];
       const localMap = new Map(local.map((r) => [toInt(r.branch_id, 0), num(r.qty, 0)]));
       rows.value = arr

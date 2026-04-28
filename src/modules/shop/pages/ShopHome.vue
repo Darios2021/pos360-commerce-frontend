@@ -29,8 +29,10 @@
     <section class="content">
       <div class="after-hero-spacer"></div>
 
-      <!-- Slider "Productos en promoción": sólo se muestra si hay promos reales activas -->
-      <div class="mb-6" v-if="promoItems.length > 0">
+      <!-- Slider "Productos en promoción":
+           Sólo se muestra si hay al menos PROMO_MIN_ITEMS promos reales activas
+           (sino el carrusel queda con 1-2 cards sueltas y se ve roto). -->
+      <div class="mb-6" v-if="promoItems.length >= PROMO_MIN_ITEMS">
         <PromoSlider :items="promoItems" :perPage="promoPerPage" @seeAll="scrollToProducts" />
       </div>
 
@@ -270,6 +272,10 @@ function scrollToProducts() {
 }
 
 const promoPerPage = computed(() => 5);
+
+// Mínimo de promos vigentes para que se renderice el carousel.
+// Con menos productos queda 1 card suelta y se ve roto visualmente.
+const PROMO_MIN_ITEMS = 4;
 
 const promoItems = computed(() => {
   // ✅ Usa la lista dedicada de promos (traída por API con filtro promo=active),
