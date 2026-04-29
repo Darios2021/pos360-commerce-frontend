@@ -1,95 +1,125 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/ShopLogin.vue -->
+<!--
+  ShopLogin
+  ---------
+  Login del shop. Por ahora soporta solo Google Identity Services (GIS).
+  El password queda almacenado en el backend cuando el usuario completa el
+  perfil — más adelante se podrá agregar login email+password reusando ese hash.
+
+  UI: split desktop con hero + login card. Mobile: solo card.
+  Usa tokens de Vuetify (`var(--v-theme-*)`) para respetar dark mode.
+-->
 <template>
   <div class="sl">
     <div class="sl-shell">
-      <!-- Panel izquierdo (desktop) -->
-      <section class="sl-left" aria-label="Información de inicio de sesión">
-        <div class="sl-left-badge">
-          <span class="sl-left-dot" aria-hidden="true" />
-          <span class="sl-left-brand">San Juan Tecnología</span>
-        </div>
+      <!-- ── Hero (desktop) ───────────────────────────────────────── -->
+      <section class="sl-hero" aria-label="Beneficios de tu cuenta">
+        <!-- shapes decorativos -->
+        <span class="sl-hero__shape sl-hero__shape--a" aria-hidden="true" />
+        <span class="sl-hero__shape sl-hero__shape--b" aria-hidden="true" />
 
-        <h1 class="sl-left-title">Ingresá para comprar más rápido</h1>
-        <p class="sl-left-sub">
-          Accedé con Google para ver tus compras, favoritos y avanzar en el checkout sin perder tiempo.
+        <h1 class="sl-hero__title">
+          Compra
+          <span class="sl-hero__title--accent">segura</span>
+        </h1>
+        <p class="sl-hero__lead">
+          Tu cuenta protegida, tus datos a mano y tus favoritos siempre con vos.
         </p>
 
-        <div class="sl-left-cards">
-          <div class="sl-mini">
-            <div class="sl-mini-title">✅ Tus compras</div>
-            <div class="sl-mini-sub">Seguimiento y historial</div>
-          </div>
-          <div class="sl-mini">
-            <div class="sl-mini-title">❤️ Favoritos</div>
-            <div class="sl-mini-sub">Guardá para después</div>
-          </div>
-          <div class="sl-mini">
-            <div class="sl-mini-title">🔒 Sesión segura</div>
-            <div class="sl-mini-sub">Google Identity Services</div>
-          </div>
+        <ul class="sl-hero__benefits">
+          <li class="sl-bn">
+            <span class="sl-bn__ico"><v-icon size="20">mdi-cart-outline</v-icon></span>
+            <div class="sl-bn__txt">
+              <strong>Checkout sin fricción</strong>
+              <span>Cargás tus datos una sola vez.</span>
+            </div>
+          </li>
+          <li class="sl-bn">
+            <span class="sl-bn__ico"><v-icon size="20">mdi-heart-outline</v-icon></span>
+            <div class="sl-bn__txt">
+              <strong>Favoritos sincronizados</strong>
+              <span>Guardalos en cualquier dispositivo.</span>
+            </div>
+          </li>
+          <li class="sl-bn">
+            <span class="sl-bn__ico"><v-icon size="20">mdi-shield-lock-outline</v-icon></span>
+            <div class="sl-bn__txt">
+              <strong>Sesión segura</strong>
+              <span>Login Google + contraseña propia.</span>
+            </div>
+          </li>
+        </ul>
+
+        <div class="sl-hero__trust">
+          <span><v-icon size="14">mdi-lock-check</v-icon> Datos encriptados</span>
+          <span class="sl-hero__trust-sep">·</span>
+          <span><v-icon size="14">mdi-account-multiple-check</v-icon> Compradores verificados</span>
         </div>
       </section>
 
-      <!-- Panel derecho (card login) -->
-      <section class="sl-right" aria-label="Formulario de inicio de sesión">
-        <div class="sl-card">
-          <!-- header tipo ML -->
-          <div class="sl-card-top">
-            <div class="sl-card-topbar" aria-hidden="true" />
-            <div class="sl-title">Ingresá</div>
-            <div class="sl-sub">
-              Entrá con Google para ver tus compras y avanzar más rápido.
+      <!-- ── Card de login ─────────────────────────────────────────── -->
+      <section class="sl-card" aria-label="Iniciar sesión">
+        <div class="sl-card__head">
+          <div class="sl-card__icon">
+            <v-icon size="22">mdi-account-circle-outline</v-icon>
+          </div>
+          <div>
+            <div class="sl-card__title">Ingresá a tu cuenta</div>
+            <div class="sl-card__sub">
+              Usá Google para entrar. Te pediremos completar tus datos la primera vez.
             </div>
           </div>
+        </div>
 
-          <v-alert v-if="error" type="error" variant="tonal" class="mt-3">
-            {{ error }}
-          </v-alert>
+        <v-alert
+          v-if="error"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="sl-alert"
+        >
+          {{ error }}
+        </v-alert>
 
-          <v-alert v-else-if="!googleClientId" type="warning" variant="tonal" class="mt-3">
-            Falta configurar <b>VITE_GOOGLE_CLIENT_ID</b> en el frontend.
-            <br />
-            (Es el mismo valor que ya tenés en backend: <b>GOOGLE_CLIENT_ID</b>)
-          </v-alert>
+        <v-alert
+          v-else-if="!googleClientId"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="sl-alert"
+        >
+          Falta configurar <b>VITE_GOOGLE_CLIENT_ID</b>.
+        </v-alert>
 
-          <!-- ✅ Botón Google (GIS) -->
-          <div class="sl-google" v-if="googleClientId">
-            <div ref="gisBtnWrap" class="sl-gis-wrap">
-              <div ref="gisBtn" class="sl-gis-btn" />
-            </div>
-
-            <div class="sl-or">
-              <span />
-              <em>o</em>
-              <span />
-            </div>
-
-            <div class="sl-note">
-              Al continuar, aceptás iniciar sesión con tu cuenta Google.
-            </div>
+        <!-- Google sign-in (botón oficial de Google Identity Services).
+             Si falla la carga, mostramos el fallback que invoca el prompt. -->
+        <div v-if="googleClientId" class="sl-google">
+          <div ref="gisBtnWrap" class="sl-google__wrap">
+            <div ref="gisBtn" class="sl-google__btn" />
           </div>
 
-          <div class="sl-actions">
-            <v-btn class="sl-btn-back" variant="tonal" @click="goBack">
-              Volver
-            </v-btn>
+          <v-btn
+            v-if="loading"
+            block
+            variant="text"
+            size="small"
+            disabled
+            loading
+            class="sl-google__loading"
+          >
+            Iniciando sesión…
+          </v-btn>
+        </div>
 
-            <v-btn
-              class="sl-btn-main"
-              color="primary"
-              :loading="loading"
-              :disabled="!googleClientId"
-              @click="promptGoogle"
-            >
-              Continuar
-            </v-btn>
-          </div>
+        <div class="sl-foot">
+          <v-icon size="14" class="me-1">mdi-shield-lock-outline</v-icon>
+          Usamos Google Identity Services. No vemos tu contraseña de Google.
+        </div>
 
-          <div class="sl-foot">
-            ¿Problemas con el navegador interno de Instagram/Facebook?
-            Probá “Abrir en navegador”.
-          </div>
+        <div class="sl-back">
+          <v-btn variant="text" size="small" @click="goBack">
+            <v-icon size="16" start>mdi-arrow-left</v-icon>
+            Volver al shop
+          </v-btn>
         </div>
       </section>
     </div>
@@ -99,11 +129,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
-
-/**
- * ✅ IMPORT FIX (igual que tu header actual):
- * Si tu store real está en /service, dejalo así.
- */
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 const route = useRoute();
@@ -116,7 +141,9 @@ const error = ref(null);
 const gisBtn = ref(null);
 const gisBtnWrap = ref(null);
 
-const googleClientId = computed(() => String(import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim());
+const googleClientId = computed(() =>
+  String(import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim()
+);
 const redirectTo = computed(() => String(route.query.redirect || "/shop"));
 
 function goBack() {
@@ -124,9 +151,6 @@ function goBack() {
   router.replace(r).catch(() => router.replace("/shop").catch(() => {}));
 }
 
-// ========================
-// GIS loader
-// ========================
 let scriptEl = null;
 let onResize = null;
 
@@ -177,8 +201,7 @@ async function onGoogleCredentialResponse(resp) {
 function getGisWidth() {
   const el = gisBtnWrap.value || gisBtn.value;
   const w = Math.floor(el?.getBoundingClientRect?.().width || 0);
-  // límites razonables
-  return Math.max(240, Math.min(w || 320, 420));
+  return Math.max(240, Math.min(w || 360, 420));
 }
 
 function renderGisButton() {
@@ -192,7 +215,7 @@ function renderGisButton() {
     theme: "outline",
     size: "large",
     text: "continue_with",
-    shape: "rect", // más ML (menos píldora)
+    shape: "rectangular",
     logo_alignment: "left",
     width: getGisWidth(),
   });
@@ -213,9 +236,7 @@ async function initGis() {
 
   renderGisButton();
 
-  // re-render en resize (responsive real)
   onResize = () => {
-    // throttle simple
     clearTimeout(onResize._t);
     onResize._t = setTimeout(() => renderGisButton(), 120);
   };
@@ -248,250 +269,242 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* ================================
-   BASE (ML: limpio, aireado)
-================================ */
+/* Paleta explícita — el branding del shop pisa --v-theme-surface y
+   --v-theme-background con tonos oscuros, así que evitamos esos
+   tokens y usamos blanco + grises directos. */
 .sl {
-  min-height: calc(100vh - 120px);
-  background: #ffffff; /* ML es más blanco */
+  min-height: calc(100dvh - 120px);
   display: grid;
-  place-items: start center;
-  padding: 36px 16px;
-  font-family: Proxima Nova, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  place-items: center;
+  padding: 32px 16px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   color: #111827;
+  background: #ebebeb;
 }
 
-/* Contenedor general */
 .sl-shell {
-  width: min(1180px, 100%);
+  width: min(1080px, 100%);
   display: grid;
-  grid-template-columns: minmax(420px, 1fr) 420px;
-  gap: 64px; /* aire ML */
-  align-items: start;
-  padding-top: 8px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 440px);
+  gap: 56px;
+  align-items: center;
 }
 
-/* ================================
-   PANEL IZQUIERDO (desktop)
-   ML: texto grande, simple, sin cajas
-================================ */
-.sl-left {
-  padding: 8px 0 0;
+/* ── HERO ────────────────────────────────────────────────────────── */
+.sl-hero {
+  position: relative;
+  padding: 8px 0;
+  min-width: 0;
+  overflow: visible;
 }
 
-.sl-left-badge {
+/* Shapes decorativos sutiles */
+.sl-hero__shape {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.sl-hero__shape--a {
+  top: -40px;
+  left: -50px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(20, 136, 209, 0.45), transparent 70%);
+}
+.sl-hero__shape--b {
+  bottom: -30px;
+  left: 120px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(0, 166, 80, 0.20), transparent 70%);
+}
+
+.sl-hero > *:not(.sl-hero__shape) { position: relative; z-index: 1; }
+
+.sl-hero__title {
+  margin: 0 0 12px;
+  font-size: clamp(34px, 4.2vw, 52px);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+.sl-hero__title--accent {
+  color: #02498b;
+}
+
+.sl-hero__lead {
+  margin: 0 0 28px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: rgba(15, 23, 42, 0.65);
+  max-width: 50ch;
+  font-weight: 400;
+}
+
+/* Lista de beneficios — pills modernas con hover */
+.sl-hero__benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  max-width: 480px;
+}
+.sl-bn {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.sl-bn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(20, 136, 209, 0.30);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.sl-bn__ico {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(20, 136, 209, 0.12), rgba(99, 102, 241, 0.10));
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sl-bn__txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sl-bn__txt strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+.sl-bn__txt span {
+  font-size: 12.5px;
+  color: rgba(15, 23, 42, 0.6);
+  line-height: 1.4;
+}
+
+/* Trust signals al pie del hero */
+.sl-hero__trust {
+  margin-top: 22px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 0;              /* ML no usa pill acá */
-  background: transparent;  /* sin caja */
-  border: 0;
-  box-shadow: none;
-}
-
-.sl-left-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #3483fa;
-}
-
-.sl-left-brand {
-  font-weight: 400;
-  font-size: 14px;
-  color: rgba(17, 24, 39, 0.78);
-  letter-spacing: 0.1px;
-}
-
-.sl-left-title {
-  margin: 14px 0 10px;
-  font-size: 42px;   /* ML grande */
-  line-height: 1.08;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.5);
   font-weight: 500;
-  color: #111827;
-  max-width: 18ch;
 }
+.sl-hero__trust span { display: inline-flex; align-items: center; gap: 4px; }
+.sl-hero__trust-sep { opacity: 0.4; }
 
-.sl-left-sub {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.55;
-  color: rgba(17, 24, 39, 0.72);
-  max-width: 56ch;
-}
-
-/* Beneficios: texto simple, sin “cards” */
-.sl-left-cards {
-  margin-top: 20px;
-  display: grid;
-  gap: 14px;
-  max-width: 520px;
-}
-
-.sl-mini {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  box-shadow: none;
-}
-
-.sl-mini-title {
-  font-weight: 500;
-  font-size: 14px;
-  color: #111827;
-}
-
-.sl-mini-sub {
-  margin-top: 2px;
-  font-size: 13px;
-  color: rgba(17, 24, 39, 0.65);
-}
-
-/* ================================
-   LOGIN CARD (derecha) - ML sutil
-================================ */
-.sl-right {
-  display: grid;
-}
-
+/* ── CARD ────────────────────────────────────────────────────────── */
 .sl-card {
-  background: #fff;
-  border-radius: 6px; /* ML suele ser menos redondo */
-  border: 1px solid rgba(0,0,0,0.12);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06); /* sombra mínima */
-  overflow: hidden;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-/* sin barra/linea superior */
-.sl-card-top {
-  padding: 22px 22px 10px;
-  border: 0;
+.sl-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
-
-.sl-title {
-  font-size: 24px;
-  font-weight: 500;
-  margin-bottom: 8px;
+.sl-card__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(20, 136, 209, 0.12);
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sl-card__title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   color: #111827;
 }
-
-.sl-sub {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: rgba(17, 24, 39, 0.72);
+.sl-card__sub {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.6);
 }
 
-/* zona Google */
+.sl-alert { margin: 0; }
+
 .sl-google {
-  padding: 14px 22px 6px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
-
-.sl-gis-wrap {
+.sl-google__wrap { width: 100%; min-height: 44px; }
+.sl-google__btn {
   width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.sl-google__btn :deep(> div) { width: 100% !important; }
+
+.sl-google__loading {
+  margin-top: 4px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
-.sl-gis-btn {
-  width: 100%;
-  min-height: 44px;
-}
-
-/* separador simple */
-.sl-or {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 0;
-}
-
-.sl-or span {
-  height: 1px;
-  background: rgba(0,0,0,0.10);
-}
-
-.sl-or em {
-  font-style: normal;
-  font-size: 12px;
-  color: rgba(0,0,0,0.55);
-}
-
-.sl-note {
-  font-size: 12px;
-  color: rgba(17, 24, 39, 0.65);
-}
-
-/* botones */
-.sl-actions {
-  padding: 14px 22px 18px;
-  display: grid;
-  gap: 10px;
-}
-
-/* El look final lo da Vuetify, acá solo pequeños detalles */
-.sl-btn-back {
-  background: #e6e6e6 !important;
-  color: #111 !important;
-  font-weight: 400;
-  letter-spacing: 0.8px;
-}
-
-.sl-btn-main {
-  font-weight: 500;
-  letter-spacing: 0.6px;
-}
-
-/* footer */
 .sl-foot {
-  padding: 0 22px 18px;
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
-  color: rgba(17, 24, 39, 0.60);
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.4;
 }
 
-/* ================================
-   RESPONSIVE
-================================ */
+.sl-back {
+  display: flex;
+  justify-content: center;
+  margin-top: -4px;
+}
 
-/* Tablet y abajo: 1 columna (y panel oculto) */
+/* ── RESPONSIVE ─────────────────────────────────────────────────── */
 @media (max-width: 960px) {
-  .sl {
-    padding: 18px 12px;
-    place-items: start center;
-  }
-
+  .sl { padding: 18px 12px; }
   .sl-shell {
     grid-template-columns: 1fr;
     gap: 0;
-    width: min(520px, 100%);
+    width: min(480px, 100%);
   }
-
-  /* ✅ NO mostrar panel izquierdo en mobile/tablet */
-  .sl-left {
-    display: none !important;
-  }
+  .sl-hero { display: none; }
 }
 
 @media (max-width: 600px) {
   .sl-card {
-    border-radius: 10px;
+    border-radius: 14px;
+    padding: 20px 18px;
+    gap: 16px;
   }
-
-  .sl-card-top {
-    padding: 18px 16px 10px;
-  }
-
-  .sl-google,
-  .sl-actions,
-  .sl-foot {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .sl-title {
-    font-size: 22px;
-  }
+  .sl-card__title { font-size: 17px; }
 }
 </style>
-

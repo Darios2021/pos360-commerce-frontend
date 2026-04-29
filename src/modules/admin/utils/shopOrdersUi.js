@@ -70,27 +70,51 @@ export function shortShipLine(o) {
 }
 
 // --- order status ---
+// Status reales que maneja la DB ecom_orders.status:
+//   created → processing → ready → delivered (o cancelled en cualquier punto)
 export function orderStatusLabel(s0) {
   const v = norm(s0);
   if (v === "created" || v === "pending") return "Creado";
-  if (v === "confirmed") return "Confirmado";
-  if (v === "preparing") return "Preparando";
-  if (v === "ready_pickup") return "Listo para retirar";
-  if (v === "shipped") return "Enviado";
+  if (v === "processing") return "En preparación";
+  if (v === "ready") return "Listo";
   if (v === "delivered") return "Entregado";
-  if (v === "cancelled") return "Cancelado";
+  if (v === "cancelled" || v === "canceled") return "Cancelado";
   return s0 || "—";
 }
 export function statusColor(s0) {
   const v = norm(s0);
-  if (v === "created" || v === "pending") return "grey";
-  if (v === "confirmed") return "blue";
-  if (v === "preparing") return "amber";
-  if (v === "ready_pickup") return "teal";
-  if (v === "shipped") return "deep-purple";
+  if (v === "created" || v === "pending") return "blue";
+  if (v === "processing") return "amber";
+  if (v === "ready") return "teal";
   if (v === "delivered") return "green";
-  if (v === "cancelled") return "red";
+  if (v === "cancelled" || v === "canceled") return "red";
   return "grey";
+}
+
+/**
+ * Próximas transiciones válidas según status actual.
+ * Devuelve [{ value, label, icon, color }] — para renderizar botones de
+ * cambio de estado en el panel admin.
+ */
+export function nextStatusActions(currentStatus) {
+  const v = norm(currentStatus);
+
+  if (v === "delivered") return []; // estado final
+  if (v === "cancelled" || v === "canceled") return []; // estado final
+
+  const all = {
+    processing: { value: "processing", label: "En preparación", icon: "mdi-package-variant", color: "amber" },
+    ready:      { value: "ready",      label: "Marcar listo",   icon: "mdi-clipboard-check-outline", color: "teal" },
+    delivered:  { value: "delivered",  label: "Entregado",      icon: "mdi-check-circle-outline", color: "green" },
+    cancelled:  { value: "cancelled",  label: "Cancelar",       icon: "mdi-close-circle-outline", color: "red" },
+  };
+
+  if (v === "created")     return [all.processing, all.cancelled];
+  if (v === "processing")  return [all.ready, all.cancelled];
+  if (v === "ready")       return [all.delivered, all.cancelled];
+
+  // Fallback (status desconocido): permitir todas
+  return [all.processing, all.ready, all.delivered, all.cancelled];
 }
 
 // --- order pay ---

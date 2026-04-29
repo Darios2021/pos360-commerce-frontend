@@ -269,6 +269,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Categorías</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="hasRoute('productsLabels')" :to="{ name: 'productsLabels' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-printer-pos</v-icon>
+                </template>
+                <v-list-item-title>Etiquetas</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Etiquetas</v-tooltip>
+              </v-list-item>
+
               <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact class="nav-item">
                 <template #prepend>
                   <v-badge

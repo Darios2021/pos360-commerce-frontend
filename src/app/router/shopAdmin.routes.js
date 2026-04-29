@@ -5,6 +5,7 @@ import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
 
 // ✅ LISTADO / BANDEJA de pedidos (TU VISTA)
 import ShopOrdersView from "@/modules/admin/pages/ShopOrdersView.vue";
+import ShopOrderDetailView from "@/modules/admin/pages/ShopOrderDetailView.vue";
 // (si preferís la otra, cambiá ShopOrdersView por ShopOrdersInboxView)
 // import ShopOrdersInboxView from "@/modules/admin/pages/ShopOrdersInboxView.vue";
 
@@ -28,12 +29,22 @@ export const shopAdminRoutes = [
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 
-  // ✅ PEDIDOS (LISTADO REAL)
+  // ✅ PEDIDOS (LISTADO REAL) — mantengo `shopOrders` por compatibilidad
+  // con AppShell y otros lugares que ya navegan a ese name.
   {
     path: "admin/shop/orders",
     name: "shopOrders",
     component: ShopOrdersView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
+  // ✅ PEDIDOS (DETALLE FULL VIEW — no modal)
+  {
+    path: "admin/shop/orders/:id",
+    name: "shopOrderDetail",
+    component: ShopOrderDetailView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+    props: true,
   },
 
   {

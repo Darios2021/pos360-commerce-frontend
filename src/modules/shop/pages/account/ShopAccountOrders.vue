@@ -80,18 +80,41 @@
               <span class="order-items">{{ Number(o.items_count || 0) }} item{{ Number(o.items_count || 0) === 1 ? "" : "s" }}</span>
               <span class="order-sep">•</span>
               <span class="order-pay">Pago: <b>{{ paymentLabel(o.payment_status) }}</b></span>
-              <span class="order-sep">•</span>
-              <span class="order-ful">{{ fulfillmentLabel(o.fulfillment_type) }}</span>
             </div>
 
             <div class="order-prod" v-if="o.first_product_name">
               {{ o.first_product_name }}
             </div>
+
+            <!-- Sucursal o dirección de envío -->
+            <div class="order-loc">
+              <v-icon size="14">{{ isPickup(o) ? 'mdi-storefront-outline' : 'mdi-truck-delivery-outline' }}</v-icon>
+              <template v-if="isPickup(o)">
+                <span class="order-loc__type">Retiro en sucursal:</span>
+                <b>{{ o.branch_name || '—' }}</b>
+              </template>
+              <template v-else>
+                <span class="order-loc__type">Envío a:</span>
+                <b>{{ o.ship_address1 || o.ship_city || '—' }}</b>
+              </template>
+            </div>
           </div>
 
           <div class="order-cta">
-            <v-btn color="primary" variant="flat" class="order-btn" @click="openDetail(o)">Ver detalle</v-btn>
-            <v-btn variant="tonal" class="order-btn2" @click="goShop">Volver a comprar</v-btn>
+            <v-btn color="primary" variant="flat" class="order-btn" @click="openDetail(o)">
+              Ver detalle
+            </v-btn>
+            <!-- Volver a comprar solo cuando el pedido cerró su ciclo -->
+            <v-btn
+              v-if="canRebuy(o)"
+              variant="text"
+              size="small"
+              class="order-btn-rebuy"
+              prepend-icon="mdi-cart-plus"
+              @click="rebuy(o)"
+            >
+              Volver a comprar
+            </v-btn>
           </div>
         </div>
       </article>
@@ -150,6 +173,28 @@
           </div>
 
           <template v-else>
+            <!-- Timeline de progreso del pedido -->
+            <div v-if="detail.order" class="timeline" :class="{ 'is-cancelled': isCancelled(detail.order) }">
+              <div
+                v-for="(s, i) in steps(detail.order)"
+                :key="s.key"
+                class="tl-step"
+                :class="{
+                  'is-done': s.done,
+                  'is-current': s.current,
+                  'is-cancel': s.key === 'cancelled',
+                }"
+              >
+                <div class="tl-dot">
+                  <v-icon size="14">{{ s.icon }}</v-icon>
+                </div>
+                <div class="tl-text">
+                  <div class="tl-label">{{ s.label }}</div>
+                  <div class="tl-time" v-if="s.at">{{ fmtDate(s.at) }}</div>
+                </div>
+                <div v-if="i < steps(detail.order).length - 1" class="tl-line" />
+              </div>
+            </div>
             <div class="detail-items">
               <div v-for="it in detail.items" :key="it.id" class="detail-item">
                 <div class="detail-item-thumb">
@@ -194,12 +239,18 @@
 
               <div class="detail-meta">
                 <div class="meta-pill">
-                  <v-icon size="16">mdi-truck-fast-outline</v-icon>
+                  <v-icon size="16">{{ isPickup(detail.order) ? 'mdi-storefront-outline' : 'mdi-truck-fast-outline' }}</v-icon>
                   <span>{{ fulfillmentLabel(detail.order?.fulfillment_type) }}</span>
                 </div>
-                <div class="meta-pill">
-                  <v-icon size="16">mdi-storefront-outline</v-icon>
-                  <span>San Juan Tecnología</span>
+                <div v-if="isPickup(detail.order) && detail.order?.branch_name" class="meta-pill meta-pill--accent">
+                  <v-icon size="16">mdi-map-marker-outline</v-icon>
+                  <span>{{ detail.order.branch_name }}</span>
+                </div>
+                <div v-else-if="!isPickup(detail.order) && (detail.order?.ship_address1 || detail.order?.ship_city)" class="meta-pill meta-pill--accent">
+                  <v-icon size="16">mdi-map-marker-outline</v-icon>
+                  <span>
+                    {{ [detail.order?.ship_address1, detail.order?.ship_city].filter(Boolean).join(', ') }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -335,6 +386,112 @@ function fulfillmentLabel(v) {
   return v || "—";
 }
 
+function isPickup(o) {
+  return String(o?.fulfillment_type || "").toLowerCase() === "pickup";
+}
+
+function isCancelled(o) {
+  const x = String(o?.status || "").toLowerCase();
+  return x === "cancelled" || x === "canceled";
+}
+
+/**
+ * "Volver a comprar" solo se muestra cuando el ciclo del pedido terminó:
+ * entregado o cancelado. En pedidos en curso no aporta y agrega ruido.
+ */
+function canRebuy(o) {
+  const x = String(o?.status || "").toLowerCase();
+  return x === "delivered" || x === "cancelled" || x === "canceled";
+}
+
+function rebuy(o) {
+  // Si vamos a la ficha del primer producto del pedido y si no, al shop.
+  const pid = Number(o?.first_product_id || 0);
+  if (pid) {
+    router.push(`/shop/product/${pid}`).catch(() => {});
+  } else {
+    goShop();
+  }
+}
+
+/**
+ * Pasos del timeline del pedido. Cada step se marca como:
+ *   done    → ya pasó (tiene timestamp)
+ *   current → es el estado actual del pedido
+ *   pending → aún no llegó
+ *
+ * Si el pedido fue cancelado, solo mostramos un step rojo "Cancelado".
+ */
+function steps(o) {
+  if (!o) return [];
+
+  const status = String(o.status || "").toLowerCase();
+
+  if (isCancelled(o)) {
+    return [
+      {
+        key: "created",
+        label: "Pedido creado",
+        icon: "mdi-cart-check",
+        at: o.created_at,
+        done: true,
+        current: false,
+      },
+      {
+        key: "cancelled",
+        label: "Cancelado",
+        icon: "mdi-close-circle",
+        at: o.cancelled_at,
+        done: true,
+        current: true,
+      },
+    ];
+  }
+
+  // Etiqueta del último paso depende del tipo de fulfillment
+  const lastLabel = isPickup(o) ? "Retirado" : "Entregado";
+  const lastIcon  = isPickup(o) ? "mdi-package-variant-closed-check" : "mdi-truck-check-outline";
+  const readyLabel = isPickup(o) ? "Listo para retirar" : "Listo para enviar";
+
+  const order = ["created", "processing", "ready", "delivered"];
+  const idx = Math.max(0, order.indexOf(status));
+
+  return [
+    {
+      key: "created",
+      label: "Pedido creado",
+      icon: "mdi-cart-check",
+      at: o.created_at,
+      done: idx >= 0,
+      current: idx === 0,
+    },
+    {
+      key: "processing",
+      label: "En preparación",
+      icon: "mdi-package-variant",
+      at: o.processing_at,
+      done: idx >= 1,
+      current: idx === 1,
+    },
+    {
+      key: "ready",
+      label: readyLabel,
+      icon: "mdi-clipboard-check-outline",
+      at: o.ready_at,
+      done: idx >= 2,
+      current: idx === 2,
+    },
+    {
+      key: "delivered",
+      label: lastLabel,
+      icon: lastIcon,
+      at: o.picked_up_at,
+      done: idx >= 3,
+      current: idx === 3,
+    },
+  ];
+}
+
 async function fetchOrders() {
   loading.value = true;
   error.value = null;
@@ -418,13 +575,16 @@ onMounted(() => {
   padding: 2px 0 18px;
 }
 
-/* ================= HEAD (FIX estirado) ================= */
+/* ================= HEAD (paleta shop explícita) ================= */
+.orders {
+  color: #111827;
+}
 .orders-head {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: end;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .orders-head-left {
@@ -432,15 +592,17 @@ onMounted(() => {
 }
 
 .orders-title {
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: 0.2px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+  margin: 0;
 }
 
 .orders-sub {
-  font-size: 12px;
-  opacity: 0.72;
-  margin-top: 2px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 2px 0 0;
 }
 
 .orders-actions {
@@ -474,36 +636,42 @@ onMounted(() => {
 
 /* ================= EMPTY ================= */
 .orders-empty {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 18px;
-  padding: 26px 16px;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 16px;
+  padding: 44px 24px;
   display: grid;
   justify-items: center;
   text-align: center;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .orders-empty-ico {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(20, 136, 209, 0.10);
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 6px;
 }
 
 .orders-empty-title {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 16px;
-  margin-top: 10px;
+  margin-top: 8px;
+  letter-spacing: -0.01em;
+  color: #111827;
 }
 
 .orders-empty-sub {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 2px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 4px;
+  max-width: 340px;
+  line-height: 1.45;
 }
 
 /* ================= LIST ================= */
@@ -513,17 +681,23 @@ onMounted(() => {
 }
 
 .order-card {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 18px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #111827;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.order-card:hover {
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
 }
 
 .order-top {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding: 10px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -532,40 +706,43 @@ onMounted(() => {
 
 .order-date {
   font-size: 12px;
-  font-weight: 400;
-  opacity: 0.78;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .order-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .order-total {
-  font-weight: 500;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #111827;
+  letter-spacing: -0.01em;
 }
 
 .order-chip {
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .order-body {
-  padding: 14px;
+  padding: 14px 16px;
   display: grid;
-  grid-template-columns: 74px 1fr auto;
+  grid-template-columns: 64px 1fr auto;
   gap: 14px;
   align-items: center;
 }
 
 .order-thumb {
-  width: 74px;
-  height: 74px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f5f5f5;
   display: grid;
   place-items: center;
 }
@@ -604,21 +781,23 @@ onMounted(() => {
 .dot-info    { background: #4b90ff; }
 
 .order-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 14.5px;
+  font-weight: 600;
   line-height: 1.2;
+  color: #111827;
 }
 
 .order-code {
   font-weight: 400;
-  opacity: 0.65;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12.5px;
   margin-left: 6px;
 }
 
 .order-sub {
   margin-top: 6px;
-  font-size: 12px;
-  opacity: 0.82;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.65);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -630,30 +809,59 @@ onMounted(() => {
 }
 
 .order-prod {
-  margin-top: 6px;
-  font-size: 12px;
-  opacity: 0.88;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.55);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+.order-loc {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(20, 136, 209, 0.08);
+  color: rgb(var(--v-theme-primary));
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 500;
+  max-width: 100%;
+}
+.order-loc__type { color: rgba(0, 0, 0, 0.6); font-weight: 400; }
+.order-loc b { color: #111827; font-weight: 600; }
+
 .order-cta {
-  display: grid;
-  gap: 8px;
-  justify-items: end;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 152px;
 }
 
-.order-btn,
-.order-btn2 {
-  min-width: 140px;
-  height: 36px;
-  min-height: 36px;
-  border-radius: 10px;
+.order-btn {
+  height: 38px;
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: none;
+}
+
+.order-btn-rebuy {
+  text-transform: none;
+  letter-spacing: 0;
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.2px;
+  color: rgb(var(--v-theme-primary));
+  height: 32px;
+  min-height: 32px;
+  padding: 0 8px;
 }
 
 .orders-pager {
@@ -684,13 +892,15 @@ onMounted(() => {
   gap: 10px;
 }
 .detail-title {
-  font-weight: 500;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: #111827;
 }
 .detail-sub {
-  margin-top: 2px;
-  font-size: 12px;
-  opacity: 0.72;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.55);
 }
 .detail-head-right {
   display: inline-flex;
@@ -716,20 +926,20 @@ onMounted(() => {
 .detail-item {
   display: grid;
   grid-template-columns: 54px 1fr auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
 }
 .detail-item-thumb {
   width: 54px;
   height: 54px;
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: grid;
   place-items: center;
 }
@@ -759,27 +969,126 @@ onMounted(() => {
   font-weight: 500;
   font-size: 13px;
 }
+/* ── Timeline de estado ───────────────────────────────────────── */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  padding: 16px 12px 12px;
+  margin-bottom: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+}
+.timeline.is-cancelled { grid-template-columns: repeat(2, 1fr); }
+
+.tl-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 6px;
+}
+.tl-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  z-index: 2;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.tl-step.is-done .tl-dot {
+  background: rgb(var(--v-theme-primary));
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
+}
+.tl-step.is-current .tl-dot {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 4px rgba(20, 136, 209, 0.18);
+}
+.tl-step.is-cancel .tl-dot {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
+}
+
+.tl-line {
+  position: absolute;
+  top: 16px;
+  left: calc(50% + 18px);
+  right: calc(-50% + 18px);
+  height: 2px;
+  background: rgba(0, 0, 0, 0.10);
+  z-index: 1;
+}
+.tl-step.is-done + .tl-step .tl-line,
+.tl-step.is-done .tl-line {
+  background: rgb(var(--v-theme-primary));
+}
+
+.tl-text { margin-top: 8px; }
+.tl-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+}
+.tl-step.is-done .tl-label,
+.tl-step.is-current .tl-label {
+  color: #111827;
+}
+.tl-step.is-cancel .tl-label { color: #b91c1c; }
+
+.tl-time {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: rgba(0, 0, 0, 0.45);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .timeline { padding: 14px 8px 10px; }
+  .tl-label { font-size: 10.5px; }
+  .tl-time { font-size: 9.5px; }
+  .tl-dot { width: 28px; height: 28px; }
+  .tl-line { top: 14px; }
+}
+
 .detail-summary {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
 }
 .sum-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 2px;
+  padding: 6px 0;
   font-size: 13px;
+  color: rgba(0, 0, 0, 0.78);
 }
+.sum-row > span:first-child { color: rgba(0, 0, 0, 0.6); }
+.sum-row > span:last-child { font-weight: 500; color: #111827; }
 .sum-total {
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  margin-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin-top: 8px;
   padding-top: 10px;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
 }
+.sum-total > span:first-child { color: #111827; font-weight: 600; }
+.sum-total > span:last-child { font-weight: 700; font-size: 17px; }
 .detail-meta {
   margin-top: 10px;
   display: flex;
@@ -789,15 +1098,22 @@ onMounted(() => {
 .meta-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  font-weight: 400;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #fafafa;
+  font-weight: 500;
   font-size: 12px;
-  opacity: 0.9;
+  color: rgba(0, 0, 0, 0.7);
 }
+.meta-pill--accent {
+  background: rgba(20, 136, 209, 0.08);
+  border-color: rgba(20, 136, 209, 0.22);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+.meta-pill--accent .v-icon { color: rgb(var(--v-theme-primary)); }
 .detail-actions {
   padding: 12px 14px;
   display: flex;

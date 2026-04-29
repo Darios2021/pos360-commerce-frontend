@@ -14,6 +14,7 @@ export const ROUTE_TREE = {
   productEdit:              { label: "Editar producto", section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   productView:              { label: "Ver producto",    section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   productsImport:           { label: "Importar CSV",    section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
+  productsLabels:           { label: "Etiquetas",        section: "Gestión", parent: { label: "Productos", to: { name: "products" } } },
   transfers:                { label: "Derivaciones",    section: "Gestión" },
   reports:                  { label: "Reportes",        section: "Gestión" },
   stock:                    { label: "Stock",           section: "Configuración" },

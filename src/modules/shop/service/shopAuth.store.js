@@ -10,7 +10,12 @@
 // Requiere Pinia (ya usás en cart)
 
 import { defineStore } from "pinia";
-import { authMe, authLogout, authGoogle } from "@/modules/shop/service/shop.auth.public.api";
+import {
+  authMe,
+  authLogout,
+  authGoogle,
+  authUpdateProfile,
+} from "@/modules/shop/service/shop.auth.public.api";
 
 function safeCustomer(c) {
   if (!c || typeof c !== "object") return null;
@@ -20,6 +25,9 @@ function safeCustomer(c) {
     first_name: c.first_name ?? null,
     last_name: c.last_name ?? null,
     phone: c.phone ?? null,
+    picture_url: c.picture_url || null,
+    // Backend lo manda como boolean coerced; si llega 0/1 lo coerce de nuevo.
+    profile_completed: c.profile_completed === true || Number(c.profile_completed) === 1,
   };
 }
 
@@ -33,6 +41,12 @@ export const useShopAuthStore = defineStore("shopAuth", {
 
   getters: {
     isLogged: (s) => !!(s.customer && s.customer.id),
+    isProfileComplete: (s) => !!(s.customer && s.customer.profile_completed),
+    /**
+     * true cuando hay cliente logueado pero le falta completar el perfil.
+     * Lo usamos para disparar el modal bloqueante en el shop layout.
+     */
+    needsProfile: (s) => !!(s.customer && s.customer.id && !s.customer.profile_completed),
     fullName: (s) => {
       const c = s.customer;
       if (!c) return "";
@@ -47,6 +61,7 @@ export const useShopAuthStore = defineStore("shopAuth", {
       const e = (c.email || "").trim().slice(0, 1).toUpperCase();
       return (a + b).trim() || e || "U";
     },
+    avatarUrl: (s) => String(s.customer?.picture_url || "").trim(),
   },
 
   actions: {
@@ -111,6 +126,34 @@ export const useShopAuthStore = defineStore("shopAuth", {
       } catch (e) {
         this.customer = null;
         this.booted = true;
+        this.error = e?.friendlyMessage || e?.message || String(e);
+        throw e;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    /**
+     * Completa o actualiza el perfil del cliente logueado.
+     * payload: { first_name, last_name, phone, password? }
+     * Si password viene vacía, no se cambia.
+     */
+    async updateProfile(payload) {
+      if (this.loading) return;
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const r = await authUpdateProfile(payload);
+        const customer = r?.customer ?? r?.data?.customer ?? null;
+        if (customer) {
+          this.customer = safeCustomer(customer);
+        } else {
+          // fallback: re-fetch /me
+          await this.fetchMe({ force: true });
+        }
+        return this.customer;
+      } catch (e) {
         this.error = e?.friendlyMessage || e?.message || String(e);
         throw e;
       } finally {

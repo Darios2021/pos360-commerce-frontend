@@ -1,27 +1,22 @@
-<!-- src/modules/admin/pages/ShopOrdersView.vue -->
-<!-- ✅ COPY-PASTE FINAL COMPLETO
-     - Vista integradora de pedidos (Admin)
-     - Usa componentes:
-       ShopOrdersHeader, ShopOrdersFilters, ShopOrdersTable,
-       ShopOrderDetailDialog, ShopPaymentProofUploadDialog
-     - Usa composable stateful:
-       useShopOrdersApi
+<!--
+  ShopOrdersView (Admin) — Lista de pedidos del shop.
+  - Filtros: búsqueda, status, fulfillment, sucursal.
+  - Tabla con preview compacto.
+  - Botón "Ver" navega a /admin/shop/orders/:id (página completa, no modal).
+  - Acciones rápidas para cambiar estado en la fila (vía PATCH .../status).
 -->
-
 <template>
-  <v-container class="mx-auto" style="max-width:1200px;">
-    <v-card rounded="xl" elevation="3" class="pa-4">
-      <!-- Header -->
-      <ShopOrdersHeader :loading="loading" @reload="reload" />
+  <v-container class="mx-auto sho-container" fluid>
+    <!-- Header -->
+    <ShopOrdersHeader :loading="loading" @reload="reload" />
 
-      <v-divider class="my-3" />
+    <!-- Error global -->
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-3" closable @click:close="error=''">
+      {{ error }}
+    </v-alert>
 
-      <!-- Error global -->
-      <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
-        {{ error }}
-      </v-alert>
-
-      <!-- Filtros -->
+    <!-- Filtros -->
+    <v-card rounded="lg" class="sho-filters" variant="flat">
       <ShopOrdersFilters
         v-model="filters"
         :loading="loading"
@@ -30,49 +25,25 @@
         :branch-items="branchItems"
         @apply="reload"
       />
+    </v-card>
 
-      <v-divider class="my-3" />
-
-      <!-- Tabla -->
+    <!-- Tabla -->
+    <v-card rounded="lg" class="sho-table-card mt-3" variant="flat">
       <ShopOrdersTable
         :headers="headers"
         :rows="rows"
         :meta="meta"
         :loading="loading"
+        :status-busy-id="statusBusy.id"
         @page="onPage"
         @limit="onLimit"
-        @view="openDetail"
+        @view="goDetail"
+        @change-status="onChangeStatus"
       />
     </v-card>
 
-    <!-- Detalle -->
-    <ShopOrderDetailDialog
-      v-model="detail.open"
-      :loading="detail.loading"
-      :error="detail.error"
-      :data="detail.data"
-      :pay-action="payAction"
-      @close="detail.open=false"
-      @create-mp="createMpLink"
-      @open-upload="openUpload"
-      @review-transfer="reviewTransfer"
-    />
-
-    <!-- Subir comprobante -->
-    <ShopPaymentProofUploadDialog
-      v-model="uploadDlg.open"
-      :loading="uploadDlg.loading"
-      :error="uploadDlg.error"
-      :payment="uploadDlg.payment"
-      :order-id="detail.data?.order?.id"
-      v-model:bank_reference="uploadDlg.bank_reference"
-      v-model:file="uploadDlg.file"
-      @submit="doUploadProof"
-      @close="uploadDlg.open=false"
-    />
-
     <!-- Snackbar -->
-    <v-snackbar v-model="snack.show" :timeout="2800">
+    <v-snackbar v-model="snack.show" :timeout="2800" :color="snack.color">
       {{ snack.text }}
     </v-snackbar>
   </v-container>
@@ -80,40 +51,39 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
-// Components
 import ShopOrdersHeader from "@/modules/admin/components/shop-orders/ShopOrdersHeader.vue";
 import ShopOrdersFilters from "@/modules/admin/components/shop-orders/ShopOrdersFilters.vue";
 import ShopOrdersTable from "@/modules/admin/components/shop-orders/ShopOrdersTable.vue";
-import ShopOrderDetailDialog from "@/modules/admin/components/shop-orders/ShopOrderDetailDialog.vue";
-import ShopPaymentProofUploadDialog from "@/modules/admin/components/shop-orders/ShopPaymentProofUploadDialog.vue";
 
-// Composable (stateful)
 import { useShopOrdersApi } from "@/modules/admin/composables/useShopOrdersApi";
+import { adminUpdateShopOrderStatus } from "@/modules/shop/service/admin.shopOrders.api";
+import { orderStatusLabel } from "@/modules/admin/utils/shopOrdersUi";
+
+const router = useRouter();
 
 // --------------------
-// Table headers
+// Headers
 // --------------------
 const headers = [
-  { title: "Código", key: "public_code", sortable: false, width: 220 },
+  { title: "Pedido", key: "public_code", sortable: false, width: 200 },
   { title: "Cliente", key: "customer", sortable: false },
-  { title: "Sucursal", key: "branch_name", sortable: false, width: 160 },
-  { title: "Entrega", key: "fulfillment_type", sortable: false, width: 200 },
+  { title: "Sucursal", key: "branch_name", sortable: false, width: 140 },
+  { title: "Entrega", key: "fulfillment_type", sortable: false, width: 180 },
   { title: "Estado / Pago", key: "status", sortable: false, width: 230 },
-  { title: "Items", key: "items_qty", sortable: false, width: 120, align: "end" },
-  { title: "Total", key: "total", sortable: false, width: 160, align: "end" },
-  { title: "", key: "actions", sortable: false, width: 110 },
+  { title: "Items", key: "items_qty", sortable: false, width: 90, align: "end" },
+  { title: "Total", key: "total", sortable: false, width: 150, align: "end" },
+  { title: "", key: "actions", sortable: false, width: 110, align: "end" },
 ];
 
 // --------------------
-// Filters data
+// Filters data — REALES de la DB
 // --------------------
 const statusItems = [
   { title: "Creado", value: "created" },
-  { title: "Confirmado", value: "confirmed" },
-  { title: "Preparando", value: "preparing" },
-  { title: "Listo para retirar", value: "ready_pickup" },
-  { title: "Enviado", value: "shipped" },
+  { title: "En preparación", value: "processing" },
+  { title: "Listo", value: "ready" },
   { title: "Entregado", value: "delivered" },
   { title: "Cancelado", value: "cancelled" },
 ];
@@ -143,45 +113,17 @@ const branchItems = computed(() =>
 
 const loading = ref(false);
 const error = ref("");
-const snack = ref({ show: false, text: "" });
+const snack = ref({ show: false, text: "", color: "" });
 
-// Detalle
-const detail = ref({
-  open: false,
-  loading: false,
-  error: "",
-  data: null,
-});
+// detalle queda solo para que el composable no se queje
+const detail = ref({ open: false, loading: false, error: "", data: null });
 
-// Acciones de pago (loading por fila)
-const payAction = ref({
-  loading: false,
-  paymentId: null,
-  type: "",
-});
-
-// Upload comprobante
-const uploadDlg = ref({
-  open: false,
-  loading: false,
-  error: "",
-  payment: null,
-  bank_reference: "",
-  file: null,
-});
+const statusBusy = ref({ id: null });
 
 // --------------------
 // API composable
 // --------------------
-const api = useShopOrdersApi({
-  loading,
-  error,
-  snack,
-  rows,
-  meta,
-  branches,
-  detail,
-});
+const api = useShopOrdersApi({ loading, error, snack, rows, meta, branches, detail });
 
 // --------------------
 // Actions
@@ -202,60 +144,38 @@ function onLimit(l) {
   api.fetchOrders(filters.value);
 }
 
-async function openDetail(item) {
-  await api.openDetail(item.id);
+function goDetail(item) {
+  // Navegamos por path para no depender del name (evita conflictos si AppShell
+  // u otros lugares usan otro name para el mismo path).
+  router.push(`/app/admin/shop/orders/${item.id}`).catch(() => {});
 }
 
-async function createMpLink(payment) {
-  payAction.value = { loading: true, paymentId: payment.id, type: "mp" };
+async function onChangeStatus({ item, status }) {
+  if (!item?.id || !status) return;
+
+  const ok = window.confirm(
+    `¿Marcar el pedido #${item.id} como "${orderStatusLabel(status)}"?`
+  );
+  if (!ok) return;
+
+  statusBusy.value.id = item.id;
   try {
-    await api.createMpLink(payment.id);
-  } finally {
-    payAction.value = { loading: false, paymentId: null, type: "" };
-  }
-}
-
-function openUpload(payment) {
-  uploadDlg.value = {
-    open: true,
-    loading: false,
-    error: "",
-    payment,
-    bank_reference: "",
-    file: null,
-  };
-}
-
-async function doUploadProof() {
-  uploadDlg.value.loading = true;
-  uploadDlg.value.error = "";
-  try {
-    await api.uploadTransferProof(
-      uploadDlg.value.payment?.id,
-      uploadDlg.value.file,
-      uploadDlg.value.bank_reference
-    );
-    uploadDlg.value.open = false;
+    await adminUpdateShopOrderStatus(item.id, status);
+    snack.value = {
+      show: true,
+      text: `Pedido #${item.id} → ${orderStatusLabel(status)}`,
+      color: "success",
+    };
+    // refrescar lista para mostrar el nuevo estado
+    await api.fetchOrders(filters.value);
   } catch (e) {
-    uploadDlg.value.error = e?.message || "No se pudo subir.";
+    snack.value = {
+      show: true,
+      text: e?.message || "No se pudo cambiar el estado.",
+      color: "error",
+    };
   } finally {
-    uploadDlg.value.loading = false;
-  }
-}
-
-async function reviewTransfer(payment, action) {
-  payAction.value = { loading: true, paymentId: payment.id, type: action };
-  try {
-    const note =
-      window.prompt(
-        action === "approve"
-          ? "Nota (opcional) para aprobar:"
-          : "Motivo/nota (recomendado):",
-        ""
-      ) || "";
-    await api.reviewTransfer(payment.id, action, note);
-  } finally {
-    payAction.value = { loading: false, paymentId: null, type: "" };
+    statusBusy.value.id = null;
   }
 }
 
@@ -267,3 +187,22 @@ onMounted(async () => {
   await api.fetchOrders(filters.value);
 });
 </script>
+
+<style scoped>
+.sho-container {
+  max-width: 1400px;
+  padding: 16px 16px 32px;
+}
+
+.sho-filters {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding: 12px 14px;
+}
+
+.sho-table-card {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  overflow: hidden;
+}
+</style>

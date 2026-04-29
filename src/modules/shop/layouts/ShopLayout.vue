@@ -15,17 +15,25 @@
 
         <!-- ✅ Bottom nav SOLO acá (NO en páginas) -->
         <ShopBottomNav v-if="isMobile" />
+
+        <!-- Modal bloqueante: aparece si el cliente está logueado pero no
+             completó su perfil. Hasta que no complete (o cierre sesión)
+             no puede operar normalmente con el shop. -->
+        <ShopCompleteProfileDialog v-model="showCompleteProfile" />
       </v-layout>
     </v-theme-provider>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, nextTick } from "vue";
+import { computed, onMounted, nextTick, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
 import ShopHeader from "@/modules/shop/components/ShopHeader.vue";
 import ShopBottomNav from "@/modules/shop/components/ShopBottomNav.vue";
+import ShopCompleteProfileDialog from "@/modules/shop/components/auth/ShopCompleteProfileDialog.vue";
+import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
+import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
 
 import { getShopThemePublic } from "@/modules/shop/service/shopTheme.public.api";
 import { applyRuntimeTheme, normalizeTheme } from "@/modules/shop/utils/runtimeTheme";
@@ -35,6 +43,35 @@ import "@/modules/shop/styles/shop.css";
 
 const { xs } = useDisplay();
 const isMobile = computed(() => !!xs.value);
+
+/* ── Bloqueo por perfil incompleto ──────────────────────────────────────
+   El dialog se abre apenas detectamos que hay sesión activa con
+   profile_completed=false. Persistente (no se cierra con ESC ni clic
+   afuera). El propio dialog ofrece "Cerrar sesión" como única salida. */
+const auth = useShopAuthStore();
+const favs = useShopFavoritesStore();
+const showCompleteProfile = ref(false);
+
+watch(
+  () => auth.needsProfile,
+  (needs) => { showCompleteProfile.value = !!needs; },
+  { immediate: true }
+);
+
+/* Sincroniza la cache de favoritos con la sesión:
+   - login con perfil completo → fetch
+   - logout → reset */
+watch(
+  () => [auth.isLogged, auth.isProfileComplete],
+  ([logged, complete]) => {
+    if (logged && complete) {
+      favs.fetch({ force: true });
+    } else if (!logged) {
+      favs.reset();
+    }
+  },
+  { immediate: true }
+);
 
 function normHex(v, fallback) {
   const s = String(v || "").trim();

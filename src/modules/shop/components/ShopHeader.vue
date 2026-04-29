@@ -46,20 +46,49 @@
           <v-menu v-else location="bottom end" offset="10">
             <template #activator="{ props }">
               <button class="ml-account-btn ml-account-btn-mobile" type="button" v-bind="props" :title="auth.fullName">
-                <span v-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
+                <img
+                  v-if="auth.avatarUrl"
+                  :src="auth.avatarUrl"
+                  :alt="auth.fullName"
+                  class="ml-account-avatar ml-account-avatar--img"
+                  referrerpolicy="no-referrer"
+                />
+                <span v-else-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
                 <v-icon v-else size="22" class="ml-account-icon">mdi-account-circle-outline</v-icon>
+                <span v-if="!auth.isProfileComplete" class="ml-account-warn-dot" aria-hidden="true" />
               </button>
             </template>
 
             <v-card class="ml-account-menu" rounded="xl" elevation="12">
               <div class="ml-account-head">
-                <div class="ml-account-title">Mi cuenta</div>
-                <div class="ml-account-sub">{{ auth.customer?.email || "" }}</div>
+                <img
+                  v-if="auth.avatarUrl"
+                  :src="auth.avatarUrl"
+                  :alt="auth.fullName"
+                  class="ml-account-head__avatar ml-account-head__avatar--img"
+                  referrerpolicy="no-referrer"
+                />
+                <div v-else class="ml-account-head__avatar">{{ safeInitials || "U" }}</div>
+                <div class="ml-account-head__text">
+                  <div class="ml-account-head__name">{{ auth.fullName || "Mi cuenta" }}</div>
+                  <div class="ml-account-head__email">{{ auth.customer?.email || "" }}</div>
+                </div>
+              </div>
+
+              <div v-if="!auth.isProfileComplete" class="ml-account-warn">
+                <v-icon size="14" color="warning">mdi-alert-circle-outline</v-icon>
+                Tu perfil está incompleto.
               </div>
 
               <v-divider />
 
               <v-list class="ml-account-list" density="comfortable">
+                <v-list-item
+                  title="Perfil"
+                  subtitle="Datos personales"
+                  prepend-icon="mdi-account-outline"
+                  @click="goMyProfile"
+                />
                 <v-list-item
                   title="Mis compras"
                   subtitle="Historial de pedidos"
@@ -72,9 +101,9 @@
                   prepend-icon="mdi-heart-outline"
                   @click="goMyFavorites"
                 />
+                <v-divider class="my-1" />
                 <v-list-item
                   title="Cerrar sesión"
-                  subtitle="Salir de esta cuenta"
                   prepend-icon="mdi-logout"
                   @click="doLogout"
                 />
@@ -122,23 +151,52 @@
           <v-menu v-else location="bottom end" offset="10" :close-on-content-click="true">
             <template #activator="{ props }">
               <button class="ml-account-btn" type="button" v-bind="props" :title="auth.fullName">
-                <span v-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
+                <img
+                  v-if="auth.avatarUrl"
+                  :src="auth.avatarUrl"
+                  :alt="auth.fullName"
+                  class="ml-account-avatar ml-account-avatar--img"
+                  referrerpolicy="no-referrer"
+                />
+                <span v-else-if="safeInitials" class="ml-account-avatar" aria-hidden="true">{{ safeInitials }}</span>
                 <v-icon v-else size="22" class="ml-account-icon">mdi-account-circle-outline</v-icon>
 
                 <span class="ml-account-name">{{ auth.fullName }}</span>
                 <v-icon size="18" class="ml-icon-white">mdi-chevron-down</v-icon>
+                <span v-if="!auth.isProfileComplete" class="ml-account-warn-dot" aria-hidden="true" />
               </button>
             </template>
 
             <v-card class="ml-account-menu" rounded="xl" elevation="12">
               <div class="ml-account-head">
-                <div class="ml-account-title">Mi cuenta</div>
-                <div class="ml-account-sub">{{ auth.customer?.email || "" }}</div>
+                <img
+                  v-if="auth.avatarUrl"
+                  :src="auth.avatarUrl"
+                  :alt="auth.fullName"
+                  class="ml-account-head__avatar ml-account-head__avatar--img"
+                  referrerpolicy="no-referrer"
+                />
+                <div v-else class="ml-account-head__avatar">{{ safeInitials || "U" }}</div>
+                <div class="ml-account-head__text">
+                  <div class="ml-account-head__name">{{ auth.fullName || "Mi cuenta" }}</div>
+                  <div class="ml-account-head__email">{{ auth.customer?.email || "" }}</div>
+                </div>
+              </div>
+
+              <div v-if="!auth.isProfileComplete" class="ml-account-warn">
+                <v-icon size="14" color="warning">mdi-alert-circle-outline</v-icon>
+                Tu perfil está incompleto.
               </div>
 
               <v-divider />
 
               <v-list class="ml-account-list" density="comfortable">
+                <v-list-item
+                  title="Perfil"
+                  subtitle="Datos personales"
+                  prepend-icon="mdi-account-outline"
+                  @click="goMyProfile"
+                />
                 <v-list-item
                   title="Mis compras"
                   subtitle="Historial de pedidos"
@@ -151,9 +209,9 @@
                   prepend-icon="mdi-heart-outline"
                   @click="goMyFavorites"
                 />
+                <v-divider class="my-1" />
                 <v-list-item
                   title="Cerrar sesión"
-                  subtitle="Salir de esta cuenta"
                   prepend-icon="mdi-logout"
                   @click="doLogout"
                 />
@@ -272,6 +330,10 @@ function goMyOrders() {
 
 function goMyFavorites() {
   router.push({ path: "/shop/account/favorites" }).catch(() => {});
+}
+
+function goMyProfile() {
+  router.push({ path: "/shop/account/profile" }).catch(() => {});
 }
 
 async function doLogout() {
@@ -544,6 +606,7 @@ watch(
 ========================= */
 
 .ml-account-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -559,6 +622,19 @@ watch(
   padding: 3px 6px;
 }
 
+/* Dot warning si el perfil está incompleto */
+.ml-account-warn-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid rgb(var(--v-theme-primary));
+  pointer-events: none;
+}
+
 .ml-account-avatar {
   width: 28px;
   height: 28px;
@@ -572,6 +648,11 @@ watch(
   background: rgba(255,255,255,0.18);
   border: 1px solid rgba(255,255,255,0.28);
   color: #fff;
+}
+.ml-account-avatar--img {
+  background: #fff;
+  object-fit: cover;
+  padding: 0;
 }
 
 .ml-account-icon {
@@ -592,21 +673,66 @@ watch(
   width: 320px;
   overflow: hidden;
   border-radius: 14px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ml-account-head {
-  padding: 12px 14px 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 12px;
 }
-
-.ml-account-title {
-  font-weight: 400;
-  font-size: 13.5px;
+.ml-account-head__avatar {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
-
-.ml-account-sub {
-  font-size: 11.5px;
-  opacity: 0.75;
+.ml-account-head__avatar--img {
+  object-fit: cover;
+  background: #f5f5f5;
+}
+.ml-account-head__text { min-width: 0; line-height: 1.2; }
+.ml-account-head__name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ml-account-head__email {
   margin-top: 2px;
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ml-account-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.10);
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 500;
+  width: calc(100% - 24px);
+  box-sizing: border-box;
 }
 
 .ml-account-list {

@@ -21,6 +21,24 @@
         <v-icon size="11">mdi-tag-multiple</v-icon>
         {{ qtyPromoHint }}
       </span>
+
+      <!-- Favorito: corazón flotante esquina superior derecha.
+           - Sin sesión → manda a login.
+           - Sesión incompleta → el dialog bloqueante ya está encima.
+           - Logueado y completo → toggle real contra la API. -->
+      <button
+        type="button"
+        class="mlx-fav-btn"
+        :class="{ 'is-fav': isFav }"
+        :aria-label="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+        :title="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+        :disabled="favBusy"
+        @click.stop="onToggleFavorite"
+      >
+        <v-icon size="18">
+          {{ isFav ? 'mdi-heart' : 'mdi-heart-outline' }}
+        </v-icon>
+      </button>
     </button>
 
     <div class="mlx-body">
@@ -70,9 +88,11 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
+import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
+import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
 
 const props = defineProps({
   p: { type: Object, required: true },
@@ -80,6 +100,44 @@ const props = defineProps({
 
 const router = useRouter();
 const route = useRoute();
+const auth = useShopAuthStore();
+const favs = useShopFavoritesStore();
+
+const productId = computed(() => Number(props.p?.product_id ?? props.p?.id ?? 0));
+const isFav = computed(() => productId.value > 0 && favs.isFavorite(productId.value));
+const favBusy = ref(false);
+
+onMounted(() => {
+  // Si ya estamos logueados, asegurarnos de tener el set cacheado.
+  if (auth.isLogged && !favs.booted && !favs.loading) {
+    favs.fetch();
+  }
+});
+
+async function onToggleFavorite() {
+  if (favBusy.value) return;
+
+  // Sin sesión → al login (devolvemos donde estábamos)
+  if (!auth.isLogged) {
+    router.push({
+      name: "shopLogin",
+      query: { redirect: route.fullPath },
+    });
+    return;
+  }
+
+  // Logueado pero perfil incompleto: el ShopCompleteProfileDialog
+  // ya está montado y bloqueando — solo bailamos del click.
+  if (!auth.isProfileComplete) return;
+
+  if (!productId.value) return;
+  favBusy.value = true;
+  try {
+    await favs.toggle(productId.value);
+  } finally {
+    favBusy.value = false;
+  }
+}
 
 /* helpers */
 function toNum(v) {
@@ -216,10 +274,17 @@ function openProduct() {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.10);
-  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  position: relative;
+}
+.mlx:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
+  border-color: rgba(0, 0, 0, 0.14);
 }
 
 /* media */
@@ -232,6 +297,13 @@ function openProduct() {
   padding: 0;
   display: block;
   position: relative;
+  overflow: hidden;
+}
+.mlx-media img {
+  transition: transform 0.4s ease;
+}
+.mlx:hover .mlx-media img {
+  transform: scale(1.04);
 }
 
 /* badges apilados (esquina superior izquierda) */
@@ -292,6 +364,64 @@ function openProduct() {
   white-space: nowrap;
 }
 .mlx-qty-promo-overlay .v-icon { opacity: 0.9; }
+
+/* Favorito flotante esquina superior derecha — visible solo en hover.
+   Si el producto ya es favorito, se muestra siempre (para feedback). */
+.mlx-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Oculto por default — aparece al hover de la card */
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  pointer-events: none;
+}
+.mlx:hover .mlx-fav-btn,
+.mlx-fav-btn:focus-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+/* Si ya es favorito, siempre visible */
+.mlx-fav-btn.is-fav {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  color: #e11d48;
+  background: #fff;
+}
+.mlx-fav-btn:hover { color: #e11d48; }
+.mlx-fav-btn.is-fav:hover { color: #be123c; }
+.mlx-fav-btn:active { transform: scale(0.92); }
+.mlx-fav-btn:disabled { opacity: 0.6 !important; cursor: wait; }
+
+/* Mobile: en touch no hay hover, lo dejamos siempre visible */
+@media (hover: none) {
+  .mlx-fav-btn {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
 .mlx-media img {
   width: 100%;
   height: 100%;
@@ -318,27 +448,31 @@ function openProduct() {
 /* title */
 .mlx-title {
   font-size: 14px;
-  line-height: 1.18;
-  font-weight: 400;
+  line-height: 1.22;
+  font-weight: 500;
   color: #111;
+  letter-spacing: -0.005em;
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 
-  min-height: calc(1.18em * 2);
+  min-height: calc(1.22em * 2);
 }
 
-/* subtitle */
+/* subtitle: marca · modelo */
 .mlx-subtitle {
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.1;
   color: rgba(0,0,0,.55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-height: 1.1em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 /* price block */
@@ -366,34 +500,35 @@ function openProduct() {
 }
 
 .mlx-price {
-  font-size: clamp(18px, 1.55vw, 21px);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-size: clamp(20px, 1.6vw, 23px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
   color: #111;
   line-height: 1;
   white-space: nowrap;
   min-width: 0;
 }
-.mlx-price.is-promo { color: #ff5722; font-weight: 400; }
+.mlx-price.is-promo { color: #ff5722; }
 
 .mlx-off {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1;
   color: #00a650;
-  background: rgba(0,166,80,.10);
+  background: rgba(0,166,80,.12);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 3px 7px;
   white-space: nowrap;
   margin-top: 4px;
+  letter-spacing: 0.02em;
 }
 .mlx-off.is-promo {
   color: #fff;
   background: #ff5722;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.3px;
 }
 

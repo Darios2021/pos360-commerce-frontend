@@ -1,226 +1,208 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/pages/account/ShopAccountFavorites.vue -->
+<!--
+  ShopAccountFavorites (ML-like)
+  ------------------------------
+  Reusa el ProductCard del shop — mismas tarjetas que en el catálogo, sin
+  reinventar UI. El usuario quita un favorito tocando el corazón (igual
+  que en el shop), o usando el botón quitar del menú.
+-->
 <template>
-  <section class="fav">
-    <div class="fav-head">
-      <div class="fav-h-title">Favoritos</div>
-      <div class="fav-h-sub">Productos que guardaste para ver después.</div>
-    </div>
+  <section class="favs">
+    <header class="favs-head">
+      <div>
+        <h1 class="favs-head__title">Favoritos</h1>
+        <p class="favs-head__sub">
+          {{ items.length
+            ? `${items.length} producto${items.length === 1 ? '' : 's'} guardado${items.length === 1 ? '' : 's'}.`
+            : 'Productos que guardás para ver después.' }}
+        </p>
+      </div>
+      <v-btn
+        v-if="items.length"
+        size="small"
+        variant="text"
+        prepend-icon="mdi-refresh"
+        :loading="loading"
+        @click="reload"
+      >
+        Actualizar
+      </v-btn>
+    </header>
 
-    <v-alert v-if="err" type="error" variant="tonal" class="mb-3">
+    <v-alert v-if="err" type="error" variant="tonal" density="compact" class="mb-4">
       {{ err }}
     </v-alert>
 
-    <div v-if="loading" class="fav-loading">
-      <v-progress-circular indeterminate />
-      <div class="text-caption" style="opacity: .75">Cargando…</div>
+    <!-- Loading -->
+    <div v-if="loading && !items.length" class="favs-skeletons">
+      <div v-for="i in 8" :key="i" class="favs-skeleton" />
     </div>
 
-    <div v-else-if="!items.length" class="fav-empty">
-      <v-icon size="28">mdi-heart-outline</v-icon>
-      <div class="fav-empty-title">Todavía no tenés favoritos</div>
-      <div class="fav-empty-sub">Tocá el ♥ en un producto para guardarlo.</div>
-      <v-btn class="mt-3" color="primary" @click="goShop">Ir a la tienda</v-btn>
+    <!-- Empty -->
+    <div v-else-if="!items.length" class="favs-empty">
+      <div class="favs-empty__icon">
+        <v-icon size="36">mdi-heart-outline</v-icon>
+      </div>
+      <div class="favs-empty__title">Todavía no tenés favoritos</div>
+      <div class="favs-empty__sub">
+        Tocá el corazón en cualquier producto para guardarlo y volver más tarde.
+      </div>
+      <v-btn class="mt-4" color="primary" prepend-icon="mdi-storefront-outline" @click="goShop">
+        Ir a la tienda
+      </v-btn>
     </div>
 
-    <div v-else class="fav-grid">
-      <article v-for="p in items" :key="p.product_id || p.id" class="fav-card">
-        <button class="fav-media" type="button" @click="openProduct(p)">
-          <img v-if="p.image_url" :src="p.image_url" alt="" loading="lazy" />
-          <div v-else class="fav-empty-media">Sin imagen</div>
-        </button>
-
-        <div class="fav-body">
-          <div class="fav-title" :title="p.name || ''">{{ p.name || "—" }}</div>
-          <div class="fav-price" v-if="p.price != null">{{ money(p.price) }}</div>
-
-          <div class="fav-actions">
-            <v-btn size="small" variant="tonal" @click="openProduct(p)">Ver</v-btn>
-            <v-btn size="small" variant="text" color="error" @click="remove(p)">Quitar</v-btn>
-          </div>
-        </div>
-      </article>
+    <!-- Grid usando ProductCard del shop (mismo componente, sin deformar) -->
+    <div v-else class="favs-grid">
+      <ProductCard
+        v-for="p in items"
+        :key="p.product_id || p.id"
+        :p="p"
+      />
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { getMyFavorites, removeFavorite } from "@/modules/shop/service/shop.account.public.api";
+import { getMyFavorites } from "@/modules/shop/service/shop.account.public.api";
+import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
+import ProductCard from "@/modules/shop/components/ProductCard.vue";
 
 const router = useRouter();
+const favs = useShopFavoritesStore();
+
 const loading = ref(false);
 const err = ref("");
 const items = ref([]);
 
-function goShop() {
-  router.push("/shop");
-}
+function goShop() { router.push("/shop"); }
 
-function openProduct(p) {
-  const id = p.product_id || p.id;
-  if (!id) return;
-  router.push(`/shop/product/${id}`);
-}
-
-function money(n) {
-  const v = Number(n || 0);
-  return v.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
-}
-
-async function remove(p) {
-  const id = p.product_id || p.id;
-  if (!id) return;
-
-  const prev = items.value.slice();
-  items.value = items.value.filter((x) => (x.product_id || x.id) !== id);
-
-  try {
-    await removeFavorite(id);
-  } catch (e) {
-    items.value = prev;
-    err.value = e?.friendlyMessage || e?.message || String(e);
-  }
-}
-
-onMounted(async () => {
+async function reload() {
   loading.value = true;
   err.value = "";
   try {
     const r = await getMyFavorites();
-    items.value = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+    const list = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+    items.value = list;
+    // refresca cache global de favoritos para que los corazones queden coherentes
+    const next = new Set();
+    for (const it of list) {
+      const pid = Number(it.product_id || it.id);
+      if (pid > 0) next.add(pid);
+    }
+    favs.ids = next;
+    favs.booted = true;
   } catch (e) {
     err.value = e?.friendlyMessage || e?.message || String(e);
   } finally {
     loading.value = false;
   }
-});
+}
+
+// Cuando el usuario quita un favorito desde el corazón del ProductCard,
+// el store global lo elimina de `ids`. Sincronizamos la lista visible.
+watch(
+  () => favs.ids.size,
+  () => {
+    if (!items.value.length) return;
+    items.value = items.value.filter((p) => {
+      const pid = Number(p.product_id || p.id);
+      return favs.ids.has(pid);
+    });
+  }
+);
+
+onMounted(reload);
 </script>
 
 <style scoped>
-.fav-head {
-  margin-bottom: 10px;
+.favs { color: #111827; }
+
+.favs-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
 }
-.fav-h-title {
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: 0.2px;
+.favs-head__title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+  margin: 0;
 }
-.fav-h-sub {
-  font-size: 12px;
-  opacity: 0.72;
+.favs-head__sub {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: 2px 0 0;
 }
 
-/* loading */
-.fav-loading {
-  display: grid;
-  place-items: center;
-  gap: 10px;
-  padding: 28px 0;
-}
-
-/* empty */
-.fav-empty {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+/* ── Empty ───────────────────────────────────────────────────── */
+.favs-empty {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 48px 24px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+}
+.favs-empty__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(20, 136, 209, 0.10);
+  color: rgb(var(--v-theme-primary));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.favs-empty__title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.favs-empty__sub {
+  margin-top: 6px;
+  max-width: 380px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.45;
 }
 
-.fav-empty-title {
-  font-weight: 500;
-  margin-top: 8px;
-}
-.fav-empty-sub {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-
-/* grid */
-.fav-grid {
+/* ── Skeletons ───────────────────────────────────────────────── */
+.favs-skeletons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
-
-@media (min-width: 720px) {
-  .fav-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-  }
+.favs-skeleton {
+  aspect-ratio: 1 / 1.55;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 25%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: skel 1.2s linear infinite;
 }
+@keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (min-width: 720px)  { .favs-skeletons { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .favs-skeletons { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-/* card */
-.fav-card {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+/* ── Grid de cards (mismas que el shop) ─────────────────────── */
+.favs-grid {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
-
-.fav-media {
-  border: 0;
-  padding: 0;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  cursor: pointer;
-}
-.fav-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.fav-empty-media {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  opacity: 0.6;
-  font-size: 12px;
-}
-
-.fav-body {
-  padding: 10px 10px 12px;
-}
-
-.fav-title {
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.2;
-  min-height: 32px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.fav-price {
-  margin-top: 6px;
-  font-weight: 500;
-}
-
-.fav-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* mobile */
-@media (max-width: 420px) {
-  .fav-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
+@media (min-width: 720px)  { .favs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .favs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>

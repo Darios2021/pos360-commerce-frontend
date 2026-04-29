@@ -84,4 +84,14 @@ export async function authGoogle({ credential }) {
   return r.data;
 }
 
+/**
+ * PATCH /public/auth/profile — completa o actualiza datos del cliente.
+ * payload: { first_name, last_name, phone, password? }
+ * Si password es null/undefined/"" el backend NO la cambia.
+ */
+export async function authUpdateProfile(payload) {
+  const r = await httpShop.patch("public/auth/profile", payload || {});
+  return r.data;
+}
+
 export default httpShop;
