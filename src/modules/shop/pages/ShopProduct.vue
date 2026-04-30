@@ -45,14 +45,19 @@
         />
       </div>
 
-      <!-- ✅ Info / Detalles / Descripción (FULL WIDTH abajo, como ML) -->
-      <div v-if="product" class="below-block">
-        <ProductInfoTabs :product="product" />
+      <!-- ✅ Info + Medios de pago (2 columnas estilo ML) -->
+      <div v-if="product" class="below-block info-payments-grid">
+        <div class="info-col">
+          <ProductInfoTabs :product="product" />
+        </div>
+        <div ref="paymentsEl" id="payment-methods" class="payments-col">
+          <PaymentMethodsCard />
+        </div>
       </div>
 
-      <!-- ✅ Medios de pago FULL WIDTH abajo -->
-      <div v-if="product" ref="paymentsEl" id="payment-methods" class="below-block">
-        <PaymentMethodsCard />
+      <!-- ✅ Preguntas y respuestas + Opiniones -->
+      <div v-if="product" class="below-block">
+        <ProductQAReviews :product-id="product.product_id ?? product.id" />
       </div>
 
       <!-- ✅ SIMILARES -->
@@ -79,6 +84,7 @@ import ProductRightPanel from "../components/shop/ProductRightPanel.vue";
 import ProductInfoTabs from "../components/shop/ProductInfoTabs.vue";
 import PaymentMethodsCard from "../components/shop/PaymentMethodsCard.vue";
 import SimilarProductsRow from "../components/shop/SimilarProductsRow.vue";
+import ProductQAReviews from "../components/shop/ProductQAReviews.vue";
 import ShopCartDrawer from "../components/shop/ShopCartDrawer.vue";
 import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 
@@ -418,16 +424,39 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
   margin-top: 8px;
 }
 
 .product-grid > * {
   min-width: 0;
+  height: 100%;
 }
 
 .below-block {
   margin-top: 16px;
+}
+
+/* ✅ Info tabs + medios de pago: 2 columnas estilo ML */
+.info-payments-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: stretch;
+}
+.info-col,
+.payments-col {
+  min-width: 0;
+}
+.info-col > *,
+.payments-col > * {
+  height: 100%;
+}
+
+@media (max-width: 1100px) {
+  .info-payments-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Loading */

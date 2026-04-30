@@ -3,6 +3,16 @@
 <template>
   <v-card class="ml-side info" variant="flat">
     <v-card-text class="ml-pad">
+      <!-- Link "Ver más productos de la marca" (si hay marca) -->
+      <a
+        v-if="brandName"
+        href="javascript:void(0)"
+        class="ml-brandlink"
+        @click.prevent="goBrandSearch"
+      >
+        Ver más productos marca {{ brandName }}
+      </a>
+
       <!-- Condición + vendidos -->
       <div class="ml-muted mb-2">
         {{ conditionLabel }}
@@ -81,6 +91,15 @@
         <div v-if="installmentHint" class="ml-installment-hint">
           {{ installmentHint }}
         </div>
+
+        <!-- Link "Ver los medios de pago" -->
+        <a
+          href="javascript:void(0)"
+          class="ml-payment-link"
+          @click.prevent="emit('go-payments')"
+        >
+          Ver los medios de pago
+        </a>
       </div>
 
       <!-- 📦 KIT: ¿Qué incluye? + ahorro -->
@@ -197,13 +216,38 @@
           Agregar al carrito
         </v-btn>
       </div>
+
+      <!-- ✅ Garantías estilo ML: devolución + compra protegida -->
+      <div class="ml-trust">
+        <div class="ml-trust__row">
+          <v-icon size="20" class="ml-trust__icon">mdi-keyboard-return</v-icon>
+          <div class="ml-trust__body">
+            <a href="javascript:void(0)" class="ml-trust__link">Devolución gratis</a>
+            <span class="ml-trust__text">
+              Tenés 30 días desde que lo recibís.
+            </span>
+          </div>
+        </div>
+        <div class="ml-trust__row">
+          <v-icon size="20" class="ml-trust__icon">mdi-shield-check-outline</v-icon>
+          <div class="ml-trust__body">
+            <a href="javascript:void(0)" class="ml-trust__link">Compra Protegida</a>
+            <span class="ml-trust__text">
+              Recibí el producto que esperabas o te devolvemos tu dinero.
+            </span>
+          </div>
+        </div>
+      </div>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
+
+const router = useRouter();
 
 const props = defineProps({
   product: { type: Object, default: null },
@@ -405,6 +449,14 @@ const brandModelLine = computed(() => {
   if (b && m) return `${b} · ${m}`;
   return b || m || "";
 });
+
+const brandName = computed(() => brandText.value || "");
+function goBrandSearch() {
+  const b = brandName.value;
+  if (!b) return;
+  // Navegamos a la home con el filtro de búsqueda por marca
+  router.push({ name: "shopHome", query: { q: b } });
+}
 
 /* ✅ única descripción (arriba) */
 const shortDesc = computed(() => {
@@ -687,9 +739,60 @@ function onBuyNow() {
 .ml-qty-hint { font-size: 12px; }
 .ml-qty-select { border-radius: 12px; }
 
+/* Link "Ver más productos marca X" arriba */
+.ml-brandlink {
+  display: inline-block;
+  font-size: 13px;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+.ml-brandlink:hover { text-decoration: underline; }
+
+/* Link "Ver los medios de pago" debajo del precio */
+.ml-payment-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+}
+.ml-payment-link:hover { text-decoration: underline; }
+
 /* Botones */
 .ml-actions { margin-top: 14px; display: grid; gap: 10px; }
 .ml-btn { border-radius: 12px; font-weight: 500; text-transform: none; }
+
+/* Garantías ML — Devolución gratis + Compra Protegida */
+.ml-trust {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ml-trust__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.ml-trust__icon {
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.ml-trust__body { min-width: 0; }
+.ml-trust__link {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 500;
+  text-decoration: none;
+  margin-right: 4px;
+}
+.ml-trust__link:hover { text-decoration: underline; }
+.ml-trust__text { color: rgba(0, 0, 0, 0.7); }
 
 @media (max-width: 980px) {
   .ml-price-int { font-size: 40px; }

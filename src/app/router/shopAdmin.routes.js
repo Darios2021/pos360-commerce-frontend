@@ -21,6 +21,9 @@ import GaleriaMultimediaView from "@/modules/admin/pages/GaleriaMultimediaView.v
 // ✅ CRM email PRO
 import EmailPromoBlocksView from "@/modules/admin/pages/EmailPromoBlocksView.vue";
 
+// ✅ Consultas web (Q&A + Reviews)
+import ShopQAView from "@/modules/admin/pages/ShopQAView.vue";
+
 export const shopAdminRoutes = [
   {
     path: "admin/shop/branding",
@@ -58,6 +61,14 @@ export const shopAdminRoutes = [
     path: "admin/shop/links",
     name: "shopLinks",
     component: ShopLinksView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+
+  // ✅ Consultas web (preguntas y opiniones del shop)
+  {
+    path: "admin/shop/qa",
+    name: "shopQA",
+    component: ShopQAView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 

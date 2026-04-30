@@ -589,16 +589,24 @@ watch(viewerIdx, (v) => {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .pg-pad {
   padding: 14px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .gallery {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .thumbs {
@@ -672,6 +680,8 @@ watch(viewerIdx, (v) => {
 
 .main {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Marco general */
@@ -679,6 +689,8 @@ watch(viewerIdx, (v) => {
   position: relative;
   width: 100%;
   height: 520px;
+  flex: 1 1 auto;
+  min-height: 520px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);

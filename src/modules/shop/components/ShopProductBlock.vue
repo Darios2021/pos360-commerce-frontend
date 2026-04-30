@@ -9,16 +9,36 @@
 -->
 <template>
   <section v-if="items?.length" class="spb">
-    <!-- Header: título + dots de paginación -->
+    <!-- Header: icono + título + subtítulo + (Ver todo / dots) -->
     <header class="spb-head">
-      <h2 class="spb-title">{{ title }}</h2>
-      <div v-if="pages > 1" class="spb-dots" aria-hidden="true">
-        <span
-          v-for="i in pages"
-          :key="i"
-          class="spb-dot"
-          :class="{ 'is-active': i - 1 === activePage }"
-        />
+      <div class="spb-head__left">
+        <img v-if="iconUrl" :src="iconUrl" :alt="title" class="spb-icon" />
+        <v-icon v-else-if="icon" size="22" class="spb-icon spb-icon--mdi">{{ icon }}</v-icon>
+        <div class="spb-head__text">
+          <h2 class="spb-title">{{ title }}</h2>
+          <div v-if="subtitle" class="spb-subtitle">{{ subtitle }}</div>
+        </div>
+      </div>
+
+      <div class="spb-head__right">
+        <component
+          v-if="viewAllTo"
+          :is="typeof viewAllTo === 'string' ? 'a' : 'router-link'"
+          :to="typeof viewAllTo === 'object' ? viewAllTo : undefined"
+          :href="typeof viewAllTo === 'string' ? viewAllTo : undefined"
+          class="spb-view-all"
+        >
+          Ver todo
+          <v-icon size="16">mdi-chevron-right</v-icon>
+        </component>
+        <div v-else-if="pages > 1" class="spb-dots" aria-hidden="true">
+          <span
+            v-for="i in pages"
+            :key="i"
+            class="spb-dot"
+            :class="{ 'is-active': i - 1 === activePage }"
+          />
+        </div>
       </div>
     </header>
 
@@ -62,8 +82,12 @@ import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import ProductCard from "./ProductCard.vue";
 
 const props = defineProps({
-  title: { type: String, required: true },
-  items: { type: Array, default: () => [] },
+  title:    { type: String, required: true },
+  subtitle: { type: String, default: "" },
+  icon:     { type: String, default: "" },         // mdi-* opcional
+  iconUrl:  { type: String, default: "" },         // url de imagen opcional
+  viewAllTo:{ type: [String, Object], default: null }, // path o RouterLocation
+  items:    { type: Array,  default: () => [] },
   pageSize: { type: Number, default: 6 },
 });
 
@@ -148,6 +172,37 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 14px;
 }
+.spb-head__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.spb-head__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.spb-head__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.spb-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.spb-icon--mdi {
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: rgb(var(--v-theme-primary));
+}
 .spb-title {
   font-size: 18px;
   font-weight: 600;
@@ -156,6 +211,34 @@ onBeforeUnmount(() => {
   line-height: 1.2;
   margin: 0;
 }
+.spb-subtitle {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* "Ver todo ›" — link tonal sutil */
+.spb-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.7);
+  text-decoration: none;
+  transition: background 0.14s, color 0.14s;
+}
+.spb-view-all:hover {
+  color: rgb(var(--v-theme-primary));
+  background: rgba(20, 136, 209, 0.08);
+}
+
+/* Dots */
 .spb-dots {
   display: inline-flex;
   align-items: center;

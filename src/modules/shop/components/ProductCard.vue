@@ -2,49 +2,59 @@
 <!-- src/modules/shop/components/ProductCard.vue -->
 <template>
   <v-card class="mlx" variant="flat" rounded="lg">
-    <!-- MEDIA -->
-    <button class="mlx-media" type="button" @click="openProduct" :title="p?.name || ''">
-      <img v-if="img" :src="img" alt="" loading="lazy" />
-      <div v-else class="mlx-media-empty">Sin imagen</div>
-
-      <!-- Badges flotantes esquina superior izquierda.
-           El badge "PROMO" solo se muestra cuando el producto tiene una promo
-           activa real (gestionada desde el backoffice). Los descuentos genéricos
-           del catálogo se reflejan únicamente con el "% OFF" verde junto al precio. -->
-      <div class="mlx-badge-stack">
-        <span v-if="isKit" class="mlx-kit-badge" :title="`Kit con ${kitItemsCount} productos`">
-          <v-icon size="11">mdi-package-variant</v-icon>
-          KIT<span v-if="kitItemsCount" class="mlx-kit-badge-count"> · {{ kitItemsCount }}</span>
-        </span>
-        <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
-      </div>
-
-      <!-- Hint promo por cantidad — overlay flotante sobre la imagen -->
-      <span v-if="qtyPromoHint" class="mlx-qty-promo-overlay">
-        <v-icon size="11">mdi-tag-multiple</v-icon>
-        {{ qtyPromoHint }}
-      </span>
-
-      <!-- Favorito: corazón flotante esquina superior derecha.
-           - Sin sesión → manda a login.
-           - Sesión incompleta → el dialog bloqueante ya está encima.
-           - Logueado y completo → toggle real contra la API. -->
-      <button
-        type="button"
-        class="mlx-fav-btn"
-        :class="{ 'is-fav': isFav }"
-        :aria-label="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
-        :title="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
-        :disabled="favBusy"
-        @click.stop="onToggleFavorite"
+    <!-- MEDIA — link nativo: middle/right click abre nueva pestaña; left click usa SPA -->
+    <router-link
+      :to="productLocation"
+      custom
+      v-slot="{ href }"
+    >
+      <a
+        :href="href"
+        class="mlx-media"
+        :title="p?.name || ''"
+        @click="openProduct"
       >
-        <v-icon size="18">
-          {{ isFav ? 'mdi-heart' : 'mdi-heart-outline' }}
-        </v-icon>
-      </button>
+        <img v-if="img" :src="img" alt="" loading="lazy" />
+        <div v-else class="mlx-media-empty">Sin imagen</div>
+
+        <!-- Badges flotantes esquina superior izquierda. -->
+        <div class="mlx-badge-stack">
+          <span v-if="isKit" class="mlx-kit-badge" :title="`Kit con ${kitItemsCount} productos`">
+            <v-icon size="11">mdi-package-variant</v-icon>
+            KIT<span v-if="kitItemsCount" class="mlx-kit-badge-count"> · {{ kitItemsCount }}</span>
+          </span>
+          <span v-if="promoActive" class="mlx-promo-badge">PROMO</span>
+        </div>
+
+        <span v-if="qtyPromoHint" class="mlx-qty-promo-overlay">
+          <v-icon size="11">mdi-tag-multiple</v-icon>
+          {{ qtyPromoHint }}
+        </span>
+      </a>
+    </router-link>
+
+    <!-- Favorito: button absoluto FUERA del link para que no sea un button anidado -->
+    <button
+      type="button"
+      class="mlx-fav-btn"
+      :class="{ 'is-fav': isFav }"
+      :aria-label="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+      :title="isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+      :disabled="favBusy"
+      @click.stop.prevent="onToggleFavorite"
+    >
+      <v-icon size="18">
+        {{ isFav ? 'mdi-heart' : 'mdi-heart-outline' }}
+      </v-icon>
     </button>
 
-    <div class="mlx-body">
+    <!-- BODY — también es link nativo -->
+    <router-link
+      :to="productLocation"
+      custom
+      v-slot="{ href }"
+    >
+      <a :href="href" class="mlx-body" @click="openProduct">
       <!-- ✅ PRECIO ARRIBA (estilo seguridad electrónica) -->
       <div class="mlx-price-row">
         <div class="mlx-price" :class="{ 'is-promo': promoActive }">$ {{ fmtMoney(displayPrice) }}</div>
@@ -82,7 +92,8 @@
           <span class="mlx-ship-full" v-if="shipFull">FULL</span>
         </div>
       </div>
-    </div>
+      </a>
+    </router-link>
   </v-card>
 </template>
 
@@ -278,7 +289,18 @@ function saveCurrentScrollSnapshot() {
 }
 
 /* nav */
-function openProduct() {
+const productLocation = computed(() => ({
+  name: "shopProduct",
+  params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
+  query: {
+    branch_id: route.query.branch_id ? String(route.query.branch_id) : "3",
+  },
+}));
+
+function openProduct(e) {
+  // El click izquierdo va por el router (SPA). Middle-click y right-click
+  // los maneja el navegador nativamente al ser un <a> con href real.
+  if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) return;
   saveCurrentScrollSnapshot();
 
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
@@ -310,7 +332,8 @@ function openProduct() {
   transform: translateY(-2px);
 }
 
-/* media — fondo blanco con padding interno (foto centrada estilo ML) */
+/* media — fondo blanco con padding interno (foto centrada estilo ML)
+   Es un <a> link nativo: text-decoration none + color inherit. */
 .mlx-media {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -323,6 +346,9 @@ function openProduct() {
   display: block;
   position: relative;
   overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 .mlx-media img {
   width: 100%;
@@ -483,14 +509,20 @@ function openProduct() {
   opacity: .55;
 }
 
-/* body — orden: precio arriba, título abajo (estilo Seguridad Electrónica) */
+/* body — orden: precio arriba, título abajo (estilo Seguridad Electrónica)
+   Es un <a> link nativo: text-decoration none + color inherit. */
 .mlx-body {
   padding: 12px 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
+.mlx-body:hover { color: inherit; }
 
 /* title — UPPERCASE FINO (peso 400) */
 .mlx-title {

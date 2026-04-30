@@ -5,26 +5,17 @@
 
       <!-- Cuotas sin tarjeta -->
       <section class="pm-section">
-        <div class="pm-sub">Cuotas sin tarjeta</div>
+        <div class="pm-sub">Cuotas sin Tarjeta</div>
         <div class="pm-row">
-          <img
-            class="pm-logo pm-logo-lg"
-            :src="icons.mercadopago"
-            alt="Mercado Pago"
-          />
-
-          <!-- 🔥 Crédito San Juan alineado y más grande -->
-          <img
-            class="pm-logo pm-logo-sjt"
-            :src="icons.creditoSjt"
-            alt="Crédito San Juan"
-          />
+          <img class="pm-logo" :src="icons.mercadopago" alt="Mercado Pago" />
+          <img class="pm-logo pm-logo--sjt" :src="icons.creditoSjt" alt="Crédito San Juan" />
         </div>
       </section>
 
       <!-- Tarjetas de crédito -->
       <section class="pm-section">
         <div class="pm-sub">Tarjetas de crédito</div>
+        <div class="pm-hint">¡Mismo precio en cuotas con bancos seleccionados!</div>
         <div class="pm-row">
           <img class="pm-logo" :src="icons.visa" alt="Visa Crédito" />
           <img class="pm-logo" :src="icons.naranja" alt="Naranja" />
@@ -35,7 +26,10 @@
       <section class="pm-section">
         <div class="pm-sub">Tarjetas de débito</div>
         <div class="pm-row">
-          <img class="pm-logo" :src="icons.visa" alt="Visa Débito" />
+          <div class="pm-item">
+            <img class="pm-logo" :src="icons.visa" alt="Visa Débito" />
+            <span class="pm-tag">DÉBITO</span>
+          </div>
         </div>
       </section>
 
@@ -44,7 +38,8 @@
         <div class="pm-sub">Efectivo</div>
         <div class="pm-row">
           <div class="pm-cash">
-            Pago en tienda San Juan Tecnología
+            <v-icon size="18" class="pm-cash__icon">mdi-storefront-outline</v-icon>
+            <span>Pago en tienda</span>
           </div>
         </div>
       </section>
@@ -66,8 +61,6 @@ const icons = {
     "https://storage-files.cingulado.org/pos360/media/1769785603289-8ef15a33274405c8.webp",
   naranja:
     "https://storage-files.cingulado.org/pos360/media/1769785599197-627b0a0bac168cee.webp",
-
-  // ✅ Crédito San Juan (icono definitivo)
   creditoSjt:
     "https://storage-files.cingulado.org/pos360/media/1769958150069-55eff4121596f9f8.webp",
 };
@@ -77,85 +70,106 @@ const icons = {
 .pm-card {
   background: #fff;
   border-color: rgba(0, 0, 0, 0.08);
+  /* Limitamos el ancho como sidebar estilo ML — el padre controla la posición. */
+  max-width: 360px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: 0;
 }
-
 .pm-pad {
-  padding: 18px;
+  padding: 22px 24px 24px;
 }
 
 .pm-title {
   font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
+  margin-bottom: 18px;
 }
 
-.pm-section + .pm-section {
-  margin-top: 18px;
-}
-
+/* Apilado vertical estilo ML sidebar */
+.pm-section + .pm-section { margin-top: 22px; }
 .pm-sub {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #1a1a1a;
   margin-bottom: 10px;
+  letter-spacing: -0.005em;
+}
+.pm-hint {
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.55);
+  margin: -6px 0 12px;
+  line-height: 1.3;
 }
 
-/* fila */
+/* Logos sueltos */
 .pm-row {
   display: flex;
-  align-items: center; /* base */
+  align-items: center;
   flex-wrap: wrap;
-  gap: 28px;
+  gap: 16px 22px;
 }
-
-/* logos base */
 .pm-logo {
-  height: 40px;
+  height: 34px;
+  max-width: 92px;
   width: auto;
   object-fit: contain;
+  display: block;
+}
+/* Crédito San Juan: el archivo tiene mucho padding interno, agrandamos un poco */
+.pm-logo--sjt {
+  height: 46px;
+  max-width: 86px;
 }
 
-/* Mercado Pago */
-.pm-logo-lg {
-  height: 48px;
+/* Logo + tag DÉBITO */
+.pm-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pm-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.55);
+  text-transform: uppercase;
 }
 
-/* 🔥 Crédito San Juan – MÁS GRANDE + ALINEADO */
-.pm-logo-sjt {
-  height: 82px;                /* ↑ más tamaño */
-  transform: translateY(-6px); /* ↑ sube ópticamente */
-}
-
-/* efectivo */
+/* Efectivo */
 .pm-cash {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.85);
 }
+.pm-cash__icon { color: rgb(var(--v-theme-primary)); }
 
-/* link */
+/* Link "Conocé otros..." */
 .pm-more {
   display: inline-block;
-  margin-top: 18px;
+  margin-top: 22px;
   font-size: 14px;
-  font-weight: 400;
-  color: #1a73e8;
+  font-weight: 500;
+  color: rgb(var(--v-theme-primary));
   text-decoration: none;
 }
-.pm-more:hover {
-  text-decoration: underline;
-}
+.pm-more:hover { text-decoration: underline; }
 
-/* responsive */
+/* mobile */
 @media (max-width: 600px) {
-  .pm-logo {
-    height: 42px;
+  .pm-card {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
   }
-  .pm-logo-lg {
-    height: 50px;
-  }
-  .pm-logo-sjt {
-    height: 88px;
-    transform: translateY(-6px);
-  }
+  .pm-pad { padding: 16px 16px 18px; }
+  .pm-title { font-size: 16px; margin-bottom: 14px; }
+  .pm-section + .pm-section { margin-top: 18px; }
+  .pm-row { gap: 14px 18px; }
 }
 </style>

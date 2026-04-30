@@ -490,6 +490,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Links Tienda</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopQA')" :to="{ name: 'shopQA' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-message-question-outline</v-icon>
+                </template>
+                <v-list-item-title>Consultas web</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Consultas web</v-tooltip>
+              </v-list-item>
+
               <v-list-item v-if="isSuperAdmin && hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-image-multiple-outline</v-icon>
@@ -691,6 +699,7 @@ const showShopMenu = computed(() => {
     hasRoute("shopOrders") ||
     hasRoute("shopPaymentsSettings") ||
     hasRoute("shopLinks") ||
+    hasRoute("shopQA") ||
     hasRoute("adminGaleriaMultimedia")
   );
 });
@@ -712,6 +721,7 @@ const shopLandingRoute = computed(() => {
   if (hasRoute("shopOrders")) return { name: "shopOrders" };
   if (hasRoute("shopPaymentsSettings")) return { name: "shopPaymentsSettings" };
   if (hasRoute("shopLinks")) return { name: "shopLinks" };
+  if (hasRoute("shopQA")) return { name: "shopQA" };
   if (hasRoute("adminGaleriaMultimedia")) return { name: "adminGaleriaMultimedia" };
   return null;
 });

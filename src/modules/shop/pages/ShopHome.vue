@@ -56,10 +56,7 @@
         class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4"
       >
         <div class="d-flex align-center ga-2">
-          <div class="text-h6 font-weight-black">{{ resultsTitle }}</div>
-          <span class="text-caption text-medium-emphasis" v-if="total">({{ total }})</span>
-
-          <v-chip v-if="activeChip" size="small" variant="tonal" color="primary" class="ml-2" :title="activeChip">
+          <v-chip v-if="activeChip" size="small" variant="tonal" color="primary" :title="activeChip">
             {{ activeChip }}
           </v-chip>
         </div>
@@ -119,20 +116,7 @@
             :items="itemsHomeBlock"
           />
         </div>
-
-        <!-- ── Resto del grid ── -->
-        <div v-if="itemsAfterBlocks.length" class="product-grid mt-6">
-          <ProductCard v-for="p in itemsAfterBlocks" :key="p.product_id ?? p.id" :p="p" />
-        </div>
       </template>
-
-      <div v-if="!itemsError && items.length" class="d-flex justify-center mt-6">
-        <v-btn v-if="hasMore" variant="tonal" size="large" :loading="loadingMore" @click="loadMore">
-          Cargar más
-        </v-btn>
-
-        <div v-else class="text-caption text-medium-emphasis">No hay más productos para mostrar.</div>
-      </div>
 
       <div class="after-products-banner" v-if="!loading && items.length && !itemsError">
         <PromoBannerParlantes />
@@ -165,6 +149,10 @@
         <PromoSliderAudioMicrofonos :limitTotal="24" />
       </div>
 
+      <div class="mt-6">
+        <PromoSliderEntretenimiento :limitTotal="24" />
+      </div>
+
       <div class="mt-8 entertainment-wrap">
         <PromoBannerEntretenimiento />
       </div>
@@ -192,6 +180,7 @@ import PromoSliderCargadores from "@/modules/shop/components/PromoSliderCargador
 import PromoSliderAudioMicrofonos from "@/modules/shop/components/PromoSliderAudioMicrofonos.vue";
 import PromoGridTelefonosAuriculares from "@/modules/shop/components/PromoGridTelefonosAuriculares.vue";
 import PromoBannerEntretenimiento from "@/modules/shop/components/PromoBannerEntretenimiento.vue";
+import PromoSliderEntretenimiento from "@/modules/shop/components/PromoSliderEntretenimiento.vue";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import ShopProductBlock from "@/modules/shop/components/ShopProductBlock.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
@@ -249,10 +238,6 @@ const itemsOffersBlock = computed(() => {
   return (withDiscount.length >= 6 ? withDiscount : slice).slice(0, BLOCK_OFFERS_SIZE);
 });
 
-const itemsAfterBlocks = computed(() => {
-  const start = FIRST_GRID_COUNT + BLOCK_INSPIRED_SIZE + SECOND_GRID_COUNT + BLOCK_OFFERS_SIZE;
-  return (items.value || []).slice(start);
-});
 
 /* Bloque "La línea Hogar puede interesarte" — busca productos cuya
    categoría/subcategoría contenga "HOGAR" o "ELECTRO" como palabra completa
@@ -366,7 +351,7 @@ function scrollToProducts() {
   window.scrollTo({ top: y, behavior: "smooth" });
 }
 
-const promoPerPage = computed(() => 5);
+const promoPerPage = computed(() => 6);
 
 // Mínimo de promos vigentes para que se renderice el carousel.
 // Con menos productos queda 1 card suelta y se ve roto visualmente.
@@ -579,6 +564,7 @@ watch(
   gap: 12px;
   align-items: stretch;
 }
+
 
 .after-products-banner {
   margin-top: 18px;

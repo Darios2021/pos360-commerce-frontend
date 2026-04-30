@@ -11,9 +11,9 @@
 
       <v-divider class="my-3" />
 
-      <v-window v-model="tab">
+      <v-window v-model="tab" class="ti-window">
         <!-- DESCRIPCIÓN -->
-        <v-window-item value="desc">
+        <v-window-item value="desc" class="ti-item">
           <div v-if="descText" class="ti-text">{{ descText }}</div>
           <div v-else class="ti-empty">
             Este producto todavía no tiene descripción cargada.
@@ -21,7 +21,7 @@
         </v-window-item>
 
         <!-- FICHA -->
-        <v-window-item value="sheet">
+        <v-window-item value="sheet" class="ti-item">
           <div class="ti-grid">
             <div class="ti-row">
               <div class="ti-k">Marca</div>
@@ -47,7 +47,7 @@
         </v-window-item>
 
         <!-- CARACTERÍSTICAS -->
-        <v-window-item value="specs">
+        <v-window-item value="specs" class="ti-item">
           <ul v-if="specsList.length" class="ti-list">
             <li v-for="(x, i) in specsList" :key="i">{{ x }}</li>
           </ul>
@@ -126,8 +126,26 @@ const specsList = computed(() => {
   background: #fff;
   border: 1px solid rgba(0,0,0,.06);
   box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  display: flex;
+  flex-direction: column;
 }
-.ti-pad { padding: 14px 16px; }
+.ti-pad {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 420px;
+}
+.ti-window {
+  flex: 1 1 auto;
+  display: flex;
+}
+.ti-window :deep(.v-window__container) {
+  width: 100%;
+}
+.ti-item {
+  min-height: 320px;
+}
 
 .ti-tabs :deep(.v-tab) {
   font-weight: 500;
