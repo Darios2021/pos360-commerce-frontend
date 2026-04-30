@@ -8,9 +8,6 @@
   <section class="prof">
     <header class="prof-head">
       <h1 class="prof-head__title">Perfil</h1>
-      <p class="prof-head__sub">
-        Mantené tus datos al día para tus compras y la facturación.
-      </p>
     </header>
 
     <v-alert
@@ -21,7 +18,7 @@
       class="prof-warn"
       icon="mdi-alert-circle-outline"
     >
-      Completá tus datos y elegí una contraseña para poder seguir comprando.
+      Completá tus datos para seguir comprando.
     </v-alert>
 
     <v-form ref="formRef" v-model="valid" @submit.prevent="onSubmit" class="prof-card">
@@ -59,8 +56,6 @@
           density="comfortable"
           bg-color="grey-lighten-4"
           readonly
-          persistent-hint
-          hint="Asociado a tu cuenta de Google. No se puede cambiar."
           prepend-inner-icon="mdi-email-outline"
           hide-details="auto"
         />
@@ -84,10 +79,8 @@
       <!-- Contraseña -->
       <div class="prof-section">
         <div class="prof-section__title">Contraseña</div>
-        <p class="prof-section__hint">
-          {{ needsPassword
-            ? "Elegí una contraseña para asegurar tu cuenta."
-            : "Dejá los campos vacíos si no querés cambiarla." }}
+        <p v-if="needsPassword" class="prof-section__hint">
+          Elegí una contraseña para tu cuenta.
         </p>
 
         <div class="prof-grid prof-grid--two">
@@ -141,13 +134,20 @@
         <v-alert v-if="successMsg" type="success" variant="tonal" density="compact">{{ successMsg }}</v-alert>
 
         <div class="prof-foot__actions">
-          <v-btn variant="text" :disabled="loading" @click="resetForm">
+          <v-btn
+            class="prof-btn prof-btn--cancel"
+            variant="outlined"
+            rounded="lg"
+            :disabled="loading"
+            @click="resetForm"
+          >
             Cancelar
           </v-btn>
           <v-btn
+            class="prof-btn prof-btn--save"
             color="primary"
             variant="flat"
-            size="large"
+            rounded="lg"
             :loading="loading"
             :disabled="!canSubmit"
             type="submit"
@@ -301,6 +301,11 @@ function friendly(e) {
 
 .prof-warn { margin-bottom: 14px; }
 
+@media (max-width: 600px) {
+  /* Tab arriba ya dice "Perfil" — evitar duplicación */
+  .prof-head { display: none; }
+}
+
 .prof-card {
   background: #ffffff;
   border-radius: 8px;
@@ -359,14 +364,44 @@ function friendly(e) {
 .prof-foot__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
 }
+
+/* Botones del perfil — pill, peso medio, sin caps forzadas */
+.prof-btn {
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  height: 44px !important;
+  min-width: 130px !important;
+  padding: 0 22px !important;
+  box-shadow: none !important;
+}
+.prof-btn--save {
+  box-shadow: 0 4px 14px -4px rgba(20, 136, 209, 0.4) !important;
+}
+.prof-btn--save:active {
+  box-shadow: 0 2px 6px -2px rgba(20, 136, 209, 0.4) !important;
+}
+.prof-btn--cancel {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+.prof-btn--cancel:hover { background: rgba(0, 0, 0, 0.04) !important; }
 
 @media (max-width: 600px) {
   .prof-grid--two { grid-template-columns: 1fr; }
   .prof-section { padding: 18px 18px; }
   .prof-foot { padding: 14px 18px 20px; }
-  .prof-foot__actions { flex-direction: column-reverse; }
-  .prof-foot__actions .v-btn { width: 100%; }
+  .prof-foot__actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .prof-foot__actions .prof-btn {
+    flex: 1;
+    min-width: 0 !important;
+  }
+  .prof-foot__actions .prof-btn--cancel { flex: 0 0 auto; min-width: 96px !important; }
 }
 </style>

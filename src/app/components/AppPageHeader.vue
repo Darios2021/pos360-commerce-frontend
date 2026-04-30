@@ -285,9 +285,14 @@ a.app-page-header__crumb:hover {
 .app-page-header--dense .app-page-header__subtitle { font-size: 11.5px; }
 
 @media (max-width: 600px) {
-  .app-page-header { padding-bottom: 14px; }
-  .app-page-header__title { font-size: 19px; }
-  .app-page-header__icon,
+  /* En mobile compactamos al máximo: no breadcrumb, no icon-cuadrado.
+     Solo back + título grande, estilo app móvil. */
+  .app-page-header { padding-bottom: 10px; gap: 4px; }
+  .app-page-header__crumbs { display: none; }
+  .app-page-header__icon { display: none; }
+  .app-page-header__title { font-size: 20px; letter-spacing: -0.015em; font-weight: 700; }
   .app-page-header__back { width: 36px; height: 36px; border-radius: 10px; }
+  .app-page-header__row { gap: 10px; }
+  .app-page-header__left { gap: 0; }
 }
 </style>

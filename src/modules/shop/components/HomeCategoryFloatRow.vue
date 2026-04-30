@@ -269,57 +269,68 @@ watch(
   position: relative;
 }
 
-/* MOBILE bubbles */
+/* MOBILE bubbles — círculos más grandes, anillo celeste (stories style) */
 .ml-bubbles {
   display: flex;
-  gap: 14px;
+  gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 8px 4px 10px;
+  padding: 12px 6px 14px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
 }
-.ml-bubbles::-webkit-scrollbar {
-  display: none;
-}
+.ml-bubbles::-webkit-scrollbar { display: none; }
+
 .ml-bubble {
   flex: 0 0 auto;
-  width: 82px;
+  width: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
   scroll-snap-align: start;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
 }
+.ml-bubble:active { transform: scale(0.94); }
+
+/* Anillo color brand del header + avatar interno */
 .ml-bubble-avatar {
-  width: 54px;
-  height: 54px;
+  position: relative;
+  flex-shrink: 0;
+  width: 68px;
+  height: 68px;
   border-radius: 999px;
-  background: #fff;
-  border: 1px solid #e6e6e6;
+  background: rgb(var(--v-theme-primary));
   overflow: hidden;
-  display: grid;
-  place-items: center;
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
 }
 .ml-bubble-avatar img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: calc(100% - 5px);
+  height: calc(100% - 5px);
+  border-radius: 999px;
   object-fit: cover;
   display: block;
+  background: #fff;
 }
+
 .ml-bubble-label {
   width: 100%;
   text-align: center;
   font-size: 12px;
-  line-height: 1.05;
-  font-weight: 500;
-  color: #7a7a7a;
+  line-height: 1.15;
+  font-weight: 600;
+  color: #111;
+  letter-spacing: -0.005em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

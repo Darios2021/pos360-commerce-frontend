@@ -7,7 +7,10 @@
       <img v-if="img" :src="img" alt="" loading="lazy" />
       <div v-else class="mlx-media-empty">Sin imagen</div>
 
-      <!-- Badges (esquina superior izquierda apilados) -->
+      <!-- Badges flotantes esquina superior izquierda.
+           El badge "PROMO" solo se muestra cuando el producto tiene una promo
+           activa real (gestionada desde el backoffice). Los descuentos genéricos
+           del catálogo se reflejan únicamente con el "% OFF" verde junto al precio. -->
       <div class="mlx-badge-stack">
         <span v-if="isKit" class="mlx-kit-badge" :title="`Kit con ${kitItemsCount} productos`">
           <v-icon size="11">mdi-package-variant</v-icon>
@@ -42,46 +45,42 @@
     </button>
 
     <div class="mlx-body">
-      <!-- TÍTULO (2 líneas fijas) -->
+      <!-- ✅ PRECIO ARRIBA (estilo seguridad electrónica) -->
+      <div class="mlx-price-row">
+        <div class="mlx-price" :class="{ 'is-promo': promoActive }">$ {{ fmtMoney(displayPrice) }}</div>
+        <div class="mlx-off" v-if="offPct" :class="{ 'is-promo': promoActive }">{{ offPct }}% OFF</div>
+      </div>
+
+      <!-- old price tachado debajo -->
+      <div class="mlx-old" :class="{ 'is-empty': !showOldPrice }">
+        {{ showOldPrice ? `$ ${fmtMoney(oldPrice)}` : " " }}
+      </div>
+
+      <!-- TÍTULO en mayúsculas, fino -->
       <div class="mlx-title" :title="p?.name || ''">
-        {{ capFirst(p?.name || "—") }}
+        {{ (p?.name || "—").toUpperCase() }}
       </div>
 
-      <!-- MARCA + MODELO (1 línea fija) -->
-      <div class="mlx-subtitle" :title="brandModel || ''">
-        {{ brandModel || " " }}
-      </div>
+      <!-- Categoría / subcategoría en líneas separadas -->
+      <div v-if="categoryName" class="mlx-cat" :title="categoryName">{{ categoryName }}</div>
+      <div v-if="subcategoryName" class="mlx-sub" :title="subcategoryName">{{ subcategoryName }}</div>
 
-      <!-- ✅ BLOQUE PRECIOS (ALTURA HOMOGÉNEA) -->
-      <div class="mlx-price-block">
-        <!-- old price -->
-        <div class="mlx-old" :class="{ 'is-empty': !showOldPrice }">
-          {{ showOldPrice ? `$ ${fmtMoney(oldPrice)}` : " " }}
+      <!-- Spacer empuja el footer hacia abajo si la card es alta -->
+      <div class="mlx-spacer"></div>
+
+      <!-- Footer info: cuotas o aviso genérico -->
+      <div class="mlx-foot">
+        <div v-if="show3Installments" class="mlx-installments">
+          En 3 cuotas de <b>$ {{ fmtMoney(installment3) }}</b>
         </div>
-
-        <!-- price + off -->
-        <div class="mlx-price-row">
-          <div class="mlx-price" :class="{ 'is-promo': promoActive }">$ {{ fmtMoney(displayPrice) }}</div>
-          <div class="mlx-off" v-if="offPct" :class="{ 'is-promo': promoActive }">{{ offPct }}% OFF</div>
+        <div v-else-if="installmentsAny" class="mlx-installments mlx-installments--soft">
+          Hasta {{ installmentsAny }} cuotas
         </div>
-
-        <!-- installments -->
-        <div class="mlx-installments" :class="{ 'is-empty': !show3Installments }">
-          <template v-if="show3Installments">
-            En 3 cuotas de <b>$ {{ fmtMoney(installment3) }}</b>
-          </template>
-          <template v-else> </template>
-        </div>
-      </div>
-
-      <!-- shipping -->
-      <div class="mlx-ship" :class="{ 'is-empty': !shipText }">
-        <template v-if="shipText">
+        <div v-if="shipText" class="mlx-ship">
           <span class="mlx-ship-free">Envío gratis</span>
           <span class="mlx-ship-bolt" v-if="shipBolt">⚡</span>
           <span class="mlx-ship-full" v-if="shipFull">FULL</span>
-        </template>
-        <template v-else> </template>
+        </div>
       </div>
     </div>
   </v-card>
@@ -163,6 +162,24 @@ const brandModel = computed(() => {
   return [String(brand).trim(), String(model).trim()].filter(Boolean).join(" · ");
 });
 
+/* breadcrumb categoría · subcategoría (estilo Seguridad Electrónica) */
+const categoryBreadcrumb = computed(() => {
+  const cat = (props.p?.category?.name || props.p?.category_name || props.p?.rubro || "").toString().trim();
+  const sub = (props.p?.subcategory?.name || props.p?.subcategory_name || "").toString().trim();
+  const parts = [cat, sub].filter(Boolean);
+  if (!parts.length) return brandModel.value;
+  return parts.join(" · ").toUpperCase();
+});
+
+const categoryName = computed(() => {
+  const cat = (props.p?.category?.name || props.p?.category_name || props.p?.rubro || "").toString().trim();
+  return cat ? cat.toUpperCase() : "";
+});
+const subcategoryName = computed(() => {
+  const sub = (props.p?.subcategory?.name || props.p?.subcategory_name || "").toString().trim();
+  return sub ? sub.toUpperCase() : "";
+});
+
 /* prices */
 const priceList = computed(() => toNum(props.p?.price_list));
 const priceDiscount = computed(() => toNum(props.p?.price_discount));
@@ -216,6 +233,12 @@ const INSTALLMENTS_MIN = 150000;
 const installmentsBase = computed(() => (priceList.value > 0 ? priceList.value : oldPrice.value));
 const show3Installments = computed(() => installmentsBase.value >= INSTALLMENTS_MIN);
 const installment3 = computed(() => installmentsBase.value / 3);
+/* Cuando NO calificamos para 3 cuotas pero sí para algún plan general */
+const installmentsAny = computed(() => {
+  const max = Number(props.p?.max_installments || props.p?.installments_max || 0);
+  if (max >= 2 && max <= 24) return max;
+  return 0;
+});
 
 /* promo activa (respeta ventana temporal si está definida) */
 const promoActive = computed(() => isPromoActive(props.p));
@@ -274,24 +297,26 @@ function openProduct() {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
   position: relative;
 }
 .mlx:hover {
-  transform: translateY(-3px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
-  border-color: rgba(0, 0, 0, 0.14);
+  border-color: rgba(0, 0, 0, 0.10);
+  transform: translateY(-2px);
 }
 
-/* media */
+/* media — fondo blanco con padding interno (foto centrada estilo ML) */
 .mlx-media {
   width: 100%;
-  height: 230px;
-  background: #f4f4f4;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  max-height: 260px;
+  background: #fff;
   cursor: pointer;
   border: 0;
   padding: 0;
@@ -300,10 +325,16 @@ function openProduct() {
   overflow: hidden;
 }
 .mlx-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #fff;
+  display: block;
+  padding: 0;
   transition: transform 0.4s ease;
 }
 .mlx:hover .mlx-media img {
-  transform: scale(1.04);
+  transform: scale(1.05);
 }
 
 /* badges apilados (esquina superior izquierda) */
@@ -315,32 +346,43 @@ function openProduct() {
   align-items: flex-start;
 }
 
-/* badge KIT — violeta */
+/* badge KIT — violeta pill */
 .mlx-kit-badge {
   display: inline-flex; align-items: center; gap: 3px;
-  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  background: #7c3aed;
   color: #fff;
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.5px;
-  padding: 4px 9px;
-  border-radius: 4px;
-  box-shadow: 0 3px 8px rgba(124, 58, 237, 0.45);
+  padding: 5px 11px;
+  border-radius: 999px;
   text-transform: uppercase;
 }
 .mlx-kit-badge-count { opacity: 0.9; font-weight: 600; }
 
-/* badge PROMO — bordó destacado */
+/* badge PROMO — naranja pill */
 .mlx-promo-badge {
-  background: linear-gradient(135deg, #ff5722 0%, #ff9100 100%);
+  background: #ff5722;
   color: #fff;
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.7px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  box-shadow: 0 3px 8px rgba(255, 87, 34, 0.45);
+  padding: 5px 12px;
+  border-radius: 999px;
   text-transform: uppercase;
+}
+
+/* badge DESCUENTO — verde pill estilo Seguridad Electrónica */
+.mlx-discount-badge {
+  background: #00a650;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 166, 80, 0.25);
 }
 
 /* hint promo por cantidad — chip flotante compacto sobre la imagen */
@@ -365,32 +407,34 @@ function openProduct() {
 }
 .mlx-qty-promo-overlay .v-icon { opacity: 0.9; }
 
-/* Favorito flotante esquina superior derecha — visible solo en hover.
-   Si el producto ya es favorito, se muestra siempre (para feedback). */
+/* Favorito flotante esquina superior derecha — color brand del header.
+   Desktop: aparece al hover de la card.
+   Si ya es favorito o en mobile: siempre visible. */
 .mlx-fav-btn {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 2;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.95);
-  color: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  color: rgb(var(--v-theme-primary));
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
   transition:
     opacity 0.18s ease,
     transform 0.18s ease,
     color 0.15s ease,
-    background 0.15s ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 
-  /* Oculto por default — aparece al hover de la card */
+  /* Oculto por default en desktop — aparece al hover de la card */
   opacity: 0;
   transform: translateY(-4px) scale(0.96);
   pointer-events: none;
@@ -401,16 +445,25 @@ function openProduct() {
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }
-/* Si ya es favorito, siempre visible */
+.mlx-fav-btn:hover {
+  background: rgb(var(--v-theme-primary));
+  color: #fff;
+  border-color: rgb(var(--v-theme-primary));
+}
+/* Si ya es favorito, siempre visible y lleno con color brand */
 .mlx-fav-btn.is-fav {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
-  color: #e11d48;
-  background: #fff;
+  background: rgb(var(--v-theme-primary));
+  color: #fff;
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 4px 12px rgba(20, 136, 209, 0.35);
 }
-.mlx-fav-btn:hover { color: #e11d48; }
-.mlx-fav-btn.is-fav:hover { color: #be123c; }
+.mlx-fav-btn.is-fav:hover {
+  background: rgb(var(--v-theme-primary));
+  filter: brightness(0.92);
+}
 .mlx-fav-btn:active { transform: scale(0.92); }
 .mlx-fav-btn:disabled { opacity: 0.6 !important; cursor: wait; }
 
@@ -422,12 +475,6 @@ function openProduct() {
     pointer-events: auto;
   }
 }
-.mlx-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
 .mlx-media-empty {
   height: 100%;
   display: grid;
@@ -436,139 +483,175 @@ function openProduct() {
   opacity: .55;
 }
 
-/* body */
+/* body — orden: precio arriba, título abajo (estilo Seguridad Electrónica) */
 .mlx-body {
-  padding: 10px 12px 12px;
+  padding: 12px 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
 }
 
-/* title */
+/* title — UPPERCASE FINO (peso 400) */
 .mlx-title {
-  font-size: 14px;
-  line-height: 1.22;
-  font-weight: 500;
-  color: #111;
-  letter-spacing: -0.005em;
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  font-weight: 400;
+  color: #1a1a1a;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 
-  min-height: calc(1.22em * 2);
+  min-height: calc(1.3em * 2);
 }
 
-/* subtitle: marca · modelo */
-.mlx-subtitle {
-  font-size: 11.5px;
-  line-height: 1.1;
-  color: rgba(0,0,0,.55);
+/* Categoría — primera línea */
+.mlx-cat {
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 1.1em;
   font-weight: 500;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
 }
 
-/* price block */
-.mlx-price-block {
+/* Subcategoría — segunda línea, más tenue */
+.mlx-sub {
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  margin-top: 1px;
+}
+
+/* Spacer empuja el footer hacia abajo */
+.mlx-spacer { flex: 1; min-height: 8px; }
+
+/* Footer: cuotas + envío */
+.mlx-foot {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
+  margin-top: 8px;
 }
 
-/* old price */
-.mlx-old {
-  font-size: 12px;
-  color: rgba(0,0,0,.55);
-  text-decoration: line-through;
-  min-height: 1.1em;
-}
-.mlx-old.is-empty { opacity: 0; }
-
-/* price row */
+/* price row — precio + % OFF en LA MISMA línea, sin wrap */
 .mlx-price-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: baseline;
-  column-gap: 10px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .mlx-price {
-  font-size: clamp(20px, 1.6vw, 23px);
+  font-size: clamp(15px, 1.3vw, 20px);
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: #111;
-  line-height: 1;
+  color: #1a1a1a;
+  line-height: 1.05;
   white-space: nowrap;
+  flex-shrink: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .mlx-price.is-promo { color: #ff5722; }
 
+/* % OFF — verde sin fondo, solo texto bold (estilo SE) */
 .mlx-off {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   color: #00a650;
-  background: rgba(0,166,80,.12);
-  border-radius: 4px;
-  padding: 3px 7px;
   white-space: nowrap;
-  margin-top: 4px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
+  flex-shrink: 0;
 }
-.mlx-off.is-promo {
-  color: #fff;
-  background: #ff5722;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
+.mlx-off.is-promo { color: #ff5722; }
 
-/* installments */
+/* old price — debajo del precio actual, tachado, gris */
+.mlx-old {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.42);
+  text-decoration: line-through;
+  min-height: 1.1em;
+  font-weight: 500;
+  margin-top: 1px;
+}
+.mlx-old.is-empty { opacity: 0; min-height: 1.1em; }
+
+/* installments — verde */
 .mlx-installments {
-  font-size: 13px;
+  font-size: 12px;
   color: #00a650;
-  line-height: 1.12;
-  min-height: 1.12em;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 400;
 }
-.mlx-installments.is-empty { opacity: 0; }
-
-/* shipping */
-.mlx-ship {
-  font-size: 13px;
+.mlx-installments b {
+  font-weight: 700;
   color: #00a650;
-  line-height: 1.12;
+}
+/* Variante "soft": cuando no es el descuento real, sino "hasta X cuotas" */
+.mlx-installments--soft {
+  color: rgba(0, 0, 0, 0.5);
+  font-weight: 400;
+}
+
+/* shipping — "Envío gratis" verde bold + FULL pill verde */
+.mlx-ship {
+  font-size: 12px;
+  color: #00a650;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.mlx-ship-free {
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+.mlx-ship-bolt {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+}
+.mlx-ship-full {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  min-height: 1.12em;
+  background: #00a650;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
 }
-.mlx-ship.is-empty { opacity: 0; }
-.mlx-ship-free { font-weight: 400; }
-.mlx-ship-bolt { font-weight: 500; }
-.mlx-ship-full { font-weight: 500; letter-spacing: 0.02em; }
 
 @media (max-width: 420px) {
   .mlx-price-row { grid-template-columns: 1fr; row-gap: 4px; }
   .mlx-off { justify-self: start; margin-top: 0; }
 }
 
-@media (max-width: 1200px) { .mlx-media { height: 215px; } }
-@media (max-width: 960px)  { .mlx-media { height: 205px; } }
-@media (max-width: 600px)  {
-  .mlx-media { height: 190px; }
+/* mantenemos aspect-ratio cuadrado en todos los breakpoints (estilo ML) */
+@media (max-width: 600px) {
   .mlx-installments { white-space: normal; }
 }
 </style>

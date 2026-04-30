@@ -1062,14 +1062,23 @@ function remove(it) {
     min-width: 0;
   }
 
-  .item-controls {
-    flex-direction: column;
-    align-items: stretch;
+  /* Botones se mantienen compactos: qty a la izq + trash al lado, no full width */
+  .item-actions {
+    gap: 8px;
   }
-
+  .qty-box {
+    max-width: 140px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+  }
+  .qty-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
   .trash-btn {
-    width: 100% !important;
-    height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
   }
 }
 

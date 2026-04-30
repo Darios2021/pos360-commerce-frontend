@@ -284,7 +284,88 @@ async function onLogout() {
   .acc-shell { padding: 0 12px; }
   .acc-grid { grid-template-columns: 1fr; gap: 12px; }
   .acc-side { position: static; }
-  .acc-side__user { padding: 14px 16px; }
-  .acc-menu__item { padding: 13px 16px; }
+}
+
+/* ── Mobile real (≤600px) — app-style con pills ── */
+@media (max-width: 600px) {
+  .acc { padding: 0 0 24px; }
+  .acc-shell { padding: 0; }
+
+  /* Breadcrumb redundante (ya hay back/bottomnav) */
+  .acc-crumb { display: none; }
+
+  /* Avatar duplicado (ya está en el menú del header del shop) */
+  .acc-side__user { display: none; }
+
+  /* "Cerrar sesión" duplicado (ya está en el menú del header del shop) */
+  .acc-menu__logout { display: none; }
+
+  /* Tabs estilo Apple/Twitter: solo texto + underline celeste grueso */
+  .acc-side {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #ffffff;
+    border-radius: 0;
+    box-shadow: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .acc-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 12px;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .acc-menu::-webkit-scrollbar { display: none; }
+
+  .acc-menu__item {
+    flex-direction: row;
+    flex-shrink: 0;
+    padding: 12px 4px;
+    margin: 0 8px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.55);
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    gap: 0;
+    white-space: nowrap;
+    width: auto;
+    min-height: 0;
+    position: relative;
+    transition: color 0.15s;
+  }
+  .acc-menu__item:first-child { margin-left: 0; }
+  .acc-menu__item :deep(.v-icon) { display: none; }
+  .acc-menu__chev { display: none; }
+  .acc-menu__warn { display: none; }
+
+  .acc-menu__item:hover { background: transparent; color: rgba(0, 0, 0, 0.85); }
+  .acc-menu__item.is-active {
+    background: transparent;
+    color: rgb(var(--v-theme-primary));
+    font-weight: 600;
+  }
+  .acc-menu__item.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: rgb(var(--v-theme-primary));
+  }
+
+  /* Main content */
+  .acc-main { padding: 0 12px; }
 }
 </style>

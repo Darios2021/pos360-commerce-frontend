@@ -23,6 +23,29 @@
       </div>
     </v-alert>
 
+    <!-- ── MOBILE: vista app-móvil simplificada ─────────────── -->
+    <DashboardMobileHome
+      v-if="isMobile"
+      :loading="loading"
+      :loading-analytics="loadingAnalytics"
+      :is-super-admin="isSuperAdmin"
+      :is-admin="isAdmin"
+      :scope-label="scopeLabel"
+      :scope-icon="scopeIcon"
+      :role-badge="roleBadge"
+      :user-name="userDisplayName"
+      :branches="branches"
+      :selected-branch="effectiveBranchId"
+      :sales="ui.sales"
+      :stock="ui.stock"
+      :inv="ui.inventory"
+      :last-sales="ui.sales.lastSales || []"
+      @refresh="refresh"
+      @branch-change="onBranchChange"
+    />
+
+    <!-- ── DESKTOP / TABLET: vista completa con tabs ─────────── -->
+    <template v-else>
     <!-- ── HEADER ─────────────────────────────────────────── -->
     <AppPageHeader
       icon="mdi-view-dashboard-outline"
@@ -144,6 +167,7 @@
         :period="period" @period-change="onPeriodChange"
       />
     </Transition>
+    </template>
   </div>
 </template>
 
@@ -156,7 +180,9 @@ import DashboardSalesTab from "../components/DashboardSalesTab.vue";
 import DashboardStockTab from "../components/DashboardStockTab.vue";
 import DashboardInventoryTab from "../components/DashboardInventoryTab.vue";
 import DashboardCashTab from "../components/DashboardCashTab.vue";
+import DashboardMobileHome from "../components/DashboardMobileHome.vue";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import { useDisplay } from "vuetify";
 
 import {
   dashboardOverview,
@@ -178,6 +204,15 @@ const isSuperAdmin  = computed(() => auth.isSuperAdmin === true);
 const isBranchAdmin = computed(() => auth.isBranchAdmin === true && !auth.isSuperAdmin);
 const isCajero      = computed(() => auth.isCajero === true);
 const userBranchId  = computed(() => auth.branchId);
+const userDisplayName = computed(() => {
+  const u = auth.user || {};
+  const full = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+  return full || u.username || u.email || "Usuario";
+});
+
+// Mobile detection (md breakpoint = < 960px)
+const display = useDisplay();
+const isMobile = computed(() => display.smAndDown.value);
 
 
 // ─── Router ───────────────────────────────────────────────────────────────────

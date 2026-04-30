@@ -2247,21 +2247,20 @@ function branchCssColor(id) {
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  background: #1488d1;
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow:
-    0 14px 32px rgba(20, 136, 209, 0.45),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
   z-index: 1004;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, background 0.15s;
 }
 .lp-fab-new:active {
   transform: scale(0.95);
+  background: #0e6ba8;
 }
 
 /* Botón cámara inline en el buscador (solo mobile) */
@@ -2271,40 +2270,80 @@ function branchCssColor(id) {
   height: 40px;
   border-radius: 12px;
   border: none;
-  background: linear-gradient(135deg, #1488d1 0%, #0e6ba8 100%);
+  background: #1488d1;
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(20, 136, 209, 0.30);
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, background 0.15s;
 }
 .lp-filters__scan:active {
   transform: scale(0.92);
-  box-shadow: 0 2px 6px rgba(20, 136, 209, 0.30);
+  background: #0e6ba8;
 }
 
 @media (max-width: 600px) {
-  /* MOBILE: ocultar KPIs/stats — saturan la vista en pantalla chica. */
+  /* MOBILE — App-style: limpio, denso, sin redundancias.
+     Ocultamos lo que no agrega valor en pantalla chica. */
   .lp-stats,
-  .lp-methods { display: none !important; }
+  .lp-methods,
+  .lp-bulk,                            /* selector "todos de la página" */
+  .lp-content__head,                   /* "Resultados X de Y" (ya está en el header) */
+  .plp-card-check,                     /* checkbox sobre la imagen */
+  .plp-card-actions,                   /* iconos eye/edit/dots */
+  .plp-card-meta,                      /* chips RING/ILUMINACION/etc */
+  .plp-card-branches { display: none !important; }
 
-  /* MOBILE: filtros simplificados — solo buscador + cámara.
-     Ocultamos status select, "Más filtros", filtros avanzados y chips. */
-  .lp-filters__primary-field,           /* select de Estado */
-  .lp-filters__more,                    /* botón "Más filtros" */
-  .lp-filters__advanced,                /* sección avanzada colapsada */
+  /* MOBILE: filtros simplificados — solo buscador + cámara. */
+  .lp-filters__primary-field,
+  .lp-filters__more,
+  .lp-filters__advanced,
   .lp-filters__chips { display: none !important; }
 
-  /* Layout del buscador + scanner en una sola fila */
   .lp-filters__primary {
     grid-template-columns: 1fr auto !important;
     gap: 8px;
   }
 
   .lp-view-toggle { display: none !important; }
+
+  /* Cards más densas y minimalistas */
+  .lp-content { gap: 8px; }
+  .plp-grid { gap: 10px !important; padding: 0 !important; }
+  .plp-card {
+    border-radius: 14px !important;
+    overflow: hidden;
+  }
+  .plp-card-info {
+    padding: 8px 10px 10px !important;
+    gap: 4px;
+  }
+  .plp-card-name {
+    font-size: 13px !important;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .plp-card-sku {
+    font-size: 10.5px;
+    opacity: 0.55;
+    margin-top: 1px;
+  }
+  .plp-card-footer { padding-top: 4px; }
+  .plp-card-price {
+    font-size: 15px !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .plp-stock-badge {
+    top: 6px !important;
+    left: 6px !important;
+    padding: 2px 6px !important;
+    font-size: 10.5px !important;
+    border-radius: 6px !important;
+  }
 }
 
 @media (max-width: 768px) {

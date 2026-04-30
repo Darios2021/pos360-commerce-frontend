@@ -670,40 +670,49 @@ watch(
 ========================= */
 
 .ml-account-menu {
-  width: 320px;
+  width: 300px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgb(var(--v-theme-surface));
   color: rgb(var(--v-theme-on-surface));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 18px 50px -12px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .ml-account-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px 12px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(180deg,
+    rgba(var(--v-theme-primary), 0.06),
+    transparent);
 }
 .ml-account-head__avatar {
   flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: rgba(var(--v-theme-primary), 0.12);
+  background: rgba(var(--v-theme-primary), 0.14);
   color: rgb(var(--v-theme-primary));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: 0.02em;
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.08);
 }
 .ml-account-head__avatar--img {
   object-fit: cover;
   background: #f5f5f5;
 }
-.ml-account-head__text { min-width: 0; line-height: 1.2; }
+.ml-account-head__text { min-width: 0; line-height: 1.2; flex: 1; }
 .ml-account-head__name {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgb(var(--v-theme-on-surface));
@@ -712,7 +721,7 @@ watch(
   white-space: nowrap;
 }
 .ml-account-head__email {
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.6);
   overflow: hidden;
@@ -724,19 +733,82 @@ watch(
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0 12px 10px;
+  margin: 0 10px 8px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 9px;
   background: rgba(245, 158, 11, 0.10);
   color: #b45309;
   font-size: 12px;
   font-weight: 500;
-  width: calc(100% - 24px);
+  width: calc(100% - 20px);
   box-sizing: border-box;
 }
 
+/* Lista — items densos con hover celeste, iconos celestes */
 .ml-account-list {
   padding: 6px !important;
+  background: rgb(var(--v-theme-surface));
+}
+.ml-account-list :deep(.v-list-item) {
+  border-radius: 10px !important;
+  min-height: 50px !important;
+  padding-inline: 10px !important;
+  margin-bottom: 2px;
+  transition: background 0.15s !important;
+}
+.ml-account-list :deep(.v-list-item:hover) {
+  background: rgba(var(--v-theme-primary), 0.06) !important;
+}
+.ml-account-list :deep(.v-list-item--active),
+.ml-account-list :deep(.v-list-item:active) {
+  background: rgba(var(--v-theme-primary), 0.10) !important;
+}
+.ml-account-list :deep(.v-list-item__prepend) {
+  padding-inline-end: 10px !important;
+}
+.ml-account-list :deep(.v-list-item .v-icon) {
+  color: rgb(var(--v-theme-primary)) !important;
+  opacity: 0.9 !important;
+  font-size: 20px !important;
+}
+.ml-account-list :deep(.v-list-item-title) {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+}
+.ml-account-list :deep(.v-list-item-subtitle) {
+  font-size: 11.5px !important;
+  opacity: 0.6 !important;
+  margin-top: 1px !important;
+}
+/* Último item (Cerrar sesión) — color de error sutil */
+.ml-account-list :deep(.v-list-item:last-child .v-icon) {
+  color: rgb(var(--v-theme-error)) !important;
+  opacity: 0.85 !important;
+}
+.ml-account-list :deep(.v-list-item:last-child .v-list-item-title) {
+  color: rgb(var(--v-theme-error)) !important;
+}
+.ml-account-list :deep(.v-list-item:last-child:hover) {
+  background: rgba(var(--v-theme-error), 0.06) !important;
+}
+
+/* Mobile: que ocupe más del ancho de pantalla */
+@media (max-width: 600px) {
+  .ml-account-menu {
+    width: calc(100vw - 24px);
+    max-width: 340px;
+  }
+  .ml-account-head {
+    padding: 14px 14px 12px;
+  }
+  .ml-account-head__avatar {
+    width: 42px;
+    height: 42px;
+  }
+  .ml-account-list :deep(.v-list-item) {
+    min-height: 52px !important;
+  }
 }
 
 .ml-header :deep(.v-icon) {

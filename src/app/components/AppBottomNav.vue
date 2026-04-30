@@ -271,8 +271,21 @@ async function chooseAction(action) {
   display: grid;
   grid-template-columns: 1fr 1fr auto 1fr 1fr;
   align-items: end;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 14px));
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.10);
+}
+/* Extender el background hacia abajo más allá del nav, así si el browser
+   muestra una franja extra (URL bar retraída, gestos, etc.) sigue cubierta
+   con el color del nav, no con el fondo de la página. */
+.bnav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 60px;
+  background: rgb(var(--v-theme-surface));
+  pointer-events: none;
 }
 .v-theme--adminDark .bnav,
 .v-theme--shopDark .bnav,

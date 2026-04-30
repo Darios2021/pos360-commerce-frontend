@@ -31,8 +31,8 @@
 
         <v-spacer />
 
-        <!-- 📅 Fecha y hora actual -->
-        <div class="appbar-datetime mr-3" :title="currentDateTime">
+        <!-- 📅 Fecha y hora actual (solo desktop/tablet) -->
+        <div v-if="!mobile" class="appbar-datetime mr-3" :title="currentDateTime">
           <v-icon size="16" class="appbar-datetime__icon">mdi-calendar-clock-outline</v-icon>
           <span class="appbar-datetime__text">{{ currentDateTime }}</span>
         </div>
@@ -81,7 +81,7 @@
             </v-btn>
           </template>
 
-          <v-card rounded="xl" class="pos-account-card" min-width="380">
+          <v-card rounded="xl" class="pos-account-card" :min-width="mobile ? 280 : 380" :max-width="mobile ? 320 : 460">
             <!-- Header: email centrado + cerrar -->
             <div class="account-header">
               <span class="account-header__spacer" />
@@ -902,8 +902,8 @@ function onLogout() {
 @media (max-width: 600px) {
   .brand-mark {
     height: 44px;
-    margin-right: 4px;
-    margin-left: 6px;
+    margin-right: 12px;
+    margin-left: 14px;
   }
 }
 .brand-mark__img {
@@ -1476,6 +1476,29 @@ function onLogout() {
 .pos-account-card {
   overflow: hidden;
   padding-bottom: 8px;
+}
+
+/* En mobile: paddings reducidos, avatar más chico, items más densos */
+@media (max-width: 600px) {
+  .pos-account-card { padding-bottom: 6px; }
+  .account-header { padding: 10px 10px 0; gap: 6px; }
+  .account-header__email { font-size: 12px; }
+  .account-avatar-wrap { margin: 10px 0 4px; }
+  .account-avatar { border-width: 2px !important; }
+  .pos-account-card :deep(.v-list) { padding: 4px !important; }
+  .pos-account-card :deep(.v-list-item) {
+    min-height: 44px !important;
+    padding-inline: 10px !important;
+    border-radius: 10px !important;
+  }
+  .pos-account-card :deep(.v-list-item-title) {
+    font-size: 13px !important;
+  }
+  .account-avatar-edit {
+    width: 24px !important;
+    height: 24px !important;
+    bottom: 2px !important;
+  }
 }
 
 .avatar-img :deep(img) {

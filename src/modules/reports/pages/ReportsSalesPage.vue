@@ -23,7 +23,22 @@
         </button>
       </div>
 
-      <div class="rpt-filters__grid">
+      <div class="rpt-period-toggle">
+        <v-btn-toggle
+          :model-value="periodMode"
+          @update:model-value="setPeriodMode"
+          color="primary"
+          mandatory
+          variant="outlined"
+          density="compact"
+          rounded="lg"
+        >
+          <v-btn value="month" prepend-icon="mdi-calendar-month-outline">Por mes</v-btn>
+          <v-btn value="range" prepend-icon="mdi-calendar-range-outline">Rango personalizado</v-btn>
+        </v-btn-toggle>
+      </div>
+
+      <div class="rpt-filters__grid rpt-filters__grid--main">
         <div class="rpt-filter-cell">
           <v-select
             v-model="f.branch_id"
@@ -35,50 +50,113 @@
             density="compact"
             hide-details
             clearable
+            prepend-inner-icon="mdi-store-outline"
             @update:modelValue="reload"
           />
         </div>
 
-        <div class="rpt-filter-cell">
-          <v-select
-            v-model="f.year"
-            :items="yearItems"
-            label="Año"
-            variant="outlined"
-            density="compact"
-            hide-details
-            @update:modelValue="reload"
-          />
-        </div>
+        <template v-if="periodMode === 'month'">
+          <div class="rpt-filter-cell">
+            <v-select
+              v-model="f.year"
+              :items="yearItems"
+              label="Año"
+              variant="outlined"
+              density="compact"
+              hide-details
+              prepend-inner-icon="mdi-calendar-blank-outline"
+              @update:modelValue="reload"
+            />
+          </div>
+
+          <div class="rpt-filter-cell">
+            <v-select
+              v-model="f.month"
+              :items="monthItems"
+              item-title="title"
+              item-value="value"
+              label="Mes"
+              variant="outlined"
+              density="compact"
+              hide-details
+              prepend-inner-icon="mdi-calendar-month-outline"
+              @update:modelValue="reload"
+            />
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="rpt-filter-cell">
+            <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
+              <template #activator="{ props }">
+                <v-text-field
+                  :model-value="f.date_from"
+                  label="Desde"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                  readonly
+                  placeholder="Sin fecha"
+                  prepend-inner-icon="mdi-calendar-start"
+                  v-bind="props"
+                  @click:clear="f.date_from = ''; reload()"
+                />
+              </template>
+              <v-date-picker
+                :model-value="f.date_from"
+                hide-header
+                show-adjacent-months
+                @update:model-value="(v) => { f.date_from = normalizeDateValue(v); fromMenu = false; reload(); }"
+              />
+            </v-menu>
+          </div>
+
+          <div class="rpt-filter-cell">
+            <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
+              <template #activator="{ props }">
+                <v-text-field
+                  :model-value="f.date_to"
+                  label="Hasta"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                  readonly
+                  placeholder="Sin fecha"
+                  prepend-inner-icon="mdi-calendar-end"
+                  v-bind="props"
+                  @click:clear="f.date_to = ''; reload()"
+                />
+              </template>
+              <v-date-picker
+                :model-value="f.date_to"
+                hide-header
+                show-adjacent-months
+                @update:model-value="(v) => { f.date_to = normalizeDateValue(v); toMenu = false; reload(); }"
+              />
+            </v-menu>
+          </div>
+        </template>
 
         <div class="rpt-filter-cell">
           <v-select
-            v-model="f.month"
-            :items="monthItems"
+            v-model="f.user_id"
+            :items="sellerItems"
             item-title="title"
             item-value="value"
-            label="Mes"
+            label="Cajero"
             variant="outlined"
             density="compact"
             hide-details
+            clearable
+            prepend-inner-icon="mdi-account-outline"
             @update:modelValue="reload"
           />
         </div>
+      </div>
 
-        <div class="rpt-filter-cell">
-          <v-select
-            v-model="f.status"
-            :items="statusItems"
-            item-title="title"
-            item-value="value"
-            label="Estado"
-            variant="outlined"
-            density="compact"
-            hide-details
-            @update:modelValue="reload"
-          />
-        </div>
-
+      <div class="rpt-filters__actions">
         <div class="rpt-filter-cell rpt-filter-cell--pct">
           <v-text-field
             v-model.number="profitPct"
@@ -94,21 +172,8 @@
             prepend-inner-icon="mdi-percent-outline"
           />
         </div>
-        <div class="rpt-filter-cell rpt-filter-cell--base">
-          <v-select
-            v-model="profitBase"
-            :items="profitBaseItems"
-            item-title="title"
-            item-value="value"
-            label="Base de cálculo"
-            variant="outlined"
-            density="compact"
-            hide-details
-            prepend-inner-icon="mdi-calculator-variant-outline"
-          />
-        </div>
 
-        <div class="rpt-filter-cell rpt-filter-cell--actions">
+        <div class="rpt-filters__actions-buttons">
           <v-btn
             variant="tonal"
             color="primary"
@@ -148,77 +213,37 @@
       </div>
     </div>
 
-    <!-- INFO DEL REPORTE (emisor + notas) -->
-    <div class="rpt-card rpt-card--info">
-      <div class="rpt-card__head">
-        <v-icon size="16">mdi-file-document-check-outline</v-icon>
-        <span class="rpt-card__title">Información del reporte</span>
-        <v-spacer />
-        <span class="rpt-card__count">Generado {{ issuedAtLabel }}</span>
+    <!-- META + Notas (collapsable) -->
+    <div class="rpt-meta">
+      <div class="rpt-meta__left">
+        <v-icon size="14" class="rpt-meta__icon">mdi-account-circle-outline</v-icon>
+        <span class="rpt-meta__user">{{ issuerName }}</span>
+        <span v-if="issuerRoles.length" class="rpt-meta__role">{{ issuerRoles[0] }}</span>
+        <span class="rpt-meta__sep">·</span>
+        <v-icon size="13" class="rpt-meta__icon">mdi-clock-outline</v-icon>
+        <span>Generado {{ issuedAtLabel }}</span>
       </div>
-      <div class="rpt-info-grid">
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">Emitido por</div>
-          <div class="rpt-info-value">
-            <strong>{{ issuerName }}</strong>
-            <span v-if="issuerEmail" class="rpt-info-sub">{{ issuerEmail }}</span>
-          </div>
-        </div>
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">Rol</div>
-          <div class="rpt-info-value">
-            <span v-for="r in issuerRoles" :key="r" class="rpt-role-chip">{{ r }}</span>
-            <span v-if="!issuerRoles.length" class="rpt-info-sub">—</span>
-          </div>
-        </div>
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">Período</div>
-          <div class="rpt-info-value">
-            <strong>{{ monthLabel }} {{ f.year }}</strong>
-            <span class="rpt-info-sub">
-              {{ fmtDate(periodFrom) }} — {{ fmtDate(periodToInclusive) }}
-            </span>
-          </div>
-        </div>
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">Alcance</div>
-          <div class="rpt-info-value">
-            <strong>{{ selectedBranchName || 'Todas las sucursales' }}</strong>
-            <span class="rpt-info-sub">
-              Estado: {{ f.status === 'ALL' ? 'Todas las ventas' : 'Solo pagadas' }}
-            </span>
-          </div>
-        </div>
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">% Ganancia global</div>
-          <div class="rpt-info-value">
-            <strong class="rpt-info-pct">{{ profitPct || 0 }}%</strong>
-            <span v-if="overrideCount > 0" class="rpt-info-sub">
-              {{ overrideCount }} venta{{ overrideCount === 1 ? '' : 's' }} con % personalizado
-            </span>
-          </div>
-        </div>
-        <div class="rpt-info-row">
-          <div class="rpt-info-label">Base de cálculo</div>
-          <div class="rpt-info-value">
-            <strong>{{ profitBaseLabel }}</strong>
-            <span class="rpt-info-sub">{{ profitBaseHelp }}</span>
-          </div>
-        </div>
-        <div class="rpt-info-row rpt-info-row--notes">
-          <div class="rpt-info-label">Notas</div>
-          <div class="rpt-info-value">
-            <v-text-field
-              v-model="reportNotes"
-              placeholder="Observaciones de esta liquidación (opcional)…"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </div>
-        </div>
-      </div>
+      <button
+        type="button"
+        class="rpt-meta__notes-toggle"
+        :class="{ 'is-active': notesOpen || !!reportNotes }"
+        @click="notesOpen = !notesOpen"
+      >
+        <v-icon size="14">mdi-note-text-outline</v-icon>
+        {{ reportNotes ? 'Notas agregadas' : 'Agregar notas' }}
+        <v-icon size="14">{{ notesOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+      </button>
+    </div>
+    <div v-if="notesOpen" class="rpt-meta__notes-row">
+      <v-text-field
+        v-model="reportNotes"
+        placeholder="Observaciones de esta liquidación (se incluyen en el PDF)…"
+        variant="outlined"
+        density="compact"
+        hide-details
+        clearable
+        prepend-inner-icon="mdi-note-text-outline"
+      />
     </div>
 
     <!-- KPIs -->
@@ -541,10 +566,19 @@ const branches = ref([]);
 const now = new Date();
 const f = reactive({
   branch_id: null,
+  user_id: null,
   year: now.getFullYear(),
   month: now.getMonth() + 1,
+  date_from: "",
+  date_to: "",
   status: "PAID",
 });
+
+const periodMode = ref("month"); // "month" | "range"
+const notesOpen = ref(false);
+const sellers = ref([]);
+const fromMenu = ref(false);
+const toMenu = ref(false);
 
 const profitPct = ref(0); // % global aplicado a todas las ventas
 const overridePct = reactive({}); // { [saleId]: number }
@@ -627,6 +661,25 @@ const selectedBranchName = computed(() => {
   return found?.title || `Sucursal #${f.branch_id}`;
 });
 
+const sellerItems = computed(() => {
+  const out = [{ title: "Todos los cajeros", value: null }];
+  (sellers.value || [])
+    .map((u) => ({
+      title: u?.title || u?.full_name || u?.username || u?.email || `Cajero #${u?.value || u?.id}`,
+      value: Number(u?.value ?? u?.id) || 0,
+    }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .forEach((x) => out.push(x));
+  return out;
+});
+
+const selectedSellerName = computed(() => {
+  if (!f.user_id) return "";
+  const found = sellerItems.value.find((x) => x.value === f.user_id);
+  return found?.title || `Cajero #${f.user_id}`;
+});
+
 const monthLabel = computed(
   () => monthItems.find((m) => m.value === f.month)?.title || ""
 );
@@ -634,10 +687,15 @@ const monthLabel = computed(
 const anyFilterSet = computed(
   () =>
     !!f.branch_id ||
+    !!f.user_id ||
+    !!f.date_from ||
+    !!f.date_to ||
     f.status !== "PAID" ||
     f.year !== now.getFullYear() ||
     f.month !== now.getMonth() + 1
 );
+
+const usingDateRange = computed(() => !!f.date_from || !!f.date_to);
 
 /* ─── Cálculo liquidación ──────────────────────────────────────── */
 function pctForSale(saleId) {
@@ -696,6 +754,15 @@ const periodFrom = computed(() => new Date(f.year, f.month - 1, 1));
 const periodToInclusive = computed(
   () => new Date(f.year, f.month, 0) // último día del mes
 );
+
+const periodLabel = computed(() => {
+  if (periodMode.value === "range") {
+    const from = f.date_from ? fmtDate(f.date_from) : "…";
+    const to = f.date_to ? fmtDate(f.date_to) : "…";
+    return `${from} — ${to}`;
+  }
+  return `${monthLabel.value} ${f.year}`;
+});
 
 /* ─── Desgloses auxiliares ─────────────────────────────────────── */
 const PAYMENT_METHOD_META = {
@@ -769,6 +836,20 @@ function pctOfMaxDay(v) {
 }
 
 /* ─── Formatters ──────────────────────────────────────────────────── */
+function formatLocalDate(date) {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function normalizeDateValue(v) {
+  if (!v) return "";
+  if (typeof v === "string") return v.slice(0, 10);
+  return formatLocalDate(v);
+}
+
 const fmtMoneyInt = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
@@ -846,6 +927,17 @@ async function loadBranches() {
   }
 }
 
+async function loadSellers() {
+  try {
+    const r = await http.get("/pos/sales/options/sellers", { params: { limit: 100 } });
+    const arr = Array.isArray(r?.data?.data) ? r.data.data : Array.isArray(r?.data) ? r.data : [];
+    sellers.value = arr;
+  } catch (e) {
+    console.warn("No se pudieron cargar cajeros", e);
+    sellers.value = [];
+  }
+}
+
 async function reload() {
   loading.value = true;
   try {
@@ -855,6 +947,14 @@ async function reload() {
       status: f.status,
     };
     if (f.branch_id) params.branch_id = f.branch_id;
+    if (f.user_id) params.user_id = f.user_id;
+    if (periodMode.value === "range") {
+      if (f.date_from) params.date_from = f.date_from;
+      if (f.date_to) params.date_to = f.date_to;
+      // No mandar year/month si estamos en modo rango
+      delete params.year;
+      delete params.month;
+    }
 
     const r = await http.get("/reports/sales", { params });
     const data = r?.data?.data || {};
@@ -891,9 +991,26 @@ async function reload() {
 
 function resetFilters() {
   f.branch_id = null;
+  f.user_id = null;
   f.status = "PAID";
   f.year = now.getFullYear();
   f.month = now.getMonth() + 1;
+  f.date_from = "";
+  f.date_to = "";
+  periodMode.value = "month";
+  reload();
+}
+
+function setPeriodMode(mode) {
+  if (!mode || mode === periodMode.value) return;
+  periodMode.value = mode;
+  if (mode === "month") {
+    f.date_from = "";
+    f.date_to = "";
+  } else {
+    f.year = now.getFullYear();
+    f.month = now.getMonth() + 1;
+  }
   reload();
 }
 
@@ -1574,7 +1691,7 @@ async function exportExcel() {
 
 /* ─── Init ─────────────────────────────────────────────────────────── */
 onMounted(async () => {
-  await loadBranches();
+  await Promise.all([loadBranches(), loadSellers()]);
   await reload();
 });
 </script>
@@ -1637,24 +1754,55 @@ onMounted(async () => {
   color: rgb(var(--v-theme-primary));
   border-color: rgba(var(--v-theme-primary), 0.28);
 }
+.rpt-period-toggle {
+  display: flex;
+  justify-content: flex-start;
+}
+.rpt-period-toggle :deep(.v-btn-toggle) {
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rpt-period-toggle :deep(.v-btn) {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 500;
+  padding: 0 14px;
+}
+
 .rpt-filters__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px 12px;
   align-items: end;
 }
-.rpt-filter-cell { min-width: 0; }
-.rpt-filter-cell--pct {
-  background: rgba(var(--v-theme-primary), 0.04);
-  padding: 2px 4px;
-  border-radius: 10px;
+.rpt-filters__grid--main {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
-.rpt-filter-cell--actions {
+.rpt-filter-cell { min-width: 0; }
+
+.rpt-filters__actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.06);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.rpt-filter-cell--pct {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 240px;
+}
+.rpt-filters__actions-buttons {
+  display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
+  margin-left: auto;
 }
 
 /* KPIs */
@@ -1716,62 +1864,69 @@ onMounted(async () => {
 .rpt-kpi--success .rpt-kpi__value { color: rgb(var(--v-theme-success)); }
 .rpt-kpi--success .rpt-kpi__label { color: rgb(var(--v-theme-success)); opacity: 0.85; }
 
-/* INFO DEL REPORTE */
-.rpt-card--info {
-  background: rgba(var(--v-theme-primary), 0.03);
-  border-color: rgba(var(--v-theme-primary), 0.2);
-}
-.rpt-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px 18px;
-  padding: 14px 16px;
-}
-.rpt-info-row {
+/* META barra (emisor, generado, notas toggle) */
+.rpt-meta {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.rpt-info-row--notes {
-  grid-column: 1 / -1;
-}
-.rpt-info-label {
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.48);
-}
-.rpt-info-value {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  color: rgb(var(--v-theme-on-surface));
-  min-width: 0;
-}
-.rpt-info-value strong { font-weight: 500; }
-.rpt-info-sub {
-  font-size: 11.5px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+  font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.55);
+}
+.rpt-meta__left {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.rpt-meta__icon { opacity: 0.6; }
+.rpt-meta__user {
   font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.78);
 }
-.rpt-info-pct {
-  color: rgb(var(--v-theme-primary));
-  font-size: 15px !important;
-}
-.rpt-role-chip {
+.rpt-meta__role {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 1px 6px;
+  border-radius: 5px;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin-right: 4px;
+  margin-left: 3px;
+}
+.rpt-meta__sep {
+  opacity: 0.4;
+  margin: 0 4px;
+}
+.rpt-meta__notes-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.rpt-meta__notes-toggle:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  color: rgb(var(--v-theme-primary));
+}
+.rpt-meta__notes-toggle.is-active {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.32);
+  color: rgb(var(--v-theme-primary));
+}
+.rpt-meta__notes-row {
+  margin-top: -4px;
 }
 
 /* BREAKDOWNS */
@@ -2232,12 +2387,15 @@ onMounted(async () => {
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .rpt-filters { padding: 14px; gap: 12px; }
-  .rpt-filter-cell--actions { justify-content: flex-start; }
+  .rpt-filters__actions { flex-direction: column; align-items: stretch; }
+  .rpt-filter-cell--pct { min-width: 0; max-width: none; }
+  .rpt-filters__actions-buttons { margin-left: 0; justify-content: flex-start; }
   .rpt-kpi { padding: 12px; }
   .rpt-kpi__value { font-size: 18px; }
   .rpt-kpi__value--sm { font-size: 15px; }
   .rpt-branch-grid { padding: 10px; }
-  .rpt-info-grid { grid-template-columns: 1fr; padding: 12px; }
+  .rpt-meta { font-size: 11px; }
+  .rpt-meta__notes-toggle { padding: 3px 8px; font-size: 11px; }
   .rpt-breakdown-row {
     grid-template-columns: 1fr 100px;
     gap: 6px;

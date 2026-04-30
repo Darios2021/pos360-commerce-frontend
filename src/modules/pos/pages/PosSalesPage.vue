@@ -9,27 +9,6 @@
         <span class="mx-1">·</span>
         <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
       </template>
-      <v-btn
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-file-delimited-outline"
-        :disabled="loading || !sales.length"
-        title="Exportar CSV"
-        @click="exportCsv"
-      >
-        Exportar
-      </v-btn>
-      <v-btn
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-refresh"
-        :loading="loading || statsLoading"
-        @click="refreshAll"
-      >
-        Actualizar
-      </v-btn>
     </AppPageHeader>
 
     <!-- ── STATS KPI ────────────────────────────────────── -->
@@ -122,13 +101,6 @@
           <div class="lp-mc__lbl">SJ Crédito</div>
           <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.credit_sjt) : '—' }}</div>
           <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div v-if="!statsLoading && stats.ready && stats.net_by_method.other > 0" class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--other"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Otro</div>
-          <div class="lp-mc__val">{{ money(stats.net_by_method.other) }}</div>
         </div>
       </div>
     </section>
@@ -1385,23 +1357,22 @@ onMounted(async () => {
 .lp-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 .lp-kpi {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: var(--lp-radius);
   background: var(--lp-card-bg);
   border: 1px solid var(--lp-card-border);
 }
 .lp-kpi__badge {
-  width: 36px; height: 36px;
-  border-radius: 10px;
+  width: 32px; height: 32px;
+  border-radius: 9px;
   flex-shrink: 0;
   display: grid; place-items: center;
-  margin-top: 2px;
 }
 .lp-kpi__badge--primary { background: rgb(var(--v-theme-primary)); }
 .lp-kpi__badge--green   { background: rgb(var(--v-theme-success)); }
@@ -1409,23 +1380,23 @@ onMounted(async () => {
 .lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
 .lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .lp-kpi__lbl   {
-  font-size: 11px; font-weight: 400;
-  opacity: 0.5;
+  font-size: 10.5px; font-weight: 500;
+  opacity: 0.55;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .lp-kpi__val   {
-  font-size: 20px; font-weight: 500;
-  line-height: 1.2;
-  margin-top: 4px;
+  font-size: 17px; font-weight: 600;
+  line-height: 1.15;
+  margin-top: 1px;
   font-feature-settings: "tnum";
 }
-.lp-kpi__sub   { font-size: 11px; opacity: 0.4; margin-top: 3px; }
+.lp-kpi__sub   { font-size: 10.5px; opacity: 0.45; margin-top: 1px; }
 .lp-kpi__skel  {
-  height: 22px;
+  height: 20px;
   border-radius: 6px;
   background: rgba(var(--v-theme-on-surface), 0.08);
-  margin-top: 4px;
+  margin-top: 2px;
   animation: lp-pulse 1.4s ease infinite;
 }
 @keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
@@ -1434,19 +1405,20 @@ onMounted(async () => {
 .lp-methods {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 .lp-mc {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 9px;
+  padding: 8px 11px;
   border-radius: var(--lp-radius-sm);
   background: var(--lp-card-bg);
   border: 1px solid var(--lp-card-border);
+  min-height: 50px;
 }
 .lp-mc__badge {
-  width: 30px; height: 30px;
+  width: 28px; height: 28px;
   border-radius: 8px;
   flex-shrink: 0;
   display: grid; place-items: center;

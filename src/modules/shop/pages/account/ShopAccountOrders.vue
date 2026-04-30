@@ -6,7 +6,6 @@
     <header class="orders-head">
       <div class="orders-head-left">
         <div class="orders-title">Mis compras</div>
-        <div class="orders-sub">Tus pedidos y su estado.</div>
       </div>
 
       <div class="orders-actions">
@@ -44,7 +43,7 @@
 
     <!-- List -->
     <div v-else class="orders-list">
-      <article v-for="o in filtered" :key="o.id" class="order-card">
+      <article v-for="o in filtered" :key="o.id" class="order-card" @click="openDetail(o)">
         <div class="order-top">
           <div class="order-date">{{ fmtDate(o.created_at) }}</div>
 
@@ -1127,65 +1126,154 @@ onMounted(() => {
     grid-template-columns: 1fr;
     align-items: start;
   }
-
   .orders-actions {
-    grid-template-columns: 1fr auto; /* ✅ buscador 1fr + botón compacto */
+    grid-template-columns: 1fr auto;
     width: 100%;
   }
-
   .orders-search :deep(.v-field__input) {
     min-height: 36px;
     font-size: 13px;
   }
-
   .orders-refresh {
     height: 36px;
     min-height: 36px;
     padding: 0 12px;
   }
-
-  .order-body {
-    grid-template-columns: 64px 1fr;
-    grid-template-rows: auto auto;
-    gap: 12px;
-  }
-
-  .order-thumb {
-    width: 64px;
-    height: 64px;
-  }
-
-  .order-cta {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .order-btn,
-  .order-btn2 {
-    height: 34px !important;
-    min-height: 34px !important;
-    font-size: 11px !important;
-    min-width: 0 !important;
-    width: 100%;
-  }
-
   .detail-card {
     max-height: 100vh;
     border-radius: 0 !important;
   }
 }
 
-/* ultra mobile: botón full ancho si querés más “limpio” */
-@media (max-width: 420px) {
+/* ================= MOBILE app-style (≤600px) — lista densa tipo ML ================= */
+@media (max-width: 600px) {
+  /* Header de la página — el tab arriba ya dice "Mis compras" */
+  .orders-head-left { display: none; }
+  .orders-head { gap: 10px; }
+  .orders-sub { display: none; }
+  .orders-refresh { display: none !important; }  /* botón Actualizar */
   .orders-actions {
-    grid-template-columns: 1fr; /* ✅ buscador arriba */
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
-  .orders-refresh {
+
+  /* Card como bloque limpio: sin barra gris arriba */
+  .order-card {
+    border-radius: 12px;
+    box-shadow: none;
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+  .order-card:hover {
+    box-shadow: none;
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  /* Top: estado dot + total · debajo fecha pequeña */
+  .order-top {
+    background: transparent !important;
+    border-bottom: none !important;
+    padding: 12px 14px 4px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 4px !important;
+  }
+  .order-top::before {
+    content: "";
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .order-date {
+    order: 2;
+    font-size: 11.5px !important;
+    color: rgba(0, 0, 0, 0.5) !important;
+  }
+  .order-right {
+    order: 1;
+    justify-content: space-between !important;
     width: 100%;
   }
+  .order-chip {
+    /* Estado más prominente, en pill plano */
+    height: 22px !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase;
+    padding: 0 9px !important;
+  }
+  .order-total {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+  }
+
+  /* Body: imagen 56x56 + info, sin CTA grande */
+  .order-body {
+    grid-template-columns: 56px 1fr !important;
+    padding: 8px 14px 14px !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+  }
+  .order-thumb {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 9px !important;
+  }
+  .order-state { display: none; }  /* duplica con el chip de arriba */
+  .order-title { font-size: 13px !important; }
+  .order-code { display: none; }
+  .order-sub {
+    margin-top: 3px !important;
+    font-size: 11.5px !important;
+    color: rgba(0, 0, 0, 0.55) !important;
+  }
+  .order-prod {
+    margin-top: 2px !important;
+    font-weight: 500 !important;
+    color: rgba(0, 0, 0, 0.78) !important;
+    font-size: 12px !important;
+    -webkit-line-clamp: 2 !important;
+  }
+  .order-loc {
+    margin-top: 6px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    border-radius: 5px !important;
+  }
+  .order-loc :deep(.v-icon) { font-size: 12px !important; }
+  .order-loc__type { display: none; }  /* solo "Rivadavia" */
+
+  /* Botones: ocultos en mobile, todo el card es tap-target */
+  .order-cta {
+    display: none !important;
+  }
+
+  /* El propio card simula link (cursor + active feedback) */
+  .order-card {
+    cursor: pointer;
+    transition: background 0.12s, transform 0.1s;
+    position: relative;
+  }
+  .order-card:active {
+    background: rgba(0, 0, 0, 0.02);
+    transform: scale(0.99);
+  }
+  .order-card::after {
+    content: "›";
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+    color: rgba(0, 0, 0, 0.25);
+    line-height: 1;
+    font-family: system-ui;
+    pointer-events: none;
+  }
+  .order-body { padding-right: 28px !important; }  /* hueco para la flecha */
+
+  /* Lista con menos gap entre cards */
+  .orders-list { gap: 8px !important; }
 }
 </style>

@@ -10,10 +10,8 @@
     <header class="favs-head">
       <div>
         <h1 class="favs-head__title">Favoritos</h1>
-        <p class="favs-head__sub">
-          {{ items.length
-            ? `${items.length} producto${items.length === 1 ? '' : 's'} guardado${items.length === 1 ? '' : 's'}.`
-            : 'Productos que guardás para ver después.' }}
+        <p v-if="items.length" class="favs-head__sub">
+          {{ items.length }} producto{{ items.length === 1 ? '' : 's' }}
         </p>
       </div>
       <v-btn
@@ -205,4 +203,14 @@ onMounted(reload);
 }
 @media (min-width: 720px)  { .favs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1100px) { .favs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ── Mobile: tab arriba ya dice "Favoritos" — quitar duplicado ── */
+@media (max-width: 600px) {
+  .favs-head__title { display: none; }
+  .favs-head .v-btn { display: none; }  /* botón Actualizar */
+  .favs-head { margin-bottom: 8px; align-items: center; justify-content: flex-start; }
+  .favs-head__sub { font-size: 12px; }
+  .favs-grid { gap: 8px; }
+  .favs-empty { padding: 36px 20px; }
+}
 </style>

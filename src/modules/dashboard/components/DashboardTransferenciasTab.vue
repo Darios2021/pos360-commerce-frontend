@@ -33,67 +33,21 @@
         </v-btn>
       </AppPageHeader>
 
-      <!-- ── KPIs (clickeables: filtran) ── -->
-      <div class="tr-kpis">
+      <!-- ── TABS de estado (estilo iOS scrolleable) ── -->
+      <div class="tr-tabs" role="tablist">
         <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
           type="button"
-          class="tr-kpi tr-kpi--all"
-          :class="{ 'is-active': statusFilter === '' }"
-          @click="statusFilter = ''; page = 1"
+          class="tr-tab"
+          :class="{ 'is-active': statusFilter === tab.value }"
+          role="tab"
+          :aria-selected="statusFilter === tab.value"
+          @click="statusFilter = tab.value; page = 1"
         >
-          <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-view-list-outline</v-icon></div>
-          <div>
-            <div class="tr-kpi__val">{{ totalVisible }}</div>
-            <div class="tr-kpi__lbl">Todas</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          class="tr-kpi tr-kpi--draft"
-          :class="{ 'is-active': statusFilter === 'draft' }"
-          @click="statusFilter = 'draft'; page = 1"
-        >
-          <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-clock-edit-outline</v-icon></div>
-          <div>
-            <div class="tr-kpi__val">{{ statusCounts.draft || 0 }}</div>
-            <div class="tr-kpi__lbl">Borrador</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          class="tr-kpi tr-kpi--pending"
-          :class="{ 'is-active': statusFilter === 'dispatched' }"
-          @click="statusFilter = 'dispatched'; page = 1"
-        >
-          <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-truck-fast-outline</v-icon></div>
-          <div>
-            <div class="tr-kpi__val">{{ statusCounts.dispatched || 0 }}</div>
-            <div class="tr-kpi__lbl">Pendientes</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          class="tr-kpi tr-kpi--received"
-          :class="{ 'is-active': statusFilter === 'received' }"
-          @click="statusFilter = 'received'; page = 1"
-        >
-          <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-check-circle-outline</v-icon></div>
-          <div>
-            <div class="tr-kpi__val">{{ statusCounts.received || 0 }}</div>
-            <div class="tr-kpi__lbl">Recibidas</div>
-          </div>
-        </button>
-        <button
-          type="button"
-          class="tr-kpi tr-kpi--cancelled"
-          :class="{ 'is-active': statusFilter === 'cancelled' }"
-          @click="statusFilter = 'cancelled'; page = 1"
-        >
-          <div class="tr-kpi__badge"><v-icon size="18" color="white">mdi-cancel</v-icon></div>
-          <div>
-            <div class="tr-kpi__val">{{ statusCounts.cancelled || 0 }}</div>
-            <div class="tr-kpi__lbl">Canceladas</div>
-          </div>
+          <v-icon size="14" class="tr-tab__icon">{{ tab.icon }}</v-icon>
+          <span class="tr-tab__label">{{ tab.label }}</span>
+          <span v-if="tab.count > 0" class="tr-tab__badge">{{ tab.count }}</span>
         </button>
       </div>
 
@@ -688,8 +642,7 @@ function itemCount(t) {
 }
 
 // ── visible / paginated (server-driven) ───────────────────────────────────
-// El scope por sucursal ya lo aplica el backend. Mantengo este passthrough
-// para evitar tocar todas las referencias del template.
+// El scope por sucursal ya lo aplica el backend.
 const visibleTransfers = computed(() => allTransfers.value);
 const filtered  = computed(() => allTransfers.value);
 const paginated = computed(() => allTransfers.value);
@@ -706,6 +659,15 @@ const statusFilters = computed(() => [
   { value: "dispatched", label: "Pendientes", icon: "mdi-truck-fast-outline",   count: statusCounts.value.dispatched || null },
   { value: "received",   label: "Recibidas",  icon: "mdi-check-circle-outline", count: statusCounts.value.received   || null },
   { value: "cancelled",  label: "Canceladas", icon: "mdi-cancel"                                                               },
+]);
+
+// Tabs de estado para la UI mobile-first (orden y conteos)
+const statusTabs = computed(() => [
+  { value: "",           label: "Todas",      icon: "mdi-view-list-outline",     count: totalVisible.value },
+  { value: "draft",      label: "Borrador",   icon: "mdi-clock-edit-outline",    count: Number(statusCounts.value.draft || 0) },
+  { value: "dispatched", label: "Pendientes", icon: "mdi-truck-fast-outline",    count: Number(statusCounts.value.dispatched || 0) },
+  { value: "received",   label: "Recibidas",  icon: "mdi-check-circle-outline",  count: Number(statusCounts.value.received || 0) },
+  { value: "cancelled",  label: "Canceladas", icon: "mdi-cancel",                count: Number(statusCounts.value.cancelled || 0) },
 ]);
 
 const totalPages = computed(() => Math.max(1, Math.ceil((totalCount.value || 0) / (limit.value || 20))));
@@ -1020,57 +982,71 @@ onBeforeUnmount(() => {
 .tr-subtitle-filter { color: rgb(var(--v-theme-primary)); font-weight: 400; }
 .tr-bar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
-/* ── KPIs ── */
-.tr-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-}
-.tr-kpi {
+/* ── TABS DE ESTADO (estilo iOS scrolleable) ── */
+.tr-tabs {
   display: flex;
+  gap: 4px;
+  padding: 4px 2px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  margin: 0 -2px;
+}
+.tr-tabs::-webkit-scrollbar { display: none; }
+.tr-tab {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
-  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  cursor: pointer;
-  text-align: left;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
-  transition: border-color .15s, background .15s, transform .15s;
-}
-.tr-kpi:hover { border-color: rgba(var(--v-theme-primary), 0.35); }
-.tr-kpi.is-active {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.05);
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.18);
-}
-.tr-kpi__badge {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
+  cursor: pointer;
+  white-space: nowrap;
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.15);
+  position: relative;
+  transition: color 0.15s, background 0.15s;
 }
-.tr-kpi--all       .tr-kpi__badge { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-.tr-kpi--draft     .tr-kpi__badge { background: linear-gradient(135deg, #94a3b8, #64748b); }
-.tr-kpi--pending   .tr-kpi__badge { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.tr-kpi--received  .tr-kpi__badge { background: linear-gradient(135deg, #22c55e, #16a34a); }
-.tr-kpi--cancelled .tr-kpi__badge { background: linear-gradient(135deg, #ef4444, #dc2626); }
-.tr-kpi__val {
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+.tr-tab:hover { color: rgba(var(--v-theme-on-surface), 0.85); }
+.tr-tab.is-active {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
 }
-.tr-kpi__lbl {
-  font-size: 10.5px;
-  font-weight: 500;
-  opacity: 0.6;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.tr-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -7px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(var(--v-theme-primary));
+}
+.tr-tab__icon { opacity: 0.85; }
+.tr-tab__label { letter-spacing: -0.005em; }
+.tr-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.10);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+.tr-tab.is-active .tr-tab__badge {
+  background: rgba(var(--v-theme-primary), 0.16);
+  color: rgb(var(--v-theme-primary));
 }
 
 /* ── BANNER ── */
@@ -1117,6 +1093,7 @@ onBeforeUnmount(() => {
 .tr-q-field :deep(.v-field) {
   background: rgb(var(--v-theme-surface));
 }
+
 
 /* ── TABLE ── */
 .tr-table-wrap {
@@ -1554,10 +1531,21 @@ onBeforeUnmount(() => {
 
 /* ── MOBILE app-like ────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  /* Ocultar KPIs grandes — saturan la vista. El filtrado se hace via
-     el chip de estado que ya existe en la barra de búsqueda. */
-  .tr-kpis { display: none !important; }
-  /* Botón "Actualizar" del header reducido a icono (espacio en mobile) */
+  /* Tabs sticky en mobile (siguen visibles al scrollear) */
+  .tr-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: rgb(var(--v-theme-background));
+    padding: 8px 2px 8px;
+    margin: 0 -10px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .tr-tab { padding: 7px 10px; font-size: 12.5px; }
+  .tr-tab__badge { min-width: 16px; height: 14px; font-size: 9.5px; padding: 0 4px; }
+
+  /* Botón "Actualizar" del header reducido a icono */
   .tr-bar-right .v-btn--variant-tonal :deep(.v-btn__content) > span:not(.v-icon) {
     display: none;
   }

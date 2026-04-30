@@ -33,15 +33,20 @@
           </button>
         </div>
 
-        <!-- Mobile step info -->
+        <!-- Mobile step info — minimal, line-based -->
         <div class="pfp-steps-mobile" v-else>
-          <div class="pfp-step-mobile-info">
-            <span class="pfp-step-mobile-count">{{ step }}/{{ STEPS.length }}</span>
-            <span class="pfp-step-mobile-name">{{ STEPS[step - 1].title }}</span>
+          <div class="pfp-step-mobile-track">
+            <span
+              v-for="s in STEPS"
+              :key="s.value"
+              class="pfp-step-mobile-seg"
+              :class="{ active: step === s.value, done: step > s.value }"
+            />
           </div>
-          <div class="pfp-dots-row">
-            <span v-for="s in STEPS" :key="s.value" class="pfp-dot"
-              :class="{ active: step === s.value, done: step > s.value }" />
+          <div class="pfp-step-mobile-text">
+            <span class="pfp-step-mobile-counter">{{ step }} de {{ STEPS.length }}</span>
+            <span class="pfp-step-mobile-dot">·</span>
+            <span class="pfp-step-mobile-name">{{ STEPS[step - 1].title }}</span>
           </div>
         </div>
 
@@ -93,23 +98,21 @@
                 </div>
               </div>
 
-              <!-- ── ESCANEAR para autocompletar (solo mobile, solo en creación) ── -->
+              <!-- ── ESCANEAR (mobile, solo creación) — link inline minimalista ── -->
               <div v-if="!isEdit" class="pfp-scan-row">
                 <BarcodeScanButton
                   mode="emit-product"
-                  label="Escanear código de barras"
+                  label="Escanear código"
                   title="Escanear producto"
                   icon="mdi-barcode-scan"
                   color="primary"
-                  variant="flat"
-                  size="large"
-                  block
+                  variant="text"
+                  size="small"
+                  density="compact"
+                  class="pfp-scan-btn"
                   @product="onScannedProduct"
                   @scanned="onScannedCode"
                 />
-                <div class="pfp-scan-hint">
-                  Si el código ya existe en tu catálogo, completa los datos automáticamente. Si no, lo guarda como código del nuevo producto.
-                </div>
               </div>
 
               <!-- 2-col layout on lg+ -->
@@ -1858,20 +1861,22 @@ async function saveAll() {
 .pfp-step-btn.done   .pfp-step-num { background: rgb(var(--v-theme-success));  color: #fff; }
 .pfp-step-label { font-size: 13px; }
 
-/* Mobile steps — sigue en columna central del grid */
+/* Mobile steps — minimal: progress segmentado + texto inline */
 .pfp-steps-mobile {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(20, 136, 209, 0.10);
+  flex: 1;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 .v-theme--adminDark .pfp-steps-mobile,
 .v-theme--shopDark .pfp-steps-mobile,
 .v-theme--dark .pfp-steps-mobile {
-  background: rgba(20, 136, 209, 0.16);
+  background: transparent;
+  border: none;
 }
 
 /* Slot derecho del topbar — balancea el grid y aloja contexto + spinner */
@@ -1909,30 +1914,51 @@ async function saveAll() {
   color: rgb(var(--v-theme-primary));
   border-color: rgba(var(--v-theme-primary), 0.25);
 }
-.pfp-step-mobile-info { display: inline-flex; align-items: baseline; gap: 6px; }
-.pfp-step-mobile-count {
-  font-size: 11px;
+/* Track segmentado tipo Apple/Linear */
+.pfp-step-mobile-track {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.pfp-step-mobile-seg {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(20, 136, 209, 0.18);
+  transition: background 0.25s;
+}
+.pfp-step-mobile-seg.done {
+  background: rgba(20, 136, 209, 0.85);
+}
+.pfp-step-mobile-seg.active {
+  background: #1488d1;
+  box-shadow: 0 0 8px rgba(20, 136, 209, 0.5);
+}
+
+/* Texto inline */
+.pfp-step-mobile-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  padding-left: 1px;
+}
+.pfp-step-mobile-counter {
   font-weight: 600;
-  letter-spacing: 0.04em;
   color: #1488d1;
   font-variant-numeric: tabular-nums;
 }
+.pfp-step-mobile-dot {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+}
 .pfp-step-mobile-name {
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.pfp-dots-row { display: inline-flex; align-items: center; gap: 4px; }
-.pfp-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(20, 136, 209, 0.30);
-  transition: all 0.2s;
-}
-.pfp-dot.active { width: 18px; background: #1488d1; }
-.pfp-dot.done   { background: rgba(20, 136, 209, 0.65); }
 
 /* Progress bar */
 .pfp-prog-wrap { height: 3px; background: rgba(var(--v-theme-on-surface), 0.08); }
@@ -2311,29 +2337,26 @@ async function saveAll() {
   .pfp-summary-grid { grid-template-columns: 1fr; }
 }
 
-/* ══ Escaneo (solo mobile) ══ */
+/* ══ Escaneo (mobile, solo creación) — link inline minimal ══ */
 .pfp-scan-row {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-start;
+  margin: -2px 0 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.pfp-scan-btn {
+  /* link-style, sin card alrededor */
+}
+.pfp-scan-btn :deep(.v-btn__content) {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   gap: 6px;
-  padding: 12px;
-  margin-bottom: 14px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(20, 136, 209, 0.10), rgba(20, 136, 209, 0.04));
-  border: 1px dashed rgba(20, 136, 209, 0.30);
 }
-.v-theme--adminDark .pfp-scan-row,
-.v-theme--shopDark .pfp-scan-row,
-.v-theme--dark .pfp-scan-row {
-  background: linear-gradient(135deg, rgba(20, 136, 209, 0.16), rgba(20, 136, 209, 0.06));
-  border-color: rgba(20, 136, 209, 0.40);
-}
-.pfp-scan-hint {
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  text-align: center;
-  padding: 0 6px;
+.pfp-scan-btn :deep(.v-icon) {
+  font-size: 16px !important;
 }
 
 /* ══ MOBILE ══ */
