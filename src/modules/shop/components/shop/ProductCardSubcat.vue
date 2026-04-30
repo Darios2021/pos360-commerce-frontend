@@ -62,6 +62,7 @@
 import { computed, ref, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getPublicProductMedia } from "@/modules/shop/service/shop.public.api";
+import { buildProductLocation } from "@/modules/shop/utils/productSlug";
 
 const props = defineProps({ p: { type: Object, required: true } });
 
@@ -209,11 +210,8 @@ watch(() => props.p?.product_id ?? props.p?.id, () => ensureMedia());
 
 function openProduct() {
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
-  router.push({
-    name: "shopProduct",
-    params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
-    query: { branch_id },
-  });
+  const loc = buildProductLocation(props.p, { branchId: branch_id });
+  if (loc) router.push(loc);
 }
 
 /* ❤️ favorito */

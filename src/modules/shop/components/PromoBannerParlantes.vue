@@ -46,10 +46,12 @@
       <!-- RIGHT -->
       <div class="pb-right">
         <img
-          class="pb-img"
-          :src="imgSrc"
-          alt="Parlantes"
-          @error="onImgError"
+          v-for="(src, i) in productImages"
+          :key="i"
+          class="pb-product"
+          :src="src"
+          alt="Parlante"
+          @error="onImgError(i)"
         >
       </div>
 
@@ -65,20 +67,20 @@ import { useRouter } from "vue-router"
 
 const router = useRouter()
 
-const PRIMARY_IMG =
-"https://storage-files.cingulado.org/pos360/products/14/1766778670423-5fba6ded.jpeg"
-
 const PAYMENT_IMG =
 "https://storage-files.cingulado.org/pos360/media/1772493744791-665f713788e427fd.webp"
 
-const FALLBACK_IMG =
-"https://images.unsplash.com/photo-1518441984357-749f0f4a53b1?auto=format&fit=crop&w=1200&q=80"
+const PRODUCT_IMAGES_DEFAULT = [
+  "https://storage-files.cingulado.org/pos360/media/1777556355995-daa0966cad126e74.webp",
+  "https://storage-files.cingulado.org/pos360/media/1777556345695-6babc0843643597f.webp",
+]
 
-const imgSrc = ref(PRIMARY_IMG)
+const productImages = ref([...PRODUCT_IMAGES_DEFAULT])
 const paymentImgSrc = ref(PAYMENT_IMG)
 
-function onImgError(){
-  imgSrc.value = FALLBACK_IMG
+function onImgError(idx){
+  // si una imagen falla, removerla en lugar de cambiarla
+  productImages.value = productImages.value.filter((_, i) => i !== idx)
 }
 
 function go(){
@@ -98,11 +100,11 @@ function go(){
 
 .pb-grid{
   display:grid;
-  grid-template-columns:1fr 420px;
+  grid-template-columns:1fr 480px;
   align-items:center;
   padding:26px 32px;
   gap:28px;
-  min-height:190px;
+  min-height:260px;
 }
 
 .pb-left{
@@ -155,16 +157,28 @@ function go(){
 
 .pb-right{
   display:flex;
+  align-items:center;
   justify-content:flex-end;
+  gap:18px;
 }
 
-/* PARLANTE MAS GRANDE */
+.pb-product{
+  max-width:50%;
+  max-height:300px;
+  object-fit:contain;
+  display:block;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.36));
+  transition: transform 0.4s ease;
+}
 
-.pb-img{
-  width:380px;
-  height:160px;
-  object-fit:cover;
-  border-radius:16px;
+/* XAEA (segundo PNG) un poco más chico que Xiaomi */
+.pb-product:nth-child(2){
+  max-height:240px;
+  max-width:42%;
+}
+
+.pb-card:hover .pb-product{
+  transform: translateY(-2px);
 }
 
 /* tablet */
@@ -180,9 +194,14 @@ gap:18px;
 justify-content:center;
 }
 
-.pb-img{
-width:100%;
-height:180px;
+.pb-product{
+max-height:240px;
+max-width:46%;
+}
+
+.pb-product:nth-child(2){
+max-height:200px;
+max-width:40%;
 }
 
 }
@@ -199,8 +218,14 @@ padding:20px;
 font-size:30px;
 }
 
-.pb-img{
-height:170px;
+.pb-product{
+max-height:180px;
+max-width:46%;
+}
+
+.pb-product:nth-child(2){
+max-height:150px;
+max-width:40%;
 }
 
 .pb-payments-img{

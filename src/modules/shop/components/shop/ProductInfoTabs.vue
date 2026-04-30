@@ -15,6 +15,9 @@
         <!-- DESCRIPCIÓN -->
         <v-window-item value="desc" class="ti-item">
           <div v-if="descText" class="ti-text">{{ descText }}</div>
+          <div v-else-if="fallbackDescText" class="ti-text ti-text--fallback">
+            {{ fallbackDescText }}
+          </div>
           <div v-else class="ti-empty">
             Este producto todavía no tiene descripción cargada.
           </div>
@@ -80,8 +83,50 @@ const descText = computed(() => {
   return t.replace(/\s+/g, " ").trim();
 });
 
+const nameText = computed(() =>
+  asText(props.product?.name || props.product?.title || props.product?.nombre)
+);
 const brandText = computed(() => asText(props.product?.brand || props.product?.marca));
 const modelText = computed(() => asText(props.product?.model || props.product?.modelo));
+
+const fallbackDescText = computed(() => {
+  const name = nameText.value;
+  const brand = brandText.value;
+  const model = modelText.value;
+  const category = categoryText.value;
+  const subcategory = subcategoryText.value;
+  const code = codeText.value;
+
+  if (!name && !brand && !model && !category && !subcategory && !code) return "";
+
+  const parts = [];
+
+  // Frase principal: nombre + marca + modelo
+  if (name) {
+    let main = name;
+    if (brand && model) main += ` de la marca ${brand}, modelo ${model}`;
+    else if (brand) main += ` de la marca ${brand}`;
+    else if (model) main += ` modelo ${model}`;
+    parts.push(`${main}.`);
+  } else if (brand || model) {
+    const bm = [brand, model].filter(Boolean).join(" ");
+    parts.push(`Producto ${bm}.`);
+  }
+
+  // Categoría / subcategoría
+  if (category && subcategory) {
+    parts.push(`Pertenece a la categoría ${category} (${subcategory}).`);
+  } else if (category) {
+    parts.push(`Pertenece a la categoría ${category}.`);
+  } else if (subcategory) {
+    parts.push(`Subcategoría: ${subcategory}.`);
+  }
+
+  // Código
+  if (code) parts.push(`Código de referencia: ${code}.`);
+
+  return parts.join(" ");
+});
 
 const categoryText = computed(() =>
   asText(props.product?.Category?.name || props.product?.category_name)
@@ -157,6 +202,10 @@ const specsList = computed(() => {
   color: rgba(0,0,0,.78);
   line-height: 1.55;
   white-space: pre-line;
+}
+
+.ti-text--fallback {
+  color: rgba(0,0,0,.7);
 }
 
 .ti-empty {

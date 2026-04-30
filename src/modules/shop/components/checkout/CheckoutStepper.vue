@@ -26,79 +26,129 @@
                ========================= -->
           <v-stepper-window-item :value="1">
             <div class="cs-step-pad">
-              <div class="cs-title">Entrega</div>
-              <div class="cs-sub">Elegí retiro en sucursal o envío a domicilio.</div>
+              <div class="cs-kicker">Paso 1 de 3</div>
+              <div class="cs-title">¿Cómo querés recibir tu pedido?</div>
+              <div class="cs-sub">Retirá gratis en sucursal o pedí envío a tu domicilio.</div>
 
-              <v-radio-group v-model="deliveryMode" density="compact" class="mt-2">
-                <v-radio label="Retiro en sucursal" value="pickup" />
-                <!-- ✅ FIX: DB usa delivery (NO shipping) -->
-                <v-radio label="Envío a domicilio" value="delivery" />
-              </v-radio-group>
+              <!-- ✅ Cards visuales en vez de radio plano -->
+              <div class="cs-mode-grid mt-3">
+                <button
+                  type="button"
+                  class="cs-mode"
+                  :class="{ 'is-active': deliveryMode === 'pickup' }"
+                  @click="deliveryMode = 'pickup'"
+                >
+                  <div class="cs-mode-head">
+                    <div class="cs-mode-ico cs-mode-ico--pickup">
+                      <v-icon size="22">mdi-storefront-outline</v-icon>
+                    </div>
+                    <span class="cs-mode-badge">Sin costo</span>
+                  </div>
+                  <div class="cs-mode-title">Retiro en sucursal</div>
+                  <div class="cs-mode-sub">
+                    Te avisamos cuando esté listo. Lo retirás en el día.
+                  </div>
+                  <div class="cs-mode-check" v-if="deliveryMode === 'pickup'">
+                    <v-icon size="16">mdi-check-circle</v-icon>
+                    Seleccionado
+                  </div>
+                </button>
 
-              <v-divider class="my-4" />
+                <button
+                  type="button"
+                  class="cs-mode"
+                  :class="{ 'is-active': deliveryMode === 'delivery' }"
+                  @click="deliveryMode = 'delivery'"
+                >
+                  <div class="cs-mode-head">
+                    <div class="cs-mode-ico cs-mode-ico--delivery">
+                      <v-icon size="22">mdi-truck-fast-outline</v-icon>
+                    </div>
+                    <span class="cs-mode-badge cs-mode-badge--alt">Cotizá tu envío</span>
+                  </div>
+                  <div class="cs-mode-title">Envío a domicilio</div>
+                  <div class="cs-mode-sub">
+                    Llega a tu casa. Calculamos costo según tu zona.
+                  </div>
+                  <div class="cs-mode-check" v-if="deliveryMode === 'delivery'">
+                    <v-icon size="16">mdi-check-circle</v-icon>
+                    Seleccionado
+                  </div>
+                </button>
+              </div>
 
               <!-- PICKUP -->
-              <div v-if="deliveryMode === 'pickup'" class="cs-box">
-                <div class="cs-box-title">Elegí sucursal</div>
-                <div class="cs-box-sub">
-                  Solo mostramos sucursales que pueden cumplir el carrito completo.
+              <div v-if="deliveryMode === 'pickup'" class="cs-box mt-4">
+                <div class="cs-box-head">
+                  <div>
+                    <div class="cs-box-title">Elegí tu sucursal de retiro</div>
+                    <div class="cs-box-sub">Solo mostramos sucursales con stock completo del carrito.</div>
+                  </div>
                 </div>
 
                 <v-alert
                   v-if="pickupBranches.length === 0"
                   type="warning"
                   variant="tonal"
-                  class="rounded-lg mt-2"
+                  class="rounded-lg mt-3"
                 >
                   No encontramos una sucursal con stock para <b>todos</b> los productos.
-                  Probá <b>envío a domicilio</b> o revisá el carrito.
+                  Probá con <b>envío a domicilio</b> o revisá el carrito.
                 </v-alert>
 
-                <v-select
-                  v-model="deliveryPickupBranchId"
-                  :items="pickupBranches"
-                  item-title="name"
-                  item-value="id"
-                  label="Sucursal"
-                  variant="outlined"
-                  density="comfortable"
-                  class="mt-3"
-                  :disabled="pickupBranches.length === 0"
-                />
+                <div v-else class="mt-3">
+                  <BranchPickerCards
+                    v-model="deliveryPickupBranchId"
+                    :branches="pickupBranches"
+                  />
+                </div>
 
-                <div v-if="deliveryPickupBranchId" class="cs-hint">
-                  Retiro gratis. Te avisamos cuando esté listo.
+                <div v-if="deliveryPickupBranchId" class="cs-hint cs-hint--ok">
+                  <v-icon size="14">mdi-check</v-icon>
+                  Retiro gratis · te avisamos cuando esté listo.
                 </div>
               </div>
 
               <!-- DELIVERY -->
-              <div v-else class="cs-box">
-                <div class="cs-box-title">Dirección de envío</div>
+              <div v-else class="cs-box mt-4">
+                <div class="cs-box-head">
+                  <div>
+                    <div class="cs-box-title">Dirección de envío</div>
+                    <div class="cs-box-sub">Completá la dirección y calculamos el costo del envío.</div>
+                  </div>
+                </div>
 
                 <v-row class="mt-1">
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="deliveryContactName"
-                      label="Nombre receptor"
+                      label="Nombre del receptor"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-account-outline"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="deliveryShipPhone"
-                      label="Teléfono receptor"
+                      label="Teléfono del receptor"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-phone-outline"
                     />
                   </v-col>
 
                   <v-col cols="12">
                     <v-text-field
                       v-model="deliveryAddress1"
-                      label="Dirección (calle + número)"
+                      label="Calle y número"
+                      placeholder="Ej. Av. Libertador 1234"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-home-outline"
                     />
                   </v-col>
 
@@ -108,6 +158,7 @@
                       label="Código postal"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
                     />
                   </v-col>
                   <v-col cols="12" md="4">
@@ -116,6 +167,7 @@
                       label="Ciudad"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
                     />
                   </v-col>
                   <v-col cols="12" md="4">
@@ -124,6 +176,7 @@
                       label="Provincia"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
                     />
                   </v-col>
                 </v-row>
@@ -132,26 +185,38 @@
                   v-if="shippingQuote?.status === 'ok'"
                   type="success"
                   variant="tonal"
-                  class="rounded-lg mt-2"
+                  class="rounded-lg mt-2 cs-quote-alert"
                 >
-                  Envío: <b>$ {{ fmtMoney(shippingQuote.amount) }}</b>
-                  <span v-if="shippingQuote.eta" class="cs-muted">· {{ shippingQuote.eta }}</span>
+                  <div class="cs-quote-row">
+                    <div>
+                      <div class="cs-quote-title">Envío: $ {{ fmtMoney(shippingQuote.amount) }}</div>
+                      <div v-if="shippingQuote.eta" class="cs-quote-eta">{{ shippingQuote.eta }}</div>
+                    </div>
+                  </div>
                 </v-alert>
 
                 <div class="d-flex justify-end mt-3">
-                  <v-btn variant="tonal" :disabled="!canQuoteShipping" @click="$emit('quote-shipping')">
+                  <v-btn
+                    variant="tonal"
+                    color="primary"
+                    class="cs-quote-btn"
+                    :disabled="!canQuoteShipping"
+                    @click="$emit('quote-shipping')"
+                  >
                     <v-icon start>mdi-truck-fast-outline</v-icon>
                     Calcular envío
                   </v-btn>
                 </div>
               </div>
 
-              <v-divider class="my-4" />
-
               <!-- BUYER -->
-              <div class="cs-box">
-                <div class="cs-box-title">Datos del comprador</div>
-                <div class="cs-box-sub">Necesitamos estos datos para generar el pedido y contactarte.</div>
+              <div class="cs-box mt-4">
+                <div class="cs-box-head">
+                  <div>
+                    <div class="cs-box-title">Datos de contacto</div>
+                    <div class="cs-box-sub">Para generar el pedido y avisarte cuando esté listo.</div>
+                  </div>
+                </div>
 
                 <v-row class="mt-1">
                   <v-col cols="12" md="6">
@@ -160,14 +225,19 @@
                       label="Nombre y apellido"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-account-outline"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="buyerEmail"
                       label="Email"
+                      type="email"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-email-outline"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -176,6 +246,8 @@
                       label="Teléfono"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-phone-outline"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -184,13 +256,15 @@
                       label="DNI / CUIT (opcional)"
                       variant="outlined"
                       density="comfortable"
+                      class="cs-input"
+                      prepend-inner-icon="mdi-card-account-details-outline"
                     />
                   </v-col>
                 </v-row>
 
                 <v-alert v-if="buyerErrors?.length" type="warning" variant="tonal" class="rounded-lg mt-2">
-                  <div class="font-weight-bold mb-1">Faltan datos:</div>
-                  <ul class="ma-0 pl-5">
+                  <div class="cs-alert-title">Faltan datos:</div>
+                  <ul class="ma-0 pl-5 cs-alert-list">
                     <li v-for="(e, i) in buyerErrors" :key="i">{{ e }}</li>
                   </ul>
                 </v-alert>
@@ -198,8 +272,8 @@
 
               <div class="cs-actions">
                 <div />
-                <v-btn color="primary" class="cs-cta" :disabled="!canGoPayment" @click="$emit('next-from-delivery')">
-                  Continuar
+                <v-btn color="primary" class="cs-cta" size="large" :disabled="!canGoPayment" @click="$emit('next-from-delivery')">
+                  Continuar a pago
                   <v-icon end>mdi-arrow-right</v-icon>
                 </v-btn>
               </div>
@@ -230,135 +304,182 @@
                ========================= -->
           <v-stepper-window-item :value="3">
             <div class="cs-step-pad">
-              <div class="cs-title">Revisión</div>
-              <div class="cs-sub">Verificá todo antes de confirmar.</div>
+              <div class="cs-kicker">Paso 3 de 3</div>
+              <div class="cs-title">Revisá tu compra</div>
+              <div class="cs-sub">Verificá los datos antes de confirmar.</div>
 
-              <v-card variant="outlined" class="rounded-lg mt-3 cs-review-card">
-                <v-card-text>
-                  <!-- PRODUCTOS -->
-                  <div class="cs-box-title">Productos</div>
+              <div class="cs-review">
+                <!-- PRODUCTOS -->
+                <section class="cs-section">
+                  <header class="cs-section-head">
+                    <div class="cs-section-ico cs-section-ico--products">
+                      <v-icon size="16">mdi-package-variant-closed</v-icon>
+                    </div>
+                    <div>
+                      <div class="cs-section-kicker">Detalle</div>
+                      <div class="cs-section-title">Productos</div>
+                    </div>
+                  </header>
 
                   <v-alert v-if="cartItems.length === 0" type="warning" variant="tonal" class="rounded-lg mt-2">
                     No hay productos en el carrito.
                   </v-alert>
 
-                  <div v-else class="cs-lines mt-2">
+                  <div v-else class="cs-lines">
                     <div v-for="it in cartItems" :key="itKey(it)" class="cs-line">
                       <div class="cs-line-left">
-                        <div class="cs-line-title">{{ it.name || it.title || "Producto" }}</div>
-                        <div class="cs-line-sub">
-                          Cantidad: <b>{{ toNum(it.qty, 1) }}</b>
+                        <div class="cs-line-thumb">
+                          <img v-if="it.image_url || it.image" :src="it.image_url || it.image" :alt="it.name || ''" />
+                          <v-icon v-else size="18" color="grey-lighten-1">mdi-image-off-outline</v-icon>
+                        </div>
+                        <div class="cs-line-info">
+                          <div class="cs-line-title">{{ it.name || it.title || "Producto" }}</div>
+                          <div class="cs-line-sub">
+                            <span class="cs-line-qty">{{ toNum(it.qty, 1) }}×</span>
+                            <span>$ {{ fmtMoney(unitPrice(it)) }} c/u</span>
+                          </div>
                         </div>
                       </div>
 
-                      <div class="cs-line-right">
-                        <div class="cs-line-price">$ {{ fmtMoney(unitPrice(it)) }}</div>
-                        <div class="cs-line-sub">
-                          Subtotal: <b>$ {{ fmtMoney(lineTotal(it)) }}</b>
-                        </div>
-                      </div>
+                      <div class="cs-line-right">$ {{ fmtMoney(lineTotal(it)) }}</div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- COMPRADOR -->
+                <section class="cs-section">
+                  <header class="cs-section-head">
+                    <div class="cs-section-ico cs-section-ico--buyer">
+                      <v-icon size="16">mdi-account-outline</v-icon>
+                    </div>
+                    <div>
+                      <div class="cs-section-kicker">Contacto</div>
+                      <div class="cs-section-title">Comprador</div>
+                    </div>
+                  </header>
+
+                  <div class="cs-info-box">
+                    <div class="cs-info-name">{{ buyer?.name || "—" }}</div>
+                    <div class="cs-info-row">
+                      <v-icon size="13">mdi-email-outline</v-icon>
+                      <span>{{ buyer?.email || "—" }}</span>
+                    </div>
+                    <div class="cs-info-row">
+                      <v-icon size="13">mdi-phone-outline</v-icon>
+                      <span>{{ buyer?.phone || "—" }}</span>
+                    </div>
+                    <div v-if="buyer?.doc_number" class="cs-info-row">
+                      <v-icon size="13">mdi-card-account-details-outline</v-icon>
+                      <span>DNI / CUIT: {{ buyer.doc_number }}</span>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ENTREGA -->
+                <section class="cs-section">
+                  <header class="cs-section-head">
+                    <div class="cs-section-ico cs-section-ico--delivery">
+                      <v-icon size="16">{{ delivery?.mode === 'pickup' ? 'mdi-storefront-outline' : 'mdi-truck-fast-outline' }}</v-icon>
+                    </div>
+                    <div>
+                      <div class="cs-section-kicker">Entrega</div>
+                      <div class="cs-section-title">{{ delivery?.mode === 'pickup' ? 'Retiro en sucursal' : 'Envío a domicilio' }}</div>
+                    </div>
+                  </header>
+
+                  <div v-if="delivery?.mode === 'pickup'" class="cs-info-box">
+                    <div class="cs-info-name">{{ selectedBranchName || pickupBranchName || "—" }}</div>
+                    <div class="cs-info-hint cs-info-hint--ok">
+                      <v-icon size="13">mdi-check</v-icon>
+                      Retiro gratis · te avisamos cuando esté listo.
                     </div>
                   </div>
 
-                  <v-divider class="my-3" />
-
-                  <!-- COMPRADOR -->
-                  <div class="cs-box-title">Comprador</div>
-                  <div class="text-body-2">
-                    <b>{{ buyer?.name || "—" }}</b>
-                    <div class="cs-muted">
-                      {{ buyer?.email || "—" }} · {{ buyer?.phone || "—" }}
+                  <div v-else class="cs-info-box">
+                    <div class="cs-info-name">{{ delivery?.address1 || "—" }}</div>
+                    <div class="cs-info-row">
+                      <v-icon size="13">mdi-map-marker-outline</v-icon>
+                      <span>{{ delivery?.city || "—" }}, {{ delivery?.province || "—" }} · CP {{ delivery?.zip || "—" }}</span>
                     </div>
-                    <div v-if="buyer?.doc_number" class="cs-muted">
-                      DNI/CUIT: {{ buyer.doc_number }}
+                    <div class="cs-info-row">
+                      <v-icon size="13">mdi-account-outline</v-icon>
+                      <span>{{ delivery?.contact_name || buyer?.name || "—" }} · {{ delivery?.ship_phone || buyer?.phone || "—" }}</span>
                     </div>
-                  </div>
-
-                  <v-divider class="my-3" />
-
-                  <!-- ENTREGA -->
-                  <div class="cs-box-title">Entrega</div>
-
-                  <div class="text-body-2" v-if="delivery?.mode === 'pickup'">
-                    Retiro en sucursal:
-                    <b>{{ selectedBranchName || pickupBranchName || "—" }}</b>
-                    <div class="cs-muted mt-1">Retiro gratis. Te avisamos cuando esté listo.</div>
-                  </div>
-
-                  <div class="text-body-2" v-else>
-                    Envío a: <b>{{ delivery?.address1 || "—" }}</b>,
-                    {{ delivery?.city || "—" }}, {{ delivery?.province || "—" }},
-                    CP {{ delivery?.zip || "—" }}
-
-                    <div class="cs-muted mt-1">
-                      {{ delivery?.contact_name || buyer?.name || "—" }} ·
-                      {{ delivery?.ship_phone || buyer?.phone || "—" }}
-                    </div>
-
-                    <div v-if="shippingQuote?.status === 'ok'" class="cs-muted mt-1">
-                      Envío: <b>$ {{ fmtMoney(shippingQuote.amount) }}</b>
+                    <div v-if="shippingQuote?.status === 'ok'" class="cs-info-hint">
+                      <v-icon size="13">mdi-truck-fast-outline</v-icon>
+                      Envío: <strong>$ {{ fmtMoney(shippingQuote.amount) }}</strong>
                       <span v-if="shippingQuote.eta">· {{ shippingQuote.eta }}</span>
                     </div>
-                    <div v-else class="cs-muted mt-1">
-                      Envío: <b>—</b>
+                  </div>
+                </section>
+
+                <!-- PAGO -->
+                <section class="cs-section">
+                  <header class="cs-section-head">
+                    <div class="cs-section-ico cs-section-ico--payment">
+                      <v-icon size="16">{{ paymentIcon }}</v-icon>
+                    </div>
+                    <div>
+                      <div class="cs-section-kicker">Pago</div>
+                      <div class="cs-section-title">{{ paymentLabel || paymentMethodFallback }}</div>
+                    </div>
+                  </header>
+
+                  <div class="cs-info-box">
+                    <div v-if="payment?.method_code === 'transfer' && payment?.reference" class="cs-info-row">
+                      <v-icon size="13">mdi-receipt-text-outline</v-icon>
+                      <span>Ref. comprobante: {{ payment.reference }}</span>
+                    </div>
+                    <div v-if="payment?.method_code === 'mercadopago'" class="cs-info-hint">
+                      <v-icon size="13">mdi-information-outline</v-icon>
+                      Te redirigimos a Mercado Pago al confirmar.
+                    </div>
+                    <div v-if="payment?.method_code === 'seller'" class="cs-info-hint">
+                      <v-icon size="13">mdi-information-outline</v-icon>
+                      El pago se coordina con el vendedor.
+                    </div>
+                    <div v-if="payment?.method_code === 'credit_sjt'" class="cs-info-hint">
+                      <v-icon size="13">mdi-information-outline</v-icon>
+                      Reservás el pedido online y completás el crédito en tienda.
+                    </div>
+                    <div v-if="payment?.method_code === 'cash'" class="cs-info-hint">
+                      <v-icon size="13">mdi-information-outline</v-icon>
+                      Pagás en efectivo al retirar o recibir el pedido.
                     </div>
                   </div>
+                </section>
 
-                  <v-divider class="my-3" />
-
-                  <!-- PAGO -->
-                  <div class="cs-box-title">Pago</div>
-                  <div class="text-body-2">
-                    Método: <b>{{ paymentLabel || paymentMethodFallback }}</b>
-
-                    <div v-if="payment?.method_code === 'transfer' && payment?.reference" class="cs-muted mt-1">
-                      Ref/Comp.: {{ payment.reference }}
-                    </div>
-                    <div v-if="payment?.method_code === 'mercadopago'" class="cs-muted mt-1">
-                      Se redirigirá a Mercado Pago al confirmar.
-                    </div>
-                    <div v-if="payment?.method_code === 'seller'" class="cs-muted mt-1">
-                      Se coordina el pago con el vendedor.
-                    </div>
-                    <div v-if="payment?.method_code === 'credit_sjt'" class="cs-muted mt-1">
-                      Reservás el pedido y finalizás el crédito en tienda.
-                    </div>
+                <!-- TOTALES -->
+                <section class="cs-totals-section">
+                  <div class="cs-total-row">
+                    <span class="cs-total-label">Subtotal productos</span>
+                    <span class="cs-total-value">$ {{ fmtMoney(subtotalProducts) }}</span>
                   </div>
 
-                  <v-divider class="my-3" />
-
-                  <!-- TOTALES -->
-                  <div class="cs-totals">
-                    <div class="cs-total-row">
-                      <div class="cs-muted">Subtotal productos</div>
-                      <div><b>$ {{ fmtMoney(subtotalProducts) }}</b></div>
-                    </div>
-
-                    <div class="cs-total-row">
-                      <div class="cs-muted">Envío</div>
-                      <div>
-                        <b v-if="delivery?.mode === 'pickup'">Gratis</b>
-                        <b v-else>$ {{ fmtMoney(shippingAmount) }}</b>
-                      </div>
-                    </div>
-
-                    <div class="cs-total-row cs-grand">
-                      <div>Total</div>
-                      <div>$ {{ fmtMoney(grandTotal) }}</div>
-                    </div>
+                  <div class="cs-total-row">
+                    <span class="cs-total-label">Envío</span>
+                    <span class="cs-total-value">
+                      <span v-if="delivery?.mode === 'pickup'" class="cs-total-free">Gratis</span>
+                      <template v-else>$ {{ fmtMoney(shippingAmount) }}</template>
+                    </span>
                   </div>
-                </v-card-text>
-              </v-card>
+
+                  <div class="cs-total-row cs-grand">
+                    <span>Total</span>
+                    <span class="cs-grand-amount">$ {{ fmtMoney(grandTotal) }}</span>
+                  </div>
+                </section>
+              </div>
 
               <v-alert v-if="submitError" type="error" variant="tonal" class="rounded-lg mt-3">
                 {{ submitError }}
               </v-alert>
 
               <div class="cs-actions">
-                <v-btn variant="tonal" @click="$emit('prev')">
-                  <v-icon start>mdi-arrow-left</v-icon>
-                  Volver
-                </v-btn>
+                <button type="button" class="cs-back-link" @click="$emit('prev')">
+                  <v-icon size="14">mdi-arrow-left</v-icon>
+                  <span>Volver al pago</span>
+                </button>
 
                 <v-btn
                   color="primary"
@@ -383,6 +504,7 @@
 <script setup>
 import { computed, watch } from "vue";
 import CheckoutPaymentStep from "@/modules/shop/components/checkout/CheckoutPaymentStep.vue";
+import BranchPickerCards from "@/modules/shop/components/checkout/BranchPickerCards.vue";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
 const cart = useShopCartStore();
@@ -627,6 +749,16 @@ const pickupBranchName = computed(() => {
   return b?.name || "";
 });
 
+const paymentIcon = computed(() => {
+  const code = String(props.payment?.method_code || "").toLowerCase();
+  if (code === "mercadopago") return "mdi-credit-card-outline";
+  if (code === "transfer") return "mdi-bank-outline";
+  if (code === "cash") return "mdi-cash-multiple";
+  if (code === "credit_sjt") return "mdi-file-document-outline";
+  if (code === "seller") return "mdi-account-tie-outline";
+  return "mdi-credit-card-outline";
+});
+
 const paymentMethodFallback = computed(() => {
   const code = toStr(props.payment?.method_code).toLowerCase();
   if (code === "mercadopago") return "Mercado Pago";
@@ -649,10 +781,20 @@ function fmtMoney(v) {
 </script>
 
 <style scoped>
+/* =========================
+   INTER + base
+========================= */
+.cs-card,
+.cs-card :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
 .cs-card {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0.005em;
   border-radius: 12px;
   border: none !important;
   box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* ✅ clave: el v-card-text default mete padding; lo anulamos acá */
@@ -660,53 +802,252 @@ function fmtMoney(v) {
   padding: 0 !important;
 }
 
+.cs-kicker {
+  font-size: 11px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: 6px;
+}
+
 .cs-title {
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: 540;
+  font-size: 22px;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.92);
 }
 .cs-sub {
-  margin-top: 2px;
-  color: #737373;
-  font-size: 13px;
+  margin-top: 4px;
+  color: rgba(17, 24, 39, 0.6);
+  font-size: 13.5px;
+  font-weight: 400;
 }
 .cs-muted {
-  color: #737373;
+  color: rgba(17, 24, 39, 0.55);
   font-size: 12.5px;
 }
 
-.cs-box {
-  border: 1px solid #e6e6e6;
+/* =========================
+   Cards de modo (pickup / delivery)
+========================= */
+.cs-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cs-mode {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
   background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  margin-top: 10px;
+  border: 1.5px solid rgba(17, 24, 39, 0.1);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+.cs-mode:hover {
+  border-color: rgba(21, 101, 192, 0.32);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+.cs-mode.is-active {
+  border-color: rgb(var(--v-theme-primary));
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.08) 100%);
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+}
+
+.cs-mode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cs-mode-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(21, 101, 192, 0.10);
+}
+.cs-mode-ico--pickup {
+  background: rgba(0, 153, 102, 0.10);
+  color: #009966;
+}
+.cs-mode-ico--delivery {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgb(var(--v-theme-primary));
+}
+.cs-mode-badge {
+  font-size: 11px;
+  font-weight: 460;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 153, 102, 0.12);
+  color: #009966;
+}
+.cs-mode-badge--alt {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgb(var(--v-theme-primary));
+}
+.cs-mode-title {
+  font-weight: 520;
+  font-size: 15px;
+  color: rgba(17, 24, 39, 0.9);
+  margin-top: 4px;
+  letter-spacing: -0.005em;
+}
+.cs-mode-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.6);
+  line-height: 1.4;
+}
+.cs-mode-check {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 460;
+  color: rgb(var(--v-theme-primary));
+}
+
+/* =========================
+   Cajas internas
+========================= */
+.cs-box {
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+}
+.cs-box-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 .cs-box-title {
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: 520;
+  font-size: 15px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
 }
 .cs-box-sub {
-  color: #737373;
+  color: rgba(17, 24, 39, 0.55);
   font-size: 12.5px;
-  margin-top: 2px;
+  margin-top: 3px;
+  font-weight: 400;
 }
 .cs-hint {
-  margin-top: 8px;
-  color: #737373;
+  margin-top: 10px;
+  color: rgba(17, 24, 39, 0.6);
   font-size: 12.5px;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cs-hint--ok {
+  color: #009966;
+  font-weight: 460;
+}
+
+/* Inputs Vuetify – redondeo más suave + foco azul */
+.cs-input :deep(.v-field) {
+  border-radius: 10px;
+}
+.cs-input :deep(.v-field--variant-outlined .v-field__outline__start),
+.cs-input :deep(.v-field--variant-outlined .v-field__outline__end),
+.cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::before),
+.cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::after) {
+  border-color: rgba(17, 24, 39, 0.14);
+}
+.cs-input :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 1;
+}
+
+/* Quote alert */
+.cs-quote-alert {
+  border-radius: 12px !important;
+}
+.cs-quote-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cs-quote-title {
+  font-weight: 520;
+  font-size: 14px;
+}
+.cs-quote-eta {
+  font-size: 12.5px;
+  color: rgba(17, 24, 39, 0.6);
+  font-weight: 400;
+  margin-top: 1px;
+}
+.cs-quote-btn {
+  border-radius: 10px;
+  text-transform: none;
+  font-weight: 460;
+  letter-spacing: 0.005em;
+}
+
+.cs-alert-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+  font-size: 13.5px;
+}
+.cs-alert-list {
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .cs-actions {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 20px;
   align-items: center;
 }
 .cs-cta {
-  border-radius: 10px;
+  border-radius: 12px;
   text-transform: none;
   font-weight: 500;
+  letter-spacing: 0.005em;
+  padding: 0 20px;
+}
+
+.cs-back-link {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 460;
+  letter-spacing: 0.005em;
+  color: rgba(17, 24, 39, 0.62);
+  transition: color 0.16s ease, gap 0.16s ease;
+}
+.cs-back-link:hover {
+  color: rgb(var(--v-theme-primary));
+  gap: 8px;
 }
 
 /* =========================
@@ -748,64 +1089,249 @@ function fmtMoney(v) {
   padding: 16px;
 }
 
-.cs-review-card {
-  border: 1px solid #e6e6e6 !important;
-  box-shadow: none !important;
-}
-.cs-lines {
+/* =========================
+   Review (Paso 3) — secciones con icono + tarjeta interna
+========================= */
+.cs-review {
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-.cs-line {
+
+.cs-section + .cs-section {
+  padding-top: 14px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.cs-section-head {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px dashed #eaeaea;
+  margin-bottom: 12px;
 }
-.cs-line:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.cs-line-left {
-  min-width: 0;
-}
-.cs-line-title {
-  font-weight: 500;
-  font-size: 13.5px;
-  line-height: 1.15;
-  word-break: break-word;
-}
-.cs-line-right {
-  text-align: right;
+.cs-section-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
 }
-.cs-line-price {
-  font-weight: 500;
+.cs-section-ico--products {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
 }
-.cs-line-sub {
-  color: #737373;
-  font-size: 12.5px;
-  margin-top: 2px;
+.cs-section-ico--buyer {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
 }
-.cs-totals {
+.cs-section-ico--delivery {
+  background: rgba(0, 153, 102, 0.12);
+  color: #009966;
+}
+.cs-section-ico--payment {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgb(var(--v-theme-primary));
+}
+.cs-section-kicker {
+  font-size: 10.5px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.cs-section-title {
+  font-weight: 540;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  color: rgba(17, 24, 39, 0.92);
+}
+
+/* Items de productos */
+.cs-lines {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+.cs-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(17, 24, 39, 0.025);
+  border-radius: 10px;
+}
+.cs-line-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cs-line-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.cs-line-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.cs-line-info {
+  min-width: 0;
+}
+.cs-line-title {
+  font-weight: 460;
+  font-size: 13.5px;
+  line-height: 1.25;
+  color: rgba(17, 24, 39, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.cs-line-sub {
+  color: rgba(17, 24, 39, 0.55);
+  font-size: 12px;
+  margin-top: 2px;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cs-line-qty {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 500;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.01em;
+}
+.cs-line-right {
+  text-align: right;
+  flex: 0 0 auto;
+  font-weight: 540;
+  font-size: 14.5px;
+  color: rgba(17, 24, 39, 0.94);
+  white-space: nowrap;
+}
+
+/* Info boxes (comprador / entrega / pago) */
+.cs-info-box {
+  background: rgba(17, 24, 39, 0.025);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-info-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.94);
+  letter-spacing: -0.005em;
+}
+.cs-info-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.65);
+}
+.cs-info-row .v-icon {
+  color: rgba(17, 24, 39, 0.4);
+  flex: 0 0 auto;
+}
+.cs-info-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: rgba(21, 101, 192, 0.06);
+  border-radius: 8px;
+  font-size: 12px;
+  color: rgba(21, 101, 192, 0.95);
+  font-weight: 460;
+  align-self: flex-start;
+}
+.cs-info-hint--ok {
+  background: rgba(0, 153, 102, 0.08);
+  color: #009966;
+}
+.cs-info-hint strong {
+  font-weight: 540;
+}
+
+/* Totales */
+.cs-totals-section {
+  margin-top: 6px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.07) 100%);
+  border: 1px solid rgba(21, 101, 192, 0.10);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .cs-total-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  align-items: center;
+}
+.cs-total-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.65);
+}
+.cs-total-value {
+  font-size: 13.5px;
+  font-weight: 460;
+  color: rgba(17, 24, 39, 0.92);
+}
+.cs-total-free {
+  color: #009966;
+  font-weight: 500;
 }
 .cs-grand {
-  margin-top: 6px;
-  padding-top: 10px;
-  border-top: 1px solid #e6e6e6;
-  font-weight: 500;
+  padding-top: 12px;
+  border-top: 1px solid rgba(21, 101, 192, 0.14);
+  font-weight: 540;
   font-size: 16px;
+  color: rgba(17, 24, 39, 0.94);
+  letter-spacing: -0.01em;
+}
+.cs-grand-amount {
+  font-weight: 540;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+  color: rgba(17, 24, 39, 0.96);
+}
+
+@media (max-width: 700px) {
+  .cs-mode-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
@@ -821,9 +1347,15 @@ function fmtMoney(v) {
     text-align: left;
   }
 
-  /* mobile: un toque menos padding lateral para “más ancho visual” */
+  /* mobile: padding interno más cómodo */
   .cs-step-pad {
     padding: 14px 12px;
+  }
+  .cs-box {
+    padding: 14px;
+  }
+  .cs-title {
+    font-size: 19px;
   }
 }
 </style>

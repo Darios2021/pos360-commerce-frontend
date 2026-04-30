@@ -93,6 +93,7 @@ import { useShopCartStore } from "../store/shopCart.store";
 
 // ✅ OG + prerender
 import { setOgAndReady, absoluteUrlFromLocation } from "../utils/ogPrerender";
+import { extractProductId, buildProductPath, hasSlugInPath } from "../utils/productSlug";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,7 +189,9 @@ function pickOgImage(p) {
 
 const shareUrl = computed(() => {
   const q = new URLSearchParams(route.query).toString();
-  const base = `/shop/product/${route.params.id}`;
+  // Si ya tenemos el producto, usar el path bonito (con slug); sino, el param crudo.
+  const pretty = product.value ? buildProductPath(product.value) : "";
+  const base = `/shop/product/${pretty || route.params.id}`;
   return absoluteUrlFromLocation(q ? `${base}?${q}` : base);
 });
 
@@ -341,12 +344,17 @@ async function load() {
   showRoutePreloader.value = true;
 
   try {
-    const id = route.params.id;
+    // route.params.id puede venir como id puro ("356") o con slug ("nombre-356")
+    const id = extractProductId(route.params.id);
     const p = await loadProductWithRetry(id, loadId);
 
     if (!p || loadId !== activeLoadId) return;
 
     product.value = p;
+
+    // si la URL vino "pelada" sin slug, embellecerla con el nombre
+    // sin recargar el componente (replaceState).
+    maybeUpgradeUrlWithSlug(p);
 
     await applyOgForProduct(p);
 
@@ -380,9 +388,29 @@ function retry() {
   load();
 }
 
-// ✅ 1 sola fuente de verdad: watch immediate (evita doble load con onMounted)
+/**
+ * Si la URL actual viene con id pelado (sin slug) y ya tenemos el producto,
+ * reescribe la URL agregando el slug-name. Usa replaceState para no disparar
+ * el watcher ni provocar un reload del componente.
+ */
+function maybeUpgradeUrlWithSlug(p) {
+  if (!p) return;
+  const currentParam = String(route.params.id || "");
+  if (hasSlugInPath(currentParam)) return; // ya tiene slug, nada que hacer
+  const pretty = buildProductPath(p);
+  if (!pretty || pretty === currentParam) return;
+
+  const q = new URLSearchParams(route.query).toString();
+  const newPath = `/shop/product/${pretty}${q ? `?${q}` : ""}${window.location.hash || ""}`;
+  try {
+    window.history.replaceState(window.history.state, "", newPath);
+  } catch {}
+}
+
+// ✅ 1 sola fuente de verdad: watch immediate. Disparamos sólo cuando cambia el
+// id real extraído del param (no cuando el slug se actualice por replaceState).
 watch(
-  () => route.params.id,
+  () => extractProductId(route.params.id),
   () => load(),
   { immediate: true }
 );

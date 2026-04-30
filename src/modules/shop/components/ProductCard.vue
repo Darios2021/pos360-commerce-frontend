@@ -289,13 +289,14 @@ function saveCurrentScrollSnapshot() {
 }
 
 /* nav */
-const productLocation = computed(() => ({
-  name: "shopProduct",
-  params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
-  query: {
-    branch_id: route.query.branch_id ? String(route.query.branch_id) : "3",
-  },
-}));
+import { buildProductLocation } from "@/modules/shop/utils/productSlug";
+
+const productLocation = computed(
+  () =>
+    buildProductLocation(props.p, {
+      branchId: route.query.branch_id || "3",
+    }) || { name: "shopProduct", params: { id: "" } }
+);
 
 function openProduct(e) {
   // El click izquierdo va por el router (SPA). Middle-click y right-click
@@ -305,11 +306,8 @@ function openProduct(e) {
 
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
 
-  router.push({
-    name: "shopProduct",
-    params: { id: String(props.p?.product_id ?? props.p?.id ?? "") },
-    query: { branch_id },
-  });
+  const loc = buildProductLocation(props.p, { branchId: branch_id });
+  if (loc) router.push(loc);
 }
 </script>
 

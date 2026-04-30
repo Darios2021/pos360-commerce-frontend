@@ -1,7 +1,11 @@
 // src/app/router/shopAdmin.routes.js
 // ✅ COPY-PASTE FINAL COMPLETO (cuelga bajo /app/*)
 
-import ShopBrandingView from "@/modules/admin/pages/ShopBrandingView.vue";
+import ShopBrandingHubView from "@/modules/admin/pages/ShopBrandingHubView.vue";
+import BrandingIdentityView from "@/modules/admin/pages/BrandingIdentityView.vue";
+import BrandingThemeView from "@/modules/admin/pages/BrandingThemeView.vue";
+import BrandingContactView from "@/modules/admin/pages/BrandingContactView.vue";
+import BrandingSocialView from "@/modules/admin/pages/BrandingSocialView.vue";
 
 // ✅ LISTADO / BANDEJA de pedidos (TU VISTA)
 import ShopOrdersView from "@/modules/admin/pages/ShopOrdersView.vue";
@@ -28,7 +32,31 @@ export const shopAdminRoutes = [
   {
     path: "admin/shop/branding",
     name: "shopBranding",
-    component: ShopBrandingView,
+    component: ShopBrandingHubView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+  {
+    path: "admin/shop/branding/identity",
+    name: "shopBrandingIdentity",
+    component: BrandingIdentityView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+  {
+    path: "admin/shop/branding/theme",
+    name: "shopBrandingTheme",
+    component: BrandingThemeView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+  {
+    path: "admin/shop/branding/contact",
+    name: "shopBrandingContact",
+    component: BrandingContactView,
+    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
+  },
+  {
+    path: "admin/shop/branding/social",
+    name: "shopBrandingSocial",
+    component: BrandingSocialView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
 

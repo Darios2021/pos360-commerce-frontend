@@ -9,8 +9,9 @@
 <template>
   <div class="ml-step">
     <div class="ml-step-head">
-      <div class="ml-step-title">Pago</div>
-      <div class="ml-step-sub">Elegí cómo querés pagar.</div>
+      <div class="ml-kicker">Paso 2 de 3</div>
+      <div class="ml-step-title">¿Cómo querés pagar?</div>
+      <div class="ml-step-sub">Elegí el método y completá los datos si corresponde.</div>
     </div>
 
     <div class="ml-pay-grid">
@@ -104,10 +105,10 @@
     </div>
 
     <div class="ml-actions">
-      <v-btn variant="tonal" @click="$emit('prev')">
-        <v-icon start>mdi-arrow-left</v-icon>
-        Volver
-      </v-btn>
+      <button type="button" class="ml-back-link" @click="$emit('prev')">
+        <v-icon size="14">mdi-arrow-left</v-icon>
+        <span>Volver a entrega</span>
+      </button>
 
       <v-btn color="primary" class="ml-cta" :disabled="!canContinue" @click="$emit('next')">
         Continuar
@@ -229,25 +230,48 @@ const canContinue = computed(() => {
 </script>
 
 <style scoped>
-/* ✅ ancho real */
+/* =========================
+   INTER + base
+========================= */
+.ml-step,
+.ml-step :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
 .ml-step {
   width: 100%;
   max-width: none;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0.005em;
 }
 
 .ml-step-head {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
+}
+.ml-kicker {
+  font-size: 11px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: 6px;
 }
 .ml-step-title {
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: 540;
+  font-size: 22px;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.92);
 }
 .ml-step-sub {
-  color: #737373;
-  font-size: 13px;
-  margin-top: 2px;
+  color: rgba(17, 24, 39, 0.6);
+  font-size: 13.5px;
+  font-weight: 400;
+  margin-top: 4px;
 }
 
+/* =========================
+   Cards de método
+========================= */
 .ml-pay-grid {
   display: grid;
   gap: 10px;
@@ -256,120 +280,179 @@ const canContinue = computed(() => {
 
 .ml-pay-card {
   width: 100%;
-  border: 1px solid #e6e6e6;
+  border: 1.5px solid rgba(17, 24, 39, 0.10);
   background: #fff;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 .ml-pay-card:hover {
-  border-color: #cfcfcf;
+  border-color: rgba(21, 101, 192, 0.32);
   transform: translateY(-1px);
 }
 .ml-pay-card.is-active {
-  border-color: #3483fa;
-  box-shadow: 0 0 0 3px rgba(52, 131, 250, 0.15);
+  border-color: rgb(var(--v-theme-primary));
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.08) 100%);
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
   transform: translateY(-1px);
 }
 .ml-pay-card.is-disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
 
 .ml-pay-left {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   align-items: center;
 }
 
 .ml-pay-ico {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
 }
-.ml-pay-ico.mp { background: rgba(52, 131, 250, 0.12); }
-.ml-pay-ico.bank { background: rgba(0, 0, 0, 0.06); }
-.ml-pay-ico.cash { background: rgba(0, 166, 80, 0.12); }
-.ml-pay-ico.credit { background: rgba(255, 147, 0, 0.14); }
+.ml-pay-ico.mp { background: rgba(21, 101, 192, 0.12); color: rgb(var(--v-theme-primary)); }
+.ml-pay-ico.bank { background: rgba(17, 24, 39, 0.07); color: rgba(17, 24, 39, 0.7); }
+.ml-pay-ico.cash { background: rgba(0, 153, 102, 0.12); color: #009966; }
+.ml-pay-ico.credit { background: rgba(245, 158, 11, 0.14); color: #b45309; }
 
 .ml-pay-txt { min-width: 0; }
 .ml-pay-title {
   font-weight: 500;
-  font-size: 14px;
-  color: #111;
+  font-size: 14.5px;
+  color: rgba(17, 24, 39, 0.92);
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  letter-spacing: -0.005em;
 }
 
 .ml-pay-warn {
   margin-top: 4px;
   font-size: 12px;
   color: #b45309;
+  font-weight: 400;
 }
 
 .ml-pay-arrow {
-  color: #9b9b9b;
+  color: rgba(17, 24, 39, 0.32);
   flex: 0 0 auto;
 }
 
 .ml-chip {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 460;
+  padding: 3px 9px;
   border-radius: 999px;
-  line-height: 1;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
-.ml-chip-blue { background: rgba(52, 131, 250, 0.12); color: #2968c8; }
-.ml-chip-gray { background: rgba(0, 0, 0, 0.06); color: #444; }
-.ml-chip-amber { background: rgba(255, 147, 0, 0.18); color: #8a4b00; }
+.ml-chip-blue { background: rgba(21, 101, 192, 0.12); color: rgb(var(--v-theme-primary)); }
+.ml-chip-gray { background: rgba(17, 24, 39, 0.07); color: rgba(17, 24, 39, 0.7); }
+.ml-chip-amber { background: rgba(245, 158, 11, 0.14); color: #b45309; }
 
+/* =========================
+   Panel de detalle del método
+========================= */
 .ml-pay-panel {
-  border: 1px solid #e6e6e6;
+  border: 1px solid rgba(17, 24, 39, 0.08);
   background: #fff;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 16px;
   margin-top: 8px;
 }
 
-.ml-panel-title { font-weight: 500; font-size: 14px; margin-bottom: 6px; }
-.ml-panel-sub { color: #737373; font-size: 13px; }
+.ml-panel-title {
+  font-weight: 520;
+  font-size: 14.5px;
+  margin-bottom: 4px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
+}
+.ml-panel-sub {
+  color: rgba(17, 24, 39, 0.6);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+}
 
 .ml-panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 12px;
 }
-.ml-kv .k { font-size: 12px; color: #737373; }
-.ml-kv .v { font-size: 13.5px; font-weight: 500; color: #111; word-break: break-word; }
+.ml-kv {
+  background: rgba(17, 24, 39, 0.03);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ml-kv .k {
+  font-size: 10.5px;
+  color: rgba(17, 24, 39, 0.55);
+  font-weight: 460;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.ml-kv .v {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.92);
+  word-break: break-word;
+}
 
 .ml-actions {
-  margin-top: 16px;
+  margin-top: 20px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
   align-items: center;
 }
 .ml-cta {
-  border-radius: 10px;
+  border-radius: 12px;
   text-transform: none;
   font-weight: 500;
+  letter-spacing: 0.005em;
+  padding: 0 20px;
+}
+
+.ml-back-link {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 460;
+  letter-spacing: 0.005em;
+  color: rgba(17, 24, 39, 0.62);
+  transition: color 0.16s ease, gap 0.16s ease;
+}
+.ml-back-link:hover {
+  color: rgb(var(--v-theme-primary));
+  gap: 8px;
 }
 
 @media (max-width: 600px) {
   .ml-panel-grid { grid-template-columns: 1fr; }
   .ml-actions { flex-direction: column; align-items: stretch; }
+  .ml-step-title { font-size: 19px; }
 }
 </style>

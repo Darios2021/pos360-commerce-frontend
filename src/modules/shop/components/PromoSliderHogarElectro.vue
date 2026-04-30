@@ -100,6 +100,7 @@ import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { isPromoActive } from "@/modules/shop/utils/promo";
 import { getPublicCategories } from "@/modules/shop/service/shop.taxonomy.api";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
+import { buildProductLocation } from "@/modules/shop/utils/productSlug";
 
 const props = defineProps({
   title: { type: String, default: "Hogar / Electro" },
@@ -145,7 +146,8 @@ const items = ref([]);
    Helpers UI
 ========================= */
 function open(p) {
-  router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
+  const loc = buildProductLocation(p);
+  if (loc) router.push(loc);
 }
 
 function toNum(v) {

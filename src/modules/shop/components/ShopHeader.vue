@@ -378,6 +378,14 @@ watch(
   background: rgb(var(--v-theme-primary)) !important;
   color: rgb(var(--v-theme-on-primary)) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0.005em;
+}
+
+.ml-header,
+.ml-header :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 .ml-row-top {
@@ -528,14 +536,17 @@ watch(
 }
 
 .ml-loc-top {
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.85;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
 }
 
 .ml-loc-bottom {
   font-size: 13px;
   font-weight: 400;
+  letter-spacing: 0;
 }
 
 /* =========================
@@ -551,12 +562,13 @@ watch(
 
 .ml-nav-soft {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   padding: 4px 6px;
   border-radius: 8px;
-  color: rgba(255,255,255,0.88);
+  color: rgba(255,255,255,0.86);
   text-decoration: none;
   white-space: nowrap;
+  letter-spacing: 0.005em;
 }
 
 .ml-nav-soft:hover {
@@ -579,14 +591,15 @@ watch(
 
 .ml-top-link {
   font-size: 13px;
-  font-weight: 500;
-  padding: 4px 8px;
+  font-weight: 400;
+  padding: 5px 12px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: rgba(255,255,255,0.92);
   text-decoration: none;
+  letter-spacing: 0.005em;
 }
 
 .ml-top-link-ghost {
@@ -661,8 +674,9 @@ watch(
 
 .ml-account-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
+  letter-spacing: 0.005em;
 }
 
 /* =========================
@@ -702,8 +716,8 @@ watch(
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 540;
+  letter-spacing: 0.01em;
   box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.08);
 }
 .ml-account-head__avatar--img {
@@ -713,8 +727,8 @@ watch(
 .ml-account-head__text { min-width: 0; line-height: 1.2; flex: 1; }
 .ml-account-head__name {
   font-size: 14.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   color: rgb(var(--v-theme-on-surface));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -739,7 +753,7 @@ watch(
   background: rgba(245, 158, 11, 0.10);
   color: #b45309;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 460;
   width: calc(100% - 20px);
   box-sizing: border-box;
 }
@@ -773,8 +787,8 @@ watch(
 }
 .ml-account-list :deep(.v-list-item-title) {
   font-size: 14px !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.005em !important;
+  font-weight: 460 !important;
+  letter-spacing: 0 !important;
 }
 .ml-account-list :deep(.v-list-item-subtitle) {
   font-size: 11.5px !important;

@@ -13,13 +13,9 @@
   <v-container fluid class="checkout-page py-6">
     <div class="checkout-shell">
       <!-- Header -->
-      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-4 checkout-head">
-        <div class="text-h5 font-weight-bold">Finalizar compra</div>
-
-        <v-btn to="/shop/cart" variant="tonal" class="checkout-back">
-          <v-icon start>mdi-arrow-left</v-icon>
-          Volver al carrito
-        </v-btn>
+      <div class="checkout-head">
+        <div class="checkout-kicker">Checkout</div>
+        <div class="checkout-title">Finalizar compra</div>
       </div>
 
       <!-- ✅ no-gutters: elimina el “contraído” lateral en mobile -->
@@ -57,13 +53,15 @@
 
         <!-- RIGHT: Summary (SOLO DESKTOP para no duplicar en mobile) -->
         <v-col cols="12" md="4" class="checkout-col checkout-col-right d-none d-md-block">
-          <CheckoutSummary
-            :items="items"
-            :subtotal="subtotal"
-            :shipping-amount="shippingAmount"
-            :total="totalWithShipping"
-            :delivery-mode="delivery.mode"
-          />
+          <div class="checkout-summary-wrap">
+            <CheckoutSummary
+              :items="items"
+              :subtotal="subtotal"
+              :shipping-amount="shippingAmount"
+              :total="totalWithShipping"
+              :delivery-mode="delivery.mode"
+            />
+          </div>
         </v-col>
       </v-row>
     </div>
@@ -80,6 +78,8 @@ import CheckoutSummary from "@/modules/shop/components/checkout/CheckoutSummary.
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 import { getBranches, getShopPaymentConfig } from "@/modules/shop/service/shop.public.api";
 import httpPublic from "@/app/api/httpPublic";
+import { encodeReceiptToken } from "@/modules/shop/utils/receiptToken";
+import { saveReceiptLocal } from "@/modules/shop/utils/receiptStorage";
 
 // -------------------------
 const router = useRouter();
@@ -418,6 +418,10 @@ async function submitOrder() {
       fulfillment_type: String(payload?.fulfillment_type || "pickup"),
       pickup_branch_name: selectedBranchName.value || null,
 
+      buyer_name: payload?.buyer?.name || "",
+      buyer_email: payload?.buyer?.email || "",
+      buyer_phone: payload?.buyer?.phone || "",
+
       shipping_address:
         payload.fulfillment_type === "delivery"
           ? `${payload.shipping?.address1 || ""}, ${payload.shipping?.city || ""}, ${payload.shipping?.province || ""} (CP ${payload.shipping?.zip || ""})`
@@ -436,14 +440,24 @@ async function submitOrder() {
       total: Number(totalWithShipping.value || 0),
     };
 
-    try {
-      sessionStorage.setItem("shop_last_receipt", JSON.stringify(receipt));
-    } catch (e) {
-      console.warn("[CHECKOUT] sessionStorage failed", e);
-    }
+    // Persistencia local (sobrevive cierre de pestaña, TTL 30 días)
+    saveReceiptLocal(receipt);
+
+    // Token URL para que el comprobante pueda compartirse con cualquiera
+    const token = encodeReceiptToken(receipt);
 
     cart.clear?.();
-    router.replace("/shop/checkout/success");
+
+    // URL persistente: ?o=<order_id>&c=<code>&t=<token>
+    // - o + c sirven para identificar el pedido (también para fetch a backend si existe)
+    // - t lleva el comprobante completo embebido (compartible aunque el receptor
+    //   no tenga el localStorage del comprador).
+    const successQuery = {};
+    if (receipt.order_id) successQuery.o = String(receipt.order_id);
+    if (receipt.code) successQuery.c = String(receipt.code);
+    if (token) successQuery.t = token;
+
+    router.replace({ path: "/shop/checkout/success", query: successQuery });
   } catch (err) {
     console.error("[CHECKOUT] error", err?.response?.data || err);
     submitError.value = mapCheckoutErrorToHumanMessage(err);
@@ -517,6 +531,14 @@ onMounted(async () => {
   width: 100%;
   padding-left: 0 !important;
   padding-right: 0 !important;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0.005em;
+}
+
+.checkout-page,
+.checkout-page :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* contenedor real centrado */
@@ -525,6 +547,25 @@ onMounted(async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 16px; /* desktop/tablet */
+}
+
+.checkout-head {
+  margin-bottom: 18px;
+}
+.checkout-kicker {
+  font-size: 11px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: 4px;
+}
+.checkout-title {
+  font-size: 22px;
+  font-weight: 540;
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.92);
+  line-height: 1.18;
 }
 
 .checkout-row {
@@ -543,6 +584,17 @@ onMounted(async () => {
   }
   .checkout-col-right {
     padding-left: 14px !important;
+  }
+
+  /* ✅ Alineamos el TOP del Summary con el TOP de la CARD interna del paso
+     (no con el stepper ni con el título del paso). El offset cubre:
+       v-stepper-header (1-2-3 + labels)         ~ 88px
+       cs-step-pad padding-top + kicker + title + sub
+                                                ~ 96px
+       gap antes de la card (.cs-review margin)  ~ 16px
+     Total ≈ 200px. */
+  .checkout-summary-wrap {
+    margin-top: 200px;
   }
 }
 

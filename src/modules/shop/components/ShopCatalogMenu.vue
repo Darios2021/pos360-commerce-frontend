@@ -5,11 +5,11 @@
     <v-menu
       v-if="!isMobile"
       v-model="menu"
-      location="bottom start"
+      location="bottom"
       :close-on-content-click="false"
-      open-on-hover
       offset="12"
       transition="fade-transition"
+      content-class="scm-menu-content"
     >
       <template #activator="{ props }">
         <button class="scm-trigger" v-bind="props" type="button" aria-label="Categorías">
@@ -38,6 +38,10 @@
                 @focus="hoverParentId = Number(c.id)"
                 @click="pickParent(c)"
               >
+                <span class="scm-thumb scm-thumb--md">
+                  <v-icon size="18">{{ iconFor(c) }}</v-icon>
+                </span>
+
                 <span class="scm-left-text">{{ c.name }}</span>
 
                 <div class="scm-left-meta">
@@ -98,7 +102,9 @@
                     @click="pickChild(s)"
                     :title="s.name"
                   >
-                    <span class="scm-sub-dot"></span>
+                    <span class="scm-thumb scm-thumb--sm">
+                      <v-icon size="14">{{ iconFor(s, hoverParent) }}</v-icon>
+                    </span>
                     <span class="scm-sub-text">{{ s.name }}</span>
                   </button>
                 </div>
@@ -151,6 +157,9 @@
             @click="toggleParent(p)"
           >
             <div class="scm-acc-parent-main">
+              <span class="scm-thumb scm-thumb--md">
+                <v-icon size="18">{{ iconFor(p) }}</v-icon>
+              </span>
               <span class="scm-acc-title">{{ p.name }}</span>
               <span
                 v-if="(childrenByParent[p.id] || []).length"
@@ -177,7 +186,9 @@
                 class="scm-acc-child"
                 @click="pickChildMobile(c)"
               >
-                <span class="scm-acc-child-dot"></span>
+                <span class="scm-thumb scm-thumb--sm">
+                  <v-icon size="14">{{ iconFor(c, p) }}</v-icon>
+                </span>
                 <span>{{ c.name }}</span>
               </button>
 
@@ -249,6 +260,41 @@ const hoverChildren = computed(() => {
     String(a.name || "").localeCompare(String(b.name || ""), "es")
   );
 });
+
+function iconFor(c, parent = null) {
+  const name = String(c?.name || "").toLowerCase();
+  const parentName = String(parent?.name || "").toLowerCase();
+  const text = `${name} ${parentName}`;
+
+  if (/(audio|auricul|parlant|sonido|altavoz)/.test(text)) return "mdi-headphones";
+  if (/(celu|tel[eé]fono|smartphone|m[oó]vil)/.test(text)) return "mdi-cellphone";
+  if (/(tablet|ipad)/.test(text)) return "mdi-tablet";
+  if (/(notebook|laptop|portátil|portatil)/.test(text)) return "mdi-laptop";
+  if (/(comput|pc |pc$|monitor|teclado|mouse|gamer)/.test(text)) return "mdi-monitor-dashboard";
+  if (/(impres|tinta|tóner|toner)/.test(text)) return "mdi-printer";
+  if (/(cable|cargad|usb|adapt)/.test(text)) return "mdi-usb-port";
+  if (/(bater|pila|power\s?bank)/.test(text)) return "mdi-battery-charging";
+  if (/(holder|soporte)/.test(text)) return "mdi-cellphone-link";
+  if (/(funda|protector|hidrog|vidrio|templ)/.test(text)) return "mdi-shield-outline";
+  if (/(reloj|smartwatch)/.test(text)) return "mdi-watch";
+  if (/(bici|moto|automotor|auto |veh[ií])/.test(text)) return "mdi-motorbike";
+  if (/(energ|solar|panel)/.test(text)) return "mdi-solar-power";
+  if (/(electr|chip|electrón)/.test(text)) return "mdi-chip";
+  if (/(hogar|casa|mueble|electrodom)/.test(text)) return "mdi-sofa";
+  if (/(herra|tool|llave)/.test(text)) return "mdi-tools";
+  if (/(juego|consol|gaming|playstation|xbox)/.test(text)) return "mdi-gamepad-variant";
+  if (/(tv|televis|smart\s?tv)/.test(text)) return "mdi-television";
+  if (/(c[aá]mara|fotograf)/.test(text)) return "mdi-camera";
+  if (/(libro|papel|oficina)/.test(text)) return "mdi-book-open-variant";
+  if (/(juguet|infantil|niño)/.test(text)) return "mdi-teddy-bear";
+  if (/(salud|bellez|cuidado)/.test(text)) return "mdi-heart-pulse";
+  if (/(deport|fitness|gym)/.test(text)) return "mdi-dumbbell";
+  if (/(comida|aliment|cocina)/.test(text)) return "mdi-silverware-fork-knife";
+  if (/(ilumin|lampara|luz)/.test(text)) return "mdi-lightbulb-outline";
+  if (/(seguridad|alarma|c[aá]m)/.test(text)) return "mdi-shield-lock-outline";
+
+  return "mdi-shape-outline";
+}
 
 function getGroupLabel(s) {
   return (
@@ -388,6 +434,67 @@ onMounted(async () => {
 .scm-root {
   display: inline-flex;
   align-items: center;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.scm-root,
+.scm-card,
+.scm-card * {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+:global(.scm-menu-content) {
+  left: 12px !important;
+  right: 12px !important;
+  max-width: calc(100vw - 24px) !important;
+}
+
+/* Miniaturas (thumb) reutilizables */
+.scm-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.06) 0%, rgba(21, 101, 192, 0.10) 100%);
+  color: rgba(21, 101, 192, 0.85);
+  border: 1px solid rgba(21, 101, 192, 0.10);
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.scm-thumb--md {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.scm-thumb--sm {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.55);
+  border-color: rgba(15, 23, 42, 0.06);
+}
+
+.scm-left-item.active .scm-thumb--md,
+.scm-left-item:hover .scm-thumb--md {
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.14) 0%, rgba(21, 101, 192, 0.20) 100%);
+  color: rgba(21, 101, 192, 1);
+  border-color: rgba(21, 101, 192, 0.22);
+}
+
+.scm-sub:hover .scm-thumb--sm {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgba(21, 101, 192, 0.95);
+  border-color: rgba(21, 101, 192, 0.18);
+}
+
+.scm-acc-child:hover .scm-thumb--sm {
+  background: rgba(21, 101, 192, 0.10);
+  color: rgba(21, 101, 192, 0.95);
+  border-color: rgba(21, 101, 192, 0.18);
 }
 
 /* trigger */
@@ -402,7 +509,7 @@ onMounted(async () => {
   padding: 7px 10px;
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.9);
-  font-weight: 520;
+  font-weight: 460;
   font-size: 13px;
   letter-spacing: 0.01em;
   transition:
@@ -421,7 +528,7 @@ onMounted(async () => {
 }
 
 .scm-trigger-text {
-  font-weight: 520;
+  font-weight: 460;
 }
 
 .scm-trigger-ico {
@@ -431,7 +538,8 @@ onMounted(async () => {
 /* card */
 .scm-card {
   position: relative;
-  width: min(1120px, calc(100vw - 40px));
+  width: calc(100vw - 24px);
+  max-width: 100vw;
   background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%) !important;
   border: 1px solid rgba(14, 24, 38, 0.08);
   box-shadow:
@@ -442,9 +550,9 @@ onMounted(async () => {
 
 .scm-mega {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  min-height: 500px;
-  max-height: calc(100vh - 150px);
+  grid-template-columns: 320px 1fr;
+  min-height: 520px;
+  max-height: calc(100vh - 140px);
 }
 
 /* left */
@@ -470,17 +578,18 @@ onMounted(async () => {
 }
 
 .scm-left-title {
-  font-weight: 560;
-  font-size: 20px;
+  font-weight: 540;
+  font-size: 19px;
   line-height: 1.1;
-  color: rgba(17, 24, 39, 0.88);
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.86);
 }
 
 .scm-left-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 420px;
+  max-height: calc(100vh - 240px);
   overflow: auto;
   padding-right: 6px;
 }
@@ -500,11 +609,11 @@ onMounted(async () => {
   background: transparent;
   cursor: pointer;
   border-radius: 14px;
-  padding: 12px 12px;
-  display: flex;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
@@ -525,7 +634,7 @@ onMounted(async () => {
 }
 
 .scm-left-text {
-  font-weight: 520;
+  font-weight: 460;
   font-size: 14px;
   color: rgba(17, 24, 39, 0.86);
   text-align: left;
@@ -595,18 +704,19 @@ onMounted(async () => {
 }
 
 .scm-right-title {
-  font-weight: 540;
-  font-size: 32px;
+  font-weight: 480;
+  font-size: 28px;
   line-height: 1.08;
   color: rgba(17, 24, 39, 0.82);
   letter-spacing: -0.02em;
+  text-transform: none;
 }
 
 .scm-seeall {
   border: 1px solid rgba(21, 101, 192, 0.14);
   background: rgba(21, 101, 192, 0.05);
   color: rgba(21, 101, 192, 0.95);
-  font-weight: 560;
+  font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -629,7 +739,7 @@ onMounted(async () => {
 /* groups */
 .scm-groups {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   padding-top: 4px;
 }
@@ -673,11 +783,11 @@ onMounted(async () => {
   text-align: left;
   padding: 4px 0;
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  color: rgba(17, 24, 39, 0.6);
-  font-weight: 430;
-  font-size: 14px;
+  align-items: center;
+  gap: 10px;
+  color: rgba(17, 24, 39, 0.62);
+  font-weight: 420;
+  font-size: 13.5px;
   line-height: 1.22;
   transition: color 0.16s ease, transform 0.16s ease;
 }
@@ -687,17 +797,12 @@ onMounted(async () => {
   transform: translateX(2px);
 }
 
-.scm-sub-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(21, 101, 192, 0.4);
-  margin-top: 7px;
-  flex-shrink: 0;
-}
-
 .scm-sub-text {
   display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* empty */
@@ -744,8 +849,9 @@ onMounted(async () => {
 }
 
 .scm-drawer-title {
-  font-weight: 560;
-  font-size: 22px;
+  font-weight: 540;
+  font-size: 20px;
+  letter-spacing: -0.01em;
   color: rgba(17, 24, 39, 0.86);
   line-height: 1.1;
 }
@@ -790,7 +896,7 @@ onMounted(async () => {
 }
 
 .scm-acc-title {
-  font-weight: 520;
+  font-weight: 460;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
@@ -823,14 +929,14 @@ onMounted(async () => {
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 7px 6px;
+  padding: 7px 8px;
   cursor: pointer;
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  color: rgba(17, 24, 39, 0.68);
-  font-weight: 430;
-  font-size: 14px;
+  align-items: center;
+  gap: 10px;
+  color: rgba(17, 24, 39, 0.7);
+  font-weight: 420;
+  font-size: 13.5px;
   line-height: 1.2;
   border-radius: 10px;
   transition:
@@ -843,15 +949,6 @@ onMounted(async () => {
   background: rgba(21, 101, 192, 0.05);
   color: rgba(21, 101, 192, 0.95);
   transform: translateX(2px);
-}
-
-.scm-acc-child-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(21, 101, 192, 0.42);
-  margin-top: 7px;
-  flex-shrink: 0;
 }
 
 .scm-acc-all {
@@ -882,6 +979,12 @@ onMounted(async () => {
 }
 
 /* responsive */
+@media (max-width: 1400px) {
+  .scm-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .scm-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));

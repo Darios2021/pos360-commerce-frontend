@@ -29,15 +29,19 @@
     <section class="content">
       <div class="after-hero-spacer"></div>
 
-      <!-- Slider "Productos en promoción":
-           Sólo se muestra si hay al menos PROMO_MIN_ITEMS promos reales activas
-           (sino el carrusel queda con 1-2 cards sueltas y se ve roto). -->
+      <!-- Bloque "Oferta del día" + carrusel de Ofertas (estilo Mercado Libre).
+           Sólo aparece si hay al menos PROMO_MIN_ITEMS promos/descuentos activos. -->
       <div class="mb-6" v-if="promoItems.length >= PROMO_MIN_ITEMS">
-        <PromoSlider :items="promoItems" :perPage="promoPerPage" @seeAll="scrollToProducts" />
+        <ShopFeaturedOffersBlock :items="promoItems" @seeAll="scrollToProducts" />
       </div>
 
       <div class="mb-6" v-if="allCats.length">
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
+      </div>
+
+      <!-- Marcas destacadas (Xiaomi + XAEA) -->
+      <div class="mb-6">
+        <ShopBrandsHighlightHome />
       </div>
 
       <!-- Video shorts: solo se renderiza si hay videos o se están cargando.
@@ -75,10 +79,8 @@
         </template>
       </v-alert>
 
-      <div v-if="loading && !items.length && !itemsError" class="product-grid">
-        <div v-for="n in 12" :key="n">
-          <v-skeleton-loader type="image, article" />
-        </div>
+      <div v-if="loading && !items.length && !itemsError" class="home-loading">
+        <v-skeleton-loader type="heading, image, article" />
       </div>
 
       <v-alert v-else-if="!loading && !items.length && !itemsError" type="info" variant="tonal">
@@ -86,22 +88,12 @@
       </v-alert>
 
       <template v-else-if="!itemsError">
-        <!-- ── Bloque 1: grid (primeros 12 productos) ── -->
-        <div v-if="itemsFirstGrid.length" class="product-grid">
-          <ProductCard v-for="p in itemsFirstGrid" :key="p.product_id ?? p.id" :p="p" />
-        </div>
-
         <!-- ── Carousel: "Inspirado en lo último que viste" ── -->
-        <div v-if="itemsInspiredBlock.length" class="mt-6">
+        <div v-if="itemsInspiredBlock.length">
           <ShopProductBlock
             title="Inspirado en lo último que viste"
             :items="itemsInspiredBlock"
           />
-        </div>
-
-        <!-- ── Bloque 2: grid (siguientes 12) ── -->
-        <div v-if="itemsSecondGrid.length" class="product-grid mt-6">
-          <ProductCard v-for="p in itemsSecondGrid" :key="p.product_id ?? p.id" :p="p" />
         </div>
 
         <!-- ── Carousel: "Ofertas para vos" ── -->
@@ -174,14 +166,14 @@ import { getHomeShorts } from "@/modules/shop/service/shop.media.api";
 import HeroSlider from "@/modules/shop/components/HeroSlider.vue";
 import HomeCategoryFloatRow from "@/modules/shop/components/HomeCategoryFloatRow.vue";
 import HomeCategoriesCarousel from "@/modules/shop/components/HomeCategoriesCarousel.vue";
-import PromoSlider from "@/modules/shop/components/PromoSlider.vue";
+import ShopFeaturedOffersBlock from "@/modules/shop/components/ShopFeaturedOffersBlock.vue";
+import ShopBrandsHighlightHome from "@/modules/shop/components/ShopBrandsHighlightHome.vue";
 import PromoSliderAuriculares from "@/modules/shop/components/PromoSliderAuriculares.vue";
 import PromoSliderCargadores from "@/modules/shop/components/PromoSliderCargadores.vue";
 import PromoSliderAudioMicrofonos from "@/modules/shop/components/PromoSliderAudioMicrofonos.vue";
 import PromoGridTelefonosAuriculares from "@/modules/shop/components/PromoGridTelefonosAuriculares.vue";
 import PromoBannerEntretenimiento from "@/modules/shop/components/PromoBannerEntretenimiento.vue";
 import PromoSliderEntretenimiento from "@/modules/shop/components/PromoSliderEntretenimiento.vue";
-import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import ShopProductBlock from "@/modules/shop/components/ShopProductBlock.vue";
 import PromoBannerParlantes from "@/modules/shop/components/PromoBannerParlantes.vue";
 import PromoBannerSeguridadElectronica from "@/modules/shop/components/PromoBannerSeguridadElectronica.vue";
@@ -205,31 +197,21 @@ const page = ref(Number(route.query.page || 1));
 const limit = ref(48);
 const total = ref(0);
 
-/* Fragmentación tipo Mercado Libre: cortamos el grid principal en bloques
-   y entre medio intercalamos carousels temáticos. Cada bloque toma un slice
-   distinto de los items cargados para evitar duplicaciones visuales y romper
-   la sensación de "lista infinita". */
-const FIRST_GRID_COUNT = 12;       // primeros productos del catálogo
-const BLOCK_INSPIRED_SIZE = 12;    // "Inspirado en lo último que viste"
-const SECOND_GRID_COUNT = 12;      // siguiente tanda del grid
-const BLOCK_OFFERS_SIZE = 12;      // "Ofertas para vos"
-
-const itemsFirstGrid = computed(() => (items.value || []).slice(0, FIRST_GRID_COUNT));
+/* Home basado en bloques: ya no hay grids de productos sueltos. Todos los
+   items cargados se distribuyen en carruseles temáticos (Inspirado / Ofertas
+   para vos / Hogar) para mantener una experiencia consistente "tipo bloque". */
+const BLOCK_INSPIRED_SIZE = 14;
+const BLOCK_OFFERS_SIZE = 14;
 
 const itemsInspiredBlock = computed(() =>
-  (items.value || []).slice(FIRST_GRID_COUNT, FIRST_GRID_COUNT + BLOCK_INSPIRED_SIZE)
+  (items.value || []).slice(0, BLOCK_INSPIRED_SIZE)
 );
 
-const itemsSecondGrid = computed(() => {
-  const start = FIRST_GRID_COUNT + BLOCK_INSPIRED_SIZE;
-  return (items.value || []).slice(start, start + SECOND_GRID_COUNT);
-});
-
 const itemsOffersBlock = computed(() => {
-  const start = FIRST_GRID_COUNT + BLOCK_INSPIRED_SIZE + SECOND_GRID_COUNT;
-  // Priorizar productos con descuento o promo activa para este bloque
   const all = items.value || [];
+  const start = BLOCK_INSPIRED_SIZE;
   const slice = all.slice(start, start + BLOCK_OFFERS_SIZE * 2);
+  // Priorizar productos con descuento o promo activa para este bloque
   const withDiscount = slice.filter((p) => {
     const list = Number(p.price_list || 0);
     const disc = Number(p.price_discount || 0);
@@ -558,13 +540,9 @@ watch(
   padding-bottom: 40px;
 }
 
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  align-items: stretch;
+.home-loading {
+  padding: 24px 8px;
 }
-
 
 .after-products-banner {
   margin-top: 18px;
@@ -605,29 +583,15 @@ watch(
   padding: 14px 12px 12px;
 }
 
-@media (max-width: 1400px) {
-  .product-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 1200px) {
   .shop-page {
     --shop-max: 1100px;
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 960px) {
   .after-hero-spacer {
     height: 14px;
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .entertainment-wrap :deep(.ent-shell) {
@@ -660,11 +624,6 @@ watch(
 @media (max-width: 600px) {
   .after-hero-spacer {
     height: 12px;
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
   }
 
   .content {

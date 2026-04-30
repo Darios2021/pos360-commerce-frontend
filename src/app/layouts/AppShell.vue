@@ -474,6 +474,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Pedidos</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminBranches')" :to="{ name: 'adminBranches' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-map-marker-multiple-outline</v-icon>
+                </template>
+                <v-list-item-title>Sucursales</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Sucursales</v-tooltip>
+              </v-list-item>
+
               <v-list-item v-if="isSuperAdmin && hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-credit-card-outline</v-icon>

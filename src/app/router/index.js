@@ -50,6 +50,7 @@ import CashRegisterDetailPage from "@/modules/admin/pages/CashRegisterDetailPage
 import TelegramSettingsAdminPage from "@/modules/admin/pages/TelegramSettingsAdminPage.vue";
 import CustomersAdminPage from "@/modules/admin/pages/CustomersAdminPage.vue";
 import CustomerDetailView from "@/modules/admin/pages/CustomerDetailView.vue";
+import BranchesAdminPage from "@/modules/admin/pages/BranchesAdminPage.vue";
 import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
 
 const routes = [
@@ -128,6 +129,13 @@ const routes = [
         path: "admin/telegram",
         name: "adminTelegram",
         component: TelegramSettingsAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+
+      {
+        path: "admin/branches",
+        name: "adminBranches",
+        component: BranchesAdminPage,
         meta: { roles: ["admin", "super_admin"] },
       },
 

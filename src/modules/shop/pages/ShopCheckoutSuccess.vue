@@ -9,25 +9,28 @@
 -->
 
 <template>
-  <v-container class="py-6">
+  <v-container class="py-6 sc-page">
     <div class="sc-shell">
       <v-card class="sc-card" elevation="0">
         <!-- HEADER -->
         <div class="sc-head">
           <div class="sc-head-left">
             <div class="sc-check">
-              <v-icon size="18">mdi-check</v-icon>
+              <v-icon size="22">mdi-check</v-icon>
             </div>
-            <div>
-              <div class="sc-title">¡Pedido confirmado!</div>
+            <div class="sc-head-text">
+              <div class="sc-kicker">Compra confirmada</div>
+              <div class="sc-title">¡Gracias por tu compra!</div>
               <div class="sc-sub">
-                Guardá este comprobante. Si pagás con Mercado Pago, la confirmación puede demorar unos minutos.
+                Te enviamos un correo con el comprobante. Si pagás con Mercado Pago,
+                la confirmación final puede demorar unos minutos.
               </div>
             </div>
           </div>
 
           <div class="sc-head-actions">
             <v-btn variant="tonal" class="sc-btn" @click="goHome">
+              <v-icon start size="16">mdi-arrow-left</v-icon>
               Seguir comprando
             </v-btn>
 
@@ -43,20 +46,38 @@
           </div>
         </div>
 
+        <!-- ⚠️ Aviso si solo tenemos info parcial -->
+        <v-alert
+          v-if="isPartial"
+          type="info"
+          variant="tonal"
+          class="rounded-lg sc-partial-alert mt-4"
+        >
+          <div class="sc-partial-title">Comprobante limitado</div>
+          <div class="sc-partial-text">
+            Estamos viendo solo el código del pedido. Si abriste este link en otro
+            dispositivo, pedile al comprador el link completo o consultanos por WhatsApp.
+          </div>
+        </v-alert>
+
         <v-divider class="my-4" />
 
         <!-- TOP GRID -->
         <div class="sc-grid">
           <!-- Datos del pedido -->
           <div class="sc-panel">
-            <div class="sc-panel-title">Datos del pedido</div>
+            <div class="sc-panel-kicker">Pedido</div>
+            <div class="sc-panel-title">Datos de tu compra</div>
 
             <div class="sc-kv">
               <div class="sc-k">ID de pedido</div>
               <div class="sc-v">{{ receipt.order_id || "—" }}</div>
             </div>
 
-         
+            <div class="sc-kv" v-if="receipt.code">
+              <div class="sc-k">Código</div>
+              <div class="sc-v sc-code">{{ receipt.code }}</div>
+            </div>
 
             <div class="sc-kv">
               <div class="sc-k">Fecha</div>
@@ -81,15 +102,26 @@
               <v-btn class="sc-share" variant="tonal" prepend-icon="mdi-share-variant" @click="sharePurchase">
                 Compartir compra
               </v-btn>
+              <v-btn
+                class="sc-share sc-share--ghost"
+                variant="text"
+                prepend-icon="mdi-content-copy"
+                @click="copyShareLink"
+              >
+                Copiar link
+              </v-btn>
             </div>
           </div>
 
           <!-- Entrega -->
           <div class="sc-panel">
-            <div class="sc-panel-title">Entrega</div>
+            <div class="sc-panel-kicker">Entrega</div>
+            <div class="sc-panel-title">
+              {{ isPickup ? "Retiro en sucursal" : "Envío a domicilio" }}
+            </div>
 
             <div class="sc-kv">
-              <div class="sc-k">{{ isPickup ? "Retiro" : "Envío" }}</div>
+              <div class="sc-k">{{ isPickup ? "Sucursal" : "Modalidad" }}</div>
               <div class="sc-v">
                 {{ isPickup ? (receipt.pickup_branch_name || "—") : "A domicilio" }}
               </div>
@@ -161,10 +193,12 @@
 
         <!-- PRODUCTOS -->
         <div class="sc-panel sc-panel-wide">
+          <div class="sc-panel-kicker">Detalle</div>
           <div class="sc-panel-title">Productos</div>
 
           <div v-if="!safeItems.length" class="sc-empty">
-            No hay productos para mostrar.
+            <v-icon size="20">mdi-package-variant-closed</v-icon>
+            <span>{{ isPartial ? "Detalle no disponible en este link." : "No hay productos para mostrar." }}</span>
           </div>
 
           <div v-else class="sc-items">
@@ -265,11 +299,16 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { decodeReceiptToken, encodeReceiptToken } from "@/modules/shop/utils/receiptToken";
+import { loadReceiptLocal, loadLastReceipt, saveReceiptLocal } from "@/modules/shop/utils/receiptStorage";
+import httpPublic from "@/app/api/httpPublic";
 
 const route = useRoute();
 const router = useRouter();
 
 const pdfLoading = ref(false);
+const hydrationSource = ref(""); // 'token' | 'local' | 'session' | 'last' | 'partial'
+const isPartial = ref(false);    // true si solo tenemos código/order_id sin items
 
 // ✅ tu link
 const pickupMapLink = "https://maps.app.goo.gl/Mm7Usiuk75bm9xym9";
@@ -368,13 +407,28 @@ const totalComputed = computed(() => {
 });
 
 const shareLink = computed(() => {
+  // Reutilizamos la URL actual si vino con token (ya es compartible y autocontenida).
+  // Si no, construimos una con order_id + code + (token si tenemos receipt).
+  if (route.query.t) {
+    return `${window.location.origin}${route.fullPath}`;
+  }
+
   const oid = receipt.value.order_id;
   const code = receipt.value.code;
 
   const base = `${window.location.origin}/shop/checkout/success`;
   const q = new URLSearchParams();
-  if (oid) q.set("order_id", String(oid));
-  if (code) q.set("code", String(code));
+  if (oid) q.set("o", String(oid));
+  if (code) q.set("c", String(code));
+
+  // Intentamos generar token con lo que tenemos para que el link sea autocontenido
+  try {
+    if (receipt.value && (receipt.value.items?.length || receipt.value.total)) {
+      const t = encodeReceiptToken(receipt.value);
+      if (t) q.set("t", t);
+    }
+  } catch {}
+
   const qs = q.toString();
   return qs ? `${base}?${qs}` : base;
 });
@@ -635,46 +689,180 @@ async function downloadPdf() {
   }
 }
 
+/**
+ * Hidratación multi-fuente con prioridad:
+ *   1) Token de URL (?t=...)        → autocontenido, compartible.
+ *   2) Query order_id/code + localStorage (TTL 30d) → mismo dispositivo.
+ *   3) sessionStorage legacy (shop_last_receipt) → último pedido.
+ *   4) Último guardado en localStorage (loadLastReceipt).
+ *   5) Fallback parcial: solo order_id/code de la URL → modo "limitado".
+ */
 function hydrateFromQueryOrStorage() {
-  const qOrderId = route.query.order_id ? Number(route.query.order_id) : null;
-  const qCode = route.query.code ? String(route.query.code) : null;
+  // Acepta tanto las claves nuevas (o, c, t) como las viejas (order_id, code) por compat
+  const qOrderId = route.query.o
+    ? Number(route.query.o)
+    : route.query.order_id
+    ? Number(route.query.order_id)
+    : null;
 
-  const raw = sessionStorage.getItem("shop_last_receipt");
-  const stored = raw ? safeParseJSON(raw) : null;
+  const qCode = route.query.c
+    ? String(route.query.c)
+    : route.query.code
+    ? String(route.query.code)
+    : null;
 
-  const src = stored || {};
-  const merged = { ...receipt.value, ...src };
+  const qToken = route.query.t ? String(route.query.t) : "";
+
+  let resolved = null;
+  let source = "";
+
+  // 1) Token URL
+  if (qToken) {
+    const fromToken = decodeReceiptToken(qToken);
+    if (fromToken && (fromToken.order_id || fromToken.code || fromToken.items)) {
+      resolved = fromToken;
+      source = "token";
+      // Aprovechamos para guardar en local así futuras visitas sin token funcionan
+      try {
+        saveReceiptLocal(fromToken);
+      } catch {}
+    }
+  }
+
+  // 2) localStorage por order_id/code
+  if (!resolved) {
+    const fromLocal = loadReceiptLocal({ order_id: qOrderId, code: qCode });
+    if (fromLocal) {
+      resolved = fromLocal;
+      source = "local";
+    }
+  }
+
+  // 3) sessionStorage legacy
+  if (!resolved) {
+    try {
+      const raw = sessionStorage.getItem("shop_last_receipt");
+      const stored = raw ? safeParseJSON(raw) : null;
+      if (stored && (stored.order_id || stored.items?.length)) {
+        // Solo usar si los IDs no contradicen la URL (evita mostrar pedido equivocado)
+        const matchesOid = !qOrderId || String(stored.order_id) === String(qOrderId);
+        const matchesCode = !qCode || String(stored.code) === String(qCode);
+        if (matchesOid && matchesCode) {
+          resolved = stored;
+          source = "session";
+        }
+      }
+    } catch {}
+  }
+
+  // 4) Último guardado en localStorage (sin filtros)
+  if (!resolved && !qOrderId && !qCode) {
+    const last = loadLastReceipt();
+    if (last) {
+      resolved = last;
+      source = "last";
+    }
+  }
+
+  // 5) Fallback parcial: solo tenemos order_id/code de la URL
+  if (!resolved && (qOrderId || qCode)) {
+    resolved = {
+      order_id: qOrderId,
+      code: qCode,
+      items: [],
+      total: 0,
+      subtotal: 0,
+      shipping_total: 0,
+      payment_label: "",
+      fulfillment_type: "pickup",
+    };
+    source = "partial";
+    isPartial.value = true;
+  }
+
+  if (!resolved) {
+    // Sin nada — mostramos el receipt default
+    hydrationSource.value = "";
+    return;
+  }
+
+  const merged = { ...receipt.value, ...resolved };
 
   if (qOrderId) merged.order_id = qOrderId;
   if (qCode) merged.code = qCode;
 
   if (!merged.payment_label) {
-    if (merged.payment_method === "MERCADOPAGO") merged.payment_label = "Mercado Pago";
-    else if (merged.payment_method === "TRANSFER") merged.payment_label = "Transferencia";
-    else if (merged.payment_method === "CASH") merged.payment_label = "Efectivo";
-    else if (merged.payment_method === "CREDIT_SJT") merged.payment_label = "Crédito San Juan Tecnología";
+    const code = String(merged.payment_method || "").toLowerCase();
+    if (code === "mercadopago" || code === "mercado_pago") merged.payment_label = "Mercado Pago";
+    else if (code === "transfer") merged.payment_label = "Transferencia";
+    else if (code === "cash") merged.payment_label = "Efectivo";
+    else if (code === "credit_sjt") merged.payment_label = "Crédito San Juan Tecnología";
+    else if (code === "seller") merged.payment_label = "Acordar pago con el vendedor";
     else merged.payment_label = "A coordinar";
   }
 
   merged.created_at_fmt = formatDateTime(merged.created_at);
   receipt.value = merged;
+  hydrationSource.value = source;
 }
 
-onMounted(() => {
+/**
+ * Fallback opcional: si solo tenemos order_id+code y no items, intentamos al backend.
+ * Endpoint público esperado: GET /ecom/checkout/receipt/:order_id?code=:code
+ * Si no existe (404), no rompe nada: nos quedamos en modo parcial.
+ */
+async function tryFetchReceiptFromBackend() {
+  if (!isPartial.value) return;
+  const oid = receipt.value.order_id;
+  const code = receipt.value.code;
+  if (!oid && !code) return;
+
+  try {
+    const params = {};
+    if (code) params.code = code;
+    const path = oid ? `/ecom/checkout/receipt/${oid}` : `/ecom/checkout/receipt`;
+    const { data } = await httpPublic.get(path, { params });
+
+    if (!data || typeof data !== "object") return;
+
+    const fetched = data.receipt || data;
+    if (!fetched || (!fetched.order_id && !fetched.code)) return;
+
+    fetched.created_at_fmt = formatDateTime(fetched.created_at);
+    receipt.value = { ...receipt.value, ...fetched };
+    isPartial.value = false;
+    hydrationSource.value = "backend";
+
+    // Cachear localmente para próximas visitas
+    try {
+      saveReceiptLocal(fetched);
+    } catch {}
+  } catch (e) {
+    // 404 esperado si el endpoint aún no existe — no es un error fatal
+    if (e?.response?.status !== 404) {
+      console.warn("[checkout/success] backend receipt fetch failed", e?.message || e);
+    }
+  }
+}
+
+onMounted(async () => {
   hydrateFromQueryOrStorage();
+  // Si quedamos en modo parcial, intentamos completar via backend (opcional)
+  await tryFetchReceiptFromBackend();
 });
 </script>
 
 <style scoped>
-/* ✅ Homogeneidad tipográfica */
-.sc-shell,
-.sc-card,
-.sc-panel,
-.sc-head,
-.sc-kv,
-.sc-items {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans",
-    sans-serif;
+/* =========================
+   INTER + base
+========================= */
+.sc-page,
+.sc-page :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.sc-page {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: 0.005em;
 }
 
 .sc-shell {
@@ -686,16 +874,20 @@ onMounted(() => {
 }
 
 .sc-card {
-  border: 1px solid #e6e6e6;
-  border-radius: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 16px;
   background: #fff;
-  padding: 16px;
+  padding: 22px;
   box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+/* =========================
+   HEADER
+========================= */
 .sc-head {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -703,34 +895,50 @@ onMounted(() => {
 
 .sc-head-left {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: flex-start;
   min-width: 0;
 }
 
 .sc-check {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(25, 135, 84, 0.12);
-  color: #198754;
+  background: linear-gradient(180deg, rgba(0, 153, 102, 0.12) 0%, rgba(0, 153, 102, 0.18) 100%);
+  color: #009966;
   flex: 0 0 auto;
+  box-shadow: 0 0 0 4px rgba(0, 153, 102, 0.06);
+}
+
+.sc-head-text {
+  min-width: 0;
+}
+.sc-kicker {
+  font-size: 11px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: 4px;
 }
 
 .sc-title {
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 1.25;
-  color: #111827;
+  font-weight: 540;
+  font-size: 22px;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.94);
 }
 
 .sc-sub {
-  color: #6b7280;
-  font-size: 12.5px;
-  margin-top: 2px;
-  max-width: 720px;
+  color: rgba(17, 24, 39, 0.6);
+  font-size: 13px;
+  font-weight: 400;
+  margin-top: 6px;
+  max-width: 640px;
+  line-height: 1.5;
 }
 
 .sc-head-actions {
@@ -741,60 +949,111 @@ onMounted(() => {
 }
 
 .sc-btn {
-  text-transform: none;
+  text-transform: none !important;
+  font-weight: 460 !important;
+  letter-spacing: 0.005em !important;
+  border-radius: 12px !important;
+}
+
+.sc-partial-alert {
+  border-radius: 12px !important;
+}
+.sc-partial-title {
   font-weight: 500;
-  border-radius: 10px;
+  font-size: 13.5px;
+}
+.sc-partial-text {
+  font-size: 12.5px;
+  color: rgba(17, 24, 39, 0.7);
+  font-weight: 400;
+  margin-top: 2px;
 }
 
 .sc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .sc-panel {
-  border: 1px solid #e6e6e6;
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 14px;
+  padding: 18px;
   background: #fff;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .sc-panel-wide {
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+.sc-panel-kicker {
+  font-size: 10.5px;
+  font-weight: 460;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.5);
+  margin-bottom: 4px;
 }
 
 .sc-panel-title {
-  font-weight: 500;
-  font-size: 13px;
-  margin-bottom: 8px;
-  color: #111827;
+  font-weight: 540;
+  font-size: 15.5px;
+  margin-bottom: 12px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
 }
 
 .sc-kv {
   display: grid;
   grid-template-columns: 140px 1fr;
   gap: 10px;
-  padding: 6px 0;
+  padding: 7px 0;
   align-items: start;
 }
 
 .sc-k {
-  color: #6b7280;
+  color: rgba(17, 24, 39, 0.55);
   font-size: 12.5px;
+  font-weight: 400;
 }
 
 .sc-v {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: #111827;
+  font-size: 13px;
+  font-weight: 460;
+  color: rgba(17, 24, 39, 0.92);
   min-width: 0;
   word-break: break-word;
 }
 
+.sc-code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  background: rgba(17, 24, 39, 0.04);
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.sc-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.sc-share {
+  text-transform: none !important;
+  font-weight: 460 !important;
+  border-radius: 10px !important;
+  letter-spacing: 0.005em !important;
+}
+.sc-share--ghost {
+  color: rgba(17, 24, 39, 0.7) !important;
+}
+
 .sc-mini {
-  color: #6b7280;
+  color: rgba(17, 24, 39, 0.55);
   font-size: 12px;
   word-break: break-word;
 }
@@ -803,6 +1062,18 @@ onMounted(() => {
   font-weight: 500;
   font-size: 12.8px;
   margin-bottom: 4px;
+}
+
+.sc-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: rgba(17, 24, 39, 0.03);
+  border-radius: 10px;
+  color: rgba(17, 24, 39, 0.6);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 /* =========================
@@ -814,29 +1085,31 @@ onMounted(() => {
 
 .sc-pickup-head {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
-  padding: 10px;
+  padding: 14px;
   border-radius: 12px;
-  background: rgba(2, 132, 199, 0.08);
-  border: 1px solid rgba(2, 132, 199, 0.15);
+  background: rgba(21, 101, 192, 0.05);
+  border: 1px solid rgba(21, 101, 192, 0.14);
 }
 
 .sc-pickup-ico {
   margin-top: 2px;
-  color: #0284c7;
+  color: rgb(var(--v-theme-primary));
 }
 
 .sc-pickup-title {
   font-weight: 500;
-  font-size: 12.8px;
-  color: #0f172a;
+  font-size: 13.5px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
 }
 
 .sc-addr {
-  line-height: 1.35;
+  line-height: 1.45;
   font-size: 12.5px;
-  color: #0f172a;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.78);
   margin-top: 4px;
   word-break: break-word;
 }
@@ -905,13 +1178,18 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(17, 24, 39, 0.08);
+}
+.sc-item:last-of-type {
+  border-bottom: none;
 }
 
 .sc-item-left {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   min-width: 0;
   flex: 1 1 auto;
@@ -919,13 +1197,13 @@ onMounted(() => {
 
 /* ✅ thumb con tamaño fijo => nunca estira */
 .sc-thumb {
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   border-radius: 10px;
   overflow: hidden;
   flex: 0 0 auto;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(17, 24, 39, 0.03);
+  border: 1px solid rgba(17, 24, 39, 0.06);
 }
 
 .sc-thumb-img {
@@ -938,7 +1216,7 @@ onMounted(() => {
   height: 100%;
   display: grid;
   place-items: center;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(17, 24, 39, 0.4);
 }
 
 .sc-item-info {
@@ -948,12 +1226,14 @@ onMounted(() => {
 .sc-qty {
   font-weight: 500;
   margin-right: 6px;
+  color: rgb(var(--v-theme-primary));
 }
 
 .sc-item-name {
-  font-size: 12.8px;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.32;
+  color: rgba(17, 24, 39, 0.88);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   line-clamp: 2;
@@ -963,81 +1243,86 @@ onMounted(() => {
 }
 
 .sc-item-sub {
-  color: #6b7280;
+  color: rgba(17, 24, 39, 0.55);
   font-size: 12px;
-  margin-top: 1px;
+  font-weight: 400;
+  margin-top: 2px;
 }
 
 .sc-item-right {
   font-weight: 500;
-  font-size: 12.8px;
+  font-size: 13.5px;
+  color: rgba(17, 24, 39, 0.92);
   white-space: nowrap;
   flex: 0 0 auto;
 }
 
 .sc-totals {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 .sc-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  font-size: 12.8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.78);
 }
 
 .sc-row > span:last-child {
   text-align: right;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 460;
+  color: rgba(17, 24, 39, 0.92);
 }
 
 .sc-free {
-  color: #00a650;
-  font-weight: 500;
+  color: #009966 !important;
+  font-weight: 500 !important;
 }
 
 .sc-total {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  margin-top: 6px;
-  font-weight: 500;
-  font-size: 15px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  font-weight: 540;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: rgba(17, 24, 39, 0.94);
 }
 
 .sc-total > span:last-child {
   text-align: right;
   white-space: nowrap;
-  font-weight: 500;
+  font-size: 22px;
 }
 
 /* =========================
    SHARE / HELP
    ========================= */
-.sc-actions-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.sc-share {
+.sc-share-original {
   text-transform: none;
   font-weight: 500;
   border-radius: 10px;
 }
 
 .sc-help {
-  margin-top: 12px;
-  border: 1px solid #e6e6e6;
-  border-radius: 12px;
-  padding: 12px;
+  margin-top: 14px;
+  border: 1px solid rgba(0, 153, 102, 0.18);
+  background: linear-gradient(180deg, rgba(0, 153, 102, 0.04) 0%, rgba(0, 153, 102, 0.08) 100%);
+  border-radius: 14px;
+  padding: 16px 18px;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1048,28 +1333,35 @@ onMounted(() => {
 
 .sc-help-title {
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
 }
 
 .sc-help-sub {
-  color: #6b7280;
+  color: rgba(17, 24, 39, 0.6);
   font-size: 12.5px;
-  margin-top: 2px;
+  font-weight: 400;
+  margin-top: 3px;
 }
 
 .sc-wa {
-  border-radius: 10px;
-  font-weight: 500;
-  text-transform: none;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0.005em !important;
 }
 
 .sc-foot {
-  margin-top: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 
 .sc-foot-note {
-  color: #6b7280;
-  font-size: 12px;
+  color: rgba(17, 24, 39, 0.5);
+  font-size: 11.5px;
+  font-weight: 400;
 }
 
 @media (max-width: 960px) {

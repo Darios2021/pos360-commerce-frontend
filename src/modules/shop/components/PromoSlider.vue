@@ -70,6 +70,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
+import { buildProductLocation } from "@/modules/shop/utils/productSlug";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -92,7 +93,8 @@ let rafResize = 0;
 const activeItemIdx = ref(0);
 
 function open(p) {
-  router.push({ name: "shopProduct", params: { id: p.product_id ?? p.id } });
+  const loc = buildProductLocation(p);
+  if (loc) router.push(loc);
 }
 
 /* ===== helpers money ===== */
