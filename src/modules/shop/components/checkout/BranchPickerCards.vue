@@ -318,10 +318,12 @@ async function initMap() {
   try {
     const google = await loadGoogleMaps(["maps", "marker"]);
 
+    const SAN_JUAN_CENTER = { lat: -31.5375, lng: -68.5364 }; // San Juan capital, Argentina
+
     mapInstance = new google.maps.Map(mapEl.value, {
-      center: { lat: -31.5375, lng: -68.5364 }, // San Juan capital aprox
+      center: SAN_JUAN_CENTER,
       zoom: 12,
-      mapId: "DEMO_MAP_ID", // requerido para AdvancedMarker; podés crear uno propio en GCP
+      mapId: "DEMO_MAP_ID", // requerido para AdvancedMarker
       gestureHandling: "greedy",
       mapTypeControl: false,
       streetViewControl: false,
@@ -329,6 +331,13 @@ async function initMap() {
       zoomControl: true,
       clickableIcons: false,
     });
+
+    // Re-centrar después de que el container alcance su tamaño final
+    // (sino el mapa puede mostrar zona random)
+    setTimeout(() => {
+      if (!mapInstance) return;
+      mapInstance.setCenter(SAN_JUAN_CENTER);
+    }, 80);
 
     infoWindow = new google.maps.InfoWindow({
       maxWidth: 260,

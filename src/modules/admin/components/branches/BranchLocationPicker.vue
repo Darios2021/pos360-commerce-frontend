@@ -9,8 +9,8 @@
     <div class="bl-toolbar">
       <v-text-field
         v-model="searchQuery"
-        label="Buscar dirección o lugar"
-        placeholder="Ej. Av. Ignacio de la Roza 1234, San Juan"
+        label="Buscar negocio, dirección o lugar"
+        placeholder="Ej. San Juan Tecnología, Av. Libertador 1234, etc."
         variant="outlined"
         density="comfortable"
         rounded="lg"
@@ -215,42 +215,108 @@ function clearCoords() {
 
 async function geocodeSearch() {
   const q = String(searchQuery.value || "").trim();
-  if (!q || !geocoder) return;
+  if (!q || !googleRef) return;
   searching.value = true;
   apiError.value = "";
 
-  try {
-    // Sesgar a Argentina para mejor relevancia
-    const result = await geocoder.geocode({
-      address: q,
-      region: "AR",
-      componentRestrictions: { country: "AR" },
-    });
+  // Bounds de la provincia de San Juan, Argentina — sesga la búsqueda
+  // para que "San Juan" no devuelva Puerto Rico o Filipinas.
+  const sanJuanBounds = new googleRef.maps.LatLngBounds(
+    { lat: -32.55, lng: -69.85 },
+    { lat: -28.40, lng: -66.95 }
+  );
 
-    const hits = result?.results || [];
-    if (!hits.length) {
+  try {
+    // 1) PRIMERO intentamos con Places API (busca negocios + direcciones).
+    //    Cubre queries tipo "San Juan Tecnología" o "Farmacia Lugones".
+    let hit = await tryPlacesSearch(q, sanJuanBounds);
+
+    // 2) Si Places no encuentra, fallback a Geocoding (solo direcciones).
+    if (!hit && geocoder) {
+      hit = await tryGeocodeSearch(q, sanJuanBounds);
+    }
+
+    if (!hit) {
       apiError.value = "No se encontraron resultados para esa búsqueda.";
       return;
     }
 
-    const hit = hits[0];
-    const loc = hit.geometry?.location;
-    if (!loc) return;
-    const lat = roundCoord(loc.lat());
-    const lng = roundCoord(loc.lng());
+    const lat = roundCoord(hit.lat);
+    const lng = roundCoord(hit.lng);
     latLocal.value = lat;
     lngLocal.value = lng;
     setMarker(lat, lng, { center: true, zoom: 16 });
     emitChange();
-    emit("geocode", { lat, lng, display_name: hit.formatted_address || q });
+    emit("geocode", { lat, lng, display_name: hit.display_name || q });
   } catch (e) {
-    console.warn("[BranchLocationPicker] geocode failed", e);
+    console.warn("[BranchLocationPicker] search failed", e);
     apiError.value =
-      "No se pudo geocodificar la dirección. Probá ingresando lat/lng a mano.";
+      "No se pudo encontrar el lugar. Probá ingresando la dirección o lat/lng a mano.";
   } finally {
     searching.value = false;
   }
 }
+
+/** Búsqueda con Places API (cubre negocios + direcciones). */
+async function tryPlacesSearch(q, bounds) {
+  try {
+    const placesLib = await loadGoogleMaps(["places"]);
+    const Place = placesLib?.maps?.places?.Place;
+    if (!Place || typeof Place.searchByText !== "function") return null;
+
+    const { places } = await Place.searchByText({
+      textQuery: q,
+      fields: ["displayName", "location", "formattedAddress"],
+      locationBias: bounds,
+      region: "AR",
+      language: "es",
+      maxResultCount: 5,
+    });
+
+    if (!places || !places.length) return null;
+    const p = places[0];
+    const loc = p.location;
+    if (!loc) return null;
+    return {
+      lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
+      lng: typeof loc.lng === "function" ? loc.lng() : loc.lng,
+      display_name:
+        (p.formattedAddress ? `${p.displayName} · ${p.formattedAddress}` : p.displayName) ||
+        q,
+    };
+  } catch (e) {
+    console.warn("[BranchLocationPicker] Places search failed", e?.message || e);
+    return null;
+  }
+}
+
+/** Fallback: Geocoding (solo direcciones). */
+async function tryGeocodeSearch(q, bounds) {
+  try {
+    const result = await geocoder.geocode({
+      address: q,
+      region: "AR",
+      bounds,
+      componentRestrictions: { country: "AR" },
+    });
+    const hits = result?.results || [];
+    if (!hits.length) return null;
+    const hit = hits[0];
+    const loc = hit.geometry?.location;
+    if (!loc) return null;
+    return {
+      lat: loc.lat(),
+      lng: loc.lng(),
+      display_name: hit.formatted_address || q,
+    };
+  } catch (e) {
+    console.warn("[BranchLocationPicker] Geocoding failed", e?.message || e);
+    return null;
+  }
+}
+
+// Centro default: San Juan capital, Argentina
+const SAN_JUAN_CENTER = { lat: -31.5375, lng: -68.5364 };
 
 async function initMap() {
   if (!mapEl.value || mapInstance) return;
@@ -262,11 +328,14 @@ async function initMap() {
 
     geocoder = new google.maps.Geocoder();
 
+    const initialCenter = hasCoords.value
+      ? { lat: Number(latLocal.value), lng: Number(lngLocal.value) }
+      : SAN_JUAN_CENTER;
+    const initialZoom = hasCoords.value ? 16 : 13;
+
     mapInstance = new google.maps.Map(mapEl.value, {
-      center: hasCoords.value
-        ? { lat: Number(latLocal.value), lng: Number(lngLocal.value) }
-        : { lat: -31.5375, lng: -68.5364 },
-      zoom: hasCoords.value ? 16 : 13,
+      center: initialCenter,
+      zoom: initialZoom,
       mapId: "DEMO_MAP_ID", // requerido para AdvancedMarker
       gestureHandling: "greedy",
       mapTypeControl: true,
@@ -288,9 +357,24 @@ async function initMap() {
 
     await nextTick();
 
-    if (hasCoords.value) {
-      setMarker(Number(latLocal.value), Number(lngLocal.value), { center: true, zoom: 16 });
-    }
+    // El v-dialog tarda en alcanzar su tamaño final → recentramos después
+    // de que el DOM se asiente, sino Google Maps queda mostrando una zona
+    // random (default Mercator).
+    const recenter = () => {
+      if (!mapInstance) return;
+      const center = hasCoords.value
+        ? { lat: Number(latLocal.value), lng: Number(lngLocal.value) }
+        : SAN_JUAN_CENTER;
+      mapInstance.setCenter(center);
+      mapInstance.setZoom(hasCoords.value ? 16 : 13);
+      if (hasCoords.value) {
+        setMarker(center.lat, center.lng, { center: false });
+      }
+    };
+
+    setTimeout(recenter, 60);
+    setTimeout(recenter, 200);
+    setTimeout(recenter, 500);
   } catch (e) {
     console.warn("[BranchLocationPicker] no se pudo cargar Google Maps", e);
     apiError.value =
