@@ -76,7 +76,7 @@ import CheckoutStepper from "@/modules/shop/components/checkout/CheckoutStepper.
 import CheckoutSummary from "@/modules/shop/components/checkout/CheckoutSummary.vue";
 
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
-import { getBranches, getShopPaymentConfig } from "@/modules/shop/service/shop.public.api";
+import { getBranches, getShopPaymentConfig, getProduct } from "@/modules/shop/service/shop.public.api";
 import httpPublic from "@/app/api/httpPublic";
 import { encodeReceiptToken } from "@/modules/shop/utils/receiptToken";
 import { saveReceiptLocal } from "@/modules/shop/utils/receiptStorage";
@@ -486,6 +486,47 @@ watch(
 );
 
 // -------------------------
+// Refresh de stock por sucursal del carrito.
+// Pide al backend los datos frescos de cada producto y actualiza
+// `stock_by_branch` de cada item del carrito (sin perder la cantidad
+// que el cliente puso). Resuelve el caso típico:
+//   "agregué X al carrito hace 1 hora; ahora cargué stock en otra
+//    sucursal en el POS pero el checkout sigue mostrando solo la vieja".
+async function refreshCartStockByBranch() {
+  const list = Array.isArray(items.value) ? items.value : [];
+  if (!list.length) return;
+
+  const refreshed = await Promise.all(
+    list.map(async (it) => {
+      const pid = Number(it.product_id || it.id || 0);
+      if (!pid) return it;
+      try {
+        const fresh = await getProduct(pid);
+        if (!fresh) return it;
+        // Mergeamos: priorizamos data del item (qty del cliente, etc.)
+        // y refrescamos stock_by_branch + stock_qty.
+        return {
+          ...it,
+          stock_by_branch: fresh.stock_by_branch || it.stock_by_branch || [],
+          stock_qty: fresh.stock_qty != null ? fresh.stock_qty : it.stock_qty,
+          price_list: fresh.price_list ?? it.price_list,
+          price_discount: fresh.price_discount ?? it.price_discount,
+        };
+      } catch {
+        return it;
+      }
+    })
+  );
+
+  // Actualizamos el carrito de manera atómica
+  if (cart && typeof cart.replaceItems === "function") {
+    cart.replaceItems(refreshed);
+  } else if (cart && Array.isArray(cart.items)) {
+    cart.items = refreshed;
+  }
+}
+
+// -------------------------
 // Init
 onMounted(async () => {
   if (!items.value.length) {
@@ -513,6 +554,12 @@ onMounted(async () => {
   } finally {
     loadingBranches.value = false;
   }
+
+  // ✅ Refrescar stock_by_branch de los items del carrito.
+  // El localStorage guarda una "foto" del producto al momento de agregarlo,
+  // que puede estar desactualizada (ej: stock cargado en otra sucursal después).
+  // Pedimos los datos frescos al backend y actualizamos el carrito en memoria.
+  await refreshCartStockByBranch();
 
   if (pickupBranches.value.length) {
     delivery.value.pickup_branch_id = pickupBranches.value[0].id;

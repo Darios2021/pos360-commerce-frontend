@@ -15,11 +15,49 @@
               class="ml-logo-wide-img"
             />
             <span v-else class="ml-brand-fallback-text">{{ branding.name || "San Juan Tecnología" }}</span>
+
+            <!-- 🇦🇷 Decoración estacional configurable desde admin/branding -->
+            <span v-if="holidayOverlayUrl" class="ar-hat" aria-hidden="true">
+              <video
+                v-if="isOverlayVideo"
+                :src="holidayOverlayUrl"
+                autoplay
+                muted
+                loop
+                playsinline
+                class="ar-hat-media"
+              />
+              <img
+                v-else
+                :src="holidayOverlayUrl"
+                alt=""
+                class="ar-hat-media"
+              />
+            </span>
           </div>
 
           <!-- ✅ Mobile: mantiene icono -->
           <div v-else class="ml-logo-icon" aria-hidden="true">
             <img :src="logoMobileUrl" :alt="branding.name" class="ml-logo-icon-img" />
+
+            <!-- 🇦🇷 Decoración estacional mobile -->
+            <span v-if="holidayOverlayUrl" class="ar-hat ar-hat--mobile" aria-hidden="true">
+              <video
+                v-if="isOverlayVideo"
+                :src="holidayOverlayUrl"
+                autoplay
+                muted
+                loop
+                playsinline
+                class="ar-hat-media"
+              />
+              <img
+                v-else
+                :src="holidayOverlayUrl"
+                alt=""
+                class="ar-hat-media"
+              />
+            </span>
           </div>
         </router-link>
 
@@ -281,7 +319,18 @@ const branding = ref({
   name: "San Juan Tecnología",
   logo_url: "",
   favicon_url: "",
+  holiday_overlay_url: "",
   updated_at: null,
+});
+
+// 🇦🇷 Decoración estacional configurable desde /admin/shop/branding/identity.
+// Si está vacío en branding, no se muestra nada.
+const holidayOverlayUrl = computed(() =>
+  withVersion(branding.value?.holiday_overlay_url || "", branding.value?.updated_at)
+);
+const isOverlayVideo = computed(() => {
+  const u = String(branding.value?.holiday_overlay_url || "").toLowerCase();
+  return /\.(mp4|webm|mov|m4v)(\?|$)/.test(u);
 });
 
 function withVersion(url, v) {
@@ -427,6 +476,7 @@ watch(
   max-height: 56px;
   display: flex;
   align-items: center;
+  position: relative; /* anclaje del gorrito */
 }
 
 .ml-logo-wide-img {
@@ -441,12 +491,58 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative; /* anclaje del gorrito */
 }
 
 .ml-logo-icon-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* =========================
+   🎩 DECORACIÓN ESTACIONAL
+   Imagen/video subido desde /admin/shop/branding/identity
+   que aparece AL LADO del logo del shop. Usado para banderas,
+   mascotas, gorritos del mundial, etc.
+========================= */
+.ar-hat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-left: 10px;
+  flex-shrink: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.24));
+  animation: ar-hat-bounce 2.6s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.ar-hat--mobile {
+  width: 44px;
+  height: 44px;
+  margin-left: 6px;
+}
+
+.ar-hat-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+}
+
+@keyframes ar-hat-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-hat {
+    animation: none;
+  }
 }
 
 /* =========================

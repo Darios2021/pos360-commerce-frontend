@@ -270,25 +270,8 @@ const shipFree = computed(() => Boolean(props.p?.free_shipping || props.p?.shipp
 const shipBolt = computed(() => Boolean(props.p?.shipping_fast || props.p?.bolt || shipFull.value));
 const shipText = computed(() => (shipFree.value || shipFull.value ? "ok" : ""));
 
-/* scroll snapshot manual antes de navegar */
-const SCROLL_KEY = "scroll_positions_v2";
-
-function saveCurrentScrollSnapshot() {
-  try {
-    const fullPath = route.fullPath || (window.location.pathname + window.location.search + window.location.hash);
-    const raw = sessionStorage.getItem(SCROLL_KEY) || "{}";
-    const map = JSON.parse(raw);
-
-    map[fullPath] = {
-      top: window.scrollY || 0,
-      left: window.scrollX || 0,
-    };
-
-    sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map));
-  } catch {}
-}
-
-/* nav */
+/* nav: el snapshot de scroll lo maneja el router en index.js
+   (scroll listener + beforeEach + scrollBehavior). No duplicar acá. */
 import { buildProductLocation } from "@/modules/shop/utils/productSlug";
 
 const productLocation = computed(
@@ -299,13 +282,16 @@ const productLocation = computed(
 );
 
 function openProduct(e) {
-  // El click izquierdo va por el router (SPA). Middle-click y right-click
-  // los maneja el navegador nativamente al ser un <a> con href real.
-  if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) return;
-  saveCurrentScrollSnapshot();
+  // Middle click, ctrl/meta/shift, o click derecho: dejar que el browser maneje
+  // nativamente (abre nueva pestaña, copia link, etc).
+  if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1 || e.button === 2)) return;
+
+  // Click izquierdo: prevenir navegación nativa del <a> y manejar con SPA.
+  // Sin esto, ocurre DOBLE navegación: el browser sigue el href + el router push,
+  // creando 2 entries en history (el user tiene que apretar "atrás" dos veces).
+  if (e) e.preventDefault();
 
   const branch_id = route.query.branch_id ? String(route.query.branch_id) : "3";
-
   const loc = buildProductLocation(props.p, { branchId: branch_id });
   if (loc) router.push(loc);
 }

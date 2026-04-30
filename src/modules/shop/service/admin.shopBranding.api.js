@@ -52,6 +52,22 @@ export async function uploadShopOgImage(file) {
   return r.data?.item || null;
 }
 
+// 🇦🇷 Decoración estacional sobre el logo (GIF/PNG/MP4 hasta 8MB).
+export async function uploadShopHolidayOverlay(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const r = await http.post("/admin/shop/branding/holiday-overlay", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return r.data?.item || null;
+}
+
+export async function removeShopHolidayOverlay() {
+  const r = await http.delete("/admin/shop/branding/holiday-overlay");
+  return r.data?.item || null;
+}
+
 // ✅ Íconos custom de redes sociales (CRM email)
 export async function listSocialIcons() {
   const r = await http.get("/admin/shop/branding/social-icons");

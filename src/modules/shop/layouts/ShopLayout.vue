@@ -5,6 +5,12 @@
     <!-- ✅ Tema SOLO del shop: evita que botones tomen adminLight -->
     <v-theme-provider theme="shopLight">
       <v-layout class="shop-shell d-flex flex-column" data-layout="shop">
+        <!-- ✅ Overlay GLOBAL para transiciones de ruta del shop.
+             Se activa desde el router (beforeEach) cuando hay scroll
+             que restaurar, y se cierra con el evento "shop:scroll-restored"
+             o por kill-switch interno. Una sola instancia para toda la app. -->
+        <ShopRouteRestoreOverlay :model-value="routeOverlayActive" />
+
         <div class="shop-header">
           <ShopHeader />
         </div>
@@ -31,7 +37,9 @@ import { useDisplay } from "vuetify";
 
 import ShopHeader from "@/modules/shop/components/ShopHeader.vue";
 import ShopBottomNav from "@/modules/shop/components/ShopBottomNav.vue";
+import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 import ShopCompleteProfileDialog from "@/modules/shop/components/auth/ShopCompleteProfileDialog.vue";
+import { routeOverlayActive } from "@/modules/shop/service/routeOverlay.state";
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
 

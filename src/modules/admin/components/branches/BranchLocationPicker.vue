@@ -115,9 +115,19 @@ const apiError = ref("");
 const latLocal = ref(props.modelValue?.latitude ?? null);
 const lngLocal = ref(props.modelValue?.longitude ?? null);
 
-const hasCoords = computed(
-  () => Number.isFinite(Number(latLocal.value)) && Number.isFinite(Number(lngLocal.value))
-);
+const hasCoords = computed(() => {
+  const lat = latLocal.value;
+  const lng = lngLocal.value;
+  // Null/undefined/string vacío → sin coords
+  if (lat === null || lat === undefined || lat === "") return false;
+  if (lng === null || lng === undefined || lng === "") return false;
+  const nLat = Number(lat);
+  const nLng = Number(lng);
+  if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) return false;
+  // (0, 0) es el océano Atlántico — lo tratamos como "sin coords"
+  if (nLat === 0 && nLng === 0) return false;
+  return true;
+});
 
 function emitChange() {
   const lat = Number.isFinite(Number(latLocal.value)) ? Number(latLocal.value) : null;
@@ -247,7 +257,19 @@ async function geocodeSearch() {
     lngLocal.value = lng;
     setMarker(lat, lng, { center: true, zoom: 16 });
     emitChange();
-    emit("geocode", { lat, lng, display_name: hit.display_name || q });
+    // Pasamos al padre todo lo que devolvió Places (si vino), así puede
+    // autocompletar campos vacíos del form sin pisar lo escrito.
+    emit("geocode", {
+      lat,
+      lng,
+      display_name: hit.display_name || q,
+      name: hit.name || "",
+      address: hit.address || "",
+      phone: hit.phone || "",
+      hours: hit.hours || "",
+      maps_url: hit.maps_url || "",
+      website: hit.website || "",
+    });
   } catch (e) {
     console.warn("[BranchLocationPicker] search failed", e);
     apiError.value =
@@ -257,7 +279,9 @@ async function geocodeSearch() {
   }
 }
 
-/** Búsqueda con Places API (cubre negocios + direcciones). */
+/** Búsqueda con Places API (cubre negocios + direcciones).
+ *  Devuelve TODOS los datos públicos del lugar (teléfono, horarios, etc.)
+ *  para que el form padre pueda autocompletar campos vacíos. */
 async function tryPlacesSearch(q, bounds) {
   try {
     const placesLib = await loadGoogleMaps(["places"]);
@@ -266,7 +290,16 @@ async function tryPlacesSearch(q, bounds) {
 
     const { places } = await Place.searchByText({
       textQuery: q,
-      fields: ["displayName", "location", "formattedAddress"],
+      fields: [
+        "displayName",
+        "location",
+        "formattedAddress",
+        "nationalPhoneNumber",
+        "internationalPhoneNumber",
+        "regularOpeningHours",
+        "googleMapsURI",
+        "websiteURI",
+      ],
       locationBias: bounds,
       region: "AR",
       language: "es",
@@ -277,17 +310,45 @@ async function tryPlacesSearch(q, bounds) {
     const p = places[0];
     const loc = p.location;
     if (!loc) return null;
+
     return {
       lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
       lng: typeof loc.lng === "function" ? loc.lng() : loc.lng,
       display_name:
         (p.formattedAddress ? `${p.displayName} · ${p.formattedAddress}` : p.displayName) ||
         q,
+      // Datos extra para autocompletar el form (sólo se usan si el campo
+      // del form está vacío, no pisa lo que el user ya escribió):
+      name: p.displayName || "",
+      address: p.formattedAddress || "",
+      phone: p.nationalPhoneNumber || p.internationalPhoneNumber || "",
+      hours: summarizeHours(p.regularOpeningHours),
+      maps_url: p.googleMapsURI || p.googleMapsUri || "",
+      website: p.websiteURI || p.websiteUri || "",
     };
   } catch (e) {
     console.warn("[BranchLocationPicker] Places search failed", e?.message || e);
     return null;
   }
+}
+
+/** Convierte el array regularOpeningHours.weekdayDescriptions de Google
+ *  a un string corto para mostrar en el form. */
+function summarizeHours(opening) {
+  if (!opening) return "";
+  const arr = opening.weekdayDescriptions;
+  if (!Array.isArray(arr) || !arr.length) return "";
+  // Si todos los días tienen el mismo horario, devolver un resumen.
+  // Sino, devolver una concatenación corta.
+  const unique = new Set(
+    arr.map((s) => String(s || "").replace(/^[^:]+:\s*/, "").trim())
+  );
+  if (unique.size === 1) {
+    return `Todos los días · ${[...unique][0]}`;
+  }
+  // Devolver primer día abierto como referencia (string corto).
+  const firstOpen = arr.find((s) => !/cerrado|closed/i.test(s));
+  return firstOpen || arr[0] || "";
 }
 
 /** Fallback: Geocoding (solo direcciones). */
@@ -318,6 +379,28 @@ async function tryGeocodeSearch(q, bounds) {
 // Centro default: San Juan capital, Argentina
 const SAN_JUAN_CENTER = { lat: -31.5375, lng: -68.5364 };
 
+let resizeObserver = null;
+
+function recenterMap() {
+  if (!mapInstance || !googleRef) return;
+
+  // Forzar resize del mapa por si el contenedor cambió de tamaño
+  // (esto evita que Google Maps quede mostrando una zona random
+  // cuando el v-dialog termina su transición de apertura).
+  googleRef.maps.event.trigger(mapInstance, "resize");
+
+  const center = hasCoords.value
+    ? { lat: Number(latLocal.value), lng: Number(lngLocal.value) }
+    : SAN_JUAN_CENTER;
+
+  mapInstance.setCenter(center);
+  mapInstance.setZoom(hasCoords.value ? 16 : 13);
+
+  if (hasCoords.value) {
+    setMarker(center.lat, center.lng, { center: false });
+  }
+}
+
 async function initMap() {
   if (!mapEl.value || mapInstance) return;
   apiError.value = "";
@@ -336,7 +419,7 @@ async function initMap() {
     mapInstance = new google.maps.Map(mapEl.value, {
       center: initialCenter,
       zoom: initialZoom,
-      mapId: "DEMO_MAP_ID", // requerido para AdvancedMarker
+      mapId: "DEMO_MAP_ID",
       gestureHandling: "greedy",
       mapTypeControl: true,
       streetViewControl: true,
@@ -345,7 +428,6 @@ async function initMap() {
       clickableIcons: false,
     });
 
-    // Click en mapa fija marker
     mapInstance.addListener("click", (e) => {
       const lat = roundCoord(e.latLng.lat());
       const lng = roundCoord(e.latLng.lng());
@@ -355,26 +437,23 @@ async function initMap() {
       emitChange();
     });
 
-    await nextTick();
+    // ResizeObserver: cuando el v-dialog termine la transición y
+    // el contenedor cambie de tamaño, re-centramos el mapa.
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        recenterMap();
+      });
+      resizeObserver.observe(mapEl.value);
+    }
 
-    // El v-dialog tarda en alcanzar su tamaño final → recentramos después
-    // de que el DOM se asiente, sino Google Maps queda mostrando una zona
-    // random (default Mercator).
-    const recenter = () => {
-      if (!mapInstance) return;
-      const center = hasCoords.value
-        ? { lat: Number(latLocal.value), lng: Number(lngLocal.value) }
-        : SAN_JUAN_CENTER;
-      mapInstance.setCenter(center);
-      mapInstance.setZoom(hasCoords.value ? 16 : 13);
-      if (hasCoords.value) {
-        setMarker(center.lat, center.lng, { center: false });
-      }
-    };
-
-    setTimeout(recenter, 60);
-    setTimeout(recenter, 200);
-    setTimeout(recenter, 500);
+    // Backup: recentros forzados a varios tiempos para cubrir la transición
+    // del v-dialog (~300ms) y posibles delays de layout.
+    setTimeout(recenterMap, 60);
+    setTimeout(recenterMap, 200);
+    setTimeout(recenterMap, 400);
+    setTimeout(recenterMap, 700);
+    setTimeout(recenterMap, 1200);
+    setTimeout(recenterMap, 1800);
   } catch (e) {
     console.warn("[BranchLocationPicker] no se pudo cargar Google Maps", e);
     apiError.value =
@@ -385,6 +464,10 @@ async function initMap() {
 onMounted(initMap);
 
 onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
   if (marker) {
     marker.map = null;
     marker = null;
@@ -409,6 +492,10 @@ watch(
   },
   { deep: true }
 );
+
+// Exponemos recenterMap para que el componente padre (dialog) pueda
+// forzar el recentro cuando la transición de apertura termine.
+defineExpose({ recenterMap });
 
 watch(
   () => props.initialAddress,

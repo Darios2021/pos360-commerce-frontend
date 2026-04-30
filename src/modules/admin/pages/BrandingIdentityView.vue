@@ -156,6 +156,89 @@
         <input ref="ogInput" type="file" accept="image/*" class="d-none" @change="onOgFile" />
       </div>
 
+      <v-divider class="my-5" />
+
+      <!-- 🇦🇷 DECORACIÓN ESTACIONAL -->
+      <div>
+        <div class="text-subtitle-2 font-weight-medium mb-1">
+          Decoración estacional sobre el logo
+          <v-chip size="x-small" variant="tonal" color="primary" class="ml-2">opcional</v-chip>
+        </div>
+        <div class="text-caption text-medium-emphasis mb-3">
+          Subí un GIF, PNG transparente o video corto MP4 (hasta 8MB) para mostrarlo
+          encima del logo del shop. Útil para temporada (gorrito argentino del Mundial,
+          gorro de Navidad, etc). Si no subís nada, no se muestra nada.
+        </div>
+
+        <v-card rounded="xl" variant="tonal" class="pa-3">
+          <div class="d-flex align-center ga-3 flex-wrap">
+            <!-- Preview -->
+            <div class="overlay-preview">
+              <template v-if="branding.holiday_overlay_url">
+                <video
+                  v-if="isVideoUrl(branding.holiday_overlay_url)"
+                  :src="abs(branding.holiday_overlay_url)"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                  class="overlay-preview-media"
+                />
+                <img
+                  v-else
+                  :src="abs(branding.holiday_overlay_url)"
+                  alt="Decoración"
+                  class="overlay-preview-media"
+                />
+              </template>
+              <v-icon v-else size="22" class="text-medium-emphasis">
+                mdi-party-popper
+              </v-icon>
+            </div>
+
+            <div class="flex-grow-1 min-w-0">
+              <div class="text-caption text-medium-emphasis text-truncate">
+                {{ branding.holiday_overlay_url || "Sin decoración cargada" }}
+              </div>
+              <div class="d-flex ga-2 mt-2">
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  size="small"
+                  rounded="lg"
+                  prepend-icon="mdi-upload"
+                  :loading="uploadingOverlay"
+                  @click="pickOverlay"
+                >
+                  {{ branding.holiday_overlay_url ? "Reemplazar" : "Subir decoración" }}
+                </v-btn>
+
+                <v-btn
+                  v-if="branding.holiday_overlay_url"
+                  variant="text"
+                  size="small"
+                  rounded="lg"
+                  color="error"
+                  prepend-icon="mdi-delete-outline"
+                  :loading="removingOverlay"
+                  @click="removeOverlay"
+                >
+                  Quitar
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </v-card>
+
+        <input
+          ref="overlayInput"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          class="d-none"
+          @change="onOverlayFile"
+        />
+      </div>
+
       <div v-if="branding.updated_at" class="text-caption text-medium-emphasis mt-4 text-right">
         Última actualización: {{ branding.updated_at }}
       </div>
@@ -173,6 +256,8 @@ import {
   uploadShopLogo,
   uploadShopFavicon,
   uploadShopOgImage,
+  uploadShopHolidayOverlay,
+  removeShopHolidayOverlay,
 } from "@/modules/shop/service/admin.shopBranding.api";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
@@ -180,15 +265,25 @@ const saving = ref(false);
 const error = ref("");
 const snack = ref({ show: false, text: "" });
 
-const branding = ref({ name: "", logo_url: "", favicon_url: "", og_image_url: "", updated_at: null });
+const branding = ref({
+  name: "",
+  logo_url: "",
+  favicon_url: "",
+  og_image_url: "",
+  holiday_overlay_url: "",
+  updated_at: null,
+});
 const form = ref({ name: "" });
 
 const logoInput = ref(null);
 const favInput = ref(null);
 const ogInput = ref(null);
+const overlayInput = ref(null);
 const uploadingLogo = ref(false);
 const uploadingFav = ref(false);
 const uploadingOg = ref(false);
+const uploadingOverlay = ref(false);
+const removingOverlay = ref(false);
 
 const base = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 const assetBase = (() => {
@@ -255,6 +350,30 @@ const onLogoFile = (ev) => uploadAndApply(uploadShopLogo, ev, uploadingLogo, "Lo
 const onFavFile = (ev) => uploadAndApply(uploadShopFavicon, ev, uploadingFav, "Favicon");
 const onOgFile = (ev) => uploadAndApply(uploadShopOgImage, ev, uploadingOg, "OG");
 
+function pickOverlay() { overlayInput.value?.click(); }
+const onOverlayFile = (ev) => uploadAndApply(uploadShopHolidayOverlay, ev, uploadingOverlay, "Decoración");
+
+async function removeOverlay() {
+  if (!confirm("¿Quitar la decoración estacional del logo?")) return;
+  removingOverlay.value = true;
+  error.value = "";
+  try {
+    const it = await removeShopHolidayOverlay();
+    if (it) branding.value = { ...branding.value, ...it, holiday_overlay_url: "" };
+    else branding.value = { ...branding.value, holiday_overlay_url: "" };
+    snack.value = { show: true, text: "Decoración eliminada" };
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo eliminar.";
+  } finally {
+    removingOverlay.value = false;
+  }
+}
+
+function isVideoUrl(url) {
+  const u = String(url || "").toLowerCase();
+  return /\.(mp4|webm|mov|m4v)(\?|$)/.test(u);
+}
+
 onMounted(load);
 </script>
 
@@ -267,5 +386,22 @@ code {
   border-radius: 4px;
   font-family: "SF Mono", Menlo, Consolas, monospace;
   font-size: 11.5px;
+}
+
+.overlay-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.overlay-preview-media {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 </style>

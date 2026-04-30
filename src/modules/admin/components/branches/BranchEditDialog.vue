@@ -1,7 +1,7 @@
 <!-- Dialog de creación / edición de sucursal -->
 
 <template>
-  <v-dialog v-model="open" max-width="900" scrollable>
+  <v-dialog v-model="open" max-width="900" scrollable @after-enter="onAfterEnter">
     <v-card rounded="xl">
       <v-toolbar color="surface" density="compact" class="px-3">
         <v-icon class="me-2">{{ isEdit ? "mdi-map-marker-outline" : "mdi-plus-circle-outline" }}</v-icon>
@@ -99,9 +99,12 @@
         </div>
         <div class="text-caption text-medium-emphasis mb-3">
           Se muestra al cliente en el checkout para que pueda ver y elegir la sucursal.
+          <strong>Si tu negocio está cargado en Google Maps</strong>, buscalo por nombre
+          (ej. "San Juan Tecnología") y autocompletamos teléfono, horarios y dirección.
         </div>
 
         <BranchLocationPicker
+          ref="locationPickerRef"
           v-model="geo"
           :initial-address="addressForGeocoding"
           @geocode="onGeocoded"
@@ -205,6 +208,7 @@ const open = computed({
 const isEdit = computed(() => !!props.branch?.id);
 const saving = ref(false);
 const errorMsg = ref("");
+const locationPickerRef = ref(null);
 
 const emptyForm = () => ({
   code: "",
@@ -259,16 +263,62 @@ watch(
   { immediate: true }
 );
 
-function onGeocoded({ display_name }) {
-  if (!form.value.address && display_name) {
-    const head = String(display_name).split(",").slice(0, 1).join(",").trim();
-    if (head) form.value.address = head;
+/**
+ * Cuando el user busca un lugar en el mapa y Places API devuelve datos del
+ * negocio (teléfono, horarios, link de Maps), autocompletamos los campos
+ * del form que estén vacíos. NO pisa lo que el admin ya haya escrito.
+ */
+function onGeocoded(data = {}) {
+  const { display_name, name, address, phone, hours, maps_url } = data;
+
+  // Nombre: si vacío, usar el displayName de Places.
+  if (!form.value.name && name) {
+    form.value.name = name;
+  }
+
+  // Dirección: usar la formattedAddress de Places, sino derivar del display_name.
+  if (!form.value.address) {
+    if (address) {
+      form.value.address = address;
+    } else if (display_name) {
+      const head = String(display_name).split(",").slice(0, 1).join(",").trim();
+      if (head) form.value.address = head;
+    }
+  }
+
+  // Teléfono: nationalPhoneNumber de Places.
+  if (!form.value.phone && phone) {
+    form.value.phone = phone;
+  }
+
+  // Horarios: resumen de regularOpeningHours.
+  if (!form.value.hours && hours) {
+    form.value.hours = hours;
+  }
+
+  // Link directo a Google Maps.
+  if (!form.value.maps_url && maps_url) {
+    form.value.maps_url = maps_url;
   }
 }
 
 function close() {
   if (saving.value) return;
   open.value = false;
+}
+
+/**
+ * Cuando termina la transición de apertura del v-dialog (~300ms),
+ * forzamos al picker a recentrar el mapa. Sin esto Google Maps queda
+ * mostrando una zona random porque el contenedor estaba con size 0
+ * cuando se inicializó.
+ */
+function onAfterEnter() {
+  const picker = locationPickerRef.value;
+  if (picker?.recenterMap) {
+    picker.recenterMap();
+    setTimeout(() => picker.recenterMap?.(), 200);
+  }
 }
 
 async function save() {

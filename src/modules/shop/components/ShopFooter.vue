@@ -209,12 +209,32 @@ onMounted(async () => {
 
 .shop-footer {
   width: 100%;
-  background: rgb(var(--v-theme-primary));
+  /* Gradiente sutil en vez de azul plano para más profundidad */
+  background:
+    linear-gradient(180deg,
+      rgb(var(--v-theme-primary)) 0%,
+      color-mix(in srgb, rgb(var(--v-theme-primary)) 92%, #000) 100%);
   color: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   letter-spacing: 0.005em;
+  position: relative;
+}
+
+/* Hairline dorada/celeste arriba para acento sutil */
+.shop-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(116, 172, 223, 0.32) 30%,
+    rgba(116, 172, 223, 0.32) 70%,
+    transparent 100%);
 }
 
 .shop-footer,
@@ -224,13 +244,18 @@ onMounted(async () => {
 
 .footer-inner {
   width: 100%;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 
 .footer-shell {
   width: min(1200px, 100%);
   margin: 0 auto;
-  padding: 36px 0 20px;
+  padding: 56px 0 28px;
+}
+
+@media (max-width: 700px) {
+  .footer-inner { padding: 0 16px; }
+  .footer-shell { padding: 36px 0 20px; }
 }
 
 /* =========================
@@ -239,8 +264,8 @@ onMounted(async () => {
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 0.9fr 1fr;
-  gap: 36px;
+  grid-template-columns: 1.4fr 0.8fr 0.9fr 1.1fr;
+  gap: 44px;
   align-items: flex-start;
 }
 
@@ -249,31 +274,31 @@ onMounted(async () => {
 ========================= */
 
 .brand-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
+  margin-bottom: 4px;
 }
 
 .brand-logo-box {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 8px 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  justify-content: flex-start;
 }
 
 .brand-logo {
-  max-height: 48px;
-  max-width: 220px;
+  max-height: 56px;
+  max-width: 240px;
   object-fit: contain;
   display: block;
+  /* Si el logo viene oscuro, lo aclaramos un toque para que respire sobre azul */
+  filter: brightness(1.04);
 }
 
 .brand-fallback {
   font-weight: 540;
-  font-size: 16px;
-  color: rgb(var(--v-theme-primary));
+  font-size: 18px;
+  color: #fff;
   letter-spacing: -0.01em;
 }
 
@@ -325,23 +350,25 @@ onMounted(async () => {
 .footer-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 13px;
+  gap: 8px;
+  padding: 8px 14px;
   border-radius: 999px;
   text-decoration: none;
   font-size: 12.5px;
-  font-weight: 460;
-  letter-spacing: 0.005em;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  backdrop-filter: blur(4px);
 }
 
 .footer-pill:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.28);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
 .footer-pill--wa:hover {
@@ -359,11 +386,24 @@ onMounted(async () => {
 
 .footer-kicker {
   font-size: 11px;
-  font-weight: 460;
-  letter-spacing: 0.18em;
+  font-weight: 540;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 16px;
+  color: rgba(116, 172, 223, 0.85);
+  margin-bottom: 18px;
+  position: relative;
+  padding-bottom: 12px;
+}
+
+.footer-kicker::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 24px;
+  height: 2px;
+  background: rgba(116, 172, 223, 0.5);
+  border-radius: 2px;
 }
 
 .footer-links {
@@ -402,19 +442,21 @@ onMounted(async () => {
 
 .branch-card {
   display: block;
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.10);
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.92);
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  color: rgba(255, 255, 255, 0.94);
+  transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+  backdrop-filter: blur(4px);
 }
 
 .branch-card:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
-  transform: translateY(-1px);
+  border-color: rgba(116, 172, 223, 0.36);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 .branch-top {
@@ -454,9 +496,12 @@ onMounted(async () => {
 ========================= */
 
 .footer-divider {
-  margin: 28px 0 16px;
+  margin: 36px 0 20px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.10);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 100%);
 }
 
 .footer-bottom {

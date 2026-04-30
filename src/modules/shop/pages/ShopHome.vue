@@ -79,8 +79,21 @@
         </template>
       </v-alert>
 
+      <!-- Loader minimalista cuando aún no hay items cargados -->
       <div v-if="loading && !items.length && !itemsError" class="home-loading">
-        <v-skeleton-loader type="heading, image, article" />
+        <div class="home-loading-row">
+          <span class="home-loading-pill"></span>
+          <span class="home-loading-pill home-loading-pill--md"></span>
+          <span class="home-loading-pill home-loading-pill--sm"></span>
+        </div>
+        <div class="home-loading-grid">
+          <div v-for="n in 8" :key="n" class="home-loading-card">
+            <div class="home-loading-thumb"></div>
+            <div class="home-loading-line home-loading-line--lg"></div>
+            <div class="home-loading-line home-loading-line--md"></div>
+            <div class="home-loading-line home-loading-line--sm"></div>
+          </div>
+        </div>
       </div>
 
       <v-alert v-else-if="!loading && !items.length && !itemsError" type="info" variant="tonal">
@@ -542,6 +555,105 @@ watch(
 
 .home-loading {
   padding: 24px 8px;
+}
+
+/* Skeleton del home con shimmer sutil — reemplaza v-skeleton-loader genérico */
+.home-loading-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 120px;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.home-loading-pill {
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+.home-loading-pill--md { width: 60%; }
+.home-loading-pill--sm { width: 100%; }
+.home-loading-pill::after,
+.home-loading-thumb::after,
+.home-loading-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: home-loading-sweep 1.4s ease-in-out infinite;
+}
+
+.home-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.home-loading-card {
+  background: rgba(15, 23, 42, 0.025);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.home-loading-thumb {
+  height: 160px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+.home-loading-line {
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+.home-loading-line--lg { width: 90%; }
+.home-loading-line--md { width: 70%; }
+.home-loading-line--sm { width: 40%; }
+
+@keyframes home-loading-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(130%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-loading-pill::after,
+  .home-loading-thumb::after,
+  .home-loading-line::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .home-loading-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .home-loading-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .home-loading-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .home-loading-row .home-loading-pill--sm {
+    display: none;
+  }
+  .home-loading-thumb {
+    height: 130px;
+  }
 }
 
 .after-products-banner {

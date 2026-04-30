@@ -11,6 +11,7 @@
 
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
+import { showRouteOverlay, hideRouteOverlay } from "@/modules/shop/service/routeOverlay.state";
 
 // Layouts
 import AppShell from "@/app/layouts/AppShell.vue";
@@ -196,6 +197,22 @@ function isShopCategoryPath(path) {
   return /^\/shop\/c\/[^/]+$/.test(normalizePath(path));
 }
 
+/**
+ * Devuelve true para CUALQUIER ruta del shop público que cargue contenido async
+ * (productos, categorías, ofertas, etc). Usado para decidir cuándo esperar a
+ * que el DOM tenga altura suficiente antes de restaurar la posición.
+ */
+function isShopAsyncPath(path) {
+  const p = normalizePath(path);
+  if (p === "/shop") return true;                                  // home
+  if (/^\/shop\/c\/[^/]+$/.test(p)) return true;                   // categoría
+  if (p === "/shop/search") return true;                            // búsqueda
+  if (p === "/shop/categories") return true;                        // grid de categorías
+  if (/^\/shop\/account/.test(p)) return true;                      // mis compras / favoritos
+  if (/^\/shop\/landing/i.test(p) || /^\/shop\/(seguridad|sistemas|servicio-tecnico)$/.test(p)) return true;
+  return false;
+}
+
 function getCurrentScroll() {
   return Math.max(
     window.scrollY || 0,
@@ -219,10 +236,21 @@ function readScroll() {
   }
 }
 
-function saveScroll(path, top = getCurrentScroll()) {
+// Usamos fullPath (incluye query strings) para diferenciar entre /shop?page=2 y /shop?page=3.
+// El path solo (sin query) hacía que distintas páginas compartieran el mismo scroll.
+function buildScrollKey(pathOrFullPath = "") {
+  let s = String(pathOrFullPath || "").trim();
+  if (!s) return "/";
+  // Extraer query si existe; ignorar hash (los anchors los maneja scrollBehavior aparte)
+  const [pathPart, queryPart] = s.split("#")[0].split("?");
+  const normalizedPath = normalizePath(pathPart);
+  return queryPart ? `${normalizedPath}?${queryPart}` : normalizedPath;
+}
+
+function saveScroll(pathOrFullPath, top = getCurrentScroll()) {
   try {
-    if (!path) return;
-    const key = normalizePath(path);
+    if (!pathOrFullPath) return;
+    const key = buildScrollKey(pathOrFullPath);
     const map = readScroll();
     map[key] = {
       top: Number(top) || 0,
@@ -232,9 +260,9 @@ function saveScroll(path, top = getCurrentScroll()) {
   } catch {}
 }
 
-function getScroll(path) {
+function getScroll(pathOrFullPath) {
   try {
-    const key = normalizePath(path);
+    const key = buildScrollKey(pathOrFullPath);
     const map = readScroll();
     return map[key] || null;
   } catch {
@@ -299,14 +327,40 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Espera hasta que el documento sea suficientemente alto para alcanzar targetTop
+ * Y la altura se mantenga estable por `stableForMs` (señal de que el contenido
+ * async ya terminó de cargar). Esto evita los "saltitos" de re-aplicar el scroll
+ * varias veces a medida que el layout cambia.
+ */
 async function waitUntilScrollable(targetTop, opts = {}) {
-  const timeoutMs = Number(opts.timeoutMs || 2200);
-  const intervalMs = Number(opts.intervalMs || 60);
+  const timeoutMs = Number(opts.timeoutMs || 3500);
+  const intervalMs = Number(opts.intervalMs || 50);
+  const stableForMs = Number(opts.stableForMs || 240);
+  const safety = 100; // queremos algo de margen para que scrollTop no quede recortado
+
+  const goal = Math.max(0, targetTop) + safety;
   const started = Date.now();
+
+  let lastHeight = -1;
+  let stableSince = 0;
 
   while (Date.now() - started < timeoutMs) {
     const maxY = getMaxScrollableY();
-    if (maxY >= targetTop) return true;
+
+    if (maxY >= goal) {
+      // Altura suficiente alcanzada. Esperamos a que se mantenga estable.
+      if (maxY === lastHeight) {
+        if (!stableSince) stableSince = Date.now();
+        if (Date.now() - stableSince >= stableForMs) return true;
+      } else {
+        stableSince = 0;
+      }
+    } else {
+      stableSince = 0;
+    }
+
+    lastHeight = maxY;
     await sleep(intervalMs);
   }
 
@@ -319,43 +373,50 @@ if ("scrollRestoration" in history) {
 
 markReloadOnce();
 
+// Captura el scroll actual de la ruta y lo guarda en sessionStorage.
+// Se llama en muchos hooks (scroll, pointerdown, beforeunload, beforeEach)
+// para garantizar que SIEMPRE haya un valor reciente al navegar.
+function captureCurrentScroll() {
+  const fullPath = window.location.pathname + window.location.search;
+  const top = getCurrentScroll();
+
+  saveScroll(fullPath, top);
+
+  if (isShopHomePath(window.location.pathname)) {
+    saveShopHomeScroll(top);
+  }
+}
+
+// Throttle ligero del listener de scroll para no escribir sessionStorage en cada pixel.
+// Usamos setTimeout en vez de RAF: garantiza que se ejecute incluso si el browser
+// está priorizando navegación en el momento del último scroll.
+let _scrollSaveTimer = null;
+function onScrollThrottled() {
+  if (_scrollSaveTimer) return;
+  _scrollSaveTimer = setTimeout(() => {
+    _scrollSaveTimer = null;
+    captureCurrentScroll();
+  }, 100);
+}
+
 if (typeof window !== "undefined") {
-  window.addEventListener(
-    "scroll",
-    () => {
-      const path = window.location.pathname + window.location.search + window.location.hash;
-      const top = getCurrentScroll();
+  window.addEventListener("scroll", onScrollThrottled, { passive: true });
 
-      saveScroll(path, top);
+  // ✅ CRÍTICO: capturar la posición ANTES de cualquier click/tap.
+  // Cubre los casos donde el listener de scroll throttled no llegó a
+  // ejecutarse (ej: scroll → click rápido) y la navegación dispara
+  // antes de que se persista. Capture phase (true) para correr antes
+  // que cualquier handler de los componentes.
+  window.addEventListener("pointerdown", captureCurrentScroll, { capture: true, passive: true });
+  window.addEventListener("click",        captureCurrentScroll, { capture: true, passive: true });
 
-      if (isShopHomePath(window.location.pathname)) {
-        saveShopHomeScroll(top);
-      }
-    },
-    { passive: true }
-  );
-
-  window.addEventListener("pagehide", () => {
-    const path = window.location.pathname + window.location.search + window.location.hash;
-    const top = getCurrentScroll();
-
-    saveScroll(path, top);
-
-    if (isShopHomePath(window.location.pathname)) {
-      saveShopHomeScroll(top);
-    }
-  });
+  // Cuando la pestaña se cierra o se oculta.
+  window.addEventListener("pagehide", captureCurrentScroll);
+  window.addEventListener("beforeunload", captureCurrentScroll);
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      const path = window.location.pathname + window.location.search + window.location.hash;
-      const top = getCurrentScroll();
-
-      saveScroll(path, top);
-
-      if (isShopHomePath(window.location.pathname)) {
-        saveShopHomeScroll(top);
-      }
+      captureCurrentScroll();
     }
   });
 }
@@ -369,6 +430,7 @@ const router = createRouter({
   routes,
 
   async scrollBehavior(to, from, savedPosition) {
+    // 1) Anchor / hash → respetar el destino del hash con un offset por el header sticky.
     if (to.hash) {
       await sleep(120);
       return {
@@ -378,54 +440,120 @@ const router = createRouter({
       };
     }
 
+    // 2) Reload de la página → siempre arriba (no queremos restaurar al refrescar F5).
     if (consumeReloadOnce()) {
       await sleep(40);
       return { top: 0, left: 0 };
     }
 
+    // 3) Helper local: espera a que el layout sea estable (altura suficiente +
+    //    sin cambios por 240ms) y devuelve la posición UNA SOLA VEZ.
+    //    Eventos:
+    //      - "shop:scroll-restoring": al inicio (overlay aparece y oculta el contenido)
+    //      - "shop:scroll-restored":   al terminar (overlay se cierra con fade)
+    const applyPosition = async (top, left = 0) => {
+      const targetTop = Math.max(0, Number(top) || 0);
+      const targetLeft = Math.max(0, Number(left) || 0);
+      const willRestoreScroll = isShopAsyncPath(to.path) && targetTop > 0;
+
+      if (willRestoreScroll) {
+        try {
+          window.dispatchEvent(new CustomEvent("shop:scroll-restoring"));
+        } catch {}
+        await waitUntilScrollable(targetTop, {
+          timeoutMs: 2200,
+          stableForMs: 140,
+          intervalMs: 40,
+        });
+      } else if (isShopAsyncPath(to.path)) {
+        await sleep(60);
+      }
+
+      // Avisar al overlay que ya puede cerrarse. Pequeño delay para que
+      // el browser pinte la posición antes de hacer fade del overlay.
+      if (willRestoreScroll) {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              window.dispatchEvent(new CustomEvent("shop:scroll-restored"));
+            } catch {}
+            hideRouteOverlay();
+          }, 100);
+        });
+      } else {
+        // Si no hay scroll que restaurar, igual cerramos el overlay global
+        // por si quedó activado erroneamente desde beforeEach.
+        hideRouteOverlay();
+      }
+
+      return { top: targetTop, left: targetLeft };
+    };
+
+    // 4) Caso especial: home con flag de restore pendiente.
     if (isShopHomePath(to.path) && consumeShopHomeRestorePending()) {
       const top = Math.max(0, getShopHomeScroll());
-
-      if (top > 0) {
-        await waitUntilScrollable(top, { timeoutMs: 2600, intervalMs: 60 });
-      } else {
-        await sleep(80);
-      }
-
-      return { top, left: 0 };
+      return await applyPosition(top, 0);
     }
 
-    if (savedPosition) {
-      const targetTop = Math.max(0, Number(savedPosition.top || 0));
-
-      if ((isShopHomePath(to.path) || isShopCategoryPath(to.path)) && targetTop > 0) {
-        await waitUntilScrollable(targetTop, { timeoutMs: 2200, intervalMs: 60 });
-      } else if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
-        await sleep(80);
-      }
-
-      return savedPosition;
-    }
-
+    // 5) Posición del sessionStorage (siempre primero, lo guarda nuestro
+    //    listener throttled + beforeEach. Es más confiable que savedPosition,
+    //    que a veces viene en 0 cuando el browser no alcanzó a guardar la
+    //    posición antes de navegar).
     const pos = getScroll(to.fullPath);
     if (pos && (pos.top > 0 || pos.left > 0)) {
-      const targetTop = Math.max(0, Number(pos.top || 0));
-
-      if ((isShopHomePath(to.path) || isShopCategoryPath(to.path)) && targetTop > 0) {
-        await waitUntilScrollable(targetTop, { timeoutMs: 2200, intervalMs: 60 });
-      } else if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
-        await sleep(80);
-      }
-
-      return pos;
+      return await applyPosition(pos.top, pos.left);
     }
 
-    if (isShopHomePath(to.path) || isShopCategoryPath(to.path)) {
+    // 6) Posición saved del browser (back/forward nativo) — fallback.
+    if (savedPosition && (savedPosition.top > 0 || savedPosition.left > 0)) {
+      return await applyPosition(savedPosition.top, savedPosition.left);
+    }
+
+    // 7) Default: arriba. En rutas async esperamos un toque para que no haya jitter.
+    if (isShopAsyncPath(to.path)) {
       await sleep(80);
     }
-
+    hideRouteOverlay();
     return { top: 0, left: 0 };
   },
+});
+
+// Seguro extra: ante cualquier afterEach desactivamos el overlay con un
+// delay generoso (en caso de que scrollBehavior no haya corrido o haya fallado).
+// Es solo un safety net — el cierre normal lo hace applyPosition.
+router.afterEach(() => {
+  setTimeout(() => {
+    hideRouteOverlay();
+  }, 4000);
+});
+
+// Captura scroll de la ruta ACTUAL antes de navegar a la siguiente.
+// Esto cubre el caso donde el scroll listener throttled no llegó a guardar
+// la última posición (ej. click rápido en un link de producto).
+router.beforeEach((to, from, next) => {
+  try {
+    if (from?.fullPath) {
+      saveScroll(from.fullPath, getCurrentScroll());
+      if (isShopHomePath(from.path)) {
+        saveShopHomeScroll(getCurrentScroll());
+      }
+    }
+
+    // ✅ Activar el overlay GLOBAL del shop ANTES de que se monte la nueva
+    // página, así el usuario nunca ve la transición de scroll-restore.
+    // Sólo si: vamos a una ruta del shop async + hay posición guardada > 0
+    // (back desde producto a home/categoría con scroll real).
+    const goingToShop = isShopAsyncPath(to?.path);
+    if (goingToShop) {
+      const saved = getScroll(to.fullPath);
+      const homePending = isShopHomePath(to.path) && getShopHomeScroll() > 0;
+      const hasScrollToRestore = (saved && (saved.top > 0)) || homePending;
+      if (hasScrollToRestore) {
+        showRouteOverlay();
+      }
+    }
+  } catch {}
+  next();
 });
 
 // =======================

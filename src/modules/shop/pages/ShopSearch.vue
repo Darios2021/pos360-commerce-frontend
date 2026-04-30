@@ -352,12 +352,18 @@ function setQuery(partial) {
 }
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
-async function fetchResults() {
+// Cuando el user cambia un filtro/página explícitamente, queremos hacer scroll
+// arriba para mostrarle los nuevos resultados. Pero NO cuando el componente se
+// monta inicialmente desde el back button (el router se encarga de restaurar).
+async function fetchResults({ scrollToTop = false } = {}) {
   loading.value = true;
   err.value = "";
-  try {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch {}
+
+  if (scrollToTop) {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {}
+  }
 
   try {
     const r = await getCatalog({
@@ -392,14 +398,14 @@ function onCat(id) {
   selectedCatId.value = id ? String(id) : null;
   page.value = 1;
   setQuery({ cat: selectedCatId.value || null, page: "1" });
-  fetchResults();
+  fetchResults({ scrollToTop: true });
 }
 
 function onBrands(arr) {
   selectedBrands.value = Array.isArray(arr) ? arr.map(String) : [];
   page.value = 1;
   setQuery({ brands: selectedBrands.value.join(",") || null, page: "1" });
-  fetchResults();
+  fetchResults({ scrollToTop: true });
 }
 
 function removeBrand(brand) {
@@ -415,7 +421,7 @@ function onPrice({ min, max }) {
     pmax: max !== null ? String(max) : null,
     page: "1",
   });
-  fetchResults();
+  fetchResults({ scrollToTop: true });
 }
 
 function clearAllFilters() {
@@ -426,7 +432,7 @@ function clearAllFilters() {
   sortSelected.value = "relevance";
   page.value = 1;
   setQuery({ cat: null, brands: null, pmin: null, pmax: null, sort: null, page: "1" });
-  fetchResults();
+  fetchResults({ scrollToTop: true });
   filterOpen.value = false;
 }
 
@@ -455,7 +461,7 @@ function applyMobileFilters() {
     page: "1",
   });
   filterOpen.value = false;
-  fetchResults();
+  fetchResults({ scrollToTop: true });
 }
 
 // Sync pending state when drawer opens
@@ -472,14 +478,14 @@ function nextPage() {
   if (page.value < pages.value) {
     page.value++;
     setQuery({ page: String(page.value) });
-    fetchResults();
+    fetchResults({ scrollToTop: true });
   }
 }
 function prevPage() {
   if (page.value > 1) {
     page.value--;
     setQuery({ page: String(page.value) });
-    fetchResults();
+    fetchResults({ scrollToTop: true });
   }
 }
 
@@ -495,7 +501,7 @@ watch(
     priceMax.value = null;
     sortSelected.value = "relevance";
     page.value = 1;
-    fetchResults();
+    fetchResults({ scrollToTop: true });
   }
 );
 
@@ -504,7 +510,7 @@ watch(
   (v) => {
     page.value = 1;
     setQuery({ sort: v !== "relevance" ? v : null, page: "1" });
-    fetchResults();
+    fetchResults({ scrollToTop: true });
   }
 );
 

@@ -1,246 +1,249 @@
-<!-- ✅ COPY-PASTE FINAL COMPLETO -->
-<!-- src/modules/shop/components/ShopRouteRestoreOverlay.vue -->
+<!--
+  ShopRouteRestoreOverlay
+  Loader OPACO con kill-switch automático.
+  - Oculta el contenido durante el restore de scroll
+  - Solo barra de progreso fina arriba (sin texto, sin spinner)
+  - Auto-cierre por timeout de seguridad: NUNCA queda visible más de 4s
+  - Auto-cierre cuando cambia la ruta (escucha popstate / pushstate)
+-->
+
 <template>
-  <transition name="route-restore-fade">
-    <div v-if="modelValue" class="route-restore-mask" aria-hidden="true">
-      <div class="route-restore-shell">
-        <div class="route-restore-topbar">
-          <span class="route-restore-shimmer"></span>
-        </div>
-
-        <div class="route-restore-schema">
-          <div class="schema-header">
-            <span class="schema-pill w-18"></span>
-            <span class="schema-pill w-28"></span>
-            <span class="schema-pill w-14"></span>
-          </div>
-
-          <div class="schema-hero"></div>
-
-          <div class="schema-grid">
-            <div v-for="n in 8" :key="n" class="schema-card">
-              <div class="schema-thumb"></div>
-              <div class="schema-line w-80"></div>
-              <div class="schema-line w-55"></div>
-              <div class="schema-line w-35"></div>
-            </div>
-          </div>
-        </div>
+  <transition name="srl-fade">
+    <div v-if="visible" class="srl-mask" aria-hidden="true">
+      <div class="srl-progress">
+        <span class="srl-progress-bar"></span>
+      </div>
+      <div class="srl-spinner-wrap">
+        <span class="srl-spinner" />
       </div>
     </div>
   </transition>
 </template>
 
 <script setup>
-defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false,
-  },
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  /** Tiempo máximo (ms) que el overlay puede estar visible antes de auto-cerrarse. */
+  maxVisibleMs: { type: Number, default: 5000 },
+  /** Tiempo MÍNIMO (ms) que el overlay debe quedar visible una vez mostrado.
+   *  Evita que aparezca-desaparezca tan rápido que el spinner no se llegue a ver. */
+  minVisibleMs: { type: Number, default: 280 },
+});
+const emit = defineEmits(["update:modelValue"]);
+
+const internal = ref(false);
+// Flag de "muerto": cuando el kill-switch dispara, sobreescribe a modelValue
+// hasta que el padre baje el prop. Evita que la pantalla quede en blanco
+// si el padre se olvidó de bajar modelValue.
+const killed = ref(false);
+const visible = computed(() => !killed.value && (props.modelValue || internal.value));
+
+let killTimer = null;
+let pendingHideTimer = null;
+let shownAt = 0;
+
+function showOverlay() {
+  internal.value = true;
+  killed.value = false;
+  shownAt = Date.now();
+  clearPendingHide();
+  // Kill-switch: si por alguna razón no se cierra solo en maxVisibleMs,
+  // forzamos cierre para evitar que la pantalla quede en blanco.
+  clearKillTimer();
+  killTimer = setTimeout(() => {
+    forceHide();
+  }, Math.max(500, props.maxVisibleMs));
+}
+
+/** Cierre "amable": respeta el tiempo mínimo de visualización. */
+function gracefulHide() {
+  const elapsed = Date.now() - shownAt;
+  const remaining = Math.max(0, props.minVisibleMs - elapsed);
+  clearPendingHide();
+  if (remaining <= 0) {
+    forceHide();
+    return;
+  }
+  pendingHideTimer = setTimeout(forceHide, remaining);
+}
+
+function forceHide() {
+  internal.value = false;
+  killed.value = true;
+  emit("update:modelValue", false);
+  clearKillTimer();
+  clearPendingHide();
+}
+
+function clearKillTimer() {
+  if (killTimer) {
+    clearTimeout(killTimer);
+    killTimer = null;
+  }
+}
+
+function clearPendingHide() {
+  if (pendingHideTimer) {
+    clearTimeout(pendingHideTimer);
+    pendingHideTimer = null;
+  }
+}
+
+function onScrollRestoring() {
+  showOverlay();
+}
+
+function onScrollRestored() {
+  // Cierre amable: respeta minVisibleMs para que se vea el spinner.
+  gracefulHide();
+}
+
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (v) {
+      // Nueva navegación: reset killed para permitir mostrar de nuevo.
+      killed.value = false;
+      showOverlay();
+    } else {
+      // Cuando el padre baja modelValue, hacemos cierre amable
+      // para respetar minVisibleMs y que el spinner se llegue a ver.
+      gracefulHide();
+    }
+  }
+);
+
+onMounted(() => {
+  if (props.modelValue) showOverlay();
+  window.addEventListener("shop:scroll-restoring", onScrollRestoring);
+  window.addEventListener("shop:scroll-restored", onScrollRestored);
+
+  // Si el browser dispara navegación nativa (back/forward sin pasar por
+  // scrollBehavior), también cerramos el overlay después de un breve delay.
+  window.addEventListener("popstate", () => setTimeout(forceHide, 1500));
+});
+
+onBeforeUnmount(() => {
+  clearKillTimer();
+  clearPendingHide();
+  window.removeEventListener("shop:scroll-restoring", onScrollRestoring);
+  window.removeEventListener("shop:scroll-restored", onScrollRestored);
 });
 </script>
 
 <style scoped>
-.route-restore-mask {
+/* Color de marca: usa la variable del theme runtime, con fallback sólido. */
+.srl-mask {
   position: fixed;
   inset: 0;
   z-index: 4000;
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   pointer-events: all;
+
+  /* Color sólido azul institucional como base — siempre disponible.
+     Si el layout del shop expone --v-theme-primary, se sobreescribe
+     desde un bloque global más abajo. */
+  --srl-brand: #1565c0;
 }
 
-.route-restore-shell {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.route-restore-topbar {
+/* ── Barra de progreso superior (NProgress style) ── */
+.srl-progress {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 3px;
-  background: rgba(52, 131, 250, 0.1);
+  background: rgba(21, 101, 192, 0.06);
   overflow: hidden;
 }
 
-.route-restore-shimmer {
+.srl-progress-bar {
   display: block;
-  width: 28%;
+  width: 30%;
   height: 100%;
-  border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgba(52, 131, 250, 0) 0%,
-    rgba(52, 131, 250, 0.65) 50%,
-    rgba(52, 131, 250, 0) 100%
+    transparent 0%,
+    var(--srl-brand) 50%,
+    transparent 100%
   );
-  animation: routeRestoreSlide 0.95s ease-in-out infinite;
+  border-radius: 0 999px 999px 0;
+  animation: srl-progress-slide 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  box-shadow: 0 0 8px var(--srl-brand);
 }
 
-.route-restore-schema {
-  width: min(1320px, calc(100% - 32px));
-  margin: 18px auto 0;
-  opacity: 0.92;
+@keyframes srl-progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(450%); }
 }
 
-.schema-header {
-  display: grid;
-  grid-template-columns: 180px 1fr 120px;
-  gap: 14px;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.schema-pill,
-.schema-hero,
-.schema-thumb,
-.schema-line {
-  position: relative;
-  overflow: hidden;
-  background: #edf2f7;
-}
-
-.schema-pill::after,
-.schema-hero::after,
-.schema-thumb::after,
-.schema-line::after {
-  content: "";
+/* ── Spinner circular grande, centrado ── */
+.srl-spinner-wrap {
   position: absolute;
   inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.72) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  animation: schemaSweep 1.25s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.schema-pill {
-  height: 16px;
-  border-radius: 999px;
+.srl-spinner {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 6px solid rgba(21, 101, 192, 0.15);
+  border-top-color: var(--srl-brand);
+  border-right-color: var(--srl-brand);
+  animation: srl-spin 0.8s linear infinite;
+  box-shadow: 0 6px 28px rgba(21, 101, 192, 0.22);
 }
 
-.schema-hero {
-  height: 260px;
-  border-radius: 24px;
-  margin-bottom: 22px;
+@keyframes srl-spin {
+  to { transform: rotate(360deg); }
 }
 
-.schema-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+/* ── Transición suave ── */
+.srl-fade-enter-active,
+.srl-fade-leave-active {
+  transition: opacity 0.28s ease;
 }
-
-.schema-card {
-  border-radius: 22px;
-  background: #f8fafc;
-  padding: 12px;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
-}
-
-.schema-thumb {
-  height: 170px;
-  border-radius: 18px;
-  margin-bottom: 12px;
-}
-
-.schema-line {
-  height: 12px;
-  border-radius: 999px;
-  margin-top: 10px;
-}
-
-.w-80 { width: 80%; }
-.w-55 { width: 55%; }
-.w-35 { width: 35%; }
-.w-18 { width: 18%; }
-.w-28 { width: 28%; }
-.w-14 { width: 14%; }
-
-.route-restore-fade-enter-active,
-.route-restore-fade-leave-active {
-  transition: opacity 0.18s ease;
-}
-
-.route-restore-fade-enter-from,
-.route-restore-fade-leave-to {
+.srl-fade-enter-from,
+.srl-fade-leave-to {
   opacity: 0;
 }
 
-@keyframes routeRestoreSlide {
-  0% { transform: translateX(-120%); }
-  100% { transform: translateX(430%); }
-}
-
-@keyframes schemaSweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(130%); }
-}
-
-@media (max-width: 1100px) {
-  .schema-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (prefers-reduced-motion: reduce) {
+  .srl-progress-bar {
+    animation: none;
+    width: 100%;
+    background: var(--srl-brand);
+    opacity: 0.6;
   }
-
-  .schema-hero {
-    height: 220px;
+  .srl-spinner {
+    animation: none;
+    border-color: var(--srl-brand);
   }
 }
 
-@media (max-width: 760px) {
-  .route-restore-topbar {
+@media (max-width: 600px) {
+  .srl-progress {
     height: 2.5px;
   }
-
-  .route-restore-shimmer {
-    width: 36%;
+  .srl-spinner {
+    width: 56px;
+    height: 56px;
+    border-width: 5px;
   }
+}
+</style>
 
-  .route-restore-schema {
-    width: calc(100% - 20px);
-    margin-top: 12px;
-  }
-
-  .schema-header {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .schema-header .schema-pill:last-child {
-    display: none;
-  }
-
-  .schema-hero {
-    height: 148px;
-    border-radius: 18px;
-    margin-bottom: 16px;
-  }
-
-  .schema-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .schema-card {
-    border-radius: 18px;
-    padding: 10px;
-  }
-
-  .schema-thumb {
-    height: 118px;
-    border-radius: 14px;
-    margin-bottom: 10px;
-  }
-
-  .schema-line {
-    height: 10px;
-    margin-top: 8px;
-  }
+<!-- Bloque NO-scoped: permite que el color de marca del shop pise el azul
+     base si el theme runtime ya cargó la variable --v-theme-primary.
+     !important para garantizar que pise al scoped style. -->
+<style>
+.scope-shop .srl-mask {
+  --srl-brand: rgb(var(--v-theme-primary)) !important;
 }
 </style>

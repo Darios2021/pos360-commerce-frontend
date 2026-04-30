@@ -161,6 +161,17 @@ export const useShopCartStore = defineStore("shopCart", {
       persistState(this);
     },
 
+    /**
+     * Reemplaza los items del carrito con una lista nueva (preservando qty).
+     * Lo usa el checkout para refrescar `stock_by_branch` con datos frescos
+     * del backend, evitando inconsistencias por items "cacheados" en localStorage
+     * desde antes de cargar stock en otras sucursales.
+     */
+    replaceItems(list) {
+      this.items = Array.isArray(list) ? list : [];
+      persistState(this);
+    },
+
     setBranch(id) {
       this.branch_id = id ? Number(id) : null;
 

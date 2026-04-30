@@ -5,6 +5,22 @@
 
 <template>
   <div class="bp" v-if="branches.length">
+    <!-- AVISO: una sola sucursal disponible -->
+    <div v-if="branches.length === 1 && !props.modelValue" class="bp-single-alert">
+      <div class="bp-single-alert-ico">
+        <v-icon size="18">mdi-information-outline</v-icon>
+      </div>
+      <div class="bp-single-alert-text">
+        <div class="bp-single-alert-title">
+          Solo hay una sucursal con stock para tu carrito
+        </div>
+        <div class="bp-single-alert-sub">
+          Elegí <strong>{{ branchName(branches[0]) }}</strong> abajo para confirmar
+          el punto de retiro.
+        </div>
+      </div>
+    </div>
+
     <!-- MAPA -->
     <div class="bp-map-wrap">
       <div ref="mapEl" class="bp-map-canvas" aria-label="Mapa de sucursales"></div>
@@ -152,12 +168,17 @@ function branchCity(b) {
   return [toStr(b?.city), toStr(b?.province)].filter(Boolean).join(", ");
 }
 function branchLatLng(b) {
-  const lat = Number(b?.latitude ?? b?.lat);
-  const lng = Number(b?.longitude ?? b?.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
-    return { lat, lng };
-  }
-  return null;
+  const rawLat = b?.latitude ?? b?.lat;
+  const rawLng = b?.longitude ?? b?.lng;
+  // Null/undefined/string vacío → sin coords (no las graficamos)
+  if (rawLat === null || rawLat === undefined || rawLat === "") return null;
+  if (rawLng === null || rawLng === undefined || rawLng === "") return null;
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // (0, 0) es el océano — lo tratamos como sin coords
+  if (lat === 0 && lng === 0) return null;
+  return { lat, lng };
 }
 function mapsLink(b) {
   const ll = branchLatLng(b);
@@ -350,11 +371,10 @@ async function initMap() {
     renderMarkers(google);
     fitToAllMarkers(google);
 
-    // Auto-seleccionar primera sucursal con coords
-    if (props.modelValue == null) {
-      const first = props.branches.find((b) => branchLatLng(b));
-      if (first) select(first, false);
-    }
+    // ❌ NO auto-seleccionamos. Aunque haya una sola sucursal disponible,
+    // el cliente tiene que elegirla explícitamente para confirmar que está
+    // de acuerdo con el punto de retiro (ver banner "Hay una sola sucursal..."
+    // en el template).
 
     // Watcher: cuando cambia la selección, re-pintar pins
     watch(
@@ -400,6 +420,43 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* ===== Aviso de sucursal única ===== */
+.bp-single-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.06) 0%, rgba(21, 101, 192, 0.10) 100%);
+  border: 1px solid rgba(21, 101, 192, 0.18);
+  border-radius: 12px;
+}
+.bp-single-alert-ico {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(21, 101, 192, 0.14);
+  color: rgb(var(--v-theme-primary));
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.bp-single-alert-text {
+  min-width: 0;
+}
+.bp-single-alert-title {
+  font-weight: 540;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  color: rgba(17, 24, 39, 0.92);
+}
+.bp-single-alert-sub {
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.65);
+  line-height: 1.4;
 }
 
 /* ===== Mapa ===== */
