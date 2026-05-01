@@ -24,12 +24,10 @@ dist-ssr
 *.sw?
 
 # Capacitor / Android
-android/app/build
-android/build
-android/.gradle
-android/local.properties
-android/app/release
-android/app/debug
+# La carpeta android/ es proyecto Gradle generado por `npx cap add android`.
+# Se regenera con `cap sync` — no se commitea para no inflar el repo (52MB)
+# ni el tar de deploy CapRover.
+/android/
 *.apk
 *.aab
 *.keystore

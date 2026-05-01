@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">San Juan Tecnología</string>
-    <string name="title_activity_main">San Juan Tecnología</string>
-    <string name="package_name">com.sanjuantecnologia.app</string>
-    <string name="custom_url_scheme">com.sanjuantecnologia.app</string>
-</resources>
