@@ -537,7 +537,11 @@
         :transfer-unread-count="transferUnreadCount"
       />
 
-      <!-- ================= BANNER DESCARGA APK (mobile web, no en APK) ================= -->
+      <!-- ================= BANNER + PROMPT DESCARGA APK (mobile web) ================= -->
+      <!-- Modal full-screen: aparece al entrar al backoffice mobile, exige
+           decidir entre instalar o postergar 24h. -->
+      <AppApkPrompt />
+      <!-- Banner discreto: queda como recordatorio sutil después del prompt. -->
       <AppApkBanner />
     </v-layout>
   </v-app>
@@ -556,6 +560,7 @@ import { setDarkMode } from "@/app/theme/darkMode";
 import { getBreadcrumbs } from "@/app/utils/routeTree";
 import AppBottomNav from "@/app/components/AppBottomNav.vue";
 import AppApkBanner from "@/app/components/AppApkBanner.vue";
+import AppApkPrompt from "@/app/components/AppApkPrompt.vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
