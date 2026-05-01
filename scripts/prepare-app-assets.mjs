@@ -31,16 +31,24 @@ const BG_LIGHT = { r: 255, g: 255, b: 255, alpha: 1 };
 const BG_DARK = { r: 13, g: 15, b: 19, alpha: 1 }; // matchea el dark mode del shop
 const ICON_SIZE = 1024;
 const SPLASH_SIZE = 2732;
-const SPLASH_LOGO_SIZE = 900; // logo dentro del splash
+const SPLASH_LOGO_SIZE = 1400; // logo dentro del splash, más grande
 
 console.log("🎨 [prepare-app-assets] Procesando logo fuente...");
 
-// 1) Icono: cuadrado 1024x1024 con padding suave para que no toque los bordes
-//    (Android le va a aplicar máscara circular o squircle según el launcher).
+// 1) Icono: cuadrado 1024x1024.
+//    - Recortamos primero el padding blanco lateral del webp original
+//      (el círculo del logo no ocupa todo el ancho del archivo).
+//    - Luego escalamos casi al tamaño completo (980/1024 ≈ 96%) para que
+//      el ícono se vea grande, sin recuadro de fondo extra.
+//    - Fondo blanco sólido (no transparente) porque las máscaras circulares
+//      de Android cortarían los bordes y dejarían bordes raros en launchers
+//      legacy. Como el logo ya tiene su propio círculo celeste, queda
+//      visualmente sin "recuadro" ajeno.
 const iconLogo = await sharp(SRC)
+  .trim() // quita el padding blanco lateral del webp
   .resize({
-    width: 820,
-    height: 820,
+    width: 980,
+    height: 980,
     fit: "contain",
     background: { r: 255, g: 255, b: 255, alpha: 0 },
   })
@@ -59,10 +67,11 @@ await sharp({
   .png()
   .toFile(OUT_ICON);
 
-console.log("  ✓ icon.png (1024x1024)");
+console.log("  ✓ icon.png (1024x1024, logo 96%)");
 
-// 2) Splash light: 2732x2732 fondo blanco + logo grande centrado
+// 2) Splash light: 2732x2732 fondo blanco + logo grande centrado (también trim)
 const splashLogo = await sharp(SRC)
+  .trim()
   .resize({
     width: SPLASH_LOGO_SIZE,
     height: SPLASH_LOGO_SIZE,

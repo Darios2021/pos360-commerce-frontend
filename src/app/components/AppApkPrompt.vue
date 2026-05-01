@@ -163,22 +163,19 @@ watch(
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
 }
 
-/* Hero con fondo celeste y logo grande */
+/* Hero con fondo celeste y logo grande, sin recuadro */
 .apk-prompt__hero {
   background: linear-gradient(135deg, #1488d1 0%, #2bb0f3 100%);
-  padding: 28px 16px 22px;
+  padding: 32px 16px 28px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 .apk-prompt__logo {
-  width: 100px;
-  height: 100px;
-  border-radius: 22px;
-  background: #fff;
-  padding: 8px;
+  width: 168px;
+  height: 168px;
   object-fit: contain;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
 }
 
 /* Body */
