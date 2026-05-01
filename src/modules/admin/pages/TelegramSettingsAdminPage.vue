@@ -370,6 +370,7 @@ const form = reactive({
   alert_stock_big_adjust: false,
   alert_shop_new_order: false,
   alert_shop_new_reservation: false,
+  alert_shop_payment_confirmed: true,
   alert_transfer_dispatched: true,
   alert_transfer_pending: true,
   alert_transfer_received: true,
@@ -400,8 +401,9 @@ const transferAlerts = [
 ];
 
 const shopAlerts = [
-  { key: "alert_shop_new_reservation", label: "Nueva reserva (retiro en sucursal)" },
-  { key: "alert_shop_new_order", label: "Nueva compra (envío a domicilio)" },
+  { key: "alert_shop_payment_confirmed", label: "Compra confirmada (MercadoPago aprobado)" },
+  { key: "alert_shop_new_reservation", label: "Nueva reserva sin MP (retiro + transferencia/efectivo)" },
+  { key: "alert_shop_new_order", label: "Nueva compra sin MP (envío + transferencia/efectivo)" },
 ];
 
 const productAlerts = [
@@ -459,6 +461,7 @@ async function save() {
       alert_stock_big_adjust: !!form.alert_stock_big_adjust,
       alert_shop_new_order: !!form.alert_shop_new_order,
       alert_shop_new_reservation: !!form.alert_shop_new_reservation,
+      alert_shop_payment_confirmed: !!form.alert_shop_payment_confirmed,
       alert_transfer_dispatched: !!form.alert_transfer_dispatched,
       alert_transfer_pending: !!form.alert_transfer_pending,
       alert_transfer_received: !!form.alert_transfer_received,

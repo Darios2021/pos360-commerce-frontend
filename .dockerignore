@@ -7,8 +7,10 @@ dist
 npm-debug.log
 yarn.lock
 pnpm-lock.yaml
-.env
-.env.*
+# .env y .env.* SÍ se copian al build — Vite los lee para inyectar
+# VITE_GOOGLE_MAPS_API_KEY y demás vars del bundle de producción.
+# Si no se copia, el bundle queda con keys vacías y Maps falla en prod.
+.env.local
 
 # Android / Capacitor: no se necesitan para el build del frontend web
 android
