@@ -44,10 +44,39 @@
 
       <!-- Cámara + área de scan -->
       <div v-if="hasNativeApi" class="bsc__camera">
-        <video ref="videoRef" class="bsc__video" autoplay muted playsinline />
+        <video
+          ref="videoRef"
+          class="bsc__video"
+          autoplay
+          muted
+          playsinline
+          @playing="onVideoPlaying"
+        />
 
-        <!-- Frame de scan en el centro -->
-        <div class="bsc__frame">
+        <!-- Loading mientras se pide permiso o se inicializa el stream -->
+        <Transition name="bsc-fade">
+          <div v-if="cameraState !== 'streaming' && cameraState !== 'denied'" class="bsc__loading">
+            <div class="bsc__loading-spinner" aria-hidden="true" />
+            <div class="bsc__loading-text">
+              {{ cameraState === 'requesting' ? 'Permití el acceso a la cámara' : 'Iniciando cámara…' }}
+            </div>
+          </div>
+        </Transition>
+
+        <!-- Cámara denegada -->
+        <Transition name="bsc-fade">
+          <div v-if="cameraState === 'denied'" class="bsc__loading bsc__loading--denied">
+            <v-icon size="42" color="white">mdi-camera-off-outline</v-icon>
+            <div class="bsc__loading-text">
+              No tengo permiso para usar la cámara.
+              <br />
+              Habilitalo en los Ajustes del teléfono.
+            </div>
+          </div>
+        </Transition>
+
+        <!-- Frame de scan en el centro (solo cuando el stream ya está activo) -->
+        <div v-show="cameraState === 'streaming'" class="bsc__frame">
           <span class="bsc__corner bsc__corner--tl" />
           <span class="bsc__corner bsc__corner--tr" />
           <span class="bsc__corner bsc__corner--bl" />
@@ -58,7 +87,7 @@
         <!-- Resultado flotante sobre la cámara -->
         <Transition name="bsc-feedback">
           <div
-            v-if="lastResult"
+            v-if="lastResult && cameraState === 'streaming'"
             class="bsc__result-floating"
             :class="`bsc__result-floating--${lastResult.kind}`"
           >
@@ -162,6 +191,14 @@ const lastResult = ref(null);
 const torchOn = ref(false);
 const torchSupported = ref(false);
 const captureCount = ref(0);
+// Estado de la cámara — separado de lastResult para no mostrar "error" durante
+// la fase normal de pedir permiso.
+//   'idle'        — diálogo cerrado o aún no iniciamos
+//   'requesting'  — esperando que el usuario apruebe el permiso
+//   'streaming'   — la cámara está mostrando frames OK
+//   'denied'      — el usuario rechazó el permiso
+//   'error'       — fallo distinto de denied (sin cámara, hardware, etc)
+const cameraState = ref("idle");
 
 const hasNativeApi = computed(
   () => typeof window !== "undefined" && "BarcodeDetector" in window
@@ -176,6 +213,7 @@ let lastDetectedAt = 0;
 // ── Cámara ───────────────────────────────────────────────────────────
 async function startCamera() {
   if (!hasNativeApi.value) return;
+  cameraState.value = "requesting";
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -197,9 +235,23 @@ async function startCamera() {
       formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","qr_code","itf","codabar"],
     });
     scanInterval = setInterval(scanFrame, 220);
+    // El estado real pasa a 'streaming' cuando el video emite onPlaying.
+    // Si por algún motivo el evento no llega, lo confirmamos a los 800ms.
+    setTimeout(() => {
+      if (cameraState.value === "requesting") cameraState.value = "streaming";
+    }, 800);
   } catch (e) {
-    setResult("error", "No se pudo acceder a la cámara. Usá el campo manual.");
+    if (e?.name === "NotAllowedError" || e?.name === "SecurityError") {
+      cameraState.value = "denied";
+    } else {
+      cameraState.value = "error";
+      setResult("error", "No se pudo acceder a la cámara.");
+    }
   }
+}
+
+function onVideoPlaying() {
+  cameraState.value = "streaming";
 }
 
 async function scanFrame() {
@@ -228,6 +280,7 @@ function stopCamera() {
   }
   detector = null;
   torchOn.value = false;
+  cameraState.value = "idle";
 }
 
 async function toggleTorch() {
@@ -471,6 +524,47 @@ function close() {
   50%  { top: 90%; opacity: 1; }
   100% { top: 8%; opacity: 0.4; }
 }
+
+/* ── Loading / estados de cámara ── */
+.bsc__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #000;
+  color: #fff;
+  text-align: center;
+  padding: 24px;
+  z-index: 3;
+}
+.bsc__loading--denied {
+  background: rgba(0, 0, 0, 0.92);
+}
+.bsc__loading-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #1488d1;
+  animation: bsc-spin 0.9s linear infinite;
+}
+@keyframes bsc-spin {
+  to { transform: rotate(360deg); }
+}
+.bsc__loading-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 280px;
+}
+
+.bsc-fade-enter-active,
+.bsc-fade-leave-active { transition: opacity 0.18s ease; }
+.bsc-fade-enter-from,
+.bsc-fade-leave-to { opacity: 0; }
 
 /* ── Sin cámara (fallback) ── */
 .bsc__no-cam {
