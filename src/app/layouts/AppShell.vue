@@ -537,12 +537,11 @@
         :transfer-unread-count="transferUnreadCount"
       />
 
-      <!-- ================= BANNER + PROMPT DESCARGA APK (mobile web) ================= -->
-      <!-- Modal full-screen: aparece al entrar al backoffice mobile, exige
-           decidir entre instalar o postergar 24h. -->
+      <!-- ================= PROMPT DESCARGA APK (mobile web, no APK Capacitor) ================= -->
+      <!-- Modal bottom-sheet permanente: aparece cada vez que un usuario
+           Android web entra al backoffice. No persiste el dismiss — vuelve
+           a aparecer en cada refresh / re-login. -->
       <AppApkPrompt />
-      <!-- Banner discreto: queda como recordatorio sutil después del prompt. -->
-      <AppApkBanner />
     </v-layout>
   </v-app>
 </template>
@@ -559,7 +558,6 @@ import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
 import { getBreadcrumbs } from "@/app/utils/routeTree";
 import AppBottomNav from "@/app/components/AppBottomNav.vue";
-import AppApkBanner from "@/app/components/AppApkBanner.vue";
 import AppApkPrompt from "@/app/components/AppApkPrompt.vue";
 import { useDisplay } from "vuetify";
 

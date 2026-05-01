@@ -50,8 +50,11 @@
           </v-btn>
 
           <button class="apk-prompt__cta-skip" @click="onSkip">
-            Seguir en el navegador por ahora
+            Seguir en el navegador
           </button>
+          <p class="apk-prompt__cta-note">
+            Te lo vamos a recordar la próxima vez que entres.
+          </p>
         </div>
       </div>
     </div>
@@ -63,11 +66,9 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { isMobileBrowser } from "@/app/utils/runtime";
 
-const STORAGE_KEY = "pos.apkPrompt.skippedAt";
-// 24h: el "saltear" no es para siempre. Si el usuario lo posterga, le
-// volvemos a mostrar al día siguiente para insistir.
-const SKIP_TTL_MS = 24 * 60 * 60 * 1000;
-
+// El prompt es permanente: NO persiste el "seguir en navegador" en
+// localStorage. Cada refresh / re-login vuelve a mostrarlo. Solo se
+// oculta dentro de la sesión actual del SPA (no atraviesa reloads).
 const LOGO =
   "https://storage-files.cingulado.org/pos360/products/224/1768522749202-af8d19f07dd9.webp";
 
@@ -75,30 +76,16 @@ const route = useRoute();
 const router = useRouter();
 const visible = ref(false);
 
-function isSkipped() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const ts = Number(raw);
-    if (!Number.isFinite(ts)) return false;
-    return Date.now() - ts < SKIP_TTL_MS;
-  } catch (_) {
-    return false;
-  }
-}
-
 function shouldShow() {
   if (!isMobileBrowser()) return false;
   if (route.name === "appInstall") return false;
   if (route.meta?.public) return false;
-  if (isSkipped()) return false;
   return true;
 }
 
 function onSkip() {
-  try {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
-  } catch (_) {}
+  // Cierra solo la sesión SPA actual. Sin localStorage. Si el usuario
+  // recarga la página o vuelve a entrar, el prompt aparece de nuevo.
   visible.value = false;
 }
 
@@ -113,8 +100,6 @@ onMounted(() => {
   if (shouldShow()) visible.value = true;
 });
 
-// Si el usuario navega entre rutas del backoffice y reaparece la condición
-// (ej: refresh del SPA), volver a evaluar. No re-aparece si ya está skipped.
 watch(
   () => route.fullPath,
   () => {
@@ -244,5 +229,12 @@ watch(
 }
 .apk-prompt__cta-skip:hover {
   color: rgba(var(--v-theme-on-surface), 0.85);
+}
+.apk-prompt__cta-note {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  line-height: 1.3;
 }
 </style>
