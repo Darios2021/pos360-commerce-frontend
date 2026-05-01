@@ -12,6 +12,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { showRouteOverlay, hideRouteOverlay } from "@/modules/shop/service/routeOverlay.state";
+import { isCapacitor } from "@/app/utils/runtime";
 
 // Layouts
 import AppShell from "@/app/layouts/AppShell.vue";
@@ -178,7 +179,13 @@ const routes = [
     ],
   },
 
-  { path: "/:pathMatch(.*)*", redirect: "/shop" },
+  // Catch-all: en web → shop público; dentro del APK Capacitor → backoffice.
+  // En Capacitor el WebView abre https://localhost/ y matchea acá. Sin esta
+  // distinción, el APK siempre arrancaría en el shop público.
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: () => (isCapacitor() ? "/app" : "/shop"),
+  },
 ];
 
 // =======================
