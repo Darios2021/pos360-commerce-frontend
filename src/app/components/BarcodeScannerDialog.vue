@@ -55,36 +55,37 @@
           <span class="bsc__line" />
         </div>
 
-        <div class="bsc__hint">
-          <v-icon size="16" class="mr-1">mdi-information-outline</v-icon>
-          Apuntá la cámara al código de barras del producto
-        </div>
+        <!-- Resultado flotante sobre la cámara -->
+        <Transition name="bsc-feedback">
+          <div
+            v-if="lastResult"
+            class="bsc__result-floating"
+            :class="`bsc__result-floating--${lastResult.kind}`"
+          >
+            <v-icon size="18" class="mr-2">{{ lastResult.icon }}</v-icon>
+            <span class="bsc__result-text">{{ lastResult.text }}</span>
+          </div>
+        </Transition>
       </div>
 
-      <!-- Fallback: cámara no soportada -->
+      <!-- Fallback: cámara no soportada — único caso que mantiene input manual -->
       <div v-else class="bsc__no-cam">
         <div class="bsc__no-cam-icon">
           <v-icon size="44">mdi-barcode-scan</v-icon>
         </div>
         <div class="bsc__no-cam-title">Lector de código</div>
         <div class="bsc__no-cam-desc">
-          Tu navegador no soporta cámara para escanear directamente.
-          Escribí o pegá el código abajo (o usá un lector USB físico).
+          Tu navegador no soporta cámara. Escribí o pegá el código.
         </div>
-      </div>
 
-      <!-- Footer: input + acción manual -->
-      <div class="bsc__footer">
-        <div class="bsc__manual">
+        <div class="bsc__no-cam-form">
           <v-text-field
             ref="manualInputRef"
             v-model="manualCode"
-            label="O escribí el código"
             placeholder="Ej: 7791234567890"
             variant="outlined"
             density="comfortable"
             hide-details
-            prepend-inner-icon="mdi-keyboard-outline"
             @keyup.enter="onSubmitManual"
             :disabled="searching"
             autocomplete="off"
@@ -95,6 +96,8 @@
             variant="flat"
             rounded="lg"
             size="large"
+            block
+            class="mt-3"
             :loading="searching"
             :disabled="!manualCode.trim() || searching"
             @click="onSubmitManual"
@@ -103,19 +106,14 @@
           </v-btn>
         </div>
 
-        <!-- Resultado -->
         <Transition name="bsc-feedback">
-          <div v-if="lastResult" class="bsc__result" :class="`bsc__result--${lastResult.kind}`">
+          <div
+            v-if="lastResult"
+            class="bsc__result"
+            :class="`bsc__result--${lastResult.kind}`"
+          >
             <v-icon size="18" class="mr-2">{{ lastResult.icon }}</v-icon>
             <span>{{ lastResult.text }}</span>
-            <v-btn
-              v-if="lastResult.kind === 'error'"
-              variant="text"
-              size="x-small"
-              color="white"
-              class="ml-auto"
-              @click="lastResult = null"
-            >Reintentar</v-btn>
           </div>
         </Transition>
       </div>
@@ -474,29 +472,14 @@ function close() {
   100% { top: 8%; opacity: 0.4; }
 }
 
-.bsc__hint {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.65);
-  font-size: 12px;
-  white-space: nowrap;
-  backdrop-filter: blur(4px);
-}
-
-/* ── Sin cámara ── */
+/* ── Sin cámara (fallback) ── */
 .bsc__no-cam {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 24px;
+  padding: 32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
   text-align: center;
 }
 .bsc__no-cam-icon {
@@ -520,38 +503,58 @@ function close() {
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.72);
   max-width: 380px;
+  margin-bottom: 20px;
 }
-
-/* ── Footer ── */
-.bsc__footer {
-  flex-shrink: 0;
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+.bsc__no-cam-form {
+  width: 100%;
+  max-width: 380px;
 }
-.bsc__manual {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-.bsc__manual :deep(.v-field) {
+.bsc__no-cam-form :deep(.v-field) {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 12px;
 }
-.bsc__manual :deep(.v-field__outline) { --v-field-border-opacity: 0.18; }
-.bsc__manual :deep(.v-field__input),
-.bsc__manual :deep(.v-label) { color: #fff !important; }
+.bsc__no-cam-form :deep(.v-field__outline) { --v-field-border-opacity: 0.18; }
+.bsc__no-cam-form :deep(.v-field__input),
+.bsc__no-cam-form :deep(.v-label) { color: #fff !important; }
 
-/* ── Resultado ── */
+/* ── Resultado flotante (sobre la cámara) ── */
+.bsc__result-floating {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.bsc__result-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bsc__result-floating--ok    { background: rgba(16, 185, 129, 0.92); color: #fff; }
+.bsc__result-floating--error { background: rgba(239, 68, 68, 0.92); color: #fff; }
+.bsc__result-floating--info  { background: rgba(20, 136, 209, 0.92); color: #fff; }
+
+/* ── Resultado inline (solo modo fallback) ── */
 .bsc__result {
   display: flex;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 14px;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
+  width: 100%;
+  max-width: 380px;
 }
 .bsc__result--ok    { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .bsc__result--error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
