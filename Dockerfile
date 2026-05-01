@@ -23,6 +23,8 @@ ARG VITE_API_BASE_URL
 ARG VITE_APP_NAME
 ARG VITE_ENV
 ARG API_BASE_URL
+ARG VITE_GOOGLE_MAPS_API_KEY
+ARG VITE_GOOGLE_CLIENT_ID
 ARG PRERENDER_BRANCH_ID
 ARG PRERENDER_LIMIT
 ARG PRERENDER_MAX_PAGES
@@ -37,6 +39,8 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_APP_NAME=${VITE_APP_NAME}
 ENV VITE_ENV=${VITE_ENV}
 ENV API_BASE_URL=${API_BASE_URL}
+ENV VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 
 ENV PRERENDER_BRANCH_ID=${PRERENDER_BRANCH_ID}
 ENV PRERENDER_LIMIT=${PRERENDER_LIMIT}
@@ -51,7 +55,7 @@ RUN npm ci
 COPY . .
 
 # ✅ Si no vinieron por ARG, usa lo que tengas en App Configs (ENV)
-RUN node -e 'console.log("[build env] VITE_API_BASE_URL=",process.env.VITE_API_BASE_URL); console.log("[build env] API_BASE_URL=",process.env.API_BASE_URL); console.log("[build env] PRERENDER_BRANCH_ID=",process.env.PRERENDER_BRANCH_ID);'
+RUN node -e 'console.log("[build env] VITE_API_BASE_URL=",process.env.VITE_API_BASE_URL); console.log("[build env] API_BASE_URL=",process.env.API_BASE_URL); console.log("[build env] PRERENDER_BRANCH_ID=",process.env.PRERENDER_BRANCH_ID); console.log("[build env] VITE_GOOGLE_MAPS_API_KEY len=", (process.env.VITE_GOOGLE_MAPS_API_KEY||"").length); console.log("[build env] VITE_GOOGLE_CLIENT_ID len=", (process.env.VITE_GOOGLE_CLIENT_ID||"").length);'
 
 RUN npm run build:prerender
 
