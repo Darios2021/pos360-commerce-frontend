@@ -536,6 +536,9 @@
         v-if="mobile"
         :transfer-unread-count="transferUnreadCount"
       />
+
+      <!-- ================= BANNER DESCARGA APK (mobile web, no en APK) ================= -->
+      <AppApkBanner />
     </v-layout>
   </v-app>
 </template>
@@ -552,6 +555,7 @@ import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
 import { getBreadcrumbs } from "@/app/utils/routeTree";
 import AppBottomNav from "@/app/components/AppBottomNav.vue";
+import AppApkBanner from "@/app/components/AppApkBanner.vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();

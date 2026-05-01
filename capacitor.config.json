@@ -1,0 +1,22 @@
+{
+  "appId": "com.sanjuantecnologia.app",
+  "appName": "San Juan Tecnología",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#1488d1",
+      "showSpinner": false,
+      "androidSplashResourceName": "splash"
+    }
+  }
+}

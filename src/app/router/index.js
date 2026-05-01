@@ -53,9 +53,17 @@ import CustomersAdminPage from "@/modules/admin/pages/CustomersAdminPage.vue";
 import CustomerDetailView from "@/modules/admin/pages/CustomerDetailView.vue";
 import BranchesAdminPage from "@/modules/admin/pages/BranchesAdminPage.vue";
 import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
+import AppInstallPage from "@/app/pages/AppInstallPage.vue";
 
 const routes = [
   ...shopRoutes,
+
+  {
+    path: "/app/install",
+    name: "appInstall",
+    component: AppInstallPage,
+    meta: { public: true },
+  },
 
   {
     path: "/app/auth",

@@ -9,3 +9,11 @@ yarn.lock
 pnpm-lock.yaml
 .env
 .env.*
+
+# Android / Capacitor: no se necesitan para el build del frontend web
+android
+capacitor.config.json
+*.aab
+*.keystore
+# El APK distribuible vive en public/ y SÍ tiene que ir al bundle
+android/app/build/**/*.apk

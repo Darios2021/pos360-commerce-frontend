@@ -22,3 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor / Android
+android/app/build
+android/build
+android/.gradle
+android/local.properties
+android/app/release
+android/app/debug
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+# El APK distribuible vive en public/ y SÍ va al bundle del frontend
+!public/shop/app/download/*.apk
