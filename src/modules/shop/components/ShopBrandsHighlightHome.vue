@@ -1,6 +1,9 @@
-<!-- Wrapper de marcas destacadas para el home (Xiaomi + XAEA por defecto) -->
+<!-- Wrapper de marcas destacadas para el home (Xiaomi + XAEA por defecto).
+     Acepta `offset` y `limit` para poder renderizar sub-conjuntos del array
+     de brands (útil para separar las cards en mobile e intercalarlas
+     entre otros bloques de la home). -->
 <template>
-  <ShopBrandsHighlightBlock v-if="resolvedSlides.length" :slides="resolvedSlides" />
+  <ShopBrandsHighlightBlock v-if="visibleSlides.length" :slides="visibleSlides" />
 </template>
 
 <script setup>
@@ -63,6 +66,10 @@ const props = defineProps({
       },
     ],
   },
+  /** Cuántas marcas renderizar (default: todas). */
+  limit: { type: Number, default: 0 },
+  /** Saltar las primeras N marcas antes de renderizar. */
+  offset: { type: Number, default: 0 },
 });
 
 const resolvedProducts = ref([]);
@@ -107,6 +114,14 @@ const resolvedSlides = computed(() => {
       };
     })
     .filter((s) => s.productImage || s.brandLogoUrl);
+});
+
+/** Aplica offset/limit para renderizar sólo el subconjunto pedido. */
+const visibleSlides = computed(() => {
+  const arr = resolvedSlides.value;
+  const start = Math.max(0, Number(props.offset) || 0);
+  const end = props.limit > 0 ? start + Number(props.limit) : arr.length;
+  return arr.slice(start, end);
 });
 
 onMounted(async () => {

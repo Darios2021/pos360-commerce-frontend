@@ -2,10 +2,11 @@
 <!-- src/modules/shop/components/PromoGridTelefonosAuriculares.vue -->
 
 <template>
-  <section class="promo-grid">
+  <section class="promo-grid" :class="{ 'promo-grid--single': only }">
 
     <!-- TELEFONOS -->
     <v-card
+      v-if="!only || only === 'phones'"
       class="promo-card"
       variant="flat"
       rounded="xl"
@@ -62,6 +63,7 @@
 
     <!-- AURICULARES -->
     <v-card
+      v-if="!only || only === 'headphones'"
       class="promo-card"
       variant="flat"
       rounded="xl"
@@ -126,6 +128,13 @@ import { useRouter } from "vue-router"
 
 const router = useRouter()
 
+/* `only`: si se pasa, renderiza sólo una de las dos cards
+   ('phones' | 'headphones'). Útil para separar en mobile e
+   intercalar entre otros bloques de la home. */
+defineProps({
+  only: { type: String, default: "" },
+})
+
 /* IMÁGENES ESTANDARIZADAS */
 
 const phoneImg = ref(
@@ -156,6 +165,10 @@ function goHeadphones(){
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:18px;
+}
+/* cuando se renderiza sólo una card (modo "only"), 1 sola columna */
+.promo-grid--single{
+  grid-template-columns:1fr;
 }
 
 .promo-card{

@@ -1,129 +1,108 @@
-<!-- Bloque "Oferta del día" + carrusel "Ofertas" estilo Mercado Libre -->
+<!-- Bloque "Oferta del día" + carrusel "Ofertas" — promos definidas desde backoffice -->
 <template>
-  <section class="fob" v-if="bestOffer || sideOffers.length">
-    <!-- IZQUIERDA: oferta del día -->
-    <article v-if="bestOffer" class="fob-hero" @click="goProduct(bestOffer)">
-      <header class="fob-head">
-        <h3 class="fob-title">Oferta del día</h3>
-      </header>
+  <section class="fob-wrap" v-if="bestOffer || sideOffers.length">
+    <!-- =================== DESKTOP =================== -->
+    <section class="fob" v-if="!isMobile">
+      <!-- IZQUIERDA: oferta del día (usa ProductCard para heredar
+           badges PROMO/KIT/descuento, botón favorito y mismo look) -->
+      <article v-if="bestOffer" class="fob-hero">
+        <header class="fob-head">
+          <h3 class="fob-title">Oferta del día</h3>
+        </header>
 
-      <div class="fob-hero-media">
-        <img v-if="imgFor(bestOffer)" :src="imgFor(bestOffer)" :alt="bestOffer.name || ''" loading="lazy" />
-        <div v-else class="fob-empty">Sin imagen</div>
-      </div>
-
-      <div class="fob-hero-body">
-        <div class="fob-name" :title="bestOffer.name">{{ bestOffer.name }}</div>
-
-        <div v-if="oldPriceOf(bestOffer)" class="fob-old">$ {{ fmt(oldPriceOf(bestOffer)) }}</div>
-
-        <div class="fob-price-row">
-          <span class="fob-price">$ {{ fmt(priceOf(bestOffer)) }}</span>
-          <span v-if="offPctOf(bestOffer)" class="fob-off">{{ offPctOf(bestOffer) }}% OFF</span>
+        <div class="fob-hero-card">
+          <ProductCard :p="bestOffer" />
         </div>
+      </article>
 
-        <div v-if="installmentsTextOf(bestOffer)" class="fob-meta">
-          {{ installmentsTextOf(bestOffer) }}
-        </div>
+      <!-- DERECHA: carrusel de ofertas -->
+      <article class="fob-side" v-if="sideOffers.length">
+        <header class="fob-head fob-head--row">
+          <div class="fob-head-left">
+            <h3 class="fob-title">Ofertas</h3>
+            <button type="button" class="fob-link" @click="$emit('seeAll')">Mostrar todas las ofertas</button>
+          </div>
 
-        <div v-if="hasFreeShipping(bestOffer)" class="fob-ship">Envío gratis</div>
-      </div>
-    </article>
+          <div class="fob-dots" v-if="pagesCount > 1">
+            <button
+              v-for="i in pagesCount"
+              :key="i"
+              class="fob-dot"
+              :class="{ active: i - 1 === pageIndex }"
+              type="button"
+              :aria-label="`Ir a página ${i}`"
+              @click="goPage(i - 1)"
+            />
+          </div>
+        </header>
 
-    <!-- DERECHA: carrusel de ofertas -->
-    <article class="fob-side" v-if="sideOffers.length">
-      <header class="fob-head fob-head--row">
-        <div class="fob-head-left">
-          <h3 class="fob-title">Ofertas</h3>
-          <button type="button" class="fob-link" @click="$emit('seeAll')">Mostrar todas las ofertas</button>
-        </div>
-
-        <div class="fob-dots" v-if="pagesCount > 1">
+        <div class="fob-rail-wrap">
           <button
-            v-for="i in pagesCount"
-            :key="i"
-            class="fob-dot"
-            :class="{ active: i - 1 === pageIndex }"
             type="button"
-            :aria-label="`Ir a página ${i}`"
-            @click="goPage(i - 1)"
-          />
-        </div>
-      </header>
-
-      <div class="fob-rail-wrap">
-        <button
-          v-show="canPrev"
-          type="button"
-          class="fob-arrow fob-arrow--prev"
-          aria-label="Ofertas anteriores"
-          @click="prev"
-        >
-          <v-icon size="22">mdi-chevron-left</v-icon>
-        </button>
-
-        <div ref="railRef" class="fob-rail" @scroll.passive="onScroll">
-          <div
-            v-for="p in sideOffers"
-            :key="p.product_id ?? p.id"
-            class="fob-card"
-            @click="goProduct(p)"
+            class="fob-arrow fob-arrow--prev"
+            :class="{ 'is-disabled': !canPrev }"
+            :disabled="!canPrev"
+            aria-label="Ofertas anteriores"
+            @click="prev"
           >
-            <div class="fob-card-media">
-              <img v-if="imgFor(p)" :src="imgFor(p)" :alt="p.name || ''" loading="lazy" />
-              <div v-else class="fob-empty">Sin imagen</div>
-            </div>
+            <v-icon size="28">mdi-chevron-left</v-icon>
+          </button>
 
-            <div class="fob-card-body">
-              <div class="fob-card-name" :title="p.name">{{ p.name }}</div>
-
-              <div v-if="oldPriceOf(p)" class="fob-old">$ {{ fmt(oldPriceOf(p)) }}</div>
-
-              <div class="fob-price-row">
-                <span class="fob-price fob-price--sm">$ {{ fmt(priceOf(p)) }}</span>
-                <span v-if="offPctOf(p)" class="fob-off fob-off--sm">{{ offPctOf(p) }}% OFF</span>
-              </div>
-
-              <div v-if="installmentsTextOf(p)" class="fob-meta">
-                {{ installmentsTextOf(p) }}
-              </div>
-
-              <div class="fob-foot-row">
-                <span v-if="hasFreeShipping(p)" class="fob-ship">Envío gratis</span>
-                <span v-if="hasFullShipping(p)" class="fob-full">FULL</span>
-              </div>
+          <div ref="railRef" class="fob-rail" @scroll.passive="onScroll">
+            <div
+              v-for="p in sideOffers"
+              :key="p.product_id ?? p.id"
+              class="fob-cell"
+            >
+              <ProductCard :p="p" />
             </div>
           </div>
-        </div>
 
-        <button
-          v-show="canNext"
-          type="button"
-          class="fob-arrow fob-arrow--next"
-          aria-label="Más ofertas"
-          @click="next"
+          <button
+            type="button"
+            class="fob-arrow fob-arrow--next"
+            :class="{ 'is-disabled': !canNext }"
+            :disabled="!canNext"
+            aria-label="Más ofertas"
+            @click="next"
+          >
+            <v-icon size="28">mdi-chevron-right</v-icon>
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <!-- =================== MOBILE =================== -->
+    <!-- Carrusel común y corriente, alineado con el resto del shop -->
+    <section class="fob-m" v-else>
+      <header class="fob-m-head">
+        <h3 class="fob-m-title">Ofertas</h3>
+        <button type="button" class="fob-m-link" @click="$emit('seeAll')">Ver todas</button>
+      </header>
+
+      <div class="fob-m-rail">
+        <div
+          v-for="p in mobileOffers"
+          :key="p.product_id ?? p.id"
+          class="fob-m-cell"
         >
-          <v-icon size="22">mdi-chevron-right</v-icon>
-        </button>
+          <ProductCard :p="p" />
+        </div>
       </div>
-    </article>
+    </section>
   </section>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from "vue";
-import { useRouter, useRoute } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
-import { buildProductLocation } from "@/modules/shop/utils/productSlug";
+import ProductCard from "./ProductCard.vue";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
 });
 
 defineEmits(["seeAll"]);
-
-const router = useRouter();
-const route = useRoute();
 
 const railRef = ref(null);
 const scrollLeft = ref(0);
@@ -134,14 +113,6 @@ function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
-function fmt(v) {
-  return new Intl.NumberFormat("es-AR").format(Math.round(toNum(v)));
-}
-
-function imgFor(p) {
-  return String(p?.image_url || p?.image || "").trim();
-}
-
 function priceOf(p) {
   if (isPromoActive(p) && toNum(p?.promo_price) > 0) return toNum(p.promo_price);
   if (toNum(p?.price_discount) > 0) return toNum(p.price_discount);
@@ -159,23 +130,6 @@ function offPctOf(p) {
   if (o <= 0 || d <= 0 || o <= d) return 0;
   return Math.round(((o - d) / o) * 100);
 }
-function installmentsTextOf(p) {
-  const max = Number(p?.max_installments || p?.installments_max || 0);
-  const base = priceOf(p);
-  if (base >= 150000) {
-    return `Mismo precio en cuotas de $ ${fmt(base / 3)}`;
-  }
-  if (max >= 2 && max <= 24) {
-    return `Hasta ${max} cuotas`;
-  }
-  return "";
-}
-function hasFreeShipping(p) {
-  return Boolean(p?.free_shipping || p?.shipping_free || p?.is_free_shipping || p?.is_full || p?.full || p?.shipping_full);
-}
-function hasFullShipping(p) {
-  return Boolean(p?.is_full || p?.full || p?.shipping_full);
-}
 
 const offers = computed(() => {
   const arr = Array.isArray(props.items) ? props.items.slice() : [];
@@ -187,21 +141,25 @@ const offers = computed(() => {
 const bestOffer = computed(() => offers.value[0] || null);
 const sideOffers = computed(() => offers.value.slice(1, 25));
 
-function goProduct(p) {
-  const loc = buildProductLocation(p, {
-    branchId: route.query.branch_id ? String(route.query.branch_id) : "3",
-  });
-  if (loc) router.push(loc);
+/* breakpoint mobile (≤ 720px) — carrusel simple sin tratamiento promo */
+const MOBILE_BP = 720;
+const isMobile = ref(typeof window !== "undefined" ? window.innerWidth <= MOBILE_BP : false);
+function onResize() {
+  if (typeof window !== "undefined") isMobile.value = window.innerWidth <= MOBILE_BP;
 }
+
+/* en mobile incluimos la oferta del día dentro del carrusel para no
+   duplicar tratamientos visuales */
+const mobileOffers = computed(() => offers.value.slice(0, 25));
 
 /* rail navigation */
 function measure() {
   const el = railRef.value;
   if (!el) return;
-  const card = el.querySelector(".fob-card");
+  const cell = el.querySelector(".fob-cell");
   const gap = parseFloat(getComputedStyle(el).columnGap || "12") || 12;
-  const cardW = card ? card.getBoundingClientRect().width : 240;
-  cardStep.value = cardW + gap;
+  const cellW = cell ? cell.getBoundingClientRect().width : 240;
+  cardStep.value = cellW + gap;
   scrollMax.value = el.scrollWidth - el.clientWidth;
   scrollLeft.value = el.scrollLeft;
 }
@@ -256,36 +214,58 @@ function goPage(idx) {
 }
 
 const canPrev = computed(() => scrollLeft.value > 4);
-const canNext = computed(() => scrollLeft.value < scrollMax.value - 4);
+const canNext = computed(() => {
+  // Caso normal: mediciones ya disponibles
+  if (scrollMax.value > 0) return scrollLeft.value < scrollMax.value - 4;
+  // Fallback en el primer render (antes de que termine el layout):
+  // si hay más items de los que entran visualmente, mostramos la flecha
+  // así el usuario percibe que hay más para ver desde el inicio.
+  if (cardStep.value > 0 && railRef.value) {
+    const fits = Math.max(1, Math.floor(railRef.value.clientWidth / cardStep.value));
+    return sideOffers.value.length > fits;
+  }
+  return sideOffers.value.length > 4;
+});
 
 let ro = null;
 onMounted(async () => {
   await nextTick();
   measure();
+  // re-medir después del primer paint para capturar scrollWidth real
+  // (imágenes lazy, fonts, etc. pueden alterar el layout inicial)
+  requestAnimationFrame(() => measure());
   if (typeof ResizeObserver !== "undefined" && railRef.value) {
     ro = new ResizeObserver(() => measure());
     ro.observe(railRef.value);
   }
   window.addEventListener("resize", measure);
+  window.addEventListener("resize", onResize);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", measure);
+  window.removeEventListener("resize", onResize);
   if (ro) ro.disconnect();
 });
 </script>
 
 <style scoped>
+/* Wrapper transparente — el bloque hereda el bg del contenedor padre.
+   La diferenciación promo se da por la interacción (carousel, dots,
+   arrows) y los precios destacados, no por un "envoltorio" llamativo. */
+.fob-wrap {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  position: relative;
+}
+.fob-wrap *,
+.fob-wrap :deep(*) {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
 .fob {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 14px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-
-.fob *,
-.fob :deep(*) {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* contenedor general (cards) */
@@ -300,19 +280,20 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.fob-hero {
-  cursor: pointer;
-  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
-}
-.fob-hero:hover {
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
-  transform: translateY(-1px);
-  border-color: rgba(15, 23, 42, 0.1);
-}
-
 .fob-side {
   position: relative;
   min-width: 0;
+}
+
+/* contenedor del ProductCard dentro del hero — le da el ancho completo
+   y deja que el card herede toda su estética (badges, fav, layout) */
+.fob-hero-card {
+  display: flex;
+  flex: 1 1 auto;
+}
+.fob-hero-card :deep(.mlx) {
+  width: 100%;
+  height: 100%;
 }
 
 /* heads */
@@ -378,113 +359,6 @@ onBeforeUnmount(() => {
   transform: scale(1.1);
 }
 
-/* hero (oferta del día) */
-.fob-hero-media {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px;
-  min-height: 280px;
-  max-height: 320px;
-}
-.fob-hero-media img {
-  max-width: 100%;
-  max-height: 280px;
-  object-fit: contain;
-  display: block;
-}
-.fob-empty {
-  font-size: 12px;
-  color: rgba(15, 23, 42, 0.4);
-  padding: 28px 0;
-}
-
-.fob-hero-body {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.fob-name {
-  font-size: 14px;
-  font-weight: 420;
-  color: rgba(17, 24, 39, 0.86);
-  line-height: 1.32;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.fob-old {
-  font-size: 12.5px;
-  color: rgba(15, 23, 42, 0.42);
-  text-decoration: line-through;
-  line-height: 1;
-}
-
-.fob-price-row {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.fob-price {
-  font-size: 26px;
-  font-weight: 460;
-  color: rgba(17, 24, 39, 0.94);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-.fob-price--sm {
-  font-size: 19px;
-}
-.fob-off {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgb(0, 153, 102);
-  letter-spacing: 0.01em;
-}
-.fob-off--sm {
-  font-size: 11.5px;
-}
-
-.fob-meta {
-  font-size: 12.5px;
-  color: rgb(0, 153, 102);
-  font-weight: 460;
-}
-
-.fob-ship {
-  font-size: 12.5px;
-  color: rgb(0, 153, 102);
-  font-weight: 500;
-}
-
-.fob-full {
-  display: inline-block;
-  background: rgb(0, 153, 102);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 1px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
-  line-height: 1.5;
-}
-
-.fob-foot-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  min-height: 18px;
-}
-
 /* rail / cards */
 .fob-rail-wrap {
   position: relative;
@@ -509,89 +383,56 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-.fob-card {
+/* celda contenedora del rail desktop — define el ancho de cada
+   ProductCard. 4 cards visibles en pantallas grandes. */
+.fob-cell {
   flex: 0 0 calc((100% - 12px * 3) / 4);
   min-width: 0;
-  background: #fff;
-  border-radius: 12px;
-  cursor: pointer;
   scroll-snap-align: start;
   display: flex;
-  flex-direction: column;
-  padding: 8px 6px 10px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.fob-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+.fob-cell :deep(.mlx) {
+  width: 100%;
+  height: 100%;
 }
 
-.fob-card-media {
-  height: 180px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-.fob-card-media img {
-  max-width: 92%;
-  max-height: 168px;
-  object-fit: contain;
-  display: block;
-}
-
-.fob-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.fob-card-name {
-  font-size: 13px;
-  font-weight: 420;
-  color: rgba(17, 24, 39, 0.82);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 33px;
-  margin-bottom: 2px;
-}
-
-/* arrows flotantes (estilo ML) */
+/* ────── Flechas — mismo estilo que ShopProductBlock (círculo blanco
+   grande con icon en color primary, estilo ML) ────── */
 .fob-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 38px;
-  height: 38px;
+  z-index: 4;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
+  border: 0;
   background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  color: rgb(var(--v-theme-primary));
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(21, 101, 192, 0.95);
-  z-index: 2;
-  transition: background 0.16s ease, transform 0.16s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transition: background 0.15s, color 0.15s, opacity 0.15s, transform 0.15s, box-shadow 0.15s;
 }
+.fob-arrow--prev { left: -28px; }
+.fob-arrow--next { right: -28px; }
 .fob-arrow:hover {
-  background: rgb(245, 247, 250);
-  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  transform: translateY(-50%) scale(1.04);
 }
-.fob-arrow--prev {
-  left: -14px;
-}
-.fob-arrow--next {
-  right: -14px;
+.fob-arrow:active { transform: translateY(-50%) scale(0.94); }
+.fob-arrow.is-disabled,
+.fob-arrow:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* responsive */
 @media (max-width: 1200px) {
-  .fob-card {
+  .fob-cell {
     flex-basis: calc((100% - 12px * 2) / 3);
   }
 }
@@ -600,33 +441,95 @@ onBeforeUnmount(() => {
   .fob {
     grid-template-columns: 1fr;
   }
-  .fob-card {
+  .fob-cell {
     flex-basis: calc((100% - 12px) / 2);
   }
-  .fob-arrow--prev { left: -8px; }
-  .fob-arrow--next { right: -8px; }
+  /* las flechas se acercan al borde del card cuando hay menos espacio */
+  .fob-arrow--prev { left: -18px; }
+  .fob-arrow--next { right: -18px; }
 }
 
-@media (max-width: 600px) {
-  .fob-hero,
-  .fob-side {
-    padding: 14px;
-    border-radius: 14px;
-  }
-  .fob-hero-media {
-    min-height: 220px;
-  }
-  .fob-hero-media img {
-    max-height: 220px;
-  }
-  .fob-price {
-    font-size: 22px;
-  }
-  .fob-card {
-    flex-basis: 70%;
-  }
-  .fob-arrow {
-    display: none;
+/* =====================================================================
+   MOBILE (≤ 720px): se renderiza como UN bloque más del home, con la
+   misma estética de card-wrapper que ShopProductBlock (fondo blanco,
+   borde sutil, padding, shadow). La oferta del día entra como una
+   card más dentro del rail.
+   ===================================================================== */
+.fob-m {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 14px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+.fob-m-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.fob-m-title {
+  font-size: 17px;
+  font-weight: 540;
+  letter-spacing: -0.015em;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin: 0;
+}
+.fob-m-link {
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.14s, color 0.14s;
+}
+.fob-m-link:hover,
+.fob-m-link:active {
+  color: rgb(var(--v-theme-primary));
+  background: rgba(20, 136, 209, 0.08);
+}
+
+.fob-m-rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 2px 6px;
+  /* margin negativo para que las cards "respiren" hasta el borde
+     interno del wrapper sin romper el padding visual */
+  margin: 0 -2px;
+  -webkit-overflow-scrolling: touch;
+}
+.fob-m-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.fob-m-cell {
+  flex: 0 0 46%;
+  max-width: 240px;
+  scroll-snap-align: start;
+  display: flex;
+}
+.fob-m-cell :deep(.mlx) {
+  width: 100%;
+}
+
+@media (max-width: 420px) {
+  .fob-m-cell {
+    flex-basis: 56%;
   }
 }
+
 </style>

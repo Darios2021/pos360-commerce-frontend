@@ -35,7 +35,8 @@
         </v-window-item>
       </v-window>
 
-      <!-- ✅ Flechas estilo MercadoLibre (píldora lateral) -->
+      <!-- ✅ Flechas — mismo estilo que los carruseles del shop
+           (círculo blanco 56×56 con icon en color primary, estilo ML) -->
       <button
         v-if="slidesSafe.length > 1"
         class="ml-mlarrow left"
@@ -43,11 +44,7 @@
         aria-label="Anterior"
         @click.stop="prev"
       >
-        <svg class="ml-mlarrow-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M14.5 5.5a1 1 0 0 1 0 1.4L10.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z"
-          />
-        </svg>
+        <v-icon size="28">mdi-chevron-left</v-icon>
       </button>
 
       <button
@@ -57,11 +54,7 @@
         aria-label="Siguiente"
         @click.stop="next"
       >
-        <svg class="ml-mlarrow-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M9.5 18.5a1 1 0 0 1 0-1.4L13.6 13 9.5 8.9a1 1 0 1 1 1.4-1.4l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 0 1-1.4 0Z"
-          />
-        </svg>
+        <v-icon size="28">mdi-chevron-right</v-icon>
       </button>
 
       <!-- dots -->
@@ -418,39 +411,45 @@ watch(
 }
 
 /* =========================
-   FLECHAS ML (hover desktop)
+   FLECHAS — círculo blanco grande con icon en color primary,
+   estilo ML. Aparecen sólo cuando el cursor entra al hero
+   (deslizamiento sutil desde el borde lateral).
    ========================= */
 .ml-mlarrow {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 92px;
-  border: 0;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
   z-index: 20;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 0;
+  background: #fff;
+  color: rgb(var(--v-theme-primary));
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 
+  /* hidden por defecto, slide-in en hover */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 160ms ease, transform 160ms ease, visibility 0ms linear 160ms;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 0.15s,
+    visibility 0ms linear 180ms;
 }
 
+/* el hero es full-bleed (100vw) — las flechas se asoman desde el
+   borde y deslizan hacia adentro al hacer hover */
 .ml-mlarrow.left {
-  left: -18px;
-  padding-left: 18px;
-  transform: translateY(-50%) translateX(-6px);
+  left: 18px;
+  transform: translateY(-50%) translateX(-12px);
 }
-
 .ml-mlarrow.right {
-  right: -18px;
-  padding-right: 18px;
-  transform: translateY(-50%) translateX(6px);
+  right: 18px;
+  transform: translateY(-50%) translateX(12px);
 }
 
 .ml-hero-inner:hover .ml-mlarrow,
@@ -458,27 +457,35 @@ watch(
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 160ms ease, transform 160ms ease, visibility 0ms;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    box-shadow 0.15s,
+    visibility 0ms;
 }
-
 .ml-hero-inner:hover .ml-mlarrow.left,
 .ml-window:hover .ml-mlarrow.left {
   transform: translateY(-50%) translateX(0);
 }
-
 .ml-hero-inner:hover .ml-mlarrow.right,
 .ml-window:hover .ml-mlarrow.right {
   transform: translateY(-50%) translateX(0);
 }
 
-.ml-mlarrow:active {
-  transform: translateY(-50%) scale(0.98);
+.ml-mlarrow:hover {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
 }
-
-.ml-mlarrow-svg {
-  width: 22px;
-  height: 22px;
-  fill: #1e6bd6;
+.ml-mlarrow.left:hover {
+  transform: translateY(-50%) translateX(0) scale(1.04);
+}
+.ml-mlarrow.right:hover {
+  transform: translateY(-50%) translateX(0) scale(1.04);
+}
+.ml-mlarrow.left:active {
+  transform: translateY(-50%) translateX(0) scale(0.94);
+}
+.ml-mlarrow.right:active {
+  transform: translateY(-50%) translateX(0) scale(0.94);
 }
 
 /* =========================
@@ -510,23 +517,15 @@ watch(
 }
 
 /* =========================
-   TABLET
+   TABLET — flecha un poco más chica y bien dentro del viewport
    ========================= */
 @media (max-width: 960px) {
   .ml-mlarrow {
-    width: 52px;
-    height: 84px;
+    width: 48px;
+    height: 48px;
   }
-
-  .ml-mlarrow.left {
-    left: -16px;
-    padding-left: 16px;
-  }
-
-  .ml-mlarrow.right {
-    right: -16px;
-    padding-right: 16px;
-  }
+  .ml-mlarrow.left { left: 12px; }
+  .ml-mlarrow.right { right: 12px; }
 }
 
 /* =========================

@@ -39,18 +39,22 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
-      <!-- Marcas destacadas (Xiaomi + XAEA) -->
+      <!-- Marcas destacadas (Xiaomi + XAEA).
+           DESKTOP: las 2 cards en grilla acá.
+           MOBILE: sólo Xiaomi acá; XAEA se intercala más abajo para no
+           dejar dos banners stackeados. -->
       <div class="mb-6">
-        <ShopBrandsHighlightHome />
+        <ShopBrandsHighlightHome :limit="isMobileView ? 1 : 0" />
       </div>
 
-      <!-- Video shorts: solo se renderiza si hay videos o se están cargando.
-           Si el endpoint falla, esta sección desaparece (no rompe la home). -->
+      <!-- Video shorts: solo se renderiza si hay videos o se están cargando. -->
       <div class="mb-6" v-if="shortsLoading || shortsItems.length > 0">
         <ShopShortsCarousel :items="shortsItems" :loading="shortsLoading" :error="shortsError" />
       </div>
 
-      <div class="mb-8">
+      <!-- DESKTOP: grilla con ambas cards (Teléfonos + Auriculares).
+           MOBILE: NO se renderiza acá — las cards se intercalan más abajo. -->
+      <div class="mb-8" v-if="!isMobileView">
         <PromoGridTelefonosAuriculares />
       </div>
 
@@ -109,9 +113,20 @@
           />
         </div>
 
+        <!-- MOBILE: 2da marca destacada (XAEA) intercalada
+             entre carruseles de productos. -->
+        <div v-if="isMobileView" class="mt-6">
+          <ShopBrandsHighlightHome :offset="1" :limit="1" />
+        </div>
+
         <!-- ── Carousel: "Ofertas para vos" ── -->
         <div v-if="itemsOffersBlock.length" class="mt-6">
           <ShopProductBlock title="Ofertas para vos" :items="itemsOffersBlock" />
+        </div>
+
+        <!-- MOBILE: card de Teléfonos intercalada entre carruseles. -->
+        <div v-if="isMobileView" class="mt-6">
+          <PromoGridTelefonosAuriculares only="phones" />
         </div>
 
         <!-- ── Carousel: "La línea Hogar puede interesarte" ── -->
@@ -136,6 +151,12 @@
           :subIds="aurisSubIds"
           iconUrl="https://storage-files.cingulado.org/pos360/products/54/1766788849600-3802f99d.jpeg"
         />
+      </div>
+
+      <!-- MOBILE: card de Auriculares entre dos sliders garantizados
+           (PromoSliderAuriculares ↑ y PromoSliderCargadores ↓). -->
+      <div class="mt-6" v-if="isMobileView">
+        <PromoGridTelefonosAuriculares only="headphones" />
       </div>
 
       <div class="mt-6">
@@ -170,6 +191,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 
 import { isPromoActive } from "@/modules/shop/utils/promo";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
@@ -199,6 +221,11 @@ import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogP
 
 const route = useRoute();
 const router = useRouter();
+
+/* Mobile: separamos las cards de los grids de promo (Brands Xiaomi+XAEA
+   y Teléfonos+Auriculares) para intercalarlas entre otros bloques de
+   la home en lugar de mostrarlas apiladas como un par. */
+const { mobile: isMobileView } = useDisplay();
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -350,7 +377,9 @@ const promoPerPage = computed(() => 6);
 
 // Mínimo de promos vigentes para que se renderice el carousel.
 // Con menos productos queda 1 card suelta y se ve roto visualmente.
-const PROMO_MIN_ITEMS = 4;
+// 5 = 1 hero + 4 cards en el rail → llena el viewport del carrusel.
+// Con 6+ aparecen las flechas activas para navegar al siguiente set.
+const PROMO_MIN_ITEMS = 5;
 
 const promoItems = computed(() => {
   // ✅ Usa la lista dedicada de promos (traída por API con filtro promo=active),

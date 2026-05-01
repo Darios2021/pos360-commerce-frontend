@@ -55,8 +55,14 @@
 
           <!-- ✅ Flechas + dots SOLO si hay overflow real -->
           <template v-if="maxIndex > 0">
-            <button class="arrow left" type="button" aria-label="Anterior" @click="prev" :disabled="index <= 0">
-              ‹
+            <button
+              class="arrow left"
+              type="button"
+              aria-label="Anterior"
+              @click="prev"
+              :disabled="index <= 0"
+            >
+              <v-icon size="28">mdi-chevron-left</v-icon>
             </button>
             <button
               class="arrow right"
@@ -65,7 +71,7 @@
               @click="next"
               :disabled="index >= maxIndex"
             >
-              ›
+              <v-icon size="28">mdi-chevron-right</v-icon>
             </button>
 
             <div class="dots">
@@ -169,7 +175,7 @@ function onImgError(e) {
 const viewportEl = ref(null);
 const index = ref(0);
 
-const cardW = ref(196);
+const cardW = ref(200);
 const gap = ref(16);
 const visibleCount = ref(1);
 const viewportMaxPx = ref(null);
@@ -192,7 +198,7 @@ function measure() {
   if (!vp) return;
 
   const w = window.innerWidth;
-  cardW.value = w <= 1200 ? 190 : 196;
+  cardW.value = w <= 1200 ? 194 : 200;
   gap.value = 16;
 
   const available = vp.parentElement?.clientWidth || vp.clientWidth || 1;
@@ -353,37 +359,46 @@ watch(
 /* Card */
 .card {
   flex: 0 0 auto;
-  width: 196px;
-  height: 252px;
-  border-radius: 10px;
-  border: 1px solid #e6e6e6;
+  width: 200px;
+  height: 268px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   background: #fff;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   padding: 0;
   overflow: hidden;
-  box-shadow: none;
-  transition: border-color 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 @media (hover: hover) {
   .card:hover {
-    border-color: #d4d4d4;
-    transform: translateY(-1px);
+    border-color: rgba(0, 0, 0, 0.10);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
+    transform: translateY(-2px);
+  }
+  .card:hover .media img {
+    transform: scale(1.04);
+  }
+  .card:hover .cta {
+    background: rgb(var(--v-theme-primary));
+    color: #fff;
   }
 }
 
 .head {
-  padding: 10px 12px 8px;
+  padding: 12px 14px 10px;
   min-height: 44px;
   display: flex;
   align-items: center;
 }
 .title {
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 540;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #333;
+  color: rgba(17, 24, 39, 0.86);
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -391,30 +406,32 @@ watch(
 }
 
 .media {
-  height: 112px;
-  background: #f5f5f5;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  height: 130px;
+  background: #f7f7f8;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 .media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.4s ease;
 }
 
 .body {
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
   justify-content: space-between;
 }
 .desc {
-  font-size: 12px;
-  color: #666;
-  line-height: 1.3;
+  font-size: 12.5px;
+  color: rgba(17, 24, 39, 0.6);
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -422,44 +439,66 @@ watch(
 }
 .cta {
   display: inline-flex;
+  align-items: center;
   width: fit-content;
-  padding: 7px 11px;
-  border-radius: 6px;
-  background: #e7f0ff;
-  color: #2968c8;
-  font-weight: 400;
-  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(20, 136, 209, 0.10);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 540;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.card:active .cta {
+  transform: scale(0.97);
 }
 
-/* Flechas ML (✅ ahora no desaparecen cuando hay overflow real) */
+/* breakpoint medio: ajusta el ancho del card para mantener la grilla
+   coherente con el cardW que mide el script (194px ≤1200) */
+@media (max-width: 1200px) {
+  .card {
+    width: 194px;
+  }
+}
+
+/* Flechas — mismo estilo que ShopProductBlock / ShopFeaturedOffersBlock
+   (círculo blanco grande con icon en color primary, estilo ML) */
 .arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  z-index: 10;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
-  border: 1px solid #e6e6e6;
-  background: rgba(255, 255, 255, 0.96);
-  font-size: 24px;
-  font-weight: 400;
-  line-height: 1;
+  border: 0;
+  background: #fff;
+  color: rgb(var(--v-theme-primary));
   display: grid;
   place-items: center;
   cursor: pointer;
-  z-index: 10;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transition: background 0.15s, color 0.15s, opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.arrow:hover {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  transform: translateY(-50%) scale(1.04);
+}
+.arrow:active {
+  transform: translateY(-50%) scale(0.94);
 }
 .arrow:disabled {
   opacity: 0.45;
-  cursor: default;
-  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 .arrow.left {
-  left: -10px;
+  left: -28px;
 }
 .arrow.right {
-  right: -10px;
+  right: -28px;
 }
 
 /* Dots */
