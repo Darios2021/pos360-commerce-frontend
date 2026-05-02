@@ -447,18 +447,21 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* ✅ ML: gallery grande + panel derecho fijo */
+/* ✅ ML: gallery grande + panel derecho fijo
+   align-items: start → la galería NO se estira al alto del panel
+   derecho (que con favoritos + share + garantías es bastante alto).
+   Antes la galería se estiraba y el frame de imagen quedaba gigante
+   con productos verticales. */
 .product-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
   margin-top: 8px;
 }
 
 .product-grid > * {
   min-width: 0;
-  height: 100%;
 }
 
 .below-block {
