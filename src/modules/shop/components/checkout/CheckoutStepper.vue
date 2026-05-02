@@ -154,7 +154,10 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(deliveryAddress1, deliveryAddressRules) }"
                       prepend-inner-icon="mdi-home-outline"
+                      :rules="deliveryAddressRules"
+                      validate-on="input"
                       autocomplete="street-address"
                       autocapitalize="words"
                     />
@@ -167,6 +170,9 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(deliveryZip, deliveryZipRules) }"
+                      :rules="deliveryZipRules"
+                      validate-on="input"
                       autocomplete="postal-code"
                       inputmode="numeric"
                     />
@@ -178,6 +184,9 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(deliveryCity, deliveryCityRules) }"
+                      :rules="deliveryCityRules"
+                      validate-on="input"
                       autocomplete="address-level2"
                       autocapitalize="words"
                     />
@@ -189,6 +198,9 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(deliveryProvince, deliveryProvinceRules) }"
+                      :rules="deliveryProvinceRules"
+                      validate-on="input"
                       autocomplete="address-level1"
                       autocapitalize="words"
                     />
@@ -240,7 +252,10 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(buyerName, buyerNameRules) }"
                       prepend-inner-icon="mdi-account-outline"
+                      :rules="buyerNameRules"
+                      validate-on="input"
                       autocomplete="name"
                       autocapitalize="words"
                       spellcheck="false"
@@ -254,7 +269,10 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(buyerEmail, buyerEmailRules) }"
                       prepend-inner-icon="mdi-email-outline"
+                      :rules="buyerEmailRules"
+                      validate-on="input"
                       autocomplete="email"
                       inputmode="email"
                       autocapitalize="none"
@@ -268,7 +286,10 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': isValid(buyerPhone, buyerPhoneRules) }"
                       prepend-inner-icon="mdi-phone-outline"
+                      :rules="buyerPhoneRules"
+                      validate-on="input"
                       type="tel"
                       autocomplete="tel"
                       inputmode="tel"
@@ -281,15 +302,27 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      :class="{ 'is-valid': buyerDocNumber && isValid(buyerDocNumber, buyerDocRules) }"
                       prepend-inner-icon="mdi-card-account-details-outline"
+                      :rules="buyerDocRules"
+                      validate-on="input"
                       inputmode="numeric"
                       autocomplete="off"
                     />
                   </v-col>
                 </v-row>
 
-                <v-alert v-if="buyerErrors?.length" type="warning" variant="tonal" class="rounded-lg mt-2">
-                  <div class="cs-alert-title">Faltan datos:</div>
+                <!-- Resumen "Faltan datos" se mantiene como ayuda extra
+                     pero ya no es la única fuente de validación: cada
+                     input muestra su propio error inline en tiempo real -->
+                <v-alert
+                  v-if="buyerErrors?.length"
+                  type="warning"
+                  variant="tonal"
+                  class="rounded-lg mt-2"
+                  density="compact"
+                >
+                  <div class="cs-alert-title">Para continuar:</div>
                   <ul class="ma-0 pl-5 cs-alert-list">
                     <li v-for="(e, i) in buyerErrors" :key="i">{{ e }}</li>
                   </ul>
@@ -637,6 +670,65 @@ const buyerDocNumber = computed({
   set: (v) => setBuyerField("doc_number", v),
 });
 
+/* =========================
+   Reglas de validación reactivas (Vuetify v-text-field :rules)
+   - Las reglas devuelven true si pasa, o un string con el error.
+   - Vuetify las corre automáticamente al tipear y al blur, mostrando
+     el mensaje debajo del input (sin necesidad de v-form/submit).
+========================= */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_MIN = 7; // mínimo razonable de dígitos para AR
+
+const ruleRequired = (label) => (v) =>
+  (toStr(v).length > 0) || `${label} requerido`;
+
+const ruleMin = (n, label) => (v) =>
+  toStr(v).length === 0 || toStr(v).length >= n || `${label} muy corto`;
+
+const ruleEmail = (v) =>
+  toStr(v).length === 0 || EMAIL_RE.test(toStr(v)) || "Email inválido";
+
+const rulePhone = (v) => {
+  const digits = toStr(v).replace(/\D/g, "");
+  return digits.length === 0 || digits.length >= PHONE_MIN || "Teléfono inválido";
+};
+
+const buyerNameRules = [ruleRequired("Nombre"), ruleMin(2, "Nombre")];
+const buyerEmailRules = [ruleRequired("Email"), ruleEmail];
+const buyerPhoneRules = [ruleRequired("Teléfono"), rulePhone];
+// DNI/CUIT es opcional — sólo valida si hay valor
+const buyerDocRules = [
+  (v) => {
+    const s = toStr(v);
+    if (!s) return true;
+    const digits = s.replace(/\D/g, "");
+    return digits.length >= 7 || "Documento muy corto";
+  },
+];
+
+// Reglas de envío (sólo se renderizan si delivery.mode === 'delivery')
+const deliveryAddressRules = [ruleRequired("Dirección"), ruleMin(4, "Dirección")];
+const deliveryCityRules = [ruleRequired("Ciudad")];
+const deliveryProvinceRules = [ruleRequired("Provincia")];
+const deliveryZipRules = [
+  (v) => {
+    const s = toStr(v);
+    if (!s) return "CP requerido";
+    return /^\d{4,8}$/.test(s.replace(/\D/g, "")) || "CP inválido";
+  },
+];
+
+// Helpers para marcar los .cs-input como válidos visualmente
+function isValid(value, rules) {
+  const v = toStr(value);
+  if (!v) return false;
+  for (const r of rules) {
+    const res = r(v);
+    if (res !== true) return false;
+  }
+  return true;
+}
+
 const deliveryMode = computed({
   get: () => {
     const m = toStr(props.delivery?.mode).toLowerCase();
@@ -955,18 +1047,65 @@ function fmtMoney(v) {
   font-weight: 460;
 }
 
-/* Inputs Vuetify – redondeo más suave + foco azul */
+/* =========================
+   Inputs Vuetify — bordes con buen contraste para que se distingan
+   contra el fondo gris claro de la card. Estados claros: idle / hover
+   / focus / valid / error.
+========================= */
 .cs-input :deep(.v-field) {
   border-radius: 10px;
+  background: #fff;
+  --v-field-border-opacity: 1;
 }
 .cs-input :deep(.v-field--variant-outlined .v-field__outline__start),
 .cs-input :deep(.v-field--variant-outlined .v-field__outline__end),
 .cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::before),
 .cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::after) {
-  border-color: rgba(17, 24, 39, 0.14);
+  border-color: rgba(17, 24, 39, 0.32);
+  border-width: 1px;
 }
-.cs-input :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1;
+.cs-input :deep(.v-field:hover .v-field__outline__start),
+.cs-input :deep(.v-field:hover .v-field__outline__end),
+.cs-input :deep(.v-field:hover .v-field__outline__notch::before),
+.cs-input :deep(.v-field:hover .v-field__outline__notch::after) {
+  border-color: rgba(17, 24, 39, 0.55);
+}
+.cs-input :deep(.v-field--focused .v-field__outline__start),
+.cs-input :deep(.v-field--focused .v-field__outline__end),
+.cs-input :deep(.v-field--focused .v-field__outline__notch::before),
+.cs-input :deep(.v-field--focused .v-field__outline__notch::after) {
+  border-color: rgb(var(--v-theme-primary));
+  border-width: 2px;
+}
+/* Label más visible */
+.cs-input :deep(.v-field__label) {
+  color: rgba(17, 24, 39, 0.62);
+  font-weight: 460;
+}
+.cs-input :deep(.v-field--focused .v-field__label),
+.cs-input :deep(.v-field--active .v-field__label) {
+  color: rgb(var(--v-theme-primary));
+}
+/* Estado válido (campo lleno y sin error): borde verde sutil */
+.cs-input.is-valid :deep(.v-field__outline__start),
+.cs-input.is-valid :deep(.v-field__outline__end),
+.cs-input.is-valid :deep(.v-field__outline__notch::before),
+.cs-input.is-valid :deep(.v-field__outline__notch::after) {
+  border-color: rgba(0, 153, 102, 0.55);
+}
+.cs-input.is-valid :deep(.v-field--focused .v-field__outline__start),
+.cs-input.is-valid :deep(.v-field--focused .v-field__outline__end),
+.cs-input.is-valid :deep(.v-field--focused .v-field__outline__notch::before),
+.cs-input.is-valid :deep(.v-field--focused .v-field__outline__notch::after) {
+  border-color: #009966;
+}
+/* Iconos un toque más oscuros para que se vean */
+.cs-input :deep(.v-field__prepend-inner .v-icon) {
+  color: rgba(17, 24, 39, 0.55) !important;
+  opacity: 1;
+}
+.cs-input :deep(.v-field--focused .v-field__prepend-inner .v-icon) {
+  color: rgb(var(--v-theme-primary)) !important;
 }
 
 /* Quote alert */
