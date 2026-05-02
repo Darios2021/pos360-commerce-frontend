@@ -716,13 +716,17 @@ watch(viewerIdx, (v) => {
   background: #fff;
 }
 
-/* ✅ MAIN IMG: nunca recorta, siempre cabe en el frame */
+/* ✅ MAIN IMG: llena el frame completo y, si tiene que recortar
+   (caso típico: imagen vertical más alta que ancha), recorta SIEMPRE
+   desde arriba (object-position: center bottom). Las fotos del shop
+   están sacadas desde abajo y la parte superior es fondo vacío
+   (pared, mesa, etc.). Conservando "la base" siempre vemos el
+   producto entero. */
 .main-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
   display: block;
 }
 
