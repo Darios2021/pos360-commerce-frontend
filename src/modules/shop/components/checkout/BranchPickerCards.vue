@@ -55,7 +55,8 @@
       </div>
     </div>
 
-    <!-- LISTA DE CARDS -->
+    <!-- LISTA DE CARDS — minimalista: ícono + nombre + horarios cortos.
+         La dirección y teléfono se muestran sólo al expandir "Ver detalles". -->
     <div class="bp-list">
       <article
         v-for="b in branches"
@@ -69,38 +70,34 @@
           :aria-pressed="isSelected(b)"
           @click="select(b, true)"
         >
-          <div class="bp-head">
-            <div class="bp-name-wrap">
+          <div class="bp-row">
+            <div class="bp-icon" :class="{ 'is-on': isSelected(b) }">
+              <v-icon size="20">mdi-storefront-outline</v-icon>
+            </div>
+
+            <div class="bp-info">
               <div class="bp-name">{{ branchName(b) }}</div>
               <div v-if="branchHours(b)" class="bp-hours">
-                <v-icon size="12">mdi-clock-outline</v-icon>
-                {{ branchHours(b) }}
+                <v-icon size="11">mdi-clock-outline</v-icon>
+                <span>{{ shortHours(branchHours(b)) }}</span>
               </div>
             </div>
 
             <div class="bp-radio" :class="{ 'is-on': isSelected(b) }">
-              <v-icon size="13" v-if="isSelected(b)">mdi-check</v-icon>
+              <v-icon size="14" v-if="isSelected(b)">mdi-check</v-icon>
             </div>
           </div>
 
-          <div v-if="branchAddress(b)" class="bp-address">
-            <v-icon size="13">mdi-map-marker-outline</v-icon>
-            <span>{{ branchAddress(b) }}</span>
-          </div>
-
-          <div v-if="branchPhone(b)" class="bp-phone">
-            <v-icon size="13">mdi-phone-outline</v-icon>
-            <span>{{ branchPhone(b) }}</span>
-          </div>
-
-          <div class="bp-actions">
-            <span v-if="isSelected(b)" class="bp-pill bp-pill--ok">
-              <v-icon size="13">mdi-check</v-icon>
-              Sucursal seleccionada
-            </span>
-            <span v-else class="bp-pill bp-pill--cta">
-              Elegir esta sucursal
-            </span>
+          <div class="bp-foot">
+            <button
+              type="button"
+              class="bp-detail-toggle"
+              @click.stop.prevent="toggleDetails(b.id)"
+              v-if="branchAddress(b) || branchPhone(b)"
+            >
+              {{ openDetails === b.id ? 'Ocultar detalles' : 'Ver detalles' }}
+              <v-icon size="13">{{ openDetails === b.id ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            </button>
 
             <a
               v-if="mapsLink(b)"
@@ -114,6 +111,19 @@
               <v-icon size="13">mdi-arrow-top-right</v-icon>
             </a>
           </div>
+
+          <transition name="bp-fade">
+            <div v-if="openDetails === b.id" class="bp-details">
+              <div v-if="branchAddress(b)" class="bp-line">
+                <v-icon size="13">mdi-map-marker-outline</v-icon>
+                <span>{{ branchAddress(b) }}</span>
+              </div>
+              <div v-if="branchPhone(b)" class="bp-line">
+                <v-icon size="13">mdi-phone-outline</v-icon>
+                <span>{{ branchPhone(b) }}</span>
+              </div>
+            </div>
+          </transition>
         </button>
       </article>
     </div>
@@ -163,6 +173,25 @@ function branchPhone(b) {
 }
 function branchHours(b) {
   return toStr(b?.hours) || toStr(b?.open_hours) || "";
+}
+/**
+ * Formatea las horas de la sucursal a algo corto y legible para mobile.
+ * Ej. "lunes: 9:00–13:00, 18:30–21:00" → "9:00–13:00 · 18:30–21:00"
+ * Si tiene varios días, deja el primero y agrega "+N días".
+ */
+function shortHours(raw) {
+  const s = toStr(raw);
+  if (!s) return "";
+  // Sacar prefijos de día
+  const noDay = s.replace(/^\s*(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|lun|mar|mi[eé]|jue|vie|s[aá]b|dom)\s*[:\-–]\s*/i, "");
+  // Limitar largo a ~38 chars
+  if (noDay.length <= 38) return noDay;
+  return noDay.slice(0, 35).trim() + "…";
+}
+
+const openDetails = ref(null);
+function toggleDetails(id) {
+  openDetails.value = openDetails.value === id ? null : id;
 }
 function branchCity(b) {
   return [toStr(b?.city), toStr(b?.province)].filter(Boolean).join(", ");
@@ -606,10 +635,10 @@ onBeforeUnmount(() => {
   border: 0;
   cursor: pointer;
   text-align: left;
-  padding: 14px 14px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1 1 auto;
   transition: background 0.18s ease;
   font: inherit;
@@ -624,22 +653,43 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 0 0 2px rgba(21, 101, 192, 0.32);
 }
 .bp-card.is-selected .bp-body {
-  background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.10) 100%);
+  background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.08) 100%);
 }
 
-.bp-head {
+/* Fila principal: ícono + nombre/horarios + radio */
+.bp-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
-.bp-name-wrap { min-width: 0; }
+.bp-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(21, 101, 192, 0.08);
+  color: rgb(var(--v-theme-primary));
+  display: grid;
+  place-items: center;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.bp-icon.is-on {
+  background: rgb(var(--v-theme-primary));
+  color: #fff;
+}
+.bp-info {
+  min-width: 0;
+  flex: 1 1 auto;
+}
 .bp-name {
   font-weight: 540;
   font-size: 15px;
   letter-spacing: -0.005em;
   color: rgba(17, 24, 39, 0.94);
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bp-hours {
   display: inline-flex;
@@ -648,7 +698,11 @@ onBeforeUnmount(() => {
   font-size: 11.5px;
   font-weight: 400;
   color: rgba(17, 24, 39, 0.55);
-  margin-top: 3px;
+  margin-top: 2px;
+}
+.bp-hours .v-icon {
+  color: rgba(17, 24, 39, 0.4);
+  flex: 0 0 auto;
 }
 
 .bp-radio {
@@ -668,52 +722,70 @@ onBeforeUnmount(() => {
   border-color: rgb(var(--v-theme-primary));
 }
 
-.bp-address,
-.bp-phone {
+/* Pie con dos links pequeños (toggle detalles + cómo llegar) */
+.bp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  margin-top: 2px;
+}
+.bp-detail-toggle {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 460;
+  color: rgba(17, 24, 39, 0.6);
+  letter-spacing: 0.005em;
+  transition: color 0.18s ease;
+}
+.bp-detail-toggle:hover {
+  color: rgba(17, 24, 39, 0.9);
+}
+
+/* Detalles expandibles (dirección + teléfono) */
+.bp-details {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(17, 24, 39, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bp-line {
+  display: inline-flex;
+  align-items: flex-start;
   gap: 6px;
   font-size: 12.5px;
   font-weight: 400;
   color: rgba(17, 24, 39, 0.65);
   line-height: 1.35;
 }
-.bp-address .v-icon,
-.bp-phone .v-icon {
+.bp-line .v-icon {
   color: rgba(17, 24, 39, 0.4);
   flex: 0 0 auto;
+  margin-top: 1px;
 }
 
-.bp-actions {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+/* Animación de expansión */
+.bp-fade-enter-active,
+.bp-fade-leave-active {
+  transition: opacity 0.18s ease, max-height 0.22s ease;
+  overflow: hidden;
+  max-height: 200px;
 }
-.bp-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 460;
-  letter-spacing: 0.005em;
-}
-.bp-pill--cta {
-  background: rgba(21, 101, 192, 0.08);
-  color: rgb(var(--v-theme-primary));
-  border: 1px dashed rgba(21, 101, 192, 0.32);
-}
-.bp-body:hover .bp-pill--cta {
-  background: rgba(21, 101, 192, 0.14);
-  border-style: solid;
-}
-.bp-pill--ok {
-  background: rgb(var(--v-theme-primary));
-  color: #fff;
+.bp-fade-enter-from,
+.bp-fade-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 
 .bp-extlink {
