@@ -217,6 +217,31 @@
         </v-btn>
       </div>
 
+      <!-- ✅ Acciones secundarias: favorito + compartir -->
+      <div class="ml-secondary-actions">
+        <button
+          type="button"
+          class="ml-action-chip"
+          :class="{ 'is-on': isFavorite, 'is-busy': favBusy }"
+          :disabled="favBusy"
+          :aria-label="isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+          @click="onToggleFavorite"
+        >
+          <v-icon size="18">{{ isFavorite ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+          <span>{{ isFavorite ? 'En favoritos' : 'Agregar a favoritos' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="ml-action-chip"
+          aria-label="Compartir producto"
+          @click="onShare"
+        >
+          <v-icon size="18">{{ shareJustCopied ? 'mdi-check' : 'mdi-share-variant-outline' }}</v-icon>
+          <span>{{ shareJustCopied ? 'Link copiado' : 'Compartir' }}</span>
+        </button>
+      </div>
+
       <!-- ✅ Garantías estilo ML: devolución + compra protegida -->
       <div class="ml-trust">
         <div class="ml-trust__row">
@@ -243,9 +268,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
+import { useShopFavoritesStore } from "@/modules/shop/store/shopFavorites.store";
+import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 const router = useRouter();
 
@@ -253,6 +280,64 @@ const props = defineProps({
   product: { type: Object, default: null },
 });
 const emit = defineEmits(["add", "buy", "go-payments"]);
+
+/* ============ Favoritos ============ */
+const favs = useShopFavoritesStore();
+const auth = useShopAuthStore();
+const favBusy = ref(false);
+
+const productId = computed(() => Number(props.product?.product_id ?? props.product?.id ?? 0));
+const isFavorite = computed(() => productId.value > 0 && favs.isFavorite(productId.value));
+
+onMounted(() => {
+  if (auth.isLogged) {
+    favs.fetch().catch(() => {});
+  }
+});
+
+async function onToggleFavorite() {
+  if (!productId.value) return;
+  if (!auth.isLogged) {
+    router.push({ path: "/shop/login", query: { redirect: location.pathname + location.search } });
+    return;
+  }
+  favBusy.value = true;
+  try {
+    await favs.toggle(productId.value);
+  } catch (e) {
+    console.warn("[fav] toggle falló:", e?.message);
+  } finally {
+    favBusy.value = false;
+  }
+}
+
+/* ============ Compartir ============ */
+const shareJustCopied = ref(false);
+
+async function onShare() {
+  const url = typeof window !== "undefined" ? window.location.href : "";
+  const title = `${props.product?.name || "Producto"} | San Juan Tecnología`;
+  const text = props.product?.short_description || props.product?.description || props.product?.name || "";
+
+  // Web Share API nativa (mobile + algunos browsers)
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      return;
+    } catch {
+      // si el usuario cancela, caemos al clipboard
+    }
+  }
+  // Fallback: copiar URL al clipboard
+  try {
+    await navigator.clipboard.writeText(url);
+    shareJustCopied.value = true;
+    setTimeout(() => { shareJustCopied.value = false; }, 1800);
+  } catch {
+    // último recurso: prompt
+    try { window.prompt("Copiá el enlace:", url); } catch {}
+  }
+}
 
 /* ================= utils ================= */
 function fmtMoney(v) {
@@ -762,6 +847,49 @@ function onBuyNow() {
 /* Botones */
 .ml-actions { margin-top: 14px; display: grid; gap: 10px; }
 .ml-btn { border-radius: 12px; font-weight: 500; text-transform: none; }
+
+/* Acciones secundarias: favorito + compartir */
+.ml-secondary-actions {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ml-action-chip {
+  appearance: none;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 10px;
+  padding: 9px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 460;
+  color: rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.005em;
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
+  white-space: nowrap;
+}
+.ml-action-chip:hover {
+  background: rgba(21, 101, 192, 0.04);
+  border-color: rgba(21, 101, 192, 0.32);
+  color: rgb(var(--v-theme-primary));
+}
+.ml-action-chip.is-on {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.32);
+  color: #dc2626;
+}
+.ml-action-chip.is-on:hover {
+  background: rgba(239, 68, 68, 0.10);
+}
+.ml-action-chip.is-busy {
+  opacity: 0.6;
+  cursor: wait;
+}
 
 /* Garantías ML — Devolución gratis + Compra Protegida */
 .ml-trust {

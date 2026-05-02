@@ -24,13 +24,35 @@ function normBase(raw) {
   return String(raw || "").trim().replace(/\/+$/, "");
 }
 
-// ✅ API_BASE_URL tiene prioridad (ideal para build/prerender)
-const API_BASE = normBase(process.env.API_BASE_URL || process.env.VITE_API_BASE_URL || "");
+// ✅ API_BASE_URL tiene prioridad (ideal para build/prerender).
+// Si no está seteada, caemos al endpoint de producción para que el
+// build NUNCA quede sin rutas de productos por una mala config de env.
+const PROD_FALLBACK = "https://pos360-commerce-api.cingulado.org/api/v1";
+const API_BASE = normBase(
+  process.env.API_BASE_URL || process.env.VITE_API_BASE_URL || PROD_FALLBACK
+);
 
 async function fetchJson(url) {
-  const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`HTTP ${res.status} - ${url}`);
-  return await res.json();
+  // 3 intentos con backoff: el catálogo en build puede tardar si el
+  // backend está warm-uping en CapRover.
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(url, { headers: { accept: "application/json" }, signal: ctrl.signal });
+      clearTimeout(t);
+      if (!res.ok) throw new Error(`HTTP ${res.status} - ${url}`);
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 3) {
+        console.warn(`[prerender] intento ${attempt} falló (${e?.message || e}), reintento en 2s…`);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 function toId(it) {
