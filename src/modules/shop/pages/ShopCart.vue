@@ -12,49 +12,69 @@
       <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
         <div class="text-h5 font-weight-bold">Carrito</div>
 
-        <v-btn variant="tonal" to="/shop">
+        <v-btn
+          v-if="items.length"
+          color="primary"
+          variant="tonal"
+          :elevation="0"
+          class="ml-btn ml-btn-cart"
+          to="/shop"
+        >
           Seguir comprando
         </v-btn>
       </div>
 
-      <v-row>
-        <!-- LEFT: Items -->
+      <!-- Empty: ocupa todo el ancho, sin Resumen al lado (no aporta con $0) -->
+      <v-card v-if="!items.length" class="ml-card ml-empty-card" elevation="0">
+        <v-card-text class="ml-empty">
+          <div class="ml-empty-ico">
+            <v-icon size="48">mdi-cart-outline</v-icon>
+          </div>
+          <div class="ml-empty-title">Tu carrito está vacío</div>
+          <div class="ml-empty-sub">
+            Agregá productos para continuar con la compra.<br>
+            Te esperan ofertas en toda la tienda.
+          </div>
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="small"
+            :elevation="0"
+            class="ml-btn ml-btn--sm ml-btn-buy mt-2"
+            to="/shop"
+          >
+            Ver productos
+          </v-btn>
+        </v-card-text>
+      </v-card>
+
+      <v-row v-else>
+        <!-- LEFT: Items (toolbar + items en UN SOLO bloque con hairlines) -->
         <v-col cols="12" md="8">
-          <!-- Toolbar ML-like -->
-          <v-card class="ml-card mb-3" elevation="0">
-            <v-card-text class="d-flex align-center justify-space-between flex-wrap ga-2">
-              <div class="d-flex align-center ga-2">
-                <v-checkbox
-                  v-model="selectAll"
-                  hide-details
-                  density="compact"
-                  class="ml-check"
-                  @update:modelValue="toggleAll"
-                />
-                <div class="ml-muted">Todos los productos</div>
-              </div>
 
-              <div class="ml-muted text-caption">
-                {{ items.length }} producto{{ items.length === 1 ? "" : "s" }}
-              </div>
-            </v-card-text>
-          </v-card>
-
-          <!-- Empty -->
-          <v-card v-if="!items.length" class="ml-card" elevation="0">
-            <v-card-text class="py-10 text-center">
-              <div class="text-h6 font-weight-bold mb-2">Tu carrito está vacío</div>
-              <div class="text-body-2 ml-muted mb-4">
-                Agregá productos para continuar con la compra.
-              </div>
-              <v-btn color="primary" to="/shop" class="ml-cta">Ver productos</v-btn>
-            </v-card-text>
-          </v-card>
-
-          <!-- Items list -->
-          <v-card v-else class="ml-card" elevation="0">
+          <!-- Items + toolbar en UN SOLO bloque, separados por hairlines -->
+          <v-card class="ml-card" elevation="0">
             <v-card-text class="pa-0">
-              <div v-for="it in items" :key="itKey(it)" class="ml-item">
+              <!-- Toolbar -->
+              <div class="ml-toolbar">
+                <div class="d-flex align-center ga-2">
+                  <v-checkbox
+                    v-model="selectAll"
+                    hide-details
+                    density="compact"
+                    class="ml-check"
+                    @update:modelValue="toggleAll"
+                  />
+                  <div class="ml-muted">Todos los productos</div>
+                </div>
+
+                <div class="ml-muted text-caption">
+                  {{ items.length }} producto{{ items.length === 1 ? "" : "s" }}
+                </div>
+              </div>
+
+              <div v-for="(it, idx) in items" :key="itKey(it)" class="ml-item">
+                <div class="ml-rule" />
                 <div class="ml-item-row">
                   <!-- select -->
                   <v-checkbox
@@ -136,8 +156,6 @@
                     </div>
                   </div>
                 </div>
-
-                <v-divider />
               </div>
             </v-card-text>
           </v-card>
@@ -154,13 +172,15 @@
                 <span>$ {{ fmtMoney(subtotalSelected) }}</span>
               </div>
 
-              <v-divider class="my-3" />
+              <div class="ml-rule my-3" />
 
               <v-btn
                 block
                 size="large"
                 color="primary"
-                class="ml-cta"
+                variant="flat"
+                :elevation="0"
+                class="ml-btn ml-btn-buy"
                 :disabled="!canCheckout"
                 @click="goCheckout"
               >
@@ -345,9 +365,52 @@ function goCheckout() {
 }
 
 .ml-card {
-  border-radius: 10px;
-  border: 1px solid #e6e6e6;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+/* ===== Empty state ===== */
+.ml-empty-card {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.ml-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 24px !important;
+  gap: 6px;
+}
+.ml-empty-ico {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(21, 101, 192, 0.06);
+  color: rgb(var(--v-theme-primary));
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+.ml-empty-ico :deep(.v-icon) {
+  color: rgb(var(--v-theme-primary));
+  opacity: 0.7;
+}
+.ml-empty-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.94);
+  letter-spacing: -0.01em;
+}
+.ml-empty-sub {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  line-height: 1.5;
+  max-width: 440px;
+  margin: 4px 0 16px;
 }
 
 .ml-summary {
@@ -356,12 +419,12 @@ function goCheckout() {
 }
 
 .ml-muted {
-  color: #737373;
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .ml-title {
   font-size: 16px;
-  font-weight: 400;
+  font-weight: 500;
   margin-bottom: 12px;
 }
 
@@ -371,10 +434,59 @@ function goCheckout() {
   font-size: 14px;
 }
 
-.ml-cta {
+/* ✅ Hairline tenue para separar apartados dentro del mismo bloque */
+.ml-rule {
+  height: 1px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ✅ Toolbar dentro del bloque de items */
+.ml-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+/* ✅ Botones sobrios — mismo patrón que ProductPurchasePanel */
+.ml-btn {
   border-radius: 6px;
+  font-weight: 460;
+  letter-spacing: 0.005em;
   text-transform: none;
-  font-weight: 400;
+  font-size: 14px;
+  min-height: 44px;
+  box-shadow: none !important;
+}
+
+/* ✅ Variante compacta — para empty states, secondary actions, chips */
+.ml-btn--sm {
+  min-height: 36px !important;
+  height: 36px !important;
+  font-size: 13px !important;
+  padding: 0 16px !important;
+  border-radius: 6px;
+}
+
+.ml-btn-buy {
+  font-weight: 500;
+}
+.ml-btn-buy :deep(.v-btn__overlay) { opacity: 0; }
+.ml-btn-buy:hover :deep(.v-btn__overlay) {
+  opacity: 0.08;
+  background: #000;
+}
+
+.ml-btn-cart {
+  background: rgba(21, 101, 192, 0.08) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.ml-btn-cart :deep(.v-btn__overlay) { opacity: 0; }
+.ml-btn-cart:hover {
+  background: rgba(21, 101, 192, 0.14) !important;
 }
 
 .ml-item-row {
@@ -422,7 +534,7 @@ function goCheckout() {
   background: transparent;
   border: 0;
   padding: 0;
-  color: #3483fa;
+  color: rgb(var(--v-theme-primary));
   font-size: 13px;
   cursor: pointer;
 }

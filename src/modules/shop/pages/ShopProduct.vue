@@ -31,18 +31,21 @@
         </div>
       </v-alert>
 
-      <!-- ✅ Contenido -->
-      <div v-else-if="product" class="product-grid">
-        <!-- LEFT: gallery grande -->
-        <ProductGallery :product="product" />
+      <!-- ✅ Contenido — SHELL único estilo ML: una sola card,
+           hairlines internos separan apartados (galería | compra) -->
+      <div v-else-if="product" class="pdp-shell">
+        <div class="product-grid">
+          <!-- LEFT: gallery grande -->
+          <ProductGallery :product="product" />
 
-        <!-- RIGHT: 1 SOLO panel -->
-        <ProductRightPanel
-          :product="product"
-          @add="onAddToCart"
-          @buy="onBuyNow"
-          @go-payments="scrollToPayments"
-        />
+          <!-- RIGHT: 1 SOLO panel -->
+          <ProductRightPanel
+            :product="product"
+            @add="onAddToCart"
+            @buy="onBuyNow"
+            @go-payments="scrollToPayments"
+          />
+        </div>
       </div>
 
       <!-- ✅ Info + Medios de pago (2 columnas estilo ML) -->
@@ -447,20 +450,30 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* ✅ ML: gallery grande + panel derecho fijo.
-   align-items: stretch → ambas cards quedan alineadas en altura.
-   La galería NO rompe proporciones porque el .main-frame interno tiene
-   aspect-ratio 1/1 + max-width fijo + margin auto: queda cuadrado y
-   centrado en la card aunque ésta crezca para alinear con el panel. */
+/* ✅ Shell único estilo Mercado Libre: UNA card que envuelve galería
+   + panel de compra. Las sub-cards no llevan borde ni sombra propios
+   (ver ProductGallery / ProductPurchasePanel). El divisor vertical
+   entre columnas es una hairline, no un gap. */
+.pdp-shell {
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 18px;
+  gap: 0;
   align-items: stretch;
-  margin-top: 8px;
+  /* hairline vertical entre las 2 columnas */
+  background: rgba(0, 0, 0, 0.06);
+  column-gap: 1px;
 }
-
 .product-grid > * {
+  background: #fff;
   min-width: 0;
 }
 
@@ -502,6 +515,9 @@ onBeforeUnmount(() => {
 @media (max-width: 1200px) {
   .product-grid {
     grid-template-columns: 1fr;
+    /* en mobile el divider va en horizontal entre filas */
+    column-gap: 0;
+    row-gap: 1px;
   }
 }
 </style>

@@ -143,7 +143,7 @@
         </div>
       </div>
 
-      <v-divider class="my-4" />
+      <div class="ml-rule my-3" />
 
       <!-- Stock -->
       <div class="ml-stock">
@@ -191,13 +191,17 @@
         />
       </div>
 
+      <div class="ml-rule mt-3" />
+
       <!-- Acciones -->
       <div class="ml-actions">
         <v-btn
-          class="ml-btn"
+          class="ml-btn ml-btn-buy"
           color="primary"
+          variant="flat"
           size="large"
           block
+          :elevation="0"
           :disabled="disabledAdd"
           @click="onBuyNow"
         >
@@ -205,14 +209,16 @@
         </v-btn>
 
         <v-btn
-          class="ml-btn"
+          class="ml-btn ml-btn-cart"
+          color="primary"
           variant="tonal"
           size="large"
           block
+          :elevation="0"
           :disabled="disabledAdd"
           @click="onAddToCart"
         >
-          <v-icon start>mdi-cart-outline</v-icon>
+          <v-icon start size="18">mdi-cart-outline</v-icon>
           Agregar al carrito
         </v-btn>
       </div>
@@ -241,6 +247,8 @@
           <span>{{ shareJustCopied ? 'Link copiado' : 'Compartir' }}</span>
         </button>
       </div>
+
+      <div class="ml-rule mt-3" />
 
       <!-- ✅ Garantías estilo ML: devolución + compra protegida -->
       <div class="ml-trust">
@@ -629,12 +637,23 @@ function onBuyNow() {
 
 <style scoped>
 .ml-side {
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  /* ✅ Sin borde / sombra propios — el panel vive dentro del shell
+     único de ShopProduct (.product-shell). El divider vertical contra
+     la galería lo da el grid del shell. */
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 .ml-pad { padding: 18px; }
+
+/* ✅ Hairline tenue para separar apartados dentro del mismo bloque,
+   sin que parezcan cards distintas. */
+.ml-rule {
+  height: 1px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.06);
+}
 
 /* ✅ anti “texto vertical” */
 .ml-side, .ml-side * {
@@ -844,9 +863,39 @@ function onBuyNow() {
 }
 .ml-payment-link:hover { text-decoration: underline; }
 
-/* Botones */
-.ml-actions { margin-top: 14px; display: grid; gap: 10px; }
-.ml-btn { border-radius: 12px; font-weight: 500; text-transform: none; }
+/* Botones — sobrios estilo ML: radius chico, peso medio, sin sombra,
+   alturas medidas, secundario tonal en azul (no gris pesado). */
+.ml-actions { margin-top: 14px; display: grid; gap: 8px; }
+
+.ml-btn {
+  border-radius: 6px;
+  font-weight: 460;
+  letter-spacing: 0.005em;
+  text-transform: none;
+  font-size: 14px;
+  min-height: 44px;
+  box-shadow: none !important;
+}
+
+/* Primary: solid plano, sin sombra, hover ligeramente más oscuro */
+.ml-btn-buy {
+  font-weight: 500;
+}
+.ml-btn-buy :deep(.v-btn__overlay) { opacity: 0; }
+.ml-btn-buy:hover :deep(.v-btn__overlay) {
+  opacity: 0.08;
+  background: #000;
+}
+
+/* Secundario tonal: azul muy suave en vez de gris */
+.ml-btn-cart {
+  background: rgba(21, 101, 192, 0.08) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.ml-btn-cart :deep(.v-btn__overlay) { opacity: 0; }
+.ml-btn-cart:hover {
+  background: rgba(21, 101, 192, 0.14) !important;
+}
 
 /* Acciones secundarias: favorito + compartir */
 .ml-secondary-actions {
@@ -857,9 +906,9 @@ function onBuyNow() {
 }
 .ml-action-chip {
   appearance: none;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
   padding: 9px 10px;
   cursor: pointer;
   display: inline-flex;
@@ -870,32 +919,28 @@ function onBuyNow() {
   font-weight: 460;
   color: rgba(0, 0, 0, 0.7);
   letter-spacing: 0.005em;
-  transition: background 0.16s, border-color 0.16s, color 0.16s;
+  transition: background 0.16s, color 0.16s;
   white-space: nowrap;
 }
 .ml-action-chip:hover {
-  background: rgba(21, 101, 192, 0.04);
-  border-color: rgba(21, 101, 192, 0.32);
+  background: rgba(21, 101, 192, 0.06);
   color: rgb(var(--v-theme-primary));
 }
 .ml-action-chip.is-on {
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.32);
   color: #dc2626;
 }
 .ml-action-chip.is-on:hover {
-  background: rgba(239, 68, 68, 0.10);
+  background: rgba(239, 68, 68, 0.08);
 }
 .ml-action-chip.is-busy {
   opacity: 0.6;
   cursor: wait;
 }
 
-/* Garantías ML — Devolución gratis + Compra Protegida */
+/* Garantías ML — Devolución gratis + Compra Protegida.
+   La hairline arriba la pone el .ml-rule del template, no acá. */
 .ml-trust {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;

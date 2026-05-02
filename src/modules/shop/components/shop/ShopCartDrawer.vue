@@ -1,141 +1,140 @@
-<!-- src/modules/shop/components/ShopCartDrawer.vue -->
+<!-- src/modules/shop/components/shop/ShopCartDrawer.vue -->
 <template>
   <v-navigation-drawer
     v-model="drawer"
     location="right"
     temporary
-    width="420"
+    width="400"
     class="cart-drawer"
   >
     <!-- Header -->
     <div class="cd-head">
       <div class="cd-title">Mi carrito</div>
-      <v-btn icon variant="text" @click="cart.closeDrawer()" aria-label="Cerrar">
+      <v-btn icon variant="text" size="small" @click="cart.closeDrawer()" aria-label="Cerrar">
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </div>
 
-    <v-divider />
+    <div class="cd-rule" />
 
     <!-- Body -->
     <div class="cd-body">
       <div v-if="!items.length" class="cd-empty">
-        Tu carrito está vacío.
-      </div>
-
-      <div v-else class="cd-items">
-        <div v-for="it in items" :key="it.product_id" class="cd-item">
-          <v-img
-            :src="it.image_url || it.image || it.cover_url"
-            width="56"
-            height="56"
-            cover
-            class="cd-img"
-          />
-
-          <div class="cd-info">
-            <div class="cd-name">{{ it.name }}</div>
-
-            <div class="cd-variant text-caption text-medium-emphasis">
-              <template v-if="it.color || it.color_name">
-                Color: {{ it.color_name || it.color }}
-              </template>
-              <template v-else-if="it.variant_name">
-                {{ it.variant_name }}
-              </template>
-              <template v-else>
-                &nbsp;
-              </template>
-            </div>
-
-            <div class="cd-qtyrow">
-              <v-btn icon size="small" variant="text" @click="cart.dec(it.product_id)">
-                <v-icon size="18">mdi-minus</v-icon>
-              </v-btn>
-
-              <div class="cd-qty">{{ it.qty }}</div>
-
-              <v-btn icon size="small" variant="text" @click="cart.inc(it.product_id)">
-                <v-icon size="18">mdi-plus</v-icon>
-              </v-btn>
-            </div>
-          </div>
-
-          <div class="cd-right">
-            <div class="cd-price">$ {{ fmtMoney(lineTotal(it)) }}</div>
-            <v-btn icon size="small" variant="text" @click="cart.remove(it.product_id)">
-              <v-icon size="18">mdi-delete</v-icon>
-            </v-btn>
-          </div>
-        </div>
-
-        <v-divider class="my-3" />
-
-        <div class="cd-row">
-          <span class="text-medium-emphasis">Subtotal</span>
-          <b>$ {{ fmtMoney(cart.total) }}</b>
-        </div>
-
-        <v-expansion-panels variant="accordion" class="cd-panels">
-          <v-expansion-panel>
-            <v-expansion-panel-title>Calculá el costo de envío</v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <v-text-field
-                v-model="zip"
-                label="Código postal"
-                variant="outlined"
-                density="comfortable"
-              />
-              <v-btn block variant="tonal" :disabled="!zip">Calcular</v-btn>
-              <div class="text-caption text-medium-emphasis mt-2">
-                (Placeholder: cálculo real cuando tengas la API)
-              </div>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-
-          <v-expansion-panel>
-            <v-expansion-panel-title>¿Tenés un descuento?</v-expansion-panel-title>
-            <v-expansion-panel-text>
-              <v-text-field
-                v-model="coupon"
-                label="Cupón"
-                variant="outlined"
-                density="comfortable"
-              />
-              <v-btn block variant="tonal" :disabled="!coupon">Aplicar</v-btn>
-              <div class="text-caption text-medium-emphasis mt-2">
-                (Placeholder: validación real más adelante)
-              </div>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
-
-        <div class="cd-row cd-total">
-          <span>Total</span>
-          <b>$ {{ fmtMoney(cart.total) }}</b>
-        </div>
-
+        <v-icon size="32" color="grey-lighten-1">mdi-cart-outline</v-icon>
+        <div class="cd-empty-title">Tu carrito está vacío</div>
+        <div class="cd-empty-sub">Agregá productos para empezar la compra.</div>
         <v-btn
           color="primary"
-          size="large"
-          block
-          class="cd-cta"
-          :disabled="!items.length"
-          @click="goCheckout"
+          variant="tonal"
+          size="small"
+          :elevation="0"
+          class="cd-btn cd-btn--sm cd-btn--cart mt-4"
+          @click="cart.closeDrawer()"
         >
-          INICIAR COMPRA
-        </v-btn>
-
-        <v-btn block variant="text" class="cd-continue" @click="cart.closeDrawer()">
           Seguir comprando
         </v-btn>
       </div>
+
+      <template v-else>
+        <!-- Items: lista plana, hairlines entre cada uno -->
+        <div class="cd-items">
+          <template v-for="(it, idx) in items" :key="it.product_id">
+            <div v-if="idx > 0" class="cd-rule" />
+            <div class="cd-item">
+              <div class="cd-thumb">
+                <img
+                  v-if="it.image_url || it.image || it.cover_url"
+                  :src="it.image_url || it.image || it.cover_url"
+                  :alt="it.name"
+                />
+                <v-icon v-else size="22" color="grey-lighten-1">mdi-image-off-outline</v-icon>
+              </div>
+
+              <div class="cd-info">
+                <div class="cd-name" :title="it.name">{{ it.name }}</div>
+
+                <div class="cd-qtyrow">
+                  <div class="cd-qtybox">
+                    <button
+                      type="button"
+                      class="cd-qtybtn"
+                      :disabled="(it.qty || 1) <= 1"
+                      @click="cart.dec(it.product_id)"
+                      aria-label="Disminuir"
+                    >−</button>
+                    <div class="cd-qty">{{ it.qty }}</div>
+                    <button
+                      type="button"
+                      class="cd-qtybtn"
+                      @click="cart.inc(it.product_id)"
+                      aria-label="Aumentar"
+                    >+</button>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="cd-link"
+                    @click="cart.remove(it.product_id)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+
+              <div class="cd-price">$ {{ fmtMoney(lineTotal(it)) }}</div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Totales -->
+        <div class="cd-rule" />
+        <div class="cd-totals">
+          <div class="cd-row">
+            <span class="cd-muted">Subtotal</span>
+            <span>$ {{ fmtMoney(cart.total) }}</span>
+          </div>
+          <div class="cd-row cd-total-row">
+            <span>Total</span>
+            <span class="cd-total-amount">$ {{ fmtMoney(cart.total) }}</span>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="cd-actions">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :elevation="0"
+            block
+            class="cd-btn cd-btn--buy"
+            :disabled="!items.length"
+            @click="goCheckout"
+          >
+            Iniciar compra
+          </v-btn>
+
+          <v-btn
+            color="primary"
+            variant="tonal"
+            :elevation="0"
+            block
+            class="cd-btn cd-btn--cart"
+            @click="cart.closeDrawer()"
+          >
+            Seguir comprando
+          </v-btn>
+        </div>
+
+        <div class="cd-hint">
+          Podés revisar envío, descuentos y pago en el checkout.
+        </div>
+      </template>
     </div>
   </v-navigation-drawer>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useShopCartStore } from "@/modules/shop/store/shopCart.store";
 
@@ -148,9 +147,6 @@ const drawer = computed({
   get: () => cart.drawer_open,
   set: (v) => cart.toggleDrawer(v),
 });
-
-const zip = ref("");
-const coupon = ref("");
 
 function fmtMoney(v) {
   return new Intl.NumberFormat("es-AR").format(Math.round(Number(v || 0)));
@@ -170,7 +166,7 @@ function lineTotal(i) {
 
 function goCheckout() {
   cart.closeDrawer();
-  router.push({ name: "shopCheckout" }); // ✅ FIX: ir a checkout real
+  router.push({ name: "shopCheckout" });
 }
 </script>
 
@@ -179,114 +175,251 @@ function goCheckout() {
   overflow: hidden;
 }
 
+/* ===== Header ===== */
 .cd-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 14px;
+  padding: 14px 16px;
 }
 
 .cd-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
+  color: rgba(17, 24, 39, 0.94);
 }
 
+/* ===== Hairline reusable ===== */
+.cd-rule {
+  height: 1px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Body ===== */
 .cd-body {
-  padding: 12px 14px 18px;
+  padding: 8px 16px 18px;
+  display: flex;
+  flex-direction: column;
 }
 
+/* ===== Empty ===== */
 .cd-empty {
-  padding: 18px 4px;
+  padding: 36px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgba(0, 0, 0, 0.6);
+}
+.cd-empty-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.92);
+  margin-top: 10px;
+}
+.cd-empty-sub {
+  font-size: 13px;
   color: rgba(0, 0, 0, 0.55);
+  margin-top: 4px;
 }
 
+/* ===== Items ===== */
 .cd-items {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .cd-item {
   display: grid;
-  grid-template-columns: 56px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  background: #fff;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
 }
 
-.cd-img {
-  border-radius: 12px;
+.cd-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.cd-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .cd-info {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .cd-name {
-  font-weight: 500;
+  font-weight: 460;
   font-size: 13px;
-  line-height: 1.2;
+  line-height: 1.35;
+  color: rgba(17, 24, 39, 0.92);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-transform: none;
 }
 
 .cd-qtyrow {
-  margin-top: 8px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  border-radius: 999px;
-  padding: 2px 6px;
+  gap: 12px;
 }
 
-.cd-qty {
-  width: 26px;
-  text-align: center;
-  font-weight: 500;
-}
-
-.cd-right {
+/* Qty box rectangular tipo ML */
+.cd-qtybox {
   display: grid;
-  justify-items: end;
-  gap: 6px;
+  grid-template-columns: 28px 36px 28px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  height: 30px;
+}
+.cd-qtybtn {
+  border: 0;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  color: rgba(17, 24, 39, 0.7);
+  transition: background 0.14s;
+}
+.cd-qtybtn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+.cd-qtybtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cd-qty {
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.92);
+}
+
+.cd-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: rgb(var(--v-theme-primary));
+  font-size: 12.5px;
+  cursor: pointer;
+  font-weight: 460;
+}
+.cd-link:hover {
+  text-decoration: underline;
 }
 
 .cd-price {
   font-weight: 500;
+  font-size: 14px;
+  color: rgba(17, 24, 39, 0.94);
   white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* ===== Totales ===== */
+.cd-totals {
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .cd-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  font-size: 13.5px;
 }
 
-.cd-total {
-  margin-top: 8px;
-  font-size: 15px;
+.cd-muted {
+  color: rgba(0, 0, 0, 0.6);
 }
 
-.cd-cta {
-  margin-top: 12px;
-  border-radius: 999px;
-  font-weight: 500;
-  text-transform: none;
-}
-
-.cd-continue {
+.cd-total-row {
   margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   font-weight: 500;
-  text-transform: none;
+  font-size: 15px;
+  color: rgba(17, 24, 39, 0.94);
+}
+.cd-total-amount {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.cd-panels {
+/* ===== Actions ===== */
+.cd-actions {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Botones — mismo patrón que el resto del shop */
+.cd-btn {
+  border-radius: 6px;
+  font-weight: 460;
+  letter-spacing: 0.005em;
+  text-transform: none;
+  font-size: 14px;
+  min-height: 44px;
+  box-shadow: none !important;
+}
+
+/* ✅ Variante compacta — empty state, secondary inline */
+.cd-btn--sm {
+  min-height: 36px !important;
+  height: 36px !important;
+  font-size: 13px !important;
+  padding: 0 16px !important;
+}
+
+.cd-btn--buy {
+  font-weight: 500;
+}
+.cd-btn--buy :deep(.v-btn__overlay) { opacity: 0; }
+.cd-btn--buy:hover :deep(.v-btn__overlay) {
+  opacity: 0.08;
+  background: #000;
+}
+
+.cd-btn--cart {
+  background: rgba(21, 101, 192, 0.08) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.cd-btn--cart :deep(.v-btn__overlay) { opacity: 0; }
+.cd-btn--cart:hover {
+  background: rgba(21, 101, 192, 0.14) !important;
+}
+
+.cd-hint {
   margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.4;
 }
 </style>

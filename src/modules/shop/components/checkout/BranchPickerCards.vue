@@ -300,13 +300,23 @@ function fitToAllMarkers(google) {
 
 function openInfoWindow(b, marker) {
   if (!infoWindow) return;
+  const selected = isSelected(b);
+
+  // Sólo mostramos un ícono cuando la sucursal está SELECCIONADA (un
+  // check sutil informativo). Para "Elegir" no agregamos ícono — botón
+  // limpio, sober.
+  const ctaIcon = selected
+    ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" style="margin-right:6px"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`
+    : "";
+
   const html = `
     <div class="bp-popup">
       <div class="bp-popup-name">${escapeHtml(branchName(b))}</div>
       ${branchAddress(b) ? `<div class="bp-popup-addr">${escapeHtml(branchAddress(b))}</div>` : ""}
-      <button class="bp-popup-cta" data-branch-id="${b.id}">${
-        isSelected(b) ? "Sucursal seleccionada" : "Elegir esta sucursal"
-      }</button>
+      <div class="bp-popup-rule"></div>
+      <button class="bp-popup-cta ${selected ? "bp-popup-cta--selected" : ""}" data-branch-id="${b.id}">
+        ${ctaIcon}<span>${selected ? "Sucursal seleccionada" : "Elegir esta sucursal"}</span>
+      </button>
     </div>
   `;
   infoWindow.setContent(html);
@@ -560,49 +570,9 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-/* InfoWindow custom */
-:deep(.bp-popup) {
-  font-family: "Inter", system-ui, sans-serif;
-  padding: 4px 4px 0;
-}
-:deep(.bp-popup-name) {
-  font-weight: 540;
-  font-size: 13.5px;
-  color: rgba(17, 24, 39, 0.94);
-  letter-spacing: -0.005em;
-}
-:deep(.bp-popup-addr) {
-  font-size: 12px;
-  color: rgba(17, 24, 39, 0.6);
-  font-weight: 400;
-  margin-top: 2px;
-  max-width: 220px;
-}
-:deep(.bp-popup-cta) {
-  margin-top: 8px;
-  appearance: none;
-  border: 0;
-  cursor: pointer;
-  padding: 7px 12px;
-  border-radius: 8px;
-  background: rgb(21, 101, 192);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  width: 100%;
-  font-family: inherit;
-  transition: background 0.16s ease;
-}
-:deep(.bp-popup-cta:hover) {
-  background: rgb(13, 71, 161);
-}
-
-/* Botón de cierre del InfoWindow más limpio */
-:deep(.gm-ui-hover-effect) {
-  top: 4px !important;
-  right: 4px !important;
-}
+/* (estilos del InfoWindow van en el <style> global de abajo —
+   el HTML del popup se inyecta fuera del árbol Vue, así que `:deep`
+   en scoped CSS no llega hasta él) */
 
 /* ===== Cards ===== */
 .bp-list {
@@ -841,5 +811,112 @@ onBeforeUnmount(() => {
   .bp-body {
     padding: 10px 10px 8px;
   }
+}
+</style>
+
+<!-- ✅ Estilos GLOBALES (no scoped) — el HTML del InfoWindow se inyecta
+     fuera del árbol Vue (DOM de Google Maps), así que :deep no llega.
+     Las clases tienen prefijo bp-/gm- exclusivos del mapa. -->
+<style>
+.bp-popup {
+  font-family: "Inter", system-ui, sans-serif;
+  padding: 4px 4px 2px;
+  width: 260px;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+.bp-popup-name {
+  font-weight: 500;
+  font-size: 14.5px;
+  color: rgba(17, 24, 39, 0.94);
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+.bp-popup-addr {
+  font-size: 12.5px;
+  color: rgba(17, 24, 39, 0.6);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.bp-popup-rule {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 12px 0 10px;
+}
+
+/* CTA sober: 36px, radius 6 — mismo patrón que ml-btn--sm del shop */
+.bp-popup-cta {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: rgb(21, 101, 192);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  width: 100%;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.16s ease, color 0.16s ease;
+  box-shadow: none;
+}
+.bp-popup-cta:hover {
+  background: rgb(13, 71, 161);
+}
+/* Variante seleccionada — tonal azul suave (mismo patrón ml-btn-cart) */
+.bp-popup-cta--selected {
+  background: rgba(21, 101, 192, 0.08);
+  color: rgb(21, 101, 192);
+  font-weight: 460;
+  cursor: default;
+}
+.bp-popup-cta--selected:hover {
+  background: rgba(21, 101, 192, 0.12);
+}
+
+/* Container del InfoWindow: radius + sombra suave + padding */
+.gm-style .gm-style-iw-c {
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  padding: 14px 14px 12px !important;
+  max-width: none !important;
+}
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
+  max-width: none !important;
+}
+/* "Cola" del tooltip */
+.gm-style .gm-style-iw-tc::after {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+/* Botón de cierre del InfoWindow — custom, sober */
+.gm-ui-hover-effect {
+  top: 6px !important;
+  right: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  transition: background 0.14s ease !important;
+}
+.gm-ui-hover-effect:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+.gm-ui-hover-effect > span {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 6px !important;
+  background-color: rgba(17, 24, 39, 0.55) !important;
 }
 </style>

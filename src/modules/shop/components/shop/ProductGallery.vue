@@ -585,16 +585,15 @@ watch(viewerIdx, (v) => {
 
 <style scoped>
 .pg-card {
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* ✅ Sin borde / sombra propios — la galería vive dentro del shell
+     único de ShopProduct (.product-shell) que ya provee el contorno y
+     el divider hairline contra el panel derecho. */
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  /* ✅ height:100% para que la card se alinee al alto del panel
-     derecho (grid con align-items: stretch). El frame interno tiene
-     aspect-ratio + max-width + margin auto → queda cuadrado y
-     centrado, sin distorsionarse aunque la card crezca. */
   height: 100%;
 }
 .pg-pad {

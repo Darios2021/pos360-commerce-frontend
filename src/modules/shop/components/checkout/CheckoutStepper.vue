@@ -355,7 +355,12 @@
               <div class="cs-review">
                 <!-- PRODUCTOS -->
                 <section class="cs-section">
-                  <h4 class="cs-section-title">Productos</h4>
+                  <header class="cs-section-row">
+                    <h4 class="cs-section-title">Productos</h4>
+                    <span class="cs-section-meta">
+                      {{ cartItems.length }} {{ cartItems.length === 1 ? "ítem" : "ítems" }}
+                    </span>
+                  </header>
 
                   <v-alert v-if="cartItems.length === 0" type="warning" variant="tonal" class="rounded-lg mt-2" density="compact">
                     No hay productos en el carrito.
@@ -380,75 +385,109 @@
                 <section class="cs-section">
                   <header class="cs-section-row">
                     <h4 class="cs-section-title">Comprador</h4>
-                    <button type="button" class="cs-edit-link" @click="$emit('prev')">Editar</button>
+                    <button type="button" class="cs-edit-link" @click="$emit('prev')">
+                      <v-icon size="14">mdi-pencil-outline</v-icon>
+                      Editar
+                    </button>
                   </header>
 
-                  <div class="cs-info">
-                    <div class="cs-info-line cs-info-line--strong">{{ buyer?.name || "—" }}</div>
-                    <div class="cs-info-line">{{ buyer?.email || "—" }}</div>
-                    <div class="cs-info-line">{{ buyer?.phone || "—" }}</div>
-                    <div v-if="buyer?.doc_number" class="cs-info-line">DNI / CUIT: {{ buyer.doc_number }}</div>
-                  </div>
+                  <dl class="cs-kv">
+                    <div class="cs-kv-row">
+                      <dt>Nombre</dt>
+                      <dd>{{ buyer?.name || "—" }}</dd>
+                    </div>
+                    <div class="cs-kv-row">
+                      <dt>Email</dt>
+                      <dd>{{ buyer?.email || "—" }}</dd>
+                    </div>
+                    <div class="cs-kv-row">
+                      <dt>Teléfono</dt>
+                      <dd>{{ buyer?.phone || "—" }}</dd>
+                    </div>
+                    <div v-if="buyer?.doc_number" class="cs-kv-row">
+                      <dt>DNI / CUIT</dt>
+                      <dd>{{ buyer.doc_number }}</dd>
+                    </div>
+                  </dl>
                 </section>
 
                 <!-- ENTREGA -->
                 <section class="cs-section">
                   <header class="cs-section-row">
                     <h4 class="cs-section-title">Entrega</h4>
-                    <button type="button" class="cs-edit-link" @click="$emit('prev')">Editar</button>
+                    <button type="button" class="cs-edit-link" @click="$emit('prev')">
+                      <v-icon size="14">mdi-pencil-outline</v-icon>
+                      Editar
+                    </button>
                   </header>
 
-                  <div v-if="delivery?.mode === 'pickup'" class="cs-info">
-                    <div class="cs-info-line cs-info-line--strong">
-                      <v-icon size="14" class="cs-info-ico">mdi-storefront-outline</v-icon>
-                      Retiro en sucursal — {{ selectedBranchName || pickupBranchName || "—" }}
+                  <dl v-if="delivery?.mode === 'pickup'" class="cs-kv">
+                    <div class="cs-kv-row">
+                      <dt>Modalidad</dt>
+                      <dd>Retiro en sucursal</dd>
                     </div>
-                    <div class="cs-info-line cs-info-line--ok">
-                      <v-icon size="13">mdi-check-circle</v-icon>
-                      Retiro gratis · te avisamos cuando esté listo
+                    <div class="cs-kv-row">
+                      <dt>Sucursal</dt>
+                      <dd>{{ selectedBranchName || pickupBranchName || "—" }}</dd>
                     </div>
-                  </div>
+                    <div class="cs-kv-row">
+                      <dt>Costo</dt>
+                      <dd class="cs-ok">Gratis · te avisamos cuando esté listo</dd>
+                    </div>
+                  </dl>
 
-                  <div v-else class="cs-info">
-                    <div class="cs-info-line cs-info-line--strong">
-                      <v-icon size="14" class="cs-info-ico">mdi-truck-fast-outline</v-icon>
-                      Envío a domicilio
+                  <dl v-else class="cs-kv">
+                    <div class="cs-kv-row">
+                      <dt>Modalidad</dt>
+                      <dd>Envío a domicilio</dd>
                     </div>
-                    <div class="cs-info-line">{{ delivery?.address1 || "—" }}</div>
-                    <div class="cs-info-line">{{ delivery?.city || "—" }}, {{ delivery?.province || "—" }} · CP {{ delivery?.zip || "—" }}</div>
-                    <div class="cs-info-line">{{ delivery?.contact_name || buyer?.name || "—" }} · {{ delivery?.ship_phone || buyer?.phone || "—" }}</div>
-                    <div v-if="shippingQuote?.status === 'ok'" class="cs-info-line cs-info-line--muted">
-                      Envío estimado: <strong>$ {{ fmtMoney(shippingQuote.amount) }}</strong>
-                      <span v-if="shippingQuote.eta">· {{ shippingQuote.eta }}</span>
+                    <div class="cs-kv-row">
+                      <dt>Domicilio</dt>
+                      <dd>
+                        {{ delivery?.address1 || "—" }}<br>
+                        {{ delivery?.city || "—" }}, {{ delivery?.province || "—" }} · CP {{ delivery?.zip || "—" }}
+                      </dd>
                     </div>
-                  </div>
+                    <div class="cs-kv-row">
+                      <dt>Contacto</dt>
+                      <dd>{{ delivery?.contact_name || buyer?.name || "—" }} · {{ delivery?.ship_phone || buyer?.phone || "—" }}</dd>
+                    </div>
+                    <div v-if="shippingQuote?.status === 'ok'" class="cs-kv-row">
+                      <dt>Estimado</dt>
+                      <dd>
+                        $ {{ fmtMoney(shippingQuote.amount) }}<span v-if="shippingQuote.eta"> · {{ shippingQuote.eta }}</span>
+                      </dd>
+                    </div>
+                  </dl>
                 </section>
 
                 <!-- PAGO -->
                 <section class="cs-section">
                   <header class="cs-section-row">
                     <h4 class="cs-section-title">Pago</h4>
-                    <button type="button" class="cs-edit-link" @click="$emit('prev')">Editar</button>
+                    <button type="button" class="cs-edit-link" @click="$emit('prev')">
+                      <v-icon size="14">mdi-pencil-outline</v-icon>
+                      Editar
+                    </button>
                   </header>
 
-                  <div class="cs-info">
-                    <div class="cs-info-line cs-info-line--strong">
-                      <v-icon size="14" class="cs-info-ico">{{ paymentIcon }}</v-icon>
-                      {{ paymentLabel || paymentMethodFallback }}
+                  <dl class="cs-kv">
+                    <div class="cs-kv-row">
+                      <dt>Método</dt>
+                      <dd>{{ paymentLabel || paymentMethodFallback }}</dd>
                     </div>
-                    <div v-if="payment?.method_code === 'transfer' && payment?.reference" class="cs-info-line">
-                      Ref. comprobante: {{ payment.reference }}
+                    <div v-if="payment?.method_code === 'transfer' && payment?.reference" class="cs-kv-row">
+                      <dt>Referencia</dt>
+                      <dd>{{ payment.reference }}</dd>
                     </div>
-                    <div v-if="payment?.method_code === 'mercadopago'" class="cs-info-line cs-info-line--muted">
-                      Te redirigimos a Mercado Pago al confirmar
+                    <div
+                      v-if="paymentNote"
+                      class="cs-kv-row"
+                    >
+                      <dt>Detalle</dt>
+                      <dd class="cs-muted">{{ paymentNote }}</dd>
                     </div>
-                    <div v-if="payment?.method_code === 'credit_sjt'" class="cs-info-line cs-info-line--muted">
-                      Reservás el pedido y completás el crédito en tienda
-                    </div>
-                    <div v-if="payment?.method_code === 'cash'" class="cs-info-line cs-info-line--muted">
-                      Pagás en efectivo al retirar o recibir
-                    </div>
-                  </div>
+                  </dl>
                 </section>
 
                 <!-- TOTALES -->
@@ -791,6 +830,15 @@ const paymentIcon = computed(() => {
   return "mdi-credit-card-outline";
 });
 
+const paymentNote = computed(() => {
+  const code = toStr(props.payment?.method_code).toLowerCase();
+  if (code === "mercadopago") return "Te redirigimos a Mercado Pago al confirmar.";
+  if (code === "credit_sjt") return "Reservás el pedido y completás el crédito en tienda.";
+  if (code === "cash") return "Pagás en efectivo al retirar o recibir.";
+  if (code === "transfer" && !props.payment?.reference) return "Te enviaremos los datos para transferir.";
+  return "";
+});
+
 const paymentMethodFallback = computed(() => {
   const code = toStr(props.payment?.method_code).toLowerCase();
   if (code === "mercadopago") return "Mercado Pago";
@@ -1110,27 +1158,37 @@ function fmtMoney(v) {
   margin-top: 20px;
   align-items: center;
 }
-/* Ambos botones (volver / continuar / confirmar) comparten forma y
-   tamaño. El primario es flat (azul lleno), el secundario es tonal
-   (fondo azul tenue + texto/icono primary). */
+/* Ambos botones (volver / continuar / confirmar) comparten el patrón
+   sober: radius chico, peso medio, sin sombra, alturas medidas.
+   El primario es flat (azul lleno) — peso 500 para mantener jerarquía.
+   El secundario tonal: azul muy suave en vez de gris pesado. */
 .cs-cta {
-  border-radius: 12px;
+  border-radius: 6px;
   text-transform: none;
-  font-weight: 540;
+  font-weight: 500;
   letter-spacing: 0.005em;
   padding: 0 22px !important;
   min-width: 170px;
+  min-height: 44px;
   font-size: 14px !important;
+  box-shadow: none !important;
+}
+.cs-cta :deep(.v-btn__overlay) { opacity: 0; }
+.cs-cta:not(.cs-cta--back):hover :deep(.v-btn__overlay) {
+  opacity: 0.08;
+  background: #000;
+}
+
+.cs-cta--back {
+  font-weight: 460;
+  background: rgba(21, 101, 192, 0.08) !important;
 }
 .cs-cta--back :deep(.v-btn__content),
 .cs-cta--back :deep(.v-icon) {
   color: rgb(var(--v-theme-primary)) !important;
 }
-.cs-cta--back {
-  background: rgba(21, 101, 192, 0.10) !important;
-}
 .cs-cta--back:hover {
-  background: rgba(21, 101, 192, 0.18) !important;
+  background: rgba(21, 101, 192, 0.14) !important;
 }
 
 /* =========================
@@ -1197,27 +1255,28 @@ function fmtMoney(v) {
 
 .cs-section + .cs-section {
   padding-top: 14px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .cs-section-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .cs-section-title {
-  font-weight: 540;
-  font-size: 14px;
-  letter-spacing: 0.005em;
-  color: rgba(17, 24, 39, 0.55);
-  text-transform: uppercase;
-  margin: 0 0 8px;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  font-size: 15px;
+  color: rgba(17, 24, 39, 0.92);
+  letter-spacing: -0.005em;
+  margin: 0;
+  text-transform: none;
 }
-.cs-section-row .cs-section-title {
-  margin-bottom: 0;
+.cs-section-meta {
+  font-size: 12.5px;
+  color: rgba(17, 24, 39, 0.55);
+  font-weight: 400;
 }
 .cs-edit-link {
   appearance: none;
@@ -1225,16 +1284,65 @@ function fmtMoney(v) {
   border: 0;
   cursor: pointer;
   font-size: 12.5px;
-  font-weight: 540;
+  font-weight: 460;
   color: rgb(var(--v-theme-primary));
-  padding: 4px 0;
-  letter-spacing: 0.005em;
-  transition: opacity 0.16s ease;
+  padding: 2px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.14s ease;
 }
 .cs-edit-link:hover {
-  opacity: 0.7;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  background: rgba(21, 101, 192, 0.08);
+}
+
+/* ✅ Definition list — label izquierda, valor derecha. Layout
+   tabular: rápido de scanear, todo alineado, sin íconos decorativos. */
+.cs-kv {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 6px 14px;
+}
+.cs-kv-row {
+  display: contents;
+}
+.cs-kv dt {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(17, 24, 39, 0.55);
+  letter-spacing: 0;
+}
+.cs-kv dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 460;
+  color: rgba(17, 24, 39, 0.92);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.cs-kv .cs-ok {
+  color: #00a650;
+  font-weight: 500;
+}
+.cs-kv .cs-muted {
+  color: rgba(17, 24, 39, 0.55);
+  font-weight: 400;
+}
+
+@media (max-width: 480px) {
+  .cs-kv {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+  .cs-kv-row {
+    display: block;
+    margin-bottom: 8px;
+  }
+  .cs-kv dt {
+    margin-bottom: 1px;
+  }
 }
 
 /* Items de productos — fila inline, sin caja gris */
@@ -1339,14 +1447,14 @@ function fmtMoney(v) {
   color: #009966;
 }
 
-/* Totales — destacados al final */
+/* Totales — bloque resumen final, más respiración + total destacado */
 .cs-totals-section {
-  margin-top: 4px;
+  margin-top: 8px;
   padding: 16px 0 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .cs-total-row {
   display: flex;
@@ -1361,25 +1469,25 @@ function fmtMoney(v) {
 }
 .cs-total-value {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 460;
   color: rgba(17, 24, 39, 0.92);
 }
 .cs-total-free {
-  color: #009966;
-  font-weight: 540;
+  color: #00a650;
+  font-weight: 500;
 }
 .cs-grand {
-  margin-top: 4px;
+  margin-top: 8px;
   padding-top: 12px;
-  border-top: 1px solid rgba(17, 24, 39, 0.10);
-  font-weight: 540;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-weight: 500;
   font-size: 15px;
   color: rgba(17, 24, 39, 0.94);
   letter-spacing: -0.005em;
 }
 .cs-grand-amount {
   font-weight: 600;
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: -0.015em;
   color: rgba(17, 24, 39, 0.96);
 }

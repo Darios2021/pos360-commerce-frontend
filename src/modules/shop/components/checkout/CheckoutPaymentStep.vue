@@ -417,26 +417,35 @@ const canContinue = computed(() => {
 /* Ambos botones (volver / continuar) comparten forma y tamaño.
    El primario es flat (azul lleno blanco) y el secundario es tonal
    (fondo azul tenue + texto/icono primary). */
+/* Patrón sober compartido con CheckoutStepper / ProductPurchasePanel */
 .ml-cta {
-  border-radius: 12px;
+  border-radius: 6px;
   text-transform: none;
-  font-weight: 540;
+  font-weight: 500;
   letter-spacing: 0.005em;
   padding: 0 22px !important;
   min-width: 170px;
-  height: 46px !important;
+  min-height: 44px;
+  height: 44px !important;
   font-size: 14px !important;
+  box-shadow: none !important;
 }
-/* Back: fondo tonal más definido, color primary explícito en texto + icono */
+.ml-cta :deep(.v-btn__overlay) { opacity: 0; }
+.ml-cta:not(.ml-cta--back):hover :deep(.v-btn__overlay) {
+  opacity: 0.08;
+  background: #000;
+}
+
+.ml-cta--back {
+  font-weight: 460;
+  background: rgba(21, 101, 192, 0.08) !important;
+}
 .ml-cta--back :deep(.v-btn__content),
 .ml-cta--back :deep(.v-icon) {
   color: rgb(var(--v-theme-primary)) !important;
 }
-.ml-cta--back {
-  background: rgba(21, 101, 192, 0.10) !important;
-}
 .ml-cta--back:hover {
-  background: rgba(21, 101, 192, 0.18) !important;
+  background: rgba(21, 101, 192, 0.14) !important;
 }
 
 @media (max-width: 600px) {
