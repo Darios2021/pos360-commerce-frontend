@@ -734,10 +734,26 @@ onBeforeUnmount(() => {
 
 @media (max-width: 700px) {
   .bp-map-wrap {
-    height: 280px;
+    height: 260px;
   }
   .bp-list {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .bp-map-hint {
+    font-size: 11px;
+    padding: 5px 10px;
+    bottom: 10px;
+  }
+  .bp-single-alert {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .bp-map-wrap {
+    height: 220px;
   }
 }
 </style>

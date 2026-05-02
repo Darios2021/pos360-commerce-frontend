@@ -118,7 +118,7 @@
                   </div>
                 </div>
 
-                <v-row class="mt-1">
+                <v-row class="mt-1" dense>
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="deliveryContactName"
@@ -127,6 +127,9 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-account-outline"
+                      autocomplete="name"
+                      autocapitalize="words"
+                      spellcheck="false"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -137,6 +140,9 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-phone-outline"
+                      type="tel"
+                      autocomplete="tel"
+                      inputmode="tel"
                     />
                   </v-col>
 
@@ -149,6 +155,8 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-home-outline"
+                      autocomplete="street-address"
+                      autocapitalize="words"
                     />
                   </v-col>
 
@@ -159,6 +167,8 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      autocomplete="postal-code"
+                      inputmode="numeric"
                     />
                   </v-col>
                   <v-col cols="12" md="4">
@@ -168,6 +178,8 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      autocomplete="address-level2"
+                      autocapitalize="words"
                     />
                   </v-col>
                   <v-col cols="12" md="4">
@@ -177,6 +189,8 @@
                       variant="outlined"
                       density="comfortable"
                       class="cs-input"
+                      autocomplete="address-level1"
+                      autocapitalize="words"
                     />
                   </v-col>
                 </v-row>
@@ -218,7 +232,7 @@
                   </div>
                 </div>
 
-                <v-row class="mt-1">
+                <v-row class="mt-1" dense>
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="buyerName"
@@ -227,6 +241,9 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-account-outline"
+                      autocomplete="name"
+                      autocapitalize="words"
+                      spellcheck="false"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -238,6 +255,10 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-email-outline"
+                      autocomplete="email"
+                      inputmode="email"
+                      autocapitalize="none"
+                      spellcheck="false"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -248,6 +269,9 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-phone-outline"
+                      type="tel"
+                      autocomplete="tel"
+                      inputmode="tel"
                     />
                   </v-col>
                   <v-col cols="12" md="6">
@@ -258,6 +282,8 @@
                       density="comfortable"
                       class="cs-input"
                       prepend-inner-icon="mdi-card-account-details-outline"
+                      inputmode="numeric"
+                      autocomplete="off"
                     />
                   </v-col>
                 </v-row>
@@ -555,22 +581,6 @@ function toStr(v) {
   return String(v ?? "").trim();
 }
 
-function splitName(full) {
-  const s = toStr(full).replace(/\s+/g, " ").trim();
-  if (!s) return { first_name: "", last_name: "" };
-  const parts = s.split(" ");
-  if (parts.length === 1) return { first_name: parts[0], last_name: "" };
-  return { first_name: parts[0], last_name: parts.slice(1).join(" ") };
-}
-
-function normalizeDelivery(d) {
-  const x = { ...(d || {}) };
-  const m = toStr(x.mode).toLowerCase();
-  if (m === "shipping") x.mode = "delivery";
-  if (m !== "pickup" && m !== "delivery") x.mode = "pickup";
-  return x;
-}
-
 function normalizePayment(p) {
   const x = { ...(p || {}) };
   let code = toStr(x.method_code).toLowerCase();
@@ -594,25 +604,20 @@ function normalizePayment(p) {
   return x;
 }
 
-function normalizeBuyer(b) {
-  const x = { ...(b || {}) };
-  const nm = toStr(x.name);
-
-  const { first_name, last_name } = splitName(nm);
-  if (!toStr(x.first_name)) x.first_name = first_name;
-  if (!toStr(x.last_name)) x.last_name = last_name;
-
-  if (x.email) x.email = toStr(x.email).toLowerCase();
-  return x;
-}
+// IMPORTANTE: nunca normalizar el buyer en cada keystroke. Si lowercasamos
+// el email o splitamos el nombre mientras el usuario tipea, el v-model se
+// re-evalúa con un valor distinto al que está en el input → Vue actualiza
+// el DOM, pierde el foco y el cursor salta. La normalización (lowercase
+// email, split first/last) ya la hace el backend (ecomCheckout.controller).
 
 function setBuyerField(key, val) {
-  const next = normalizeBuyer({ ...(props.buyer || {}), [key]: val });
-  emit("update:buyer", next);
+  // Set directo sin normalizar — preservamos lo que el usuario tipea.
+  emit("update:buyer", { ...(props.buyer || {}), [key]: val });
 }
 function setDeliveryField(key, val) {
-  const next = normalizeDelivery({ ...(props.delivery || {}), [key]: val });
-  emit("update:delivery", next);
+  // Set directo. Si la propiedad afecta el modo (pickup/delivery), el
+  // setter del modo lo normaliza explícitamente; los demás campos no.
+  emit("update:delivery", { ...(props.delivery || {}), [key]: val });
 }
 
 const buyerName = computed({
@@ -677,39 +682,24 @@ const paymentModel = computed({
   set: (v) => emit("update:payment", normalizePayment(v)),
 });
 
+// IMPORTANTE: NO se ponen watchers deep que re-emitan props.delivery /
+// props.payment / props.buyer normalizados. Esos watchers creaban un
+// ciclo: input → setter → emit → parent prop update → watcher → re-emit
+// normalizado → re-render del input → cursor salta / pierde foco.
+// La normalización (modo, método de pago, lowercase email) la hacemos al
+// momento de submit (buildBackendPayload en ShopCheckout.vue + backend).
+//
+// Si necesitás canonicalizar el modo de delivery al montar (porque el
+// padre pueda mandar "shipping" en vez de "delivery"), se hace una sola
+// vez con immediate: true SIN deep:
 watch(
-  () => props.delivery,
-  (d) => {
-    const nd = normalizeDelivery(d);
-    if (toStr(nd?.mode) !== toStr(d?.mode)) emit("update:delivery", nd);
-  },
-  { deep: true, immediate: true }
-);
-
-watch(
-  () => props.payment,
-  (p) => {
-    const np = normalizePayment(p);
-    if (toStr(np?.method_code) !== toStr(p?.method_code) || toStr(np?.method) !== toStr(p?.method)) {
-      emit("update:payment", np);
+  () => toStr(props.delivery?.mode).toLowerCase(),
+  (m) => {
+    if (m === "shipping" && props.delivery?.mode !== "delivery") {
+      emit("update:delivery", { ...(props.delivery || {}), mode: "delivery" });
     }
   },
-  { deep: true, immediate: true }
-);
-
-watch(
-  () => props.buyer,
-  (b) => {
-    const nb = normalizeBuyer(b);
-    if (
-      toStr(nb?.first_name) !== toStr(b?.first_name) ||
-      toStr(nb?.last_name) !== toStr(b?.last_name) ||
-      toStr(nb?.email) !== toStr(b?.email)
-    ) {
-      emit("update:buyer", nb);
-    }
-  },
-  { deep: true, immediate: true }
+  { immediate: true }
 );
 
 const cartItems = computed(() => (Array.isArray(cart.items) ? cart.items : []));
@@ -1356,6 +1346,58 @@ function fmtMoney(v) {
   }
   .cs-title {
     font-size: 19px;
+  }
+  .cs-sub {
+    font-size: 13px;
+  }
+
+  /* títulos de los steps (Envío / Pago / Revisión): más compactos
+     y permitimos wrap para que no se solapen */
+  :deep(.v-stepper-item__title) {
+    font-size: 12px !important;
+    white-space: normal !important;
+    text-align: center;
+    line-height: 1.15;
+  }
+  :deep(.v-stepper-item__avatar) {
+    margin-bottom: 4px !important;
+  }
+  :deep(.v-stepper-header) {
+    padding: 4px 0 !important;
+  }
+
+  /* CTA full-width en mobile para que quede bien grande y al pulgar */
+  .cs-cta {
+    width: 100%;
+  }
+  .cs-quote-btn {
+    width: 100%;
+  }
+
+  /* secciones del review más compactas */
+  .cs-review {
+    padding: 14px;
+    gap: 12px;
+  }
+  .cs-section-head {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .cs-step-pad {
+    padding: 12px 10px;
+  }
+  .cs-box {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .cs-title {
+    font-size: 17px;
+  }
+  /* mode cards: reducir padding y altura para que entren bien */
+  .cs-mode {
+    padding: 14px;
   }
 }
 </style>
