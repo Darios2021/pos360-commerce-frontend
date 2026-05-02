@@ -18,8 +18,10 @@
         <div class="checkout-title">Finalizar compra</div>
       </div>
 
-      <!-- ✅ no-gutters: elimina el “contraído” lateral en mobile -->
-      <v-row no-gutters class="checkout-row">
+      <!-- ✅ no-gutters: elimina el "contraído" lateral en mobile.
+           align="start" para que el summary sticky funcione (sino la
+           col se estira al alto del row y el sticky no tiene espacio). -->
+      <v-row no-gutters class="checkout-row" align="start">
         <!-- LEFT -->
         <v-col cols="12" md="8" class="checkout-col checkout-col-left">
           <CheckoutStepper
@@ -633,15 +635,12 @@ onMounted(async () => {
     padding-left: 14px !important;
   }
 
-  /* ✅ Alineamos el TOP del Summary con el TOP de la CARD interna del paso
-     (no con el stepper ni con el título del paso). El offset cubre:
-       v-stepper-header (1-2-3 + labels)         ~ 88px
-       cs-step-pad padding-top + kicker + title + sub
-                                                ~ 96px
-       gap antes de la card (.cs-review margin)  ~ 16px
-     Total ≈ 200px. */
+  /* Summary alineado al top de la columna izquierda y sticky para que
+     el usuario lo vea siempre mientras hace scroll por los pasos. */
   .checkout-summary-wrap {
-    margin-top: 200px;
+    position: sticky;
+    top: 16px;
+    margin-top: 0;
   }
 }
 
