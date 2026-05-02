@@ -111,16 +111,28 @@
               {{ q.name }}
             </div>
 
-            <v-btn
-              size="x-small"
-              variant="tonal"
-              color="error"
-              @click="removeQueuedByKey(q.key)"
-              :disabled="busy"
-              title="Quitar"
-            >
-              <v-icon size="16">mdi-close</v-icon>
-            </v-btn>
+            <div class="d-flex ga-1">
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                @click="openCropperForQueued(q)"
+                :disabled="busy"
+                title="Recortar"
+              >
+                <v-icon size="16">mdi-crop</v-icon>
+              </v-btn>
+
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="error"
+                @click="removeQueuedByKey(q.key)"
+                :disabled="busy"
+                title="Quitar"
+              >
+                <v-icon size="16">mdi-close</v-icon>
+              </v-btn>
+            </div>
           </div>
         </v-card>
       </div>
@@ -163,6 +175,17 @@
               <v-btn
                 size="x-small"
                 variant="tonal"
+                color="primary"
+                @click="openCropperForRemote(img)"
+                :disabled="busy"
+                title="Recortar"
+              >
+                <v-icon size="16">mdi-crop</v-icon>
+              </v-btn>
+
+              <v-btn
+                size="x-small"
+                variant="tonal"
                 color="error"
                 @click="removeImage(img)"
                 :disabled="busy"
@@ -182,12 +205,22 @@
         <v-btn variant="text" @click="snack.open=false">OK</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- ✅ Editor de recorte -->
+    <ImageCropperDialog
+      v-model="cropper.open"
+      :src="cropper.src"
+      :filename="cropper.filename"
+      default-ratio="1"
+      @applied="onCropApplied"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import http from "../../../../app/api/http";
+import ImageCropperDialog from "../dialogs/ImageCropperDialog.vue";
 
 const API = {
   list: (id) => `/products/${id}/images`,
@@ -394,6 +427,99 @@ async function setPrimary(img) {
     await refresh();
   } catch (e) {
     error.value = e?.response?.data?.message || e?.message || "No se pudo marcar como principal";
+  } finally {
+    busy.value = false;
+  }
+}
+
+/* =========================
+   ✅ CROPPER
+========================= */
+const cropper = ref({
+  open: false,
+  src: "",
+  filename: "",
+  // contexto: una y solo una de estas dos está seteada
+  queueKey: "",      // si recortamos un File en cola
+  remoteImg: null,   // si recortamos una imagen ya subida
+});
+
+function openCropperForQueued(q) {
+  if (!q?.file || !q?.url) return;
+  cropper.value = {
+    open: true,
+    src: q.url, // object URL del File en cola
+    filename: q.name || "imagen",
+    queueKey: q.key,
+    remoteImg: null,
+  };
+}
+
+function openCropperForRemote(img) {
+  if (!img?.url) return;
+  // ✅ cache-buster para evitar tainted canvas con caches viejos
+  const sep = img.url.includes("?") ? "&" : "?";
+  const src = `${img.url}${sep}_cb=${Date.now()}`;
+  cropper.value = {
+    open: true,
+    src,
+    filename: `producto-${img.id || "img"}`,
+    queueKey: "",
+    remoteImg: img,
+  };
+}
+
+async function onCropApplied(payload) {
+  const file = payload?.file;
+  if (!(file instanceof File)) return;
+
+  // ── Modo cola: reemplazo el File en la queue
+  if (cropper.value.queueKey) {
+    const key = cropper.value.queueKey;
+    const prev = safeFiles(props.modelValue);
+    const next = prev.map((f) => (fileKey(f) === key ? file : f));
+    setQueue(next);
+    toast("✂️ Imagen recortada (en cola)");
+    return;
+  }
+
+  // ── Modo real: subo nueva + borro original + refresh
+  const original = cropper.value.remoteImg;
+  if (!original) return;
+
+  const id = resolvedId.value;
+  if (!id) {
+    error.value = "Producto sin id, no puedo guardar el recorte";
+    return;
+  }
+
+  busy.value = true;
+  error.value = "";
+  try {
+    const fd = new FormData();
+    fd.append("files", file);
+    await http.post(API.upload(id), fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    if (original.id) {
+      try {
+        await http.delete(API.remove(id, original.id));
+      } catch (e) {
+        // Si falla el delete, igual avisamos del éxito del upload
+        // pero dejamos un mensaje suave por consola.
+        console.warn("[ProductImages] no se pudo eliminar la original:", e);
+      }
+    }
+
+    toast("✂️ Imagen recortada y guardada");
+    await refresh();
+  } catch (e) {
+    error.value =
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      e?.message ||
+      "No se pudo guardar el recorte";
   } finally {
     busy.value = false;
   }

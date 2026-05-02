@@ -447,16 +447,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-/* ✅ ML: gallery grande + panel derecho fijo
-   align-items: start → la galería NO se estira al alto del panel
-   derecho (que con favoritos + share + garantías es bastante alto).
-   Antes la galería se estiraba y el frame de imagen quedaba gigante
-   con productos verticales. */
+/* ✅ ML: gallery grande + panel derecho fijo.
+   align-items: stretch → ambas cards quedan alineadas en altura.
+   La galería NO rompe proporciones porque el .main-frame interno tiene
+   aspect-ratio 1/1 + max-width fijo + margin auto: queda cuadrado y
+   centrado en la card aunque ésta crezca para alinear con el panel. */
 .product-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
   margin-top: 8px;
 }
 

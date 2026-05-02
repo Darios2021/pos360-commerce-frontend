@@ -591,9 +591,11 @@ watch(viewerIdx, (v) => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
-  /* NO usar height:100% acá — si el padre fuerza altura (flex/grid
-     con stretch) la galería se estira y la imagen vertical queda
-     gigante. Que la card tome el alto del contenido (frame + thumbs). */
+  /* ✅ height:100% para que la card se alinee al alto del panel
+     derecho (grid con align-items: stretch). El frame interno tiene
+     aspect-ratio + max-width + margin auto → queda cuadrado y
+     centrado, sin distorsionarse aunque la card crezca. */
+  height: 100%;
 }
 .pg-pad {
   padding: 14px;
@@ -684,19 +686,22 @@ watch(viewerIdx, (v) => {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center; /* ✅ centra el frame cuadrado verticalmente
+                              cuando la card es más alta que el frame */
 }
 
-/* Marco general — altura DURA para que las imágenes verticales
-   (parlantes, celulares, vertical phones) no estiren la card.
-   max-height/min-height iguales con !important porque algún padre
-   en stretch puede tratar de pisar height. La imagen adentro es
-   max-height: 100% + object-fit contain → siempre cabe sin recortar. */
+/* Marco — MISMO patrón que las cards del carrusel (estilo ML):
+   aspect-ratio 1/1 + object-fit cover. El frame cuadrado matchea
+   mejor las fotos del shop, el cover llena sin huecos y como el
+   producto está más o menos al centro de la foto, queda visible.
+   max-height capa la altura en pantallas anchas para que la
+   galería no se vuelva enorme. */
 .main-frame {
   position: relative;
   width: 100%;
-  height: 480px !important;
-  max-height: 480px !important;
-  min-height: 480px !important;
+  max-width: 540px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
   flex: 0 0 auto !important;
   border-radius: 16px;
   background: #fff;
@@ -706,29 +711,19 @@ watch(viewerIdx, (v) => {
   cursor: pointer;
 }
 
-/* ✅ Caja imagen centrada */
+/* ✅ Caja imagen — la imagen llena el frame (cover) sin estirarlo */
 .img-box {
   position: absolute;
   inset: 0;
-  padding: 14px;
-  display: grid;
-  place-items: center;
   background: #fff;
 }
 
-/* ✅ MAIN IMG: nunca recorta el producto.
-   Las fotos del shop tienen el producto al centro con fondo arriba/
-   abajo (pared/mesa/piso). Si recortáramos, perderíamos parte del
-   producto. Mejor usar contain + centrar: imagen completa siempre.
-   Si la imagen es muy vertical queda algo más chica con espacio a
-   los lados, pero nada se pierde y el frame no se estira. */
+/* ✅ MAIN IMG: idéntico a .mlx-media img de ProductCard */
 .main-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  object-position: center center;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #fff;
   display: block;
 }
 
@@ -940,18 +935,14 @@ watch(viewerIdx, (v) => {
     display: block;
   }
   .main-frame {
-    height: min(86vw, 420px) !important;
-    max-height: min(86vw, 420px) !important;
-    min-height: min(86vw, 420px) !important;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;
   }
   .main-video {
     padding: 10px;
   }
   .video-box {
     width: min(360px, 96%);
-  }
-  .img-box {
-    padding: 10px;
   }
 }
 </style>
