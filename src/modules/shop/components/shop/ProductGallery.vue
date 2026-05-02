@@ -716,17 +716,19 @@ watch(viewerIdx, (v) => {
   background: #fff;
 }
 
-/* ✅ MAIN IMG: llena el frame completo y, si tiene que recortar
-   (caso típico: imagen vertical más alta que ancha), recorta SIEMPRE
-   desde arriba (object-position: center bottom). Las fotos del shop
-   están sacadas desde abajo y la parte superior es fondo vacío
-   (pared, mesa, etc.). Conservando "la base" siempre vemos el
-   producto entero. */
+/* ✅ MAIN IMG: nunca recorta el producto.
+   Las fotos del shop tienen el producto al centro con fondo arriba/
+   abajo (pared/mesa/piso). Si recortáramos, perderíamos parte del
+   producto. Mejor usar contain + centrar: imagen completa siempre.
+   Si la imagen es muy vertical queda algo más chica con espacio a
+   los lados, pero nada se pierde y el frame no se estira. */
 .main-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center bottom;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center center;
   display: block;
 }
 
