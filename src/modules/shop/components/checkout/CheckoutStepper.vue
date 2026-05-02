@@ -917,7 +917,7 @@ function fmtMoney(v) {
 .cs-mode-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .cs-mode {
@@ -925,23 +925,22 @@ function fmtMoney(v) {
   cursor: pointer;
   text-align: left;
   background: #fff;
-  border: 1.5px solid rgba(17, 24, 39, 0.1);
-  border-radius: 14px;
-  padding: 16px;
+  border: 1.5px solid rgba(17, 24, 39, 0.10);
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 .cs-mode:hover {
   border-color: rgba(21, 101, 192, 0.32);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
 }
 .cs-mode.is-active {
   border-color: rgb(var(--v-theme-primary));
   background: linear-gradient(180deg, rgba(21, 101, 192, 0.04) 0%, rgba(21, 101, 192, 0.08) 100%);
-  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+  box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.12);
 }
 
 .cs-mode-head {
@@ -949,16 +948,22 @@ function fmtMoney(v) {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-bottom: 2px;
 }
 .cs-mode-ico {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
   color: rgb(var(--v-theme-primary));
   background: rgba(21, 101, 192, 0.10);
+}
+.cs-mode-ico .v-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
 }
 .cs-mode-ico--pickup {
   background: rgba(0, 153, 102, 0.10);
@@ -969,14 +974,15 @@ function fmtMoney(v) {
   color: rgb(var(--v-theme-primary));
 }
 .cs-mode-badge {
-  font-size: 11px;
-  font-weight: 460;
+  font-size: 10px;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 4px 9px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: rgba(0, 153, 102, 0.12);
   color: #009966;
+  white-space: nowrap;
 }
 .cs-mode-badge--alt {
   background: rgba(21, 101, 192, 0.10);
@@ -984,23 +990,29 @@ function fmtMoney(v) {
 }
 .cs-mode-title {
   font-weight: 520;
-  font-size: 15px;
+  font-size: 14px;
   color: rgba(17, 24, 39, 0.9);
-  margin-top: 4px;
   letter-spacing: -0.005em;
+  line-height: 1.2;
 }
 .cs-mode-sub {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: rgba(17, 24, 39, 0.6);
-  line-height: 1.4;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+/* "Seleccionado" pill — el borde + fondo ya comunican el estado activo,
+   pero dejamos un check sutil en mobile escondiendo el texto */
 .cs-mode-check {
-  margin-top: 6px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11.5px;
   font-weight: 460;
   color: rgb(var(--v-theme-primary));
 }
@@ -1452,8 +1464,44 @@ function fmtMoney(v) {
 }
 
 @media (max-width: 700px) {
+  /* En mobile, mantenemos las 2 cards lado a lado (más rápido decidir
+     que un radio en columna) — pero más compactas. */
   .cs-mode-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .cs-mode {
+    padding: 10px;
+    gap: 2px;
+  }
+  .cs-mode-head {
+    margin-bottom: 0;
+  }
+  .cs-mode-ico {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+  }
+  .cs-mode-ico .v-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .cs-mode-badge {
+    font-size: 9.5px;
+    padding: 2px 6px;
+  }
+  .cs-mode-title {
+    font-size: 13.5px;
+  }
+  .cs-mode-sub {
+    font-size: 11.5px;
+    -webkit-line-clamp: 2;
+  }
+  /* "Seleccionado" se sobreentiende por el borde — esconder en mobile
+     ahorra una línea entera y la card queda más compacta */
+  .cs-mode-check {
+    display: none;
   }
 }
 
@@ -1531,9 +1579,17 @@ function fmtMoney(v) {
   .cs-title {
     font-size: 17px;
   }
-  /* mode cards: reducir padding y altura para que entren bien */
+  /* mode cards: aún más compactas en pantallas chicas */
   .cs-mode {
-    padding: 12px;
+    padding: 8px 10px;
+  }
+  .cs-mode-sub {
+    /* en pantallas muy chicas el subtitle se hace ruido — 1 línea */
+    -webkit-line-clamp: 1;
+  }
+  /* esconder la badge en pantallas muy chicas: el ícono y título alcanzan */
+  .cs-mode-badge {
+    display: none;
   }
 }
 </style>
