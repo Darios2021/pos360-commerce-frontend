@@ -357,6 +357,57 @@
     <v-snackbar v-model="snack.show" :timeout="2800" :color="snack.color">
       {{ snack.text }}
     </v-snackbar>
+
+    <!-- Dialog de cancelación: motivo obligatorio -->
+    <v-dialog v-model="cancelDialog.open" max-width="480" persistent>
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="error">mdi-cancel</v-icon>
+          Cancelar pedido
+          <span v-if="order" class="text-medium-emphasis ml-2">#{{ order.id }}</span>
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2 mb-3">
+            Indicá el motivo de la cancelación. El cliente no lo verá pero
+            queda registrado para auditoría y se notifica al equipo por Telegram.
+          </div>
+          <v-textarea
+            v-model="cancelDialog.reason"
+            label="Motivo de la cancelación"
+            placeholder="Ej. Stock no disponible / cliente desistió / error en el precio"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            auto-grow
+            counter="500"
+            maxlength="500"
+            :rules="[
+              (v) => (v && v.trim().length >= 5) || 'Motivo requerido (mín. 5 caracteres)',
+            ]"
+            autofocus
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            variant="text"
+            :disabled="!!statusBusy"
+            @click="cancelDialog.open = false"
+          >
+            Volver
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            :loading="statusBusy === 'cancelled'"
+            :disabled="!cancelReasonValid"
+            @click="confirmCancel"
+          >
+            Cancelar pedido
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -468,8 +519,22 @@ async function reload() {
   if (detail.value?.error) error.value = detail.value.error;
 }
 
+// Dialog de cancelación con motivo obligatorio
+const cancelDialog = ref({ open: false, reason: "" });
+const cancelReasonValid = computed(() => {
+  return String(cancelDialog.value.reason || "").trim().length >= 5;
+});
+
 async function onChangeStatus(action) {
   if (!order.value || !action?.value) return;
+
+  // Cancelación → abrir dialog en lugar de confirm. El motivo se exige
+  // tanto en el cliente como en el backend (validación doble).
+  if (action.value === "cancelled") {
+    cancelDialog.value = { open: true, reason: "" };
+    return;
+  }
+
   const ok = window.confirm(`¿Marcar el pedido #${order.value.id} como "${action.label}"?`);
   if (!ok) return;
 
@@ -480,6 +545,24 @@ async function onChangeStatus(action) {
     await reload();
   } catch (e) {
     snack.value = { show: true, text: e?.message || "No se pudo cambiar el estado.", color: "error" };
+  } finally {
+    statusBusy.value = "";
+  }
+}
+
+async function confirmCancel() {
+  if (!order.value || !cancelReasonValid.value) return;
+  statusBusy.value = "cancelled";
+  try {
+    await adminUpdateShopOrderStatus(order.value.id, "cancelled", {
+      reason: cancelDialog.value.reason.trim(),
+    });
+    snack.value = { show: true, text: "Pedido cancelado", color: "success" };
+    cancelDialog.value = { open: false, reason: "" };
+    await reload();
+  } catch (e) {
+    const apiMsg = e?.response?.data?.message || e?.message || "No se pudo cancelar el pedido.";
+    snack.value = { show: true, text: apiMsg, color: "error" };
   } finally {
     statusBusy.value = "";
   }

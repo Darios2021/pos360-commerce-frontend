@@ -153,6 +153,19 @@ function goDetail(item) {
 async function onChangeStatus({ item, status }) {
   if (!item?.id || !status) return;
 
+  // Cancelaciones requieren motivo. Para mantener simple este listing,
+  // mandamos al usuario al detalle del pedido donde está el dialog
+  // dedicado con textarea de motivo.
+  if (status === "cancelled") {
+    goDetail(item);
+    snack.value = {
+      show: true,
+      text: "Para cancelar, indicá el motivo desde el detalle del pedido.",
+      color: "info",
+    };
+    return;
+  }
+
   const ok = window.confirm(
     `¿Marcar el pedido #${item.id} como "${orderStatusLabel(status)}"?`
   );

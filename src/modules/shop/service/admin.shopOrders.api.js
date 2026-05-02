@@ -19,7 +19,10 @@ export async function adminGetShopOrderById(id) {
  * status: "created" | "processing" | "ready" | "delivered" | "cancelled"
  * El backend auto-setea processing_at / ready_at / picked_up_at / cancelled_at.
  */
-export async function adminUpdateShopOrderStatus(id, status) {
-  const { data } = await http.patch(`/admin/shop/orders/${id}/status`, { status });
+export async function adminUpdateShopOrderStatus(id, status, opts = {}) {
+  const body = { status };
+  // Para cancelaciones el backend exige un motivo no vacío (mín 5 chars).
+  if (opts.reason) body.reason = String(opts.reason);
+  const { data } = await http.patch(`/admin/shop/orders/${id}/status`, body);
   return data;
 }
