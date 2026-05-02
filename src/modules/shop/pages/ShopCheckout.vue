@@ -648,7 +648,20 @@ onMounted(async () => {
 /* ✅ mobile: más ancho visual (menos padding lateral) */
 @media (max-width: 600px) {
   .checkout-shell {
-    padding: 0 10px; /* antes era “mucho”, por eso lo veías contraído */
+    padding: 0 6px;
+  }
+  /* el v-container fluid agrega py-6 — bajamos el padding vertical
+     en mobile para que el contenido no quede tan abajo y se aproveche
+     mejor el viewport */
+  .checkout-page {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+  .checkout-head {
+    margin-bottom: 12px;
+  }
+  .checkout-title {
+    font-size: 19px;
   }
 }
 </style>

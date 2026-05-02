@@ -733,12 +733,16 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 700px) {
+  .bp,
+  .bp-list {
+    gap: 10px;
+  }
   .bp-map-wrap {
-    height: 260px;
+    height: 240px;
+    border-radius: 12px;
   }
   .bp-list {
     grid-template-columns: 1fr;
-    gap: 10px;
   }
   .bp-map-hint {
     font-size: 11px;
@@ -749,11 +753,21 @@ onBeforeUnmount(() => {
     padding: 10px 12px;
     gap: 10px;
   }
+  .bp-card {
+    border-radius: 12px;
+    border-width: 1px;
+  }
+  .bp-body {
+    padding: 12px 12px 10px;
+  }
 }
 
 @media (max-width: 420px) {
   .bp-map-wrap {
-    height: 220px;
+    height: 200px;
+  }
+  .bp-body {
+    padding: 10px 10px 8px;
   }
 }
 </style>

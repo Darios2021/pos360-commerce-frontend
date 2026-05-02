@@ -1337,12 +1337,15 @@ function fmtMoney(v) {
     text-align: left;
   }
 
-  /* mobile: padding interno más cómodo */
+  /* mobile: padding más justo para no comer ancho del viewport.
+     Antes el chain (shell 10 + step-pad 12 + box 14 = 36px/lado) dejaba
+     todas las cards visualmente "encajonadas" con margen lateral grande. */
   .cs-step-pad {
-    padding: 14px 12px;
+    padding: 10px 6px;
   }
   .cs-box {
-    padding: 14px;
+    padding: 12px;
+    border-radius: 12px;
   }
   .cs-title {
     font-size: 19px;
@@ -1386,18 +1389,18 @@ function fmtMoney(v) {
 
 @media (max-width: 420px) {
   .cs-step-pad {
-    padding: 12px 10px;
+    padding: 8px 4px;
   }
   .cs-box {
-    padding: 12px;
-    border-radius: 12px;
+    padding: 10px;
+    border-radius: 10px;
   }
   .cs-title {
     font-size: 17px;
   }
   /* mode cards: reducir padding y altura para que entren bien */
   .cs-mode {
-    padding: 14px;
+    padding: 12px;
   }
 }
 </style>
