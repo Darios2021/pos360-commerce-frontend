@@ -1048,36 +1048,34 @@ function fmtMoney(v) {
 }
 
 /* =========================
-   Inputs Vuetify — bordes con buen contraste para que se distingan
-   contra el fondo gris claro de la card. Estados claros: idle / hover
-   / focus / valid / error.
+   Inputs Vuetify — refuerzo de contraste en bordes/labels/iconos.
+   IMPORTANTE: NO tocar border-width; Vuetify ya define los borders
+   correctos en cada pieza del outline (start/notch::before/notch::after/
+   end). Tocar border-width agrega bordes laterales no deseados que se
+   ven como "líneas verticales internas" en el input.
 ========================= */
 .cs-input :deep(.v-field) {
   border-radius: 10px;
   background: #fff;
+  /* opacidad full para que el color del border se respete */
   --v-field-border-opacity: 1;
+  /* La opacidad del color elegido por Vuetify cuando NO está focused */
+  --v-medium-emphasis-opacity: 0.62;
 }
-.cs-input :deep(.v-field--variant-outlined .v-field__outline__start),
-.cs-input :deep(.v-field--variant-outlined .v-field__outline__end),
-.cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::before),
-.cs-input :deep(.v-field--variant-outlined .v-field__outline__notch::after) {
-  border-color: rgba(17, 24, 39, 0.32);
-  border-width: 1px;
+/* Color del borde idle — Vuetify lo aplica como currentColor de
+   .v-field, así que cambiando el color general cambian las 4 piezas
+   del outline sin romper sus border-widths individuales. */
+.cs-input :deep(.v-field--variant-outlined) {
+  color: rgba(17, 24, 39, 0.55);
 }
-.cs-input :deep(.v-field:hover .v-field__outline__start),
-.cs-input :deep(.v-field:hover .v-field__outline__end),
-.cs-input :deep(.v-field:hover .v-field__outline__notch::before),
-.cs-input :deep(.v-field:hover .v-field__outline__notch::after) {
-  border-color: rgba(17, 24, 39, 0.55);
+.cs-input :deep(.v-field--variant-outlined:hover) {
+  color: rgba(17, 24, 39, 0.78);
 }
-.cs-input :deep(.v-field--focused .v-field__outline__start),
-.cs-input :deep(.v-field--focused .v-field__outline__end),
-.cs-input :deep(.v-field--focused .v-field__outline__notch::before),
-.cs-input :deep(.v-field--focused .v-field__outline__notch::after) {
-  border-color: rgb(var(--v-theme-primary));
-  border-width: 2px;
+.cs-input :deep(.v-field--focused) {
+  color: rgb(var(--v-theme-primary));
 }
-/* Label más visible */
+
+/* Label más visible (prop independiente del color del field) */
 .cs-input :deep(.v-field__label) {
   color: rgba(17, 24, 39, 0.62);
   font-weight: 460;
@@ -1086,19 +1084,15 @@ function fmtMoney(v) {
 .cs-input :deep(.v-field--active .v-field__label) {
   color: rgb(var(--v-theme-primary));
 }
+
 /* Estado válido (campo lleno y sin error): borde verde sutil */
-.cs-input.is-valid :deep(.v-field__outline__start),
-.cs-input.is-valid :deep(.v-field__outline__end),
-.cs-input.is-valid :deep(.v-field__outline__notch::before),
-.cs-input.is-valid :deep(.v-field__outline__notch::after) {
-  border-color: rgba(0, 153, 102, 0.55);
+.cs-input.is-valid :deep(.v-field--variant-outlined) {
+  color: rgba(0, 153, 102, 0.7);
 }
-.cs-input.is-valid :deep(.v-field--focused .v-field__outline__start),
-.cs-input.is-valid :deep(.v-field--focused .v-field__outline__end),
-.cs-input.is-valid :deep(.v-field--focused .v-field__outline__notch::before),
-.cs-input.is-valid :deep(.v-field--focused .v-field__outline__notch::after) {
-  border-color: #009966;
+.cs-input.is-valid :deep(.v-field--variant-outlined.v-field--focused) {
+  color: #009966;
 }
+
 /* Iconos un toque más oscuros para que se vean */
 .cs-input :deep(.v-field__prepend-inner .v-icon) {
   color: rgba(17, 24, 39, 0.55) !important;
