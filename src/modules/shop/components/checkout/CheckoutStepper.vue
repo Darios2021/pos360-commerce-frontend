@@ -1154,17 +1154,25 @@ function fmtMoney(v) {
 }
 /* Ambos botones (volver / continuar / confirmar) comparten forma y
    tamaño. El primario es flat (azul lleno), el secundario es tonal
-   (fondo azul tenue, texto/icono primary). */
+   (fondo azul tenue + texto/icono primary). */
 .cs-cta {
   border-radius: 12px;
   text-transform: none;
-  font-weight: 500;
+  font-weight: 540;
   letter-spacing: 0.005em;
-  padding: 0 20px;
-  min-width: 160px;
+  padding: 0 22px !important;
+  min-width: 170px;
+  font-size: 14px !important;
 }
+.cs-cta--back :deep(.v-btn__content),
 .cs-cta--back :deep(.v-icon) {
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.cs-cta--back {
+  background: rgba(21, 101, 192, 0.10) !important;
+}
+.cs-cta--back:hover {
+  background: rgba(21, 101, 192, 0.18) !important;
 }
 
 /* =========================
