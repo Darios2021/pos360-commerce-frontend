@@ -14,18 +14,6 @@
       <div class="ml-step-sub">Elegí el método y completá los datos si corresponde.</div>
     </div>
 
-    <!-- Trust banner — comunica seguridad ANTES de elegir método -->
-    <div class="ml-trust-banner">
-      <div class="ml-trust-ico">
-        <v-icon size="16">mdi-shield-check-outline</v-icon>
-      </div>
-      <div class="ml-trust-text">
-        <span class="ml-trust-strong">Pago 100% seguro</span>
-        <span class="ml-trust-sep">·</span>
-        Tus datos están protegidos. Nunca vemos los datos de tu tarjeta.
-      </div>
-    </div>
-
     <div class="ml-pay-grid">
       <template v-for="m in methods" :key="m.code">
         <!-- Card -->
@@ -74,98 +62,7 @@
             <v-icon v-if="local.method_code === m.code" size="14">mdi-check</v-icon>
           </div>
         </button>
-
-        <!-- Panel contextual JUSTO debajo -->
-        <v-expand-transition>
-          <div v-if="local.method_code === m.code" class="ml-pay-panel">
-            <!-- MERCADO PAGO -->
-            <template v-if="m.code === 'mercadopago'">
-              <div class="ml-panel-rows">
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="primary">mdi-credit-card-outline</v-icon>
-                  <span>Pagás con tarjeta de crédito, débito, dinero en cuenta o QR.</span>
-                </div>
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="primary">mdi-arrow-right-bold-circle-outline</v-icon>
-                  <span>Al confirmar te redirigimos al sitio seguro de Mercado Pago.</span>
-                </div>
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="success">mdi-cash-multiple</v-icon>
-                  <span>Hasta 12 cuotas según tu tarjeta y promociones disponibles.</span>
-                </div>
-              </div>
-            </template>
-
-            <!-- TRANSFER -->
-            <template v-else-if="m.code === 'transfer'">
-              <div class="ml-panel-rows">
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="primary">mdi-bank-transfer</v-icon>
-                  <span>Te mostramos los datos para que transfieras desde tu home banking.</span>
-                </div>
-              </div>
-
-              <div class="ml-panel-grid">
-                <div class="ml-kv">
-                  <div class="k">Alias</div>
-                  <div class="v">{{ transfer.alias || "—" }}</div>
-                </div>
-                <div class="ml-kv">
-                  <div class="k">CBU</div>
-                  <div class="v">{{ transfer.cbu || "—" }}</div>
-                </div>
-                <div class="ml-kv">
-                  <div class="k">Titular</div>
-                  <div class="v">{{ transfer.holder || "—" }}</div>
-                </div>
-              </div>
-
-              <v-text-field
-                v-model="local.reference"
-                label="N° de referencia / comprobante (opcional)"
-                variant="outlined"
-                density="comfortable"
-                class="mt-3"
-                hide-details="auto"
-              />
-            </template>
-
-            <!-- CASH -->
-            <template v-else-if="m.code === 'cash'">
-              <div class="ml-panel-rows">
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="primary">mdi-cash</v-icon>
-                  <span>Confirmás el pedido y pagás en efectivo al retirar o recibir.</span>
-                </div>
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="success">mdi-clock-outline</v-icon>
-                  <span>Te avisamos cuando esté listo para retirar.</span>
-                </div>
-              </div>
-            </template>
-
-            <!-- CREDIT -->
-            <template v-else-if="m.code === 'credit_sjt'">
-              <div class="ml-panel-rows">
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="warning">mdi-store-outline</v-icon>
-                  <span>Reservás online y completás el trámite de crédito en la sucursal.</span>
-                </div>
-                <div class="ml-panel-row">
-                  <v-icon size="15" color="primary">mdi-account-check-outline</v-icon>
-                  <span>Necesitás presentar DNI y comprobante de ingresos en sucursal.</span>
-                </div>
-              </div>
-            </template>
-          </div>
-        </v-expand-transition>
       </template>
-    </div>
-
-    <!-- Footer de seguridad — refuerza confianza al final -->
-    <div class="ml-secure-footer">
-      <v-icon size="13">mdi-lock-outline</v-icon>
-      <span>Conexión cifrada (SSL). Tus datos viajan seguros.</span>
     </div>
 
     <div class="ml-actions">
@@ -349,44 +246,6 @@ const canContinue = computed(() => {
 }
 
 /* =========================
-   Trust banner — refuerza seguridad arriba de los métodos
-========================= */
-.ml-trust-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(180deg, rgba(0, 153, 102, 0.06) 0%, rgba(0, 153, 102, 0.10) 100%);
-  border: 1px solid rgba(0, 153, 102, 0.20);
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-.ml-trust-ico {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: rgba(0, 153, 102, 0.16);
-  color: #009966;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-}
-.ml-trust-text {
-  font-size: 12.5px;
-  color: rgba(17, 24, 39, 0.7);
-  font-weight: 400;
-  line-height: 1.4;
-}
-.ml-trust-strong {
-  color: #009966;
-  font-weight: 540;
-}
-.ml-trust-sep {
-  margin: 0 6px;
-  color: rgba(17, 24, 39, 0.3);
-}
-
-/* =========================
    Cards de método
 ========================= */
 .ml-pay-grid {
@@ -548,77 +407,6 @@ const canContinue = computed(() => {
 .ml-chip-gray { background: rgba(17, 24, 39, 0.07); color: rgba(17, 24, 39, 0.7); }
 .ml-chip-amber { background: rgba(245, 158, 11, 0.14); color: #b45309; }
 
-/* =========================
-   Panel de detalle del método (rows con ícono)
-========================= */
-.ml-pay-panel {
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: linear-gradient(180deg, rgba(21, 101, 192, 0.025) 0%, rgba(21, 101, 192, 0.04) 100%);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-top: 4px;
-}
-
-.ml-panel-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.ml-panel-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  color: rgba(17, 24, 39, 0.72);
-  line-height: 1.4;
-  font-weight: 400;
-}
-.ml-panel-row .v-icon {
-  flex: 0 0 auto;
-  margin-top: 2px;
-}
-
-/* Footer de seguridad cierra la sección */
-.ml-secure-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 14px;
-  font-size: 11.5px;
-  color: rgba(17, 24, 39, 0.5);
-  font-weight: 460;
-}
-.ml-secure-footer .v-icon {
-  color: rgba(17, 24, 39, 0.45);
-}
-
-.ml-panel-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
-.ml-kv {
-  background: rgba(17, 24, 39, 0.03);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-.ml-kv .k {
-  font-size: 10.5px;
-  color: rgba(17, 24, 39, 0.55);
-  font-weight: 460;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 2px;
-}
-.ml-kv .v {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: rgba(17, 24, 39, 0.92);
-  word-break: break-word;
-}
-
 .ml-actions {
   margin-top: 20px;
   display: flex;
@@ -652,13 +440,11 @@ const canContinue = computed(() => {
 }
 
 @media (max-width: 600px) {
-  .ml-panel-grid { grid-template-columns: 1fr; }
   .ml-actions { flex-direction: column-reverse; align-items: stretch; }
   .ml-cta { width: 100%; min-width: 0; }
   .ml-step-title { font-size: 19px; }
   .ml-pay-card { padding: 12px 14px; }
   .ml-pay-ico { width: 36px; height: 36px; }
-  .ml-trust-text { font-size: 12px; }
   .ml-pay-brands { gap: 4px; }
   .ml-brand-pill { min-width: 28px; height: 16px; font-size: 9px; }
 }
