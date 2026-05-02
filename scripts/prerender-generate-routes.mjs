@@ -61,6 +61,29 @@ function toId(it) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+const SLUG_MAX = 80;
+function slugify(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // quita diacríticos
+    .replace(/ñ/g, "n")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SLUG_MAX)
+    .replace(/-+$/g, "");
+}
+function buildProductPath(item) {
+  const id = toId(item);
+  if (!id) return null;
+  const name = item?.name || item?.title || item?.product?.name || "";
+  const slug = slugify(name);
+  return slug ? `${slug}-${id}` : String(id);
+}
+
 function uniq(arr) {
   return Array.from(new Set(arr));
 }
@@ -82,7 +105,8 @@ function extractItems(data) {
 
   const catalogUrl = `${API_BASE}/public/catalog`;
 
-  const ids = [];
+  /** @type {Array<{id:number, slugPath:string}>} */
+  const products = [];
   try {
     for (let page = 1; page <= MAX_PAGES; page++) {
       const u = new URL(catalogUrl);
@@ -98,11 +122,13 @@ function extractItems(data) {
 
       for (const it of items) {
         const id = toId(it);
-        if (id) ids.push(id);
-        if (ids.length >= MAX_PRODUCTS) break;
+        if (!id) continue;
+        const slugPath = buildProductPath(it) || String(id);
+        products.push({ id, slugPath });
+        if (products.length >= MAX_PRODUCTS) break;
       }
 
-      if (ids.length >= MAX_PRODUCTS) break;
+      if (products.length >= MAX_PRODUCTS) break;
 
       const pages = Number(data?.pages || 0);
       if (pages && page >= pages) break;
@@ -116,10 +142,20 @@ function extractItems(data) {
     return;
   }
 
-  const productIds = uniq(ids).slice(0, MAX_PRODUCTS);
-
-  // ✅ SOLO una variante (SIN slash final) => evita overwrite warnings
-  const productRoutes = productIds.map((id) => `/shop/product/${id}`);
+  // Generamos AMBAS variantes: id puro y slug-id. Así el prerender
+  // cubre los links viejos (/shop/product/281) y los nuevos
+  // (/shop/product/parlante-xiaomi-281) que es lo que usan los share
+  // del shop. Dedupe vía Set.
+  const productRoutes = [];
+  const seen = new Set();
+  for (const p of products) {
+    const idPath = `/shop/product/${p.id}`;
+    if (!seen.has(idPath)) { productRoutes.push(idPath); seen.add(idPath); }
+    if (p.slugPath !== String(p.id)) {
+      const slugPath = `/shop/product/${p.slugPath}`;
+      if (!seen.has(slugPath)) { productRoutes.push(slugPath); seen.add(slugPath); }
+    }
+  }
 
   const routes = uniq(["/shop/", ...productRoutes]);
 
@@ -128,5 +164,5 @@ function extractItems(data) {
   console.log(`[prerender] api_base: ${API_BASE}`);
   console.log(`[prerender] catalog: ${catalogUrl}`);
   console.log(`[prerender] branch_id: ${BRANCH_ID}`);
-  console.log(`[prerender] products: ${productIds.length}`);
+  console.log(`[prerender] products: ${products.length} (rutas: ${routes.length})`);
 })();
