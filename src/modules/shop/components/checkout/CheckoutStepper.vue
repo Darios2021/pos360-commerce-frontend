@@ -858,10 +858,13 @@ function fmtMoney(v) {
 .cs-card {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   letter-spacing: 0.005em;
-  border-radius: 12px;
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
+  border-radius: 14px !important;
+  /* Card real: fondo blanco + borde sutil + sombra suave para que el
+     stepper deje de sentirse "en el aire" como pidió el cliente */
+  background: #fff !important;
+  border: 1px solid rgba(17, 24, 39, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  overflow: hidden;
 }
 
 /* ✅ clave: el v-card-text default mete padding; lo anulamos acá */
@@ -1178,10 +1181,14 @@ function fmtMoney(v) {
   box-shadow: none !important;
   border: none !important;
 }
+/* Header del stepper — separado del contenido del paso por un borde
+   sutil debajo + padding propio (queda como "navegación" arriba del
+   card grande) */
 :deep(.v-stepper-header) {
   background: transparent !important;
   box-shadow: none !important;
-  border-bottom: none !important;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06) !important;
+  padding: 16px 12px 14px !important;
 }
 :deep(.v-stepper-window) {
   background: transparent !important;
