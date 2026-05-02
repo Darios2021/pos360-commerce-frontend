@@ -1,11 +1,13 @@
-// ✅ COPY-PASTE FINAL COMPLETO
 // src/modules/shop/store/shopAuth.store.js
-// - Maneja Shop Auth (cookie httpOnly) vía /api/v1/public/auth/*
-// - fetchMe() / loginGoogle() / logout()
-// - ✅ credentials include (necesario para cookies Secure)
+// - Maneja Shop Auth vía /api/v1/public/auth/*
+// - Web: cookie httpOnly (credentials: include).
+// - Mobile (Capacitor): además persiste el session token en
+//   @capacitor/preferences y lo manda como Authorization: Bearer.
+//   Necesario porque las cookies httpOnly no son confiables entre
+//   cierres del WebView.
 
-// Pinia
 import { defineStore } from "pinia";
+import { getToken, setToken, clearToken } from "@/app/utils/tokenStorage";
 
 function trimEndSlashes(s) {
   return String(s || "").replace(/\/+$/, "");
@@ -40,10 +42,20 @@ const API_BASE = normalizeApiV1Base(RAW) || "/api/v1";
 
 async function api(path, { method = "GET", body } = {}) {
   const url = `${trimEndSlashes(API_BASE)}${path.startsWith("/") ? "" : "/"}${path}`;
+  const headers = { "Content-Type": "application/json" };
+
+  // Si tenemos token guardado (típicamente mobile / Capacitor), lo
+  // mandamos como Bearer. El backend prioriza la cookie pero acepta
+  // este header como fallback.
+  try {
+    const tok = await getToken();
+    if (tok) headers.Authorization = `Bearer ${tok}`;
+  } catch {}
+
   const res = await fetch(url, {
     method,
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -120,6 +132,14 @@ export const useShopAuthStore = defineStore("shopAuth", {
       this.customer = r?.customer || null;
       this.lastFetchedAt = Date.now();
       this.status = "ready";
+
+      // Persistir token de sesión (para mobile principalmente).
+      const token = r?.session?.token;
+      const expiresIn = Number(r?.session?.expires_in || 0);
+      if (token) {
+        try { await setToken(token, expiresIn); } catch {}
+      }
+
       return this.customer;
     },
 
@@ -127,9 +147,35 @@ export const useShopAuthStore = defineStore("shopAuth", {
       try {
         await api("/public/auth/logout", { method: "POST" });
       } catch {}
+      try { await clearToken(); } catch {}
       this.customer = null;
       this.lastFetchedAt = Date.now();
       this.status = "ready";
+    },
+
+    /**
+     * Hidratación al boot: si tenemos token guardado, lo usamos para
+     * llamar /me. Si responde OK, quedamos logueados sin pasar por
+     * el login screen. Llamado desde main.js / App.vue al arrancar.
+     */
+    async hydrate() {
+      try {
+        const tok = await getToken();
+        // En web sin token, igual intentamos /me por si existe la cookie
+        // httpOnly. En Capacitor sin token directamente saltamos /me
+        // (no hay cookie persistente).
+        if (!tok) {
+          if (typeof window !== "undefined" && !window.Capacitor?.isNativePlatform?.()) {
+            return await this.fetchMe({ force: true });
+          }
+          this.status = "ready";
+          return null;
+        }
+        return await this.fetchMe({ force: true });
+      } catch {
+        this.status = "ready";
+        return null;
+      }
     },
   },
 });

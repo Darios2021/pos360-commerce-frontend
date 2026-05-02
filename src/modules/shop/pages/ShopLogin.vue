@@ -123,6 +123,31 @@
         </div>
       </section>
     </div>
+
+    <!-- Dialog: ofrecer activar biometría tras primer login en mobile -->
+    <v-dialog v-model="biometricDialog" max-width="400" persistent>
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center ga-2">
+          <v-icon color="primary">mdi-fingerprint</v-icon>
+          Ingresá con tu huella
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2">
+            Activá el ingreso con huella o reconocimiento facial para abrir
+            la app sin tener que loguearte cada vez. Es más rápido y seguro.
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="text" :disabled="biometricBusy" @click="skipBiometricAndContinue">
+            Ahora no
+          </v-btn>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" :loading="biometricBusy" @click="enableBiometricAndContinue">
+            Activar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -130,6 +155,9 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
+import { isCapacitor } from "@/app/utils/runtime";
+import { checkBiometricAvailability, authenticateBiometric } from "@/app/utils/biometric";
+import { isBiometricEnabled, setBiometricEnabled } from "@/app/utils/tokenStorage";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,6 +216,22 @@ async function onGoogleCredentialResponse(resp) {
 
     await auth.loginGoogle({ credential });
 
+    // En la app móvil, si hay biometría disponible y todavía no la
+    // activó, ofrecemos activarla. Si dice que sí, las próximas
+    // entradas pedirán huella en lugar de re-loguear.
+    if (isCapacitor()) {
+      const already = await isBiometricEnabled();
+      if (!already) {
+        const avail = await checkBiometricAvailability();
+        if (avail.available) {
+          biometricDialog.value = true;
+          // El dialog decide qué hacer; el redirect lo hace después.
+          loading.value = false;
+          return;
+        }
+      }
+    }
+
     const target = redirectTo.value || "/shop";
     router.replace(target).catch(() => router.replace("/shop").catch(() => {}));
   } catch (e) {
@@ -196,6 +240,35 @@ async function onGoogleCredentialResponse(resp) {
   } finally {
     loading.value = false;
   }
+}
+
+// Dialog "¿Activar huella?" después del primer login en mobile
+const biometricDialog = ref(false);
+const biometricBusy = ref(false);
+
+async function enableBiometricAndContinue() {
+  biometricBusy.value = true;
+  try {
+    // Pedimos la huella ahora mismo para confirmar que funciona y
+    // que el usuario está dispuesto. Si rechaza, no activamos.
+    const ok = await authenticateBiometric({
+      reason: "Confirmá tu huella para activarla en este dispositivo",
+    });
+    if (ok) {
+      await setBiometricEnabled(true);
+    }
+  } finally {
+    biometricBusy.value = false;
+    biometricDialog.value = false;
+    const target = redirectTo.value || "/shop";
+    router.replace(target).catch(() => router.replace("/shop").catch(() => {}));
+  }
+}
+
+function skipBiometricAndContinue() {
+  biometricDialog.value = false;
+  const target = redirectTo.value || "/shop";
+  router.replace(target).catch(() => router.replace("/shop").catch(() => {}));
 }
 
 function getGisWidth() {

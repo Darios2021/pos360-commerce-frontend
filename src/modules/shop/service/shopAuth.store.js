@@ -16,6 +16,7 @@ import {
   authGoogle,
   authUpdateProfile,
 } from "@/modules/shop/service/shop.auth.public.api";
+import { setToken, clearToken, getToken } from "@/app/utils/tokenStorage";
 
 function safeCustomer(c) {
   if (!c || typeof c !== "object") return null;
@@ -108,6 +109,15 @@ export const useShopAuthStore = defineStore("shopAuth", {
         // muchos backends devuelven { customer }, otros { data: { customer } }
         const customer = r?.customer ?? r?.data?.customer ?? null;
 
+        // Persistimos el session token que el backend devuelve en el body
+        // (necesario para Capacitor — la cookie httpOnly no es confiable
+        // entre cierres del WebView).
+        const token = r?.session?.token ?? r?.data?.session?.token ?? null;
+        const expiresIn = Number(r?.session?.expires_in ?? r?.data?.session?.expires_in ?? 0);
+        if (token) {
+          try { await setToken(token, expiresIn); } catch {}
+        }
+
         // si vino customer, seteamos; si no, pedimos /me por consistencia
         if (customer) {
           this.customer = safeCustomer(customer);
@@ -171,9 +181,34 @@ export const useShopAuthStore = defineStore("shopAuth", {
       } catch (e) {
         // aunque falle, igual limpiamos state para UX
       } finally {
+        try { await clearToken(); } catch {}
         this.customer = null;
         this.booted = true;
         this.loading = false;
+      }
+    },
+
+    /**
+     * Hidratación al boot del app. En mobile (Capacitor) lee el token
+     * persistido y lo usa para validar la sesión via /me. En web cae
+     * a fetchMe() directo (la cookie httpOnly va por sí sola).
+     */
+    async hydrate() {
+      try {
+        const tok = await getToken();
+        const isNative =
+          typeof window !== "undefined" &&
+          window.Capacitor?.isNativePlatform?.();
+        if (isNative && !tok) {
+          // Sin token guardado en mobile → seguimos como invitado.
+          this.booted = true;
+          return null;
+        }
+        await this.fetchMe({ force: true });
+        return this.customer;
+      } catch {
+        this.booted = true;
+        return null;
       }
     },
   },

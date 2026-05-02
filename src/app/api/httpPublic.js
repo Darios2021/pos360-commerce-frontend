@@ -1,10 +1,15 @@
 // src/app/api/httpPublic.js
-// ✅ COPY-PASTE FINAL (SHOP/Checkout público)
+// SHOP/Checkout público.
 // - Same-origin por defecto: /api/v1
-// - NO agrega Authorization
-// - Permite override por env (DEV) con VITE_PUBLIC_API_BASE_URL
+// - withCredentials: true → manda cookies httpOnly (web).
+// - Si hay un token guardado en Preferences/localStorage (mobile),
+//   lo envía como Authorization: Bearer (el backend lo prioriza
+//   junto con la cookie). Esto cubre el caso Capacitor donde la
+//   cookie httpOnly no es confiable entre cierres del WebView.
+// - Permite override por env (DEV) con VITE_PUBLIC_API_BASE_URL.
 
 import axios from "axios";
+import { getToken } from "@/app/utils/tokenStorage";
 
 const raw = String(import.meta.env.VITE_PUBLIC_API_BASE_URL || "").trim();
 const baseURL = raw || "/api/v1";
@@ -16,6 +21,21 @@ if (!raw && typeof window !== "undefined" && import.meta.env?.DEV) {
 const httpPublic = axios.create({
   baseURL,
   timeout: 60000,
+  withCredentials: true,
+});
+
+// Inyecta el Bearer si tenemos token guardado (mobile).
+httpPublic.interceptors.request.use(async (config) => {
+  try {
+    const tok = await getToken();
+    if (tok) {
+      config.headers = config.headers || {};
+      if (!config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${tok}`;
+      }
+    }
+  } catch {}
+  return config;
 });
 
 // Mensaje amigable en errores

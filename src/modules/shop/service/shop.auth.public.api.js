@@ -53,6 +53,21 @@ const httpShop = axios.create({
   withCredentials: true, // ✅ CLAVE
 });
 
+// Inyecta Bearer si hay token guardado (mobile / Capacitor).
+httpShop.interceptors.request.use(async (config) => {
+  try {
+    const { getToken } = await import("@/app/utils/tokenStorage");
+    const tok = await getToken();
+    if (tok) {
+      config.headers = config.headers || {};
+      if (!config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${tok}`;
+      }
+    }
+  } catch {}
+  return config;
+});
+
 // Friendly errors
 httpShop.interceptors.response.use(
   (r) => r,

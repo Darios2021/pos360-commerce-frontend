@@ -122,6 +122,53 @@ app.use(VueApexCharts);
 
 app.mount("#app");
 
+// ============================================================
+// Boot guard de auth shop + biometría (solo Capacitor / mobile)
+// ----------------------------------------------------------------
+// Si la app móvil tiene un token de sesión guardado y el usuario
+// activó biometría, pedimos huella ANTES de hidratar.
+// Si la huella falla → limpiamos el token (forzamos re-login).
+// Si todo OK → hidratamos el store de auth para que todas las
+// llamadas API arranquen ya autenticadas.
+// ============================================================
+(async () => {
+  try {
+    const { isCapacitor } = await import("@/app/utils/runtime");
+    const { getToken, isBiometricEnabled, clearToken } = await import("@/app/utils/tokenStorage");
+    const { useShopAuthStore } = await import("@/modules/shop/service/shopAuth.store");
+
+    const auth = useShopAuthStore();
+
+    if (isCapacitor()) {
+      const tok = await getToken();
+      if (tok) {
+        const bioOn = await isBiometricEnabled();
+        if (bioOn) {
+          const { authenticateBiometric } = await import("@/app/utils/biometric");
+          const ok = await authenticateBiometric({
+            reason: "Ingresá con tu huella para abrir Sj Tecnología",
+          });
+          if (!ok) {
+            // Si falló la biometría, NO borramos el token: lo dejamos
+            // para que el usuario pueda reintentar. Pero forzamos a la
+            // pantalla de login (no hidratamos automáticamente).
+            // El usuario puede tocar "Reintentar" desde el login.
+            return;
+          }
+        }
+        await auth.hydrate();
+      } else {
+        // No hay token → no hidratamos, queda invitado.
+      }
+    } else {
+      // Web: igual hidratamos (la cookie httpOnly suele estar disponible).
+      await auth.hydrate();
+    }
+  } catch (e) {
+    console.warn("[boot] hydrate falló:", e?.message);
+  }
+})();
+
 // ✅ theme inicial (una sola vez)
 applyThemeAtomic({ vuetify, path: window.location.pathname, debug: DEBUG_THEME });
 
