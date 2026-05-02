@@ -520,13 +520,20 @@
               </v-alert>
 
               <div class="cs-actions">
-                <button type="button" class="cs-back-link" @click="$emit('prev')">
-                  <v-icon size="14">mdi-arrow-left</v-icon>
-                  <span>Volver al pago</span>
-                </button>
+                <v-btn
+                  variant="tonal"
+                  color="primary"
+                  class="cs-cta cs-cta--back"
+                  size="large"
+                  @click="$emit('prev')"
+                >
+                  <v-icon start>mdi-arrow-left</v-icon>
+                  Volver al pago
+                </v-btn>
 
                 <v-btn
                   color="primary"
+                  variant="flat"
                   class="cs-cta"
                   size="large"
                   :loading="submitting"
@@ -1145,32 +1152,19 @@ function fmtMoney(v) {
   margin-top: 20px;
   align-items: center;
 }
+/* Ambos botones (volver / continuar / confirmar) comparten forma y
+   tamaño. El primario es flat (azul lleno), el secundario es tonal
+   (fondo azul tenue, texto/icono primary). */
 .cs-cta {
   border-radius: 12px;
   text-transform: none;
   font-weight: 500;
   letter-spacing: 0.005em;
   padding: 0 20px;
+  min-width: 160px;
 }
-
-.cs-back-link {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 8px;
-  font-size: 13px;
-  font-weight: 460;
-  letter-spacing: 0.005em;
-  color: rgba(17, 24, 39, 0.62);
-  transition: color 0.16s ease, gap 0.16s ease;
-}
-.cs-back-link:hover {
+.cs-cta--back :deep(.v-icon) {
   color: rgb(var(--v-theme-primary));
-  gap: 8px;
 }
 
 /* =========================

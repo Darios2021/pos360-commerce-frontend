@@ -105,12 +105,23 @@
     </div>
 
     <div class="ml-actions">
-      <button type="button" class="ml-back-link" @click="$emit('prev')">
-        <v-icon size="14">mdi-arrow-left</v-icon>
-        <span>Volver a entrega</span>
-      </button>
+      <v-btn
+        variant="tonal"
+        color="primary"
+        class="ml-cta ml-cta--back"
+        @click="$emit('prev')"
+      >
+        <v-icon start>mdi-arrow-left</v-icon>
+        Volver a entrega
+      </v-btn>
 
-      <v-btn color="primary" class="ml-cta" :disabled="!canContinue" @click="$emit('next')">
+      <v-btn
+        color="primary"
+        variant="flat"
+        class="ml-cta"
+        :disabled="!canContinue"
+        @click="$emit('next')"
+      >
         Continuar
         <v-icon end>mdi-arrow-right</v-icon>
       </v-btn>
@@ -422,32 +433,20 @@ const canContinue = computed(() => {
   gap: 10px;
   align-items: center;
 }
+/* Ambos botones (volver / continuar) comparten forma y tamaño.
+   El primario es flat (azul lleno blanco) y el secundario es tonal
+   (fondo azul tenue, texto/icono primary) — misma jerarquía visual. */
 .ml-cta {
   border-radius: 12px;
   text-transform: none;
   font-weight: 500;
   letter-spacing: 0.005em;
   padding: 0 20px;
+  min-width: 160px;
+  height: 44px !important;
 }
-
-.ml-back-link {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 8px;
-  font-size: 13px;
-  font-weight: 460;
-  letter-spacing: 0.005em;
-  color: rgba(17, 24, 39, 0.62);
-  transition: color 0.16s ease, gap 0.16s ease;
-}
-.ml-back-link:hover {
+.ml-cta--back :deep(.v-icon) {
   color: rgb(var(--v-theme-primary));
-  gap: 8px;
 }
 
 @media (max-width: 600px) {
