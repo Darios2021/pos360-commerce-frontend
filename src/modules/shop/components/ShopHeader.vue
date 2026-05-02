@@ -265,6 +265,9 @@
             Favoritos
           </button>
 
+          <!-- ✅ Notificaciones (solo logueado) -->
+          <NotificationBell v-if="auth.isLogged" class="ml-top-bell" />
+
           <!-- ✅ carrito SOLO desktop -->
           <router-link class="ml-top-icon" to="/shop/cart" :title="`Carrito (${cart.count})`" aria-label="Carrito">
             <v-badge :content="cart.count" color="red" v-if="cart.count > 0">
@@ -300,6 +303,7 @@ import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 import ShopSearchBox from "@/modules/shop/components/ShopSearchBox.vue";
 import ShopCatalogMenu from "@/modules/shop/components/ShopCatalogMenu.vue";
+import NotificationBell from "@/modules/shop/components/NotificationBell.vue";
 import { getShopBranding } from "@/modules/shop/service/shop.public.api";
 
 const route = useRoute();
