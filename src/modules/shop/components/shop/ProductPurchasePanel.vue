@@ -271,7 +271,7 @@
 import { computed, ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
-import { useShopFavoritesStore } from "@/modules/shop/store/shopFavorites.store";
+import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
 
 const router = useRouter();
