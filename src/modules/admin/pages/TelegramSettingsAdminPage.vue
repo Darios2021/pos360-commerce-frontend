@@ -373,6 +373,7 @@ const form = reactive({
   alert_shop_payment_confirmed: true,
   alert_shop_order_confirmed: true,
   alert_shop_order_status_changed: true,
+  alert_shop_new_question: true,
   alert_transfer_dispatched: true,
   alert_transfer_pending: true,
   alert_transfer_received: true,
@@ -407,6 +408,7 @@ const shopAlerts = [
   { key: "alert_shop_new_order", label: "Compra con envío a domicilio" },
   { key: "alert_shop_payment_confirmed", label: "Pago Mercado Pago aprobado" },
   { key: "alert_shop_order_status_changed", label: "Cambio de estado del pedido (preparación / listo / entregado / cancelado)" },
+  { key: "alert_shop_new_question", label: "Nueva pregunta de cliente en producto (Q&A)" },
 ];
 
 const productAlerts = [
@@ -467,6 +469,7 @@ async function save() {
       alert_shop_payment_confirmed: !!form.alert_shop_payment_confirmed,
       alert_shop_order_confirmed: !!form.alert_shop_order_confirmed,
       alert_shop_order_status_changed: !!form.alert_shop_order_status_changed,
+      alert_shop_new_question: !!form.alert_shop_new_question,
       alert_transfer_dispatched: !!form.alert_transfer_dispatched,
       alert_transfer_pending: !!form.alert_transfer_pending,
       alert_transfer_received: !!form.alert_transfer_received,
