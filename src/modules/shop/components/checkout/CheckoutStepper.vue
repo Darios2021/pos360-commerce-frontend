@@ -312,21 +312,6 @@
                   </v-col>
                 </v-row>
 
-                <!-- Resumen "Faltan datos" se mantiene como ayuda extra
-                     pero ya no es la única fuente de validación: cada
-                     input muestra su propio error inline en tiempo real -->
-                <v-alert
-                  v-if="buyerErrors?.length"
-                  type="warning"
-                  variant="tonal"
-                  class="rounded-lg mt-2"
-                  density="compact"
-                >
-                  <div class="cs-alert-title">Para continuar:</div>
-                  <ul class="ma-0 pl-5 cs-alert-list">
-                    <li v-for="(e, i) in buyerErrors" :key="i">{{ e }}</li>
-                  </ul>
-                </v-alert>
               </div>
 
               <div class="cs-actions">
