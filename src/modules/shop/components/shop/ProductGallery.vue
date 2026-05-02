@@ -591,7 +591,9 @@ watch(viewerIdx, (v) => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* NO usar height:100% acá — si el padre fuerza altura (flex/grid
+     con stretch) la galería se estira y la imagen vertical queda
+     gigante. Que la card tome el alto del contenido (frame + thumbs). */
 }
 .pg-pad {
   padding: 14px;
@@ -684,13 +686,18 @@ watch(viewerIdx, (v) => {
   flex-direction: column;
 }
 
-/* Marco general */
+/* Marco general — altura DURA para que las imágenes verticales
+   (parlantes, celulares, vertical phones) no estiren la card.
+   max-height/min-height iguales con !important porque algún padre
+   en stretch puede tratar de pisar height. La imagen adentro es
+   max-height: 100% + object-fit contain → siempre cabe sin recortar. */
 .main-frame {
   position: relative;
   width: 100%;
-  height: 520px;
-  flex: 1 1 auto;
-  min-height: 520px;
+  height: 480px !important;
+  max-height: 480px !important;
+  min-height: 480px !important;
+  flex: 0 0 auto !important;
   border-radius: 16px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -709,12 +716,13 @@ watch(viewerIdx, (v) => {
   background: #fff;
 }
 
-/* ✅ MAIN IMG: nunca recorta */
+/* ✅ MAIN IMG: nunca recorta, siempre cabe en el frame */
 .main-img {
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
+  object-fit: contain;
   display: block;
 }
 
@@ -926,7 +934,9 @@ watch(viewerIdx, (v) => {
     display: block;
   }
   .main-frame {
-    height: min(92vw, 520px);
+    height: min(86vw, 420px) !important;
+    max-height: min(86vw, 420px) !important;
+    min-height: min(86vw, 420px) !important;
   }
   .main-video {
     padding: 10px;
