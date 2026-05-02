@@ -542,6 +542,59 @@ router.afterEach(() => {
   }, 4000);
 });
 
+// =======================
+// Guard: redirección desde Mercado Pago
+// =======================
+// MP a veces redirige al "store URL" (configurado en su dashboard)
+// en vez de a las back_urls de la preference. Resultado típico:
+// /shop?external_reference=<code>&collection_status=null&payment_id=null...
+// Detectamos esos query params y redirigimos manualmente al
+// /shop/checkout/{success|pending|failure} correspondiente.
+router.beforeEach((to, from, next) => {
+  try {
+    const q = to.query || {};
+    const isMpRedirect =
+      "collection_status" in q ||
+      "collection_id" in q ||
+      "preference_id" in q ||
+      "merchant_order_id" in q;
+
+    // public_code de la orden viene como external_reference o como ?order=
+    const code = String(
+      q.external_reference || q.order || q.o || ""
+    ).trim();
+
+    // Sólo intervenimos si el destino NO es ya una pantalla de checkout/return
+    const goingToCheckoutReturn = /^\/shop\/checkout\/(success|pending|failure)/.test(
+      String(to.path || "")
+    );
+
+    if (isMpRedirect && code && !goingToCheckoutReturn) {
+      // Sólo existe shopCheckoutSuccess como ruta de retorno; la página
+      // detecta el status de MP y muestra la UI correcta (aprobado /
+      // pendiente / rechazado / abandonado).
+      const fwdQuery = { o: code, c: code };
+
+      // Forwardeamos los params clave de MP para que ShopCheckoutSuccess
+      // pueda mostrar el estado real del pago.
+      const fwd = [
+        "collection_status",
+        "status",
+        "payment_id",
+        "payment_type",
+        "merchant_order_id",
+        "preference_id",
+      ];
+      for (const k of fwd) {
+        if (q[k] && q[k] !== "null") fwdQuery[k] = q[k];
+      }
+
+      return next({ name: "shopCheckoutSuccess", query: fwdQuery, replace: true });
+    }
+  } catch {}
+  next();
+});
+
 // Captura scroll de la ruta ACTUAL antes de navegar a la siguiente.
 // Esto cubre el caso donde el scroll listener throttled no llegó a guardar
 // la última posición (ej. click rápido en un link de producto).
