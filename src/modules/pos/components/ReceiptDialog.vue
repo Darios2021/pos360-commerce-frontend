@@ -151,6 +151,13 @@
           <v-icon start size="14">mdi-close</v-icon>Cerrar
         </v-btn>
         <v-spacer />
+        <v-tooltip text="Enviar por mail" location="top">
+          <template #activator="{ props: tp }">
+            <v-btn v-bind="tp" icon variant="tonal" size="small" class="mr-2" @click="openMail">
+              <v-icon size="18">mdi-email-outline</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
         <v-tooltip text="Descargar PDF" location="top">
           <template #activator="{ props: tp }">
             <v-btn v-bind="tp" icon variant="tonal" size="small" class="mr-2" @click="downloadTicket">
@@ -168,12 +175,45 @@
       </v-card-actions>
 
     </v-card>
+
+    <!-- Envío del comprobante. Siempre opcional: el cajero decide. -->
+    <v-dialog v-model="mailDialog" max-width="480">
+      <v-card>
+        <v-card-title class="text-subtitle-1">Enviar comprobante por mail</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="mailTo"
+            label="Para"
+            type="email"
+            density="compact"
+            variant="outlined"
+            hide-details="auto"
+            autofocus
+            placeholder="cliente@ejemplo.com"
+            :error-messages="mailError"
+          />
+          <div class="text-caption text-medium-emphasis mt-3">
+            <v-icon size="14" class="mr-1">mdi-paperclip</v-icon>
+            Se adjunta el comprobante N° {{ saleNumber }} en PDF.
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="mailSending" @click="mailDialog = false">Cancelar</v-btn>
+          <v-btn color="primary" variant="flat" :loading="mailSending" @click="sendMail">Enviar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snack.show" :color="snack.color" timeout="3500">{{ snack.text }}</v-snackbar>
   </v-dialog>
 </template>
 
 <script setup>
 import { ref, computed, watch } from "vue";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
+import http from "@/app/api/http";
+import { buildReceiptPdf } from "../utils/receiptPdf";
 
 const props = defineProps({
   open:        { type: Boolean, default: false },
@@ -262,6 +302,57 @@ const invoiceLabel = computed(() => {
   if (mode === "FISCAL") return type ? `Fiscal – ${type}` : "Fiscal";
   return "";
 });
+
+// ── envío por mail ─────────────────────────────────────────────────────────
+// Es opcional y no bloquea nada del flujo de venta: si el cliente no quiere el
+// comprobante digital, simplemente no se usa.
+const mailDialog = ref(false);
+const mailTo = ref("");
+const mailError = ref("");
+const mailSending = ref(false);
+const snack = ref({ show: false, text: "", color: "success" });
+
+function openMail() {
+  mailTo.value = String(props.sale?.customer_email || "").trim();
+  mailError.value = "";
+  mailDialog.value = true;
+}
+
+async function sendMail() {
+  const to = String(mailTo.value || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    mailError.value = "Escribí un email válido.";
+    return;
+  }
+  mailError.value = "";
+  mailSending.value = true;
+  try {
+    const { base64, filename } = await buildReceiptPdf({
+      sale: props.sale,
+      companyName: props.companyName,
+      branchName: props.branchName,
+      output: "base64",
+    });
+
+    await http.post(`/pos/sales/${props.sale.id}/email`, {
+      to,
+      pdf_base64: base64,
+      filename,
+    });
+
+    mailDialog.value = false;
+    snack.value = { show: true, text: `Comprobante enviado a ${to}.`, color: "success" };
+  } catch (e) {
+    console.error("[pos] enviar comprobante:", e);
+    snack.value = {
+      show: true,
+      text: e?.response?.data?.message || "No se pudo enviar el comprobante.",
+      color: "error",
+    };
+  } finally {
+    mailSending.value = false;
+  }
+}
 
 // ── shared ticket HTML builder ─────────────────────────────────────────────
 function buildTicketWindow() {
