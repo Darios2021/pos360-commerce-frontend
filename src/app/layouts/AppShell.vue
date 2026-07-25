@@ -261,6 +261,14 @@
               <!-- Stock e Inventario removidos: la nueva vista de Productos
                    ya cubre la matriz por sucursal y la gestión de stock. -->
 
+              <v-list-item v-if="hasRoute('budgets')" :to="{ name: 'budgets' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-file-document-edit-outline</v-icon>
+                </template>
+                <v-list-item-title>Presupuestos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Presupuestos</v-tooltip>
+              </v-list-item>
+
               <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-shape-outline</v-icon>

@@ -95,6 +95,18 @@ const routes = [
       { path: "products-import", name: "productsImport", component: ImportProductsPage },
       { path: "products-labels", name: "productsLabels", component: BulkLabelsPage },
 
+      // Presupuestador
+      {
+        path: "budgets",
+        name: "budgets",
+        component: () => import("@/modules/budgets/pages/BudgetsListPage.vue"),
+      },
+      {
+        path: "budgets/:id",
+        name: "budgetEdit",
+        component: () => import("@/modules/budgets/pages/BudgetEditorPage.vue"),
+      },
+
       { path: "transfers", name: "transfers", component: StockTransfersPage },
 
       { path: "stock", name: "stock", component: StockPage },
@@ -540,6 +552,30 @@ router.afterEach(() => {
   setTimeout(() => {
     hideRouteOverlay();
   }, 4000);
+});
+
+// =======================
+// Titulo de la pestaña
+// =======================
+// index.html trae los placeholders __TITLE__ / __OG_TITLE__ que reemplaza el
+// edge al servir la tienda publica. En /app (backoffice) el edge no los toca,
+// asi que quedaba "__TITLE__" a la vista. El shop maneja su propio titulo
+// (ShopHeader + ogPrerender), asi que aca solo cubrimos el resto y limpiamos
+// el placeholder si quedo colgado.
+const APP_TITLE = "POS de venta";
+
+router.afterEach((to) => {
+  const path = String(to.path || "");
+  const isShop = path === "/shop" || path.startsWith("/shop/");
+
+  if (isShop) {
+    // Ultimo recurso: si el edge no inyecto nada, no dejamos el placeholder.
+    if (document.title.includes("__TITLE__")) document.title = APP_TITLE;
+    return;
+  }
+
+  const section = to.meta?.title;
+  document.title = section ? `${section} · ${APP_TITLE}` : APP_TITLE;
 });
 
 // =======================
