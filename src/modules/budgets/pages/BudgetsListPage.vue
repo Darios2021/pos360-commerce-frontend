@@ -83,6 +83,18 @@
         @update:model-value="onFilter"
       />
 
+      <!-- A los vendedores el backend ya les muestra solo los suyos; el
+           interruptor es para que un admin pueda mirar los propios. -->
+      <v-switch
+        v-if="canSeeAll"
+        v-model="mine"
+        label="Solo míos"
+        color="primary"
+        density="compact"
+        hide-details
+        inset
+        @update:model-value="onFilter"
+      />
     </div>
 
     <v-card variant="outlined" rounded="lg">
@@ -105,7 +117,11 @@
         @click:row="onRowClick"
       >
         <template #item.number="{ item }">
-          <span class="font-weight-medium">#{{ item.number }}</span>
+          <span class="font-weight-medium">{{ budgetNumber(item) }}</span>
+        </template>
+
+        <template #item.user_name="{ item }">
+          <span class="text-body-2">{{ sellerName(item) }}</span>
         </template>
 
         <template #item.customer_name="{ item }">
@@ -187,6 +203,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import { useAuthStore } from "@/app/store/auth.store";
 import KpiCard from "@/modules/dashboard/components/KpiCard.vue";
 import {
   listBudgets,
@@ -197,6 +214,7 @@ import {
   statusColor,
 } from "../services/budgets.service";
 import { exportBudgetPdfById, loadBudgetIdentity } from "../utils/budgetPdf";
+import { budgetNumber, sellerName, fmtDocDate, daysUntil } from "../utils/budgetDoc";
 
 const router = useRouter();
 
@@ -208,6 +226,12 @@ const loading = ref(false);
 const creating = ref(false);
 const q = ref("");
 const status = ref("");
+const mine = ref(false);
+
+// Un cajero/vendedor solo ve los suyos y lo resuelve el backend: para él el
+// interruptor no cambiaría nada, así que no se muestra.
+const auth = useAuthStore();
+const canSeeAll = computed(() => !auth.isCajero);
 
 const pdfId = ref(null);
 
@@ -248,8 +272,9 @@ const perPageOptions = [
 ];
 
 const headers = [
-  { title: "N°", key: "number", width: 80 },
+  { title: "N°", key: "number", width: 110 },
   { title: "Cliente", key: "customer_name" },
+  { title: "Vendedor", key: "user_name", width: 150, sortable: false },
   { title: "Creado", key: "created_at", width: 120 },
   { title: "Vence", key: "valid_until", width: 140 },
   { title: "Estado", key: "status", width: 130 },
@@ -273,23 +298,12 @@ function money(v, currency = "ARS") {
   return `${symbol} ${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function fmtDate(v) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+const fmtDate = fmtDocDate;
 
 // Días entre hoy y el vencimiento, contando por día calendario para que
 // "vence hoy" no dependa de la hora.
 function daysToExpiry(item) {
-  if (!item?.valid_until) return null;
-  const d = new Date(item.valid_until);
-  if (Number.isNaN(d.getTime())) return null;
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const now = new Date();
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((a - b) / 86400000);
+  return daysUntil(item?.valid_until);
 }
 
 function isClosed(item) {
@@ -322,6 +336,7 @@ async function fetch() {
       limit: limit.value,
       q: q.value || undefined,
       status: status.value || undefined,
+      mine: mine.value ? 1 : undefined,
     });
     items.value = data?.data || [];
     total.value = data?.meta?.total || 0;
@@ -349,6 +364,7 @@ function onFilter() {
 function clearFilters() {
   q.value = "";
   status.value = "";
+  mine.value = false;
   onFilter();
 }
 

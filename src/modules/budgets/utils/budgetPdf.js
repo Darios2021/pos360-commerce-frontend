@@ -6,6 +6,14 @@
 // e importe.
 import http from "@/app/api/http";
 import { getBudget } from "../services/budgets.service";
+import {
+  budgetNumber,
+  sellerName,
+  issuerLines,
+  fmtDocDate,
+  hasDiscount,
+  discountLabel,
+} from "./budgetDoc";
 
 function money(v, currency = "ARS") {
   const n = Number(v || 0);
@@ -16,12 +24,7 @@ function money(v, currency = "ARS") {
   })}`;
 }
 
-function fmtDate(v) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+const fmtDate = fmtDocDate;
 
 // Las fuentes estándar de jsPDF son WinAnsi: los emojis y los símbolos raros
 // que suelen venir pegados en las descripciones del catálogo salen como
@@ -117,11 +120,9 @@ export async function exportBudgetPdf({
   const m = (v) => money(currency === "USD" ? Number(v || 0) / rate : v, currency);
 
   const companyName = branding?.name || "";
-  const companyPhone = branch?.phone || branding?.phone_display || branding?.whatsapp_display || "";
-  const companyEmail = branding?.email || "";
-  const companyAddress = branch
-    ? [branch.address, branch.city, branch.province].filter(Boolean).join(", ")
-    : branding?.address || "";
+  // Sucursal, dirección, teléfono y datos fiscales (CUIT / Ing. Brutos): lo que
+  // el cliente necesita para cargar el presupuesto en su contabilidad.
+  const companyLines = [...issuerLines({ branding, branch }), branding?.email || ""].filter(Boolean);
   // El logo completo es apaisado (1920x500) y no entra en el encabezado: para
   // el PDF usamos el isotipo, que es el símbolo solo.
   const companyMark = branding?.favicon_url || branding?.og_image_url || "";
@@ -166,16 +167,14 @@ export async function exportBudgetPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(MUTED);
-  const headLines = [branch?.name, companyAddress, companyPhone, companyEmail]
-    .filter(Boolean)
-    .map(pdfText);
+  const headLines = companyLines.map(pdfText);
   if (headLines.length) doc.text(headLines, infoX, 64, { lineHeightFactor: 1.45 });
 
   label("Presupuesto", RIGHT, 48, { align: "right" });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(21);
   doc.setTextColor(INK);
-  doc.text(`#${budget?.number ?? ""}`, RIGHT, 68, { align: "right" });
+  doc.text(budgetNumber(budget), RIGHT, 68, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
@@ -209,6 +208,17 @@ export async function exportBudgetPdf({
     doc.setFontSize(8.5);
     doc.setTextColor(MUTED);
     doc.text(pdfText(customerLine), M, y);
+  }
+
+  // Quién lo atendió, debajo de los datos del cliente: es por quien vuelve a
+  // preguntar el cliente cuando llama.
+  const seller = sellerName(budget);
+  if (seller) {
+    y += 13;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(MUTED);
+    doc.text(pdfText(`Vendedor: ${seller}`), M, y);
   }
 
   // ── Renglones ───────────────────────────────────────────────────────────
@@ -273,8 +283,13 @@ export async function exportBudgetPdf({
   y = (doc.lastAutoTable?.finalY || 300) + 22;
   const LABEL_X = RIGHT - 190;
 
+  // El descuento sale acá, con el resto de los números: se hace con margen
+  // negativo en el renglón y el cliente tiene que poder verlo.
+  const discounted = hasDiscount(totals);
+
   const rows = [
-    ["SubTotal", m(totals?.subtotal)],
+    ["SubTotal", m(discounted ? totals?.subtotal_gross : totals?.subtotal)],
+    ...(discounted ? [[discountLabel(totals), `- ${m(totals?.discount)}`]] : []),
     ["IVA 21%", m(totals?.vat_21)],
     ["IVA 10.5%", m(totals?.vat_105)],
   ];
@@ -412,7 +427,7 @@ export async function exportBudgetPdf({
     doc.setTextColor(INK);
   }
 
-  const filename = `presupuesto-${budget?.number ?? ""}.pdf`;
+  const filename = `presupuesto-${budgetNumber(budget)}.pdf`;
 
   if (output === "base64") {
     // datauristring viene como "data:application/pdf;filename=...;base64,XXXX"
@@ -463,6 +478,8 @@ export async function exportBudgetPdfById(id, identity) {
     budget: full,
     items: full.items || [],
     totals: {
+      subtotal_gross: full.subtotal_gross,
+      discount: full.discount,
       subtotal: full.subtotal,
       vat_21: full.vat_21,
       vat_105: full.vat_105,

@@ -114,6 +114,63 @@
 
       <v-divider class="my-5" />
 
+      <!-- DATOS FISCALES -->
+      <div class="text-subtitle-2 font-weight-medium mb-1">Datos fiscales</div>
+      <div class="text-caption text-medium-emphasis mb-3">
+        Salen en el encabezado del presupuesto, debajo de la dirección. Es lo que el
+        cliente necesita para cargarlo en su contabilidad.
+      </div>
+
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="form.tax_id"
+            label="CUIT"
+            placeholder="30-71234567-8"
+            variant="outlined"
+            density="comfortable"
+            rounded="lg"
+            hide-details
+            prepend-inner-icon="mdi-card-account-details-outline"
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="form.iibb"
+            label="Ingresos Brutos"
+            placeholder="Convenio Multilateral 901-123456-7"
+            variant="outlined"
+            density="comfortable"
+            rounded="lg"
+            hide-details
+            prepend-inner-icon="mdi-file-document-outline"
+          />
+        </v-col>
+      </v-row>
+
+      <v-divider class="my-5" />
+
+      <!-- PRESUPUESTOS -->
+      <div class="text-subtitle-2 font-weight-medium mb-1">Observaciones del presupuesto</div>
+      <div class="text-caption text-medium-emphasis mb-3">
+        Con esto arranca cada presupuesto nuevo. Adentro del presupuesto se puede
+        cambiar sin tocar esta plantilla.
+      </div>
+
+      <v-textarea
+        v-model="form.budget_notes_default"
+        label="Condiciones de pago, entrega y garantía"
+        placeholder="Condiciones de Pago&#10;     Tarjetas bancarias: Hasta 6 cuotas sin interés.&#10;     Contado efectivo / Transferencia: 20% de descuento sobre el total.&#10;Plazo de Entrega e Instalación&#10;     Coordinación: La fecha de instalación se definirá de común acuerdo con el cliente.&#10;Garantía&#10;     SOBRE LA INSTALACION: 30 días de cobertura directa.&#10;     SOBRE LOS EQUIPOS INSTALADOS: POR FALLA DE FABRICA 1 año de garantía oficial del fabricante."
+        variant="outlined"
+        density="comfortable"
+        rounded="lg"
+        hide-details
+        rows="8"
+        auto-grow
+      />
+
+      <v-divider class="my-5" />
+
       <!-- COPY EMAILS -->
       <div class="text-subtitle-2 font-weight-medium mb-1">Mensajes en emails CRM</div>
       <div class="text-caption text-medium-emphasis mb-3">
@@ -170,6 +227,9 @@ const form = ref({
   business_hours: "",
   tagline: "",
   footer_note: "",
+  tax_id: "",
+  iibb: "",
+  budget_notes_default: "",
 });
 
 async function load() {
@@ -185,6 +245,9 @@ async function load() {
         business_hours: it.business_hours || "",
         tagline: it.tagline || "",
         footer_note: it.footer_note || "",
+        tax_id: it.tax_id || "",
+        iibb: it.iibb || "",
+        budget_notes_default: it.budget_notes_default || "",
       };
     }
   } catch (e) {

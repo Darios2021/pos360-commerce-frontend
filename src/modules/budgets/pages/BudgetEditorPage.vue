@@ -20,6 +20,11 @@
       <v-btn size="small" variant="text" prepend-icon="mdi-text-box-plus-outline" @click="addFreeLine">
         Renglón libre
       </v-btn>
+      <!-- Para lo que todavía no está en el catálogo: se carga acá y entra al
+           presupuesto en el mismo paso, sin salir de la pantalla. -->
+      <v-btn size="small" variant="text" prepend-icon="mdi-package-variant-plus" @click="openNewProductDialog">
+        Cargar producto
+      </v-btn>
 
       <v-spacer />
 
@@ -111,21 +116,29 @@
             <img v-if="companyMark" :src="companyMark" class="company-mark" alt="" />
             <div class="company-info">
               <div class="company-name">{{ companyName }}</div>
-              <div v-if="companyBranchName">{{ companyBranchName }}</div>
-              <div v-if="companyAddress">{{ companyAddress }}</div>
-              <div v-if="companyPhone">{{ companyPhone }}</div>
+              <div v-for="(line, i) in companyLines" :key="i">{{ line }}</div>
             </div>
           </div>
 
           <div class="doc-meta">
             <div class="doc-kind">PRESUPUESTO</div>
-            <div class="doc-number">#{{ budget.number }}</div>
+            <div class="doc-number">{{ docNumber }}</div>
             <dl class="doc-dates">
               <dt>Fecha</dt>
               <dd>{{ fmtDate(budget.created_at) }}</dd>
               <dt>Vence</dt>
-              <dd>{{ fmtDate(budget.valid_until) }}</dd>
+              <dd>
+                <!-- La vigencia se mueve desde acá: hay clientes que la piden
+                     por más días y no tiene sentido rehacer el presupuesto. -->
+                <input
+                  v-model="header.valid_until"
+                  type="date"
+                  class="cell-input date-input"
+                  @change="saveValidUntil"
+                />
+              </dd>
             </dl>
+            <div class="doc-validity">{{ validityLabel }}</div>
           </div>
         </div>
 
@@ -133,11 +146,14 @@
         <div class="doc-section">
           <div class="section-label">Cliente</div>
           <div class="d-flex align-start ga-3">
-            <div class="flex-grow-1">
+            <div class="flex-grow-1 min-w-0">
               <div class="customer-name">{{ header.customer_name || "Consumidor Final" }}</div>
               <div class="text-caption text-medium-emphasis">
                 {{ customerLine || "Sin datos de contacto" }}
               </div>
+              <!-- Quién lo atendió: es por quien vuelve a preguntar el cliente
+                   cuando llama, más que por el número de presupuesto. -->
+              <div v-if="sellerLabel" class="seller-line">Vendedor: {{ sellerLabel }}</div>
             </div>
             <v-btn size="small" variant="text" prepend-icon="mdi-account-search-outline" @click="openCustomerDialog">
               Cambiar
@@ -152,7 +168,13 @@
               <th class="col-qty">Cant.</th>
               <th class="col-detail">Detalle</th>
               <th v-if="header.show_cost" class="col-num col-private">Costo</th>
-              <th v-if="header.show_cost" class="col-num col-private">Margen</th>
+              <th v-if="header.show_cost" class="col-num col-private">
+                Margen
+                <v-tooltip activator="parent" location="top" max-width="260">
+                  En negativo es un descuento: con -10% el renglón se cobra un 10% menos
+                  y la bonificación sale abajo, en los totales.
+                </v-tooltip>
+              </th>
               <th class="col-num">IVA</th>
               <th class="col-num">P. unitario</th>
               <th class="col-num">Importe</th>
@@ -281,11 +303,17 @@
           </tbody>
         </table>
 
-        <!-- Totales -->
+        <!-- Totales. El descuento sale acá abajo, con el resto de los números,
+             que es donde el cliente lo busca: se hace poniendo margen negativo
+             en el renglón y esta línea lo hace visible. -->
         <div class="totals-wrap">
           <dl class="totals">
             <dt>SubTotal</dt>
-            <dd>{{ money(totals.subtotal) }}</dd>
+            <dd>{{ money(hasDiscount ? totals.subtotal_gross : totals.subtotal) }}</dd>
+            <template v-if="hasDiscount">
+              <dt class="discount">{{ discountLabel }}</dt>
+              <dd class="discount">- {{ money(totals.discount) }}</dd>
+            </template>
             <dt>IVA 21%</dt>
             <dd>{{ money(totals.vat_21) }}</dd>
             <dt>IVA 10.5%</dt>
@@ -337,7 +365,15 @@
     <!-- Buscador de productos -->
     <v-dialog v-model="productDialog" max-width="900">
       <v-card>
-        <v-card-title class="text-subtitle-1">Agregar producto al presupuesto</v-card-title>
+        <v-card-title class="d-flex align-center ga-3">
+          <span class="text-subtitle-1">Agregar producto al presupuesto</span>
+          <v-spacer />
+          <!-- Si el producto no está en el catálogo, se carga desde acá y
+               entra al presupuesto sin salir de la pantalla. -->
+          <v-btn size="small" variant="tonal" prepend-icon="mdi-package-variant-plus" @click="openNewProductDialog">
+            Cargar producto
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="productQuery"
@@ -468,6 +504,69 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="productDialog = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Alta rápida de producto. No reemplaza a la ficha completa del
+         catálogo: carga lo mínimo para poder presupuestar y después se
+         completa en Productos. -->
+    <v-dialog v-model="newProductDialog" max-width="560">
+      <v-card>
+        <v-card-title class="text-subtitle-1">Cargar producto al catálogo</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newProduct.name"
+            label="Nombre"
+            density="compact"
+            variant="outlined"
+            hide-details="auto"
+            autofocus
+            class="mb-3"
+            :error-messages="newProductError"
+            placeholder="Ej: Cámara IP domo 4MP"
+          />
+          <div class="d-flex ga-3 flex-wrap">
+            <v-text-field
+              v-model="newProduct.sku"
+              label="Código (opcional)"
+              density="compact"
+              variant="outlined"
+              hide-details
+              style="min-width: 160px"
+            />
+            <v-text-field
+              v-model="newProduct.price"
+              label="Precio"
+              type="number"
+              min="0"
+              prefix="$"
+              density="compact"
+              variant="outlined"
+              hide-details
+              style="max-width: 160px"
+            />
+            <v-select
+              v-model="newProduct.tax_rate"
+              :items="vatItems"
+              label="IVA"
+              density="compact"
+              variant="outlined"
+              hide-details
+              style="max-width: 120px"
+            />
+          </div>
+          <div class="text-caption text-medium-emphasis mt-3">
+            Queda cargado en el catálogo y entra al presupuesto con el margen que
+            elegiste arriba. El resto de la ficha se completa después en Productos.
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="creatingProduct" @click="newProductDialog = false">Cancelar</v-btn>
+          <v-btn color="primary" variant="flat" :loading="creatingProduct" @click="createAndAddProduct">
+            Cargar y agregar
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -632,6 +731,7 @@ import { useRoute } from "vue-router";
 import http from "@/app/api/http";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
+import { ProductsService } from "@/app/services/products.service";
 import { listCustomers } from "@/modules/admin/services/customers.service";
 import {
   getBudget,
@@ -644,6 +744,15 @@ import {
 } from "../services/budgets.service";
 import { fetchOfficialUsdRate } from "../services/fx.service";
 import { exportBudgetPdf } from "../utils/budgetPdf";
+import {
+  budgetNumber,
+  sellerName,
+  issuerLines,
+  fmtDocDate,
+  daysUntil,
+  hasDiscount as docHasDiscount,
+  discountLabel as docDiscountLabel,
+} from "../utils/budgetDoc";
 
 const route = useRoute();
 const id = route.params.id;
@@ -666,11 +775,12 @@ const header = ref({
   exchange_rate: 1,
   fx_source: "",
   fx_date: "",
+  valid_until: "",
   notes: "",
   show_cost: true,
 });
 
-const totals = ref({ subtotal: 0, vat_21: 0, vat_105: 0, total: 0 });
+const totals = ref({ subtotal_gross: 0, discount: 0, subtotal: 0, vat_21: 0, vat_105: 0, total: 0 });
 
 const snack = ref({ show: false, text: "", color: "success" });
 
@@ -685,16 +795,11 @@ const companyName = computed(() => branding.value?.name || "");
 const companyMark = computed(
   () => branding.value?.favicon_url || branding.value?.og_image_url || ""
 );
-const companyPhone = computed(
-  () => branch.value?.phone || branding.value?.phone_display || branding.value?.whatsapp_display || ""
+// Sucursal, direccion, telefono y datos fiscales (CUIT / Ing. Brutos), en el
+// mismo orden que el PDF.
+const companyLines = computed(() =>
+  issuerLines({ branding: branding.value, branch: branch.value })
 );
-const companyAddress = computed(() => {
-  const parts = branch.value
-    ? [branch.value.address, branch.value.city, branch.value.province]
-    : [branding.value?.address];
-  return parts.filter(Boolean).join(", ");
-});
-const companyBranchName = computed(() => branch.value?.name || "");
 
 async function loadIdentity() {
   // Identidad visual del shop. El endpoint admin trae ademas direccion y
@@ -757,6 +862,26 @@ const customerLine = computed(() =>
     .join(" / ")
 );
 
+// Numeracion del documento: local + correlativo (001-00035).
+const docNumber = computed(() => (budget.value ? budgetNumber(budget.value) : ""));
+
+const sellerLabel = computed(() => (budget.value ? sellerName(budget.value) : ""));
+
+// Cuantos dias de vigencia quedan, contados por dia calendario.
+const validityLabel = computed(() => {
+  if (!header.value.valid_until) return "Sin vencimiento";
+  const days = daysUntil(header.value.valid_until);
+  if (days === null) return "";
+  if (days < 0) return `vencido hace ${Math.abs(days)} día${Math.abs(days) === 1 ? "" : "s"}`;
+  if (days === 0) return "vence hoy";
+  return `vigente ${days} día${days === 1 ? "" : "s"}`;
+});
+
+// Descuento: lo calcula el backend a partir de los renglones con margen
+// negativo. Si no hay ninguno, la fila no aparece.
+const hasDiscount = computed(() => docHasDiscount(totals.value));
+const discountLabel = computed(() => docDiscountLabel(totals.value));
+
 // Los importes se guardan SIEMPRE en pesos. Presupuestar en USD no reescribe
 // nada: divide por la cotizacion guardada al momento de mostrar.
 const fxRate = computed(() => {
@@ -794,12 +919,7 @@ const fxCaption = computed(() => {
   return parts.join(" · ");
 });
 
-function fmtDate(v) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+const fmtDate = fmtDocDate;
 
 function fmtDateTime(v) {
   if (!v) return "";
@@ -833,10 +953,14 @@ function applyBudget(data) {
     exchange_rate: Number(data.exchange_rate) || 1,
     fx_source: data.fx_source || "",
     fx_date: data.fx_date || "",
+    // El input date necesita YYYY-MM-DD; la API la manda como DATEONLY.
+    valid_until: String(data.valid_until || "").slice(0, 10),
     notes: data.notes || "",
     show_cost: !!data.show_cost,
   };
   totals.value = {
+    subtotal_gross: data.subtotal_gross,
+    discount: data.discount,
     subtotal: data.subtotal,
     vat_21: data.vat_21,
     vat_105: data.vat_105,
@@ -872,6 +996,11 @@ async function saveHeader() {
 function toggleShowCost() {
   header.value.show_cost = !header.value.show_cost;
   saveHeader();
+}
+
+// Cambiar el vencimiento no toca importes: solo hasta cuándo vale el documento.
+async function saveValidUntil() {
+  await saveHeader();
 }
 
 function setStatus(v) {
@@ -953,19 +1082,19 @@ const mailMessage = ref("");
 const mailSending = ref(false);
 const mailToError = ref("");
 
-const mailFilename = computed(() => `presupuesto-${budget.value?.number ?? ""}.pdf`);
+const mailFilename = computed(() => `presupuesto-${docNumber.value}.pdf`);
 
 function openMailDialog() {
   mailTo.value = header.value.customer_email || "";
-  mailSubject.value = `Presupuesto #${budget.value?.number ?? ""} - ${companyName.value}`.trim();
+  mailSubject.value = `Presupuesto ${docNumber.value} - ${companyName.value}`.trim();
   const cliente = header.value.customer_name && header.value.customer_name !== "Consumidor Final"
     ? header.value.customer_name
     : "";
   mailMessage.value = [
     cliente ? `Hola ${cliente},` : "Hola,",
     "",
-    `Te enviamos el presupuesto #${budget.value?.number ?? ""} en el archivo adjunto.`,
-    budget.value?.valid_until ? `Tiene validez hasta el ${fmtDate(budget.value.valid_until)}.` : "",
+    `Te enviamos el presupuesto ${docNumber.value} en el archivo adjunto.`,
+    header.value.valid_until ? `Tiene validez hasta el ${fmtDate(header.value.valid_until)}.` : "",
     "",
     "Quedamos a disposición por cualquier consulta.",
   ]
@@ -1289,6 +1418,64 @@ async function addProduct(product) {
   }
 }
 
+// ── Alta rápida de producto ───────────────────────────────────────────────
+// Presupuestar algo que todavía no está en el catálogo obligaba a salir,
+// cargarlo en Productos y volver. Acá se carga lo mínimo (nombre, precio,
+// IVA) y el producto entra al presupuesto en el mismo paso; la ficha completa
+// se termina después desde Productos.
+const newProductDialog = ref(false);
+const creatingProduct = ref(false);
+const newProductError = ref("");
+const newProduct = ref({ name: "", sku: "", price: "", tax_rate: 21 });
+
+const vatItems = [
+  { title: "21%", value: 21 },
+  { title: "10.5%", value: 10.5 },
+  { title: "0%", value: 0 },
+];
+
+function openNewProductDialog() {
+  // Lo que ya escribió en el buscador es, casi siempre, el nombre que busca.
+  newProduct.value = { name: productQuery.value || "", sku: "", price: "", tax_rate: 21 };
+  newProductError.value = "";
+  newProductDialog.value = true;
+}
+
+async function createAndAddProduct() {
+  const name = String(newProduct.value.name || "").trim();
+  if (!name) {
+    newProductError.value = "Poné un nombre para el producto.";
+    return;
+  }
+  newProductError.value = "";
+  creatingProduct.value = true;
+  try {
+    const price = Number(newProduct.value.price) || 0;
+    const res = await ProductsService.create({
+      name,
+      sku: String(newProduct.value.sku || "").trim() || undefined,
+      price,
+      price_list: price,
+      tax_rate: Number(newProduct.value.tax_rate) || 0,
+      is_active: true,
+    });
+    const created = res?.data || res?.item || null;
+    if (!created?.id) throw new Error("El catálogo no devolvió el producto creado.");
+
+    await addProduct(created);
+    newProductDialog.value = false;
+    // Que quede visible en el buscador, por si quiere sumar más cantidad.
+    productQuery.value = name;
+    searchProducts();
+  } catch (e) {
+    const msg = e?.message || e?.response?.data?.message || "No se pudo cargar el producto.";
+    newProductError.value = msg;
+    notify(msg, "error");
+  } finally {
+    creatingProduct.value = false;
+  }
+}
+
 // ── Clientes ──────────────────────────────────────────────────────────────
 const customerDialog = ref(false);
 const customerQuery = ref("");
@@ -1489,6 +1676,26 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+/* El vencimiento se edita en el lugar donde se lee, sin abrir nada. */
+.date-input {
+  width: 108px;
+  text-align: right;
+  font-size: 12px;
+  color-scheme: light dark;
+}
+
+.doc-validity {
+  font-size: 11px;
+  opacity: 0.55;
+  margin-top: 4px;
+}
+
+.seller-line {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
 /* ── Secciones ─────────────────────────────────────────────────────────── */
 .doc-section {
   margin-top: 36px;
@@ -1661,6 +1868,14 @@ onMounted(() => {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* El descuento es la única línea que resta: se marca para que se lea de un
+   vistazo entre los demás importes. */
+.totals dt.discount,
+.totals dd.discount {
+  color: rgb(var(--v-theme-error));
+  opacity: 1;
+}
+
 .totals dt.grand,
 .totals dd.grand {
   padding-top: 12px;
