@@ -1621,22 +1621,34 @@ async function copyBarcode(item) {
   color: rgb(185, 28, 28);
 }
 
-:global(.v-theme--adminDark) .qrow__stock.level-high {
+/* Ojo con :global(): en este build se come el ancestro y la regla queda
+   suelta pintando cualquier nodo que tenga la clase de tema. El idiom
+   que si funciona es el descendiente pelado. */
+.v-theme--adminDark .qrow__stock.level-high,
+.v-theme--shopDark .qrow__stock.level-high,
+.v-theme--dark .qrow__stock.level-high {
   color: rgb(134, 239, 172);
 }
 
-:global(.v-theme--adminDark) .qrow__stock.level-mid {
+.v-theme--adminDark .qrow__stock.level-mid,
+.v-theme--shopDark .qrow__stock.level-mid,
+.v-theme--dark .qrow__stock.level-mid {
   color: rgb(253, 224, 71);
 }
 
-:global(.v-theme--adminDark) .qrow__stock.level-low,
-:global(.v-theme--adminDark) .qrow__stock.level-out {
+.v-theme--adminDark .qrow__stock.level-low,
+.v-theme--adminDark .qrow__stock.level-out,
+.v-theme--shopDark .qrow__stock.level-low,
+.v-theme--shopDark .qrow__stock.level-out,
+.v-theme--dark .qrow__stock.level-low,
+.v-theme--dark .qrow__stock.level-out {
   color: rgb(252, 165, 165);
 }
 
 /* La marca en la ficha se penso sobre fondo oscuro */
-:global(.v-theme--light) .meta-chip--brand,
-:global(.v-theme--adminLight) .meta-chip--brand {
+.v-theme--light .meta-chip--brand,
+.v-theme--adminLight .meta-chip--brand,
+.v-theme--shopLight .meta-chip--brand {
   background: rgba(20, 136, 209, 0.12);
   color: rgb(15, 105, 163);
 }

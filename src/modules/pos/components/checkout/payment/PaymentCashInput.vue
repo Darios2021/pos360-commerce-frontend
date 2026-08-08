@@ -704,36 +704,52 @@ defineExpose({
    TEMA CLARO
    Las fichas se disenaron sobre fondo oscuro: los textos y los bordes
    usan blanco con alfa y sobre fondo claro quedan invisibles. Aca se
-   reescriben esos tonos contra la tinta de la superficie. El estado
+   reescriben esos tonos contra la tinta de la superficie. Ojo: aca
+   :global() NO sirve, el build se come el ancestro y la regla termina
+   pintando cualquier nodo con la clase de tema. El estado
    activo no se toca: ahi el fondo es el color saturado y el blanco va.
 ========================= */
-:global(.v-theme--light) .ck-cash-tile {
+.v-theme--light .ck-cash-tile,
+.v-theme--adminLight .ck-cash-tile,
+.v-theme--shopLight .ck-cash-tile {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(15, 23, 42, 0.022);
 }
 
-:global(.v-theme--light) .ck-cash-tile__label {
+.v-theme--light .ck-cash-tile__label,
+.v-theme--adminLight .ck-cash-tile__label,
+.v-theme--shopLight .ck-cash-tile__label {
   color: rgba(15, 23, 42, 0.6);
 }
 
-:global(.v-theme--light) .ck-cash-tile__value {
+.v-theme--light .ck-cash-tile__value,
+.v-theme--adminLight .ck-cash-tile__value,
+.v-theme--shopLight .ck-cash-tile__value {
   color: rgba(15, 23, 42, 0.9);
 }
 
-:global(.v-theme--light) .ck-manual-input__icon {
+.v-theme--light .ck-manual-input__icon,
+.v-theme--adminLight .ck-manual-input__icon,
+.v-theme--shopLight .ck-manual-input__icon {
   background: rgba(139, 92, 246, 0.12);
   color: rgb(109, 62, 216);
 }
 
-:global(.v-theme--light) .ck-manual-input {
+.v-theme--light .ck-manual-input,
+.v-theme--adminLight .ck-manual-input,
+.v-theme--shopLight .ck-manual-input {
   color: rgb(15, 23, 42);
 }
 
-:global(.v-theme--light) .ck-manual-input::placeholder {
+.v-theme--light .ck-manual-input::placeholder,
+.v-theme--adminLight .ck-manual-input::placeholder,
+.v-theme--shopLight .ck-manual-input::placeholder {
   color: rgba(15, 23, 42, 0.38);
 }
 
-:global(.v-theme--light) .ck-status--neutral {
+.v-theme--light .ck-status--neutral,
+.v-theme--adminLight .ck-status--neutral,
+.v-theme--shopLight .ck-status--neutral {
   color: rgba(15, 23, 42, 0.66);
   background: rgba(15, 23, 42, 0.05);
 }
