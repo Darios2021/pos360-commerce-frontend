@@ -371,7 +371,7 @@ function onStepClick(step, index) {
   .pdch__line { width: 14px; flex-basis: 14px; margin: 0 4px; }
 }
 
-:global(.v-theme--dark) .pdch__step--active .pdch__dot {
+.v-theme--dark .pdch__step--active .pdch__dot {
   box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.32);
 }
 </style>

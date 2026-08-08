@@ -357,12 +357,12 @@ function submit() {
 }
 
 /* ── Dark mode ───────────────────────────────────────────────── */
-:global(.v-theme--dark) .ccd__info {
+.v-theme--dark .ccd__info {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.07);
 }
 
-:global(.v-theme--dark) .ccd-chip {
+.v-theme--dark .ccd-chip {
   background: rgba(255, 255, 255, 0.06);
 }
 

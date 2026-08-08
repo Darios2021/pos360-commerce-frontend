@@ -695,8 +695,8 @@ watch(id, load);
   background: rgba(245, 158, 11, 0.16);
   color: #d97706;
 }
-:global(.v-theme--dark) .crd-audit--medium .crd-audit__ic,
-:global(.v-theme--dark) .crd-audit--medium .crd-audit__sev { color: #fbbf24; }
+.v-theme--dark .crd-audit--medium .crd-audit__ic,
+.v-theme--dark .crd-audit--medium .crd-audit__sev { color: #fbbf24; }
 
 .crd-audit--low {
   background: rgba(var(--v-theme-on-surface), 0.03);

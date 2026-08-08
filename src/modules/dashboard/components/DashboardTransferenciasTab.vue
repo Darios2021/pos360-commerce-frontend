@@ -1312,7 +1312,7 @@ onBeforeUnmount(() => {
   background: rgba(245, 158, 11, 0.14);
   color: #d97706;
 }
-:global(.v-theme--dark) .tr2-status--dispatched { color: #fbbf24; }
+.v-theme--dark .tr2-status--dispatched { color: #fbbf24; }
 .tr2-status--dispatched .tr2-status__dot {
   background: #f59e0b;
   animation: tr2-pulse 1.8s ease-in-out infinite;

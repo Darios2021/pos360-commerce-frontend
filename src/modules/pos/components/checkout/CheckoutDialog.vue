@@ -1671,14 +1671,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
 }
 
 /* ── Dark theme active states ── */
-:global(.v-theme--dark) .ck-root :deep(.ck-pay.active),
-:global(.v-theme--dark) .ck-root :deep(.ck-option.active),
-:global(.v-theme--dark) .ck-root :deep(.ck-choice.active),
-:global(.v-theme--dark) .ck-root :deep(.ck-card.active),
-:global(.v-theme--dark) .ck-root :deep(.ck-box.active),
-:global(.v-theme--dark) .ck-root :deep(.ck-item.active),
-:global(.v-theme--dark) .ck-root :deep(.cursorActive.active),
-:global(.v-theme--dark) .ck-root :deep(.active.cursorActive) {
+.v-theme--dark .ck-root :deep(.ck-pay.active),
+.v-theme--dark .ck-root :deep(.ck-option.active),
+.v-theme--dark .ck-root :deep(.ck-choice.active),
+.v-theme--dark .ck-root :deep(.ck-card.active),
+.v-theme--dark .ck-root :deep(.ck-box.active),
+.v-theme--dark .ck-root :deep(.ck-item.active),
+.v-theme--dark .ck-root :deep(.cursorActive.active),
+.v-theme--dark .ck-root :deep(.active.cursorActive) {
   background:
     linear-gradient(
       135deg,
@@ -1694,33 +1694,33 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown, true));
   transform: translateY(-1px);
 }
 
-:global(.v-theme--dark) .ck-root :deep(.ck-pay.active::before),
-:global(.v-theme--dark) .ck-root :deep(.ck-option.active::before),
-:global(.v-theme--dark) .ck-root :deep(.ck-choice.active::before),
-:global(.v-theme--dark) .ck-root :deep(.ck-card.active::before),
-:global(.v-theme--dark) .ck-root :deep(.ck-box.active::before),
-:global(.v-theme--dark) .ck-root :deep(.ck-item.active::before) {
+.v-theme--dark .ck-root :deep(.ck-pay.active::before),
+.v-theme--dark .ck-root :deep(.ck-option.active::before),
+.v-theme--dark .ck-root :deep(.ck-choice.active::before),
+.v-theme--dark .ck-root :deep(.ck-card.active::before),
+.v-theme--dark .ck-root :deep(.ck-box.active::before),
+.v-theme--dark .ck-root :deep(.ck-item.active::before) {
   background: rgba(var(--v-theme-primary), 1) !important;
 }
 
-:global(.v-theme--dark) .ck-root :deep(.ck-pay.active *),
-:global(.v-theme--dark) .ck-root :deep(.ck-option.active *),
-:global(.v-theme--dark) .ck-root :deep(.ck-choice.active *),
-:global(.v-theme--dark) .ck-root :deep(.ck-card.active *),
-:global(.v-theme--dark) .ck-root :deep(.ck-box.active *),
-:global(.v-theme--dark) .ck-root :deep(.ck-item.active *) {
+.v-theme--dark .ck-root :deep(.ck-pay.active *),
+.v-theme--dark .ck-root :deep(.ck-option.active *),
+.v-theme--dark .ck-root :deep(.ck-choice.active *),
+.v-theme--dark .ck-root :deep(.ck-card.active *),
+.v-theme--dark .ck-root :deep(.ck-box.active *),
+.v-theme--dark .ck-root :deep(.ck-item.active *) {
   opacity: 1 !important;
 }
 
-:global(.v-theme--dark) .ck-root :deep(.ck-pay.active .ck-pay-state),
-:global(.v-theme--dark) .ck-root :deep(.ck-option.active .ck-pay-state),
-:global(.v-theme--dark) .ck-root :deep(.ck-choice.active .ck-pay-state),
-:global(.v-theme--dark) .ck-root :deep(.ck-card.active .ck-pay-state) {
+.v-theme--dark .ck-root :deep(.ck-pay.active .ck-pay-state),
+.v-theme--dark .ck-root :deep(.ck-option.active .ck-pay-state),
+.v-theme--dark .ck-root :deep(.ck-choice.active .ck-pay-state),
+.v-theme--dark .ck-root :deep(.ck-card.active .ck-pay-state) {
   color: rgba(255, 255, 255, 1) !important;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.22));
 }
 
-:global(.v-theme--dark) .ck-root :deep(.ck-cursor-tag) {
+.v-theme--dark .ck-root :deep(.ck-cursor-tag) {
   background: rgba(255, 255, 255, 0.18) !important;
   color: rgba(255, 255, 255, 0.98) !important;
 }

@@ -681,7 +681,7 @@ async function doCancel() {
   background: rgba(245, 158, 11, 0.16);
   color: #d97706;
 }
-:global(.v-theme--dark) .tdet__status-chip--dispatched { color: #fbbf24; }
+.v-theme--dark .tdet__status-chip--dispatched { color: #fbbf24; }
 .tdet__status-chip--received,
 .tdet__status-chip--partial {
   background: rgba(var(--v-theme-success), 0.15);

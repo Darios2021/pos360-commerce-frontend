@@ -676,12 +676,12 @@ onMounted(async () => {
   background: rgba(139, 92, 246, 0.16);
   color: #7c3aed;
 }
-:global(.v-theme--dark) .up-role--admin { color: #a78bfa; }
+.v-theme--dark .up-role--admin { color: #a78bfa; }
 .up-role--manager {
   background: rgba(59, 130, 246, 0.16);
   color: #2563eb;
 }
-:global(.v-theme--dark) .up-role--manager { color: #60a5fa; }
+.v-theme--dark .up-role--manager { color: #60a5fa; }
 .up-role--cashier {
   background: rgba(var(--v-theme-success), 0.14);
   color: rgb(var(--v-theme-success));

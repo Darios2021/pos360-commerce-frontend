@@ -178,7 +178,7 @@ function onKeyDownNumeric(e) {
 }
 
 /* dark */
-:global(.v-theme--dark) .pp-root {
+.v-theme--dark .pp-root {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -229,7 +229,7 @@ function onKeyDownNumeric(e) {
 }
 
 /* en dark, que no se lave */
-:global(.v-theme--dark) .pp-input :deep(.v-field--variant-outlined .v-field__outline) {
+.v-theme--dark .pp-input :deep(.v-field--variant-outlined .v-field__outline) {
   opacity: 1;
 }
 

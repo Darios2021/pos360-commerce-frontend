@@ -614,24 +614,24 @@ onBeforeUnmount(() => {
 }
 
 /* ─── Dark mode ─────────────────────────────────────── */
-:global(.v-theme--dark) .caja-card {
+.v-theme--dark .caja-card {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-:global(.v-theme--dark) .caja-card__hero {
+.v-theme--dark .caja-card__hero {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-:global(.v-theme--dark) .caja-tile {
+.v-theme--dark .caja-tile {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
 }
 
-:global(.v-theme--dark) .caja-tile:hover {
+.v-theme--dark .caja-tile:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
-:global(.v-theme--dark) .caja-chip {
+.v-theme--dark .caja-chip {
   background: rgba(255, 255, 255, 0.06);
 }
 
