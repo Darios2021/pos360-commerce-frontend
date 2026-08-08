@@ -201,8 +201,15 @@ function money(val) {
   }).format(toNum(val));
 }
 
-function qty3(n) {
-  return toNum(n).toFixed(3);
+// El POS vende por unidad: no hay ningun producto marcado como fraccionado en
+// todo el sistema. Con toFixed(3) una unidad se mostraba "1.000", y en es-AR el
+// punto es separador de miles: el cajero leia mil donde habia una. Se muestran
+// enteros, y los decimales solo aparecen si el numero de verdad los tiene, por
+// si algun dia entra mercaderia a granel.
+function cantidad(n) {
+  const v = toNum(n);
+  if (Number.isInteger(v)) return String(v);
+  return String(Number(v.toFixed(3)));
 }
 
 function qtyInt(it) {
@@ -394,7 +401,7 @@ function maxQtyForItem(it) {
 function stockText(it) {
   const m = maxQtyForItem(it);
   if (!(m > 0)) return "";
-  return `Stock: ${qty3(m)}`;
+  return `Stock: ${cantidad(m)}`;
 }
 
 function clampQtyToStock(it, q) {
@@ -415,7 +422,7 @@ function syncDraftFromCart() {
   for (const it of props.cart || []) {
     const k = itKey(it);
     if (!k) continue;
-    qtyDraft[k] = qty3(it.qty);
+    qtyDraft[k] = cantidad(it.qty);
   }
 
   const keys = new Set((props.cart || []).map((x) => itKey(x)));
@@ -493,12 +500,12 @@ function commit(it) {
   const clamped = clampQtyToStock(it, q);
 
   if (max && clamped < q) {
-    toast(`⚠️ No hay stock suficiente. Máximo: ${qty3(max)}`);
+    toast(`⚠️ No hay stock suficiente. Máximo: ${cantidad(max)}`);
   }
 
   q = clamped;
   setQtyInStore(it, q);
-  qtyDraft[k] = qty3(it.qty);
+  qtyDraft[k] = cantidad(it.qty);
 }
 
 function inc(it) {
@@ -509,14 +516,14 @@ function inc(it) {
   const next = clampQtyToStock(it, desired);
 
   if (max && next < desired) {
-    toast(`⚠️ Sin stock. Máximo: ${qty3(max)}`);
+    toast(`⚠️ Sin stock. Máximo: ${cantidad(max)}`);
     setQtyInStore(it, next);
-    qtyDraft[itKey(it)] = qty3(it.qty);
+    qtyDraft[itKey(it)] = cantidad(it.qty);
     return;
   }
 
   setQtyInStore(it, next);
-  qtyDraft[itKey(it)] = qty3(it.qty);
+  qtyDraft[itKey(it)] = cantidad(it.qty);
 }
 
 function dec(it) {
@@ -528,7 +535,7 @@ function dec(it) {
   }
 
   setQtyInStore(it, next);
-  qtyDraft[itKey(it)] = qty3(it.qty);
+  qtyDraft[itKey(it)] = cantidad(it.qty);
 }
 
 function remove(it) {

@@ -9,6 +9,14 @@ function toNum(v, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+// El stock se guarda con 3 decimales pero el POS vende por unidad. Sin esto el
+// aviso decia "Disponible: 1.000" para una sola unidad, y en es-AR el punto es
+// separador de miles.
+function cantidadLegible(v) {
+  const n = toNum(v, 0);
+  return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+}
+
 function toInt(v, d = 0) {
   const n = parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : d;
@@ -898,7 +906,7 @@ export const usePosStore = defineStore("pos", {
       if (toNum(existing.qty, 0) + 1 > toNum(existing.available_qty, 0)) {
         this.toast = {
           show: true,
-          text: `⚠️ Stock insuficiente. Disponible: ${toNum(existing.available_qty, 0).toFixed(3)}`,
+          text: `⚠️ Stock insuficiente. Disponible: ${cantidadLegible(existing.available_qty)}`,
         };
         return;
       }
@@ -914,7 +922,7 @@ export const usePosStore = defineStore("pos", {
       if (toNum(it.qty, 0) + 1 > toNum(it.available_qty, 0)) {
         this.toast = {
           show: true,
-          text: `⚠️ Stock insuficiente. Disponible: ${toNum(it.available_qty, 0).toFixed(3)}`,
+          text: `⚠️ Stock insuficiente. Disponible: ${cantidadLegible(it.available_qty)}`,
         };
         return;
       }
