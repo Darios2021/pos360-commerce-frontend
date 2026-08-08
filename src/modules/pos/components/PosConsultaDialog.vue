@@ -1,7 +1,6 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    theme="adminDark"
     max-width="1100"
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -47,7 +46,8 @@
             <v-text-field
               ref="searchInputRef"
               v-model="searchQuery"
-              placeholder="Buscar por nombre…"
+              placeholder="Buscar nombre, SKU o código…"
+              @keydown="onSearchKeydown"
               density="comfortable"
               variant="outlined"
               clearable
@@ -178,6 +178,34 @@
                   </button>
                 </span>
               </div>
+
+              <div class="results-summary__tools">
+                <span class="kbd-hint">
+                  <kbd>&uarr;</kbd><kbd>&darr;</kbd> moverse
+                  <kbd>Enter</kbd> agregar
+                  <kbd>Esc</kbd> cerrar
+                </span>
+                <div class="view-switch">
+                  <button
+                    type="button"
+                    :class="{ 'view-switch__btn--on': viewMode === 'list' }"
+                    class="view-switch__btn"
+                    title="Lista compacta"
+                    @click="setViewMode('list')"
+                  >
+                    <v-icon size="15">mdi-format-list-bulleted</v-icon>
+                  </button>
+                  <button
+                    type="button"
+                    :class="{ 'view-switch__btn--on': viewMode === 'grid' }"
+                    class="view-switch__btn"
+                    title="Fichas con foto"
+                    @click="setViewMode('grid')"
+                  >
+                    <v-icon size="15">mdi-view-grid-outline</v-icon>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div v-if="loading" class="state-box">
@@ -201,7 +229,7 @@
               </div>
             </div>
 
-            <div v-else class="results-grid">
+            <div v-else-if="viewMode === 'grid'" class="results-grid">
               <article
                 v-for="item in filteredItems"
                 :key="getItemKey(item)"
@@ -285,6 +313,61 @@
                 </div>
               </article>
             </div>
+
+            <!-- Lista compacta: una linea por producto, para leer de un saque -->
+            <div v-else class="results-list">
+              <button
+                v-for="(item, i) in filteredItems"
+                :key="getItemKey(item)"
+                :ref="(el) => setRowRef(el, i)"
+                type="button"
+                class="qrow"
+                :class="{
+                  'qrow--cursor': i === cursorIndex,
+                  'qrow--out': getStock(item) <= 0,
+                }"
+                :disabled="getStock(item) <= 0"
+                @mousemove="cursorIndex = i"
+                @click="addToCart(item)"
+              >
+                <span class="qrow__thumb">
+                  <v-img
+                    v-if="getImage(item)"
+                    :src="getImage(item)"
+                    :aspect-ratio="1"
+                    cover
+                  />
+                  <v-icon v-else size="17">mdi-package-variant-closed</v-icon>
+                </span>
+
+                <span class="qrow__main">
+                  <span class="qrow__name" :title="getName(item)">
+                    {{ getName(item) }}
+                  </span>
+                  <span class="qrow__sub">
+                    <span v-if="getBrand(item)">{{ getBrand(item) }}</span>
+                    <span v-if="getModel(item)">{{ getModel(item) }}</span>
+                    <span v-if="getBarcode(item) || getSku(item)" class="qrow__code">
+                      {{ getBarcode(item) || getSku(item) }}
+                    </span>
+                  </span>
+                </span>
+
+                <span
+                  class="qrow__stock"
+                  :class="stockLevelClass(getStock(item))"
+                  :title="getStock(item) > 0 ? `Stock: ${getStock(item)}` : 'Sin stock'"
+                >
+                  {{ getStock(item) }}
+                </span>
+
+                <span class="qrow__price">{{ formatMoney(getPrice(item)) }}</span>
+
+                <span class="qrow__add">
+                  <v-icon size="16">mdi-cart-plus</v-icon>
+                </span>
+              </button>
+            </div>
           </section>
         </div>
       </div>
@@ -322,12 +405,42 @@ const selectedModel = ref(null);
 const searchInputRef = ref(null);
 const copiedKey = ref(null);
 
+// La consulta rapida arranca en lista: con 300 productos las fichas con
+// foto obligan a barrer la pantalla, la lista se lee de corrido.
+const VIEW_KEY = "pos.consulta.vista";
+const viewMode = ref(leerVistaGuardada());
+const cursorIndex = ref(0);
+const rowRefs = ref([]);
+
 let copyResetTimer = null;
+
+function leerVistaGuardada() {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    return v === "grid" ? "grid" : "list";
+  } catch {
+    return "list";
+  }
+}
+
+function setViewMode(modo) {
+  viewMode.value = modo;
+  try {
+    localStorage.setItem(VIEW_KEY, modo);
+  } catch {
+    /* modo privado: se pierde la preferencia, no importa */
+  }
+}
+
+function setRowRef(el, i) {
+  if (el) rowRefs.value[i] = el;
+}
 
 watch(
   () => props.modelValue,
   async (val) => {
     if (val) {
+      cursorIndex.value = 0;
       await nextTick();
       focusSearch();
       // Al abrir, si no hay items aún, disparar una búsqueda vacía para traer catálogo
@@ -659,6 +772,11 @@ const filteredItems = computed(() => {
   return list;
 });
 
+watch(filteredItems, (list) => {
+  rowRefs.value = [];
+  if (cursorIndex.value > list.length - 1) cursorIndex.value = 0;
+});
+
 // ─── Acciones ───────────────────────────────────────────────
 function closeDialog() {
   emit("update:modelValue", false);
@@ -679,6 +797,36 @@ function clearAllFilters() {
 
 function addToCart(item) {
   emit("add-to-cart", item);
+}
+
+// El foco se queda en el buscador: se sigue tipeando mientras se mueve
+// el cursor con las flechas y se agrega con Enter, sin tocar el mouse.
+function onSearchKeydown(e) {
+  const total = filteredItems.value.length;
+  if (!total) return;
+
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const paso = e.key === "ArrowDown" ? 1 : -1;
+    cursorIndex.value = (cursorIndex.value + paso + total) % total;
+    scrollCursorIntoView();
+    return;
+  }
+
+  if (e.key === "Enter") {
+    const item = filteredItems.value[cursorIndex.value];
+    if (!item) return;
+    e.preventDefault();
+    if (getStock(item) > 0) addToCart(item);
+  }
+}
+
+function scrollCursorIntoView() {
+  nextTick(() => {
+    rowRefs.value[cursorIndex.value]?.scrollIntoView?.({
+      block: "nearest",
+    });
+  });
 }
 
 async function copyBarcode(item) {
@@ -723,7 +871,7 @@ async function copyBarcode(item) {
 
   /* Scrollbar estilo app moderno */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.22) transparent;
 }
 
 .consulta-body::-webkit-scrollbar {
@@ -736,7 +884,7 @@ async function copyBarcode(item) {
 }
 
 .consulta-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -955,9 +1103,9 @@ async function copyBarcode(item) {
   flex-direction: column;
   min-height: 290px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  color: rgba(var(--v-theme-on-surface), 0.92);
   overflow: hidden;
   transition:
     border-color 0.14s ease,
@@ -969,7 +1117,7 @@ async function copyBarcode(item) {
   border-color: rgba(var(--v-theme-primary), 0.5);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 /* ─── Imagen arriba (altura fija) ─────────────────────────── */
@@ -978,8 +1126,8 @@ async function copyBarcode(item) {
   width: 100%;
   height: 160px;
   flex: 0 0 160px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   overflow: hidden;
 }
 
@@ -1003,7 +1151,7 @@ async function copyBarcode(item) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 /* Badge de stock flotante sobre la imagen (semáforo) */
@@ -1054,7 +1202,7 @@ async function copyBarcode(item) {
   padding: 9px 10px 10px;
   flex: 1 1 auto;
   min-height: 130px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(var(--v-theme-on-surface), 0.92);
 }
 
 .product-card__name {
@@ -1062,7 +1210,7 @@ async function copyBarcode(item) {
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.005em;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(var(--v-theme-on-surface), 0.96);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1078,12 +1226,12 @@ async function copyBarcode(item) {
   gap: 4px;
   padding: 3px 7px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10.5px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(var(--v-theme-on-surface), 0.85);
   letter-spacing: 0.02em;
   min-width: 0;
 }
@@ -1134,8 +1282,8 @@ async function copyBarcode(item) {
   align-items: center;
   padding: 1px 6px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.85);
   font-size: 10px;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -1154,8 +1302,8 @@ async function copyBarcode(item) {
 
 .meta-chip--muted {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
+  color: rgba(var(--v-theme-on-surface), 0.65);
   text-transform: none;
 }
 
@@ -1173,7 +1321,7 @@ async function copyBarcode(item) {
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(var(--v-theme-on-surface), 0.96);
   font-feature-settings: "tnum";
   line-height: 1.1;
 }
@@ -1264,6 +1412,246 @@ async function copyBarcode(item) {
 
   .product-card__price {
     font-size: 14px;
+  }
+}
+/* ─── Herramientas del encabezado de resultados ─────────────── */
+.results-summary__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.kbd-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.view-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+}
+
+.view-switch__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 23px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.view-switch__btn:hover {
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+
+.view-switch__btn--on {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-primary));
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.14);
+}
+
+/* ─── Lista compacta (modo consulta rapida) ─────────────────── */
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qrow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 44px auto 30px;
+  align-items: center;
+  gap: 10px;
+
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.qrow:nth-child(even) {
+  background: rgba(var(--v-theme-on-surface), 0.022);
+}
+
+.qrow--cursor {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.34);
+}
+
+.qrow--out {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.qrow__thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.28);
+}
+
+.qrow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.qrow__name {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: rgb(var(--v-theme-on-surface));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qrow__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qrow__code {
+  font-feature-settings: "tnum";
+  letter-spacing: 0.02em;
+  color: rgba(var(--v-theme-on-surface), 0.42);
+}
+
+.qrow__stock {
+  justify-self: center;
+  min-width: 30px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  font-feature-settings: "tnum";
+}
+
+.qrow__price {
+  justify-self: end;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgb(var(--v-theme-on-surface));
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+.qrow__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.qrow--out .qrow__add {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* El semaforo de stock reusa los mismos cortes que la ficha */
+.qrow__stock.level-high {
+  background: rgba(34, 197, 94, 0.16);
+  color: rgb(21, 128, 61);
+}
+
+.qrow__stock.level-mid {
+  background: rgba(234, 179, 8, 0.18);
+  color: rgb(161, 98, 7);
+}
+
+.qrow__stock.level-low,
+.qrow__stock.level-out {
+  background: rgba(239, 68, 68, 0.16);
+  color: rgb(185, 28, 28);
+}
+
+:global(.v-theme--adminDark) .qrow__stock.level-high {
+  color: rgb(134, 239, 172);
+}
+
+:global(.v-theme--adminDark) .qrow__stock.level-mid {
+  color: rgb(253, 224, 71);
+}
+
+:global(.v-theme--adminDark) .qrow__stock.level-low,
+:global(.v-theme--adminDark) .qrow__stock.level-out {
+  color: rgb(252, 165, 165);
+}
+
+/* La marca en la ficha se penso sobre fondo oscuro */
+:global(.v-theme--light) .meta-chip--brand,
+:global(.v-theme--adminLight) .meta-chip--brand {
+  background: rgba(20, 136, 209, 0.12);
+  color: rgb(15, 105, 163);
+}
+
+@media (max-width: 760px) {
+  .qrow {
+    grid-template-columns: 30px minmax(0, 1fr) auto 28px;
+  }
+
+  .qrow__stock {
+    display: none;
+  }
+
+  .kbd-hint {
+    display: none;
   }
 }
 </style>

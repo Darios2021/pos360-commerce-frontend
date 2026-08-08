@@ -701,6 +701,44 @@ defineExpose({
 }
 
 /* =========================
+   TEMA CLARO
+   Las fichas se disenaron sobre fondo oscuro: los textos y los bordes
+   usan blanco con alfa y sobre fondo claro quedan invisibles. Aca se
+   reescriben esos tonos contra la tinta de la superficie. El estado
+   activo no se toca: ahi el fondo es el color saturado y el blanco va.
+========================= */
+:global(.v-theme--light) .ck-cash-tile {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.022);
+}
+
+:global(.v-theme--light) .ck-cash-tile__label {
+  color: rgba(15, 23, 42, 0.6);
+}
+
+:global(.v-theme--light) .ck-cash-tile__value {
+  color: rgba(15, 23, 42, 0.9);
+}
+
+:global(.v-theme--light) .ck-manual-input__icon {
+  background: rgba(139, 92, 246, 0.12);
+  color: rgb(109, 62, 216);
+}
+
+:global(.v-theme--light) .ck-manual-input {
+  color: rgb(15, 23, 42);
+}
+
+:global(.v-theme--light) .ck-manual-input::placeholder {
+  color: rgba(15, 23, 42, 0.38);
+}
+
+:global(.v-theme--light) .ck-status--neutral {
+  color: rgba(15, 23, 42, 0.66);
+  background: rgba(15, 23, 42, 0.05);
+}
+
+/* =========================
    RESPONSIVE
 ========================= */
 @media (max-width: 760px) {
