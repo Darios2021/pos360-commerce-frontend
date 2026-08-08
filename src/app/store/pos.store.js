@@ -3,6 +3,7 @@
 
 import { defineStore } from "pinia";
 import http from "../api/http";
+import { claveParaCobro, cobroConfirmado } from "./claveDeCobro";
 
 function toNum(v, d = 0) {
   const n = Number(v);
@@ -12,17 +13,6 @@ function toNum(v, d = 0) {
 // El stock se guarda con 3 decimales pero el POS vende por unidad. Sin esto el
 // aviso decia "Disponible: 1.000" para una sola unidad, y en es-AR el punto es
 // separador de miles.
-// Clave del intento de cobro. Se genera una por carrito y sobrevive a los
-// reintentos: si la primera request se pierde en la red y el cajero vuelve a
-// cobrar, la API reconoce la clave y devuelve la venta que ya registro en vez
-// de crear otra. Se renueva recien cuando el carrito arranca de cero.
-function nuevaClaveDeCobro() {
-  const azar =
-    globalThis.crypto?.randomUUID?.() ??
-    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-  return `pos-${azar}`.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
-}
-
 function cantidadLegible(v) {
   const n = toNum(v, 0);
   return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
@@ -670,8 +660,9 @@ export const usePosStore = defineStore("pos", {
     toast: { show: false, text: "" },
     last_sale: null,
 
-    // Identifica el intento de cobro en curso. Se mantiene entre reintentos y
-    // se renueva al vaciar el carrito, o sea recien cuando empieza otra venta.
+    // Clave del intento en curso, solo para mostrarla o depurar. La fuente de
+    // verdad es store/claveDeCobro.js, que la ata al contenido del cobro y la
+    // guarda para que sobreviva a una recarga.
     claveDeCobro: null,
   }),
 
@@ -800,9 +791,6 @@ export const usePosStore = defineStore("pos", {
 
     clearCart() {
       this.cart = [];
-      // Carrito nuevo, venta nueva: la clave anterior ya no sirve. Si no se
-      // renovara, la segunda venta del dia chocaria con la clave de la primera
-      // y la API devolveria aquella en vez de registrar esta.
       this.claveDeCobro = null;
     },
 
@@ -1169,7 +1157,10 @@ export const usePosStore = defineStore("pos", {
         });
         console.log("[POS_STORE] POST /pos/sales payload =>", JSON.parse(JSON.stringify(payload)));
 
-        if (!this.claveDeCobro) this.claveDeCobro = nuevaClaveDeCobro();
+        // La clave va atada al contenido del cobro y sobrevive a una recarga.
+        // Si este mismo cobro ya se intento, se reusa: el servidor devuelve la
+        // venta que registro en vez de crear otra.
+        this.claveDeCobro = claveParaCobro(payload);
         const { data } = await http.post("/pos/sales", payload, {
           headers: { "Idempotency-Key": this.claveDeCobro },
         });
@@ -1177,6 +1168,10 @@ export const usePosStore = defineStore("pos", {
         if (data?.repetida) {
           console.warn("[POS_STORE] la venta ya estaba registrada, no se cobro de nuevo");
         }
+
+        // Entro: el pendiente se cierra y la proxima venta arranca con clave nueva.
+        cobroConfirmado();
+        this.claveDeCobro = null;
 
         let sale = normalizeSaleShape(data);
 
