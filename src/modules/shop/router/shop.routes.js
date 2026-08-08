@@ -4,23 +4,23 @@
 import ShopLayout from "@/modules/shop/layouts/ShopLayout.vue";
 
 import ShopHome from "@/modules/shop/pages/ShopHome.vue";
-import ShopCategory from "@/modules/shop/pages/ShopCategory.vue";
-import ShopSearch from "@/modules/shop/pages/ShopSearch.vue";
-import ShopProduct from "@/modules/shop/pages/ShopProduct.vue";
-import ShopCart from "@/modules/shop/pages/ShopCart.vue";
+const ShopCategory = () => import("@/modules/shop/pages/ShopCategory.vue");
+const ShopSearch = () => import("@/modules/shop/pages/ShopSearch.vue");
+const ShopProduct = () => import("@/modules/shop/pages/ShopProduct.vue");
+const ShopCart = () => import("@/modules/shop/pages/ShopCart.vue");
 
 // ✅ Checkout
-import ShopCheckout from "@/modules/shop/pages/ShopCheckout.vue";
+const ShopCheckout = () => import("@/modules/shop/pages/ShopCheckout.vue");
 
 // ✅ Comprobante / éxito de compra
-import ShopCheckoutSuccess from "@/modules/shop/pages/ShopCheckoutSuccess.vue";
+const ShopCheckoutSuccess = () => import("@/modules/shop/pages/ShopCheckoutSuccess.vue");
 
 // ✅ NUEVA pantalla full-screen de categorías
-import ShopCategories from "@/modules/shop/pages/ShopCategories.vue";
+const ShopCategories = () => import("@/modules/shop/pages/ShopCategories.vue");
 
 // ✅ NUEVAS pantallas mobile footer
-import ShopClips from "@/modules/shop/pages/ShopClips.vue";
-import ShopMore from "@/modules/shop/pages/ShopMore.vue";
+const ShopClips = () => import("@/modules/shop/pages/ShopClips.vue");
+const ShopMore = () => import("@/modules/shop/pages/ShopMore.vue");
 
 // ✅ Mi cuenta
 import shopAccountRoutes from "@/modules/shop/router/shop.account.routes";

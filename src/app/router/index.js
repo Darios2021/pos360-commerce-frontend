@@ -24,37 +24,52 @@ import { shopAdminRoutes } from "@/app/router/shopAdmin.routes";
 
 // Pages
 import LoginPage from "@/modules/auth/pages/LoginPage.vue";
-import ProfilePage from "@/modules/account/pages/ProfilePage.vue";
-import DashboardHome from "@/modules/dashboard/pages/DashboardHome.vue";
+// Las paginas se cargan al entrar a su ruta, no al abrir la app. Antes todo
+// viajaba en un solo bundle: el cajero esperaba a que bajaran el editor de
+// productos, la importacion por Excel y la tienda publica antes de poder
+// cobrar. Medido sobre el despliegue: 3.481 kB -> 1.958 kB hasta el POS
+// operativo, y xlsx, jspdf y html2canvas dejan de bajarse.
+//
+// Quedan eager AppShell y AuthLayout (hacen falta en el primer pintado),
+// LoginPage (es la pantalla de entrada) y ShopLayout / ShopHome (primer
+// pintado de la tienda publica, que ademas se prerrenderiza).
+//
+// Nota para el que venga: si al diferir aparecen errores de vue-router del
+// tipo 'Cannot destructure property matched of s.value', mirar primero si
+// falta una ruta con nombre. Nos paso: un link del menu apuntaba a un name
+// inexistente y el sintoma parecia del lazy loading, que no tenia nada que
+// ver.
+const ProfilePage = () => import("@/modules/account/pages/ProfilePage.vue");
+const DashboardHome = () => import("@/modules/dashboard/pages/DashboardHome.vue");
 
-import PosPage from "@/modules/pos/pages/PosPage.vue";
-import PosSalesPage from "@/modules/pos/pages/PosSalesPage.vue";
-import PosSaleDetailPage from "@/modules/pos/pages/PosSaleDetailPage.vue";
+const PosPage = () => import("@/modules/pos/pages/PosPage.vue");
+const PosSalesPage = () => import("@/modules/pos/pages/PosSalesPage.vue");
+const PosSaleDetailPage = () => import("@/modules/pos/pages/PosSaleDetailPage.vue");
 
-import ProductsListPage from "@/modules/products/pages/ProductsListPage.vue";
-import BulkLabelsPage    from "@/modules/products/pages/BulkLabelsPage.vue";
-import ProductFormPage from "@/modules/products/pages/ProductFormPage.vue";
-import ProductProfilePage from "@/modules/products/pages/ProductProfilePage.vue";
-import ProductDetailViewPage from "@/modules/products/pages/ProductDetailViewPage.vue";
+const ProductsListPage = () => import("@/modules/products/pages/ProductsListPage.vue");
+const BulkLabelsPage = () => import("@/modules/products/pages/BulkLabelsPage.vue");
+const ProductFormPage = () => import("@/modules/products/pages/ProductFormPage.vue");
+const ProductProfilePage = () => import("@/modules/products/pages/ProductProfilePage.vue");
+const ProductDetailViewPage = () => import("@/modules/products/pages/ProductDetailViewPage.vue");
 
-import ImportProductsPage from "@/modules/import/pages/ImportProductsPage.vue";
+const ImportProductsPage = () => import("@/modules/import/pages/ImportProductsPage.vue");
 
-import CategoriesPage from "@/modules/categories/pages/CategoriesPage.vue";
-import InventoryPage from "@/modules/inventory/pages/InventoryPage.vue";
-import StockPage from "@/modules/stock/pages/StockPage.vue";
+const CategoriesPage = () => import("@/modules/categories/pages/CategoriesPage.vue");
+const InventoryPage = () => import("@/modules/inventory/pages/InventoryPage.vue");
+const StockPage = () => import("@/modules/stock/pages/StockPage.vue");
 
-import StockTransfersPage from "@/modules/dashboard/pages/StockTransfersPage.vue";
-import UsersPage from "@/modules/users/pages/UsersPage.vue";
-import FiscalAdminPage from "@/modules/admin/pages/FiscalAdminPage.vue";
-import PaymentMethodsAdminPage from "@/modules/admin/pages/PaymentMethodsAdminPage.vue";
-import CashRegistersAdminPage from "@/modules/admin/pages/CashRegistersAdminPage.vue";
-import CashRegisterDetailPage from "@/modules/admin/pages/CashRegisterDetailPage.vue";
-import TelegramSettingsAdminPage from "@/modules/admin/pages/TelegramSettingsAdminPage.vue";
-import CustomersAdminPage from "@/modules/admin/pages/CustomersAdminPage.vue";
-import CustomerDetailView from "@/modules/admin/pages/CustomerDetailView.vue";
-import BranchesAdminPage from "@/modules/admin/pages/BranchesAdminPage.vue";
-import ReportsShellPage from "@/modules/reports/pages/ReportsShellPage.vue";
-import AppInstallPage from "@/app/pages/AppInstallPage.vue";
+const StockTransfersPage = () => import("@/modules/dashboard/pages/StockTransfersPage.vue");
+const UsersPage = () => import("@/modules/users/pages/UsersPage.vue");
+const FiscalAdminPage = () => import("@/modules/admin/pages/FiscalAdminPage.vue");
+const PaymentMethodsAdminPage = () => import("@/modules/admin/pages/PaymentMethodsAdminPage.vue");
+const CashRegistersAdminPage = () => import("@/modules/admin/pages/CashRegistersAdminPage.vue");
+const CashRegisterDetailPage = () => import("@/modules/admin/pages/CashRegisterDetailPage.vue");
+const TelegramSettingsAdminPage = () => import("@/modules/admin/pages/TelegramSettingsAdminPage.vue");
+const CustomersAdminPage = () => import("@/modules/admin/pages/CustomersAdminPage.vue");
+const CustomerDetailView = () => import("@/modules/admin/pages/CustomerDetailView.vue");
+const BranchesAdminPage = () => import("@/modules/admin/pages/BranchesAdminPage.vue");
+const ReportsShellPage = () => import("@/modules/reports/pages/ReportsShellPage.vue");
+const AppInstallPage = () => import("@/app/pages/AppInstallPage.vue");
 
 const routes = [
   ...shopRoutes,

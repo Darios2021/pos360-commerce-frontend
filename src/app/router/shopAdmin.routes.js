@@ -1,32 +1,32 @@
 // src/app/router/shopAdmin.routes.js
 // ✅ COPY-PASTE FINAL COMPLETO (cuelga bajo /app/*)
 
-import ShopBrandingHubView from "@/modules/admin/pages/ShopBrandingHubView.vue";
-import BrandingIdentityView from "@/modules/admin/pages/BrandingIdentityView.vue";
-import BrandingThemeView from "@/modules/admin/pages/BrandingThemeView.vue";
-import BrandingContactView from "@/modules/admin/pages/BrandingContactView.vue";
-import BrandingSocialView from "@/modules/admin/pages/BrandingSocialView.vue";
+const ShopBrandingHubView = () => import("@/modules/admin/pages/ShopBrandingHubView.vue");
+const BrandingIdentityView = () => import("@/modules/admin/pages/BrandingIdentityView.vue");
+const BrandingThemeView = () => import("@/modules/admin/pages/BrandingThemeView.vue");
+const BrandingContactView = () => import("@/modules/admin/pages/BrandingContactView.vue");
+const BrandingSocialView = () => import("@/modules/admin/pages/BrandingSocialView.vue");
 
 // ✅ LISTADO / BANDEJA de pedidos (TU VISTA)
-import ShopOrdersView from "@/modules/admin/pages/ShopOrdersView.vue";
-import ShopOrderDetailView from "@/modules/admin/pages/ShopOrderDetailView.vue";
+const ShopOrdersView = () => import("@/modules/admin/pages/ShopOrdersView.vue");
+const ShopOrderDetailView = () => import("@/modules/admin/pages/ShopOrderDetailView.vue");
 // (si preferís la otra, cambiá ShopOrdersView por ShopOrdersInboxView)
 // import ShopOrdersInboxView from "@/modules/admin/pages/ShopOrdersInboxView.vue";
 
 // ✅ Settings (solo los que tienen backend real)
-import ShopPaymentsSettingsView from "@/modules/admin/pages/ShopPaymentsSettingsView.vue";
+const ShopPaymentsSettingsView = () => import("@/modules/admin/pages/ShopPaymentsSettingsView.vue");
 
 // ✅ Links Tienda
-import ShopLinksView from "@/modules/admin/pages/ShopLinksView.vue";
+const ShopLinksView = () => import("@/modules/admin/pages/ShopLinksView.vue");
 
 // ✅ Galería Multimedia
-import GaleriaMultimediaView from "@/modules/admin/pages/GaleriaMultimediaView.vue";
+const GaleriaMultimediaView = () => import("@/modules/admin/pages/GaleriaMultimediaView.vue");
 
 // ✅ CRM email PRO
-import EmailPromoBlocksView from "@/modules/admin/pages/EmailPromoBlocksView.vue";
+const EmailPromoBlocksView = () => import("@/modules/admin/pages/EmailPromoBlocksView.vue");
 
 // ✅ Consultas web (Q&A + Reviews)
-import ShopQAView from "@/modules/admin/pages/ShopQAView.vue";
+const ShopQAView = () => import("@/modules/admin/pages/ShopQAView.vue");
 
 export const shopAdminRoutes = [
   {
