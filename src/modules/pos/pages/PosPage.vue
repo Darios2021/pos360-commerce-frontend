@@ -10,7 +10,6 @@
       <AppPageHeader
         icon="mdi-point-of-sale"
         title="Punto de Venta"
-        subtitle="Operación rápida con accesos por teclado (F1, F2, F4, F5, F6, F9)"
         dense
         class="pos-page-header"
       />
