@@ -706,25 +706,30 @@ defineExpose({
    usan blanco con alfa y sobre fondo claro quedan invisibles. Aca se
    reescriben esos tonos contra la tinta de la superficie. Ojo: aca
    :global() NO sirve, el build se come el ancestro y la regla termina
-   pintando cualquier nodo con la clase de tema. El estado
-   activo no se toca: ahi el fondo es el color saturado y el blanco va.
+   pintando cualquier nodo con la clase de tema.
+
+   El :not(.active):not(.cursorActive) NO es adorno. Sin el, estas reglas
+   empatan en especificidad con .ck-cash-tile.active y, por venir despues,
+   le borran el relleno de color a la ficha elegida: queda el texto blanco
+   del estado activo sobre un fondo casi blanco. Excluir el activo deja
+   que siga mandando el gradiente saturado, que es donde el blanco va.
 ========================= */
-.v-theme--light .ck-cash-tile,
-.v-theme--adminLight .ck-cash-tile,
-.v-theme--shopLight .ck-cash-tile {
+.v-theme--light .ck-cash-tile:not(.active):not(.cursorActive),
+.v-theme--adminLight .ck-cash-tile:not(.active):not(.cursorActive),
+.v-theme--shopLight .ck-cash-tile:not(.active):not(.cursorActive) {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(15, 23, 42, 0.022);
 }
 
-.v-theme--light .ck-cash-tile__label,
-.v-theme--adminLight .ck-cash-tile__label,
-.v-theme--shopLight .ck-cash-tile__label {
+.v-theme--light .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__label,
+.v-theme--adminLight .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__label,
+.v-theme--shopLight .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__label {
   color: rgba(15, 23, 42, 0.6);
 }
 
-.v-theme--light .ck-cash-tile__value,
-.v-theme--adminLight .ck-cash-tile__value,
-.v-theme--shopLight .ck-cash-tile__value {
+.v-theme--light .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__value,
+.v-theme--adminLight .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__value,
+.v-theme--shopLight .ck-cash-tile:not(.active):not(.cursorActive) .ck-cash-tile__value {
   color: rgba(15, 23, 42, 0.9);
 }
 
