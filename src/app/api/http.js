@@ -9,6 +9,7 @@
 
 import axios from "axios";
 import { loadAuth, clearAuth } from "../utils/storage";
+import { marcarCaido, marcarEnLinea, esFalloDeRed } from "@/app/store/conexion.state";
 
 function trimEndSlashes(s) {
   return String(s || "").replace(/\/+$/, "");
@@ -90,9 +91,17 @@ http.interceptors.request.use((config) => {
 
 // Friendly errors
 http.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    // El servidor contesto: haya lo que haya pasado con la red antes, ahora hay
+    // conexion. Es la unica senal confiable, mas que navigator.onLine.
+    marcarEnLinea();
+    return r;
+  },
   (err) => {
     const status = Number(err?.response?.status || 0);
+
+    if (esFalloDeRed(err)) marcarCaido();
+    else marcarEnLinea();
 
     if (status === 401) {
       try {

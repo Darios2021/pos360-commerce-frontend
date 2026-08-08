@@ -2,6 +2,7 @@
   <v-container fluid class="pos-root" :style="cssVars">
     <!-- ─── MOBILE: layout app-like con FAB carrito + bottom-sheets ─── -->
     <template v-if="mobile">
+      <PosEstadoConexion />
       <PosMobileLayout />
     </template>
 
@@ -13,6 +14,7 @@
         dense
         class="pos-page-header"
       />
+      <PosEstadoConexion />
       <PosGridLayout class="pos-layout">
         <template #topbar>
           <div class="pos-shell pos-shell--topbar" data-tour="topbar">
@@ -53,6 +55,7 @@ import PosCartOnly from "../sections/PosCartOnly.vue";
 import PosDialogs from "../dialogs/PosDialogs.vue";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import PosMobileLayout from "../layouts/PosMobileLayout.vue";
+import PosEstadoConexion from "../components/PosEstadoConexion.vue";
 import { usePosUiConfig } from "../composables/usePosUiConfig";
 import { useDisplay } from "vuetify";
 
