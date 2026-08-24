@@ -60,15 +60,15 @@
         </div>
       </div>
 
-      <div class="kits-grid mb-10">
-        <SeguridadKitCard
-          v-for="k in kits"
-          :key="k.id"
-          :kit="k"
-          :catalogo="catalogoPorId"
-          :cargando="cargandoKits"
-        />
+      <div v-if="cargandoKits" class="product-grid mb-10">
+        <v-skeleton-loader v-for="n in 4" :key="n" type="image,article" />
       </div>
+      <div v-else-if="kits.length" class="product-grid mb-10">
+        <ProductCard v-for="k in kits" :key="k.product_id" :p="k" />
+      </div>
+      <v-alert v-else type="info" variant="tonal" rounded="lg" class="mb-10">
+        Todavía no hay kits cargados en esta categoría.
+      </v-alert>
 
       <!-- ── SERVICIOS ── -->
       <div class="text-h6 font-weight-black mb-4">Soluciones de Seguridad</div>
@@ -174,16 +174,12 @@ import { ref, computed, onMounted } from "vue";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
-import SeguridadKitCard from "@/modules/shop/components/SeguridadKitCard.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
-import { KITS_SEGURIDAD, idsDeKits } from "@/modules/shop/data/kits.seguridad";
 
 // SEGURIDAD ELECTRONICA en la taxonomia del shop.
 const CATEGORIA_SEGURIDAD = 11;
 const POR_PAGINA = 24;
 const WHATSAPP = "https://wa.me/5492646000000";
-
-const kits = KITS_SEGURIDAD;
 
 const cargando = ref(true);
 const cargandoMas = ref(false);
@@ -197,9 +193,9 @@ const subcategorias = ref([]);
 const subSel = ref(null);
 const marcaSel = ref(null);
 
-// Indice product_id -> producto, para que los kits resuelvan precio e imagen
-// sin pedir cada componente por separado.
-const catalogoPorId = ref({});
+// Los kits son productos con is_kit=1: se muestran con la misma ProductCard
+// que el resto del sitio y se compran por el flujo normal de producto.
+const kits = ref([]);
 
 const marcas = ref([]);
 const hayMas = computed(() => items.value.length < total.value);
@@ -234,7 +230,10 @@ async function traer({ reset = false } = {}) {
       limit: POR_PAGINA,
     });
 
-    const nuevos = Array.isArray(r?.items) ? r.items : [];
+    // Los kits ya tienen su propia seccion arriba: no se repiten en la grilla.
+    const nuevos = (Array.isArray(r?.items) ? r.items : []).filter(
+      (p) => !(p?.is_kit === true || Number(p?.is_kit) === 1)
+    );
     items.value = reset ? nuevos : [...items.value, ...nuevos];
     total.value = Number(r?.total || 0);
   } catch {
@@ -264,10 +263,10 @@ function elegirMarca(name) {
   traer({ reset: true });
 }
 
-// Trae la categoria entera de una para dos cosas: indexar los componentes de
-// los kits y contar marcas reales. El catalogo visible se pide aparte porque
-// se pagina y se filtra.
-async function traerTodoParaKits() {
+// Una sola pasada por la categoria entera para dos cosas: separar los kits
+// del resto y contar las marcas reales. El catalogo visible se pide aparte
+// porque se pagina y se filtra.
+async function traerKitsYMarcas() {
   try {
     const r = await getCatalog({
       category_id: CATEGORIA_SEGURIDAD,
@@ -278,25 +277,7 @@ async function traerTodoParaKits() {
     });
     const todos = Array.isArray(r?.items) ? r.items : [];
 
-    const idx = {};
-    for (const p of todos) idx[Number(p.product_id)] = p;
-
-    // Si algun componente de un kit no vino en la primera pagina, lo buscamos
-    // suelto en vez de dejar el kit incompleto.
-    const faltan = idsDeKits().filter((id) => !idx[id]);
-    if (faltan.length) {
-      const r2 = await getCatalog({
-        category_id: CATEGORIA_SEGURIDAD,
-        include_children: 1,
-        in_stock: 0,
-        page: 2,
-        limit: 200,
-      });
-      for (const p of Array.isArray(r2?.items) ? r2.items : []) {
-        idx[Number(p.product_id)] = p;
-      }
-    }
-    catalogoPorId.value = idx;
+    kits.value = todos.filter((p) => p?.is_kit === true || Number(p?.is_kit) === 1);
 
     const cont = new Map();
     for (const p of todos) {
@@ -309,7 +290,7 @@ async function traerTodoParaKits() {
       .sort((a, b) => b.n - a.n)
       .slice(0, 8);
   } catch {
-    catalogoPorId.value = {};
+    kits.value = [];
   } finally {
     cargandoKits.value = false;
   }
@@ -325,7 +306,7 @@ const services = [
 ];
 
 onMounted(async () => {
-  traerTodoParaKits();
+  traerKitsYMarcas();
   try {
     subcategorias.value = await getPublicCategoryChildren(CATEGORIA_SEGURIDAD);
   } catch {
@@ -378,14 +359,6 @@ onMounted(async () => {
 .hero-right { display: flex; justify-content: flex-end; align-items: center; }
 .hero-img { width: 400px; height: 200px; object-fit: contain; }
 
-/* Kits */
-.kits-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 16px;
-  align-items: stretch;
-}
-
 /* Subcategorias */
 .subs-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -426,6 +399,5 @@ onMounted(async () => {
 }
 @media (max-width: 600px) {
   .hero-inner { padding: 28px 0; }
-  .kits-grid { grid-template-columns: 1fr; }
 }
 </style>

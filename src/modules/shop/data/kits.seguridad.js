@@ -1,20 +1,19 @@
 // src/modules/shop/data/kits.seguridad.js
 //
-// Kits de seguridad electronica armados con productos REALES del catalogo.
+// ⚠ Esto NO es codigo de runtime: la pantalla ya no lo importa.
 //
-// Cada kit es una lista de product_id + cantidad. Los precios NO se escriben
-// aca: se calculan en vivo desde el catalogo, asi un cambio de lista se
-// refleja solo y no queda un precio viejo pegado en el codigo.
+// Es la semilla de los kits: la lista de que lleva cada uno, con productos
+// reales del catalogo. La lee el script de alta que los crea como productos
+// con is_kit=1 (deploy/crear-kits.mjs). Una vez creados, el shop los toma de
+// la API como cualquier otro producto y esta lista queda solo como registro
+// de con que criterio se armaron.
 //
 // Los componentes de cada kit son compatibles entre si a proposito: los
-// sensores AX Home van con el hub AX Home, los perifericos X28 con la central
-// X28. Mezclarlos daria un kit que no funciona.
+// perifericos AX Home van con el hub AX Home y los X28 con la central X28.
+// Mezclarlos daria un kit que no funciona.
 //
-// ⚠ Estos kits son una vista del front: NO son productos con is_kit=1 en la
-// base. El modelo lo soporta (products.is_kit + product_kit_items) y el
-// detalle publico ya los devuelve, pero no hay ninguno cargado. Mientras sean
-// solo de front, el kit no tiene SKU propio ni se vende como unidad en el POS:
-// al carrito entran sus componentes sueltos.
+// Los precios no se escriben aca. El script los suma desde el catalogo al
+// momento del alta.
 
 export const KITS_SEGURIDAD = [
   {
