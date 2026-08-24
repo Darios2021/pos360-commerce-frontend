@@ -55,7 +55,7 @@
         <div>
           <div class="text-h6 font-weight-black">Kits armados</div>
           <div class="text-body-2 text-medium-emphasis">
-            Combinaciones que funcionan entre sí, con todo el material de instalación.
+            Equipos completos, listos para instalar.
           </div>
         </div>
       </div>
@@ -193,8 +193,24 @@ const subcategorias = ref([]);
 const subSel = ref(null);
 const marcaSel = ref(null);
 
-// Los kits son productos con is_kit=1: se muestran con la misma ProductCard
-// que el resto del sitio y se compran por el flujo normal de producto.
+// Los kits se muestran con la misma ProductCard que el resto del sitio y se
+// compran por el flujo normal de producto: son productos reales, con su
+// precio cargado en el backoffice.
+//
+// Cual es un kit se decide de dos maneras, y alcanza con cualquiera:
+//   1. is_kit=1, la marca que pone el backoffice en la ficha del producto.
+//   2. La lista de abajo, para los kits que ya existen como producto pero
+//      todavia no tienen esa marca puesta. Sin esto quedan sueltos entre los
+//      sensores y las camaras, que es justamente lo que no queremos.
+// El dia que se marquen como kit en el backoffice, siguen saliendo igual y
+// esta lista se puede borrar sin tocar nada mas.
+const KITS_POR_ID = new Set([466, 588, 589, 603, 604]);
+
+function esKit(p) {
+  if (p?.is_kit === true || Number(p?.is_kit) === 1) return true;
+  return KITS_POR_ID.has(Number(p?.product_id));
+}
+
 const kits = ref([]);
 
 const marcas = ref([]);
@@ -231,9 +247,7 @@ async function traer({ reset = false } = {}) {
     });
 
     // Los kits ya tienen su propia seccion arriba: no se repiten en la grilla.
-    const nuevos = (Array.isArray(r?.items) ? r.items : []).filter(
-      (p) => !(p?.is_kit === true || Number(p?.is_kit) === 1)
-    );
+    const nuevos = (Array.isArray(r?.items) ? r.items : []).filter((p) => !esKit(p));
     items.value = reset ? nuevos : [...items.value, ...nuevos];
     total.value = Number(r?.total || 0);
   } catch {
@@ -277,7 +291,7 @@ async function traerKitsYMarcas() {
     });
     const todos = Array.isArray(r?.items) ? r.items : [];
 
-    kits.value = todos.filter((p) => p?.is_kit === true || Number(p?.is_kit) === 1);
+    kits.value = todos.filter(esKit);
 
     const cont = new Map();
     for (const p of todos) {
