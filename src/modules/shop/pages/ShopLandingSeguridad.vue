@@ -1,8 +1,16 @@
 <!-- src/modules/shop/pages/ShopLandingSeguridad.vue -->
+<!--
+  Landing de SEGURIDAD ELECTRONICA (/shop/seguridad).
+
+  Antes traia productos con search:"camara seguridad", que dejaba afuera
+  alarmas y cerco perimetral y colaba cosas de otras categorias. Ahora
+  consulta la categoria real (SEGURIDAD ELECTRONICA, id 11) con sus tres
+  subcategorias, y arma los kits sobre esos mismos productos.
+-->
 <template>
   <v-container fluid class="shop-page pa-0">
 
-    <!-- ── HERO FULL-BLEED ── -->
+    <!-- ── HERO ── -->
     <section class="hero-fullbleed">
       <div class="hero-inner">
         <div class="hero-grid">
@@ -10,10 +18,11 @@
             <div class="hero-kicker">San Juan Seguridad</div>
             <h1 class="hero-title">Protegé lo que<br>más importa</h1>
             <p class="hero-sub">
-              Sistemas de videovigilancia, alarmas y control de acceso
-              para hogares y empresas. Instalación y soporte incluidos.
+              Videovigilancia, alarmas y cerco perimetral para hogares y
+              empresas. Kits armados y listos para instalar, o cada
+              componente por separado.
             </p>
-            <div class="d-flex ga-2 flex-wrap mt-2 mb-4">
+            <div class="d-flex ga-2 flex-wrap mt-4">
               <v-chip color="white" variant="flat" size="small" label>
                 <v-icon start size="14" color="success">mdi-check-circle</v-icon>
                 Instalación incluida
@@ -26,29 +35,6 @@
                 <v-icon start size="14" color="success">mdi-check-circle</v-icon>
                 Garantía oficial
               </v-chip>
-            </div>
-            <div class="d-flex ga-3 flex-wrap">
-              <v-btn
-                color="white"
-                variant="flat"
-                rounded="lg"
-                size="large"
-                :to="{ name: 'shopSearch', query: { q: 'camara seguridad' } }"
-              >
-                Ver productos
-                <v-icon end>mdi-arrow-right</v-icon>
-              </v-btn>
-              <v-btn
-                variant="outlined"
-                rounded="lg"
-                size="large"
-                href="https://wa.me/5492646000000"
-                target="_blank"
-                style="color:white;border-color:rgba(255,255,255,0.5)"
-              >
-                <v-icon start>mdi-whatsapp</v-icon>
-                Consultar
-              </v-btn>
             </div>
           </div>
           <div class="hero-right">
@@ -64,16 +50,30 @@
 
     <section class="content pt-6">
 
+      <!-- ── KITS ── -->
+      <div class="sec-head">
+        <div>
+          <div class="text-h6 font-weight-black">Kits armados</div>
+          <div class="text-body-2 text-medium-emphasis">
+            Combinaciones que funcionan entre sí, con todo el material de instalación.
+          </div>
+        </div>
+      </div>
+
+      <div class="kits-grid mb-10">
+        <SeguridadKitCard
+          v-for="k in kits"
+          :key="k.id"
+          :kit="k"
+          :catalogo="catalogoPorId"
+          :cargando="cargandoKits"
+        />
+      </div>
+
       <!-- ── SERVICIOS ── -->
       <div class="text-h6 font-weight-black mb-4">Soluciones de Seguridad</div>
-      <div class="services-grid mb-8">
-        <v-card
-          v-for="s in services"
-          :key="s.title"
-          variant="flat"
-          rounded="xl"
-          class="pa-5"
-        >
+      <div class="services-grid mb-10">
+        <v-card v-for="s in services" :key="s.title" variant="flat" rounded="lg" class="pa-5">
           <div class="d-flex align-center ga-3 mb-3">
             <v-avatar color="primary" size="44" rounded="lg">
               <v-icon color="white">{{ s.icon }}</v-icon>
@@ -84,51 +84,79 @@
         </v-card>
       </div>
 
-      <!-- ── MARCAS ── -->
-      <div class="d-flex align-center ga-2 flex-wrap mb-8">
-        <span class="text-caption text-medium-emphasis font-weight-medium">Marcas:</span>
-        <v-chip v-for="b in brands" :key="b" size="small" variant="tonal" color="primary">{{ b }}</v-chip>
+      <!-- ── CATALOGO ── -->
+      <div class="sec-head">
+        <div>
+          <div class="text-h6 font-weight-black">Catálogo de Seguridad</div>
+          <div class="text-body-2 text-medium-emphasis">
+            {{ total }} productos en la categoría
+          </div>
+        </div>
       </div>
 
-      <!-- ── PRODUCTOS ── -->
-      <div class="text-h6 font-weight-black mb-4">Catálogo de Seguridad</div>
+      <!-- Subcategorias reales -->
+      <div class="subs-row mb-4">
+        <v-chip
+          :variant="subSel === null ? 'flat' : 'tonal'"
+          :color="subSel === null ? 'primary' : undefined"
+          label
+          @click="elegirSub(null)"
+        >
+          Todo
+        </v-chip>
+        <v-chip
+          v-for="s in subcategorias"
+          :key="s.id"
+          :variant="subSel === s.id ? 'flat' : 'tonal'"
+          :color="subSel === s.id ? 'primary' : undefined"
+          label
+          @click="elegirSub(s.id)"
+        >
+          {{ titulizar(s.name) }}
+        </v-chip>
+      </div>
 
-      <div v-if="loading" class="product-grid mb-6">
+      <!-- Marcas reales de la categoria -->
+      <div v-if="marcas.length" class="d-flex align-center ga-2 flex-wrap mb-6">
+        <span class="text-caption text-medium-emphasis font-weight-medium">Marcas:</span>
+        <v-chip
+          v-for="b in marcas"
+          :key="b.name"
+          size="small"
+          :variant="marcaSel === b.name ? 'flat' : 'tonal'"
+          color="primary"
+          label
+          @click="elegirMarca(b.name)"
+        >
+          {{ titulizar(b.name) }} ({{ b.n }})
+        </v-chip>
+      </div>
+
+      <div v-if="cargando" class="product-grid mb-6">
         <v-skeleton-loader v-for="n in 8" :key="n" type="image,article" />
       </div>
-      <div v-else-if="items.length" class="product-grid mb-4">
+      <div v-else-if="items.length" class="product-grid mb-6">
         <ProductCard v-for="p in items" :key="p.product_id" :p="p" />
       </div>
+      <v-alert v-else type="info" variant="tonal" rounded="lg" class="mb-6">
+        No hay productos para ese filtro.
+      </v-alert>
 
-      <div class="d-flex justify-center mb-8">
-        <v-btn
-          variant="tonal"
-          color="primary"
-          size="large"
-          rounded="lg"
-          :to="{ name: 'shopSearch', query: { q: 'seguridad' } }"
-        >
-          Ver todo el catálogo de seguridad
-          <v-icon end>mdi-arrow-right</v-icon>
+      <div v-if="hayMas" class="d-flex justify-center mb-10">
+        <v-btn variant="tonal" color="primary" size="large" rounded="lg" :loading="cargandoMas" @click="verMas">
+          Ver más productos
         </v-btn>
       </div>
 
       <!-- ── CTA ── -->
-      <v-card class="cta-card" variant="flat" rounded="xl">
+      <v-card class="cta-card" variant="flat" rounded="lg">
         <div class="pa-8 text-center">
           <v-icon size="48" color="white" class="mb-3">mdi-shield-lock</v-icon>
           <div class="text-h5 font-weight-black text-white mb-2">¿Necesitás un sistema a medida?</div>
           <div class="text-body-1 mb-5" style="color:rgba(255,255,255,0.8)">
             Nuestro equipo evalúa tu espacio y te diseña la solución más eficiente. Primera consulta sin cargo.
           </div>
-          <v-btn
-            color="white"
-            variant="flat"
-            rounded="lg"
-            size="large"
-            href="https://wa.me/5492646000000"
-            target="_blank"
-          >
+          <v-btn color="white" variant="flat" rounded="lg" size="large" :href="WHATSAPP" target="_blank">
             <v-icon start>mdi-whatsapp</v-icon>
             Hablar con un especialista
           </v-btn>
@@ -142,34 +170,168 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
+import { getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
+import SeguridadKitCard from "@/modules/shop/components/SeguridadKitCard.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
+import { KITS_SEGURIDAD, idsDeKits } from "@/modules/shop/data/kits.seguridad";
 
-const loading = ref(true);
-const items   = ref([]);
+// SEGURIDAD ELECTRONICA en la taxonomia del shop.
+const CATEGORIA_SEGURIDAD = 11;
+const POR_PAGINA = 24;
+const WHATSAPP = "https://wa.me/5492646000000";
+
+const kits = KITS_SEGURIDAD;
+
+const cargando = ref(true);
+const cargandoMas = ref(false);
+const cargandoKits = ref(true);
+
+const items = ref([]);
+const total = ref(0);
+const page = ref(1);
+
+const subcategorias = ref([]);
+const subSel = ref(null);
+const marcaSel = ref(null);
+
+// Indice product_id -> producto, para que los kits resuelvan precio e imagen
+// sin pedir cada componente por separado.
+const catalogoPorId = ref({});
+
+const marcas = ref([]);
+const hayMas = computed(() => items.value.length < total.value);
+
+const MINUSCULAS = new Set(["de", "del", "la", "el", "y", "con", "para", "en"]);
+
+function titulizar(s) {
+  const txt = String(s || "").toLowerCase().trim();
+  if (!txt) return "";
+  return txt
+    .split(/\s+/)
+    .map((w, i) => (i > 0 && MINUSCULAS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+async function traer({ reset = false } = {}) {
+  if (reset) {
+    page.value = 1;
+    cargando.value = true;
+  } else {
+    cargandoMas.value = true;
+  }
+
+  try {
+    const r = await getCatalog({
+      category_id: CATEGORIA_SEGURIDAD,
+      subcategory_id: subSel.value,
+      include_children: subSel.value == null ? 1 : 0,
+      brands: marcaSel.value || "",
+      in_stock: 0,
+      page: page.value,
+      limit: POR_PAGINA,
+    });
+
+    const nuevos = Array.isArray(r?.items) ? r.items : [];
+    items.value = reset ? nuevos : [...items.value, ...nuevos];
+    total.value = Number(r?.total || 0);
+  } catch {
+    if (reset) {
+      items.value = [];
+      total.value = 0;
+    }
+  } finally {
+    cargando.value = false;
+    cargandoMas.value = false;
+  }
+}
+
+function verMas() {
+  page.value += 1;
+  traer();
+}
+
+function elegirSub(id) {
+  subSel.value = subSel.value === id ? null : id;
+  marcaSel.value = null;
+  traer({ reset: true });
+}
+
+function elegirMarca(name) {
+  marcaSel.value = marcaSel.value === name ? null : name;
+  traer({ reset: true });
+}
+
+// Trae la categoria entera de una para dos cosas: indexar los componentes de
+// los kits y contar marcas reales. El catalogo visible se pide aparte porque
+// se pagina y se filtra.
+async function traerTodoParaKits() {
+  try {
+    const r = await getCatalog({
+      category_id: CATEGORIA_SEGURIDAD,
+      include_children: 1,
+      in_stock: 0,
+      page: 1,
+      limit: 200,
+    });
+    const todos = Array.isArray(r?.items) ? r.items : [];
+
+    const idx = {};
+    for (const p of todos) idx[Number(p.product_id)] = p;
+
+    // Si algun componente de un kit no vino en la primera pagina, lo buscamos
+    // suelto en vez de dejar el kit incompleto.
+    const faltan = idsDeKits().filter((id) => !idx[id]);
+    if (faltan.length) {
+      const r2 = await getCatalog({
+        category_id: CATEGORIA_SEGURIDAD,
+        include_children: 1,
+        in_stock: 0,
+        page: 2,
+        limit: 200,
+      });
+      for (const p of Array.isArray(r2?.items) ? r2.items : []) {
+        idx[Number(p.product_id)] = p;
+      }
+    }
+    catalogoPorId.value = idx;
+
+    const cont = new Map();
+    for (const p of todos) {
+      const b = String(p.brand || "").trim();
+      if (!b) continue;
+      cont.set(b, (cont.get(b) || 0) + 1);
+    }
+    marcas.value = [...cont.entries()]
+      .map(([name, n]) => ({ name, n }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 8);
+  } catch {
+    catalogoPorId.value = {};
+  } finally {
+    cargandoKits.value = false;
+  }
+}
 
 const services = [
-  { icon: "mdi-cctv",              title: "Videovigilancia IP",       desc: "Cámaras HD con visión nocturna, acceso remoto y grabación local o en la nube." },
-  { icon: "mdi-alarm-light",       title: "Sistemas de Alarma",       desc: "Detección de movimiento e intrusión con alertas en tiempo real a tu celular." },
-  { icon: "mdi-door-closed-lock",  title: "Control de Acceso",        desc: "Lectores biométricos, tarjetas y PIN para controlar el ingreso a tu propiedad." },
-  { icon: "mdi-wifi",              title: "Monitoreo Remoto",          desc: "Accedé a tus cámaras desde cualquier lugar del mundo desde la app móvil." },
-  { icon: "mdi-car-key",           title: "Seguridad Vehicular",       desc: "Rastreo GPS, inmovilizadores y alertas para tu flota o vehículo personal." },
-  { icon: "mdi-tools",             title: "Instalación Profesional",   desc: "Técnicos certificados con garantía de instalación y soporte post-venta." },
+  { icon: "mdi-cctv",             title: "Videovigilancia",         desc: "Cámaras Turbo HD e IP con visión nocturna a color, acceso remoto y grabación local." },
+  { icon: "mdi-alarm-light",      title: "Sistemas de Alarma",      desc: "Centrales cableadas e inalámbricas con sensores de movimiento, apertura y sirenas." },
+  { icon: "mdi-fence",            title: "Cerco Perimetral",        desc: "Energizadores, hilo electroplástico y todo el herraje para cerrar el perímetro." },
+  { icon: "mdi-fire",             title: "Detección de Incendio",   desc: "Centrales, detectores de humo, avisadores manuales y sirenas con estrobo." },
+  { icon: "mdi-server-network",   title: "Racks y Redes",           desc: "Switches PoE, gabinetes murales, bandejas y organizadores para la instalación." },
+  { icon: "mdi-tools",            title: "Instalación Profesional", desc: "Técnicos certificados con garantía de instalación y soporte post-venta." },
 ];
 
-const brands = ["Hikvision", "Dahua", "Imou", "TP-Link", "Reolink"];
-
 onMounted(async () => {
+  traerTodoParaKits();
   try {
-    const r = await getCatalog({ search: "camara seguridad", limit: 8, page: 1 });
-    items.value = Array.isArray(r?.items) ? r.items : [];
+    subcategorias.value = await getPublicCategoryChildren(CATEGORIA_SEGURIDAD);
   } catch {
-    items.value = [];
-  } finally {
-    loading.value = false;
+    subcategorias.value = [];
   }
+  await traer({ reset: true });
 });
 </script>
 
@@ -182,12 +344,21 @@ onMounted(async () => {
   padding-bottom: 24px;
 }
 
+.sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 /* Hero full-bleed */
 .hero-fullbleed {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   background: #02498b;
-  border-radius: 0 0 22px 22px;
+  border-radius: 0 0 14px 14px;
   overflow: hidden;
 }
 .hero-inner {
@@ -203,9 +374,41 @@ onMounted(async () => {
 }
 .hero-kicker { font-size: 11px; letter-spacing: 2px; font-weight: 400; opacity: .7; color: white; text-transform: uppercase; margin-bottom: 10px; }
 .hero-title { margin: 0 0 12px; color: white; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.1; font-weight: 500; }
-.hero-sub { margin: 0 0 10px; color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.6; max-width: 480px; }
+.hero-sub { margin: 0; color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.6; max-width: 480px; }
 .hero-right { display: flex; justify-content: flex-end; align-items: center; }
 .hero-img { width: 400px; height: 200px; object-fit: contain; }
+
+/* Kits */
+.kits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Subcategorias */
+.subs-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Grilla de productos: misma definicion que ShopCategory, para que las
+   tarjetas midan igual en las dos pantallas */
+.product-grid{
+  display:grid !important;
+  gap:12px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  margin: 0 auto !important;
+}
+.product-grid .grid-item,
+.product-grid .grid-item > *{
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+@media (max-width: 1100px){
+  .product-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 960px){
+  .product-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
 
 /* Services */
 .services-grid {
@@ -223,5 +426,6 @@ onMounted(async () => {
 }
 @media (max-width: 600px) {
   .hero-inner { padding: 28px 0; }
+  .kits-grid { grid-template-columns: 1fr; }
 }
 </style>
