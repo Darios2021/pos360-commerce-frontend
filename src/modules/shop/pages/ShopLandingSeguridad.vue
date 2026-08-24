@@ -282,14 +282,26 @@ function elegirMarca(name) {
 // porque se pagina y se filtra.
 async function traerKitsYMarcas() {
   try {
-    const r = await getCatalog({
-      category_id: CATEGORIA_SEGURIDAD,
-      include_children: 1,
-      in_stock: 0,
-      page: 1,
-      limit: 200,
-    });
-    const todos = Array.isArray(r?.items) ? r.items : [];
+    // La categoria no entra en una sola pagina: la API topea el limit en 100
+    // y hoy hay 119 productos. Pidiendo una sola pagina quedaban afuera tres
+    // kits y las marcas se contaban a medias. Recorremos todas las paginas.
+    const todos = [];
+    let pagina = 1;
+    let paginas = 1;
+    do {
+      const r = await getCatalog({
+        category_id: CATEGORIA_SEGURIDAD,
+        include_children: 1,
+        in_stock: 0,
+        page: pagina,
+        limit: 100,
+      });
+      const lote = Array.isArray(r?.items) ? r.items : [];
+      todos.push(...lote);
+      paginas = Number(r?.pages || 1);
+      pagina += 1;
+      if (!lote.length) break;
+    } while (pagina <= paginas && pagina <= 10);
 
     kits.value = todos.filter(esKit);
 
