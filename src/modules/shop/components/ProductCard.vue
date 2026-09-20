@@ -92,6 +92,12 @@
           <span class="mlx-ship-full" v-if="shipFull">FULL</span>
         </div>
       </div>
+
+      <!-- Abono de monitoreo: lo pasa la pantalla que sabe que este producto lo admite. -->
+      <div v-if="abono" class="mlx-abono">
+        <v-icon size="14">mdi-record-circle-outline</v-icon>
+        <span>{{ abono }}</span>
+      </div>
       </a>
     </router-link>
   </v-card>
@@ -106,6 +112,8 @@ import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.stor
 
 const props = defineProps({
   p: { type: Object, required: true },
+  // Texto del abono mensual, ya armado. Vacio = la tarjeta no lo muestra.
+  abono: { type: String, default: "" },
 });
 
 const router = useRouter();
@@ -610,6 +618,29 @@ function openProduct(e) {
 .mlx-old.is-empty { opacity: 0; min-height: 1.1em; }
 
 /* installments — verde */
+.mlx-abono {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: 4px;
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 8%, #ffffff);
+  border-left: 3px solid rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-primary));
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.mlx-abono span {
+  min-width: 0;
+  /* Dos renglones como techo: el texto completo entra, y un abono con un
+     numero mas largo no empuja la tarjeta. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .mlx-installments {
   font-size: 12px;
   color: #00a650;

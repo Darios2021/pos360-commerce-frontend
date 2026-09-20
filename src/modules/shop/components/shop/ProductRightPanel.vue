@@ -20,11 +20,11 @@ const props = defineProps({
 
 const emit = defineEmits(["add", "buy", "go-payments"]);
 
-function onAdd(p, qty = 1) {
-  emit("add", p || props.product, qty || 1);
+function onAdd(p, qty = 1, abono = null) {
+  emit("add", p || props.product, qty || 1, abono);
 }
-function onBuy(p, qty = 1) {
-  emit("buy", p || props.product, qty || 1);
+function onBuy(p, qty = 1, abono = null) {
+  emit("buy", p || props.product, qty || 1, abono);
 }
 </script>
 

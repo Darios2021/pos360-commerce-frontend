@@ -131,6 +131,16 @@ export const shopRoutes = [
         meta: { public: true },
       },
 
+      // ✅ PORTADA INSTITUCIONAL
+      // Direccion de prueba: la definitiva es la raiz del dominio, que hoy
+      // pos360-edge redirige a /shop/. Ver ShopEmpresa.vue.
+      {
+        path: "empresa",
+        name: "shopEmpresa",
+        component: () => import("@/modules/shop/pages/ShopEmpresa.vue"),
+        meta: { public: true },
+      },
+
       // ✅ LANDINGS
       {
         path: "seguridad",

@@ -64,11 +64,46 @@
         <v-skeleton-loader v-for="n in 4" :key="n" type="image,article" />
       </div>
       <div v-else-if="kits.length" class="product-grid mb-10">
-        <ProductCard v-for="k in kits" :key="k.product_id" :p="k" />
+        <ProductCard v-for="k in kits" :key="k.product_id" :p="k" :abono="abonoTexto" />
       </div>
       <v-alert v-else type="info" variant="tonal" rounded="lg" class="mb-10">
         Todavía no hay kits cargados en esta categoría.
       </v-alert>
+
+      <!-- ── ABONO DE MONITOREO ── -->
+      <v-card v-if="abono" class="abono-card mb-10" variant="flat" rounded="lg">
+        <div class="abono-inner">
+          <div class="abono-left">
+            <div class="abono-kicker">Abono de monitoreo</div>
+            <div class="abono-title">EL OJO. Monitoreo y vigilancia 24/7</div>
+            <div class="abono-desc">
+              Conexión ininterrumpida del sistema de alarma con la central técnica,
+              para la detección temprana de incidentes.
+            </div>
+            <div class="abono-price-row">
+              <span class="abono-price">$ {{ fmtMoney(abono.monto) }}</span>
+              <span class="abono-per">por mes</span>
+              <span v-if="abono.lista > abono.monto" class="abono-list">$ {{ fmtMoney(abono.lista) }}</span>
+            </div>
+            <v-btn
+              class="mt-4"
+              color="white"
+              variant="flat"
+              rounded="lg"
+              size="large"
+              :to="{ name: 'shopProduct', params: { id: abono.producto.product_id } }"
+            >
+              Ver el abono
+            </v-btn>
+          </div>
+          <div class="abono-right">
+            <div v-for="(paso, i) in abonoPasos" :key="paso" class="abono-step">
+              <span class="abono-step-n">{{ i + 1 }}</span>
+              <span>{{ paso }}</span>
+            </div>
+          </div>
+        </div>
+      </v-card>
 
       <!-- ── SERVICIOS ── -->
       <div class="text-h6 font-weight-black mb-4">Soluciones de Seguridad</div>
@@ -173,6 +208,7 @@
 import { ref, computed, onMounted } from "vue";
 import { getCatalog } from "@/modules/shop/service/shop.public.api";
 import { getPublicCategoryChildren } from "@/modules/shop/service/shop.taxonomy.api";
+import { getAbonoMonitoreo, lineaAbono } from "@/modules/shop/service/abono.api";
 import ProductCard from "@/modules/shop/components/ProductCard.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
 
@@ -331,8 +367,27 @@ const services = [
   { icon: "mdi-tools",            title: "Instalación Profesional", desc: "Técnicos certificados con garantía de instalación y soporte post-venta." },
 ];
 
+// El abono de monitoreo sale del catalogo (categoria MONITOREO). Si no hay
+// ninguno con precio cargado queda en null y ni la franja de las tarjetas ni
+// el bloque de EL OJO se dibujan.
+const abono = ref(null);
+
+const abonoTexto = computed(() => lineaAbono(abono.value, fmtMoney));
+
+function fmtMoney(n) {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Number(n) || 0);
+}
+
+const abonoPasos = [
+  "El sensor detecta el evento",
+  "La central técnica recibe la señal",
+  "El operador verifica",
+  "Aviso inmediato al titular",
+];
+
 onMounted(async () => {
   traerKitsYMarcas();
+  getAbonoMonitoreo().then((r) => { abono.value = r; });
   try {
     subcategorias.value = await getPublicCategoryChildren(CATEGORIA_SEGURIDAD);
   } catch {
@@ -418,6 +473,85 @@ onMounted(async () => {
 
 /* CTA */
 .cta-card { background: linear-gradient(135deg, #02498b 0%, #013066 100%) !important; margin-bottom: 32px; }
+
+/* Abono de monitoreo: mismo degradé que la CTA, que es la pieza que la
+   pantalla ya usaba para los bloques oscuros. */
+.abono-card { background: linear-gradient(135deg, #02498b 0%, #013066 100%) !important; }
+
+.abono-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 40px;
+  padding: 32px;
+  align-items: center;
+}
+
+.abono-left { min-width: 0; }
+
+.abono-kicker {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 10px;
+}
+
+.abono-title {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.abono-desc {
+  font-size: 16px;
+  line-height: 25.6px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.abono-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.abono-price { font-size: 32px; font-weight: 700; color: #fff; }
+.abono-per { font-size: 16px; color: rgba(255, 255, 255, 0.85); }
+.abono-list { font-size: 13px; color: rgba(255, 255, 255, 0.55); text-decoration: line-through; }
+
+.abono-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.abono-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.abono-step-n {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .abono-inner { grid-template-columns: 1fr; gap: 24px; padding: 24px; }
+  .abono-title { font-size: 24px; line-height: 30px; }
+}
 
 @media (max-width: 900px) {
   .hero-grid { grid-template-columns: 1fr; }

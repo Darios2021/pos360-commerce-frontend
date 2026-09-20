@@ -143,6 +143,46 @@
         </div>
       </div>
 
+      <!-- 🛡 Modalidad: equipo solo, o equipo con el abono de monitoreo.
+           Aparece solo si este producto admite abono y el abono esta cargado
+           en el catalogo con precio. -->
+      <div v-if="abono" class="ml-modalidad">
+        <div class="ml-rule my-3" />
+        <div class="ml-strong mb-2">Modalidad</div>
+
+        <label class="ml-mod-opt" :class="{ 'is-on': !conAbono }">
+          <input type="radio" name="modalidad" :checked="!conAbono" @change="conAbono = false" />
+          <span class="ml-mod-body">
+            <span class="ml-mod-title">Solo el equipo</span>
+            <span class="ml-muted">$ {{ fmtMoney(priceFinal) }} por única vez</span>
+          </span>
+        </label>
+
+        <label class="ml-mod-opt" :class="{ 'is-on': conAbono }">
+          <input type="radio" name="modalidad" :checked="conAbono" @change="conAbono = true" />
+          <span class="ml-mod-body">
+            <span class="ml-mod-title">Con abono EL OJO</span>
+            <span class="ml-mod-accent">
+              $ {{ fmtMoney(priceFinal) }} más $ {{ fmtMoney(abono.monto) }} por mes
+            </span>
+          </span>
+          <v-icon size="20" color="primary">mdi-record-circle-outline</v-icon>
+        </label>
+
+        <div class="ml-mod-total">
+          <div class="ml-mod-total-row">
+            <span class="ml-muted">Pago inicial</span>
+            <b class="ml-mod-total-now">$ {{ fmtMoney(totalInicial) }}</b>
+          </div>
+          <div class="ml-mod-total-row">
+            <span class="ml-muted">Después</span>
+            <span class="ml-mod-accent">
+              {{ conAbono ? `$ ${fmtMoney(abono.monto)} por mes` : "Sin cargo mensual" }}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="ml-rule my-3" />
 
       <!-- Stock -->
@@ -281,6 +321,7 @@ import { useRouter } from "vue-router";
 import { isPromoActive } from "@/modules/shop/utils/promo";
 import { useShopFavoritesStore } from "@/modules/shop/service/shopFavorites.store";
 import { useShopAuthStore } from "@/modules/shop/service/shopAuth.store";
+import { getAbonoMonitoreo } from "@/modules/shop/service/abono.api";
 
 const router = useRouter();
 
@@ -375,6 +416,51 @@ const isKit = computed(() => {
   const v = props.product?.is_kit;
   return v === true || Number(v) === 1;
 });
+
+/* ================= ABONO DE MONITOREO =================
+   El abono se ofrece sobre los kits de SEGURIDAD ELECTRONICA. Los cinco que ya
+   existen como producto todavia no tienen is_kit=1 puesto en el backoffice, asi
+   que se los reconoce igual que en la landing: por marca o por id. El dia que
+   se marquen, la lista se puede borrar.
+   El abono nunca se ofrece sobre el abono mismo. */
+const CATEGORIA_SEGURIDAD = 11;
+const KITS_POR_ID = new Set([466, 588, 589, 603, 604]);
+
+const abono = ref(null);
+const conAbono = ref(false);
+
+const admiteAbono = computed(() => {
+  const p = props.product;
+  if (!p) return false;
+  const pid = Number(p.product_id ?? p.id ?? 0);
+  if (abono.value && pid === Number(abono.value.producto?.product_id)) return false;
+  if (Number(p.category_id) !== CATEGORIA_SEGURIDAD) return false;
+  return isKit.value || KITS_POR_ID.has(pid);
+});
+
+const totalInicial = computed(() => priceFinal.value * (Number(qty.value) || 1));
+
+// La ficha pide el producto DESPUES de montar, y ademas cambia sin desmontar
+// el panel cuando se navega de un producto a otro. Por eso esto va en un watch
+// y no en onMounted: en onMounted `product` todavia esta vacio y el bloque no
+// se dibujaba nunca.
+watch(
+  () => props.product?.product_id ?? props.product?.id ?? null,
+  async (pid) => {
+    if (!pid) return;
+    if (!admiteAbono.value) {
+      abono.value = null;
+      conAbono.value = false;
+      return;
+    }
+    const r = await getAbonoMonitoreo();
+    // admiteAbono se reevalua con el abono ya cargado: descarta la ficha del
+    // abono mismo.
+    abono.value = r && admiteAbono.value ? r : null;
+    conAbono.value = !!abono.value;
+  },
+  { immediate: true }
+);
 const kitItemsList = computed(() => {
   const arr = props.product?.kit_items || props.product?.kitItems;
   if (!Array.isArray(arr)) return [];
@@ -627,11 +713,20 @@ const qtyHint = computed(() => {
 /* ================= actions ================= */
 function onAddToCart() {
   if (disabledAdd.value) return;
-  emit("add", props.product, qty.value);
+  emit("add", props.product, qty.value, extraAbono());
 }
 function onBuyNow() {
   if (disabledAdd.value) return;
-  emit("buy", props.product, qty.value);
+  emit("buy", props.product, qty.value, extraAbono());
+}
+
+/**
+ * Producto del abono que hay que sumar a la compra, o null.
+ * Va siempre por 1: es un servicio mensual, no se lleva de a dos.
+ */
+function extraAbono() {
+  if (!conAbono.value) return null;
+  return abono.value?.producto || null;
 }
 </script>
 
@@ -664,6 +759,55 @@ function onBuyNow() {
 
 .ml-muted { color: rgba(0,0,0,.6); font-size: 13px; }
 .ml-strong { font-weight: 500; color: rgba(0,0,0,.9); }
+
+/* ===== Modalidad: equipo solo o equipo con abono ===== */
+.ml-mod-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.ml-mod-opt.is-on {
+  border: 2px solid rgb(var(--v-theme-primary));
+  padding: 11px;
+  background: color-mix(in srgb, rgb(var(--v-theme-primary)) 6%, #ffffff);
+}
+.ml-mod-opt input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: rgb(var(--v-theme-primary));
+}
+.ml-mod-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ml-mod-title { font-size: 13px; font-weight: 600; color: rgba(0, 0, 0, 0.9); }
+.ml-mod-accent { font-size: 13px; font-weight: 600; color: rgb(var(--v-theme-primary)); }
+
+.ml-mod-total {
+  background: #f4f6f8;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ml-mod-total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ml-mod-total-now { font-size: 20px; color: rgba(0, 0, 0, 0.9); }
 
 .ml-title {
   font-size: 22px;

@@ -133,12 +133,18 @@ async function hideRoutePreloaderSoon() {
 }
 
 // Cart actions
-function onAddToCart(p, qty = 1) {
+//
+// `abono` llega cuando la ficha es un kit de seguridad y el comprador eligio la
+// modalidad con monitoreo. Es un producto real del catalogo (categoria
+// MONITOREO), asi que entra al carrito como cualquier otro, siempre por 1.
+function onAddToCart(p, qty = 1, abono = null) {
   cart.add(p, qty);
+  if (abono) cart.add(abono, 1);
 }
 
-function onBuyNow(p, qty = 1) {
+function onBuyNow(p, qty = 1, abono = null) {
   cart.add(p, qty);
+  if (abono) cart.add(abono, 1);
   cart.closeDrawer?.();
   router.push("/shop/cart");
 }
