@@ -42,53 +42,10 @@
 
         <span v-if="!isCajaOpen" class="caja-chip caja-chip--muted">
           <v-icon size="13">mdi-information-outline</v-icon>
-          <span class="caja-chip__label">Abrí caja para operar</span>
+          <span class="caja-chip__label">Sin turno abierto</span>
         </span>
       </div>
 
-      <!-- Alerta sutil de inactividad (cuando caja está abierta) -->
-      <Transition name="caja-alert">
-        <div v-if="showIdleWarning" class="caja-alert" role="alert">
-          <v-icon size="15" class="caja-alert__icon">mdi-alert-outline</v-icon>
-          <span class="caja-alert__text">
-            Sin movimiento hace {{ idleMinutesLabel }} — ¿querés cerrar caja?
-          </span>
-          <button
-            type="button"
-            class="caja-alert__dismiss"
-            @click="dismissIdle"
-            aria-label="Descartar aviso"
-          >
-            <v-icon size="14">mdi-close</v-icon>
-          </button>
-        </div>
-      </Transition>
-
-      <!-- Otras cajas abiertas en esta sucursal (de otros usuarios): sólo aviso. -->
-      <div v-if="branchOpenRegisters.length" class="caja-alert caja-alert--otras" role="status">
-        <v-icon size="15" class="caja-alert__icon">mdi-account-multiple-outline</v-icon>
-        <span class="caja-alert__text">
-          También abierta:
-          <template v-for="(r, i) in branchOpenRegisters" :key="r.id">
-            <strong>{{ r.opened_by_name }} (#{{ r.id }})</strong><template v-if="i < branchOpenRegisters.length - 1">, </template>
-          </template>
-        </span>
-      </div>
-
-      <!-- Aviso de otras cajas abiertas del mismo usuario -->
-      <div v-if="otherOpenRegisters.length" class="caja-alert caja-alert--danger" role="alert">
-        <v-icon size="15" class="caja-alert__icon">mdi-alert-decagram-outline</v-icon>
-        <span class="caja-alert__text">
-          Tenés {{ otherOpenRegisters.length }}
-          {{ otherOpenRegisters.length === 1 ? "caja abierta" : "cajas abiertas" }}
-          en
-          <template v-for="(r, i) in otherOpenRegisters" :key="r.id">
-            <strong>sucursal #{{ r.branch_id }} (caja #{{ r.id }})</strong>
-            <template v-if="i < otherOpenRegisters.length - 1">, </template>
-          </template>.
-          Cerralas antes de cambiar de turno.
-        </span>
-      </div>
     </div>
 
     <!-- Acciones (app-tile style consistentes con TopBar) -->
@@ -126,6 +83,56 @@
         <span class="caja-tile__txt">Cerrar</span>
       </button>
     </div>
+
+    <!-- Avisos a todo el ancho, debajo del renglón de la caja -->
+    <div
+      v-if="showIdleWarning || branchOpenRegisters.length || otherOpenRegisters.length"
+      class="caja-card__avisos"
+    >
+  <!-- Alerta sutil de inactividad (cuando caja está abierta) -->
+  <Transition name="caja-alert">
+    <div v-if="showIdleWarning" class="caja-alert" role="alert">
+      <v-icon size="15" class="caja-alert__icon">mdi-alert-outline</v-icon>
+      <span class="caja-alert__text">
+        Sin movimiento hace {{ idleMinutesLabel }} — ¿querés cerrar caja?
+      </span>
+      <button
+        type="button"
+        class="caja-alert__dismiss"
+        @click="dismissIdle"
+        aria-label="Descartar aviso"
+      >
+        <v-icon size="14">mdi-close</v-icon>
+      </button>
+    </div>
+  </Transition>
+
+  <!-- Otras cajas abiertas en esta sucursal (de otros usuarios): sólo aviso. -->
+  <div v-if="branchOpenRegisters.length" class="caja-alert caja-alert--otras" role="status">
+    <v-icon size="15" class="caja-alert__icon">mdi-account-multiple-outline</v-icon>
+    <span class="caja-alert__text">
+      También abierta:
+      <template v-for="(r, i) in branchOpenRegisters" :key="r.id">
+        <strong>{{ r.opened_by_name }} (#{{ r.id }})</strong><template v-if="i < branchOpenRegisters.length - 1">, </template>
+      </template>
+    </span>
+  </div>
+
+  <!-- Aviso de otras cajas abiertas del mismo usuario -->
+  <div v-if="otherOpenRegisters.length" class="caja-alert caja-alert--danger" role="alert">
+    <v-icon size="15" class="caja-alert__icon">mdi-alert-decagram-outline</v-icon>
+    <span class="caja-alert__text">
+      Tenés {{ otherOpenRegisters.length }}
+      {{ otherOpenRegisters.length === 1 ? "caja abierta" : "cajas abiertas" }}
+      en
+      <template v-for="(r, i) in otherOpenRegisters" :key="r.id">
+        <strong>sucursal #{{ r.branch_id }} (caja #{{ r.id }})</strong>
+        <template v-if="i < otherOpenRegisters.length - 1">, </template>
+      </template>.
+      Cerralas antes de cambiar de turno.
+    </span>
+  </div>
+    </div>
   </div>
 </template>
 
@@ -155,6 +162,7 @@ function formatDate(value) {
   return d.toLocaleTimeString("es-AR", {
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 }
 
@@ -774,4 +782,51 @@ onBeforeUnmount(() => {
   color: #fcd34d !important;
 }
 .caja-alert--otras .caja-alert__icon { color: inherit !important; }
+
+/* ===== Renglón de caja como el lienzo (2026-10-09) =====
+   Una sola línea: "● Caja abierta · recién" arriba, "Cajero · hora" abajo,
+   y los avisos a todo el ancho debajo del renglón. */
+.caja-card { flex-wrap: wrap !important; row-gap: 8px !important; }
+.caja-card__body { flex: 1 1 0 !important; min-width: 0 !important; }
+.caja-card__title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0;
+}
+.caja-card__elapsed {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  font: 500 11px Inter, sans-serif !important;
+  color: var(--z-suave, #64748b) !important;
+  white-space: nowrap;
+}
+.caja-card__elapsed::before { content: "·"; margin-right: 4px; }
+.caja-card__elapsed :deep(.v-icon) { display: none !important; }
+.caja-card__meta {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 4px !important;
+  min-width: 0;
+  overflow: hidden;
+}
+.caja-chip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caja-chip + .caja-chip::before { content: "·"; margin-right: 4px; }
+.caja-card__actions { flex: 0 0 auto !important; }
+.caja-card__avisos {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.caja-card__avisos .caja-alert {
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
 </style>
