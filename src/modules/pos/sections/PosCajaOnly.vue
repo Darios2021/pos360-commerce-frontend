@@ -13,6 +13,7 @@
       :loading-global="loadingGlobal"
       :cart-count="cartCount"
       :other-open-registers="otherOpenRegisters"
+      :branch-open-registers="branchOpenRegisters"
       :current-cash-register-id="currentCashRegister?.id || 0"
       @open-config="openCajaConfig"
       @close-caja="onCloseCaja"
@@ -30,6 +31,7 @@ const {
   isCajaOpen,
   currentCashRegister,
   otherOpenRegisters,
+  branchOpenRegisters,
   openedAt,
   cashierName,
   branchChipLabel,

@@ -64,6 +64,17 @@
         </div>
       </Transition>
 
+      <!-- Otras cajas abiertas en esta sucursal (de otros usuarios): sólo aviso. -->
+      <div v-if="branchOpenRegisters.length" class="caja-alert caja-alert--otras" role="status">
+        <v-icon size="15" class="caja-alert__icon">mdi-account-multiple-outline</v-icon>
+        <span class="caja-alert__text">
+          También abierta:
+          <template v-for="(r, i) in branchOpenRegisters" :key="r.id">
+            <strong>{{ r.opened_by_name }} (#{{ r.id }})</strong><template v-if="i < branchOpenRegisters.length - 1">, </template>
+          </template>
+        </span>
+      </div>
+
       <!-- Aviso de otras cajas abiertas del mismo usuario -->
       <div v-if="otherOpenRegisters.length" class="caja-alert caja-alert--danger" role="alert">
         <v-icon size="15" class="caja-alert__icon">mdi-alert-decagram-outline</v-icon>
@@ -131,6 +142,7 @@ const props = defineProps({
   idleMinutes: { type: Number, default: 10 },
   // Otras cajas abiertas del mismo usuario (zombies en otras sucursales)
   otherOpenRegisters: { type: Array, default: () => [] },
+  branchOpenRegisters: { type: Array, default: () => [] },
   currentCashRegisterId: { type: [Number, String], default: 0 },
 });
 
@@ -750,4 +762,16 @@ onBeforeUnmount(() => {
   color: #92400e !important;
 }
 .caja-tile__txt { white-space: nowrap; }
+
+.caja-alert--otras {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  color: #92400e !important;
+  font-size: 12px;
+}
+.v-theme--dark .caja-alert--otras,
+.v-theme--adminDark .caja-alert--otras {
+  color: #fcd34d !important;
+}
+.caja-alert--otras .caja-alert__icon { color: inherit !important; }
 </style>

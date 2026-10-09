@@ -372,7 +372,13 @@ export function usePosSalesFlow() {
 
       closeCajaConfig();
       await refreshCaja().catch(() => {});
-      toast(`Caja iniciada • ${cajaTypeLabel.value} • ${invoiceTypeLabel.value}`);
+      // Varias cajas por sucursal (una por usuario): se avisa, no se traba.
+      const otras = (branchOpenRegisters.value || []).map((r) => `${r.opened_by_name} (#${r.id})`);
+      toast(
+        otras.length
+          ? `Caja iniciada. También abierta en la sucursal: ${otras.join(", ")}`
+          : `Caja iniciada • ${cajaTypeLabel.value} • ${invoiceTypeLabel.value}`
+      );
     } catch (err) {
       if (err?.status === 409) {
         // Si openCaja detectó zombie, ya se abrió el PosZombieCashDialog.
