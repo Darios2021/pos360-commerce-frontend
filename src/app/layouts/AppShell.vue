@@ -10,15 +10,6 @@
         height="72"
         class="pos-appbar"
       >
-        <template v-if="!mobile" #prepend>
-          <v-btn
-            icon="mdi-menu"
-            variant="text"
-            class="pos-appbar-toggle"
-            :title="rail ? 'Expandir menú' : 'Contraer menú'"
-            @click="toggleRail"
-          />
-        </template>
 
         <!-- Marca: logo final con texto integrado -->
         <div class="brand-mark" title="POS 360">
@@ -187,8 +178,8 @@
         v-model="drawer"
         permanent
         :rail="rail"
-        width="280"
-        rail-width="72"
+        width="248"
+        rail-width="76"
         class="pos-drawer"
       >
         <!--
@@ -199,7 +190,19 @@
           Las secciones colapsadas se persisten en localStorage para que
           cada usuario mantenga su preferencia.
         -->
+        <button
+          type="button"
+          class="nav-plegar"
+          :aria-expanded="!rail"
+          :title="rail ? 'Expandir menú' : 'Contraer menú'"
+          @click="toggleRail"
+        >
+          <v-icon size="22">{{ rail ? "mdi-dock-left" : "mdi-dock-left" }}</v-icon>
+          <span v-if="!rail">Contraer</span>
+        </button>
+
         <v-list nav density="compact" class="pos-nav-list">
+          <div v-if="!rail" class="nav-rotulo">Operación</div>
           <!-- ════════ OPERACIÓN ════════ -->
           <!-- Caption removido por pedido del cliente: el sidebar arranca
                directo con los items, sin label de sección encima. -->
@@ -207,6 +210,7 @@
           <v-list-item :to="{ name: 'home' }" :active="isDashboard" link class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-view-dashboard-outline</v-icon>
+              <span class="nav-corto">Inicio</span>
             </template>
             <v-list-item-title>Dashboard</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
@@ -215,6 +219,7 @@
           <v-list-item :to="{ name: 'pos' }" exact class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-point-of-sale</v-icon>
+              <span class="nav-corto">Vender</span>
             </template>
             <v-list-item-title>Punto de Venta</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
@@ -223,6 +228,7 @@
           <v-list-item :to="{ name: 'posSales' }" exact class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-receipt-text-outline</v-icon>
+              <span class="nav-corto">Ventas</span>
             </template>
             <v-list-item-title>Ventas</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
@@ -231,6 +237,7 @@
           <v-list-item :to="{ name: 'posPrinter' }" exact class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-printer-pos-outline</v-icon>
+              <span class="nav-corto">Impresión</span>
             </template>
             <v-list-item-title>Impresión</v-list-item-title>
             <v-tooltip v-if="rail" activator="parent" location="right">Impresión</v-tooltip>
@@ -244,6 +251,7 @@
           >
             <template #prepend>
               <v-icon size="18">mdi-briefcase-outline</v-icon>
+              <span class="nav-corto">Gestión</span>
             </template>
             <v-list-item-title>Gestión</v-list-item-title>
             <template #append>
@@ -344,6 +352,7 @@
           >
             <template #prepend>
               <v-icon size="18">mdi-account-heart-outline</v-icon>
+              <span class="nav-corto">CRM</span>
             </template>
             <v-list-item-title>CRM</v-list-item-title>
             <template #append>
@@ -395,6 +404,7 @@
           >
             <template #prepend>
               <v-icon size="18">mdi-cog-outline</v-icon>
+              <span class="nav-corto">Sistema</span>
             </template>
             <v-list-item-title>Sistema</v-list-item-title>
             <template #append>
@@ -460,6 +470,7 @@
           >
             <template #prepend>
               <v-icon size="18">mdi-storefront-outline</v-icon>
+              <span class="nav-corto">Tienda</span>
             </template>
             <v-list-item-title>Tienda</v-list-item-title>
             <template #append>
@@ -580,7 +591,16 @@ import { useDisplay } from "vuetify";
 const { mobile } = useDisplay();
 
 const drawer = ref(true);
-const rail = ref(false);
+// Plegado o desplegado: lo que eligio el usuario, y si nunca eligio, la
+// pantalla (por debajo de 1440 arranca plegado, como Zondito).
+const NAV_RAIL_KEY = "pos360.nav_plegado";
+const rail = ref((() => {
+  try {
+    const g = localStorage.getItem(NAV_RAIL_KEY);
+    if (g !== null) return g === "1";
+  } catch (_) {}
+  return typeof window !== "undefined" && window.innerWidth < 1440;
+})());
 const accountMenu = ref(false);
 
 // ─── Reloj del header (Martes 28 de Abril 15:58) ────────────────────────
@@ -914,7 +934,17 @@ onBeforeUnmount(() => {
 
 function toggleRail() {
   rail.value = !rail.value;
+  try { localStorage.setItem(NAV_RAIL_KEY, rail.value ? "1" : "0"); } catch (_) {}
 }
+
+// Entrar al Punto de Venta pliega el menu (la grilla de productos necesita el
+// ancho). Solo al ENTRAR: adentro se puede volver a abrir a mano.
+watch(() => route.name, (nuevo, previo) => {
+  if (nuevo === "pos" && previo && previo !== "pos" && !rail.value) {
+    rail.value = true;
+    try { localStorage.setItem(NAV_RAIL_KEY, "1"); } catch (_) {}
+  }
+});
 
 function onLogout() {
   accountMenu.value = false;
@@ -1759,4 +1789,158 @@ function onLogout() {
     display: none;
   }
 }
+
+/* =========================
+   MENU LATERAL CON EL ESTILO DE ZONDITO (2026-10-09)
+   Medido en app.zondito.com (NavLateral de Sazonik) y con la paleta de POS
+   360: plegado 76 px con icono y nombre corto, desplegado 248 px; filas de
+   40 px y radio 10; el activo relleno en el color de marca. Va al final para
+   ganarle a los estilos anteriores del drawer.
+========================= */
+.pos-drawer {
+  background: #eaf4fb !important;
+  color: #1f2a3a !important;
+  border-right: 2px solid #8cc4e8 !important;
+}
+.pos-drawer :deep(.v-navigation-drawer__content) {
+  background: #eaf4fb !important;
+  scrollbar-width: none;
+}
+.pos-drawer :deep(.v-navigation-drawer__content::-webkit-scrollbar) { width: 0; }
+.v-theme--dark .pos-drawer,
+.v-theme--adminDark .pos-drawer,
+.v-theme--shopDark .pos-drawer,
+.v-theme--dark .pos-drawer :deep(.v-navigation-drawer__content),
+.v-theme--adminDark .pos-drawer :deep(.v-navigation-drawer__content),
+.v-theme--shopDark .pos-drawer :deep(.v-navigation-drawer__content) {
+  background: #10141b !important;
+  color: #e3e8f0 !important;
+  border-right-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Boton de plegar, arriba del menu */
+.nav-plegar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+  background: transparent;
+  color: #1f2a3a;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nav-plegar:hover { background: rgba(15, 23, 42, 0.05); }
+.pos-drawer.v-navigation-drawer--rail .nav-plegar { justify-content: center; padding: 0; }
+.v-theme--dark .nav-plegar, .v-theme--adminDark .nav-plegar, .v-theme--shopDark .nav-plegar {
+  color: #e3e8f0;
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+}
+
+/* Rotulo de seccion */
+.nav-rotulo {
+  padding: 12px 20px 4px;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #5a6678;
+}
+.v-theme--dark .nav-rotulo, .v-theme--adminDark .nav-rotulo, .v-theme--shopDark .nav-rotulo { color: #9aa5b6; }
+
+.pos-nav-list { padding-top: 8px !important; padding-bottom: 8px !important; }
+
+/* Filas (desplegado) */
+.pos-drawer :deep(.v-list-item),
+.pos-drawer :deep(.v-list-item.nav-item) {
+  min-height: 40px !important;
+  height: 40px;
+  padding-inline: 12px !important;
+  margin-inline: 8px !important;
+  margin-block: 0 2px !important;
+  border-radius: 10px !important;
+  color: #1f2a3a !important;
+}
+.pos-drawer :deep(.v-list-item.nav-section-head) { margin-top: 0 !important; }
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend) {
+  min-width: 21px !important;
+  width: 21px !important;
+  margin-inline-end: 12px !important;
+}
+.pos-drawer :deep(.v-list-item.nav-item .v-list-item__prepend .v-icon) {
+  font-size: 21px !important;
+  width: 21px !important;
+  height: 21px !important;
+  opacity: 1 !important;
+}
+.pos-drawer :deep(.v-list-item .v-list-item-title),
+.pos-drawer :deep(.v-list-item.nav-section-head .v-list-item-title) {
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+.pos-drawer :deep(.v-list-item:hover) { background: rgba(15, 23, 42, 0.06) !important; }
+.v-theme--dark .pos-drawer :deep(.v-list-item),
+.v-theme--adminDark .pos-drawer :deep(.v-list-item),
+.v-theme--shopDark .pos-drawer :deep(.v-list-item) { color: #e3e8f0 !important; }
+.v-theme--dark .pos-drawer :deep(.v-list-item:hover),
+.v-theme--adminDark .pos-drawer :deep(.v-list-item:hover),
+.v-theme--shopDark .pos-drawer :deep(.v-list-item:hover) { background: rgba(255, 255, 255, 0.07) !important; }
+
+/* Activo: relleno en el color de marca, texto blanco */
+.pos-drawer :deep(.v-list-item.v-list-item--active),
+.pos-drawer :deep(.v-list-item.v-list-item--active:hover) {
+  background: rgb(var(--v-theme-primary)) !important;
+  color: #fff !important;
+}
+.pos-drawer :deep(.v-list-item.v-list-item--active .v-list-item-title) { font-weight: 800 !important; }
+.pos-drawer :deep(.v-list-item.v-list-item--active .v-icon) { color: #fff !important; }
+
+/* Hijos de un grupo: sin icono, adentro */
+.pos-drawer :deep(.nav-section .v-list-item.nav-item) {
+  height: 36px;
+  min-height: 36px !important;
+  padding-inline-start: 46px !important;
+}
+.pos-drawer :deep(.nav-section .v-list-item.nav-item .v-list-item__prepend) { display: none !important; }
+.pos-drawer :deep(.nav-section .v-list-item .v-list-item-title) { font-size: 14px !important; }
+
+/* Nombre corto: solo en el rail */
+.nav-corto { display: none; }
+
+/* Plegado (rail): icono arriba y nombre corto abajo, 62 x 56 */
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item),
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item.nav-item) {
+  width: 62px !important;
+  min-width: 62px !important;
+  max-width: 62px !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  margin: 0 auto 2px !important;
+  padding: 0 4px !important;
+  border-radius: 10px !important;
+}
+.pos-drawer.v-navigation-drawer--rail :deep(.v-list-item .v-list-item__prepend) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 2px !important;
+  width: 100% !important;
+}
+.pos-drawer.v-navigation-drawer--rail .nav-corto {
+  display: block;
+  max-width: 100%;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* En el rail no se despliegan los grupos: se ven los accesos y los grupos */
+.pos-drawer.v-navigation-drawer--rail :deep(.nav-section) { display: none !important; }
 </style>
