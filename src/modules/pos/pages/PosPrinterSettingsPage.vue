@@ -89,6 +89,7 @@ const PRUEBA = {
   sale_number: "PRUEBA",
   sold_at: new Date().toISOString(),
   customer_name: "Consumidor Final",
+  user: { id: 7 },
   total: 15500,
   paid_total: 20000,
   change_total: 4500,
@@ -98,7 +99,7 @@ const PRUEBA = {
   ],
   payments: [{ method: "CASH", amount: 15500 }],
 };
-const datosPrueba = { sale: PRUEBA, companyName: "San Juan Tecnología", branchName: "" };
+const datosPrueba = { sale: PRUEBA, branchName: "Chimbas" };
 
 const columnas = computed(() => columnasDe(ajustes.anchoPapel));
 const renglones = computed(() => armarTicket(datosPrueba, columnas.value));

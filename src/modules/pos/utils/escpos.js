@@ -14,6 +14,23 @@
 // components/ReceiptDialog.vue renglon por renglon: si el comprobante cambia
 // alla, cambia aca.
 
+/** Lo que va en todos los tickets: razon social y Defensa del Consumidor. */
+export const EMPRESA = "SAN JUAN TECNOLOGIA";
+export const DEFENSA_CONSUMIDOR = "DEF. CONSUMIDOR 4306400-08";
+
+/** "Chimbas" -> "Sucursal Chimbas"; si ya dice "Sucursal", queda igual. */
+export function rotuloSucursal(nombre) {
+  const n = String(nombre || "").trim();
+  if (!n) return "";
+  return /^sucursal\b/i.test(n) ? n : `Sucursal ${n}`;
+}
+
+/** El cajero por su ID en el sistema, no por el nombre. */
+export function idCajero(sale) {
+  const id = sale?.user?.id ?? sale?.user_id ?? sale?.seller_id;
+  return id != null && id !== "" ? String(id) : "";
+}
+
 /** Columnas de la fuente A: 48 en un rollo de 80 (72 mm de area), 32 en uno de 58. */
 export const columnasDe = (anchoPapel) => (Number(anchoPapel) === 58 ? 32 : 48);
 
@@ -95,7 +112,7 @@ function medio(p) {
  * El ticket como renglones. Sirve para imprimir (`codificar`) y para la vista
  * de Impresion, que muestra exactamente lo que va a salir.
  */
-export function armarTicket({ sale, companyName = "POS360", branchName = "" }, columnas) {
+export function armarTicket({ sale, companyName = EMPRESA, branchName = "" }, columnas) {
   const r = [];
   const mitad = Math.floor(columnas / 2);
   const raya = "-".repeat(columnas);
@@ -107,12 +124,12 @@ export function armarTicket({ sale, companyName = "POS360", branchName = "" }, c
     aLosCostados(izq, der, columnas).forEach((s) => r.push({ texto: s, ...extra }));
 
   const numero = sale?.sale_number || sale?.id || "";
-  const sucursal = branchName || "";
+  const sucursal = rotuloSucursal(branchName || sale?.branch?.name);
   const direccion = String(sale?.branch?.address || "").trim();
   const telefono = String(sale?.branch?.phone || "").trim();
 
   // Cabecera
-  grande(String(companyName || "POS360").toUpperCase());
+  grande(String(companyName || EMPRESA).toUpperCase());
   if (sucursal) centro(sucursal);
   if (direccion) centro(direccion);
   if (telefono) centro(`Tel: ${telefono}`);
@@ -121,9 +138,8 @@ export function armarTicket({ sale, companyName = "POS360", branchName = "" }, c
   // Datos
   fila("Comprobante", `N° ${numero}`);
   fila("Fecha y hora", fechaHora(sale?.sold_at || sale?.created_at));
-  const u = sale?.user;
-  const cajero = u ? (u.username || [u.first_name, u.last_name].filter(Boolean).join(" ") || `#${u.id}`) : "";
-  if (cajero) fila("Cajero/a", cajero);
+  const cajero = idCajero(sale);
+  if (cajero) fila("Cajero ID", cajero);
   fila("Cliente", String(sale?.customer_name || "").trim() || "Consumidor Final");
   const doc = String(sale?.customer_doc || "").trim();
   if (doc) fila("Doc.", doc);
@@ -173,6 +189,7 @@ export function armarTicket({ sale, companyName = "POS360", branchName = "" }, c
   centro("¡Gracias por su compra!", { negrita: true });
   centro(`Comprobante N° ${numero} · ID #${sale?.id ?? ""}`);
   if (sucursal) centro(sucursal);
+  centro(DEFENSA_CONSUMIDOR, { negrita: true });
   return r;
 }
 

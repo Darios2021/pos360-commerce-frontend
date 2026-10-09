@@ -58,7 +58,7 @@ export function usePosSalesFlow() {
   // compat / UI opcional
   const receiptOpen = ref(false);
   const receiptSale = ref(null);
-  const receiptCompanyName = ref("POS360");
+  const receiptCompanyName = ref("SAN JUAN TECNOLOGIA");
 
   // Snackbar compartido (singleton module-level). Se mantiene la forma
   // pública `snack` y `toast(text)` por backward compat con

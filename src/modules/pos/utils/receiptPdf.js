@@ -6,6 +6,8 @@
 // `output`: "save" descarga, "base64" devuelve { base64, filename } para
 // mandarlo por mail.
 
+import { idCajero, DEFENSA_CONSUMIDOR } from "./escpos";
+
 const W = 80;            // ancho del papel en mm
 const PAD = 4;           // margen lateral
 const INNER = W - PAD * 2;
@@ -105,6 +107,8 @@ export async function buildReceiptPdf({
   // ── Datos del comprobante ───────────────────────────────────────────────
   row("Comprobante", `N ${number}`, { style: "bold" });
   row("Fecha", fmtDatetime(sale?.sold_at || sale?.created_at));
+  const cajero = idCajero(sale);
+  if (cajero) row("Cajero ID", cajero);
   const cliente = String(sale?.customer_name || "").trim() || "Consumidor Final";
   row("Cliente", cliente);
   if (sale?.customer_doc) row("Documento", String(sale.customer_doc));
@@ -174,6 +178,7 @@ export async function buildReceiptPdf({
   rule();
   line("Gracias por su compra", { size: 7.5, align: "center", gap: 4 });
   line("Este comprobante no es factura", { size: 6.5, align: "center", gap: 3.5 });
+  line(DEFENSA_CONSUMIDOR, { size: 7, style: "bold", align: "center", gap: 3.5 });
 
   const filename = `comprobante-${number}.pdf`;
 

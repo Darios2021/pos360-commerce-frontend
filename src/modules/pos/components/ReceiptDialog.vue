@@ -31,8 +31,8 @@
 
             <!-- ══ CABECERA EMPRESA ══ -->
             <div class="tkt-header">
-              <div class="tkt-company">{{ companyName }}</div>
-              <div v-if="branchName" class="tkt-branch">{{ branchName }}</div>
+              <div class="tkt-company">{{ companyName || EMPRESA }}</div>
+              <div v-if="branchLabel" class="tkt-branch">{{ branchLabel }}</div>
               <div v-if="branchAddress" class="tkt-address">{{ branchAddress }}</div>
               <div v-if="branchPhone" class="tkt-phone">Tel: {{ branchPhone }}</div>
             </div>
@@ -49,9 +49,9 @@
                 <span>Fecha y hora</span>
                 <strong>{{ fmtDatetime(sale.sold_at || sale.created_at) }}</strong>
               </div>
-              <div v-if="sellerName" class="tkt-meta-row">
-                <span>Cajero/a</span>
-                <strong>{{ sellerName }}</strong>
+              <div v-if="cashierId" class="tkt-meta-row">
+                <span>Cajero ID</span>
+                <strong>{{ cashierId }}</strong>
               </div>
               <div class="tkt-meta-row">
                 <span>Cliente</span>
@@ -137,7 +137,8 @@
             <div class="tkt-footer">
               <div class="tkt-footer-thanks">¡Gracias por su compra!</div>
               <div class="tkt-footer-ref">Comprobante N° {{ saleNumber }} · ID #{{ sale.id }}</div>
-              <div v-if="branchName" class="tkt-footer-branch">{{ branchName }}</div>
+              <div v-if="branchLabel" class="tkt-footer-branch">{{ branchLabel }}</div>
+              <div class="tkt-footer-def">{{ DEFENSA_CONSUMIDOR }}</div>
             </div>
 
           </div>
@@ -215,11 +216,12 @@ import PosDialogHeader from "./shared/PosDialogHeader.vue";
 import http from "@/app/api/http";
 import { buildReceiptPdf } from "../utils/receiptPdf";
 import { imprimirTicket } from "../utils/impresion";
+import { EMPRESA, DEFENSA_CONSUMIDOR, rotuloSucursal, idCajero } from "../utils/escpos";
 
 const props = defineProps({
   open:        { type: Boolean, default: false },
   sale:        { type: Object,  default: null  },
-  companyName: { type: String,  default: "POS360" },
+  companyName: { type: String,  default: EMPRESA },
   branchName:  { type: String,  default: "" },
 });
 
@@ -290,11 +292,8 @@ const grossTotal    = computed(() => saleItems.value.reduce((a, it) => a + itemT
 const discountTotal = computed(() => Math.max(0, grossTotal.value - Number(props.sale?.total || 0)));
 const hasDiscount   = computed(() => discountTotal.value > 0.009);
 
-const sellerName = computed(() => {
-  const u = props.sale?.user;
-  if (!u) return "";
-  return u.username || [u.first_name, u.last_name].filter(Boolean).join(" ") || `#${u.id}`;
-});
+const cashierId = computed(() => idCajero(props.sale));
+const branchLabel = computed(() => rotuloSucursal(props.branchName || props.sale?.branch?.name));
 const customerDisplay = computed(() => String(props.sale?.customer_name || "").trim());
 const customerDoc     = computed(() => String(props.sale?.customer_doc  || "").trim());
 const invoiceLabel = computed(() => {
@@ -330,8 +329,8 @@ async function sendMail() {
   try {
     const { base64, filename } = await buildReceiptPdf({
       sale: props.sale,
-      companyName: props.companyName,
-      branchName: props.branchName,
+      companyName: props.companyName || EMPRESA,
+      branchName: branchLabel.value,
       output: "base64",
     });
 
@@ -412,6 +411,7 @@ function buildTicketWindow() {
     .tkt-footer-thanks { font-size:13px; font-weight: 500; }
     .tkt-footer-ref { font-size:9px; color:#777; margin-top:3px; }
     .tkt-footer-branch { font-size:10px; color:#555; margin-top:2px; }
+    .tkt-footer-def { font-size:11px; font-weight:700; margin-top:4px; }
     @media print {
       @page { margin:0; size:80mm auto; }
       html, body { width:80mm; padding:3mm 2mm; }
@@ -435,7 +435,7 @@ async function printTicket() {
   printing.value = true;
   try {
     const por = await imprimirTicket(
-      { sale: props.sale, companyName: props.companyName, branchName: props.branchName },
+      { sale: props.sale, companyName: props.companyName || EMPRESA, branchName: branchLabel.value },
       printByBrowser,
     );
     if (por === "directa") {
@@ -474,6 +474,7 @@ function printByFrame() {
     .tkt-rule{border-top:1px dashed #000;margin:6px 0}
     .tkt-meta-row,.tkt-total-row,.tkt-pay-row{display:flex;justify-content:space-between;font-size:11px}
     .tkt-total-row--main{font-size:16px}
+    .tkt-footer-def{font-weight:700;margin-top:4px}
     .tkt-items{width:100%;border-collapse:collapse}
     .tkt-td--qty,.tkt-td--price,.tkt-td--sub{text-align:right;white-space:nowrap}
     @media print{@page{margin:0;size:80mm auto}}
@@ -535,6 +536,7 @@ function downloadTicket() {
     .tkt-footer-thanks { font-size:13px; font-weight: 500; }
     .tkt-footer-ref { font-size:9px; color:#777; margin-top:3px; }
     .tkt-footer-branch { font-size:10px; color:#555; margin-top:2px; }
+    .tkt-footer-def { font-size:11px; font-weight:700; margin-top:4px; }
   </style>
 </head>
 <body>${el.outerHTML}</body>
@@ -678,4 +680,5 @@ function downloadTicket() {
 .tkt-footer-thanks { font-size: 13px; font-weight: 500; color: #000; }
 .tkt-footer-ref { font-size: 10px; color: #999; margin-top: 4px; }
 .tkt-footer-branch { font-size: 10px; color: #777; margin-top: 2px; }
+.tkt-footer-def { font-size: 11px; font-weight: 700; color: #000; margin-top: 4px; }
 </style>
