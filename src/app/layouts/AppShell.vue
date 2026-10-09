@@ -1943,4 +1943,27 @@ function onLogout() {
 }
 /* En el rail no se despliegan los grupos: se ven los accesos y los grupos */
 .pos-drawer.v-navigation-drawer--rail :deep(.nav-section) { display: none !important; }
+
+/* Texto e iconos: los estilos viejos los forzaban a blanco (fondo azul). */
+.pos-drawer :deep(.v-list-item__prepend > .v-icon),
+.pos-drawer :deep(.v-list-item__append .v-icon),
+.pos-drawer :deep(.v-list-item-title),
+.pos-drawer :deep(.v-list-item__content) {
+  color: #1f2a3a !important;
+}
+.pos-drawer :deep(.v-list-item--active .v-list-item__prepend > .v-icon),
+.pos-drawer :deep(.v-list-item--active .v-list-item__append .v-icon),
+.pos-drawer :deep(.v-list-item--active .v-list-item-title),
+.pos-drawer :deep(.v-list-item--active .v-list-item__content) {
+  color: #fff !important;
+  font-weight: 800 !important;
+}
+.v-theme--dark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item__prepend > .v-icon),
+.v-theme--dark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item-title),
+.v-theme--dark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item__append .v-icon),
+.v-theme--adminDark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item__prepend > .v-icon),
+.v-theme--adminDark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item-title),
+.v-theme--adminDark .pos-drawer :deep(.v-list-item:not(.v-list-item--active) .v-list-item__append .v-icon) {
+  color: #e3e8f0 !important;
+}
 </style>
