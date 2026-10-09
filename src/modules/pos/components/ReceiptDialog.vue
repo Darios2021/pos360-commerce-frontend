@@ -167,7 +167,7 @@
         </v-tooltip>
         <v-tooltip text="Imprimir ticket" location="top">
           <template #activator="{ props: tp }">
-            <v-btn v-bind="tp" icon variant="flat" color="primary" size="small" @click="printTicket">
+            <v-btn v-bind="tp" icon variant="flat" color="primary" size="small" :loading="printing" @click="printTicket">
               <v-icon size="18">mdi-printer</v-icon>
             </v-btn>
           </template>
@@ -214,6 +214,7 @@ import { ref, computed, watch } from "vue";
 import PosDialogHeader from "./shared/PosDialogHeader.vue";
 import http from "@/app/api/http";
 import { buildReceiptPdf } from "../utils/receiptPdf";
+import { imprimirTicket } from "../utils/impresion";
 
 const props = defineProps({
   open:        { type: Boolean, default: false },
@@ -424,11 +425,65 @@ function buildTicketWindow() {
 }
 
 // ── print ─────────────────────────────────────────────────────────────────
-function printTicket() {
+// Con la impresion directa configurada en esta PC (Punto de Venta › Impresion)
+// el ticket va derecho a la termica, sin cuadro de impresion. Si el programa
+// local no contesta, o no esta configurada, sale por el navegador.
+const printing = ref(false);
+
+async function printTicket() {
+  if (!props.sale || printing.value) return;
+  printing.value = true;
+  try {
+    const por = await imprimirTicket(
+      { sale: props.sale, companyName: props.companyName, branchName: props.branchName },
+      printByBrowser,
+    );
+    if (por === "directa") {
+      snack.value = { show: true, text: "Ticket enviado a la impresora.", color: "success" };
+    }
+  } finally {
+    printing.value = false;
+  }
+}
+
+function printByBrowser() {
   const w = buildTicketWindow();
-  if (!w) return;
-  w.focus();
-  setTimeout(() => { w.print(); }, 500);
+  if (w) {
+    w.focus();
+    setTimeout(() => { w.print(); }, 500);
+    return;
+  }
+  // Ventana bloqueada (pasa si el intento directo demoro el clic): se imprime
+  // desde un marco oculto, que no necesita ventana nueva.
+  printByFrame();
+}
+
+function printByFrame() {
+  const el = document.getElementById("pos-ticket");
+  if (!el) return;
+  const f = document.createElement("iframe");
+  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(f);
+  const d = f.contentDocument;
+  d.open();
+  d.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Courier New',Courier,monospace;font-size:12px;color:#000;width:80mm;padding:3mm 2mm}
+    .tkt-header,.tkt-footer{text-align:center}
+    .tkt-company{font-size:17px;text-transform:uppercase}
+    .tkt-rule{border-top:1px dashed #000;margin:6px 0}
+    .tkt-meta-row,.tkt-total-row,.tkt-pay-row{display:flex;justify-content:space-between;font-size:11px}
+    .tkt-total-row--main{font-size:16px}
+    .tkt-items{width:100%;border-collapse:collapse}
+    .tkt-td--qty,.tkt-td--price,.tkt-td--sub{text-align:right;white-space:nowrap}
+    @media print{@page{margin:0;size:80mm auto}}
+  </style></head><body>${el.outerHTML}</body></html>`);
+  d.close();
+  setTimeout(() => {
+    f.contentWindow.focus();
+    f.contentWindow.print();
+    setTimeout(() => f.remove(), 1000);
+  }, 300);
 }
 
 // ── download HTML file ────────────────────────────────────────────────────

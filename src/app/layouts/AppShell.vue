@@ -228,6 +228,14 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
           </v-list-item>
 
+          <v-list-item :to="{ name: 'posPrinter' }" exact class="nav-item">
+            <template #prepend>
+              <v-icon size="18">mdi-printer-pos-outline</v-icon>
+            </template>
+            <v-list-item-title>Impresión</v-list-item-title>
+            <v-tooltip v-if="rail" activator="parent" location="right">Impresión</v-tooltip>
+          </v-list-item>
+
           <!-- ════════ GESTIÓN (colapsable) ════════ -->
           <v-list-item
             class="nav-item nav-section-head"

@@ -100,6 +100,8 @@ const routes = [
       { path: "pos", name: "pos", component: PosPage },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
+      // Impresion del ticket en esta PC: todos los cajeros, cada mostrador la suya.
+      { path: "pos/impresion", name: "posPrinter", component: () => import("@/modules/pos/pages/PosPrinterSettingsPage.vue") },
 
       { path: "products", name: "products", component: ProductsListPage },
       { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true } },
