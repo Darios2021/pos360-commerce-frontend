@@ -989,6 +989,12 @@ defineExpose({
   color: #047857;
 }
 .psb-lector:disabled { opacity: 0.55; cursor: default; }
+.v-theme--dark .psb-lector.active,
+.v-theme--adminDark .psb-lector.active,
+.v-theme--shopDark .psb-lector.active {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
 </style>
 
 <style>

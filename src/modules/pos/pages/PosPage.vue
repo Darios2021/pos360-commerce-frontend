@@ -172,4 +172,12 @@ const { mobile } = useDisplay();
   border: 0;
   box-shadow: none;
 }
+
+/* El mostrador va de borde a borde, como en Zondito: el contenedor general
+   de la app (máx. 1400 px y 16 px de aire) se libera sólo en esta pantalla. */
+.pos-container:has(> .pos-root) {
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
 </style>
