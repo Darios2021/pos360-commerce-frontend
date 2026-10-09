@@ -99,7 +99,7 @@ const PRUEBA = {
   ],
   payments: [{ method: "CASH", amount: 15500 }],
 };
-const datosPrueba = { sale: PRUEBA, branchName: "Chimbas" };
+const datosPrueba = { sale: PRUEBA, branchName: "Casa Central" };
 
 const columnas = computed(() => columnasDe(ajustes.anchoPapel));
 const renglones = computed(() => armarTicket(datosPrueba, columnas.value));

@@ -18,11 +18,9 @@
 export const EMPRESA = "SAN JUAN TECNOLOGIA";
 export const DEFENSA_CONSUMIDOR = "DEF. CONSUMIDOR 4306400-08";
 
-/** "Chimbas" -> "Sucursal Chimbas"; si ya dice "Sucursal", queda igual. */
+/** La sucursal tal como se llama en el sistema ("Casa Central"), sin agregados. */
 export function rotuloSucursal(nombre) {
-  const n = String(nombre || "").trim();
-  if (!n) return "";
-  return /^sucursal\b/i.test(n) ? n : `Sucursal ${n}`;
+  return String(nombre || "").trim();
 }
 
 /** El cajero por su ID en el sistema, no por el nombre. */
