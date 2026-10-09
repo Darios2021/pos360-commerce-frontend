@@ -13,6 +13,33 @@
       @clear="clearQuery"
     />
 
+    <!-- Rubros, como las pastillas de Zondito: filtran el catálogo. -->
+    <div v-if="rubrosVisibles.length" class="pls-rubros" role="tablist" aria-label="Rubros">
+      <button
+        type="button"
+        class="pls-rubro"
+        :class="{ 'is-on': !rubroId }"
+        role="tab"
+        :aria-selected="!rubroId ? 'true' : 'false'"
+        @click="elegirRubro(null)"
+      >
+        <v-icon size="18">mdi-view-grid-outline</v-icon>
+        Todos
+      </button>
+      <button
+        v-for="c in rubrosVisibles"
+        :key="c.id"
+        type="button"
+        class="pls-rubro"
+        :class="{ 'is-on': Number(rubroId) === Number(c.id) }"
+        role="tab"
+        :aria-selected="Number(rubroId) === Number(c.id) ? 'true' : 'false'"
+        @click="elegirRubro(c.id)"
+      >
+        {{ c.name }}
+      </button>
+    </div>
+
     <PosProductsPanel
       class="pos-surface pos-left-section__products"
       :loading="loading"
@@ -260,6 +287,18 @@ const {
 
 async function refreshCatalog() {
   await searchNow({ force: true });
+}
+
+// Pastillas de rubro: los rubros activos, en el orden que vienen.
+const rubrosVisibles = computed(() =>
+  (categories.value || []).filter((c) => c && c.id && c.name && c.is_active !== false && !c.parent_id)
+);
+
+function elegirRubro(id) {
+  const actual = rubroId.value ? Number(rubroId.value) : null;
+  const nuevo = id ? Number(id) : null;
+  if (actual === nuevo) return;
+  setRubro(nuevo);
 }
 
 async function onRubroChange() {
@@ -542,10 +581,46 @@ defineExpose({
 </script>
 
 <style scoped>
-.pos-left-section {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+/* Pastillas de rubro (Zondito: pastilla() de ui/kit). */
+.pls-rubros {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pls-rubros::-webkit-scrollbar { display: none; }
+.pls-rubro {
+  flex: 0 0 auto;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--z-suave, #64748b);
+  font: 700 14px Inter, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.pls-rubro:hover {
+  background: rgba(15, 111, 174, 0.04);
+  color: var(--z-texto, #0f172a);
+}
+.pls-rubro.is-on {
+  background: rgba(15, 111, 174, 0.08);
+  color: var(--z-primario-tinta, #0f6fae);
+}
+
+.pos-left-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -554,21 +629,21 @@ defineExpose({
 }
 
 .pos-left-section__search {
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
-  padding: 6px;
-  border-radius: 14px;
+  padding: 0;
+  border-radius: 0;
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .pos-left-section__products {
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  height: 100%;
-  max-height: 100%;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 0;
   box-sizing: border-box;
 }
 

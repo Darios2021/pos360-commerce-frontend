@@ -17,7 +17,7 @@
       <v-text-field
         ref="searchRef"
         v-model="qLocal"
-        placeholder="Buscá por nombre, marca, SKU o escaneá un código…"
+        placeholder="Buscar un producto o escanear un código"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="comfortable"
@@ -36,7 +36,25 @@
         @keydown.esc="onEsc"
         @click:clear="onClear"
         @update:model-value="onTyping"
-      />
+      >
+        <!-- Como en Zondito: la tecla y el lector van adentro del campo. -->
+        <template #append-inner>
+          <span class="psb-tecla" aria-hidden="true">{{ focusHotkey }}</span>
+          <button
+            type="button"
+            class="scanner-toggle psb-lector"
+            :class="{ active: isOn }"
+            :disabled="disabledAll"
+            :title="isOn ? 'Lector activo' : 'Lector inactivo'"
+            :aria-pressed="isOn ? 'true' : 'false'"
+            @mousedown.prevent
+            @click.stop="handleToggle"
+          >
+            <v-icon size="16">mdi-barcode-scan</v-icon>
+            LECTOR
+          </button>
+        </template>
+      </v-text-field>
 
       <transition name="search-pill">
         <div v-if="hotkeyActive" class="search-hotkey-pill">
@@ -44,19 +62,6 @@
           <span>{{ focusHotkey }} activo</span>
         </div>
       </transition>
-    </div>
-
-    <div
-      class="scanner-toggle"
-      :class="{ active: isOn, disabled: disabledAll }"
-      @click="handleToggle"
-      :title="isOn ? 'Lector activo' : 'Lector inactivo'"
-    >
-      <v-icon :color="isOn ? 'success' : 'grey'" size="22">
-        mdi-barcode-scan
-      </v-icon>
-
-      <div class="switch" :class="{ active: isOn }"></div>
     </div>
   </div>
 
@@ -911,6 +916,79 @@ defineExpose({
     padding: 10px;
   }
 }
+
+/* ===== Diseño de Zondito (2026-10-09) =====
+   Campo de 50 px, radio 12, fondo apenas gris; la tecla F2 y la pastilla
+   LECTOR adentro del campo. Va al final para pisar lo anterior. */
+.pos-search-bar {
+  gap: 0;
+  padding: 12px 16px 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.pos-search-bar.hotkey-active,
+.pos-search-bar.dd-open {
+  border: 0;
+  box-shadow: none;
+  animation: none;
+}
+.search-input :deep(.v-field) {
+  border-radius: 12px;
+  min-height: 50px;
+  font-size: 14px;
+  font-weight: 400;
+  background: var(--z-campo, #f1f5f9);
+  border: 1px solid var(--z-borde, rgba(15, 23, 42, 0.10));
+  box-shadow: none;
+}
+.search-input :deep(.v-field__outline) { display: none; }
+.search-input :deep(.v-field__input) { min-height: 48px; }
+.search-input.is-active :deep(.v-field),
+.search-input.is-hotkey-active :deep(.v-field) {
+  border-color: rgba(15, 111, 174, 0.55);
+  box-shadow: 0 0 0 1px rgba(15, 111, 174, 0.32);
+}
+.search-input :deep(.v-field__append-inner) {
+  align-items: center;
+  gap: 6px;
+  padding-top: 0;
+}
+.psb-tecla {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 23px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  font: 900 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #1e293b;
+  background: linear-gradient(#f8fafc, #cbd5e1);
+  border: 1px solid rgba(100, 116, 139, 0.6);
+  box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45), 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+.psb-lector {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--z-tonal, rgba(15, 23, 42, 0.05));
+  color: var(--z-suave, #64748b);
+  font: 800 11px Inter, sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.psb-lector.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+.psb-lector:disabled { opacity: 0.55; cursor: default; }
 </style>
 
 <style>

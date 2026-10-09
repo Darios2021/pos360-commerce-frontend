@@ -28,7 +28,7 @@
       <!-- Badges flotantes sobre la imagen -->
       <div class="prow-badges-tl">
         <span
-          v-if="hasStockValue"
+          v-if="hasStockValue && (stockLevel === 'low' || stockLevel === 'out')"
           class="badge-stock"
           :class="`level-${stockLevel}`"
           :title="stockLevelTitle"
@@ -73,6 +73,9 @@
         <div class="prow-price-box">
           <div class="price-current" :class="{ 'is-promo': promoActive }">
             {{ money(effectivePriceValue) }}
+          </div>
+          <div v-if="hasStockValue" class="prow-stock-line" :class="`level-${stockLevel}`">
+            {{ stockLine }}
           </div>
           <div class="price-meta">
             <span v-if="hasRealDiscount" class="price-list">
@@ -258,6 +261,15 @@ const stockLevel = computed(() => {
   if (n < 5) return "low";
   if (n <= 10) return "mid";
   return "high";
+});
+
+// Renglón de stock bajo el precio, como en Zondito.
+const stockLine = computed(() => {
+  const n = stockInt.value;
+  if (n <= 0) return "Sin stock";
+  if (n === 1) return "Queda 1";
+  if (n < 5) return `Quedan ${n}`;
+  return `Stock ${n}`;
 });
 
 const stockLevelTitle = computed(() => {
@@ -1031,5 +1043,110 @@ function money(v) {
     height: 36px !important;
     min-width: 36px !important;
   }
+}
+
+/* ===== Tarjeta con el diseño de Zondito (ProductGrid, 2026-10-09) =====
+   Radio 12, borde apenas visible, foto cuadrada a todo el ancho, nombre
+   14,5/600 en dos renglones, precio 18/800 con el stock abajo y el botón de
+   30 px. Va al final para pisar el estilo anterior sin tocar la lógica. */
+.prow {
+  border-radius: 12px !important;
+  border: 1px solid var(--z-borde, rgba(15, 23, 42, 0.08)) !important;
+  background: var(--z-tarjeta, #ffffff) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.prow:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10) !important;
+  transform: translateY(-2px);
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+.prow.in-cart { border-color: rgba(15, 111, 174, 0.5) !important; }
+.prow.disabled { opacity: 0.55; }
+
+.prow-media {
+  aspect-ratio: 1 / 1;
+  border-radius: 0 !important;
+  background: var(--z-foto, rgba(15, 23, 42, 0.04)) !important;
+  border-bottom: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06));
+}
+.prow-media :deep(.v-img__img) { transition: transform 0.7s ease-out; }
+.prow:hover .prow-media :deep(.v-img__img) { transform: scale(1.05); }
+
+/* Stock: la insignia sólo cuando queda poco o no hay, arriba a la derecha. */
+.prow-badges-tl { left: auto !important; right: 6px !important; top: 6px !important; }
+.prow-badges-tr { right: auto !important; left: 6px !important; top: 6px !important; }
+.badge-stock {
+  padding: 5px 10px !important;
+  border-radius: 9px !important;
+  font: 500 13px Inter, sans-serif !important;
+  color: #ffffff !important;
+  border: 0 !important;
+}
+.badge-stock.level-low {
+  background: #f59e0b !important;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.5), 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+}
+.badge-stock.level-out {
+  background: #dc2626 !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.48), 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+}
+.badge-stock :deep(.v-icon) { color: #ffffff !important; }
+
+.prow-info {
+  gap: 3px !important;
+  padding: 7px 9px 8px !important;
+}
+.prow-title {
+  font-size: 14.5px !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em;
+  color: var(--z-texto, #0f172a) !important;
+}
+.prow-meta { display: none !important; }
+
+.price-current {
+  font-size: 18px !important;
+  line-height: 1.05 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  color: var(--z-texto, #0f172a) !important;
+}
+.price-current.is-promo { color: #dc2626 !important; }
+.price-meta { display: none !important; }
+.prow-stock-line {
+  margin-top: 2px;
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  color: #059669;
+}
+.prow-stock-line.level-low { color: #d97706; }
+.prow-stock-line.level-out { color: #dc2626; }
+
+.btn-action {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 8px !important;
+  background: #0f6fae !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(15, 111, 174, 0.32) !important;
+}
+.btn-action--in-cart {
+  background: #059669 !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.42) !important;
+}
+.btn-action :deep(.v-icon) { color: #ffffff !important; font-size: 19px !important; }
+.btn-qty-badge {
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 5px !important;
+  border-radius: 9999px !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font: 800 11px Inter, sans-serif !important;
 }
 </style>

@@ -153,6 +153,7 @@
             <span class="total-price-mode" :class="{ 'is-reseller': precioRevendedor }">
               {{ precioRevendedor ? "Precio revendedor" : "Precio contado" }}
             </span>
+            <span class="total-units">{{ unidades }} {{ unidades === 1 ? "unidad" : "unidades" }}</span>
           </div>
           <span class="total-amt">{{ money(total) }}</span>
         </div>
@@ -165,8 +166,9 @@
           :disabled="(cart || []).length === 0 || !canEdit"
           @click="$emit('checkout')"
         >
-          <v-icon start size="16">mdi-cash-register</v-icon>
-          COBRAR (F9)
+          <v-icon start size="22">mdi-cash-register</v-icon>
+          Cobrar
+          <span class="pay-tecla" aria-hidden="true">F9</span>
         </v-btn>
 
         <div v-if="!canEdit" class="cart-lock text-caption text-medium-emphasis">
@@ -374,6 +376,11 @@ function unitPriceNormal(it) {
 }
 
 const precioRevendedor = computed(() => (props.cart || []).some((it) => it?.reseller_applied));
+
+// Unidades del carrito (no renglones), como el pie de Zondito.
+const unidades = computed(() =>
+  Math.round((props.cart || []).reduce((a, it) => a + toNum(it?.qty), 0) * 1000) / 1000
+);
 
 function lineTotal(it) {
   return round3(toNum(it?.qty) * toNum(unitPriceEffective(it)));
@@ -1158,5 +1165,123 @@ function remove(it) {
     height: 38px !important;
     font-size: 13px !important;
   }
+}
+
+/* ===== Panel con el diseño de Zondito (Sidebar, 2026-10-09) =====
+   Sin cabecera "Carrito": el panel arranca con la caja (arriba, en su
+   bloque) y el cliente. Renglones de radio 12 con foto de 56 y la cantidad
+   encima, total en caja gris y "Cobrar F9" de 56 px. */
+.cart-card {
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: var(--z-panel, #ffffff) !important;
+}
+.cart-head { display: none !important; }
+.cart-divider { display: none !important; }
+.cart-body { padding: 8px !important; }
+.cart-items { gap: 8px !important; }
+.cart-item {
+  padding: 8px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--z-borde, rgba(15, 23, 42, 0.10)) !important;
+  background: var(--z-panel, #ffffff) !important;
+  box-shadow: none !important;
+}
+.item-media {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  border-radius: 10px !important;
+}
+.item-media-qty {
+  top: auto !important;
+  right: auto !important;
+  bottom: 4px !important;
+  left: 4px !important;
+  height: 22px !important;
+  min-width: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 9999px !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #ffffff !important;
+  font: 800 11px Inter, sans-serif !important;
+}
+.item-name {
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  font-weight: 400 !important;
+  color: var(--z-texto, #0f172a) !important;
+}
+.item-total {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--z-texto, #0f172a) !important;
+}
+.unit-price {
+  font-size: 11.5px !important;
+  color: var(--z-suave, #64748b) !important;
+}
+.qty-btn {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 7px !important;
+}
+
+.cart-foot {
+  padding: 8px !important;
+  border-top: 0 !important;
+  background: var(--z-panel, #ffffff) !important;
+  box-shadow: none !important;
+}
+.foot-card {
+  padding: 8px !important;
+  border-radius: 10px !important;
+  background: var(--z-hundido, rgba(15, 23, 42, 0.03)) !important;
+  border: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06)) !important;
+  box-shadow: none !important;
+}
+.total-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--z-texto2, #334155) !important;
+}
+.total-units {
+  font-size: 11px;
+  color: var(--z-suave, #64748b);
+}
+.total-amt {
+  font-size: 26px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+  color: var(--z-texto, #0f172a) !important;
+}
+.pay-btn {
+  margin-top: 8px !important;
+  height: 56px !important;
+  border-radius: 12px !important;
+  background: #0f6fae !important;
+  color: #ffffff !important;
+  font: 800 18px Inter, sans-serif !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+}
+.pay-btn :deep(.v-btn__content) { gap: 8px; }
+.pay-tecla {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 23px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  font: 900 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #0f172a;
+  background: linear-gradient(#ffffff, #f1f5f9);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 2px 5px rgba(0, 0, 0, 0.25);
 }
 </style>

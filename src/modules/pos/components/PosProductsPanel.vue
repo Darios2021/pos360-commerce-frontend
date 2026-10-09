@@ -161,4 +161,23 @@ defineProps({
     height: 8px;
   }
 }
+
+/* ===== Diseño de Zondito (2026-10-09) =====
+   La grilla va directo sobre el lienzo: sin tarjeta contenedora, sin
+   cabecera ni pie, y sin barra de desplazamiento a la vista. */
+.pp-card {
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pp-head,
+.pp-foot { display: none; }
+.pp-body {
+  padding: 0 16px 16px;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+}
+.pp-body::-webkit-scrollbar { display: none; }
+.pp-bottom-gap { height: 8px; }
 </style>

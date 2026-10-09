@@ -31,20 +31,15 @@
   min-height: 0;
   max-height: 100%;
   display: grid;
-  gap: var(--pos-gap, 8px);
+  gap: 0;
   overflow: hidden;
   box-sizing: border-box;
-
-  grid-template-columns:
-    minmax(0, var(--pos-left-column, 1.7fr))
-    minmax(var(--pos-right-min-width, 380px), var(--pos-right-column, 0.86fr));
-
-  grid-template-rows:
-    var(--pos-topbar-height, 52px)
-    minmax(0, 1fr);
-
+  /* Como el mostrador de Zondito: el catálogo a la izquierda (barra de
+     teclas arriba) y el panel de 340 px de alto completo a la derecha. */
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: 56px minmax(0, 1fr);
   grid-template-areas:
-    "topbar topbar"
+    "topbar right"
     "search right";
 }
 
@@ -62,6 +57,8 @@
 .pos-grid__topbar {
   grid-area: topbar;
   overflow: hidden;
+  background: var(--z-barra, #ffffff);
+  border-bottom: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06));
 }
 
 .pos-grid__search {
@@ -76,12 +73,12 @@
   min-height: 0;
   max-height: 100%;
   display: grid;
-  grid-template-rows:
-    minmax(84px, var(--pos-caja-height, 84px))
-    minmax(0, 1fr);
-  gap: var(--pos-right-stack-gap, 8px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
   overflow: hidden;
   align-content: stretch;
+  background: var(--z-panel, #ffffff);
+  border-left: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06));
 }
 
 .pos-grid__caja,

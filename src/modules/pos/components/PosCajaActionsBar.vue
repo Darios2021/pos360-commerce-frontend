@@ -10,8 +10,8 @@
   >
     <!-- Ícono grande de estado (app-tile style) -->
     <div class="caja-card__hero">
-      <v-icon size="30" class="caja-card__hero-icon">
-        mdi-cash-register
+      <v-icon size="20" class="caja-card__hero-icon">
+        {{ isCajaOpen ? "mdi-lock-open-variant" : "mdi-lock" }}
       </v-icon>
       <span class="caja-card__hero-dot" :title="isCajaOpen ? 'Activa' : 'Inactiva'" />
     </div>
@@ -100,8 +100,8 @@
         class="caja-tile caja-tile--open"
         @click="$emit('open-config')"
       >
-        <v-icon size="20">mdi-play</v-icon>
-        <v-tooltip activator="parent" location="bottom">Abrir caja</v-tooltip>
+        <v-icon size="18">mdi-lock-open-variant</v-icon>
+        <span class="caja-tile__txt">Abrir caja</span>
       </button>
 
       <button
@@ -111,10 +111,8 @@
         :class="{ 'is-attention': showIdleWarning }"
         @click="$emit('close-caja')"
       >
-        <v-icon size="20">mdi-stop</v-icon>
-        <v-tooltip activator="parent" location="bottom">
-          Cerrar caja{{ showIdleWarning ? " (sin movimiento)" : "" }}
-        </v-tooltip>
+        <v-icon size="18">mdi-lock</v-icon>
+        <span class="caja-tile__txt">Cerrar</span>
       </button>
     </div>
   </div>
@@ -671,4 +669,85 @@ onBeforeUnmount(() => {
     transform: rotate(360deg);
   }
 }
+
+/* ===== Caja con el diseño de Zondito (2026-10-09) =====
+   Un renglón: figurita de 32, "Caja abierta" con su punto, quién y desde
+   cuándo en chico, y un solo botón con texto (Cerrar o Abrir caja). */
+.caja-card {
+  border-radius: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06)) !important;
+  background: var(--z-panel, #ffffff) !important;
+  box-shadow: none !important;
+  padding: 10px 12px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  min-height: 0 !important;
+}
+.caja-card__hero {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+.caja-card.is-open .caja-card__hero { background: rgba(16, 185, 129, 0.12) !important; }
+.caja-card.is-closed .caja-card__hero { background: rgba(220, 38, 38, 0.12) !important; }
+.caja-card.is-open .caja-card__hero-icon { color: #059669 !important; }
+.caja-card.is-closed .caja-card__hero-icon { color: #dc2626 !important; }
+.caja-card__hero-dot { display: none !important; }
+.caja-card__body { gap: 1px !important; }
+.caja-card__title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.caja-card__title::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.caja-card.is-open .caja-card__title { color: #059669 !important; }
+.caja-card.is-closed .caja-card__title { color: #dc2626 !important; }
+.caja-card__elapsed { font-size: 11px !important; }
+.caja-card__meta { gap: 6px !important; }
+.caja-chip {
+  height: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--z-suave, #64748b) !important;
+}
+.caja-chip :deep(.v-icon) { display: none !important; }
+.caja-tile {
+  width: auto !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  gap: 6px;
+  border-radius: 10px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: var(--z-tonal, rgba(15, 23, 42, 0.05)) !important;
+  color: var(--z-texto2, #334155) !important;
+  font: 700 14px Inter, sans-serif;
+}
+.caja-tile :deep(.v-icon) { color: var(--z-texto2, #334155) !important; }
+.caja-tile--neutral { width: 36px !important; padding: 0 !important; }
+.caja-tile--open {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+.caja-tile--open :deep(.v-icon) { color: #ffffff !important; }
+.caja-tile--close.is-attention {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #92400e !important;
+}
+.caja-tile__txt { white-space: nowrap; }
 </style>
