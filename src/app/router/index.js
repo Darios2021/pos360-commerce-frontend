@@ -150,6 +150,19 @@ const routes = [
         component: PaymentMethodsAdminPage,
         meta: { roles: ["admin", "super_admin"] },
       },
+      // Alta y edicion de un medio de pago en vista completa (antes, modal).
+      {
+        path: "admin/payment-methods/nuevo",
+        name: "adminPaymentMethodNew",
+        component: () => import("@/modules/admin/pages/PaymentMethodEditPage.vue"),
+        meta: { roles: ["admin", "super_admin"] },
+      },
+      {
+        path: "admin/payment-methods/:id",
+        name: "adminPaymentMethodEdit",
+        component: () => import("@/modules/admin/pages/PaymentMethodEditPage.vue"),
+        meta: { roles: ["admin", "super_admin"] },
+      },
 
       {
         path: "admin/cash-registers",
