@@ -218,7 +218,10 @@ export function codificar(renglones) {
     b.push(...aPC437(r.texto), LF);
   }
   b.push(ESC, 0x45, 0, GS, 0x21, 0, ESC, 0x61, 0);
-  b.push(ESC, 0x64, 4, GS, 0x56, 0x42, 0); // avanzar y cortar
+  // Avance para que el ultimo renglon pase la cuchilla, y corte total en la
+  // forma A (GS V 0): la que entienden todas las termicas con cortador. La
+  // forma B (GS V 66), que trae Sazonik, la ignoran algunas genericas.
+  b.push(ESC, 0x64, 6, GS, 0x56, 0x00); // avanzar y cortar
   return Uint8Array.from(b);
 }
 
