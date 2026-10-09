@@ -759,7 +759,8 @@ onBeforeUnmount(() => {
   font: 700 14px Inter, sans-serif;
 }
 .caja-tile :deep(.v-icon) { color: var(--z-texto2, #334155) !important; }
-.caja-tile--neutral { width: 36px !important; padding: 0 !important; }
+/* Como Zondito: un solo botón en el renglón (Cerrar / Abrir caja). */
+.caja-tile--neutral { display: none !important; }
 .caja-tile--open {
   background: #059669 !important;
   color: #ffffff !important;
