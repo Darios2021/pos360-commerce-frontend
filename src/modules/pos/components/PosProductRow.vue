@@ -28,7 +28,7 @@
       <!-- Badges flotantes sobre la imagen -->
       <div class="prow-badges-tl">
         <span
-          v-if="hasStockValue && (stockLevel === 'low' || stockLevel === 'out')"
+          v-if="hasStockValue && stockInt <= 1"
           class="badge-stock"
           :class="`level-${stockLevel}`"
           :title="stockLevelTitle"
