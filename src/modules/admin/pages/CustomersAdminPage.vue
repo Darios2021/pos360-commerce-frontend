@@ -1105,11 +1105,9 @@ function toggleSelectAllOnPage() {
 function clearSelection() { selectedIds.value = new Set(); }
 
 // Crear / editar
+// El alta va a la ficha completa (con el precio mayorista), no al modal.
 function openCreate() {
-  Object.assign(form, emptyForm());
-  editDialog.id = null;
-  editDialog.stats = null;
-  editDialog.show = true;
+  router.push({ name: "adminCustomerNew" });
 }
 function openEdit(row) {
   if (!row?.id) return;

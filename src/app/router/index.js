@@ -190,6 +190,12 @@ const routes = [
         name: "adminCustomers",
         component: CustomersAdminPage,
       },
+      // Alta de cliente: la misma ficha completa que el detalle, sin modal.
+      {
+        path: "admin/clientes/nuevo",
+        name: "adminCustomerNew",
+        component: CustomerDetailView,
+      },
       {
         path: "admin/clientes/:id",
         name: "adminCustomerDetail",

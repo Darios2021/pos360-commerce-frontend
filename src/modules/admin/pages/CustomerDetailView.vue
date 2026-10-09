@@ -16,10 +16,10 @@
     <!-- HEADER -->
     <AppPageHeader
       icon="mdi-account-group-outline"
-      :title="customer?.display_name || 'Cliente'"
+      :title="esNuevo ? 'Nuevo cliente' : (customer?.display_name || 'Cliente')"
       :subtitle="customer ? typeLabel(customer.customer_type) : ''"
     >
-      <v-btn variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
+      <v-btn v-if="!esNuevo" variant="tonal" size="small" rounded="lg" prepend-icon="mdi-refresh" :loading="loading" @click="load">
         Recargar
       </v-btn>
       <v-btn
@@ -29,7 +29,7 @@
         rounded="lg"
         prepend-icon="mdi-content-save"
         :loading="saving"
-        :disabled="!form.display_name?.trim()"
+        :disabled="!form.display_name?.trim() && !form.first_name?.trim() && !form.last_name?.trim()"
         @click="save"
       >
         Guardar
@@ -39,7 +39,7 @@
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
 
     <!-- HERO -->
-    <div class="cust-hero">
+    <div v-if="!esNuevo" class="cust-hero">
       <div class="cust-hero__left">
         <div class="cust-hero__avatar">{{ initials }}</div>
         <div>
@@ -186,7 +186,7 @@
       </div>
 
       <!-- COL DER — Stats + Historial -->
-      <div class="cust-col">
+      <div v-if="!esNuevo" class="cust-col">
         <section class="cust-section">
           <div class="cust-section__head">
             <v-icon size="14" color="primary">mdi-chart-line</v-icon>
@@ -300,6 +300,7 @@ import { useRoute, useRouter } from "vue-router";
 import {
   getCustomer,
   updateCustomer,
+  createCustomer,
   deleteCustomer,
 } from "@/modules/admin/services/customers.service";
 import { getCustomerMessageLogs } from "@/modules/admin/services/messaging.service";
@@ -313,6 +314,8 @@ const route = useRoute();
 const router = useRouter();
 
 const customerId = computed(() => Number(route.params.id) || 0);
+// Sin id es el alta: la misma ficha, sin historial ni acciones de mensajes.
+const esNuevo = computed(() => !customerId.value);
 const loading = ref(false);
 const saving = ref(false);
 const busyDelete = ref(false);
@@ -466,6 +469,15 @@ async function save() {
   saving.value = true;
   error.value = "";
   try {
+    if (esNuevo.value) {
+      const { data } = await createCustomer({ ...form });
+      const id = data?.data?.id;
+      if (id) {
+        router.replace({ name: "adminCustomerDetail", params: { id } });
+        return;
+      }
+      throw new Error("La API no devolvió el cliente creado.");
+    }
     const { data } = await updateCustomer(customerId.value, { ...form });
     if (data?.data) customer.value = { ...customer.value, ...data.data };
     snack.show = true; snack.text = "Cliente guardado";
