@@ -65,10 +65,12 @@ function getInvoiceTypeLabel(v) {
   return map[upper(v)] || "";
 }
 
-export function usePosCashRegister() {
-  // La sucursal en la que está parado el POS: va en cada pedido de caja.
+export function usePosCashRegister({ sucursal = null } = {}) {
+  // La sucursal en la que está parado el POS: va en cada pedido de caja. La
+  // pasa el flujo con la misma regla que el nombre que se ve en pantalla; el
+  // store queda de respaldo (puede guardar otra de una sesión anterior).
   const posStore = usePosStore();
-  const sucursalPos = () => posStore?.branch_id || null;
+  const sucursalPos = () => (typeof sucursal === "function" ? sucursal() : null) || posStore?.branch_id || null;
   const currentCashRegister = ref(null);
   const otherOpenRegisters = ref([]);
   const branchOpenRegisters = ref([]);

@@ -119,7 +119,12 @@ export function usePosSalesFlow() {
     closeCaja,
     refreshCaja,
     canSellWithCaja,
-  } = usePosCashRegister();
+  } = usePosCashRegister({
+    // La misma sucursal que muestra la pantalla (branchName de usePosBranch):
+    // la elegida en el POS, si no la principal del usuario, si no la guardada.
+    sucursal: () =>
+      Number(activeBranchId.value || auth?.user?.branch_id || posStore?.branch_id || 0) || null,
+  });
 
   const cashierName = computed(() => {
     return (
