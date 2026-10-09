@@ -786,8 +786,10 @@ onBeforeUnmount(() => {
 /* ===== Renglón de caja como el lienzo (2026-10-09) =====
    Una sola línea: "● Caja abierta · recién" arriba, "Cajero · hora" abajo,
    y los avisos a todo el ancho debajo del renglón. */
-.caja-card { flex-wrap: wrap !important; row-gap: 8px !important; }
-.caja-card__body { flex: 1 1 0 !important; min-width: 0 !important; }
+/* El bloque es una grilla de 3 columnas (figurita | datos | botones): los
+   avisos van en una fila propia que ocupa las tres. */
+.caja-card { row-gap: 8px !important; column-gap: 10px !important; }
+.caja-card__body { min-width: 0 !important; overflow: hidden; }
 .caja-card__title-row {
   display: flex !important;
   align-items: center !important;
@@ -795,6 +797,9 @@ onBeforeUnmount(() => {
   flex-wrap: nowrap !important;
   min-width: 0;
 }
+.caja-card__title-row { overflow: hidden; }
+.caja-card__title { white-space: nowrap; flex-shrink: 0; }
+.caja-card__elapsed { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .caja-card__elapsed {
   padding: 0 !important;
   background: transparent !important;
@@ -817,7 +822,7 @@ onBeforeUnmount(() => {
 .caja-chip + .caja-chip::before { content: "·"; margin-right: 4px; }
 .caja-card__actions { flex: 0 0 auto !important; }
 .caja-card__avisos {
-  flex: 1 1 100%;
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 6px;
