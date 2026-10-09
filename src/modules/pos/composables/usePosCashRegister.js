@@ -77,7 +77,29 @@ export function usePosCashRegister() {
     loading: false,
     error: "",
     pendingPayload: null,
+    resumen: null,
+    resumenCargando: false,
   });
+
+  // Resumen de la caja que traba la apertura: lo que se espera en efectivo
+  // y lo vendido. Sin esto no hay arqueo posible al cerrarla.
+  async function cargarResumenTrabada(id) {
+    const state = zombieDialog.value;
+    if (!id || !state) return;
+    state.resumenCargando = true;
+    try {
+      const res = await getCashRegisterSummary(id);
+      const raw = res?.data?.data || res?.data?.summary || res?.data || null;
+      if (zombieDialog.value?.data?.cash_register_id === id) {
+        zombieDialog.value.resumen = raw?.totals ? raw : null;
+      }
+    } catch (e) {
+      console.warn("[POS] resumen de la caja trabada:", e?.message || e);
+      if (zombieDialog.value?.data?.cash_register_id === id) zombieDialog.value.resumen = null;
+    } finally {
+      if (zombieDialog.value) zombieDialog.value.resumenCargando = false;
+    }
+  }
 
   const loadingCurrent = ref(false);
   const loadingOpen = ref(false);
@@ -319,7 +341,10 @@ const canSellWithCaja = computed(() => {
             loading: false,
             error: "",
             pendingPayload: payload,
+            resumen: null,
+            resumenCargando: false,
           };
+          cargarResumenTrabada(error.data.cash_register_id);
         } else if (code === "CAJA_YA_ABIERTA" && error?.data?.cash_register_id) {
           // Caja de OTRO usuario en esta sucursal. El dialog decide qué
           // botones mostrar según el rol:
@@ -333,7 +358,10 @@ const canSellWithCaja = computed(() => {
             loading: false,
             error: "",
             pendingPayload: payload,
+            resumen: null,
+            resumenCargando: false,
           };
+          cargarResumenTrabada(error.data.cash_register_id);
         }
 
         try {
@@ -357,9 +385,18 @@ const canSellWithCaja = computed(() => {
   //   - is_own=false: el user cierra la caja de OTRO operador. Solo funciona
   //     si el caller es admin de la sucursal o super_admin (lo enforce el
   //     backend; si no tiene permisos, recibe 403 y mostramos el error).
-  async function closeZombieAndOpen() {
+  // `arqueo` = { contado, motivo } desde la vista. Antes se cerraba con
+  // declarado = fondo inicial ("cierre neutro"), pero la API calcula
+  // diferencia = declarado - esperado, y el esperado suma el efectivo vendido:
+  // cada cierre así dejaba un faltante falso igual a lo cobrado en efectivo.
+  async function closeZombieAndOpen(arqueo = {}) {
     const state = zombieDialog.value;
     if (!state?.data?.cash_register_id) return;
+    const contado = Number(arqueo?.contado);
+    if (!Number.isFinite(contado) || contado < 0) {
+      state.error = "Falta el efectivo contado en la caja.";
+      return;
+    }
 
     state.loading = true;
     state.error = "";
@@ -370,13 +407,17 @@ const canSellWithCaja = computed(() => {
         state.data?.opened_by_name ||
         state.data?.opened_by_email ||
         `usuario #${state.data?.opened_by || "?"}`;
-      const note = isOwn
-        ? "Cierre neutro automático (al abrir nueva caja del mismo usuario)"
-        : `Cierre administrativo: caja del cajero ${owner} cerrada por otro operador para liberar la sucursal.`;
+      const motivo = String(arqueo?.motivo || "").trim();
+      const note = (isOwn
+        ? "Cierre de caja propia al abrir otra"
+        : `Cierre administrativo de la caja de ${owner}, para abrir otra en la sucursal`)
+        + (motivo ? `. Motivo de la diferencia: ${motivo}` : "");
+      void openingCash;
 
-      // Cierre neutro: declarado = fondo inicial → diferencia 0.
+      // Cierre con arqueo: declarado = lo contado. La API registra la
+      // diferencia contra el esperado (fondo + efectivo vendido + movimientos).
       await closeCashRegister(state.data.cash_register_id, {
-        closing_cash: openingCash,
+        closing_cash: Number(contado.toFixed(2)),
         closing_note: note,
       });
 
@@ -416,6 +457,8 @@ const canSellWithCaja = computed(() => {
       loading: false,
       error: "",
       pendingPayload: null,
+      resumen: null,
+      resumenCargando: false,
     };
   }
 

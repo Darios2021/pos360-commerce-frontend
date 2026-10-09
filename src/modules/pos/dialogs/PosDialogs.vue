@@ -63,6 +63,8 @@
       :data="zombieDialog.data"
       :loading="zombieDialog.loading"
       :error="zombieDialog.error"
+      :resumen="zombieDialog.resumen"
+      :resumen-cargando="zombieDialog.resumenCargando"
       @confirm="closeZombieAndOpen"
       @cancel="cancelZombieDialog"
       @switch-branch="onSwitchBranchFromZombie"
