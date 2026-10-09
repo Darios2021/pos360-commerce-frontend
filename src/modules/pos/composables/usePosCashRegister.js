@@ -9,6 +9,7 @@ import {
   createCashRegisterMovement,
   closeCashRegister,
 } from "../services/posCashRegisters.service";
+import { usePosStore } from "@/app/store/pos.store";
 
 function toNum(v, d = 0) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -65,6 +66,9 @@ function getInvoiceTypeLabel(v) {
 }
 
 export function usePosCashRegister() {
+  // La sucursal en la que está parado el POS: va en cada pedido de caja.
+  const posStore = usePosStore();
+  const sucursalPos = () => posStore?.branch_id || null;
   const currentCashRegister = ref(null);
   const otherOpenRegisters = ref([]);
   const branchOpenRegisters = ref([]);
@@ -88,7 +92,8 @@ export function usePosCashRegister() {
     if (!id || !state) return;
     state.resumenCargando = true;
     try {
-      const res = await getCashRegisterSummary(id);
+      // El resumen sólo se lee desde la sucursal de esa caja.
+      const res = await getCashRegisterSummary(id, { sucursal: zombieDialog.value?.data?.branch_id });
       const raw = res?.data?.data || res?.data?.summary || res?.data || null;
       if (zombieDialog.value?.data?.cash_register_id === id) {
         zombieDialog.value.resumen = raw?.totals ? raw : null;
@@ -256,7 +261,7 @@ const canSellWithCaja = computed(() => {
     clearError();
 
     try {
-      const res = await getCurrentCashRegister();
+      const res = await getCurrentCashRegister({ sucursal: sucursalPos() });
       currentCashRegister.value = res?.data || null;
 
       // Otras cajas abiertas del mismo user (zombies al cambiar de branch)
@@ -304,7 +309,7 @@ const canSellWithCaja = computed(() => {
         invoice_type: normalizeInvoiceType(payload.invoice_type) || "TICKET",
       };
 
-      const res = await openCashRegister(body);
+      const res = await openCashRegister(body, { sucursal: sucursalPos() });
       currentCashRegister.value = res?.data || null;
 
       if (currentCashRegister.value?.id) {
@@ -365,7 +370,7 @@ const canSellWithCaja = computed(() => {
         }
 
         try {
-          const current = await getCurrentCashRegister();
+          const current = await getCurrentCashRegister({ sucursal: sucursalPos() });
           currentCashRegister.value = current?.data || null;
         } catch {}
       }
@@ -416,10 +421,11 @@ const canSellWithCaja = computed(() => {
 
       // Cierre con arqueo: declarado = lo contado. La API registra la
       // diferencia contra el esperado (fondo + efectivo vendido + movimientos).
+      // Se cierra desde la sucursal de esa caja (la API lo exige).
       await closeCashRegister(state.data.cash_register_id, {
         closing_cash: Number(contado.toFixed(2)),
         closing_note: note,
-      });
+      }, { sucursal: state.data.branch_id });
 
       // Reintentar apertura con el payload original.
       const payload = state.pendingPayload || {};
@@ -473,7 +479,7 @@ const canSellWithCaja = computed(() => {
         return null;
       }
 
-      const res = await getCashRegisterSummary(id);
+      const res = await getCashRegisterSummary(id, { sucursal: sucursalPos() });
 
       // ✅ FIX:
       // Soporta varias formas de respuesta del backend.
@@ -516,7 +522,7 @@ const canSellWithCaja = computed(() => {
         amount: toNum(payload.amount, 0),
       };
 
-      const res = await createCashRegisterMovement(id, body);
+      const res = await createCashRegisterMovement(id, body, { sucursal: sucursalPos() });
       await loadSummary(id);
       return res;
     } catch (error) {
@@ -550,7 +556,7 @@ const canSellWithCaja = computed(() => {
           ).trim() || "Cierre de caja",
       };
 
-      const res = await closeCashRegister(id, body);
+      const res = await closeCashRegister(id, body, { sucursal: sucursalPos() });
 
       currentCashRegister.value = null;
       summary.value = res?.data?.summary || res?.data || null;

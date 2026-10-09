@@ -155,30 +155,42 @@ async function request(endpointPath, options = {}) {
 // ✅ IMPORTANTE: los endpoints reales van bajo /pos/cash-registers
 const CASH_REGISTERS_BASE = "/pos/cash-registers";
 
-export async function getCurrentCashRegister() {
+// La sucursal va explícita en cada pedido del POS (`{ sucursal }`). Sin el
+// encabezado la API usa la sucursal principal del usuario, y el POS puede
+// estar parado en otra: se abría la caja "en Casa Central" y la API buscaba
+// la caja abierta de Rivadavia. Las pantallas de admin no lo mandan.
+function conSucursal(sucursal) {
+  const n = parseInt(String(sucursal ?? ""), 10);
+  return Number.isFinite(n) && n > 0 ? { "X-Branch-Id": String(n) } : {};
+}
+
+export async function getCurrentCashRegister({ sucursal } = {}) {
   return request(`${CASH_REGISTERS_BASE}/current`, {
     method: "GET",
+    headers: conSucursal(sucursal),
   });
 }
 
-export async function openCashRegister(payload) {
+export async function openCashRegister(payload, { sucursal } = {}) {
   return request(`${CASH_REGISTERS_BASE}/open`, {
     method: "POST",
     body: payload,
+    headers: conSucursal(sucursal),
   });
 }
 
-export async function getCashRegisterSummary(id) {
+export async function getCashRegisterSummary(id, { sucursal } = {}) {
   if (!id) {
     throw new Error("getCashRegisterSummary requiere un id de caja");
   }
 
   return request(`${CASH_REGISTERS_BASE}/${id}/summary`, {
     method: "GET",
+    headers: conSucursal(sucursal),
   });
 }
 
-export async function createCashRegisterMovement(id, payload) {
+export async function createCashRegisterMovement(id, payload, { sucursal } = {}) {
   if (!id) {
     throw new Error("createCashRegisterMovement requiere un id de caja");
   }
@@ -186,10 +198,11 @@ export async function createCashRegisterMovement(id, payload) {
   return request(`${CASH_REGISTERS_BASE}/${id}/movements`, {
     method: "POST",
     body: payload,
+    headers: conSucursal(sucursal),
   });
 }
 
-export async function closeCashRegister(id, payload) {
+export async function closeCashRegister(id, payload, { sucursal } = {}) {
   if (!id) {
     throw new Error("closeCashRegister requiere un id de caja");
   }
@@ -197,6 +210,7 @@ export async function closeCashRegister(id, payload) {
   return request(`${CASH_REGISTERS_BASE}/${id}/close`, {
     method: "POST",
     body: payload,
+    headers: conSucursal(sucursal),
   });
 }
 
