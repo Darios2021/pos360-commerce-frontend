@@ -4,6 +4,7 @@
 import { defineStore } from "pinia";
 import http from "../api/http";
 import { claveParaCobro, cobroConfirmado } from "./claveDeCobro";
+import { esMayorista } from "../utils/clienteMayorista";
 
 function toNum(v, d = 0) {
   const n = Number(v);
@@ -656,6 +657,9 @@ export const usePosStore = defineStore("pos", {
     branch_id: readLSInt(LS_BRANCH),
     warehouse_id: readLSInt(LS_WAREHOUSE),
     customer: null,
+    // Cliente de la ficha elegido en el carrito. Si es mayorista, el carrito
+    // se cobra a precio Revendedor (price_reseller).
+    clienteVenta: null,
     cart: [],
     toast: { show: false, text: "" },
     last_sale: null,
@@ -789,8 +793,14 @@ export const usePosStore = defineStore("pos", {
       }
     },
 
+    setClienteVenta(cliente) {
+      this.clienteVenta = cliente && typeof cliente === "object" ? { ...cliente } : null;
+      for (const it of this.cart) this._recalcLine(it);
+    },
+
     clearCart() {
       this.cart = [];
+      this.clienteVenta = null;
       this.claveDeCobro = null;
     },
 
@@ -805,6 +815,11 @@ export const usePosStore = defineStore("pos", {
     },
 
     _computeEffectiveUnit(it) {
+      // Cliente mayorista: precio Revendedor, sin promos encima. Si el producto
+      // no tiene precio Revendedor cargado, sigue el precio comun.
+      const reseller = toNum(it.price_reseller, 0);
+      if (reseller > 0 && esMayorista(this.clienteVenta)) return Math.round(reseller * 100) / 100;
+
       // Precio base sin promo
       const baseDiscount = toNum(it.price_discount, 0);
       const baseList = toNum(it.price_list, 0);
@@ -842,7 +857,8 @@ export const usePosStore = defineStore("pos", {
       // Persistimos el unit_price efectivo para que el checkout y el resumen lo usen
       it.price = unit;
       it.unit_price = unit;
-      it.promo_applied = Boolean(it.is_promo) && (
+      it.reseller_applied = toNum(it.price_reseller, 0) > 0 && esMayorista(this.clienteVenta);
+      it.promo_applied = !it.reseller_applied && Boolean(it.is_promo) && (
         this._isPromoTimeActive(it) ||
         (toInt(it.promo_qty_threshold, 0) >= 2 &&
          toNum(it.promo_qty_discount, 0) > 0 &&

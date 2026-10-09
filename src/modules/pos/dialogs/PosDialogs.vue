@@ -25,6 +25,9 @@
       v-model:invoice-mode="checkoutInvoiceMode"
       v-model:invoice-type="checkoutInvoiceType"
       v-model:customer-type="customerType"
+      :customer-name-value="posStore.clienteVenta?.display_name || ''"
+      :customer-doc-value="posStore.clienteVenta?.doc_number || ''"
+      :customer-phone-value="posStore.clienteVenta?.phone || ''"
       :cash-error="cashError"
       :cash-error-msg="cashErrorMsg"
       @confirm="onCheckoutConfirm"
@@ -181,6 +184,7 @@ onBeforeUnmount(() => {
 });
 
 const {
+  posStore,
   showCartDialog,
   cartItems,
   checkoutDialog,

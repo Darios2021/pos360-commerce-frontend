@@ -20,6 +20,8 @@
       </v-chip>
     </div>
 
+    <PosClienteVenta :pos-store="posStore" :disabled="!canEdit" />
+
     <div class="cart-divider" />
 
     <!-- Body -->
@@ -61,7 +63,8 @@
               <div class="item-row-top">
                 <div class="item-name" :title="it?.name || ''">
                   {{ it?.name || "—" }}
-                  <span v-if="it?.is_promo" class="promo-tag">PROMO</span>
+                  <span v-if="it?.reseller_applied" class="promo-tag">REVENDEDOR</span>
+                  <span v-else-if="it?.is_promo" class="promo-tag">PROMO</span>
                 </div>
                 <span class="item-total">{{ money(lineTotal(it)) }}</span>
               </div>
@@ -174,6 +177,7 @@
 import { reactive, watch } from "vue";
 import { useSnackbar } from "../composables/useSnackbar";
 import { usePosImages } from "../composables/usePosImages";
+import PosClienteVenta from "./PosClienteVenta.vue";
 
 const { productImage } = usePosImages();
 

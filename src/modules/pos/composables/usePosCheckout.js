@@ -3,6 +3,7 @@
 
 import { ref, computed, watch } from "vue";
 import { fetchPosPaymentMethods } from "@/app/services/paymentMethod.service";
+import { esMayorista } from "@/app/utils/clienteMayorista";
 
 function toSafeNum(v, def = 0) {
   const n = Number(v);
@@ -475,7 +476,8 @@ export function usePosCheckout({
     paymentMethodId.value = getDefaultPaymentMethodId();
 
     installments.value = 1;
-    applyReseller.value = false;
+    // Cliente mayorista elegido en el carrito: se cobra a precio Revendedor.
+    applyReseller.value = esMayorista(posStore?.clienteVenta);
     paymentProof.value = "";
     cashInput.value = "";
     cardKind.value = "CREDIT";

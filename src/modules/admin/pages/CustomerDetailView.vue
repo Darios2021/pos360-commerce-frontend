@@ -150,6 +150,8 @@
             <v-select v-model="form.customer_type" :items="customerTypeItems"
                       label="Tipo de cliente"
                       variant="outlined" density="compact" hide-details />
+            <v-switch v-model="mayorista" color="primary" hide-details density="compact" class="mt-2"
+                      label="Precio mayorista (Revendedor)" />
             <v-text-field v-model="form.tags" label="Tags / etiquetas (libre)"
                           variant="outlined" density="compact" hide-details class="mt-3"
                           placeholder="vip, campania-2026" />
@@ -305,6 +307,7 @@ import { listPromoBlocks } from "@/modules/admin/services/emailPromoBlocks.api";
 import SendMessageDialog from "@/modules/admin/components/SendMessageDialog.vue";
 import PromoSendDialog from "@/modules/admin/components/PromoSendDialog.vue";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import { esMayorista, conMayorista } from "@/app/utils/clienteMayorista";
 
 const route = useRoute();
 const router = useRouter();
@@ -353,6 +356,12 @@ const customerTypeItems = [
   { title: "Monotributo", value: "monotributo" },
   { title: "Exento", value: "exento" },
 ];
+
+// Mayorista = etiqueta "mayorista" en tags: en el POS se le cobra el precio Revendedor.
+const mayorista = computed({
+  get: () => esMayorista(form.tags),
+  set: (v) => { form.tags = conMayorista(form.tags, v); },
+});
 
 const initials = computed(() => {
   const src = customer.value?.display_name || `${customer.value?.first_name || ""} ${customer.value?.last_name || ""}`;
