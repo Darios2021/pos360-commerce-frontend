@@ -231,13 +231,17 @@ function porElNavegador() {
   white-space: pre;
   overflow-x: auto;
   max-width: 100%;
+  box-sizing: content-box;
 }
 .imp-vista .is-b { font-weight: 700; }
 .imp-vista .is-d { font-size: 2em; line-height: 1.1; }
 .imp-oculto { display: none; }
 
-@media (max-width: 900px) {
-  .imp { padding: 12px; }
+@media (max-width: 1280px) {
   .imp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .imp { padding: 12px; }
+  .imp-vista { font-size: 9px; }
 }
 </style>
