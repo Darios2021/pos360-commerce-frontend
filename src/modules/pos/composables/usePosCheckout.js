@@ -160,6 +160,13 @@ export function usePosCheckout({
 
   const installments = ref(1);
   const applyReseller = ref(false);
+  // La eleccion de precio del primer paso del cobro vuelve al carrito, para
+  // que el carrito y el cobro muestren lo mismo.
+  watch(applyReseller, (v) => {
+    if (esMayorista(posStore?.clienteVenta) && posStore.usarPrecioMayorista !== !!v) {
+      posStore.setUsarPrecioMayorista?.(!!v);
+    }
+  });
   const paymentProof = ref("");
   const cashInput = ref("");
   const cardKind = ref("CREDIT");
@@ -477,7 +484,7 @@ export function usePosCheckout({
 
     installments.value = 1;
     // Cliente mayorista elegido en el carrito: se cobra a precio Revendedor.
-    applyReseller.value = esMayorista(posStore?.clienteVenta);
+    applyReseller.value = !!posStore?.precioMayoristaAplicado?.();
     paymentProof.value = "";
     cashInput.value = "";
     cardKind.value = "CREDIT";

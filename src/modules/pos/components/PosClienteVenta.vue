@@ -31,7 +31,9 @@
         </v-list-item>
       </template>
     </v-autocomplete>
-    <span v-if="mayorista" class="cv-tag cv-tag--on">Precio mayorista</span>
+    <span v-if="mayorista" class="cv-tag cv-tag--on" :class="{ 'is-off': !aplicado }">
+      {{ aplicado ? "Precio revendedor aplicado" : "Cliente mayorista: precio normal" }}
+    </span>
   </div>
 </template>
 
@@ -49,6 +51,7 @@ const busqueda = ref("");
 const opciones = ref([]);
 const buscando = ref(false);
 const mayorista = computed(() => esMayorista(props.posStore?.clienteVenta));
+const aplicado = computed(() => mayorista.value && props.posStore?.usarPrecioMayorista !== false);
 
 let reloj = null;
 let turno = 0;
@@ -93,5 +96,14 @@ function elegir(c) {
   color: rgb(var(--v-theme-primary));
   white-space: nowrap;
 }
-.cv-tag--on { align-self: flex-start; }
+.cv-tag--on {
+  align-self: flex-start;
+  font-size: 12px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.cv-tag--on.is-off {
+  background: rgba(var(--v-theme-on-surface), .08);
+  color: rgba(var(--v-theme-on-surface), .7);
+}
 </style>

@@ -63,15 +63,18 @@
               <div class="item-row-top">
                 <div class="item-name" :title="it?.name || ''">
                   {{ it?.name || "—" }}
-                  <span v-if="it?.reseller_applied" class="promo-tag">REVENDEDOR</span>
-                  <span v-else-if="it?.is_promo" class="promo-tag">PROMO</span>
+                  <span v-if="!it?.reseller_applied && it?.is_promo" class="promo-tag">PROMO</span>
                 </div>
                 <span class="item-total">{{ money(lineTotal(it)) }}</span>
               </div>
 
               <div class="item-meta">
+                <span v-if="it?.reseller_applied" class="reseller-tag">REVENDEDOR</span>
                 <span class="unit-price">
-                  <span v-if="it?.promo_applied && unitPriceList(it) > unitPriceEffective(it)" class="unit-old">
+                  <span v-if="it?.reseller_applied && unitPriceNormal(it) > unitPriceEffective(it)" class="unit-old">
+                    {{ money(unitPriceNormal(it)) }}
+                  </span>
+                  <span v-else-if="it?.promo_applied && unitPriceList(it) > unitPriceEffective(it)" class="unit-old">
                     {{ money(unitPriceList(it)) }}
                   </span>
                   {{ money(unitPriceEffective(it)) }}
@@ -147,7 +150,9 @@
         <div class="total-row">
           <div class="total-label-group">
             <span class="total-label">Total</span>
-            <span class="total-price-mode">Precio contado</span>
+            <span class="total-price-mode" :class="{ 'is-reseller': precioRevendedor }">
+              {{ precioRevendedor ? "Precio revendedor" : "Precio contado" }}
+            </span>
           </div>
           <span class="total-amt">{{ money(total) }}</span>
         </div>
@@ -174,7 +179,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from "vue";
+import { computed, reactive, watch } from "vue";
 import { useSnackbar } from "../composables/useSnackbar";
 import { usePosImages } from "../composables/usePosImages";
 import PosClienteVenta from "./PosClienteVenta.vue";
@@ -273,6 +278,12 @@ function pickFirstNumber(obj, keys) {
 function unitPriceEffective(it) {
   if (!it) return 0;
 
+  // Cliente mayorista con precio Revendedor: el store ya dejo el unitario.
+  if (it?.reseller_applied) {
+    const eff = toNum(it?.unit_price) || toNum(it?.price);
+    if (eff > 0) return eff;
+  }
+
   // Si el store ya marcó la línea con promo aplicada, usamos el unit_price
   // efectivo persistido (no price_discount, que es el original)
   if (it?.promo_applied) {
@@ -354,6 +365,15 @@ function unitPriceEffective(it) {
     ])
   );
 }
+
+// Precio que tendria sin el Revendedor, para mostrarlo tachado.
+function unitPriceNormal(it) {
+  const disc = toNum(it?.price_discount);
+  if (disc > 0) return disc;
+  return toNum(it?.price_list);
+}
+
+const precioRevendedor = computed(() => (props.cart || []).some((it) => it?.reseller_applied));
 
 function lineTotal(it) {
   return round3(toNum(it?.qty) * toNum(unitPriceEffective(it)));
@@ -988,6 +1008,19 @@ function remove(it) {
   gap: 8px;
 }
 
+.reseller-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+.total-price-mode.is-reseller {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+}
 .total-label-group {
   display: flex;
   flex-direction: column;

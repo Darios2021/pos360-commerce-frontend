@@ -4,6 +4,26 @@
       <div class="ck-screen__title">Elegí medio de pago</div>
     </div>
 
+    <!-- Cliente mayorista: con que precio se cobra. -->
+    <div v-if="clienteMayorista" class="ck-precio">
+      <div class="ck-precio__cliente">
+        <v-icon size="16">mdi-account-tie-outline</v-icon>
+        {{ clienteMayorista }}
+      </div>
+      <v-btn-toggle
+        :model-value="state.applyReseller ? 'revendedor' : 'normal'"
+        mandatory
+        density="comfortable"
+        color="primary"
+        variant="outlined"
+        divided
+        @update:model-value="(v) => (state.applyReseller = v === 'revendedor')"
+      >
+        <v-btn value="revendedor">Precio revendedor</v-btn>
+        <v-btn value="normal">Precio normal</v-btn>
+      </v-btn-toggle>
+    </div>
+
     <div class="ck-screen__body">
       <PaymentMethodSelector
         :methods="visiblePaymentMethods"
@@ -22,8 +42,16 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import PaymentMethodSelector from "../payment/PaymentMethodSelector.vue";
+import { usePosStore } from "@/app/store/pos.store";
+import { esMayorista } from "@/app/utils/clienteMayorista";
+
+const posStore = usePosStore();
+// Nombre del cliente si es mayorista; vacio si no (y el bloque no se muestra).
+const clienteMayorista = computed(() =>
+  esMayorista(posStore.clienteVenta) ? posStore.clienteVenta?.display_name || "Cliente mayorista" : ""
+);
 
 const rootRef = ref(null);
 
@@ -108,7 +136,7 @@ defineExpose({
   min-height: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 10px;
   padding: 4px 6px 6px;
   outline: none;
@@ -137,5 +165,25 @@ defineExpose({
 
 .ck-screen__body {
   min-height: 0;
+}
+
+.ck-precio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.07);
+  border: 1px solid rgba(var(--v-theme-primary), 0.25);
+}
+
+.ck-precio__cliente {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 </style>

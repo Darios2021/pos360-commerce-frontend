@@ -660,6 +660,9 @@ export const usePosStore = defineStore("pos", {
     // Cliente de la ficha elegido en el carrito. Si es mayorista, el carrito
     // se cobra a precio Revendedor (price_reseller).
     clienteVenta: null,
+    // Con cliente mayorista, si se cobra a precio Revendedor (true) o al
+    // precio normal (false). Se elige en el primer paso del cobro.
+    usarPrecioMayorista: true,
     cart: [],
     toast: { show: false, text: "" },
     last_sale: null,
@@ -795,12 +798,24 @@ export const usePosStore = defineStore("pos", {
 
     setClienteVenta(cliente) {
       this.clienteVenta = cliente && typeof cliente === "object" ? { ...cliente } : null;
+      this.usarPrecioMayorista = true;
       for (const it of this.cart) this._recalcLine(it);
+    },
+
+    setUsarPrecioMayorista(activo) {
+      this.usarPrecioMayorista = !!activo;
+      for (const it of this.cart) this._recalcLine(it);
+    },
+
+    /** Si el carrito va hoy a precio Revendedor. */
+    precioMayoristaAplicado() {
+      return esMayorista(this.clienteVenta) && this.usarPrecioMayorista;
     },
 
     clearCart() {
       this.cart = [];
       this.clienteVenta = null;
+      this.usarPrecioMayorista = true;
       this.claveDeCobro = null;
     },
 
@@ -818,7 +833,7 @@ export const usePosStore = defineStore("pos", {
       // Cliente mayorista: precio Revendedor, sin promos encima. Si el producto
       // no tiene precio Revendedor cargado, sigue el precio comun.
       const reseller = toNum(it.price_reseller, 0);
-      if (reseller > 0 && esMayorista(this.clienteVenta)) return Math.round(reseller * 100) / 100;
+      if (reseller > 0 && this.precioMayoristaAplicado()) return Math.round(reseller * 100) / 100;
 
       // Precio base sin promo
       const baseDiscount = toNum(it.price_discount, 0);
@@ -857,7 +872,7 @@ export const usePosStore = defineStore("pos", {
       // Persistimos el unit_price efectivo para que el checkout y el resumen lo usen
       it.price = unit;
       it.unit_price = unit;
-      it.reseller_applied = toNum(it.price_reseller, 0) > 0 && esMayorista(this.clienteVenta);
+      it.reseller_applied = toNum(it.price_reseller, 0) > 0 && this.precioMayoristaAplicado();
       it.promo_applied = !it.reseller_applied && Boolean(it.is_promo) && (
         this._isPromoTimeActive(it) ||
         (toInt(it.promo_qty_threshold, 0) >= 2 &&
