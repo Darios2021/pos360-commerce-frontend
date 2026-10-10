@@ -109,10 +109,24 @@
                       </div>
                     </div>
                     <div class="pfp-section-body">
+                      <div class="pfn-moneda">
+                        <span class="pfn-moneda__tit">Costo en</span>
+                        <div class="pfn-seg" role="group" aria-label="Moneda del costo">
+                          <button type="button" :class="{ 'is-on': !costoEnDolares }" :disabled="busy" @click="setMoneda(null)">Pesos</button>
+                          <button type="button" :class="{ 'is-on': costoEnDolares }" :disabled="busy" @click="setMoneda('USD')">Dólares</button>
+                        </div>
+                        <span v-if="costoEnDolares" class="pfn-moneda__fx">
+                          <template v-if="fxCargando">Buscando la cotización…</template>
+                          <template v-else-if="num(draft.fx_rate, 0) > 0">Dólar $ {{ fmtCot(draft.fx_rate) }}</template>
+                          <template v-else>Sin cotización</template>
+                          <a href="#" class="pfn-link" @click.prevent="traerCotizacion">Usar la de hoy</a>
+                        </span>
+                        <span v-if="fxError" class="pfn-error">{{ fxError }}</span>
+                      </div>
                       <v-row dense>
                         <v-col cols="12" sm="4">
                           <v-text-field v-model="draft.cost" :disabled="busy" density="compact" variant="outlined"
-                            label="Costo" type="number" min="0" prefix="$" hide-details="auto" :error-messages="fieldErr('cost')" />
+                            label="Costo" type="number" min="0" :prefix="costoEnDolares ? 'US$' : '$'" hide-details="auto" :error-messages="fieldErr('cost')" />
                         </v-col>
                         <v-col cols="6" sm="4">
                           <v-text-field v-model="draft.markup_pct" :disabled="busy" density="compact" variant="outlined"
@@ -141,6 +155,10 @@
                           <v-text-field v-model="draft.price_reseller" :disabled="busy" density="compact"
                             variant="outlined" label="Revendedor" type="number" min="0" prefix="$"
                             :error-messages="fieldErr('price_reseller')" hide-details="auto" />
+                        </v-col>
+                        <v-col cols="6" sm="4">
+                          <v-text-field v-model="draft.price_installer" :disabled="busy" density="compact"
+                            variant="outlined" label="Instalador" type="number" min="0" prefix="$" hide-details="auto" />
                         </v-col>
                       </v-row>
                       <label class="pfn-check">
@@ -971,6 +989,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import http from "../../../app/api/http";
+import { fetchOfficialUsdRate } from "@/modules/budgets/services/fx.service";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 import { CategoriesService } from "../../../app/services/categories.service";
@@ -1244,6 +1263,7 @@ function defaultDraft() {
     brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0,
     cost: null, tax_rate: 21, markup_pct: null,
     supplier_id: null, supplier_code: "", unit: "unidad", location: "", purchase_date: null, min_stock: null,
+    cost_currency: null, fx_rate: null, price_installer: null,
     // Promoción
     is_promo: false,
     promo_price: null,
@@ -1258,6 +1278,25 @@ function defaultDraft() {
   };
 }
 const draft = ref(defaultDraft());
+
+/* ── Costo en dólares: cotización oficial (la misma fuente que presupuestos) ── */
+const costoEnDolares = computed(() => draft.value?.cost_currency === "USD");
+const fxCargando = ref(false);
+const fxError = ref("");
+function fmtCot(v) { return num(v, 0).toLocaleString("es-AR", { maximumFractionDigits: 2 }); }
+async function traerCotizacion() {
+  fxCargando.value = true; fxError.value = "";
+  try {
+    const fx = await fetchOfficialUsdRate();
+    draft.value.fx_rate = fx.rate;
+  } catch (e) {
+    fxError.value = e?.message || "No se pudo traer la cotización";
+  } finally { fxCargando.value = false; }
+}
+function setMoneda(m) {
+  draft.value.cost_currency = m;
+  if (m === "USD" && !(num(draft.value?.fx_rate, 0) > 0)) traerCotizacion();
+}
 
 /* ── Compra: proveedores y unidades ── */
 const UNIDADES = [
@@ -1304,21 +1343,30 @@ onMounted(() => cargarProveedores(""));
 /* ── Lista calculada: costo + % de ganancia + IVA ── */
 const IVAS = [{ t: "21 %", v: 21 }, { t: "10,5 %", v: 10.5 }, { t: "27 %", v: 27 }, { t: "Exento", v: 0 }];
 const listaCalculada = ref(true);
+// Costo en pesos: el costo tal cual. En dólares: costo × cotización guardada.
+function costoEnPesos() {
+  const c = num(draft.value?.cost, 0);
+  if (draft.value?.cost_currency !== "USD") return c;
+  const r = num(draft.value?.fx_rate, 0);
+  return r > 0 ? c * r : 0;
+}
 function listaDesdeCosto() {
-  const c = num(draft.value?.cost, 0), g = draft.value?.markup_pct;
+  const c = costoEnPesos(), g = draft.value?.markup_pct;
   if (!(c > 0) || g === "" || g == null) return null;
   return Math.round(c * (1 + num(g, 0) / 100) * (1 + num(draft.value?.tax_rate, 0) / 100));
 }
 const cuentaLista = computed(() => {
-  const c = num(draft.value?.cost, 0), g = draft.value?.markup_pct;
+  const c = costoEnPesos(), g = draft.value?.markup_pct;
   if (!(c > 0) || g === "" || g == null) return "";
   const conGanancia = c * (1 + num(g, 0) / 100);
   const iva = num(draft.value?.tax_rate, 0);
   const conIva = conGanancia * (1 + iva / 100);
   const f = (n) => "$ " + n.toLocaleString("es-AR", { maximumFractionDigits: 2 });
-  return `${f(c)} de costo + ${num(g, 0)} % = ${f(conGanancia)}` + (iva ? ` · + IVA ${iva} % = ${f(conIva)}` : "") + ` → lista ${f(Math.round(conIva))}`;
+  const enDolares = draft.value?.cost_currency === "USD"
+    ? `US$ ${num(draft.value?.cost, 0).toLocaleString("es-AR")} × ${f(num(draft.value?.fx_rate, 0))} = ` : "";
+  return `${enDolares}${f(c)} de costo + ${num(g, 0)} % = ${f(conGanancia)}` + (iva ? ` · + IVA ${iva} % = ${f(conIva)}` : "") + ` → lista ${f(Math.round(conIva))}`;
 });
-watch(() => [draft.value?.cost, draft.value?.markup_pct, draft.value?.tax_rate, listaCalculada.value], () => {
+watch(() => [draft.value?.cost, draft.value?.markup_pct, draft.value?.tax_rate, draft.value?.cost_currency, draft.value?.fx_rate, listaCalculada.value], () => {
   if (!listaCalculada.value) return;
   const l = listaDesdeCosto();
   if (l != null && num(draft.value?.price_list, 0) !== l) draft.value.price_list = l;
@@ -1334,6 +1382,8 @@ watch(() => draft.value?.id, (id, viejo) => {
   // La API devuelve los decimales como texto ("21.00"): el selector de IVA compara números
   if (draft.value.tax_rate != null) draft.value.tax_rate = num(draft.value.tax_rate, 21);
   if (draft.value.min_stock != null) draft.value.min_stock = num(draft.value.min_stock, 0);
+  if (draft.value.fx_rate != null) draft.value.fx_rate = num(draft.value.fx_rate, 0) || null;
+  if (draft.value.price_installer != null) draft.value.price_installer = num(draft.value.price_installer, 0);
   if (draft.value.purchase_date) draft.value.purchase_date = String(draft.value.purchase_date).slice(0, 10);
   if (!draft.value.unit) draft.value.unit = "unidad";
   listaCalculada.value = draft.value?.markup_pct != null && draft.value?.markup_pct !== "";
@@ -1754,6 +1804,9 @@ function buildPayload() {
   payload.purchase_date = String(draft.value?.purchase_date || "").slice(0, 10) || null;
   payload.min_stock = draft.value?.min_stock === "" || draft.value?.min_stock == null ? null : num(draft.value.min_stock, 0);
   payload.supplier_id = toInt(draft.value?.supplier_id, 0) || null;
+  payload.cost_currency = draft.value?.cost_currency === "USD" ? "USD" : null;
+  payload.fx_rate = payload.cost_currency ? (num(draft.value?.fx_rate, 0) || null) : null;
+  payload.price_installer = draft.value?.price_installer === "" || draft.value?.price_installer == null ? null : num(draft.value.price_installer, 0);
   // Lista a mano: no queda guardado un % que no la explica
   if (!listaCalculada.value) payload.markup_pct = null;
   delete payload.sku;
@@ -2663,6 +2716,16 @@ async function saveAll() {
 .pfn-check { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pfn-cancelar { font-size: 14px; font-weight: 700; color: inherit; opacity: .7; text-decoration: none; margin-right: 16px; }
 .pfn-cancelar:hover { text-decoration: underline; }
+.pfn-moneda { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.pfn-moneda__tit { font-size: 13px; font-weight: 700; opacity: .75; }
+.pfn-seg { display: flex; gap: 2px; padding: 3px; border-radius: 8px; border: 1px solid rgba(var(--v-border-color), 0.25); }
+.pfn-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: inherit; cursor: pointer; }
+.pfn-seg button.is-on { background: #0f6fae; color: #ffffff; }
+.pfn-moneda__fx { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pfn-link { color: #0f6fae; font-weight: 800; text-decoration: none; }
+.v-theme--dark .pfn-link { color: #5aaee0; }
+.pfn-link:hover { text-decoration: underline; }
+.pfn-error { font-size: 13px; font-weight: 700; color: #b23b35; }
 /* Secciones con la banda azul del rediseño */
 .pfp-root .pfp-section { border-radius: 12px !important; border: 1px solid rgba(var(--v-border-color), 0.16) !important; overflow: hidden; box-shadow: none !important; }
 .pfp-root .pfp-section-head { background: #0f6fae !important; color: #ffffff !important; border: 0 !important; padding: 12px 16px !important; }

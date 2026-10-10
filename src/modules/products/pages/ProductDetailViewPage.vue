@@ -71,10 +71,15 @@
             <dd>$ {{ fmtPrice(productForUIFixed.price_list) }}<span v-if="recargoLista" class="pd-suave"> · {{ recargoLista }} % más</span></dd>
             <dt>Revendedor</dt>
             <dd>{{ Number(raw.price_reseller) > 0 ? `$ ${fmtPrice(raw.price_reseller)}` : "—" }}</dd>
+            <template v-if="Number(raw.price_installer) > 0"><dt>Instalador</dt><dd>$ {{ fmtPrice(raw.price_installer) }}</dd></template>
             <dt>Costo</dt>
-            <dd><template v-if="costo > 0">$ {{ fmtPrice(costo) }}</template><span v-else class="pd-tenue">sin cargar</span></dd>
+            <dd>
+              <template v-if="costo > 0 && raw.cost_currency === 'USD'">US$ {{ Number(costo).toLocaleString("es-AR") }}<span v-if="Number(raw.fx_rate) > 0" class="pd-suave"> · dólar $ {{ fmtPrice(raw.fx_rate) }}</span></template>
+              <template v-else-if="costo > 0">$ {{ fmtPrice(costo) }}</template>
+              <span v-else class="pd-tenue">sin cargar</span>
+            </dd>
             <dt>Margen</dt>
-            <dd><template v-if="costo > 0 && productForUIFixed.margin !== null">{{ Math.round(productForUIFixed.margin) }} %</template><span v-else class="pd-tenue">sin costo no se calcula</span></dd>
+            <dd><template v-if="costoPesos > 0 && Number(productForUIFixed.price_discount) > 0">{{ Math.round(((Number(productForUIFixed.price_discount) - costoPesos) / Number(productForUIFixed.price_discount)) * 100) }} % <span class="pd-suave">en contado</span></template><span v-else class="pd-tenue">sin costo no se calcula</span></dd>
           </dl>
         </div>
 
@@ -644,6 +649,12 @@ const lineaCodigos = computed(() => {
   return [r.brand, r.model, sku ? `SKU ${sku}` : "", code ? `Código ${code}` : ""].filter(Boolean).join(" · ");
 });
 const costo = computed(() => Number(raw.value?.cost || 0));
+// El margen se calcula en pesos: un costo en dólares se pasa con la cotización guardada
+const costoPesos = computed(() => {
+  if (raw.value?.cost_currency !== "USD") return costo.value;
+  const r = Number(raw.value?.fx_rate || 0);
+  return r > 0 ? costo.value * r : 0;
+});
 const recargoLista = computed(() => {
   const l = Number(productForUIFixed.value.price_list || 0), c = Number(productForUIFixed.value.price_discount || 0);
   return l > c && c > 0 ? Math.round(((l - c) / l) * 100) : 0;

@@ -58,11 +58,23 @@
         <v-list density="compact" class="lp-promo-menu">
           <v-list-item prepend-icon="mdi-pause-circle-outline" title="Pausar todas las promos" @click="onPauseAllPromos" />
           <v-list-item prepend-icon="mdi-play-circle-outline" title="Reactivar promos configuradas" @click="onResumeAllPromos" />
+          <v-divider />
+          <v-list-item prepend-icon="mdi-currency-usd" title="Actualizar precios en dólares" @click="onRepriceUsd" />
         </v-list>
       </v-menu>
     </div>
 
     <BarcodeScannerDialog v-if="!smAndUp" v-model="lpScanOpen" title="Buscar producto" />
+
+    <!-- Actualizar precios en dólares: se confirma acá mismo, no en una ventana -->
+    <div v-if="usdConfirm" class="pl-usd">
+      <span class="pl-usd__txt num">
+        <b>Actualizar precios en dólares</b>
+        Dólar oficial de hoy $ {{ Number(usdConfirm.rate).toLocaleString("es-AR") }}. Se recalcula la lista de los productos con costo en dólares y % de ganancia; contado y revendedor no cambian.
+      </span>
+      <a href="#" class="pl-link pl-link--chico pl-link--suave" @click.prevent="usdConfirm = null">No actualizar</a>
+      <v-btn color="primary" variant="flat" :loading="bulkPromoBusy" @click="confirmarUsd">Actualizar</v-btn>
+    </div>
 
     <!-- ── Resumen en una franja (clic en una parte filtra) ── -->
     <div class="pl-resumen">
@@ -308,6 +320,8 @@ import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
 import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
+import http from "@/app/api/http";
+import { fetchOfficialUsdRate } from "@/modules/budgets/services/fx.service";
 
 const router = useRouter();
 const route = useRoute();
@@ -740,11 +754,41 @@ function onResumeAllPromos() {
   };
 }
 
+const usdConfirm = ref(null);
+async function confirmarUsd() {
+  if (!usdConfirm.value?.rate) return;
+  bulkPromoBusy.value = true;
+  try {
+    const { data } = await http.post("/products/usd-reprice", { rate: usdConfirm.value.rate });
+    const n = Number(data?.data?.updated || 0);
+    toast(n > 0 ? `${n} ${n === 1 ? "precio actualizado" : "precios actualizados"} al dólar de hoy` : "No hay productos con costo en dólares");
+    usdConfirm.value = null;
+    await Promise.all([fetchNow(), fetchStats()]);
+  } catch (e) {
+    toast(`⚠️ ${e?.response?.data?.message || e?.message || "No se pudo actualizar"}`);
+  } finally {
+    bulkPromoBusy.value = false;
+  }
+}
+// Lista de los productos con costo en dólares, a la cotización oficial de hoy
+async function onRepriceUsd() {
+  bulkPromoBusy.value = true;
+  try {
+    const fx = await fetchOfficialUsdRate();
+    usdConfirm.value = { rate: fx.rate };
+  } catch (e) {
+    toast(`⚠️ ${e?.message || "No se pudo traer la cotización"}`);
+  } finally {
+    bulkPromoBusy.value = false;
+  }
+}
+
 async function confirmBulkPromo() {
   const action = bulkPromoDialog.value.action;
   if (!action) return;
   bulkPromoBusy.value = true;
   try {
+
     const res = action === "pause"
       ? await products.pauseAllPromos()
       : await products.resumeAllPromos();
@@ -2080,6 +2124,9 @@ function branchCssColor(id) {
 .pl-partes { display: flex; gap: 2px; height: 8px; }
 .pl-partes > span { display: block; height: 8px; border-radius: 3px; }
 
+.pl-usd { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; background: var(--pl-caja); border: 1px solid #8cc0e3; }
+.pl-usd__txt { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--pl-suave); }
+.pl-usd__txt b { font-size: 15px; color: var(--pl-texto); }
 .pl-masiva { display: flex; align-items: center; gap: 16px; padding: 8px 14px; border-radius: 10px; background: var(--pl-caja); border: 1px solid #8cc0e3; }
 .pl-masiva__sel { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
 .pl-masiva__no { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--pl-suave); }
