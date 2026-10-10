@@ -1509,7 +1509,7 @@ watch(branchId, fetchProduct);
 .v-theme--dark .pd-estado.is-activo { color: #5fc9a6; }
 .pd-editar { height: 42px !important; border-radius: 10px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
 
-.pd-grilla { display: grid; grid-template-columns: 420px minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+.pd-grilla { display: grid; grid-template-columns: minmax(320px, 420px) minmax(340px, 1fr) minmax(320px, 360px); gap: 18px; align-items: start; }
 .pd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .pd-caja { border-radius: 12px; overflow: hidden; background: var(--pd-caja); border: 1px solid var(--pd-borde); }
 .pd-esq { background: linear-gradient(90deg, var(--pd-caja), var(--pd-hover), var(--pd-caja)); }
@@ -1537,7 +1537,7 @@ watch(branchId, fetchProduct);
 .pd-precio__grande { font-size: 40px; font-weight: 800; line-height: 1; }
 .pd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; }
 .pd-datos dt { font-size: 14px; font-weight: 600; color: var(--pd-suave); }
-.pd-datos dd { margin: 0; font-size: 15px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+.pd-datos dd { margin: 0; font-size: 15px; font-weight: 700; text-align: right; overflow-wrap: break-word; }
 .pd-desc { margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.55; white-space: pre-line; }
 
 .pd-filas { display: flex; flex-direction: column; padding: 2px 16px 8px; }
@@ -1565,8 +1565,8 @@ watch(branchId, fetchProduct);
 .pd-ver-todas { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--pd-linea); font-size: 15px; font-weight: 800; color: var(--pd-acento); text-decoration: none; }
 .pd-ver-todas:hover { background: var(--pd-hover); }
 
-@media (max-width: 1280px) {
-  .pd-grilla { grid-template-columns: 380px minmax(0, 1fr); }
+@media (max-width: 1560px) {
+  .pd-grilla { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
   .pd-grilla > .pd-col:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
 @media (max-width: 900px) {
