@@ -560,6 +560,7 @@ export const useProductsStore = defineStore("products", {
         delete p.limit;
         delete p.stock;
         delete p.price_presence;
+        delete p.cost_presence;
         delete p.price_min;
         delete p.price_max;
         delete p.images;

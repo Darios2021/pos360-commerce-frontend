@@ -28,7 +28,7 @@
       <div class="sp-tabla-scroll">
         <table class="sp-tabla cf-tabla">
           <thead>
-            <tr><th>Producto</th><th class="c-v">Vendido</th><th class="c-m">Moneda</th><th class="c-c">Costo</th></tr>
+            <tr><th>Producto</th><th class="c-v">Vendido</th><th class="c-p">Contado</th><th class="c-p">Lista</th><th class="c-p">Revendedor</th><th class="c-m">Moneda</th><th class="c-c">Costo</th></tr>
           </thead>
           <tbody>
             <tr v-for="r in filas" :key="r.id" :class="{ 'is-ok': r.guardado }">
@@ -37,6 +37,9 @@
                 <span class="sp-s cf-sku">{{ r.sku }}</span>
               </td>
               <td class="c-v num">{{ pesos(r.vendido) }}</td>
+              <td class="c-p num">{{ precio(r.contado) }}</td>
+              <td class="c-p num">{{ precio(r.lista) }}</td>
+              <td class="c-p num">{{ precio(r.revendedor) }}</td>
               <td class="c-m">
                 <div class="cf-seg">
                   <button type="button" :class="{ 'is-on': !r.usd }" @click="r.usd = false">$</button>
@@ -49,7 +52,7 @@
               </td>
             </tr>
             <tr v-if="!cargando && !filas.length">
-              <td colspan="4" class="sp-vacio">Todos los productos vendidos en el período tienen costo</td>
+              <td colspan="7" class="sp-vacio">Todos los productos vendidos en el período tienen costo</td>
             </tr>
           </tbody>
         </table>
@@ -83,6 +86,8 @@ const dolar = ref(null);
 const aviso = reactive({ open: false, text: "" });
 
 const pesos = (v) => `$ ${Math.round(Number(v || 0)).toLocaleString("es-AR")}`;
+// Precio de referencia: sin cargar se muestra como raya.
+const precio = (v) => (Number(v) > 0 ? pesos(v) : "—");
 const completos = computed(() => filas.value.filter((r) => !r.guardado && Number(r.costo) > 0));
 
 async function cargar() {
@@ -93,7 +98,10 @@ async function cargar() {
     const m = new Map();
     for (const r of data?.data?.rows || []) {
       if (!r.product_id || !(Number(r.qty_sin_costo) > 0)) continue;
-      const a = m.get(r.product_id) || { id: r.product_id, nombre: r.name, sku: r.sku, vendido: 0, usd: false, costo: null, guardado: false };
+      const a = m.get(r.product_id) || {
+        id: r.product_id, nombre: r.name, sku: r.sku, vendido: 0, usd: false, costo: null, guardado: false,
+        contado: r.price_discount, lista: r.price_list, revendedor: r.price_reseller,
+      };
       a.vendido += Number(r.vendido || 0);
       m.set(r.product_id, a);
     }
@@ -143,7 +151,8 @@ onMounted(async () => {
 .cf-filtros label { display: flex; flex-direction: column; gap: 6px; width: 170px; }
 .cf-filtros label span { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sp-suave); }
 .cf-dolar { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--sp-suave); padding-bottom: 12px; }
-.cf-tabla .c-v { width: 160px; text-align: right; }
+.cf-tabla .c-v { width: 130px; text-align: right; }
+.cf-tabla .c-p { width: 115px; text-align: right; color: var(--sp-suave); font-weight: 600; white-space: nowrap; }
 .cf-tabla .c-m { width: 130px; }
 .cf-tabla .c-c { width: 220px; }
 .cf-tabla tbody tr { cursor: default; }

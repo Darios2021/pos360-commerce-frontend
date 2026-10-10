@@ -88,6 +88,7 @@
           <button type="button" :class="{ 'is-on': f.stock === 'low' }" @click="filtroRapido('stock', 'low')"><i class="c-bajo"></i>{{ fmtInt(stats.low_stock) }} bajo</button>
           <button type="button" :class="{ 'is-on': f.stock === 'without' }" @click="filtroRapido('stock', 'without')"><i class="c-sin"></i>{{ fmtInt(stats.without_stock) }} sin stock</button>
           <button v-if="stats.without_price" type="button" :class="{ 'is-on': f.price_presence === 'without' }" @click="filtroRapido('price_presence', 'without')"><i class="c-precio"></i>{{ fmtInt(stats.without_price) }} sin precio</button>
+          <button v-if="stats.without_cost" type="button" :class="{ 'is-on': f.cost_presence === 'without' }" @click="filtroRapido('cost_presence', 'without')"><i class="c-costo"></i>{{ fmtInt(stats.without_cost) }} sin costo</button>
         </span>
       </div>
       <span class="pl-partes">
@@ -349,6 +350,8 @@ const stats = ref({
   without_stock: 0,
   with_price: 0,
   without_price: 0,
+  with_cost: 0,
+  without_cost: 0,
   with_images: 0,
   without_images: 0,
   promo_active: 0,
@@ -499,6 +502,7 @@ const f = ref({
   subcategory_id: null,
   stock: "all",
   price_presence: "all",
+  cost_presence: "all",
   status: "active",
   price_min: null,
   price_max: null,
@@ -565,6 +569,7 @@ async function clearFilters() {
     subcategory_id: null,
     stock: "all",
     price_presence: "all",
+    cost_presence: "all",
     status: "active",
     price_min: null,
     price_max: null,
@@ -604,6 +609,8 @@ async function fetchStats() {
         without_stock: Number(data.without_stock || 0),
         with_price: Number(data.with_price || 0),
         without_price: Number(data.without_price || 0),
+        with_cost: Number(data.with_cost || 0),
+        without_cost: Number(data.without_cost || 0),
         with_images: Number(data.with_images || 0),
         without_images: Number(data.without_images || 0),
         promo_active: Number(data.promo_active || 0),
@@ -639,6 +646,7 @@ async function fetchNow() {
 
       stock: f.value.stock,
       price_presence: f.value.price_presence,
+      cost_presence: f.value.cost_presence && f.value.cost_presence !== "all" ? f.value.cost_presence : null,
       price_min: f.value.price_min !== "" && f.value.price_min != null ? Number(f.value.price_min) : null,
       price_max: f.value.price_max !== "" && f.value.price_max != null ? Number(f.value.price_max) : null,
       images: f.value.images,
@@ -934,6 +942,7 @@ function filtrosDeLaUrl() {
   const q = route.query || {};
   if (["with", "without", "low"].includes(q.stock)) f.value.stock = q.stock;
   if (q.precio === "with" || q.precio === "without") f.value.price_presence = q.precio;
+  if (q.costo === "with" || q.costo === "without") f.value.cost_presence = q.costo;
   const suc = parseInt(String(q.sucursal || ""), 10);
   if (suc > 0) f.value.branch_id = suc;
 }
@@ -1032,6 +1041,7 @@ const gruposFiltro = computed(() => {
     ],
   });
   g.push({ clave: "price_presence", titulo: "Precio", opciones: [op("price_presence", "with", "Con precio", s.with_price), op("price_presence", "without", "Sin precio", s.without_price)] });
+  g.push({ clave: "cost_presence", titulo: "Costo", opciones: [op("cost_presence", "with", "Con costo", s.with_cost), op("cost_presence", "without", "Sin costo", s.without_cost)] });
   g.push({ clave: "images", titulo: "Fotos", opciones: [op("images", "with", "Con fotos", s.with_images), op("images", "without", "Sin fotos", s.without_images)] });
   g.push({
     clave: "promo", titulo: "Promoción",
@@ -1050,7 +1060,7 @@ const gruposFiltro = computed(() => {
   }
   return g;
 });
-const DEFAULTS_FILTRO = { status: "active", stock: "all", price_presence: "all", images: "all", promo: "all", branch_id: null };
+const DEFAULTS_FILTRO = { status: "active", stock: "all", price_presence: "all", cost_presence: "all", images: "all", promo: "all", branch_id: null };
 function elegirFiltro(clave, valor) {
   const actual = f.value[clave];
   const igual = clave === "branch_id" ? Number(actual) === Number(valor) : actual === valor;
@@ -1086,6 +1096,7 @@ const activeFiltersCount = computed(() => {
   if (f.value.subcategory_id) n++;
   if (f.value.stock !== 'all') n++;
   if (f.value.price_presence !== 'all') n++;
+  if (f.value.cost_presence && f.value.cost_presence !== 'all') n++;
   if (f.value.images !== 'all') n++;
   if (f.value.price_min) n++;
   if (f.value.price_max) n++;
@@ -1102,6 +1113,7 @@ const activeAdvancedCount = computed(() => {
   if (f.value.subcategory_id) n++;
   if (f.value.stock !== 'all') n++;
   if (f.value.price_presence !== 'all') n++;
+  if (f.value.cost_presence && f.value.cost_presence !== 'all') n++;
   if (f.value.images !== 'all') n++;
   if (f.value.promo !== 'all') n++;
   if (f.value.price_min) n++;
@@ -1116,6 +1128,7 @@ const activeFilterChips = computed(() => {
   if (f.value.subcategory_id) { const s = subcategoryItems.value.find(x => x.value === f.value.subcategory_id); chips.push({ key: 'subcategory_id', label: `Subrubro: ${s?.title || f.value.subcategory_id}` }); }
   if (f.value.stock !== 'all') chips.push({ key: 'stock', label: stockItems.find(x => x.value === f.value.stock)?.title });
   if (f.value.price_presence !== 'all') chips.push({ key: 'price_presence', label: pricePresenceItems.find(x => x.value === f.value.price_presence)?.title });
+  if (f.value.cost_presence && f.value.cost_presence !== 'all') chips.push({ key: 'cost_presence', label: f.value.cost_presence === 'without' ? 'Sin costo' : 'Con costo' });
   if (f.value.images !== 'all') chips.push({ key: 'images', label: imagesItems.find(x => x.value === f.value.images)?.title });
   if (f.value.promo !== 'all') chips.push({ key: 'promo', label: `Promo: ${promoItems.find(x => x.value === f.value.promo)?.title}` });
   if (f.value.price_min) chips.push({ key: 'price_min', label: `Mín $${f.value.price_min}` });
@@ -1126,7 +1139,7 @@ const activeFilterChips = computed(() => {
 });
 
 function removeFilter(key) {
-  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', images: 'all', promo: 'all', price_min: null, price_max: null, status: 'active' };
+  const defaults = { branch_id: null, category_id: null, subcategory_id: null, stock: 'all', price_presence: 'all', cost_presence: 'all', images: 'all', promo: 'all', price_min: null, price_max: null, status: 'active' };
   f.value[key] = defaults[key];
   if (key === 'category_id') f.value.subcategory_id = null;
   applyFilters();
@@ -2120,7 +2133,7 @@ function branchCssColor(id) {
 .pl-leyenda button:hover { background: var(--pl-hover); }
 .pl-leyenda button.is-on { border-color: #8cc0e3; background: var(--pl-hover); }
 .pl-leyenda i { width: 10px; height: 10px; border-radius: 3px; display: block; }
-.pl .c-bien { background: #2E9E7B; } .pl .c-bajo { background: #8cc0e3; } .pl .c-sin { background: #C3C9D6; } .pl .c-precio { background: #f0b429; }
+.pl .c-bien { background: #2E9E7B; } .pl .c-bajo { background: #8cc0e3; } .pl .c-sin { background: #C3C9D6; } .pl .c-precio { background: #f0b429; } .pl .c-costo { background: #64748b; }
 .pl-partes { display: flex; gap: 2px; height: 8px; }
 .pl-partes > span { display: block; height: 8px; border-radius: 3px; }
 
