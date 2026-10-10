@@ -477,6 +477,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-tabs button span { margin-left: 4px; opacity: .8; }
 
 .ct-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ct-col > .sp-busca__campo { flex: 0 0 auto; }
 .ct-pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .ct-paso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); text-align: left; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
 .ct-paso:hover:not(:disabled):not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
