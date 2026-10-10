@@ -4,10 +4,15 @@ import "@mdi/font/css/materialdesignicons.css";
 import { createVuetify } from "vuetify";
 import * as components from "vuetify/components";
 import * as directives from "vuetify/directives";
+import { es } from "vuetify/locale";
 
 const vuetify = createVuetify({
   components,
   directives,
+
+  // Textos propios de Vuetify (calendario, "sin datos", paginado) en español.
+  locale: { locale: "es", fallback: "en", messages: { es } },
+  date: { locale: { es: "es-AR" } },
 
   defaults: {
     VOverlay: { scrim: false },

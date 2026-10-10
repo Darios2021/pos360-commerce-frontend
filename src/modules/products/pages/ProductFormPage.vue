@@ -12,9 +12,9 @@
     <!-- Pasos -->
     <nav class="pfx-pasos" aria-label="Pasos">
       <template v-for="(p, i) in STEPS" :key="p.value">
-        <button type="button" class="pfx-paso" :class="{ 'is-hecho': step > p.value, 'is-actual': step === p.value }"
+        <button type="button" class="pfx-paso" :class="{ 'is-hecho': step > p.value && (p.value !== 1 || canGoAfterStep1), 'is-falta': step > p.value && p.value === 1 && !canGoAfterStep1, 'is-actual': step === p.value }"
           :disabled="!canGoTo(p.value)" @click="goToStep(p.value)">
-          <span class="pfx-paso__n num"><v-icon v-if="step > p.value" size="18">mdi-check</v-icon><template v-else>{{ p.value }}</template></span>
+          <span class="pfx-paso__n num"><v-icon v-if="step > p.value && (p.value !== 1 || canGoAfterStep1)" size="18">mdi-check</v-icon><template v-else>{{ p.value }}</template></span>
           <span class="pfx-paso__txt"><span class="pfx-paso__tit">{{ p.title }}</span><span class="pfx-paso__sub">{{ p.sub }}</span></span>
         </button>
         <span v-if="i < STEPS.length - 1" class="pfx-paso__linea" :class="{ 'is-hecho': step > p.value }"></span>
@@ -48,7 +48,7 @@
                 :error-messages="!draft.name && step1Touched ? ['Falta la descripción'] : []" />
             </div>
           </div>
-          <div class="pfx-g pfx-g--3">
+          <div class="pfx-g pfx-g--4">
             <div class="pfx-c"><label>Rubro</label>
               <v-select v-model="draftCategoryId" :items="categoriesList" item-title="name" item-value="id" :disabled="busy"
                 density="comfortable" variant="outlined" hide-details="auto" clearable :menu-props="{ maxHeight: 360 }"
@@ -61,6 +61,9 @@
             </div>
             <div class="pfx-c"><label>Marca <i>· opcional</i></label>
               <v-text-field v-model="draft.brand" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Modelo <i>· opcional</i></label>
+              <v-text-field v-model="draft.model" :disabled="busy" density="comfortable" variant="outlined" hide-details />
             </div>
           </div>
           <div class="pfx-g pfx-g--2">
@@ -111,17 +114,16 @@
           <!-- Los tres precios de venta, lo que más importa de la tarjeta -->
           <div class="pfx-tres">
             <div class="pfx-precio">
-              <div class="pfx-precio__cab"><label>Precio contado</label><i>opcional</i></div>
+              <div class="pfx-precio__cab"><label>Precio contado</label></div>
               <CampoPlata v-model="draft.price_discount" :disabled="busy" :error-messages="fieldErr('price_discount')" />
             </div>
             <div class="pfx-precio pfx-precio--lista" :class="{ 'pfx-calculado': listaCalculada }">
-              <div class="pfx-precio__cab"><label>Precio lista</label>
-                <label class="pfx-sw pfx-sw--chico"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Calculada</label>
-              </div>
+              <div class="pfx-precio__cab"><label>Precio lista</label></div>
               <CampoPlata :model-value="draft.price_list" :disabled="busy" :error-messages="fieldErr('price_list')" @update:model-value="onListaAMano" />
+              <label class="pfx-sw pfx-sw--chico"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Calculada desde el costo</label>
             </div>
             <div class="pfx-precio">
-              <div class="pfx-precio__cab"><label>Precio revendedor</label><i>opcional</i></div>
+              <div class="pfx-precio__cab"><label>Precio revendedor</label></div>
               <CampoPlata v-model="draft.price_reseller" :disabled="busy" :error-messages="fieldErr('price_reseller')" />
             </div>
           </div>
@@ -155,6 +157,60 @@
             <ProductImagesPanel :product-id="draft?.id || null" v-model="queuedImages" @changed="onQueuedChanged" />
           </div>
           </div></section>
+          <div class="pfp-section pfp-step2-videos mt-4">
+                  <div class="pfp-section-head" style="--accent:#ef4444">
+                    <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-youtube</v-icon></div>
+                    <div>
+                      <div class="pfp-section-title">Videos</div>
+                      <div class="pfp-section-sub">YouTube o archivos</div>
+                    </div>
+                    <div class="ml-auto d-flex ga-1 align-center">
+                      <v-chip v-if="queuedYoutubeVideos.length || queuedVideoFiles.length" size="x-small" color="primary" variant="tonal">
+                        {{ queuedYoutubeVideos.length + queuedVideoFiles.length }} en cola
+                      </v-chip>
+                      <v-btn size="x-small" variant="text" @click="clearVideosQueue" :disabled="busy">Limpiar</v-btn>
+                    </div>
+                  </div>
+                  <div class="pfp-section-body">
+                    <div class="pfp-video-grid">
+                      <div>
+                        <div class="pfp-video-label"><v-icon size="16" color="#FF0000">mdi-youtube</v-icon> YouTube / Shorts</div>
+                        <div class="d-flex ga-2 mt-2">
+                          <v-text-field v-model="ytUrl" :disabled="busy" density="compact" label="URL YouTube"
+                            prepend-inner-icon="mdi-link" variant="outlined" hide-details class="flex-1"
+                            @keyup.enter="addYoutubeUrl" />
+                          <v-btn color="primary" variant="flat" rounded="lg" @click="addYoutubeUrl" :disabled="busy">
+                            <v-icon>mdi-plus</v-icon>
+                          </v-btn>
+                        </div>
+                        <v-alert v-if="ytError" type="error" variant="tonal" density="compact" class="mt-2">{{ ytError }}</v-alert>
+                        <div v-if="queuedYoutubeVideos.length" class="pfp-queue-list mt-2">
+                          <div v-for="(v, idx) in queuedYoutubeVideos" :key="v.key" class="pfp-queue-item">
+                            <v-icon size="16" color="#FF0000" class="flex-shrink-0">mdi-youtube</v-icon>
+                            <div class="pfp-queue-url text-truncate">{{ v.url }}</div>
+                            <v-btn size="x-small" icon variant="text" @click="removeYoutubeAt(idx)" :disabled="busy">
+                              <v-icon size="14">mdi-close</v-icon>
+                            </v-btn>
+                          </div>
+                        </div>
+                        <div v-else class="pfp-queue-empty">Sin videos</div>
+                      </div>
+                      <div>
+                        <div class="pfp-video-label"><v-icon size="16">mdi-upload</v-icon> Archivo de video</div>
+                        <div class="mt-2">
+                          <v-file-input v-model="queuedVideoFiles" :disabled="busy" density="compact"
+                            variant="outlined" prepend-icon="" prepend-inner-icon="mdi-video-plus"
+                            label="Elegí archivos de video" multiple accept="video/*" show-size chips hide-details />
+                        </div>
+                      </div>
+                    </div>
+                    <ProductVideosPanel v-if="isEdit" class="mt-3" :product-id="draft?.id || null" mode="edit"
+                      :youtube-queue="queuedYoutubeVideos" :files-queue="queuedVideoFiles"
+                      @update:youtubeQueue="queuedYoutubeVideos = normalizeYoutubeQueue($event)"
+                      @update:filesQueue="queuedVideoFiles = normalizeFilesQueue($event)"
+                      @changed="onVideosChanged" />
+                  </div>
+                </div>
         </div>
 
         <!-- 4. Más datos -->
@@ -175,14 +231,8 @@
                 </template>
               </v-autocomplete>
             </div>
-            <div class="pfx-c"><label>Código del proveedor</label>
-              <v-text-field v-model="draft.supplier_code" :disabled="busy" density="comfortable" variant="outlined" hide-details />
-            </div>
             <div class="pfx-c"><label>Fecha de compra</label>
-              <v-text-field v-model="draft.purchase_date" :disabled="busy" density="comfortable" variant="outlined" type="date" hide-details />
-            </div>
-            <div class="pfx-c"><label>Modelo</label>
-              <v-text-field v-model="draft.model" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+              <CampoFecha v-model="draft.purchase_date" :disabled="busy" />
             </div>
             <div class="pfx-c"><label>Unidad</label>
               <v-select v-model="draft.unit" :items="UNIDADES" :disabled="busy" density="comfortable" variant="outlined" hide-details />
@@ -492,60 +542,6 @@
               </div>
 
 
-          <div class="pfp-section pfp-step2-videos mt-4">
-                  <div class="pfp-section-head" style="--accent:#ef4444">
-                    <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-youtube</v-icon></div>
-                    <div>
-                      <div class="pfp-section-title">Videos</div>
-                      <div class="pfp-section-sub">YouTube o archivos</div>
-                    </div>
-                    <div class="ml-auto d-flex ga-1 align-center">
-                      <v-chip v-if="queuedYoutubeVideos.length || queuedVideoFiles.length" size="x-small" color="primary" variant="tonal">
-                        {{ queuedYoutubeVideos.length + queuedVideoFiles.length }} en cola
-                      </v-chip>
-                      <v-btn size="x-small" variant="text" @click="clearVideosQueue" :disabled="busy">Limpiar</v-btn>
-                    </div>
-                  </div>
-                  <div class="pfp-section-body">
-                    <div class="pfp-video-grid">
-                      <div>
-                        <div class="pfp-video-label"><v-icon size="16" color="#FF0000">mdi-youtube</v-icon> YouTube / Shorts</div>
-                        <div class="d-flex ga-2 mt-2">
-                          <v-text-field v-model="ytUrl" :disabled="busy" density="compact" label="URL YouTube"
-                            prepend-inner-icon="mdi-link" variant="outlined" hide-details class="flex-1"
-                            @keyup.enter="addYoutubeUrl" />
-                          <v-btn color="primary" variant="flat" rounded="lg" @click="addYoutubeUrl" :disabled="busy">
-                            <v-icon>mdi-plus</v-icon>
-                          </v-btn>
-                        </div>
-                        <v-alert v-if="ytError" type="error" variant="tonal" density="compact" class="mt-2">{{ ytError }}</v-alert>
-                        <div v-if="queuedYoutubeVideos.length" class="pfp-queue-list mt-2">
-                          <div v-for="(v, idx) in queuedYoutubeVideos" :key="v.key" class="pfp-queue-item">
-                            <v-icon size="16" color="#FF0000" class="flex-shrink-0">mdi-youtube</v-icon>
-                            <div class="pfp-queue-url text-truncate">{{ v.url }}</div>
-                            <v-btn size="x-small" icon variant="text" @click="removeYoutubeAt(idx)" :disabled="busy">
-                              <v-icon size="14">mdi-close</v-icon>
-                            </v-btn>
-                          </div>
-                        </div>
-                        <div v-else class="pfp-queue-empty">Sin videos</div>
-                      </div>
-                      <div>
-                        <div class="pfp-video-label"><v-icon size="16">mdi-upload</v-icon> Archivo de video</div>
-                        <div class="mt-2">
-                          <v-file-input v-model="queuedVideoFiles" :disabled="busy" density="compact"
-                            variant="outlined" prepend-icon="" prepend-inner-icon="mdi-video-plus"
-                            label="Elegí archivos de video" multiple accept="video/*" show-size chips hide-details />
-                        </div>
-                      </div>
-                    </div>
-                    <ProductVideosPanel v-if="isEdit" class="mt-3" :product-id="draft?.id || null" mode="edit"
-                      :youtube-queue="queuedYoutubeVideos" :files-queue="queuedVideoFiles"
-                      @update:youtubeQueue="queuedYoutubeVideos = normalizeYoutubeQueue($event)"
-                      @update:filesQueue="queuedVideoFiles = normalizeFilesQueue($event)"
-                      @changed="onVideosChanged" />
-                  </div>
-                </div>
 
 
 
@@ -625,6 +621,7 @@
 
 <script setup>
 import CampoPlata from "@/app/components/CampoPlata.vue";
+import CampoFecha from "@/app/components/CampoFecha.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
@@ -897,13 +894,17 @@ const kitSavings = computed(() => {
   return { componentsTotal, kitPrice, savings, savingsPct };
 });
 
+function hoyIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function defaultDraft() {
   return {
     id: null, name: "", sku: "", code: null, barcode: null, branch_id: null, description: "",
     category_id: null, subcategory_id: null, is_active: true, track_stock: true,
     brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0,
     cost: null, tax_rate: 21, markup_pct: null,
-    supplier_id: null, supplier_code: "", unit: "unidad", location: "", purchase_date: null, min_stock: null,
+    supplier_id: null, supplier_code: "", unit: "unidad", location: "", purchase_date: hoyIso(), min_stock: null,
     cost_currency: null, fx_rate: null, price_installer: null,
     warranty_months: 0,
     // Promoción
@@ -2536,6 +2537,9 @@ async function saveAll() {
 .pfx-g { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .pfx-g--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pfx-g--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pfx-g--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pfx-paso.is-falta .pfx-paso__n { background: #fff4e5; color: #b45309; border-color: #f59e0b; }
+.pfx-paso.is-falta .pfx-paso__tit { color: #b45309; }
 .pfx-g--precio { grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr) 120px; }
 /* Los tres precios: tarjetas con el importe grande. */
 .pfx-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -2550,7 +2554,7 @@ async function saveAll() {
 .pfx-precio .v-field__input, .pfx-precio .v-text-field__prefix { min-height: 60px; font-size: 26px !important; font-weight: 800; letter-spacing: -0.02em; }
 .pfx-precio .v-text-field__prefix { font-size: 20px !important; opacity: .6; }
 .pfx-sw--chico { font-size: 13px !important; font-weight: 700 !important; color: #0a466e !important; }
-.pfx-sw--chico .v-switch { transform: scale(.85); transform-origin: right center; }
+.v-theme--dark .pfx-sw--chico { color: #9cc9ea !important; }
 @media (max-width: 1100px) { .pfx-tres { grid-template-columns: 1fr; } }
 .pfx-g--abajo { align-items: end; }
 .pfx-c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2576,11 +2580,18 @@ async function saveAll() {
 .pfx-fila__txt b { font-size: 15px; }
 .pfx-fila__txt small { font-size: 13px; color: var(--x-suave); }
 .pfx-detalle { margin-top: -6px; }
-.pfx .pfp-section { border: 0 !important; border-bottom: 1px solid var(--x-linea) !important; border-radius: 0 !important; background: transparent !important; margin: 0 !important; }
-.pfx .pfp-section .pfp-section-head { background: transparent !important; padding: 12px 0 !important; }
-.pfx .pfp-section .pfp-section-title { color: var(--x-texto) !important; font-weight: 700 !important; font-size: 15px !important; }
-.pfx .pfp-section .pfp-section-head .v-btn { color: var(--x-acento) !important; }
-.pfx .pfp-section .pfp-section-body { padding: 4px 0 14px !important; }
+/* Promoción, Kit y Videos: tarjetas con la banda azul, como los demás grupos.
+   El interruptor va en la banda; el cuerpo aparece al encenderlo. */
+.pfx .pfp-section { border: 1px solid var(--x-borde) !important; border-radius: 12px !important; background: var(--x-caja) !important; margin: 0 !important; overflow: hidden; box-shadow: none !important; }
+.pfx .pfp-section .pfp-section-head { display: flex; align-items: center; gap: 10px; min-height: 48px; box-sizing: border-box; background: #0f6fae !important; padding: 4px 12px 4px 18px !important; border: 0 !important; }
+.v-theme--dark .pfx .pfp-section .pfp-section-head { background: #0f5f96 !important; }
+.pfx .pfp-section .pfp-section-title { color: #ffffff !important; font-weight: 800 !important; font-size: 15px !important; }
+.pfx .pfp-section .pfp-section-head .v-btn, .pfx .pfp-section .pfp-section-head .v-chip { color: #ffffff !important; }
+.pfx .pfp-section .pfp-section-head .v-switch .v-switch__track { background: rgba(255, 255, 255, 0.35) !important; opacity: 1 !important; }
+.pfx .pfp-section .pfp-section-head .v-selection-control--dirty .v-switch__track { background: #2E9E7B !important; }
+.pfx .pfp-section .pfp-section-head .v-switch__thumb { background: #ffffff !important; color: #ffffff !important; }
+.pfx .pfp-section .pfp-section-body { padding: 18px 20px 20px !important; }
+.pfx .pfp-step2-videos .pfp-section-body, .pfx .pfp-step2-videos > div:not(.pfp-section-head) { padding: 16px 20px 18px; }
 
 /* campos de Vuetify con la medida de la maqueta */
 .pfx .v-field { border-radius: 10px !important; font-size: 16px; }
@@ -2620,7 +2631,7 @@ async function saveAll() {
 @media (max-width: 760px) {
   .pfx > .pfx-cab, .pfx > .pfx-pasos, .pfx > .pfx-cuerpo, .pfx-pie__in { width: calc(100% - 24px); }
   .pfx-tarjeta { padding: 18px 14px; }
-  .pfx-g--2, .pfx-g--3, .pfx-g--precio { grid-template-columns: minmax(0, 1fr); }
+  .pfx-g--2, .pfx-g--3, .pfx-g--4, .pfx-g--precio { grid-template-columns: minmax(0, 1fr); }
   .pfx-paso__txt { display: none; }
   .pfx-paso.is-actual .pfx-paso__txt { display: flex; }
   .pfx-pie__n { display: none; }
