@@ -91,7 +91,8 @@
               </v-avatar>
               <span class="mc-quien__txt">
                 <span class="mc-quien__nombre">{{ userFullName || userEmailOrUsername }}</span>
-                <span class="mc-quien__sub">{{ [userEmailOrUsername, userRoleLabel].filter(Boolean).join(" · ") }}</span>
+                <span class="mc-quien__sub">{{ userEmailOrUsername }}</span>
+                <span class="mc-quien__rol">{{ userRoleLabel }}</span>
               </span>
             </div>
             <router-link :to="{ name: 'profile' }" class="mc-op" role="menuitem" @click="accountMenu = false">
@@ -1569,6 +1570,7 @@ function onLogout() {
 .mc-quien__txt { display: flex; flex-direction: column; min-width: 0; }
 .mc-quien__nombre { font-size: 15px; font-weight: 700; color: rgb(var(--v-theme-on-surface)); }
 .mc-quien__sub { font-size: 12px; color: rgba(var(--v-theme-on-surface), 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-quien__rol { font-size: 12px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.6); }
 .mc-op { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 16px; border: 0; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; color: rgb(var(--v-theme-on-surface)) !important; text-decoration: none; cursor: pointer; text-align: left; }
 .mc-op:hover { background: rgba(var(--v-theme-on-surface), 0.05); }
 .mc-op .v-icon { color: rgba(var(--v-theme-on-surface), 0.55) !important; }

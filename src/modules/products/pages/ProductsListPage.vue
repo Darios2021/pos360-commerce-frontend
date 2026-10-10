@@ -1,805 +1,302 @@
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 
 <template>
-  <div class="lp">
-
-    <!-- ── HEADER ───────────────────────────────────────── -->
-    <AppPageHeader
-      icon="mdi-package-variant-closed"
-      title="Productos"
-    >
-      <template #subtitle>
-        <span>{{ meta.total.toLocaleString('es') }}</span>
-        <span class="mx-1">·</span>
-        <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
-      </template>
-
-      <v-btn-toggle
-        v-if="smAndUp"
-        v-model="viewMode"
-        mandatory
-        density="compact"
-        rounded="lg"
-        class="lp-view-toggle"
-      >
-        <v-btn value="grid" size="small" title="Vista en tarjetas">
-          <v-icon size="18">mdi-view-grid-outline</v-icon>
-        </v-btn>
-        <v-btn value="list" size="small" title="Vista en lista">
-          <v-icon size="18">mdi-format-list-bulleted</v-icon>
-        </v-btn>
-      </v-btn-toggle>
-
-      <!-- Acción masiva sobre promociones (oculta en mobile, accesible vía menu/sidebar) -->
-      <v-menu v-if="smAndUp" offset-y>
-        <template #activator="{ props: btnProps }">
-          <v-btn
-            v-bind="btnProps"
-            variant="tonal"
-            rounded="lg"
-            size="small"
-            prepend-icon="mdi-tag-heart-outline"
-            append-icon="mdi-menu-down"
-            :loading="bulkPromoBusy"
-            :disabled="bulkPromoBusy"
-          >
-            Promos
-          </v-btn>
-        </template>
-        <v-list density="compact" class="lp-promo-menu">
-          <v-list-item
-            prepend-icon="mdi-pause-circle-outline"
-            title="Pausar todas las promos"
-            subtitle="Apaga is_promo en todos los productos activos"
-            @click="onPauseAllPromos"
-          />
-          <v-list-item
-            prepend-icon="mdi-play-circle-outline"
-            title="Reactivar promos configuradas"
-            subtitle="Solo los que tienen precio o reglas configuradas"
-            @click="onResumeAllPromos"
-          />
-        </v-list>
-      </v-menu>
-
-      <v-btn
-        v-if="smAndUp"
-        color="primary"
-        variant="flat"
-        prepend-icon="mdi-plus"
-        rounded="lg"
-        size="small"
-        @click="openCreate"
-      >
-        Nuevo
+  <div class="pl">
+    <!-- ── Encabezado ───────────────────────────────────── -->
+    <div class="pl-cab">
+      <div class="pl-cab__txt">
+        <h1 class="pl-cab__titulo">Productos</h1>
+        <span class="pl-cab__sub num">{{ subtitulo }}</span>
+      </div>
+      <v-btn v-if="smAndUp" color="primary" variant="flat" prepend-icon="mdi-plus" class="pl-nuevo" @click="openCreate">
+        Nuevo producto
       </v-btn>
-    </AppPageHeader>
+    </div>
 
     <!-- FAB "+ Nuevo" solo en mobile -->
-    <button
-      v-if="!smAndUp"
-      type="button"
-      class="lp-fab-new"
-      title="Nuevo producto"
-      @click="openCreate"
-    >
+    <button v-if="!smAndUp" type="button" class="lp-fab-new" aria-label="Nuevo producto" @click="openCreate">
       <v-icon size="24">mdi-plus</v-icon>
     </button>
 
-    <!-- Confirmación de acción masiva sobre promos -->
-    <v-dialog v-model="bulkPromoDialog.open" max-width="440" persistent>
-      <v-card rounded="xl" class="pa-2">
-        <v-card-title class="d-flex align-center ga-2 pt-4 px-4">
-          <v-icon :color="bulkPromoDialog.action === 'pause' ? 'warning' : 'success'">
-            {{ bulkPromoDialog.action === 'pause' ? 'mdi-pause-circle' : 'mdi-play-circle' }}
-          </v-icon>
-          <span class="font-weight-black">{{ bulkPromoDialog.title }}</span>
-        </v-card-title>
-        <v-card-text class="px-4 pb-2 text-body-2">
-          {{ bulkPromoDialog.message }}
-          <div v-if="bulkPromoDialog.action === 'pause'" class="mt-2 text-caption text-medium-emphasis">
-            Esto NO borra los datos de configuración (precio, fechas, reglas). Solo apaga el flag.
-            Podés volver a activar después con "Reactivar promos configuradas".
+    <!-- ── Buscador, filtros activos y vista ────────────── -->
+    <div class="pl-busca">
+      <div class="pl-busca__campo">
+        <v-icon size="22" class="pl-busca__ic">mdi-magnify</v-icon>
+        <input
+          v-model="f.q"
+          type="search"
+          class="pl-busca__input"
+          placeholder="Nombre, SKU, código de barras o marca"
+          @input="debouncedSearch"
+          @keyup.enter="applyFilters"
+        />
+        <button v-if="!smAndUp" type="button" class="pl-busca__scan" aria-label="Escanear código" @click="lpScanOpen = true">
+          <v-icon size="20">mdi-barcode-scan</v-icon>
+        </button>
+        <button type="button" class="pl-busca__filtros" @click="panelAbierto = true">
+          <v-icon size="18">mdi-tune-variant</v-icon>Filtros
+          <span v-if="activeFilterChips.length" class="pl-busca__n num">{{ activeFilterChips.length }}</span>
+        </button>
+      </div>
+      <span v-for="chip in activeFilterChips" :key="chip.key" class="pl-chip">
+        {{ chip.label }}
+        <button type="button" class="pl-chip__x" :aria-label="`Quitar ${chip.label}`" @click="removeFilter(chip.key)">
+          <v-icon size="18">mdi-close</v-icon>
+        </button>
+      </span>
+      <span class="pl-esp" />
+      <div v-if="smAndUp" class="pl-vista" role="group" aria-label="Vista">
+        <button type="button" :class="{ 'is-on': viewMode === 'grid' }" aria-label="Vista en grilla" @click="viewMode = 'grid'"><v-icon size="20">mdi-view-grid-outline</v-icon></button>
+        <button type="button" :class="{ 'is-on': viewMode === 'list' }" aria-label="Vista en lista" @click="viewMode = 'list'"><v-icon size="20">mdi-format-list-bulleted</v-icon></button>
+      </div>
+      <v-menu v-if="smAndUp && isAdmin" location="bottom end">
+        <template #activator="{ props: btnProps }">
+          <button v-bind="btnProps" type="button" class="pl-mas" aria-label="Más acciones" :disabled="bulkPromoBusy">
+            <v-icon size="20">mdi-dots-horizontal</v-icon>
+          </button>
+        </template>
+        <v-list density="compact" class="lp-promo-menu">
+          <v-list-item prepend-icon="mdi-pause-circle-outline" title="Pausar todas las promos" @click="onPauseAllPromos" />
+          <v-list-item prepend-icon="mdi-play-circle-outline" title="Reactivar promos configuradas" @click="onResumeAllPromos" />
+        </v-list>
+      </v-menu>
+    </div>
+
+    <BarcodeScannerDialog v-if="!smAndUp" v-model="lpScanOpen" title="Buscar producto" />
+
+    <!-- ── Resumen en una franja (clic en una parte filtra) ── -->
+    <div class="pl-resumen">
+      <div class="pl-resumen__cifras">
+        <span class="num">Inventario <b>$ {{ millones(stats.stock_value) }}</b> a precio de venta</span>
+        <span class="num"><b>{{ fmtInt(stats.stock_units) }}</b> unidades</span>
+        <v-progress-circular v-if="statsLoading" indeterminate size="18" width="2" color="primary" />
+        <span class="pl-esp" />
+        <span class="pl-leyenda num">
+          <button type="button" :class="{ 'is-on': f.stock === 'with' }" @click="filtroRapido('stock', 'with')"><i class="c-bien"></i>{{ fmtInt(stats.ok_stock) }} bien</button>
+          <button type="button" :class="{ 'is-on': f.stock === 'low' }" @click="filtroRapido('stock', 'low')"><i class="c-bajo"></i>{{ fmtInt(stats.low_stock) }} bajo</button>
+          <button type="button" :class="{ 'is-on': f.stock === 'without' }" @click="filtroRapido('stock', 'without')"><i class="c-sin"></i>{{ fmtInt(stats.without_stock) }} sin stock</button>
+          <button v-if="stats.without_price" type="button" :class="{ 'is-on': f.price_presence === 'without' }" @click="filtroRapido('price_presence', 'without')"><i class="c-precio"></i>{{ fmtInt(stats.without_price) }} sin precio</button>
+        </span>
+      </div>
+      <span class="pl-partes">
+        <span class="c-bien" :style="{ width: parte(stats.ok_stock) }"></span>
+        <span class="c-bajo" :style="{ width: parte(stats.low_stock) }"></span>
+        <span class="c-sin" :style="{ width: parte(stats.without_stock) }"></span>
+      </span>
+    </div>
+
+    <!-- ── Selección masiva ─────────────────────────────── -->
+    <div v-if="selectedIds.length" class="pl-masiva">
+      <label class="pl-masiva__sel" @click.stop>
+        <v-checkbox-btn :model-value="allSelected" :indeterminate="someSelected" density="compact" hide-details @update:modelValue="toggleSelectAll" />
+        <span><strong>{{ selectedIds.length }}</strong> {{ selectedIds.length === 1 ? 'seleccionado' : 'seleccionados' }}</span>
+      </label>
+      <a href="#" class="pl-masiva__no" @click.prevent="selectedIds = []">Quitar selección</a>
+      <v-btn :color="isAdmin ? 'error' : 'warning'" variant="flat" size="small" :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'" @click="bulkDisableOrDelete">
+        {{ isAdmin ? 'Eliminar' : 'Inactivar' }} {{ selectedIds.length }}
+      </v-btn>
+    </div>
+
+    <v-alert v-if="products.error" type="error" variant="tonal" density="compact">{{ products.error }}</v-alert>
+
+    <!-- ── Contenido ────────────────────────────────────── -->
+    <div class="pl-contenido" :class="{ 'is-cargando': loading && items.length }">
+      <div v-if="loading && !items.length" class="pl-grilla">
+        <div v-for="n in 12" :key="n" class="pl-card pl-card--esqueleto" />
+      </div>
+
+      <div v-else-if="!loading && !items.length" class="pl-vacio">
+        <v-icon size="44">mdi-package-variant-closed</v-icon>
+        <span>No hay productos con estos filtros</span>
+        <a href="#" class="pl-link" @click.prevent="clearFilters">Quitar los filtros</a>
+      </div>
+
+      <!-- Grilla -->
+      <div v-else-if="viewMode === 'grid' || !smAndUp" class="pl-grilla">
+        <div
+          v-for="item in items"
+          :key="item.id"
+          class="pl-card"
+          :class="{ 'is-inactivo': isInactive(item), 'is-sel': selectedIds.includes(item.id) }"
+          @click="abrirTarjeta($event, item.id)"
+          @auxclick="abrirTarjeta($event, item.id)"
+        >
+          <div class="pl-card__foto">
+            <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" loading="lazy" />
+            <v-icon v-else size="38">mdi-package-variant-closed</v-icon>
+            <span class="pl-card__check" @click.stop>
+              <v-checkbox-btn :model-value="selectedIds.includes(item.id)" density="compact" hide-details @update:modelValue="toggleSelect(item.id)" />
+            </span>
+            <span v-if="isInactive(item)" class="pl-marca">Inactivo</span>
+            <span v-else-if="Number(item.is_kit) === 1 || item.is_kit === true" class="pl-marca">Kit</span>
           </div>
-        </v-card-text>
+          <div class="pl-card__info">
+            <span v-if="rubro(item)" class="pl-rubro clamp1">{{ rubro(item) }}</span>
+            <router-link :to="{ name: 'productView', params: { id: item.id } }" class="pl-card__nombre" @click.stop>{{ item.name }}</router-link>
+            <span class="pl-s clamp1 num">{{ [item.brand, item.sku || item.code].filter(Boolean).join(' · ') }}</span>
+            <span class="pl-card__stock num" :class="nivel(item)">
+              <i></i>{{ stockTexto(item) }}
+              <span class="pl-esp" />
+              <span v-for="b in sucursalesCortas(item)" :key="b.id" class="pl-suc" :title="b.name">{{ b.ini }}</span>
+            </span>
+            <span class="pl-esp-v" />
+            <span class="pl-card__pie">
+              <span class="pl-card__precios">
+                <span class="pl-card__precio num">{{ precioContado(item) ? `$ ${fmtPrice(precioContado(item))}` : 'Sin precio' }}</span>
+                <span v-if="Number(item.price_list) > precioContado(item)" class="pl-s num">lista $ {{ fmtPrice(item.price_list) }}</span>
+              </span>
+              <router-link :to="{ name: 'productEdit', params: { id: item.id } }" class="pl-link pl-link--chico" @click.stop>Editar<v-icon size="18">mdi-chevron-right</v-icon></router-link>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista: tabla cerrada -->
+      <div v-else class="pl-tabla-caja">
+        <table class="pl-tabla">
+          <thead>
+            <tr>
+              <th class="c-check"><v-checkbox-btn :model-value="allSelected" :indeterminate="someSelected" density="compact" hide-details @update:modelValue="toggleSelectAll" /></th>
+              <th class="c-foto"></th>
+              <th>Producto</th>
+              <th class="c-rubro">Rubro</th>
+              <th class="c-stock">Stock</th>
+              <th class="c-suc">Sucursales</th>
+              <th class="c-plata">Contado</th>
+              <th class="c-plata">Lista</th>
+              <th class="c-plata">Revendedor</th>
+              <th class="c-ver"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in items"
+              :key="item.id"
+              :class="{ 'is-inactivo': isInactive(item) }"
+              @click="abrirTarjeta($event, item.id)"
+              @auxclick="abrirTarjeta($event, item.id)"
+            >
+              <td class="c-check" @click.stop><v-checkbox-btn :model-value="selectedIds.includes(item.id)" density="compact" hide-details @update:modelValue="toggleSelect(item.id)" /></td>
+              <td class="c-foto"><span class="pl-mini"><img v-if="getProductImage(item)" :src="getProductImage(item)" alt="" loading="lazy" /><v-icon v-else size="20">mdi-package-variant-closed</v-icon></span></td>
+              <td>
+                <router-link :to="{ name: 'productView', params: { id: item.id } }" class="pl-b clamp1 pl-tabla__nombre" @click.stop>{{ item.name }}</router-link>
+                <div class="pl-s clamp1 num">{{ [item.brand, item.sku || item.code].filter(Boolean).join(' · ') }}<template v-if="isInactive(item)"> · inactivo</template></div>
+              </td>
+              <td><div class="pl-b clamp1">{{ item.category?.name || item.rubro || '—' }}</div><div class="pl-s clamp1">{{ item.subcategory?.name || item.subrubro || '' }}</div></td>
+              <td class="num"><span class="pl-card__stock" :class="nivel(item)"><i></i>{{ getStockQty(item) }}</span></td>
+              <td><span v-for="b in sucursalesCortas(item)" :key="b.id" class="pl-suc" :title="b.name">{{ b.ini }}</span></td>
+              <td class="c-plata num pl-b">{{ precioContado(item) ? `$ ${fmtPrice(precioContado(item))}` : '—' }}</td>
+              <td class="c-plata num pl-suave">{{ Number(item.price_list) > 0 ? `$ ${fmtPrice(item.price_list)}` : '—' }}</td>
+              <td class="c-plata num pl-suave">{{ Number(item.price_reseller) > 0 ? `$ ${fmtPrice(item.price_reseller)}` : '—' }}</td>
+              <td class="c-ver"><router-link :to="{ name: 'productEdit', params: { id: item.id } }" class="pl-link pl-link--chico" @click.stop>Editar<v-icon size="18">mdi-chevron-right</v-icon></router-link></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Paginación ───────────────────────────────────── -->
+    <div v-if="meta.total > 0" class="pl-pie">
+      <span class="num pl-pie__info">{{ desde }} a {{ hasta }} de {{ fmtInt(meta.total) }}</span>
+      <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="smAndUp ? 7 : 4" density="comfortable" size="small" @update:modelValue="fetchNow" />
+    </div>
+
+    <!-- ── Panel de filtros: convive con el listado, no es un modal ── -->
+    <Transition name="pl-panel">
+      <aside v-if="panelAbierto" class="pl-panel" aria-label="Filtros">
+        <div class="pl-panel__cab">
+          <span>Filtros</span>
+          <button type="button" class="pl-panel__cerrar" aria-label="Cerrar filtros" @click="panelAbierto = false"><v-icon size="24">mdi-close</v-icon></button>
+        </div>
+        <div class="pl-panel__cuerpo">
+          <div v-for="g in gruposFiltro" :key="g.clave" class="pl-grupo">
+            <span class="pl-grupo__tit">{{ g.titulo }}</span>
+            <button
+              v-for="o in g.opciones"
+              :key="String(o.value)"
+              type="button"
+              class="pl-op"
+              :class="{ 'is-on': o.on, 'is-cero': o.count === 0 && !o.on }"
+              @click="elegirFiltro(g.clave, o.value)"
+            >
+              <span class="pl-op__caja"><v-icon v-if="o.on" size="16" color="white">mdi-check</v-icon></span>
+              <span class="pl-op__eti">{{ o.label }}</span>
+              <span v-if="o.count !== null" class="pl-op__n num">{{ fmtInt(o.count) }}</span>
+            </button>
+          </div>
+
+          <div class="pl-grupo">
+            <span class="pl-grupo__tit">Rubro</span>
+            <v-select v-model="f.category_id" :items="categoryItems" item-title="title" item-value="value" placeholder="Todos los rubros" variant="outlined" density="compact" hide-details clearable @update:modelValue="onCategoryChange" />
+            <v-select v-if="f.category_id" v-model="f.subcategory_id" :items="subcategoryItems" item-title="title" item-value="value" placeholder="Todos los subrubros" variant="outlined" density="compact" hide-details clearable class="mt-2" @update:modelValue="applyFilters" />
+          </div>
+
+          <div class="pl-grupo">
+            <span class="pl-grupo__tit">Precio de lista</span>
+            <div class="pl-rango">
+              <input v-model="f.price_min" type="number" inputmode="numeric" placeholder="Desde $" @change="applyFilters" />
+              <input v-model="f.price_max" type="number" inputmode="numeric" placeholder="Hasta $" @change="applyFilters" />
+            </div>
+          </div>
+
+          <div class="pl-grupo">
+            <span class="pl-grupo__tit">Por página</span>
+            <div class="pl-porpag">
+              <button v-for="n in [12, 24, 48, 96]" :key="n" type="button" :class="{ 'is-on': limit === n }" @click="limit = n; onLimitChange()">{{ n }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="pl-panel__pie">
+          <button type="button" class="pl-panel__ver num" @click="panelAbierto = false">
+            Ver {{ fmtInt(meta.total) }} {{ meta.total === 1 ? 'producto' : 'productos' }}
+          </button>
+        </div>
+      </aside>
+    </Transition>
+
+    <!-- Confirmación de acción masiva sobre promos (aviso trivial y reversible) -->
+    <v-dialog v-model="bulkPromoDialog.open" max-width="440" persistent>
+      <v-card rounded="lg" class="pa-2">
+        <v-card-title class="pt-4 px-4 font-weight-black">{{ bulkPromoDialog.title }}</v-card-title>
+        <v-card-text class="px-4 pb-2 text-body-2">{{ bulkPromoDialog.message }}</v-card-text>
         <v-card-actions class="justify-end px-4 pb-4">
-          <v-btn variant="text" @click="bulkPromoDialog.open = false">Cancelar</v-btn>
-          <v-btn
-            :color="bulkPromoDialog.action === 'pause' ? 'warning' : 'success'"
-            variant="flat"
-            rounded="lg"
-            :loading="bulkPromoBusy"
-            @click="confirmBulkPromo"
-          >
-            {{ bulkPromoDialog.action === 'pause' ? 'Sí, pausar' : 'Sí, reactivar' }}
+          <a href="#" class="pl-link pl-link--chico pl-link--suave mr-4" @click.prevent="bulkPromoDialog.open = false">Volver</a>
+          <v-btn :color="bulkPromoDialog.action === 'pause' ? 'warning' : 'success'" variant="flat" :loading="bulkPromoBusy" @click="confirmBulkPromo">
+            {{ bulkPromoDialog.action === 'pause' ? 'Pausar' : 'Reactivar' }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- ── STATS KPI ────────────────────────────────────── -->
-    <section class="lp-stats">
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--primary">
-          <v-icon size="16" color="white">mdi-package-variant-closed</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Total</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.total) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">Productos en filtro actual</div>
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--green">
-          <v-icon size="16" color="white">mdi-check-circle-outline</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Activos</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.active) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.active, stats.total)} del total` : '' }}</div>
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--orange">
-          <v-icon size="16" color="white">mdi-alert-circle-outline</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Sin stock</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.without_stock) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.without_stock, stats.total)} del total` : '' }}</div>
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--indigo">
-          <v-icon size="16" color="white">mdi-currency-usd-off</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Sin precio</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? fmtInt(stats.without_price) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">{{ stats.ready ? `${pct(stats.without_price, stats.total)} del total` : '' }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── METHOD-LIKE CARDS (cobertura) ────────────────── -->
-    <section class="lp-methods">
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--cash"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Con stock</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_stock) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--card"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Con precio</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_price) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--mp"><v-icon size="14" color="white">mdi-image-multiple-outline</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Con imágenes</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.with_images) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--transfer"><v-icon size="14" color="white">mdi-image-off-outline</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Sin imágenes</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.without_images) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <button
-        type="button"
-        class="lp-mc lp-mc--clickable"
-        :class="{ 'is-active': f.promo === 'active' }"
-        title="Filtrar por promociones vigentes"
-        @click="onPromoActiveKpiClick"
-      >
-        <div class="lp-mc__badge lp-mc__badge--promo"><v-icon size="14" color="white">mdi-tag-heart</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Promos activas</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? fmtInt(stats.promo_active) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </button>
-    </section>
-
-    <!-- ── FILTER BAR ───────────────────────────────────── -->
-    <section class="lp-filters">
-      <!-- Fila primaria: search + status + toggle más filtros -->
-      <div class="lp-filters__primary">
-        <v-text-field
-          v-model="f.q"
-          placeholder="Buscar por nombre, SKU, marca, modelo..."
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="lp-filters__search"
-          @input="debouncedSearch"
-          @click:clear="clearSearch"
-          @keyup.enter="applyFilters"
-        />
-        <!-- Botón cámara: aparece solo en mobile junto al buscador.
-             Al detectar producto navega a su vista de detalle. -->
-        <button
-          v-if="!smAndUp"
-          type="button"
-          class="lp-filters__scan"
-          title="Escanear código"
-          aria-label="Escanear código"
-          @click="lpScanOpen = true"
-        >
-          <v-icon size="20">mdi-barcode-scan</v-icon>
-        </button>
-        <v-select
-          v-model="f.status"
-          :items="statusItems"
-          item-title="title"
-          item-value="value"
-          label="Estado"
-          variant="outlined"
-          density="compact"
-          hide-details
-          class="lp-filters__primary-field"
-          @update:modelValue="applyFilters"
-        />
-        <button
-          type="button"
-          class="lp-filters__more"
-          :class="{ 'lp-filters__more--open': advancedOpen }"
-          @click="toggleAdvanced"
-        >
-          <v-icon size="15">mdi-tune-variant</v-icon>
-          <span>Más filtros</span>
-          <span v-if="activeAdvancedCount > 0" class="lp-filters__more-count">{{ activeAdvancedCount }}</span>
-          <v-icon size="14" class="lp-filters__more-chev">mdi-chevron-down</v-icon>
-        </button>
-      </div>
-
-      <!-- Lector de código (mobile, modo navigate → abre productView) -->
-      <BarcodeScannerDialog
-        v-if="!smAndUp"
-        v-model="lpScanOpen"
-        title="Buscar producto"
-      />
-
-      <!-- Filtros avanzados colapsables -->
-      <v-expand-transition>
-        <div v-show="advancedOpen" class="lp-filters__advanced">
-          <div class="lp-filters__grid">
-            <div v-if="isAdmin" class="lp-filters__cell">
-              <v-select
-                v-model="f.branch_id"
-                :items="branchItems"
-                item-title="title"
-                item-value="value"
-                label="Sucursal"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.category_id"
-                :items="categoryItems"
-                item-title="title"
-                item-value="value"
-                label="Rubro"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                @update:modelValue="onCategoryChange"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.subcategory_id"
-                :items="subcategoryItems"
-                item-title="title"
-                item-value="value"
-                label="Subrubro"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                :disabled="!f.category_id"
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.stock"
-                :items="stockItems"
-                item-title="title"
-                item-value="value"
-                label="Stock"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.price_presence"
-                :items="pricePresenceItems"
-                item-title="title"
-                item-value="value"
-                label="Precio"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.images"
-                :items="imagesItems"
-                item-title="title"
-                item-value="value"
-                label="Imágenes"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="f.promo"
-                :items="promoItems"
-                item-title="title"
-                item-value="value"
-                label="Promoción"
-                prepend-inner-icon="mdi-tag-heart"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:modelValue="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell lp-filters__cell--range">
-              <v-text-field
-                v-model="f.price_min"
-                label="Mín $"
-                type="number"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                @keyup.enter="applyFilters"
-                @blur="applyFilters"
-              />
-              <span class="lp-filters__range-sep">—</span>
-              <v-text-field
-                v-model="f.price_max"
-                label="Máx $"
-                type="number"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                @keyup.enter="applyFilters"
-                @blur="applyFilters"
-              />
-            </div>
-            <div class="lp-filters__cell lp-filters__cell--per-page">
-              <v-select
-                v-model="limit"
-                :items="[12, 24, 48, 96]"
-                label="Por página"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:modelValue="onLimitChange"
-              />
-            </div>
-          </div>
-        </div>
-      </v-expand-transition>
-
-      <!-- Chips activos -->
-      <div v-if="activeFilterChips.length" class="lp-filters__chips">
-        <v-chip
-          v-for="chip in activeFilterChips"
-          :key="chip.key"
-          size="small"
-          variant="tonal"
-          color="primary"
-          closable
-          class="lp-filters__chip"
-          @click:close="removeFilter(chip.key)"
-        >
-          {{ chip.label }}
-        </v-chip>
-        <button
-          v-if="activeFilterChips.length > 1"
-          type="button"
-          class="lp-filters__chips-clear"
-          @click="clearFilters"
-        >
-          Limpiar todo
-        </button>
-      </div>
-    </section>
-
-    <!-- ── BULK ACTION BAR ──────────────────────────────── -->
-    <div v-if="items.length" class="lp-bulk" :class="{ 'lp-bulk--active': selectedIds.length }">
-      <label class="lp-bulk__select" @click.stop>
-        <v-checkbox-btn
-          :model-value="allSelected"
-          :indeterminate="someSelected"
-          density="compact"
-          hide-details
-          @update:modelValue="toggleSelectAll"
-        />
-        <span class="lp-bulk__label">
-          <template v-if="selectedIds.length">
-            <strong>{{ selectedIds.length }}</strong> seleccionado{{ selectedIds.length === 1 ? '' : 's' }}
-          </template>
-          <template v-else>
-            Seleccionar todos de la página
-          </template>
-        </span>
-      </label>
-
-      <div v-if="selectedIds.length" class="lp-bulk__actions">
-        <v-btn variant="text" size="small" rounded="lg" @click="selectedIds = []">
-          <v-icon size="16" start>mdi-close</v-icon>
-          Cancelar
-        </v-btn>
-        <v-btn
-          :color="isAdmin ? 'error' : 'warning'"
-          variant="flat"
-          size="small"
-          rounded="lg"
-          :prepend-icon="isAdmin ? 'mdi-delete-outline' : 'mdi-eye-off-outline'"
-          @click="bulkDisableOrDelete"
-        >
-          {{ isAdmin ? 'Eliminar' : 'Inactivar' }} {{ selectedIds.length }}
-        </v-btn>
-      </div>
-    </div>
-
-    <!-- ── ERROR ────────────────────────────────────────── -->
-    <v-alert v-if="products.error" type="error" variant="tonal" density="compact" class="lp-alert">
-      {{ products.error }}
-    </v-alert>
-
-    <!-- ── CONTENT ──────────────────────────────────────── -->
-    <section class="lp-content">
-      <div class="lp-content__head">
-        <div class="lp-content__head-left">
-          <span class="lp-content__title">Resultados</span>
-          <v-chip size="x-small" variant="tonal">{{ items.length }} de {{ meta.total }}</v-chip>
-        </div>
-      </div>
-
-      <div class="lp-content__body" :class="{ 'lp-content__body--loading': loading }">
-        <!-- SKELETON -->
-        <div v-if="loading && !items.length" class="lp-skeleton-grid">
-          <div v-for="n in 8" :key="n" class="lp-skeleton-card" />
-        </div>
-
-        <!-- EMPTY -->
-        <div v-else-if="!loading && !items.length" class="lp-empty">
-          <v-icon size="52" color="medium-emphasis">mdi-package-variant-closed</v-icon>
-          <div class="lp-empty__title">Sin resultados</div>
-          <div class="lp-empty__sub">Probá con otros filtros o creá un nuevo producto</div>
-          <div class="d-flex ga-2 mt-4">
-            <v-btn variant="tonal" rounded="lg" @click="clearFilters">Limpiar filtros</v-btn>
-            <v-btn color="primary" variant="flat" rounded="lg" @click="openCreate">Nuevo producto</v-btn>
-          </div>
-        </div>
-
-        <!-- GRID -->
-        <div
-          v-else-if="viewMode === 'grid' || !smAndUp"
-          class="plp-grid"
-        >
-          <div
-            v-for="item in items"
-            :key="item.id"
-            class="plp-card"
-            :class="{ 'plp-card--inactive': isInactive(item) }"
-            @click="openView(item.id)"
-          >
-            <div class="plp-card-media">
-              <img v-if="getProductImage(item)" :src="getProductImage(item)" :alt="item.name" class="plp-card-img" />
-              <div v-else class="plp-card-noimg">
-                <v-icon size="38">mdi-package-variant-closed</v-icon>
-              </div>
-
-              <span
-                class="plp-stock-badge"
-                :class="stockLevelClass(item)"
-                :title="getStockLabel(item)"
-              >
-                <v-icon size="12">
-                  {{ getStockQty(item) > 0 ? 'mdi-package-variant-closed' : 'mdi-close-circle' }}
-                </v-icon>
-                {{ getStockQty(item) }}
-              </span>
-
-              <div class="plp-card-check" @click.stop>
-                <v-checkbox-btn
-                  :model-value="selectedIds.includes(item.id)"
-                  density="compact"
-                  hide-details
-                  @update:modelValue="toggleSelect(item.id)"
-                />
-              </div>
-
-              <span v-if="isInactive(item)" class="plp-inactive-badge">Inactivo</span>
-              <span v-if="Number(item.is_kit) === 1 || item.is_kit === true" class="plp-kit-badge" title="Es un kit / combo">
-                <v-icon size="11">mdi-package-variant</v-icon>
-                KIT
-              </span>
-            </div>
-
-            <div class="plp-card-info">
-              <div class="plp-card-name" :title="item.name">{{ item.name }}</div>
-
-              <div v-if="item.sku || item.code" class="plp-card-sku">
-                <v-icon size="11">mdi-barcode</v-icon>
-                <span>{{ item.sku || item.code }}</span>
-              </div>
-
-              <div v-if="item.brand || item.model || item.category?.name || item.rubro" class="plp-card-meta">
-                <span v-if="item.brand" class="meta-chip meta-chip--brand">{{ item.brand }}</span>
-                <span v-if="item.model" class="meta-chip meta-chip--muted">{{ item.model }}</span>
-                <span v-if="item.category?.name || item.rubro" class="meta-chip meta-chip--cat">
-                  {{ item.category?.name || item.rubro }}
-                </span>
-              </div>
-
-              <div v-if="enabledBranches(item).length || Number(item.branch_id || 0) > 0" class="plp-card-branches">
-                <template v-if="enabledBranches(item).length">
-                  <span
-                    v-for="(b, i) in visibleBranches(enabledBranches(item))"
-                    :key="`${item.id}-b${b.id}-${i}`"
-                    class="plp-br-pill"
-                    :style="{ '--br-color': branchCssColor(b.id) }"
-                  >
-                    <v-icon size="10">mdi-store-outline</v-icon>
-                    {{ branchInitials(b.name) }}
-                  </span>
-                  <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-br-pill plp-br-pill--more">
-                    +{{ hiddenBranchesCount(enabledBranches(item)) }}
-                  </span>
-                </template>
-                <span v-else class="plp-br-pill" :style="{ '--br-color': branchCssColor(item.branch_id) }">
-                  <v-icon size="10">mdi-store-outline</v-icon>
-                  {{ branchInitials(branchName(item.branch_id)) }}
-                </span>
-              </div>
-
-              <div class="plp-card-footer">
-                <div v-if="Number(item.price_list) > 0" class="plp-card-price">
-                  {{ fmtPrice(item.price_list) }}
-                </div>
-                <div v-else class="plp-card-price plp-card-price--none">
-                  Sin precio
-                </div>
-
-                <div class="plp-card-actions" @click.stop>
-                  <v-btn icon size="x-small" variant="text" title="Ver" @click.stop="openView(item.id)">
-                    <v-icon size="16">mdi-eye-outline</v-icon>
-                  </v-btn>
-                  <v-btn icon size="x-small" variant="text" title="Editar" @click.stop="openEdit(item.id)">
-                    <v-icon size="16">mdi-pencil-outline</v-icon>
-                  </v-btn>
-                  <v-menu location="bottom end" :close-on-content-click="true">
-                    <template #activator="{ props }">
-                      <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
-                        <v-icon size="16">mdi-dots-vertical</v-icon>
-                      </v-btn>
-                    </template>
-                    <v-list density="compact" min-width="160">
-                      <v-list-item @click="openEdit(item.id)">
-                        <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
-                        <v-list-item-title>Editar</v-list-item-title>
-                      </v-list-item>
-                      <v-divider />
-                      <v-list-item v-if="!isAdmin" @click="askDisable(item)">
-                        <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
-                        <v-list-item-title>Inactivar</v-list-item-title>
-                      </v-list-item>
-                      <v-list-item v-else @click="askDelete(item)">
-                        <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
-                        <v-list-item-title class="text-error">Eliminar</v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- LIST -->
-        <div v-else class="plp-list-wrap">
-          <div class="plp-list-head">
-            <div class="plp-lh-check">
-              <v-checkbox-btn
-                :model-value="allSelected"
-                density="compact"
-                hide-details
-                @update:modelValue="toggleSelectAll"
-              />
-            </div>
-            <div class="plp-lh-name">Nombre</div>
-            <div class="plp-lh-cat">Rubro · Subrubro</div>
-            <div class="plp-lh-branches">Sucursales</div>
-            <div class="plp-lh-price">Precio</div>
-            <div class="plp-lh-stock">Stock</div>
-            <div class="plp-lh-actions"></div>
-          </div>
-          <div
-            v-for="item in items"
-            :key="item.id"
-            class="plp-list-row"
-            :class="{ 'plp-list-row--inactive': isInactive(item) }"
-            @click="openView(item.id)"
-          >
-            <div class="plp-lh-check" @click.stop>
-              <v-checkbox-btn
-                :model-value="selectedIds.includes(item.id)"
-                density="compact"
-                hide-details
-                @update:modelValue="toggleSelect(item.id)"
-              />
-            </div>
-            <div class="plp-row-name">
-              <div class="plp-row-name-text">
-                <span v-if="Number(item.is_kit) === 1 || item.is_kit === true" class="plp-kit-pill" title="Kit / combo">
-                  <v-icon size="11">mdi-package-variant</v-icon>KIT
-                </span>
-                {{ item.name }}
-              </div>
-              <div v-if="item.sku || item.brand" class="plp-row-sku">
-                {{ item.sku || '' }}{{ item.sku && item.brand ? ' · ' : '' }}{{ item.brand || '' }}
-              </div>
-            </div>
-            <div class="plp-row-cat">
-              <span v-if="item.category?.name || item.rubro" class="plp-tag plp-tag--cat">
-                {{ item.category?.name || item.rubro }}
-              </span>
-              <span v-if="item.subcategory?.name || item.subrubro" class="plp-tag plp-tag--sub">
-                {{ item.subcategory?.name || item.subrubro }}
-              </span>
-            </div>
-            <div class="plp-row-branches">
-              <template v-if="enabledBranches(item).length">
-                <v-chip
-                  v-for="(b, i) in visibleBranches(enabledBranches(item))"
-                  :key="`${item.id}-r${b.id}-${i}`"
-                  size="x-small"
-                  variant="tonal"
-                  :color="branchColor(b.id)"
-                  label
-                  class="plp-br-chip"
-                >
-                  {{ branchInitials(b.name) }}
-                </v-chip>
-                <span v-if="hiddenBranchesCount(enabledBranches(item)) > 0" class="plp-more">
-                  +{{ hiddenBranchesCount(enabledBranches(item)) }}
-                </span>
-              </template>
-              <template v-else-if="Number(item.branch_id || 0) > 0">
-                <v-chip size="x-small" variant="tonal" :color="branchColor(item.branch_id)" label class="plp-br-chip">
-                  {{ branchInitials(branchName(item.branch_id)) }}
-                </v-chip>
-              </template>
-              <span v-else class="text-medium-emphasis text-caption">—</span>
-            </div>
-            <div class="plp-row-price">
-              <span v-if="Number(item.price_list) > 0" class="plp-price-val">${{ fmtPrice(item.price_list) }}</span>
-              <span v-else class="text-medium-emphasis text-caption">—</span>
-            </div>
-            <div class="plp-row-stock" :class="getStockClass(item)">
-              <span class="st-dot" /><span>{{ getStockLabel(item) }}</span>
-            </div>
-            <div class="plp-row-actions" @click.stop>
-              <v-btn icon size="x-small" variant="text" @click.stop="openView(item.id)">
-                <v-icon size="16">mdi-eye-outline</v-icon>
-              </v-btn>
-              <v-menu location="bottom end" :close-on-content-click="true">
-                <template #activator="{ props }">
-                  <v-btn v-bind="props" icon size="x-small" variant="text" @click.stop>
-                    <v-icon size="16">mdi-dots-vertical</v-icon>
-                  </v-btn>
-                </template>
-                <v-list density="compact" min-width="160">
-                  <v-list-item @click="openEdit(item.id)">
-                    <template #prepend><v-icon size="16">mdi-pencil-outline</v-icon></template>
-                    <v-list-item-title>Editar</v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item v-if="!isAdmin" @click="askDisable(item)">
-                    <template #prepend><v-icon size="16">mdi-eye-off-outline</v-icon></template>
-                    <v-list-item-title>Inactivar</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item v-else @click="askDelete(item)">
-                    <template #prepend><v-icon size="16" color="error">mdi-delete-outline</v-icon></template>
-                    <v-list-item-title class="text-error">Eliminar</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── PAGINATION ───────────────────────────────────── -->
-    <footer v-if="meta.total > 0" class="lp-pagination">
-      <span class="lp-pagination__info">{{ items.length }} de {{ meta.total }}</span>
-      <v-pagination
-        v-model="page"
-        :length="meta.pages || 1"
-        :total-visible="smAndUp ? 7 : 4"
-        rounded="lg"
-        size="small"
-        @update:modelValue="fetchNow"
-      />
-    </footer>
-
-    <!-- ── DIALOGS ──────────────────────────────────────── -->
     <v-dialog v-model="disableOpen" max-width="460">
-      <v-card rounded="xl">
+      <v-card rounded="lg">
         <v-card-title class="font-weight-bold pt-5 px-5">Inactivar producto</v-card-title>
         <v-card-text class="px-5">
           ¿Inactivar <b>{{ disableItem?.name }}</b>?
           <div class="text-caption text-medium-emphasis mt-1">Se oculta del catálogo y del POS. No se borra.</div>
         </v-card-text>
         <v-card-actions class="justify-end px-5 pb-5">
-          <v-btn variant="tonal" :disabled="products.loading" @click="disableOpen = false">Cancelar</v-btn>
-          <v-btn color="warning" variant="flat" rounded="lg" :loading="products.loading" @click="doDisable">
-            Inactivar
-          </v-btn>
+          <a href="#" class="pl-link pl-link--chico pl-link--suave mr-4" @click.prevent="disableOpen = false">Volver</a>
+          <v-btn color="warning" variant="flat" :loading="products.loading" @click="doDisable">Inactivar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="deleteOpen" max-width="460">
-      <v-card rounded="xl">
+      <v-card rounded="lg">
         <v-card-title class="font-weight-bold pt-5 px-5">Eliminar producto</v-card-title>
         <v-card-text class="px-5">
           ¿Eliminar <b>{{ deleteItem?.name }}</b>?
           <div class="text-caption text-medium-emphasis mt-1">Si tiene ventas relacionadas, se inactiva automáticamente.</div>
         </v-card-text>
         <v-card-actions class="justify-end px-5 pb-5">
-          <v-btn variant="tonal" :disabled="products.loading" @click="deleteOpen = false">Cancelar</v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" :loading="products.loading" @click="doDelete">
-            Eliminar
-          </v-btn>
+          <a href="#" class="pl-link pl-link--chico pl-link--suave mr-4" @click.prevent="deleteOpen = false">Volver</a>
+          <v-btn color="error" variant="flat" :loading="products.loading" @click="doDelete">Eliminar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snack.show" :timeout="3500" location="bottom right" rounded="lg">{{ snack.text }}</v-snackbar>
+    <v-snackbar v-model="snack.show" :timeout="3500" location="bottom right">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
@@ -810,7 +307,6 @@ import { useDisplay } from "vuetify";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useCategoriesStore } from "@/app/store/categories.store";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
 
 const router = useRouter();
@@ -842,6 +338,10 @@ const stats = ref({
   with_images: 0,
   without_images: 0,
   promo_active: 0,
+  low_stock: 0,
+  ok_stock: 0,
+  stock_units: 0,
+  stock_value: 0,
 });
 function fmtInt(n) {
   return Number(n || 0).toLocaleString('es');
@@ -1093,6 +593,10 @@ async function fetchStats() {
         with_images: Number(data.with_images || 0),
         without_images: Number(data.without_images || 0),
         promo_active: Number(data.promo_active || 0),
+        low_stock: Number(data.low_stock || 0),
+        ok_stock: Number(data.ok_stock || 0),
+        stock_units: Number(data.stock_units || 0),
+        stock_value: Number(data.stock_value || 0),
       };
     } else {
       stats.value.ready = false;
@@ -1409,6 +913,106 @@ watch(
     selectedIds.value = [];
   }
 );
+
+/* ── Rediseño: franja, panel de filtros y tarjetas ── */
+const panelAbierto = ref(false);
+
+const subtitulo = computed(() => {
+  const n = Number(stats.value.active || 0);
+  let suc = "todas las sucursales";
+  if (f.value.branch_id) suc = branchName(f.value.branch_id);
+  else if (!isAdmin.value && auth.user?.branch_id) suc = branchName(auth.user.branch_id);
+  return `${fmtInt(n)} ${n === 1 ? "activo" : "activos"} · ${suc}`;
+});
+function millones(v) {
+  const n = Number(v || 0);
+  if (n >= 1e6) return (n / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " M";
+  return Math.round(n).toLocaleString("es-AR");
+}
+function parte(n) {
+  const tot = Number(stats.value.with_stock || 0) + Number(stats.value.without_stock || 0);
+  return tot ? `${Math.max(0.5, (Number(n || 0) / tot) * 100)}%` : "0%";
+}
+function filtroRapido(clave, valor) {
+  f.value[clave] = f.value[clave] === valor ? "all" : valor;
+  applyFilters();
+}
+function abrirTarjeta(e, id) {
+  if (window.getSelection?.()?.toString()) return;
+  const ruta = { name: "productView", params: { id } };
+  if (e.button === 1 || e.ctrlKey || e.metaKey) { window.open(router.resolve(ruta).href, "_blank"); return; }
+  if (e.type === "click") router.push(ruta);
+}
+function rubro(item) {
+  return [item?.category?.name || item?.rubro, item?.subcategory?.name || item?.subrubro].filter(Boolean).join(" › ");
+}
+function nivel(item) {
+  const n = getStockQty(item);
+  return n <= 0 ? "is-sin" : n <= 3 ? "is-bajo" : "is-bien";
+}
+function stockTexto(item) {
+  const n = getStockQty(item);
+  if (n <= 0) return "sin stock";
+  return `${fmtInt(n)} en stock${n <= 3 ? " · bajo" : ""}`;
+}
+function sucursalesCortas(item) {
+  const lista = enabledBranches(item);
+  const base = lista.length ? lista : (Number(item?.branch_id || 0) > 0 ? [{ id: Number(item.branch_id), name: branchName(item.branch_id) }] : []);
+  return base.map((b) => ({ ...b, ini: branchInitials(b.name) }));
+}
+function precioContado(item) {
+  return Number(item?.price_discount || 0) || Number(item?.price_list || 0) || 0;
+}
+const desde = computed(() => (meta.value.total ? (page.value - 1) * Number(limit.value || 24) + 1 : 0));
+const hasta = computed(() => Math.min(meta.value.total, (page.value - 1) * Number(limit.value || 24) + items.value.length));
+
+// Grupos del panel. Las cantidades salen de las stats, que respetan búsqueda,
+// sucursal, rubro y estado; null = sin cantidad para esa opción.
+const gruposFiltro = computed(() => {
+  const s = stats.value;
+  const op = (clave, value, label, count) => ({ value, label, count, on: f.value[clave] === value });
+  const g = [];
+  g.push({
+    clave: "status", titulo: "Estado",
+    opciones: [
+      op("status", "active", "Activos", s.active),
+      op("status", "inactive", "Inactivos", s.inactive),
+    ],
+  });
+  g.push({
+    clave: "stock", titulo: "Stock",
+    opciones: [
+      op("stock", "with", "Con stock", s.with_stock),
+      op("stock", "low", "Stock bajo (3 o menos)", s.low_stock),
+      op("stock", "without", "Sin stock", s.without_stock),
+    ],
+  });
+  g.push({ clave: "price_presence", titulo: "Precio", opciones: [op("price_presence", "with", "Con precio", s.with_price), op("price_presence", "without", "Sin precio", s.without_price)] });
+  g.push({ clave: "images", titulo: "Fotos", opciones: [op("images", "with", "Con fotos", s.with_images), op("images", "without", "Sin fotos", s.without_images)] });
+  g.push({
+    clave: "promo", titulo: "Promoción",
+    opciones: [
+      op("promo", "active", "En promo vigente", s.promo_active),
+      op("promo", "scheduled", "Promo programada", null),
+      op("promo", "expired", "Promo vencida", null),
+      op("promo", "none", "Sin promo", null),
+    ],
+  });
+  if (isAdmin.value) {
+    g.push({
+      clave: "branch_id", titulo: "Sucursal",
+      opciones: branchItems.value.filter((b) => b.value).map((b) => ({ value: b.value, label: b.title, count: null, on: Number(f.value.branch_id) === b.value })),
+    });
+  }
+  return g;
+});
+const DEFAULTS_FILTRO = { status: "active", stock: "all", price_presence: "all", images: "all", promo: "all", branch_id: null };
+function elegirFiltro(clave, valor) {
+  const actual = f.value[clave];
+  const igual = clave === "branch_id" ? Number(actual) === Number(valor) : actual === valor;
+  f.value[clave] = igual ? DEFAULTS_FILTRO[clave] : valor;
+  applyFilters();
+}
 
 /* ── UI HELPERS ── */
 const viewMode = ref('grid');
@@ -2411,5 +2015,160 @@ function branchCssColor(id) {
   text-transform: uppercase;
   margin-right: 6px;
   vertical-align: 1px;
+}
+</style>
+
+<style>
+/* Productos (rediseño). Sin scoped: todo cuelga de .pl; tema oscuro con
+   .v-theme--dark .pl. Mismos tokens que Ventas y el tablero. */
+.pos-container:has(.pl) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.pl {
+  --pl-fondo: #d6e6f3; --pl-caja: #ffffff; --pl-borde: #d3dde7; --pl-linea: #e3eaf1; --pl-texto: #0f172a;
+  --pl-suave: #5a6678; --pl-tenue: #94a3b8; --pl-acento: #0f6fae; --pl-banda: #0f6fae; --pl-banda-borde: #0d5f96;
+  --pl-rubro: #3f8fc6; --pl-hover: #f3f8fc; --pl-foto: #ffffff; --pl-suc: #eef5fb; --pl-suc-txt: #0a466e;
+  padding: 20px 28px 32px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pl-fondo); color: var(--pl-texto);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.v-theme--dark .pl {
+  --pl-fondo: #0b0f14; --pl-caja: #151c25; --pl-borde: #253141; --pl-linea: #222c39; --pl-texto: #e5edf5;
+  --pl-suave: #9aa8b8; --pl-tenue: #64748b; --pl-acento: #5aaee0; --pl-banda: #0f5f96; --pl-banda-borde: #0c4f7d;
+  --pl-rubro: #6fb3e0; --pl-hover: #1a2430; --pl-foto: #ffffff; --pl-suc: #1f2b3a; --pl-suc-txt: #9cc9ea;
+}
+.pl > * { max-width: 1500px; width: 100%; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.pl .num { font-variant-numeric: tabular-nums; }
+.pl .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-esp { flex: 1; }
+.pl-s { font-size: 12px; color: var(--pl-suave); }
+.pl-b { font-weight: 700; }
+.pl-suave { color: var(--pl-suave); }
+.pl-link { display: inline-flex; align-items: center; font-size: 15px; font-weight: 800; color: var(--pl-acento); text-decoration: none; white-space: nowrap; }
+.pl-link:hover { text-decoration: underline; }
+.pl-link--chico { font-size: 13px; }
+.pl-link--suave { color: var(--pl-suave); font-weight: 700; }
+
+.pl-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.pl-cab__txt { display: flex; flex-direction: column; gap: 2px; }
+.pl-cab__titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.pl-cab__sub { font-size: 14px; font-weight: 600; color: var(--pl-suave); }
+.pl-nuevo { height: 42px !important; border-radius: 10px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
+
+.pl-busca { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pl-busca__campo { flex: 1 1 380px; height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; border-radius: 10px; background: var(--pl-caja); border: 1px solid var(--pl-borde); box-sizing: border-box; }
+.pl-busca__campo:focus-within { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, 0.18); }
+.pl-busca__ic { color: var(--pl-suave); }
+.pl-busca__input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-family: inherit; font-size: 15px; color: var(--pl-texto); }
+.pl-busca__input::placeholder { color: var(--pl-tenue); }
+.pl-busca__scan { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--pl-suave); }
+.pl-busca__filtros { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 8px; border: 1px solid #8cc0e3; background: transparent; font-family: inherit; font-size: 14px; font-weight: 800; color: var(--pl-acento); cursor: pointer; white-space: nowrap; }
+.pl-busca__n { min-width: 20px; height: 20px; padding: 0 4px; border-radius: 6px; background: #0f6fae; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; box-sizing: border-box; }
+.pl-chip { height: 34px; display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 12px; border-radius: 8px; background: var(--pl-caja); border: 1px solid #8cc0e3; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.pl-chip__x { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--pl-suave); cursor: pointer; }
+.pl-vista { display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: var(--pl-caja); border: 1px solid var(--pl-borde); }
+.pl-vista button { width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--pl-suave); cursor: pointer; }
+.pl-vista button.is-on { background: #0f6fae; color: #ffffff; }
+.pl-mas { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--pl-borde); background: var(--pl-caja); color: var(--pl-suave); cursor: pointer; }
+
+.pl-resumen { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: 12px; background: var(--pl-caja); border: 1px solid var(--pl-borde); }
+.pl-resumen__cifras { display: flex; align-items: center; gap: 6px 22px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--pl-suave); }
+.pl-resumen__cifras b { font-size: 20px; font-weight: 800; color: var(--pl-texto); }
+.pl-leyenda { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pl-leyenda button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--pl-texto); cursor: pointer; }
+.pl-leyenda button:hover { background: var(--pl-hover); }
+.pl-leyenda button.is-on { border-color: #8cc0e3; background: var(--pl-hover); }
+.pl-leyenda i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.pl .c-bien { background: #2E9E7B; } .pl .c-bajo { background: #8cc0e3; } .pl .c-sin { background: #C3C9D6; } .pl .c-precio { background: #f0b429; }
+.pl-partes { display: flex; gap: 2px; height: 8px; }
+.pl-partes > span { display: block; height: 8px; border-radius: 3px; }
+
+.pl-masiva { display: flex; align-items: center; gap: 16px; padding: 8px 14px; border-radius: 10px; background: var(--pl-caja); border: 1px solid #8cc0e3; }
+.pl-masiva__sel { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.pl-masiva__no { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--pl-suave); }
+
+.pl-contenido.is-cargando { opacity: .6; transition: opacity .15s; }
+.pl-vacio { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 16px; border-radius: 12px; background: var(--pl-caja); border: 1px solid var(--pl-borde); color: var(--pl-suave); font-size: 15px; font-weight: 600; }
+
+/* grilla */
+.pl-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.pl-card { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: var(--pl-caja); border: 1px solid var(--pl-borde); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.pl-card:hover { border-color: #8cc0e3; box-shadow: 0 6px 18px rgba(10, 70, 110, 0.10); }
+.pl-card.is-sel { border-color: #0f6fae; box-shadow: 0 0 0 2px rgba(15, 111, 174, 0.25); }
+.pl-card.is-inactivo { opacity: .6; }
+.pl-card--esqueleto { height: 330px; background: linear-gradient(90deg, var(--pl-caja), var(--pl-hover), var(--pl-caja)); }
+.pl-card__foto { position: relative; height: 160px; display: flex; align-items: center; justify-content: center; background: var(--pl-foto); border-bottom: 1px solid var(--pl-linea); color: #94a3b8; }
+.pl-card__foto img { max-width: 100%; height: 160px; object-fit: contain; }
+.pl-card__check { position: absolute; top: 6px; right: 6px; border-radius: 8px; background: rgba(255, 255, 255, 0.92); }
+.pl-marca { position: absolute; top: 8px; left: 8px; height: 22px; padding: 0 8px; border-radius: 6px; background: #334155; color: #ffffff; font-size: 11px; font-weight: 800; display: flex; align-items: center; text-transform: uppercase; letter-spacing: .04em; }
+.pl-card__info { flex: 1; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pl-rubro { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--pl-rubro); }
+.pl-card__nombre { font-size: 14px; font-weight: 800; line-height: 1.2; min-height: 34px; color: var(--pl-texto); text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pl-card__nombre:hover { text-decoration: underline; }
+.pl-card__stock { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--pl-suave); }
+.pl-card__stock i { width: 8px; height: 8px; border-radius: 9999px; display: block; flex-shrink: 0; background: #C3C9D6; }
+.pl-card__stock.is-bien { color: #1f7a5f; } .pl-card__stock.is-bien i { background: #2E9E7B; }
+.pl-card__stock.is-bajo { color: var(--pl-suc-txt); } .pl-card__stock.is-bajo i { background: #8cc0e3; }
+.v-theme--dark .pl-card__stock.is-bien { color: #5fc9a6; }
+.pl-suc { height: 20px; padding: 0 6px; border-radius: 5px; background: var(--pl-suc); color: var(--pl-suc-txt); font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; margin-left: 3px; }
+.pl-esp-v { flex: 1; }
+.pl-card__pie { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.pl-card__precios { display: flex; flex-direction: column; min-width: 0; }
+.pl-card__precio { font-size: 18px; font-weight: 800; }
+
+/* lista: tabla cerrada */
+.pl-tabla-caja { border-radius: 12px; overflow: auto; background: var(--pl-caja); border: 1px solid var(--pl-borde); }
+.pl-tabla { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1040px; }
+.pl-tabla th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #ffffff; background: var(--pl-banda); text-align: left; padding: 10px 12px; border: 1px solid var(--pl-banda-borde); border-top: 0; }
+.pl-tabla td { padding: 6px 12px; border: 1px solid var(--pl-linea); vertical-align: middle; font-size: 14px; overflow: hidden; }
+.pl-tabla th:first-child, .pl-tabla td:first-child { border-left: 0; }
+.pl-tabla th:last-child, .pl-tabla td:last-child { border-right: 0; }
+.pl-tabla tbody tr { cursor: pointer; }
+.pl-tabla tbody tr:hover td { background: var(--pl-hover); }
+.pl-tabla tr.is-inactivo td { opacity: .6; }
+.pl-tabla .c-check { width: 48px; padding: 0 6px; }
+.pl-tabla .c-foto { width: 60px; padding: 4px 8px; }
+.pl-tabla .c-rubro { width: 170px; }
+.pl-tabla .c-stock { width: 80px; }
+.pl-tabla .c-suc { width: 130px; }
+.pl-tabla .c-plata { width: 112px; text-align: right; white-space: nowrap; }
+.pl-tabla .c-ver { width: 80px; }
+.pl-tabla__nombre { display: block; color: var(--pl-texto); text-decoration: none; }
+.pl-tabla__nombre:hover { text-decoration: underline; }
+.pl-mini { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--pl-linea); display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--pl-foto); color: #94a3b8; }
+.pl-mini img { width: 44px; height: 44px; object-fit: contain; }
+
+.pl-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pl-pie__info { font-size: 14px; font-weight: 600; color: var(--pl-suave); }
+
+/* panel de filtros */
+.pl-panel { position: fixed; top: 56px; right: 0; bottom: 0; width: 400px; max-width: 100vw; z-index: 1006; display: flex; flex-direction: column; background: var(--pl-caja); border-left: 2px solid #8cc4e8; box-shadow: -12px 0 32px rgba(10, 70, 110, 0.16); color: var(--pl-texto); }
+.pl-panel__cab { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 20px; background: #0f6fae; color: #ffffff; font-size: 18px; font-weight: 800; }
+.pl-panel__cerrar { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #ffffff; cursor: pointer; }
+.pl-panel__cuerpo { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 12px; }
+.pl-grupo { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--pl-linea); }
+.pl-grupo:last-child { border-bottom: 0; }
+.pl-grupo__tit { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--pl-suave); margin-bottom: 6px; }
+.pl-op { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 4px; border: 0; border-radius: 6px; background: transparent; font-family: inherit; color: var(--pl-texto); cursor: pointer; text-align: left; }
+.pl-op:hover { background: var(--pl-hover); }
+.pl-op__caja { width: 20px; height: 20px; flex-shrink: 0; border-radius: 5px; border: 2px solid #9fb3c8; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.pl-op.is-on .pl-op__caja { background: #0f6fae; border-color: #0f6fae; }
+.pl-op__eti { flex: 1; font-size: 15px; font-weight: 600; }
+.pl-op__n { font-size: 14px; font-weight: 800; }
+.pl-op.is-on .pl-op__n { color: var(--pl-acento); }
+.pl-op.is-cero { opacity: .5; }
+.pl-rango { display: flex; gap: 8px; }
+.pl-rango input { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--pl-borde); background: var(--pl-caja); color: var(--pl-texto); font-family: inherit; font-size: 14px; }
+.pl-porpag { display: flex; gap: 6px; }
+.pl-porpag button { flex: 1; height: 36px; border-radius: 8px; border: 1px solid var(--pl-borde); background: var(--pl-caja); color: var(--pl-texto); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.pl-porpag button.is-on { background: #0f6fae; border-color: #0f6fae; color: #ffffff; }
+.pl-panel__pie { padding: 14px 20px; border-top: 1px solid var(--pl-borde); }
+.pl-panel__ver { width: 100%; height: 46px; border: 0; border-radius: 10px; background: #0f6fae; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.pl-panel-enter-active, .pl-panel-leave-active { transition: transform .18s ease; }
+.pl-panel-enter-from, .pl-panel-leave-to { transform: translateX(100%); }
+
+@media (max-width: 900px) {
+  .pl { padding: 14px 12px 96px; }
+  .pl-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pl-card__foto, .pl-card__foto img { height: 130px; }
+  .pl-resumen__cifras b { font-size: 18px; }
+  .pl-panel { top: 0; width: 100vw; z-index: 2400; }
 }
 </style>
