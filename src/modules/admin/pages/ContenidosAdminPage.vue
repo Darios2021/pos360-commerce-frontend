@@ -54,7 +54,7 @@
             <input v-model="buscar" class="sp-busca__input" type="search" placeholder="Buscar por nombre, marca o código" />
           </label>
           <div class="ct-chips">
-            <button type="button" class="ct-chip" :class="{ 'is-on': !categoria }" @click="categoria = null">Todas<b class="num">{{ catalogo.length }}</b></button>
+            <button type="button" class="ct-chip" :class="{ 'is-on': !categoria }" @click="categoria = null">Todas<b class="num">{{ base.length }}</b></button>
             <button v-for="c in categoriasVisibles" :key="c.nombre" type="button" class="ct-chip" :class="{ 'is-on': categoria === c.nombre }" @click="categoria = c.nombre">{{ c.texto }}<b class="num">{{ c.cantidad }}</b></button>
             <v-menu v-if="categoriasResto.length" location="bottom start">
               <template #activator="{ props: p }">
@@ -368,7 +368,7 @@ const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "
 const textoCategoria = (c) => { const s = String(c || "").toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
 const categorias = computed(() => {
   const m = new Map();
-  for (const p of catalogo.value) if (p.categoria) m.set(p.categoria, (m.get(p.categoria) || 0) + 1);
+  for (const p of base.value) if (p.categoria) m.set(p.categoria, (m.get(p.categoria) || 0) + 1);
   return [...m.entries()].map(([nombre, cantidad]) => ({ nombre, cantidad, texto: textoCategoria(nombre) })).sort((a, b) => b.cantidad - a.cantidad);
 });
 const categoriasVisibles = computed(() => categorias.value.slice(0, 5));
@@ -378,10 +378,11 @@ const descuentoDe = (p) => (Number(p.precioAnterior) > Number(p.precio) && Numbe
 const porDescuento = (l) => l.slice().sort((a, b) => descuentoDe(b) - descuentoDe(a));
 const enPromo = computed(() => porDescuento(catalogo.value.filter((p) => promoIds.value.has(String(p.id)))));
 const conDescuento = computed(() => porDescuento(catalogo.value.filter((p) => descuentoDe(p) >= DESCUENTO_MIN)));
+// El grupo de productos sobre el que se busca: todo el catálogo o el de "armar desde".
+const base = computed(() => (formato.value === "ofertas" && origen.value === "promo" ? enPromo.value : formato.value === "ofertas" && origen.value === "descuento" ? conDescuento.value : catalogo.value));
 const filtrados = computed(() => {
   const q = normalizar(buscar.value).trim();
-  const base = formato.value === "ofertas" && origen.value === "promo" ? enPromo.value : formato.value === "ofertas" && origen.value === "descuento" ? conDescuento.value : catalogo.value;
-  return base.filter((p) => (!categoria.value || p.categoria === categoria.value) && (!q || normalizar(`${p.titulo} ${p.nombre} ${p.etiqueta}`).includes(q)));
+  return base.value.filter((p) => (!categoria.value || p.categoria === categoria.value) && (!q || normalizar(`${p.titulo} ${p.nombre} ${p.etiqueta}`).includes(q)));
 });
 const visibles = computed(() => filtrados.value.slice(0, cuantos.value));
 function masProductos(visible) { if (visible) cuantos.value += POR_TANDA; }
