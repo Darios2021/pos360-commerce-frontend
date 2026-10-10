@@ -132,7 +132,7 @@
             </template>
             <template v-else-if="opciones.voz">
               <div v-if="activa === 'intro'" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
-              <div v-else class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.cierre" rows="4" maxlength="400" @input="guion.cierreEditada = true"></textarea></div>
+              <div v-else class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.cierre" rows="5" maxlength="600" @input="guion.cierreEditada = true"></textarea></div>
             </template>
             <div v-else class="ct-vacio">Sin voz en off</div>
           </div>
