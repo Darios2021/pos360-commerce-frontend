@@ -448,14 +448,19 @@ function aperturaPorDefecto() {
     apertura.titular = "";
     apertura.bajada = "";
   }
+  sincronizarVoz();
 }
 watch(categoria, () => { if (formato.value === "categoria") aperturaPorDefecto(); });
 // La bajada sugerida ("Hasta N % OFF") sigue a los productos elegidos.
 watch(() => seleccion.value.map((p) => p.id).join(","), () => { if (formato.value === "ofertas" || formato.value === "categoria") aperturaPorDefecto(); });
 // Lo que dice el titular lo lee también la voz, salvo que la voz se haya escrito a mano.
+const vozDeApertura = () => [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(". ").replace(/([?!])\./g, "$1").slice(0, 300);
+function sincronizarVoz() {
+  if (!guion.introEditada && apertura.titular.trim()) guion.intro = vozDeApertura();
+}
 function editarApertura() {
   apertura.editada = true;
-  if (!guion.introEditada && opciones.voz) guion.intro = [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(" ").slice(0, 300);
+  sincronizarVoz();
 }
 const aperturaVista = computed(() => (apertura.titular.trim() ? { titular: apertura.titular.trim(), bajada: apertura.bajada.trim() } : null));
 const muestraEstrella = computed(() => {
@@ -583,7 +588,7 @@ function sugerir() {
       delete e.titulo;
       delete e.descripcion;
       const g = await sugerirGuion(e);
-      if (!guion.introEditada) guion.intro = (formato.value === "problema" && apertura.titular.trim() ? [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(" ") : g.intro) || "";
+      if (!guion.introEditada) guion.intro = (apertura.titular.trim() ? vozDeApertura() : g.intro) || "";
       if (!guion.cierreEditada) guion.cierre = g.cierre || "";
       seleccion.value.forEach((p, i) => { if (!p.vozEditada) p.voz = g.items?.[i] || ""; });
     } catch { /* la sugerencia es opcional */ }
