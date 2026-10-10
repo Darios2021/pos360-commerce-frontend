@@ -746,16 +746,7 @@ function remove(it) {
     box-shadow 0.14s ease;
 }
 
-.item-shell:hover {
-  border-color: #0f6fae;
-  background: #e6f1fa;
-  box-shadow: inset 0 0 0 1px #0f6fae, 0 4px 12px rgba(10, 70, 110, 0.12);
-}
-.v-theme--dark .item-shell:hover {
-  border-color: #8cc0e3;
-  background: #1d3a55;
-  box-shadow: inset 0 0 0 1px #8cc0e3;
-}
+
 
 /* Miniatura con badge de cantidad */
 .item-media {
@@ -1193,6 +1184,24 @@ function remove(it) {
   border: 1px solid var(--z-borde, rgba(15, 23, 42, 0.10)) !important;
   background: var(--z-panel, #ffffff) !important;
   box-shadow: none !important;
+}
+/* Una sola tarjeta por ítem: el marco es .cart-item; .item-shell sólo ordena. */
+.item-shell {
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.cart-item { transition: background-color 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }
+.cart-item:hover {
+  border-color: #0f6fae !important;
+  background: #e6f1fa !important;
+  box-shadow: inset 0 0 0 1px #0f6fae, 0 4px 12px rgba(10, 70, 110, 0.12) !important;
+}
+.v-theme--dark .cart-item:hover {
+  border-color: #8cc0e3 !important;
+  background: #1d3a55 !important;
+  box-shadow: inset 0 0 0 1px #8cc0e3 !important;
 }
 .item-media {
   width: 56px !important;

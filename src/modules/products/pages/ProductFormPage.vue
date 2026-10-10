@@ -41,7 +41,7 @@
 
         <!-- 1. Lo básico -->
         <div v-show="step === 1" class="pfx-paso-cont">
-          <div class="pfx-enc"><h2>Lo básico</h2><p>Con esto el producto ya se puede vender.</p></div>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Qué es</span></div><div class="pfx-seg__in">
           <div class="pfx-g">
             <div class="pfx-c"><label>Descripción</label>
               <v-text-field v-model="draft.name" :disabled="busy" density="comfortable" variant="outlined" hide-details="auto"
@@ -76,7 +76,8 @@
               <div class="pfx-fijo num">{{ draft.code || nextCodePreview || "—" }}<span v-if="!isEdit"> · automático</span></div>
             </div>
           </div>
-          <div class="pfx-sep"></div>
+          </div></section>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Costo y precios</span></div><div class="pfx-seg__in">
           <div class="pfx-g pfx-g--precio">
             <div class="pfx-c"><label>Costo en</label>
               <div class="pfn-seg" role="group" aria-label="Moneda del costo">
@@ -119,14 +120,17 @@
               <label class="pfx-sw"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Lista calculada</label>
             </div>
           </div>
+          </div></section>
         </div>
 
         <!-- 2. Stock -->
         <div v-show="step === 2" class="pfx-paso-cont">
-          <div class="pfx-enc"><h2>Stock</h2><p>Cuántas unidades entran a cada sucursal.</p></div>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Stock por sucursal</span></div><div class="pfx-seg__in">
           <div class="pfx-stock">
             <ProductStockPanel :product-id="draft?.id || null" v-model="stockMatrix" :disabled="busy" />
           </div>
+          </div></section>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Control de stock</span></div><div class="pfx-seg__in">
           <div class="pfx-g pfx-g--abajo" style="grid-template-columns: 200px 1fr">
             <div class="pfx-c"><label>Stock mínimo <i>· opcional</i></label>
               <v-text-field v-model="draft.min_stock" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" hide-details />
@@ -136,19 +140,21 @@
               <label class="pfx-sw"><v-switch v-model="draft.track_stock" inset density="compact" hide-details color="primary" :disabled="busy" />Controla stock</label>
             </div>
           </div>
+          </div></section>
         </div>
 
         <!-- 3. Fotos -->
         <div v-show="step === 3" class="pfx-paso-cont">
-          <div class="pfx-enc"><h2>Fotos</h2><p>La primera es la que se ve en el POS y en la tienda.</p></div>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Fotos</span></div><div class="pfx-seg__in">
           <div class="pfx-fotos">
             <ProductImagesPanel :product-id="draft?.id || null" v-model="queuedImages" @changed="onQueuedChanged" />
           </div>
+          </div></section>
         </div>
 
         <!-- 4. Más datos -->
         <div v-show="step === 4" class="pfx-paso-cont">
-          <div class="pfx-enc"><h2>Más datos</h2><p>Todo es opcional.</p></div>
+          <section class="pfx-seg"><div class="pfx-banda"><span>Compra y ficha</span></div><div class="pfx-seg__in">
           <div class="pfx-g pfx-g--3">
             <div class="pfx-c"><label>Proveedor</label>
               <v-autocomplete v-model="draft.supplier_id" :items="proveedores" item-title="name" item-value="id"
@@ -193,6 +199,8 @@
             <a href="#" class="pfn-link" @click.prevent="verDetalle = !verDetalle">{{ verDetalle ? "Cerrar" : (draft.description ? "Editar" : "Escribir") }}</a>
           </div>
           <v-textarea v-if="verDetalle" v-model="draft.description" :disabled="busy" density="comfortable" variant="outlined" auto-grow rows="3" hide-details class="pfx-detalle" />
+
+          </div></section>
 
           <!-- ══ PROMOCIÓN (ancho completo) ══ -->
               <div class="pfp-section pfp-promo-section mt-4" :class="{ 'pfp-promo-on': draft.is_promo }">
@@ -2500,8 +2508,13 @@ async function saveAll() {
 /* cuerpo */
 .pfx-cargando { display: flex; justify-content: center; padding: 60px 0; }
 .pfx-cuerpo { display: flex; gap: 24px; align-items: flex-start; padding-bottom: 24px; }
-.pfx-tarjeta { flex: 1; min-width: 0; padding: 24px 28px; border-radius: 12px; background: var(--x-caja); border: 1px solid var(--x-borde); box-sizing: border-box; }
+.pfx-tarjeta { flex: 1; min-width: 0; box-sizing: border-box; }
 .pfx-paso-cont { display: flex; flex-direction: column; gap: 18px; }
+/* Cada grupo del paso es su propia tarjeta con la banda azul del sistema. */
+.pfx-seg { border-radius: 12px; overflow: hidden; background: var(--x-caja); border: 1px solid var(--x-borde); }
+.pfx-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #0f6fae; color: #ffffff; font-size: 15px; font-weight: 800; }
+.v-theme--dark .pfx-banda { background: #0f5f96; }
+.pfx-seg__in { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px 20px; }
 .pfx-enc h2 { margin: 0; font-size: 20px; font-weight: 800; }
 .pfx-enc p { margin: 2px 0 0; font-size: 14px; color: var(--x-suave); }
 .pfx-g { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
