@@ -101,7 +101,7 @@
 
 
           <!-- SUCURSALES -->
-          <section id="shop-sucursales" class="footer-col footer-col-branches">
+          <section class="footer-col footer-col-branches">
             <div class="footer-kicker">Sucursales</div>
 
             <div class="branches-list">

@@ -165,8 +165,10 @@
 
         <nav class="ml-nav" aria-label="Secciones">
           <ShopCatalogMenu />
-          <!-- Seguridad, Servicio tecnico y Desarrollo pasaron a la franja de
-               lineas de arriba (ShopLineasBar.vue). -->
+          <span class="ml-nav-sep" aria-hidden="true">|</span>
+          <router-link class="ml-nav-soft ml-nav-strong" :to="{ name: 'shopLandingSeguridad' }">San Juan Seguridad</router-link>
+          <router-link class="ml-nav-soft ml-nav-strong" :to="{ name: 'shopLandingSistemas' }">San Juan Sistemas</router-link>
+          <router-link class="ml-nav-soft ml-nav-strong" :to="{ name: 'shopLandingServicioTecnico' }">San Juan Servicio Técnico</router-link>
         </nav>
 
         <!-- ✅ DESKTOP: acciones abajo (estilo Mercado Libre) -->
