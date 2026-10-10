@@ -1188,6 +1188,9 @@ onMounted(async () => {
   // ?cajero=<id>: "Ver sus ventas" desde la vista de una venta
   const cajeroUrl = Number(route.query?.cajero || 0);
   if (cajeroUrl > 0) sellerId.value = cajeroUrl;
+  // ?producto=<id>&nombre=…: "Ver todas sus ventas" desde la ficha del producto
+  const productoUrl = Number(route.query?.producto || 0);
+  if (productoUrl > 0) productPick.value = { value: productoUrl, title: String(route.query?.nombre || `Producto #${productoUrl}`) };
   onSellerSearch("");
   onProductSearch("");
   refreshAll();

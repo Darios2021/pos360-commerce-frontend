@@ -1,439 +1,154 @@
 <!-- src/modules/products/pages/ProductDetailViewPage.vue -->
 <template>
-  <div class="pv">
-
-    <!-- HEADER -->
-    <AppPageHeader
-      icon="mdi-package-variant-closed"
-      :title="raw?.name || 'Producto'"
-    >
-      <template v-if="raw" #subtitle>
-        <v-chip
-          v-if="productForUIFixed.category_name"
-          size="x-small"
-          variant="tonal"
-          color="primary"
-          label
-          class="mr-1"
-        >
-          <v-icon start size="12">mdi-shape-outline</v-icon>
-          {{ productForUIFixed.category_name }}
-        </v-chip>
-        <v-chip
-          v-if="productForUIFixed.subcategory_name"
-          size="x-small"
-          variant="tonal"
-          label
-        >
-          {{ productForUIFixed.subcategory_name }}
-        </v-chip>
-      </template>
-
-      <v-btn
-        v-if="raw"
-        variant="tonal"
-        size="small"
-        prepend-icon="mdi-qrcode"
-        rounded="lg"
-        @click="printDlg = true"
-      >
-        Etiqueta / QR
-      </v-btn>
-      <v-btn
-        v-if="raw"
-        color="primary"
-        variant="flat"
-        size="small"
-        prepend-icon="mdi-pencil-outline"
-        rounded="lg"
-        @click="$router.push({ name: 'productEdit', params: { id: productId } })"
-      >
-        Editar
-      </v-btn>
-    </AppPageHeader>
-
-    <!-- ERROR -->
-    <v-alert v-if="error" type="error" variant="tonal" class="ma-3">{{ error }}</v-alert>
-
-    <!-- SKELETON -->
-    <div v-if="loading && !raw" class="pv-skel">
-      <div class="pv-sk pv-sk--gallery" />
-      <div class="pv-sk-stack">
-        <div class="pv-sk pv-sk--card" />
-        <div class="pv-sk pv-sk--card" />
-        <div class="pv-sk pv-sk--card" />
+  <div class="pd">
+    <!-- ── Encabezado ───────────────────────────────────── -->
+    <div class="pd-cab">
+      <div class="pd-cab__txt">
+        <router-link :to="{ name: 'products' }" class="pd-volver"><v-icon size="18">mdi-chevron-left</v-icon>Productos</router-link>
+        <span v-if="rubroTexto" class="pd-rubro">{{ rubroTexto }}</span>
+        <h1 class="pd-cab__nombre">{{ raw?.name || "Producto" }}</h1>
+        <span v-if="raw" class="pd-cab__sub num">
+          {{ lineaCodigos }}<template v-if="lineaCodigos"> · </template><a href="#" class="pd-link pd-link--chico" @click.prevent="printDlg = true">Etiqueta y QR</a>
+        </span>
+      </div>
+      <div v-if="raw" class="pd-cab__der">
+        <span class="pd-estado" :class="productForUIFixed.is_active !== false ? 'is-activo' : 'is-inactivo'"><i></i>{{ productForUIFixed.is_active !== false ? "Activo" : "Inactivo" }}</span>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-pencil-outline" class="pd-editar" :to="{ name: 'productEdit', params: { id: productId } }">Editar</v-btn>
       </div>
     </div>
 
-    <!-- MAIN -->
-    <div v-else-if="raw" class="pv-layout">
+    <v-alert v-if="error" type="error" variant="tonal">{{ error }}</v-alert>
 
-      <!-- ── GALLERY (left, sticky) ── -->
-      <aside class="pv-gallery">
-        <div class="pv-gallery-main">
-          <img v-if="heroImage" :src="heroImage" class="pv-gallery-img" />
-          <div v-else class="pv-gallery-placeholder">
-            <v-icon size="72" color="medium-emphasis">mdi-image-outline</v-icon>
-            <span class="mt-2">Sin imagen</span>
-          </div>
-          <div v-if="allImages.length > 1" class="pv-gallery-count">
-            {{ activeImageIndex + 1 }} / {{ allImages.length }}
-          </div>
-          <button
-            v-if="allImages.length > 1"
-            type="button"
-            class="pv-gallery-nav pv-gallery-nav--prev"
-            @click="prevImage"
-            aria-label="Anterior"
-          >
-            <v-icon size="22">mdi-chevron-left</v-icon>
-          </button>
-          <button
-            v-if="allImages.length > 1"
-            type="button"
-            class="pv-gallery-nav pv-gallery-nav--next"
-            @click="nextImage"
-            aria-label="Siguiente"
-          >
-            <v-icon size="22">mdi-chevron-right</v-icon>
+    <div v-if="loading && !raw" class="pd-grilla">
+      <div class="pd-caja pd-esq" style="height: 420px" />
+      <div class="pd-caja pd-esq" style="height: 420px" />
+      <div class="pd-caja pd-esq" style="height: 420px" />
+    </div>
+
+    <div v-else-if="raw" class="pd-grilla">
+      <!-- 1. Fotos y videos -->
+      <section class="pd-col">
+        <div class="pd-caja pd-foto">
+          <img v-if="heroImage" :src="heroImage" :alt="raw.name" />
+          <div v-else class="pd-foto__vacia"><v-icon size="64">mdi-image-outline</v-icon><span>Sin foto</span></div>
+          <template v-if="allImages.length > 1">
+            <button type="button" class="pd-foto__nav pd-foto__nav--ant" aria-label="Foto anterior" @click="prevImage"><v-icon size="22">mdi-chevron-left</v-icon></button>
+            <button type="button" class="pd-foto__nav pd-foto__nav--sig" aria-label="Foto siguiente" @click="nextImage"><v-icon size="22">mdi-chevron-right</v-icon></button>
+            <span class="pd-foto__n num">{{ activeImageIndex + 1 }} / {{ allImages.length }}</span>
+          </template>
+        </div>
+        <div v-if="allImages.length > 1" class="pd-miniaturas">
+          <button v-for="(img, i) in allImages" :key="i" type="button" class="pd-mini" :class="{ 'is-on': heroImage === img }" :aria-label="`Foto ${i + 1}`" @click="heroImage = img">
+            <img :src="img" alt="" />
           </button>
         </div>
 
-        <div v-if="allImages.length > 1" class="pv-gallery-thumbs">
-          <button
-            v-for="(img, i) in allImages"
-            :key="i"
-            type="button"
-            class="pv-gallery-thumb"
-            :class="{ 'pv-gallery-thumb--active': heroImage === img }"
-            @click="heroImage = img"
-          >
-            <img :src="img" />
-          </button>
-        </div>
-
-        <!-- Videos (debajo de imágenes) -->
-        <section v-if="vd.loading || videosList.length || vd.error" class="pv-card pv-card--videos">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="red">mdi-play-circle</v-icon>
-              Videos
-              <v-chip v-if="videosList.length" size="x-small" class="ml-2" color="primary" variant="flat">
-                {{ videosList.length }}
-              </v-chip>
-            </div>
-            <v-btn size="x-small" variant="text" :loading="vd.loading" @click="loadVideos">
-              <v-icon start size="14">mdi-refresh</v-icon>Actualizar
-            </v-btn>
-          </div>
-
-          <v-alert v-if="vd.error" type="error" variant="tonal" density="compact" class="mb-3">{{ vd.error }}</v-alert>
-
-          <div v-if="vd.loading && !videosList.length" class="pv-centered">
-            <v-progress-circular size="22" indeterminate color="primary" />
-            <span class="ml-2 text-body-2">Cargando videos…</span>
-          </div>
-
-          <div v-else-if="!videosList.length" class="pv-empty pv-empty--sm">
-            <v-icon size="32" color="medium-emphasis">mdi-video-off-outline</v-icon>
-            <span>Sin videos cargados</span>
-          </div>
-
-          <div v-else class="pv-video-grid">
-            <button
-              v-for="v in videosList"
-              :key="v.id"
-              type="button"
-              class="pv-video-card"
-              @click="openVideo(v)"
-            >
-              <div
-                class="pv-video-thumb"
-                :style="v.isYoutube && v.thumbUrl ? { backgroundImage: `url('${v.thumbUrl}')` } : null"
-              >
-                <img
-                  v-if="v.isYoutube && v.thumbUrl"
-                  :src="v.thumbUrl"
-                  :alt="v.title"
-                  class="pv-video-fg"
-                  @error="(e) => onThumbError(e, v.raw)"
-                />
-                <video
-                  v-else-if="v.url"
-                  :src="v.url + '#t=0.5'"
-                  preload="metadata"
-                  muted
-                  playsinline
-                  class="pv-video-fg"
-                />
-                <div v-else class="pv-video-thumb-fallback">
-                  <v-icon size="44" color="white">mdi-file-video</v-icon>
-                </div>
-                <div class="pv-video-play">
-                  <v-icon size="32" color="white">mdi-play</v-icon>
-                </div>
-              </div>
-              <div v-if="v.title" class="pv-video-title">{{ v.title }}</div>
+        <div v-if="videosList.length" class="pd-caja">
+          <div class="pd-banda"><span>Videos</span><small class="num">{{ videosList.length }}</small></div>
+          <div class="pd-videos">
+            <button v-for="v in videosList" :key="v.id" type="button" class="pd-video" @click="openVideo(v)">
+              <span class="pd-video__cuadro">
+                <img v-if="v.isYoutube && v.thumbUrl" :src="v.thumbUrl" :alt="v.title" @error="(e) => onThumbError(e, v.raw)" />
+                <video v-else-if="v.url" :src="v.url + '#t=0.5'" preload="metadata" muted playsinline />
+                <v-icon class="pd-video__play" size="30" color="white">mdi-play</v-icon>
+              </span>
+              <span v-if="v.title" class="pd-s clamp1">{{ v.title }}</span>
             </button>
           </div>
-        </section>
-      </aside>
+        </div>
+      </section>
 
-      <!-- ── CONTENT (right, scroll) ── -->
-      <div class="pv-content">
-
-        <!-- Identity -->
-        <section class="pv-card pv-card--identity">
-          <div class="pv-chips-row">
-            <v-chip
-              size="small"
-              :color="productForUIFixed.is_active !== false ? 'success' : 'error'"
-              variant="flat"
-              rounded="md"
-              class="pv-chip-status"
-            >
-              <v-icon start size="14">
-                {{ productForUIFixed.is_active !== false ? 'mdi-check-circle' : 'mdi-close-circle' }}
-              </v-icon>
-              {{ productForUIFixed.is_active !== false ? 'Activo' : 'Inactivo' }}
-            </v-chip>
-            <v-chip v-if="productForUIFixed.is_new" size="small" color="primary" variant="tonal" rounded="md">Nuevo</v-chip>
-            <v-chip v-if="productForUIFixed.is_promo" size="small" color="warning" variant="tonal" rounded="md">Promo</v-chip>
-            <v-chip v-if="productForUIFixed.is_kit" size="small" color="#7c3aed" variant="flat" rounded="md">
-              <v-icon start size="13">mdi-package-variant</v-icon>
-              Kit · {{ kitItemsList.length }}
-            </v-chip>
-            <v-chip v-if="productForUIFixed.track_stock === false" size="small" variant="tonal" rounded="md">Sin control stock</v-chip>
+      <!-- 2. Precios, kit y ficha -->
+      <section class="pd-col">
+        <div class="pd-caja">
+          <div class="pd-banda"><span>Precios</span><small v-if="Number(raw.tax_rate) > 0" class="num">IVA {{ Number(raw.tax_rate) }} % incluido</small></div>
+          <div class="pd-precio">
+            <span class="pd-precio__grande num">$ {{ fmtPrice(productForUIFixed.price_discount) }}</span>
+            <span class="pd-s">contado y Mercado Pago</span>
           </div>
-
-          <h1 class="pv-name">{{ productForUIFixed.name || '—' }}</h1>
-
-          <div class="pv-meta">
-            <span v-if="productForUIFixed.brand" class="pv-meta-brand">{{ productForUIFixed.brand }}</span>
-            <span v-if="productForUIFixed.model" class="pv-meta-sep">·</span>
-            <span v-if="productForUIFixed.model" class="pv-meta-model">{{ productForUIFixed.model }}</span>
-          </div>
-
-          <div class="pv-codes">
-            <div v-if="productForUIFixed.sku || productForUIFixed.code" class="pv-code-pill">
-              <v-icon size="13" class="pv-code-ic">mdi-pound</v-icon>
-              <span class="pv-code-k">SKU</span>
-              <span class="pv-code-v">{{ productForUIFixed.sku || productForUIFixed.code }}</span>
-            </div>
-            <div v-if="productForUIFixed.barcode" class="pv-code-pill">
-              <v-icon size="13" class="pv-code-ic">mdi-barcode</v-icon>
-              <span class="pv-code-k">Barcode</span>
-              <span class="pv-code-v">{{ productForUIFixed.barcode }}</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Prices -->
-        <section class="pv-card">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="success">mdi-cash-multiple</v-icon>
-              Precios
-            </div>
-          </div>
-
-          <div class="pv-price-hero">
-            <div class="pv-price-main">
-              <div class="pv-price-cash">
-                <div class="pv-price-cash-lbl">Contado / MP</div>
-                <div class="pv-price-cash-val">
-                  <span class="pv-price-cur">$</span>
-                  <span class="pv-price-big">{{ fmtPrice(productForUIFixed.price_discount) }}</span>
-                </div>
-              </div>
-              <div
-                v-if="productForUIFixed.price_list > productForUIFixed.price_discount && productForUIFixed.price_list"
-                class="pv-price-delta"
-              >
-                <v-icon size="14">mdi-arrow-down-bold</v-icon>
-                {{ Math.round(((productForUIFixed.price_list - productForUIFixed.price_discount) / productForUIFixed.price_list) * 100) }}%
-              </div>
-            </div>
-            <div
-              v-if="productForUIFixed.price_list && productForUIFixed.price_list !== productForUIFixed.price_discount"
-              class="pv-price-compare"
-            >
-              <span class="pv-price-compare-k">Lista / Crédito:</span>
-              <span class="pv-price-compare-v">${{ fmtPrice(productForUIFixed.price_list) }}</span>
-            </div>
-          </div>
-
-          <div class="pv-price-grid">
-            <div class="pv-pg-item">
-              <span class="pv-pg-k">Lista</span>
-              <span class="pv-pg-v">${{ fmtPrice(productForUIFixed.price_list) }}</span>
-            </div>
-            <div class="pv-pg-item">
-              <span class="pv-pg-k">Contado</span>
-              <span class="pv-pg-v">${{ fmtPrice(productForUIFixed.price_discount) }}</span>
-            </div>
-            <div class="pv-pg-item">
-              <span class="pv-pg-k">Revendedor</span>
-              <span class="pv-pg-v">${{ fmtPrice(productForUIFixed.price_reseller) }}</span>
-            </div>
-            <div class="pv-pg-item">
-              <span class="pv-pg-k">Costo</span>
-              <span class="pv-pg-v pv-pg-v--dim">${{ fmtPrice(productForUIFixed.cost) }}</span>
-            </div>
-            <div class="pv-pg-item pv-pg-item--margin" v-if="productForUIFixed.margin !== null && productForUIFixed.margin !== undefined">
-              <span class="pv-pg-k">Margen</span>
-              <span class="pv-pg-v pv-pg-v--ok">{{ Number(productForUIFixed.margin || 0).toFixed(1) }}%</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Kit / Combo -->
-        <section v-if="productForUIFixed.is_kit" class="pv-card pv-card--kit">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="#7c3aed">mdi-package-variant</v-icon>
-              ¿Qué incluye este kit?
-              <v-chip size="x-small" class="ml-2" color="#7c3aed" variant="flat">
-                {{ kitItemsList.length }} {{ kitItemsList.length === 1 ? 'producto' : 'productos' }}
-              </v-chip>
-            </div>
-          </div>
-
-          <div v-if="!kitItemsList.length" class="pv-empty pv-empty--sm">
-            <v-icon size="28" color="warning">mdi-alert-circle-outline</v-icon>
-            <span>El kit todavía no tiene componentes definidos</span>
-          </div>
-
-          <div v-else class="pv-kit-grid">
-            <div
-              v-for="it in kitItemsList"
-              :key="it.component_id"
-              class="pv-kit-card"
-              @click="$router.push({ name: 'productView', params: { id: it.component_id } })"
-            >
-              <div class="pv-kit-img">
-                <img v-if="it.image_url" :src="it.image_url" :alt="it.name" />
-                <v-icon v-else size="28" color="medium-emphasis">mdi-package-variant-closed</v-icon>
-                <span class="pv-kit-qty">×{{ it.qty }}</span>
-              </div>
-              <div class="pv-kit-info">
-                <div class="pv-kit-name" :title="it.name">{{ it.name }}</div>
-                <div class="pv-kit-meta">
-                  <span v-if="it.sku">SKU {{ it.sku }}</span>
-                  <span v-if="it.price_list" class="pv-kit-price">$ {{ Number(it.price_list).toLocaleString('es-AR') }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="kitSavingsView" class="pv-kit-savings-block">
-            <div class="pv-kit-savings-row">
-              <span class="text-medium-emphasis">Suelto:</span>
-              <b class="text-decoration-line-through text-medium-emphasis">$ {{ Number(kitSavingsView.componentsTotal).toLocaleString('es-AR') }}</b>
-            </div>
-            <div class="pv-kit-savings-row">
-              <span class="text-medium-emphasis">Kit:</span>
-              <b>$ {{ Number(kitSavingsView.kitPrice).toLocaleString('es-AR') }}</b>
-            </div>
-            <div v-if="kitSavingsView.savings > 0" class="pv-kit-savings-final">
-              <v-icon size="14" color="success">mdi-trending-down</v-icon>
-              <span>Ahorro vs suelto:</span>
-              <b class="text-success">$ {{ Number(kitSavingsView.savings).toLocaleString('es-AR') }} ({{ kitSavingsView.savingsPct }}%)</b>
-            </div>
-          </div>
-        </section>
-
-        <!-- Stock -->
-        <section class="pv-card">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="primary">mdi-warehouse</v-icon>
-              Stock por sucursal
-              <v-chip size="x-small" class="ml-2" :color="totalStockAllBranches > 0 ? 'success' : 'grey'" variant="flat">
-                {{ totalStockAllBranches }} uds
-              </v-chip>
-            </div>
-            <v-btn size="x-small" variant="text" :loading="mx.loading" @click="refreshBranchesMatrix">
-              <v-icon start size="14">mdi-refresh</v-icon>Actualizar
-            </v-btn>
-          </div>
-
-          <v-alert v-if="mx.error" type="error" variant="tonal" density="compact" class="mb-3">{{ mx.error }}</v-alert>
-
-          <div v-if="mx.loading" class="pv-centered">
-            <v-progress-circular size="22" indeterminate color="primary" />
-            <span class="ml-2 text-body-2">Cargando stock…</span>
-          </div>
-
-          <div v-else-if="!branchesStock.length" class="pv-empty pv-empty--sm">
-            <v-icon size="32" color="medium-emphasis">mdi-store-off-outline</v-icon>
-            <span>Sin datos de sucursales</span>
-          </div>
-
-          <div v-else class="pv-stock-grid">
-            <div
-              v-for="r in branchesStock"
-              :key="r.key"
-              class="pv-stock-card"
-              :class="{ 'pv-stock-card--ok': r.stock_qty > 0 }"
-            >
-              <div class="pv-stock-av" :class="{ ok: r.stock_qty > 0 }">{{ initials(r.branch_name) }}</div>
-              <div class="pv-stock-body">
-                <div class="pv-stock-name">{{ r.branch_name }}</div>
-                <div class="pv-stock-qty" :class="r.stock_qty > 0 ? 'clr-ok' : 'clr-zero'">
-                  {{ r.stock_qty > 0 ? r.stock_qty + ' uds' : 'Sin stock' }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Details -->
-        <section class="pv-card">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="indigo">mdi-information-outline</v-icon>
-              Detalles
-            </div>
-          </div>
-
-          <dl class="pv-dl">
-            <template v-if="productForUIFixed.brand">
-              <dt>Marca</dt><dd>{{ productForUIFixed.brand }}</dd>
-            </template>
-            <template v-if="productForUIFixed.model">
-              <dt>Modelo</dt><dd>{{ productForUIFixed.model }}</dd>
-            </template>
-            <template v-if="productForUIFixed.category_name">
-              <dt>Categoría</dt><dd>{{ productForUIFixed.category_name }}</dd>
-            </template>
-            <template v-if="productForUIFixed.subcategory_name">
-              <dt>Subcategoría</dt><dd>{{ productForUIFixed.subcategory_name }}</dd>
-            </template>
-            <template v-if="productForUIFixed.warranty_months">
-              <dt>Garantía</dt><dd>{{ productForUIFixed.warranty_months }} meses</dd>
-            </template>
-            <template v-if="productForUIFixed.sku || productForUIFixed.code">
-              <dt>SKU</dt><dd class="pv-mono">{{ productForUIFixed.sku || productForUIFixed.code }}</dd>
-            </template>
-            <template v-if="productForUIFixed.barcode">
-              <dt>Código de barras</dt><dd class="pv-mono">{{ productForUIFixed.barcode }}</dd>
-            </template>
+          <dl class="pd-datos num">
+            <dt>Lista y crédito</dt>
+            <dd>$ {{ fmtPrice(productForUIFixed.price_list) }}<span v-if="recargoLista" class="pd-suave"> · {{ recargoLista }} % más</span></dd>
+            <dt>Revendedor</dt>
+            <dd>{{ Number(raw.price_reseller) > 0 ? `$ ${fmtPrice(raw.price_reseller)}` : "—" }}</dd>
+            <dt>Costo</dt>
+            <dd><template v-if="costo > 0">$ {{ fmtPrice(costo) }}</template><span v-else class="pd-tenue">sin cargar</span></dd>
+            <dt>Margen</dt>
+            <dd><template v-if="costo > 0 && productForUIFixed.margin !== null">{{ Math.round(productForUIFixed.margin) }} %</template><span v-else class="pd-tenue">sin costo no se calcula</span></dd>
           </dl>
-        </section>
+        </div>
 
-        <!-- Description -->
-        <section v-if="productForUIFixed.description" class="pv-card">
-          <div class="pv-card-head">
-            <div class="pv-card-title">
-              <v-icon size="16" color="medium-emphasis">mdi-text-long</v-icon>
-              Descripción
+        <div v-if="productForUIFixed.is_kit" class="pd-caja">
+          <div class="pd-banda"><span>Qué incluye el kit</span><small class="num">{{ kitItemsList.length }} {{ kitItemsList.length === 1 ? "producto" : "productos" }}</small></div>
+          <div v-if="!kitItemsList.length" class="pd-vacio">El kit todavía no tiene componentes</div>
+          <div v-else class="pd-filas">
+            <router-link v-for="it in kitItemsList" :key="it.component_id" :to="{ name: 'productView', params: { id: it.component_id } }" class="pd-kit">
+              <span class="pd-kit__foto"><img v-if="it.image_url" :src="it.image_url" alt="" /><v-icon v-else size="20">mdi-package-variant-closed</v-icon></span>
+              <span class="pd-kit__txt"><span class="pd-b clamp1">{{ it.name }}</span><span class="pd-s num">× {{ it.qty }}<template v-if="it.sku"> · {{ it.sku }}</template></span></span>
+              <span v-if="it.price_list" class="pd-b num">$ {{ fmtPrice(it.price_list) }}</span>
+            </router-link>
+            <div v-if="kitSavingsView && kitSavingsView.savings > 0" class="pd-kit__ahorro num">
+              Suelto $ {{ fmtPrice(kitSavingsView.componentsTotal) }} · kit $ {{ fmtPrice(kitSavingsView.kitPrice) }} · ahorro $ {{ fmtPrice(kitSavingsView.savings) }} ({{ kitSavingsView.savingsPct }} %)
             </div>
           </div>
-          <p class="pv-desc">{{ productForUIFixed.description }}</p>
-        </section>
+        </div>
 
-      </div>
+        <div class="pd-caja">
+          <div class="pd-banda"><span>Ficha</span></div>
+          <dl class="pd-datos">
+            <dt>Marca</dt><dd><template v-if="raw.brand">{{ raw.brand }}</template><span v-else class="pd-tenue">sin marca</span></dd>
+            <template v-if="raw.model"><dt>Modelo</dt><dd>{{ raw.model }}</dd></template>
+            <dt>Garantía</dt><dd><template v-if="Number(raw.warranty_months) > 0">{{ raw.warranty_months }} {{ Number(raw.warranty_months) === 1 ? "mes" : "meses" }}</template><span v-else class="pd-tenue">sin garantía cargada</span></dd>
+            <template v-if="raw.barcode"><dt>Código de barras</dt><dd class="num">{{ raw.barcode }}</dd></template>
+            <template v-if="productForUIFixed.track_stock === false"><dt>Stock</dt><dd>sin control de stock</dd></template>
+            <template v-if="altaTexto"><dt>Alta</dt><dd class="num">{{ altaTexto }}</dd></template>
+          </dl>
+          <p v-if="raw.description" class="pd-desc">{{ raw.description }}</p>
+          <p v-else class="pd-desc pd-tenue">Sin descripción.</p>
+        </div>
+      </section>
+
+      <!-- 3. Stock y ventas -->
+      <section class="pd-col">
+        <div class="pd-caja">
+          <div class="pd-banda"><span>Stock por sucursal</span><small class="num">{{ fmtPrice(totalStockAllBranches) || 0 }} {{ totalStockAllBranches === 1 ? "unidad" : "unidades" }}</small></div>
+          <v-alert v-if="mx.error" type="error" variant="tonal" density="compact" class="ma-3">{{ mx.error }}</v-alert>
+          <div v-if="mx.loading" class="pd-vacio"><v-progress-circular size="22" indeterminate color="primary" /></div>
+          <div v-else-if="!branchesStock.length" class="pd-vacio">Sin datos de sucursales</div>
+          <div v-else class="pd-filas">
+            <div v-for="r in stockOrdenado" :key="r.key" class="pd-stock">
+              <div class="pd-stock__linea">
+                <i :class="nivelStock(r.stock_qty)"></i>
+                <span class="pd-b">{{ r.branch_name }}</span>
+                <span class="pd-stock__n num" :class="{ 'pd-tenue': r.stock_qty <= 0 }">{{ r.stock_qty > 0 ? `${fmtPrice(r.stock_qty)} ${r.stock_qty === 1 ? "unidad" : "unidades"}` : "sin stock" }}</span>
+              </div>
+              <span class="pd-pista"><span :class="nivelStock(r.stock_qty)" :style="{ width: anchoStock(r.stock_qty) }"></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pd-caja">
+          <div class="pd-banda"><span>Ventas</span><small>últimos 12 meses</small></div>
+          <div v-if="ventas.cargando" class="pd-vacio"><v-progress-circular size="22" indeterminate color="primary" /></div>
+          <div v-else-if="!ventas.unidades" class="pd-vacio">Todavía no se vendió</div>
+          <template v-else>
+            <div class="pd-ventas__cifras num">
+              <span><b>{{ fmtPrice(ventas.unidades) }}</b> vendidos</span>
+              <span><b>$ {{ fmtPrice(ventas.total) }}</b> facturado</span>
+            </div>
+            <div class="pd-filas">
+              <router-link v-for="v in ventas.ultimas" :key="v.id" :to="{ name: 'posSaleDetail', params: { id: v.id } }" class="pd-venta">
+                <span class="pd-venta__n num">#{{ v.id }}</span>
+                <span class="pd-venta__txt"><span class="pd-b num">{{ v.fecha }}</span><span class="pd-s clamp1">{{ v.detalle }}</span></span>
+                <span class="pd-b num">$ {{ fmtPrice(v.precio) }}</span>
+              </router-link>
+            </div>
+            <router-link :to="{ name: 'posSales', query: { producto: String(productId), nombre: raw.name } }" class="pd-ver-todas">
+              Ver todas sus ventas<v-icon size="20">mdi-chevron-right</v-icon>
+            </router-link>
+          </template>
+        </div>
+      </section>
     </div>
 
     <!-- Hidden A4 for printing -->
@@ -552,7 +267,6 @@ import http from "@/app/api/http";
 import ProductLabelPreview from "@/modules/products/components/label/ProductLabelPreview.vue";
 import ProductLabelSheetA4 from "@/modules/products/components/label/ProductLabelSheetA4.vue";
 import ProductPrintActions from "@/modules/products/components/actions/ProductPrintActions.vue";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 import { buildProductUI } from "@/modules/products/utils/productUi.adapter.js";
 import { downloadLabelPdfA4 } from "@/modules/products/utils/labelPdfA4.js";
@@ -913,6 +627,72 @@ async function downloadPdf() {
     title: printTitle.value,
   });
 }
+
+
+/* ── Rediseño: textos, stock ordenado y ventas del producto ── */
+const rubroTexto = computed(() => [productForUIFixed.value.category_name, productForUIFixed.value.subcategory_name].filter(Boolean).join(" › "));
+const lineaCodigos = computed(() => {
+  const r = raw.value || {};
+  const sku = r.sku || "";
+  const code = r.code && r.code !== sku ? r.code : "";
+  return [r.brand, r.model, sku ? `SKU ${sku}` : "", code ? `Código ${code}` : ""].filter(Boolean).join(" · ");
+});
+const costo = computed(() => Number(raw.value?.cost || 0));
+const recargoLista = computed(() => {
+  const l = Number(productForUIFixed.value.price_list || 0), c = Number(productForUIFixed.value.price_discount || 0);
+  return l > c && c > 0 ? Math.round(((l - c) / l) * 100) : 0;
+});
+const altaTexto = computed(() => {
+  const r = raw.value || {};
+  if (!r.created_at) return "";
+  const d = new Date(r.created_at);
+  const fecha = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  const u = r.createdByUser || r.created_by_user || {};
+  const quien = [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.username || "";
+  return quien ? `${fecha} · ${quien}` : fecha;
+});
+const stockOrdenado = computed(() => [...branchesStock.value].sort((a, b) => b.stock_qty - a.stock_qty));
+function nivelStock(n) { return n <= 0 ? "is-sin" : n <= 3 ? "is-bajo" : "is-bien"; }
+function anchoStock(n) {
+  const max = Math.max(1, ...branchesStock.value.map((r) => r.stock_qty));
+  return n > 0 ? `${Math.max(4, (n / max) * 100)}%` : "0%";
+}
+
+const ventas = ref({ cargando: false, unidades: 0, total: 0, ultimas: [] });
+async function cargarVentas() {
+  const pid = Number(productId.value || 0);
+  if (!pid) return;
+  ventas.value = { cargando: true, unidades: 0, total: 0, ultimas: [] };
+  try {
+    const desde = new Date(); desde.setFullYear(desde.getFullYear() - 1);
+    const base = { status: "PAID", product_id: pid, from: desde.toISOString() };
+    const [lista, todas] = await Promise.all([
+      http.get("/pos/sales", { params: { ...base, limit: 4, page: 1 } }),
+      http.get("/pos/sales", { params: { ...base, limit: 200, page: 1 } }),
+    ]);
+    const filas = (r) => (Array.isArray(r?.data?.data) ? r.data.data : []);
+    const deEste = (s) => (Array.isArray(s.items) ? s.items : []).filter((it) => Number(it.product_id) === pid);
+    let unidades = 0, total = 0;
+    for (const s of filas(todas)) for (const it of deEste(s)) { unidades += Number(it.quantity || 0); total += Number(it.line_total || 0); }
+    const ultimas = filas(lista).map((s) => {
+      const d = new Date(s.sold_at);
+      const its = deEste(s);
+      const q = its.reduce((a, it) => a + Number(it.quantity || 0), 0);
+      const cajero = [s.user?.first_name, s.user?.last_name].filter(Boolean).join(" ").trim() || s.user?.username || "";
+      return {
+        id: s.id,
+        fecha: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} h`,
+        detalle: [`${q} ${q === 1 ? "unidad" : "unidades"}`, cajero, s.branch?.name].filter(Boolean).join(" · "),
+        precio: its[0] ? Number(its[0].unit_price || 0) : Number(s.total || 0),
+      };
+    });
+    ventas.value = { cargando: false, unidades, total, ultimas };
+  } catch {
+    ventas.value = { cargando: false, unidades: 0, total: 0, ultimas: [] };
+  }
+}
+watch(productId, cargarVentas);
+onMounted(cargarVentas);
 
 watch(allImages, (imgs) => {
   if (imgs.length && !heroImage.value) heroImage.value = imgs[0];
@@ -1685,5 +1465,115 @@ watch(branchId, fetchProduct);
   padding-top: 8px;
   border-top: 1px dashed rgba(124, 58, 237, 0.25);
   font-size: 13px;
+}
+</style>
+
+<style>
+/* Ficha de producto (rediseño). Sin scoped: todo cuelga de .pd. */
+.pos-container:has(.pd) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.pd {
+  --pd-fondo: #d6e6f3; --pd-caja: #ffffff; --pd-borde: #d3dde7; --pd-linea: #eef2f6; --pd-texto: #0f172a;
+  --pd-suave: #5a6678; --pd-tenue: #94a3b8; --pd-acento: #0f6fae; --pd-banda: #0f6fae; --pd-rubro: #3f8fc6;
+  --pd-hover: #f3f8fc; --pd-pista: rgba(15, 23, 42, 0.06);
+  padding: 20px 28px 40px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pd-fondo); color: var(--pd-texto);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.v-theme--dark .pd {
+  --pd-fondo: #0b0f14; --pd-caja: #151c25; --pd-borde: #253141; --pd-linea: #222c39; --pd-texto: #e5edf5;
+  --pd-suave: #9aa8b8; --pd-tenue: #64748b; --pd-acento: #5aaee0; --pd-banda: #0f5f96; --pd-rubro: #6fb3e0;
+  --pd-hover: #1a2430; --pd-pista: rgba(255, 255, 255, 0.07);
+}
+.pd > * { max-width: 1440px; width: 100%; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.pd .num { font-variant-numeric: tabular-nums; }
+.pd .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-s { font-size: 13px; color: var(--pd-suave); }
+.pd-b { font-weight: 700; }
+.pd-suave { font-weight: 600; color: var(--pd-suave); }
+.pd-tenue { color: var(--pd-tenue); font-weight: 600; }
+.pd-link { color: var(--pd-acento); font-weight: 800; text-decoration: none; }
+.pd-link:hover { text-decoration: underline; }
+.pd-link--chico { font-size: 14px; }
+
+.pd-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pd-cab__txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pd-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--pd-acento); text-decoration: none; margin-left: -4px; }
+.pd-volver:hover { text-decoration: underline; }
+.pd-rubro { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--pd-rubro); }
+.pd-cab__nombre { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+.pd-cab__sub { font-size: 14px; font-weight: 600; color: var(--pd-suave); }
+.pd-cab__der { display: flex; align-items: center; gap: 14px; }
+.pd-estado { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px; background: var(--pd-caja); border: 1px solid var(--pd-borde); font-size: 15px; font-weight: 800; }
+.pd-estado i { width: 10px; height: 10px; border-radius: 9999px; display: block; }
+.pd-estado.is-activo { color: #1f7a5f; } .pd-estado.is-activo i { background: #2E9E7B; }
+.pd-estado.is-inactivo { color: var(--pd-suave); } .pd-estado.is-inactivo i { background: #C3C9D6; }
+.v-theme--dark .pd-estado.is-activo { color: #5fc9a6; }
+.pd-editar { height: 42px !important; border-radius: 10px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
+
+.pd-grilla { display: grid; grid-template-columns: 420px minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+.pd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pd-caja { border-radius: 12px; overflow: hidden; background: var(--pd-caja); border: 1px solid var(--pd-borde); }
+.pd-esq { background: linear-gradient(90deg, var(--pd-caja), var(--pd-hover), var(--pd-caja)); }
+.pd-banda { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--pd-banda); color: #ffffff; font-size: 15px; font-weight: 800; }
+.pd-banda small { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.pd-vacio { padding: 26px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--pd-suave); }
+
+.pd-foto { position: relative; height: 420px; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+.pd-foto img { width: 100%; height: 100%; object-fit: contain; padding: 20px; box-sizing: border-box; }
+.pd-foto__vacia { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #94a3b8; font-weight: 700; }
+.pd-foto__nav { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #d3dde7; background: rgba(255, 255, 255, 0.92); color: #0f172a; cursor: pointer; }
+.pd-foto__nav--ant { left: 10px; } .pd-foto__nav--sig { right: 10px; }
+.pd-foto__n { position: absolute; bottom: 10px; right: 10px; height: 24px; padding: 0 8px; border-radius: 6px; background: rgba(15, 23, 42, 0.7); color: #ffffff; font-size: 12px; font-weight: 700; display: flex; align-items: center; }
+.pd-miniaturas { display: flex; gap: 8px; flex-wrap: wrap; }
+.pd-mini { width: 72px; height: 72px; padding: 4px; border-radius: 10px; border: 1px solid var(--pd-borde); background: #ffffff; cursor: pointer; box-sizing: border-box; }
+.pd-mini.is-on { border: 2px solid #0f6fae; }
+.pd-mini img { width: 100%; height: 100%; object-fit: contain; }
+.pd-videos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+.pd-video { display: flex; flex-direction: column; gap: 4px; border: 0; padding: 0; background: transparent; color: var(--pd-texto); cursor: pointer; text-align: left; font-family: inherit; }
+.pd-video__cuadro { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #0f172a; display: block; }
+.pd-video__cuadro img, .pd-video__cuadro video { width: 100%; height: 100%; object-fit: cover; }
+.pd-video__play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+.pd-precio { display: flex; flex-direction: column; gap: 2px; padding: 16px 16px 4px; }
+.pd-precio__grande { font-size: 40px; font-weight: 800; line-height: 1; }
+.pd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; }
+.pd-datos dt { font-size: 14px; font-weight: 600; color: var(--pd-suave); }
+.pd-datos dd { margin: 0; font-size: 15px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+.pd-desc { margin: 0; padding: 0 16px 16px; font-size: 14px; line-height: 1.55; white-space: pre-line; }
+
+.pd-filas { display: flex; flex-direction: column; padding: 2px 16px 8px; }
+.pd-kit { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--pd-linea); color: var(--pd-texto); text-decoration: none; }
+.pd-kit__foto { width: 40px; height: 40px; flex-shrink: 0; border-radius: 8px; border: 1px solid var(--pd-linea); background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; color: #94a3b8; }
+.pd-kit__foto img { width: 100%; height: 100%; object-fit: contain; }
+.pd-kit__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pd-kit__ahorro { padding: 10px 0 4px; font-size: 13px; font-weight: 700; color: #1f7a5f; }
+
+.pd-stock { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--pd-linea); }
+.pd-stock:last-child { border-bottom: 0; }
+.pd-stock__linea { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.pd-stock__linea > i { width: 8px; height: 8px; border-radius: 9999px; display: block; flex-shrink: 0; }
+.pd-stock__n { margin-left: auto; font-weight: 800; }
+.pd-pista { display: block; height: 8px; border-radius: 9999px; background: var(--pd-pista); }
+.pd-pista > span { display: block; height: 8px; border-radius: 9999px; }
+.pd .is-bien { background: #2E9E7B; } .pd .is-bajo { background: #8cc0e3; } .pd .is-sin { background: #C3C9D6; }
+
+.pd-ventas__cifras { display: flex; gap: 22px; padding: 14px 16px 6px; font-size: 14px; font-weight: 700; color: var(--pd-suave); }
+.pd-ventas__cifras b { font-size: 22px; color: var(--pd-texto); }
+.pd-venta { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--pd-linea); color: var(--pd-texto); text-decoration: none; }
+.pd-venta:hover .pd-venta__n { text-decoration: underline; }
+.pd-venta__n { width: 52px; flex-shrink: 0; font-size: 14px; font-weight: 800; color: var(--pd-acento); }
+.pd-venta__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pd-ver-todas { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--pd-linea); font-size: 15px; font-weight: 800; color: var(--pd-acento); text-decoration: none; }
+.pd-ver-todas:hover { background: var(--pd-hover); }
+
+@media (max-width: 1280px) {
+  .pd-grilla { grid-template-columns: 380px minmax(0, 1fr); }
+  .pd-grilla > .pd-col:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 900px) {
+  .pd { padding: 14px 12px 96px; }
+  .pd-grilla, .pd-grilla > .pd-col:last-child { grid-template-columns: minmax(0, 1fr); }
+  .pd-foto { height: 300px; }
+  .pd-cab__nombre { font-size: 22px; }
+  .pd-cab__der { width: 100%; justify-content: space-between; }
 }
 </style>
