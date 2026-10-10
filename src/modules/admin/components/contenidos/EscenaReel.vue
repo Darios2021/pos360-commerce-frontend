@@ -69,7 +69,7 @@ const renglones = computed(() => String(props.item?.descripcion || "").split(/\s
 </script>
 
 <style>
-.er { position: relative; overflow: hidden; border-radius: 1.4em; background: #f3efe7; color: #16171a; font-family: Inter, sans-serif; box-shadow: 0 10px 30px rgba(7, 28, 47, .25); flex-shrink: 0; line-height: 1.2; }
+.er { position: relative; overflow: hidden; border-radius: 1.4em; background: #f3efe7; color: #16171a; font-family: Inter, sans-serif; text-align: left; white-space: normal; box-shadow: 0 10px 30px rgba(7, 28, 47, .25); flex-shrink: 0; line-height: 1.2; }
 .er-portada, .er-arriba, .er-cierre__marca { background: radial-gradient(ellipse 85% 60% at 50% 40%, color-mix(in srgb, var(--er-pri) 70%, #4aa3ff) 0%, var(--er-pri) 38%, var(--er-osc) 100%); }
 .er-portada { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .er-logo { width: 72%; max-height: 30%; object-fit: contain; }
@@ -98,8 +98,8 @@ const renglones = computed(() => String(props.item?.descripcion || "").split(/\s
 .er-suc span { font-size: .75em; }
 .er-pin.v-icon { font-size: 1.6em; color: var(--er-pri); }
 .er-redes { display: flex; flex-wrap: wrap; gap: .4em; margin-top: .3em; }
-.er-redes span { display: inline-flex; align-items: center; gap: .3em; font-size: .75em; font-weight: 800; padding: .3em .6em; border-radius: .3em; background: #fff; }
+.er-redes span { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: .3em; font-size: .75em; font-weight: 800; padding: .3em .6em; border-radius: .3em; background: #fff; }
 .er-redes span.is-whatsapp { background: #25d366; color: #fff; }
 .er-redes .v-icon, .er-enlace .v-icon { font-size: 1.3em; }
-.er-enlace { display: inline-flex; align-items: center; gap: .3em; font-size: .75em; font-weight: 700; color: var(--er-pri); }
+.er-enlace { max-width: 100%; overflow: hidden; white-space: nowrap; display: inline-flex; align-items: center; gap: .3em; font-size: .75em; font-weight: 700; color: var(--er-pri); }
 </style>
