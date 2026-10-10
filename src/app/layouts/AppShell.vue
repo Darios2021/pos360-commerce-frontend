@@ -342,6 +342,13 @@
                 <v-list-item-title>Promociones email</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Promociones email</v-tooltip>
               </v-list-item>
+              <v-list-item v-if="isAdmin && hasRoute('adminContenidos')" :to="{ name: 'adminContenidos' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-movie-open-play-outline</v-icon>
+                </template>
+                <v-list-item-title>Gestión de contenidos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Gestión de contenidos</v-tooltip>
+              </v-list-item>
             </div>
           </v-expand-transition>
 
@@ -726,7 +733,8 @@ const showSistemaSection = computed(() => {
 const showCrmSection = computed(() => {
   return (
     hasRoute("adminCustomers") ||
-    (isSuperAdmin.value && hasRoute("emailPromoBlocks"))
+    (isSuperAdmin.value && hasRoute("emailPromoBlocks")) ||
+    (isAdmin.value && hasRoute("adminContenidos"))
   );
 });
 const isCajero      = computed(() => auth.isCajero === true);

@@ -65,6 +65,7 @@ const PaymentMethodsAdminPage = () => import("@/modules/admin/pages/PaymentMetho
 const CashRegistersAdminPage = () => import("@/modules/admin/pages/CashRegistersAdminPage.vue");
 const CashRegisterDetailPage = () => import("@/modules/admin/pages/CashRegisterDetailPage.vue");
 const TelegramSettingsAdminPage = () => import("@/modules/admin/pages/TelegramSettingsAdminPage.vue");
+const ContenidosAdminPage = () => import("@/modules/admin/pages/ContenidosAdminPage.vue");
 const CustomersAdminPage = () => import("@/modules/admin/pages/CustomersAdminPage.vue");
 const CustomerDetailView = () => import("@/modules/admin/pages/CustomerDetailView.vue");
 const BranchesAdminPage = () => import("@/modules/admin/pages/BranchesAdminPage.vue");
@@ -188,6 +189,12 @@ const routes = [
         path: "admin/telegram",
         name: "adminTelegram",
         component: TelegramSettingsAdminPage,
+        meta: { roles: ["admin", "super_admin"] },
+      },
+      {
+        path: "admin/contenidos",
+        name: "adminContenidos",
+        component: ContenidosAdminPage,
         meta: { roles: ["admin", "super_admin"] },
       },
 
