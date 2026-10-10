@@ -48,9 +48,9 @@
                     <div class="vd-b">{{ productName(item) }}</div>
                     <div v-if="productMetaLine(item)" class="vd-s">{{ productMetaLine(item) }}</div>
                   </td>
-                  <td class="c-num num">{{ number(item.quantity) }}</td>
-                  <td class="c-plata num">{{ plata(item.unit_price) }}</td>
-                  <td class="c-plata num vd-b">{{ plata(item.line_total) }}</td>
+                  <td class="c-num num" data-etiqueta="Cantidad">{{ number(item.quantity) }}</td>
+                  <td class="c-plata c-precio num" data-etiqueta="Precio">{{ plata(item.unit_price) }}</td>
+                  <td class="c-plata c-total num vd-b">{{ plata(item.line_total) }}</td>
                   <td class="c-ver">
                     <router-link v-if="pidOf(item)" :to="{ name: 'productView', params: { id: pidOf(item) } }" class="vd-link">Ver<v-icon size="18">mdi-chevron-right</v-icon></router-link>
                   </td>
@@ -803,5 +803,23 @@ watch(id, () => load());
 @media (max-width: 900px) {
   .vd { padding: 16px 16px 96px; }
   .vd-grilla { grid-template-columns: minmax(0, 1fr); }
+  /* En el teléfono cada producto es un renglón: imagen, nombre y total arriba;
+     cantidad y precio debajo. Sin deslizar de costado. */
+  .vd-tabla { min-width: 0; }
+  .vd-tabla thead { display: none; }
+  .vd-tabla, .vd-tabla tbody, .vd-tabla tfoot { display: block; }
+  .vd-tabla tbody tr { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--vd-linea); }
+  .vd-tabla td { border: 0; padding: 0; width: auto !important; }
+  .vd-tabla td.c-img { grid-row: 1 / span 2; }
+  .vd-tabla td.c-total { grid-column: 3; grid-row: 1; }
+  .vd-tabla td.c-num, .vd-tabla td.c-precio { grid-row: 2; text-align: left; font-size: 13px; color: var(--vd-suave); }
+  .vd-tabla td.c-num { grid-column: 2; }
+  .vd-tabla td.c-precio { grid-column: 3; text-align: right; }
+  .vd-tabla td.c-num::before, .vd-tabla td.c-precio::before { content: attr(data-etiqueta) " "; }
+  .vd-tabla td.c-ver { display: none; }
+  .vd-tabla tfoot tr { display: flex; justify-content: space-between; padding: 10px 14px; background: var(--vd-pie); border-top: 1px solid var(--vd-linea); }
+  .vd-tabla tfoot td { background: transparent; }
+  .vd-tabla tfoot td:last-child { display: none; }
+  .vd-estado { height: 32px; font-size: 14px; }
 }
 </style>
