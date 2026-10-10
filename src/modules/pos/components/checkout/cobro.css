@@ -87,7 +87,7 @@
 .v-card.ck-root .pms-icon .v-icon { font-size: 26px !important; color: var(--cb-suave) !important; }
 .v-card.ck-root .pms-tile--active .pms-icon { background: #ffffff !important; }
 .v-card.ck-root .pms-tile--active .pms-icon .v-icon { color: var(--cb-azul) !important; }
-.v-card.ck-root .pms-name { font-size: 19px !important; font-weight: 800 !important; color: var(--cb-texto) !important; white-space: normal !important; }
+.v-card.ck-root .pms-name { max-width: 100%; font-size: 18px !important; font-weight: 800 !important; color: var(--cb-texto) !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; word-break: normal !important; }
 
 /* Efectivo */
 .v-card.ck-root .ck-cash__quick { gap: 12px !important; }
@@ -147,8 +147,7 @@
 }
 .v-card.ck-root .ck-act--back { height: 48px !important; min-width: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--cb-suave) !important; }
 .v-card.ck-root .ck-act--back .ck-act-sub { font-size: 15px !important; font-weight: 700 !important; color: var(--cb-suave) !important; }
-.v-card.ck-root .ck-act--back .ck-act-main { border: 1px solid rgba(100, 116, 139, 0.6); background: linear-gradient(#f8fafc, #cbd5e1); box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45); color: #1e293b; font-size: 0 !important; }
-.v-card.ck-root .ck-act--back .ck-act-main::after { content: "⌫"; font-size: 13px; }
+.v-card.ck-root .ck-act--back .ck-act-main { display: none !important; }
 .v-card.ck-root .ck-act--enter {
   height: 60px !important; min-width: 300px !important; padding: 0 26px !important; border-radius: 12px !important;
   background: var(--cb-azul) !important; color: #ffffff !important; box-shadow: 0 6px 16px rgba(15, 111, 174, 0.28) !important;
