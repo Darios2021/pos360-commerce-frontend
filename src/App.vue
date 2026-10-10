@@ -3,12 +3,14 @@
 <template>
   <div :class="rootScopeClass">
     <router-view />
+    <AppVersionAviso v-if="rootScopeClass === 'scope-app'" />
   </div>
 </template>
 
 <script setup>
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import AppVersionAviso from "@/app/components/AppVersionAviso.vue";
 
 const route = useRoute();
 

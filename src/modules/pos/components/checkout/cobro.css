@@ -110,10 +110,32 @@
 .v-card.ck-root .ck-status--ok { background: var(--cb-verde-tinte) !important; color: #1f7a5f !important; border-color: var(--cb-verde) !important; }
 .v-card.ck-root .ck-status--error { background: var(--cb-rojo-tinte) !important; color: #a3322c !important; border-color: var(--cb-rojo) !important; }
 
-/* Tarjeta y cuotas */
+/* Tarjeta y cuotas: un solo estado elegido (borde azul, letra oscura); el
+   cursor del teclado, si no coincide, es un contorno punteado. */
 .v-card.ck-root .ck-section__label { font-size: 12px !important; font-weight: 800 !important; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-suave) !important; }
-.v-card.ck-root .ck-pay { min-height: 76px; padding: 14px 16px !important; }
-.v-card.ck-root .ck-pay__title { font-size: 17px !important; font-weight: 800 !important; }
+.v-card.ck-root .ck-section { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.v-card.ck-root .ck-sections { gap: 18px !important; }
+.v-card.ck-root .ck-pay-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+.v-card.ck-root .ck-pay-grid--installments { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.v-card.ck-root .ck-pay { min-height: 76px; padding: 12px 14px !important; outline: none !important; }
+.v-card.ck-root .ck-pay:focus, .v-card.ck-root .ck-pay:focus-visible { outline: none !important; }
+.v-card.ck-root .ck-pay.cursorActive:not(.active) { background: #ffffff !important; border: 1px solid var(--cb-borde) !important; box-shadow: none !important; outline: 2px dashed #3f8fc6 !important; outline-offset: 2px; }
+.v-card.ck-root .ck-pay :is(.ck-pay__title, .ck-pay__text, .ck-pay__left) { color: var(--cb-texto) !important; opacity: 1 !important; }
+.v-card.ck-root .ck-pay__title { font-size: 17px !important; font-weight: 800 !important; white-space: nowrap; }
+.v-card.ck-root .ck-pay__hint { color: var(--cb-suave) !important; opacity: 1 !important; font-size: 13px !important; font-weight: 600 !important; }
+.v-card.ck-root .ck-pay__icon { background: #f1f5f9 !important; color: var(--cb-suave) !important; border-radius: 10px !important; }
+.v-card.ck-root .ck-pay__icon .v-icon { color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-pay.active .ck-pay__icon { background: var(--cb-azul) !important; }
+.v-card.ck-root .ck-pay.active .ck-pay__icon .v-icon { color: #ffffff !important; }
+.v-card.ck-root :is(.ck-cursor-tag, .ck-pay__state) { display: none !important; }
+.v-card.ck-root .ck-pay.active { position: relative; }
+.v-card.ck-root .ck-pay.active::after {
+  content: "✓"; position: absolute; top: 8px; right: 10px; width: 22px; height: 22px; border-radius: 9999px;
+  background: var(--cb-azul); color: #ffffff; font: 900 13px/22px Inter, sans-serif; text-align: center;
+}
+/* Lo mismo para efectivo y comprobante: el texto nunca queda blanco. */
+.v-card.ck-root :is(.ck-cash-tile, .ck-inv-card) :is(span, strong, div) { opacity: 1; }
+.v-card.ck-root .ck-cash-tile.cursorActive:not(.active) { background: #ffffff !important; border: 1px solid var(--cb-borde) !important; box-shadow: none !important; }
 
 /* Comprobante */
 .v-card.ck-root .ck-invoice-grid { gap: 12px !important; }
