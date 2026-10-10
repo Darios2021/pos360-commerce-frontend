@@ -18,6 +18,10 @@
         <v-icon start size="18">mdi-cash-multiple</v-icon>
         Ventas
       </v-tab>
+      <v-tab value="ganancia" class="rpt-tab">
+        <v-icon start size="18">mdi-chart-pie</v-icon>
+        Ganancia y reparto
+      </v-tab>
       <v-tab value="stock" class="rpt-tab" disabled>
         <v-icon start size="18">mdi-warehouse</v-icon>
         Stock
@@ -32,6 +36,7 @@
 
     <div class="rpt-shell__body">
       <ReportsSalesPage v-if="activeTab === 'sales'" />
+      <ReportsGananciaPage v-else-if="activeTab === 'ganancia'" />
     </div>
   </div>
 </template>
@@ -39,6 +44,7 @@
 <script setup>
 import { ref } from "vue";
 import ReportsSalesPage from "./ReportsSalesPage.vue";
+import ReportsGananciaPage from "./ReportsGananciaPage.vue";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const activeTab = ref("sales");
