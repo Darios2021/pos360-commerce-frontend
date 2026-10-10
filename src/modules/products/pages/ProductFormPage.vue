@@ -120,7 +120,7 @@
             <div class="pfx-precio pfx-precio--lista" :class="{ 'pfx-calculado': listaCalculada }">
               <div class="pfx-precio__cab"><label>Precio lista</label></div>
               <CampoPlata :model-value="draft.price_list" :disabled="busy" :error-messages="fieldErr('price_list')" @update:model-value="onListaAMano" />
-              <label class="pfx-sw pfx-sw--chico"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Calculada desde el costo</label>
+              <label class="pfx-sw pfx-sw--chico"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Calculada</label>
             </div>
             <div class="pfx-precio">
               <div class="pfx-precio__cab"><label>Precio revendedor</label></div>
@@ -2583,13 +2583,13 @@ async function saveAll() {
 /* Promoción, Kit y Videos: tarjetas con la banda azul, como los demás grupos.
    El interruptor va en la banda; el cuerpo aparece al encenderlo. */
 .pfx .pfp-section { border: 1px solid var(--x-borde) !important; border-radius: 12px !important; background: var(--x-caja) !important; margin: 0 !important; overflow: hidden; box-shadow: none !important; }
-.pfx .pfp-section .pfp-section-head { display: flex; align-items: center; gap: 10px; min-height: 48px; box-sizing: border-box; background: #0f6fae !important; padding: 4px 12px 4px 18px !important; border: 0 !important; }
-.v-theme--dark .pfx .pfp-section .pfp-section-head { background: #0f5f96 !important; }
-.pfx .pfp-section .pfp-section-title { color: #ffffff !important; font-weight: 800 !important; font-size: 15px !important; }
-.pfx .pfp-section .pfp-section-head .v-btn, .pfx .pfp-section .pfp-section-head .v-chip { color: #ffffff !important; }
-.pfx .pfp-section .pfp-section-head .v-switch .v-switch__track { background: rgba(255, 255, 255, 0.35) !important; opacity: 1 !important; }
-.pfx .pfp-section .pfp-section-head .v-selection-control--dirty .v-switch__track { background: #2E9E7B !important; }
-.pfx .pfp-section .pfp-section-head .v-switch__thumb { background: #ffffff !important; color: #ffffff !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head { display: flex; align-items: center; gap: 10px; min-height: 48px; box-sizing: border-box; background: #0f6fae !important; padding: 4px 12px 4px 18px !important; border: 0 !important; }
+.v-theme--dark .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head { background: #0f5f96 !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-title.pfp-section-title { color: #ffffff !important; font-weight: 800 !important; font-size: 15px !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-btn, .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-chip { color: #ffffff !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-switch .v-switch__track { background: rgba(255, 255, 255, 0.35) !important; opacity: 1 !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-selection-control--dirty .v-switch__track { background: #2E9E7B !important; }
+.pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-switch__thumb { background: #ffffff !important; color: #ffffff !important; }
 .pfx .pfp-section .pfp-section-body { padding: 18px 20px 20px !important; }
 .pfx .pfp-step2-videos .pfp-section-body, .pfx .pfp-step2-videos > div:not(.pfp-section-head) { padding: 16px 20px 18px; }
 
