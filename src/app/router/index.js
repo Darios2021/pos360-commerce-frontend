@@ -105,6 +105,8 @@ const routes = [
 
       { path: "products", name: "products", component: ProductsListPage },
       { path: "proveedores", name: "suppliers", component: () => import("@/modules/products/pages/SuppliersPage.vue") },
+      { path: "costos", name: "costsMissing", component: () => import("@/modules/products/pages/CostosFaltantesPage.vue"), meta: { roles: ["admin", "super_admin"] } },
+      { path: "parametros-precios", name: "priceSettings", component: () => import("@/modules/settings/pages/ParametrosPreciosPage.vue"), meta: { roles: ["admin", "super_admin"] } },
       { path: "proveedores/nuevo", name: "supplierNew", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       { path: "proveedores/:id", name: "supplierEdit", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true } },

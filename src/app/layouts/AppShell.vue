@@ -216,6 +216,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Proveedores</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="isAdmin && hasRoute('costsMissing')" :to="{ name: 'costsMissing' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-cash-edit</v-icon>
+                </template>
+                <v-list-item-title>Costos faltantes</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Costos faltantes</v-tooltip>
+              </v-list-item>
+
               <!-- Stock e Inventario removidos: la nueva vista de Productos
                    ya cubre la matriz por sucursal y la gestión de stock. -->
 
@@ -367,6 +375,14 @@
                 </template>
                 <v-list-item-title>Usuarios</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Usuarios</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isAdmin && hasRoute('priceSettings')" :to="{ name: 'priceSettings' }" exact class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-tune-variant</v-icon>
+                </template>
+                <v-list-item-title>Parámetros de precios</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Parámetros de precios</v-tooltip>
               </v-list-item>
 
               <v-list-item v-if="isAdmin && hasRoute('adminPaymentMethods')" :to="{ name: 'adminPaymentMethods' }" exact class="nav-item">
@@ -698,6 +714,7 @@ function onSectionHeadClick(name) {
 const showSistemaSection = computed(() => {
   return (
     (isAdmin.value && hasRoute("users")) ||
+    (isAdmin.value && hasRoute("priceSettings")) ||
     (isAdmin.value && hasRoute("adminPaymentMethods")) ||
     (isAdmin.value && hasRoute("adminFiscal")) ||
     (isSuperAdmin.value && hasRoute("adminTelegram")) ||
