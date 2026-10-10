@@ -281,6 +281,111 @@ async function cargarCatalogo() {
   } catch (e) { error.value = mensaje(e); } finally { cargandoCatalogo.value = false; }
 }
 
+/* Selección y guion */
+const ordenDe = (id) => { const i = seleccion.value.findIndex((p) => p.id === id); return i >= 0 ? i + 1 : 0; };
+function alternar(p) {
+  if (ordenDe(p.id)) return quitar(p.id);
+  if (seleccion.value.length >= TOPE) return;
+  const caracteristicas = String(p.descripcion || "").split(/\s*·\s*|\.\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 3).join("\n");
+  seleccion.value.push({ ...p, caracteristicas, voz: "", vozEditada: false });
+  activa.value = p.id;
+  sugerir();
+}
+function quitar(id) {
+  seleccion.value = seleccion.value.filter((p) => p.id !== id);
+  if (activa.value === id) activa.value = "intro";
+  sugerir();
+}
+function soltar(i) {
+  const desde = arrastrando.value;
+  arrastrando.value = null;
+  destino.value = null;
+  if (desde == null || desde === i) return;
+  const l = seleccion.value.slice();
+  const [x] = l.splice(desde, 1);
+  l.splice(i, 0, x);
+  seleccion.value = l;
+  sugerir();
+}
+function limitarCaracteristicas(p) {
+  const r = String(p.caracteristicas || "").split("\n");
+  if (r.length > 3) p.caracteristicas = r.slice(0, 3).join("\n");
+}
+// Las características viajan como la descripción que el servicio parte en renglones.
+const descripcionDe = (p) => String(p.caracteristicas || "").split("\n").map((x) => x.trim().replace(/[.·]+$/, "")).filter(Boolean).join(" · ").slice(0, 160);
+const encargoItem = (p) => ({
+  titulo: String(p.titulo || "").trim() || p.nombre,
+  descripcion: descripcionDe(p) || undefined,
+  etiqueta: p.etiqueta || undefined,
+  precio: p.precio,
+  precioAnterior: p.precioAnterior,
+  imagen: p.imagen,
+  cuotas: opciones.cuotas ? p.cuotas : undefined,
+});
+const tipoActiva = computed(() => (activa.value === "intro" || activa.value === "cierre" ? activa.value : "item"));
+const itemActivo = computed(() => { const p = seleccion.value.find((x) => x.id === activa.value); return p ? encargoItem(p) : null; });
+
+// Duraciones de la plantilla (sin voz): portada 2,6 s, 3 s por producto (7 s si es uno solo), cierre 3,4 s.
+const T = computed(() => ({ intro: 2.6, item: seleccion.value.length === 1 ? 7 : 3, cierre: 3.4 }));
+const duracion = computed(() => T.value.intro + T.value.item * seleccion.value.length + T.value.cierre);
+
+function armarEncargo() {
+  const f = fuente.value;
+  const items = seleccion.value.map(encargoItem);
+  return {
+    cuenta: f.cuenta,
+    plantilla: items.length === 1 ? "producto" : "destacados",
+    ajuste: f.ajuste,
+    marca: f.marca,
+    estilo: f.estilo,
+    sellos: f.sellos,
+    textos: f.textos,
+    mediosDePago: opciones.cuotas ? f.mediosDePago || [] : [],
+    sucursales: f.sucursales || [],
+    redes: f.redes || [],
+    musica: opciones.musica || undefined,
+    efectos: opciones.efectos,
+    items,
+    voz: {
+      activa: opciones.voz,
+      velocidad: opciones.ritmo,
+      guion: {
+        intro: guion.intro.trim() || undefined,
+        items: seleccion.value.map((p) => (p.voz || "").trim()),
+        cierre: guion.cierre.trim() || undefined,
+      },
+    },
+  };
+}
+
+// La voz sugerida por el servicio, sin pisar lo que se escribió a mano.
+let demoraGuion;
+function sugerir() {
+  clearTimeout(demoraGuion);
+  demoraGuion = setTimeout(async () => {
+    if (!fuente.value || !seleccion.value.length || !opciones.voz) return;
+    try {
+      const e = armarEncargo();
+      delete e.voz;
+      const g = await sugerirGuion(e);
+      if (!guion.introEditada) guion.intro = g.intro || "";
+      if (!guion.cierreEditada) guion.cierre = g.cierre || "";
+      seleccion.value.forEach((p, i) => { if (!p.vozEditada) p.voz = g.items?.[i] || ""; });
+    } catch { /* la sugerencia es opcional */ }
+  }, 250);
+}
+
+async function generar() {
+  creando.value = true;
+  error.value = "";
+  try {
+    const p = await crearPieza(armarEncargo());
+    piezas.value = [p, ...piezas.value];
+    seguir();
+    irA("videos");
+  } catch (e) { error.value = mensaje(e); } finally { creando.value = false; }
+}
+
 /* Videos */
 async function borrar(v) {
   if (confirmar.value !== v.id) {
