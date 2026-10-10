@@ -4,7 +4,7 @@
     <!-- ── Encabezado ───────────────────────────────────── -->
     <div class="vd-cab">
       <div class="vd-cab__txt">
-        <router-link :to="{ name: 'posSales' }" class="vd-volver"><v-icon size="18">mdi-chevron-left</v-icon>Ventas</router-link>
+        <router-link :to="{ name: 'posSales' }" class="vd-volver"><v-icon size="18">mdi-arrow-left</v-icon>Ventas</router-link>
         <h1 class="vd-cab__titulo num">Venta #{{ sale?.id ?? id }}</h1>
         <span v-if="sale" class="vd-cab__sub num">{{ subtitulo }}</span>
       </div>

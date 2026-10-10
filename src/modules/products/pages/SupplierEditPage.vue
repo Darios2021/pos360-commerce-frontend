@@ -4,7 +4,7 @@
   <div class="sp">
     <div class="sp-cab">
       <div class="sp-cab__txt">
-        <router-link :to="{ name: 'suppliers' }" class="se-volver"><v-icon size="18">mdi-chevron-left</v-icon>Proveedores</router-link>
+        <router-link :to="{ name: 'suppliers' }" class="se-volver"><v-icon size="18">mdi-arrow-left</v-icon>Proveedores</router-link>
         <h1 class="sp-cab__titulo">{{ esNuevo ? "Nuevo proveedor" : (form.name || "Proveedor") }}</h1>
         <span v-if="!esNuevo && !cargando" class="sp-cab__sub num">
           {{ productos.length }} {{ productos.length === 1 ? "producto" : "productos" }}<template v-if="!activo"> · dado de baja</template>

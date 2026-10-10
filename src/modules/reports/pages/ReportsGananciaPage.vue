@@ -8,7 +8,7 @@
   <div class="gr">
     <div class="gr-cab">
       <div class="gr-cab__txt">
-        <a v-if="sucursalVista" href="#" class="gr-volver" @click.prevent="sucursalVista = null"><v-icon size="18">mdi-chevron-left</v-icon>Ganancia y reparto</a>
+        <a v-if="sucursalVista" href="#" class="gr-volver" @click.prevent="sucursalVista = null"><v-icon size="18">mdi-arrow-left</v-icon>Ganancia y reparto</a>
         <h2 class="gr-tit">{{ sucursalVista ? sucursalVista.nombre : "Ganancia y reparto" }}</h2>
         <span class="gr-sub num">{{ textoPeriodo }}<template v-if="sucursalVista"> · {{ pesos(sucursalVista.vendido) }} vendidos</template></span>
       </div>

@@ -302,3 +302,30 @@ body,
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
+/* ── Botón Volver (10/10, elegido por el usuario: "pastilla con flecha") ──
+   Uno solo para todo el sistema: pastilla blanca con la flecha en un círculo
+   azul y el nombre de adonde vuelve. Cubre las clases de cada vista. */
+a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver),
+.app-back.v-btn {
+  display: inline-flex !important; align-items: center; gap: 8px; width: fit-content;
+  height: 36px !important; padding: 0 14px 0 4px !important; margin: 0 0 8px 0 !important;
+  border-radius: 9999px !important; border: 1px solid #d3dde7 !important; background: #ffffff !important;
+  color: #0f172a !important; font: 700 14px Inter, sans-serif !important; letter-spacing: 0 !important;
+  text-decoration: none !important; text-transform: none !important; box-shadow: none !important;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver) .v-icon {
+  width: 28px; height: 28px; border-radius: 9999px; background: #eef7fd; color: #0f6fae !important;
+  font-size: 18px !important; transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver):hover,
+.app-back.v-btn:hover { background: #cfe5f5 !important; border-color: #3f8fc6 !important; color: #0a466e !important; }
+a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver):hover .v-icon { background: #0f6fae; color: #ffffff !important; transform: translateX(-2px); }
+:is(.v-theme--dark, .v-theme--adminDark) a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver),
+:is(.v-theme--dark, .v-theme--adminDark) .app-back.v-btn { background: #151c25 !important; border-color: #253141 !important; color: #e5edf5 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver) .v-icon { background: #12324b; color: #5aaee0 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) a:is(.se-volver, .pd-volver, .pfx-volver, .gr-volver, .be-volver, .vd-volver):hover,
+:is(.v-theme--dark, .v-theme--adminDark) .app-back.v-btn:hover { background: #1d3a55 !important; border-color: #5aaee0 !important; }
+.app-back.v-btn .v-btn__prepend { margin: 0 !important; }
+.app-back.v-btn .v-btn__prepend .v-icon { width: 28px; height: 28px; border-radius: 9999px; background: #eef7fd; color: #0f6fae; font-size: 18px; }
+.app-back.v-btn:hover .v-btn__prepend .v-icon { background: #0f6fae; color: #ffffff; }

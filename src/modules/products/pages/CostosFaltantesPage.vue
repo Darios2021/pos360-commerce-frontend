@@ -6,7 +6,7 @@
   <div class="sp cf-pg">
     <div class="sp-cab">
       <div class="sp-cab__txt">
-        <router-link :to="{ name: 'reports' }" class="se-volver"><v-icon size="18">mdi-chevron-left</v-icon>Reportes</router-link>
+        <router-link :to="{ name: 'reports' }" class="se-volver"><v-icon size="18">mdi-arrow-left</v-icon>Reportes</router-link>
         <h1 class="sp-cab__titulo">Costos faltantes</h1>
         <span class="sp-cab__sub num">{{ cargando ? "Buscando…" : `${filas.length} ${filas.length === 1 ? "producto vendido" : "productos vendidos"} sin costo · ordenados por lo vendido` }}</span>
       </div>

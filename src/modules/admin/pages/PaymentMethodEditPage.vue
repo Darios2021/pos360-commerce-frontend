@@ -24,7 +24,7 @@
     </AppPageHeader>
 
     <div class="pm-volver">
-      <v-btn variant="text" size="small" prepend-icon="mdi-arrow-left" :to="{ name: 'adminPaymentMethods' }">
+      <v-btn variant="text" size="small" prepend-icon="mdi-arrow-left" class="app-back" :to="{ name: 'adminPaymentMethods' }">
         Medios de pago
       </v-btn>
     </div>

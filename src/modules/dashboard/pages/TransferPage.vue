@@ -9,7 +9,7 @@
   <div class="sp tp">
     <div class="sp-cab">
       <div class="sp-cab__txt">
-        <router-link :to="{ name: 'transfers' }" class="se-volver"><v-icon size="18">mdi-chevron-left</v-icon>Derivaciones</router-link>
+        <router-link :to="{ name: 'transfers' }" class="se-volver"><v-icon size="18">mdi-arrow-left</v-icon>Derivaciones</router-link>
         <h1 class="sp-cab__titulo">{{ titulo }}</h1>
         <span v-if="!esNueva && tr" class="sp-cab__sub tp-ruta">
           <span><v-icon size="18">mdi-store-outline</v-icon>{{ origenNombre }}</span>

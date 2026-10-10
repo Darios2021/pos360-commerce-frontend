@@ -9,7 +9,7 @@
          se arma (renglones, totales, observaciones); a la derecha un panel fijo
          con el total, la acción principal y los ajustes del documento. -->
     <div class="be-cab">
-      <router-link :to="{ name: 'budgets' }" class="be-volver"><v-icon size="18">mdi-chevron-left</v-icon>Presupuestos</router-link>
+      <router-link :to="{ name: 'budgets' }" class="be-volver"><v-icon size="18">mdi-arrow-left</v-icon>Presupuestos</router-link>
       <h1 class="be-tit">Presupuesto {{ docNumber }}</h1>
       <span v-if="budget" class="be-sub">{{ statusTitleOf(header.status) }} · {{ header.customer_name || "Consumidor final" }}<template v-if="saveState"> · {{ saveState }}</template></span>
     </div>

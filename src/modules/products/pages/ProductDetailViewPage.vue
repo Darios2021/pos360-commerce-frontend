@@ -4,7 +4,7 @@
     <!-- ── Encabezado ───────────────────────────────────── -->
     <div class="pd-cab">
       <div class="pd-cab__txt">
-        <router-link :to="{ name: 'products' }" class="pd-volver"><v-icon size="18">mdi-chevron-left</v-icon>Productos</router-link>
+        <router-link :to="{ name: 'products' }" class="pd-volver"><v-icon size="18">mdi-arrow-left</v-icon>Productos</router-link>
         <span v-if="rubroTexto" class="pd-rubro">{{ rubroTexto }}</span>
         <h1 class="pd-cab__nombre">{{ raw?.name || "Producto" }}</h1>
         <span v-if="raw" class="pd-cab__sub num">

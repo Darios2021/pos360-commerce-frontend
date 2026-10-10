@@ -13,7 +13,7 @@
   <v-container class="mx-auto sod" fluid>
     <!-- Top bar con back + acciones -->
     <div class="sod-top">
-      <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="goBack">
+      <v-btn variant="text" prepend-icon="mdi-arrow-left" class="app-back" @click="goBack">
         Volver a pedidos
       </v-btn>
 

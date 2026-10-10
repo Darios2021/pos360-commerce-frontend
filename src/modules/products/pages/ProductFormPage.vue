@@ -3,7 +3,7 @@
     <!-- Encabezado -->
     <div class="pfx-cab">
       <router-link :to="isEdit && draft?.id ? { name: 'productView', params: { id: draft.id } } : { name: 'products' }" class="pfx-volver">
-        <v-icon size="18">mdi-chevron-left</v-icon>{{ isEdit ? "Volver al producto" : "Productos" }}
+        <v-icon size="18">mdi-arrow-left</v-icon>{{ isEdit ? "Volver al producto" : "Productos" }}
       </router-link>
       <h1 class="pfx-titulo">{{ isEdit ? (draft?.name || "Editar producto") : "Nuevo producto" }}</h1>
       <span v-if="isEdit && draft?.sku" class="pfx-sub num">SKU {{ draft.sku }}<template v-if="draft?.code"> · Código {{ draft.code }}</template></span>
