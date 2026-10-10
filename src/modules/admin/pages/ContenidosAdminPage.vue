@@ -80,6 +80,7 @@
             >
               <span v-if="ordenDe(p.id)" class="ct-prod__n">{{ ordenDe(p.id) }}</span>
               <span v-else class="ct-prod__mas"><v-icon size="20">mdi-plus</v-icon></span>
+              <span v-if="formato === 'ofertas' && descuentoDe(p)" class="ct-prod__off num">-{{ descuentoDe(p) }}%</span>
               <img :src="p.imagen" alt="" loading="lazy" />
               <span class="ct-prod__t">{{ p.titulo }}</span>
               <span class="ct-prod__p num">{{ pesos(p.precio) }}</span>
@@ -280,7 +281,7 @@ import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, lista
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
-const CAMPO_FORMATO = null;
+const CAMPO_FORMATO = "tipo";
 // Formatos del video (los arma el servicio de contenidos; POS elige y ordena los productos).
 const FORMATOS = [
   { v: "destacados", t: "Destacados", s: "1 a 6 productos", tope: 6, muestra: "" },
@@ -499,7 +500,7 @@ const encargoItem = (p) => ({
 });
 const productoActivo = computed(() => seleccion.value.find((x) => x.id === activa.value) || null);
 const tituloActiva = computed(() => {
-  if (activa.value === "intro") return "Portada · logo de la marca";
+  if (activa.value === "intro") return aperturaVista.value ? "Apertura" : "Portada · logo de la marca";
   if (activa.value === "cierre") return `Cierre · ${fuente.value?.textos?.llamado || "cierre"}`;
   const i = seleccion.value.findIndex((x) => x.id === activa.value);
   return i >= 0 ? `Escena ${i + 1} · ${seleccion.value[i].titulo}` : "";
@@ -516,9 +517,8 @@ function armarEncargo() {
   const f = fuente.value;
   const items = seleccion.value.map(encargoItem);
   const conApertura = aperturaVista.value;
-  // El formato de video viaja cuando el servicio defina su campo: hoy "formato"
-  // es la medida (reel_9x16) y un valor nuevo lo rechaza. Apertura y cierre, si
-  // el servicio todavía no los conoce, los descarta sin error.
+  // El formato de video viaja en "tipo" ("formato" es la medida, reel_9x16).
+  // Si el servicio todavía no conoce un campo, lo descarta sin error.
   return {
     ...(CAMPO_FORMATO ? { [CAMPO_FORMATO]: formato.value } : {}),
     ...(conApertura ? { apertura: conApertura } : {}),
@@ -665,7 +665,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 
 .ct-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ct-col > .sp-busca__campo { flex: 0 0 auto; }
-.ct-pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ct-pasos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ct-paso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); text-align: left; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
 .ct-paso:hover:not(:disabled):not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-paso:hover:not(:disabled):not(.is-on) { background: #1a2a3a; }
@@ -750,6 +750,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-prod__s { font-size: 12px; color: var(--sp-suave); }
 .ct-prod__n, .ct-prod__mas { position: absolute; top: 8px; z-index: 1; width: 30px; height: 30px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; background: #0f6fae; color: #fff; }
 .ct-prod__n { left: 8px; font-size: 15px; font-weight: 900; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.ct-prod__off { position: absolute; top: 44px; right: 8px; z-index: 1; padding: 3px 7px; border-radius: 6px; background: #c2413a; color: #fff; font-size: 13px; font-weight: 900; }
 .ct-prod__mas { right: 8px; opacity: 0; transition: opacity .12s; }
 .ct-prod__mas .v-icon { color: #fff; }
 .ct-prod:hover:not(.is-lleno) { background: #cfe5f5; border-color: #3f8fc6; }
@@ -872,6 +873,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
   .ct-musica { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ct-datos { grid-template-columns: minmax(0, 1fr); }
   .ct-paso small { display: none; }
+  .ct-pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ct-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
