@@ -153,6 +153,13 @@
             <button type="button" class="ct-st" @click="verEscena('cierre')"><EscenaReel tipo="cierre" :fuente="fuente" :ancho="150" /><b>Cierre</b><span class="num">{{ fmtSeg(T.cierre) }} s</span></button>
           </div>
         </div>
+        <div class="sp-caja">
+          <div class="se-banda"><span>Datos del video</span></div>
+          <div class="ct-datos">
+            <div class="ct-campo"><label>Título</label><input v-model="datos.titulo" maxlength="80" /></div>
+            <div class="ct-campo"><label>Descripción</label><input v-model="datos.descripcion" maxlength="200" /></div>
+          </div>
+        </div>
         <div class="ct-p3__abajo">
           <div class="sp-caja">
             <div class="se-banda"><span>Música</span></div>
@@ -193,18 +200,43 @@
           <span class="num">{{ fecha(v.creada) }}</span>
           <b :class="`is-${v.estado}`">{{ estadoTexto(v) }}</b>
         </div>
-        <div v-if="v.estado === 'en_cola' || v.estado === 'renderizando'" class="ct-video__barra"><span :style="{ width: `${v.progreso || 0}%` }"></span></div>
+        <div v-if="enProceso(v)" class="ct-video__barra"><span :style="{ width: `${v.progreso || 0}%` }"></span></div>
         <div class="ct-video__vis">
           <video v-if="v.estado === 'lista'" :src="v.video" :poster="v.portada" controls playsinline preload="none"></video>
-          <div v-else class="ct-video__vacio" :class="{ 'is-error': v.estado === 'error' }">
-            <v-icon size="44">{{ v.estado === "error" ? "mdi-movie-off-outline" : "mdi-movie-open-outline" }}</v-icon>
-            <b>{{ v.estado === "error" ? "Sin video" : "Armando el video" }}</b>
+          <div v-else-if="enProceso(v)" class="ct-video__armando">
+            <img v-if="v.vistaPrevia" :src="v.vistaPrevia" alt="" class="ct-video__cuadro" />
+            <div v-else class="ct-video__onda"><span v-for="k in 5" :key="k" :style="{ animationDelay: `${k * 0.12}s` }"></span></div>
+            <div class="ct-video__etapa">
+              <b>{{ v.etapa || "Preparando" }}</b>
+              <span v-if="v.cuadros" class="num">Cuadro {{ fmtEntero(v.cuadro) }} de {{ fmtEntero(v.cuadros) }}</span>
+              <span class="num">{{ v.progreso || 0 }} %</span>
+            </div>
+          </div>
+          <div v-else class="ct-video__vacio is-error">
+            <v-icon size="44">mdi-movie-off-outline</v-icon>
+            <b>Sin video</b>
           </div>
         </div>
-        <div class="ct-video__pie">
+        <div v-if="editando === v.id" class="ct-video__datos">
+          <input v-model="borrador.titulo" class="ct-video__in" maxlength="80" placeholder="Título" />
+          <textarea v-model="borrador.descripcion" class="ct-video__in" rows="2" maxlength="200" placeholder="Descripción"></textarea>
+          <div class="ct-video__acc">
+            <button type="button" class="ct-video__cancelar" @click="editando = null">Cancelar</button>
+            <button type="button" class="ct-bajar" :disabled="guardando" @click="guardarDatos(v)">Guardar</button>
+          </div>
+        </div>
+        <div v-else class="ct-video__datos">
+          <div class="ct-video__titulo">
+            <b :class="{ 'is-tenue': !v.titulo }">{{ v.titulo || "Sin título" }}</b>
+            <button type="button" title="Editar título y descripción" @click="editar(v)"><v-icon size="18">mdi-pencil-outline</v-icon></button>
+          </div>
+          <p v-if="v.descripcion" class="ct-video__desc">{{ v.descripcion }}</p>
+          <p v-if="v.items?.length" class="ct-video__items">{{ v.items.map((x) => x.titulo).join(" · ") }}</p>
+        </div>
+        <div v-if="v.estado === 'lista' || v.estado === 'error'" class="ct-video__pie">
           <a v-if="v.estado === 'lista'" :href="v.video" download class="ct-bajar"><v-icon size="20">mdi-download</v-icon>Bajar MP4</a>
           <span v-else class="ct-video__esp"></span>
-          <button v-if="v.estado === 'lista' || v.estado === 'error'" type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" :title="confirmar === v.id ? 'Confirmar' : 'Eliminar'" @click="borrar(v)">
+          <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" :title="confirmar === v.id ? 'Confirmar' : 'Eliminar'" @click="borrar(v)">
             <v-icon size="20">mdi-delete-outline</v-icon><span v-if="confirmar === v.id">Confirmar</span>
           </button>
         </div>
@@ -217,7 +249,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, crearPieza, getFuente, listarPiezas, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, listarPiezas, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const TOPE = 6;
@@ -253,6 +285,10 @@ const cuantos = ref(POR_TANDA);
 const seleccion = ref([]);
 const activa = ref("intro");
 const paso = ref(1);
+const datos = reactive({ titulo: "", descripcion: "" });
+const editando = ref(null);
+const borrador = reactive({ titulo: "", descripcion: "" });
+const guardando = ref(false);
 const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEditada: false });
 const opciones = reactive({ musica: "pulso", voz: true, ritmo: 1, cuotas: true, efectos: true });
 const piezas = ref([]);
@@ -271,6 +307,8 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola" }[v.estado] || `Generando ${v.progreso || 0} %`);
+const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
+const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
 const mensaje = (e) => e?.response?.data?.error || e?.response?.data?.message || "No se pudo completar la operación.";
 
 /* Catálogo: se baja entero (todas las páginas) para filtrar por categoría al instante. */
@@ -362,6 +400,8 @@ function armarEncargo() {
   const f = fuente.value;
   const items = seleccion.value.map(encargoItem);
   return {
+    titulo: datos.titulo.trim() || seleccion.value.map((p) => p.titulo).join(", ").slice(0, 80),
+    descripcion: datos.descripcion.trim() || undefined,
     cuenta: f.cuenta,
     plantilla: items.length === 1 ? "producto" : "destacados",
     ajuste: f.ajuste,
@@ -396,6 +436,8 @@ function sugerir() {
     try {
       const e = armarEncargo();
       delete e.voz;
+      delete e.titulo;
+      delete e.descripcion;
       const g = await sugerirGuion(e);
       if (!guion.introEditada) guion.intro = g.intro || "";
       if (!guion.cierreEditada) guion.cierre = g.cierre || "";
@@ -411,11 +453,27 @@ async function generar() {
     const p = await crearPieza(armarEncargo());
     piezas.value = [p, ...piezas.value];
     seguir();
+    datos.titulo = "";
+    datos.descripcion = "";
     irA("videos");
   } catch (e) { error.value = mensaje(e); } finally { creando.value = false; }
 }
 
 /* Videos */
+function editar(v) {
+  borrador.titulo = v.titulo || "";
+  borrador.descripcion = v.descripcion || "";
+  editando.value = v.id;
+}
+async function guardarDatos(v) {
+  guardando.value = true;
+  try {
+    const n = await editarPieza(v.id, { titulo: borrador.titulo.trim() || null, descripcion: borrador.descripcion.trim() || null });
+    const i = piezas.value.findIndex((x) => x.id === v.id);
+    if (i >= 0) piezas.value[i] = { ...piezas.value[i], titulo: n.titulo, descripcion: n.descripcion };
+    editando.value = null;
+  } catch (e) { error.value = mensaje(e); } finally { guardando.value = false; }
+}
 async function borrar(v) {
   if (confirmar.value !== v.id) {
     confirmar.value = v.id;
@@ -626,8 +684,30 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-video__vacio .v-icon { color: #fff; }
 .ct-video__vacio.is-error { background: #2a1416; }
 .ct-video__pie { display: flex; gap: 8px; }
+.ct-video__armando { position: relative; height: 100%; }
+.ct-video__cuadro { width: 100%; height: 100%; object-fit: cover; display: block; animation: ct-respira 2.4s ease-in-out infinite; }
+@keyframes ct-respira { 0%, 100% { filter: brightness(.82); } 50% { filter: brightness(1); } }
+.ct-video__onda { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; background: radial-gradient(ellipse 85% 60% at 50% 40%, #2f7fd0 0%, #02498b 38%, #071c2f 100%); }
+.ct-video__onda span { width: 8px; height: 60px; border-radius: 9999px; background: rgba(255, 255, 255, .85); animation: ct-onda 1s ease-in-out infinite; }
+@keyframes ct-onda { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.ct-video__etapa { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 2px; padding: 26px 14px 12px; background: linear-gradient(transparent, rgba(7, 28, 47, .92)); color: #fff; }
+.ct-video__etapa b { font-size: 16px; font-weight: 800; }
+.ct-video__etapa span { font-size: 13px; font-weight: 600; opacity: .9; }
+.ct-video__datos { display: flex; flex-direction: column; gap: 6px; }
+.ct-video__titulo { display: flex; align-items: flex-start; gap: 6px; }
+.ct-video__titulo b { flex: 1; font-size: 15px; font-weight: 800; line-height: 1.3; }
+.ct-video__titulo b.is-tenue { color: var(--sp-tenue); }
+.ct-video__titulo button { border: 0; background: transparent; color: var(--sp-suave); cursor: pointer; padding: 2px; border-radius: 6px; display: inline-flex; }
+.ct-video__titulo button:hover { color: var(--sp-acento); background: var(--sp-hover); }
+.ct-video__desc { margin: 0; font-size: 13px; line-height: 1.35; }
+.ct-video__items { margin: 0; font-size: 12px; color: var(--sp-suave); line-height: 1.35; }
+.ct-video__in { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font: 500 14px/1.35 Inter, sans-serif; outline: 0; resize: vertical; }
+.ct-video__in:focus { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, .18); }
+.ct-video__acc { display: flex; gap: 8px; align-items: center; }
+.ct-video__cancelar { border: 0; background: transparent; font: 700 14px Inter, sans-serif; color: var(--sp-suave); cursor: pointer; padding: 0 6px; }
+.ct-datos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; padding: 10px 16px 16px; }
 .ct-video__esp { flex: 1; }
-.ct-bajar { flex: 1; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; background: #0f6fae; color: #fff !important; font: 800 15px Inter, sans-serif; text-decoration: none; white-space: nowrap; }
+.ct-bajar { flex: 1; border: 0; cursor: pointer; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; background: #0f6fae; color: #fff !important; font: 800 15px Inter, sans-serif; text-decoration: none; white-space: nowrap; }
 .ct-bajar .v-icon { color: #fff !important; }
 .ct-bajar:hover { background: #0a5a90; }
 .ct-borrar { height: 42px; min-width: 42px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: #c2413a; font: 800 14px Inter, sans-serif; cursor: pointer; }
@@ -647,6 +727,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
   .ct-tira { flex-direction: row; overflow-x: auto; }
   .ct-ti { flex-direction: column; min-width: 110px; }
   .ct-musica { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ct-datos { grid-template-columns: minmax(0, 1fr); }
   .ct-paso small { display: none; }
   .ct-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

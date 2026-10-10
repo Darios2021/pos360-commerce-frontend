@@ -38,3 +38,9 @@ export async function verPieza(id) {
 export async function borrarPieza(id) {
   await http.delete(`${BASE}/piezas/${id}`);
 }
+
+// Título y descripción del video (no salen en el video). null o "" los borra.
+export async function editarPieza(id, cambios) {
+  const { data } = await http.patch(`${BASE}/piezas/${id}`, cambios);
+  return data;
+}
