@@ -73,21 +73,31 @@
   border: 2px solid var(--cb-azul) !important; background: var(--cb-tinte) !important; color: var(--cb-texto) !important;
   box-shadow: 0 0 0 4px rgba(15, 111, 174, 0.12) !important;
 }
-.v-card.ck-root :is(.pms-tile--cursor, .ck-cash-tile.cursorActive, .ck-inv-card.cursorActive):not(.pms-tile--active):not(.active) { outline: 2px dashed #3f8fc6; outline-offset: 2px; }
+.v-card.ck-root :is(.ck-cash-tile.cursorActive, .ck-inv-card.cursorActive):not(.active) { outline: 2px dashed #3f8fc6; outline-offset: 2px; }
 /* Menos teclas a la vista: los números siguen andando, sin cartel. */
 .v-card.ck-root :is(.pms-kbadge, .ck-inv-key) { display: none !important; }
 
-/* Medios de pago */
+/* Medios de pago: ícono a la izquierda y el nombre entero; la elegida (que
+   es también donde está el cursor) con borde azul, ícono azul y tilde. */
 .v-card.ck-root .pms-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
 .v-card.ck-root .pms-tile {
-  min-height: 112px !important; display: flex !important; flex-direction: column !important; align-items: flex-start !important;
-  justify-content: flex-start !important; gap: 10px !important; padding: 16px !important; text-align: left;
+  position: relative; min-height: 76px !important; height: auto !important; display: flex !important; flex-direction: row !important;
+  align-items: center !important; justify-content: flex-start !important; gap: 12px !important; padding: 12px 14px !important; text-align: left;
 }
-.v-card.ck-root .pms-icon { width: 44px !important; height: 44px !important; border-radius: 10px !important; background: #f1f5f9 !important; }
+.v-card.ck-root .pms-icon { width: 44px !important; height: 44px !important; flex-shrink: 0; border-radius: 10px !important; background: #f1f5f9 !important; }
 .v-card.ck-root .pms-icon .v-icon { font-size: 26px !important; color: var(--cb-suave) !important; }
-.v-card.ck-root .pms-tile--active .pms-icon { background: #ffffff !important; }
-.v-card.ck-root .pms-tile--active .pms-icon .v-icon { color: var(--cb-azul) !important; }
-.v-card.ck-root .pms-name { max-width: 100%; font-size: 18px !important; font-weight: 800 !important; color: var(--cb-texto) !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; word-break: normal !important; }
+.v-card.ck-root .pms-tile--active .pms-icon { background: var(--cb-azul) !important; }
+.v-card.ck-root .pms-tile--active .pms-icon .v-icon { color: #ffffff !important; }
+.v-card.ck-root .pms-name {
+  min-width: 0; font-size: 16px !important; font-weight: 800 !important; line-height: 1.2 !important; color: var(--cb-texto) !important;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; word-break: normal !important; overflow-wrap: anywhere;
+}
+.v-card.ck-root .pms-tile--active::after {
+  content: "✓"; position: absolute; top: 8px; right: 10px; width: 22px; height: 22px; border-radius: 9999px;
+  background: var(--cb-azul); color: #ffffff; font: 900 13px/22px Inter, sans-serif; text-align: center;
+}
+/* El cursor sin selección (sólo pasa con Mixto) no se dibuja aparte. */
+.v-card.ck-root .pms-tile--cursor:not(.pms-tile--active) { outline: none !important; }
 
 /* Efectivo */
 .v-card.ck-root .ck-cash__quick { gap: 12px !important; }

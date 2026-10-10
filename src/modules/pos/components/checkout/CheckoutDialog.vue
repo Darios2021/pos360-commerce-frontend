@@ -576,7 +576,7 @@ watch(
       state.cashInput = String(props.cashInput ?? "");
       state.cardKind = normalizeCardKind(props.cardKind, "CREDIT");
 
-      state.mixedMode = !!props.mixedMode;
+      state.mixedMode = false;
       state.mixedPayments = normalizeMixedPaymentsInput(props.mixedPayments);
 
       state.invoiceMode = String(props.invoiceMode || "MIXED").toUpperCase();
@@ -595,12 +595,9 @@ watch(
           state.mixedPayments = [makeMixedRow({ payment_method_id: firstMethodId() })];
         }
       } else {
-        const preferredIdx = visiblePaymentMethods.value.findIndex(
-          (x) => Number(x.id) === Number(props.paymentMethodId)
-        );
-
-        methodCursor.value =
-          preferredIdx >= 0 ? preferredIdx : getDefaultMethodIndex();
+        // Siempre arranca en el primero (el más usado), no en el último
+        // elegido: la selección queda en el mismo lugar en cada cobro.
+        methodCursor.value = 0;
 
         methodCursorTarget.value = "method";
         state.paymentMethodId =
