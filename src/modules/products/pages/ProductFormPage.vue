@@ -2634,6 +2634,11 @@ async function saveAll() {
 .pfn-aside .pi-root > div:first-of-type > div:first-child { display: none !important; }
 .pfn-aside .pi-root > div:first-of-type { justify-content: flex-end !important; }
 .pfn-aside .pi-dropzone { background: var(--pfn-caja) !important; border: 2px dashed #8cc0e3 !important; border-radius: 10px !important; }
+/* Promoción y kit apagados: fila blanca con su interruptor, como en la maqueta */
+.pfp-root .pfp-promo-section:not(.pfp-promo-on) .pfp-section-head,
+.pfp-root .pfp-kit-section:not(.pfp-kit-on) .pfp-section-head { background: var(--pfn-caja) !important; }
+.pfp-root .pfp-promo-section:not(.pfp-promo-on) .pfp-section-title,
+.pfp-root .pfp-kit-section:not(.pfp-kit-on) .pfp-section-title { color: rgb(var(--v-theme-on-surface)) !important; font-weight: 700 !important; }
 /* Bloques que se conservan (promoción, kit, videos): sin subtítulos que explican */
 .pfp-root .pfp-section-sub { display: none !important; }
 .pfp-root .pfp-section.mt-4 { margin-top: 0 !important; }
