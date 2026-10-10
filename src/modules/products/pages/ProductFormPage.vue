@@ -64,9 +64,10 @@
             </div>
           </div>
           <div class="pfx-g pfx-g--2">
-            <div class="pfx-c"><label>Código de barras <i>· opcional</i></label>
+            <div class="pfx-c"><label>Código de barras</label>
               <div class="pfx-barras">
-                <v-text-field v-model="draft.barcode" :disabled="busy" density="comfortable" variant="outlined" hide-details placeholder="Escanear o escribir" />
+                <v-text-field v-model="draft.barcode" :disabled="busy" density="comfortable" variant="outlined" hide-details class="num"
+                  :placeholder="!isEdit && barcodePreview ? `${barcodePreview} · automático` : 'Escanear o escribir'" />
                 <BarcodeScanButton v-if="!isEdit" mode="emit-product" label="" title="Escanear código" icon="mdi-barcode-scan"
                   color="primary" variant="text" size="small" density="compact" class="pfx-barras__btn"
                   @product="onScannedProduct" @scanned="onScannedCode" />
@@ -86,7 +87,7 @@
               </div>
             </div>
             <div class="pfx-c"><label>Costo</label>
-              <v-text-field v-model="draft.cost" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" :prefix="costoEnDolares ? 'US$' : '$'" hide-details />
+              <CampoPlata v-model="draft.cost" :moneda="costoEnDolares ? 'USD' : 'ARS'" :disabled="busy" hide-details />
             </div>
             <div class="pfx-c"><label>% de ganancia</label>
               <v-text-field v-model="draft.markup_pct" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" suffix="%" hide-details />
@@ -94,30 +95,34 @@
             <div class="pfx-c"><label>IVA</label>
               <v-select v-model="draft.tax_rate" :items="IVAS" item-title="t" item-value="v" :disabled="busy" density="comfortable" variant="outlined" hide-details />
             </div>
-            <div class="pfx-c"><label>Lista</label>
-              <v-text-field :model-value="draft.price_list" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
-                :class="{ 'pfx-calculado': listaCalculada }" :error-messages="fieldErr('price_list')" hide-details="auto" @update:model-value="onListaAMano" />
-            </div>
           </div>
-          <div v-if="costoEnDolares" class="pfx-nota num">
-            <template v-if="fxCargando">Buscando la cotización…</template>
-            <template v-else-if="num(draft.fx_rate, 0) > 0">Dólar $ {{ fmtCot(draft.fx_rate) }}</template>
-            <template v-else>Sin cotización</template>
-            · <a href="#" class="pfn-link" @click.prevent="traerCotizacion">Usar la de hoy</a>
-            <span v-if="fxError" class="pfn-error"> · {{ fxError }}</span>
+          <div v-if="costoEnDolares || cuentaLista" class="pfx-nota num">
+            <template v-if="costoEnDolares">
+              <template v-if="fxCargando">Buscando la cotización…</template>
+              <template v-else-if="num(draft.fx_rate, 0) > 0">Dólar $ {{ fmtCot(draft.fx_rate) }}</template>
+              <template v-else>Sin cotización</template>
+              · <a href="#" class="pfn-link" @click.prevent="traerCotizacion">Usar la de hoy</a>
+              <span v-if="fxError" class="pfn-error"> · {{ fxError }}</span>
+              <template v-if="cuentaLista"><br /></template>
+            </template>
+            <span v-if="cuentaLista">{{ cuentaLista }}</span>
           </div>
-          <div class="pfx-g pfx-g--3 pfx-g--abajo">
-            <div class="pfx-c"><label>Contado <i>· opcional</i></label>
-              <v-text-field v-model="draft.price_discount" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
-                :error-messages="fieldErr('price_discount')" hide-details="auto" />
+
+          <!-- Los tres precios de venta, lo que más importa de la tarjeta -->
+          <div class="pfx-tres">
+            <div class="pfx-precio">
+              <div class="pfx-precio__cab"><label>Precio contado</label><i>opcional</i></div>
+              <CampoPlata v-model="draft.price_discount" :disabled="busy" :error-messages="fieldErr('price_discount')" />
             </div>
-            <div class="pfx-c"><label>Revendedor <i>· opcional</i></label>
-              <v-text-field v-model="draft.price_reseller" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
-                :error-messages="fieldErr('price_reseller')" hide-details="auto" />
+            <div class="pfx-precio pfx-precio--lista" :class="{ 'pfx-calculado': listaCalculada }">
+              <div class="pfx-precio__cab"><label>Precio lista</label>
+                <label class="pfx-sw pfx-sw--chico"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Calculada</label>
+              </div>
+              <CampoPlata :model-value="draft.price_list" :disabled="busy" :error-messages="fieldErr('price_list')" @update:model-value="onListaAMano" />
             </div>
-            <div class="pfx-cuenta num">
-              <span v-if="cuentaLista">{{ cuentaLista }}</span>
-              <label class="pfx-sw"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Lista calculada</label>
+            <div class="pfx-precio">
+              <div class="pfx-precio__cab"><label>Precio revendedor</label><i>opcional</i></div>
+              <CampoPlata v-model="draft.price_reseller" :disabled="busy" :error-messages="fieldErr('price_reseller')" />
             </div>
           </div>
           </div></section>
@@ -189,7 +194,7 @@
               <v-text-field v-model="draft.location" :disabled="busy" density="comfortable" variant="outlined" hide-details placeholder="Ej.: estante B3" />
             </div>
             <div class="pfx-c"><label>Precio instalador</label>
-              <v-text-field v-model="draft.price_installer" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$" hide-details />
+              <CampoPlata v-model="draft.price_installer" :disabled="busy" hide-details />
             </div>
           </div>
 
@@ -253,12 +258,10 @@
                           Mientras dure la ventana, el producto se vende a este precio.
                         </div>
 
-                        <v-text-field
+                        <CampoPlata
                           v-model="draft.promo_price"
                           label="Precio en promoción *"
-                          prepend-inner-icon="mdi-currency-usd"
-                          variant="outlined" density="comfortable" hide-details="auto"
-                          type="number" min="0" :disabled="busy"
+                          :disabled="busy"
                           class="mb-3"
                         />
 
@@ -621,6 +624,7 @@
 </template>
 
 <script setup>
+import CampoPlata from "@/app/components/CampoPlata.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
@@ -1361,6 +1365,16 @@ function onScannedProduct(product) {
 }
 
 /* ── Next code ── */
+// El código de barras que la API genera si queda vacío: EAN-13 interno
+// (prefijo 2) con el número del producto, el mismo del código P000000876.
+const barcodePreview = computed(() => {
+  const n = toInt(String(nextCodePreview.value || "").replace(/\D/g, ""), 0);
+  if (!n) return "";
+  const base = `2${String(n).padStart(11, "0")}`;
+  let suma = 0;
+  for (let i = 0; i < 12; i++) suma += Number(base[i]) * (i % 2 ? 3 : 1);
+  return base + String((10 - (suma % 10)) % 10);
+});
 async function reloadNextCode() {
   if (isEdit.value) return;
   const code = await products.fetchNextCode();
@@ -2522,7 +2536,22 @@ async function saveAll() {
 .pfx-g { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .pfx-g--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pfx-g--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.pfx-g--precio { grid-template-columns: 130px repeat(2, minmax(0, 1fr)) 120px minmax(0, 1fr); }
+.pfx-g--precio { grid-template-columns: 130px minmax(0, 1fr) minmax(0, 1fr) 120px; }
+/* Los tres precios: tarjetas con el importe grande. */
+.pfx-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pfx-precio { display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 16px; border-radius: 12px; background: var(--x-fondo); border: 1px solid var(--x-borde); min-width: 0; }
+.pfx-precio--lista { background: #eef7fd; border: 2px solid #0f6fae; }
+.v-theme--dark .pfx-precio--lista { background: #12324b; border-color: #5aaee0; }
+.pfx-precio__cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+.pfx-precio__cab > label:first-child { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a466e; }
+.v-theme--dark .pfx-precio__cab > label:first-child { color: #9cc9ea; }
+.pfx-precio__cab i { font-style: normal; font-size: 12px; font-weight: 600; color: var(--x-tenue); }
+.pfx-precio .v-field { background: var(--x-caja); }
+.pfx-precio .v-field__input, .pfx-precio .v-text-field__prefix { min-height: 60px; font-size: 26px !important; font-weight: 800; letter-spacing: -0.02em; }
+.pfx-precio .v-text-field__prefix { font-size: 20px !important; opacity: .6; }
+.pfx-sw--chico { font-size: 13px !important; font-weight: 700 !important; color: #0a466e !important; }
+.pfx-sw--chico .v-switch { transform: scale(.85); transform-origin: right center; }
+@media (max-width: 1100px) { .pfx-tres { grid-template-columns: 1fr; } }
 .pfx-g--abajo { align-items: end; }
 .pfx-c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .pfx-c > label { font-size: 13px; font-weight: 700; color: var(--x-texto); opacity: .85; }
