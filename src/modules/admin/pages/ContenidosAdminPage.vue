@@ -77,7 +77,7 @@
               <b class="ct-es__h">Logo de la marca</b>
               <div v-if="activa === 'intro' && opciones.voz" class="ct-campo" @click.stop>
                 <label><v-icon size="15">mdi-account-voice</v-icon> Voz</label>
-                <textarea v-model="guion.intro" rows="2" maxlength="160" @input="guion.introEditada = true"></textarea>
+                <textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea>
               </div>
               <span v-else-if="opciones.voz && guion.intro" class="ct-es__v">“{{ guion.intro }}”</span>
             </div>
@@ -101,8 +101,8 @@
               <span class="ct-es__k">Escena {{ i + 1 }} · {{ fmtSeg(T.item) }} s</span>
               <b class="ct-es__h">{{ p.titulo || "Sin título" }}</b>
               <div v-if="activa === p.id" class="ct-editor" @click.stop>
-                <div class="ct-campo"><label>Título</label><input v-model="p.titulo" maxlength="70" /></div>
-                <div class="ct-campo"><label>Marca y modelo</label><input v-model="p.etiqueta" maxlength="60" /></div>
+                <div class="ct-campo"><label>Título</label><input v-model="p.titulo" maxlength="90" /></div>
+                <div class="ct-campo"><label>Marca y modelo</label><input v-model="p.etiqueta" maxlength="80" /></div>
                 <div class="ct-campo">
                   <label>Precio</label>
                   <div class="ct-precio">
@@ -112,7 +112,7 @@
                   </div>
                 </div>
                 <div class="ct-campo"><label>Características, una por renglón</label><textarea v-model="p.caracteristicas" rows="3" @input="limitarCaracteristicas(p)"></textarea></div>
-                <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="p.voz" rows="2" maxlength="240" @input="p.vozEditada = true"></textarea></div>
+                <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="p.voz" rows="2" maxlength="400" @input="p.vozEditada = true"></textarea></div>
               </div>
               <span v-else-if="opciones.voz && p.voz" class="ct-es__v">“{{ p.voz }}”</span>
             </div>
@@ -134,7 +134,7 @@
               <b class="ct-es__h">{{ fuente?.textos?.llamado || "Cierre" }}</b>
               <div v-if="activa === 'cierre' && opciones.voz" class="ct-campo" @click.stop>
                 <label><v-icon size="15">mdi-account-voice</v-icon> Voz</label>
-                <textarea v-model="guion.cierre" rows="3" maxlength="160" @input="guion.cierreEditada = true"></textarea>
+                <textarea v-model="guion.cierre" rows="3" maxlength="400" @input="guion.cierreEditada = true"></textarea>
               </div>
               <span v-else-if="opciones.voz && guion.cierre" class="ct-es__v">“{{ guion.cierre }}”</span>
             </div>
@@ -251,7 +251,7 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola" }[v.estado] || `Generando ${v.progreso || 0} %`);
-const mensaje = (e) => e?.response?.data?.message || e?.response?.data?.error || "No se pudo completar la operación.";
+const mensaje = (e) => e?.response?.data?.error || e?.response?.data?.message || "No se pudo completar la operación.";
 
 /* Catálogo: se baja entero (todas las páginas) para filtrar por categoría al instante. */
 const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -312,7 +312,7 @@ function limitarCaracteristicas(p) {
   if (r.length > 3) p.caracteristicas = r.slice(0, 3).join("\n");
 }
 // Las características viajan como la descripción que el servicio parte en renglones.
-const descripcionDe = (p) => String(p.caracteristicas || "").split("\n").map((x) => x.trim().replace(/[.·]+$/, "")).filter(Boolean).join(" · ").slice(0, 160);
+const descripcionDe = (p) => String(p.caracteristicas || "").split("\n").map((x) => x.trim().replace(/[.·]+$/, "")).filter(Boolean).join(" · ").slice(0, 300);
 const encargoItem = (p) => ({
   titulo: String(p.titulo || "").trim() || p.nombre,
   descripcion: descripcionDe(p) || undefined,
@@ -397,7 +397,10 @@ async function borrar(v) {
   try {
     await borrarPieza(v.id);
     piezas.value = piezas.value.filter((x) => x.id !== v.id);
-  } catch (e) { error.value = mensaje(e); }
+  } catch (e) {
+    if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
+    else error.value = mensaje(e);
+  }
 }
 
 // Mientras haya videos generándose, se consultan cada 3 segundos.
@@ -412,7 +415,10 @@ function seguir() {
         const n = await verPieza(v.id);
         const i = piezas.value.findIndex((x) => x.id === v.id);
         if (i >= 0) piezas.value[i] = n;
-      } catch { /* se reintenta en la próxima vuelta */ }
+      } catch (e) {
+        // Un video que ya no existe sale de la lista; otro error se reintenta.
+        if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
+      }
     }
     seguir();
   }, 3000);
