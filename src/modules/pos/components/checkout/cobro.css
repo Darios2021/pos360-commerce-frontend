@@ -81,16 +81,16 @@
    es también donde está el cursor) con borde azul, ícono azul y tilde. */
 .v-card.ck-root .pms-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
 .v-card.ck-root .pms-tile {
-  position: relative; min-height: 76px !important; height: auto !important; display: flex !important; flex-direction: row !important;
-  align-items: center !important; justify-content: flex-start !important; gap: 12px !important; padding: 12px 14px !important; text-align: left;
+  position: relative; min-height: 100px !important; height: auto !important; display: flex !important; flex-direction: column !important;
+  align-items: flex-start !important; justify-content: flex-start !important; gap: 10px !important; padding: 14px !important; text-align: left;
 }
 .v-card.ck-root .pms-icon { width: 44px !important; height: 44px !important; flex-shrink: 0; border-radius: 10px !important; background: #f1f5f9 !important; }
 .v-card.ck-root .pms-icon .v-icon { font-size: 26px !important; color: var(--cb-suave) !important; }
 .v-card.ck-root .pms-tile--active .pms-icon { background: var(--cb-azul) !important; }
 .v-card.ck-root .pms-tile--active .pms-icon .v-icon { color: #ffffff !important; }
 .v-card.ck-root .pms-name {
-  min-width: 0; font-size: 16px !important; font-weight: 800 !important; line-height: 1.2 !important; color: var(--cb-texto) !important;
-  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; word-break: normal !important; overflow-wrap: anywhere;
+  max-width: 100%; font-size: 16px !important; font-weight: 800 !important; line-height: 1.2 !important; color: var(--cb-texto) !important;
+  white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; word-break: normal !important;
 }
 .v-card.ck-root .pms-tile--active::after {
   content: "✓"; position: absolute; top: 8px; right: 10px; width: 22px; height: 22px; border-radius: 9999px;
