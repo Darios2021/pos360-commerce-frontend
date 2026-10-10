@@ -45,6 +45,8 @@
 </template>
 
 <script setup>
+import "../../styles/modales-oscuro.css";
+
 defineProps({
   modelValue: { type: Boolean, default: false },
   titulo: { type: String, required: true },

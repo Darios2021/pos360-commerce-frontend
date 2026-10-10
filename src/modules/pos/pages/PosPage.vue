@@ -91,7 +91,7 @@ const { mobile } = useDisplay();
   --z-primario: #0f6fae;
   --z-primario-tinta: #0f6fae;
 }
-.v-theme--dark .pos-root,
+:is(.v-theme--dark, .v-theme--adminDark) .pos-root,
 .v-theme--adminDark .pos-root,
 .v-theme--shopDark .pos-root {
   --z-lienzo: #0b0f14;

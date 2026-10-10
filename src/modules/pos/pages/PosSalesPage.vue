@@ -1199,7 +1199,7 @@ onMounted(async () => {
 
 <style>
 /* Ventas. Sin scoped: todo cuelga de .vt, y el tema oscuro se resuelve con
-   .v-theme--dark .vt sin :global(). Mismos tokens que el tablero. */
+   :is(.v-theme--dark, .v-theme--adminDark) .vt sin :global(). Mismos tokens que el tablero. */
 .pos-container:has(.vt) {
   max-width: none !important;
   padding: 0 !important;
@@ -1228,7 +1228,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 14px;
 }
-.v-theme--dark .vt {
+:is(.v-theme--dark, .v-theme--adminDark) .vt {
   --vt-fondo: #0b0f14;
   --vt-caja: #151c25;
   --vt-borde: #253141;
@@ -1311,10 +1311,10 @@ onMounted(async () => {
 .vt-estado i { width: 8px; height: 8px; border-radius: 9999px; background: #C3C9D6; display: block; }
 .vt-estado.is-paid { color: #1f7a5f; }
 .vt-estado.is-paid i { background: #2E9E7B; }
-.v-theme--dark .vt-estado.is-paid { color: #5fc9a6; }
+:is(.v-theme--dark, .v-theme--adminDark) .vt-estado.is-paid { color: #5fc9a6; }
 .vt-estado.is-cancelled { color: #b23b35; }
 .vt-estado.is-cancelled i { background: #C4453F; }
-.v-theme--dark .vt-estado.is-cancelled { color: #f08a84; }
+:is(.v-theme--dark, .v-theme--adminDark) .vt-estado.is-cancelled { color: #f08a84; }
 .vt-estado.is-refunded i { background: #8cc0e3; }
 .vt-ver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 800; color: var(--vt-acento); text-decoration: none; white-space: nowrap; }
 .vt-ver:hover { text-decoration: underline; }
@@ -1351,7 +1351,7 @@ onMounted(async () => {
 .vt-fechas { display: flex; gap: 8px; }
 .vt-fecha { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: var(--vt-suave); }
 .vt-fecha input { height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--vt-borde); background: var(--vt-caja); color: var(--vt-texto); font-family: inherit; font-size: 14px; }
-.v-theme--dark .vt-fecha input { color-scheme: dark; }
+:is(.v-theme--dark, .v-theme--adminDark) .vt-fecha input { color-scheme: dark; }
 .vt-panel__pie { padding: 14px 20px; border-top: 1px solid var(--vt-borde); }
 .vt-panel__ver { width: 100%; height: 46px; border: 0; border-radius: 10px; background: #0f6fae; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
 .vt-panel-enter-active, .vt-panel-leave-active { transition: transform .18s ease; }

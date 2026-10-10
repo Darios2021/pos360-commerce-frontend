@@ -2064,7 +2064,7 @@ function branchCssColor(id) {
 
 <style>
 /* Productos (rediseño). Sin scoped: todo cuelga de .pl; tema oscuro con
-   .v-theme--dark .pl. Mismos tokens que Ventas y el tablero. */
+   :is(.v-theme--dark, .v-theme--adminDark) .pl. Mismos tokens que Ventas y el tablero. */
 .pos-container:has(.pl) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
 .pl {
   --pl-fondo: #d6e6f3; --pl-caja: #ffffff; --pl-borde: #d3dde7; --pl-linea: #e3eaf1; --pl-texto: #0f172a;
@@ -2073,7 +2073,7 @@ function branchCssColor(id) {
   padding: 20px 28px 32px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pl-fondo); color: var(--pl-texto);
   display: flex; flex-direction: column; gap: 14px;
 }
-.v-theme--dark .pl {
+:is(.v-theme--dark, .v-theme--adminDark) .pl {
   --pl-fondo: #0b0f14; --pl-caja: #151c25; --pl-borde: #253141; --pl-linea: #222c39; --pl-texto: #e5edf5;
   --pl-suave: #9aa8b8; --pl-tenue: #64748b; --pl-acento: #5aaee0; --pl-banda: #0f5f96; --pl-banda-borde: #0c4f7d;
   --pl-rubro: #6fb3e0; --pl-hover: #1a2430; --pl-foto: #ffffff; --pl-suc: #1f2b3a; --pl-suc-txt: #9cc9ea;
@@ -2153,7 +2153,7 @@ function branchCssColor(id) {
 .pl-card__stock i { width: 8px; height: 8px; border-radius: 9999px; display: block; flex-shrink: 0; background: #C3C9D6; }
 .pl-card__stock.is-bien { color: #1f7a5f; } .pl-card__stock.is-bien i { background: #2E9E7B; }
 .pl-card__stock.is-bajo { color: var(--pl-suc-txt); } .pl-card__stock.is-bajo i { background: #8cc0e3; }
-.v-theme--dark .pl-card__stock.is-bien { color: #5fc9a6; }
+:is(.v-theme--dark, .v-theme--adminDark) .pl-card__stock.is-bien { color: #5fc9a6; }
 .pl-suc { height: 20px; padding: 0 6px; border-radius: 5px; background: var(--pl-suc); color: var(--pl-suc-txt); font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; margin-left: 3px; }
 .pl-esp-v { flex: 1; }
 .pl-card__pie { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; margin-top: 4px; }

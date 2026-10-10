@@ -194,8 +194,8 @@ body,
 }
 
 /* Cards y sheets: SIN borde, con radius y sombra sutil para flotar */
-.v-theme--dark .v-card,
-.v-theme--dark .v-sheet,
+:is(.v-theme--dark, .v-theme--adminDark) .v-card,
+:is(.v-theme--dark, .v-theme--adminDark) .v-sheet,
 .v-theme--adminDark .v-card,
 .v-theme--adminDark .v-sheet,
 .v-theme--shopDark .v-card,
@@ -205,16 +205,16 @@ body,
 }
 
 /* Tablas en dark: sin borde exterior — flotan sobre el fondo */
-.v-theme--dark .v-data-table,
-.v-theme--dark .v-table,
+:is(.v-theme--dark, .v-theme--adminDark) .v-data-table,
+:is(.v-theme--dark, .v-theme--adminDark) .v-table,
 .v-theme--adminDark .v-data-table,
 .v-theme--adminDark .v-table,
 .v-theme--shopDark .v-data-table,
 .v-theme--shopDark .v-table {
   border: none;
 }
-.v-theme--dark .v-data-table thead th,
-.v-theme--dark .v-table thead th,
+:is(.v-theme--dark, .v-theme--adminDark) .v-data-table thead th,
+:is(.v-theme--dark, .v-theme--adminDark) .v-table thead th,
 .v-theme--adminDark .v-data-table thead th,
 .v-theme--adminDark .v-table thead th,
 .v-theme--shopDark .v-data-table thead th,
@@ -222,14 +222,14 @@ body,
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   background: transparent !important;
 }
-.v-theme--dark .v-data-table tbody tr:hover,
+:is(.v-theme--dark, .v-theme--adminDark) .v-data-table tbody tr:hover,
 .v-theme--adminDark .v-data-table tbody tr:hover,
 .v-theme--shopDark .v-data-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Inputs en dark: borde más visible para mejor accesibilidad */
-.v-theme--dark .v-field--variant-outlined .v-field__outline,
+:is(.v-theme--dark, .v-theme--adminDark) .v-field--variant-outlined .v-field__outline,
 .v-theme--adminDark .v-field--variant-outlined .v-field__outline,
 .v-theme--shopDark .v-field--variant-outlined .v-field__outline {
   --v-field-border-opacity: 0.16;

@@ -1198,7 +1198,7 @@ function remove(it) {
   background: #e6f1fa !important;
   box-shadow: inset 0 0 0 1px #0f6fae, 0 4px 12px rgba(10, 70, 110, 0.12) !important;
 }
-.v-theme--dark .cart-item:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .cart-item:hover {
   border-color: #8cc0e3 !important;
   background: #1d3a55 !important;
   box-shadow: inset 0 0 0 1px #8cc0e3 !important;

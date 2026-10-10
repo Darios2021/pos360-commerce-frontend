@@ -6,7 +6,7 @@
   padding: 20px 28px 40px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--sp-fondo); color: var(--sp-texto);
   display: flex; flex-direction: column; gap: 14px;
 }
-.v-theme--dark .sp {
+:is(.v-theme--dark, .v-theme--adminDark) .sp {
   --sp-fondo: #0b0f14; --sp-caja: #151c25; --sp-borde: #253141; --sp-linea: #222c39; --sp-texto: #e5edf5;
   --sp-suave: #9aa8b8; --sp-tenue: #64748b; --sp-acento: #5aaee0; --sp-banda: #0f5f96; --sp-banda-borde: #0c4f7d; --sp-hover: #1a2430;
 }

@@ -613,7 +613,7 @@ defineExpose({
   box-shadow: inset 0 0 0 1.5px #3f8fc6;
   color: #0a466e;
 }
-.v-theme--dark .pls-rubro:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .pls-rubro:hover {
   background: #1d3a55;
   box-shadow: inset 0 0 0 1.5px #8cc0e3;
   color: #e2eefa;

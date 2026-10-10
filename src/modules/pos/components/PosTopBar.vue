@@ -460,27 +460,27 @@ onBeforeUnmount(() => {
 .hk-fullscreen .ptb-tile-icon :deep(.v-icon) { color: #334155; }
 
 /* Oscuro: fondo al 20 % e icono en 400. */
-.v-theme--dark .hk-help .ptb-tile-icon :deep(.v-icon),
-.v-theme--dark .hk-find .ptb-tile-icon :deep(.v-icon),
-.v-theme--dark .hk-fullscreen .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-help .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-find .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-fullscreen .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-help .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-find .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-fullscreen .ptb-tile-icon :deep(.v-icon) { color: #cbd5e1; }
-.v-theme--dark .hk-search .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-search .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-search .ptb-tile-icon :deep(.v-icon) { color: #2dd4bf; }
-.v-theme--dark .hk-refresh .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-refresh .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-refresh .ptb-tile-icon :deep(.v-icon) { color: #38bdf8; }
-.v-theme--dark .hk-cart .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-cart .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-cart .ptb-tile-icon :deep(.v-icon) { color: #a78bfa; }
-.v-theme--dark .hk-customer .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-customer .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-customer .ptb-tile-icon :deep(.v-icon) { color: #38bdf8; }
-.v-theme--dark .hk-clear .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-clear .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-clear .ptb-tile-icon :deep(.v-icon) { color: #f87171; }
-.v-theme--dark .hk-cash .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-cash .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-cash .ptb-tile-icon :deep(.v-icon) { color: #fbbf24; }
-.v-theme--dark .hk-movements .ptb-tile-icon :deep(.v-icon),
+:is(.v-theme--dark, .v-theme--adminDark) .hk-movements .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-movements .ptb-tile-icon :deep(.v-icon) { color: #2dd4bf; }
-.v-theme--dark .ptb-tile:hover,
+:is(.v-theme--dark, .v-theme--adminDark) .ptb-tile:hover,
 .v-theme--adminDark .ptb-tile:hover {
   background: #1d3a55;
   box-shadow: inset 0 0 0 1.5px #8cc0e3;

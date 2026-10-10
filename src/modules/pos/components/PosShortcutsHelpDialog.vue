@@ -171,7 +171,7 @@ function openWizard() {
 }
 .v-theme--adminDark .psh-head__icon,
 .v-theme--shopDark .psh-head__icon,
-.v-theme--dark .psh-head__icon {
+:is(.v-theme--dark, .v-theme--adminDark) .psh-head__icon {
   background: rgba(20, 136, 209, 0.20);
 }
 .psh-head__text { flex: 1 1 auto; min-width: 0; }
@@ -299,12 +299,12 @@ function openWizard() {
 }
 .v-theme--adminDark .psh-cell,
 .v-theme--shopDark .psh-cell,
-.v-theme--dark .psh-cell {
+:is(.v-theme--dark, .v-theme--adminDark) .psh-cell {
   background: rgba(255, 255, 255, 0.04);
 }
 .v-theme--adminDark .psh-cell:hover,
 .v-theme--shopDark .psh-cell:hover,
-.v-theme--dark .psh-cell:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .psh-cell:hover {
   background: rgba(20, 136, 209, 0.14);
 }
 
@@ -327,7 +327,7 @@ function openWizard() {
 }
 .v-theme--adminDark .psh-kbd,
 .v-theme--shopDark .psh-kbd,
-.v-theme--dark .psh-kbd {
+:is(.v-theme--dark, .v-theme--adminDark) .psh-kbd {
   background: rgba(20, 136, 209, 0.18);
   border-color: rgba(20, 136, 209, 0.35);
   color: #5eb9e3;
@@ -360,7 +360,7 @@ function openWizard() {
 }
 .v-theme--adminDark .psh-tip,
 .v-theme--shopDark .psh-tip,
-.v-theme--dark .psh-tip {
+:is(.v-theme--dark, .v-theme--adminDark) .psh-tip {
   background: rgba(20, 136, 209, 0.10);
 }
 .psh-tip__icon {

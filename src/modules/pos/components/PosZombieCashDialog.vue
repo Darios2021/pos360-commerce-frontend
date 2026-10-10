@@ -281,7 +281,7 @@ function money(v) {
   color: var(--zv-texto);
   font-family: Inter, sans-serif;
 }
-.v-theme--dark .zv,
+:is(.v-theme--dark, .v-theme--adminDark) .zv,
 .v-theme--adminDark .zv,
 .v-theme--shopDark .zv {
   --zv-lienzo: #0b0f14;

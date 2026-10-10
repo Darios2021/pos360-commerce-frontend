@@ -289,7 +289,7 @@ async function chooseAction(action) {
 }
 .v-theme--adminDark .bnav,
 .v-theme--shopDark .bnav,
-.v-theme--dark .bnav {
+:is(.v-theme--dark, .v-theme--adminDark) .bnav {
   border-top-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.32);
 }
@@ -394,7 +394,7 @@ async function chooseAction(action) {
 }
 .v-theme--adminDark .bnav__fab,
 .v-theme--shopDark .bnav__fab,
-.v-theme--dark .bnav__fab {
+:is(.v-theme--dark, .v-theme--adminDark) .bnav__fab {
   border-color: rgb(var(--v-theme-surface));
 }
 .bnav__fab-label {
@@ -460,12 +460,12 @@ async function chooseAction(action) {
 }
 .v-theme--adminDark .bnav-action,
 .v-theme--shopDark .bnav-action,
-.v-theme--dark .bnav-action {
+:is(.v-theme--dark, .v-theme--adminDark) .bnav-action {
   background: rgba(255, 255, 255, 0.04);
 }
 .v-theme--adminDark .bnav-action:active,
 .v-theme--shopDark .bnav-action:active,
-.v-theme--dark .bnav-action:active {
+:is(.v-theme--dark, .v-theme--adminDark) .bnav-action:active {
   background: rgba(255, 255, 255, 0.08);
 }
 

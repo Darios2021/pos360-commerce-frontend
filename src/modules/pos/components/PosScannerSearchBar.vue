@@ -991,7 +991,7 @@ defineExpose({
   color: #047857;
 }
 .psb-lector:disabled { opacity: 0.55; cursor: default; }
-.v-theme--dark .psb-lector.active,
+:is(.v-theme--dark, .v-theme--adminDark) .psb-lector.active,
 .v-theme--adminDark .psb-lector.active,
 .v-theme--shopDark .psb-lector.active {
   background: rgba(16, 185, 129, 0.18);
@@ -1014,7 +1014,7 @@ defineExpose({
   font-family: inherit;
 }
 
-.v-theme--dark .pos-smart-dd {
+:is(.v-theme--dark, .v-theme--adminDark) .pos-smart-dd {
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow:
     0 14px 32px rgba(0, 0, 0, 0.55),
@@ -1051,8 +1051,8 @@ defineExpose({
   background: #cfe5f5;
   box-shadow: inset 3px 0 0 #0f6fae;
 }
-.v-theme--dark .pos-dd-row:hover,
-.v-theme--dark .pos-dd-row.active { background: #1d3a55; box-shadow: inset 3px 0 0 #8cc0e3; }
+:is(.v-theme--dark, .v-theme--adminDark) .pos-dd-row:hover,
+:is(.v-theme--dark, .v-theme--adminDark) .pos-dd-row.active { background: #1d3a55; box-shadow: inset 3px 0 0 #8cc0e3; }
 
 .pos-dd-row.active {
   background: rgba(var(--v-theme-primary), 0.12);

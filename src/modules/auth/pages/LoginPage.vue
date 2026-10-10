@@ -515,7 +515,7 @@ async function submit() {
 /* Login forzado a tema claro: tokens Vuetify locales para que inputs,
    checkbox, alerts y demás componentes no hereden el dark mode global. */
 .login-shell,
-.v-theme--dark .login-shell {
+:is(.v-theme--dark, .v-theme--adminDark) .login-shell {
   --v-theme-surface: 255, 255, 255;
   --v-theme-on-surface: 26, 26, 26;
   --v-theme-background: 255, 255, 255;

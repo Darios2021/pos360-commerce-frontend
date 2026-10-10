@@ -117,7 +117,7 @@ function emitSelected(value) {
   min-height: 68px;
 }
 
-.v-theme--dark .pbs-dialog {
+:is(.v-theme--dark, .v-theme--adminDark) .pbs-dialog {
   border-color: rgba(255, 255, 255, 0.08);
 }
 </style>

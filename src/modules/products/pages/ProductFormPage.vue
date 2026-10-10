@@ -1705,7 +1705,7 @@ async function saveAll() {
 }
 .v-theme--adminDark .pfp-steps-mobile,
 .v-theme--shopDark .pfp-steps-mobile,
-.v-theme--dark .pfp-steps-mobile {
+:is(.v-theme--dark, .v-theme--adminDark) .pfp-steps-mobile {
   background: transparent;
   border: none;
 }
@@ -2392,7 +2392,7 @@ async function saveAll() {
 /* Encabezado y piezas del alta rediseñada (sin scoped, prefijo pfn) */
 .pfn-cab { display: flex; flex-direction: column; gap: 3px; padding: 18px 24px 4px; }
 .pfn-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: #0f6fae; text-decoration: none; margin-left: -4px; }
-.v-theme--dark .pfn-volver { color: #5aaee0; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfn-volver { color: #5aaee0; }
 .pfn-volver:hover { text-decoration: underline; }
 .pfn-titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
 .pfn-sub { font-size: 14px; font-weight: 600; opacity: .7; font-variant-numeric: tabular-nums; }
@@ -2408,21 +2408,21 @@ async function saveAll() {
 .pfn-seg button.is-on { background: #0f6fae; color: #ffffff; }
 .pfn-moneda__fx { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pfn-link { color: #0f6fae; font-weight: 800; text-decoration: none; }
-.v-theme--dark .pfn-link { color: #5aaee0; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfn-link { color: #5aaee0; }
 .pfn-link:hover { text-decoration: underline; }
 .pfn-error { font-size: 13px; font-weight: 700; color: #b23b35; }
 
 /* ── Alta rediseñada (maqueta ProductoNuevo) ── */
 .pos-container:has(.pfp-root) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
 .pfp-root { --pfn-fondo: #d6e6f3; --pfn-caja: #ffffff; --pfn-borde: #d3dde7; --pfn-linea: #eef2f6; --pfn-suave: #5a6678; background: var(--pfn-fondo) !important; }
-.v-theme--dark .pfp-root { --pfn-fondo: #0b0f14; --pfn-caja: #151c25; --pfn-borde: #253141; --pfn-linea: #222c39; --pfn-suave: #9aa8b8; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfp-root { --pfn-fondo: #0b0f14; --pfn-caja: #151c25; --pfn-borde: #253141; --pfn-linea: #222c39; --pfn-suave: #9aa8b8; }
 .pfp-root .pfp-content { max-width: 1340px; margin: 0 auto; padding-top: 4px; }
 .pfn-cab { max-width: 1340px; margin: 0 auto; box-sizing: border-box; width: 100%; }
 .pfn-grilla { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
 .pfn-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .pfn-caja { border-radius: 12px; overflow: hidden; background: var(--pfn-caja); border: 1px solid var(--pfn-borde); }
 .pfn-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #0f6fae; color: #ffffff; font-size: 15px; font-weight: 800; }
-.v-theme--dark .pfn-banda { background: #0f5f96; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfn-banda { background: #0f5f96; }
 .pfn-banda small { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
 .pfn-cuerpo { padding: 14px 16px; }
 .pfn-campos { display: grid; gap: 12px; padding: 14px 16px; }
@@ -2475,7 +2475,7 @@ async function saveAll() {
 /* Secciones con la banda azul del rediseño */
 .pfp-root .pfp-section { border-radius: 12px !important; border: 1px solid rgba(var(--v-border-color), 0.16) !important; overflow: hidden; box-shadow: none !important; }
 .pfp-root .pfp-section-head { background: #0f6fae !important; color: #ffffff !important; border: 0 !important; padding: 12px 16px !important; }
-.v-theme--dark .pfp-root .pfp-section-head { background: #0f5f96 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfp-root .pfp-section-head { background: #0f5f96 !important; }
 .pfp-root .pfp-section-head::before { display: none !important; }
 .pfp-root .pfp-section-icon { display: none !important; }
 .pfp-root .pfp-section-title { color: #ffffff !important; font-size: 15px !important; font-weight: 800 !important; }
@@ -2492,7 +2492,7 @@ async function saveAll() {
   min-height: calc(100vh - 56px); background: var(--x-fondo) !important; color: var(--x-texto);
   display: flex; flex-direction: column; box-sizing: border-box;
 }
-.v-theme--dark .pfx {
+:is(.v-theme--dark, .v-theme--adminDark) .pfx {
   --x-fondo: #0b0f14; --x-caja: #151c25; --x-borde: #253141; --x-campo: #33425a; --x-linea: #222c39;
   --x-texto: #e5edf5; --x-suave: #9aa8b8; --x-tenue: #64748b; --x-acento: #5aaee0;
 }
@@ -2528,7 +2528,7 @@ async function saveAll() {
 /* Cada grupo del paso es su propia tarjeta con la banda azul del sistema. */
 .pfx-seg { border-radius: 12px; overflow: hidden; background: var(--x-caja); border: 1px solid var(--x-borde); }
 .pfx-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #0f6fae; color: #ffffff; font-size: 15px; font-weight: 800; }
-.v-theme--dark .pfx-banda { background: #0f5f96; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx-banda { background: #0f5f96; }
 .pfx-seg__in { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px 20px; }
 .pfx-enc h2 { margin: 0; font-size: 20px; font-weight: 800; }
 .pfx-enc p { margin: 2px 0 0; font-size: 14px; color: var(--x-suave); }
@@ -2543,16 +2543,16 @@ async function saveAll() {
 .pfx-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .pfx-precio { display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 16px; border-radius: 12px; background: var(--x-fondo); border: 1px solid var(--x-borde); min-width: 0; }
 .pfx-precio--lista { background: #eef7fd; border: 2px solid #0f6fae; }
-.v-theme--dark .pfx-precio--lista { background: #12324b; border-color: #5aaee0; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx-precio--lista { background: #12324b; border-color: #5aaee0; }
 .pfx-precio__cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
 .pfx-precio__cab > label:first-child { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a466e; }
-.v-theme--dark .pfx-precio__cab > label:first-child { color: #9cc9ea; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx-precio__cab > label:first-child { color: #9cc9ea; }
 .pfx-precio__cab i { font-style: normal; font-size: 12px; font-weight: 600; color: var(--x-tenue); }
 .pfx-precio .v-field { background: var(--x-caja); }
 .pfx-precio .v-field__input, .pfx-precio .v-text-field__prefix { min-height: 60px; font-size: 26px !important; font-weight: 800; letter-spacing: -0.02em; }
 .pfx-precio .v-text-field__prefix { font-size: 20px !important; opacity: .6; }
 .pfx-sw--chico { font-size: 13px !important; font-weight: 700 !important; color: #0a466e !important; }
-.v-theme--dark .pfx-sw--chico { color: #9cc9ea !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx-sw--chico { color: #9cc9ea !important; }
 @media (max-width: 1100px) { .pfx-tres { grid-template-columns: 1fr; } }
 .pfx-g--abajo { align-items: end; }
 .pfx-c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -2582,7 +2582,7 @@ async function saveAll() {
    El interruptor va en la banda; el cuerpo aparece al encenderlo. */
 .pfx .pfp-section { border: 1px solid var(--x-borde) !important; border-radius: 12px !important; background: var(--x-caja) !important; margin: 0 !important; overflow: hidden; box-shadow: none !important; }
 .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head { display: flex; align-items: center; gap: 10px; min-height: 48px; box-sizing: border-box; background: #0f6fae !important; padding: 4px 12px 4px 18px !important; border: 0 !important; }
-.v-theme--dark .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head { background: #0f5f96 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head { background: #0f5f96 !important; }
 .pfx .pfx-tarjeta .pfp-section .pfp-section-title.pfp-section-title { color: #ffffff !important; font-weight: 800 !important; font-size: 15px !important; }
 .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-btn, .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-chip { color: #ffffff !important; }
 .pfx .pfx-tarjeta .pfp-section .pfp-section-head.pfp-section-head .v-switch .v-switch__track { background: rgba(255, 255, 255, 0.35) !important; opacity: 1 !important; }
@@ -2597,7 +2597,7 @@ async function saveAll() {
 .pfx .v-field--focused .v-field__outline { --v-field-border-width: 2px; }
 .pfx .pfx-calculado .v-field { background: rgba(15, 111, 174, 0.07); }
 .pfx .pfx-calculado input { font-weight: 800; color: #0a466e; }
-.v-theme--dark .pfx .pfx-calculado input { color: #9cc9ea; }
+:is(.v-theme--dark, .v-theme--adminDark) .pfx .pfx-calculado input { color: #9cc9ea; }
 
 /* vista previa */
 .pfx-aside { width: 300px; flex-shrink: 0; position: sticky; top: 8px; display: flex; flex-direction: column; gap: 10px; }

@@ -1522,7 +1522,7 @@ watch(branchId, fetchProduct);
   padding: 20px 28px 40px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pd-fondo); color: var(--pd-texto);
   display: flex; flex-direction: column; gap: 16px;
 }
-.v-theme--dark .pd {
+:is(.v-theme--dark, .v-theme--adminDark) .pd {
   --pd-fondo: #0b0f14; --pd-caja: #151c25; --pd-borde: #253141; --pd-linea: #222c39; --pd-texto: #e5edf5;
   --pd-suave: #9aa8b8; --pd-tenue: #64748b; --pd-acento: #5aaee0; --pd-banda: #0f5f96; --pd-rubro: #6fb3e0;
   --pd-hover: #1a2430; --pd-pista: rgba(255, 255, 255, 0.07);
@@ -1550,7 +1550,7 @@ watch(branchId, fetchProduct);
 .pd-estado i { width: 10px; height: 10px; border-radius: 9999px; display: block; }
 .pd-estado.is-activo { color: #1f7a5f; } .pd-estado.is-activo i { background: #2E9E7B; }
 .pd-estado.is-inactivo { color: var(--pd-suave); } .pd-estado.is-inactivo i { background: #C3C9D6; }
-.v-theme--dark .pd-estado.is-activo { color: #5fc9a6; }
+:is(.v-theme--dark, .v-theme--adminDark) .pd-estado.is-activo { color: #5fc9a6; }
 .pd-editar { height: 42px !important; border-radius: 10px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
 
 .pd-grilla { display: grid; grid-template-columns: minmax(320px, 420px) minmax(340px, 1fr) minmax(320px, 360px); gap: 18px; align-items: start; }
@@ -1583,9 +1583,9 @@ watch(branchId, fetchProduct);
 .pd-pr--lista { background: #eef7fd; border: 2px solid #0f6fae; }
 .pd-pr__lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a466e; }
 .pd-pr__val { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
-.v-theme--dark .pd-pr { background: #1a2430; border-color: #253141; }
-.v-theme--dark .pd-pr--lista { background: #12324b; border-color: #5aaee0; }
-.v-theme--dark .pd-pr__lab { color: #9cc9ea; }
+:is(.v-theme--dark, .v-theme--adminDark) .pd-pr { background: #1a2430; border-color: #253141; }
+:is(.v-theme--dark, .v-theme--adminDark) .pd-pr--lista { background: #12324b; border-color: #5aaee0; }
+:is(.v-theme--dark, .v-theme--adminDark) .pd-pr__lab { color: #9cc9ea; }
 .pd-precio__grande { font-size: 40px; font-weight: 800; line-height: 1; }
 .pd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; }
 .pd-datos dt { font-size: 14px; font-weight: 600; color: var(--pd-suave); }

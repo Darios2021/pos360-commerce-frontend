@@ -1008,7 +1008,7 @@ onMounted(() => {
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
-.v-theme--dark .cra-alert--medium { color: #fbbf24; }
+:is(.v-theme--dark, .v-theme--adminDark) .cra-alert--medium { color: #fbbf24; }
 
 .cra-ok-ic {
   display: inline-flex;

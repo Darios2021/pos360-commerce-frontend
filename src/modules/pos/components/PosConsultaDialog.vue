@@ -1626,13 +1626,13 @@ async function copyBarcode(item) {
    que si funciona es el descendiente pelado. */
 .v-theme--adminDark .qrow__stock.level-high,
 .v-theme--shopDark .qrow__stock.level-high,
-.v-theme--dark .qrow__stock.level-high {
+:is(.v-theme--dark, .v-theme--adminDark) .qrow__stock.level-high {
   color: rgb(134, 239, 172);
 }
 
 .v-theme--adminDark .qrow__stock.level-mid,
 .v-theme--shopDark .qrow__stock.level-mid,
-.v-theme--dark .qrow__stock.level-mid {
+:is(.v-theme--dark, .v-theme--adminDark) .qrow__stock.level-mid {
   color: rgb(253, 224, 71);
 }
 
@@ -1640,8 +1640,8 @@ async function copyBarcode(item) {
 .v-theme--adminDark .qrow__stock.level-out,
 .v-theme--shopDark .qrow__stock.level-low,
 .v-theme--shopDark .qrow__stock.level-out,
-.v-theme--dark .qrow__stock.level-low,
-.v-theme--dark .qrow__stock.level-out {
+:is(.v-theme--dark, .v-theme--adminDark) .qrow__stock.level-low,
+:is(.v-theme--dark, .v-theme--adminDark) .qrow__stock.level-out {
   color: rgb(252, 165, 165);
 }
 

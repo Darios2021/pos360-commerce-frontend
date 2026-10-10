@@ -632,24 +632,24 @@ onBeforeUnmount(() => {
 }
 
 /* ─── Dark mode ─────────────────────────────────────── */
-.v-theme--dark .caja-card {
+:is(.v-theme--dark, .v-theme--adminDark) .caja-card {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-.v-theme--dark .caja-card__hero {
+:is(.v-theme--dark, .v-theme--adminDark) .caja-card__hero {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.v-theme--dark .caja-tile {
+:is(.v-theme--dark, .v-theme--adminDark) .caja-tile {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
 }
 
-.v-theme--dark .caja-tile:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .caja-tile:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.v-theme--dark .caja-chip {
+:is(.v-theme--dark, .v-theme--adminDark) .caja-chip {
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -778,7 +778,7 @@ onBeforeUnmount(() => {
   color: #92400e !important;
   font-size: 12px;
 }
-.v-theme--dark .caja-alert--otras,
+:is(.v-theme--dark, .v-theme--adminDark) .caja-alert--otras,
 .v-theme--adminDark .caja-alert--otras {
   color: #fcd34d !important;
 }

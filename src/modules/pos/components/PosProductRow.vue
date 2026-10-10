@@ -1066,12 +1066,12 @@ function money(v) {
 }
 .prow:hover .prow-body,
 .prow:hover .prow-info { background: #e6f1fa; }
-.v-theme--dark .prow:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .prow:hover {
   box-shadow: inset 0 0 0 2px #8cc0e3, 0 10px 22px rgba(0, 0, 0, 0.45) !important;
   border-color: #8cc0e3 !important;
 }
-.v-theme--dark .prow:hover .prow-body,
-.v-theme--dark .prow:hover .prow-info { background: #1d3a55; }
+:is(.v-theme--dark, .v-theme--adminDark) .prow:hover .prow-body,
+:is(.v-theme--dark, .v-theme--adminDark) .prow:hover .prow-info { background: #1d3a55; }
 .prow.in-cart { border-color: rgba(15, 111, 174, 0.5) !important; }
 .prow.disabled { opacity: 0.55; }
 

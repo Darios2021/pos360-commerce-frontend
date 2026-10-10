@@ -378,7 +378,7 @@ onMounted(loadMe);
 </script>
 
 <style>
-/* Perfil. Sin scoped: todo cuelga de .pf; tema oscuro con .v-theme--dark .pf. */
+/* Perfil. Sin scoped: todo cuelga de .pf; tema oscuro con :is(.v-theme--dark, .v-theme--adminDark) .pf. */
 .pos-container:has(.pf) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
 .pf {
   --pf-fondo: #d6e6f3; --pf-caja: #ffffff; --pf-borde: #d3dde7; --pf-linea: #eef2f6; --pf-campo: #c9d5e1;
@@ -386,7 +386,7 @@ onMounted(loadMe);
   padding: 22px 28px 48px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pf-fondo); color: var(--pf-texto);
   display: flex; flex-direction: column; gap: 18px;
 }
-.v-theme--dark .pf {
+:is(.v-theme--dark, .v-theme--adminDark) .pf {
   --pf-fondo: #0b0f14; --pf-caja: #151c25; --pf-borde: #253141; --pf-linea: #222c39; --pf-campo: #33425a;
   --pf-texto: #e5edf5; --pf-suave: #9aa8b8; --pf-acento: #5aaee0; --pf-banda: #0f5f96; --pf-pie: #1a2430;
 }

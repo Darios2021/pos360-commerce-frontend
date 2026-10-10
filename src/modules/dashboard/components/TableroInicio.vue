@@ -573,7 +573,7 @@ const avisos = computed(() => {
 
 <style>
 /* Tokens del tablero. Sin scoped: todo cuelga de .tb, así el tema oscuro
-   se resuelve con .v-theme--dark .tb sin :global(). */
+   se resuelve con :is(.v-theme--dark, .v-theme--adminDark) .tb sin :global(). */
 .tb {
   --tb-fondo: #d6e6f3;
   --tb-caja: #ffffff;
@@ -587,7 +587,7 @@ const avisos = computed(() => {
   --tb-rojo: #c4453f;
   --tb-acento: #0f6fae;
 }
-.v-theme--dark .tb {
+:is(.v-theme--dark, .v-theme--adminDark) .tb {
   --tb-fondo: #0b0f14;
   --tb-caja: #151c25;
   --tb-borde: #253141;

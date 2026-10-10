@@ -1980,12 +1980,12 @@ async function save() {
 /* Ajustes en dark mode */
 .v-theme--adminDark .tfm-chip,
 .v-theme--shopDark .tfm-chip,
-.v-theme--dark .tfm-chip {
+:is(.v-theme--dark, .v-theme--adminDark) .tfm-chip {
   border-color: rgba(255, 255, 255, 0.08);
 }
 .v-theme--adminDark .tfm-item,
 .v-theme--shopDark .tfm-item,
-.v-theme--dark .tfm-item {
+:is(.v-theme--dark, .v-theme--adminDark) .tfm-item {
   border-color: rgba(255, 255, 255, 0.06);
 }
 </style>

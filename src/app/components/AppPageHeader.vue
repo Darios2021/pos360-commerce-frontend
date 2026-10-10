@@ -212,12 +212,12 @@ a.app-page-header__crumb:hover {
 }
 .v-theme--adminDark .app-page-header__back,
 .v-theme--shopDark .app-page-header__back,
-.v-theme--dark .app-page-header__back {
+:is(.v-theme--dark, .v-theme--adminDark) .app-page-header__back {
   background: rgba(255, 255, 255, 0.05);
 }
 .v-theme--adminDark .app-page-header__back:hover,
 .v-theme--shopDark .app-page-header__back:hover,
-.v-theme--dark .app-page-header__back:hover {
+:is(.v-theme--dark, .v-theme--adminDark) .app-page-header__back:hover {
   background: rgba(20, 136, 209, 0.18);
 }
 
@@ -241,7 +241,7 @@ a.app-page-header__crumb:hover {
 }
 .v-theme--adminDark .app-page-header__icon,
 .v-theme--shopDark .app-page-header__icon,
-.v-theme--dark .app-page-header__icon {
+:is(.v-theme--dark, .v-theme--adminDark) .app-page-header__icon {
   background: rgba(20, 136, 209, 0.18);
 }
 .app-page-header__text {

@@ -47,6 +47,7 @@
 import { computed, ref, watch } from "vue";
 import { listCustomers } from "@/modules/admin/services/customers.service";
 import PosClienteDialog from "./modales/PosClienteDialog.vue";
+import "../styles/modales-oscuro.css";
 import { esMayorista } from "@/app/utils/clienteMayorista";
 
 const props = defineProps({

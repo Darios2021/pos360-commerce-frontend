@@ -490,7 +490,7 @@ defineExpose({ refresh, applyReparto });
 }
 /* =========================================================
    ✅ DARK ONLY: que el switch OFF se vea (sin tocar LIGHT)
-   Vuetify 3 agrega .v-theme--dark en el root
+   Vuetify 3 agrega :is(.v-theme--dark, .v-theme--adminDark) en el root
 ========================================================= */
 
 :deep(.v-theme--dark) .pf-card :deep(.v-selection-control--switch) {
@@ -521,36 +521,36 @@ defineExpose({ refresh, applyReparto });
 }
 /* =========================================================
    ✅ FIX DEFINITIVO (GLOBAL): Switch OFF visible en DARK dentro del dialog
-   Motivo: scoped/:deep con .v-theme--dark a veces no matchea nada.
+   Motivo: scoped/:deep con :is(.v-theme--dark, .v-theme--adminDark) a veces no matchea nada.
    Esto sale del scope y pega directo al overlay real.
 ========================================================= */
 
 /* DARK ONLY dentro del overlay del ProductFormDialog */
-.v-theme--dark .pf-overlay .v-switch__track {
+:is(.v-theme--dark, .v-theme--adminDark) .pf-overlay .v-switch__track {
   opacity: 1 !important;
   background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 30%, transparent) !important;
   border: 1px solid color-mix(in srgb, rgb(var(--v-theme-on-surface)) 62%, transparent) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, rgb(var(--v-theme-on-surface)) 18%, transparent) !important;
 }
 
-.v-theme--dark .pf-overlay .v-switch__thumb {
+:is(.v-theme--dark, .v-theme--adminDark) .pf-overlay .v-switch__thumb {
   opacity: 1 !important;
   background: color-mix(in srgb, rgb(var(--v-theme-surface)) 98%, rgb(var(--v-theme-on-surface)) 2%) !important;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.70) !important;
 }
 
 /* OFF (apagado) aún más fuerte por si Vuetify lo “oscurece” */
-.v-theme--dark .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__track {
+:is(.v-theme--dark, .v-theme--adminDark) .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__track {
   background: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 34%, transparent) !important;
   border-color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 70%, transparent) !important;
 }
 
-.v-theme--dark .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb {
+:is(.v-theme--dark, .v-theme--adminDark) .pf-overlay input:not(:checked) + .v-selection-control__wrapper .v-switch__thumb {
   background: rgb(var(--v-theme-surface)) !important;
 }
 
 /* ON se mantiene (por si el global te lo pisa) */
-.v-theme--dark .pf-overlay input:checked + .v-selection-control__wrapper .v-switch__track {
+:is(.v-theme--dark, .v-theme--adminDark) .pf-overlay input:checked + .v-selection-control__wrapper .v-switch__track {
   background: color-mix(in srgb, rgb(var(--v-theme-primary)) 48%, transparent) !important;
   border-color: color-mix(in srgb, rgb(var(--v-theme-primary)) 80%, transparent) !important;
 }

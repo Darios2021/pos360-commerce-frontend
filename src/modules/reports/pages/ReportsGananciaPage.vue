@@ -203,7 +203,7 @@ onMounted(() => { cargarSucursales(); cargar(); });
   --gr-banda: #0f6fae; --gr-banda-borde: #0d5f96; --gr-tinte: #eef7fd; --gr-hover: #f3f8fc;
   display: flex; flex-direction: column; gap: 14px; color: var(--gr-texto);
 }
-.v-theme--dark .gr {
+:is(.v-theme--dark, .v-theme--adminDark) .gr {
   --gr-caja: #151c25; --gr-borde: #253141; --gr-linea: #222c39; --gr-texto: #e5edf5; --gr-suave: #9aa8b8; --gr-tenue: #64748b;
   --gr-banda: #0f5f96; --gr-banda-borde: #0c4f7d; --gr-tinte: #12324b; --gr-hover: #1a2430;
 }
@@ -222,11 +222,11 @@ onMounted(() => { cargarSucursales(); cargar(); });
 .gr-franja__dest { background: var(--gr-tinte); }
 .gr-lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gr-suave); }
 .gr-aviso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #fff4e5; border: 1px solid #f5c98a; color: #8a4b0f; font-size: 14px; }
-.v-theme--dark .gr-aviso { background: #3a2a12; border-color: #7a5a22; color: #f5c98a; }
+:is(.v-theme--dark, .v-theme--adminDark) .gr-aviso { background: #3a2a12; border-color: #7a5a22; color: #f5c98a; }
 .gr-aviso .v-icon { color: inherit; }
 .gr-aviso span { flex: 1; }
 .gr-link { font-weight: 800; color: var(--gr-banda); text-decoration: none; white-space: nowrap; }
-.v-theme--dark .gr-link { color: #5aaee0; }
+:is(.v-theme--dark, .v-theme--adminDark) .gr-link { color: #5aaee0; }
 .gr-link:hover { text-decoration: underline; }
 .gr-caja { border-radius: 12px; overflow: hidden; background: var(--gr-caja); border: 1px solid var(--gr-borde); }
 .gr-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--gr-banda); color: #ffffff; font-size: 15px; font-weight: 800; }

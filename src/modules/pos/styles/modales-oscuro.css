@@ -1,0 +1,133 @@
+/* src/modules/pos/styles/modales-oscuro.css
+ *
+ * Modo oscuro de las ventanas de la barra del POS (PosModal y las de
+ * components/modales) y del cobro (cobro.css). El tema oscuro del sistema se
+ * llama "adminDark": se pregunta por los dos nombres. Mismos tokens que el
+ * resto de las vistas oscuras (canvas más oscuro que las cajas).
+ */
+:is(.v-theme--dark, .v-theme--adminDark) {
+  --mo-fondo: #0b0f14;
+  --mo-caja: #151c25;
+  --mo-caja2: #1a2430;
+  --mo-borde: #253141;
+  --mo-linea: #222c39;
+  --mo-texto: #e5edf5;
+  --mo-suave: #9aa8b8;
+  --mo-tenue: #64748b;
+  --mo-tinte: #12324b;
+  --mo-acento: #5aaee0;
+  --mo-hover: #1d3a55;
+}
+
+/* ── Marco común ────────────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .pm { background: var(--mo-caja); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-cab { background: #0f5f96; }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-pie { background: #101720; border-top-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-lab { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-vacio { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-esc { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-in { background: #0f151d; border-color: var(--mo-acento); box-shadow: 0 0 0 4px rgba(90, 174, 224, 0.16); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-in input { color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-in .v-icon { color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-op { background: var(--mo-caja2); border-color: var(--mo-borde); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-op:hover { background: var(--mo-hover); border-color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-op.is-on { background: var(--mo-tinte); border-color: var(--mo-acento); box-shadow: 0 0 0 4px rgba(90, 174, 224, 0.14); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-fila:hover { background: var(--mo-caja2); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-fila.is-on { background: var(--mo-tinte); border-color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-foto { border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-stock { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-stock.ok { color: #6ee7b7; }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-cant button { background: var(--mo-caja2); border-color: var(--mo-borde); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-cant button:hover { background: var(--mo-hover); border-color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-aside { background: #101720; border-left-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm-dl dt { color: var(--mo-suave); }
+
+/* ── Buscar ─────────────────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pb-sub, .pb-cuenta, .pb-precio small, .pb-ficha__meta) { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pb-ficha { background: #101720; border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pb-pr, .pb-suc) { background: var(--mo-caja2); border-color: var(--mo-borde); color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pb-pr.is-on, .pb-suc.is-esta) { background: var(--mo-tinte); border-color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pb-pr.is-on .pm-lab { color: #9cc9ea; }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pb-pr b, .pb-suc b) { color: var(--mo-texto); }
+
+/* ── Carrito y vaciar ───────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .pc-sub { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pc-suma { background: var(--mo-caja2); }
+:is(.v-theme--dark, .v-theme--adminDark) .pc-quitar:hover { background: #3d1a18; border-color: #7a2e29; }
+:is(.v-theme--dark, .v-theme--adminDark) .pv-ic { background: #3d1a18; }
+:is(.v-theme--dark, .v-theme--adminDark) .pv-sub { color: var(--mo-suave); }
+
+/* ── Movimientos ────────────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-campo { background: #0f151d; border-color: var(--mo-borde); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-tipo .v-icon { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-tipo.is-in { background: #143a2f; border-color: #2e9e7b; color: #6ee7b7; }
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-tipo.is-out { background: #3d1a18; border-color: #c2413a; color: #fca5a5; }
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-deberia { background: var(--mo-caja2); border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pmv-mov { border-bottom-color: var(--mo-linea); }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pmv-hora, .pmv-nada) { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pm .pmv-in { color: #6ee7b7; }
+:is(.v-theme--dark, .v-theme--adminDark) .pm .pmv-out { color: #fca5a5; }
+
+/* ── Cliente ────────────────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-izq { background: #101720; border-right-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-busca { background: #0f151d; border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-busca input, :is(.v-theme--dark, .v-theme--adminDark) .pcl-c input { background: #0f151d; color: var(--mo-texto); border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.pcl-c span, .pcl-et, .pcl-s, .pcl-nada) { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-fila { background: var(--mo-caja2); border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-tabs { background: #0f151d; }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-tabs button { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-tabs button.is-on { background: var(--mo-caja2); color: var(--mo-acento); }
+:is(.v-theme--dark, .v-theme--adminDark) .pcl-av { background: var(--mo-borde); color: var(--mo-texto); }
+
+/* ── Ayuda, caja ────────────────────────────────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .pa-tecla { border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) .pa-tecla.is-clave { background: var(--mo-tinte); border-color: #2f5d80; }
+:is(.v-theme--dark, .v-theme--adminDark) .pa-txt small { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .ac-chips span { background: var(--mo-caja2); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .ac-nota { background: #0f151d; border-color: var(--mo-borde); color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-caja { background: var(--mo-caja2); }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-dif--is-ok { background: #143a2f; }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-dif--is-warning { background: #3a2a12; }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-dif--is-danger { background: #3d1a18; }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.aq-res span, .aq-medio) { border-color: var(--mo-borde); }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.aq-detalle, .aq-res small, .aq-nada, .aq-venta__m) { color: var(--mo-suave); }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-medio span { color: var(--mo-texto); }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-aviso { background: #3a2a12; color: #f5c98a; }
+:is(.v-theme--dark, .v-theme--adminDark) .aq-aviso--suave { background: var(--mo-caja2); color: var(--mo-suave); }
+
+/* ── Cobro (cobro.css usa variables --cb-*) ─────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root {
+  --cb-tinte: #12324b; --cb-hover: #1d3a55; --cb-borde: #253141; --cb-linea: #222c39;
+  --cb-texto: #e5edf5; --cb-suave: #9aa8b8; --cb-verde-tinte: #143a2f; --cb-rojo-tinte: #3d1a18;
+  background: var(--mo-caja) !important;
+}
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.pdch, .pdch__row--main, .ck-body-main) { background: var(--mo-caja) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root .pdch__row--top { background: #0f5f96 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root .pdch__dot { background: var(--mo-borde) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.ck-body-aside, .ck-ftr) { background: #101720 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.pms-tile, .ck-cash-tile, .ck-pay, .ck-inv-card, .ck-item, .ck-summary-card) { background: var(--mo-caja2) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.pms-tile--active, .ck-cash-tile.active, .ck-pay.active, .ck-inv-card.active) { background: var(--cb-tinte) !important; border-color: var(--mo-acento) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.pms-icon, .ck-cash-tile__icon, .ck-pay__icon, .ck-inv-letter) { background: var(--mo-borde) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root :is(.ck-status-banner--change, .ck-status-banner--exact) { color: #6ee7b7 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root .ck-status-banner--missing { color: #fca5a5 !important; border-color: #7a2e29 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .v-card.ck-root .ck-manual-input input { color: var(--mo-texto) !important; }
+/* Confirmar y cliente mayorista (estilos propios de sus pantallas) */
+:is(.v-theme--dark, .v-theme--adminDark) .cf-total { background: var(--mo-tinte) !important; border-color: var(--mo-acento) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.cf-total__val, .cf-dato__val) { color: var(--mo-texto) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cf-total__col .cf-lab { color: #9cc9ea !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cf-dato { background: var(--mo-caja2) !important; border-color: var(--mo-borde) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cf-dato__ic { background: var(--mo-borde) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cf-lab { color: var(--mo-suave) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cpm { background: var(--mo-tinte) !important; border-color: #2f5d80 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cpm-txt b { color: var(--mo-texto) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cpm-seg button:not(.is-on) { background: var(--mo-caja2) !important; border-color: var(--mo-borde) !important; color: var(--mo-texto) !important; }
+
+/* ── Cliente del carrito (PosClienteVenta) ──────────────────────────── */
+:is(.v-theme--dark, .v-theme--adminDark) .cv-elegir { background: var(--mo-caja2) !important; border-color: var(--mo-borde) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-elegir:hover { background: var(--mo-hover) !important; border-color: var(--mo-acento) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-elegir__txt b, :is(.v-theme--dark, .v-theme--adminDark) .cv-nombre { color: var(--mo-texto) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.cv-elegir__txt small, .cv-sub) { color: var(--mo-suave) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-ficha { background: #143a2f !important; border-color: #2e7a62 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-ficha--may { background: var(--mo-tinte) !important; border-color: #2f5d80 !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-btn .v-icon { color: var(--mo-texto) !important; }
+:is(.v-theme--dark, .v-theme--adminDark) .cv-seg:not(.is-on) { background: var(--mo-caja2) !important; border-color: var(--mo-borde) !important; color: var(--mo-texto) !important; }
