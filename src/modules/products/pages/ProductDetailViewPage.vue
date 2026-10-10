@@ -62,15 +62,25 @@
       <section class="pd-col">
         <div class="pd-caja">
           <div class="pd-banda"><span>Precios</span><small v-if="Number(raw.tax_rate) > 0" class="num">IVA {{ Number(raw.tax_rate) }} % incluido</small></div>
-          <div class="pd-precio">
-            <span class="pd-precio__grande num">$ {{ fmtPrice(productForUIFixed.price_discount) }}</span>
-            <span class="pd-s">contado y Mercado Pago</span>
+          <!-- Los tres precios de venta, cada uno en su tarjeta -->
+          <div class="pd-tres">
+            <div class="pd-pr">
+              <span class="pd-pr__lab">Precio contado</span>
+              <span class="pd-pr__val num">$ {{ fmtPrice(productForUIFixed.price_discount) }}</span>
+              <span class="pd-s">efectivo, transferencia y Mercado Pago</span>
+            </div>
+            <div class="pd-pr pd-pr--lista">
+              <span class="pd-pr__lab">Precio lista</span>
+              <span class="pd-pr__val num">$ {{ fmtPrice(productForUIFixed.price_list) }}</span>
+              <span class="pd-s">tarjeta y crédito<template v-if="recargoLista"> · {{ recargoLista }} % más</template></span>
+            </div>
+            <div class="pd-pr">
+              <span class="pd-pr__lab">Precio revendedor</span>
+              <span class="pd-pr__val num" :class="{ 'pd-tenue': !(Number(raw.price_reseller) > 0) }">{{ Number(raw.price_reseller) > 0 ? `$ ${fmtPrice(raw.price_reseller)}` : "sin cargar" }}</span>
+              <span class="pd-s">clientes mayoristas</span>
+            </div>
           </div>
           <dl class="pd-datos num">
-            <dt>Lista y crédito</dt>
-            <dd>$ {{ fmtPrice(productForUIFixed.price_list) }}<span v-if="recargoLista" class="pd-suave"> · {{ recargoLista }} % más</span></dd>
-            <dt>Revendedor</dt>
-            <dd>{{ Number(raw.price_reseller) > 0 ? `$ ${fmtPrice(raw.price_reseller)}` : "—" }}</dd>
             <template v-if="Number(raw.price_installer) > 0"><dt>Instalador</dt><dd>$ {{ fmtPrice(raw.price_installer) }}</dd></template>
             <dt>Costo</dt>
             <dd>
@@ -1568,6 +1578,14 @@ watch(branchId, fetchProduct);
 .pd-video__play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
 .pd-precio { display: flex; flex-direction: column; gap: 2px; padding: 16px 16px 4px; }
+.pd-tres { display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 4px; }
+.pd-pr { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #f3f8fc; border: 1px solid #d3dde7; }
+.pd-pr--lista { background: #eef7fd; border: 2px solid #0f6fae; }
+.pd-pr__lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a466e; }
+.pd-pr__val { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+.v-theme--dark .pd-pr { background: #1a2430; border-color: #253141; }
+.v-theme--dark .pd-pr--lista { background: #12324b; border-color: #5aaee0; }
+.v-theme--dark .pd-pr__lab { color: #9cc9ea; }
 .pd-precio__grande { font-size: 40px; font-weight: 800; line-height: 1; }
 .pd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; }
 .pd-datos dt { font-size: 14px; font-weight: 600; color: var(--pd-suave); }
