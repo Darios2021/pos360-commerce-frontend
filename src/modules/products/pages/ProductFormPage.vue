@@ -1192,7 +1192,7 @@ function defaultDraft() {
     id: null, name: "", sku: "", code: null, barcode: null, branch_id: null, description: "",
     category_id: null, subcategory_id: null, is_active: true, track_stock: true,
     brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0,
-    cost: 0, tax_rate: 21, markup_pct: null,
+    cost: null, tax_rate: 21, markup_pct: null,
     // Promoción
     is_promo: false,
     promo_price: null,
@@ -2562,4 +2562,13 @@ async function saveAll() {
 .pfn-check { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pfn-cancelar { font-size: 14px; font-weight: 700; color: inherit; opacity: .7; text-decoration: none; margin-right: 16px; }
 .pfn-cancelar:hover { text-decoration: underline; }
+/* Secciones con la banda azul del rediseño */
+.pfp-root .pfp-section { border-radius: 12px !important; border: 1px solid rgba(var(--v-border-color), 0.16) !important; overflow: hidden; box-shadow: none !important; }
+.pfp-root .pfp-section-head { background: #0f6fae !important; color: #ffffff !important; border: 0 !important; padding: 12px 16px !important; }
+.v-theme--dark .pfp-root .pfp-section-head { background: #0f5f96 !important; }
+.pfp-root .pfp-section-head::before { display: none !important; }
+.pfp-root .pfp-section-icon { display: none !important; }
+.pfp-root .pfp-section-title { color: #ffffff !important; font-size: 15px !important; font-weight: 800 !important; }
+.pfp-root .pfp-section-sub { color: rgba(255, 255, 255, 0.8) !important; }
+.pfp-root .pfp-section-head .v-btn { color: #ffffff !important; }
 </style>
