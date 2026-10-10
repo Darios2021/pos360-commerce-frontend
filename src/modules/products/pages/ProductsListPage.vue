@@ -805,7 +805,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -814,6 +814,7 @@ import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
 
 const router = useRouter();
+const route = useRoute();
 const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
@@ -995,6 +996,7 @@ const stockItems = [
   { title: "Todos", value: "all" },
   { title: "Con stock", value: "with" },
   { title: "Sin stock", value: "without" },
+  { title: "Stock bajo (3 o menos)", value: "low" },
 ];
 const pricePresenceItems = [
   { title: "Todos", value: "all" },
@@ -1378,7 +1380,20 @@ async function reload() {
   await fetchNow();
 }
 
-onMounted(reload);
+// Filtros desde un enlace (los avisos del tablero): ?stock=without,
+// ?precio=without, ?sucursal=3. Quedan como chips quitables del panel.
+function filtrosDeLaUrl() {
+  const q = route.query || {};
+  if (["with", "without", "low"].includes(q.stock)) f.value.stock = q.stock;
+  if (q.precio === "with" || q.precio === "without") f.value.price_presence = q.precio;
+  const suc = parseInt(String(q.sucursal || ""), 10);
+  if (suc > 0) f.value.branch_id = suc;
+}
+
+onMounted(() => {
+  filtrosDeLaUrl();
+  reload();
+});
 
 watch(
   () => auth.isAuthed,

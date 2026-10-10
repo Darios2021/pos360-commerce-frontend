@@ -551,12 +551,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 
 // =====================
@@ -1291,6 +1292,9 @@ onMounted(async () => {
     try { await auth.fetchMe(); } catch {}
   }
   await loadBranchesIfAdmin();
+  // Filtro desde un enlace (los avisos del tablero): ?estado=CANCELLED
+  const estadoUrl = String(route.query?.estado || "").toUpperCase();
+  if (estadoUrl && statusItems.some((s) => s.value === estadoUrl)) status.value = estadoUrl;
   onSellerSearch("");
   onProductSearch("");
   refreshAll();

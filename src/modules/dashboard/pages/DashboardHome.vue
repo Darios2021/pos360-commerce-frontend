@@ -44,130 +44,24 @@
       @branch-change="onBranchChange"
     />
 
-    <!-- ── DESKTOP / TABLET: vista completa con tabs ─────────── -->
-    <template v-else>
-    <!-- ── HEADER ─────────────────────────────────────────── -->
-    <AppPageHeader
-      icon="mdi-view-dashboard-outline"
-      title="Dashboard"
-      subtitle="Resumen operativo y métricas en tiempo real"
-    >
-      <v-btn
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-refresh"
-        :loading="loading || loadingAnalytics"
-        @click="refresh"
-      >
-        Actualizar
-      </v-btn>
-    </AppPageHeader>
-
-    <!-- ── Tab bar + scope chip ────────────────────────────── -->
-    <div class="dash-tabs-row">
-      <!-- Segmented control de tabs (estilo moderno tipo iOS) -->
-      <div class="dash-tabs" role="tablist" :style="tabIndicatorStyle">
-        <button
-          v-for="(item, idx) in tabItems"
-          :key="item.value"
-          ref="tabRefs"
-          class="dash-tab"
-          :class="{ 'dash-tab--active': tab === item.value }"
-          :data-idx="idx"
-          role="tab"
-          :aria-selected="tab === item.value"
-          @click="setTab(item.value)"
-        >
-          <v-icon size="16" class="dash-tab__icon">{{ item.icon }}</v-icon>
-          <span class="dash-tab__label">{{ item.label }}</span>
-          <span v-if="item.badge" class="dash-tab__badge">{{ item.badge }}</span>
-        </button>
-      </div>
-
-      <!-- SUPER_ADMIN: selector funcional para cambiar de sucursal -->
-      <v-menu
-        v-if="isSuperAdmin && branches.length > 0"
-        location="bottom end"
-        :close-on-content-click="true"
-      >
-        <template #activator="{ props: menuProps }">
-          <button class="dh-scope dh-scope--clickable" v-bind="menuProps" type="button">
-            <v-icon size="15" class="dh-scope__icon">mdi-shield-crown-outline</v-icon>
-            <div class="dh-scope__body">
-              <span class="dh-scope__role">Super admin</span>
-              <span class="dh-scope__branch">{{ scopeLabel }}</span>
-            </div>
-            <v-icon size="14" class="dh-scope__chevron">mdi-chevron-down</v-icon>
-          </button>
-        </template>
-        <v-list density="compact" rounded="lg" min-width="220" class="pa-1">
-          <v-list-item :active="!effectiveBranchId" color="primary" @click="onBranchChange(null)">
-            <v-list-item-title class="font-weight-bold">Todas las sucursales</v-list-item-title>
-          </v-list-item>
-          <v-divider class="my-1" />
-          <v-list-item
-            v-for="b in branches"
-            :key="b.id"
-            :active="effectiveBranchId === b.id"
-            color="primary"
-            @click="onBranchChange(b.id)"
-          >
-            <v-list-item-title>{{ b.name }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <!-- BRANCH ADMIN / CAJERO: chip read-only mostrando su ámbito real -->
-      <div
-        v-else
-        class="dh-scope dh-scope--readonly"
-        :class="{ 'dh-scope--cashier': isCajero }"
-      >
-        <v-icon size="15" class="dh-scope__icon">{{ scopeIcon }}</v-icon>
-        <div class="dh-scope__body">
-          <span class="dh-scope__role">{{ roleBadge }}</span>
-          <span class="dh-scope__branch">{{ scopeLabel }}</span>
-        </div>
-        <v-tooltip activator="parent" location="bottom">{{ scopeTooltip }}</v-tooltip>
-      </div>
-    </div>
-
-    <!-- ── Mini banner explicando el ámbito (solo no-super_admin) ─────────── -->
-    <div v-if="!isSuperAdmin" class="dash-scope-hint">
-      <v-icon size="14" color="primary">mdi-information-outline</v-icon>
-      <span>{{ scopeHint }}</span>
-    </div>
-
-    <Transition name="tab-fade" mode="out-in">
-      <DashboardSalesTab
-        v-if="tab === 'sales'" key="sales"
-        :loading="loading" :loading-analytics="loadingAnalytics"
-        :is-admin="isAdmin" :scope-label="scopeLabel"
-        :sales="ui.sales" :analytics="analytics.sales"
-        :period="period" :branches="branches" :selected-branch="effectiveBranchId"
-        @period-change="onPeriodChange" @branch-change="onBranchChange"
-      />
-      <DashboardStockTab
-        v-else-if="tab === 'stock'" key="stock"
-        :loading="loading" :loading-analytics="loadingAnalytics"
-        :is-admin="isAdmin" :scope-label="scopeLabel"
-        :stock="ui.stock" :analytics="analytics.stockMovements"
-        :branches="branches" :selected-branch="effectiveBranchId"
-        @branch-change="onBranchChange"
-      />
-      <DashboardInventoryTab
-        v-else-if="tab === 'inventory'" key="inventory"
-        :loading="loading" :loading-analytics="loadingAnalytics"
-        :inv="ui.inventory" :analytics="analytics.products"
-      />
-      <DashboardCashTab
-        v-else-if="tab === 'cash'" key="cash"
-        :loading="loadingAnalytics" :analytics="analytics.cash"
-        :period="period" @period-change="onPeriodChange"
-      />
-    </Transition>
-    </template>
+    <!-- ── DESKTOP / TABLET: el tablero en bloques ─────────── -->
+    <TableroInicio
+      v-else
+      :loading="loading"
+      :loading-analytics="loadingAnalytics"
+      :is-admin="isAdmin"
+      :is-super-admin="isSuperAdmin"
+      :scope-label="scopeLabel"
+      :period="period"
+      :branches="branches"
+      :selected-branch="effectiveBranchId"
+      :sales="ui.sales"
+      :analytics="analytics.sales"
+      :stock="ui.stock"
+      :inventory="ui.inventory"
+      @period-change="onPeriodChange"
+      @branch-change="onBranchChange"
+    />
   </div>
 </template>
 
@@ -176,12 +70,8 @@ import { computed, onMounted, ref, watch } from "vue";
 // (ref still used for loading/branches/ui state; onMounted/watch for data fetching)
 import { useRoute, useRouter } from "vue-router";
 
-import DashboardSalesTab from "../components/DashboardSalesTab.vue";
-import DashboardStockTab from "../components/DashboardStockTab.vue";
-import DashboardInventoryTab from "../components/DashboardInventoryTab.vue";
-import DashboardCashTab from "../components/DashboardCashTab.vue";
+import TableroInicio from "../components/TableroInicio.vue";
 import DashboardMobileHome from "../components/DashboardMobileHome.vue";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import { useDisplay } from "vuetify";
 
 import {

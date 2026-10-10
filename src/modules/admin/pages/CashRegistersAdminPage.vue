@@ -477,13 +477,14 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { adminListCashRegisters } from "@/modules/pos/services/posCashRegisters.service";
 import http from "@/app/api/http";
 import { useAuthStore } from "@/app/store/auth.store";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 if (auth.status === "idle") auth.hydrate?.();
 
@@ -776,6 +777,8 @@ function diffChipClass(v) {
 }
 
 onMounted(() => {
+  // Filtro desde un enlace (los avisos del tablero): ?estado=abiertas
+  if (String(route.query?.estado || "") === "abiertas") filters.status = "OPEN";
   loadBranches();
   reload();
 });
