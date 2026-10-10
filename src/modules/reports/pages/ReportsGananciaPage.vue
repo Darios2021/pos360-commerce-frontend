@@ -518,7 +518,7 @@ a.gr-prod:hover { text-decoration: underline; }
 .gr-ops-buscar { flex: 1; min-width: 240px; max-width: 420px; }
 .gr-pills--chicas button span { margin-left: 4px; opacity: .7; }
 .gr-ops { min-width: 1240px; }
-.gr-ops td { font-size: 14px; padding: 10px 12px; }
+.gr-ops td { font-size: 14px; padding: 10px 12px; white-space: nowrap; }
 .gr-ops th { padding: 10px 12px; white-space: nowrap; }
 .gr-ops th.is-orden { cursor: pointer; user-select: none; }
 .gr-ops th.is-orden:hover { color: var(--gr-acento); }
