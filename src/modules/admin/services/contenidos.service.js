@@ -56,3 +56,20 @@ export async function cancelarPieza(id) {
   const { data } = await http.post(`${BASE}/piezas/${id}/cancelar`);
   return data;
 }
+
+// Redes conectadas del comercio: { instagram, facebook, whatsapp, ensayo } (sin tokens).
+export async function getRedes() {
+  const { data } = await http.get(`${BASE}/redes`);
+  return data;
+}
+
+// Guarda credenciales o el modo ensayo (sólo super admin). Los tokens van al servicio cifrados.
+export async function guardarRedes(cambios) {
+  await http.put(`${BASE}/redes`, cambios);
+}
+
+// Publica un video listo: { destinos: ["instagram", "facebook"], texto }.
+export async function publicarPieza(id, publicacion) {
+  const { data } = await http.post(`${BASE}/piezas/${id}/publicaciones`, publicacion);
+  return data;
+}

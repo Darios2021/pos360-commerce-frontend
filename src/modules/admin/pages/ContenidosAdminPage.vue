@@ -13,7 +13,8 @@
       </div>
       <div class="ct-tabs" role="tablist">
         <button type="button" role="tab" :class="{ 'is-on': vista === 'nuevo' }" @click="irA('nuevo')">Nuevo reel</button>
-        <button type="button" role="tab" :class="{ 'is-on': vista === 'videos' }" @click="irA('videos')">Videos <span v-if="piezas.length" class="num">{{ piezas.length }}</span></button>
+        <button type="button" role="tab" :class="{ 'is-on': vista === 'videos' || vista === 'publicar' }" @click="irA('videos')">Videos <span v-if="piezas.length" class="num">{{ piezas.length }}</span></button>
+        <button type="button" role="tab" :class="{ 'is-on': vista === 'redes' }" @click="irA('redes')">Redes</button>
       </div>
     </div>
 
@@ -231,6 +232,84 @@
       </div>
     </template>
 
+    <!-- REDES: credenciales de Meta (van cifradas al servicio; nunca vuelven) -->
+    <div v-else-if="vista === 'redes'" class="ct-redes">
+      <section class="ct-col">
+        <div v-for="r in REDES" :key="r.k" class="sp-caja">
+          <div class="ct-red">
+            <span class="ct-red__ic" :class="`is-${r.k}`">{{ r.sigla }}</span>
+            <b>{{ r.t }}</b>
+            <span :class="redes[r.k] ? 'ct-ok' : 'ct-no'"><v-icon v-if="redes[r.k]" size="16">mdi-check-circle-outline</v-icon>{{ redes[r.k] ? "Conectado" : "Sin conectar" }}</span>
+            <button v-if="esSuper" type="button" class="ct-lnk" @click="redAbierta = redAbierta === r.k ? null : r.k">{{ redAbierta === r.k ? "Cerrar" : redes[r.k] ? "Cambiar" : "Conectar" }}</button>
+          </div>
+          <div v-if="redAbierta === r.k" class="ct-red__form">
+            <div class="ct-campo"><label>{{ r.idT }}</label><input v-model="cred.id" autocomplete="off" inputmode="numeric" /></div>
+            <div class="ct-campo"><label>Token de acceso</label><input v-model="cred.token" type="password" autocomplete="new-password" /></div>
+            <div class="ct-red__acc"><button type="button" class="ct-generar" :disabled="!cred.id.trim() || !cred.token.trim() || guardandoRed" @click="conectar(r)">Guardar conexión</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="ct-col">
+        <div class="sp-caja">
+          <div class="se-banda"><span>Modo de publicación</span></div>
+          <div class="ct-sonido">
+            <label class="ct-sw ct-sw--ultimo" :class="{ 'is-bloq': !esSuper }"><span>Ensayo: armar sin publicar</span><input :checked="redes.ensayo !== false" type="checkbox" :disabled="!esSuper || guardandoRed" @change="cambiarEnsayo($event)" /><i></i></label>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PUBLICAR: vista completa de un video listo -->
+    <div v-else-if="vista === 'publicar'" class="ct-pub">
+      <a href="#" class="se-volver ct-volver" @click.prevent="irA('videos')"><v-icon size="18">mdi-arrow-left</v-icon>Videos</a>
+      <div v-if="!piezaPub" class="sp-caja ct-vacio">{{ cargandoPub ? "Cargando…" : "El video no está disponible" }}</div>
+      <template v-else>
+        <div class="ct-pub__cab"><h2>Publicar video</h2><span>{{ piezaPub.titulo || piezaPub.items?.map((x) => x.titulo).join(", ") || "Sin título" }}</span></div>
+        <div v-if="redes.ensayo !== false" class="ct-ensayo"><v-icon size="20">mdi-flask-outline</v-icon>Modo ensayo: no se publica</div>
+        <div class="ct-pub__grilla">
+          <div class="ct-pub__video"><video :src="piezaPub.video" :poster="piezaPub.portada" controls playsinline preload="metadata"></video></div>
+          <div class="sp-caja">
+            <div class="se-banda"><span>Texto de la publicación</span><small class="num">{{ fmtEntero(textoPub.length) }} de 2.200</small></div>
+            <div class="ct-pub__texto">
+              <textarea v-model="textoPub" rows="14" maxlength="2200"></textarea>
+              <div class="ct-chips"><button v-for="h in hashtags" :key="h" type="button" class="ct-chip" :class="{ 'is-on': textoPub.includes(h) }" @click="alternarHashtag(h)">{{ h }}</button></div>
+            </div>
+          </div>
+          <div class="ct-col">
+            <div class="sp-caja">
+              <div class="se-banda"><span>Dónde se publica</span></div>
+              <label v-for="r in REDES.filter((x) => x.k !== 'whatsapp')" :key="r.k" class="ct-dest" :class="{ 'is-off': !redes[r.k] }">
+                <input v-model="destinos" type="checkbox" :value="r.k" :disabled="!redes[r.k]" />
+                <span class="ct-red__ic" :class="`is-${r.k}`">{{ r.sigla }}</span>
+                <span class="ct-dest__t"><b>{{ r.pub }}</b><small>{{ redes[r.k] ? r.sub : "sin conectar" }}</small></span>
+                <span :class="redes[r.k] ? 'ct-ok' : 'ct-no'">{{ redes[r.k] ? "Conectado" : "Sin conectar" }}</span>
+              </label>
+              <button v-if="!redes.instagram && !redes.facebook" type="button" class="ct-lnk ct-dest__ir" @click="irA('redes')">Conectar redes</button>
+            </div>
+            <div class="sp-caja">
+              <div class="se-banda"><span>Publicaciones</span><small class="num">{{ (piezaPub.publicaciones || []).length }}</small></div>
+              <div v-if="!(piezaPub.publicaciones || []).length" class="ct-vacio">Todavía no se publicó</div>
+              <div v-for="(p, k) in [...(piezaPub.publicaciones || [])].reverse()" :key="k" class="ct-hist">
+                <span class="num">{{ fecha(p.fecha) }}</span>
+                <span v-for="(r, d) in p.resultados" :key="d" class="ct-hist__r" :class="r.ok ? (r.ensayo ? 'is-ens' : 'is-ok') : 'is-err'">
+                  {{ nombreRed(d) }} · {{ r.ok ? (r.ensayo ? "ensayo" : "publicado") : "falló" }}
+                  <a v-if="r.enlace" :href="r.enlace" target="_blank" rel="noopener">ver</a>
+                  <small v-if="!r.ok">{{ r.error }}</small>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ct-pie">
+          <span></span>
+          <button type="button" class="ct-generar" :class="{ 'is-confirmar': confirmarPub }" :disabled="!destinos.length || !textoPub.trim() || publicando" @click="publicar">
+            <v-progress-circular v-if="publicando" indeterminate size="22" width="3" />
+            <v-icon v-else size="22">mdi-send-outline</v-icon>{{ confirmarPub ? "Confirmar publicación" : `Publicar en ${destinos.map(nombreRed).join(" y ") || "redes"}` }}
+          </button>
+        </div>
+      </template>
+    </div>
+
     <!-- VIDEOS -->
     <div v-else class="ct-videos">
       <div v-if="!piezas.length" class="sp-caja ct-vacio">Sin videos</div>
@@ -280,9 +359,10 @@
           </button>
         </div>
         <div v-if="v.estado === 'lista' || v.estado === 'error' || v.estado === 'cancelada'" class="ct-video__pie">
-          <button v-if="v.estado === 'lista'" type="button" class="ct-bajar" :disabled="bajando === v.id" @click="bajar(v)">
+          <button v-if="v.estado === 'lista'" type="button" class="ct-bajar" @click="abrirPublicar(v)"><v-icon size="20">mdi-send-outline</v-icon>Publicar</button>
+          <button v-if="v.estado === 'lista'" type="button" class="ct-icono" title="Bajar MP4" :disabled="bajando === v.id" @click="bajar(v)">
             <v-progress-circular v-if="bajando === v.id" indeterminate size="18" width="2" />
-            <v-icon v-else size="20">mdi-download</v-icon>Bajar MP4
+            <v-icon v-else size="20">mdi-download</v-icon>
           </button>
           <span v-else class="ct-video__esp"></span>
           <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" :title="confirmar === v.id ? 'Confirmar' : 'Eliminar'" @click="borrar(v)">
@@ -297,8 +377,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -337,10 +418,15 @@ const RITMOS = [
   { v: 1.12, t: "Ágil" },
 ];
 
+const REDES = [
+  { k: "instagram", t: "Instagram", sigla: "IG", idT: "ID de la cuenta de Instagram", idK: "ig_usuario_id", pub: "Instagram · reel", sub: "también en el feed" },
+  { k: "facebook", t: "Facebook · página", sigla: "f", idT: "ID de la página de Facebook", idK: "pagina_id", pub: "Facebook · reel de la página", sub: "página del comercio" },
+  { k: "whatsapp", t: "WhatsApp Business", sigla: "WA", idT: "ID del número de WhatsApp", idK: "numero_id" },
+];
 const route = useRoute();
 const router = useRouter();
-const vista = computed(() => (route.query.vista === "videos" ? "videos" : "nuevo"));
-function irA(v) { router.replace({ query: { ...route.query, vista: v === "videos" ? "videos" : undefined } }); }
+const vista = computed(() => (["videos", "redes", "publicar"].includes(route.query.vista) ? route.query.vista : "nuevo"));
+function irA(v, extra = {}) { router.replace({ query: { vista: v === "nuevo" ? undefined : v, ...extra } }); }
 
 const fuente = ref(null);
 const catalogo = ref([]);
@@ -366,6 +452,19 @@ const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEdita
 const opciones = reactive({ musica: "pulso", voz: true, locutor: null, ritmo: 1, cuotas: true, efectos: true });
 const voces = ref([]);
 const piezas = ref([]);
+const auth = useAuthStore();
+const esSuper = computed(() => Boolean(auth.isSuperAdmin));
+const redes = ref({});
+const redAbierta = ref(null);
+const cred = reactive({ id: "", token: "" });
+const guardandoRed = ref(false);
+const piezaPub = ref(null);
+const cargandoPub = ref(false);
+const textoPub = ref("");
+const destinos = ref([]);
+const publicando = ref(false);
+const confirmarPub = ref(false);
+const textoDe = ref(null);
 const error = ref("");
 const creando = ref(false);
 const confirmar = ref(null);
@@ -621,6 +720,81 @@ async function generar() {
   } catch (e) { error.value = mensaje(e); } finally { creando.value = false; }
 }
 
+/* Redes y publicación */
+const nombreRed = (k) => ({ instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp" }[k] || k);
+async function cargarRedes() {
+  try { redes.value = (await getRedes()) || {}; } catch { redes.value = {}; }
+}
+async function conectar(r) {
+  guardandoRed.value = true;
+  try {
+    await guardarRedes({ [r.k]: { [r.idK]: cred.id.trim(), token: cred.token.trim() } });
+    cred.id = ""; cred.token = "";
+    redAbierta.value = null;
+    await cargarRedes();
+  } catch (e) { error.value = mensaje(e); } finally { guardandoRed.value = false; }
+}
+async function cambiarEnsayo(ev) {
+  const ensayo = ev.target.checked;
+  guardandoRed.value = true;
+  try { await guardarRedes({ ensayo }); await cargarRedes(); } catch (e) { error.value = mensaje(e); ev.target.checked = !ensayo; } finally { guardandoRed.value = false; }
+}
+const hashtags = computed(() => {
+  const marca = String(fuente.value?.marca?.nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, " ").trim();
+  const camel = marca ? `#${marca.toLowerCase().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}` : "";
+  return ["#SanJuan", camel, "#Tecnologia", "#Ofertas", "#Cuotas"].filter(Boolean);
+});
+function alternarHashtag(h) {
+  const t = textoPub.value;
+  textoPub.value = t.includes(h) ? t.replace(new RegExp(`\\s*${h}\\b`), "") : `${t.trimEnd()}${/#\w+$/.test(t.trimEnd()) ? " " : "\n\n"}${h}`;
+}
+// Texto sugerido con lo que ya se sabe del video y de la tienda (se edita libre).
+function textoSugerido(p) {
+  const f = fuente.value || {};
+  const items = (p.items || []).map((x) => x.titulo).filter(Boolean);
+  const lineas = [];
+  lineas.push(p.descripcion || p.titulo || (items.length === 1 ? items[0] : "Mirá lo que tenemos"));
+  if (items.length > 1) lineas.push("", ...items.map((x) => `• ${x}`));
+  const extra = [];
+  if (f.sellos?.length) extra.push(...f.sellos);
+  if (f.sucursales?.length) extra.push(`📍 ${f.sucursales.map((x) => x.nombre).join(" · ")}`);
+  if (f.textos?.contacto) extra.push(`💬 ${f.textos.contacto}`);
+  if (f.textos?.enlace) extra.push(`🌐 ${f.textos.enlace}`);
+  if (extra.length) lineas.push("", ...extra);
+  lineas.push("", hashtags.value.slice(0, 2).join(" "));
+  return lineas.join("\n").slice(0, 2200);
+}
+async function abrirPublicar(v) {
+  irA("publicar", { pieza: v.id });
+}
+async function cargarPublicar() {
+  const id = route.query.pieza;
+  if (vista.value !== "publicar" || !id) return;
+  cargandoPub.value = true;
+  confirmarPub.value = false;
+  try {
+    const [p] = await Promise.all([verPieza(String(id)), cargarRedes()]);
+    piezaPub.value = p;
+    if (textoDe.value !== p.id) { textoPub.value = textoSugerido(p); textoDe.value = p.id; }
+    destinos.value = ["instagram", "facebook"].filter((k) => redes.value[k]).slice(0, 1);
+  } catch { piezaPub.value = null; } finally { cargandoPub.value = false; }
+}
+watch(() => [vista.value, route.query.pieza], cargarPublicar);
+watch(vista, (v) => { if (v === "redes") cargarRedes(); });
+async function publicar() {
+  if (redes.value.ensayo === false && !confirmarPub.value) {
+    confirmarPub.value = true;
+    setTimeout(() => { confirmarPub.value = false; }, 5000);
+    return;
+  }
+  confirmarPub.value = false;
+  publicando.value = true;
+  try {
+    await publicarPieza(piezaPub.value.id, { destinos: destinos.value, texto: textoPub.value.trim() });
+    piezaPub.value = await verPieza(piezaPub.value.id);
+  } catch (e) { error.value = mensaje(e); } finally { publicando.value = false; }
+}
+
 /* Videos */
 async function cancelar(v) {
   if (confirmar.value !== v.id) {
@@ -728,6 +902,8 @@ onMounted(async () => {
     fuente.value = await getFuente();
   } catch (e) { error.value = mensaje(e); }
   cargarCatalogo();
+  cargarRedes();
+  cargarPublicar();
   cargarPromos();
   listarVoces().then((l) => {
     voces.value = l;
@@ -904,6 +1080,54 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-generar:hover:not(:disabled) { background: #0a5a90; }
 .ct-generar:disabled { opacity: .5; cursor: default; }
 
+.ct-icono { width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-acento); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.ct-icono .v-icon { color: var(--sp-acento); }
+.ct-icono:hover { background: #cfe5f5; border-color: #3f8fc6; }
+.ct-redes { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ct-red { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.ct-red > b { flex: 1; font-size: 15px; }
+.ct-red__ic { width: 40px; height: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font: 900 13px Inter, sans-serif; flex-shrink: 0; }
+.ct-red__ic.is-instagram { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); }
+.ct-red__ic.is-facebook { background: #1877f2; font-size: 18px; }
+.ct-red__ic.is-whatsapp { background: #25d366; }
+.ct-red__form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 4px 12px; padding: 0 16px 16px; border-top: 1px solid var(--sp-linea); }
+.ct-red__acc { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 8px; }
+.ct-ok, .ct-no { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 9999px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.ct-ok { background: #e3f4ee; color: #1f7a5c; }
+.ct-ok .v-icon { color: #1f7a5c; }
+.ct-no { background: var(--sp-linea); color: var(--sp-suave); }
+.ct-lnk { border: 0; background: transparent; font: 800 15px Inter, sans-serif; color: var(--sp-acento); cursor: pointer; padding: 4px 6px; }
+.ct-lnk:hover { text-decoration: underline; }
+.ct-sw.is-bloq { opacity: .6; cursor: default; }
+.ct-pub { display: flex; flex-direction: column; gap: 14px; }
+.ct-volver { align-self: flex-start; }
+.ct-pub__cab h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.ct-pub__cab span { font-size: 14px; font-weight: 600; color: var(--sp-suave); }
+.ct-ensayo { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: #fff4e5; color: #8a4b0f; font-size: 14px; font-weight: 700; }
+.ct-ensayo .v-icon { color: #8a4b0f; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-ensayo { background: #3a2a12; color: #f5c98a; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-ensayo .v-icon { color: #f5c98a; }
+.ct-pub__grilla { display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+.ct-pub__video video { width: 300px; aspect-ratio: 9 / 16; border-radius: 16px; background: #000; display: block; box-shadow: 0 10px 30px rgba(7, 28, 47, .25); }
+.ct-pub__texto { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ct-pub__texto textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font: 500 14px/1.5 Inter, sans-serif; outline: 0; resize: vertical; }
+.ct-pub__texto textarea:focus { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, .18); }
+.ct-dest { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--sp-linea); cursor: pointer; }
+.ct-dest input { width: 20px; height: 20px; accent-color: #0f6fae; }
+.ct-dest.is-off { opacity: .55; cursor: default; }
+.ct-dest__t { flex: 1; display: flex; flex-direction: column; }
+.ct-dest__t b { font-size: 15px; }
+.ct-dest__t small { font-size: 13px; color: var(--sp-suave); }
+.ct-dest__ir { margin: 8px 12px 12px; }
+.ct-hist { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--sp-linea); font-size: 13px; }
+.ct-hist > span:first-child { color: var(--sp-suave); font-weight: 700; }
+.ct-hist__r { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 9999px; font-weight: 800; }
+.ct-hist__r.is-ok { background: #e3f4ee; color: #1f7a5c; }
+.ct-hist__r.is-ens { background: #fff4e5; color: #8a4b0f; }
+.ct-hist__r.is-err { background: #fdecea; color: #c2413a; }
+.ct-hist__r a { color: inherit; }
+.ct-hist__r small { font-weight: 600; }
+.ct-generar.is-confirmar { background: #c2413a; }
 .ct-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 .ct-videos > .ct-vacio { grid-column: 1 / -1; }
 .ct-video { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -951,6 +1175,10 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-borrar.is-confirmar .v-icon { color: #fff; }
 
 @media (max-width: 1100px) {
+  .ct-pub__grilla { grid-template-columns: 260px minmax(0, 1fr); }
+  .ct-pub__grilla > .ct-col { grid-column: 1 / -1; }
+  .ct-pub__video video { width: 260px; }
+  .ct-redes { grid-template-columns: minmax(0, 1fr); }
   .ct-p2 { grid-template-columns: 220px minmax(0, 1fr); }
   .ct-p2 .ct-prev__tel { grid-column: 1 / -1; }
   .ct-p3__abajo { grid-template-columns: minmax(0, 1fr); }
