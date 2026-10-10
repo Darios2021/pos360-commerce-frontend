@@ -171,6 +171,9 @@
             <div class="se-banda"><span>Voz y detalles</span></div>
             <div class="ct-sonido">
               <label class="ct-sw"><span>Voz en off</span><input v-model="opciones.voz" type="checkbox" @change="sugerir" /><i></i></label>
+              <div v-if="opciones.voz && voces.length > 1" class="ct-seg">
+                <button v-for="o in voces" :key="o.id" type="button" :class="{ 'is-on': opciones.locutor === o.id }" @click="opciones.locutor = o.id">{{ o.nombre }}</button>
+              </div>
               <div v-if="opciones.voz" class="ct-seg">
                 <button v-for="o in RITMOS" :key="o.v" type="button" :class="{ 'is-on': opciones.ritmo === o.v }" @click="opciones.ritmo = o.v">{{ o.t }}</button>
               </div>
@@ -249,7 +252,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, listarPiezas, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const TOPE = 6;
@@ -290,7 +293,8 @@ const editando = ref(null);
 const borrador = reactive({ titulo: "", descripcion: "" });
 const guardando = ref(false);
 const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEditada: false });
-const opciones = reactive({ musica: "pulso", voz: true, ritmo: 1, cuotas: true, efectos: true });
+const opciones = reactive({ musica: "pulso", voz: true, locutor: null, ritmo: 1, cuotas: true, efectos: true });
+const voces = ref([]);
 const piezas = ref([]);
 const error = ref("");
 const creando = ref(false);
@@ -417,6 +421,7 @@ function armarEncargo() {
     items,
     voz: {
       activa: opciones.voz,
+      locutor: opciones.locutor || undefined,
       velocidad: opciones.ritmo,
       guion: {
         intro: guion.intro.trim() || undefined,
@@ -516,6 +521,10 @@ onMounted(async () => {
     fuente.value = await getFuente();
   } catch (e) { error.value = mensaje(e); }
   cargarCatalogo();
+  listarVoces().then((l) => {
+    voces.value = l;
+    opciones.locutor = (l.find((v) => v.porDefecto) || l[0])?.id || null;
+  }).catch(() => { voces.value = []; });
   try {
     piezas.value = await listarPiezas(30);
     seguir();

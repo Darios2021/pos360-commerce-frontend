@@ -44,3 +44,9 @@ export async function editarPieza(id, cambios) {
   const { data } = await http.patch(`${BASE}/piezas/${id}`, cambios);
   return data;
 }
+
+// Locutores disponibles para la voz en off: [{ id, nombre, porDefecto }].
+export async function listarVoces() {
+  const { data } = await http.get(`${BASE}/voces`);
+  return Array.isArray(data) ? data : [];
+}
