@@ -12,7 +12,7 @@
     :ancho="1080"
     :accion="modo === 'nuevo' ? 'Guardar y asignar a la venta' : 'Asignar a la venta'"
     accion-icono="mdi-account-check-outline"
-    :accion-deshabilitada="modo === 'nuevo' ? !nuevo.display_name.trim() : sel < 0"
+    :accion-deshabilitada="modo === 'nuevo' ? !nuevo.display_name.trim() : (soloMay && !resultados.length)"
     :cargando="guardando"
     @update:model-value="emit('update:modelValue', $event)"
     @abierto="enfocar"
@@ -20,25 +20,29 @@
   >
     <div class="pcl">
       <div class="pcl-izq" :class="{ 'is-activo': modo === 'buscar' }" @click="modo = 'buscar'">
-        <span class="pm-lab">Buscar cliente</span>
+        <div class="pcl-tabs" role="tablist">
+          <button type="button" role="tab" :aria-selected="!soloMay" :class="{ 'is-on': !soloMay }" @click="soloMay = false">Todos</button>
+          <button type="button" role="tab" :aria-selected="soloMay" :class="{ 'is-on': soloMay }" @click="soloMay = true">Mayoristas</button>
+        </div>
         <label class="pcl-busca">
           <v-icon size="22">mdi-magnify</v-icon>
-          <input ref="campoBusca" v-model="q" type="text" autocomplete="off" placeholder="DNI, nombre o teléfono" @focus="modo = 'buscar'" />
+          <input ref="campoBusca" v-model="q" type="text" autocomplete="off" :placeholder="soloMay ? 'Buscar entre mayoristas' : 'DNI, nombre o teléfono'" @focus="modo = 'buscar'" />
           <v-progress-circular v-if="buscando" indeterminate size="18" width="2" color="primary" />
         </label>
         <div ref="listaRef" class="pcl-lista">
-          <div class="pm-fila pcl-fila" :class="{ 'is-on': modo === 'buscar' && sel === 0 }" @click="sel = 0" @dblclick="sel = 0; confirmar()">
+          <div v-if="!soloMay" class="pm-fila pcl-fila" :class="{ 'is-on': modo === 'buscar' && sel === 0 }" @click="sel = 0" @dblclick="sel = 0; confirmar()">
             <v-icon size="22">mdi-account-outline</v-icon>
             <span class="pcl-n">Consumidor final</span>
           </div>
-          <div v-for="(c, i) in resultados" :key="c.id" class="pm-fila pcl-fila" :class="{ 'is-on': modo === 'buscar' && sel === i + 1 }" @click="sel = i + 1" @dblclick="sel = i + 1; confirmar()">
-            <v-icon size="22" :color="esMayorista(c) ? 'primary' : undefined">mdi-card-account-details-outline</v-icon>
+          <div v-for="(c, i) in resultados" :key="c.id" class="pm-fila pcl-fila" :class="{ 'is-on': modo === 'buscar' && sel === i + base }" @click="sel = i + base" @dblclick="sel = i + base; confirmar()">
+            <span class="pcl-av" :class="{ 'is-may': esMayorista(c) }">{{ String(c.display_name || "?").trim().charAt(0).toUpperCase() }}</span>
             <span class="pcl-txt">
               <span class="pcl-n pm-c1">{{ c.display_name }}</span>
-              <span class="pcl-s pm-c1">{{ esMayorista(c) ? "mayorista" : [c.doc_number, c.phone].filter(Boolean).join(" · ") || "sin datos de contacto" }}</span>
+              <span class="pcl-s pm-c1">{{ [c.doc_number, c.phone].filter(Boolean).join(" · ") || "sin datos de contacto" }}</span>
             </span>
+            <span v-if="esMayorista(c)" class="pcl-tag">Mayorista</span>
           </div>
-          <div v-if="q.trim().length >= 2 && !buscando && !resultados.length" class="pcl-nada">Sin resultados</div>
+          <div v-if="!buscando && !resultados.length && (soloMay || q.trim().length >= 2)" class="pcl-nada">{{ soloMay ? "Sin mayoristas que coincidan" : "Sin resultados" }}</div>
         </div>
       </div>
 
@@ -86,6 +90,10 @@ const modo = ref("buscar");
 const campoBusca = ref(null);
 const listaRef = ref(null);
 const q = ref("");
+const soloMay = ref(false);
+// Con la pestaña Mayoristas no está la fila "Consumidor final": el primer
+// resultado es el 0.
+const base = computed(() => (soloMay.value ? 0 : 1));
 const resultados = ref([]);
 const buscando = ref(false);
 const sel = ref(0);
@@ -97,18 +105,22 @@ function enfocar() { nextTick(() => campoBusca.value?.focus()); }
 
 let reloj = null;
 let turno = 0;
-watch(q, (v) => {
+watch([q, soloMay], ([v]) => {
   clearTimeout(reloj);
   const texto = String(v || "").trim();
-  if (texto.length < 2) { resultados.value = []; sel.value = 0; return; }
+  // Todos: desde 2 letras. Mayoristas: también con el campo vacío (la lista).
+  if (!soloMay.value && texto.length < 2) { resultados.value = []; sel.value = 0; return; }
   reloj = setTimeout(async () => {
     const mio = ++turno;
     buscando.value = true;
     try {
-      const { data } = await listCustomers({ q: texto, limit: 15, is_active: 1 });
+      const params = { limit: soloMay.value ? 50 : 15, is_active: 1 };
+      if (texto) params.q = texto;
+      if (soloMay.value) params.mayorista = 1;
+      const { data } = await listCustomers(params);
       if (mio !== turno) return;
       resultados.value = data?.data || [];
-      sel.value = resultados.value.length ? 1 : 0;
+      sel.value = resultados.value.length ? base.value : 0;
     } catch {
       if (mio === turno) resultados.value = [];
     } finally {
@@ -125,7 +137,9 @@ function asignar(c) {
 
 async function confirmar() {
   if (modo.value === "buscar") {
-    asignar(sel.value === 0 ? null : resultados.value[sel.value - 1]);
+    if (!soloMay.value && sel.value === 0) { asignar(null); return; }
+    const c = resultados.value[sel.value - base.value];
+    if (c) asignar(c);
     return;
   }
   if (!nuevo.display_name.trim() || guardando.value) return;
@@ -157,6 +171,7 @@ async function confirmar() {
 watch(abierto, (v) => {
   if (!v) return;
   modo.value = "buscar";
+  soloMay.value = false;
   q.value = "";
   resultados.value = [];
   sel.value = 0;
@@ -165,7 +180,8 @@ watch(abierto, (v) => {
 });
 
 function mover(d) {
-  const n = resultados.value.length + 1;
+  const n = resultados.value.length + base.value;
+  if (!n) return;
   sel.value = (sel.value + d + n) % n;
   nextTick(() => listaRef.value?.querySelector(".pm-fila.is-on")?.scrollIntoView({ block: "nearest" }));
 }
@@ -193,6 +209,12 @@ useTeclasModal(abierto, (e) => {
 .pcl-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pcl-n { font-size: 15px; font-weight: 800; }
 .pcl-s { font-size: 12px; font-weight: 700; color: #5a6678; }
+.pcl-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: #e2e8f0; }
+.pcl-tabs button { height: 40px; border: 0; border-radius: 9px; background: transparent; font: 800 14px Inter, sans-serif; color: #334155; cursor: pointer; }
+.pcl-tabs button.is-on { background: #ffffff; color: #0f6fae; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12); }
+.pcl-av { width: 36px; height: 36px; flex-shrink: 0; border-radius: 9999px; background: #e2e8f0; color: #334155; display: flex; align-items: center; justify-content: center; font: 900 15px Inter, sans-serif; }
+.pcl-av.is-may { background: #0f6fae; color: #ffffff; }
+.pcl-tag { flex-shrink: 0; padding: 2px 8px; border-radius: 9999px; background: #0f6fae; color: #ffffff; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .pcl-nada { font-size: 14px; color: #5a6678; padding: 6px 2px; }
 .pcl-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pcl-c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }

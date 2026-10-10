@@ -4,24 +4,20 @@
       <div class="ck-screen__title">Elegí medio de pago</div>
     </div>
 
-    <!-- Cliente mayorista: con que precio se cobra. -->
-    <div v-if="clienteMayorista" class="ck-precio">
-      <div class="ck-precio__cliente">
-        <v-icon size="16">mdi-account-tie-outline</v-icon>
-        {{ clienteMayorista }}
+    <!-- Cliente mayorista: con qué precio se cobra. -->
+    <div v-if="clienteMayorista" class="cpm">
+      <div class="cpm-cli">
+        <span class="cpm-av">{{ String(clienteMayorista).trim().charAt(0).toUpperCase() }}</span>
+        <span class="cpm-txt"><b>{{ clienteMayorista }}</b><span class="cpm-tag">Mayorista</span></span>
       </div>
-      <v-btn-toggle
-        :model-value="state.applyReseller ? 'revendedor' : 'normal'"
-        mandatory
-        density="comfortable"
-        color="primary"
-        variant="outlined"
-        divided
-        @update:model-value="(v) => (state.applyReseller = v === 'revendedor')"
-      >
-        <v-btn value="revendedor">Precio revendedor</v-btn>
-        <v-btn value="normal">Precio normal</v-btn>
-      </v-btn-toggle>
+      <div class="cpm-seg" role="radiogroup" aria-label="Precio de la venta">
+        <button type="button" role="radio" :aria-checked="state.applyReseller" :class="{ 'is-on': state.applyReseller }" @click="state.applyReseller = true">
+          <v-icon size="22">mdi-tag-outline</v-icon>Precio revendedor
+        </button>
+        <button type="button" role="radio" :aria-checked="!state.applyReseller" :class="{ 'is-on': !state.applyReseller }" @click="state.applyReseller = false">
+          <v-icon size="22">mdi-cash</v-icon>Precio normal
+        </button>
+      </div>
     </div>
 
     <div class="ck-screen__body">
@@ -186,4 +182,18 @@ defineExpose({
   font-weight: 600;
   font-size: 0.9rem;
 }
+
+/* Cliente mayorista (10/10): ficha y dos botones grandes para el precio. */
+.cpm { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; border-radius: 12px; background: #eef7fd; border: 1px solid #8cc0e3; }
+.cpm-cli { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+.cpm-av { width: 40px; height: 40px; border-radius: 9999px; background: #0f6fae; color: #ffffff; display: flex; align-items: center; justify-content: center; font: 900 17px Inter, sans-serif; flex-shrink: 0; }
+.cpm-txt { display: flex; flex-direction: column; min-width: 0; }
+.cpm-txt b { font-size: 16px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cpm-tag { align-self: flex-start; margin-top: 2px; padding: 2px 8px; border-radius: 9999px; background: #0f6fae; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.cpm-seg { display: flex; gap: 8px; }
+.cpm-seg button { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 10px; border: 1px solid #c9d5e1; background: #ffffff; color: #334155; font: 800 15px Inter, sans-serif; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+.cpm-seg button .v-icon { color: #5a6678; }
+.cpm-seg button:hover { background: #cfe5f5; border-color: #3f8fc6; }
+.cpm-seg button.is-on { background: #0f6fae; border-color: #0f6fae; color: #ffffff; box-shadow: 0 4px 12px rgba(15, 111, 174, 0.25); }
+.cpm-seg button.is-on .v-icon { color: #ffffff; }
 </style>

@@ -6,86 +6,47 @@
      si es mayorista, el selector de precio con el estilo de Retiro/Delivery. -->
 <template>
   <div class="cv">
-    <template v-if="cliente">
-      <div class="cv-ficha">
+    <!-- Sin cliente: un botón que abre la ventana Cliente (F3), con el
+         buscador grande y la pestaña de mayoristas. -->
+    <button v-if="!cliente" type="button" class="cv-elegir" :disabled="disabled" @click="abrirBuscador">
+      <span class="cv-elegir__ic"><v-icon size="22">mdi-account-search-outline</v-icon></span>
+      <span class="cv-elegir__txt"><small>Cliente</small><b>Consumidor final</b></span>
+      <span class="cv-tk">F3</span>
+    </button>
+
+    <template v-else>
+      <div class="cv-ficha" :class="{ 'cv-ficha--may': mayorista }">
         <span class="cv-avatar">{{ inicial }}</span>
         <span class="cv-datos">
-          <span class="cv-nombre-fila">
-            <span class="cv-nombre">{{ cliente.display_name }}</span>
-            <v-icon size="15" class="cv-ok">mdi-account-check</v-icon>
-          </span>
-          <span class="cv-sub">{{ subtitulo }}</span>
+          <span class="cv-nombre">{{ cliente.display_name }}</span>
+          <span v-if="mayorista" class="cv-tag">Mayorista</span>
+          <span v-else class="cv-sub">{{ subtitulo }}</span>
         </span>
-        <button
-          type="button"
-          class="cv-sacar"
-          :disabled="disabled"
-          title="Sacar el cliente de esta venta"
-          aria-label="Sacar el cliente de esta venta"
-          @click="elegir(null)"
-        >
-          <v-icon size="19">mdi-account-remove-outline</v-icon>
+        <button type="button" class="cv-btn" :disabled="disabled" title="Cambiar cliente" aria-label="Cambiar cliente" @click="abrirBuscador">
+          <v-icon size="20">mdi-account-switch-outline</v-icon>
+        </button>
+        <button type="button" class="cv-btn cv-btn--sacar" :disabled="disabled" title="Sacar el cliente de esta venta" aria-label="Sacar el cliente de esta venta" @click="elegir(null)">
+          <v-icon size="20">mdi-close</v-icon>
         </button>
       </div>
-
-      <div v-if="mayorista" class="cv-precio" role="group" aria-label="Precio de la venta">
-        <button
-          type="button"
-          class="cv-seg"
-          :class="{ 'is-on': aplicado }"
-          :disabled="disabled"
-          @click="usarRevendedor(true)"
-        >
-          <v-icon size="22">mdi-tag-outline</v-icon>
-          Revendedor
+      <div v-if="mayorista" class="cv-precio" role="radiogroup" aria-label="Precio de la venta">
+        <button type="button" class="cv-seg" :class="{ 'is-on': aplicado }" :disabled="disabled" @click="usarRevendedor(true)">
+          <v-icon size="20">mdi-tag-outline</v-icon>Revendedor
         </button>
-        <button
-          type="button"
-          class="cv-seg"
-          :class="{ 'is-on': !aplicado }"
-          :disabled="disabled"
-          @click="usarRevendedor(false)"
-        >
-          <v-icon size="22">mdi-cash</v-icon>
-          Precio normal
+        <button type="button" class="cv-seg" :class="{ 'is-on': !aplicado }" :disabled="disabled" @click="usarRevendedor(false)">
+          <v-icon size="20">mdi-cash</v-icon>Normal
         </button>
       </div>
     </template>
 
-    <v-autocomplete
-      v-else
-      :model-value="null"
-      v-model:search="busqueda"
-      :items="opciones"
-      :loading="buscando"
-      :disabled="disabled"
-      item-title="display_name"
-      item-value="id"
-      return-object
-      no-filter
-      hide-details
-      density="compact"
-      variant="outlined"
-      placeholder="Cliente (consumidor final)"
-      prepend-inner-icon="mdi-account-search-outline"
-      no-data-text="Sin resultados"
-      class="cv-campo"
-      @update:model-value="elegir"
-    >
-      <template #item="{ props: ip, item }">
-        <v-list-item v-bind="ip" :subtitle="item.raw.doc_number || item.raw.phone || ''">
-          <template #append>
-            <span v-if="esMayorista(item.raw)" class="cv-tag">Mayorista</span>
-          </template>
-        </v-list-item>
-      </template>
-    </v-autocomplete>
+    <PosClienteDialog v-if="posStore" v-model="buscadorAbierto" :pos-store="posStore" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from "vue";
 import { listCustomers } from "@/modules/admin/services/customers.service";
+import PosClienteDialog from "./modales/PosClienteDialog.vue";
 import { esMayorista } from "@/app/utils/clienteMayorista";
 
 const props = defineProps({
@@ -133,133 +94,46 @@ function elegir(c) {
   opciones.value = [];
 }
 
+// La misma ventana Cliente de F3, montada acá para que también ande en el
+// celular, donde no está la barra de teclas.
+const buscadorAbierto = ref(false);
+function abrirBuscador() {
+  buscadorAbierto.value = true;
+}
+
 function usarRevendedor(activo) {
   props.posStore?.setUsarPrecioMayorista?.(activo);
 }
 </script>
 
 <style scoped>
-.cv {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06));
-}
-
-.cv-ficha {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.28);
-}
-.cv-avatar {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #10b981;
-  color: #ffffff;
-  font: 900 15px Inter, sans-serif;
-}
-.cv-datos {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.cv-nombre-fila {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.cv-nombre {
-  font: 700 14px Inter, sans-serif;
-  color: var(--z-texto, #0f172a);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cv-ok { color: #10b981 !important; flex-shrink: 0; }
-.cv-sub {
-  font-size: 12px;
-  color: var(--z-suave, #64748b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cv-sacar {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.cv-sacar:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-.cv-sacar :deep(.v-icon) { color: inherit; }
-
-/* Selector de precio: el mismo grupo que Retiro/Delivery/Mesa en Zondito. */
-.cv-precio {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.05);
-}
-.cv-seg {
-  flex: 1;
-  min-width: 0;
-  height: 54px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--z-texto2, #334155);
-  font: 700 12px Inter, sans-serif;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.cv-seg :deep(.v-icon) { color: inherit; }
-.cv-seg.is-on {
-  background: #0f6fae;
-  color: #ffffff;
-}
-.cv-seg:disabled { opacity: 0.5; cursor: default; }
-
-.cv-campo :deep(.v-field) {
-  border-radius: 8px;
-  min-height: 42px;
-  font-size: 14px;
-  background: var(--z-campo, #ffffff);
-}
-.cv-tag {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(15, 111, 174, 0.12);
-  color: #0f6fae;
-  white-space: nowrap;
-}
+.cv { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-bottom: 1px solid var(--z-linea, rgba(15, 23, 42, 0.06)); }
+.cv-elegir { width: 100%; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 8px; border-radius: 12px; border: 1px solid #c9d5e1; background: #ffffff; cursor: pointer; text-align: left; transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
+.cv-elegir:hover:not(:disabled) { background: #cfe5f5; border-color: #3f8fc6; box-shadow: inset 0 0 0 1px #3f8fc6; }
+.cv-elegir:disabled { opacity: 0.5; cursor: not-allowed; }
+.cv-elegir__ic { width: 40px; height: 40px; border-radius: 10px; background: rgba(14, 165, 233, 0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cv-elegir__ic .v-icon { color: #0369a1; }
+.cv-elegir__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cv-elegir__txt small { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6678; }
+.cv-elegir__txt b { font-size: 15px; font-weight: 800; color: #0f172a; }
+.cv-tk { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 26px; padding: 0 7px; border-radius: 6px; border: 1px solid rgba(100, 116, 139, 0.6); background: linear-gradient(#f8fafc, #cbd5e1); box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45); color: #1e293b; font: 900 13px ui-monospace, Menlo, Consolas, monospace; }
+.cv-ficha { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border-radius: 12px; background: #e3f4ee; border: 1px solid #9fd5c2; }
+.cv-ficha--may { background: #eef7fd; border-color: #8cc0e3; }
+.cv-avatar { width: 40px; height: 40px; flex-shrink: 0; border-radius: 9999px; display: flex; align-items: center; justify-content: center; background: #2e9e7b; color: #ffffff; font: 900 16px Inter, sans-serif; }
+.cv-ficha--may .cv-avatar { background: #0f6fae; }
+.cv-datos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cv-nombre { font-size: 15px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-sub { font-size: 12px; font-weight: 600; color: #5a6678; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-tag { align-self: flex-start; padding: 1px 8px; border-radius: 9999px; background: #0f6fae; color: #ffffff; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.cv-btn { width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cv-btn .v-icon { color: #334155; }
+.cv-btn:hover { background: rgba(15, 23, 42, 0.08); }
+.cv-btn--sacar:hover { background: #fdeceb; }
+.cv-btn--sacar:hover .v-icon { color: #a3322c; }
+.cv-precio { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cv-seg { height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; border: 1px solid #c9d5e1; background: #ffffff; color: #334155; font: 800 14px Inter, sans-serif; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+.cv-seg .v-icon { color: #5a6678; }
+.cv-seg:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+.cv-seg.is-on { background: #0f6fae; border-color: #0f6fae; color: #ffffff; box-shadow: 0 4px 12px rgba(15, 111, 174, 0.25); }
+.cv-seg.is-on .v-icon { color: #ffffff; }
 </style>
