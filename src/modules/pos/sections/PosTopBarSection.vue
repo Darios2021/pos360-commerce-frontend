@@ -9,22 +9,25 @@
       :cart-count="cartCount"
       :active-states="activeStates"
       :caja-open="!!isCajaOpen"
-      @help="handleHelp"
-      @find-product="handleFindProduct"
-      @search="handleSearch"
+      @help="abrir(helpOpen)"
+      @find-product="abrir(buscarOpen)"
+      @search="abrir(consultaOpen)"
       @refresh="handleRefresh"
-      @show-cart="handleShowCart"
+      @show-cart="abrir(showCartDialog)"
       @pay="handlePay"
       @new-customer="handleNewCustomer"
       @clear-cart="handleClearCart"
       @cash="handleCash"
       @movements="handleMovements"
     />
-    <PosCashMovementsDialog
-      v-model="movementsOpen"
-      :caja-id="Number(currentCashRegister?.id || 0)"
-      :sucursal="movementsSucursal"
-    />
+
+    <!-- Ventanas de la barra (maqueta aprobada 10/10) -->
+    <PosBuscarDialog v-model="buscarOpen" :branch-id="sucursal" @agregar="agregar" />
+    <PosPrecioDialog v-model="consultaOpen" :branch-id="sucursal" @agregar="agregar" />
+    <PosCarritoDialog v-model="showCartDialog" :pos-store="posStore" @cobrar="cobrarDesdeCarrito" />
+    <PosVaciarDialog v-model="vaciarOpen" :pos-store="posStore" @vaciado="toast('Carrito vaciado')" />
+    <PosMovimientosDialog v-model="movementsOpen" :caja-id="Number(currentCashRegister?.id || 0)" :sucursal="sucursal" />
+    <PosAyudaDialog v-model="helpOpen" />
   </div>
 </template>
 
@@ -32,7 +35,12 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import PosTopBar from "../components/PosTopBar.vue";
-import PosCashMovementsDialog from "../components/PosCashMovementsDialog.vue";
+import PosBuscarDialog from "../components/modales/PosBuscarDialog.vue";
+import PosPrecioDialog from "../components/modales/PosPrecioDialog.vue";
+import PosCarritoDialog from "../components/modales/PosCarritoDialog.vue";
+import PosVaciarDialog from "../components/modales/PosVaciarDialog.vue";
+import PosMovimientosDialog from "../components/modales/PosMovimientosDialog.vue";
+import PosAyudaDialog from "../components/modales/PosAyudaDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
 const {
@@ -47,7 +55,6 @@ const {
   checkoutDialog,
   openCheckoutSafe,
   toast,
-  requestFocusSearch,
   requestRefreshCatalog,
   isCajaOpen,
   currentCashRegister,
@@ -55,68 +62,56 @@ const {
   openCajaConfig,
   onCloseCaja,
   posStore,
+  handleAddConsultaToCart,
 } = usePosSalesFlow();
 
 const router = useRouter();
+const buscarOpen = ref(false);
+const vaciarOpen = ref(false);
 const movementsOpen = ref(false);
-const movementsSucursal = computed(
+const sucursal = computed(
   () => Number(getActiveBranchIdSafe?.() || currentCashRegister.value?.branch_id || 0) || 0
 );
 
-// Mapa de estados activos por F-key para que el TopBar resalte los que
-// están abiertos (toggle visual).
+// Qué ventana está a la vista, para el punto de la barra.
 const activeStates = computed(() => ({
   F1: !!helpOpen.value,
+  F2: !!buscarOpen.value,
   F4: !!consultaOpen.value,
   F6: !!showCartDialog.value,
+  F8: !!vaciarOpen.value,
   F9: !!checkoutDialog.value,
   F10: !!movementsOpen.value,
 }));
 
+const ventanas = [helpOpen, buscarOpen, consultaOpen, showCartDialog, vaciarOpen, movementsOpen];
 function closeAllSecondary() {
-  helpOpen.value = false;
-  consultaOpen.value = false;
-  showCartDialog.value = false;
-  movementsOpen.value = false;
+  for (const v of ventanas) v.value = false;
+}
+// Misma tecla: abre o cierra. Otra tecla: cierra la que esté y abre la suya.
+function abrir(ventana) {
+  if (ventana.value) { ventana.value = false; return; }
+  closeAllSecondary();
+  ventana.value = true;
 }
 
-function handleHelp() {
-  if (helpOpen.value) {
-    helpOpen.value = false;
-    return;
-  }
-  closeAllSecondary();
-  helpOpen.value = true;
-}
-
-function handleFindProduct() {
-  // F2: enfocar el buscador. Cierra cualquier dialog secundario para que el
-  // foco llegue al input real.
-  closeAllSecondary();
-  requestFocusSearch();
-}
-
-function handleSearch() {
-  if (consultaOpen.value) {
-    consultaOpen.value = false;
-    return;
-  }
-  closeAllSecondary();
-  consultaOpen.value = true;
+// Buscar y Consulta: el producto entra con los controles de siempre (caja
+// abierta, sucursal) y la cantidad elegida.
+function agregar({ product, qty = 1 }) {
+  const antes = cartItems.value.find((x) => Number(x.id) === Number(product?.id))?.qty || 0;
+  handleAddConsultaToCart(product);
+  const despues = cartItems.value.find((x) => Number(x.id) === Number(product?.id))?.qty || 0;
+  if (despues > antes) for (let i = 1; i < qty; i++) posStore.increaseQty(product.id);
 }
 
 function handleRefresh() {
   requestRefreshCatalog();
-  toast("Actualizando catalogo...");
+  toast("Actualizando catálogo");
 }
 
-function handleShowCart() {
-  if (showCartDialog.value) {
-    showCartDialog.value = false;
-    return;
-  }
-  closeAllSecondary();
-  showCartDialog.value = true;
+async function cobrarDesdeCarrito() {
+  showCartDialog.value = false;
+  await handlePay();
 }
 
 // F3: alta en la ficha completa de clientes; al guardar vuelve al POS y el
@@ -126,15 +121,14 @@ function handleNewCustomer() {
   router.push({ name: "adminCustomerNew", query: { volver: "pos" } });
 }
 
-// F8 llega ya confirmado (segunda pulsación) desde el TopBar.
 function handleClearCart() {
+  if (vaciarOpen.value) { vaciarOpen.value = false; return; }
   if (!cartItems.value.length) {
     toast("El carrito ya está vacío");
     return;
   }
   closeAllSecondary();
-  posStore.clearCart();
-  toast("Carrito vaciado");
+  vaciarOpen.value = true;
 }
 
 // F7: abrir la caja, o con la caja abierta, arqueo y cierre.
@@ -144,12 +138,9 @@ async function handleCash() {
   else openCajaConfig();
 }
 
-// F10: ingresos y egresos de efectivo, ventana que abre y cierra.
+// F10: ingresos y egresos de efectivo.
 function handleMovements() {
-  if (movementsOpen.value) {
-    movementsOpen.value = false;
-    return;
-  }
+  if (movementsOpen.value) { movementsOpen.value = false; return; }
   if (!isCajaOpen.value || !currentCashRegister.value?.id) {
     toast("No hay caja abierta");
     return;
@@ -165,9 +156,10 @@ async function handlePay() {
     return;
   }
   if (!cartItems.value.length) {
-    toast("Agrega productos al carrito antes de cobrar");
+    toast("Agregá productos al carrito antes de cobrar");
     return;
   }
+  closeAllSecondary();
   await openCheckoutSafe();
 }
 </script>

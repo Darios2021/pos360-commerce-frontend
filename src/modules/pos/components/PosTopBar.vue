@@ -23,7 +23,8 @@
                 active: activeHotkey === item.key,
                 'is-open': isStateActive(item),
                 'is-armed': armedKey === item.key,
-                'ptb-tile--clave': item.key === 'F2' || item.key === 'F9',
+                'ptb-tile--clave': item.clave,
+                'ptb-tile--icono': item.soloIcono,
               }]"
               :aria-label="item.tooltip"
               :aria-keyshortcuts="item.key"
@@ -219,7 +220,7 @@ function dispatch(item) {
 
 function activateAndDispatch(item) {
   if (!item) return;
-  if (item.confirm && props.cartCount > 0 && armedKey.value !== item.key) {
+  if (item.confirm && props.cartCount > 0 && armedKey.value !== item.key) { // (F8 ya no lo usa: confirma en su ventana)
     disarm();
     armedKey.value = item.key;
     armedTimer = setTimeout(disarm, 3000);
@@ -313,7 +314,7 @@ onBeforeUnmount(() => {
 }
 .ptb-hotkeys::-webkit-scrollbar { display: none; }
 
-.ptb-sep { display: none; }
+.ptb-sep { display: block; width: 1px; height: 34px; margin: 0 6px; background: var(--z-linea, #d3dde7); flex-shrink: 0; }
 
 .ptb-tile {
   position: relative;
@@ -409,6 +410,7 @@ onBeforeUnmount(() => {
   .ptb-tile-label { display: inline; }
 }
 .ptb-tile.is-armed .ptb-tile-label { display: inline; }
+.ptb-tile--icono .ptb-tile-label { display: none !important; }
 
 .ptb-tile.active,
 .ptb-tile.is-open { background: rgba(15, 111, 174, 0.10); }

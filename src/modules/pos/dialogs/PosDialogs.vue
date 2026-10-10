@@ -1,12 +1,5 @@
 <template>
   <div class="pos-dialogs">
-    <PosCartPreviewDialog
-      v-model="showCartDialog"
-      :items="cartItems"
-      :total-amount="checkoutTotalPreview"
-      currency="ARS"
-      @go-pay="handleGoPayFromCart"
-    />
 
     <CheckoutDialog
       v-model:open="checkoutDialog"
@@ -80,19 +73,9 @@
       @save="onSaveArqueo"
     />
 
-    <PosShortcutsHelpDialog v-model="helpOpen" />
 
     <PosWizardDialog v-model="wizardOpen" :first-run="wizardFirstRun" />
 
-    <PosConsultaDialog
-      v-model="consultaOpen"
-      :items="consultaItems"
-      :loading="consultaLoading"
-      @manual-search="handleManualConsulta"
-      @barcode-search="handleBarcodeConsulta"
-      @add-to-cart="handleAddConsultaToCart"
-      @select="handleSelectConsultaItem"
-    />
 
     <v-dialog v-model="scannerTestOpen" max-width="460">
       <v-card class="pos-scanner-test-dialog">
@@ -148,14 +131,11 @@
 <script setup>
 import CheckoutDialog from "../components/checkout/CheckoutDialog.vue";
 import ReceiptDialog from "../components/ReceiptDialog.vue";
-import PosCartPreviewDialog from "../components/PosCartPreviewDialog.vue";
-import PosShortcutsHelpDialog from "../components/PosShortcutsHelpDialog.vue";
 import PosWizardDialog from "../components/PosWizardDialog.vue";
 import PosCajaConfigDialog from "../components/PosCajaConfigDialog.vue";
 import PosZombieCashDialog from "../components/PosZombieCashDialog.vue";
 import PosCajaArqueoDialog from "../components/PosCajaArqueoDialog.vue";
 import PosBranchSwitchDialog from "../components/PosBranchSwitchDialog.vue";
-import PosConsultaDialog from "../components/PosConsultaDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 
