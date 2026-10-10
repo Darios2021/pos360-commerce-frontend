@@ -159,7 +159,7 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Punto de Venta</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'posSales' }" exact class="nav-item">
+          <v-list-item :to="{ name: 'posSales' }" class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-receipt-text-outline</v-icon>
               <span class="nav-corto">Ventas</span>
@@ -168,7 +168,7 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Ventas</v-tooltip>
           </v-list-item>
 
-          <v-list-item :to="{ name: 'posPrinter' }" exact class="nav-item">
+          <v-list-item :to="{ name: 'posPrinter' }" class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-printer-pos-outline</v-icon>
               <span class="nav-corto">Impresión</span>
@@ -200,7 +200,7 @@
 
           <v-expand-transition>
             <div v-show="navOpen.gestion" class="nav-section">
-              <v-list-item :to="{ name: 'products' }" exact class="nav-item">
+              <v-list-item :to="{ name: 'products' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-package-variant-closed</v-icon>
                 </template>
@@ -227,7 +227,7 @@
               <!-- Stock e Inventario removidos: la nueva vista de Productos
                    ya cubre la matriz por sucursal y la gestión de stock. -->
 
-              <v-list-item v-if="hasRoute('budgets')" :to="{ name: 'budgets' }" exact class="nav-item">
+              <v-list-item v-if="hasRoute('budgets')" :to="{ name: 'budgets' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-file-document-edit-outline</v-icon>
                 </template>
@@ -235,7 +235,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Presupuestos</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" exact class="nav-item">
+              <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-shape-outline</v-icon>
                 </template>
@@ -243,7 +243,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Categorías</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="hasRoute('productsLabels')" :to="{ name: 'productsLabels' }" exact class="nav-item">
+              <v-list-item v-if="hasRoute('productsLabels')" :to="{ name: 'productsLabels' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-printer-pos</v-icon>
                 </template>
@@ -251,7 +251,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Etiquetas</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" exact class="nav-item">
+              <v-list-item v-if="hasRoute('transfers')" :to="{ name: 'transfers' }" class="nav-item">
                 <template #prepend>
                   <v-badge
                     v-if="transferUnreadCount > 0"
@@ -274,7 +274,7 @@
                 </v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isAdmin && hasRoute('adminCashRegisters')" :to="{ name: 'adminCashRegisters' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('adminCashRegisters')" :to="{ name: 'adminCashRegisters' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-cash-register</v-icon>
                 </template>
@@ -282,7 +282,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Cajas</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isAdmin && hasRoute('reports')" :to="{ name: 'reports' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('reports')" :to="{ name: 'reports' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-chart-line</v-icon>
                 </template>
@@ -320,8 +320,7 @@
               <v-list-item
                 v-if="hasRoute('adminCustomers')"
                 :to="{ name: 'adminCustomers' }"
-                exact
-                class="nav-item"
+                                class="nav-item"
               >
                 <template #prepend>
                   <v-icon size="18">mdi-account-group-outline</v-icon>
@@ -333,8 +332,7 @@
               <v-list-item
                 v-if="isSuperAdmin && hasRoute('emailPromoBlocks')"
                 :to="{ name: 'emailPromoBlocks' }"
-                exact
-                class="nav-item"
+                                class="nav-item"
               >
                 <template #prepend>
                   <v-icon size="18">mdi-tag-multiple-outline</v-icon>
@@ -342,7 +340,7 @@
                 <v-list-item-title>Promociones email</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Promociones email</v-tooltip>
               </v-list-item>
-              <v-list-item v-if="isAdmin && hasRoute('adminContenidos')" :to="{ name: 'adminContenidos' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('adminContenidos')" :to="{ name: 'adminContenidos' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-movie-open-play-outline</v-icon>
                 </template>
@@ -376,7 +374,7 @@
 
           <v-expand-transition>
             <div v-show="navOpen.sistema" class="nav-section">
-              <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('users')" :to="{ name: 'users' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-account-multiple-outline</v-icon>
                 </template>
@@ -384,7 +382,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Usuarios</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isAdmin && hasRoute('priceSettings')" :to="{ name: 'priceSettings' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('priceSettings')" :to="{ name: 'priceSettings' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-tune-variant</v-icon>
                 </template>
@@ -392,7 +390,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Parámetros de precios</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isAdmin && hasRoute('adminPaymentMethods')" :to="{ name: 'adminPaymentMethods' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('adminPaymentMethods')" :to="{ name: 'adminPaymentMethods' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-credit-card-outline</v-icon>
                 </template>
@@ -400,7 +398,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Medios de pago</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isAdmin && hasRoute('adminFiscal')" :to="{ name: 'adminFiscal' }" exact class="nav-item">
+              <v-list-item v-if="isAdmin && hasRoute('adminFiscal')" :to="{ name: 'adminFiscal' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-file-document-outline</v-icon>
                 </template>
@@ -408,7 +406,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Fiscal</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('adminTelegram')" :to="{ name: 'adminTelegram' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminTelegram')" :to="{ name: 'adminTelegram' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-send-variant</v-icon>
                 </template>
@@ -416,7 +414,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Alertas Telegram</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding') && !showShopMenu" :to="{ name: 'shopBranding' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding') && !showShopMenu" :to="{ name: 'shopBranding' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-storefront-outline</v-icon>
                 </template>
@@ -450,7 +448,7 @@
 
           <v-expand-transition>
             <div v-show="navOpen.tienda" class="nav-section">
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-palette-outline</v-icon>
                 </template>
@@ -458,7 +456,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Branding</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-receipt-text-outline</v-icon>
                 </template>
@@ -466,7 +464,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Pedidos</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('adminBranches')" :to="{ name: 'adminBranches' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminBranches')" :to="{ name: 'adminBranches' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-map-marker-multiple-outline</v-icon>
                 </template>
@@ -474,7 +472,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Sucursales</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-credit-card-outline</v-icon>
                 </template>
@@ -482,7 +480,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Pagos</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopLinks')" :to="{ name: 'shopLinks' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-link-variant</v-icon>
                 </template>
@@ -490,7 +488,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Links Tienda</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopQA')" :to="{ name: 'shopQA' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopQA')" :to="{ name: 'shopQA' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-message-question-outline</v-icon>
                 </template>
@@ -498,7 +496,7 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Consultas web</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" exact class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('adminGaleriaMultimedia')" :to="{ name: 'adminGaleriaMultimedia' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-image-multiple-outline</v-icon>
                 </template>
