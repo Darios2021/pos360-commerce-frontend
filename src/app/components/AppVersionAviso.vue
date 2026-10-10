@@ -75,10 +75,10 @@ onBeforeUnmount(() => {
 .ava-ic { width: 40px; height: 40px; border-radius: 10px; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ava-ic .v-icon, .ava-x .v-icon { color: #ffffff; }
 .ava-txt { display: flex; flex-direction: column; min-width: 0; }
-.ava-txt b { font-size: 15px; font-weight: 800; }
+.ava-txt b { font-size: 15px; font-weight: 800; color: #ffffff; }
 .ava-txt small { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
-.ava-btn { height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #ffffff; color: #0f6fae; font: 800 14px Inter, sans-serif; cursor: pointer; }
-.ava-btn:hover { background: #e6f1fa; }
+.ava .ava-btn { height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #ffffff !important; color: #0f6fae !important; -webkit-text-fill-color: #0f6fae; font: 800 14px Inter, sans-serif !important; opacity: 1 !important; cursor: pointer; white-space: nowrap; }
+.ava .ava-btn:hover { background: #e6f1fa !important; }
 .ava-x { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .ava-x:hover { background: rgba(255, 255, 255, 0.14); }
 .ava-enter-active, .ava-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
