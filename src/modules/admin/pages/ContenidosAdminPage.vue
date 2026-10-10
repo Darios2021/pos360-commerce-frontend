@@ -251,9 +251,9 @@
               <span class="num">{{ v.progreso || 0 }} %</span>
             </div>
           </div>
-          <div v-else class="ct-video__vacio is-error">
-            <v-icon size="44">mdi-movie-off-outline</v-icon>
-            <b>Sin video</b>
+          <div v-else class="ct-video__vacio" :class="{ 'is-error': v.estado === 'error' }">
+            <v-icon size="44">{{ v.estado === "cancelada" ? "mdi-cancel" : "mdi-movie-off-outline" }}</v-icon>
+            <b>{{ v.estado === "cancelada" ? "Cancelado" : "Sin video" }}</b>
           </div>
         </div>
         <div v-if="editando === v.id" class="ct-video__datos">
@@ -273,13 +273,13 @@
           <p v-if="v.items?.length" class="ct-video__items">{{ v.items.map((x) => x.titulo).join(" · ") }}</p>
           <p v-if="v.voz?.usada" class="ct-video__items"><v-icon size="14">mdi-account-voice</v-icon> {{ nombreVoz(v.voz.usada) }}<template v-if="v.voz.respaldo"> · respaldo de {{ nombreVoz(v.voz.pedida) }}</template></p>
         </div>
-        <div v-if="v.estado === 'en_cola'" class="ct-video__pie">
+        <div v-if="enProceso(v)" class="ct-video__pie">
           <span class="ct-video__esp"></span>
-          <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" @click="borrar(v)">
+          <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" @click="cancelar(v)">
             <v-icon size="20">mdi-close-circle-outline</v-icon><span>{{ confirmar === v.id ? "Confirmar" : "Cancelar" }}</span>
           </button>
         </div>
-        <div v-if="v.estado === 'lista' || v.estado === 'error'" class="ct-video__pie">
+        <div v-if="v.estado === 'lista' || v.estado === 'error' || v.estado === 'cancelada'" class="ct-video__pie">
           <button v-if="v.estado === 'lista'" type="button" class="ct-bajar" :disabled="bajando === v.id" @click="bajar(v)">
             <v-progress-circular v-if="bajando === v.id" indeterminate size="18" width="2" />
             <v-icon v-else size="20">mdi-download</v-icon>Bajar MP4
@@ -298,7 +298,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -380,7 +380,7 @@ const fecha = (iso) => {
   const hora = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
-const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola" }[v.estado] || `Generando ${v.progreso || 0} %`);
+const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola", cancelada: "Cancelado" }[v.estado] || `Generando ${v.progreso || 0} %`);
 const nombreVoz = (id) => voces.value.find((x) => x.id === id)?.nombre || String(id || "").replace(/^./, (c) => c.toUpperCase());
 const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
 const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
@@ -622,6 +622,22 @@ async function generar() {
 }
 
 /* Videos */
+async function cancelar(v) {
+  if (confirmar.value !== v.id) {
+    confirmar.value = v.id;
+    setTimeout(() => { if (confirmar.value === v.id) confirmar.value = null; }, 4000);
+    return;
+  }
+  confirmar.value = null;
+  try {
+    const n = await cancelarPieza(v.id);
+    const i = piezas.value.findIndex((x) => x.id === v.id);
+    if (i >= 0) piezas.value[i] = { ...piezas.value[i], ...n };
+  } catch (e) {
+    if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
+    else error.value = mensaje(e);
+  }
+}
 // El enlace firmado vence a la hora: se pide la pieza de nuevo y se abre con
 // descargar=1, que el servicio responde como descarga (Content-Disposition).
 const bajando = ref(null);
@@ -634,8 +650,6 @@ async function bajar(v) {
     if (!n.video) throw new Error("El video ya no está disponible.");
     const a = document.createElement("a");
     a.href = `${n.video}${n.video.includes("?") ? "&" : "?"}descargar=1`;
-    a.target = "_blank";
-    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -668,7 +682,13 @@ async function borrar(v) {
   }
   confirmar.value = null;
   try {
-    await borrarPieza(v.id);
+    try {
+      await borrarPieza(v.id);
+    } catch (e) {
+      if (e?.response?.status !== 409 || v.estado !== "cancelada") throw e;
+      await new Promise((r) => setTimeout(r, 1000));
+      await borrarPieza(v.id);
+    }
     piezas.value = piezas.value.filter((x) => x.id !== v.id);
   } catch (e) {
     if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);

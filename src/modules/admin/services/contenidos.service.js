@@ -50,3 +50,9 @@ export async function listarVoces() {
   const { data } = await http.get(`${BASE}/voces`);
   return Array.isArray(data) ? data : [];
 }
+
+// Corta un video en cola o dibujándose: queda en estado "cancelada".
+export async function cancelarPieza(id) {
+  const { data } = await http.post(`${BASE}/piezas/${id}/cancelar`);
+  return data;
+}
