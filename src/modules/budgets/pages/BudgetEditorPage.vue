@@ -1927,7 +1927,13 @@ onMounted(() => {
 .be-seg button.is-on { background: #0f6fae; color: #ffffff; }
 .be-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .be-vend { font-size: 13px; color: var(--be-suave); }
-@media (max-width: 1100px) { .be-cuerpo { flex-direction: column; } .be-panel { width: 100%; position: static; } }
+/* Pantallas de menos de 1400 px: el panel pasa arriba como una fila de
+   tarjetas y la tabla usa todo el ancho (si no, el nombre del producto se corta). */
+@media (max-width: 1400px) {
+  .be-cuerpo { flex-direction: column-reverse; align-items: stretch; }
+  .be-panel { width: 100%; position: static; display: grid; grid-template-columns: 1fr 1fr 1.2fr; align-items: start; }
+}
+@media (max-width: 900px) { .be-panel { grid-template-columns: 1fr; } }
 
 /* Ventana Agregar producto */
 .bp { display: flex; flex-direction: column; max-height: calc(100vh - 48px); border-radius: 14px; overflow: hidden; background: #ffffff; color: #0f172a; font-family: Inter, sans-serif; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
