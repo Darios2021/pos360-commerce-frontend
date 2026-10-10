@@ -2513,6 +2513,8 @@ async function saveAll() {
 .pfx-c > label { font-size: 13px; font-weight: 700; color: var(--x-texto); opacity: .85; }
 .pfx-c > label i { font-style: normal; font-weight: 600; color: var(--x-tenue); }
 .pfx-sep { height: 1px; background: var(--x-linea); }
+.pfx .pfn-seg { height: 48px; box-sizing: border-box; border-radius: 10px; border-color: rgba(var(--v-border-color), 0.28); }
+.pfx .pfn-seg button { flex: 1; height: 100%; font-size: 15px; border-radius: 8px; }
 .pfx-fijo { height: 46px; display: flex; align-items: center; padding: 0 14px; border-radius: 10px; background: var(--x-fondo); font-size: 15px; font-weight: 700; color: var(--x-suave); }
 .pfx-barras { position: relative; }
 .pfx-barras__btn { position: absolute !important; right: 6px; top: 50%; transform: translateY(-50%); min-width: 0 !important; }
