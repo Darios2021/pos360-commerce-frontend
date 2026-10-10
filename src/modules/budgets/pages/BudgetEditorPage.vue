@@ -1927,9 +1927,9 @@ onMounted(() => {
 .be-seg button.is-on { background: #0f6fae; color: #ffffff; }
 .be-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .be-vend { font-size: 13px; color: var(--be-suave); }
-/* Pantallas de menos de 1400 px: el panel pasa arriba como una fila de
+/* Pantallas de menos de 1500 px: el panel pasa arriba como una fila de
    tarjetas y la tabla usa todo el ancho (si no, el nombre del producto se corta). */
-@media (max-width: 1400px) {
+@media (max-width: 1500px) {
   .be-cuerpo { flex-direction: column-reverse; align-items: stretch; }
   .be-panel { width: 100%; position: static; display: grid; grid-template-columns: 1fr 1fr 1.2fr; align-items: start; }
 }
