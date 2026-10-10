@@ -610,7 +610,7 @@ const avisos = computed(() => {
 
 .tb {
   padding: 24px 28px 40px;
-  min-height: calc(100vh - 72px);
+  min-height: calc(100vh - 56px);
   background: var(--tb-fondo);
   color: var(--tb-texto);
   display: flex;

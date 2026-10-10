@@ -1217,7 +1217,7 @@ onMounted(async () => {
   --vt-pista: rgba(15, 23, 42, 0.06);
 
   padding: 22px 28px 28px;
-  min-height: calc(100vh - 72px);
+  min-height: calc(100vh - 56px);
   box-sizing: border-box;
   background: var(--vt-fondo);
   color: var(--vt-texto);

@@ -7,42 +7,54 @@
       <v-app-bar
         flat
         elevation="0"
-        height="72"
+        height="56"
         class="pos-appbar"
       >
 
-        <!-- Marca: logo final con texto integrado -->
-        <div class="brand-mark" title="POS 360">
-          <img
-            :src="BRAND_LOGO_WHITE"
-            alt="POS 360"
-            class="brand-mark__img"
-          />
-        </div>
+        <!-- Marca -->
+        <router-link :to="{ name: 'home' }" class="brand-mark" title="POS 360">
+          <img :src="BRAND_LOGO_WHITE" alt="POS 360" class="brand-mark__img" />
+        </router-link>
+
+        <!-- Dónde estoy: sucursal y estado de mi caja -->
+        <template v-if="!mobile">
+          <span class="nb-sep" />
+          <span v-if="nbSucursal" class="nb-sucursal">{{ nbSucursal }}</span>
+          <router-link
+            v-if="cajaNav"
+            :to="{ name: 'pos' }"
+            class="nb-caja"
+            :class="cajaNav.abierta ? 'is-abierta' : 'is-cerrada'"
+          >
+            <i></i><b>{{ cajaNav.abierta ? "Caja abierta" : "Caja cerrada" }}</b>
+            <span v-if="cajaNav.desde">desde {{ cajaNav.desde }}</span>
+          </router-link>
+        </template>
 
         <v-spacer />
 
-        <!-- 📅 Fecha y hora actual (solo desktop/tablet) -->
-        <div v-if="!mobile" class="appbar-datetime mr-3" :title="currentDateTime">
-          <v-icon size="16" class="appbar-datetime__icon">mdi-calendar-clock-outline</v-icon>
-          <span class="appbar-datetime__text">{{ currentDateTime }}</span>
-        </div>
+        <span v-if="!mobile" class="nb-fecha" :title="currentDateTime">{{ fechaCorta }}</span>
 
-        <!-- 🔔 Derivaciones bell -->
-        <TransferNotificationBell class="mr-1" />
+        <TransferNotificationBell class="nb-campana" />
 
-        <!-- 🌙 Modo oscuro -->
-        <v-btn
-          icon
-          variant="text"
-          class="mr-1"
-          :title="isDark ? 'Modo claro' : 'Modo oscuro'"
+        <button
+          v-if="!mobile"
+          type="button"
+          class="nb-btn"
+          :aria-label="enPantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla completa'"
+          @click="togglePantallaCompleta"
+        >
+          <v-icon size="22">{{ enPantallaCompleta ? "mdi-fullscreen-exit" : "mdi-fullscreen" }}</v-icon>
+        </button>
+
+        <button
+          type="button"
+          class="nb-btn"
+          :aria-label="isDark ? 'Modo claro' : 'Modo oscuro'"
           @click="toggleDark"
         >
-          <v-icon>
-            {{ isDark ? "mdi-weather-night" : "mdi-white-balance-sunny" }}
-          </v-icon>
-        </v-btn>
+          <v-icon size="22">{{ isDark ? "mdi-white-balance-sunny" : "mdi-weather-night" }}</v-icon>
+        </button>
 
         <!-- ===== Cuenta ===== -->
         <v-menu
@@ -52,14 +64,8 @@
           offset="12"
         >
           <template #activator="{ props }">
-            <v-btn
-              v-bind="props"
-              icon
-              variant="text"
-              class="ml-1"
-              title="Cuenta"
-            >
-              <v-avatar size="34" class="pos-avatar-btn">
+            <button v-bind="props" type="button" class="nb-cuenta" aria-label="Cuenta">
+              <v-avatar size="32" class="nb-cuenta__avatar">
                 <v-img
                   v-if="userAvatarFinal"
                   :key="userAvatarKey"
@@ -67,9 +73,14 @@
                   class="avatar-img"
                   cover
                 />
-                <span v-else class="avatar-fallback">{{ userInitials }}</span>
+                <span v-else class="nb-cuenta__iniciales">{{ userInitials }}</span>
               </v-avatar>
-            </v-btn>
+              <span v-if="!mobile" class="nb-cuenta__txt">
+                <span class="nb-cuenta__nombre">{{ userFullName || userEmailOrUsername }}</span>
+                <span class="nb-cuenta__rol">{{ userRoleLabel }}</span>
+              </span>
+              <v-icon v-if="!mobile" size="20">mdi-chevron-down</v-icon>
+            </button>
           </template>
 
           <v-card rounded="xl" class="pos-account-card" :min-width="mobile ? 280 : 380" :max-width="mobile ? 320 : 460">
@@ -587,6 +598,7 @@ import { getBreadcrumbs } from "@/app/utils/routeTree";
 import AppBottomNav from "@/app/components/AppBottomNav.vue";
 import AppApkPrompt from "@/app/components/AppApkPrompt.vue";
 import { useDisplay } from "vuetify";
+import { getCurrentCashRegister } from "@/modules/pos/services/posCashRegisters.service";
 
 const { mobile } = useDisplay();
 
@@ -608,12 +620,57 @@ const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Vierne
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const currentDateTime = ref("");
 let clockTimer = null;
+let cajaTimer = null;
 function updateClock() {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   currentDateTime.value = `${DAY_NAMES[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${hh}:${mm}`;
 }
+
+// Fecha corta del encabezado: "Vie 9/10 · 19:20"
+const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const fechaCorta = ref("");
+function actualizarFechaCorta() {
+  const d = new Date();
+  fechaCorta.value = `${DIAS_CORTOS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+// Estado de la caja del usuario en el encabezado (se refresca cada minuto y al navegar)
+const cajaNav = ref(null);
+async function cargarCajaNav() {
+  if (!auth.isAuthed && !auth.user) { cajaNav.value = null; return; }
+  try {
+    const res = await getCurrentCashRegister();
+    const c = res?.data || null;
+    if (c && String(c.status || "OPEN").toUpperCase() === "OPEN" && c.id) {
+      const at = c.opened_at ? new Date(c.opened_at) : null;
+      let desde = "";
+      if (at) {
+        const hh = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+        desde = at.toDateString() === new Date().toDateString() ? hh : `${at.getDate()}/${at.getMonth() + 1} ${hh}`;
+      }
+      cajaNav.value = { abierta: true, desde, sucursal: c.branch_name || c.branch?.name || "" };
+    } else {
+      cajaNav.value = { abierta: false, desde: "", sucursal: "" };
+    }
+  } catch {
+    cajaNav.value = null;
+  }
+}
+const nbSucursal = computed(() =>
+  userBranchLabel.value || cajaNav.value?.sucursal || (auth.isSuperAdmin ? "Todas las sucursales" : "")
+);
+
+// Pantalla completa
+const enPantallaCompleta = ref(false);
+function togglePantallaCompleta() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.();
+  } catch { /* el navegador puede negarlo */ }
+}
+function onFullscreenChange() { enPantallaCompleta.value = !!document.fullscreenElement; }
 
 // Marca POS 360 — versión optimizada para el header.
 const BRAND_LOGO_HEADER = "https://storage-files.cingulado.org/pos360/media/1777345911123-fc15363786567e40.webp";
@@ -922,8 +979,19 @@ onMounted(() => {
   window.addEventListener("focus", onFocus);
   document.addEventListener("visibilitychange", onVisibility);
   updateClock();
-  clockTimer = setInterval(updateClock, 30000);
+  clockTimer = setInterval(() => { updateClock(); actualizarFechaCorta(); }, 30000);
+  actualizarFechaCorta();
+  cargarCajaNav();
+  cajaTimer = setInterval(cargarCajaNav, 60000);
+  document.addEventListener("fullscreenchange", onFullscreenChange);
 });
+
+onBeforeUnmount(() => {
+  clearInterval(cajaTimer);
+  document.removeEventListener("fullscreenchange", onFullscreenChange);
+});
+// Al salir del POS la caja pudo abrirse o cerrarse
+watch(() => route.name, (nuevo, viejo) => { if (nuevo === "pos" || viejo === "pos") cargarCajaNav(); });
 
 onBeforeUnmount(() => {
   window.removeEventListener("storage", onStorage);
@@ -1024,28 +1092,53 @@ function onLogout() {
   -webkit-text-fill-color: transparent;
 }
 
+/* Encabezado aprobado en el canvas (Encabezado.dc.html): azul noche con filo celeste */
 .pos-appbar {
-  background: #1488d1 !important;
+  background: #0b2a45 !important;
   color: #fff !important;
-  border-bottom: none !important;
+  border-bottom: 3px solid #1488d1 !important;
   position: relative;
 }
-/* Dark: app-bar en negro profundo (mismo que surface) — flota sobre background */
+.pos-appbar :deep(.v-toolbar__content) { gap: 12px; padding: 0 16px 0 12px; }
 .v-theme--dark .pos-appbar,
 .v-theme--adminDark .pos-appbar,
 .v-theme--shopDark .pos-appbar {
-  background: #0d0f13 !important;
+  background: #0d1520 !important;
 }
-
-.pos-appbar::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  pointer-events: none;
-  background: rgba(255, 255, 255, 0.18);
+.pos-appbar .brand-mark { height: 34px; margin-right: 0; }
+.nb-sep { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.16); flex-shrink: 0; }
+.nb-sucursal { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.nb-caja {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
+  border-radius: 10px; color: #ffffff !important; text-decoration: none; white-space: nowrap; font-size: 13px;
+}
+.nb-caja i { width: 8px; height: 8px; border-radius: 9999px; display: block; }
+.nb-caja b { font-weight: 700; }
+.nb-caja span { font-weight: 500; color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+.nb-caja.is-abierta { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(74, 222, 128, 0.45); }
+.nb-caja.is-abierta i { background: #4ade80; }
+.nb-caja.is-cerrada { background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.5); }
+.nb-caja.is-cerrada i { background: #f87171; }
+.nb-fecha { font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.85); white-space: nowrap; }
+.nb-btn {
+  width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; color: #ffffff; cursor: pointer;
+}
+.nb-btn:hover, .nb-cuenta:hover { background: rgba(255, 255, 255, 0.08); }
+.nb-campana :deep(.v-btn) { width: 40px !important; height: 40px !important; border-radius: 10px !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; }
+.nb-cuenta {
+  display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 10px 0 6px;
+  border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; color: #ffffff; cursor: pointer;
+  font-family: inherit; max-width: 260px;
+}
+.nb-cuenta__avatar { background: #1488d1; }
+.nb-cuenta__iniciales { font-size: 13px; font-weight: 800; color: #ffffff; }
+.nb-cuenta__txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; min-width: 0; }
+.nb-cuenta__nombre { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.nb-cuenta__rol { font-size: 11px; font-weight: 700; color: #7dc0ec; }
+@media (max-width: 600px) {
+  .pos-appbar .brand-mark { height: 30px; margin-left: 2px; }
+  .nb-cuenta { padding: 0 4px; height: 42px; }
 }
 
 .pos-drawer {

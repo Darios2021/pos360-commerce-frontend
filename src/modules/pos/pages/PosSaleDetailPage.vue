@@ -789,7 +789,7 @@ watch(id, () => load());
   --vd-fondo: #d6e6f3; --vd-caja: #ffffff; --vd-borde: #d3dde7; --vd-linea: #e3eaf1;
   --vd-texto: #0f172a; --vd-suave: #5a6678; --vd-banda: #0f6fae; --vd-acento: #0f6fae;
   --vd-rubro: #3f8fc6; --vd-pie: #f3f8fc; --vd-avatar: #0a466e; --vd-foto: #ffffff;
-  padding: 20px 28px 40px; min-height: calc(100vh - 72px); box-sizing: border-box;
+  padding: 20px 28px 40px; min-height: calc(100vh - 56px); box-sizing: border-box;
   background: var(--vd-fondo); color: var(--vd-texto);
   display: flex; flex-direction: column; gap: 18px;
 }
