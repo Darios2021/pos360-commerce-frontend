@@ -576,11 +576,9 @@
     <!-- Pie fijo: un solo botón -->
     <div class="pfx-pie">
       <div class="pfx-pie__in">
-        <a v-if="step > 1" href="#" class="pfx-ant" @click.prevent="prevStep"><v-icon size="20">mdi-chevron-left</v-icon>Anterior</a>
-        <a v-else href="#" class="pfx-ant" @click.prevent="onCancel">Cancelar</a>
+        <!-- Sólo Atrás y Siguiente; en el último paso, Guardar (pedido del usuario). -->
+        <a v-if="step > 1" href="#" class="pfx-ant" @click.prevent="prevStep"><v-icon size="20">mdi-chevron-left</v-icon>Atrás</a>
         <span class="pfx-esp"></span>
-        <a v-if="step < 4 && (isEdit || step >= 2)" href="#" class="pfn-link" @click.prevent="guardar">{{ isEdit ? "Guardar ya" : "Guardar ya" }}</a>
-        <span class="pfx-pie__n num">Paso {{ step }} de 4</span>
         <v-btn color="primary" variant="flat" class="pfx-sig" :loading="busy" :disabled="busy" @click="step < 4 ? nextStep() : guardar()">
           {{ step < 4 ? "Siguiente" : (isEdit ? "Guardar cambios" : "Guardar producto") }}
           <v-icon v-if="step < 4" end size="20">mdi-chevron-right</v-icon>
