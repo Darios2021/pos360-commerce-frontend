@@ -245,6 +245,12 @@ function handleKeydown(e) {
 
   // Dialogs bloqueantes (arqueo, config de caja, branch pick): solo dejamos
   // pasar F1 (ayuda) y F11 (fullscreen).
+  // Con el cobro abierto, sus teclas son del cobro (F10 confirma la venta):
+  // la barra sólo atiende F1, F11 y F9, que lo cierra.
+  if (flow?.checkoutDialog?.value && !ALWAYS_ALLOWED_KEYS.has(item.key) && item.key !== "F9") {
+    return;
+  }
+
   if (isBlockingDialogOpen() && !ALWAYS_ALLOWED_KEYS.has(item.key)) {
     return;
   }

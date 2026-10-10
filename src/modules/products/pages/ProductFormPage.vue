@@ -1308,11 +1308,13 @@ const totalStockSummary = computed(() =>
 );
 
 /* ── Navigation ── */
-function canGoTo(target) { const t = toInt(target, 1); if (t <= 1) return true; return !!canGoAfterStep1.value; }
+// Los pasos se navegan libres desde el indicador; lo obligatorio del paso 1
+// lo exige el guardado (y queda marcado en rojo al volver).
+function canGoTo() { return true; }
 
 function goToStep(target) {
   const t = toInt(target, 1);
-  if (!canGoTo(t)) return;
+  if (step.value === 1 && t !== 1) step1Touched.value = true;
   step.value = Math.min(4, Math.max(1, t));
   if (mainRef.value) mainRef.value.scrollTop = 0;
 }
