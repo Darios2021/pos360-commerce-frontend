@@ -101,6 +101,12 @@
             <dt>Garantía</dt><dd><template v-if="Number(raw.warranty_months) > 0">{{ raw.warranty_months }} {{ Number(raw.warranty_months) === 1 ? "mes" : "meses" }}</template><span v-else class="pd-tenue">sin garantía cargada</span></dd>
             <template v-if="raw.barcode"><dt>Código de barras</dt><dd class="num">{{ raw.barcode }}</dd></template>
             <template v-if="productForUIFixed.track_stock === false"><dt>Stock</dt><dd>sin control de stock</dd></template>
+            <template v-if="raw.unit && raw.unit !== 'unidad'"><dt>Unidad</dt><dd>{{ raw.unit }}</dd></template>
+            <template v-if="nombreProveedor"><dt>Proveedor</dt><dd>{{ nombreProveedor }}<template v-if="raw.supplier_code"> · {{ raw.supplier_code }}</template></dd></template>
+            <template v-else-if="raw.supplier_code"><dt>Código del proveedor</dt><dd class="num">{{ raw.supplier_code }}</dd></template>
+            <template v-if="raw.purchase_date"><dt>Última compra</dt><dd class="num">{{ fechaCorta(raw.purchase_date) }}</dd></template>
+            <template v-if="raw.location"><dt>Ubicación</dt><dd>{{ raw.location }}</dd></template>
+            <template v-if="raw.min_stock != null"><dt>Stock mínimo</dt><dd class="num">{{ fmtPrice(raw.min_stock) }}</dd></template>
             <template v-if="altaTexto"><dt>Alta</dt><dd class="num">{{ altaTexto }}</dd></template>
           </dl>
           <p v-if="raw.description" class="pd-desc">{{ raw.description }}</p>
@@ -651,6 +657,23 @@ const altaTexto = computed(() => {
   const quien = [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.username || "";
   return quien ? `${fecha} · ${quien}` : fecha;
 });
+const proveedoresMapa = ref({});
+async function cargarProveedor() {
+  const sid = Number(raw.value?.supplier_id || 0);
+  if (!sid || proveedoresMapa.value[sid]) return;
+  try {
+    const { data } = await http.get("/products/suppliers");
+    const mapa = {};
+    for (const p of Array.isArray(data?.data) ? data.data : []) mapa[p.id] = p.name;
+    proveedoresMapa.value = mapa;
+  } catch { /* sin nombre se muestra solo el código */ }
+}
+const nombreProveedor = computed(() => proveedoresMapa.value[Number(raw.value?.supplier_id || 0)] || "");
+watch(() => raw.value?.supplier_id, cargarProveedor);
+function fechaCorta(v) {
+  const [y, m, d] = String(v || "").slice(0, 10).split("-");
+  return d ? `${d}/${m}/${y}` : "";
+}
 const stockOrdenado = computed(() => [...branchesStock.value].sort((a, b) => b.stock_qty - a.stock_qty));
 function nivelStock(n) { return n <= 0 ? "is-sin" : n <= 3 ? "is-bajo" : "is-bien"; }
 function anchoStock(n) {

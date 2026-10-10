@@ -240,6 +240,56 @@
                     </div>
                   </div>
 
+                  <!-- Compra: proveedor, códigos, ubicación, unidad y stock mínimo -->
+                  <div class="pfp-section">
+                    <div class="pfp-section-head" style="--accent:#0f6fae">
+                      <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-truck-outline</v-icon></div>
+                      <div>
+                        <div class="pfp-section-title">Compra</div>
+                        <div class="pfp-section-sub">Proveedor, ubicación y stock mínimo</div>
+                      </div>
+                    </div>
+                    <div class="pfp-section-body">
+                      <v-row dense>
+                        <v-col cols="12" sm="8">
+                          <v-autocomplete v-model="draft.supplier_id" :items="proveedores" item-title="name" item-value="id"
+                            :loading="proveedoresCargando" :disabled="busy" density="compact" variant="outlined"
+                            label="Proveedor" clearable hide-details no-filter
+                            @update:search="buscarProveedores">
+                            <template #no-data>
+                              <div class="pa-2">
+                                <v-btn v-if="proveedorBuscado" size="small" variant="tonal" color="primary" :loading="creandoProveedor" @click="crearProveedor">
+                                  Agregar «{{ proveedorBuscado }}»
+                                </v-btn>
+                                <span v-else class="text-caption text-medium-emphasis">Escribí el nombre del proveedor</span>
+                              </div>
+                            </template>
+                          </v-autocomplete>
+                        </v-col>
+                        <v-col cols="12" sm="4">
+                          <v-text-field v-model="draft.supplier_code" :disabled="busy" density="compact" variant="outlined"
+                            label="Código del proveedor" hide-details />
+                        </v-col>
+                        <v-col cols="6" sm="4">
+                          <v-text-field v-model="draft.purchase_date" :disabled="busy" density="compact" variant="outlined"
+                            label="Fecha de compra" type="date" hide-details />
+                        </v-col>
+                        <v-col cols="6" sm="4">
+                          <v-text-field v-model="draft.location" :disabled="busy" density="compact" variant="outlined"
+                            label="Ubicación" placeholder="Ej.: estante B3" hide-details />
+                        </v-col>
+                        <v-col cols="6" sm="4">
+                          <v-select v-model="draft.unit" :items="UNIDADES" :disabled="busy" density="compact" variant="outlined"
+                            label="Unidad" hide-details />
+                        </v-col>
+                        <v-col cols="6" sm="4">
+                          <v-text-field v-model="draft.min_stock" :disabled="busy" density="compact" variant="outlined"
+                            label="Stock mínimo" type="number" min="0" hide-details />
+                        </v-col>
+                      </v-row>
+                    </div>
+                  </div>
+
                 </div><!-- /right col -->
               </div><!-- /step1-grid -->
 
@@ -1193,6 +1243,7 @@ function defaultDraft() {
     category_id: null, subcategory_id: null, is_active: true, track_stock: true,
     brand: "", model: "", price_list: 0, price_discount: 0, price_reseller: 0,
     cost: null, tax_rate: 21, markup_pct: null,
+    supplier_id: null, supplier_code: "", unit: "unidad", location: "", purchase_date: null, min_stock: null,
     // Promoción
     is_promo: false,
     promo_price: null,
@@ -1207,6 +1258,48 @@ function defaultDraft() {
   };
 }
 const draft = ref(defaultDraft());
+
+/* ── Compra: proveedores y unidades ── */
+const UNIDADES = [
+  { title: "Unidad", value: "unidad" }, { title: "Metro", value: "metro" }, { title: "Caja", value: "caja" },
+  { title: "Par", value: "par" }, { title: "Kilo", value: "kg" }, { title: "Litro", value: "litro" },
+];
+const proveedores = ref([]);
+const proveedoresCargando = ref(false);
+const proveedorBuscado = ref("");
+const creandoProveedor = ref(false);
+let tProv = null;
+async function cargarProveedores(q = "") {
+  proveedoresCargando.value = true;
+  try {
+    const { data } = await http.get("/products/suppliers", { params: { q } });
+    const lista = Array.isArray(data?.data) ? data.data : [];
+    // El elegido siempre queda en la lista, aunque no coincida con la búsqueda
+    const actual = proveedores.value.find((p) => Number(p.id) === Number(draft.value?.supplier_id));
+    proveedores.value = actual && !lista.some((p) => p.id === actual.id) ? [actual, ...lista] : lista;
+  } catch { /* sin proveedores el campo queda vacío */ } finally { proveedoresCargando.value = false; }
+}
+function buscarProveedores(q) {
+  proveedorBuscado.value = String(q || "").trim();
+  clearTimeout(tProv);
+  tProv = setTimeout(() => cargarProveedores(proveedorBuscado.value), 250);
+}
+async function crearProveedor() {
+  const name = proveedorBuscado.value;
+  if (!name) return;
+  creandoProveedor.value = true;
+  try {
+    const { data } = await http.post("/products/suppliers", { name });
+    const p = data?.data;
+    if (p?.id) {
+      proveedores.value = [p, ...proveedores.value.filter((x) => x.id !== p.id)];
+      draft.value.supplier_id = p.id;
+    }
+  } catch (e) {
+    toast(e?.response?.data?.message || "No se pudo agregar el proveedor");
+  } finally { creandoProveedor.value = false; }
+}
+onMounted(() => cargarProveedores(""));
 
 /* ── Lista calculada: costo + % de ganancia + IVA ── */
 const IVAS = [{ t: "21 %", v: 21 }, { t: "10,5 %", v: 10.5 }, { t: "27 %", v: 27 }, { t: "Exento", v: 0 }];
@@ -1240,6 +1333,9 @@ watch(() => draft.value?.id, (id, viejo) => {
   if (!id || id === viejo) return;
   // La API devuelve los decimales como texto ("21.00"): el selector de IVA compara números
   if (draft.value.tax_rate != null) draft.value.tax_rate = num(draft.value.tax_rate, 21);
+  if (draft.value.min_stock != null) draft.value.min_stock = num(draft.value.min_stock, 0);
+  if (draft.value.purchase_date) draft.value.purchase_date = String(draft.value.purchase_date).slice(0, 10);
+  if (!draft.value.unit) draft.value.unit = "unidad";
   listaCalculada.value = draft.value?.markup_pct != null && draft.value?.markup_pct !== "";
 });
 
@@ -1653,6 +1749,11 @@ async function commitVideos(productId) {
 /* ── Payload ── */
 function buildPayload() {
   const payload = { ...draft.value, name: String(draft.value?.name || "").trim(), description: String(draft.value?.description || "").trim(), brand: String(draft.value?.brand || "").trim(), model: String(draft.value?.model || "").trim(), category_id: toInt(getCategoryIdFromDraft(draft.value), 0) || null, subcategory_id: toInt(getSubcategoryIdFromDraft(draft.value), 0) || null, price_list: num(draft.value?.price_list, 0), price_discount: num(draft.value?.price_discount, 0), price_reseller: num(draft.value?.price_reseller, 0), cost: num(draft.value?.cost, 0), tax_rate: num(draft.value?.tax_rate, 21), markup_pct: draft.value?.markup_pct === "" || draft.value?.markup_pct == null ? null : num(draft.value.markup_pct, 0) };
+  // Compra: vacíos → null
+  for (const k of ["supplier_code", "unit", "location"]) payload[k] = String(draft.value?.[k] ?? "").trim() || null;
+  payload.purchase_date = String(draft.value?.purchase_date || "").slice(0, 10) || null;
+  payload.min_stock = draft.value?.min_stock === "" || draft.value?.min_stock == null ? null : num(draft.value.min_stock, 0);
+  payload.supplier_id = toInt(draft.value?.supplier_id, 0) || null;
   // Lista a mano: no queda guardado un % que no la explica
   if (!listaCalculada.value) payload.markup_pct = null;
   delete payload.sku;
