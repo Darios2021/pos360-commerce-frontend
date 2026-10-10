@@ -11,6 +11,8 @@
              o por kill-switch interno. Una sola instancia para toda la app. -->
         <ShopRouteRestoreOverlay :model-value="routeOverlayActive" />
 
+        <ShopLineasBar />
+
         <div class="shop-header">
           <ShopHeader />
         </div>
@@ -36,6 +38,7 @@ import { computed, onMounted, nextTick, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
 import ShopHeader from "@/modules/shop/components/ShopHeader.vue";
+import ShopLineasBar from "@/modules/shop/components/ShopLineasBar.vue";
 import ShopBottomNav from "@/modules/shop/components/ShopBottomNav.vue";
 import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 import ShopCompleteProfileDialog from "@/modules/shop/components/auth/ShopCompleteProfileDialog.vue";

@@ -39,6 +39,11 @@
         <HomeCategoriesCarousel :categories="allCats" :perPage="12" />
       </div>
 
+      <!-- Segunda linea del negocio: kits de la tienda con instalacion. -->
+      <div class="mb-6">
+        <HomeSeguridadInstalacion />
+      </div>
+
       <!-- Marcas destacadas (Xiaomi + XAEA).
            DESKTOP: las 2 cards en grilla acá.
            MOBILE: sólo Xiaomi acá; XAEA se intercala más abajo para no
@@ -182,6 +187,11 @@
       <div class="mt-8 entertainment-wrap">
         <PromoBannerEntretenimiento />
       </div>
+
+      <!-- Tercera y cuarta linea: servicio tecnico y desarrollo. -->
+      <div class="mt-8 mb-8">
+        <HomeServiciosBand />
+      </div>
     </section>
 
     <ShopFooter />
@@ -215,6 +225,8 @@ import PromoBannerSeguridadElectronica from "@/modules/shop/components/PromoBann
 import PromoSliderSeguridad from "@/modules/shop/components/PromoSliderSeguridad.vue";
 import ShopRouteRestoreOverlay from "@/modules/shop/components/ShopRouteRestoreOverlay.vue";
 import ShopFooter from "@/modules/shop/components/ShopFooter.vue";
+import HomeSeguridadInstalacion from "@/modules/shop/components/HomeSeguridadInstalacion.vue";
+import HomeServiciosBand from "@/modules/shop/components/HomeServiciosBand.vue";
 import ShopShortsCarousel from "@/modules/shop/components/shop/ShopShortsCarousel.vue";
 
 import { setOgAndReady, absoluteUrlFromLocation } from "@/modules/shop/utils/ogPrerender";
