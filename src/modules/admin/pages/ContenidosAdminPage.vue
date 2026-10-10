@@ -45,7 +45,7 @@
         <div class="ct-pregunta__cuerpo">
           <div class="ct-campo"><label>{{ formato === "problema" ? "Pregunta" : "Titular" }}</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
           <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="editarApertura" /></div>
-          <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea></div>
+          <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz · apertura</label><textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea></div>
         </div>
       </div>
       </template>
@@ -163,7 +163,7 @@
             <template v-else-if="activa === 'intro'">
               <div class="ct-campo"><label>{{ formato === "problema" ? "Pregunta" : "Titular" }}</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
               <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="editarApertura" /></div>
-              <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
+              <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz · apertura</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
             </template>
             <template v-else>
               <div class="ct-cierre-opc">
