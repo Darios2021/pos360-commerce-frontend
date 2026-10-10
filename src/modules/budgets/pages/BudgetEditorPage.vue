@@ -1963,7 +1963,12 @@ onMounted(() => {
 .be .items-table td { padding: 10px 12px; border: 1px solid var(--be-linea); vertical-align: middle; color: var(--be-texto); }
 .be .items-table th:first-child, .be .items-table td:first-child { border-left: 0; }
 .be .items-table th:last-child, .be .items-table td:last-child { border-right: 0; }
-.be .items-table .col-num { text-align: right; }
+.be .items-table .col-num { text-align: right; width: 118px; }
+.be .items-table .col-qty { width: 78px; }
+.be .items-table .col-detail { min-width: 300px; width: auto; }
+.be .items-table .col-act { width: 44px; text-align: center; }
+.be .items-table .col-num .cell-input { text-align: right; }
+.be .items-table select.cell-input { text-align: center; }
 .be .items-table .col-private { background: rgba(240, 180, 41, 0.06); }
 .be .cell-input { width: 100%; min-height: 38px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--be-borde); background: var(--be-campo); color: var(--be-texto); font: 600 14px Inter, sans-serif; box-sizing: border-box; outline: 0; }
 .be .cell-input:focus { border-color: #0f6fae; box-shadow: 0 0 0 3px rgba(15,111,174,.14); }
