@@ -609,8 +609,14 @@ defineExpose({
   transition: background 0.15s ease, color 0.15s ease;
 }
 .pls-rubro:hover {
-  background: rgba(15, 111, 174, 0.04);
-  color: var(--z-texto, #0f172a);
+  background: #cfe5f5;
+  box-shadow: inset 0 0 0 1.5px #3f8fc6;
+  color: #0a466e;
+}
+.v-theme--dark .pls-rubro:hover {
+  background: #1d3a55;
+  box-shadow: inset 0 0 0 1.5px #8cc0e3;
+  color: #e2eefa;
 }
 .pls-rubro.is-on {
   background: rgba(15, 111, 174, 0.08);

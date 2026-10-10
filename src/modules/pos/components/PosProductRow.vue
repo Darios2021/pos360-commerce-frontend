@@ -1057,11 +1057,21 @@ function money(v) {
   overflow: hidden;
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
+/* Hover marcado, como las tarjetas vivas de Zondito: borde de 2 px del azul
+   de la marca, la tarjeta sube y el pie se tiñe. */
 .prow:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10) !important;
-  transform: translateY(-2px);
-  border-color: rgba(15, 23, 42, 0.16) !important;
+  box-shadow: inset 0 0 0 2px #0f6fae, 0 10px 22px rgba(10, 70, 110, 0.20) !important;
+  transform: translateY(-3px);
+  border-color: #0f6fae !important;
 }
+.prow:hover .prow-body,
+.prow:hover .prow-info { background: #e6f1fa; }
+.v-theme--dark .prow:hover {
+  box-shadow: inset 0 0 0 2px #8cc0e3, 0 10px 22px rgba(0, 0, 0, 0.45) !important;
+  border-color: #8cc0e3 !important;
+}
+.v-theme--dark .prow:hover .prow-body,
+.v-theme--dark .prow:hover .prow-info { background: #1d3a55; }
 .prow.in-cart { border-color: rgba(15, 111, 174, 0.5) !important; }
 .prow.disabled { opacity: 0.55; }
 

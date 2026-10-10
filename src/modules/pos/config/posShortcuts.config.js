@@ -40,9 +40,9 @@ export const POS_SHORTCUT_GROUPS = [
 ];
 
 // Solo las F-keys que tienen una acción real conectada en PosTopBarSection.
-// Las toggle abren y cierran su ventana; F3 y F10 van a una vista completa
-// (el carrito queda en el store y se recupera al volver); F8 pide una segunda
-// pulsación antes de vaciar.
+// Las toggle abren y cierran su ventana; F3 va a la ficha completa de
+// clientes (el carrito queda en el store y se recupera al volver); F8 pide una
+// segunda pulsación antes de vaciar.
 export const POS_SHORTCUTS = [
   {
     key: "F1",
@@ -155,6 +155,7 @@ export const POS_SHORTCUTS = [
     tooltip: "Movimientos de caja (F10)",
     holdActive: false,
     allowInInput: true,
+    toggle: true,
   },
   {
     key: "F9",

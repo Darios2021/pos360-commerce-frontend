@@ -297,9 +297,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: nowrap;
-  padding: 10px 14px 6px;
+  padding: 12px 16px 6px;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: visible;
@@ -313,10 +313,10 @@ onBeforeUnmount(() => {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 0 0 auto;
-  height: 44px;
-  padding: 6px 10px 6px 6px;
+  height: 54px;
+  padding: 7px 12px 7px 7px;
   box-sizing: border-box;
   border: 0;
   border-radius: 10px;
@@ -344,10 +344,10 @@ onBeforeUnmount(() => {
 
 /* La figurita: icono y fondo del mismo color (tonos medidos en Zondito). */
 .ptb-tile-icon {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
 }
 .ptb-tile:hover .ptb-tile-icon { filter: brightness(1.1) saturate(1.2); }
 .ptb-tile-icon :deep(.v-icon) {
-  font-size: 21px !important;
+  font-size: 24px !important;
   color: #334155;
 }
 
@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
 .ptb-tile-dot {
   position: absolute;
   top: 4px;
-  left: 32px;
+  left: 40px;
   width: 8px;
   height: 8px;
   border-radius: 50%;

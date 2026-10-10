@@ -747,8 +747,14 @@ function remove(it) {
 }
 
 .item-shell:hover {
-  border-color: rgba(var(--v-theme-primary), 0.32);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: #0f6fae;
+  background: #e6f1fa;
+  box-shadow: inset 0 0 0 1px #0f6fae, 0 4px 12px rgba(10, 70, 110, 0.12);
+}
+.v-theme--dark .item-shell:hover {
+  border-color: #8cc0e3;
+  background: #1d3a55;
+  box-shadow: inset 0 0 0 1px #8cc0e3;
 }
 
 /* Miniatura con badge de cantidad */

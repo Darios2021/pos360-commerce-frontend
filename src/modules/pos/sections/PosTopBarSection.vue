@@ -20,13 +20,19 @@
       @cash="handleCash"
       @movements="handleMovements"
     />
+    <PosCashMovementsDialog
+      v-model="movementsOpen"
+      :caja-id="Number(currentCashRegister?.id || 0)"
+      :sucursal="movementsSucursal"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import PosTopBar from "../components/PosTopBar.vue";
+import PosCashMovementsDialog from "../components/PosCashMovementsDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
 const {
@@ -52,6 +58,10 @@ const {
 } = usePosSalesFlow();
 
 const router = useRouter();
+const movementsOpen = ref(false);
+const movementsSucursal = computed(
+  () => Number(getActiveBranchIdSafe?.() || currentCashRegister.value?.branch_id || 0) || 0
+);
 
 // Mapa de estados activos por F-key para que el TopBar resalte los que
 // están abiertos (toggle visual).
@@ -60,12 +70,14 @@ const activeStates = computed(() => ({
   F4: !!consultaOpen.value,
   F6: !!showCartDialog.value,
   F9: !!checkoutDialog.value,
+  F10: !!movementsOpen.value,
 }));
 
 function closeAllSecondary() {
   helpOpen.value = false;
   consultaOpen.value = false;
   showCartDialog.value = false;
+  movementsOpen.value = false;
 }
 
 function handleHelp() {
@@ -132,15 +144,18 @@ async function handleCash() {
   else openCajaConfig();
 }
 
-// F10: ingresos y egresos en su vista completa.
+// F10: ingresos y egresos de efectivo, ventana que abre y cierra.
 function handleMovements() {
+  if (movementsOpen.value) {
+    movementsOpen.value = false;
+    return;
+  }
   if (!isCajaOpen.value || !currentCashRegister.value?.id) {
     toast("No hay caja abierta");
     return;
   }
   closeAllSecondary();
-  const sucursal = Number(getActiveBranchIdSafe?.() || currentCashRegister.value?.branch_id || 0) || undefined;
-  router.push({ name: "posCashMovements", query: { caja: currentCashRegister.value.id, sucursal } });
+  movementsOpen.value = true;
 }
 
 async function handlePay() {

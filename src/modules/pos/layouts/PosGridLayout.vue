@@ -37,7 +37,7 @@
   /* Como el mostrador de Zondito: el catálogo a la izquierda (barra de
      teclas arriba) y el panel de 340 px de alto completo a la derecha. */
   grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: 56px minmax(0, 1fr);
+  grid-template-rows: 76px minmax(0, 1fr);
   grid-template-areas:
     "topbar right"
     "search right";

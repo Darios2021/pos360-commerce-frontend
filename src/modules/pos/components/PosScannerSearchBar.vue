@@ -922,7 +922,7 @@ defineExpose({
    LECTOR adentro del campo. Va al final para pisar lo anterior. */
 .pos-search-bar {
   gap: 0;
-  padding: 12px 16px 0;
+  padding: 16px 16px 4px;
   border-radius: 0;
   background: transparent;
   border: 0;
@@ -936,15 +936,16 @@ defineExpose({
 }
 .search-input :deep(.v-field) {
   border-radius: 12px;
-  min-height: 50px;
-  font-size: 14px;
-  font-weight: 400;
+  min-height: 60px;
+  font-size: 16px;
+  font-weight: 500;
   background: var(--z-campo, #f1f5f9);
   border: 1px solid var(--z-borde, rgba(15, 23, 42, 0.10));
   box-shadow: none;
 }
 .search-input :deep(.v-field__outline) { display: none; }
-.search-input :deep(.v-field__input) { min-height: 48px; }
+.search-input :deep(.v-field__input) { min-height: 58px; font-size: 16px; }
+.search-input :deep(.v-field__prepend-inner .v-icon) { font-size: 24px; }
 .search-input.is-active :deep(.v-field),
 .search-input.is-hotkey-active :deep(.v-field) {
   border-color: rgba(15, 111, 174, 0.55);
@@ -959,9 +960,9 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
-  height: 23px;
-  padding: 0 6px;
+  min-width: 30px;
+  height: 26px;
+  padding: 0 7px;
   box-sizing: border-box;
   border-radius: 6px;
   font: 900 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -974,10 +975,10 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 26px;
-  padding: 0 8px;
+  height: 30px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--z-tonal, rgba(15, 23, 42, 0.05));
   color: var(--z-suave, #64748b);
   font: 800 11px Inter, sans-serif;
@@ -1046,8 +1047,11 @@ defineExpose({
 
 .pos-dd-row:hover,
 .pos-dd-row.active {
-  background: rgba(var(--v-theme-on-surface), 0.06);
+  background: #cfe5f5;
+  box-shadow: inset 3px 0 0 #0f6fae;
 }
+.v-theme--dark .pos-dd-row:hover,
+.v-theme--dark .pos-dd-row.active { background: #1d3a55; box-shadow: inset 3px 0 0 #8cc0e3; }
 
 .pos-dd-row.active {
   background: rgba(var(--v-theme-primary), 0.12);
