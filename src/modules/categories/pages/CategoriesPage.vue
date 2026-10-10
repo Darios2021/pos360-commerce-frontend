@@ -1,793 +1,264 @@
 <!-- src/modules/categories/pages/CategoriesPage.vue -->
+<!-- Categorías con el diseño nuevo (10/10): a la izquierda los rubros con su
+     cantidad de subrubros; a la derecha el rubro elegido, que se edita ahí
+     mismo (nombre, activo, subrubros), sin ventanas. Un solo botón arriba. -->
 <template>
-  <div class="lp">
-
-    <!-- ── HEADER ───────────────────────────────────────── -->
-    <AppPageHeader icon="mdi-shape-outline" title="Categorías">
-      <template #subtitle>
-        <span>{{ totalRubros }}</span>
-        <span class="mx-1">·</span>
-        <span>{{ totalSubrubros }} subrubros</span>
-        <span class="mx-1">·</span>
-        <span>Ecommerce: Rubro → Subrubro</span>
-      </template>
-      <v-btn
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-refresh"
-        :disabled="busyAny"
-        :loading="busyKey === '__reload__'"
-        @click="reload"
-      >
-        Recargar
-      </v-btn>
-      <v-btn
-        color="primary"
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-plus-box"
-        :disabled="busyAny || !selectedParentId"
-        @click="openCreateChild"
-      >
-        Nueva subcategoría
-      </v-btn>
-      <v-btn
-        color="primary"
-        variant="flat"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-plus"
-        :disabled="busyAny"
-        @click="openCreateRoot"
-      >
-        Nuevo rubro
-      </v-btn>
-    </AppPageHeader>
-
-    <!-- Loader global -->
-    <v-progress-linear v-if="busyAny" indeterminate rounded class="lp-loader" />
-
-    <!-- Error -->
-    <v-alert v-if="errorText" type="error" variant="tonal" density="compact" class="lp-alert">
-      {{ errorText }}
-    </v-alert>
-
-    <!-- ── FILTER BAR ───────────────────────────────────── -->
-    <section class="lp-filters">
-      <div class="lp-filters__primary">
-        <v-text-field
-          v-model="q"
-          placeholder="Buscar rubro o subrubro..."
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="lp-filters__search"
-          :disabled="busyAny"
-        />
+  <div class="sp ct">
+    <div class="sp-cab">
+      <div class="sp-cab__txt">
+        <h1 class="sp-cab__titulo">Categorías</h1>
+        <span class="sp-cab__sub num">{{ rubros.length }} rubros · {{ totalSub }} subrubros</span>
       </div>
-    </section>
+      <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" class="sp-nuevo" @click="nuevoRubro">Nuevo rubro</v-btn>
+    </div>
 
-    <!-- ── MASTER / DETAIL ──────────────────────────────── -->
-    <div class="lp-master-detail">
+    <div class="sp-busca">
+      <div class="sp-busca__campo">
+        <v-icon size="22" class="sp-busca__ic">mdi-magnify</v-icon>
+        <input v-model="q" type="search" class="sp-busca__input" placeholder="Buscar rubro o subrubro" />
+      </div>
+      <label class="sp-check"><input v-model="verInactivos" type="checkbox" />Mostrar los inactivos</label>
+    </div>
 
-      <!-- LEFT: TREE -->
-      <section class="lp-content lp-content--md">
-        <div class="lp-content__head">
-          <div class="lp-content__head-left">
-            <span class="lp-content__title">Árbol de categorías</span>
-            <v-chip size="x-small" variant="tonal">{{ totalRubros }} rubros</v-chip>
-          </div>
-        </div>
+    <v-alert v-if="error" type="error" variant="tonal" density="compact">{{ error }}</v-alert>
 
-        <div class="lp-content__body">
-          <v-treeview
-            :items="treeItems"
-            item-title="name"
-            item-value="key"
-            open-on-click
-            activatable
-            :search="q"
-            v-model:opened="openKeys"
-            v-model:activated="activeKeys"
-            density="comfortable"
-            class="cat-tree"
+    <div class="ct-cuerpo">
+      <!-- Rubros -->
+      <section class="sp-caja ct-lista">
+        <div class="se-banda"><span>Rubros</span><small class="num">{{ lista.length }}</small></div>
+        <v-progress-linear v-if="cargando" indeterminate color="primary" height="3" />
+        <div class="ct-filas">
+          <button
+            v-for="r in lista"
+            :key="r.id"
+            type="button"
+            class="ct-fila"
+            :class="{ 'is-on': sel && sel.id === r.id, 'is-off': !r.is_active }"
+            @click="elegir(r)"
           >
-            <template #prepend="{ item }">
-              <v-icon size="18" :color="item.depth === 0 ? 'primary' : undefined">
-                {{ item.children?.length ? "mdi-folder-outline" : "mdi-tag-outline" }}
-              </v-icon>
-            </template>
-
-            <template #title="{ item }">
-              <div class="cat-row">
-                <div class="cat-row__info">
-                  <div class="cat-row__title">
-                    <span class="cat-row__name">{{ item.name }}</span>
-                    <v-chip
-                      size="x-small"
-                      variant="tonal"
-                      :color="item.depth === 0 ? 'primary' : undefined"
-                    >
-                      {{ item.depth === 0 ? "Rubro" : "Subrubro" }}
-                    </v-chip>
-                    <v-chip v-if="!item.is_active" size="x-small" variant="tonal" color="warning">
-                      Inactivo
-                    </v-chip>
-                  </div>
-                  <div class="cat-row__path">{{ item.path }}</div>
-                </div>
-
-                <div class="cat-row__actions" @click.stop>
-                  <v-btn
-                    v-if="item.depth === 0"
-                    icon="mdi-plus-box"
-                    variant="text"
-                    size="x-small"
-                    title="Crear subcategoría"
-                    :disabled="busyAny"
-                    :loading="isBusy(item.key)"
-                    @click.stop="openCreateChildFrom(item)"
-                  />
-                  <v-btn
-                    v-if="item.depth === 0"
-                    icon="mdi-pencil-outline"
-                    variant="text"
-                    size="x-small"
-                    title="Editar rubro"
-                    :disabled="busyAny"
-                    :loading="isBusy(item.key)"
-                    @click.stop="openEditCategory(item)"
-                  />
-                  <v-btn
-                    v-if="item.depth === 1"
-                    icon="mdi-pencil-outline"
-                    variant="text"
-                    size="x-small"
-                    title="Editar subrubro"
-                    :disabled="busyAny"
-                    :loading="isBusy(item.key)"
-                    @click.stop="openEditSubcategory(item)"
-                  />
-                  <v-btn
-                    :icon="item.is_active ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline'"
-                    variant="text"
-                    size="x-small"
-                    :title="item.is_active ? 'Desactivar' : 'Activar'"
-                    :color="item.is_active ? undefined : 'success'"
-                    :disabled="busyAny && !isBusy(item.key)"
-                    :loading="isBusy(item.key)"
-                    @click.stop="toggle(item)"
-                  />
-                </div>
-              </div>
-            </template>
-
-            <template #no-data>
-              <div class="cat-empty">
-                <v-icon size="40" color="medium-emphasis">mdi-folder-open-outline</v-icon>
-                <span>Sin categorías.</span>
-              </div>
-            </template>
-          </v-treeview>
+            <span class="ct-fila__ic"><v-icon size="20">mdi-folder-outline</v-icon></span>
+            <span class="ct-fila__txt">
+              <b class="clamp1">{{ r.name }}</b>
+              <small class="num">{{ subsDe(r).length }} {{ subsDe(r).length === 1 ? "subrubro" : "subrubros" }}<template v-if="!r.is_active"> · inactivo</template></small>
+              <small v-if="q && coincidencias(r).length" class="ct-match clamp1">{{ coincidencias(r).join(" · ") }}</small>
+            </span>
+            <v-icon size="20" class="ct-fila__ir">mdi-chevron-right</v-icon>
+          </button>
+          <div v-if="!cargando && !lista.length" class="sp-vacio">{{ q ? "Ningún rubro coincide" : "Todavía no hay rubros" }}</div>
         </div>
       </section>
 
-      <!-- RIGHT: DETAIL -->
-      <section class="lp-content lp-content--md">
-        <div class="lp-content__head">
-          <div class="lp-content__head-left">
-            <span class="lp-content__title">Detalle</span>
-            <v-chip v-if="selectedNode" size="x-small" variant="tonal" :color="selectedNode.depth === 0 ? 'primary' : undefined">
-              {{ selectedNode.depth === 0 ? "Rubro" : "Subrubro" }}
-            </v-chip>
+      <!-- Rubro elegido -->
+      <section class="sp-caja ct-detalle">
+        <template v-if="sel">
+          <div class="se-banda"><span>{{ sel.id ? "Rubro" : "Nuevo rubro" }}</span><small v-if="sel.id" class="num">{{ subsDe(sel).length }} subrubros</small></div>
+          <div class="se-campos">
+            <label class="se-campo se-campo--ancho"><span>Nombre del rubro</span>
+              <input ref="nombreRef" v-model="form.name" type="text" maxlength="120" @keydown.enter="guardarRubro" />
+            </label>
+            <label v-if="sel.id" class="ct-sw se-campo--ancho"><v-switch v-model="form.is_active" inset density="compact" hide-details color="primary" />Activo</label>
           </div>
-        </div>
-
-        <div class="lp-content__body">
-          <div v-if="!selectedNode" class="cat-detail-empty">
-            <v-icon size="44" color="medium-emphasis">mdi-cursor-pointer</v-icon>
-            <div class="cat-detail-empty__title">Seleccioná un rubro o subrubro</div>
-            <div class="cat-detail-empty__sub">Las acciones detalladas aparecen acá</div>
+          <div class="ct-accion">
+            <v-btn color="primary" variant="flat" class="sp-nuevo" :loading="guardando" :disabled="!cambiado" @click="guardarRubro">
+              {{ sel.id ? "Guardar cambios" : "Crear rubro" }}
+            </v-btn>
           </div>
 
-          <div v-else class="cat-detail">
-            <div class="cat-detail__field">
-              <div class="cat-detail__label">Nombre</div>
-              <div class="cat-detail__value">{{ selectedNode.name }}</div>
+          <template v-if="sel.id">
+            <div class="se-banda ct-banda2"><span>Subrubros</span></div>
+            <div class="ct-subs">
+              <div v-for="s in subsDe(sel)" :key="s.id" class="ct-sub" :class="{ 'is-off': !s.is_active }">
+                <input v-model="s.name" type="text" maxlength="120" class="ct-sub__in" @keydown.enter="$event.target.blur()" @blur="guardarSub(s)" />
+                <label class="ct-sw ct-sw--chico"><v-switch :model-value="s.is_active" inset density="compact" hide-details color="primary" @update:model-value="(v) => activarSub(s, v)" />{{ s.is_active ? "Activo" : "Inactivo" }}</label>
+              </div>
+              <div v-if="!subsDe(sel).length" class="ct-nada">Este rubro todavía no tiene subrubros</div>
+              <div class="ct-nuevo">
+                <v-icon size="20">mdi-plus</v-icon>
+                <input v-model="nuevoSub" type="text" maxlength="120" placeholder="Nuevo subrubro y Enter" @keydown.enter="crearSub" />
+                <v-progress-circular v-if="creandoSub" indeterminate size="18" width="2" color="primary" />
+              </div>
             </div>
-
-            <div class="cat-detail__field">
-              <div class="cat-detail__label">Ruta</div>
-              <div class="cat-detail__path">{{ selectedNode.path }}</div>
-            </div>
-
-            <div class="cat-detail__chips">
-              <v-chip size="small" variant="tonal" :color="selectedNode.depth === 0 ? 'primary' : undefined">
-                {{ selectedNode.depth === 0 ? "Rubro" : "Subrubro" }}
-              </v-chip>
-              <v-chip size="small" variant="tonal">ID #{{ selectedNode.id }}</v-chip>
-              <v-chip
-                size="small"
-                variant="tonal"
-                :color="selectedNode.is_active ? 'success' : 'warning'"
-              >
-                {{ selectedNode.is_active ? "Activo" : "Inactivo" }}
-              </v-chip>
-            </div>
-
-            <v-divider />
-
-            <div class="cat-detail__actions">
-              <v-btn
-                v-if="selectedNode.depth === 0"
-                color="primary"
-                variant="flat"
-                size="small"
-                rounded="lg"
-                prepend-icon="mdi-plus-box"
-                :disabled="busyAny"
-                @click="openCreateChild"
-              >
-                Nueva subcategoría aquí
-              </v-btn>
-              <v-btn
-                v-if="selectedNode.depth === 0"
-                variant="tonal"
-                size="small"
-                rounded="lg"
-                prepend-icon="mdi-pencil-outline"
-                :disabled="busyAny"
-                @click="openEditCategory(selectedNode)"
-              >
-                Editar
-              </v-btn>
-              <v-btn
-                :variant="selectedNode.is_active ? 'tonal' : 'flat'"
-                :color="selectedNode.is_active ? 'warning' : 'success'"
-                size="small"
-                rounded="lg"
-                :prepend-icon="selectedNode.is_active ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline'"
-                :disabled="busyAny && !isBusy(selectedNode.key)"
-                :loading="isBusy(selectedNode.key)"
-                @click="toggle(selectedNode)"
-              >
-                {{ selectedNode.is_active ? "Desactivar" : "Activar" }}
-              </v-btn>
-            </div>
-          </div>
-        </div>
+          </template>
+        </template>
+        <div v-else class="sp-vacio">Elegí un rubro de la lista</div>
       </section>
     </div>
 
-    <!-- DIALOG -->
-    <CategoryFormDialog
-      v-model:open="dlgOpen"
-      :mode="dlgMode"
-      :item="dlgItem"
-      :preset-kind="dlgPresetKind"
-      :preset-parent-id="dlgPresetParentId"
-      @saved="onSaved"
-    />
-
-    <!-- SNACKBAR -->
-    <v-snackbar v-model="snack.open" :timeout="2400" location="bottom right" rounded="lg">
-      {{ snack.text }}
-      <template #actions>
-        <v-btn variant="text" @click="snack.open = false">OK</v-btn>
-      </template>
-    </v-snackbar>
+    <v-snackbar v-model="aviso.open" :timeout="2200">{{ aviso.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import http from "../../../app/api/http";
-import { useCategoriesStore } from "../../../app/store/categories.store";
-import CategoryFormDialog from "../components/CategoryFormDialog.vue";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import http from "@/app/api/http";
+import { useCategoriesStore } from "@/app/store/categories.store";
+import "@/modules/products/styles/proveedores.css";
 
 const cats = useCategoriesStore();
+const rubros = ref([]);
+const subs = ref({}); // category_id -> subrubros
+const cargando = ref(false);
+const guardando = ref(false);
+const creandoSub = ref(false);
+const error = ref("");
 const q = ref("");
+const verInactivos = ref(false);
+const sel = ref(null);
+const form = reactive({ name: "", is_active: true });
+const nuevoSub = ref("");
+const nombreRef = ref(null);
+const aviso = reactive({ open: false, text: "" });
 
-const dlgOpen = ref(false);
-const dlgMode = ref("create");
-const dlgItem = ref(null);
-const dlgPresetKind = ref("root");
-const dlgPresetParentId = ref(null);
-
-const openKeys = ref([]);
-const activeKeys = ref([]);
-
-const errorText = ref("");
-
-// snackbar
-const snack = ref({ open: false, text: "" });
-function toast(text) {
-  snack.value.text = String(text || "");
-  snack.value.open = true;
+const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const subsDe = (r) => (subs.value[r?.id] || []).filter((s) => verInactivos.value || s.is_active).sort((a, b) => a.name.localeCompare(b.name, "es"));
+const totalSub = computed(() => Object.values(subs.value).reduce((a, l) => a + l.length, 0));
+function coincidencias(r) {
+  const t = norm(q.value.trim());
+  return t ? (subs.value[r.id] || []).filter((s) => norm(s.name).includes(t)).map((s) => s.name) : [];
 }
-
-// busy: evita doble click
-const busyKey = ref(null); // string | null
-const busyAny = computed(() => !!busyKey.value);
-function isBusy(key) {
-  return busyKey.value === key;
-}
-function beginBusy(key) {
-  if (busyKey.value) return false;
-  busyKey.value = key;
-  return true;
-}
-function endBusy() {
-  busyKey.value = null;
-}
-
-// ===== Fetch ecommerce tree =====
-const parents = ref([]); // rubros
-const subsByCat = ref({}); // category_id -> subcategories
-
-async function loadEcomTree() {
-  errorText.value = "";
-
-  await cats.fetchAll(true);
-
-  parents.value = (cats.parents || []).map((c) => ({
-    id: Number(c.id),
-    name: String(c.name || "").trim(),
-    is_active: Number(c.is_active ?? 1) !== 0,
-  }));
-
-  const map = {};
-  for (const p of parents.value) {
-    try {
-      const { data } = await http.get(`/categories/${p.id}/subcategories`);
-      map[p.id] = (data?.items || []).map((s) => ({
-        id: Number(s.id),
-        name: String(s.name || "").trim(),
-        is_active: Number(s.is_active ?? 1) !== 0,
-        category_id: Number(s.category_id),
-      }));
-    } catch (e) {
-      map[p.id] = [];
-    }
-  }
-  subsByCat.value = map;
-}
-
-onMounted(async () => {
-  await loadEcomTree();
+const lista = computed(() => {
+  const t = norm(q.value.trim());
+  return rubros.value
+    .filter((r) => verInactivos.value || r.is_active)
+    .filter((r) => !t || norm(r.name).includes(t) || coincidencias(r).length)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+});
+const cambiado = computed(() => {
+  if (!sel.value) return false;
+  if (!sel.value.id) return !!form.name.trim();
+  return form.name.trim() !== sel.value.name || form.is_active !== sel.value.is_active;
 });
 
-async function reload() {
-  if (!beginBusy("__reload__")) return;
+function avisar(t) { aviso.text = t; aviso.open = true; }
+
+async function cargar() {
+  cargando.value = true;
+  error.value = "";
   try {
-    await loadEcomTree();
-    toast("Actualizado");
+    await cats.fetchAll(true);
+    rubros.value = (cats.parents || []).map((c) => ({ id: Number(c.id), name: String(c.name || "").trim(), is_active: Number(c.is_active ?? 1) !== 0 }));
+    const mapa = {};
+    await Promise.all(rubros.value.map(async (r) => {
+      try {
+        const { data } = await http.get(`/categories/${r.id}/subcategories`);
+        mapa[r.id] = (data?.items || []).map((s) => ({ id: Number(s.id), name: String(s.name || "").trim(), nombreGuardado: String(s.name || "").trim(), is_active: Number(s.is_active ?? 1) !== 0, category_id: r.id }));
+      } catch { mapa[r.id] = []; }
+    }));
+    subs.value = mapa;
+    if (sel.value?.id) sel.value = rubros.value.find((r) => r.id === sel.value.id) || null;
+    if (!sel.value && lista.value.length) elegir(lista.value[0]);
   } catch (e) {
-    errorText.value = e?.response?.data?.message || e?.message || String(e);
+    error.value = e?.response?.data?.message || e?.message || "No se pudieron cargar las categorías";
   } finally {
-    endBusy();
+    cargando.value = false;
   }
 }
 
-// ===== Tree build (2 niveles) =====
-const treeItems = computed(() => {
-  const out = [];
-  const parentsSorted = [...parents.value].sort((a, b) =>
-    a.name.localeCompare(b.name, "es")
-  );
-
-  for (const p of parentsSorted) {
-    const path = p.name;
-
-    const kids = (subsByCat.value[p.id] || [])
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "es"))
-      .map((s) => ({
-        key: `s:${s.id}`,
-        id: s.id,
-        name: s.name,
-        is_active: s.is_active,
-        depth: 1,
-        path: `${path} > ${s.name}`,
-        type: "subcategory",
-        category_id: p.id,
-        children: [],
-      }));
-
-    out.push({
-      key: `c:${p.id}`,
-      id: p.id,
-      name: p.name,
-      is_active: p.is_active,
-      depth: 0,
-      path,
-      type: "category",
-      children: kids,
-    });
-  }
-
-  return out;
-});
-
-// totales para el header
-const totalRubros = computed(() => parents.value.length);
-const totalSubrubros = computed(() => {
-  let n = 0;
-  for (const k of Object.keys(subsByCat.value)) {
-    n += (subsByCat.value[k] || []).length;
-  }
-  return n;
-});
-
-// ===== Selection =====
-const selectedKey = computed(() =>
-  activeKeys.value?.[0] ? String(activeKeys.value[0]) : null
-);
-
-function findNode(nodes, key) {
-  for (const n of nodes) {
-    if (n.key === key) return n;
-    if (n.children?.length) {
-      const x = findNode(n.children, key);
-      if (x) return x;
-    }
-  }
-  return null;
+function elegir(r) {
+  sel.value = r;
+  form.name = r.name;
+  form.is_active = r.is_active;
+  nuevoSub.value = "";
+}
+function nuevoRubro() {
+  sel.value = { id: null, name: "", is_active: true };
+  form.name = "";
+  form.is_active = true;
+  nextTick(() => nombreRef.value?.focus());
 }
 
-const selectedNode = computed(() =>
-  selectedKey.value ? findNode(treeItems.value, selectedKey.value) : null
-);
-
-// solo rubros para crear subcat
-const selectedParentId = computed(() => {
-  if (!selectedNode.value) return null;
-  return selectedNode.value.depth === 0
-    ? selectedNode.value.id
-    : selectedNode.value.category_id;
-});
-
-// ===== Dialog actions =====
-function openCreateRoot() {
-  dlgMode.value = "create";
-  dlgItem.value = null;
-  dlgPresetKind.value = "root";
-  dlgPresetParentId.value = null;
-  dlgOpen.value = true;
-}
-
-function openCreateChild() {
-  if (!selectedParentId.value) return;
-  dlgMode.value = "create";
-  dlgItem.value = null;
-  dlgPresetKind.value = "child";
-  dlgPresetParentId.value = selectedParentId.value;
-  dlgOpen.value = true;
-}
-
-function openCreateChildFrom(item) {
-  dlgMode.value = "create";
-  dlgItem.value = null;
-  dlgPresetKind.value = "child";
-  dlgPresetParentId.value = item.id;
-  dlgOpen.value = true;
-}
-
-function openEditCategory(item) {
-  dlgMode.value = "edit";
-  dlgItem.value = {
-    id: item.id,
-    name: item.name,
-    parent_id: null,
-    is_active: item.is_active ? 1 : 0,
-  };
-  dlgOpen.value = true;
-}
-
-function openEditSubcategory(item) {
-  toast("Editar subrubros: si querés te armo el dialog dedicado.");
-}
-
-// ===== Toggle con confirm + loader + anti doble click =====
-async function toggle(item) {
-  const key = item?.key || "__toggle__";
-  if (!beginBusy(key)) return;
-
+async function guardarRubro() {
+  const name = form.name.trim();
+  if (!name || !cambiado.value || guardando.value) return;
+  guardando.value = true;
+  error.value = "";
   try {
-    const willDeactivate = !!item.is_active;
-
-    const ok = window.confirm(
-      willDeactivate
-        ? `¿Desactivar "${item.name}"? (No se verá en tienda)`
-        : `¿Activar "${item.name}"?`
-    );
-    if (!ok) return;
-
-    if (item.type === "category") {
-      await cats.update(item.id, { is_active: willDeactivate ? 0 : 1 });
+    if (sel.value.id) {
+      await cats.update(sel.value.id, { name, is_active: form.is_active ? 1 : 0, parent_id: null });
+      avisar("Rubro guardado");
     } else {
-      await http.patch(`/categories/${item.category_id}/subcategories/${item.id}`, {
-        name: item.name,
-        is_active: willDeactivate ? 0 : 1,
-      });
+      const creado = await cats.create({ name, is_active: 1, parent_id: null });
+      sel.value = { id: Number(creado?.id) || null, name, is_active: true };
+      avisar("Rubro creado");
     }
-
-    await loadEcomTree();
-    toast(willDeactivate ? "Desactivado" : "Activado");
+    await cargar();
   } catch (e) {
-    errorText.value = e?.response?.data?.message || e?.message || String(e);
+    error.value = cats.error || e?.response?.data?.message || e?.message || "No se pudo guardar el rubro";
   } finally {
-    endBusy();
+    guardando.value = false;
   }
 }
 
-async function onSaved() {
-  await reload();
+async function guardarSub(s) {
+  const name = String(s.name || "").trim();
+  if (!name) { s.name = s.nombreGuardado; return; }
+  if (name === s.nombreGuardado) return;
+  try {
+    await http.patch(`/categories/${s.category_id}/subcategories/${s.id}`, { name });
+    s.nombreGuardado = name;
+    avisar("Subrubro guardado");
+  } catch (e) {
+    s.name = s.nombreGuardado;
+    error.value = e?.response?.data?.message || e?.message || "No se pudo guardar el subrubro";
+  }
 }
+async function activarSub(s, v) {
+  try {
+    await http.patch(`/categories/${s.category_id}/subcategories/${s.id}`, { is_active: v ? 1 : 0 });
+    s.is_active = v;
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo cambiar el subrubro";
+  }
+}
+async function crearSub() {
+  const name = nuevoSub.value.trim();
+  if (!name || !sel.value?.id || creandoSub.value) return;
+  creandoSub.value = true;
+  try {
+    const { data } = await http.post(`/categories/${sel.value.id}/subcategories`, { name, is_active: 1 });
+    const it = data?.item || data?.data || {};
+    (subs.value[sel.value.id] ||= []).push({ id: Number(it.id), name, nombreGuardado: name, is_active: true, category_id: sel.value.id });
+    nuevoSub.value = "";
+    avisar("Subrubro agregado");
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo crear el subrubro";
+  } finally {
+    creandoSub.value = false;
+  }
+}
+
+onMounted(cargar);
 </script>
 
-<style scoped>
-/* ============================================================
-   LIST PAGE — patrón estandarizado (lp-*)
-   Compartido con Productos / Ventas. Mantener sincronizado.
-   ============================================================ */
-
-.lp {
-  --lp-gap: 14px;
-  --lp-radius: 14px;
-  --lp-radius-sm: 12px;
-  --lp-card-bg: rgb(var(--v-theme-surface));
-  --lp-card-border: rgba(var(--v-border-color), var(--v-border-opacity));
-  --lp-muted: rgba(var(--v-theme-on-surface), 0.55);
-  --lp-strong: rgba(var(--v-theme-on-surface), 0.9);
-
-  display: flex;
-  flex-direction: column;
-  gap: var(--lp-gap);
-  min-width: 0;
-}
-
-/* HEADER */
-.lp-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 4px 2px 0;
-}
-.lp-header__left  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.lp-title {
-  font-size: 22px;
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-.lp-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--lp-muted);
-  flex-wrap: wrap;
-}
-.lp-meta__strong {
-  font-weight: 500;
-  color: var(--lp-strong);
-  font-feature-settings: "tnum";
-}
-.lp-meta__sep { opacity: 0.4; }
-
-/* LOADER + ALERT */
-.lp-loader { margin: 0 !important; }
-.lp-alert  { margin-bottom: 0 !important; }
-
-/* FILTER BAR (modo simple — solo search) */
-.lp-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--lp-radius);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-}
-.lp-filters__primary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.lp-filters__search { flex: 1 1 100%; min-width: 220px; }
-.lp-filters__search :deep(.v-field) { border-radius: 10px; }
-
-/* CONTENT WRAPPER */
-.lp-content {
-  border-radius: var(--lp-radius);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.lp-content__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--lp-card-border);
-  background: rgba(var(--v-theme-on-surface), 0.015);
-}
-.lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
-.lp-content__body { padding: 12px; flex: 1; min-height: 0; }
-.lp-content--md { min-height: 480px; }
-
-/* MASTER-DETAIL GRID */
-.lp-master-detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: var(--lp-gap);
-  align-items: start;
-}
-
-/* ============================================================
-   CATEGORÍAS — específico
-   ============================================================ */
-
-.cat-tree {
-  background: transparent;
-}
-.cat-tree :deep(.v-list-item) {
-  border-radius: 8px;
-  margin-bottom: 2px;
-}
-.cat-tree :deep(.v-list-item--active) {
-  background: rgba(var(--v-theme-primary), 0.1);
-}
-
-.cat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-.cat-row__info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-.cat-row__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.cat-row__name {
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: -0.005em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cat-row__path {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  font-feature-settings: "tnum";
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cat-row__actions {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
-}
-.cat-row__actions :deep(.v-btn) {
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-}
-
-.cat-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 32px 0;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  font-size: 13px;
-}
-
-/* DETAIL */
-.cat-detail-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 48px 16px;
-  text-align: center;
-  min-height: 240px;
-}
-.cat-detail-empty__title {
-  font-size: 15px;
-  font-weight: 400;
-  margin-top: 4px;
-}
-.cat-detail-empty__sub {
-  font-size: 12.5px;
-  color: var(--lp-muted);
-}
-
-.cat-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 4px 2px;
-}
-.cat-detail__field { display: flex; flex-direction: column; gap: 3px; }
-.cat-detail__label {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--lp-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.cat-detail__value {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.cat-detail__path {
-  font-size: 13px;
-  color: rgba(var(--v-theme-on-surface), 0.78);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-}
-.cat-detail__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.cat-detail__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* RESPONSIVE */
-@media (max-width: 960px) {
-  .lp { gap: 12px; }
-  .lp-filters { padding: 10px 12px; }
-  .lp-master-detail { grid-template-columns: 1fr; }
-  .lp-content--md { min-height: auto; }
-}
-
-@media (max-width: 600px) {
-  .lp-title { font-size: 18px; }
-  .cat-row__path { display: none; }
-  .cat-row__actions :deep(.v-btn) {
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-  }
-}
+<style>
+.ct-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.ct-filas { display: flex; flex-direction: column; max-height: calc(100vh - 300px); overflow-y: auto; }
+.ct-fila { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 0; border-bottom: 1px solid var(--sp-linea); background: transparent; text-align: left; cursor: pointer; font-family: Inter, sans-serif; color: var(--sp-texto); border-left: 3px solid transparent; }
+.ct-fila:hover { background: var(--sp-hover); }
+.ct-fila.is-on { background: rgba(15, 111, 174, 0.08); border-left-color: #0f6fae; }
+.ct-fila.is-off { opacity: .6; }
+.ct-fila__ic { width: 36px; height: 36px; border-radius: 10px; background: var(--sp-hover); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ct-fila__ic .v-icon { color: #0f6fae; }
+.ct-fila__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ct-fila__txt b { font-size: 15px; font-weight: 800; }
+.ct-fila__txt small { font-size: 12px; color: var(--sp-suave); }
+.ct-match { color: #0f6fae !important; font-weight: 700; }
+.ct-fila__ir { color: var(--sp-tenue) !important; }
+.ct-detalle { position: sticky; top: 70px; }
+.ct-accion { display: flex; justify-content: flex-end; padding: 0 16px 16px; }
+.ct-banda2 { border-top: 1px solid var(--sp-linea); }
+.ct-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.ct-sw--chico { font-size: 13px; color: var(--sp-suave); min-width: 120px; }
+.ct-subs { display: flex; flex-direction: column; padding: 8px 16px 16px; }
+.ct-sub { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--sp-linea); }
+.ct-sub.is-off .ct-sub__in { color: var(--sp-tenue); }
+.ct-sub__in { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid transparent; background: transparent; font: 600 15px Inter, sans-serif; color: var(--sp-texto); outline: 0; }
+.ct-sub__in:hover { border-color: var(--sp-borde); }
+.ct-sub__in:focus { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, 0.18); background: var(--sp-caja); }
+.ct-nada { padding: 12px 0; font-size: 14px; color: var(--sp-suave); }
+.ct-nuevo { display: flex; align-items: center; gap: 8px; margin-top: 10px; height: 46px; padding: 0 12px; border-radius: 10px; border: 1px dashed var(--sp-borde); }
+.ct-nuevo .v-icon { color: #0f6fae; }
+.ct-nuevo input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 600 15px Inter, sans-serif; color: var(--sp-texto); }
+.ct-nuevo:focus-within { border-style: solid; border-color: #3f8fc6; }
+@media (max-width: 900px) { .ct-cuerpo { grid-template-columns: 1fr; } .ct-detalle { position: static; } }
 </style>
