@@ -9,11 +9,11 @@
       :cart-count="cartCount"
       :active-states="activeStates"
       :caja-open="!!isCajaOpen"
-      @help="abrir(helpOpen)"
-      @find-product="abrir(buscarOpen)"
-      @search="abrir(consultaOpen)"
+      @help="abrir('ayuda')"
+      @find-product="abrir('buscar')"
+      @search="abrir('consulta')"
       @refresh="handleRefresh"
-      @show-cart="abrir(showCartDialog)"
+      @show-cart="abrir('carrito')"
       @pay="handlePay"
       @new-customer="handleNewCustomer"
       @clear-cart="handleClearCart"
@@ -84,12 +84,14 @@ const activeStates = computed(() => ({
   F10: !!movementsOpen.value,
 }));
 
-const ventanas = [helpOpen, buscarOpen, consultaOpen, showCartDialog, vaciarOpen, movementsOpen];
+// Por nombre: en la plantilla Vue desenvuelve los ref y pasaría el booleano.
+const VENTANAS = { ayuda: helpOpen, buscar: buscarOpen, consulta: consultaOpen, carrito: showCartDialog, vaciar: vaciarOpen, movimientos: movementsOpen };
 function closeAllSecondary() {
-  for (const v of ventanas) v.value = false;
+  for (const v of Object.values(VENTANAS)) v.value = false;
 }
 // Misma tecla: abre o cierra. Otra tecla: cierra la que esté y abre la suya.
-function abrir(ventana) {
+function abrir(nombre) {
+  const ventana = VENTANAS[nombre];
   if (ventana.value) { ventana.value = false; return; }
   closeAllSecondary();
   ventana.value = true;
