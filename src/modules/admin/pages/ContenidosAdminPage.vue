@@ -272,6 +272,12 @@
           <p v-if="v.descripcion" class="ct-video__desc">{{ v.descripcion }}</p>
           <p v-if="v.items?.length" class="ct-video__items">{{ v.items.map((x) => x.titulo).join(" · ") }}</p>
         </div>
+        <div v-if="v.estado === 'en_cola'" class="ct-video__pie">
+          <span class="ct-video__esp"></span>
+          <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" @click="borrar(v)">
+            <v-icon size="20">mdi-close-circle-outline</v-icon><span>{{ confirmar === v.id ? "Confirmar" : "Cancelar" }}</span>
+          </button>
+        </div>
         <div v-if="v.estado === 'lista' || v.estado === 'error'" class="ct-video__pie">
           <a v-if="v.estado === 'lista'" :href="v.video" download class="ct-bajar"><v-icon size="20">mdi-download</v-icon>Bajar MP4</a>
           <span v-else class="ct-video__esp"></span>
