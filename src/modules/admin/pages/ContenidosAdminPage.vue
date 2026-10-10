@@ -67,9 +67,9 @@
               <span class="ct-prod__p num">{{ pesos(p.precio) }}</span>
               <span class="ct-prod__s num">{{ p.cuotas ? `${p.cuotas.cantidad} cuotas de ${pesos(p.cuotas.valor)} · ` : "" }}stock {{ p.stock }}</span>
             </button>
+            <div v-if="visibles.length < filtrados.length" v-intersect="masProductos" class="ct-sentinela"></div>
+            <div v-if="!cargandoCatalogo && !filtrados.length" class="ct-vacio">Sin productos</div>
           </div>
-          <div v-if="visibles.length < filtrados.length" v-intersect="masProductos" class="ct-sentinela"></div>
-          <div v-if="!cargandoCatalogo && !filtrados.length" class="ct-vacio">Sin productos</div>
         </section>
         <aside class="ct-col ct-enreel">
           <div class="sp-caja">
@@ -492,7 +492,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-paso.is-ok b { background: #2E9E7B; color: #fff; }
 .ct-paso.is-ok b .v-icon { color: #fff; }
 .ct-p1 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
-.ct-enreel { position: sticky; top: 12px; }
+.ct-enreel .sp-caja { max-height: calc(100vh - 330px); overflow-y: auto; }
 .ct-sel { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); }
 .ct-sel:last-child { border-bottom: 0; }
 .ct-sel.is-arrastrando { opacity: .4; }
@@ -528,7 +528,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-musica button:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-musica button:hover:not(.is-on) { background: #1a2a3a; }
 .ct-musica button.is-on { border: 2px solid #0f6fae; padding: 15px 7px; background: var(--sp-hover); }
-.ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); position: sticky; bottom: 12px; z-index: 2; }
+.ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
 .ct-atras { height: 50px; display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 800 16px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
 .ct-atras:hover { background: #cfe5f5; border-color: #3f8fc6; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-atras:hover { background: #1a2a3a; }
@@ -557,7 +557,11 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-prod.is-on { border: 2px solid #0f6fae; box-shadow: 0 0 0 3px #cfe5f5; padding: 7px; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-prod.is-on { box-shadow: 0 0 0 3px #12304a; }
 .ct-prod.is-lleno { opacity: .5; cursor: default; }
-.ct-sentinela { height: 1px; }
+.ct-sentinela { height: 1px; grid-column: 1 / -1; }
+.ct-grilla > .ct-vacio { grid-column: 1 / -1; }
+/* El catálogo y la tira de escenas tienen su propio scroll: el layout de la app corta el sticky. */
+.ct-p1 .ct-grilla { max-height: calc(100vh - 400px); min-height: 320px; overflow-y: auto; padding: 2px 4px 2px 2px; align-content: start; }
+.ct-p2 .ct-tira { max-height: calc(100vh - 330px); overflow-y: auto; }
 .ct-vacio { padding: 36px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--sp-suave); }
 
 .ct-es { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); cursor: pointer; }
@@ -638,7 +642,8 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 }
 @media (max-width: 900px) {
   .ct-p1, .ct-p2 { grid-template-columns: minmax(0, 1fr); }
-  .ct-enreel { position: static; order: -1; }
+  .ct-enreel { order: -1; }
+  .ct-p1 .ct-grilla { max-height: 60vh; }
   .ct-tira { flex-direction: row; overflow-x: auto; }
   .ct-ti { flex-direction: column; min-width: 110px; }
   .ct-musica { grid-template-columns: repeat(2, minmax(0, 1fr)); }
