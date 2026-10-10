@@ -8,18 +8,24 @@
       :loading-global="loadingGlobal"
       :cart-count="cartCount"
       :active-states="activeStates"
+      :caja-open="!!isCajaOpen"
       @help="handleHelp"
       @find-product="handleFindProduct"
       @search="handleSearch"
       @refresh="handleRefresh"
       @show-cart="handleShowCart"
       @pay="handlePay"
+      @new-customer="handleNewCustomer"
+      @clear-cart="handleClearCart"
+      @cash="handleCash"
+      @movements="handleMovements"
     />
   </div>
 </template>
 
 <script setup>
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 import PosTopBar from "../components/PosTopBar.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
@@ -37,7 +43,15 @@ const {
   toast,
   requestFocusSearch,
   requestRefreshCatalog,
+  isCajaOpen,
+  currentCashRegister,
+  getActiveBranchIdSafe,
+  openCajaConfig,
+  onCloseCaja,
+  posStore,
 } = usePosSalesFlow();
+
+const router = useRouter();
 
 // Mapa de estados activos por F-key para que el TopBar resalte los que
 // están abiertos (toggle visual).
@@ -91,6 +105,42 @@ function handleShowCart() {
   }
   closeAllSecondary();
   showCartDialog.value = true;
+}
+
+// F3: alta en la ficha completa de clientes; al guardar vuelve al POS y el
+// carrito sigue en el store.
+function handleNewCustomer() {
+  closeAllSecondary();
+  router.push({ name: "adminCustomerNew", query: { volver: "pos" } });
+}
+
+// F8 llega ya confirmado (segunda pulsación) desde el TopBar.
+function handleClearCart() {
+  if (!cartItems.value.length) {
+    toast("El carrito ya está vacío");
+    return;
+  }
+  closeAllSecondary();
+  posStore.clearCart();
+  toast("Carrito vaciado");
+}
+
+// F7: abrir la caja, o con la caja abierta, arqueo y cierre.
+async function handleCash() {
+  closeAllSecondary();
+  if (isCajaOpen.value) await onCloseCaja();
+  else openCajaConfig();
+}
+
+// F10: ingresos y egresos en su vista completa.
+function handleMovements() {
+  if (!isCajaOpen.value || !currentCashRegister.value?.id) {
+    toast("No hay caja abierta");
+    return;
+  }
+  closeAllSecondary();
+  const sucursal = Number(getActiveBranchIdSafe?.() || currentCashRegister.value?.branch_id || 0) || undefined;
+  router.push({ name: "posCashMovements", query: { caja: currentCashRegister.value.id, sucursal } });
 }
 
 async function handlePay() {

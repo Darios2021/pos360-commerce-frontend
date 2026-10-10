@@ -28,16 +28,21 @@
 //                 Tambien se usa para que el listener global NO bloquee la
 //                 F-key de un dialog toggleable mientras esta abierto.
 
+// El orden de los grupos es el orden de la barra (como Zondito: buscar,
+// venta, caja, cobrar y al final ayuda y pantalla).
 export const POS_SHORTCUT_GROUPS = [
-  { id: "utility", label: "Ayuda" },
   { id: "search",  label: "Busqueda" },
-  { id: "cart",    label: "Carrito" },
+  { id: "cart",    label: "Venta" },
+  { id: "cash",    label: "Caja" },
   { id: "sales",   label: "Cobro" },
   { id: "system",  label: "Sistema" },
+  { id: "utility", label: "Ayuda" },
 ];
 
 // Solo las F-keys que tienen una acción real conectada en PosTopBarSection.
-// Todas son toggle (abren/cierran) salvo F2 (foco) y F5 (acción puntual).
+// Las toggle abren y cierran su ventana; F3 y F10 van a una vista completa
+// (el carrito queda en el store y se recupera al volver); F8 pide una segunda
+// pulsación antes de vaciar.
 export const POS_SHORTCUTS = [
   {
     key: "F1",
@@ -62,6 +67,18 @@ export const POS_SHORTCUTS = [
     description: "Enfocar el buscador de productos / scanner.",
     tooltip: "Buscar producto (F2)",
     holdActive: true,
+    allowInInput: true,
+  },
+  {
+    key: "F3",
+    event: "new-customer",
+    label: "Cliente nuevo",
+    icon: "mdi-account-plus-outline",
+    color: "hk-customer",
+    group: "cart",
+    description: "Dar de alta un cliente en su ficha completa. La venta en curso se conserva.",
+    tooltip: "Cliente nuevo (F3)",
+    holdActive: false,
     allowInInput: true,
   },
   {
@@ -101,6 +118,43 @@ export const POS_SHORTCUTS = [
     holdActive: false,
     allowInInput: false,
     toggle: true,
+  },
+  {
+    key: "F8",
+    event: "clear-cart",
+    label: "Vaciar",
+    icon: "mdi-backspace-outline",
+    color: "hk-clear",
+    group: "cart",
+    description: "Vaciar el carrito. Pide una segunda pulsación para confirmar.",
+    tooltip: "Vaciar carrito (F8)",
+    holdActive: false,
+    allowInInput: false,
+    confirm: true,
+  },
+  {
+    key: "F7",
+    event: "cash",
+    label: "Caja",
+    icon: "mdi-lock-open-variant-outline",
+    color: "hk-cash",
+    group: "cash",
+    description: "Con la caja cerrada, abrirla. Con la caja abierta, arqueo y cierre.",
+    tooltip: "Caja (F7)",
+    holdActive: false,
+    allowInInput: true,
+  },
+  {
+    key: "F10",
+    event: "movements",
+    label: "Movimientos",
+    icon: "mdi-cash-sync",
+    color: "hk-movements",
+    group: "cash",
+    description: "Ingresos y egresos de efectivo de la caja abierta.",
+    tooltip: "Movimientos de caja (F10)",
+    holdActive: false,
+    allowInInput: true,
   },
   {
     key: "F9",

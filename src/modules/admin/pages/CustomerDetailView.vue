@@ -472,6 +472,11 @@ async function save() {
     if (esNuevo.value) {
       const { data } = await createCustomer({ ...form });
       const id = data?.data?.id;
+      // Alta desde el POS (F3): vuelve a la venta en curso.
+      if (id && route.query.volver === "pos") {
+        router.push({ name: "pos" });
+        return;
+      }
       if (id) {
         router.replace({ name: "adminCustomerDetail", params: { id } });
         return;

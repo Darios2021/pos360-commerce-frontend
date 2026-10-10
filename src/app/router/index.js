@@ -100,6 +100,7 @@ const routes = [
       { path: "pos", name: "pos", component: PosPage },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
+      { path: "pos/movimientos", name: "posCashMovements", component: () => import("@/modules/pos/pages/PosCashMovementsPage.vue") },
       // Impresion del ticket en esta PC: todos los cajeros, cada mostrador la suya.
       { path: "pos/impresion", name: "posPrinter", component: () => import("@/modules/pos/pages/PosPrinterSettingsPage.vue") },
 

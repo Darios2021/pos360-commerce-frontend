@@ -22,6 +22,7 @@
               :class="[item.color, {
                 active: activeHotkey === item.key,
                 'is-open': isStateActive(item),
+                'is-armed': armedKey === item.key,
                 'ptb-tile--clave': item.key === 'F2' || item.key === 'F9',
               }]"
               :aria-label="item.tooltip"
@@ -30,8 +31,9 @@
               @click="activateAndDispatch(item)"
             >
               <span class="ptb-tile-icon">
-                <v-icon>{{ item.icon }}</v-icon>
+                <v-icon>{{ iconOf(item) }}</v-icon>
               </span>
+              <span class="ptb-tile-label">{{ labelOf(item) }}</span>
               <span class="ptb-tile-key">{{ item.key }}</span>
 
               <!-- Dot indicador: se enciende cuando el estado asociado está abierto -->
@@ -40,7 +42,7 @@
           </template>
 
           <div class="ptb-tooltip">
-            <div class="ptb-tooltip__title">{{ item.label }} ({{ item.key }})</div>
+            <div class="ptb-tooltip__title">{{ labelOf(item) }} ({{ item.key }})</div>
             <div v-if="item.description" class="ptb-tooltip__desc">
               {{ item.description }}
             </div>
@@ -72,6 +74,7 @@ const props = defineProps({
   // Mapa { F1: bool, F4: bool, ... } que indica qué shortcuts están "abiertos"
   // — el padre lo provee desde el flow de sales.
   activeStates: { type: Object, default: () => ({}) },
+  cajaOpen: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -81,7 +84,31 @@ const emit = defineEmits([
   "refresh",
   "show-cart",
   "pay",
+  "new-customer",
+  "clear-cart",
+  "cash",
+  "movements",
 ]);
+
+// F7 cambia con el estado de la caja, como en Zondito.
+function iconOf(item) {
+  if (item.key === "F7") return props.cajaOpen ? "mdi-lock-outline" : "mdi-lock-open-variant-outline";
+  return item.icon;
+}
+function labelOf(item) {
+  if (item.key === "F7") return props.cajaOpen ? "Cerrar caja" : "Abrir caja";
+  if (armedKey.value === item.key) return "¿Vaciar?";
+  return item.label;
+}
+
+// Teclas con confirmación (F8): la primera pulsación la arma por 3 s y la
+// segunda ejecuta. Con el carrito vacío no hay nada que confirmar.
+const armedKey = ref(null);
+let armedTimer = null;
+function disarm() {
+  armedKey.value = null;
+  if (armedTimer) { clearTimeout(armedTimer); armedTimer = null; }
+}
 
 const shortcuts = POS_SHORTCUTS;
 const renderedGroups = computed(() => groupShortcuts(shortcuts));
@@ -192,6 +219,13 @@ function dispatch(item) {
 
 function activateAndDispatch(item) {
   if (!item) return;
+  if (item.confirm && props.cartCount > 0 && armedKey.value !== item.key) {
+    disarm();
+    armedKey.value = item.key;
+    armedTimer = setTimeout(disarm, 3000);
+    return;
+  }
+  disarm();
   setActiveHotkey(item.key, !!item.holdActive);
   dispatch(item);
 }
@@ -239,18 +273,22 @@ onBeforeUnmount(() => {
     clearTimeout(activeTimer);
     activeTimer = null;
   }
+  disarm();
 });
 </script>
 
 <style scoped>
 /* Barra de teclas con el diseño de Zondito (BarraPOS): cada tecla es un
-   botón bajo con su figurita de 32 px en el color de la acción y la tecla
-   al lado. La tecla se ve siempre en F2 (buscar) y F9 (cobrar); en las demás
-   aparece al pasar el mouse, como en Zondito. */
+   botón bajo con su figurita de 32 px en el color de la acción. La tecla se
+   ve siempre en F2 (buscar) y F9 (cobrar); en las demás aparece flotando en
+   la esquina al pasar el mouse, y el botón entero se tiñe del color de la
+   marca, como el hover de Zondito. La etiqueta aparece cuando la barra tiene
+   ancho para todas. */
 .ptb {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .ptb-hotkeys {
@@ -261,9 +299,10 @@ onBeforeUnmount(() => {
   justify-content: flex-start;
   gap: 4px;
   flex-wrap: nowrap;
-  padding: 6px 12px;
+  padding: 10px 14px 6px;
   box-sizing: border-box;
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: none;
 }
 .ptb-hotkeys::-webkit-scrollbar { display: none; }
@@ -285,9 +324,13 @@ onBeforeUnmount(() => {
   color: var(--z-texto2, #334155);
   font: 700 14px Inter, sans-serif;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
-.ptb-tile:hover { background: var(--z-tonal, rgba(15, 23, 42, 0.05)); }
+.ptb-tile:hover {
+  background: #cfe5f5;
+  box-shadow: inset 0 0 0 1.5px #3f8fc6;
+  color: #0a466e;
+}
 .ptb-tile:active { transform: scale(0.95); }
 .ptb-tile:focus-visible {
   outline: 2px solid var(--z-primario, #0f6fae);
@@ -311,7 +354,7 @@ onBeforeUnmount(() => {
   background: rgba(100, 116, 139, 0.2);
   transition: filter 0.15s ease;
 }
-.ptb-tile:hover .ptb-tile-icon { filter: brightness(1.1); }
+.ptb-tile:hover .ptb-tile-icon { filter: brightness(1.1) saturate(1.2); }
 .ptb-tile-icon :deep(.v-icon) {
   font-size: 21px !important;
   color: #334155;
@@ -335,12 +378,42 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(100, 116, 139, 0.6);
   box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45), 0 2px 4px rgba(0, 0, 0, 0.18);
 }
-.ptb-tile--clave .ptb-tile-key,
-.ptb-tile:hover .ptb-tile-key,
-.ptb-tile.is-open .ptb-tile-key { display: inline-flex; }
+/* F2 y F9: la tecla al lado, siempre. Las demás: flotando en la esquina,
+   sólo con el mouse encima o con foco de teclado. */
+.ptb-tile--clave .ptb-tile-key { display: inline-flex; }
+.ptb-tile:not(.ptb-tile--clave) .ptb-tile-key {
+  display: inline-flex;
+  position: absolute;
+  top: -9px;
+  right: -10px;
+  z-index: 3;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+}
+.ptb-tile:not(.ptb-tile--clave):is(:hover, :focus-visible, .is-armed) .ptb-tile-key {
+  opacity: 1;
+  transform: none;
+}
+
+/* Etiqueta: con lugar para todas. */
+.ptb-tile-label { display: none; }
+@container (min-width: 1250px) {
+  .ptb-tile-label { display: inline; }
+}
+.ptb-tile.is-armed .ptb-tile-label { display: inline; }
 
 .ptb-tile.active,
 .ptb-tile.is-open { background: rgba(15, 111, 174, 0.10); }
+
+/* F8 armada: esperando la segunda pulsación. */
+.ptb-tile.is-armed,
+.ptb-tile.is-armed:hover {
+  background: #fde2e2;
+  box-shadow: inset 0 0 0 1.5px #dc2626;
+  color: #991b1b;
+}
 
 /* Punto de "abierto" (la ventana de esa tecla está a la vista) */
 .ptb-tile-dot {
@@ -365,6 +438,14 @@ onBeforeUnmount(() => {
 .hk-refresh    .ptb-tile-icon :deep(.v-icon) { color: #0369a1; }
 .hk-cart       .ptb-tile-icon { background: rgba(139, 92, 246, 0.2); }
 .hk-cart       .ptb-tile-icon :deep(.v-icon) { color: #6d28d9; }
+.hk-customer   .ptb-tile-icon { background: rgba(14, 165, 233, 0.2); }
+.hk-customer   .ptb-tile-icon :deep(.v-icon) { color: #0369a1; }
+.hk-clear      .ptb-tile-icon { background: rgba(239, 68, 68, 0.2); }
+.hk-clear      .ptb-tile-icon :deep(.v-icon) { color: #b91c1c; }
+.hk-cash       .ptb-tile-icon { background: rgba(245, 158, 11, 0.25); }
+.hk-cash       .ptb-tile-icon :deep(.v-icon) { color: #b45309; }
+.hk-movements  .ptb-tile-icon { background: rgba(20, 184, 166, 0.25); }
+.hk-movements  .ptb-tile-icon :deep(.v-icon) { color: #0f766e; }
 .hk-pay        .ptb-tile-icon { background: #10b981; box-shadow: 0 3px 9px rgba(16, 185, 129, 0.4); }
 .hk-pay        .ptb-tile-icon :deep(.v-icon) { color: #ffffff; }
 .hk-fullscreen .ptb-tile-icon { background: rgba(100, 116, 139, 0.2); }
@@ -383,6 +464,20 @@ onBeforeUnmount(() => {
 .v-theme--adminDark .hk-refresh .ptb-tile-icon :deep(.v-icon) { color: #38bdf8; }
 .v-theme--dark .hk-cart .ptb-tile-icon :deep(.v-icon),
 .v-theme--adminDark .hk-cart .ptb-tile-icon :deep(.v-icon) { color: #a78bfa; }
+.v-theme--dark .hk-customer .ptb-tile-icon :deep(.v-icon),
+.v-theme--adminDark .hk-customer .ptb-tile-icon :deep(.v-icon) { color: #38bdf8; }
+.v-theme--dark .hk-clear .ptb-tile-icon :deep(.v-icon),
+.v-theme--adminDark .hk-clear .ptb-tile-icon :deep(.v-icon) { color: #f87171; }
+.v-theme--dark .hk-cash .ptb-tile-icon :deep(.v-icon),
+.v-theme--adminDark .hk-cash .ptb-tile-icon :deep(.v-icon) { color: #fbbf24; }
+.v-theme--dark .hk-movements .ptb-tile-icon :deep(.v-icon),
+.v-theme--adminDark .hk-movements .ptb-tile-icon :deep(.v-icon) { color: #2dd4bf; }
+.v-theme--dark .ptb-tile:hover,
+.v-theme--adminDark .ptb-tile:hover {
+  background: #1d3a55;
+  box-shadow: inset 0 0 0 1.5px #8cc0e3;
+  color: #e2eefa;
+}
 
 /* Tooltip */
 .ptb-tooltip {
