@@ -1,327 +1,118 @@
-<!-- src/modules/account/pages/ProfilePage.vue -->
 <template>
-  <div class="prof-page">
+  <div class="pf">
+    <v-alert v-if="pageError" type="error" variant="tonal" density="compact">{{ pageError }}</v-alert>
 
-    <!-- ── Hero header ──────────────────────────────────────────────── -->
-    <div class="prof-hero">
-      <div class="prof-hero__inner">
-        <div class="prof-hero__left">
-          <div class="prof-hero__avatar-wrap">
-            <v-avatar size="72" class="prof-hero__avatar">
-              <v-img v-if="avatarSrc && !avatarError" :key="avatarKey" :src="avatarSrc" cover @error="avatarError = true" />
-              <span v-else class="font-weight-black text-h5">{{ initials }}</span>
-            </v-avatar>
-            <button class="prof-hero__avatar-edit" title="Cambiar foto" @click="pickFile">
-              <v-icon size="14">mdi-camera</v-icon>
+    <!-- Quién soy -->
+    <div class="pf-cab">
+      <div class="pf-foto">
+        <button type="button" class="pf-foto__btn" aria-label="Cambiar foto" :disabled="uploading" @click="pickFile">
+          <v-avatar size="88" class="pf-foto__avatar">
+            <v-img v-if="avatarSrc && !avatarError" :key="avatarKey" :src="avatarSrc" cover @error="avatarError = true" />
+            <span v-else class="pf-foto__iniciales">{{ initials }}</span>
+          </v-avatar>
+          <v-progress-circular v-if="uploading" class="pf-foto__carga" indeterminate size="88" width="3" color="primary" />
+        </button>
+        <a href="#" class="pf-link pf-link--chico" @click.prevent="pickFile">Cambiar foto</a>
+        <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="d-none" @change="onPickFile" />
+      </div>
+      <div class="pf-cab__txt">
+        <h1 class="pf-cab__nombre">{{ fullName || me.username || "Mi perfil" }}</h1>
+        <span class="pf-cab__sub">{{ [roleLabel, me.email].filter(Boolean).join(" · ") }}</span>
+        <span v-if="avatarHint" class="pf-cab__aviso">{{ avatarHint }}</span>
+      </div>
+      <v-btn color="primary" variant="flat" class="pf-guardar" :loading="saving || savingSig" @click="guardarTodo">Guardar cambios</v-btn>
+    </div>
+
+    <div class="pf-grilla">
+      <!-- Datos personales -->
+      <section class="pf-caja">
+        <div class="pf-banda"><span>Datos personales</span></div>
+        <div class="pf-campos pf-campos--dos">
+          <label class="pf-campo"><span>Nombre</span><input v-model="form.first_name" type="text" autocomplete="given-name" /></label>
+          <label class="pf-campo"><span>Apellido</span><input v-model="form.last_name" type="text" autocomplete="family-name" /></label>
+        </div>
+        <dl class="pf-datos">
+          <dt>Usuario</dt><dd>{{ me.username || "—" }}</dd>
+          <dt>Correo</dt><dd>{{ me.email || "—" }}</dd>
+          <dt>Rol</dt><dd>{{ roleLabel }}</dd>
+        </dl>
+      </section>
+
+      <!-- Sucursales -->
+      <section class="pf-caja">
+        <div class="pf-banda"><span>Sucursales</span><small>{{ sucursalesOrdenadas.length }} {{ sucursalesOrdenadas.length === 1 ? "asignada" : "asignadas" }}</small></div>
+        <div class="pf-filas">
+          <div v-for="b in sucursalesOrdenadas" :key="b.id" class="pf-suc" :class="{ 'is-principal': b.principal }">
+            <v-icon size="20">mdi-store-outline</v-icon>{{ b.name }}
+            <span v-if="b.principal" class="pf-suc__tag">Principal</span>
+          </div>
+          <div v-if="!sucursalesOrdenadas.length" class="pf-vacio">Sin sucursales asignadas</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Firma: formulario a la izquierda, cómo se ve a la derecha -->
+    <section class="pf-caja">
+      <div class="pf-banda"><span>Firma para correos del CRM</span><small>va al pie de los correos a clientes</small></div>
+      <v-alert v-if="sigError" type="error" variant="tonal" density="compact" class="ma-3">{{ sigError }}</v-alert>
+      <div class="pf-firma">
+        <div class="pf-campos pf-campos--dos">
+          <label class="pf-campo"><span>Nombre a mostrar</span><input v-model="sigForm.display_name" type="text" /></label>
+          <label class="pf-campo"><span>Cargo</span><input v-model="sigForm.role_title" type="text" placeholder="Ej.: Ventas" /></label>
+          <label class="pf-campo"><span>Correo de contacto</span><input v-model="sigForm.email" type="email" /></label>
+          <label class="pf-campo"><span>Teléfono</span><input v-model="sigForm.phone" type="tel" /></label>
+          <label class="pf-campo"><span>WhatsApp</span><input v-model="sigForm.whatsapp" type="tel" inputmode="numeric" placeholder="Solo números" /></label>
+          <label class="pf-campo"><span>Frase</span><input v-model="sigForm.tagline" type="text" placeholder="Opcional" /></label>
+          <label class="pf-check">
+            <input v-model="sigForm.include_by_default" type="checkbox" />
+            Incluir la firma en cada envío
+          </label>
+        </div>
+        <div class="pf-previa">
+          <span class="pf-previa__tit">Así se ve</span>
+          <div class="pf-previa__caja">
+            <button type="button" class="pf-previa__foto" aria-label="Cambiar foto de la firma" :disabled="uploadingSigPhoto" @click="pickSigPhoto">
+              <img v-if="sigForm.photo_url" :src="sigForm.photo_url" alt="" />
+              <span v-else>{{ sigInitials }}</span>
             </button>
-          </div>
-          <div>
-            <div class="prof-hero__name">{{ fullName || "Usuario" }}</div>
-            <div class="prof-hero__meta">
-              <span class="prof-role-badge">{{ roleLabel }}</span>
-              <span class="prof-hero__email">{{ me.email }}</span>
+            <div class="pf-previa__txt">
+              <span class="pf-previa__nombre">{{ sigForm.display_name || "Tu nombre" }}</span>
+              <span v-if="sigForm.role_title" class="pf-previa__sub">{{ sigForm.role_title }}</span>
+              <span v-if="sigForm.tagline" class="pf-previa__sub">{{ sigForm.tagline }}</span>
+              <span v-if="sigForm.email" class="pf-previa__mail">{{ sigForm.email }}</span>
+              <span v-if="sigForm.phone || sigForm.whatsapp" class="pf-previa__sub">{{ [sigForm.phone, sigForm.whatsapp ? "WhatsApp" : ""].filter(Boolean).join(" · ") }}</span>
             </div>
           </div>
-        </div>
-        <div class="prof-hero__actions">
-          <v-btn variant="tonal" size="small" prepend-icon="mdi-refresh" :loading="loadingMe" @click="loadMe">
-            Actualizar
-          </v-btn>
-          <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-content-save" :loading="saving" @click="saveProfile">
-            Guardar cambios
-          </v-btn>
+          <span class="pf-previa__links">
+            <a href="#" class="pf-link pf-link--chico" @click.prevent="pickSigPhoto">{{ sigForm.photo_url ? "Cambiar foto de la firma" : "Poner foto en la firma" }}</a>
+            <a v-if="sigForm.photo_url" href="#" class="pf-link pf-link--chico pf-link--suave" @click.prevent="removeSigPhoto">Quitar</a>
+          </span>
+          <input ref="sigPhotoInput" type="file" accept="image/*" class="d-none" @change="onSigPhotoFile" />
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ── Alerts ───────────────────────────────────────────────────── -->
-    <div class="prof-body">
-      <v-alert v-if="pageError" type="error" variant="tonal" rounded="xl" class="mb-5" density="compact">
-        {{ pageError }}
-      </v-alert>
-
-      <!-- ── Grid principal ─────────────────────────────────────────── -->
-      <div class="prof-grid">
-
-        <!-- Datos personales (editable) -->
-        <div class="prof-section">
-          <div class="prof-section__header">
-            <div class="prof-section__title">Datos personales</div>
-            <div class="prof-section__sub">Nombre y apellido son editables</div>
-          </div>
-          <div class="prof-section__body">
-            <div class="prof-field-row">
-              <div class="prof-field">
-                <label class="prof-label">Nombre</label>
-                <v-text-field v-model="form.first_name" variant="outlined" density="compact" hide-details />
-              </div>
-              <div class="prof-field">
-                <label class="prof-label">Apellido</label>
-                <v-text-field v-model="form.last_name" variant="outlined" density="compact" hide-details />
-              </div>
-            </div>
-          </div>
+    <!-- Contraseña: se abre acá mismo, no en una ventana -->
+    <section class="pf-caja">
+      <button type="button" class="pf-clave" :aria-expanded="pwAbierto" @click="pwAbierto = !pwAbierto">
+        <v-icon size="22">mdi-lock-outline</v-icon>
+        <span class="pf-clave__tit">Contraseña</span>
+        <span class="pf-link">{{ pwAbierto ? "Cancelar" : "Cambiar" }}<v-icon size="20">{{ pwAbierto ? "mdi-chevron-up" : "mdi-chevron-right" }}</v-icon></span>
+      </button>
+      <div v-if="pwAbierto" class="pf-clave__form">
+        <div class="pf-campos pf-campos--tres">
+          <label class="pf-campo"><span>Contraseña actual</span><input v-model="pw.current_password" type="password" autocomplete="current-password" /></label>
+          <label class="pf-campo"><span>Nueva (mínimo 8)</span><input v-model="pw.new_password" type="password" autocomplete="new-password" /></label>
+          <label class="pf-campo"><span>Repetir la nueva</span><input v-model="pw.new_password2" type="password" autocomplete="new-password" @keyup.enter="changePassword" /></label>
         </div>
-
-        <!-- Información de cuenta (readonly) -->
-        <div class="prof-section">
-          <div class="prof-section__header">
-            <div class="prof-section__title">Cuenta</div>
-            <div class="prof-section__sub">Información del sistema</div>
-          </div>
-          <div class="prof-section__body">
-            <div class="prof-info-list">
-              <div class="prof-info-row">
-                <span class="prof-info-label"><v-icon size="13" class="mr-1">mdi-email-outline</v-icon>Email</span>
-                <span class="prof-info-value">{{ me.email || "—" }}</span>
-              </div>
-              <div class="prof-info-row">
-                <span class="prof-info-label"><v-icon size="13" class="mr-1">mdi-at</v-icon>Usuario</span>
-                <span class="prof-info-value">{{ me.username || "—" }}</span>
-              </div>
-              <div class="prof-info-row">
-                <span class="prof-info-label"><v-icon size="13" class="mr-1">mdi-shield-account-outline</v-icon>Rol</span>
-                <span class="prof-role-badge">{{ roleLabel }}</span>
-              </div>
-              <div class="prof-info-row">
-                <span class="prof-info-label"><v-icon size="13" class="mr-1">mdi-identifier</v-icon>ID</span>
-                <span class="prof-info-value prof-info-value--mono">#{{ me.id || "—" }}</span>
-              </div>
-              <div v-if="me.created_at" class="prof-info-row">
-                <span class="prof-info-label"><v-icon size="13" class="mr-1">mdi-calendar-outline</v-icon>Miembro desde</span>
-                <span class="prof-info-value">{{ fmtDate(me.created_at) }}</span>
-              </div>
-            </div>
-          </div>
+        <div class="pf-clave__pie">
+          <span v-if="pwError" class="pf-error">{{ pwError }}</span>
+          <v-btn color="primary" variant="flat" :loading="pwLoading" @click="changePassword">Cambiar contraseña</v-btn>
         </div>
-
-        <!-- Foto de perfil -->
-        <div class="prof-section">
-          <div class="prof-section__header">
-            <div class="prof-section__title">Foto de perfil</div>
-            <div class="prof-section__sub">png · jpg · webp · máx 5 MB</div>
-          </div>
-          <div class="prof-section__body">
-            <div class="prof-avatar-row">
-              <v-avatar size="56" class="prof-avatar-sm">
-                <v-img v-if="avatarSrc && !avatarError" :key="avatarKey + 'sm'" :src="avatarSrc" cover @error="avatarError = true" />
-                <span v-else class="font-weight-bold">{{ initials }}</span>
-              </v-avatar>
-              <div class="flex-grow-1">
-                <div v-if="avatarHint" class="prof-info-value mb-2">{{ avatarHint }}</div>
-                <div class="d-flex gap-2">
-                  <v-btn variant="tonal" size="small" prepend-icon="mdi-camera" @click="pickFile">Elegir</v-btn>
-                  <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-cloud-upload-outline"
-                    :disabled="!avatarFile" :loading="uploading" @click="uploadAvatar">
-                    Subir
-                  </v-btn>
-                </div>
-              </div>
-            </div>
-            <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="d-none" @change="onPickFile" />
-          </div>
-        </div>
-
-        <!-- Sucursales -->
-        <div class="prof-section">
-          <div class="prof-section__header">
-            <div class="prof-section__title">Sucursales asignadas</div>
-            <div class="prof-section__sub">{{ userBranches.length }} sucursal{{ userBranches.length !== 1 ? 'es' : '' }}</div>
-          </div>
-          <div class="prof-section__body">
-            <div v-if="loadingMe" class="d-flex justify-center py-3">
-              <v-progress-circular indeterminate size="20" color="primary" />
-            </div>
-            <div v-else-if="!userBranches.length" class="prof-empty">
-              Sin sucursales asignadas
-            </div>
-            <div v-else class="prof-branch-list">
-              <div v-for="b in userBranches" :key="b.id" class="prof-branch-row">
-                <div class="prof-branch-icon">
-                  <v-icon size="13" color="primary">mdi-store-outline</v-icon>
-                </div>
-                <span class="prof-branch-name">{{ b.name }}</span>
-                <span class="prof-branch-id">#{{ b.id }}</span>
-                <v-chip v-if="b.id === me.branch_id" size="x-small" color="success" variant="tonal" class="ml-auto">
-                  Principal
-                </v-chip>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ════════════ FIRMA CRM EMAIL (full width) ════════════ -->
-        <div class="prof-section prof-section--full">
-          <div class="prof-section__header">
-            <div>
-              <div class="prof-section__title">
-                <v-icon size="14" class="me-1">mdi-draw-pen</v-icon>
-                Firma para emails del CRM
-              </div>
-              <div class="prof-section__sub">
-                Tu firma personal aparece al pie de los emails que envíes desde el módulo de clientes.
-              </div>
-            </div>
-            <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-content-save"
-                   :loading="savingSig" @click="saveSignature">
-              Guardar firma
-            </v-btn>
-          </div>
-
-          <div class="prof-section__body">
-            <v-alert v-if="sigError" type="error" variant="tonal" density="compact" class="mb-3">
-              {{ sigError }}
-            </v-alert>
-
-            <div class="prof-sig-grid">
-              <!-- Form -->
-              <div class="prof-sig-form">
-                <div class="prof-sig-photo-row">
-                  <v-avatar size="64" rounded="lg" class="elevation-1">
-                    <v-img v-if="sigForm.photo_url" :src="sigForm.photo_url" cover />
-                    <v-icon v-else size="32">mdi-account-outline</v-icon>
-                  </v-avatar>
-                  <div>
-                    <div class="d-flex ga-2 mb-1">
-                      <v-btn size="small" variant="tonal" prepend-icon="mdi-upload"
-                             :loading="uploadingSigPhoto" @click="pickSigPhoto">
-                        Subir foto
-                      </v-btn>
-                      <v-btn v-if="sigForm.photo_url" size="small" variant="text" color="error"
-                             prepend-icon="mdi-delete-outline" :loading="deletingSigPhoto"
-                             @click="removeSigPhoto">
-                        Quitar
-                      </v-btn>
-                    </div>
-                    <div class="text-caption text-medium-emphasis">
-                      Recomendado: foto cuadrada (mínimo 200×200 px).
-                    </div>
-                    <input ref="sigPhotoInput" type="file" accept="image/*" class="d-none" @change="onSigPhotoFile" />
-                  </div>
-                </div>
-
-                <div class="prof-field-row">
-                  <div class="prof-field">
-                    <label class="prof-label">Nombre a mostrar</label>
-                    <v-text-field v-model="sigForm.display_name" variant="outlined" density="compact" hide-details
-                                  placeholder="Ej: Dario Pérez" />
-                  </div>
-                  <div class="prof-field">
-                    <label class="prof-label">Cargo / rol</label>
-                    <v-text-field v-model="sigForm.role_title" variant="outlined" density="compact" hide-details
-                                  placeholder="Ej: Asesor comercial" />
-                  </div>
-                </div>
-
-                <div class="prof-field mt-3">
-                  <label class="prof-label">Frase / tagline (opcional)</label>
-                  <v-text-field v-model="sigForm.tagline" variant="outlined" density="compact" hide-details
-                                placeholder="Ej: Disponible de lun a sáb para asesorarte" />
-                </div>
-
-                <div class="prof-field-row mt-3">
-                  <div class="prof-field">
-                    <label class="prof-label">Email de contacto</label>
-                    <v-text-field v-model="sigForm.email" type="email"
-                                  variant="outlined" density="compact" hide-details
-                                  placeholder="dario@ejemplo.com" />
-                  </div>
-                  <div class="prof-field">
-                    <label class="prof-label">Teléfono</label>
-                    <v-text-field v-model="sigForm.phone" variant="outlined" density="compact" hide-details
-                                  placeholder="+54 11 1234-5678" />
-                  </div>
-                </div>
-
-                <div class="prof-field mt-3">
-                  <label class="prof-label">WhatsApp (solo dígitos)</label>
-                  <v-text-field v-model="sigForm.whatsapp" variant="outlined" density="compact" hide-details
-                                placeholder="5491112345678" />
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    Se usa para armar el link <code>wa.me/&lt;número&gt;</code>.
-                  </div>
-                </div>
-
-                <v-switch v-model="sigForm.include_by_default" color="primary" density="compact" hide-details class="mt-3"
-                          :label="sigForm.include_by_default
-                            ? 'Incluir mi firma por defecto en cada envío'
-                            : 'No incluir por defecto (la activo manualmente al enviar)'" />
-              </div>
-
-              <!-- Preview -->
-              <div class="prof-sig-preview-wrap">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-2"
-                     style="letter-spacing: 0.06em; text-transform: uppercase;">
-                  Vista previa en el email
-                </div>
-                <div class="prof-sig-preview">
-                  <div class="prof-sig-preview__row">
-                    <div class="prof-sig-preview__avatar">
-                      <img v-if="sigForm.photo_url" :src="sigForm.photo_url" :alt="sigForm.display_name" />
-                      <span v-else>{{ sigInitials }}</span>
-                    </div>
-                    <div class="prof-sig-preview__info">
-                      <div v-if="sigForm.display_name" class="prof-sig-preview__name">{{ sigForm.display_name }}</div>
-                      <div v-else class="prof-sig-preview__name prof-sig-preview__name--placeholder">Tu nombre</div>
-                      <div v-if="sigForm.role_title" class="prof-sig-preview__role">{{ sigForm.role_title }}</div>
-                      <div v-if="sigForm.tagline" class="prof-sig-preview__tag">{{ sigForm.tagline }}</div>
-                      <div v-if="sigForm.email || sigForm.phone || sigForm.whatsapp" class="prof-sig-preview__contact">
-                        <a v-if="sigForm.email" :href="`mailto:${sigForm.email}`">{{ sigForm.email }}</a>
-                        <span v-if="sigForm.email && sigForm.phone" class="prof-sig-preview__sep">·</span>
-                        <span v-if="sigForm.phone">{{ sigForm.phone }}</span>
-                        <span v-if="(sigForm.email || sigForm.phone) && sigForm.whatsapp" class="prof-sig-preview__sep">·</span>
-                        <a v-if="sigForm.whatsapp" class="prof-sig-preview__wa">WhatsApp</a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Seguridad (full width) -->
-        <div class="prof-section prof-section--full">
-          <div class="prof-section__header">
-            <div>
-              <div class="prof-section__title">Seguridad</div>
-              <div class="prof-section__sub">Gestioná tu contraseña de acceso</div>
-            </div>
-            <v-btn variant="tonal" size="small" prepend-icon="mdi-lock-reset" @click="pwDialog = true">
-              Cambiar contraseña
-            </v-btn>
-          </div>
-        </div>
-
       </div>
-    </div>
+    </section>
 
-    <!-- ── Dialog contraseña ────────────────────────────────────────── -->
-    <v-dialog v-model="pwDialog" max-width="440">
-      <v-card rounded="xl" class="pa-6">
-        <div class="d-flex align-center justify-space-between mb-5">
-          <div class="text-subtitle-1 font-weight-black">Cambiar contraseña</div>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="pwDialog = false" />
-        </div>
-        <v-text-field v-model="pw.current_password" label="Contraseña actual" type="password"
-          variant="outlined" density="comfortable" class="mb-3" hide-details="auto" />
-        <v-text-field v-model="pw.new_password" label="Nueva contraseña (mínimo 8)" type="password"
-          variant="outlined" density="comfortable" class="mb-3" hide-details="auto" />
-        <v-text-field v-model="pw.new_password2" label="Repetir nueva contraseña" type="password"
-          variant="outlined" density="comfortable" hide-details="auto" />
-        <v-alert v-if="pwError" type="error" variant="tonal" rounded="lg" class="mt-4" density="compact">
-          {{ pwError }}
-        </v-alert>
-        <div class="d-flex justify-end gap-2 mt-5">
-          <v-btn variant="text" @click="pwDialog = false">Cancelar</v-btn>
-          <v-btn color="primary" variant="flat" :loading="pwLoading" @click="changePassword">Guardar</v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
-
-    <v-snackbar v-model="snack.open" :color="snack.color" timeout="2600" rounded="xl">
-      {{ snack.text }}
-    </v-snackbar>
+    <v-snackbar v-model="snack.open" :color="snack.color" :timeout="2800">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
@@ -442,7 +233,9 @@ function onPickFile(e) {
   if (!f) return;
   if (f.size > 5 * 1024 * 1024) { avatarHint.value = "Máximo 5 MB."; avatarFile.value = null; return; }
   avatarFile.value = f;
-  avatarHint.value = `${f.name} (${Math.round(f.size / 1024)} KB)`;
+  avatarHint.value = "";
+  e.target.value = "";
+  uploadAvatar();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -564,313 +357,113 @@ async function changePassword() {
   try {
     await MeService.changePassword({ current_password: pw.current_password, new_password: pw.new_password });
     Object.assign(pw, { current_password: "", new_password: "", new_password2: "" });
-    pwDialog.value = false; toast("Contraseña actualizada");
+    pwDialog.value = false; pwAbierto.value = false; toast("Contraseña actualizada");
   } catch (e) { pwError.value = e?.response?.data?.message || e?.message || "No se pudo cambiar la contraseña.";
   } finally { pwLoading.value = false; }
 }
 
+// ── Rediseño: guardar todo junto, foto al elegirla, contraseña en el lugar ──
+const pwAbierto = ref(false);
+async function guardarTodo() {
+  await Promise.all([saveProfile(), saveSignature()]);
+}
+const sucursalesOrdenadas = computed(() => {
+  const principal = Number(me.branch_id || auth.user?.branch_id || 0);
+  return userBranches.value
+    .map((b) => ({ ...b, principal: Number(b.id) === principal }))
+    .sort((a, b) => Number(b.principal) - Number(a.principal));
+});
+
 onMounted(loadMe);
 </script>
 
-<style scoped>
-.prof-page {
-  min-height: 100%;
-  background: rgb(var(--v-theme-background));
+<style>
+/* Perfil. Sin scoped: todo cuelga de .pf; tema oscuro con .v-theme--dark .pf. */
+.pos-container:has(.pf) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.pf {
+  --pf-fondo: #d6e6f3; --pf-caja: #ffffff; --pf-borde: #d3dde7; --pf-linea: #eef2f6; --pf-campo: #c9d5e1;
+  --pf-texto: #0f172a; --pf-suave: #5a6678; --pf-acento: #0f6fae; --pf-banda: #0f6fae; --pf-pie: #f8fbfd;
+  padding: 22px 28px 48px; min-height: calc(100vh - 56px); box-sizing: border-box; background: var(--pf-fondo); color: var(--pf-texto);
+  display: flex; flex-direction: column; gap: 18px;
 }
+.v-theme--dark .pf {
+  --pf-fondo: #0b0f14; --pf-caja: #151c25; --pf-borde: #253141; --pf-linea: #222c39; --pf-campo: #33425a;
+  --pf-texto: #e5edf5; --pf-suave: #9aa8b8; --pf-acento: #5aaee0; --pf-banda: #0f5f96; --pf-pie: #1a2430;
+}
+.pf > * { max-width: 1100px; width: 100%; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.pf-link { display: inline-flex; align-items: center; font-size: 15px; font-weight: 800; color: var(--pf-acento); text-decoration: none; cursor: pointer; }
+.pf-link:hover { text-decoration: underline; }
+.pf-link--chico { font-size: 13px; }
+.pf-link--suave { color: var(--pf-suave); font-weight: 700; }
 
-/* ── Hero ────────────────────────────────────────────────── */
-.prof-hero {
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  padding: 24px 32px;
-}
-.prof-hero__inner {
-  max-width: 900px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.prof-hero__left {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-.prof-hero__avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-.prof-hero__avatar {
-  border: 2px solid rgba(var(--v-theme-primary), 0.35);
-}
-.prof-hero__avatar-edit {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-primary));
-  color: #fff;
-  border: 2px solid rgb(var(--v-theme-surface));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.prof-hero__name {
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: rgb(var(--v-theme-on-surface));
-}
-.prof-hero__meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 5px;
-  flex-wrap: wrap;
-}
-.prof-hero__email {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-}
-.prof-hero__actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.prof-role-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 2px 9px;
-  border-radius: 20px;
-  background: rgba(var(--v-theme-primary), 0.14);
-  color: rgb(var(--v-theme-primary));
-}
+.pf-cab { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.pf-foto { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pf-foto__btn { position: relative; padding: 0; border: 0; background: transparent; border-radius: 9999px; cursor: pointer; }
+.pf-foto__avatar { background: var(--pf-acento); }
+.pf-foto__iniciales { font-size: 30px; font-weight: 800; color: #ffffff; }
+.pf-foto__carga { position: absolute; inset: 0; }
+.pf-cab__txt { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.pf-cab__nombre { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.pf-cab__sub { font-size: 15px; font-weight: 600; color: var(--pf-suave); }
+.pf-cab__aviso { font-size: 13px; font-weight: 700; color: #b23b35; }
+.pf-guardar { height: 42px !important; border-radius: 10px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
 
-/* ── Body ────────────────────────────────────────────────── */
-.prof-body {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 28px 32px 48px;
-}
+.pf-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.pf-caja { border-radius: 12px; overflow: hidden; background: var(--pf-caja); border: 1px solid var(--pf-borde); }
+.pf-banda { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--pf-banda); color: #ffffff; font-size: 15px; font-weight: 800; }
+.pf-banda small { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
 
-/* ── Grid ────────────────────────────────────────────────── */
-.prof-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 680px) {
-  .prof-grid { grid-template-columns: 1fr; }
-  .prof-hero { padding: 18px 20px; }
-  .prof-body { padding: 20px 20px 40px; }
-}
+.pf-campos { display: grid; gap: 12px; padding: 14px 16px; }
+.pf-campos--dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pf-campos--tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-campo { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.pf-campo span { font-size: 13px; font-weight: 700; color: var(--pf-suave); }
+.pf-campo input { height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--pf-campo); background: var(--pf-caja); color: var(--pf-texto); font-family: inherit; font-size: 15px; outline: 0; min-width: 0; }
+.pf-campo input:focus { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, 0.18); }
+.pf-campo input::placeholder { color: #94a3b8; }
+.pf-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pf-check input { width: 18px; height: 18px; accent-color: #0f6fae; }
 
-/* ── Section card ─────────────────────────────────────────── */
-.prof-section {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 16px;
-  overflow: hidden;
-}
-.prof-section--full {
-  grid-column: 1 / -1;
-}
-.prof-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-}
-.prof-section__title {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgb(var(--v-theme-on-surface));
-  letter-spacing: 0.01em;
-}
-.prof-section__sub {
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  margin-top: 2px;
-}
-.prof-section__body {
-  padding: 18px 20px;
-}
+.pf-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; border-top: 1px solid var(--pf-linea); }
+.pf-datos dt { font-size: 14px; font-weight: 600; color: var(--pf-suave); }
+.pf-datos dd { margin: 0; font-size: 15px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
 
-/* ── Field row ───────────────────────────────────────────── */
-.prof-field-row {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.prof-field { display: flex; flex-direction: column; gap: 5px; }
-.prof-label {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
+.pf-filas { display: flex; flex-direction: column; padding: 4px 16px 8px; }
+.pf-suc { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--pf-linea); font-size: 15px; font-weight: 600; }
+.pf-suc:last-child { border-bottom: 0; }
+.pf-suc .v-icon { color: var(--pf-suave); }
+.pf-suc.is-principal { font-weight: 700; }
+.pf-suc__tag { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--pf-acento); }
+.pf-vacio { padding: 20px 0; text-align: center; color: var(--pf-suave); font-weight: 600; }
 
-/* ── Info list ───────────────────────────────────────────── */
-.prof-info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.prof-info-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-.prof-info-row:last-child { border-bottom: none; }
-.prof-info-label {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-.prof-info-value {
-  font-size: 12.5px;
-  font-weight: 400;
-  color: rgb(var(--v-theme-on-surface));
-  text-align: right;
-}
-.prof-info-value--mono {
-  font-family: monospace;
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-}
+.pf-firma { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 8px; }
+.pf-previa { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 14px 0; }
+.pf-previa__tit { font-size: 13px; font-weight: 700; color: var(--pf-suave); }
+.pf-previa__caja { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 10px; border: 1px solid var(--pf-linea); background: var(--pf-pie); }
+.pf-previa__foto { width: 56px; height: 56px; flex-shrink: 0; border-radius: 9999px; border: 0; padding: 0; overflow: hidden; background: var(--pf-acento); color: #ffffff; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pf-previa__foto img { width: 100%; height: 100%; object-fit: cover; }
+.pf-previa__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pf-previa__nombre { font-size: 16px; font-weight: 800; }
+.pf-previa__sub { font-size: 13px; color: var(--pf-suave); }
+.pf-previa__mail { font-size: 13px; font-weight: 700; color: var(--pf-acento); overflow-wrap: anywhere; }
+.pf-previa__links { display: flex; gap: 14px; }
 
-/* ── Avatar row ──────────────────────────────────────────── */
-.prof-avatar-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.prof-avatar-sm {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  flex-shrink: 0;
-}
+.pf-clave { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 0; background: transparent; color: var(--pf-texto); font-family: inherit; cursor: pointer; text-align: left; }
+.pf-clave .v-icon { color: var(--pf-suave); }
+.pf-clave__tit { font-size: 15px; font-weight: 700; }
+.pf-clave .pf-link { margin-left: auto; }
+.pf-clave .pf-link .v-icon { color: inherit; }
+.pf-clave__form { border-top: 1px solid var(--pf-linea); }
+.pf-clave__pie { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 0 16px 14px; }
+.pf-error { font-size: 13px; font-weight: 700; color: #b23b35; }
 
-/* ── Branch list ─────────────────────────────────────────── */
-.prof-branch-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+@media (max-width: 900px) {
+  .pf { padding: 16px 14px 96px; }
+  .pf-grilla, .pf-firma, .pf-campos--tres { grid-template-columns: minmax(0, 1fr); }
+  .pf-previa { padding: 0 16px 16px; }
+  .pf-guardar { width: 100%; }
 }
-.prof-branch-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+@media (max-width: 520px) {
+  .pf-campos--dos { grid-template-columns: minmax(0, 1fr); }
 }
-.prof-branch-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: rgba(var(--v-theme-primary), 0.10);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.prof-branch-name {
-  font-size: 12.5px;
-  font-weight: 400;
-  flex: 1;
-  color: rgb(var(--v-theme-on-surface));
-}
-.prof-branch-id {
-  font-size: 11px;
-  font-family: monospace;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-}
-.prof-empty {
-  text-align: center;
-  padding: 20px;
-  font-size: 12.5px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.35);
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 10px;
-}
-
-/* gap utility (vue 3 Vuetify no siempre tiene gap en flex) */
-.gap-2 { gap: 8px; }
-
-/* ── Firma CRM ───────────────────────────────────────────── */
-.prof-sig-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 24px;
-}
-@media (max-width: 880px) {
-  .prof-sig-grid { grid-template-columns: 1fr; }
-}
-.prof-sig-form { display: flex; flex-direction: column; }
-.prof-sig-photo-row {
-  display: flex; align-items: center; gap: 16px;
-  margin-bottom: 18px;
-  padding-bottom: 16px;
-  border-bottom: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-}
-
-.prof-sig-preview-wrap {
-  display: flex; flex-direction: column;
-}
-.prof-sig-preview {
-  background: #fafbfc;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 18px 20px;
-}
-.prof-sig-preview__row {
-  display: flex; align-items: flex-start; gap: 16px;
-}
-.prof-sig-preview__avatar {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-primary));
-  color: #fff;
-  display: grid; place-items: center;
-  font-size: 18px; font-weight: 500;
-  flex-shrink: 0; overflow: hidden;
-}
-.prof-sig-preview__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.prof-sig-preview__info { flex-grow: 1; min-width: 0; }
-.prof-sig-preview__name {
-  font-size: 15px; font-weight: 500; color: #111827; letter-spacing: -0.2px;
-}
-.prof-sig-preview__name--placeholder { opacity: .4; font-weight: 400; }
-.prof-sig-preview__role {
-  font-size: 12.5px;
-  color: rgb(var(--v-theme-primary));
-  font-weight: 400; letter-spacing: 0.3px;
-  text-transform: uppercase; margin-top: 2px;
-}
-.prof-sig-preview__tag { font-size: 12.5px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
-.prof-sig-preview__contact { font-size: 12.5px; color: #6b7280; margin-top: 8px; line-height: 1.6; }
-.prof-sig-preview__contact a {
-  color: rgb(var(--v-theme-primary)); text-decoration: none; font-weight: 400;
-}
-.prof-sig-preview__sep { margin: 0 8px; color: #d1d5db; }
-.prof-sig-preview__wa { color: #25D366 !important; font-weight: 400; }
 </style>

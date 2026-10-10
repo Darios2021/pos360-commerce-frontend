@@ -83,103 +83,25 @@
             </button>
           </template>
 
-          <v-card rounded="xl" class="pos-account-card" :min-width="mobile ? 280 : 380" :max-width="mobile ? 320 : 460">
-            <!-- Header: email centrado + cerrar -->
-            <div class="account-header">
-              <span class="account-header__spacer" />
-              <span class="account-header__email">{{ userEmailOrUsername }}</span>
-              <v-btn
-                icon="mdi-close"
-                variant="text"
-                density="comfortable"
-                size="small"
-                class="account-header__close"
-                @click="accountMenu = false"
-              />
+          <div class="mc" role="menu">
+            <div class="mc-quien">
+              <v-avatar size="40" class="mc-quien__avatar">
+                <v-img v-if="userAvatarFinal" :key="userAvatarKey + '-menu'" :src="userAvatarFinal" cover />
+                <span v-else class="mc-quien__iniciales">{{ userInitials }}</span>
+              </v-avatar>
+              <span class="mc-quien__txt">
+                <span class="mc-quien__nombre">{{ userFullName || userEmailOrUsername }}</span>
+                <span class="mc-quien__sub">{{ [userEmailOrUsername, userRoleLabel].filter(Boolean).join(" · ") }}</span>
+              </span>
             </div>
-
-            <!-- Avatar centrado con anillo de marca -->
-            <div class="account-avatar-wrap">
-              <div class="account-avatar-ring">
-                <v-avatar size="92" class="account-avatar">
-                  <v-img
-                    v-if="userAvatarFinal"
-                    :key="userAvatarKey + '-big'"
-                    :src="userAvatarFinal"
-                    class="avatar-img"
-                    cover
-                  />
-                  <span v-else class="account-avatar-fallback">
-                    {{ userInitials }}
-                  </span>
-                </v-avatar>
-              </div>
-              <router-link
-                :to="{ name: 'profile' }"
-                class="account-avatar-edit"
-                title="Editar perfil"
-                @click="accountMenu = false"
-              >
-                <v-icon size="14">mdi-camera-outline</v-icon>
-              </router-link>
-            </div>
-
-            <!-- Saludo grande -->
-            <div class="account-greeting">
-              ¡Hola, {{ userFirstName || "usuario" }}!
-            </div>
-
-            <!-- CTA principal -->
-            <div class="px-4">
-              <v-btn
-                block
-                variant="outlined"
-                class="account-cta-btn"
-                :to="{ name: 'profile' }"
-                @click="accountMenu = false"
-              >
-                Gestionar mi cuenta
-              </v-btn>
-            </div>
-
-            <!-- Dos acciones secundarias -->
-            <div class="account-actions">
-              <v-btn
-                variant="outlined"
-                class="account-action-btn"
-                :prepend-icon="isDark ? 'mdi-white-balance-sunny' : 'mdi-weather-night'"
-                @click="toggleDark"
-              >
-                {{ isDark ? "Modo claro" : "Modo oscuro" }}
-              </v-btn>
-              <v-btn
-                variant="outlined"
-                class="account-action-btn"
-                prepend-icon="mdi-logout-variant"
-                @click="onLogout"
-              >
-                Cerrar sesión
-              </v-btn>
-            </div>
-
-            <!-- Info card: rol + sucursal -->
-            <div v-if="userRoleLabel || userBranchLabel" class="account-info-card">
-              <v-icon size="20" color="primary">mdi-shield-account-outline</v-icon>
-              <div class="account-info-text">
-                <strong>{{ userRoleLabel }}</strong>
-                <span v-if="userBranchLabel" class="account-info-branch">
-                  · {{ userBranchLabel }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="account-footer">
-              <span>POS 360</span>
-              <span class="account-footer-dot">·</span>
-              <span>SAN JUAN TECNOLOGÍA</span>
-            </div>
-          </v-card>
+            <router-link :to="{ name: 'profile' }" class="mc-op" role="menuitem" @click="accountMenu = false">
+              <v-icon size="20">mdi-account-outline</v-icon>Mi perfil
+            </router-link>
+            <div class="mc-sep" />
+            <button type="button" class="mc-op" role="menuitem" @click="onLogout">
+              <v-icon size="20">mdi-logout-variant</v-icon>Cerrar sesión
+            </button>
+          </div>
         </v-menu>
       </v-app-bar>
 
@@ -1638,208 +1560,19 @@ function onLogout() {
 }
 
 /* =========================
-   Account menu (estilo Google account)
+   Menú de la cuenta (sobrio: quién soy, mi perfil, cerrar sesión)
 ========================= */
-
-.pos-account-card {
-  overflow: hidden;
-  padding-bottom: 8px;
-}
-
-/* En mobile: paddings reducidos, avatar más chico, items más densos */
-@media (max-width: 600px) {
-  .pos-account-card { padding-bottom: 6px; }
-  .account-header { padding: 10px 10px 0; gap: 6px; }
-  .account-header__email { font-size: 12px; }
-  .account-avatar-wrap { margin: 10px 0 4px; }
-  .account-avatar { border-width: 2px !important; }
-  .pos-account-card :deep(.v-list) { padding: 4px !important; }
-  .pos-account-card :deep(.v-list-item) {
-    min-height: 44px !important;
-    padding-inline: 10px !important;
-    border-radius: 10px !important;
-  }
-  .pos-account-card :deep(.v-list-item-title) {
-    font-size: 13px !important;
-  }
-  .account-avatar-edit {
-    width: 24px !important;
-    height: 24px !important;
-    bottom: 2px !important;
-  }
-}
-
-.avatar-img :deep(img) {
-  object-fit: cover !important;
-  object-position: center !important;
-}
-
-/* Header con email centrado + close X */
-.account-header {
-  display: flex;
-  align-items: center;
-  padding: 14px 14px 0;
-  gap: 8px;
-}
-.account-header__spacer {
-  width: 32px;
-  flex-shrink: 0;
-}
-.account-header__email {
-  flex: 1;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.account-header__close {
-  flex-shrink: 0;
-}
-
-/* Avatar centrado con anillo de marca + botón cámara */
-.account-avatar-wrap {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  margin: 16px 0 6px;
-}
-.account-avatar-ring {
-  padding: 3px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1488d1 0%, #2bb0f3 35%, #1488d1 65%, #121e47 100%);
-  display: inline-flex;
-}
-.account-avatar {
-  border: 3px solid rgb(var(--v-theme-surface));
-}
-.account-avatar-fallback {
-  display: inline-flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  text-transform: uppercase;
-  background: rgba(var(--v-theme-primary), 0.10);
-}
-.account-avatar-edit {
-  position: absolute;
-  bottom: 4px;
-  left: calc(50% + 22px);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(var(--v-theme-on-surface), 0.75);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  text-decoration: none;
-}
-.account-avatar-edit:hover {
-  background: rgba(var(--v-theme-primary), 0.10);
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  color: rgb(var(--v-theme-primary));
-}
-
-/* Saludo grande */
-.account-greeting {
-  text-align: center;
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  margin: 8px 16px 18px;
-  color: rgba(var(--v-theme-on-surface), 0.95);
-}
-
-/* CTA principal — pill outlined */
-.account-cta-btn {
-  border-radius: 999px !important;
-  height: 44px !important;
-  font-weight: 400 !important;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
-  color: rgb(var(--v-theme-primary)) !important;
-}
-.account-cta-btn:hover {
-  background: rgba(var(--v-theme-primary), 0.06) !important;
-  border-color: rgba(var(--v-theme-primary), 0.4) !important;
-}
-
-/* Dos acciones secundarias side-by-side */
-.account-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 10px 16px 0;
-}
-.account-action-btn {
-  border-radius: 999px !important;
-  height: 44px !important;
-  font-weight: 400 !important;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
-  color: rgba(var(--v-theme-on-surface), 0.85) !important;
-}
-.account-action-btn:hover {
-  background: rgba(var(--v-theme-on-surface), 0.05) !important;
-}
-
-/* Info card: rol + sucursal */
-.account-info-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 14px 16px 0;
-  padding: 12px 16px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.10);
-  border-radius: 999px;
-  font-size: 13px;
-}
-.account-info-text {
-  flex: 1;
-  min-width: 0;
-  color: rgba(var(--v-theme-on-surface), 0.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.account-info-text strong {
-  font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), 0.95);
-}
-.account-info-branch {
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  font-weight: 400;
-}
-
-/* Footer */
-.account-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 16px 6px;
-  margin-top: 4px;
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.50);
-  letter-spacing: 0.02em;
-}
-.account-footer-dot {
-  opacity: 0.7;
-}
+.mc { width: 300px; padding: 6px 0; border-radius: 12px; background: rgb(var(--v-theme-surface)); border: 1px solid rgba(var(--v-border-color), 0.16); box-shadow: 0 12px 28px rgba(10, 70, 110, 0.16); }
+.mc-quien { display: flex; align-items: center; gap: 12px; padding: 10px 16px 12px; border-bottom: 1px solid rgba(var(--v-border-color), 0.10); }
+.mc-quien__avatar { background: #0f6fae; flex-shrink: 0; }
+.mc-quien__iniciales { font-size: 15px; font-weight: 700; color: #ffffff; }
+.mc-quien__txt { display: flex; flex-direction: column; min-width: 0; }
+.mc-quien__nombre { font-size: 15px; font-weight: 700; color: rgb(var(--v-theme-on-surface)); }
+.mc-quien__sub { font-size: 12px; color: rgba(var(--v-theme-on-surface), 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-op { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 16px; border: 0; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; color: rgb(var(--v-theme-on-surface)) !important; text-decoration: none; cursor: pointer; text-align: left; }
+.mc-op:hover { background: rgba(var(--v-theme-on-surface), 0.05); }
+.mc-op .v-icon { color: rgba(var(--v-theme-on-surface), 0.55) !important; }
+.mc-sep { height: 1px; margin: 4px 0; background: rgba(var(--v-border-color), 0.10); }
 
 /* =========================
    Header buttons clean
