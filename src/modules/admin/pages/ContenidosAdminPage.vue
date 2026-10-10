@@ -34,16 +34,16 @@
         <button v-for="f in FORMATOS" :key="f.v" type="button" class="ct-fmt" :class="{ 'is-on': formato === f.v }" @click="elegirFormato(f.v)">
           <span v-if="formato === f.v" class="ct-fmt__ok"><v-icon size="18">mdi-check</v-icon></span>
           <EscenaReel v-if="f.v === 'estrella'" tipo="item" :item="muestraEstrella" :fuente="fuente" :ancho="150" />
-          <EscenaReel v-else tipo="intro" :apertura="formato === f.v && aperturaVista ? aperturaVista : f.muestra ? { titular: f.muestra } : null" :fuente="fuente" :ancho="150" />
+          <EscenaReel v-else tipo="intro" :apertura="formato === f.v ? aperturaVista : f.muestra ? { titular: f.muestra } : null" :fuente="fuente" :ancho="150" />
           <b>{{ f.t }}</b>
           <span>{{ f.s }}</span>
         </button>
       </div>
 
-      <div v-if="formato === 'problema'" class="sp-caja ct-pregunta">
-        <div class="se-banda"><span>La pregunta</span></div>
+      <div class="sp-caja ct-pregunta">
+        <div class="se-banda"><span>{{ formato === "problema" ? "La pregunta" : "Apertura del video" }}</span></div>
         <div class="ct-pregunta__cuerpo">
-          <div class="ct-campo"><label>Pregunta</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
+          <div class="ct-campo"><label>{{ formato === "problema" ? "Pregunta" : "Titular" }}</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
           <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="editarApertura" /></div>
           <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea></div>
         </div>
@@ -450,6 +450,8 @@ function aperturaPorDefecto() {
   }
 }
 watch(categoria, () => { if (formato.value === "categoria") aperturaPorDefecto(); });
+// La bajada sugerida ("Hasta N % OFF") sigue a los productos elegidos.
+watch(() => seleccion.value.map((p) => p.id).join(","), () => { if (formato.value === "ofertas" || formato.value === "categoria") aperturaPorDefecto(); });
 // Lo que dice el titular lo lee también la voz, salvo que la voz se haya escrito a mano.
 function editarApertura() {
   apertura.editada = true;
