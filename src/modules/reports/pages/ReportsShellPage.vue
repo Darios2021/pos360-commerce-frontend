@@ -1,119 +1,51 @@
 <!-- src/modules/reports/pages/ReportsShellPage.vue -->
+<!-- Reportes (maqueta aprobada 10/10): título y la elección del reporte; cada
+     reporte trae su período y sucursal. Ventas y Productos comparten filtros. -->
 <template>
-  <div class="rpt-shell">
-    <AppPageHeader
-      icon="mdi-chart-line"
-      title="Reportes"
-      subtitle="Ventas por sucursal, stock, auditoría de cajas y liquidación de franquicias"
-    />
-
-    <v-tabs
-      v-model="activeTab"
-      density="comfortable"
-      color="primary"
-      class="rpt-shell__tabs"
-      show-arrows
-    >
-      <v-tab value="sales" class="rpt-tab">
-        <v-icon start size="18">mdi-cash-multiple</v-icon>
-        Ventas
-      </v-tab>
-      <v-tab value="ganancia" class="rpt-tab">
-        <v-icon start size="18">mdi-chart-pie</v-icon>
-        Ganancia y reparto
-      </v-tab>
-      <v-tab value="stock" class="rpt-tab" disabled>
-        <v-icon start size="18">mdi-warehouse</v-icon>
-        Stock
-        <v-chip size="x-small" class="ml-2" variant="tonal" color="warning">Próximamente</v-chip>
-      </v-tab>
-      <v-tab value="cashboxes" class="rpt-tab" disabled>
-        <v-icon start size="18">mdi-cash-register</v-icon>
-        Auditoría de cajas
-        <v-chip size="x-small" class="ml-2" variant="tonal" color="warning">Próximamente</v-chip>
-      </v-tab>
-    </v-tabs>
-
-    <div class="rpt-shell__body">
-      <ReportsSalesPage v-if="activeTab === 'sales'" />
-      <ReportsGananciaPage v-else-if="activeTab === 'ganancia'" />
+  <div class="sp rp">
+    <div class="sp-cab rp-cab">
+      <div class="sp-cab__txt"><h1 class="sp-cab__titulo">Reportes</h1></div>
+      <div class="rp-tabs" role="tablist">
+        <button v-for="t in TABS" :key="t.v" type="button" role="tab" :aria-selected="vista === t.v" :class="{ 'is-on': vista === t.v }" @click="elegir(t.v)">
+          <v-icon size="19">{{ t.i }}</v-icon>{{ t.t }}
+        </button>
+      </div>
     </div>
+
+    <ReportsGananciaPage v-if="vista === 'ganancia'" />
+    <ReportsVentasPage v-else :key="vista" :vista="vista" />
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import ReportsSalesPage from "./ReportsSalesPage.vue";
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import ReportsVentasPage from "./ReportsVentasPage.vue";
 import ReportsGananciaPage from "./ReportsGananciaPage.vue";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import "@/modules/products/styles/proveedores.css";
 
-const activeTab = ref("sales");
+const TABS = [
+  { v: "ventas", t: "Ventas", i: "mdi-cash-multiple" },
+  { v: "productos", t: "Productos", i: "mdi-package-variant" },
+  { v: "ganancia", t: "Ganancia y reparto", i: "mdi-chart-pie" },
+];
+
+const route = useRoute();
+const router = useRouter();
+const vista = computed(() => (TABS.some((t) => t.v === route.query.vista) ? route.query.vista : "ventas"));
+function elegir(v) {
+  router.replace({ query: { ...route.query, vista: v === "ventas" ? undefined : v } });
+}
 </script>
 
-<style scoped>
-.rpt-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
-.rpt-shell__head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 2px 2px;
-  flex-wrap: wrap;
-}
-
-.rpt-shell__title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.rpt-shell__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(var(--v-theme-primary), 0.14);
-  color: rgb(var(--v-theme-primary));
-  flex-shrink: 0;
-}
-
-.rpt-shell__title {
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-.rpt-shell__subtitle {
-  font-size: 12.5px;
-  color: rgba(var(--v-theme-on-surface), 0.58);
-  margin-top: 2px;
-}
-
-.rpt-shell__tabs {
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-}
-
-.rpt-tab {
-  text-transform: none !important;
-  font-weight: 400;
-  letter-spacing: 0;
-  font-size: 13px;
-}
-
-.rpt-shell__body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
+<style>
+.sp.rp > * { max-width: 1440px; }
+.rp-cab { align-items: center; flex-wrap: wrap; }
+.rp-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); flex-wrap: wrap; }
+.rp-tabs button { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: transparent; font: 800 15px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; white-space: nowrap; }
+.rp-tabs button .v-icon { color: inherit; opacity: .8; }
+.rp-tabs button:hover:not(.is-on) { background: #cfe5f5; }
+:is(.v-theme--dark, .v-theme--adminDark) .rp-tabs button:hover:not(.is-on) { background: #1a2a3a; }
+.rp-tabs button.is-on { background: #0f6fae; color: #ffffff; }
+@media (max-width: 600px) { .rp-tabs { width: 100%; } .rp-tabs button { flex: 1; justify-content: center; padding: 0 10px; } .rp-tabs button .v-icon { display: none; } }
 </style>
