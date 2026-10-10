@@ -492,7 +492,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-paso.is-ok b { background: #2E9E7B; color: #fff; }
 .ct-paso.is-ok b .v-icon { color: #fff; }
 .ct-p1 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
-.ct-enreel .sp-caja { max-height: calc(100vh - 330px); overflow-y: auto; }
+.ct-enreel .sp-caja { max-height: calc(100vh - 420px); overflow-y: auto; }
 .ct-sel { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); }
 .ct-sel:last-child { border-bottom: 0; }
 .ct-sel.is-arrastrando { opacity: .4; }
@@ -560,8 +560,8 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-sentinela { height: 1px; grid-column: 1 / -1; }
 .ct-grilla > .ct-vacio { grid-column: 1 / -1; }
 /* El catálogo y la tira de escenas tienen su propio scroll: el layout de la app corta el sticky. */
-.ct-p1 .ct-grilla { max-height: calc(100vh - 400px); min-height: 320px; overflow-y: auto; padding: 2px 4px 2px 2px; align-content: start; }
-.ct-p2 .ct-tira { max-height: calc(100vh - 330px); overflow-y: auto; }
+.ct-p1 .ct-grilla { max-height: calc(100vh - 490px); min-height: 320px; overflow-y: auto; padding: 2px 4px 2px 2px; align-content: start; }
+.ct-p2 .ct-tira { max-height: calc(100vh - 420px); overflow-y: auto; }
 .ct-vacio { padding: 36px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--sp-suave); }
 
 .ct-es { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); cursor: pointer; }
