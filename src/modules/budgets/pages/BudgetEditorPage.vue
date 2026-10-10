@@ -164,40 +164,12 @@
             <tr class="be-agregar">
               <td :colspan="header.show_cost ? 8 : 6">
                 <div class="be-agregar__fila">
-                  <label class="be-busca" :class="{ 'is-on': busqAbierta }">
+                  <button type="button" class="be-busca be-busca--btn" @click="openProductDialog">
                     <v-icon size="22">mdi-plus</v-icon>
-                    <input
-                      ref="busqRef"
-                      v-model="productQuery"
-                      type="text"
-                      autocomplete="off"
-                      placeholder="Agregar producto: buscá por nombre o código"
-                      @focus="abrirBusqueda"
-                      @input="busqSel = 0; debouncedProductSearch()"
-                      @keydown="teclaBusqueda"
-                      @blur="cerrarBusqueda"
-                    />
-                    <v-progress-circular v-if="productLoading" indeterminate size="18" width="2" color="primary" />
-                  </label>
+                    <span>Agregar producto: buscá por nombre o código</span>
+                  </button>
                   <a href="#" class="be-link" @click.prevent="addFreeLine">Renglón libre</a>
                   <a href="#" class="be-link" @click.prevent="openNewProductDialog">Producto nuevo</a>
-                  <a href="#" class="be-link be-link--suave" @click.prevent="openProductDialog">Más opciones</a>
-                </div>
-                <div v-if="busqAbierta && productResults.length" class="be-res">
-                  <div class="be-res__cab">Resultados del catálogo · Enter agrega el elegido</div>
-                  <button
-                    v-for="(p, i) in productResults.slice(0, 8)"
-                    :key="p.id"
-                    type="button"
-                    class="be-res__fila"
-                    :class="{ 'is-on': i === busqSel }"
-                    @mousedown.prevent="addProduct(p)"
-                    @mouseenter="busqSel = i"
-                  >
-                    <span class="be-res__nombre">{{ p.name }}</span>
-                    <span class="be-res__sku">{{ p.sku || p.code }}</span>
-                    <b class="be-res__precio">{{ money(previewPrice(p)) }}</b>
-                  </button>
                 </div>
               </td>
             </tr>
@@ -305,149 +277,78 @@
         </section>
       </aside>
     </div>
-    <v-dialog v-model="productDialog" max-width="900">
-      <v-card>
-        <v-card-title class="d-flex align-center ga-3">
-          <span class="text-subtitle-1">Agregar producto al presupuesto</span>
-          <v-spacer />
-          <!-- Si el producto no está en el catálogo, se carga desde acá y
-               entra al presupuesto sin salir de la pantalla. -->
-          <v-btn size="small" variant="tonal" prepend-icon="mdi-package-variant-plus" @click="openNewProductDialog">
-            Cargar producto
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <v-text-field
-            v-model="productQuery"
-            density="compact"
-            variant="outlined"
-            hide-details
-            autofocus
-            clearable
-            placeholder="Buscar por nombre o código"
-            prepend-inner-icon="mdi-magnify"
-            class="mb-4"
-            @update:model-value="debouncedProductSearch"
-            @keyup.enter="addFirstResult"
-          />
-
-          <!-- Estos tres valores no son filtros de la búsqueda: son con qué
-               entra cada producto que agregues. Se aclara explícitamente porque
-               puestos sueltos arriba parecían parte del buscador. -->
-          <div class="defaults-box mb-4">
-            <div class="defaults-head">Con qué se agrega cada producto</div>
-            <div class="d-flex ga-3 flex-wrap align-center">
-              <v-select
-                v-model="priceSource"
-                :items="priceSourceItems"
-                density="compact"
-                variant="outlined"
-                hide-details
-                label="Precio de partida"
-                style="max-width: 200px"
-                @update:model-value="onPriceSourceChange"
-              />
-              <v-text-field
-                v-model="addQty"
-                density="compact"
-                variant="outlined"
-                hide-details
-                label="Cantidad"
-                type="number"
-                min="1"
-                style="max-width: 110px"
-              />
-              <v-text-field
-                v-model="addMargin"
-                density="compact"
-                variant="outlined"
-                hide-details
-                label="Margen"
-                type="number"
-                suffix="%"
-                style="max-width: 120px"
-              />
-            </div>
-            <div class="text-caption text-medium-emphasis mt-2">
-              {{ defaultsExplain }}
-            </div>
+    <!-- Agregar producto (pedido del usuario 10/10): ventana grande con el
+         buscador completo y fotos. Enter agrega el elegido; si ya está en el
+         presupuesto, la tarjeta muestra cuánto lleva y se sube o baja ahí. -->
+    <v-dialog v-model="productDialog" max-width="1180" scrollable>
+      <section class="bp">
+        <header class="bp-cab">
+          <v-icon size="26">mdi-magnify</v-icon>
+          <span class="bp-cab__tit">Agregar producto</span>
+          <button type="button" class="bp-cerrar" @click="productDialog = false">Cerrar<span class="bp-tk">Esc</span></button>
+        </header>
+        <div class="bp-barra">
+          <label class="bp-busca">
+            <v-icon size="26">mdi-barcode-scan</v-icon>
+            <input
+              v-model="productQuery"
+              type="text"
+              autocomplete="off"
+              autofocus
+              placeholder="Buscar por nombre, código o lector"
+              @input="bpSel = 0; debouncedProductSearch()"
+              @keydown="bpTecla"
+            />
+            <v-progress-circular v-if="productLoading" indeterminate size="22" width="3" color="primary" />
+          </label>
+          <div class="bp-def">
+            <v-select v-model="priceSource" :items="priceSourceItems" density="comfortable" variant="outlined" hide-details label="Precio de partida" style="width: 190px" @update:model-value="onPriceSourceChange" />
+            <v-text-field v-model="addQty" density="comfortable" variant="outlined" hide-details label="Cantidad" type="number" min="1" style="width: 110px" />
+            <v-text-field v-model="addMargin" density="comfortable" variant="outlined" hide-details label="Margen" type="number" suffix="%" style="width: 110px" />
           </div>
-
-          <v-data-table
-            :headers="productHeaders"
-            :items="productResults"
-            :loading="productLoading"
-            density="compact"
-            item-value="id"
-            :items-per-page="10"
-            no-data-text="No hay productos para mostrar. Probá con otro nombre o codigo."
-            loading-text="Buscando productos..."
-            items-per-page-text="Productos por pagina"
-            @click:row="(e, { item }) => (pickedQty(item) ? stepProduct(item, 1) : addProduct(item))"
-          >
-            <template #item.thumb="{ item }">
-              <img v-if="productImage(item)" :src="productImage(item)" class="picker-thumb" alt="" />
-              <div v-else class="picker-thumb picker-thumb--empty">
-                <v-icon size="16" color="grey">mdi-image-off-outline</v-icon>
+        </div>
+        <div class="bp-cuerpo">
+          <div v-if="!productLoading && !productResults.length" class="bp-vacio">Sin productos para «{{ productQuery }}»</div>
+          <div class="bp-grilla">
+            <article
+              v-for="(item, i) in productResults"
+              :key="item.id"
+              class="bp-card"
+              :class="{ 'is-on': i === bpSel, 'is-dentro': pickedQty(item) }"
+              @mouseenter="bpSel = i"
+              @click="pickedQty(item) ? stepProduct(item, 1) : addProduct(item)"
+            >
+              <div class="bp-foto">
+                <img v-if="productImage(item)" :src="productImage(item)" alt="" />
+                <v-icon v-else size="40">mdi-image-off-outline</v-icon>
+                <span v-if="pickedQty(item)" class="bp-dentro">{{ pickedQty(item) }} en el presupuesto</span>
               </div>
-            </template>
-
-            <template #item.name="{ item }">
-              <div class="d-flex align-center ga-2">
-                <span class="text-body-2">{{ item.name }}</span>
-                <v-chip v-if="pickedQty(item)" size="x-small" color="primary" variant="tonal">
-                  en el presupuesto
-                </v-chip>
+              <div class="bp-info">
+                <span class="bp-nombre">{{ item.name }}</span>
+                <span class="bp-sku">{{ item.sku || item.code }}</span>
+                <div class="bp-pie">
+                  <div class="bp-precio">
+                    <b :class="{ 'bp-sin': !basePriceOf(item) }">{{ money(previewPrice(item)) }}</b>
+                    <small v-if="Number(addMargin) && basePriceOf(item)">base {{ money(basePriceOf(item)) }}</small>
+                  </div>
+                  <div v-if="pickedQty(item)" class="bp-cant" @click.stop>
+                    <button type="button" :disabled="stepping === item.id" @click="stepProduct(item, -1)">−</button>
+                    <span>{{ pickedQty(item) }}</span>
+                    <button type="button" :disabled="stepping === item.id" @click="stepProduct(item, 1)">+</button>
+                  </div>
+                  <button v-else type="button" class="bp-agregar" :disabled="stepping === item.id" @click.stop="addProduct(item)">
+                    <v-icon size="18">mdi-plus</v-icon>Agregar
+                  </button>
+                </div>
               </div>
-              <div v-if="item.sku" class="text-caption text-medium-emphasis">Cod: {{ item.sku }}</div>
-            </template>
-
-            <template #item.base="{ item }">
-              <span :class="{ 'text-error': !basePriceOf(item) }">{{ money(basePriceOf(item)) }}</span>
-            </template>
-
-            <template #item.preview="{ item }">
-              <span class="font-weight-medium">{{ money(previewPrice(item)) }}</span>
-            </template>
-
-            <!-- Si el producto ya está en el presupuesto, en vez de "Agregar"
-                 se muestra cuánto lleva y se puede subir o bajar desde acá. -->
-            <template #item.actions="{ item }">
-              <div v-if="pickedQty(item)" class="d-flex align-center justify-end ga-1">
-                <v-btn
-                  size="x-small"
-                  variant="text"
-                  icon="mdi-minus"
-                  :loading="stepping === item.id"
-                  @click.stop="stepProduct(item, -1)"
-                />
-                <span class="picked-qty">{{ pickedQty(item) }}</span>
-                <v-btn
-                  size="x-small"
-                  variant="text"
-                  icon="mdi-plus"
-                  :loading="stepping === item.id"
-                  @click.stop="stepProduct(item, 1)"
-                />
-              </div>
-              <v-btn
-                v-else
-                size="small"
-                variant="tonal"
-                color="primary"
-                :loading="stepping === item.id"
-                @click.stop="addProduct(item)"
-              >
-                Agregar
-              </v-btn>
-            </template>
-          </v-data-table>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="productDialog = false">Cerrar</v-btn>
-        </v-card-actions>
-      </v-card>
+            </article>
+          </div>
+        </div>
+        <footer class="bp-piefin">
+          <span class="bp-ayuda">{{ defaultsExplain }}</span>
+          <a href="#" class="be-link" @click.prevent="openNewProductDialog">¿No está? Cargar producto nuevo</a>
+        </footer>
+      </section>
     </v-dialog>
 
     <!-- Alta rápida de producto. No reemplaza a la ficha completa del
@@ -1361,28 +1262,16 @@ async function addProduct(product) {
   }
 }
 
-// ── Buscador dentro de la tabla ───────────────────────────────────────────
-// El mismo buscador del diálogo (productQuery / searchProducts / addProduct),
-// abierto en la última fila: flechas eligen, Enter agrega, Esc cierra.
-const busqRef = ref(null);
-const busqAbierta = ref(false);
-const busqSel = ref(0);
-function abrirBusqueda() {
-  busqAbierta.value = true;
-  if (!productResults.value.length) searchProducts();
-}
-function cerrarBusqueda() {
-  setTimeout(() => { busqAbierta.value = false; }, 120);
-}
-async function teclaBusqueda(e) {
-  const lista = productResults.value.slice(0, 8);
-  if (e.key === "ArrowDown") { e.preventDefault(); busqAbierta.value = true; busqSel.value = Math.min(lista.length - 1, busqSel.value + 1); }
-  else if (e.key === "ArrowUp") { e.preventDefault(); busqSel.value = Math.max(0, busqSel.value - 1); }
-  else if (e.key === "Escape") { busqAbierta.value = false; }
+// ── Ventana Agregar producto: flechas eligen, Enter agrega el elegido ─────
+const bpSel = ref(0);
+async function bpTecla(e) {
+  const lista = productResults.value;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); bpSel.value = Math.min(lista.length - 1, bpSel.value + (e.key === "ArrowDown" ? 4 : 1)); }
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); bpSel.value = Math.max(0, bpSel.value - (e.key === "ArrowUp" ? 4 : 1)); }
   else if (e.key === "Enter") {
     e.preventDefault();
-    const p = lista[busqSel.value];
-    if (p) { await addProduct(p); productQuery.value = ""; busqSel.value = 0; searchProducts(); }
+    const p = lista[bpSel.value];
+    if (p) await (pickedQty(p) ? stepProduct(p, 1) : addProduct(p));
   }
 }
 
@@ -1958,7 +1847,8 @@ onMounted(() => {
 .be-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--be-banda); color: #ffffff; font-size: 15px; font-weight: 800; }
 .be-banda small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.85); }
 .be-scroll { overflow-x: auto; }
-.be .items-table { width: 100%; border-collapse: collapse; }
+.be .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.be .items-table .col-detail .cell-input--title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .be .items-table th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--be-suave); background: var(--be-hover); text-align: left; padding: 10px 12px; border: 1px solid var(--be-linea); border-top: 0; }
 .be .items-table td { padding: 10px 12px; border: 1px solid var(--be-linea); vertical-align: middle; color: var(--be-texto); }
 .be .items-table th:first-child, .be .items-table td:first-child { border-left: 0; }
@@ -1983,6 +1873,8 @@ onMounted(() => {
 .be-busca { flex: 1; min-width: 260px; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--be-borde); background: var(--be-campo); }
 .be-busca.is-on { border: 2px solid #0f6fae; box-shadow: 0 0 0 4px rgba(15,111,174,.12); }
 .be-busca .v-icon { color: #0f6fae; }
+.be-busca--btn { cursor: pointer; text-align: left; font: 600 15px Inter, sans-serif; color: var(--be-suave); }
+.be-busca--btn:hover { border-color: #3f8fc6; background: #cfe5f5; }
 .be-busca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 600 15px Inter, sans-serif; color: var(--be-texto); }
 .be-link { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 800; color: var(--be-acento); text-decoration: none; white-space: nowrap; }
 .be-link:hover { text-decoration: underline; }
@@ -2036,4 +1928,51 @@ onMounted(() => {
 .be-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .be-vend { font-size: 13px; color: var(--be-suave); }
 @media (max-width: 1100px) { .be-cuerpo { flex-direction: column; } .be-panel { width: 100%; position: static; } }
+
+/* Ventana Agregar producto */
+.bp { display: flex; flex-direction: column; max-height: calc(100vh - 48px); border-radius: 14px; overflow: hidden; background: #ffffff; color: #0f172a; font-family: Inter, sans-serif; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.bp-cab { display: flex; align-items: center; gap: 12px; padding: 14px 16px 14px 22px; background: #0f6fae; color: #ffffff; flex-shrink: 0; }
+.bp-cab .v-icon { color: #ffffff; }
+.bp-cab__tit { font-size: 20px; font-weight: 800; }
+.bp-cerrar { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: #ffffff; font: 700 14px Inter, sans-serif; cursor: pointer; }
+.bp-tk { display: inline-flex; align-items: center; height: 24px; padding: 0 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.18); font: 900 12px ui-monospace, monospace; }
+.bp-barra { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 22px; border-bottom: 1px solid #e3eaf1; flex-shrink: 0; }
+.bp-busca { flex: 1; min-width: 320px; height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: 12px; border: 2px solid #0f6fae; box-shadow: 0 0 0 4px rgba(15,111,174,.14); }
+.bp-busca .v-icon { color: #0f6fae; }
+.bp-busca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 700 19px Inter, sans-serif; color: #0f172a; }
+.bp-def { display: flex; gap: 8px; }
+.bp-cuerpo { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px; background: #f3f8fc; }
+.bp-vacio { padding: 40px; text-align: center; font-weight: 600; color: #5a6678; }
+.bp-grilla { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.bp-card { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: #ffffff; border: 1px solid #d3dde7; cursor: pointer; transition: box-shadow 120ms ease, transform 120ms ease, border-color 120ms ease; }
+.bp-card:hover, .bp-card.is-on { border-color: #0f6fae; box-shadow: inset 0 0 0 2px #0f6fae, 0 10px 22px rgba(10,70,110,.18); transform: translateY(-2px); }
+.bp-card.is-dentro { border-color: #2E9E7B; }
+.bp-foto { position: relative; height: 150px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-bottom: 1px solid #eef2f6; }
+.bp-foto img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.bp-foto .v-icon { color: #c3c9d6; }
+.bp-dentro { position: absolute; left: 8px; top: 8px; padding: 3px 8px; border-radius: 9999px; background: #2E9E7B; color: #ffffff; font-size: 11px; font-weight: 800; }
+.bp-info { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px 12px; flex: 1; }
+.bp-nombre { font-size: 14px; font-weight: 800; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 35px; }
+.bp-sku { font-size: 12px; color: #5a6678; }
+.bp-pie { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
+.bp-precio { display: flex; flex-direction: column; }
+.bp-precio b { font-size: 18px; font-weight: 900; }
+.bp-precio small { font-size: 11px; color: #5a6678; }
+.bp-sin { color: #c2413a; }
+.bp-agregar { height: 36px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; border: 0; border-radius: 9px; background: #0f6fae; color: #ffffff; font: 800 13px Inter, sans-serif; cursor: pointer; }
+.bp-agregar .v-icon { color: #ffffff; }
+.bp-cant { display: flex; align-items: center; gap: 4px; }
+.bp-cant button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #c9d5e1; background: #ffffff; font: 900 18px Inter, sans-serif; cursor: pointer; }
+.bp-cant span { min-width: 26px; text-align: center; font-weight: 900; }
+.bp-piefin { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 22px; border-top: 1px solid #e3eaf1; background: #f8fbfd; flex-shrink: 0; }
+.bp-ayuda { font-size: 13px; color: #5a6678; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp { background: #151c25; color: #e5edf5; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-cab { background: #0f5f96; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-barra, :is(.v-theme--dark, .v-theme--adminDark) .bp-piefin { border-color: #253141; background: #101720; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-busca input { color: #e5edf5; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-cuerpo { background: #0b0f14; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-card { background: #1a2430; border-color: #253141; }
+:is(.v-theme--dark, .v-theme--adminDark) .bp-info, :is(.v-theme--dark, .v-theme--adminDark) .bp-nombre { color: #e5edf5; }
+:is(.v-theme--dark, .v-theme--adminDark) :is(.bp-sku, .bp-precio small, .bp-ayuda) { color: #9aa8b8; }
+@media (max-width: 1000px) { .bp-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
