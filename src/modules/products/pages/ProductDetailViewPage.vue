@@ -1578,7 +1578,7 @@ watch(branchId, fetchProduct);
 .pd-video__play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
 .pd-precio { display: flex; flex-direction: column; gap: 2px; padding: 16px 16px 4px; }
-.pd-tres { display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 4px; }
+.pd-tres { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; padding: 14px 14px 4px; }
 .pd-pr { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #f3f8fc; border: 1px solid #d3dde7; }
 .pd-pr--lista { background: #eef7fd; border: 2px solid #0f6fae; }
 .pd-pr__lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a466e; }
