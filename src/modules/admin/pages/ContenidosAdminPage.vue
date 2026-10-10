@@ -575,9 +575,9 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-tira { display: flex; flex-direction: column; gap: 8px; }
 .ct-ti { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); text-align: left; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
 .ct-ti .er { border-radius: 6px; box-shadow: none; border: 1px solid var(--sp-borde); }
-.ct-ti span { display: flex; flex-direction: column; min-width: 0; }
-.ct-ti small { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--sp-suave); }
-.ct-ti b { font-size: 14px; font-weight: 800; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ct-ti > span { display: flex; flex-direction: column; min-width: 0; }
+.ct-ti > span > small { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--sp-suave); }
+.ct-ti > span > b { font-size: 14px; font-weight: 800; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ct-ti:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-ti:hover:not(.is-on) { background: #1a2a3a; }
 .ct-ti.is-on { border: 2px solid #0f6fae; padding: 7px; background: var(--sp-hover); }
@@ -585,8 +585,8 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-p3 { display: flex; flex-direction: column; gap: 16px; }
 .ct-story { display: flex; justify-content: space-between; gap: 12px; padding: 18px 22px; overflow-x: auto; }
 .ct-st { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: transparent; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; padding: 0; }
-.ct-st b { font-size: 14px; font-weight: 800; }
-.ct-st span { font-size: 13px; color: var(--sp-suave); }
+.ct-st > b { font-size: 14px; font-weight: 800; }
+.ct-st > span { font-size: 13px; color: var(--sp-suave); }
 .ct-st:hover .er { outline: 3px solid #3f8fc6; outline-offset: 3px; }
 .ct-p3__abajo { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
 .ct-musica { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 16px; }
