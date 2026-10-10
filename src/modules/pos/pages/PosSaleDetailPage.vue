@@ -416,7 +416,9 @@ function statusColor(s) {
 }
 function userLabel(s) {
   const u = s?.user || null;
-  return u?.name || u?.full_name || u?.email || u?.username || (s?.user_id ? `#${s.user_id}` : "—");
+  // El nombre de la persona antes que el correo, igual que en el listado
+  const nombre = [u?.first_name, u?.last_name].filter(Boolean).join(" ").trim();
+  return nombre || u?.name || u?.full_name || u?.username || u?.email || (s?.user_id ? `#${s.user_id}` : "—");
 }
 function paymentHeadline(p) {
   const installments = Number(p?.installments || 1);
