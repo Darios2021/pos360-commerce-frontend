@@ -15,7 +15,7 @@
       @refresh="handleRefresh"
       @show-cart="abrir('carrito')"
       @pay="handlePay"
-      @new-customer="handleNewCustomer"
+      @new-customer="abrir('cliente')"
       @clear-cart="handleClearCart"
       @cash="handleCash"
       @movements="handleMovements"
@@ -27,13 +27,13 @@
     <PosCarritoDialog v-model="showCartDialog" :pos-store="posStore" @cobrar="cobrarDesdeCarrito" />
     <PosVaciarDialog v-model="vaciarOpen" :pos-store="posStore" @vaciado="toast('Carrito vaciado')" />
     <PosMovimientosDialog v-model="movementsOpen" :caja-id="Number(currentCashRegister?.id || 0)" :sucursal="sucursal" />
+    <PosClienteDialog v-model="clienteOpen" :pos-store="posStore" @asignado="(c) => toast(c ? `Cliente: ${c.display_name}` : 'Consumidor final')" />
     <PosAyudaDialog v-model="helpOpen" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
 import PosTopBar from "../components/PosTopBar.vue";
 import PosBuscarDialog from "../components/modales/PosBuscarDialog.vue";
 import PosPrecioDialog from "../components/modales/PosPrecioDialog.vue";
@@ -41,6 +41,7 @@ import PosCarritoDialog from "../components/modales/PosCarritoDialog.vue";
 import PosVaciarDialog from "../components/modales/PosVaciarDialog.vue";
 import PosMovimientosDialog from "../components/modales/PosMovimientosDialog.vue";
 import PosAyudaDialog from "../components/modales/PosAyudaDialog.vue";
+import PosClienteDialog from "../components/modales/PosClienteDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 
 const {
@@ -65,8 +66,8 @@ const {
   handleAddConsultaToCart,
 } = usePosSalesFlow();
 
-const router = useRouter();
 const buscarOpen = ref(false);
+const clienteOpen = ref(false);
 const vaciarOpen = ref(false);
 const movementsOpen = ref(false);
 const sucursal = computed(
@@ -77,6 +78,7 @@ const sucursal = computed(
 const activeStates = computed(() => ({
   F1: !!helpOpen.value,
   F2: !!buscarOpen.value,
+  F3: !!clienteOpen.value,
   F4: !!consultaOpen.value,
   F6: !!showCartDialog.value,
   F8: !!vaciarOpen.value,
@@ -85,7 +87,7 @@ const activeStates = computed(() => ({
 }));
 
 // Por nombre: en la plantilla Vue desenvuelve los ref y pasaría el booleano.
-const VENTANAS = { ayuda: helpOpen, buscar: buscarOpen, consulta: consultaOpen, carrito: showCartDialog, vaciar: vaciarOpen, movimientos: movementsOpen };
+const VENTANAS = { ayuda: helpOpen, buscar: buscarOpen, consulta: consultaOpen, carrito: showCartDialog, cliente: clienteOpen, vaciar: vaciarOpen, movimientos: movementsOpen };
 function closeAllSecondary() {
   for (const v of Object.values(VENTANAS)) v.value = false;
 }
@@ -114,13 +116,6 @@ function handleRefresh() {
 async function cobrarDesdeCarrito() {
   showCartDialog.value = false;
   await handlePay();
-}
-
-// F3: alta en la ficha completa de clientes; al guardar vuelve al POS y el
-// carrito sigue en el store.
-function handleNewCustomer() {
-  closeAllSecondary();
-  router.push({ name: "adminCustomerNew", query: { volver: "pos" } });
 }
 
 function handleClearCart() {

@@ -1,239 +1,81 @@
 <template>
-  <v-dialog
+  <!-- F7 con la caja abierta: arqueo y cierre (maqueta aprobada 10/10). La
+       lógica (esperado, diferencia, PDF, detalle) es la de siempre. -->
+  <PosModal
     :model-value="open"
-    max-width="960"
+    titulo="Cerrar caja"
+    :sub="[cashierLabel, branchLabel, openedAtLabel].filter(Boolean).join(' · ')"
+    tecla="F7"
+    icono="mdi-lock-outline"
+    :ancho="1040"
+    accion="Cerrar la caja"
+    accion-icono="mdi-lock"
     @update:model-value="$emit('update:open', $event)"
+    @abierto="enfocar"
+    @accion="submit"
   >
-    <v-card class="arq" rounded="xl">
-      <PosDialogHeader
-        eyebrow="Cierre de caja"
-        title="Arqueo"
-        :subtitle="subtitle"
-        @close="$emit('update:open', false)"
-      >
-        <template #chips>
-          <span v-if="cashierLabel" class="arq-chip">
-            <v-icon size="12">mdi-account-circle</v-icon>
-            {{ cashierLabel }}
-          </span>
-          <span v-if="branchLabel" class="arq-chip">
-            <v-icon size="12">mdi-store-outline</v-icon>
-            {{ branchLabel }}
-          </span>
-          <span v-if="openedAtLabel" class="arq-chip">
-            <v-icon size="12">mdi-login-variant</v-icon>
-            {{ openedAtLabel }}
-          </span>
-        </template>
-      </PosDialogHeader>
-
-      <!-- Alerta de ventas anuladas (solo si hay) -->
-      <div v-if="cancelledCount > 0" class="arq__cancelled-alert">
-        <v-icon size="13" color="warning">mdi-alert</v-icon>
-        <span>
-          <strong>{{ cancelledCount }}</strong>
-          {{ cancelledCount === 1 ? "venta anulada excluida" : "ventas anuladas excluidas" }}
-          del arqueo.
-        </span>
-      </div>
-
-      <!-- Alerta de summary vacío — ayuda a detectar desfasaje entre venta y caja -->
-      <div v-if="summaryEmpty" class="arq__empty-alert">
-        <v-icon size="14" color="warning">mdi-alert-circle-outline</v-icon>
-        <div class="arq__empty-alert-text">
-          <strong>No se encontraron movimientos en esta caja.</strong>
-          <span>
-            Si hiciste ventas, puede haber un desfasaje de sucursal o la caja
-            estaba recién abierta. Recargá el resumen y probá de nuevo.
-          </span>
+    <div class="aq">
+      <div class="aq-izq">
+        <div v-if="summaryEmpty" class="aq-aviso">
+          <span>No se encontraron movimientos en esta caja.</span>
+          <button type="button" class="aq-link" @click="$emit('reload')">Recargar</button>
         </div>
-        <v-btn
-          variant="tonal"
-          color="warning"
-          size="x-small"
-          prepend-icon="mdi-refresh"
-          @click="$emit('reload')"
-        >
-          Recargar
-        </v-btn>
-      </div>
-
-      <v-divider />
-
-      <div class="arq__body arq__body--wide">
-        <!-- Columna izquierda: efectivo + resumen + métodos -->
-        <div class="arq__col arq__col--left">
-        <!-- Hero: efectivo -->
-        <section class="arq__cash">
-          <div class="arq__section-title">
-            <v-icon size="14">mdi-cash</v-icon>
-            Efectivo en caja
-          </div>
-
-          <div class="arq__expected">
-            <span class="arq__expected-label">Esperado</span>
-            <strong class="arq__expected-amount">{{ money(expectedCashValue) }}</strong>
-          </div>
-
-          <v-text-field
-            v-model="cashInput"
-            label="Efectivo contado físicamente"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            prefix="$"
-            inputmode="decimal"
-            class="arq__cash-input"
-            @keyup.enter="submit"
-          />
-
-          <div class="arq__diff" :class="diffClass">
-            <v-icon size="15" class="arq__diff-icon">{{ diffIcon }}</v-icon>
-            <div class="arq__diff-text">
-              <strong>{{ diffTitle }}</strong>
-              <span>{{ diffDetail }}</span>
-            </div>
-            <strong class="arq__diff-amount">{{ formatDiff(cashDiff) }}</strong>
-          </div>
-        </section>
-
-        <!-- Resumen del turno (solo lectura, del sistema) -->
-        <section v-if="hasTurnInfo" class="arq__summary">
-          <div class="arq__section-title">
-            <v-icon size="14">mdi-receipt-text-outline</v-icon>
-            Resumen del turno
-          </div>
-
-          <div class="arq__metrics">
-            <div class="arq__metric">
-              <span class="arq__metric-label">Ventas</span>
-              <strong class="arq__metric-val">{{ salesCount }}</strong>
-            </div>
-            <div class="arq__metric">
-              <span class="arq__metric-label">Facturado</span>
-              <strong class="arq__metric-val">{{ money(salesTotal) }}</strong>
-            </div>
-            <div class="arq__metric">
-              <span class="arq__metric-label">Fondo inicial</span>
-              <strong class="arq__metric-val">{{ money(openingCash) }}</strong>
-            </div>
-          </div>
-
-          <div v-if="paymentRows.length" class="arq__methods">
-            <span class="arq__methods-title">
-              Cobrado en el turno por medio de pago
-            </span>
-            <div class="arq__methods-list">
-              <span
-                v-for="row in paymentRows"
-                :key="row.key"
-                class="arq-method-chip"
-                :class="{ 'arq-method-chip--cash': row.key === 'cash' }"
-              >
-                <v-icon size="13">{{ row.icon }}</v-icon>
-                <span class="arq-method-chip__name">{{ row.label }}</span>
-                <strong>{{ money(row.expected) }}</strong>
-                <span v-if="row.count" class="arq-method-chip__count">
-                  {{ row.count }} {{ row.count === 1 ? "venta" : "ventas" }}
-                </span>
-              </span>
-            </div>
-          </div>
-        </section>
+        <div v-if="cancelledCount > 0" class="aq-aviso aq-aviso--suave">
+          {{ cancelledCount }} {{ cancelledCount === 1 ? "venta anulada excluida" : "ventas anuladas excluidas" }} del arqueo.
         </div>
-
-        <!-- Columna derecha: detalle de ventas -->
-        <div class="arq__col arq__col--right">
-          <section class="arq__sales-panel" v-if="salesDetail.length">
-            <div class="arq__section-title arq__section-title--flex">
-              <v-icon size="14">mdi-clipboard-text-outline</v-icon>
-              <span>Detalle de ventas</span>
-              <span class="arq__section-badge">{{ salesDetail.length }}</span>
-            </div>
-
-            <div class="arq__sales-list">
-              <article
-                v-for="s in salesDetail"
-                :key="s.id"
-                class="arq__sale-card"
-              >
-                <header class="arq__sale-head">
-                  <span class="arq__sale-id">#{{ s.id }}</span>
-                  <span class="arq__sale-time">
-                    <v-icon size="11">mdi-clock-outline</v-icon>
-                    {{ formatTime(s.sold_at) }}
-                  </span>
-                  <span
-                    class="arq__sale-method"
-                    :class="`arq__sale-method--${String(s.primary_method || '').toLowerCase()}`"
-                  >
-                    <v-icon size="12">{{ methodIcon(s.primary_method) }}</v-icon>
-                    {{ methodLabel(s.primary_method) }}
-                    <span v-if="installmentsOf(s) > 1" class="arq__sale-installments">
-                      · {{ installmentsOf(s) }}x {{ money(installmentValueOf(s)) }}
-                    </span>
-                  </span>
-                  <strong class="arq__sale-total">{{ money(s.total) }}</strong>
-                </header>
-
-                <ul v-if="s.items && s.items.length" class="arq__sale-items">
-                  <li
-                    v-for="(it, i) in s.items"
-                    :key="`${s.id}-${i}`"
-                    class="arq__item-chip"
-                  >
-                    <span class="arq__item-name" :title="it.name">{{ it.name }}</span>
-                    <strong class="arq__item-qty">×{{ qtyLabel(it.quantity) }}</strong>
-                  </li>
-                </ul>
-              </article>
-            </div>
-          </section>
-
-          <div v-else class="arq__sales-empty">
-            <v-icon size="28">mdi-cart-outline</v-icon>
-            <span>Aún no hay ventas en este turno.</span>
+        <div class="aq-dos">
+          <div class="aq-caja"><span class="pm-lab">Debería haber</span><b class="num">{{ money(expectedCashValue) }}</b></div>
+          <div class="aq-caja" :class="`aq-dif--${diffClass}`">
+            <span class="pm-lab">{{ diffTitle }}</span>
+            <b class="num">{{ formatDiff(cashDiff) }}</b>
           </div>
+        </div>
+        <span class="pm-lab">Efectivo contado</span>
+        <label class="pm-in pm-in--monto">
+          <span class="aq-signo">$</span>
+          <input ref="campo" :value="cashInput" type="text" inputmode="decimal" autocomplete="off" @input="onCash" />
+        </label>
+        <span class="aq-detalle">{{ diffDetail }}</span>
+        <div class="aq-res num">
+          <span><small>Ventas</small><b>{{ salesCount }}</b></span>
+          <span><small>Facturado</small><b>{{ money(salesTotal) }}</b></span>
+          <span><small>Fondo inicial</small><b>{{ money(openingCash) }}</b></span>
         </div>
       </div>
 
-      <v-divider />
+      <aside class="pm-aside aq-der">
+        <span class="pm-lab">Cobrado en el turno</span>
+        <div v-for="row in paymentRows" :key="row.key" class="aq-medio num">
+          <span>{{ row.label }}</span>
+          <b>{{ money(row.expected) }}<small v-if="row.count"> · {{ row.count }} {{ row.count === 1 ? "venta" : "ventas" }}</small></b>
+        </div>
+        <div v-if="!paymentRows.length" class="aq-nada">Sin cobros en este turno</div>
 
-      <div class="arq__footer">
-        <v-btn
-          v-if="hasTurnInfo"
-          variant="text"
-          size="small"
-          prepend-icon="mdi-file-pdf-box"
-          @click="downloadPdf"
-          :disabled="pdfLoading"
-          :loading="pdfLoading"
-          class="arq__pdf-btn"
-        >
-          PDF
-        </v-btn>
+        <button v-if="salesDetail.length" type="button" class="aq-link aq-ver" @click="showSalesDetail = !showSalesDetail">
+          {{ showSalesDetail ? "Ocultar" : "Ver" }} las {{ salesDetail.length }} ventas
+        </button>
+        <div v-if="showSalesDetail" class="aq-ventas">
+          <div v-for="v in salesDetail" :key="v.id" class="aq-venta num">
+            <span>#{{ v.id }} · {{ formatTime(v.sold_at) }}</span>
+            <span class="aq-venta__m">{{ methodLabel(v.primary_method) }}<template v-if="installmentsOf(v) > 1"> · {{ installmentsOf(v) }}x</template></span>
+            <b>{{ money(v.total) }}</b>
+          </div>
+        </div>
 
-        <div class="arq__footer-spacer" />
-
-        <v-btn variant="text" size="small" @click="$emit('update:open', false)">
-          Cancelar
-        </v-btn>
-        <v-btn
-          color="primary"
-          size="small"
-          prepend-icon="mdi-check"
-          @click="submit"
-        >
-          Registrar cierre
-        </v-btn>
-      </div>
-    </v-card>
-  </v-dialog>
+        <button v-if="hasTurnInfo" type="button" class="aq-link aq-pdf" :disabled="pdfLoading" @click="downloadPdf">
+          <v-icon size="20">mdi-file-pdf-box</v-icon>{{ pdfLoading ? "Armando el PDF…" : "Arqueo en PDF" }}
+        </button>
+      </aside>
+    </div>
+  </PosModal>
 </template>
 
 <script setup>
 import { computed, ref, watch } from "vue";
-import PosDialogHeader from "./shared/PosDialogHeader.vue";
+import { nextTick } from "vue";
+import PosModal from "./modales/PosModal.vue";
+import { useTeclasModal } from "../composables/useTeclasModal";
+import { formatearMonto } from "../utils/montoTexto";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -418,7 +260,7 @@ const paymentRows = computed(() => {
 // ─── Sync ──────────────────────────────────────────────────────────────
 function syncFromSummary() {
   // Pre-rellenamos con lo esperado para que el cajero solo confirme / corrija.
-  cashInput.value = String(expectedCashValue.value || 0);
+  cashInput.value = Number(expectedCashValue.value || 0).toLocaleString("es-AR", { maximumFractionDigits: 2 });
   showSalesDetail.value = false;
 }
 
@@ -437,6 +279,18 @@ watch(
   },
   { deep: true }
 );
+
+// ─── Teclado ───────────────────────────────────────────────────────────
+const campo = ref(null);
+function enfocar() { nextTick(() => { campo.value?.focus(); campo.value?.select(); }); }
+function onCash(e) {
+  cashInput.value = formatearMonto(e.target.value);
+  e.target.value = cashInput.value;
+}
+useTeclasModal(computed(() => props.open), (e) => {
+  if (e.key === "Enter") { submit(); return true; }
+  return false;
+});
 
 // ─── Submit ────────────────────────────────────────────────────────────
 // ─── Detalle de ventas (para tabla y PDF) ─────────────────────────────
@@ -863,584 +717,38 @@ function submit() {
 }
 </script>
 
-<style scoped>
-.arq {
-  overflow: hidden;
-  background: rgb(var(--v-theme-surface));
-}
-
-.arq-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 7px;
-  background: rgba(var(--v-theme-on-surface), 0.07);
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.3;
-}
-
-.arq-chip :deep(.v-icon) {
-  opacity: 0.72;
-}
-
-.arq__cancelled-alert {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  background: rgba(var(--v-theme-warning), 0.08);
-  border-bottom: 1px solid rgba(var(--v-theme-warning), 0.18);
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.82);
-}
-
-.arq__empty-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 16px;
-  background: rgba(var(--v-theme-warning), 0.1);
-  border-bottom: 1px solid rgba(var(--v-theme-warning), 0.22);
-}
-
-.arq__empty-alert-text {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.9);
-}
-
-.arq__empty-alert-text strong {
-  font-weight: 500;
-  color: rgb(var(--v-theme-warning));
-}
-
-.arq__empty-alert-text span {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  line-height: 1.35;
-}
-
-.arq__body {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.arq__body--wide {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 18px;
-  padding: 20px;
-}
-
-.arq__col {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
-.arq__col--right {
-  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-  padding-left: 18px;
-}
-
-.arq__section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  margin-bottom: 8px;
-}
-
-.arq__section-title--flex {
-  margin-bottom: 10px;
-}
-
-.arq__section-badge {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-primary), 0.14);
-  color: rgb(var(--v-theme-primary));
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-/* ─── Hero: efectivo ─────────────────────────────────────────────── */
-.arq__cash {
-  padding: 14px;
-  border-radius: 14px;
-  background: linear-gradient(
-    180deg,
-    rgba(var(--v-theme-primary), 0.05) 0%,
-    rgba(var(--v-theme-primary), 0.02) 100%
-  );
-  border: 1px solid rgba(var(--v-theme-primary), 0.16);
-}
-
-.arq__expected {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  margin-bottom: 10px;
-}
-
-.arq__expected-label {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.arq__expected-amount {
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.arq__cash-input :deep(.v-field) {
-  border-radius: 10px;
-  background: rgb(var(--v-theme-surface));
-}
-
-.arq__cash-input :deep(.v-field__input) {
-  font-size: 20px;
-  font-weight: 500;
-  padding-top: 6px;
-  padding-bottom: 6px;
-}
-
-.arq__cash-input :deep(.v-field__prefix) {
-  font-size: 16px;
-  font-weight: 400;
-  opacity: 0.6;
-  padding-top: 10px;
-}
-
-.arq__diff {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-}
-
-.arq__diff.is-ok {
-  background: rgba(var(--v-theme-success), 0.08);
-  border-color: rgba(var(--v-theme-success), 0.24);
-  color: rgb(var(--v-theme-success));
-}
-
-.arq__diff.is-warning {
-  background: rgba(var(--v-theme-warning), 0.1);
-  border-color: rgba(var(--v-theme-warning), 0.28);
-  color: rgb(var(--v-theme-warning));
-}
-
-.arq__diff.is-danger {
-  background: rgba(var(--v-theme-error), 0.08);
-  border-color: rgba(var(--v-theme-error), 0.24);
-  color: rgb(var(--v-theme-error));
-}
-
-.arq__diff-icon {
-  flex-shrink: 0;
-}
-
-.arq__diff-text {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.arq__diff-text strong {
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.1;
-}
-
-.arq__diff-text span {
-  font-size: 10.5px;
-  opacity: 0.88;
-  line-height: 1.2;
-}
-
-.arq__diff-amount {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ─── Resumen del turno ────────────────────────────────────────────── */
-.arq__summary {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-}
-
-.arq__metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding-bottom: 10px;
-}
-
-.arq__metric {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-
-.arq__metric-label {
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.56);
-}
-
-.arq__metric-val {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.arq__methods {
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-  padding-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.arq__methods-title {
-  font-size: 10.5px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  letter-spacing: 0.02em;
-}
-
-.arq__methods-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.arq-method-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border-radius: 7px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-
-.arq-method-chip :deep(.v-icon) {
-  opacity: 0.7;
-}
-
-.arq-method-chip__name {
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.75);
-}
-
-.arq-method-chip strong {
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.arq-method-chip__count {
-  font-size: 10px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  line-height: 1.3;
-}
-
-/* Efectivo con acento verde para distinguirlo de los otros medios */
-.arq-method-chip--cash {
-  background: rgba(var(--v-theme-success), 0.08);
-  border-color: rgba(var(--v-theme-success), 0.28);
-}
-
-.arq-method-chip--cash :deep(.v-icon) {
-  color: rgb(var(--v-theme-success));
-  opacity: 0.9;
-}
-
-.arq-method-chip--cash strong {
-  color: rgb(var(--v-theme-success));
-}
-
-/* ─── Detalle de ventas (nuevo layout en cards) ───────────────── */
-.arq__sales-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.arq__sales-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 460px;
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--v-theme-primary), 0.38) transparent;
-}
-
-.arq__sales-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.arq__sales-list::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-primary), 0.38);
-  border-radius: 999px;
-}
-
-.arq__sale-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.arq__sale-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.28);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-}
-
-.arq__sale-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.arq__sale-id {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgb(var(--v-theme-primary));
-  font-feature-settings: "tnum";
-  letter-spacing: -0.01em;
-}
-
-.arq__sale-time {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-feature-settings: "tnum";
-}
-
-.arq__sale-time :deep(.v-icon) {
-  opacity: 0.7;
-}
-
-.arq__sale-method {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), 0.82);
-}
-
-.arq__sale-method--cash {
-  background: rgba(var(--v-theme-success), 0.12);
-  color: rgb(var(--v-theme-success));
-}
-
-.arq__sale-method--card,
-.arq__sale-method--transfer {
-  background: rgba(var(--v-theme-info), 0.12);
-  color: rgb(var(--v-theme-info));
-}
-
-.arq__sale-method--mercadopago,
-.arq__sale-method--qr {
-  background: rgba(255, 176, 32, 0.16);
-  color: rgb(206, 140, 14);
-}
-
-.arq__sale-installments {
-  margin-left: 2px;
-  font-weight: 400;
-  opacity: 0.85;
-  font-feature-settings: "tnum";
-}
-
-.arq__sale-total {
-  margin-left: auto;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: rgb(var(--v-theme-on-surface));
-  white-space: nowrap;
-  font-feature-settings: "tnum";
-}
-
-.arq__sale-items {
-  list-style: none;
-  margin: 0;
-  padding: 6px 0 2px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
-}
-
-.arq__item-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  font-size: 11px;
-  line-height: 1.3;
-  max-width: 100%;
-}
-
-.arq__item-name {
-  color: rgba(var(--v-theme-on-surface), 0.82);
-  font-weight: 400;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
-}
-
-.arq__item-qty {
-  color: rgb(var(--v-theme-primary));
-  font-weight: 500;
-  font-feature-settings: "tnum";
-  flex-shrink: 0;
-}
-
-.arq__sales-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 30px 10px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  font-size: 12px;
-  text-align: center;
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.15);
-  border-radius: 12px;
-}
-
-.arq__sales-empty :deep(.v-icon) {
-  opacity: 0.5;
-}
-
-/* ─── Footer ─────────────────────────────────────────────────────── */
-.arq__footer-spacer {
-  flex: 1 1 auto;
-}
-
-.arq__pdf-btn {
-  opacity: 0.85;
-}
-
-.arq__pdf-btn:hover {
-  opacity: 1;
-}
-
-/* ─── Footer ────────────────────────────────────────────────────────── */
-.arq__footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px 16px;
-}
-
-/* ─── Responsive ────────────────────────────────────────────────────── */
-@media (max-width: 760px) {
-  .arq__body--wide {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 16px;
-  }
-  .arq__col--right {
-    border-left: none;
-    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.07);
-    padding-left: 0;
-    padding-top: 14px;
-  }
-  .arq__sales-list {
-    max-height: 320px;
-  }
-}
-
-@media (max-width: 520px) {
-  .arq__body--wide {
-    padding: 12px;
-  }
-  .arq__metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-  .arq__expected-amount {
-    font-size: 16px;
-  }
-  .arq__cash-input :deep(.v-field__input) {
-    font-size: 18px;
-  }
-  .arq__sale-total {
-    font-size: 13px;
-  }
-  .arq__item-name {
-    max-width: 140px;
-  }
-}
+<style>
+.aq { display: flex; min-height: 100%; }
+.aq-izq { flex: 1; min-width: 0; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.aq-aviso { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #fff4e5; color: #8a4b0f; font-size: 14px; font-weight: 700; }
+.aq-aviso--suave { background: #f1f5f9; color: #5a6678; }
+.aq-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.aq-caja { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 12px; background: #f1f5f9; }
+.aq-caja b { font-size: 30px; font-weight: 900; }
+.aq-dif--is-ok { background: #e3f4ee; border: 2px solid #2e9e7b; }
+.aq-dif--is-ok b, .aq-dif--is-ok .pm-lab { color: #1f7a5f; }
+.aq-dif--is-warning { background: #fff4e5; border: 2px solid #f59e0b; }
+.aq-dif--is-warning b, .aq-dif--is-warning .pm-lab { color: #b45309; }
+.aq-dif--is-danger { background: #fdeceb; border: 2px solid #c2413a; }
+.aq-dif--is-danger b, .aq-dif--is-danger .pm-lab { color: #a3322c; }
+.aq-signo { font-size: 26px; font-weight: 800; color: #94a3b8; }
+.aq-detalle { font-size: 14px; font-weight: 600; color: #5a6678; }
+.aq-res { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+.aq-res span { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 10px; border: 1px solid #d3dde7; }
+.aq-res small { font-size: 12px; font-weight: 700; color: #5a6678; }
+.aq-res b { font-size: 18px; font-weight: 900; }
+.aq-der { padding: 18px; gap: 6px; width: 350px; }
+.aq-medio { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eef2f6; font-size: 15px; }
+.aq-medio span { font-weight: 600; color: #334155; }
+.aq-medio b { font-weight: 800; text-align: right; }
+.aq-medio small { font-weight: 600; color: #94a3b8; }
+.aq-nada { font-size: 14px; color: #5a6678; padding: 6px 0; }
+.aq-link { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; font: 800 14px Inter, sans-serif; color: #0f6fae; cursor: pointer; }
+.aq-link:hover { text-decoration: underline; }
+.aq-link .v-icon { color: #0f6fae; }
+.aq-ver { margin-top: 10px; }
+.aq-pdf { margin-top: 14px; }
+.aq-ventas { display: flex; flex-direction: column; max-height: 220px; overflow-y: auto; }
+.aq-venta { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef2f6; font-size: 13px; }
+.aq-venta__m { color: #5a6678; }
 </style>

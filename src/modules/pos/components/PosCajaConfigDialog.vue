@@ -1,117 +1,39 @@
 <template>
-  <v-dialog
+  <!-- F7 con la caja cerrada: apertura (maqueta aprobada 10/10). -->
+  <PosModal
     :model-value="open"
-    max-width="420"
+    titulo="Abrir caja"
+    tecla="F7"
+    icono="mdi-lock-open-variant-outline"
+    :ancho="720"
+    :accion="`Abrir caja con ${pesosTxt}`"
+    accion-icono="mdi-lock-open-variant"
     @update:model-value="$emit('update:open', $event)"
+    @abierto="enfocar"
+    @accion="submit"
   >
-    <v-card class="ccd" rounded="xl">
-      <PosDialogHeader
-        eyebrow="Caja"
-        title="Apertura de caja"
-        subtitle="¿Cuánto dinero hay en caja para empezar el turno?"
-        @close="$emit('update:open', false)"
-      />
-
-      <v-divider />
-
-      <div class="ccd__body">
-        <!-- Fondo inicial (único campo obligatorio) -->
-        <div class="ccd__amount-section">
-          <div class="ccd__amount-label">
-            <v-icon size="16" class="mr-1">mdi-cash</v-icon>
-            Fondo inicial de caja
-          </div>
-          <v-text-field
-            ref="amountInputRef"
-            v-model="localOpeningAmount"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            prefix="$"
-            inputmode="decimal"
-            placeholder="0"
-            class="ccd__amount-input"
-            autofocus
-            @keyup.enter="submit"
-          />
-          <p class="ccd__amount-hint">
-            Solo efectivo físico disponible para vuelto
-          </p>
-        </div>
-
-        <!-- Info automática -->
-        <div class="ccd__info">
-          <div class="ccd__info-title">
-            <v-icon size="13">mdi-information-outline</v-icon>
-            Se registrarán automáticamente
-          </div>
-          <div class="ccd__info-chips">
-            <span class="ccd-chip">
-              <v-icon size="13">mdi-account-circle</v-icon>
-              <span>{{ cashierName || "Usuario" }}</span>
-            </span>
-            <span v-if="branchLabel" class="ccd-chip">
-              <v-icon size="13">mdi-store-outline</v-icon>
-              <span>{{ branchLabel }}</span>
-            </span>
-            <span class="ccd-chip">
-              <v-icon size="13">mdi-clock-outline</v-icon>
-              <span>{{ currentTimeLabel }}</span>
-            </span>
-          </div>
-        </div>
-
-        <!-- Observación (opcional, colapsable) -->
-        <div class="ccd__note">
-          <button
-            type="button"
-            class="ccd__note-toggle"
-            @click="showNote = !showNote"
-            :aria-expanded="showNote ? 'true' : 'false'"
-          >
-            <v-icon size="14">
-              {{ showNote ? "mdi-chevron-down" : "mdi-chevron-right" }}
-            </v-icon>
-            <span>Agregar observación (opcional)</span>
-          </button>
-
-          <v-expand-transition>
-            <v-text-field
-              v-if="showNote"
-              v-model="localNote"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              placeholder="Ej: Cambié billetes de $10.000"
-              class="mt-2"
-            />
-          </v-expand-transition>
-        </div>
+    <div class="ac">
+      <span class="pm-lab">Efectivo para empezar el turno</span>
+      <label class="pm-in pm-in--monto">
+        <span class="ac-signo">$</span>
+        <input ref="campo" :value="localOpeningAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="0" @input="onMonto" />
+      </label>
+      <div class="ac-chips">
+        <span v-if="cashierName"><v-icon size="18">mdi-account-outline</v-icon>{{ cashierName }}</span>
+        <span v-if="branchLabel"><v-icon size="18">mdi-store-outline</v-icon>{{ branchLabel }}</span>
+        <span class="num"><v-icon size="18">mdi-clock-outline</v-icon>{{ currentTimeLabel }}</span>
       </div>
-
-      <v-divider />
-
-      <div class="ccd__actions">
-        <v-btn variant="text" size="small" @click="$emit('update:open', false)">
-          Cancelar
-        </v-btn>
-        <v-btn
-          variant="flat"
-          color="success"
-          size="small"
-          prepend-icon="mdi-cash-register"
-          @click="submit"
-        >
-          Abrir caja
-        </v-btn>
-      </div>
-    </v-card>
-  </v-dialog>
+      <input v-model="localNote" type="text" maxlength="255" class="ac-nota" placeholder="Observación (opcional)" />
+    </div>
+  </PosModal>
 </template>
 
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
-import PosDialogHeader from "./shared/PosDialogHeader.vue";
+import { nextTick } from "vue";
+import PosModal from "./modales/PosModal.vue";
+import { useTeclasModal } from "../composables/useTeclasModal";
+import { formatearMonto, pesos } from "../utils/montoTexto";
 
 const props = defineProps({
   open:         { type: Boolean,          default: false },
@@ -151,7 +73,8 @@ const currentTimeLabel = computed(() =>
 );
 
 function syncFromProps() {
-  localOpeningAmount.value = String(props.openingAmount ?? "");
+  const n = normalizeAmount(props.openingAmount);
+  localOpeningAmount.value = n > 0 ? n.toLocaleString("es-AR", { maximumFractionDigits: 2 }) : "";
   localNote.value = props.note || "";
   showNote.value = !!(props.note && String(props.note).trim());
 }
@@ -177,6 +100,18 @@ onBeforeUnmount(() => {
   if (clockTimer) clearInterval(clockTimer);
 });
 
+const campo = ref(null);
+const pesosTxt = computed(() => pesos(normalizeAmount(localOpeningAmount.value)));
+function enfocar() { nextTick(() => { campo.value?.focus(); campo.value?.select(); }); }
+function onMonto(e) {
+  localOpeningAmount.value = formatearMonto(e.target.value);
+  e.target.value = localOpeningAmount.value;
+}
+useTeclasModal(computed(() => props.open), (e) => {
+  if (e.key === "Enter") { submit(); return true; }
+  return false;
+});
+
 function submit() {
   const openingAmount = normalizeAmount(localOpeningAmount.value);
   const noteText = String(localNote.value || "").trim();
@@ -199,180 +134,11 @@ function submit() {
 }
 </script>
 
-<style scoped>
-.ccd {
-  overflow: hidden;
-  background: rgb(var(--v-theme-surface));
-}
-
-.ccd__body {
-  padding: 18px;
-  display: grid;
-  gap: 14px;
-}
-
-/* ── Fondo inicial (hero) ─────────────────────────────────────── */
-.ccd__amount-section {
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 14px;
-  background: linear-gradient(
-    180deg,
-    rgba(var(--v-theme-primary), 0.07) 0%,
-    rgba(var(--v-theme-primary), 0.03) 100%
-  );
-  border: 1px solid rgba(var(--v-theme-primary), 0.18);
-}
-
-.ccd__amount-label {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.72);
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-}
-
-.ccd__amount-input :deep(.v-field) {
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
-}
-
-.ccd__amount-input :deep(.v-field__input) {
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
-.ccd__amount-input :deep(.v-field__prefix) {
-  font-size: 20px;
-  font-weight: 400;
-  padding-top: 14px;
-  opacity: 0.7;
-}
-
-.ccd__amount-hint {
-  margin: 0;
-  font-size: 11.5px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-}
-
-/* ── Info automática ──────────────────────────────────────────── */
-.ccd__info {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-
-.ccd__info-title {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.58);
-}
-
-.ccd__info-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ccd-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border-radius: 7px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgb(var(--v-theme-on-surface));
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.3;
-  max-width: 100%;
-}
-
-.ccd-chip :deep(.v-icon) {
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.ccd-chip span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── Nota colapsable ──────────────────────────────────────────── */
-.ccd__note {
-  display: grid;
-  gap: 4px;
-}
-
-.ccd__note-toggle {
-  all: unset;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.68);
-  transition: background 0.14s ease, color 0.14s ease;
-  width: fit-content;
-}
-
-.ccd__note-toggle:hover {
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.ccd__note-toggle:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 2px;
-}
-
-.ccd :deep(.v-field) {
-  border-radius: 10px;
-}
-
-/* ── Actions ──────────────────────────────────────────────────── */
-.ccd__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px 16px;
-}
-
-/* ── Dark mode ───────────────────────────────────────────────── */
-.v-theme--dark .ccd__info {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.07);
-}
-
-.v-theme--dark .ccd-chip {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 420px) {
-  .ccd__body {
-    padding: 14px;
-  }
-  .ccd__amount-input :deep(.v-field__input) {
-    font-size: 22px;
-  }
-}
+<style>
+.ac { display: flex; flex-direction: column; gap: 14px; padding: 22px; }
+.ac-signo { font-size: 26px; font-weight: 800; color: #94a3b8; }
+.ac-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.ac-chips span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9999px; background: #f1f5f9; font-size: 14px; font-weight: 700; color: #334155; }
+.ac-nota { height: 50px; padding: 0 14px; border-radius: 12px; border: 1px solid #c9d5e1; font: 500 15px Inter, sans-serif; color: #0f172a; outline: 0; }
+.ac-nota:focus { border-color: #0f6fae; box-shadow: 0 0 0 3px rgba(15, 111, 174, 0.14); }
 </style>
