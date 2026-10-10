@@ -10,8 +10,8 @@ export async function getFuente() {
   return data;
 }
 
-export async function buscarProductos(buscar = "") {
-  const { data } = await http.get(`${BASE}/productos`, { params: { buscar } });
+export async function buscarProductos(buscar = "", pagina = 1) {
+  const { data } = await http.get(`${BASE}/productos`, { params: { buscar, pagina } });
   return data;
 }
 
