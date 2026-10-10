@@ -5,49 +5,37 @@
     </div>
 
     <div class="ck-screen__body">
-      <div class="ck-confirm">
+      <div class="ck-confirm cf">
 
-        <!-- TOTAL (PROTAGONISTA) -->
-        <section class="ck-total-card">
-          <div class="ck-total-card__label">TOTAL</div>
-          <div class="ck-total-card__value">
-            {{ money(totalSafe) }}
+        <!-- El total, protagonista; el vuelto al lado si hay -->
+        <section class="cf-total" :class="{ 'cf-total--vuelto': showChange }">
+          <div class="cf-total__col">
+            <span class="cf-lab">Total a cobrar</span>
+            <span class="cf-total__val num">{{ money(totalSafe) }}</span>
           </div>
-
-          <!-- Vuelto destacado en la confirmación -->
-          <div v-if="showChange" class="ck-total-card__change">
-            <v-icon size="16">mdi-cash-refund</v-icon>
-            <span>Vuelto</span>
-            <strong>{{ money(changeSafe) }}</strong>
+          <div v-if="showChange" class="cf-total__col cf-total__vuelto">
+            <span class="cf-lab">Vuelto</span>
+            <span class="cf-total__val num">{{ money(changeSafe) }}</span>
           </div>
         </section>
 
-        <!-- RESUMEN LIMPIO -->
-        <section class="ck-summary-card">
-
-          <div class="ck-summary-row">
-            <span>Medio de pago</span>
-            <strong>{{ paymentSummaryLabel || "Sin medio" }}</strong>
+        <!-- Cómo se cobra, en tres tarjetas iguales -->
+        <section class="cf-datos">
+          <div class="cf-dato">
+            <span class="cf-dato__ic"><v-icon size="22">mdi-wallet-outline</v-icon></span>
+            <span class="cf-lab">Medio de pago</span>
+            <strong class="cf-dato__val">{{ paymentSummaryLabel || "Sin medio" }}</strong>
           </div>
-
-          <div class="ck-summary-row">
-            <span>Comprobante</span>
-            <strong>{{ invoiceModeText }}</strong>
+          <div class="cf-dato">
+            <span class="cf-dato__ic"><v-icon size="22">mdi-receipt-text-outline</v-icon></span>
+            <span class="cf-lab">Comprobante</span>
+            <strong class="cf-dato__val">{{ invoiceModeText }}</strong>
           </div>
-
-          <div class="ck-summary-row">
-            <span>Cliente</span>
-            <strong :class="{ 'ck-warn': isCustomerMissing }">
-              {{ customerLabel }}
-            </strong>
+          <div class="cf-dato" :class="{ 'cf-dato--falta': isCustomerMissing }">
+            <span class="cf-dato__ic"><v-icon size="22">mdi-account-outline</v-icon></span>
+            <span class="cf-lab">Cliente</span>
+            <strong class="cf-dato__val">{{ customerLabel }}</strong>
           </div>
-
-        </section>
-
-        <!-- ACCION -->
-        <section class="ck-confirm-cta">
-          <v-icon size="18">mdi-check-circle-outline</v-icon>
-          <span>Enter o F10 para confirmar venta</span>
         </section>
 
       </div>
@@ -352,4 +340,21 @@ defineExpose({
     font-size: 0.7rem;
   }
 }
+
+/* Confirmar con el diseño de las ventanas del POS (10/10) */
+.cf { display: flex; flex-direction: column; gap: 14px; }
+.cf-lab { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #5a6678; }
+.cf-total { display: flex; gap: 14px; padding: 20px 22px; border-radius: 14px; background: #eef7fd; border: 2px solid #0f6fae; }
+.cf-total__col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cf-total__col .cf-lab { color: #0a466e; }
+.cf-total__val { font-size: 44px; font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; color: #0f172a; }
+.cf-total__vuelto { padding-left: 18px; border-left: 2px solid rgba(15, 111, 174, 0.25); }
+.cf-total__vuelto .cf-lab, .cf-total__vuelto .cf-total__val { color: #1f7a5f; }
+.cf-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cf-dato { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 12px; border: 1px solid #d3dde7; background: #ffffff; min-width: 0; }
+.cf-dato__ic { width: 40px; height: 40px; border-radius: 10px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.cf-dato__ic .v-icon { color: #0f6fae; }
+.cf-dato__val { font-size: 18px; font-weight: 800; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-dato--falta { border-color: #c2413a; background: #fdeceb; }
+.cf-dato--falta .cf-dato__val { color: #a3322c; }
 </style>
