@@ -4,164 +4,23 @@
      oculta para poder girar la pantalla y mostrarle el presupuesto al cliente
      sin exponer la rentabilidad. -->
 <template>
-  <div class="budget-editor">
-    <!-- Barra de acciones. Tres zonas: volver | agregar renglones | ajustes del
-         documento y salida. Antes estaba todo en una fila con el mismo peso. -->
-    <div class="toolbar d-flex align-center flex-wrap ga-2 pa-3">
-      <v-btn variant="text" size="small" prepend-icon="mdi-arrow-left" :to="{ name: 'budgets' }">
-        Presupuestos
-      </v-btn>
-
-      <v-divider vertical class="mx-2" />
-
-      <v-btn size="small" color="primary" variant="flat" prepend-icon="mdi-plus" @click="openProductDialog">
-        Agregar producto
-      </v-btn>
-      <v-btn size="small" variant="text" prepend-icon="mdi-text-box-plus-outline" @click="addFreeLine">
-        Renglón libre
-      </v-btn>
-      <!-- Para lo que todavía no está en el catálogo: se carga acá y entra al
-           presupuesto en el mismo paso, sin salir de la pantalla. -->
-      <v-btn size="small" variant="text" prepend-icon="mdi-package-variant-plus" @click="openNewProductDialog">
-        Cargar producto
-      </v-btn>
-
-      <v-spacer />
-
-      <span class="text-caption text-medium-emphasis mr-1">{{ saveState }}</span>
-
-      <v-btn size="small" variant="tonal" prepend-icon="mdi-download-outline" @click="exportPdf">
-        Descargar PDF
-      </v-btn>
-      <v-btn size="small" color="primary" variant="flat" prepend-icon="mdi-email-outline" @click="openMailDialog">
-        Enviar por mail
-      </v-btn>
-    </div>
-
-    <!-- Ajustes del documento, inline: menús cortos pegados a su propio control
-         para no tapar la hoja. -->
-    <div v-if="budget" class="statusbar d-flex align-center flex-wrap ga-3 px-3 py-2">
-      <v-menu location="bottom start">
-        <template #activator="{ props }">
-          <button v-bind="props" type="button" class="inline-control">
-            <v-icon :color="statusColorOf(header.status)" size="10" class="status-dot">mdi-circle</v-icon>
-            <span>{{ statusTitleOf(header.status) }}</span>
-            <v-icon size="16">mdi-menu-down</v-icon>
-          </button>
-        </template>
-        <v-list density="compact" min-width="200">
-          <v-list-item
-            v-for="st in statusItems"
-            :key="st.value"
-            :active="header.status === st.value"
-            @click="setStatus(st.value)"
-          >
-            <template #prepend>
-              <v-icon :color="st.color" size="10" class="mr-2">mdi-circle</v-icon>
-            </template>
-            <v-list-item-title>{{ st.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <v-menu location="bottom start">
-        <template #activator="{ props }">
-          <button v-bind="props" type="button" class="inline-control">
-            <span>{{ header.currency === "USD" ? "Dólares USD" : "Pesos ARS" }}</span>
-            <v-icon size="16">mdi-menu-down</v-icon>
-          </button>
-        </template>
-        <v-list density="compact" min-width="180">
-          <v-list-item
-            :active="header.currency === 'ARS'"
-            title="Pesos ARS"
-            @click="setCurrency('ARS')"
-          />
-          <v-list-item
-            :active="header.currency === 'USD'"
-            title="Dólares USD"
-            @click="setCurrency('USD')"
-          />
-        </v-list>
-      </v-menu>
-
-      <button type="button" class="inline-control" @click="toggleShowCost">
-        <v-icon size="16">{{ header.show_cost ? "mdi-eye-outline" : "mdi-eye-off-outline" }}</v-icon>
-        <span>{{ header.show_cost ? "Costo visible" : "Costo oculto" }}</span>
-        <v-tooltip activator="parent" location="bottom" max-width="260">
-          Muestra u oculta las columnas Costo y Margen en pantalla. No afecta precios
-          ni totales, y nunca sale en el PDF.
-        </v-tooltip>
-      </button>
-
-      <span v-if="header.currency === 'USD'" class="text-caption text-medium-emphasis">
-        {{ fxCaption }}
-      </span>
-
-      <v-spacer />
-
-      <span class="text-caption text-medium-emphasis d-none d-md-inline">
-        {{ statusHintOf(header.status) }}
-      </span>
+  <div class="budget-editor be">
+    <!-- Editor de presupuesto (maqueta aprobada 10/10): a la izquierda lo que
+         se arma (renglones, totales, observaciones); a la derecha un panel fijo
+         con el total, la acción principal y los ajustes del documento. -->
+    <div class="be-cab">
+      <router-link :to="{ name: 'budgets' }" class="be-volver"><v-icon size="18">mdi-chevron-left</v-icon>Presupuestos</router-link>
+      <h1 class="be-tit">Presupuesto {{ docNumber }}</h1>
+      <span v-if="budget" class="be-sub">{{ statusTitleOf(header.status) }} · {{ header.customer_name || "Consumidor final" }}<template v-if="saveState"> · {{ saveState }}</template></span>
     </div>
 
     <v-progress-linear v-if="loading" indeterminate />
 
-    <!-- Hoja -->
-    <div v-if="budget" class="sheet-wrap pa-4">
-      <div class="sheet">
-        <!-- Encabezado -->
-        <div class="doc-head">
-          <div class="d-flex ga-4 align-start">
-            <img v-if="companyMark" :src="companyMark" class="company-mark" alt="" />
-            <div class="company-info">
-              <div class="company-name">{{ companyName }}</div>
-              <div v-for="(line, i) in companyLines" :key="i">{{ line }}</div>
-            </div>
-          </div>
-
-          <div class="doc-meta">
-            <div class="doc-kind">PRESUPUESTO</div>
-            <div class="doc-number">{{ docNumber }}</div>
-            <dl class="doc-dates">
-              <dt>Fecha</dt>
-              <dd>{{ fmtDate(budget.created_at) }}</dd>
-              <dt>Vence</dt>
-              <dd>
-                <!-- La vigencia se mueve desde acá: hay clientes que la piden
-                     por más días y no tiene sentido rehacer el presupuesto. -->
-                <input
-                  v-model="header.valid_until"
-                  type="date"
-                  class="cell-input date-input"
-                  @change="saveValidUntil"
-                />
-              </dd>
-            </dl>
-            <div class="doc-validity">{{ validityLabel }}</div>
-          </div>
-        </div>
-
-        <!-- Cliente -->
-        <div class="doc-section">
-          <div class="section-label">Cliente</div>
-          <div class="d-flex align-start ga-3">
-            <div class="flex-grow-1 min-w-0">
-              <div class="customer-name">{{ header.customer_name || "Consumidor Final" }}</div>
-              <div class="text-caption text-medium-emphasis">
-                {{ customerLine || "Sin datos de contacto" }}
-              </div>
-              <!-- Quién lo atendió: es por quien vuelve a preguntar el cliente
-                   cuando llama, más que por el número de presupuesto. -->
-              <div v-if="sellerLabel" class="seller-line">Vendedor: {{ sellerLabel }}</div>
-            </div>
-            <v-btn size="small" variant="text" prepend-icon="mdi-account-search-outline" @click="openCustomerDialog">
-              Cambiar
-            </v-btn>
-          </div>
-        </div>
-
-        <!-- Renglones -->
+    <div v-if="budget" class="be-cuerpo">
+      <div class="be-main">
+        <section class="be-caja">
+          <div class="be-banda"><span>Renglones</span><small>{{ items.length }} {{ items.length === 1 ? "renglón" : "renglones" }}</small></div>
+          <div class="be-scroll">
         <table class="items-table">
           <thead>
             <tr>
@@ -300,12 +159,51 @@
                 Sin renglones. Agregá un producto del catálogo o un renglón libre.
               </td>
             </tr>
+            <!-- Agregar, dentro de la tabla (maqueta aprobada 10/10): buscador con
+                 flechas y Enter; renglón libre y producto nuevo al lado. -->
+            <tr class="be-agregar">
+              <td :colspan="header.show_cost ? 8 : 6">
+                <div class="be-agregar__fila">
+                  <label class="be-busca" :class="{ 'is-on': busqAbierta }">
+                    <v-icon size="22">mdi-plus</v-icon>
+                    <input
+                      ref="busqRef"
+                      v-model="productQuery"
+                      type="text"
+                      autocomplete="off"
+                      placeholder="Agregar producto: buscá por nombre o código"
+                      @focus="abrirBusqueda"
+                      @input="busqSel = 0; debouncedProductSearch()"
+                      @keydown="teclaBusqueda"
+                      @blur="cerrarBusqueda"
+                    />
+                    <v-progress-circular v-if="productLoading" indeterminate size="18" width="2" color="primary" />
+                  </label>
+                  <a href="#" class="be-link" @click.prevent="addFreeLine">Renglón libre</a>
+                  <a href="#" class="be-link" @click.prevent="openNewProductDialog">Producto nuevo</a>
+                  <a href="#" class="be-link be-link--suave" @click.prevent="openProductDialog">Más opciones</a>
+                </div>
+                <div v-if="busqAbierta && productResults.length" class="be-res">
+                  <div class="be-res__cab">Resultados del catálogo · Enter agrega el elegido</div>
+                  <button
+                    v-for="(p, i) in productResults.slice(0, 8)"
+                    :key="p.id"
+                    type="button"
+                    class="be-res__fila"
+                    :class="{ 'is-on': i === busqSel }"
+                    @mousedown.prevent="addProduct(p)"
+                    @mouseenter="busqSel = i"
+                  >
+                    <span class="be-res__nombre">{{ p.name }}</span>
+                    <span class="be-res__sku">{{ p.sku || p.code }}</span>
+                    <b class="be-res__precio">{{ money(previewPrice(p)) }}</b>
+                  </button>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-
-        <!-- Totales. El descuento sale acá abajo, con el resto de los números,
-             que es donde el cliente lo busca: se hace poniendo margen negativo
-             en el renglón y esta línea lo hace visible. -->
+          </div>
         <div class="totals-wrap">
           <dl class="totals">
             <dt>SubTotal</dt>
@@ -322,12 +220,12 @@
             <dd class="grand">{{ money(totals.total) }}</dd>
           </dl>
         </div>
+        </section>
 
         <div v-if="header.currency === 'USD'" class="fx-note">
           {{ fxCaption }}
         </div>
 
-        <!-- Especificaciones -->
         <div v-if="itemsWithSpecs.length" class="doc-section">
           <div class="section-label">Especificaciones</div>
           <div v-for="it in itemsWithSpecs" :key="`spec-${it.id}`" class="spec-block">
@@ -343,6 +241,7 @@
         </div>
 
         <!-- Observaciones -->
+
         <div class="doc-section">
           <div class="section-label">Observaciones</div>
           <v-textarea
@@ -360,9 +259,52 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Buscador de productos -->
+      <aside class="be-panel">
+        <section class="be-caja be-total">
+          <span class="be-lab">Total</span>
+          <b class="be-total__num">{{ money(totals.total) }}</b>
+          <span class="be-total__sub">{{ header.currency === "USD" ? "Dólares" : "Pesos" }} · vence {{ fmtDate(header.valid_until) }}<template v-if="validityLabel">, {{ validityLabel }}</template></span>
+          <button type="button" class="be-btn" @click="openMailDialog"><v-icon size="20">mdi-send-outline</v-icon>Enviar al cliente</button>
+          <a href="#" class="be-link be-link--centro" @click.prevent="exportPdf"><v-icon size="18">mdi-download-outline</v-icon>Descargar PDF</a>
+        </section>
+
+        <section class="be-caja be-estado">
+          <span class="be-lab">Estado</span>
+          <div class="be-pills">
+            <button v-for="st in statusItems" :key="st.value" type="button" :class="[`be-pill--${st.value}`, { 'is-on': header.status === st.value }]" :title="st.hint" @click="setStatus(st.value)">
+              <i></i>{{ st.title }}
+            </button>
+          </div>
+        </section>
+
+        <section class="be-caja be-ajustes">
+          <div class="be-campo">
+            <span>Cliente</span>
+            <div class="be-cliente">
+              <span class="be-av"><v-icon size="20">mdi-account-outline</v-icon></span>
+              <span class="be-cliente__txt"><b>{{ header.customer_name || "Consumidor final" }}</b><small v-if="customerLine">{{ customerLine }}</small></span>
+              <a href="#" class="be-link" @click.prevent="openCustomerDialog">Cambiar</a>
+            </div>
+          </div>
+          <div class="be-dos">
+            <div class="be-campo">
+              <span>Vence</span>
+              <CampoFecha :model-value="header.valid_until" :clearable="false" @update:model-value="(v) => { header.valid_until = v; saveValidUntil(); }" />
+            </div>
+            <div class="be-campo">
+              <span>Moneda</span>
+              <div class="be-seg">
+                <button type="button" :class="{ 'is-on': header.currency !== 'USD' }" @click="setCurrency('ARS')">$</button>
+                <button type="button" :class="{ 'is-on': header.currency === 'USD' }" @click="setCurrency('USD')">US$</button>
+              </div>
+            </div>
+          </div>
+          <label class="be-sw"><v-switch :model-value="!!header.show_cost" inset density="compact" hide-details color="primary" @update:model-value="toggleShowCost" />Ver costo y margen</label>
+          <span class="be-vend">Vendedor: {{ sellerLabel || "—" }} · creado {{ fmtDate(budget.created_at) }}</span>
+        </section>
+      </aside>
+    </div>
     <v-dialog v-model="productDialog" max-width="900">
       <v-card>
         <v-card-title class="d-flex align-center ga-3">
@@ -743,6 +685,7 @@ import {
   BUDGET_STATUS,
 } from "../services/budgets.service";
 import { fetchOfficialUsdRate } from "../services/fx.service";
+import CampoFecha from "@/app/components/CampoFecha.vue";
 import { exportBudgetPdf } from "../utils/budgetPdf";
 import {
   budgetNumber,
@@ -1418,6 +1361,31 @@ async function addProduct(product) {
   }
 }
 
+// ── Buscador dentro de la tabla ───────────────────────────────────────────
+// El mismo buscador del diálogo (productQuery / searchProducts / addProduct),
+// abierto en la última fila: flechas eligen, Enter agrega, Esc cierra.
+const busqRef = ref(null);
+const busqAbierta = ref(false);
+const busqSel = ref(0);
+function abrirBusqueda() {
+  busqAbierta.value = true;
+  if (!productResults.value.length) searchProducts();
+}
+function cerrarBusqueda() {
+  setTimeout(() => { busqAbierta.value = false; }, 120);
+}
+async function teclaBusqueda(e) {
+  const lista = productResults.value.slice(0, 8);
+  if (e.key === "ArrowDown") { e.preventDefault(); busqAbierta.value = true; busqSel.value = Math.min(lista.length - 1, busqSel.value + 1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); busqSel.value = Math.max(0, busqSel.value - 1); }
+  else if (e.key === "Escape") { busqAbierta.value = false; }
+  else if (e.key === "Enter") {
+    e.preventDefault();
+    const p = lista[busqSel.value];
+    if (p) { await addProduct(p); productQuery.value = ""; busqSel.value = 0; searchProducts(); }
+  }
+}
+
 // ── Alta rápida de producto ───────────────────────────────────────────────
 // Presupuestar algo que todavía no está en el catálogo obligaba a salir,
 // cargarlo en Productos y volver. Acá se carga lo mínimo (nombre, precio,
@@ -1964,4 +1932,103 @@ onMounted(() => {
 .picker-thumb--empty {
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
+</style>
+
+<style>
+/* Editor de presupuesto, diseño nuevo (sin scoped: todo cuelga de .be) */
+.pos-container:has(.be) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.be {
+  --be-fondo: #d6e6f3; --be-caja: #ffffff; --be-borde: #d3dde7; --be-linea: #e3eaf1; --be-texto: #0f172a; --be-suave: #5a6678;
+  --be-banda: #0f6fae; --be-acento: #0f6fae; --be-hover: #f3f8fc; --be-campo: #ffffff;
+  min-height: calc(100vh - 56px); padding: 20px 28px 40px; box-sizing: border-box; background: var(--be-fondo); color: var(--be-texto);
+  display: flex; flex-direction: column; gap: 14px;
+}
+:is(.v-theme--dark, .v-theme--adminDark) .be {
+  --be-fondo: #0b0f14; --be-caja: #151c25; --be-borde: #253141; --be-linea: #222c39; --be-texto: #e5edf5; --be-suave: #9aa8b8;
+  --be-banda: #0f5f96; --be-acento: #5aaee0; --be-hover: #1a2430; --be-campo: #0f151d;
+}
+.be-cab { display: flex; flex-direction: column; gap: 2px; }
+.be-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--be-acento); text-decoration: none; margin-left: -4px; }
+.be-tit { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.be-sub { font-size: 14px; font-weight: 600; color: var(--be-suave); }
+.be-cuerpo { display: flex; gap: 16px; align-items: flex-start; }
+.be-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.be-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 70px; }
+.be-caja { border-radius: 12px; overflow: hidden; background: var(--be-caja); border: 1px solid var(--be-borde); }
+.be-banda { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--be-banda); color: #ffffff; font-size: 15px; font-weight: 800; }
+.be-banda small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.85); }
+.be-scroll { overflow-x: auto; }
+.be .items-table { width: 100%; border-collapse: collapse; }
+.be .items-table th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--be-suave); background: var(--be-hover); text-align: left; padding: 10px 12px; border: 1px solid var(--be-linea); border-top: 0; }
+.be .items-table td { padding: 10px 12px; border: 1px solid var(--be-linea); vertical-align: middle; color: var(--be-texto); }
+.be .items-table th:first-child, .be .items-table td:first-child { border-left: 0; }
+.be .items-table th:last-child, .be .items-table td:last-child { border-right: 0; }
+.be .items-table .col-num { text-align: right; }
+.be .items-table .col-private { background: rgba(240, 180, 41, 0.06); }
+.be .cell-input { width: 100%; min-height: 38px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--be-borde); background: var(--be-campo); color: var(--be-texto); font: 600 14px Inter, sans-serif; box-sizing: border-box; outline: 0; }
+.be .cell-input:focus { border-color: #0f6fae; box-shadow: 0 0 0 3px rgba(15,111,174,.14); }
+.be .cell-input--title { font-weight: 800; border-color: transparent; background: transparent; padding-left: 0; }
+.be .cell-input--title:hover, .be .cell-input--title:focus { border-color: var(--be-borde); background: var(--be-campo); padding-left: 10px; }
+.be .item-thumb { width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--be-linea); object-fit: contain; background: #fff; }
+.be .item-sku { font-size: 12px; color: var(--be-suave); }
+.be .specs-toggle, .be .price-source { border: 0; background: transparent; padding: 0; font: 700 12px Inter, sans-serif; color: var(--be-acento); cursor: pointer; }
+.be .amount { font-weight: 800; }
+.be-agregar td { background: var(--be-hover); padding: 12px 14px !important; }
+.be-agregar__fila { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.be-busca { flex: 1; min-width: 260px; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--be-borde); background: var(--be-campo); }
+.be-busca.is-on { border: 2px solid #0f6fae; box-shadow: 0 0 0 4px rgba(15,111,174,.12); }
+.be-busca .v-icon { color: #0f6fae; }
+.be-busca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 600 15px Inter, sans-serif; color: var(--be-texto); }
+.be-link { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 800; color: var(--be-acento); text-decoration: none; white-space: nowrap; }
+.be-link:hover { text-decoration: underline; }
+.be-link--suave { color: var(--be-suave); font-weight: 700; }
+.be-link--centro { justify-content: center; margin-top: 4px; }
+.be-res { margin-top: 8px; border-radius: 12px; border: 1px solid var(--be-borde); background: var(--be-caja); overflow: hidden; }
+.be-res__cab { padding: 9px 14px; font-size: 13px; color: var(--be-suave); border-bottom: 1px solid var(--be-linea); }
+.be-res__fila { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; cursor: pointer; font-family: Inter, sans-serif; color: var(--be-texto); }
+.be-res__fila.is-on { background: rgba(15,111,174,.08); border-left-color: #0f6fae; }
+.be-res__nombre { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.be-res__sku { font-size: 12px; color: var(--be-suave); }
+.be-res__precio { font-size: 15px; }
+.be .totals-wrap { display: flex; justify-content: flex-end; padding: 14px 18px; border-top: 1px solid var(--be-linea); }
+.be .totals { display: grid; grid-template-columns: auto auto; gap: 6px 28px; margin: 0; font-size: 15px; }
+.be .totals dt { color: var(--be-suave); }
+.be .totals dd { margin: 0; text-align: right; font-weight: 700; }
+.be .totals .grand { font-size: 20px; font-weight: 900; color: var(--be-texto); }
+.be .doc-section { border-radius: 12px; background: var(--be-caja); border: 1px solid var(--be-borde); padding: 14px 16px; }
+.be .section-label { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--be-suave); margin-bottom: 10px; }
+.be .fx-note { font-size: 13px; color: var(--be-suave); }
+.be-total { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.be-lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--be-suave); }
+.be-total__num { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.be-total__sub { font-size: 13px; color: var(--be-suave); }
+.be-btn { margin-top: 10px; height: 52px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; background: #0f6fae; color: #ffffff; font: 800 16px Inter, sans-serif; cursor: pointer; box-shadow: 0 6px 16px rgba(15,111,174,.25); }
+.be-btn .v-icon { color: #ffffff; }
+.be-btn:hover { filter: brightness(1.08); }
+.be-estado { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.be-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.be-pills button { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--be-borde); background: var(--be-caja); color: var(--be-texto); font: 700 13px Inter, sans-serif; cursor: pointer; }
+.be-pills button i { width: 9px; height: 9px; border-radius: 9999px; background: #C3C9D6; }
+.be-pills .be-pill--generado i { background: #8cc0e3; }
+.be-pills .be-pill--en_proceso i { background: #3f8fc6; }
+.be-pills .be-pill--entregado i { background: #0f6fae; }
+.be-pills .be-pill--vendido i { background: #2E9E7B; }
+.be-pills button.is-on { background: #0f6fae; border-color: #0f6fae; color: #ffffff; }
+.be-pills button.is-on i { background: #ffffff; }
+.be-ajustes { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.be-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.be-campo > span { font-size: 13px; font-weight: 700; }
+.be-cliente { display: flex; align-items: center; gap: 10px; }
+.be-av { width: 36px; height: 36px; border-radius: 9999px; background: var(--be-hover); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.be-av .v-icon { color: var(--be-suave); }
+.be-cliente__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.be-cliente__txt b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.be-cliente__txt small { font-size: 12px; color: var(--be-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.be-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.be-seg { display: flex; height: 48px; padding: 3px; gap: 3px; border-radius: 10px; border: 1px solid var(--be-borde); box-sizing: border-box; }
+.be-seg button { flex: 1; border: 0; border-radius: 8px; background: transparent; font: 800 14px Inter, sans-serif; color: var(--be-texto); cursor: pointer; }
+.be-seg button.is-on { background: #0f6fae; color: #ffffff; }
+.be-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.be-vend { font-size: 13px; color: var(--be-suave); }
+@media (max-width: 1100px) { .be-cuerpo { flex-direction: column; } .be-panel { width: 100%; position: static; } }
 </style>
