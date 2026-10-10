@@ -5,7 +5,11 @@
 <template>
   <div class="er" :style="{ width: `${ancho}px`, height: `${(ancho * 16) / 9}px`, fontSize: `${ancho / 27}px`, '--er-pri': primario, '--er-osc': oscuro, '--er-ace': acento }">
     <!-- Portada -->
-    <div v-if="tipo === 'intro'" class="er-portada">
+    <div v-if="tipo === 'intro' && apertura?.titular" class="er-portada er-portada--titular">
+      <img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" class="er-logo-chico" />
+      <div class="er-apertura"><b>{{ apertura.titular }}</b><span v-if="apertura.bajada">{{ apertura.bajada }}</span></div>
+    </div>
+    <div v-else-if="tipo === 'intro'" class="er-portada">
       <img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" class="er-logo" />
       <b v-else class="er-nombre">{{ fuente?.marca?.nombre }}</b>
     </div>
@@ -30,15 +34,15 @@
     <div v-else-if="tipo === 'cierre'" class="er-cierre">
       <div class="er-cierre__marca"><img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" /></div>
       <div class="er-cierre__papel">
-        <b class="er-llamado">{{ fuente?.textos?.llamado || "Vení a visitarnos" }}</b>
-        <div v-for="s in fuente?.sucursales || []" :key="s.nombre" class="er-suc">
+        <b v-if="cierre.llamado !== false" class="er-llamado">{{ fuente?.textos?.llamado || "Vení a visitarnos" }}</b>
+        <div v-for="s in cierre.sucursales === false ? [] : fuente?.sucursales || []" :key="s.nombre" class="er-suc">
           <v-icon class="er-pin">mdi-map-marker</v-icon>
           <div><b>{{ s.nombre }}</b><span>{{ s.direccion }}</span></div>
         </div>
-        <div class="er-redes">
+        <div v-if="cierre.redes !== false" class="er-redes">
           <span v-for="r in fuente?.redes || []" :key="r.red" :class="`is-${r.red}`"><v-icon>{{ ICONOS[r.red] || "mdi-web" }}</v-icon>{{ r.texto }}</span>
         </div>
-        <span v-if="fuente?.textos?.enlace" class="er-enlace"><v-icon>mdi-web</v-icon>{{ fuente.textos.enlace }}</span>
+        <span v-if="cierre.redes !== false && fuente?.textos?.enlace" class="er-enlace"><v-icon>mdi-web</v-icon>{{ fuente.textos.enlace }}</span>
       </div>
     </div>
   </div>
@@ -53,6 +57,8 @@ const props = defineProps({
   fuente: { type: Object, default: null },
   ancho: { type: Number, default: 270 },
   conCuotas: { type: Boolean, default: true },
+  apertura: { type: Object, default: null },
+  cierre: { type: Object, default: () => ({}) },
 });
 
 const ICONOS = { whatsapp: "mdi-whatsapp", instagram: "mdi-instagram", facebook: "mdi-facebook", tiktok: "mdi-music-note", youtube: "mdi-youtube", x: "mdi-alpha-x" };
@@ -72,6 +78,11 @@ const renglones = computed(() => String(props.item?.descripcion || "").split(/\s
 .er { position: relative; overflow: hidden; border-radius: 1.4em; background: #f3efe7; color: #16171a; font-family: Inter, sans-serif; text-align: left; white-space: normal; box-shadow: 0 10px 30px rgba(7, 28, 47, .25); flex-shrink: 0; line-height: 1.2; }
 .er-portada, .er-arriba, .er-cierre__marca { background: radial-gradient(ellipse 85% 60% at 50% 40%, color-mix(in srgb, var(--er-pri) 70%, #4aa3ff) 0%, var(--er-pri) 38%, var(--er-osc) 100%); }
 .er-portada { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.er-portada--titular { align-items: flex-start; justify-content: flex-start; flex-direction: column; padding: 2.2em 1.8em; }
+.er-logo-chico { width: 42%; max-height: 8%; object-fit: contain; align-self: center; }
+.er-apertura { margin-top: 62%; display: flex; flex-direction: column; gap: .8em; color: #fff; }
+.er-apertura b { font-family: "Archivo Narrow", Inter, sans-serif; font-size: 3.2em; font-weight: 900; line-height: .95; text-transform: uppercase; }
+.er-apertura span { font-size: 1.2em; font-weight: 600; opacity: .9; }
 .er-logo { width: 72%; max-height: 30%; object-fit: contain; }
 .er-nombre { color: #fff; font-size: 2em; font-weight: 900; text-align: center; padding: 0 1em; }
 .er-arriba { height: 52%; display: flex; align-items: center; justify-content: center; }

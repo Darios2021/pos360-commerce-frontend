@@ -22,15 +22,33 @@
     <!-- NUEVO REEL: tres pasos navegables -->
     <template v-if="vista === 'nuevo'">
       <div class="ct-pasos">
-        <button v-for="(s, i) in PASOS" :key="i" type="button" class="ct-paso" :class="{ 'is-on': paso === i + 1, 'is-ok': paso > i + 1 && seleccion.length }" :disabled="i > 0 && !seleccion.length" @click="paso = i + 1">
-          <b><v-icon v-if="paso > i + 1 && seleccion.length" size="20">mdi-check</v-icon><template v-else>{{ i + 1 }}</template></b>
-          <span><strong>{{ s.t }}</strong><small>{{ i === 0 ? `${seleccion.length} ${seleccion.length === 1 ? "elegido" : "elegidos"}` : s.s }}</small></span>
+        <button v-for="(s, i) in PASOS" :key="i" type="button" class="ct-paso" :class="{ 'is-on': paso === i + 1, 'is-ok': paso > i + 1 && (i === 0 || seleccion.length) }" :disabled="i > 1 && !seleccion.length" @click="paso = i + 1">
+          <b><v-icon v-if="paso > i + 1 && (i === 0 || seleccion.length)" size="20">mdi-check</v-icon><template v-else>{{ i + 1 }}</template></b>
+          <span><strong>{{ s.t }}</strong><small>{{ i === 0 ? formatoActual.t : i === 1 ? `${seleccion.length} ${seleccion.length === 1 ? "elegido" : "elegidos"}` : s.s }}</small></span>
         </button>
       </div>
 
-      <!-- 1. Productos -->
-      <div v-if="paso === 1" class="ct-p1">
+      <!-- 1. Formato -->
+      <div v-if="paso === 1" class="ct-formatos">
+        <button v-for="f in FORMATOS" :key="f.v" type="button" class="ct-fmt" :class="{ 'is-on': formato === f.v }" @click="elegirFormato(f.v)">
+          <span v-if="formato === f.v" class="ct-fmt__ok"><v-icon size="18">mdi-check</v-icon></span>
+          <EscenaReel v-if="f.v === 'estrella'" tipo="item" :item="muestraEstrella" :fuente="fuente" :ancho="150" />
+          <EscenaReel v-else tipo="intro" :apertura="f.muestra ? { titular: f.muestra } : null" :fuente="fuente" :ancho="150" />
+          <b>{{ f.t }}</b>
+          <span>{{ f.s }}</span>
+        </button>
+      </div>
+
+      <!-- 2. Productos -->
+      <div v-else-if="paso === 2" class="ct-p1">
         <section class="ct-col">
+          <div v-if="formato === 'ofertas'" class="sp-caja ct-desde">
+            <b>Armar desde</b>
+            <button type="button" class="ct-chip" :class="{ 'is-on': origen === 'promo' }" @click="armarDesde('promo')">Marcados como promo<b class="num">{{ enPromo.length }}</b></button>
+            <button type="button" class="ct-chip" :class="{ 'is-on': origen === 'descuento' }" @click="armarDesde('descuento')">{{ DESCUENTO_MIN }} % de descuento o más<b class="num">{{ conDescuento.length }}</b></button>
+            <button type="button" class="ct-chip" :class="{ 'is-on': origen === 'mano' }" @click="origen = 'mano'">Elegir a mano</button>
+            <span v-if="origen !== 'mano'" class="ct-desde__orden">Ordenado por descuento</span>
+          </div>
           <label class="sp-busca__campo">
             <v-icon size="20" class="sp-busca__ic">mdi-magnify</v-icon>
             <input v-model="buscar" class="sp-busca__input" type="search" placeholder="Buscar por nombre, marca o código" />
@@ -96,19 +114,19 @@
         </aside>
       </div>
 
-      <!-- 2. Escenas -->
-      <div v-else-if="paso === 2" class="ct-p2">
+      <!-- 3. Escenas -->
+      <div v-else-if="paso === 3" class="ct-p2">
         <div class="ct-tira">
           <button type="button" class="ct-ti" :class="{ 'is-on': activa === 'intro' }" @click="activa = 'intro'">
-            <EscenaReel tipo="intro" :fuente="fuente" :ancho="46" />
-            <span><small>Portada · {{ fmtSeg(T.intro) }} s</small><b>Logo de la marca</b></span>
+            <EscenaReel tipo="intro" :apertura="aperturaVista" :fuente="fuente" :ancho="46" />
+            <span><small>Portada · {{ fmtSeg(T.intro) }} s</small><b>{{ apertura.titular || "Logo de la marca" }}</b></span>
           </button>
           <button v-for="(p, i) in seleccion" :key="p.id" type="button" class="ct-ti" :class="{ 'is-on': activa === p.id }" @click="activa = p.id">
             <EscenaReel tipo="item" :item="encargoItem(p)" :fuente="fuente" :ancho="46" :con-cuotas="opciones.cuotas" />
             <span><small>Escena {{ i + 1 }} · {{ fmtSeg(T.item) }} s</small><b>{{ p.titulo }}</b></span>
           </button>
           <button type="button" class="ct-ti" :class="{ 'is-on': activa === 'cierre' }" @click="activa = 'cierre'">
-            <EscenaReel tipo="cierre" :fuente="fuente" :ancho="46" />
+            <EscenaReel tipo="cierre" :cierre="cierreOpc" :fuente="fuente" :ancho="46" />
             <span><small>Cierre · {{ fmtSeg(T.cierre) }} s</small><b>{{ fuente?.textos?.llamado || "Cierre" }}</b></span>
           </button>
         </div>
@@ -130,27 +148,33 @@
               <div class="ct-campo"><label>Características, una por renglón</label><textarea v-model="productoActivo.caracteristicas" rows="3" @input="limitarCaracteristicas(productoActivo)"></textarea></div>
               <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="productoActivo.voz" rows="3" maxlength="400" @input="productoActivo.vozEditada = true"></textarea></div>
             </template>
-            <template v-else-if="opciones.voz">
-              <div v-if="activa === 'intro'" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
-              <div v-else class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.cierre" rows="5" maxlength="600" @input="guion.cierreEditada = true"></textarea></div>
+            <template v-else-if="activa === 'intro'">
+              <div class="ct-campo"><label>Titular</label><input v-model="apertura.titular" class="ct-titular" maxlength="40" :placeholder="formato === 'problema' ? '¿…?' : ''" @input="apertura.editada = true" /></div>
+              <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="apertura.editada = true" /></div>
+              <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
             </template>
-            <div v-else class="ct-vacio">Sin voz en off</div>
+            <template v-else>
+              <div class="ct-cierre-opc">
+                <label v-for="o in CIERRE_OPC" :key="o.k" class="ct-sw"><span>{{ o.t }}</span><input v-model="cierreOpc[o.k]" type="checkbox" /><i></i></label>
+              </div>
+              <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.cierre" rows="5" maxlength="600" @input="guion.cierreEditada = true"></textarea></div>
+            </template>
           </div>
         </div>
 
         <div class="ct-prev__tel">
-          <EscenaReel :tipo="tipoActiva" :item="itemActivo" :fuente="fuente" :ancho="300" :con-cuotas="opciones.cuotas" />
+          <EscenaReel :tipo="tipoActiva" :item="itemActivo" :apertura="aperturaVista" :cierre="cierreOpc" :fuente="fuente" :ancho="300" :con-cuotas="opciones.cuotas" />
         </div>
       </div>
 
-      <!-- 3. Sonido y video -->
+      <!-- 4. Sonido y video -->
       <div v-else class="ct-p3">
         <div class="sp-caja">
           <div class="se-banda"><span>El reel</span><small class="num">{{ seleccion.length }} {{ seleccion.length === 1 ? "producto" : "productos" }} · {{ fmtSeg(duracion) }} s</small></div>
           <div class="ct-story">
-            <button type="button" class="ct-st" @click="verEscena('intro')"><EscenaReel tipo="intro" :fuente="fuente" :ancho="150" /><b>Portada</b><span class="num">{{ fmtSeg(T.intro) }} s</span></button>
+            <button type="button" class="ct-st" @click="verEscena('intro')"><EscenaReel tipo="intro" :apertura="aperturaVista" :fuente="fuente" :ancho="150" /><b>Portada</b><span class="num">{{ fmtSeg(T.intro) }} s</span></button>
             <button v-for="(p, i) in seleccion" :key="p.id" type="button" class="ct-st" @click="verEscena(p.id)"><EscenaReel tipo="item" :item="encargoItem(p)" :fuente="fuente" :ancho="150" :con-cuotas="opciones.cuotas" /><b>Escena {{ i + 1 }}</b><span class="num">{{ fmtSeg(T.item) }} s</span></button>
-            <button type="button" class="ct-st" @click="verEscena('cierre')"><EscenaReel tipo="cierre" :fuente="fuente" :ancho="150" /><b>Cierre</b><span class="num">{{ fmtSeg(T.cierre) }} s</span></button>
+            <button type="button" class="ct-st" @click="verEscena('cierre')"><EscenaReel tipo="cierre" :cierre="cierreOpc" :fuente="fuente" :ancho="150" /><b>Cierre</b><span class="num">{{ fmtSeg(T.cierre) }} s</span></button>
           </div>
         </div>
         <div class="sp-caja">
@@ -187,7 +211,7 @@
       <div class="ct-pie">
         <button v-if="paso > 1" type="button" class="ct-atras" @click="paso--"><v-icon size="20">mdi-arrow-left</v-icon>Atrás</button>
         <span v-else></span>
-        <button v-if="paso < 3" type="button" class="ct-generar" :disabled="!seleccion.length" @click="paso++">Siguiente<v-icon size="22">mdi-arrow-right</v-icon></button>
+        <button v-if="paso < 4" type="button" class="ct-generar" :disabled="paso >= 2 && !seleccion.length" @click="paso++">Siguiente<v-icon size="22">mdi-arrow-right</v-icon></button>
         <button v-else type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando" @click="generar">
           <v-progress-circular v-if="creando" indeterminate size="22" width="3" />
           <v-icon v-else size="24">mdi-movie-open-outline</v-icon>Generar video
@@ -255,7 +279,22 @@ import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import { borrarPieza, buscarProductos, crearPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
-const TOPE = 6;
+const DESCUENTO_MIN = 25;
+const CAMPO_FORMATO = null;
+// Formatos del video (los arma el servicio de contenidos; POS elige y ordena los productos).
+const FORMATOS = [
+  { v: "destacados", t: "Destacados", s: "1 a 6 productos", tope: 6, muestra: "" },
+  { v: "estrella", t: "Producto estrella", s: "1 producto", tope: 1 },
+  { v: "ofertas", t: "Ofertas", s: "mayor descuento primero", tope: 6, muestra: "Ofertas de la semana" },
+  { v: "categoria", t: "Categoría", s: "de una categoría", tope: 6, muestra: "Cámaras de seguridad" },
+  { v: "problema", t: "Problema y solución", s: "pregunta y respuesta", tope: 3, muestra: "¿Querés ver tu casa desde el celular?" },
+];
+const CIERRE_OPC = [
+  { k: "sucursales", t: "Sucursales" },
+  { k: "redes", t: "Redes y web" },
+  { k: "cuotas", t: "Cuotas y medios de pago" },
+  { k: "llamado", t: "Llamado" },
+];
 const POR_TANDA = 48;
 const MUSICAS = [
   { v: "pulso", t: "Pulso", i: "mdi-pulse" },
@@ -264,6 +303,7 @@ const MUSICAS = [
   { v: null, t: "Sin música", i: "mdi-volume-off" },
 ];
 const PASOS = [
+  { t: "Formato", s: "" },
   { t: "Productos", s: "" },
   { t: "Escenas", s: "texto y voz" },
   { t: "Sonido y video", s: "música y generar" },
@@ -288,6 +328,13 @@ const cuantos = ref(POR_TANDA);
 const seleccion = ref([]);
 const activa = ref("intro");
 const paso = ref(1);
+const formato = ref("destacados");
+const formatoActual = computed(() => FORMATOS.find((f) => f.v === formato.value) || FORMATOS[0]);
+const TOPE = computed(() => formatoActual.value.tope);
+const origen = ref("mano");
+const promoIds = ref(new Set());
+const apertura = reactive({ titular: "", bajada: "", editada: false });
+const cierreOpc = reactive({ sucursales: true, redes: true, cuotas: true, llamado: true });
 const datos = reactive({ titulo: "", descripcion: "" });
 const editando = ref(null);
 const borrador = reactive({ titulo: "", descripcion: "" });
@@ -326,9 +373,14 @@ const categorias = computed(() => {
 const categoriasVisibles = computed(() => categorias.value.slice(0, 5));
 const categoriasResto = computed(() => categorias.value.slice(5).sort((a, b) => a.texto.localeCompare(b.texto)));
 const categoriaEnResto = computed(() => categoriasResto.value.some((c) => c.nombre === categoria.value));
+const descuentoDe = (p) => (Number(p.precioAnterior) > Number(p.precio) && Number(p.precio) > 0 ? Math.round((1 - p.precio / p.precioAnterior) * 100) : 0);
+const porDescuento = (l) => l.slice().sort((a, b) => descuentoDe(b) - descuentoDe(a));
+const enPromo = computed(() => porDescuento(catalogo.value.filter((p) => promoIds.value.has(String(p.id)))));
+const conDescuento = computed(() => porDescuento(catalogo.value.filter((p) => descuentoDe(p) >= DESCUENTO_MIN)));
 const filtrados = computed(() => {
   const q = normalizar(buscar.value).trim();
-  return catalogo.value.filter((p) => (!categoria.value || p.categoria === categoria.value) && (!q || normalizar(`${p.titulo} ${p.nombre} ${p.etiqueta}`).includes(q)));
+  const base = formato.value === "ofertas" && origen.value === "promo" ? enPromo.value : formato.value === "ofertas" && origen.value === "descuento" ? conDescuento.value : catalogo.value;
+  return base.filter((p) => (!categoria.value || p.categoria === categoria.value) && (!q || normalizar(`${p.titulo} ${p.nombre} ${p.etiqueta}`).includes(q)));
 });
 const visibles = computed(() => filtrados.value.slice(0, cuantos.value));
 function masProductos(visible) { if (visible) cuantos.value += POR_TANDA; }
@@ -343,20 +395,79 @@ async function cargarCatalogo() {
   } catch (e) { error.value = mensaje(e); } finally { cargandoCatalogo.value = false; }
 }
 
+/* Formato y "armar desde" */
+function nuevoItem(p) {
+  const caracteristicas = String(p.descripcion || "").split(/\s*·\s*|\.\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 3).join("\n");
+  return { ...p, caracteristicas, voz: "", vozEditada: false };
+}
+function elegirFormato(v) {
+  formato.value = v;
+  origen.value = v === "ofertas" ? "promo" : "mano";
+  if (seleccion.value.length > TOPE.value) seleccion.value = seleccion.value.slice(0, TOPE.value);
+  if (v === "ofertas") armarDesde(enPromo.value.length ? "promo" : "descuento");
+  aperturaPorDefecto();
+  sugerir();
+}
+function armarDesde(o) {
+  origen.value = o;
+  const l = o === "promo" ? enPromo.value : o === "descuento" ? conDescuento.value : [];
+  if (o !== "mano") {
+    seleccion.value = l.slice(0, TOPE.value).map(nuevoItem);
+    activa.value = "intro";
+    aperturaPorDefecto();
+    sugerir();
+  }
+}
+// Titular sugerido según el formato, sin pisar lo que se escribió a mano.
+function aperturaPorDefecto() {
+  if (apertura.editada) return;
+  const f = formato.value;
+  if (f === "ofertas") {
+    const max = Math.max(0, ...seleccion.value.map(descuentoDe));
+    apertura.titular = "Ofertas de la semana";
+    apertura.bajada = max ? `Hasta ${max} % OFF` : "";
+  } else if (f === "categoria") {
+    const c = categoria.value || seleccion.value[0]?.categoria;
+    apertura.titular = c ? textoCategoria(c).slice(0, 40) : "";
+    apertura.bajada = c ? `${catalogo.value.filter((p) => p.categoria === c).length} modelos` : "";
+  } else {
+    apertura.titular = "";
+    apertura.bajada = "";
+  }
+}
+watch(categoria, () => { if (formato.value === "categoria") aperturaPorDefecto(); });
+const aperturaVista = computed(() => (apertura.titular.trim() ? { titular: apertura.titular.trim(), bajada: apertura.bajada.trim() } : null));
+const muestraEstrella = computed(() => {
+  const p = seleccion.value[0] || catalogo.value[0];
+  return p ? encargoItem(p) : null;
+});
+async function cargarPromos() {
+  try {
+    const { default: http } = await import("@/app/api/http");
+    const ids = new Set();
+    for (let page = 1; page < 20; page++) {
+      const { data } = await http.get("/products", { params: { limit: 100, page } });
+      const l = data?.data || [];
+      l.filter((p) => p.is_promo === true || p.is_promo === 1).forEach((p) => ids.add(String(p.id)));
+      if (l.length < 100) break;
+    }
+    promoIds.value = ids;
+  } catch { promoIds.value = new Set(); }
+}
+
 /* Selección y guion */
 const ordenDe = (id) => { const i = seleccion.value.findIndex((p) => p.id === id); return i >= 0 ? i + 1 : 0; };
 function alternar(p) {
   if (ordenDe(p.id)) return quitar(p.id);
-  if (seleccion.value.length >= TOPE) return;
-  const caracteristicas = String(p.descripcion || "").split(/\s*·\s*|\.\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 3).join("\n");
-  seleccion.value.push({ ...p, caracteristicas, voz: "", vozEditada: false });
+  if (seleccion.value.length >= TOPE.value) return;
+  seleccion.value.push(nuevoItem(p));
   if (activa.value === "intro" && seleccion.value.length === 1) activa.value = p.id;
   sugerir();
 }
 function quitar(id) {
   seleccion.value = seleccion.value.filter((p) => p.id !== id);
   if (activa.value === id) activa.value = "intro";
-  if (!seleccion.value.length) paso.value = 1;
+  if (!seleccion.value.length && paso.value > 2) paso.value = 2;
   sugerir();
 }
 function soltar(i) {
@@ -384,6 +495,7 @@ const encargoItem = (p) => ({
   precioAnterior: p.precioAnterior,
   imagen: p.imagen,
   cuotas: opciones.cuotas ? p.cuotas : undefined,
+  stock: Number.isFinite(Number(p.stock)) ? Number(p.stock) : undefined,
 });
 const productoActivo = computed(() => seleccion.value.find((x) => x.id === activa.value) || null);
 const tituloActiva = computed(() => {
@@ -403,7 +515,14 @@ const duracion = computed(() => T.value.intro + T.value.item * seleccion.value.l
 function armarEncargo() {
   const f = fuente.value;
   const items = seleccion.value.map(encargoItem);
+  const conApertura = aperturaVista.value;
+  // El formato de video viaja cuando el servicio defina su campo: hoy "formato"
+  // es la medida (reel_9x16) y un valor nuevo lo rechaza. Apertura y cierre, si
+  // el servicio todavía no los conoce, los descarta sin error.
   return {
+    ...(CAMPO_FORMATO ? { [CAMPO_FORMATO]: formato.value } : {}),
+    ...(conApertura ? { apertura: conApertura } : {}),
+    cierre: { ...cierreOpc },
     titulo: datos.titulo.trim() || seleccion.value.map((p) => p.titulo).join(", ").slice(0, 80),
     descripcion: datos.descripcion.trim() || undefined,
     cuenta: f.cuenta,
@@ -521,6 +640,7 @@ onMounted(async () => {
     fuente.value = await getFuente();
   } catch (e) { error.value = mensaje(e); }
   cargarCatalogo();
+  cargarPromos();
   listarVoces().then((l) => {
     voces.value = l;
     opciones.locutor = (l.find((v) => v.porDefecto) || l[0])?.id || null;
@@ -558,6 +678,20 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-paso.is-on b { background: #0f6fae; color: #fff; }
 .ct-paso.is-ok b { background: #2E9E7B; color: #fff; }
 .ct-paso.is-ok b .v-icon { color: #fff; }
+.ct-formatos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.ct-fmt { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 12px; border-radius: 14px; background: var(--sp-caja); border: 1px solid var(--sp-borde); cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
+.ct-fmt > b { font-size: 15px; font-weight: 800; }
+.ct-fmt > span:last-child { font-size: 13px; color: var(--sp-suave); margin-top: -6px; }
+.ct-fmt:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-fmt:hover:not(.is-on) { background: #1a2a3a; }
+.ct-fmt.is-on { border: 2px solid #0f6fae; padding: 13px 11px; background: var(--sp-hover); }
+.ct-fmt__ok { position: absolute; top: 8px; right: 8px; z-index: 1; width: 26px; height: 26px; border-radius: 50%; background: #0f6fae; display: flex; align-items: center; justify-content: center; }
+.ct-fmt__ok .v-icon { color: #fff; }
+.ct-desde { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; flex: 0 0 auto; }
+.ct-desde > b { font-size: 14px; }
+.ct-desde__orden { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--sp-suave); }
+.ct-titular { font-size: 18px !important; font-weight: 800 !important; }
+.ct-cierre-opc { margin-bottom: 6px; }
 .ct-p1 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
 .ct-enreel .sp-caja { max-height: calc(100vh - 420px); overflow-y: auto; }
 .ct-sel { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); }
