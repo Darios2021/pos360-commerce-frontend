@@ -36,7 +36,7 @@ const actual = (() => {
 })();
 
 async function revisar() {
-  if (!actual || hayNueva.value || document.hidden) return;
+  if (!actual || hayNueva.value) return;
   try {
     const r = await fetch(`${location.pathname}?v=${Date.now()}`, { cache: "no-store", credentials: "same-origin" });
     if (!r.ok) return;
