@@ -224,7 +224,7 @@
         <button v-if="paso > 1" type="button" class="ct-atras" @click="paso--"><v-icon size="20">mdi-arrow-left</v-icon>Atrás</button>
         <span v-else></span>
         <button v-if="paso < 4" type="button" class="ct-generar" :disabled="paso >= 2 && !seleccion.length" @click="paso++">Siguiente<v-icon size="22">mdi-arrow-right</v-icon></button>
-        <button v-else type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando" @click="generar">
+        <button v-else type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando || (formato === 'problema' && !apertura.titular.trim())" @click="generar">
           <v-progress-circular v-if="creando" indeterminate size="22" width="3" />
           <v-icon v-else size="24">mdi-movie-open-outline</v-icon>Generar video
         </button>
@@ -271,6 +271,7 @@
           </div>
           <p v-if="v.descripcion" class="ct-video__desc">{{ v.descripcion }}</p>
           <p v-if="v.items?.length" class="ct-video__items">{{ v.items.map((x) => x.titulo).join(" · ") }}</p>
+          <p v-if="v.voz?.usada" class="ct-video__items"><v-icon size="14">mdi-account-voice</v-icon> {{ nombreVoz(v.voz.usada) }}<template v-if="v.voz.respaldo"> · respaldo de {{ nombreVoz(v.voz.pedida) }}</template></p>
         </div>
         <div v-if="v.estado === 'en_cola'" class="ct-video__pie">
           <span class="ct-video__esp"></span>
@@ -377,6 +378,7 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola" }[v.estado] || `Generando ${v.progreso || 0} %`);
+const nombreVoz = (id) => voces.value.find((x) => x.id === id)?.nombre || String(id || "").replace(/^./, (c) => c.toUpperCase());
 const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
 const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
 const mensaje = (e) => e?.response?.data?.error || e?.response?.data?.message || "No se pudo completar la operación.";
@@ -460,9 +462,8 @@ watch(categoria, () => { if (formato.value === "categoria") aperturaPorDefecto()
 // La bajada sugerida ("Hasta N % OFF") sigue a los productos elegidos.
 watch(() => seleccion.value.map((p) => p.id).join(","), () => { if (formato.value === "ofertas" || formato.value === "categoria") aperturaPorDefecto(); });
 // Lo que dice el titular lo lee también la voz, salvo que la voz se haya escrito a mano.
-const vozDeApertura = () => [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(". ").replace(/([?!])\./g, "$1").slice(0, 300);
 function sincronizarVoz() {
-  if (!guion.introEditada && apertura.titular.trim()) guion.intro = vozDeApertura();
+  if (!guion.introEditada) sugerir();
 }
 function editarApertura() {
   apertura.editada = true;
@@ -587,14 +588,17 @@ let demoraGuion;
 function sugerir() {
   clearTimeout(demoraGuion);
   demoraGuion = setTimeout(async () => {
-    if (!fuente.value || !seleccion.value.length || !opciones.voz) return;
+    if (!fuente.value || !seleccion.value.length || !opciones.voz) {
+      if (!guion.introEditada && apertura.titular.trim()) guion.intro = [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(" ");
+      return;
+    }
     try {
       const e = armarEncargo();
       delete e.voz;
       delete e.titulo;
       delete e.descripcion;
       const g = await sugerirGuion(e);
-      if (!guion.introEditada) guion.intro = (apertura.titular.trim() ? vozDeApertura() : g.intro) || "";
+      if (!guion.introEditada) guion.intro = g.intro || "";
       if (!guion.cierreEditada) guion.cierre = g.cierre || "";
       seleccion.value.forEach((p, i) => { if (!p.vozEditada) p.voz = g.items?.[i] || ""; });
     } catch { /* la sugerencia es opcional */ }
