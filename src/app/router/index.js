@@ -130,6 +130,8 @@ const routes = [
       },
 
       { path: "transfers", name: "transfers", component: StockTransfersPage },
+      { path: "transfers/new", name: "transferNew", component: () => import("@/modules/dashboard/pages/TransferPage.vue") },
+      { path: "transfers/:id", name: "transferView", component: () => import("@/modules/dashboard/pages/TransferPage.vue") },
 
       { path: "stock", name: "stock", component: StockPage },
       {
