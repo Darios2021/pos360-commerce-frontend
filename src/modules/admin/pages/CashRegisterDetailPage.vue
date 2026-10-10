@@ -1,716 +1,271 @@
+<!-- src/modules/admin/pages/CashRegisterDetailPage.vue -->
+<!-- Una caja (maqueta aprobada 10/10): debería haber / se contó / diferencia
+     en grande, las ventas del turno y al costado el efectivo, lo cobrado por
+     medio, los movimientos y las notas. El cierre administrativo y eliminar
+     se hacen acá, con la confirmación en la misma pantalla (no en ventanas). -->
 <template>
-  <div class="crd">
-
-    <!-- HEADER -->
-    <AppPageHeader
-      icon="mdi-cash-register"
-      :title="`Caja #${id}`"
-    >
-      <template v-if="data" #subtitle>
-        <v-chip
-          size="x-small"
-          :color="data.status === 'OPEN' ? 'success' : 'grey'"
-          variant="flat"
-        >
-          {{ data.status === 'OPEN' ? 'Abierta' : 'Cerrada' }}
-        </v-chip>
-      </template>
-      <v-btn
-        variant="tonal"
-        size="small"
-        rounded="lg"
-        prepend-icon="mdi-refresh"
-        :loading="loading"
-        @click="load"
-      >
-        Actualizar
-      </v-btn>
-    </AppPageHeader>
-
-    <!-- Error -->
-    <v-alert v-if="error" type="error" variant="tonal" class="ma-4">{{ error }}</v-alert>
-
-    <!-- Loading -->
-    <div v-if="loading && !data" class="crd-centered">
-      <v-progress-circular size="28" indeterminate color="primary" />
-      <span class="ml-2">Cargando detalle…</span>
+  <div class="sp cd">
+    <div class="sp-cab">
+      <div class="sp-cab__txt">
+        <router-link :to="{ name: 'adminCashRegisters' }" class="se-volver"><v-icon size="18">mdi-arrow-left</v-icon>Cajas</router-link>
+        <h1 class="sp-cab__titulo">Caja #{{ id }}</h1>
+        <span v-if="cr" class="sp-cab__sub num">{{ [cr.branch_name, cr.opened_by_name].filter(Boolean).join(" · ") }} · {{ fechaHora(cr.opened_at) }} → {{ abierta ? "abierta" : fechaHora(cr.closed_at) }} ({{ duracion }})</span>
+      </div>
+      <span v-if="cr" :class="`cd-chip cd-chip--${chip.k}`">{{ chip.t }}</span>
     </div>
 
-    <!-- Content -->
-    <div v-else-if="data" class="crd-content">
+    <v-alert v-if="error" type="error" variant="tonal" density="compact">{{ error }}</v-alert>
+    <v-progress-linear v-if="cargando" indeterminate color="primary" height="3" />
 
-      <!-- Info principal -->
-      <div class="crd-grid">
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-account-circle</v-icon> Cajero</div>
-          <div class="crd-v">{{ data.opened_by_name || "—" }}</div>
-          <div class="crd-sub" v-if="data.opened_by_email">{{ data.opened_by_email }}</div>
-        </div>
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-storefront</v-icon> Sucursal</div>
-          <div class="crd-v">{{ data.branch_name || "—" }}</div>
-          <div class="crd-sub">ID: {{ data.branch_id }}</div>
-        </div>
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-login-variant</v-icon> Apertura</div>
-          <div class="crd-v">{{ fmtDateTime(data.opened_at) }}</div>
-          <div class="crd-sub" v-if="data.opening_ip">IP: {{ data.opening_ip }}</div>
-        </div>
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-logout-variant</v-icon> Cierre</div>
-          <div class="crd-v">{{ data.closed_at ? fmtDateTime(data.closed_at) : 'En curso' }}</div>
-          <div class="crd-sub" v-if="data.closed_by_name">Por: {{ data.closed_by_name }}</div>
-        </div>
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-shape-outline</v-icon> Tipo</div>
-          <div class="crd-v">{{ cajaTypeLabel(data.caja_type) || '—' }}</div>
-          <div class="crd-sub">
-            {{ invoiceModeLabel(data.invoice_mode) }}
-            {{ data.invoice_type ? '· ' + data.invoice_type : '' }}
-          </div>
-        </div>
-        <div class="crd-card">
-          <div class="crd-k"><v-icon size="14">mdi-clock-outline</v-icon> Duración</div>
-          <div class="crd-v">{{ durationLabel(data) }}</div>
-          <div class="crd-sub">{{ data.sales_count || 0 }} ventas</div>
-        </div>
+    <template v-if="cr">
+      <div class="cd-tres num">
+        <div class="sp-caja cd-n"><span class="cd-lab">Debería haber</span><b>{{ pesos(tot.expected_cash) }}</b></div>
+        <div class="sp-caja cd-n"><span class="cd-lab">Se contó</span><b>{{ abierta ? "—" : pesos(cr.closing_cash) }}</b><small v-if="abierta">la caja sigue abierta</small></div>
+        <div class="sp-caja cd-n" :class="{ 'is-falta': difer < 0, 'is-sobra': difer > 0 }"><span class="cd-lab">Diferencia</span><b>{{ abierta ? "—" : dif(difer) }}</b></div>
       </div>
 
-      <!-- Auditoría (si hay alertas) -->
-      <section v-if="auditFlags.length" class="crd-section crd-section--audit">
-        <div class="crd-section__title">
-          <v-icon size="16" color="error">mdi-alert-decagram</v-icon>
-          Auditoría
-          <v-chip size="x-small" class="ml-2" color="error" variant="flat">
-            {{ auditFlags.length }}
-            {{ auditFlags.length === 1 ? 'alerta' : 'alertas' }}
-          </v-chip>
-        </div>
+      <div class="cd-dos">
+        <section class="sp-caja">
+          <div class="se-banda"><span>Ventas del turno</span><small class="num">{{ ventas.length }} {{ ventas.length === 1 ? "cobrada" : "cobradas" }}<template v-if="anuladas"> · {{ anuladas }} {{ anuladas === 1 ? "anulada" : "anuladas" }}</template></small></div>
+          <div class="sp-tabla-scroll">
+            <table class="sp-tabla cd-tabla">
+              <thead><tr><th class="c-v">Venta</th><th class="c-h">Hora</th><th>Productos</th><th class="c-m">Cobro</th><th class="c-t">Total</th></tr></thead>
+              <tbody>
+                <tr v-for="v in ventas" :key="v.id" @click="irVenta($event, v)" @auxclick="irVenta($event, v)">
+                  <td><router-link :to="{ name: 'posSaleDetail', params: { id: v.id } }" class="sp-nombre num cd-nro" @click.stop>#{{ v.id }}</router-link></td>
+                  <td class="num">{{ hora(v.sold_at) }}</td>
+                  <td class="clamp1">{{ (v.items || []).map((i) => `${i.name} × ${fmt(i.quantity)}`).join(" · ") || "—" }}</td>
+                  <td>{{ medio(v.primary_method) }}<template v-if="cuotas(v) > 1"> · {{ cuotas(v) }} cuotas</template></td>
+                  <td class="c-t num sp-b">{{ pesos(v.total) }}</td>
+                </tr>
+                <tr v-if="!ventas.length"><td colspan="5" class="sp-vacio">Sin ventas en este turno</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        <div class="crd-audit-list">
-          <div
-            v-for="f in auditFlags"
-            :key="f.code"
-            class="crd-audit"
-            :class="`crd-audit--${f.severity}`"
-          >
-            <div class="crd-audit__ic">
-              <v-icon size="20">{{ flagIcon(f.code) }}</v-icon>
-            </div>
-            <div class="crd-audit__body">
-              <div class="crd-audit__head">
-                <span class="crd-audit__label">{{ f.label }}</span>
-                <span class="crd-audit__sev">{{ severityLabel(f.severity) }}</span>
+        <aside class="cd-lado">
+          <section class="sp-caja">
+            <div class="se-banda"><span>Efectivo</span></div>
+            <dl class="cd-dl num">
+              <dt>Apertura</dt><dd>{{ pesos(tot.opening_cash) }}</dd>
+              <dt>Ventas en efectivo</dt><dd>{{ pesos(tot.cash_sales) }}</dd>
+              <dt>Ingresos</dt><dd class="cj-verde">+ {{ pesos(tot.manual_in) }}</dd>
+              <dt>Egresos</dt><dd class="cj-rojo">− {{ pesos(tot.manual_out) }}</dd>
+              <dt class="cd-fin">Debería haber</dt><dd class="cd-fin">{{ pesos(tot.expected_cash) }}</dd>
+            </dl>
+          </section>
+          <section v-if="medios.length" class="sp-caja">
+            <div class="se-banda"><span>Cobrado por medio</span></div>
+            <dl class="cd-dl num"><template v-for="mm in medios" :key="mm.k"><dt>{{ mm.t }}</dt><dd>{{ pesos(mm.v) }}</dd></template></dl>
+          </section>
+          <section v-if="movs.length" class="sp-caja">
+            <div class="se-banda"><span>Movimientos</span></div>
+            <div class="cd-movs">
+              <div v-for="mv in movs" :key="mv.id" class="cd-mov num">
+                <span class="cd-mov__h">{{ hora(mv.happened_at) }}</span>
+                <span class="clamp1 cd-mov__r">{{ mv.reason === "APERTURA_CAJA" ? "Apertura de caja" : mv.reason }}</span>
+                <b :class="mv.type === 'OUT' ? 'cj-rojo' : 'cj-verde'">{{ mv.type === "OUT" ? "−" : "+" }} {{ pesos(mv.amount) }}</b>
               </div>
-              <div class="crd-audit__detail">{{ f.detail }}</div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+          <section v-if="cr.closing_note || cr.opening_note" class="sp-caja">
+            <div class="se-banda"><span>Notas</span></div>
+            <div class="cd-notas">
+              <p v-if="cr.opening_note"><b>Apertura:</b> {{ cr.opening_note }}</p>
+              <p v-if="cr.closing_note"><b>Cierre:</b> {{ cr.closing_note }}</p>
+            </div>
+          </section>
 
-      <!-- Totales -->
-      <section class="crd-section">
-        <div class="crd-section__title">
-          <v-icon size="16">mdi-cash-multiple</v-icon> Totales
-        </div>
-        <div class="crd-totals">
-          <div class="crd-total">
-            <span class="crd-total-k">Fondo inicial</span>
-            <span class="crd-total-v">${{ fmtNum(totals.opening_cash) }}</span>
-          </div>
-          <div class="crd-total">
-            <span class="crd-total-k">Ventas</span>
-            <span class="crd-total-v">${{ fmtNum(totals.sales_total) }}</span>
-          </div>
-          <div class="crd-total">
-            <span class="crd-total-k">Pagado</span>
-            <span class="crd-total-v">${{ fmtNum(totals.paid_total) }}</span>
-          </div>
-          <div class="crd-total">
-            <span class="crd-total-k">Ingresos manuales</span>
-            <span class="crd-total-v crd-total-v--ok">+${{ fmtNum(totals.manual_in) }}</span>
-          </div>
-          <div class="crd-total">
-            <span class="crd-total-k">Egresos manuales</span>
-            <span class="crd-total-v crd-total-v--bad">-${{ fmtNum(totals.manual_out) }}</span>
-          </div>
-          <div class="crd-total crd-total--big">
-            <span class="crd-total-k">Efectivo esperado</span>
-            <span class="crd-total-v">${{ fmtNum(totals.expected_cash) }}</span>
-          </div>
-          <div class="crd-total crd-total--big" v-if="data.closing_cash != null">
-            <span class="crd-total-k">Declarado</span>
-            <span class="crd-total-v">${{ fmtNum(data.closing_cash) }}</span>
-          </div>
-          <div class="crd-total crd-total--big" v-if="data.difference_cash != null">
-            <span class="crd-total-k">Diferencia</span>
-            <span class="crd-total-v" :class="diffTextClass(data.difference_cash)">
-              {{ data.difference_cash > 0 ? '+' : '' }}${{ fmtNum(data.difference_cash) }}
-            </span>
-          </div>
-        </div>
-      </section>
+          <!-- Acciones de administrador, en la pantalla -->
+          <section class="sp-caja cd-admin">
+            <div class="se-banda"><span>Administración</span></div>
+            <div class="cd-admin__in">
+              <template v-if="abierta">
+                <span class="cd-admin__t">Cierre administrativo</span>
+                <label class="cd-op"><input v-model="modoCierre" type="radio" value="neutral" />Contado = apertura (diferencia 0)</label>
+                <label class="cd-op"><input v-model="modoCierre" type="radio" value="expected_real" />Contado = lo que debería haber ({{ pesos(tot.expected_cash) }})</label>
+                <input v-model="motivo" type="text" maxlength="255" class="cd-in" placeholder="Motivo (opcional)" />
+                <button type="button" class="cd-btn" :disabled="trabajando" @click="cerrar"><v-icon size="18">mdi-lock-outline</v-icon>Cerrar la caja #{{ id }}</button>
+              </template>
+              <template v-if="!confirmaBorrar">
+                <a href="#" class="cd-borrar" @click.prevent="confirmaBorrar = true">Eliminar la caja</a>
+              </template>
+              <template v-else>
+                <span class="cd-admin__t cj-rojo">Eliminar la caja #{{ id }}<template v-if="ventas.length"> y sus {{ ventas.length }} {{ ventas.length === 1 ? "venta" : "ventas" }}</template></span>
+                <input v-model="textoBorrar" type="text" class="cd-in" placeholder="Escribí ELIMINAR para confirmar" />
+                <div class="cd-fila">
+                  <a href="#" class="sp-link" @click.prevent="confirmaBorrar = false; textoBorrar = ''">No</a>
+                  <button type="button" class="cd-btn cd-btn--rojo" :disabled="textoBorrar.trim().toUpperCase() !== 'ELIMINAR' || trabajando" @click="borrar">Eliminar</button>
+                </div>
+              </template>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </template>
 
-      <!-- Pagos por método -->
-      <section v-if="paymentMethodsArr.length" class="crd-section">
-        <div class="crd-section__title">
-          <v-icon size="16">mdi-credit-card-outline</v-icon> Pagos por método
-        </div>
-        <div class="crd-pmethods">
-          <div v-for="p in paymentMethodsArr" :key="p.key" class="crd-pmethod">
-            <div class="crd-pmethod__k">{{ p.label }}</div>
-            <div class="crd-pmethod__v">${{ fmtNum(p.amount) }}</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Movimientos manuales -->
-      <section class="crd-section">
-        <div class="crd-section__title">
-          <v-icon size="16">mdi-swap-vertical</v-icon> Movimientos manuales
-          <v-chip size="x-small" class="ml-2" variant="tonal">
-            {{ (movements || []).length }}
-          </v-chip>
-        </div>
-
-        <div v-if="!(movements || []).length" class="crd-empty-sm">
-          Sin movimientos manuales.
-        </div>
-
-        <div v-else class="crd-subtable-wrap">
-          <table class="crd-subtable">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Motivo</th>
-                <th>Nota</th>
-                <th class="num">Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in movements" :key="m.id">
-                <td>{{ fmtDateTime(m.happened_at) }}</td>
-                <td>
-                  <span class="crd-mtype" :class="m.type === 'IN' ? 'is-in' : 'is-out'">
-                    <v-icon size="12">{{ m.type === 'IN' ? 'mdi-arrow-down' : 'mdi-arrow-up' }}</v-icon>
-                    {{ m.type === 'IN' ? 'Ingreso' : 'Egreso' }}
-                  </span>
-                </td>
-                <td>{{ m.reason }}</td>
-                <td class="crd-note">{{ m.note || '—' }}</td>
-                <td class="num" :class="m.type === 'IN' ? 'clr-ok' : 'clr-bad'">
-                  {{ m.type === 'IN' ? '+' : '-' }}${{ fmtNum(m.amount) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Notas -->
-      <section v-if="data.opening_note || data.closing_note" class="crd-section">
-        <div class="crd-section__title">
-          <v-icon size="16">mdi-note-text-outline</v-icon> Notas
-        </div>
-        <div v-if="data.opening_note" class="crd-note-block">
-          <div class="crd-note-k">Apertura</div>
-          <div class="crd-note-v">{{ data.opening_note }}</div>
-        </div>
-        <div v-if="data.closing_note" class="crd-note-block">
-          <div class="crd-note-k">Cierre</div>
-          <div class="crd-note-v">{{ data.closing_note }}</div>
-        </div>
-      </section>
-    </div>
+    <v-snackbar v-model="aviso.open" :timeout="2600">{{ aviso.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {
-  adminListCashRegisters,
-  getCashRegisterSummary,
-} from "@/modules/pos/services/posCashRegisters.service";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import http from "@/app/api/http";
+import { adminListCashRegisters, getCashRegisterSummary } from "@/modules/pos/services/posCashRegisters.service";
+import "@/modules/products/styles/proveedores.css";
 
 const route = useRoute();
 const router = useRouter();
 const id = computed(() => Number(route.params?.id || 0));
 
-const loading = ref(false);
+const cr = ref(null);
+const tot = ref({});
+const pagos = ref({});
+const ventas = ref([]);
+const anuladas = ref(0);
+const movs = ref([]);
+const cargando = ref(false);
+const trabajando = ref(false);
 const error = ref("");
-const data = ref(null);
-const movements = ref([]);
-const paymentsByMethod = ref({});
+const modoCierre = ref("neutral");
+const motivo = ref("");
+const confirmaBorrar = ref(false);
+const textoBorrar = ref("");
+const aviso = reactive({ open: false, text: "" });
 
-const totals = computed(() => {
-  const d = data.value || {};
-  return {
-    opening_cash: Number(d.totals_opening_cash ?? d.opening_cash ?? 0),
-    sales_total: Number(d.totals_sales_total ?? d.sales_total ?? 0),
-    paid_total: Number(d.totals_paid_total ?? d.sales_total ?? 0),
-    manual_in: Number(d.totals_manual_in ?? d.manual_in ?? 0),
-    manual_out: Number(d.totals_manual_out ?? d.manual_out ?? 0),
-    expected_cash: Number(d.totals_expected_cash ?? d.expected_cash ?? 0),
-  };
+const n = (v) => Number(v || 0);
+const fmt = (v) => n(v).toLocaleString("es-AR", { maximumFractionDigits: 3 });
+const pesos = (v) => `$ ${n(v).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
+const dif = (v) => (!n(v) ? "$ 0" : n(v) < 0 ? `− ${pesos(-n(v))}` : `+ ${pesos(v)}`);
+const dd = (x) => String(x).padStart(2, "0");
+function fechaHora(v) { const d = new Date(v); return isNaN(d) ? "" : `${dd(d.getDate())}/${dd(d.getMonth() + 1)} ${dd(d.getHours())}:${dd(d.getMinutes())}`; }
+function hora(v) { const d = new Date(v); return isNaN(d) ? "" : `${dd(d.getHours())}:${dd(d.getMinutes())}`; }
+
+const abierta = computed(() => String(cr.value?.status || "").toUpperCase() === "OPEN");
+const difer = computed(() => (cr.value?.difference_cash != null ? n(cr.value.difference_cash) : n(cr.value?.closing_cash) - n(tot.value.expected_cash)));
+const chip = computed(() => {
+  if (abierta.value) return { k: "abierta", t: "Abierta" };
+  if (difer.value < 0) return { k: "falta", t: "Cerrada con faltante" };
+  if (difer.value > 0) return { k: "sobra", t: "Cerrada con sobrante" };
+  return { k: "ok", t: "Cerrada" };
 });
+const duracion = computed(() => {
+  const a = new Date(cr.value?.opened_at), b = cr.value?.closed_at ? new Date(cr.value.closed_at) : new Date();
+  const h = isNaN(a) ? 0 : (b - a) / 3600000;
+  if (h >= 48) return `${Math.floor(h / 24)} días`;
+  const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+  return hh ? `${hh} h ${mm} min` : `${mm} min`;
+});
+const MEDIOS = { cash: "Efectivo", mercadopago: "Mercado Pago", card: "Tarjeta", transfer: "Transferencia", credit_sjt: "Crédito SJT", other: "Otros" };
+const medios = computed(() => Object.entries(MEDIOS).map(([k, t]) => ({ k, t, v: n(pagos.value?.[k]) })).filter((x) => x.v));
+const NOMBRE_MEDIO = { CASH: "Efectivo", QR: "Mercado Pago QR", MERCADOPAGO: "Mercado Pago", CARD: "Tarjeta", TRANSFER: "Transferencia", CREDIT_SJT: "Crédito SJT" };
+const medio = (m) => NOMBRE_MEDIO[String(m || "").toUpperCase()] || m || "—";
+const cuotas = (v) => Math.max(...(v.payments || []).map((p) => n(p.installments) || 1), 1);
 
-function goBack() {
-  router.push({ name: "adminCashRegisters" });
+function irVenta(e, v) {
+  const r = { name: "posSaleDetail", params: { id: v.id } };
+  if (e.button === 1 || e.ctrlKey || e.metaKey) { window.open(router.resolve(r).href, "_blank"); return; }
+  if (e.type === "click") router.push(r);
 }
 
-async function load() {
+async function cargar() {
   if (!id.value) return;
-  loading.value = true;
+  cargando.value = true;
   error.value = "";
-
   try {
-    // 1) Tomo la fila completa desde admin/list filtrando por id vía búsqueda para
-    //    obtener branch_name, opened_by_name, email, etc. sin query adicional.
-    //    Si no aparece (edge case), caigo a summary como única fuente.
-    let row = null;
+    let fila = null;
     try {
-      const listRes = await adminListCashRegisters({ page: 1, limit: 200 });
-      const items = Array.isArray(listRes?.data) ? listRes.data : [];
-      row = items.find((r) => Number(r.id) === id.value) || null;
-    } catch (_) {}
-
-    // 2) Summary detallado (movimientos, pagos por método, totales).
-    let summaryRaw = null;
-    try {
-      const res = await getCashRegisterSummary(id.value);
-      summaryRaw = res?.data?.data || res?.data || res;
-    } catch (e) {
-      if (!row) throw e;
-    }
-
-    const header = summaryRaw?.cash_register || summaryRaw?.header || {};
-    const t = summaryRaw?.totals || {};
-    const m = Array.isArray(summaryRaw?.movements) ? summaryRaw.movements : [];
-    const pbm = summaryRaw?.payments_by_method || summaryRaw?.paymentsByMethod || {};
-
-    data.value = {
-      id: id.value,
-      ...row,
-      ...header,
-      branch_name: row?.branch_name || header?.branch_name,
-      opened_by_name: row?.opened_by_name || header?.opened_by_name,
-      opened_by_email: row?.opened_by_email || header?.opened_by_email,
-      closed_by_name: row?.closed_by_name || header?.closed_by_name,
-      sales_count: t?.sales_count ?? row?.sales_count ?? 0,
-      totals_opening_cash: t?.opening_cash ?? row?.opening_cash,
-      totals_sales_total: t?.sales_total ?? row?.sales_total,
-      totals_paid_total: t?.paid_total ?? t?.sales_total ?? row?.sales_total,
-      totals_manual_in: t?.manual_in ?? row?.manual_in,
-      totals_manual_out: t?.manual_out ?? row?.manual_out,
-      totals_expected_cash: t?.expected_cash ?? row?.expected_cash,
-      audit: row?.audit || null,
-    };
-    movements.value = m;
-    paymentsByMethod.value = pbm;
+      const l = await adminListCashRegisters({ q: String(id.value), page: 1, limit: 50 });
+      fila = (Array.isArray(l?.data) ? l.data : []).find((r) => Number(r.id) === id.value) || null;
+    } catch { /* el resumen alcanza */ }
+    const res = await getCashRegisterSummary(id.value);
+    const s = res?.data?.data || res?.data || res || {};
+    cr.value = { ...(fila || {}), ...(s.cash_register || {}), branch_name: fila?.branch_name || s.cash_register?.branch_name, opened_by_name: fila?.opened_by_name || s.cash_register?.opened_by_name, difference_cash: fila?.difference_cash ?? s.cash_register?.difference_cash };
+    tot.value = s.totals || {};
+    pagos.value = s.payments_by_method || {};
+    ventas.value = (s.sales_detail || []).filter((v) => String(v.status || "").toUpperCase() !== "CANCELLED");
+    anuladas.value = n(s.totals?.sales_cancelled_count);
+    movs.value = Array.isArray(s.movements) ? s.movements : [];
   } catch (e) {
     error.value = e?.friendlyMessage || e?.message || "No se pudo cargar la caja";
   } finally {
-    loading.value = false;
+    cargando.value = false;
   }
 }
 
-const paymentMethodsArr = computed(() => {
-  const src = paymentsByMethod.value || {};
-  const map = {
-    cash: "Efectivo",
-    card: "Tarjeta",
-    transfer: "Transferencia",
-    qr: "QR",
-    mercadopago: "MercadoPago",
-    credit_sjt: "Crédito SJT",
-    other: "Otros",
-  };
-  return Object.keys(src)
-    .map((k) => ({ key: k, label: map[k] || k, amount: Number(src[k] || 0) }))
-    .filter((p) => p.amount !== 0);
-});
-
-function fmtNum(v) {
-  const n = Number(v || 0);
-  return new Intl.NumberFormat("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+async function cerrar() {
+  trabajando.value = true;
+  try {
+    await http.post(`/pos/cash-registers/admin/${id.value}/force-close`, { mode: modoCierre.value, reason: motivo.value.trim() || null });
+    aviso.text = `Caja #${id.value} cerrada`; aviso.open = true;
+    await cargar();
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo cerrar la caja";
+  } finally { trabajando.value = false; }
 }
-function fmtDateTime(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "—";
-  const date = d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-  const time = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-  return `${date} · ${time}`;
-}
-function cajaTypeLabel(v) {
-  const map = { GENERAL: "General", SHIFT: "Turno", BRANCH: "Sucursal", MOBILE: "Móvil" };
-  return map[String(v || "").toUpperCase()] || "";
-}
-function invoiceModeLabel(v) {
-  const map = { NO_FISCAL: "No fiscal", FISCAL: "Fiscal", MIXED: "Mixta", TICKET_ONLY: "Solo ticket" };
-  return map[String(v || "").toUpperCase()] || "—";
-}
-function durationLabel(h) {
-  if (!h?.opened_at) return "—";
-  const start = new Date(h.opened_at).getTime();
-  const end = h.closed_at ? new Date(h.closed_at).getTime() : Date.now();
-  const diff = Math.max(0, end - start);
-  const totalMin = Math.floor(diff / 60000);
-  const hr = Math.floor(totalMin / 60);
-  const mn = totalMin % 60;
-  if (hr > 0) return `${hr}h ${mn}m`;
-  if (mn < 1) return "recién";
-  return `${mn} min`;
-}
-function diffTextClass(v) {
-  const n = Number(v || 0);
-  if (n > 0) return "clr-ok";
-  if (n < 0) return "clr-bad";
-  return "";
+async function borrar() {
+  trabajando.value = true;
+  try {
+    await http.delete(`/pos/cash-registers/admin/${id.value}${ventas.value.length ? "?force=1" : ""}`);
+    router.replace({ name: "adminCashRegisters" });
+  } catch (e) {
+    error.value = e?.response?.data?.message || e?.message || "No se pudo eliminar";
+  } finally { trabajando.value = false; }
 }
 
-const auditFlags = computed(() => {
-  const flags = data.value?.audit?.flags;
-  return Array.isArray(flags) ? flags : [];
-});
-
-function flagIcon(code) {
-  const map = {
-    SHORTAGE: "mdi-cash-remove",
-    SURPLUS: "mdi-cash-plus",
-    OVERTIME: "mdi-clock-alert",
-    LONG_OPEN: "mdi-clock-alert-outline",
-    BIG_MANUAL_OUT: "mdi-arrow-up-bold-circle-outline",
-  };
-  return map[code] || "mdi-alert-outline";
-}
-function severityLabel(sev) {
-  const map = { high: "Grave", medium: "Importante", low: "Aviso" };
-  return map[sev] || sev;
-}
-
-onMounted(load);
-watch(id, load);
+watch(id, cargar);
+onMounted(cargar);
 </script>
 
-<style scoped>
-.crd {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: rgb(var(--v-theme-background));
-}
-
-/* Top bar */
-.crd-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.crd-bar__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.crd-bar__id {
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.005em;
-}
-
-.crd-centered {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-}
-
-/* Content */
-.crd-content {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.crd-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 12px;
-}
-.crd-card {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.crd-k {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.55;
-  margin-bottom: 4px;
-}
-.crd-v {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgb(var(--v-theme-on-surface));
-  line-height: 1.3;
-}
-.crd-sub {
-  font-size: 11px;
-  opacity: 0.55;
-  margin-top: 2px;
-  font-weight: 500;
-}
-
-/* Sections */
-.crd-section {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 14px;
-  padding: 16px 18px;
-}
-.crd-section__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.75;
-  margin-bottom: 12px;
-}
-
-.crd-totals {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 4px 28px;
-}
-.crd-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 8px 0;
-  border-bottom: 1px dashed rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.5));
-}
-.crd-total-k { font-size: 12.5px; font-weight: 400; opacity: 0.7; }
-.crd-total-v { font-size: 14px; font-weight: 500; }
-.crd-total-v--ok  { color: rgb(var(--v-theme-success)); }
-.crd-total-v--bad { color: rgb(var(--v-theme-error)); }
-.crd-total--big .crd-total-k { font-size: 13px; font-weight: 500; opacity: 0.88; }
-.crd-total--big .crd-total-v { font-size: 18px; }
-
-.crd-pmethods {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-}
-.crd-pmethod {
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.crd-pmethod__k {
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.55;
-  margin-bottom: 4px;
-}
-.crd-pmethod__v {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.crd-subtable-wrap { overflow-x: auto; }
-.crd-subtable {
-  width: 100%;
-  border-collapse: collapse;
-}
-.crd-subtable th {
-  text-align: left;
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.55;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.crd-subtable th.num,
-.crd-subtable td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.crd-subtable td {
-  padding: 10px 12px;
-  font-size: 13px;
-  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.5));
-}
-.crd-subtable tr:last-child td { border-bottom: none; }
-
-.crd-mtype {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-.crd-mtype.is-in  { background: rgba(var(--v-theme-success), 0.12); color: rgb(var(--v-theme-success)); }
-.crd-mtype.is-out { background: rgba(var(--v-theme-error), 0.12);   color: rgb(var(--v-theme-error)); }
-
-.crd-note {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.8;
-}
-
-.crd-note-block {
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  margin-bottom: 8px;
-}
-.crd-note-k {
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.55;
-  margin-bottom: 4px;
-}
-.crd-note-v {
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.crd-empty-sm {
-  font-size: 12px;
-  opacity: 0.6;
-  padding: 12px 0;
-}
-
-/* Auditoría */
-.crd-section--audit {
-  border-color: rgba(var(--v-theme-error), 0.4);
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-error), 0.04), rgba(var(--v-theme-error), 0)),
-    rgb(var(--v-theme-surface));
-}
-.crd-audit-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
-}
-.crd-audit {
-  display: grid;
-  grid-template-columns: 40px 1fr;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid;
-}
-.crd-audit__ic {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-.crd-audit__body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.crd-audit__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.crd-audit__label {
-  font-weight: 500;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.crd-audit__sev {
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  border-radius: 999px;
-}
-.crd-audit__detail {
-  font-size: 12px;
-  opacity: 0.8;
-  line-height: 1.4;
-}
-
-.crd-audit--high {
-  background: rgba(var(--v-theme-error), 0.06);
-  border-color: rgba(var(--v-theme-error), 0.35);
-}
-.crd-audit--high .crd-audit__ic {
-  background: rgba(var(--v-theme-error), 0.14);
-  color: rgb(var(--v-theme-error));
-}
-.crd-audit--high .crd-audit__sev {
-  background: rgba(var(--v-theme-error), 0.14);
-  color: rgb(var(--v-theme-error));
-}
-
-.crd-audit--medium {
-  background: rgba(245, 158, 11, 0.05);
-  border-color: rgba(245, 158, 11, 0.35);
-}
-.crd-audit--medium .crd-audit__ic {
-  background: rgba(245, 158, 11, 0.14);
-  color: #d97706;
-}
-.crd-audit--medium .crd-audit__sev {
-  background: rgba(245, 158, 11, 0.16);
-  color: #d97706;
-}
-:is(.v-theme--dark, .v-theme--adminDark) .crd-audit--medium .crd-audit__ic,
-:is(.v-theme--dark, .v-theme--adminDark) .crd-audit--medium .crd-audit__sev { color: #fbbf24; }
-
-.crd-audit--low {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border-color: rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.crd-audit--low .crd-audit__ic {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.65);
-}
-.crd-audit--low .crd-audit__sev {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgba(var(--v-theme-on-surface), 0.65);
-}
-
-.clr-ok  { color: rgb(var(--v-theme-success)); }
-.clr-bad { color: rgb(var(--v-theme-error)); }
+<style>
+.cd-chip { padding: 8px 14px; border-radius: 9999px; font-weight: 800; font-size: 14px; background: var(--sp-hover); }
+.cd-chip--abierta { background: #e3f4ee; color: #1f7a5f; }
+.cd-chip--falta { background: #fdeceb; color: #a3322c; }
+.cd-chip--sobra { background: #fff4e5; color: #b45309; }
+.cd-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.cd-n { padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
+.cd-n b { font-size: 30px; font-weight: 900; }
+.cd-n small { font-size: 13px; color: var(--sp-suave); }
+.cd-n.is-falta { border: 2px solid #c2413a; background: #fdeceb; }
+.cd-n.is-falta b, .cd-n.is-falta .cd-lab { color: #a3322c; }
+.cd-n.is-sobra { border: 2px solid #f0b429; background: #fff8eb; }
+.cd-lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sp-suave); }
+.cd-dos { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+.cd-lado { display: flex; flex-direction: column; gap: 14px; }
+.cd-tabla .c-v { width: 90px; }
+.cd-tabla .c-h { width: 80px; }
+.cd-tabla .c-m { width: 170px; }
+.cd-tabla .c-t { width: 130px; text-align: right; }
+.cd-nro { color: #0f6fae !important; }
+.cd-dl { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; margin: 0; padding: 14px 16px; font-size: 15px; }
+.cd-dl dt { color: var(--sp-suave); font-weight: 600; }
+.cd-dl dd { margin: 0; font-weight: 800; text-align: right; }
+.cd-dl .cd-fin { padding-top: 10px; border-top: 1px solid var(--sp-linea); color: var(--sp-texto); font-size: 16px; }
+.cd-movs { display: flex; flex-direction: column; padding: 6px 16px 12px; }
+.cd-mov { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--sp-linea); font-size: 14px; }
+.cd-mov__h { color: var(--sp-suave); font-weight: 700; }
+.cd-mov__r { flex: 1; min-width: 0; }
+.cd-notas { padding: 12px 16px; font-size: 14px; line-height: 1.45; }
+.cd-notas p { margin: 0 0 8px; }
+.cd-admin__in { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.cd-admin__t { font-size: 14px; font-weight: 800; }
+.cd-op { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.cd-op input { accent-color: #0f6fae; width: 16px; height: 16px; }
+.cd-in { height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font: 500 14px Inter, sans-serif; outline: 0; }
+.cd-btn { height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 10px; background: #0f6fae; color: #ffffff; font: 800 15px Inter, sans-serif; cursor: pointer; }
+.cd-btn .v-icon { color: #ffffff; }
+.cd-btn:disabled { opacity: .45; cursor: not-allowed; }
+.cd-btn--rojo { background: #c2413a; padding: 0 18px; }
+.cd-borrar { font-size: 14px; font-weight: 800; color: #b23b35; text-decoration: none; }
+.cd-borrar:hover { text-decoration: underline; }
+.cd-fila { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.cd .cj-rojo { color: #c2413a; }
+.cd .cj-verde { color: #1f7a5f; }
+:is(.v-theme--dark, .v-theme--adminDark) .cd-n.is-falta { background: #3d1a18; }
+:is(.v-theme--dark, .v-theme--adminDark) .cd-n.is-falta b, :is(.v-theme--dark, .v-theme--adminDark) .cd-n.is-falta .cd-lab { color: #fca5a5; }
+:is(.v-theme--dark, .v-theme--adminDark) .cd-chip--falta { background: #3d1a18; color: #fca5a5; }
+:is(.v-theme--dark, .v-theme--adminDark) .cd-chip--abierta { background: #143a2f; color: #6ee7b7; }
+@media (max-width: 1100px) { .cd-dos { grid-template-columns: 1fr; } .cd-tres { grid-template-columns: 1fr; } }
 </style>
