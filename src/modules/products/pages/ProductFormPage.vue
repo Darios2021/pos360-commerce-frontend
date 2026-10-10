@@ -71,7 +71,7 @@
                     <v-textarea v-model="draft.description" :disabled="busy" density="compact" variant="outlined"
                       label="Detalle para la tienda" auto-grow rows="2" class="pfn-ancho" hide-details />
                   </div>
-                  <div v-if="skuPreview || draft.sku" class="pfn-pie num">SKU {{ skuPreview || draft.sku }}</div>
+                  <div v-if="draft.sku || skuPreview" class="pfn-pie num">SKU {{ draft.sku || skuPreview }}</div>
                 </section>
 
                 <!-- 2. Costo y precios -->
@@ -2633,6 +2633,8 @@ async function saveAll() {
 .pfn-aside .pi-root { padding: 12px; }
 .pfn-aside .pi-root > div:first-of-type > div:first-child { display: none !important; }
 .pfn-aside .pi-root > div:first-of-type { justify-content: flex-end !important; }
+.pfn-aside .pi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.pfn-aside .pi-card { min-width: 0 !important; width: auto !important; }
 .pfn-aside .pi-dropzone { background: var(--pfn-caja) !important; border: 2px dashed #8cc0e3 !important; border-radius: 10px !important; }
 /* Promoción y kit apagados: fila blanca con su interruptor, como en la maqueta */
 .pfp-root .pfp-promo-section:not(.pfp-promo-on) .pfp-section-head,
