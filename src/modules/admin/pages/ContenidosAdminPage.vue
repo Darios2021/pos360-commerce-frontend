@@ -29,15 +29,26 @@
       </div>
 
       <!-- 1. Formato -->
-      <div v-if="paso === 1" class="ct-formatos">
+      <template v-if="paso === 1">
+      <div class="ct-formatos">
         <button v-for="f in FORMATOS" :key="f.v" type="button" class="ct-fmt" :class="{ 'is-on': formato === f.v }" @click="elegirFormato(f.v)">
           <span v-if="formato === f.v" class="ct-fmt__ok"><v-icon size="18">mdi-check</v-icon></span>
           <EscenaReel v-if="f.v === 'estrella'" tipo="item" :item="muestraEstrella" :fuente="fuente" :ancho="150" />
-          <EscenaReel v-else tipo="intro" :apertura="f.muestra ? { titular: f.muestra } : null" :fuente="fuente" :ancho="150" />
+          <EscenaReel v-else tipo="intro" :apertura="formato === f.v && aperturaVista ? aperturaVista : f.muestra ? { titular: f.muestra } : null" :fuente="fuente" :ancho="150" />
           <b>{{ f.t }}</b>
           <span>{{ f.s }}</span>
         </button>
       </div>
+
+      <div v-if="formato === 'problema'" class="sp-caja ct-pregunta">
+        <div class="se-banda"><span>La pregunta</span></div>
+        <div class="ct-pregunta__cuerpo">
+          <div class="ct-campo"><label>Pregunta</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
+          <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="editarApertura" /></div>
+          <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea></div>
+        </div>
+      </div>
+      </template>
 
       <!-- 2. Productos -->
       <div v-else-if="paso === 2" class="ct-p1">
@@ -150,8 +161,8 @@
               <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="productoActivo.voz" rows="3" maxlength="400" @input="productoActivo.vozEditada = true"></textarea></div>
             </template>
             <template v-else-if="activa === 'intro'">
-              <div class="ct-campo"><label>Titular</label><input v-model="apertura.titular" class="ct-titular" maxlength="40" :placeholder="formato === 'problema' ? '¿…?' : ''" @input="apertura.editada = true" /></div>
-              <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="apertura.editada = true" /></div>
+              <div class="ct-campo"><label>{{ formato === "problema" ? "Pregunta" : "Titular" }}</label><input v-model="apertura.titular" class="ct-titular" :maxlength="TOPE_TITULAR" @input="editarApertura" /></div>
+              <div class="ct-campo"><label>Bajada</label><input v-model="apertura.bajada" maxlength="80" @input="editarApertura" /></div>
               <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
             </template>
             <template v-else>
@@ -282,6 +293,7 @@ import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
 const CAMPO_FORMATO = "tipo";
+const TOPE_TITULAR = 90;
 // Formatos del video (los arma el servicio de contenidos; POS elige y ordena los productos).
 const FORMATOS = [
   { v: "destacados", t: "Destacados", s: "1 a 6 productos", tope: 6, muestra: "" },
@@ -438,6 +450,11 @@ function aperturaPorDefecto() {
   }
 }
 watch(categoria, () => { if (formato.value === "categoria") aperturaPorDefecto(); });
+// Lo que dice el titular lo lee también la voz, salvo que la voz se haya escrito a mano.
+function editarApertura() {
+  apertura.editada = true;
+  if (!guion.introEditada && opciones.voz) guion.intro = [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(" ").slice(0, 300);
+}
 const aperturaVista = computed(() => (apertura.titular.trim() ? { titular: apertura.titular.trim(), bajada: apertura.bajada.trim() } : null));
 const muestraEstrella = computed(() => {
   const p = seleccion.value[0] || catalogo.value[0];
@@ -564,7 +581,7 @@ function sugerir() {
       delete e.titulo;
       delete e.descripcion;
       const g = await sugerirGuion(e);
-      if (!guion.introEditada) guion.intro = g.intro || "";
+      if (!guion.introEditada) guion.intro = (formato.value === "problema" && apertura.titular.trim() ? [apertura.titular.trim(), apertura.bajada.trim()].filter(Boolean).join(" ") : g.intro) || "";
       if (!guion.cierreEditada) guion.cierre = g.cierre || "";
       seleccion.value.forEach((p, i) => { if (!p.vozEditada) p.voz = g.items?.[i] || ""; });
     } catch { /* la sugerencia es opcional */ }
@@ -692,6 +709,9 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-desde > b { font-size: 14px; }
 .ct-desde__orden { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--sp-suave); }
 .ct-titular { font-size: 18px !important; font-weight: 800 !important; }
+.ct-pregunta { flex: 0 0 auto; }
+.ct-pregunta__cuerpo { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 4px 16px; padding: 8px 16px 16px; }
+.ct-pregunta__cuerpo .ct-campo:last-child:nth-child(3) { grid-column: 1 / -1; }
 .ct-cierre-opc { margin-bottom: 6px; }
 .ct-p1 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
 .ct-enreel .sp-caja { max-height: calc(100vh - 420px); overflow-y: auto; }
