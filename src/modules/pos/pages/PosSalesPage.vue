@@ -1185,6 +1185,9 @@ onMounted(async () => {
   // Filtro desde un enlace (los avisos del tablero): ?estado=CANCELLED
   const estadoUrl = String(route.query?.estado || "").toUpperCase();
   if (estadoUrl && statusItems.some((s) => s.value === estadoUrl)) status.value = estadoUrl;
+  // ?cajero=<id>: "Ver sus ventas" desde la vista de una venta
+  const cajeroUrl = Number(route.query?.cajero || 0);
+  if (cajeroUrl > 0) sellerId.value = cajeroUrl;
   onSellerSearch("");
   onProductSearch("");
   refreshAll();

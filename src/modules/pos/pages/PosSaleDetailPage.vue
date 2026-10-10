@@ -8,150 +8,155 @@
         <h1 class="vd-cab__titulo num">Venta #{{ sale?.id ?? id }}</h1>
         <span v-if="sale" class="vd-cab__sub num">{{ subtitulo }}</span>
       </div>
-      <span v-if="sale?.status" class="vd-estado" :class="`is-${String(sale.status).toLowerCase()}`"><i></i>{{ statusLabel(sale.status) }}</span>
+      <div v-if="sale" class="vd-cab__der">
+        <span class="vd-estado" :class="`is-${String(sale.status || '').toLowerCase()}`"><i></i>{{ statusLabel(sale.status) }}</span>
+        <span class="vd-total">
+          <span class="vd-total__k">Total<template v-if="items.length > 1"> · {{ items.length }} productos</template></span>
+          <span class="vd-total__v num">{{ plata(sale.total) }}</span>
+        </span>
+      </div>
     </div>
 
-    <div v-if="loading" class="vd-caja vd-vacio">
-      <v-progress-circular indeterminate size="28" color="primary" />
-    </div>
+    <div v-if="loading" class="vd-caja vd-vacio"><v-progress-circular indeterminate size="28" color="primary" /></div>
     <div v-else-if="!sale" class="vd-caja vd-vacio">Venta no encontrada</div>
 
     <template v-else>
-      <!-- 1. Productos : tabla cerrada con los totales al pie -->
-      <section class="vd-bloque">
-        <div class="vd-bloque__tit">
-          <span class="vd-h">1. Productos</span>
-          <span class="vd-nota num">{{ (sale.items || []).length }} {{ (sale.items || []).length === 1 ? 'producto' : 'productos' }} · {{ unidadesTexto }}</span>
-        </div>
-        <div class="vd-caja">
-          <div class="vd-tabla-scroll">
-            <table class="vd-tabla">
-              <thead>
-                <tr>
-                  <th class="c-img"></th>
-                  <th>Producto</th>
-                  <th class="c-num">Cantidad</th>
-                  <th class="c-plata">Precio</th>
-                  <th class="c-plata">Total</th>
-                  <th class="c-ver"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in (sale.items || [])" :key="item.id || item.product_id">
-                  <td class="c-img">
-                    <button type="button" class="vd-img" :aria-label="`Imagen de ${productName(item)}`" @click="openImage(item)">
-                      <img v-if="itemImage(item)" :src="itemImage(item)" alt="" />
-                      <v-icon v-else size="20">mdi-image-outline</v-icon>
-                    </button>
-                  </td>
-                  <td>
-                    <div class="vd-b">{{ productName(item) }}</div>
-                    <div v-if="productMetaLine(item)" class="vd-s">{{ productMetaLine(item) }}</div>
-                  </td>
-                  <td class="c-num num" data-etiqueta="Cantidad">{{ number(item.quantity) }}</td>
-                  <td class="c-plata c-precio num" data-etiqueta="Precio">{{ plata(item.unit_price) }}</td>
-                  <td class="c-plata c-total num vd-b">{{ plata(item.line_total) }}</td>
-                  <td class="c-ver">
-                    <router-link v-if="pidOf(item)" :to="{ name: 'productView', params: { id: pidOf(item) } }" class="vd-link">Ver<v-icon size="18">mdi-chevron-right</v-icon></router-link>
-                  </td>
-                </tr>
-                <tr v-if="!(sale.items || []).length">
-                  <td colspan="6" class="vd-vacio">Sin productos en esta venta</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr v-for="t in totales" :key="t.k" :class="{ 'is-total': t.fuerte }">
-                  <td colspan="4" class="vd-tot-k">{{ t.k }}</td>
-                  <td class="c-plata num">{{ t.v }}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <div class="vd-grilla">
-        <!-- 2. Cobro -->
-        <section class="vd-bloque">
-          <div class="vd-bloque__tit">
-            <span class="vd-h">2. Cobro</span>
-            <span class="vd-nota">{{ paymentsResolved.length === 1 ? '1 pago' : `${paymentsResolved.length} pagos` }}</span>
-          </div>
-          <div class="vd-caja">
-            <div class="vd-banda"><span>Cobrado</span><span class="num">{{ plata(sale.paid_total) }}</span></div>
-            <div class="vd-filas">
-              <div v-for="pm in paymentsResolved" :key="pm.id || `${pm.payment_method_id}_${pm.amount}`" class="vd-pago">
-                <div class="vd-pago__linea">
-                  <span class="vd-medio"><i :style="{ background: colorMedio(pm.method_resolved) }"></i>{{ pm.method_display }}</span>
-                  <span class="vd-pago__monto num">{{ plata(pm.amount) }}</span>
-                </div>
-                <div class="vd-s">{{ paymentHeadline(pm) }}<template v-for="part in paymentSubline(pm)" :key="part"> · {{ part }}</template></div>
-                <dl v-if="hechosPago(pm).length" class="vd-datos vd-datos--chico">
-                  <template v-for="f in hechosPago(pm)" :key="f.label">
-                    <dt>{{ f.label }}</dt><dd class="num">{{ f.value }}</dd>
-                  </template>
-                </dl>
-                <div v-if="pm.note_human" class="vd-s">{{ pm.note_human }}</div>
-              </div>
-              <div v-if="!paymentsResolved.length" class="vd-vacio">Sin pagos registrados</div>
+      <div class="vd-principal">
+        <!-- Un producto: la foto manda -->
+        <section v-if="items.length === 1" class="vd-caja vd-heroe">
+          <button type="button" class="vd-heroe__foto" :aria-label="`Imagen de ${productName(items[0])}`" @click="openImage(items[0])">
+            <img v-if="itemImage(items[0])" :src="itemImage(items[0])" alt="" />
+            <v-icon v-else size="56">mdi-image-outline</v-icon>
+          </button>
+          <div class="vd-heroe__info">
+            <div class="vd-heroe__cab">
+              <span v-if="rubroTexto(items[0])" class="vd-rubro">{{ rubroTexto(items[0]) }}</span>
+              <span class="vd-heroe__nombre">{{ productName(items[0]) }}</span>
+              <span class="vd-s num">{{ codigosTexto(items[0]) }}</span>
+            </div>
+            <dl class="vd-datos vd-datos--caja num">
+              <dt>Cantidad</dt><dd>{{ cantidadTexto(items[0].quantity) }}</dd>
+              <dt>Precio cobrado</dt><dd>{{ plata(items[0].unit_price) }}<span v-if="basePrecio" class="vd-suave"> · {{ basePrecio }}</span></dd>
+              <template v-if="precioLista(items[0]) > Number(items[0].unit_price || 0)">
+                <dt>Precio de lista</dt><dd class="vd-tachado">{{ plata(precioLista(items[0])) }}</dd>
+                <dt>Diferencia</dt><dd>{{ plata(precioLista(items[0]) - Number(items[0].unit_price || 0)) }} menos que lista</dd>
+              </template>
+              <template v-if="Number(items[0].discount_amount || 0) > 0">
+                <dt>Descuento</dt><dd>- {{ plata(items[0].discount_amount) }}</dd>
+              </template>
+            </dl>
+            <div class="vd-heroe__pie">
+              <span class="vd-s num">{{ stockQty(items[0]) !== null ? `Stock hoy: ${cantidadTexto(stockQty(items[0]))}` : '' }}</span>
+              <router-link v-if="pidOf(items[0])" :to="{ name: 'productView', params: { id: pidOf(items[0]) } }" class="vd-link">Ver producto<v-icon size="20">mdi-chevron-right</v-icon></router-link>
             </div>
           </div>
         </section>
 
-        <!-- 3. Datos de la venta y cliente -->
-        <section class="vd-bloque">
-          <div class="vd-bloque__tit"><span class="vd-h">3. Datos</span></div>
-          <div class="vd-caja">
-            <div class="vd-banda"><span>Venta</span><span class="num">{{ invoiceTypeResolved && invoiceTypeResolved !== '—' ? invoiceTypeResolved : '' }}</span></div>
-            <dl class="vd-datos">
-              <dt>Fecha</dt><dd class="num">{{ dt(sale.sold_at || sale.created_at) }}</dd>
-              <template v-if="branchLabelResolved"><dt>Sucursal</dt><dd>{{ branchLabelResolved }}</dd></template>
-              <template v-if="userLabel(sale) !== '—'"><dt>Cajero</dt><dd>{{ userLabel(sale) }}</dd></template>
-              <template v-if="sale.sale_number"><dt>Número</dt><dd class="num">#{{ sale.sale_number }}</dd></template>
-              <dt>Fiscal</dt><dd>{{ invoiceModeLabelResolved }}</dd>
-              <dt>Tipo de cliente</dt><dd>{{ customerTypeLabelResolved }}</dd>
-              <template v-if="sale.note"><dt>Nota</dt><dd>{{ sale.note }}</dd></template>
-            </dl>
-            <div class="vd-banda vd-banda--sec"><span>Cliente</span></div>
-            <dl class="vd-datos">
-              <dt>Nombre</dt><dd>{{ customerNameResolved }}</dd>
-              <template v-if="customerDocResolved"><dt>Documento</dt><dd class="num">{{ customerDocResolved }}</dd></template>
-              <template v-if="customerPhoneResolved"><dt>Teléfono</dt><dd class="num">{{ customerPhoneResolved }}</dd></template>
-              <template v-if="customerEmailResolved"><dt>Correo</dt><dd>{{ customerEmailResolved }}</dd></template>
-            </dl>
+        <!-- Varios productos: una tarjeta con foto por producto -->
+        <section v-else class="vd-productos">
+          <router-link
+            v-for="item in items"
+            :key="item.id || item.product_id"
+            :to="pidOf(item) ? { name: 'productView', params: { id: pidOf(item) } } : {}"
+            class="vd-caja vd-prod"
+          >
+            <span class="vd-prod__foto">
+              <img v-if="itemImage(item)" :src="itemImage(item)" alt="" />
+              <v-icon v-else size="40">mdi-image-outline</v-icon>
+            </span>
+            <span class="vd-prod__info">
+              <span v-if="rubroTexto(item)" class="vd-rubro">{{ rubroTexto(item) }}</span>
+              <span class="vd-prod__nombre">{{ productName(item) }}</span>
+              <span class="vd-s num">{{ codigosTexto(item) }}</span>
+              <span class="vd-prod__esp"></span>
+              <span class="vd-s num">
+                {{ number(item.quantity) }} × {{ plata(item.unit_price) }}
+                <template v-if="precioLista(item) > Number(item.unit_price || 0)"> · lista <s>{{ plata(precioLista(item)) }}</s></template>
+              </span>
+              <span class="vd-prod__total num">{{ plata(item.line_total) }}</span>
+            </span>
+          </router-link>
+          <div v-if="!items.length" class="vd-caja vd-vacio">Sin productos en esta venta</div>
+        </section>
+
+        <!-- Quién la vendió -->
+        <section class="vd-caja vd-vendio">
+          <div class="vd-banda"><span>La vendió</span></div>
+          <div class="vd-vendio__quien">
+            <span class="vd-avatar">{{ vendedor.iniciales }}</span>
+            <span class="vd-vendio__txt">
+              <span class="vd-vendio__nombre">{{ vendedor.nombre }}</span>
+              <span class="vd-s">{{ [vendedor.usuario ? `Usuario ${vendedor.usuario}` : '', branchLabelResolved].filter(Boolean).join(' · ') }}</span>
+            </span>
           </div>
+          <dl class="vd-datos num">
+            <template v-if="sale.cash_register_id"><dt>Caja</dt><dd>#{{ sale.cash_register_id }}<template v-if="cajaAbierta"> · abierta {{ cajaAbierta }}</template></dd></template>
+            <template v-if="delDia"><dt>Ese día</dt><dd>{{ delDia.ventas }} {{ delDia.ventas === 1 ? 'venta' : 'ventas' }} · {{ plata(delDia.total) }}</dd></template>
+            <template v-if="delDia && delDia.orden && delDia.ventas > 1"><dt>Esta venta</dt><dd>{{ delDia.orden }}.ª del día</dd></template>
+          </dl>
+          <router-link v-if="sale.user_id" :to="{ name: 'posSales', query: { cajero: String(sale.user_id) } }" class="vd-vendio__ver">
+            Ver sus ventas<v-icon size="20">mdi-chevron-right</v-icon>
+          </router-link>
         </section>
       </div>
 
-      <!-- 4. Devoluciones y cambios -->
-      <section class="vd-bloque">
-        <div class="vd-bloque__tit">
-          <span class="vd-h">4. Devoluciones y cambios</span>
-          <span class="vd-nota">{{ refunds.length + exchanges.length ? `${refunds.length + exchanges.length} movimientos` : 'ninguno' }}</span>
-        </div>
-        <div class="vd-caja">
+      <div class="vd-trio">
+        <!-- Cobro -->
+        <section class="vd-caja">
+          <div class="vd-banda"><span>Cobro</span><span class="num">{{ plata(sale.paid_total) }}</span></div>
+          <div class="vd-filas">
+            <div v-for="pm in paymentsResolved" :key="pm.id || `${pm.payment_method_id}_${pm.amount}`" class="vd-pago">
+              <div class="vd-pago__linea">
+                <span class="vd-pago__medio">
+                  <span class="vd-medio"><i :style="{ background: colorMedio(pm.method_resolved) }"></i>{{ pm.method_display }}</span>
+                  <span class="vd-s">{{ detallePago(pm) }}</span>
+                </span>
+                <span class="vd-pago__monto num">{{ plata(pm.amount) }}</span>
+              </div>
+              <div v-if="pm.reference || pm.note_human" class="vd-s">{{ [pm.reference ? `Ref: ${pm.reference}` : '', pm.note_human].filter(Boolean).join(' · ') }}</div>
+            </div>
+            <div v-if="Number(sale.change_total || 0) > 0" class="vd-s num vd-vuelto">Vuelto {{ plata(sale.change_total) }}</div>
+            <div v-if="!paymentsResolved.length" class="vd-vacio">Sin pagos registrados</div>
+          </div>
+        </section>
+
+        <!-- Comprobante y cliente -->
+        <section class="vd-caja">
+          <div class="vd-banda"><span>Comprobante</span></div>
+          <dl class="vd-datos">
+            <dt>Tipo</dt><dd>{{ comprobanteTexto }}</dd>
+            <template v-if="sale.sale_number"><dt>Número</dt><dd class="num">#{{ sale.sale_number }}</dd></template>
+            <dt>Cliente</dt><dd>{{ customerNameResolved }}</dd>
+            <template v-if="customerDocResolved"><dt>Documento</dt><dd class="num">{{ customerDocResolved }}</dd></template>
+            <template v-if="customerPhoneResolved"><dt>Teléfono</dt><dd class="num">{{ customerPhoneResolved }}</dd></template>
+            <template v-if="customerEmailResolved"><dt>Correo</dt><dd>{{ customerEmailResolved }}</dd></template>
+            <template v-if="sale.note"><dt>Nota</dt><dd>{{ sale.note }}</dd></template>
+          </dl>
+        </section>
+
+        <!-- Devoluciones y cambios -->
+        <section class="vd-caja">
+          <div class="vd-banda"><span>Devoluciones y cambios</span><span v-if="refundsTotal > 0" class="num">- {{ plata(refundsTotal) }}</span></div>
           <div class="vd-filas">
             <div v-for="r in refunds" :key="`r${r.id}`" class="vd-mov">
-              <span class="vd-mov__tipo">Devolución</span>
               <span class="vd-mov__txt">
-                <span class="vd-b num">{{ dt(r.created_at) }}</span>
+                <span class="vd-b">Devolución · <span class="num">{{ dt(r.created_at) }}</span></span>
                 <span class="vd-s">{{ refundMethodLabel(r) }}<template v-if="r.reference"> · Ref: {{ r.reference }}</template><template v-if="r.reason"> · {{ r.reason }}</template></span>
               </span>
               <span class="vd-mov__monto num">- {{ plata(r.amount) }}</span>
             </div>
             <div v-for="x in exchanges" :key="`x${x.id}`" class="vd-mov">
-              <span class="vd-mov__tipo">Cambio</span>
               <span class="vd-mov__txt">
-                <span class="vd-b num">{{ dt(x.created_at) }}</span>
-                <span class="vd-s num">Original {{ plata(x.original_total) }} · Nuevo {{ plata(x.new_total) }} · Devuelto {{ plata(x.returned_amount) }}<template v-if="x.note"> · {{ x.note }}</template></span>
+                <span class="vd-b">Cambio · <span class="num">{{ dt(x.created_at) }}</span></span>
+                <span class="vd-s num">Original {{ plata(x.original_total) }} · Nuevo {{ plata(x.new_total) }}<template v-if="x.note"> · {{ x.note }}</template></span>
               </span>
               <span class="vd-mov__monto num">Dif. {{ plata(x.diff) }}</span>
             </div>
-            <div v-if="!refunds.length && !exchanges.length" class="vd-vacio">Sin devoluciones ni cambios</div>
+            <div v-if="showNetSummary" class="vd-mov vd-mov--neto"><span class="vd-b">Neto de la venta</span><span class="vd-mov__monto num">{{ plata(netTotal) }}</span></div>
+            <div v-if="!refunds.length && !exchanges.length" class="vd-vacio">Ninguno</div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <!-- Anulación: en la vista completa de la venta, nunca en una ventana emergente -->
       <section v-if="isAdmin && sale.status !== 'CANCELLED'" class="vd-anular">
@@ -188,7 +193,7 @@
         </v-card-title>
         <v-divider />
         <v-card-text>
-          <v-img v-if="itemImage(imageItem)" :src="itemImage(imageItem)" cover style="max-height:500px;border-radius:12px;" />
+          <v-img v-if="itemImage(imageItem)" :src="itemImage(imageItem)" contain style="max-height:500px;border-radius:12px;" />
           <v-alert v-else type="info" variant="tonal">Sin imagen para este producto.</v-alert>
         </v-card-text>
       </v-card>
@@ -648,6 +653,7 @@ async function load() {
     if (!data?.ok) throw new Error(data?.message || "Error cargando venta");
     payload.value = data.data || null;
     await hydrateProductsForItems();
+    cargarContexto();
   } catch (e) {
     snack.value = { show: true, text: e?.response?.data?.message || e?.message || "Error" };
   } finally { loading.value = false; }
@@ -674,34 +680,102 @@ async function anularVenta() {
   }
 }
 
-// ===== Rediseño: encabezado, totales y cobro =====
+// ===== Rediseño: el producto y quien la vendió primero =====
+const items = computed(() => (Array.isArray(sale.value?.items) ? sale.value.items : []));
 const plata = (v) => "$ " + Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 2 });
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const dosDig = (n) => String(n).padStart(2, "0");
+const horaDe = (v) => { const d = new Date(v); return `${dosDig(d.getHours())}:${dosDig(d.getMinutes())}`; };
+const ddmm = (v) => { const d = new Date(v); return `${dosDig(d.getDate())}/${dosDig(d.getMonth() + 1)}`; };
+const mismoDia = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+
 const subtitulo = computed(() => {
   const s = sale.value;
   if (!s) return "";
-  return [dt(s.sold_at || s.created_at), branchLabelResolved.value, userLabel(s) !== "—" ? userLabel(s) : ""].filter(Boolean).join(" · ");
+  const v = s.sold_at || s.created_at;
+  const d = new Date(v);
+  return [`${DIAS[d.getDay()]} ${ddmm(v)}/${d.getFullYear()} · ${horaDe(v)} h`, branchLabelResolved.value].filter(Boolean).join(" · ");
 });
-const unidadesTexto = computed(() => {
-  const n = (sale.value?.items || []).reduce((a, it) => a + number(it.quantity), 0);
-  const r = Math.round(n * 100) / 100;
-  return `${r.toLocaleString("es-AR")} ${r === 1 ? "unidad" : "unidades"}`;
+function cantidadTexto(q) {
+  const n = Math.round(number(q) * 100) / 100;
+  return `${n.toLocaleString("es-AR")} ${n === 1 ? "unidad" : "unidades"}`;
+}
+function rubroTexto(item) {
+  const prod = p(item) || {};
+  return [prod?.category?.name, prod?.subcategory?.name].filter(Boolean).join(" › ");
+}
+function codigosTexto(item) {
+  const sku = productSku(item);
+  const code = String(p(item)?.code || "").trim();
+  return [sku ? `SKU ${sku}` : "", code && code !== sku ? `Código ${code}` : ""].filter(Boolean).join(" · ");
+}
+function precioLista(item) { return Number(p(item)?.price_list || 0); }
+const basePrecio = computed(() => {
+  const l = String(paymentsResolved.value[0]?.price_basis_label || "").toLowerCase();
+  if (!l) return "";
+  return l.startsWith("precio") ? l : `precio ${l}`;
 });
-const totales = computed(() => {
+const comprobanteTexto = computed(() => {
+  const t = invoiceTypeResolved.value && invoiceTypeResolved.value !== "—"
+    ? invoiceTypeResolved.value.charAt(0) + invoiceTypeResolved.value.slice(1).toLowerCase() : "";
+  const m = invoiceModeLabelResolved.value && invoiceModeLabelResolved.value !== "—" ? invoiceModeLabelResolved.value.toLowerCase() : "";
+  return [t, m].filter(Boolean).join(" · ") || "—";
+});
+
+const vendedor = computed(() => {
   const s = sale.value || {};
-  const t = [];
-  if (hasValue(s.subtotal) && Number(s.subtotal) !== Number(s.total)) t.push({ k: "Subtotal", v: plata(s.subtotal) });
-  if (Number(s.discount_total || 0) > 0) t.push({ k: "Descuento", v: "- " + plata(s.discount_total) });
-  if (Number(s.tax_total || 0) > 0) t.push({ k: "Impuestos", v: plata(s.tax_total) });
-  t.push({ k: "Total", v: plata(s.total), fuerte: true });
-  if (Number(s.paid_total || 0) !== Number(s.total || 0)) t.push({ k: "Pagado", v: plata(s.paid_total) });
-  if (Number(s.change_total || 0) > 0) t.push({ k: "Vuelto", v: plata(s.change_total) });
-  if (refundsTotal.value > 0) t.push({ k: "Devuelto", v: "- " + plata(refundsTotal.value) });
-  if (showNetSummary.value) t.push({ k: "Neto", v: plata(netTotal.value), fuerte: true });
-  return t;
+  const nombre = userLabel(s);
+  const iniciales = nombre.split(/\s+/).filter((w) => /[a-záéíóúñ]/i.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+  return { nombre, iniciales, usuario: s.user?.username || "" };
 });
+
+// Contexto de quien vendió: su caja y lo que vendió ese día
+const cajaAbierta = ref("");
+const delDia = ref(null);
+async function cargarContexto() {
+  const s = sale.value;
+  cajaAbierta.value = "";
+  delDia.value = null;
+  if (!s) return;
+  if (s.cash_register_id) {
+    try {
+      const { data } = await http.get(`/pos/cash-registers/${s.cash_register_id}/summary`);
+      const at = data?.data?.cash_register?.opened_at;
+      if (at) cajaAbierta.value = mismoDia(at, s.sold_at) ? `${horaDe(at)} h` : `el ${ddmm(at)}, ${horaDe(at)} h`;
+    } catch { /* sin permiso o sin caja: la fila muestra solo el número */ }
+  }
+  if (s.user_id && s.sold_at) {
+    try {
+      const d = new Date(s.sold_at);
+      const ini = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const fin = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate(), 23, 59, 59, 999);
+      const base = { status: "PAID", seller_id: s.user_id };
+      const [dia, hasta] = await Promise.all([
+        http.get("/pos/sales/stats", { params: { ...base, from: ini.toISOString(), to: fin.toISOString() } }),
+        http.get("/pos/sales/stats", { params: { ...base, from: ini.toISOString(), to: d.toISOString() } }),
+      ]);
+      const ventas = Number(dia.data?.data?.sales_count || 0);
+      if (ventas) {
+        delDia.value = {
+          ventas,
+          total: Number(dia.data?.data?.gross_total_sum || 0),
+          orden: s.status === "PAID" ? Number(hasta.data?.data?.sales_count || 0) : 0,
+        };
+      }
+    } catch { /* sin datos del día no se muestra la fila */ }
+  }
+}
+
+function detallePago(pm) {
+  const partes = [];
+  if (pm.installments > 1) partes.push(`${pm.installments} cuotas${pm.installment_amount ? ` de ${plata(pm.installment_amount)}` : ""}`);
+  else partes.push("1 pago");
+  if (pm.card_type_label) partes.push(pm.card_type_label);
+  if (pm.card_brand) partes.push(pm.card_brand);
+  return partes.join(" · ");
+}
 const COLOR_MEDIO = { MERCADOPAGO: "#0a466e", QR: "#0a466e", CASH: "#0f6fae", TRANSFER: "#3f8fc6", CARD: "#8cc0e3", CREDIT_SJT: "#5b7083" };
 function colorMedio(m) { return COLOR_MEDIO[String(m || "").toUpperCase()] || "#C3C9D6"; }
-function hechosPago(pm) { return paymentFacts(pm).filter((f) => !["Método", "Cuotas"].includes(f.label)); }
 
 onMounted(load);
 watch(id, () => load());
@@ -713,84 +787,97 @@ watch(id, () => load());
 .pos-container:has(.vd) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
 .vd {
   --vd-fondo: #d6e6f3; --vd-caja: #ffffff; --vd-borde: #d3dde7; --vd-linea: #e3eaf1;
-  --vd-texto: #0f172a; --vd-suave: #5a6678; --vd-banda: #0f6fae; --vd-banda-borde: #0d5f96;
-  --vd-acento: #0f6fae; --vd-pie: #f3f8fc;
-  padding: 22px 28px 40px; min-height: calc(100vh - 72px); box-sizing: border-box;
+  --vd-texto: #0f172a; --vd-suave: #5a6678; --vd-banda: #0f6fae; --vd-acento: #0f6fae;
+  --vd-rubro: #3f8fc6; --vd-pie: #f3f8fc; --vd-avatar: #0a466e; --vd-foto: #ffffff;
+  padding: 20px 28px 40px; min-height: calc(100vh - 72px); box-sizing: border-box;
   background: var(--vd-fondo); color: var(--vd-texto);
-  display: flex; flex-direction: column; gap: 20px;
+  display: flex; flex-direction: column; gap: 18px;
 }
 .v-theme--dark .vd {
   --vd-fondo: #0b0f14; --vd-caja: #151c25; --vd-borde: #253141; --vd-linea: #222c39;
-  --vd-texto: #e5edf5; --vd-suave: #9aa8b8; --vd-banda: #0f5f96; --vd-banda-borde: #0c4f7d;
-  --vd-acento: #5aaee0; --vd-pie: #1a2430;
+  --vd-texto: #e5edf5; --vd-suave: #9aa8b8; --vd-banda: #0f5f96; --vd-acento: #5aaee0;
+  --vd-rubro: #6fb3e0; --vd-pie: #1a2430; --vd-avatar: #0f6fae;
 }
-.vd > * { max-width: 1300px; width: 100%; margin-left: auto; margin-right: auto; }
+.vd > * { max-width: 1340px; width: 100%; margin-left: auto; margin-right: auto; }
 .vd .num { font-variant-numeric: tabular-nums; }
+.vd-s { font-size: 13px; color: var(--vd-suave); }
+.vd-suave { font-weight: 600; color: var(--vd-suave); }
+.vd-b { font-weight: 700; }
+.vd-tachado { color: var(--vd-suave) !important; text-decoration: line-through; }
+.vd-vacio { padding: 24px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--vd-suave); }
+.vd-link { display: inline-flex; align-items: center; font-size: 15px; font-weight: 800; color: var(--vd-acento); text-decoration: none; white-space: nowrap; }
+.vd-link:hover { text-decoration: underline; }
 
+/* encabezado */
 .vd-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .vd-cab__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .vd-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--vd-acento); text-decoration: none; margin-left: -4px; }
 .vd-volver:hover { text-decoration: underline; }
-.vd-cab__titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
-.vd-cab__sub { font-size: 14px; font-weight: 600; color: var(--vd-suave); }
+.vd-cab__titulo { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.vd-cab__sub { font-size: 15px; font-weight: 600; color: var(--vd-suave); }
+.vd-cab__der { display: flex; align-items: center; gap: 14px; }
 .vd-estado { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; background: var(--vd-caja); border: 1px solid var(--vd-borde); font-size: 15px; font-weight: 800; color: var(--vd-suave); }
 .vd-estado i { width: 10px; height: 10px; border-radius: 9999px; background: #C3C9D6; display: block; }
 .vd-estado.is-paid { color: #1f7a5f; } .vd-estado.is-paid i { background: #2E9E7B; }
 .vd-estado.is-cancelled { color: #b23b35; } .vd-estado.is-cancelled i { background: #C4453F; }
 .v-theme--dark .vd-estado.is-paid { color: #5fc9a6; }
 .v-theme--dark .vd-estado.is-cancelled { color: #f08a84; }
+.vd-total { display: flex; flex-direction: column; align-items: flex-end; }
+.vd-total__k { font-size: 13px; font-weight: 700; color: var(--vd-suave); }
+.vd-total__v { font-size: 32px; font-weight: 800; line-height: 1; }
 
-.vd-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.vd-bloque { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.vd-bloque__tit { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.vd-h { font-size: 22px; font-weight: 800; }
-.vd-nota { font-size: 13px; color: var(--vd-suave); }
-.vd-caja { border-radius: 12px; overflow: hidden; background: var(--vd-caja); border: 1px solid var(--vd-borde); flex: 1; }
+.vd-caja { border-radius: 12px; overflow: hidden; background: var(--vd-caja); border: 1px solid var(--vd-borde); box-sizing: border-box; }
 .vd-banda { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--vd-banda); color: #ffffff; font-size: 14px; font-weight: 700; }
 .vd-banda > span:first-child { font-size: 15px; font-weight: 800; }
-.vd-banda--sec { border-top: 1px solid var(--vd-banda-borde); }
-.vd-b { font-weight: 700; }
-.vd-s { font-size: 13px; color: var(--vd-suave); }
-.vd-link { display: inline-flex; align-items: center; font-size: 14px; font-weight: 800; color: var(--vd-acento); text-decoration: none; white-space: nowrap; }
-.vd-link:hover { text-decoration: underline; }
-.vd-vacio { padding: 28px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--vd-suave); }
+.vd-rubro { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--vd-rubro); }
 
-/* tabla cerrada */
-.vd-tabla-scroll { overflow-x: auto; }
-.vd-tabla { width: 100%; border-collapse: collapse; min-width: 640px; }
-.vd-tabla th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #ffffff; background: var(--vd-banda); text-align: left; padding: 11px 12px; border: 1px solid var(--vd-banda-borde); border-top: 0; }
-.vd-tabla td { padding: 9px 12px; border: 1px solid var(--vd-linea); vertical-align: middle; font-size: 14px; }
-.vd-tabla th:first-child, .vd-tabla td:first-child { border-left: 0; }
-.vd-tabla th:last-child, .vd-tabla td:last-child { border-right: 0; }
-.vd-tabla tfoot td { background: var(--vd-pie); font-weight: 700; }
-.vd-tabla tfoot tr.is-total td { font-size: 17px; font-weight: 800; }
-.vd-tabla .c-img { width: 64px; }
-.vd-tabla .c-num { width: 100px; text-align: right; }
-.vd-tabla .c-plata { width: 140px; text-align: right; white-space: nowrap; }
-.vd-tabla .c-ver { width: 72px; }
-.vd-tot-k { text-align: right; }
-.vd-img { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--vd-borde); background: var(--vd-pie); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; padding: 0; color: var(--vd-suave); }
-.vd-img img { width: 100%; height: 100%; object-fit: cover; }
+/* producto + vendedor */
+.vd-principal { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: stretch; }
+.vd-heroe { display: flex; min-height: 340px; }
+.vd-heroe__foto { width: 340px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; border: 0; border-right: 1px solid var(--vd-linea); background: var(--vd-foto); cursor: zoom-in; color: #94a3b8; }
+.vd-heroe__foto img { width: 100%; height: 300px; object-fit: contain; }
+.vd-heroe__info { flex: 1; min-width: 0; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+.vd-heroe__cab { display: flex; flex-direction: column; gap: 4px; }
+.vd-heroe__nombre { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+.vd-heroe__pie { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; padding: 14px 16px; }
+.vd-datos dt { font-size: 14px; font-weight: 600; color: var(--vd-suave); }
+.vd-datos dd { margin: 0; font-size: 15px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+.vd-datos--caja { border-radius: 10px; background: var(--vd-pie); border: 1px solid var(--vd-linea); }
 
-/* cobro y datos */
+.vd-productos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-content: start; }
+.vd-prod { display: flex; height: 250px; color: var(--vd-texto); text-decoration: none; }
+.vd-prod:hover { border-color: #8cc0e3; }
+.vd-prod__foto { width: 200px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; border-right: 1px solid var(--vd-linea); background: var(--vd-foto); color: #94a3b8; }
+.vd-prod__foto img { width: 100%; height: 220px; object-fit: contain; }
+.vd-prod__info { flex: 1; min-width: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.vd-prod__nombre { font-size: 17px; font-weight: 800; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.vd-prod__esp { flex: 1; }
+.vd-prod__total { font-size: 22px; font-weight: 800; text-align: right; }
+
+.vd-vendio { display: flex; flex-direction: column; }
+.vd-vendio__quien { display: flex; align-items: center; gap: 16px; padding: 20px 18px 10px; }
+.vd-avatar { width: 72px; height: 72px; flex-shrink: 0; border-radius: 9999px; background: var(--vd-avatar); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; }
+.vd-vendio__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vd-vendio__nombre { font-size: 24px; font-weight: 800; line-height: 1.15; }
+.vd-vendio .vd-datos { padding: 6px 18px 16px; }
+.vd-vendio__ver { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-top: 1px solid var(--vd-linea); font-size: 15px; font-weight: 800; color: var(--vd-acento); text-decoration: none; }
+.vd-vendio__ver:hover { background: var(--vd-pie); }
+
+/* cobro, comprobante, historial */
+.vd-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .vd-filas { display: flex; flex-direction: column; padding: 4px 16px 8px; }
 .vd-pago { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--vd-linea); }
 .vd-pago:last-child { border-bottom: 0; }
 .vd-pago__linea { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.vd-pago__monto { font-size: 20px; font-weight: 800; }
-.vd-medio { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
+.vd-pago__medio { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vd-pago__monto { font-size: 22px; font-weight: 800; white-space: nowrap; }
+.vd-medio { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; }
 .vd-medio i { width: 12px; height: 12px; border-radius: 3px; display: block; }
-.vd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; padding: 14px 16px; }
-.vd-datos--chico { padding: 6px 0 0; gap: 4px 14px; font-size: 13px; }
-.vd-datos dt { font-size: 14px; font-weight: 600; color: var(--vd-suave); }
-.vd-datos dd { margin: 0; font-size: 14px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
-.vd-datos--chico dt, .vd-datos--chico dd { font-size: 13px; }
-
-/* devoluciones y cambios */
-.vd-mov { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--vd-linea); }
+.vd-vuelto { padding: 8px 0; }
+.vd-mov { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--vd-linea); }
 .vd-mov:last-child { border-bottom: 0; }
-.vd-mov__tipo { width: 96px; flex-shrink: 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--vd-suave); }
-.vd-mov__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vd-mov__txt { display: flex; flex-direction: column; min-width: 0; }
 .vd-mov__monto { font-size: 16px; font-weight: 800; white-space: nowrap; }
 
 /* anular */
@@ -800,26 +887,25 @@ watch(id, () => load());
 .vd-anular__confirma { display: flex; align-items: center; gap: 14px; }
 .vd-anular__no { font-size: 14px; font-weight: 700; color: var(--vd-suave); }
 
+@media (max-width: 1200px) {
+  .vd-principal { grid-template-columns: minmax(0, 1fr); }
+  .vd-trio { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 900px) {
-  .vd { padding: 16px 16px 96px; }
-  .vd-grilla { grid-template-columns: minmax(0, 1fr); }
-  /* En el teléfono cada producto es un renglón: imagen, nombre y total arriba;
-     cantidad y precio debajo. Sin deslizar de costado. */
-  .vd-tabla { min-width: 0; }
-  .vd-tabla thead { display: none; }
-  .vd-tabla, .vd-tabla tbody, .vd-tabla tfoot { display: block; }
-  .vd-tabla tbody tr { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--vd-linea); }
-  .vd-tabla td { border: 0; padding: 0; width: auto !important; }
-  .vd-tabla td.c-img { grid-row: 1 / span 2; }
-  .vd-tabla td.c-total { grid-column: 3; grid-row: 1; }
-  .vd-tabla td.c-num, .vd-tabla td.c-precio { grid-row: 2; text-align: left; font-size: 13px; color: var(--vd-suave); }
-  .vd-tabla td.c-num { grid-column: 2; }
-  .vd-tabla td.c-precio { grid-column: 3; text-align: right; }
-  .vd-tabla td.c-num::before, .vd-tabla td.c-precio::before { content: attr(data-etiqueta) " "; }
-  .vd-tabla td.c-ver { display: none; }
-  .vd-tabla tfoot tr { display: flex; justify-content: space-between; padding: 10px 14px; background: var(--vd-pie); border-top: 1px solid var(--vd-linea); }
-  .vd-tabla tfoot td { background: transparent; }
-  .vd-tabla tfoot td:last-child { display: none; }
-  .vd-estado { height: 32px; font-size: 14px; }
+  .vd { padding: 14px 14px 96px; gap: 12px; }
+  .vd-cab__titulo { font-size: 24px; }
+  .vd-cab__der { width: 100%; justify-content: space-between; }
+  .vd-total__v { font-size: 26px; }
+  .vd-heroe { flex-direction: column; min-height: 0; }
+  .vd-heroe__foto { width: 100%; border-right: 0; border-bottom: 1px solid var(--vd-linea); padding: 12px; }
+  .vd-heroe__foto img { height: 220px; }
+  .vd-heroe__info { padding: 14px; gap: 10px; }
+  .vd-heroe__nombre { font-size: 21px; }
+  .vd-productos { grid-template-columns: minmax(0, 1fr); }
+  .vd-prod { height: auto; min-height: 150px; }
+  .vd-prod__foto { width: 120px; }
+  .vd-prod__foto img { height: 120px; }
+  .vd-avatar { width: 54px; height: 54px; font-size: 20px; }
+  .vd-vendio__nombre { font-size: 19px; }
 }
 </style>
