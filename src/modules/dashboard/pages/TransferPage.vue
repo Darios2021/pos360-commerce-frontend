@@ -96,7 +96,7 @@
     <template v-else-if="modo === 'recibir'">
       <div class="tp-dos">
         <section class="sp-caja">
-          <div class="se-banda"><span>¿Qué llegó?</span><small class="num">{{ recep.length }} productos · {{ fmt(enviadas) }} unidades</small></div>
+          <div class="se-banda"><span>¿Qué llegó?</span><small class="num">{{ recep.length }} {{ recep.length === 1 ? "producto" : "productos" }} · {{ fmt(enviadas) }} {{ enviadas === 1 ? "unidad" : "unidades" }}</small></div>
           <div class="sp-tabla-scroll">
             <table class="sp-tabla tp-tabla">
               <thead><tr><th>Producto</th><th class="c-stock">Enviado</th><th class="c-cant">Llegó</th><th class="c-dif">Diferencia</th></tr></thead>
@@ -144,7 +144,7 @@
       </section>
       <div class="tp-dos">
         <section class="sp-caja">
-          <div class="se-banda"><span>Productos</span><small class="num">{{ (tr.items || []).length }} productos · {{ fmt(enviadas) }} unidades</small></div>
+          <div class="se-banda"><span>Productos</span><small class="num">{{ (tr.items || []).length }} {{ (tr.items || []).length === 1 ? "producto" : "productos" }} · {{ fmt(enviadas) }} {{ enviadas === 1 ? "unidad" : "unidades" }}</small></div>
           <div class="sp-tabla-scroll">
             <table class="sp-tabla tp-tabla">
               <thead><tr><th>Producto</th><th class="c-stock">Enviado</th><th class="c-stock">Recibido</th><th class="c-dif">Diferencia</th></tr></thead>
