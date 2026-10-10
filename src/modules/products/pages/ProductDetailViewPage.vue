@@ -67,12 +67,12 @@
             <div class="pd-pr">
               <span class="pd-pr__lab">Precio contado</span>
               <span class="pd-pr__val num">$ {{ fmtPrice(productForUIFixed.price_discount) }}</span>
-              <span class="pd-s">efectivo, transferencia y Mercado Pago</span>
+              <span class="pd-s">contado y Mercado Pago</span>
             </div>
             <div class="pd-pr pd-pr--lista">
               <span class="pd-pr__lab">Precio lista</span>
               <span class="pd-pr__val num">$ {{ fmtPrice(productForUIFixed.price_list) }}</span>
-              <span class="pd-s">tarjeta y crédito<template v-if="recargoLista"> · {{ recargoLista }} % más</template></span>
+              <span class="pd-s">crédito<template v-if="recargoLista"> · {{ recargoLista }} % más</template></span>
             </div>
             <div class="pd-pr">
               <span class="pd-pr__lab">Precio revendedor</span>
