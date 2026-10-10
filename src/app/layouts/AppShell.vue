@@ -650,7 +650,10 @@ async function cargarCajaNav() {
         const hh = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
         desde = at.toDateString() === new Date().toDateString() ? hh : `${at.getDate()}/${at.getMonth() + 1} ${hh}`;
       }
-      cajaNav.value = { abierta: true, desde, sucursal: c.branch_name || c.branch?.name || "" };
+      const bid = Number(c.branch_id || 0);
+      const sucursal = c.branch_name || c.branch?.name
+        || (auth.branches || []).find((b) => Number(b.id) === bid)?.name || "";
+      cajaNav.value = { abierta: true, desde, sucursal };
     } else {
       cajaNav.value = { abierta: false, desde: "", sucursal: "" };
     }
@@ -658,8 +661,9 @@ async function cargarCajaNav() {
     cajaNav.value = null;
   }
 }
+// La sucursal de la caja abierta manda: es donde está vendiendo ahora
 const nbSucursal = computed(() =>
-  userBranchLabel.value || cajaNav.value?.sucursal || (auth.isSuperAdmin ? "Todas las sucursales" : "")
+  cajaNav.value?.sucursal || userBranchLabel.value || (auth.isSuperAdmin ? "Todas las sucursales" : "")
 );
 
 // Pantalla completa
@@ -1125,7 +1129,7 @@ function onLogout() {
   border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; color: #ffffff; cursor: pointer;
 }
 .nb-btn:hover, .nb-cuenta:hover { background: rgba(255, 255, 255, 0.08); }
-.nb-campana :deep(.v-btn) { width: 40px !important; height: 40px !important; border-radius: 10px !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; }
+.pos-appbar .nb-campana :deep(.v-btn.v-btn--icon) { width: 40px !important; height: 40px !important; border-radius: 10px !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; }
 .nb-cuenta {
   display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 10px 0 6px;
   border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; color: #ffffff; cursor: pointer;
