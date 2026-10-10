@@ -181,6 +181,7 @@
           <v-list-item
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.gestion"
+            :active="rail && seccionActiva === 'gestion'"
             @click="onSectionHeadClick('gestion')"
           >
             <template #prepend>
@@ -298,6 +299,7 @@
             v-if="showCrmSection"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.crm"
+            :active="rail && seccionActiva === 'crm'"
             @click="onSectionHeadClick('crm')"
           >
             <template #prepend>
@@ -355,6 +357,7 @@
             v-if="showSistemaSection"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.sistema"
+            :active="rail && seccionActiva === 'sistema'"
             @click="onSectionHeadClick('sistema')"
           >
             <template #prepend>
@@ -429,6 +432,7 @@
             v-if="isSuperAdmin && showShopMenu"
             class="nav-item nav-section-head"
             :aria-expanded="navOpen.tienda"
+            :active="rail && seccionActiva === 'tienda'"
             @click="onSectionHeadClick('tienda')"
           >
             <template #prepend>
@@ -705,6 +709,26 @@ function toggleSection(name) {
 
 // En rail: clic en header de grupo expande el drawer (no togglea hijos
 // porque no hay espacio para mostrarlos). En expandido: togglea normal.
+// Con el menú colapsado, el encabezado del grupo se marca cuando la página
+// actual es de ese grupo (también sus páginas internas: /products/12/edit).
+const SECCIONES = {
+  gestion: ["products", "suppliers", "costsMissing", "budgets", "serviceOrders", "categories", "productsLabels", "transfers", "adminCashRegisters", "reports"],
+  crm: ["adminCustomers", "emailPromoBlocks", "adminContenidos"],
+  sistema: ["users", "priceSettings", "adminPaymentMethods", "adminFiscal", "adminTelegram"],
+  tienda: ["shopBranding", "shopOrders", "adminBranches", "shopPaymentsSettings", "shopLinks", "shopQA", "adminGaleriaMultimedia"],
+};
+const seccionActiva = computed(() => {
+  const p = route.path;
+  for (const [seccion, nombres] of Object.entries(SECCIONES)) {
+    for (const n of nombres) {
+      if (!router.hasRoute(n)) continue;
+      const base = router.resolve({ name: n }).path.replace(/\/$/, "");
+      if (p === base || p.startsWith(`${base}/`)) return seccion;
+    }
+  }
+  return null;
+});
+
 function onSectionHeadClick(name) {
   if (rail.value) {
     rail.value = false;
