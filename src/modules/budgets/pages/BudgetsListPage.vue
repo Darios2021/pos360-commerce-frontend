@@ -1,210 +1,100 @@
 <!-- src/modules/budgets/pages/BudgetsListPage.vue
      Listado de presupuestos. Punto de entrada del presupuestador. -->
 <template>
-  <div class="pa-4">
-    <AppPageHeader icon="mdi-file-document-edit-outline" title="Presupuestos">
-      <v-btn color="primary" prepend-icon="mdi-plus" :loading="creating" @click="onCreate">
-        Nuevo presupuesto
-      </v-btn>
-    </AppPageHeader>
-
-    <!-- Resumen sobre el total, no sobre la página visible -->
-    <v-row class="mb-2" dense>
-      <v-col cols="12" sm="6" md="3">
-        <KpiCard
-          title="Presupuestos"
-          :value="String(stats.count)"
-          :loading="statsLoading"
-          icon="mdi-file-document-multiple-outline"
-          tone="primary"
-          :sub="`${stats.open} abierto${stats.open === 1 ? '' : 's'}`"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <KpiCard
-          title="Monto presupuestado"
-          :value="money(stats.amount)"
-          :loading="statsLoading"
-          icon="mdi-cash-multiple"
-          tone="indigo"
-          sub="Suma de todos los presupuestos"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <KpiCard
-          title="Vencidos"
-          :value="String(stats.expired)"
-          :loading="statsLoading"
-          icon="mdi-clock-alert-outline"
-          :tone="stats.expired > 0 ? 'warning' : 'success'"
-          sub="Pasados de fecha y sin cerrar"
-        />
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <KpiCard
-          title="Vendidos"
-          :value="String(stats.sold)"
-          :loading="statsLoading"
-          icon="mdi-check-decagram-outline"
-          tone="success"
-          :sub="money(stats.sold_amount)"
-        />
-      </v-col>
-    </v-row>
-
-    <div class="d-flex align-center flex-wrap ga-3 mb-4">
-      <div class="text-caption text-medium-emphasis">
-        {{ total }} presupuesto{{ total === 1 ? "" : "s" }} en la lista
-        <template v-if="items.length"> · {{ sumLabel }} {{ money(pageSum) }}</template>
+  <!-- Presupuestos con el lenguaje de Ventas y Productos (10/10): un solo
+       botón, buscador con los estados, franja de resumen (no tarjetas) y
+       tabla cerrada con enlace real por fila. -->
+  <div class="sp bl">
+    <div class="sp-cab">
+      <div class="sp-cab__txt">
+        <h1 class="sp-cab__titulo">Presupuestos</h1>
+        <span class="sp-cab__sub num">{{ fmtInt(total) }} {{ total === 1 ? "presupuesto" : "presupuestos" }}<template v-if="status || q || mine"> con estos filtros</template></span>
       </div>
-
-      <v-spacer />
-
-      <v-text-field
-        v-model="q"
-        density="compact"
-        variant="outlined"
-        hide-details
-        clearable
-        placeholder="Buscar por cliente, CUIT o número"
-        prepend-inner-icon="mdi-magnify"
-        style="max-width: 320px"
-        @update:model-value="debouncedFetch"
-      />
-
-      <v-select
-        v-model="status"
-        :items="statusItems"
-        label="Estado"
-        density="compact"
-        variant="outlined"
-        hide-details
-        style="max-width: 190px"
-        @update:model-value="onFilter"
-      />
-
-      <!-- A los vendedores el backend ya les muestra solo los suyos; el
-           interruptor es para que un admin pueda mirar los propios. -->
-      <v-switch
-        v-if="canSeeAll"
-        v-model="mine"
-        label="Solo míos"
-        color="primary"
-        density="compact"
-        hide-details
-        inset
-        @update:model-value="onFilter"
-      />
+      <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" class="sp-nuevo" :loading="creating" @click="onCreate">Nuevo presupuesto</v-btn>
     </div>
 
-    <v-card variant="outlined" rounded="lg">
-      <v-data-table-server
-        :headers="headers"
-        :items="items"
-        :items-length="total"
-        :loading="loading"
-        :page="page"
-        :items-per-page="limit"
-        :items-per-page-options="perPageOptions"
-        items-per-page-text="Filas por página:"
-        page-text="{0}-{1} de {2}"
-        loading-text="Cargando presupuestos..."
-        density="compact"
-        item-value="id"
-        hover
-        class="budgets-table"
-        @update:options="onOptions"
-        @click:row="onRowClick"
-      >
-        <template #item.number="{ item }">
-          <span class="font-weight-medium">{{ budgetNumber(item) }}</span>
-        </template>
+    <div class="sp-busca">
+      <div class="sp-busca__campo">
+        <v-icon size="22" class="sp-busca__ic">mdi-magnify</v-icon>
+        <input v-model="q" type="search" class="sp-busca__input" placeholder="Cliente, número o vendedor" @input="debouncedFetch" />
+      </div>
+      <label v-if="canSeeAll" class="sp-check"><input v-model="mine" type="checkbox" @change="onFilter" />Solo los míos</label>
+    </div>
 
-        <template #item.user_name="{ item }">
-          <span class="text-body-2">{{ sellerName(item) }}</span>
-        </template>
+    <div class="bl-estados" role="tablist">
+      <button v-for="e in estados" :key="e.value" type="button" role="tab" :aria-selected="status === e.value" :class="{ 'is-on': status === e.value }" @click="status = e.value; onFilter()">
+        <i v-if="e.value" :class="`bl-dot bl-dot--${e.value}`"></i>{{ e.title }}
+      </button>
+    </div>
 
-        <template #item.customer_name="{ item }">
-          <div class="text-body-2">{{ item.customer_name }}</div>
-          <div v-if="item.customer_phone || item.customer_cuit" class="text-caption text-medium-emphasis">
-            {{ [item.customer_phone, item.customer_cuit].filter(Boolean).join(" / ") }}
-          </div>
-        </template>
+    <!-- Franja de resumen sobre todos los presupuestos -->
+    <div class="bl-franja num">
+      <div><span class="bl-lab">Presupuestado</span><b>{{ money(stats.amount) }}</b><small>{{ fmtInt(stats.count) }} presupuestos</small></div>
+      <div><span class="bl-lab">Abiertos</span><b>{{ fmtInt(stats.open) }}</b></div>
+      <div><span class="bl-lab">Vencidos sin cerrar</span><b :class="{ 'bl-rojo': stats.expired > 0 }">{{ fmtInt(stats.expired) }}</b></div>
+      <div><span class="bl-lab">Vendidos</span><b>{{ fmtInt(stats.sold) }}</b><small>{{ money(stats.sold_amount) }}</small></div>
+    </div>
 
-        <template #item.created_at="{ item }">
-          {{ fmtDate(item.created_at) }}
-        </template>
+    <div class="sp-caja">
+      <v-progress-linear v-if="loading" indeterminate color="primary" height="3" />
+      <div class="sp-tabla-scroll">
+        <table class="sp-tabla bl-tabla">
+          <thead>
+            <tr>
+              <th class="c-nro">N°</th>
+              <th>Cliente</th>
+              <th class="c-vend">Vendedor</th>
+              <th class="c-fecha">Creado</th>
+              <th class="c-vence">Vence</th>
+              <th class="c-est">Estado</th>
+              <th class="c-total">Total</th>
+              <th class="c-pdf"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in items" :key="item.id" @click="abrir($event, item)" @auxclick="abrir($event, item)">
+              <td class="num"><router-link :to="ruta(item)" class="sp-nombre" @click.stop>{{ budgetNumber(item) }}</router-link></td>
+              <td>
+                <div class="sp-b clamp1">{{ item.customer_name || "Consumidor final" }}</div>
+                <div v-if="item.customer_phone" class="sp-s num">{{ item.customer_phone }}</div>
+              </td>
+              <td class="clamp1">{{ sellerName(item) }}</td>
+              <td class="num">{{ fmtDate(item.created_at) }}</td>
+              <td class="num">
+                <div :class="{ 'bl-rojo': isExpired(item) }">{{ fmtDate(item.valid_until) }}</div>
+                <div v-if="expiryLabel(item)" class="sp-s" :class="{ 'bl-rojo': isExpired(item) }">{{ expiryLabel(item) }}</div>
+              </td>
+              <td><span :class="`bl-est bl-est--${item.status}`">{{ statusLabel(item.status) }}</span></td>
+              <td class="c-total num sp-b">{{ money(item.total, item.currency) }}</td>
+              <td class="c-pdf">
+                <button type="button" class="bl-pdf" title="Descargar PDF" :disabled="pdfId === item.id" @click.stop="onPdf(item)">
+                  <v-progress-circular v-if="pdfId === item.id" indeterminate size="16" width="2" />
+                  <v-icon v-else size="20">mdi-file-pdf-box</v-icon>
+                </button>
+              </td>
+            </tr>
+            <tr v-if="!loading && !items.length">
+              <td colspan="8" class="sp-vacio">{{ q || status || mine ? "Ningún presupuesto coincide" : "Todavía no hay presupuestos" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="total > limit" class="bl-pag num">
+        <span>{{ desdeN }}–{{ hastaN }} de {{ fmtInt(total) }}</span>
+        <button type="button" :disabled="page <= 1" @click="irPagina(page - 1)"><v-icon size="20">mdi-chevron-left</v-icon></button>
+        <button type="button" :disabled="hastaN >= total" @click="irPagina(page + 1)"><v-icon size="20">mdi-chevron-right</v-icon></button>
+      </div>
+    </div>
 
-        <!-- Vencimiento: la fecha sola no dice nada de un vistazo, así que
-             debajo va cuánto falta o hace cuánto venció. -->
-        <template #item.valid_until="{ item }">
-          <div :class="isExpired(item) ? 'text-error' : ''">{{ fmtDate(item.valid_until) }}</div>
-          <div class="text-caption" :class="isExpired(item) ? 'text-error' : 'text-medium-emphasis'">
-            {{ expiryLabel(item) }}
-          </div>
-        </template>
-
-        <template #item.status="{ item }">
-          <v-chip size="small" :color="statusColor(item.status)" variant="tonal">
-            {{ statusLabel(item.status) }}
-          </v-chip>
-        </template>
-
-        <template #item.total="{ item }">
-          <span class="font-weight-medium">{{ money(item.total, item.currency) }}</span>
-        </template>
-
-        <template #item.actions="{ item }">
-          <div class="d-flex ga-1 justify-end row-actions">
-            <v-btn
-              size="small"
-              variant="text"
-              :to="{ name: 'budgetEdit', params: { id: item.id } }"
-              @click.stop
-            >
-              <v-icon>mdi-pencil-outline</v-icon>
-              <v-tooltip activator="parent" location="top">Ver / editar</v-tooltip>
-            </v-btn>
-            <v-btn
-              size="small"
-              variant="text"
-              :loading="pdfId === item.id"
-              @click.stop="onPdf(item)"
-            >
-              <v-icon>mdi-file-pdf-box</v-icon>
-              <v-tooltip activator="parent" location="top">Descargar PDF</v-tooltip>
-            </v-btn>
-          </div>
-        </template>
-
-        <template #no-data>
-          <div class="text-center pa-8 text-medium-emphasis">
-            <template v-if="q || status">
-              No hay presupuestos que coincidan con la búsqueda.
-              <div class="mt-2">
-                <v-btn size="small" variant="text" @click="clearFilters">Limpiar filtros</v-btn>
-              </div>
-            </template>
-            <template v-else>
-              Todavía no hay presupuestos. Creá el primero con el botón de arriba.
-            </template>
-          </div>
-        </template>
-      </v-data-table-server>
-    </v-card>
-
-    <v-snackbar v-model="snack.show" :color="snack.color" timeout="3500">
-      {{ snack.text }}
-    </v-snackbar>
+    <v-snackbar v-model="snack.show" :color="snack.color" :timeout="3000">{{ snack.text }}</v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import { useAuthStore } from "@/app/store/auth.store";
-import KpiCard from "@/modules/dashboard/components/KpiCard.vue";
+import "@/modules/products/styles/proveedores.css";
 import {
   listBudgets,
   createBudget,
@@ -374,6 +264,19 @@ function onOptions(opts) {
   fetch();
 }
 
+const estados = [{ title: "Todos", value: "" }, ...BUDGET_STATUS.map((x) => ({ title: x.label, value: x.value }))];
+const fmtInt = (v) => Number(v || 0).toLocaleString("es-AR");
+const desdeN = computed(() => (total.value ? (page.value - 1) * limit.value + 1 : 0));
+const hastaN = computed(() => Math.min(total.value, page.value * limit.value));
+function irPagina(p) { page.value = p; fetch(); }
+const ruta = (item) => ({ name: "budgetEdit", params: { id: item.id } });
+// Fila entera abre; ctrl/cmd o rueda abren en otra pestaña.
+function abrir(e, item) {
+  if (window.getSelection?.()?.toString()) return;
+  if (e.button === 1 || e.ctrlKey || e.metaKey) { window.open(router.resolve(ruta(item)).href, "_blank"); return; }
+  if (e.type === "click") openBudget(item);
+}
+
 function openBudget(item) {
   router.push({ name: "budgetEdit", params: { id: item.id } });
 }
@@ -414,8 +317,39 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.budgets-table :deep(tbody tr) {
-  cursor: pointer;
-}
+<style>
+.bl-estados { display: flex; gap: 6px; flex-wrap: wrap; }
+.bl-estados button { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font: 700 14px Inter, sans-serif; cursor: pointer; }
+.bl-estados button:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+.bl-estados button.is-on { background: #0f6fae; border-color: #0f6fae; color: #ffffff; }
+.bl-dot { width: 9px; height: 9px; border-radius: 9999px; }
+.bl-dot--generado, .bl-est--generado::before { background: #8cc0e3; }
+.bl-dot--en_proceso, .bl-est--en_proceso::before { background: #3f8fc6; }
+.bl-dot--entregado, .bl-est--entregado::before { background: #0f6fae; }
+.bl-dot--vendido, .bl-est--vendido::before { background: #2E9E7B; }
+.bl-dot--no_venta, .bl-est--no_venta::before { background: #C3C9D6; }
+.bl-franja { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 12px; overflow: hidden; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
+.bl-franja > div { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-left: 1px solid var(--sp-linea); }
+.bl-franja > div:first-child { border-left: 0; }
+.bl-franja b { font-size: 22px; font-weight: 900; }
+.bl-franja small { font-size: 12px; font-weight: 600; color: var(--sp-suave); }
+.bl-lab { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sp-suave); }
+.bl-rojo { color: #c2413a !important; }
+.bl-tabla .c-nro { width: 120px; }
+.bl-tabla .c-vend { width: 170px; }
+.bl-tabla .c-fecha { width: 110px; }
+.bl-tabla .c-vence { width: 150px; }
+.bl-tabla .c-est { width: 130px; }
+.bl-tabla .c-total { width: 150px; text-align: right; }
+.bl-tabla .c-pdf { width: 56px; text-align: center; }
+.bl-est { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.bl-est::before { content: ""; width: 9px; height: 9px; border-radius: 9999px; }
+.bl-pdf { width: 36px; height: 36px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.bl-pdf .v-icon { color: var(--sp-suave); }
+.bl-pdf:hover { background: #cfe5f5; }
+.bl-pdf:hover .v-icon { color: #0a466e; }
+.bl-pag { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--sp-linea); font-size: 14px; font-weight: 600; color: var(--sp-suave); }
+.bl-pag button { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--sp-borde); background: var(--sp-caja); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.bl-pag button:disabled { opacity: .4; cursor: default; }
+@media (max-width: 900px) { .bl-franja { grid-template-columns: 1fr 1fr; } }
 </style>
