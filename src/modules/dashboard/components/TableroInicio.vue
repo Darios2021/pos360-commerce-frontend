@@ -210,7 +210,7 @@
 
       <!-- 9. Valor del inventario : filas -->
       <section class="tb-bloque">
-        <div class="tb-bloque__tit"><span class="tb-h">{{ n('inventario') }}. Valor del inventario</span><span class="tb-nota">a precio de lista, hoy</span></div>
+        <div class="tb-bloque__tit"><span class="tb-h">{{ n('inventario') }}. Valor del inventario</span><span class="tb-nota">a precio de venta, hoy</span></div>
         <div class="tb-caja">
           <div class="tb-banda"><span>Inventario</span><span class="num">{{ plata(totalInventario) }} · {{ miles(unidadesInventario) }} unidades</span></div>
           <div class="tb-filas">
@@ -312,7 +312,11 @@ const ddmmyyyy = (s) => {
 
 const rangoTexto = computed(() => {
   const d = props.sales?.periodFrom, h = props.sales?.periodTo;
-  return d && h ? `${ddmmyyyy(d)} a ${ddmmyyyy(h)}` : "";
+  if (!d || !h) return "";
+  // El servidor fecha en UTC: de noche ya es "mañana" allá. Nunca mostrar más allá de hoy.
+  const hoy = new Date();
+  const hoyYmd = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+  return `${ddmmyyyy(d)} a ${ddmmyyyy(String(h) > hoyYmd ? hoyYmd : h)}`;
 });
 
 // ── Serie diaria del período ────────────────────────────────────────────────
@@ -367,7 +371,7 @@ const serie = computed(() => {
       etiqueta: g.etiqueta,
       // En las series densas, solo el pico lleva cifra arriba
       cifra: g.total && (!densa || g.total === max) ? corto(g.total) : "",
-      sub: densa ? "" : g.count ? `${g.count} v.` : "sin ventas",
+      sub: densa ? "" : `${g.count} v.`,
       alto: g.total ? Math.max(6, (g.total / max) * 190) : 4,
       color,
     };
@@ -488,13 +492,13 @@ const stockFilas = computed(() =>
 const productos = computed(() => (props.sales?.topProductsPeriod || []).filter((r) => num(r.units) > 0).slice(0, 8));
 const maxUnidades = computed(() => Math.max(0, ...productos.value.map((p) => num(p.units))));
 
-// ── Bloque 9: inventario por sucursal, a precio de lista ────────────────────
+// ── Bloque 9: inventario por sucursal, a precio de venta ────────────────────
 const inventario = computed(() => {
   const m = new Map();
   for (const r of props.stock?.inventoryValue || []) {
     const k = r.branch_name || r.warehouse_name || "Sin sucursal";
     const g = m.get(k) || { nombre: k, valor: 0, unidades: 0, productos: 0 };
-    g.valor += num(r.price_list_value); g.unidades += num(r.total_units); g.productos += num(r.products_count);
+    g.valor += num(r.price_value); g.unidades += num(r.total_units); g.productos += num(r.products_count);
     m.set(k, g);
   }
   return [...m.values()].filter((g) => g.valor > 0).sort((a, b) => b.valor - a.valor);
@@ -667,12 +671,13 @@ const avisos = computed(() => {
 .tb-fila--mini { gap: 6px; padding: 9px 0; }
 .tb-fila:last-child { border-bottom: 0; }
 .tb-fila__linea { display: flex; align-items: center; gap: 14px; }
-.tb-fila__cifra { width: 64px; flex-shrink: 0; font-size: 24px; font-weight: 800; }
+.tb-fila__cifra { width: 64px; flex-shrink: 0; font-size: 24px; font-weight: 800; white-space: nowrap; }
 .tb-fila__cifra--chica { width: 44px; font-size: 22px; }
 .tb-fila__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tb-fila__eti { font-size: 16px; font-weight: 700; }
 .tb-fila__eti--chica { flex: 1; min-width: 0; font-size: 15px; }
 .tb-fila__sub { font-size: 13px; color: var(--tb-suave); }
+.tb-leyenda .tb-fila__sub { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tb-fila__dato { font-size: 16px; font-weight: 800; white-space: nowrap; }
 .tb-fila__dato--chico { font-size: 15px; }
 .tb-pista { display: block; height: 8px; border-radius: 9999px; background: var(--tb-pista); }
@@ -685,9 +690,9 @@ const avisos = computed(() => {
 
 /* dona */
 .tb-dona-caja { display: flex; align-items: center; gap: 24px; padding: 20px 20px 24px; }
-.tb-dona { position: relative; width: 210px; height: 210px; flex-shrink: 0; border-radius: 9999px; }
+.tb-dona { position: relative; width: clamp(160px, 15vw, 210px); aspect-ratio: 1; flex-shrink: 0; border-radius: 9999px; }
 .tb-dona__centro { position: absolute; inset: 15%; border-radius: 9999px; background: var(--tb-caja); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.tb-dona__cifra { font-size: 26px; font-weight: 800; }
+.tb-dona__cifra { font-size: clamp(20px, 1.8vw, 26px); font-weight: 800; }
 .tb-dona__sub { font-size: 13px; color: var(--tb-suave); }
 .tb-leyenda { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .tb-leyenda__fila { display: flex; align-items: center; gap: 10px; }
