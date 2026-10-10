@@ -106,6 +106,8 @@
 </template>
 
 <script setup>
+// Estilo del cobro nuevo (todas las pantallas cuelgan de .ck-root).
+import "../cobro.css";
 import { computed } from "vue";
 import { usePosImages } from "../../../composables/usePosImages";
 

@@ -1,0 +1,161 @@
+/* src/modules/pos/components/checkout/cobro.css
+ *
+ * Cobro (F9) con el lenguaje de las demás ventanas de la barra (maqueta
+ * aprobada 10/10, ModalCobrar 1 a 3): banda azul, pasos, tarjetas grandes con
+ * borde azul al elegir, resumen a la derecha y un único botón grande con
+ * Enter. Sólo estilos: la lógica del cobro no cambia. Todo cuelga de
+ * .v-card.ck-root para ganarle a los estilos scoped de cada pantalla.
+ * Pensado para llevarlo a Zondito: los tokens son los mismos.
+ */
+
+.v-card.ck-root {
+  --cb-azul: #0f6fae;
+  --cb-azul-osc: #0a466e;
+  --cb-tinte: #eef7fd;
+  --cb-hover: #cfe5f5;
+  --cb-borde: #d3dde7;
+  --cb-linea: #e3eaf1;
+  --cb-texto: #0f172a;
+  --cb-suave: #5a6678;
+  --cb-verde: #2e9e7b;
+  --cb-verde-tinte: #e3f4ee;
+  --cb-rojo: #c2413a;
+  --cb-rojo-tinte: #fdeceb;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35) !important;
+  font-family: Inter, sans-serif;
+  color: var(--cb-texto);
+  background: #ffffff !important;
+}
+.v-overlay:has(.ck-root) .v-overlay__scrim { background: rgb(11, 42, 69) !important; opacity: 0.58 !important; }
+
+/* ── Encabezado: banda azul + pasos ─────────────────────────────────── */
+.v-card.ck-root .pdch { padding: 0 !important; background: #ffffff !important; border: 0 !important; }
+.v-card.ck-root .pdch__row--top {
+  display: flex; align-items: center; gap: 12px; margin: 0 !important;
+  padding: 14px 16px 14px 22px !important; background: var(--cb-azul) !important; color: #ffffff;
+}
+.v-card.ck-root .pdch__eyebrow { font-size: 0 !important; letter-spacing: 0 !important; display: flex; align-items: center; gap: 12px; }
+.v-card.ck-root .pdch__eyebrow::before { content: "Cobrar"; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; text-transform: none; }
+.v-card.ck-root .pdch__eyebrow::after {
+  content: "F9"; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; padding: 0 7px;
+  box-sizing: border-box; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); color: #ffffff; font: 900 13px ui-monospace, Menlo, Consolas, monospace;
+}
+.v-card.ck-root .pdch__close { margin-left: auto; color: #ffffff !important; }
+.v-card.ck-root .pdch__close .v-icon { color: #ffffff !important; }
+.v-card.ck-root .pdch__row--main { padding: 14px 22px !important; border-bottom: 1px solid var(--cb-linea); margin: 0 !important; }
+.v-card.ck-root .pdch__dot {
+  width: 30px !important; height: 30px !important; border-radius: 9999px !important; font-size: 14px !important; font-weight: 800 !important;
+  background: #e2e8f0 !important; color: var(--cb-suave) !important; border: 0 !important; box-shadow: none !important;
+}
+.v-card.ck-root .pdch__step--active .pdch__dot { background: var(--cb-azul) !important; color: #ffffff !important; box-shadow: 0 0 0 4px rgba(15, 111, 174, 0.18) !important; }
+.v-card.ck-root .pdch__step--done .pdch__dot { background: var(--cb-verde) !important; color: #ffffff !important; }
+.v-card.ck-root .pdch__label { font-size: 14px !important; font-weight: 600 !important; color: var(--cb-suave) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.v-card.ck-root .pdch__step--active .pdch__label { font-weight: 800 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .pdch__step--done .pdch__label { color: #1f7a5f !important; }
+.v-card.ck-root .pdch__line { background: var(--cb-borde) !important; height: 2px !important; }
+.v-card.ck-root .pdch__line--done { background: var(--cb-verde) !important; }
+
+/* ── Cuerpo ─────────────────────────────────────────────────────────── */
+.v-card.ck-root .ck-body-main { padding: 20px 22px !important; background: #ffffff !important; }
+.v-card.ck-root .ck-body-aside { background: #f8fbfd !important; border-left: 1px solid var(--cb-linea) !important; }
+.v-card.ck-root .ck-screen__title { font-size: 22px !important; font-weight: 800 !important; color: var(--cb-texto) !important; letter-spacing: -0.01em; text-transform: none !important; }
+
+/* Tarjeta elegible: medios, efectivo, cuotas, comprobante */
+.v-card.ck-root :is(.pms-tile, .ck-cash-tile, .ck-pay, .ck-inv-card) {
+  border-radius: 12px !important; border: 1px solid var(--cb-borde) !important; background: #ffffff !important;
+  color: var(--cb-texto) !important; box-shadow: none !important; transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.v-card.ck-root :is(.pms-tile, .ck-cash-tile, .ck-pay, .ck-inv-card):hover { background: var(--cb-hover) !important; border-color: #3f8fc6 !important; }
+.v-card.ck-root :is(.pms-tile--active, .ck-cash-tile.active, .ck-pay.active, .ck-pay--active, .ck-inv-card.active) {
+  border: 2px solid var(--cb-azul) !important; background: var(--cb-tinte) !important; color: var(--cb-texto) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 174, 0.12) !important;
+}
+.v-card.ck-root :is(.pms-tile--cursor, .ck-cash-tile.cursorActive, .ck-inv-card.cursorActive):not(.pms-tile--active):not(.active) { outline: 2px dashed #3f8fc6; outline-offset: 2px; }
+/* Menos teclas a la vista: los números siguen andando, sin cartel. */
+.v-card.ck-root :is(.pms-kbadge, .ck-inv-key) { display: none !important; }
+
+/* Medios de pago */
+.v-card.ck-root .pms-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
+.v-card.ck-root .pms-tile {
+  min-height: 112px !important; display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+  justify-content: flex-start !important; gap: 10px !important; padding: 16px !important; text-align: left;
+}
+.v-card.ck-root .pms-icon { width: 44px !important; height: 44px !important; border-radius: 10px !important; background: #f1f5f9 !important; }
+.v-card.ck-root .pms-icon .v-icon { font-size: 26px !important; color: var(--cb-suave) !important; }
+.v-card.ck-root .pms-tile--active .pms-icon { background: #ffffff !important; }
+.v-card.ck-root .pms-tile--active .pms-icon .v-icon { color: var(--cb-azul) !important; }
+.v-card.ck-root .pms-name { font-size: 19px !important; font-weight: 800 !important; color: var(--cb-texto) !important; white-space: normal !important; }
+
+/* Efectivo */
+.v-card.ck-root .ck-cash__quick { gap: 12px !important; }
+.v-card.ck-root .ck-cash-tile { min-height: 104px; padding: 14px 16px !important; }
+.v-card.ck-root .ck-cash-tile__label { font-size: 14px !important; font-weight: 700 !important; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-cash-tile__value { font-size: 24px !important; font-weight: 900 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .ck-cash-tile__icon { background: #f1f5f9 !important; color: var(--cb-suave) !important; border-radius: 10px !important; }
+.v-card.ck-root .ck-manual-input-wrap, .v-card.ck-root .ck-manual-input { border-radius: 12px !important; }
+.v-card.ck-root .ck-manual-input input { font-size: 30px !important; font-weight: 900 !important; }
+.v-card.ck-root .ck-status--ok { background: var(--cb-verde-tinte) !important; color: #1f7a5f !important; border-color: var(--cb-verde) !important; }
+.v-card.ck-root .ck-status--error { background: var(--cb-rojo-tinte) !important; color: #a3322c !important; border-color: var(--cb-rojo) !important; }
+
+/* Tarjeta y cuotas */
+.v-card.ck-root .ck-section__label { font-size: 12px !important; font-weight: 800 !important; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-pay { min-height: 76px; padding: 14px 16px !important; }
+.v-card.ck-root .ck-pay__title { font-size: 17px !important; font-weight: 800 !important; }
+
+/* Comprobante */
+.v-card.ck-root .ck-invoice-grid { gap: 12px !important; }
+.v-card.ck-root .ck-inv-card { min-height: 100px; padding: 16px !important; }
+.v-card.ck-root .ck-inv-letter { width: 40px !important; height: 40px !important; border-radius: 10px !important; background: #e2e8f0 !important; color: #334155 !important; font-size: 19px !important; font-weight: 900 !important; }
+.v-card.ck-root .ck-inv-card.active .ck-inv-letter { background: var(--cb-azul) !important; color: #ffffff !important; }
+.v-card.ck-root .ck-inv-title { font-size: 17px !important; font-weight: 800 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .ck-inv-desc { font-size: 13px !important; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-inv-check { display: none !important; }
+
+/* Confirmar */
+.v-card.ck-root .ck-confirm .ck-total-card { border-radius: 12px !important; background: var(--cb-tinte) !important; border: 2px solid var(--cb-azul) !important; }
+.v-card.ck-root .ck-confirm .ck-total-card__value { font-size: 40px !important; font-weight: 900 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .ck-summary-card { border-radius: 12px !important; border: 1px solid var(--cb-borde) !important; background: #ffffff !important; }
+.v-card.ck-root .ck-summary-row { font-size: 15px !important; }
+.v-card.ck-root .ck-confirm-cta { display: none !important; }
+
+/* ── Resumen (derecha) ──────────────────────────────────────────────── */
+.v-card.ck-root .ck-summary__title { font-size: 12px !important; font-weight: 800 !important; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-item { border-radius: 12px !important; border: 1px solid var(--cb-borde) !important; background: #ffffff !important; box-shadow: none !important; }
+.v-card.ck-root .ck-item__name { font-weight: 800 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .ck-item__price { font-weight: 900 !important; color: var(--cb-texto) !important; }
+.v-card.ck-root .ck-summary__totals .ck-total-card { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.v-card.ck-root .ck-summary__totals .ck-total-card__label { font-size: 15px !important; font-weight: 800 !important; color: var(--cb-texto) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.v-card.ck-root .ck-summary__totals .ck-total-card__label-icon { display: none !important; }
+.v-card.ck-root .ck-summary__totals .ck-total-card__value { font-size: 32px !important; font-weight: 900 !important; color: var(--cb-texto) !important; letter-spacing: -0.02em; }
+.v-card.ck-root .ck-status-banner { border-radius: 12px !important; box-shadow: none !important; }
+.v-card.ck-root .ck-status-banner--missing { background: var(--cb-rojo-tinte) !important; border: 1px solid #f3c4c0 !important; color: #a3322c !important; }
+.v-card.ck-root :is(.ck-status-banner--change, .ck-status-banner--exact) { background: var(--cb-verde-tinte) !important; border: 2px solid var(--cb-verde) !important; color: #1f7a5f !important; }
+.v-card.ck-root .ck-status-banner__amount { font-size: 28px !important; font-weight: 900 !important; }
+
+/* ── Pie: Atrás (texto) y un botón grande con Enter ─────────────────── */
+.v-card.ck-root .ck-ftr { padding: 16px 22px !important; border-top: 1px solid var(--cb-linea) !important; background: #f8fbfd !important; }
+.v-card.ck-root .ck-ftr-actions { width: 100%; display: flex !important; align-items: center; justify-content: space-between; gap: 16px; }
+.v-card.ck-root .ck-act { text-transform: none !important; letter-spacing: 0 !important; }
+.v-card.ck-root .ck-act-key { display: none !important; }
+.v-card.ck-root .ck-act-text { display: flex !important; flex-direction: row-reverse !important; align-items: center; gap: 10px; }
+.v-card.ck-root .ck-act-main {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; padding: 0 7px; box-sizing: border-box;
+  border-radius: 6px; font: 900 12px ui-monospace, Menlo, Consolas, monospace !important; text-transform: none;
+}
+.v-card.ck-root .ck-act--back { height: 48px !important; min-width: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-act--back .ck-act-sub { font-size: 15px !important; font-weight: 700 !important; color: var(--cb-suave) !important; }
+.v-card.ck-root .ck-act--back .ck-act-main { border: 1px solid rgba(100, 116, 139, 0.6); background: linear-gradient(#f8fafc, #cbd5e1); box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45); color: #1e293b; font-size: 0 !important; }
+.v-card.ck-root .ck-act--back .ck-act-main::after { content: "⌫"; font-size: 13px; }
+.v-card.ck-root .ck-act--enter {
+  height: 60px !important; min-width: 300px !important; padding: 0 26px !important; border-radius: 12px !important;
+  background: var(--cb-azul) !important; color: #ffffff !important; box-shadow: 0 6px 16px rgba(15, 111, 174, 0.28) !important;
+}
+.v-card.ck-root .ck-act--enter .ck-act-sub { font-size: 18px !important; font-weight: 800 !important; color: #ffffff !important; opacity: 1 !important; }
+.v-card.ck-root .ck-act--enter .ck-act-main { border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.18); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); color: #ffffff; font-size: 0 !important; }
+.v-card.ck-root .ck-act--enter .ck-act-main::after { content: "Enter"; font-size: 12px; }
+/* En Confirmar el botón cobra: verde. */
+.v-card.ck-root:has(.ck-confirm) .ck-act--enter { background: var(--cb-verde) !important; box-shadow: 0 6px 16px rgba(46, 158, 123, 0.3) !important; }
+.v-card.ck-root .ck-act--enter.v-btn--disabled { opacity: 0.45 !important; }
