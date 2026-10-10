@@ -318,6 +318,31 @@
             </div>
           </div>
 
+          <!-- Anulación: en la vista completa de la venta, nunca en una ventana emergente -->
+          <section v-if="isAdmin && sale.status !== 'CANCELLED'" class="sd-anular">
+            <div class="sd-anular__txt">
+              <span class="sd-anular__tit">Anular la venta</span>
+              <span class="sd-anular__sub">Se restaura el stock, la venta queda como anulada y no cuenta en el arqueo.</span>
+            </div>
+            <v-btn
+              v-if="!confirmandoAnular"
+              variant="tonal"
+              color="error"
+              prepend-icon="mdi-cancel"
+              @click="confirmandoAnular = true"
+            >Anular venta</v-btn>
+            <div v-else class="sd-anular__confirma">
+              <v-btn
+                variant="flat"
+                color="error"
+                prepend-icon="mdi-cancel"
+                :loading="anulando"
+                @click="anularVenta"
+              >Confirmar anulación de #{{ sale.id }}</v-btn>
+              <a href="#" class="sd-anular__no" @click.prevent="confirmandoAnular = false">No anular</a>
+            </div>
+          </section>
+
         </v-tabs-window-item>
 
         <!-- ── PRODUCTOS ── -->
@@ -551,6 +576,7 @@ import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
+import { useAuthStore } from "../../../app/store/auth.store";
 
 const route = useRoute();
 const router = useRouter();
@@ -998,6 +1024,27 @@ async function load() {
   } finally { loading.value = false; }
 }
 
+// ===== Anular (antes vivía en un diálogo del listado) =====
+const auth = useAuthStore();
+const isAdmin = computed(() => auth.isAdmin === true);
+const confirmandoAnular = ref(false);
+const anulando = ref(false);
+async function anularVenta() {
+  if (!sale.value?.id) return;
+  anulando.value = true;
+  try {
+    const { data } = await http.delete(`/pos/sales/${sale.value.id}`);
+    if (!data?.ok) throw new Error(data?.message || "No se pudo anular");
+    snack.value = { show: true, text: data?.message || "Venta anulada. Stock restaurado." };
+    confirmandoAnular.value = false;
+    await load();
+  } catch (e) {
+    snack.value = { show: true, text: e?.response?.data?.message || e?.message || "No se pudo anular" };
+  } finally {
+    anulando.value = false;
+  }
+}
+
 onMounted(load);
 watch(id, () => load());
 </script>
@@ -1267,4 +1314,22 @@ watch(id, () => load());
   .sd-totals { overflow-x: auto; flex-wrap: nowrap; }
   .sd-tot { min-width: 100px; }
 }
+
+.sd-anular {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(196, 69, 63, 0.35);
+  background: rgba(196, 69, 63, 0.05);
+}
+.sd-anular__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sd-anular__tit { font-size: 15px; font-weight: 800; }
+.sd-anular__sub { font-size: 13px; color: rgba(var(--v-theme-on-surface), 0.65); }
+.sd-anular__confirma { display: flex; align-items: center; gap: 14px; }
+.sd-anular__no { font-size: 14px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.7); }
 </style>

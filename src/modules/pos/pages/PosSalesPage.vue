@@ -1,549 +1,208 @@
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
 <template>
-  <div class="lp">
+  <div class="vt">
+    <!-- ── Encabezado ───────────────────────────────────── -->
+    <div class="vt-cab">
+      <div class="vt-cab__txt">
+        <h1 class="vt-cab__titulo">Ventas</h1>
+        <span class="vt-cab__sub num">{{ subtitulo }}</span>
+      </div>
+      <div class="vt-cab__acciones">
+        <div class="vt-periodos" role="group" aria-label="Período">
+          <button
+            v-for="p in PERIODOS"
+            :key="p.value"
+            type="button"
+            class="vt-periodo"
+            :class="{ 'is-activo': periodoActivo === p.value }"
+            @click="elegirPeriodo(p.value)"
+          >{{ p.nombre }}</button>
+        </div>
+        <button type="button" class="vt-filtros-btn" @click="panelAbierto = true">
+          <v-icon size="20">mdi-tune-variant</v-icon>
+          Filtros
+          <span v-if="filtrosActivos" class="vt-filtros-btn__n num">{{ filtrosActivos }}</span>
+        </button>
+      </div>
+    </div>
 
-    <!-- ── HEADER ───────────────────────────────────────── -->
-    <AppPageHeader icon="mdi-receipt-text-outline" title="Ventas">
-      <template #subtitle>
-        <span>{{ Number(meta.total || 0).toLocaleString('es') }}</span>
-        <span class="mx-1">·</span>
-        <span>Página {{ meta.page }} de {{ meta.pages || 1 }}</span>
-      </template>
-    </AppPageHeader>
-
-    <!-- ── STATS KPI ────────────────────────────────────── -->
-    <section class="lp-stats">
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--primary">
-          <v-icon size="16" color="white">mdi-receipt-text-outline</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Ventas</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? stats.sales_count : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--green">
-          <v-icon size="16" color="white">mdi-trending-up</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Bruto vendido</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.gross_total_sum) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">Antes de devoluciones</div>
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--orange">
-          <v-icon size="16" color="white">mdi-cash-refund</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Devoluciones</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.refunds_sum) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">Total reintegrado</div>
-        </div>
-      </div>
-
-      <div class="lp-kpi">
-        <div class="lp-kpi__badge lp-kpi__badge--indigo">
-          <v-icon size="16" color="white">mdi-cash-check</v-icon>
-        </div>
-        <div class="lp-kpi__body">
-          <div class="lp-kpi__lbl">Neto vendido</div>
-          <div v-if="!statsLoading" class="lp-kpi__val">{{ stats.ready ? money(stats.total_sum) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-          <div class="lp-kpi__sub">Bruto − devoluciones</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── PAYMENT METHODS ──────────────────────────────── -->
-    <section class="lp-methods">
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--cash"><v-icon size="14" color="white">mdi-cash</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Efectivo</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.cash) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--transfer"><v-icon size="14" color="white">mdi-bank-transfer</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Transferencia</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.transfer) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--card"><v-icon size="14" color="white">mdi-credit-card-outline</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Tarjeta</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.card) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--mp"><v-icon size="14" color="white">mdi-qrcode</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">Mercado Pago</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.mercadopago) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-      <div class="lp-mc">
-        <div class="lp-mc__badge lp-mc__badge--sjt"><v-icon size="14" color="white">mdi-wallet-outline</v-icon></div>
-        <div class="lp-mc__body">
-          <div class="lp-mc__lbl">SJ Crédito</div>
-          <div v-if="!statsLoading" class="lp-mc__val">{{ stats.ready ? money(stats.net_by_method.credit_sjt) : '—' }}</div>
-          <div v-else class="lp-kpi__skel" />
-        </div>
-      </div>
-    </section>
-
-    <!-- ── FILTER BAR ───────────────────────────────────── -->
-    <section class="lp-filters">
-      <!-- Fila primaria: search + estado + presets + toggle -->
-      <div class="lp-filters__primary">
-        <v-text-field
+    <!-- ── Buscador y filtros activos ───────────────────── -->
+    <div class="vt-busca">
+      <div class="vt-busca__campo">
+        <v-icon size="22" class="vt-busca__ic">mdi-magnify</v-icon>
+        <input
           v-model="q"
-          placeholder="Buscar por cliente, número, ID…"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="lp-filters__search"
+          type="search"
+          class="vt-busca__input"
+          placeholder="Número de venta, cliente, documento o producto"
+          @input="applyFilters"
           @keyup.enter="applyFiltersImmediate"
-          @click:clear="applyFiltersImmediate"
         />
-        <v-select
-          v-model="status"
-          :items="statusItems"
-          label="Estado"
-          variant="outlined"
-          density="compact"
-          hide-details
-          class="lp-filters__primary-field"
-          @update:model-value="applyFiltersImmediate"
-        />
-        <div class="lp-filters__presets">
-          <v-btn
-            size="small"
-            rounded="lg"
-            :variant="isToday ? 'flat' : 'tonal'"
-            :color="isToday ? 'primary' : undefined"
-            @click="setToday"
-          >
-            Hoy
-          </v-btn>
-          <v-btn size="small" rounded="lg" variant="tonal" @click="setThisWeek">Semana</v-btn>
-          <v-btn size="small" rounded="lg" variant="tonal" @click="setThisMonth">Mes</v-btn>
-        </div>
-        <button
-          type="button"
-          class="lp-filters__more"
-          :class="{ 'lp-filters__more--open': advancedOpen }"
-          @click="toggleAdvanced"
-        >
-          <v-icon size="15">mdi-tune-variant</v-icon>
-          <span>Más filtros</span>
-          <span v-if="activeAdvancedCount > 0" class="lp-filters__more-count">{{ activeAdvancedCount }}</span>
-          <v-icon size="14" class="lp-filters__more-chev">mdi-chevron-down</v-icon>
+      </div>
+      <span v-for="chip in chips" :key="chip.key" class="vt-chip">
+        {{ chip.label }}
+        <button type="button" class="vt-chip__x" :aria-label="`Quitar ${chip.label}`" @click="quitarChip(chip.key)">
+          <v-icon size="18">mdi-close</v-icon>
         </button>
+      </span>
+    </div>
+
+    <!-- ── Resumen en una franja ─────────────────────────── -->
+    <div class="vt-resumen">
+      <div class="vt-resumen__cifras">
+        <span class="num">Facturado <b>{{ plata(stats.gross_total_sum) }}</b></span>
+        <span class="num">Devoluciones <b>{{ plata(stats.refunds_sum) }}</b></span>
+        <span class="num">Neto <b>{{ plata(stats.total_sum) }}</b></span>
+        <v-progress-circular v-if="statsLoading" indeterminate size="18" width="2" color="primary" />
+      </div>
+      <template v-if="medios.length">
+        <span class="vt-partes">
+          <span v-for="m in medios" :key="m.key" :style="{ width: m.ancho + '%', background: m.color }"></span>
+        </span>
+        <div class="vt-leyenda">
+          <span v-for="m in medios" :key="m.key" class="num">
+            <i :style="{ background: m.color }"></i>{{ m.etiqueta }} <em>{{ plata(m.total) }} · {{ m.pct }} %</em>
+          </span>
+        </div>
+      </template>
+    </div>
+
+    <!-- ── Tabla (escritorio) ────────────────────────────── -->
+    <div class="vt-tabla-caja">
+      <v-progress-linear v-if="loading" indeterminate color="primary" height="3" class="vt-carga" />
+      <div class="vt-tabla-scroll">
+        <table class="vt-tabla">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th class="c-fecha">Fecha</th>
+              <th class="c-cajero">Cajero</th>
+              <th>Productos</th>
+              <th class="c-cobro">Cobro</th>
+              <th class="c-total">Total</th>
+              <th class="c-estado">Estado</th>
+              <th class="c-ver"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in sales" :key="s.id" class="vt-fila" @click="abrirFila($event, s.id)" @auxclick="abrirFila($event, s.id)">
+              <td class="c-n num"><router-link :to="rutaVenta(s.id)" class="vt-link" @click.stop>#{{ s.id }}</router-link></td>
+              <td class="num"><div class="vt-b">{{ dia(s.sold_at) }}</div><div class="vt-s">{{ hora(s.sold_at) }} h</div></td>
+              <td><div class="vt-b clamp1">{{ nombreCajero(s) }}</div><div class="vt-s clamp1">{{ s.branch?.name || `Sucursal #${s.branch_id}` }}</div></td>
+              <td class="c-prod">
+                <div class="vt-p clamp1">{{ primaryProductName(s) }}<span v-if="productExtraCount(s)" class="vt-mas"> y {{ productExtraCount(s) }} más</span></div>
+                <div class="vt-s clamp1">{{ s.customer_name || 'Consumidor final' }} · {{ unidades(s) }}</div>
+              </td>
+              <td>
+                <span class="vt-medio"><i :style="{ background: colorMedio(primaryPayment(s)?.method) }"></i>{{ methodLabel(primaryPayment(s)?.method) }}</span>
+                <div class="vt-s num">{{ detalleCobro(s) }}</div>
+              </td>
+              <td class="c-total num">{{ plata(s.total) }}</td>
+              <td><span class="vt-estado" :class="`is-${String(s.status || '').toLowerCase()}`"><i></i>{{ statusLabel(s.status) }}</span></td>
+              <td class="c-ver"><router-link :to="rutaVenta(s.id)" class="vt-ver" @click.stop>Ver<v-icon size="18">mdi-chevron-right</v-icon></router-link></td>
+            </tr>
+            <tr v-if="!loading && !sales.length">
+              <td colspan="8" class="vt-vacio">No hay ventas con estos filtros</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <div v-if="from || to" class="lp-date-range">
-        <v-icon size="13">mdi-calendar-range</v-icon>
-        {{ normalizeDate(from) || '…' }} → {{ normalizeDate(to) || '…' }}
-        <button type="button" class="lp-date-range__clear" @click="clearDates">
-          <v-icon size="13">mdi-close</v-icon>
-          Limpiar fechas
-        </button>
+      <!-- Teléfono: la misma venta en tarjeta, también enlace -->
+      <div class="vt-tarjetas">
+        <router-link v-for="s in sales" :key="s.id" :to="rutaVenta(s.id)" class="vt-tarjeta">
+          <div class="vt-tarjeta__fila">
+            <span class="vt-link num">#{{ s.id }}</span>
+            <span class="vt-s num">{{ dia(s.sold_at) }} · {{ hora(s.sold_at) }} h</span>
+            <span class="vt-tarjeta__total num">{{ plata(s.total) }}</span>
+          </div>
+          <div class="vt-p clamp1">{{ primaryProductName(s) }}<span v-if="productExtraCount(s)" class="vt-mas"> y {{ productExtraCount(s) }} más</span></div>
+          <div class="vt-tarjeta__fila">
+            <span class="vt-medio"><i :style="{ background: colorMedio(primaryPayment(s)?.method) }"></i>{{ methodLabel(primaryPayment(s)?.method) }}</span>
+            <span class="vt-s clamp1">{{ nombreCajero(s) }}</span>
+            <span class="vt-estado" :class="`is-${String(s.status || '').toLowerCase()}`"><i></i>{{ statusLabel(s.status) }}</span>
+          </div>
+        </router-link>
+        <div v-if="!loading && !sales.length" class="vt-vacio">No hay ventas con estos filtros</div>
       </div>
 
-      <!-- Filtros avanzados colapsables -->
-      <v-expand-transition>
-        <div v-show="advancedOpen" class="lp-filters__advanced">
-          <div class="lp-filters__grid">
-            <div class="lp-filters__cell">
-              <v-autocomplete
-                v-model="sellerId"
-                :items="sellerItems"
-                :loading="sellerLoading"
-                label="Cajero / Vendedor"
-                placeholder="Buscar vendedor"
-                prepend-inner-icon="mdi-account"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                item-title="title"
-                item-value="value"
-                :no-filter="true"
-                @update:search="onSellerSearch"
-                @update:model-value="applyFiltersImmediate"
-                @click:clear="sellerId = null; applyFiltersImmediate()"
-              />
-            </div>
-
-            <div class="lp-filters__cell">
-              <v-autocomplete
-                v-model="productPick"
-                :items="productItems"
-                :loading="productLoading"
-                label="Producto vendido"
-                placeholder="Buscar producto"
-                prepend-inner-icon="mdi-package-variant-closed"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                return-object
-                item-title="title"
-                item-value="value"
-                :no-filter="true"
-                @update:search="onProductSearch"
-                @update:model-value="applyFiltersImmediate"
-                @click:clear="productPick = null; applyFiltersImmediate()"
-              />
-            </div>
-
-            <div class="lp-filters__cell">
-              <v-select
-                v-model="payMethod"
-                :items="payMethodItems"
-                label="Método de pago"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
-                @update:model-value="applyFiltersImmediate"
-                @click:clear="payMethod = ''; applyFiltersImmediate()"
-              />
-            </div>
-
-            <div v-if="isAdmin" class="lp-filters__cell">
-              <v-select
-                v-model="selectedBranchId"
-                :items="branchSelectItems"
-                label="Sucursal"
-                variant="outlined"
-                density="compact"
-                hide-details
-                :loading="branchesLoading"
-                @update:model-value="onBranchChanged"
-              />
-            </div>
-
-            <div class="lp-filters__cell">
-              <v-menu v-model="fromMenu" :close-on-content-click="false" location="bottom">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-bind="props"
-                    :model-value="normalizeDate(from) || ''"
-                    label="Desde"
-                    prepend-inner-icon="mdi-calendar"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    readonly
-                    placeholder="Sin fecha"
-                  />
-                </template>
-                <v-date-picker
-                  v-model="from"
-                  show-adjacent-months
-                  @update:model-value="fromMenu = false; applyFiltersImmediate()"
-                />
-              </v-menu>
-            </div>
-
-            <div class="lp-filters__cell">
-              <v-menu v-model="toMenu" :close-on-content-click="false" location="bottom">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-bind="props"
-                    :model-value="normalizeDate(to) || ''"
-                    label="Hasta"
-                    prepend-inner-icon="mdi-calendar"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    readonly
-                    placeholder="Sin fecha"
-                  />
-                </template>
-                <v-date-picker
-                  v-model="to"
-                  show-adjacent-months
-                  @update:model-value="toMenu = false; applyFiltersImmediate()"
-                />
-              </v-menu>
-            </div>
-
-            <div class="lp-filters__cell lp-filters__cell--per-page">
-              <v-select
-                v-model="meta.limit"
-                :items="[10, 20, 50, 100]"
-                label="Por página"
-                variant="outlined"
-                density="compact"
-                hide-details
-                @update:model-value="meta.page = 1; refreshAll()"
-              />
-            </div>
-          </div>
-
-          <div v-if="isAdmin" class="lp-filters__hint">
-            Sucursal activa: <b>{{ effectiveBranchId ? `#${effectiveBranchId}` : 'Todas' }}</b>
-          </div>
-        </div>
-      </v-expand-transition>
-
-      <!-- Chips activos -->
-      <div v-if="activeFilterChips.length" class="lp-filters__chips">
-        <v-chip
-          v-for="chip in activeFilterChips"
-          :key="chip.key"
+      <div v-if="meta.total > 0" class="vt-pie">
+        <span class="num vt-pie__info">{{ desde }} a {{ hasta }} de {{ miles(meta.total) }}</span>
+        <v-pagination
+          v-model="meta.page"
+          :length="meta.pages || 1"
+          :total-visible="5"
+          density="comfortable"
           size="small"
-          variant="tonal"
-          color="primary"
-          closable
-          class="lp-filters__chip"
-          @click:close="removeChip(chip.key)"
-        >
-          {{ chip.label }}
-        </v-chip>
-        <button
-          v-if="activeFilterChips.length > 1"
-          type="button"
-          class="lp-filters__chips-clear"
-          @click="resetFilters"
-        >
-          Limpiar todo
-        </button>
+          class="vt-paginas"
+          @update:model-value="refreshAll"
+        />
       </div>
-    </section>
+    </div>
 
-    <!-- ── CONTENT ──────────────────────────────────────── -->
-    <section class="lp-content">
-      <div class="lp-content__head">
-        <div class="lp-content__head-left">
-          <span class="lp-content__title">Listado</span>
-          <v-chip size="x-small" variant="tonal">{{ sales.length }} de {{ meta.total }}</v-chip>
+    <!-- ── Panel de filtros: convive con el listado, no es un modal ── -->
+    <Transition name="vt-panel">
+      <aside v-if="panelAbierto" class="vt-panel" aria-label="Filtros">
+        <div class="vt-panel__cab">
+          <span>Filtros</span>
+          <button type="button" class="vt-panel__cerrar" aria-label="Cerrar filtros" @click="panelAbierto = false">
+            <v-icon size="24">mdi-close</v-icon>
+          </button>
         </div>
-        <v-btn size="x-small" variant="text" @click="toggleDense">
-          <v-icon start size="13">{{ dense ? 'mdi-format-line-spacing' : 'mdi-format-line-weight' }}</v-icon>
-          {{ dense ? 'Normal' : 'Compacta' }}
-        </v-btn>
-      </div>
 
-      <div class="lp-content__body lp-content__body--flush" :class="{ 'lp-content__body--loading': loading }">
-        <v-data-table
-          :headers="headers"
-          :items="sales"
-          :loading="loading"
-          item-key="id"
-          :density="dense ? 'compact' : 'comfortable'"
-          hover
-          class="vp-table"
-          :items-per-page="-1"
-          hide-default-footer
-          @click:row="onRowClick"
-        >
-          <template #item.sold_at="{ item }">
-            <div class="vp-date">{{ dt(item.sold_at) }}</div>
-            <div class="vp-id">
-              ID {{ item.id }}
-              <span v-if="item.sale_number"> · N° {{ item.sale_number }}</span>
-            </div>
-          </template>
-
-          <template #item.seller="{ item }">
-            <div class="vp-bold">{{ item.user?.username || fullUserName(item.user) || `#${item.user_id}` }}</div>
-            <div class="vp-sub">{{ item.branch?.name || `Suc. #${item.branch_id}` }}</div>
-          </template>
-
-          <template #item.customer="{ item }">
-            <div class="vp-bold">{{ item.customer_name || 'Consumidor Final' }}</div>
-            <div v-if="item.customer_doc || item.customer_phone" class="vp-sub">
-              <span v-if="item.customer_doc">{{ item.customer_doc }}</span>
-              <span v-if="item.customer_doc && item.customer_phone"> · </span>
-              <span v-if="item.customer_phone">{{ item.customer_phone }}</span>
-            </div>
-          </template>
-
-          <template #item.product="{ item }">
-            <div class="vp-bold">{{ primaryProductName(item) }}</div>
-            <div v-if="productExtraCount(item) > 0" class="vp-sub">
-              +{{ productExtraCount(item) }} más
-            </div>
-            <div v-else-if="primaryProductSku(item)" class="vp-sub">{{ primaryProductSku(item) }}</div>
-          </template>
-
-          <template #item.total="{ item }">
-            <div class="vp-amount">{{ money(item.total) }}</div>
-            <div class="vp-sub">
-              Pag: {{ money(item.paid_total) }}
-              <span v-if="Number(item.change_total) > 0"> · Vto: {{ money(item.change_total) }}</span>
-            </div>
-          </template>
-
-          <template #item.method="{ item }">
-            <div class="vp-pay-row">
-              <v-chip
-                size="small"
-                variant="flat"
-                :color="payColor(primaryPayment(item)?.method)"
-                class="vp-pay-chip"
-              >
-                {{ methodLabel(primaryPayment(item)?.method) }}
-              </v-chip>
-              <span v-if="paymentInstallments(primaryPayment(item))" class="vp-cuotas">
-                {{ paymentInstallments(primaryPayment(item)) }}x
-              </span>
-              <span v-if="(item.payments || []).length > 1" class="vp-extra-pays">
-                +{{ item.payments.length - 1 }}
-              </span>
-            </div>
-            <div v-if="paymentReference(primaryPayment(item))" class="vp-sub vp-ref">
-              {{ paymentReference(primaryPayment(item)) }}
-            </div>
-          </template>
-
-          <template #item.status="{ item }">
-            <v-chip size="small" variant="tonal" :color="statusColor(item.status)">
-              {{ statusLabel(item.status) }}
-            </v-chip>
-          </template>
-
-          <template #item.actions="{ item }">
-            <div class="vp-actions">
-              <v-btn
-                size="x-small"
-                variant="tonal"
-                color="primary"
-                icon
-                title="Ver detalle"
-                @click.stop="goDetail(item.id)"
-              >
-                <v-icon size="15">mdi-eye</v-icon>
-              </v-btn>
-
-              <v-menu v-model="menuOpen[item.id]" :close-on-content-click="true">
-                <template #activator="{ props }">
-                  <v-btn v-bind="props" size="x-small" variant="tonal" icon>
-                    <v-icon size="15">mdi-dots-vertical</v-icon>
-                  </v-btn>
-                </template>
-                <v-list density="compact">
-                  <v-list-item @click.stop="actView(item.id)">
-                    <template #prepend><v-icon size="16">mdi-eye</v-icon></template>
-                    <v-list-item-title>Ver detalle</v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item @click.stop="actRefund(item.id)">
-                    <template #prepend><v-icon size="16" color="orange">mdi-cash-refund</v-icon></template>
-                    <v-list-item-title>Registrar devolución</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item @click.stop="actExchange(item.id)">
-                    <template #prepend><v-icon size="16" color="cyan">mdi-swap-horizontal</v-icon></template>
-                    <v-list-item-title>Registrar cambio</v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item @click.stop="copyText(String(item.id))">
-                    <template #prepend><v-icon size="16">mdi-content-copy</v-icon></template>
-                    <v-list-item-title>Copiar ID</v-list-item-title>
-                  </v-list-item>
-                  <v-divider v-if="isAdmin" />
-                  <v-list-item
-                    v-if="isAdmin && item.status !== 'CANCELLED'"
-                    @click.stop="openDelete(item)"
-                  >
-                    <template #prepend><v-icon size="16" color="error">mdi-cancel</v-icon></template>
-                    <v-list-item-title>Anular venta</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item v-else-if="item.status === 'CANCELLED'" disabled>
-                    <template #prepend><v-icon size="16" color="grey">mdi-cancel</v-icon></template>
-                    <v-list-item-title class="text-disabled">Ya anulada</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </template>
-
-          <template #bottom><div /></template>
-        </v-data-table>
-      </div>
-    </section>
-
-    <!-- ── PAGINATION ───────────────────────────────────── -->
-    <footer v-if="meta.total > 0" class="lp-pagination">
-      <span class="lp-pagination__info">{{ sales.length }} de {{ meta.total }}</span>
-      <v-pagination
-        v-model="meta.page"
-        :length="meta.pages || 1"
-        :total-visible="7"
-        rounded="lg"
-        size="small"
-        @update:modelValue="refreshAll"
-      />
-    </footer>
-
-    <!-- ── ANULAR VENTA DIALOG ──────────────────────────── -->
-    <v-dialog v-model="deleteDialog.show" max-width="480">
-      <v-card rounded="xl">
-        <div class="anular-dlg__head">
-          <div class="anular-dlg__icon-wrap">
-            <v-icon size="22" color="error">mdi-cancel</v-icon>
+        <div class="vt-panel__cuerpo">
+          <div v-for="g in grupos" :key="g.clave" class="vt-grupo">
+            <span class="vt-grupo__tit">{{ g.titulo }}</span>
+            <button
+              v-for="o in g.opciones"
+              :key="String(o.value)"
+              type="button"
+              class="vt-op"
+              :class="{ 'is-on': o.on, 'is-cero': !o.count && !o.on }"
+              @click="elegirOpcion(g.clave, o.value)"
+            >
+              <span class="vt-op__caja"><v-icon v-if="o.on" size="16" color="white">mdi-check</v-icon></span>
+              <span class="vt-op__eti">{{ o.label }}</span>
+              <span class="vt-op__n num">{{ miles(o.count) }}</span>
+            </button>
           </div>
-          <div>
-            <p class="anular-dlg__eyebrow">Venta #{{ getSaleId(deleteDialog.sale) }}</p>
-            <h3 class="anular-dlg__title">Anular venta</h3>
+
+          <div class="vt-grupo">
+            <span class="vt-grupo__tit">Producto vendido</span>
+            <v-autocomplete
+              v-model="productPick"
+              :items="productItems"
+              :loading="productLoading"
+              placeholder="Buscar producto"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              return-object
+              item-title="title"
+              item-value="value"
+              :no-filter="true"
+              @update:search="onProductSearch"
+              @update:model-value="applyFiltersImmediate"
+            />
+          </div>
+
+          <div class="vt-grupo">
+            <span class="vt-grupo__tit">Fechas</span>
+            <div class="vt-fechas">
+              <label class="vt-fecha"><span>Desde</span><input v-model="from" type="date" @change="applyFiltersImmediate" /></label>
+              <label class="vt-fecha"><span>Hasta</span><input v-model="to" type="date" @change="applyFiltersImmediate" /></label>
+            </div>
           </div>
         </div>
 
-        <div class="anular-dlg__body">
-          <div class="anular-dlg__info-row">
-            <v-icon size="16" color="success" class="flex-shrink-0">mdi-package-variant</v-icon>
-            <span>El stock de los productos será <strong>restaurado automáticamente</strong>.</span>
-          </div>
-          <div class="anular-dlg__info-row">
-            <v-icon size="16" color="primary" class="flex-shrink-0">mdi-history</v-icon>
-            <span>La venta quedará como <strong>Anulada</strong> en el historial (no se borra).</span>
-          </div>
-          <div class="anular-dlg__info-row">
-            <v-icon size="16" color="warning" class="flex-shrink-0">mdi-cash-remove</v-icon>
-            <span>El importe <strong>no se contará</strong> en el arqueo de esta sesión.</span>
-          </div>
+        <div class="vt-panel__pie">
+          <button type="button" class="vt-panel__ver num" @click="panelAbierto = false">
+            Ver {{ miles(stats.sales_count) }} {{ stats.sales_count === 1 ? 'venta' : 'ventas' }}
+          </button>
         </div>
-
-        <div class="anular-dlg__actions">
-          <v-btn
-            variant="text"
-            size="small"
-            :disabled="!!deletingId"
-            @click="deleteDialog = { show: false, sale: null }"
-          >
-            Volver
-          </v-btn>
-          <v-btn
-            variant="flat"
-            color="error"
-            size="small"
-            :loading="!!deletingId"
-            @click="deleteSaleConfirmed"
-          >
-            <v-icon start size="14">mdi-cancel</v-icon>Confirmar anulación
-          </v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
+      </aside>
+    </Transition>
 
     <v-snackbar v-model="snack.show" :timeout="3200">{{ snack.text }}</v-snackbar>
   </div>
@@ -554,7 +213,6 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useAuthStore } from "../../../app/store/auth.store";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -900,7 +558,7 @@ function statusLabel(s) {
   const x = String(s || "").toUpperCase();
   if (x === "PAID") return "Pagada";
   if (x === "DRAFT") return "Borrador";
-  if (x === "CANCELLED") return "Cancelada";
+  if (x === "CANCELLED") return "Anulada";
   if (x === "REFUNDED") return "Reintegrada";
   return s || "—";
 }
@@ -1127,7 +785,7 @@ async function fetchStats() {
 }
 
 async function refreshAll() {
-  await Promise.all([fetchSales(), fetchStats()]);
+  await Promise.all([fetchSales(), fetchStats(), fetchFacets()]);
 }
 
 const applyFiltersDebounced = debounce(() => { meta.value.page = 1; refreshAll(); }, 180);
@@ -1287,6 +945,238 @@ async function deleteSaleConfirmed() {
   }
 }
 
+// =====================
+// Rediseño: período, panel de filtros, resumen y filas
+// =====================
+const PERIODOS = [
+  { value: "hoy", nombre: "Hoy" },
+  { value: "semana", nombre: "Semana" },
+  { value: "mes", nombre: "Mes" },
+  { value: "12m", nombre: "12 meses" },
+  { value: "fechas", nombre: "Fechas" },
+];
+const panelAbierto = ref(false);
+
+function rangoSemana() {
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const lunes = new Date(now);
+  lunes.setDate(now.getDate() - (day - 1));
+  const domingo = new Date(lunes);
+  domingo.setDate(lunes.getDate() + 6);
+  return [formatLocalDate(lunes), formatLocalDate(domingo)];
+}
+function rangoMes() {
+  const now = new Date();
+  return [formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)), formatLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+}
+function rango12m() {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  return [formatLocalDate(d), formatLocalDate(now)];
+}
+const periodoActivo = computed(() => {
+  const f = normalizeDate(from.value), t = normalizeDate(to.value);
+  if (!f && !t) return "";
+  const hoy = formatLocalDate(new Date());
+  const igual = ([a, b]) => f === a && t === b;
+  if (f === hoy && t === hoy) return "hoy";
+  if (igual(rangoSemana())) return "semana";
+  if (igual(rangoMes())) return "mes";
+  if (igual(rango12m())) return "12m";
+  return "fechas";
+});
+function elegirPeriodo(v) {
+  if (v === "fechas") { panelAbierto.value = true; return; }
+  // Tocar el período activo lo quita: vuelve a "desde el inicio"
+  if (periodoActivo.value === v) { from.value = ""; to.value = ""; applyFiltersImmediate(); return; }
+  const r = v === "hoy" ? [formatLocalDate(new Date()), formatLocalDate(new Date())]
+    : v === "semana" ? rangoSemana() : v === "mes" ? rangoMes() : rango12m();
+  from.value = r[0];
+  to.value = r[1];
+  applyFiltersImmediate();
+}
+
+// Cantidades del panel: cada grupo contado contra los demás filtros (API /facets)
+const facets = ref({ status: [], branch: [], pay_method: [], seller: [] });
+async function fetchFacets() {
+  try {
+    const base = buildParams(1, 1);
+    delete base.page;
+    delete base.limit;
+    const { data } = await http.get("/pos/sales/facets", { params: base });
+    if (data?.ok) facets.value = { status: [], branch: [], pay_method: [], seller: [], ...(data.data || {}) };
+  } catch {
+    // sin cantidades el panel sigue sirviendo para filtrar
+  }
+}
+const contar = (lista, v) => Number((lista || []).find((x) => String(x.value) === String(v))?.count || 0);
+
+const ESTADOS_PLURAL = { PAID: "Pagadas", CANCELLED: "Anuladas", REFUNDED: "Reintegradas", DRAFT: "Borradores" };
+
+const grupos = computed(() => {
+  const g = [];
+  g.push({
+    clave: "status", titulo: "Estado",
+    opciones: Object.entries(ESTADOS_PLURAL)
+      .map(([value, label]) => ({ value, label, count: contar(facets.value.status, value), on: status.value === value }))
+      .filter((o) => o.count || o.on || o.value === "PAID" || o.value === "CANCELLED"),
+  });
+  if (isAdmin.value) {
+    const lista = (branches.value || [])
+      .filter((b) => String(b?.is_active ?? 1) !== "0")
+      .map((b) => ({ value: Number(b.id), label: b.name || `Sucursal #${b.id}` }));
+    for (const f of facets.value.branch || []) {
+      if (!lista.some((b) => b.value === Number(f.value))) lista.push({ value: Number(f.value), label: f.label });
+    }
+    g.push({
+      clave: "branch", titulo: "Sucursal",
+      opciones: lista
+        .map((b) => ({ ...b, count: contar(facets.value.branch, b.value), on: Number(selectedBranchId.value) === b.value }))
+        .sort((a, b) => b.count - a.count),
+    });
+  }
+  g.push({
+    clave: "pay_method", titulo: "Medio de pago",
+    opciones: payMethodItems
+      .filter((m) => m.value)
+      .map((m) => ({ value: m.value, label: methodLabel(m.value), count: contar(facets.value.pay_method, m.value), on: String(payMethod.value || "").toUpperCase() === m.value }))
+      .sort((a, b) => b.count - a.count),
+  });
+  const cajeros = (facets.value.seller || []).map((s) => ({ value: Number(s.value), label: s.label, count: Number(s.count || 0), on: Number(sellerId.value) === Number(s.value) }));
+  if (sellerId.value && !cajeros.some((c) => c.on)) {
+    cajeros.unshift({ value: Number(sellerId.value), label: nombreCajeroElegido.value, count: 0, on: true });
+  }
+  g.push({ clave: "seller", titulo: "Cajero", opciones: cajeros });
+  return g;
+});
+
+const nombreCajeroElegido = computed(() => {
+  const id = Number(sellerId.value || 0);
+  if (!id) return "";
+  return (facets.value.seller || []).find((s) => Number(s.value) === id)?.label
+    || sellerItems.value.find((x) => Number(x.value) === id)?.title
+    || `Usuario #${id}`;
+});
+
+function elegirOpcion(clave, v) {
+  if (clave === "status") status.value = status.value === v ? "" : v;
+  if (clave === "pay_method") payMethod.value = String(payMethod.value || "").toUpperCase() === v ? "" : v;
+  if (clave === "seller") sellerId.value = Number(sellerId.value) === Number(v) ? null : v;
+  if (clave === "branch") {
+    selectedBranchId.value = Number(selectedBranchId.value) === Number(v) ? null : v;
+    onBranchChanged();
+    return;
+  }
+  applyFiltersImmediate();
+}
+
+const ddmmaaaa = (s) => {
+  const d = normalizeDate(s);
+  if (!d) return "";
+  const [y, m, day] = d.split("-");
+  return `${day}/${m}/${y}`;
+};
+const rangoTexto = computed(() => {
+  const f = normalizeDate(from.value), t = normalizeDate(to.value);
+  if (!f && !t) return "desde el inicio";
+  if (f && t) return f === t ? `el ${ddmmaaaa(f)}` : `${ddmmaaaa(f)} a ${ddmmaaaa(t)}`;
+  return f ? `desde el ${ddmmaaaa(f)}` : `hasta el ${ddmmaaaa(t)}`;
+});
+const sucursalTexto = computed(() => {
+  if (isAdmin.value) {
+    if (!selectedBranchId.value) return "todas las sucursales";
+    return branchSelectItems.value.find((x) => x.value === Number(selectedBranchId.value))?.title || `Sucursal #${selectedBranchId.value}`;
+  }
+  return sales.value[0]?.branch?.name || "";
+});
+const subtitulo = computed(() => {
+  const n = Number(stats.value.sales_count || 0);
+  const estado = status.value ? ` ${String(ESTADOS_PLURAL[status.value] || "").toLowerCase()}` : "";
+  return [`${miles(n)} ${n === 1 ? "venta" : "ventas"}${estado}`, rangoTexto.value, sucursalTexto.value].filter(Boolean).join(" · ");
+});
+
+const chips = computed(() => {
+  const c = [];
+  if (status.value) c.push({ key: "status", label: `Estado: ${String(ESTADOS_PLURAL[status.value] || status.value).toLowerCase()}` });
+  if (from.value || to.value) c.push({ key: "fechas", label: `Fechas: ${rangoTexto.value}` });
+  if (isAdmin.value && selectedBranchId.value) c.push({ key: "branch", label: `Sucursal: ${sucursalTexto.value}` });
+  if (String(payMethod.value || "").trim()) c.push({ key: "payMethod", label: `Medio: ${methodLabel(payMethod.value)}` });
+  if (sellerId.value) c.push({ key: "sellerId", label: `Cajero: ${nombreCajeroElegido.value}` });
+  if (productPick.value) c.push({ key: "productPick", label: `Producto: ${productPick.value?.title || productPick.value}` });
+  return c;
+});
+const filtrosActivos = computed(() => chips.value.length);
+function quitarChip(key) {
+  if (key === "status") { status.value = ""; applyFiltersImmediate(); return; }
+  if (key === "fechas") { clearDates(); return; }
+  if (key === "branch") { selectedBranchId.value = null; onBranchChanged(); return; }
+  removeChip(key);
+}
+
+// Resumen: medios de pago del período, en una barra partida
+const COLOR_MEDIO = {
+  MERCADOPAGO: "#0a466e", CASH: "#0f6fae", TRANSFER: "#3f8fc6", CARD: "#8cc0e3", CREDIT_SJT: "#5b7083", OTHER: "#C3C9D6",
+};
+function colorMedio(m) {
+  const x = String(m || "").toUpperCase();
+  return COLOR_MEDIO[x === "QR" ? "MERCADOPAGO" : x] || COLOR_MEDIO.OTHER;
+}
+const medios = computed(() => {
+  const n = stats.value.net_by_method || {};
+  const lista = [
+    ["MERCADOPAGO", n.mercadopago], ["CASH", n.cash], ["TRANSFER", n.transfer],
+    ["CARD", n.card], ["CREDIT_SJT", n.credit_sjt], ["OTHER", n.other],
+  ].map(([key, v]) => ({ key, total: Number(v || 0) })).filter((m) => m.total > 0);
+  const tot = lista.reduce((a, m) => a + m.total, 0);
+  return lista
+    .sort((a, b) => b.total - a.total)
+    .map((m) => ({ ...m, etiqueta: methodLabel(m.key), color: colorMedio(m.key), pct: Math.round((m.total / tot) * 100), ancho: Math.max(1, (m.total / tot) * 100) }));
+});
+
+// Filas
+const miles = (v) => Math.round(Number(v || 0)).toLocaleString("es-AR");
+const plata = (v) => "$ " + Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 2 });
+function dia(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  const dd = String(d.getDate()).padStart(2, "0"), mm = String(d.getMonth() + 1).padStart(2, "0");
+  return d.getFullYear() === new Date().getFullYear() ? `${dd}/${mm}` : `${dd}/${mm}/${String(d.getFullYear()).slice(2)}`;
+}
+function hora(v) {
+  if (!v) return "";
+  return new Date(v).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+function nombreCajero(s) {
+  return fullUserName(s.user) || s.user?.username || `Usuario #${s.user_id}`;
+}
+function unidades(s) {
+  const n = pickSaleItems(s).reduce((a, it) => a + Number(it.quantity ?? it.qty ?? 0), 0);
+  const r = Math.round(n * 100) / 100;
+  return `${r.toLocaleString("es-AR")} ${r === 1 ? "unidad" : "unidades"}`;
+}
+function detalleCobro(s) {
+  const p = primaryPayment(s);
+  const partes = [];
+  const cuotas = paymentInstallments(p);
+  if (cuotas > 1) partes.push(`${cuotas} cuotas`);
+  else if (p?.method === "CARD") partes.push("1 pago");
+  const otros = (s.payments || []).length - 1;
+  if (otros > 0) partes.push(`y ${otros} ${otros === 1 ? "medio más" : "medios más"}`);
+  return partes.join(" · ");
+}
+const rutaVenta = (id) => ({ name: "posSaleDetail", params: { id } });
+function abrirFila(e, id) {
+  if (window.getSelection?.()?.toString()) return;
+  if (e.button === 1 || e.ctrlKey || e.metaKey) {
+    window.open(router.resolve(rutaVenta(id)).href, "_blank");
+    return;
+  }
+  if (e.type === "click") router.push(rutaVenta(id));
+}
+const desde = computed(() => (meta.value.total ? (meta.value.page - 1) * meta.value.limit + 1 : 0));
+const hasta = computed(() => Math.min(meta.value.total, (meta.value.page - 1) * meta.value.limit + sales.value.length));
+
 onMounted(async () => {
   if (auth?.isAuthed && !auth.user && typeof auth.fetchMe === "function") {
     try { await auth.fetchMe(); } catch {}
@@ -1301,428 +1191,172 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-/* ============================================================
-   LIST PAGE — patrón estandarizado (lp-*)
-   Compartido con ProductsListPage. Mantener sincronizado.
-   ============================================================ */
+<style>
+/* Ventas. Sin scoped: todo cuelga de .vt, y el tema oscuro se resuelve con
+   .v-theme--dark .vt sin :global(). Mismos tokens que el tablero. */
+.pos-container:has(.vt) {
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.vt {
+  --vt-fondo: #d6e6f3;
+  --vt-caja: #ffffff;
+  --vt-borde: #d3dde7;
+  --vt-linea: #e3eaf1;
+  --vt-texto: #0f172a;
+  --vt-suave: #5a6678;
+  --vt-tenue: #94a3b8;
+  --vt-hover: #f3f8fc;
+  --vt-banda: #0f6fae;
+  --vt-banda-borde: #0d5f96;
+  --vt-acento: #0f6fae;
+  --vt-pista: rgba(15, 23, 42, 0.06);
 
-.lp {
-  --lp-gap: 14px;
-  --lp-radius: 14px;
-  --lp-radius-sm: 12px;
-  --lp-card-pad: 16px;
-  --lp-card-bg: rgb(var(--v-theme-surface));
-  --lp-card-border: rgba(var(--v-border-color), var(--v-border-opacity));
-  --lp-muted: rgba(var(--v-theme-on-surface), 0.55);
-  --lp-strong: rgba(var(--v-theme-on-surface), 0.9);
-
+  padding: 22px 28px 28px;
+  min-height: calc(100vh - 72px);
+  box-sizing: border-box;
+  background: var(--vt-fondo);
+  color: var(--vt-texto);
   display: flex;
   flex-direction: column;
-  gap: var(--lp-gap);
-  min-width: 0;
+  gap: 14px;
 }
+.v-theme--dark .vt {
+  --vt-fondo: #0b0f14;
+  --vt-caja: #151c25;
+  --vt-borde: #253141;
+  --vt-linea: #222c39;
+  --vt-texto: #e5edf5;
+  --vt-suave: #9aa8b8;
+  --vt-tenue: #64748b;
+  --vt-hover: #1a2430;
+  --vt-banda: #0f5f96;
+  --vt-banda-borde: #0c4f7d;
+  --vt-acento: #5aaee0;
+  --vt-pista: rgba(255, 255, 255, 0.07);
+}
+.vt > * { max-width: 1400px; width: 100%; margin-left: auto; margin-right: auto; }
+.vt .num { font-variant-numeric: tabular-nums; }
+.vt .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── HEADER ─────────────────────────────────────────────── */
-.lp-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 4px 2px 0;
-}
-.lp-header__left  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.lp-header__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* encabezado */
+.vt-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.vt-cab__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vt-cab__titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.vt-cab__sub { font-size: 14px; font-weight: 600; color: var(--vt-suave); }
+.vt-cab__acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vt-periodos { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--vt-caja); border: 1px solid var(--vt-borde); }
+.vt-periodo { height: 34px; padding: 0 14px; border: 0; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 700; background: transparent; color: var(--vt-suave); cursor: pointer; white-space: nowrap; }
+.vt-periodo:hover { color: var(--vt-texto); }
+.vt-periodo.is-activo { background: #0f6fae; color: #ffffff; }
+.vt-filtros-btn { height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border: 0; border-radius: 10px; background: #0f6fae; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.vt-filtros-btn__n { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 6px; background: #ffffff; color: #0f6fae; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; box-sizing: border-box; }
 
-.lp-title {
-  font-size: 22px;
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-.lp-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--lp-muted);
-}
-.lp-meta__strong {
-  font-weight: 500;
-  color: var(--lp-strong);
-  font-feature-settings: "tnum";
-}
-.lp-meta__sep { opacity: 0.4; }
+/* buscador */
+.vt-busca { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vt-busca__campo { flex: 1 1 360px; height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 10px; background: var(--vt-caja); border: 1px solid var(--vt-borde); box-sizing: border-box; }
+.vt-busca__campo:focus-within { border-color: #3f8fc6; box-shadow: 0 0 0 3px rgba(63, 143, 198, 0.18); }
+.vt-busca__ic { color: var(--vt-suave); }
+.vt-busca__input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-family: inherit; font-size: 15px; color: var(--vt-texto); }
+.vt-busca__input::placeholder { color: var(--vt-tenue); }
+.vt-chip { height: 34px; display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 12px; border-radius: 8px; background: var(--vt-caja); border: 1px solid #8cc0e3; font-size: 14px; font-weight: 700; color: var(--vt-texto); white-space: nowrap; }
+.vt-chip__x { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--vt-suave); cursor: pointer; }
+.vt-chip__x:hover { background: var(--vt-pista); color: var(--vt-texto); }
 
-/* ── STATS KPI ──────────────────────────────────────────── */
-.lp-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.lp-kpi {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--lp-radius);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-}
-.lp-kpi__badge {
-  width: 32px; height: 32px;
-  border-radius: 9px;
-  flex-shrink: 0;
-  display: grid; place-items: center;
-}
-.lp-kpi__badge--primary { background: rgb(var(--v-theme-primary)); }
-.lp-kpi__badge--green   { background: rgb(var(--v-theme-success)); }
-.lp-kpi__badge--orange  { background: var(--pos-kpi-color-1, #f57c00); }
-.lp-kpi__badge--indigo  { background: var(--pos-kpi-color-2, #5c6bc0); }
-.lp-kpi__body  { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.lp-kpi__lbl   {
-  font-size: 10.5px; font-weight: 500;
-  opacity: 0.55;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.lp-kpi__val   {
-  font-size: 17px; font-weight: 600;
-  line-height: 1.15;
-  margin-top: 1px;
-  font-feature-settings: "tnum";
-}
-.lp-kpi__sub   { font-size: 10.5px; opacity: 0.45; margin-top: 1px; }
-.lp-kpi__skel  {
-  height: 20px;
-  border-radius: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  margin-top: 2px;
-  animation: lp-pulse 1.4s ease infinite;
-}
-@keyframes lp-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+/* resumen */
+.vt-resumen { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: 12px; background: var(--vt-caja); border: 1px solid var(--vt-borde); box-sizing: border-box; }
+.vt-resumen__cifras { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--vt-suave); }
+.vt-resumen__cifras b { font-size: 20px; font-weight: 800; color: var(--vt-texto); margin-left: 4px; }
+.vt-partes { display: flex; gap: 2px; height: 8px; }
+.vt-partes > span { display: block; height: 8px; border-radius: 3px; }
+.vt-leyenda { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; font-size: 13px; font-weight: 700; }
+.vt-leyenda > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.vt-leyenda i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.vt-leyenda em { font-style: normal; color: var(--vt-suave); }
 
-/* ── METHOD CARDS ──────────────────────────────────────── */
-.lp-methods {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-.lp-mc {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 11px;
-  border-radius: var(--lp-radius-sm);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-  min-height: 50px;
-}
-.lp-mc__badge {
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  display: grid; place-items: center;
-}
-.lp-mc__badge--cash     { background: rgb(var(--v-theme-success)); }
-.lp-mc__badge--transfer { background: var(--pos-kpi-color-3, #9c27b0); }
-.lp-mc__badge--card     { background: rgb(var(--v-theme-info)); }
-.lp-mc__badge--mp       { background: var(--pos-kpi-color-1, #f57c00); }
-.lp-mc__badge--sjt      { background: var(--pos-kpi-color-4, #009688); }
-.lp-mc__badge--other    { background: rgba(var(--v-theme-on-surface), 0.35); }
-.lp-mc__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.lp-mc__lbl  {
-  font-size: 10px; font-weight: 400;
-  opacity: 0.45;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.lp-mc__val  {
-  font-size: 14px; font-weight: 500;
-  margin-top: 2px;
-  font-feature-settings: "tnum";
-}
+/* tabla cerrada */
+.vt-tabla-caja { position: relative; border-radius: 12px; overflow: hidden; background: var(--vt-caja); border: 1px solid var(--vt-borde); box-sizing: border-box; }
+.vt-carga { position: absolute; top: 0; left: 0; right: 0; z-index: 2; }
+.vt-tabla-scroll { overflow-x: auto; }
+.vt-tabla { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 980px; }
+.vt-tabla th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #ffffff; background: var(--vt-banda); text-align: left; padding: 11px 12px; border: 1px solid var(--vt-banda-borde); border-top: 0; }
+.vt-tabla th:first-child, .vt-tabla td:first-child { border-left: 0; }
+.vt-tabla th:last-child, .vt-tabla td:last-child { border-right: 0; }
+.vt-tabla td { padding: 9px 12px; border: 1px solid var(--vt-linea); vertical-align: middle; font-size: 14px; overflow: hidden; }
+.vt-tabla .c-n { width: 78px; }
+.vt-tabla .c-fecha { width: 92px; }
+.vt-tabla .c-cajero { width: 180px; }
+.vt-tabla .c-cobro { width: 170px; }
+.vt-tabla th.c-total, .vt-tabla td.c-total { width: 120px; text-align: right; font-weight: 800; font-size: 15px; }
+.vt-tabla .c-estado { width: 112px; }
+.vt-tabla .c-ver { width: 72px; }
+.vt-fila { cursor: pointer; }
+.vt-fila:hover td { background: var(--vt-hover); }
+.vt-link { font-weight: 800; color: var(--vt-acento); text-decoration: none; }
+.vt-link:hover { text-decoration: underline; }
+.vt-b { font-weight: 700; }
+.vt-p { font-weight: 600; }
+.vt-s { font-size: 12px; color: var(--vt-suave); }
+.vt-mas { font-weight: 600; color: var(--vt-suave); }
+.vt-medio { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.vt-medio i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; display: block; }
+.vt-estado { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--vt-suave); }
+.vt-estado i { width: 8px; height: 8px; border-radius: 9999px; background: #C3C9D6; display: block; }
+.vt-estado.is-paid { color: #1f7a5f; }
+.vt-estado.is-paid i { background: #2E9E7B; }
+.v-theme--dark .vt-estado.is-paid { color: #5fc9a6; }
+.vt-estado.is-cancelled { color: #b23b35; }
+.vt-estado.is-cancelled i { background: #C4453F; }
+.v-theme--dark .vt-estado.is-cancelled { color: #f08a84; }
+.vt-estado.is-refunded i { background: #8cc0e3; }
+.vt-ver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 800; color: var(--vt-acento); text-decoration: none; white-space: nowrap; }
+.vt-ver:hover { text-decoration: underline; }
+.vt-vacio { text-align: center; padding: 40px 12px !important; font-size: 15px; font-weight: 600; color: var(--vt-suave); }
 
-/* ── FILTER BAR ─────────────────────────────────────────── */
-.lp-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--lp-radius);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-}
+.vt-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--vt-borde); flex-wrap: wrap; }
+.vt-pie__info { font-size: 14px; font-weight: 600; color: var(--vt-suave); }
+.vt-paginas { margin: 0; }
 
-.lp-filters__primary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.lp-filters__search { flex: 1 1 280px; min-width: 220px; }
-.lp-filters__search :deep(.v-field) { border-radius: 10px; }
-.lp-filters__primary-field { flex: 0 0 160px; min-width: 140px; }
+/* tarjetas del teléfono */
+.vt-tarjetas { display: none; }
+.vt-tarjeta { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-bottom: 1px solid var(--vt-linea); color: var(--vt-texto); text-decoration: none; }
+.vt-tarjeta__fila { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vt-tarjeta__fila > .vt-s { flex: 1; min-width: 0; }
+.vt-tarjeta__total { margin-left: auto; font-size: 16px; font-weight: 800; }
 
-.lp-filters__presets {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-  flex-shrink: 0;
-}
+/* panel de filtros */
+.vt-panel { position: fixed; top: 72px; right: 0; bottom: 0; width: 400px; max-width: 100vw; z-index: 1006; display: flex; flex-direction: column; background: var(--vt-caja); border-left: 2px solid #8cc4e8; box-shadow: -12px 0 32px rgba(10, 70, 110, 0.16); color: var(--vt-texto); }
+.vt-panel__cab { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 20px; background: #0f6fae; color: #ffffff; font-size: 18px; font-weight: 800; }
+.vt-panel__cerrar { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #ffffff; cursor: pointer; }
+.vt-panel__cerrar:hover { background: rgba(255, 255, 255, 0.14); }
+.vt-panel__cuerpo { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 20px 12px; }
+.vt-grupo { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--vt-linea); }
+.vt-grupo:last-child { border-bottom: 0; }
+.vt-grupo__tit { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--vt-suave); margin-bottom: 6px; }
+.vt-op { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 4px; border: 0; border-radius: 6px; background: transparent; font-family: inherit; color: var(--vt-texto); cursor: pointer; text-align: left; }
+.vt-op:hover { background: var(--vt-hover); }
+.vt-op__caja { width: 20px; height: 20px; flex-shrink: 0; border-radius: 5px; border: 2px solid #9fb3c8; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.vt-op.is-on .vt-op__caja { background: #0f6fae; border-color: #0f6fae; }
+.vt-op__eti { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-op__n { font-size: 14px; font-weight: 800; }
+.vt-op.is-on .vt-op__n { color: var(--vt-acento); }
+.vt-op.is-cero { opacity: .5; }
+.vt-fechas { display: flex; gap: 8px; }
+.vt-fecha { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: var(--vt-suave); }
+.vt-fecha input { height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--vt-borde); background: var(--vt-caja); color: var(--vt-texto); font-family: inherit; font-size: 14px; }
+.v-theme--dark .vt-fecha input { color-scheme: dark; }
+.vt-panel__pie { padding: 14px 20px; border-top: 1px solid var(--vt-borde); }
+.vt-panel__ver { width: 100%; height: 46px; border: 0; border-radius: 10px; background: #0f6fae; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.vt-panel-enter-active, .vt-panel-leave-active { transition: transform .18s ease; }
+.vt-panel-enter-from, .vt-panel-leave-to { transform: translateX(100%); }
 
-.lp-filters__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  height: 38px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-  border: 1px solid var(--lp-card-border);
-  color: rgba(var(--v-theme-on-surface), 0.78);
-  font-size: 12.5px;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition: background 0.14s, border-color 0.14s, color 0.14s;
-  user-select: none;
-}
-.lp-filters__more:hover {
-  background: rgba(var(--v-theme-on-surface), 0.07);
-  color: var(--lp-strong);
-}
-.lp-filters__more--open {
-  background: rgba(var(--v-theme-primary), 0.1);
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  color: rgb(var(--v-theme-primary));
-}
-.lp-filters__more-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
-  font-size: 10.5px;
-  font-weight: 500;
-  line-height: 1;
-  font-feature-settings: "tnum";
-}
-.lp-filters__more-chev {
-  transition: transform 0.18s ease;
-  opacity: 0.7;
-}
-.lp-filters__more--open .lp-filters__more-chev { transform: rotate(180deg); }
-
-.lp-date-range {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  padding: 4px 0;
-}
-.lp-date-range__clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  margin-left: 4px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-size: 11px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
-}
-.lp-date-range__clear:hover {
-  background: rgba(var(--v-theme-error), 0.08);
-  color: rgb(var(--v-theme-error));
-  border-color: rgba(var(--v-theme-error), 0.3);
-}
-
-.lp-filters__advanced {
-  padding-top: 4px;
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
-}
-.lp-filters__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px 12px;
-  align-items: start;
-  padding-top: 12px;
-}
-.lp-filters__cell { min-width: 0; }
-.lp-filters__cell--per-page { max-width: 160px; }
-.lp-filters__hint {
-  margin-top: 8px;
-  font-size: 11.5px;
-  color: var(--lp-muted);
-}
-
-.lp-filters__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.08);
-}
-.lp-filters__chip { font-size: 11px !important; }
-.lp-filters__chips-clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  font-size: 11px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
-}
-.lp-filters__chips-clear:hover {
-  background: rgba(var(--v-theme-error), 0.08);
-  color: rgb(var(--v-theme-error));
-  border-color: rgba(var(--v-theme-error), 0.3);
-}
-
-/* ── CONTENT WRAPPER ───────────────────────────────────── */
-.lp-content {
-  border-radius: var(--lp-radius);
-  background: var(--lp-card-bg);
-  border: 1px solid var(--lp-card-border);
-  overflow: hidden;
-}
-.lp-content__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--lp-card-border);
-  background: rgba(var(--v-theme-on-surface), 0.015);
-}
-.lp-content__head-left { display: flex; align-items: center; gap: 8px; }
-.lp-content__title { font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
-.lp-content__body { padding: 12px; transition: opacity 0.2s; }
-.lp-content__body--flush { padding: 0; }
-.lp-content__body--loading { opacity: 0.7; pointer-events: none; }
-
-/* ── PAGINATION ─────────────────────────────────────────── */
-.lp-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 4px 6px 8px;
-}
-.lp-pagination__info {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--lp-muted);
-  font-feature-settings: "tnum";
-}
-
-/* ============================================================
-   VENTAS — específico (data-table cells)
-   ============================================================ */
-.vp-table { background: transparent; }
-.vp-date   { font-size: 13px; font-weight: 400; }
-.vp-id     { font-size: 11px; opacity: 0.45; font-family: monospace; }
-.vp-bold   { font-size: 13px; font-weight: 400; }
-.vp-sub    { font-size: 11px; opacity: 0.5; }
-.vp-amount { font-size: 14px; font-weight: 500; font-feature-settings: "tnum"; }
-
-.vp-pay-row  { display: flex; align-items: center; gap: 6px; }
-.vp-pay-chip { font-size: 11px !important; }
-.vp-cuotas {
-  font-size: 11px; font-weight: 500;
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
-  padding: 1px 6px; border-radius: 999px;
-}
-.vp-extra-pays { font-size: 11px; font-weight: 400; opacity: 0.55; }
-.vp-ref { font-family: monospace; font-size: 10px; }
-
-.vp-actions { display: flex; gap: 4px; align-items: center; }
-
-/* ── RESPONSIVE ─────────────────────────────────────────── */
-@media (max-width: 1200px) {
-  .lp-methods { grid-template-columns: repeat(3, 1fr); }
-}
-@media (max-width: 960px) {
-  .lp { gap: 12px; }
-  .lp-stats   { grid-template-columns: repeat(2, 1fr); }
-  .lp-methods { grid-template-columns: repeat(3, 1fr); }
-  .lp-filters { padding: 10px 12px; }
-}
-@media (max-width: 600px) {
-  .lp-title { font-size: 18px; }
-  /* MOBILE app-like: ocultar KPIs y métodos; el listado de ventas es lo importante */
-  .lp-stats,
-  .lp-methods { display: none !important; }
-  .lp-filters__primary-field { flex: 0 0 100%; }
-  .lp-filters__presets { width: 100%; justify-content: flex-start; }
-}
-
-/* ── ANULAR DIALOG ─────────────────────────────────────── */
-.anular-dlg__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 18px 12px;
-}
-.anular-dlg__icon-wrap {
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: rgba(var(--v-theme-error), .1);
-  flex-shrink: 0;
-}
-.anular-dlg__eyebrow {
-  margin: 0;
-  font-size: 11px; font-weight: 400;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), .5);
-}
-.anular-dlg__title {
-  margin: 2px 0 0;
-  font-size: 18px; font-weight: 500; line-height: 1.1;
-}
-.anular-dlg__body {
-  padding: 4px 18px 14px;
-  display: grid;
-  gap: 8px;
-}
-.anular-dlg__info-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), .03);
-  border: 1px solid rgba(var(--v-theme-on-surface), .06);
-  font-size: 13px;
-  line-height: 1.4;
-}
-.anular-dlg__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 10px 18px 16px;
+@media (max-width: 900px) {
+  .vt { padding: 16px 16px 96px; }
+  .vt-tabla-scroll { display: none; }
+  .vt-tarjetas { display: block; }
+  .vt-cab__acciones { width: 100%; }
+  .vt-periodos { flex: 1; overflow-x: auto; }
+  .vt-panel { top: 0; width: 100vw; z-index: 2400; }
 }
 </style>
