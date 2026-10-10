@@ -152,7 +152,8 @@ onMounted(async () => {
 .cf-filtros label span { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sp-suave); }
 .cf-dolar { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--sp-suave); padding-bottom: 12px; }
 .cf-tabla .c-v { width: 130px; text-align: right; }
-.cf-tabla .c-p { width: 115px; text-align: right; color: var(--sp-suave); font-weight: 600; white-space: nowrap; }
+.cf-tabla .c-p { width: 115px; text-align: right; white-space: nowrap; }
+.cf-tabla td.c-p { color: var(--sp-texto); font-weight: 700; }
 .cf-tabla .c-m { width: 130px; }
 .cf-tabla .c-c { width: 220px; }
 .cf-tabla tbody tr { cursor: default; }
