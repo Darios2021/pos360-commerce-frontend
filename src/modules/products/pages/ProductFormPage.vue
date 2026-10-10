@@ -2629,6 +2629,11 @@ async function saveAll() {
 .pfn-ganancia { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; margin: 0; padding: 12px 14px; font-size: 14px; }
 .pfn-ganancia dt { color: var(--pfn-suave); font-weight: 600; }
 .pfn-ganancia dd { margin: 0; text-align: right; font-weight: 800; }
+/* Panel de fotos dentro de la columna derecha: sin título repetido, zona blanca */
+.pfn-aside .pi-root { padding: 12px; }
+.pfn-aside .pi-root > div:first-of-type > div:first-child { display: none !important; }
+.pfn-aside .pi-root > div:first-of-type { justify-content: flex-end !important; }
+.pfn-aside .pi-dropzone { background: var(--pfn-caja) !important; border: 2px dashed #8cc0e3 !important; border-radius: 10px !important; }
 /* Bloques que se conservan (promoción, kit, videos): sin subtítulos que explican */
 .pfp-root .pfp-section-sub { display: none !important; }
 .pfp-root .pfp-section.mt-4 { margin-top: 0 !important; }
