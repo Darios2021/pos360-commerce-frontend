@@ -280,7 +280,10 @@
           </button>
         </div>
         <div v-if="v.estado === 'lista' || v.estado === 'error'" class="ct-video__pie">
-          <a v-if="v.estado === 'lista'" :href="v.video" download class="ct-bajar"><v-icon size="20">mdi-download</v-icon>Bajar MP4</a>
+          <button v-if="v.estado === 'lista'" type="button" class="ct-bajar" :disabled="bajando === v.id" @click="bajar(v)">
+            <v-progress-circular v-if="bajando === v.id" indeterminate size="18" width="2" />
+            <v-icon v-else size="20">mdi-download</v-icon>Bajar MP4
+          </button>
           <span v-else class="ct-video__esp"></span>
           <button type="button" class="ct-borrar" :class="{ 'is-confirmar': confirmar === v.id }" :title="confirmar === v.id ? 'Confirmar' : 'Eliminar'" @click="borrar(v)">
             <v-icon size="20">mdi-delete-outline</v-icon><span v-if="confirmar === v.id">Confirmar</span>
@@ -619,6 +622,30 @@ async function generar() {
 }
 
 /* Videos */
+// El enlace firmado vence a la hora: se pide la pieza de nuevo y se abre con
+// descargar=1, que el servicio responde como descarga (Content-Disposition).
+const bajando = ref(null);
+async function bajar(v) {
+  bajando.value = v.id;
+  try {
+    const n = await verPieza(v.id);
+    const i = piezas.value.findIndex((x) => x.id === v.id);
+    if (i >= 0) piezas.value[i] = n;
+    if (!n.video) throw new Error("El video ya no está disponible.");
+    const a = document.createElement("a");
+    a.href = `${n.video}${n.video.includes("?") ? "&" : "?"}descargar=1`;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) {
+    if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
+    error.value = e?.message && !e?.response ? e.message : mensaje(e);
+  } finally {
+    bajando.value = null;
+  }
+}
 function editar(v) {
   borrador.titulo = v.titulo || "";
   borrador.descripcion = v.descripcion || "";
