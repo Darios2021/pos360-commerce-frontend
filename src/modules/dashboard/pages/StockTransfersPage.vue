@@ -33,7 +33,7 @@
         <table class="sp-tabla dl-tabla">
           <thead>
             <tr>
-              <th class="c-num">Número</th>
+              <th class="c-nro">Número</th>
               <th>Origen y destino</th>
               <th class="c-prod">Productos</th>
               <th class="c-est">Estado</th>
@@ -43,7 +43,10 @@
           </thead>
           <tbody>
             <tr v-for="t in filas" :key="t.id" :class="{ 'is-borrador': t.status === 'draft' }" @click="abrir($event, t)" @auxclick="abrir($event, t)">
-              <td><router-link :to="ruta(t)" class="sp-nombre num dl-nro" @click.stop>{{ t.number }}</router-link></td>
+              <td class="c-nro">
+                <router-link :to="ruta(t)" class="sp-nombre num dl-nro" @click.stop>{{ corto(t.number) }}</router-link>
+                <div class="sp-s num">{{ prefijo(t.number) }}</div>
+              </td>
               <td>
                 <span class="dl-ruta">
                   <span><v-icon size="18">mdi-store-outline</v-icon>{{ suc(t.fromWarehouse) }}</span>
@@ -108,6 +111,9 @@ const cargando = ref(false);
 const error = ref("");
 
 const fmt = (v) => Number(v || 0).toLocaleString("es-AR");
+// DER-2026-000026 → "000026" grande y "DER-2026" chico: entra en la columna.
+const corto = (num) => String(num || "").split("-").pop();
+const prefijo = (num) => String(num || "").split("-").slice(0, -1).join("-");
 const etiqueta = (s) => NOMBRES[s] || s;
 const suc = (w) => String(w?.branch?.name || w?.name || "").replace(/^Depósito\s+/i, "") || "—";
 function fecha(v) {
@@ -167,12 +173,14 @@ onMounted(cargar);
 .dl-dot--received, .dl-est--received::before, .dl-est--partial::before { background: #2E9E7B; }
 .dl-est { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
 .dl-est::before { content: ""; }
-.dl-tabla .c-num { width: 190px; }
-.dl-tabla .c-prod { width: 96px; text-align: right; }
-.dl-tabla .c-est { width: 130px; }
-.dl-tabla .c-fechas { width: 210px; }
-.dl-tabla .c-ver { width: 116px; text-align: right; }
-.dl-tabla td { white-space: nowrap; }
+.dl-tabla { min-width: 900px; }
+.dl-tabla .c-nro { width: 110px; }
+.dl-tabla .c-prod { width: 100px; text-align: right; }
+.dl-tabla .c-est { width: 120px; }
+.dl-tabla .c-fechas { width: 200px; }
+.dl-tabla .c-ver { width: 136px; text-align: right; }
+.dl-tabla td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-nro { font-size: 16px; }
 .dl-tabla tr.is-borrador td { background: rgba(240, 180, 41, 0.07); }
 .dl-nro { color: #0f6fae !important; white-space: nowrap; }
 .dl-ruta { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; flex-wrap: wrap; }
