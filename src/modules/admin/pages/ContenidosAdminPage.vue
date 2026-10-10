@@ -707,7 +707,13 @@ function seguir() {
       try {
         const n = await verPieza(v.id);
         const i = piezas.value.findIndex((x) => x.id === v.id);
-        if (i >= 0) piezas.value[i] = n;
+        if (i >= 0) {
+          // El avance no retrocede mientras no vuelva a la cola (un reinicio del servicio).
+          const antes = piezas.value[i];
+          const volvioACola = n.estado === "en_cola" || /^en cola/i.test(n.etapa || "");
+          if (n.estado === "renderizando" && !volvioACola && Number(n.progreso) < Number(antes.progreso)) n.progreso = antes.progreso;
+          piezas.value[i] = n;
+        }
       } catch (e) {
         // Un video que ya no existe sale de la lista; otro error se reintenta.
         if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
