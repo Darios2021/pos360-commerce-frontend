@@ -1,34 +1,31 @@
-<!-- src/modules/products/pages/ProductFormPage.vue -->
 <template>
-  <div class="pfp-root">
-
-    <!-- ══ ENCABEZADO ══ -->
-    <div class="pfn-cab">
-      <router-link :to="isEdit && draft?.id ? { name: 'productView', params: { id: draft.id } } : { name: 'products' }" class="pfn-volver">
+  <div class="pfp-root pfx">
+    <!-- Encabezado -->
+    <div class="pfx-cab">
+      <router-link :to="isEdit && draft?.id ? { name: 'productView', params: { id: draft.id } } : { name: 'products' }" class="pfx-volver">
         <v-icon size="18">mdi-chevron-left</v-icon>{{ isEdit ? "Volver al producto" : "Productos" }}
       </router-link>
-      <h1 class="pfn-titulo">{{ isEdit ? (draft?.name || "Editar producto") : "Nuevo producto" }}</h1>
-      <span v-if="isEdit && draft?.sku" class="pfn-sub">SKU {{ draft.sku }}<template v-if="draft?.code"> · Código {{ draft.code }}</template></span>
+      <h1 class="pfx-titulo">{{ isEdit ? (draft?.name || "Editar producto") : "Nuevo producto" }}</h1>
+      <span v-if="isEdit && draft?.sku" class="pfx-sub num">SKU {{ draft.sku }}<template v-if="draft?.code"> · Código {{ draft.code }}</template></span>
     </div>
 
-    <!-- ══ LAYOUT ══ -->
-    <div class="pfp-layout">
+    <!-- Pasos -->
+    <nav class="pfx-pasos" aria-label="Pasos">
+      <template v-for="(p, i) in STEPS" :key="p.value">
+        <button type="button" class="pfx-paso" :class="{ 'is-hecho': step > p.value, 'is-actual': step === p.value }"
+          :disabled="!canGoTo(p.value)" @click="goToStep(p.value)">
+          <span class="pfx-paso__n num"><v-icon v-if="step > p.value" size="18">mdi-check</v-icon><template v-else>{{ p.value }}</template></span>
+          <span class="pfx-paso__txt"><span class="pfx-paso__tit">{{ p.title }}</span><span class="pfx-paso__sub">{{ p.sub }}</span></span>
+        </button>
+        <span v-if="i < STEPS.length - 1" class="pfx-paso__linea" :class="{ 'is-hecho': step > p.value }"></span>
+      </template>
+    </nav>
 
-      <!-- ══ MAIN ══ -->
-      <main class="pfp-main" ref="mainRef">
-        <div class="pfp-content">
+    <div v-if="initialLoading" class="pfx-cargando"><v-progress-circular indeterminate size="40" color="primary" /></div>
 
-          <!-- ── LOADING ── -->
-          <div v-if="initialLoading" class="pfp-init-loading">
-            <v-progress-circular indeterminate size="48" color="primary" />
-            <div class="mt-4 text-caption text-medium-emphasis">Cargando producto…</div>
-          </div>
-
-          <template v-else>
-
-            <div class="pfn-grilla">
-              <div class="pfn-main">
-              <div v-if="products.error" class="pfp-alert-error mb-4">
+    <div v-else class="pfx-cuerpo" ref="mainRef">
+      <section class="pfx-tarjeta">
+        <div v-if="products.error" class="pfp-alert-error mb-4">
                 <v-icon size="18" color="error" class="mr-2">mdi-alert-circle</v-icon>
                 <div>
                   <div class="font-weight-bold text-body-2">{{ products.error }}</div>
@@ -41,133 +38,163 @@
               </div>
 
 
-                <!-- 1. Qué es -->
-                <section class="pfn-caja">
-                  <div class="pfn-banda"><span>1. Qué es</span></div>
-                  <div class="pfn-campos pfn-campos--tres">
-                    <v-text-field :model-value="draft.code || nextCodePreview || ''" density="compact" variant="outlined" label="Código" hide-details readonly />
-                    <v-text-field v-model="draft.supplier_code" :disabled="busy" density="compact" variant="outlined" label="Código del proveedor" hide-details />
-                    <div class="pfn-barras">
-                      <v-text-field v-model="draft.barcode" :disabled="busy" density="compact" variant="outlined" label="Código de barras" hide-details />
-                      <BarcodeScanButton v-if="!isEdit" mode="emit-product" label="" title="Escanear código" icon="mdi-barcode-scan"
-                        color="primary" variant="text" size="small" density="compact" class="pfn-barras__btn"
-                        @product="onScannedProduct" @scanned="onScannedCode" />
-                    </div>
-                    <v-text-field v-model="draft.name" :disabled="busy" density="compact" variant="outlined"
-                      label="Descripción" class="pfn-ancho"
-                      :error="!draft.name && step1Touched" :error-messages="!draft.name && step1Touched ? ['Obligatorio'] : []" hide-details="auto" />
-                    <v-select v-model="draftCategoryId" :items="categoriesList" item-title="name" item-value="id"
-                      :disabled="busy" density="compact" variant="outlined" label="Rubro" hide-details="auto" clearable
-                      :error="!draftCategoryId && step1Touched" :error-messages="!draftCategoryId && step1Touched ? ['Obligatorio'] : []"
-                      :menu-props="{ maxHeight: 360 }" />
-                    <v-select v-model="draftSubcategoryId" :items="filteredSubcategories" item-title="name" item-value="id"
-                      :disabled="busy || !draftCategoryId" density="compact" variant="outlined" label="Subrubro" hide-details="auto" clearable
-                      :error="!draftSubcategoryId && step1Touched" :error-messages="!draftSubcategoryId && step1Touched ? ['Obligatorio'] : []"
-                      :menu-props="{ maxHeight: 360 }" />
-                    <v-text-field v-model="draft.brand" :disabled="busy" density="compact" variant="outlined" label="Marca" hide-details />
-                    <v-text-field v-model="draft.model" :disabled="busy" density="compact" variant="outlined" label="Modelo" hide-details />
-                    <v-select v-model="draft.unit" :items="UNIDADES" :disabled="busy" density="compact" variant="outlined" label="Unidad" hide-details />
-                    <v-select v-model="draft.warranty_months" :items="GARANTIAS" item-title="t" item-value="v" :disabled="busy" density="compact" variant="outlined" label="Garantía" hide-details />
-                    <v-textarea v-model="draft.description" :disabled="busy" density="compact" variant="outlined"
-                      label="Detalle para la tienda" auto-grow rows="2" class="pfn-ancho" hide-details />
-                  </div>
-                  <div v-if="draft.sku || skuPreview" class="pfn-pie num">SKU {{ draft.sku || skuPreview }}</div>
-                </section>
 
-                <!-- 2. Costo y precios -->
-                <section class="pfn-caja">
-                  <div class="pfn-banda"><span>2. Costo y precios</span></div>
-                  <div class="pfn-cuerpo">
-                      <div class="pfn-moneda">
-                        <span class="pfn-moneda__tit">Costo en</span>
-                        <div class="pfn-seg" role="group" aria-label="Moneda del costo">
-                          <button type="button" :class="{ 'is-on': !costoEnDolares }" :disabled="busy" @click="setMoneda(null)">Pesos</button>
-                          <button type="button" :class="{ 'is-on': costoEnDolares }" :disabled="busy" @click="setMoneda('USD')">Dólares</button>
-                        </div>
-                        <span v-if="costoEnDolares" class="pfn-moneda__fx">
-                          <template v-if="fxCargando">Buscando la cotización…</template>
-                          <template v-else-if="num(draft.fx_rate, 0) > 0">Dólar $ {{ fmtCot(draft.fx_rate) }}</template>
-                          <template v-else>Sin cotización</template>
-                          <a href="#" class="pfn-link" @click.prevent="traerCotizacion">Usar la de hoy</a>
-                        </span>
-                        <span v-if="fxError" class="pfn-error">{{ fxError }}</span>
-                      </div>
-                      <v-row dense>
-                        <v-col cols="12" sm="4">
-                          <v-text-field v-model="draft.cost" :disabled="busy" density="compact" variant="outlined"
-                            label="Costo" type="number" min="0" :prefix="costoEnDolares ? 'US$' : '$'" hide-details="auto" :error-messages="fieldErr('cost')" />
-                        </v-col>
-                        <v-col cols="6" sm="4">
-                          <v-text-field v-model="draft.markup_pct" :disabled="busy" density="compact" variant="outlined"
-                            label="% de ganancia" type="number" min="0" suffix="%" hide-details="auto" />
-                        </v-col>
-                        <v-col cols="6" sm="4">
-                          <v-select v-model="draft.tax_rate" :items="IVAS" item-title="t" item-value="v" :disabled="busy"
-                            density="compact" variant="outlined" label="IVA" hide-details />
-                        </v-col>
-                      </v-row>
-                      <div v-if="cuentaLista" class="pfn-cuenta">{{ cuentaLista }}</div>
-                      <v-row dense class="mt-1">
-                        <v-col cols="12" sm="4">
-                          <v-text-field :model-value="draft.price_list" :disabled="busy" density="compact"
-                            variant="outlined" label="Lista y crédito" type="number" min="0" prefix="$"
-                            :class="{ 'pfn-calculado': listaCalculada }"
-                            :error-messages="fieldErr('price_list')" hide-details="auto"
-                            @update:model-value="onListaAMano" />
-                        </v-col>
-                        <v-col cols="6" sm="4">
-                          <v-text-field v-model="draft.price_discount" :disabled="busy" density="compact"
-                            variant="outlined" label="Contado" type="number" min="0" prefix="$"
-                            :error-messages="fieldErr('price_discount')" hide-details="auto" />
-                        </v-col>
-                        <v-col cols="6" sm="4">
-                          <v-text-field v-model="draft.price_reseller" :disabled="busy" density="compact"
-                            variant="outlined" label="Revendedor" type="number" min="0" prefix="$"
-                            :error-messages="fieldErr('price_reseller')" hide-details="auto" />
-                        </v-col>
-                        <v-col cols="6" sm="4">
-                          <v-text-field v-model="draft.price_installer" :disabled="busy" density="compact"
-                            variant="outlined" label="Instalador" type="number" min="0" prefix="$" hide-details="auto" />
-                        </v-col>
-                      </v-row>
-                      <label class="pfn-check">
-                        <v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />
-                        Lista calculada
-                      </label>
-                  </div>
-                </section>
+        <!-- 1. Lo básico -->
+        <div v-show="step === 1" class="pfx-paso-cont">
+          <div class="pfx-enc"><h2>Lo básico</h2><p>Con esto el producto ya se puede vender.</p></div>
+          <div class="pfx-g">
+            <div class="pfx-c"><label>Descripción</label>
+              <v-text-field v-model="draft.name" :disabled="busy" density="comfortable" variant="outlined" hide-details="auto"
+                :error-messages="!draft.name && step1Touched ? ['Falta la descripción'] : []" />
+            </div>
+          </div>
+          <div class="pfx-g pfx-g--3">
+            <div class="pfx-c"><label>Rubro</label>
+              <v-select v-model="draftCategoryId" :items="categoriesList" item-title="name" item-value="id" :disabled="busy"
+                density="comfortable" variant="outlined" hide-details="auto" clearable :menu-props="{ maxHeight: 360 }"
+                :error-messages="!draftCategoryId && step1Touched ? ['Falta el rubro'] : []" />
+            </div>
+            <div class="pfx-c"><label>Subrubro</label>
+              <v-select v-model="draftSubcategoryId" :items="filteredSubcategories" item-title="name" item-value="id"
+                :disabled="busy || !draftCategoryId" density="comfortable" variant="outlined" hide-details="auto" clearable
+                :menu-props="{ maxHeight: 360 }" :error-messages="!draftSubcategoryId && step1Touched ? ['Falta el subrubro'] : []" />
+            </div>
+            <div class="pfx-c"><label>Marca <i>· opcional</i></label>
+              <v-text-field v-model="draft.brand" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+          </div>
+          <div class="pfx-g pfx-g--2">
+            <div class="pfx-c"><label>Código de barras <i>· opcional</i></label>
+              <div class="pfx-barras">
+                <v-text-field v-model="draft.barcode" :disabled="busy" density="comfortable" variant="outlined" hide-details placeholder="Escanear o escribir" />
+                <BarcodeScanButton v-if="!isEdit" mode="emit-product" label="" title="Escanear código" icon="mdi-barcode-scan"
+                  color="primary" variant="text" size="small" density="compact" class="pfx-barras__btn"
+                  @product="onScannedProduct" @scanned="onScannedCode" />
+              </div>
+            </div>
+            <div class="pfx-c"><label>Código</label>
+              <div class="pfx-fijo num">{{ draft.code || nextCodePreview || "—" }}<span v-if="!isEdit"> · automático</span></div>
+            </div>
+          </div>
+          <div class="pfx-sep"></div>
+          <div class="pfx-g pfx-g--precio">
+            <div class="pfx-c"><label>Costo en</label>
+              <div class="pfn-seg" role="group" aria-label="Moneda del costo">
+                <button type="button" :class="{ 'is-on': !costoEnDolares }" :disabled="busy" @click="setMoneda(null)">$</button>
+                <button type="button" :class="{ 'is-on': costoEnDolares }" :disabled="busy" @click="setMoneda('USD')">US$</button>
+              </div>
+            </div>
+            <div class="pfx-c"><label>Costo</label>
+              <v-text-field v-model="draft.cost" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" :prefix="costoEnDolares ? 'US$' : '$'" hide-details />
+            </div>
+            <div class="pfx-c"><label>% de ganancia</label>
+              <v-text-field v-model="draft.markup_pct" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" suffix="%" hide-details />
+            </div>
+            <div class="pfx-c"><label>IVA</label>
+              <v-select v-model="draft.tax_rate" :items="IVAS" item-title="t" item-value="v" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Lista</label>
+              <v-text-field :model-value="draft.price_list" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
+                :class="{ 'pfx-calculado': listaCalculada }" :error-messages="fieldErr('price_list')" hide-details="auto" @update:model-value="onListaAMano" />
+            </div>
+          </div>
+          <div v-if="costoEnDolares" class="pfx-nota num">
+            <template v-if="fxCargando">Buscando la cotización…</template>
+            <template v-else-if="num(draft.fx_rate, 0) > 0">Dólar $ {{ fmtCot(draft.fx_rate) }}</template>
+            <template v-else>Sin cotización</template>
+            · <a href="#" class="pfn-link" @click.prevent="traerCotizacion">Usar la de hoy</a>
+            <span v-if="fxError" class="pfn-error"> · {{ fxError }}</span>
+          </div>
+          <div class="pfx-g pfx-g--3 pfx-g--abajo">
+            <div class="pfx-c"><label>Contado <i>· opcional</i></label>
+              <v-text-field v-model="draft.price_discount" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
+                :error-messages="fieldErr('price_discount')" hide-details="auto" />
+            </div>
+            <div class="pfx-c"><label>Revendedor <i>· opcional</i></label>
+              <v-text-field v-model="draft.price_reseller" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$"
+                :error-messages="fieldErr('price_reseller')" hide-details="auto" />
+            </div>
+            <div class="pfx-cuenta num">
+              <span v-if="cuentaLista">{{ cuentaLista }}</span>
+              <label class="pfx-sw"><v-switch v-model="listaCalculada" inset density="compact" hide-details color="primary" :disabled="busy" />Lista calculada</label>
+            </div>
+          </div>
+        </div>
 
-                <!-- 3. Compra y stock -->
-                <section class="pfn-caja">
-                  <div class="pfn-banda"><span>3. Compra y stock</span></div>
-                  <div class="pfn-campos pfn-campos--tres">
-                    <v-autocomplete v-model="draft.supplier_id" :items="proveedores" item-title="name" item-value="id"
-                      :loading="proveedoresCargando" :disabled="busy" density="compact" variant="outlined"
-                      label="Proveedor" clearable hide-details no-filter class="pfn-ancho2"
-                      @update:search="buscarProveedores">
-                      <template #no-data>
-                        <div class="pa-2">
-                          <v-btn v-if="proveedorBuscado" size="small" variant="tonal" color="primary" :loading="creandoProveedor" @click="crearProveedor">
-                            Agregar «{{ proveedorBuscado }}»
-                          </v-btn>
-                          <span v-else class="text-caption text-medium-emphasis">Escribí el nombre</span>
-                        </div>
-                      </template>
-                    </v-autocomplete>
-                    <v-text-field v-model="draft.purchase_date" :disabled="busy" density="compact" variant="outlined" label="Fecha de compra" type="date" hide-details />
-                    <v-text-field v-model="draft.location" :disabled="busy" density="compact" variant="outlined" label="Ubicación" placeholder="Ej.: estante B3" hide-details />
-                    <v-text-field v-model="draft.min_stock" :disabled="busy" density="compact" variant="outlined" label="Stock mínimo" type="number" min="0" hide-details />
-                  </div>
-                  <div class="pfn-stock">
-                    <ProductStockPanel :product-id="draft?.id || null" v-model="stockMatrix" :disabled="busy" />
-                  </div>
-                  <div class="pfn-toggles">
-                    <label class="pfn-check"><v-switch v-model="draft.is_active" inset density="compact" hide-details color="primary" :disabled="busy" />Activo</label>
-                    <label class="pfn-check"><v-switch v-model="draft.track_stock" inset density="compact" hide-details color="primary" :disabled="busy" />Controla stock</label>
-                  </div>
-                </section>
+        <!-- 2. Stock -->
+        <div v-show="step === 2" class="pfx-paso-cont">
+          <div class="pfx-enc"><h2>Stock</h2><p>Cuántas unidades entran a cada sucursal.</p></div>
+          <div class="pfx-stock">
+            <ProductStockPanel :product-id="draft?.id || null" v-model="stockMatrix" :disabled="busy" />
+          </div>
+          <div class="pfx-g pfx-g--abajo" style="grid-template-columns: 200px 1fr">
+            <div class="pfx-c"><label>Stock mínimo <i>· opcional</i></label>
+              <v-text-field v-model="draft.min_stock" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" hide-details />
+            </div>
+            <div class="pfx-toggles">
+              <label class="pfx-sw"><v-switch v-model="draft.is_active" inset density="compact" hide-details color="primary" :disabled="busy" />Activo</label>
+              <label class="pfx-sw"><v-switch v-model="draft.track_stock" inset density="compact" hide-details color="primary" :disabled="busy" />Controla stock</label>
+            </div>
+          </div>
+        </div>
 
-              <!-- ══ PROMOCIÓN (ancho completo) ══ -->
+        <!-- 3. Fotos -->
+        <div v-show="step === 3" class="pfx-paso-cont">
+          <div class="pfx-enc"><h2>Fotos</h2><p>La primera es la que se ve en el POS y en la tienda.</p></div>
+          <div class="pfx-fotos">
+            <ProductImagesPanel :product-id="draft?.id || null" v-model="queuedImages" @changed="onQueuedChanged" />
+          </div>
+        </div>
+
+        <!-- 4. Más datos -->
+        <div v-show="step === 4" class="pfx-paso-cont">
+          <div class="pfx-enc"><h2>Más datos</h2><p>Todo es opcional.</p></div>
+          <div class="pfx-g pfx-g--3">
+            <div class="pfx-c"><label>Proveedor</label>
+              <v-autocomplete v-model="draft.supplier_id" :items="proveedores" item-title="name" item-value="id"
+                :loading="proveedoresCargando" :disabled="busy" density="comfortable" variant="outlined"
+                clearable hide-details no-filter placeholder="Elegir o agregar" @update:search="buscarProveedores">
+                <template #no-data>
+                  <div class="pa-2">
+                    <v-btn v-if="proveedorBuscado" size="small" variant="tonal" color="primary" :loading="creandoProveedor" @click="crearProveedor">
+                      Agregar «{{ proveedorBuscado }}»
+                    </v-btn>
+                    <span v-else class="text-caption text-medium-emphasis">Escribí el nombre</span>
+                  </div>
+                </template>
+              </v-autocomplete>
+            </div>
+            <div class="pfx-c"><label>Código del proveedor</label>
+              <v-text-field v-model="draft.supplier_code" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Fecha de compra</label>
+              <v-text-field v-model="draft.purchase_date" :disabled="busy" density="comfortable" variant="outlined" type="date" hide-details />
+            </div>
+            <div class="pfx-c"><label>Modelo</label>
+              <v-text-field v-model="draft.model" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Unidad</label>
+              <v-select v-model="draft.unit" :items="UNIDADES" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Garantía</label>
+              <v-select v-model="draft.warranty_months" :items="GARANTIAS" item-title="t" item-value="v" :disabled="busy" density="comfortable" variant="outlined" hide-details />
+            </div>
+            <div class="pfx-c"><label>Ubicación</label>
+              <v-text-field v-model="draft.location" :disabled="busy" density="comfortable" variant="outlined" hide-details placeholder="Ej.: estante B3" />
+            </div>
+            <div class="pfx-c"><label>Precio instalador</label>
+              <v-text-field v-model="draft.price_installer" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" prefix="$" hide-details />
+            </div>
+          </div>
+
+          <div class="pfx-fila">
+            <v-icon size="22">mdi-text-long</v-icon>
+            <span class="pfx-fila__txt"><b>Detalle para la tienda</b><small>características, medidas, qué incluye</small></span>
+            <a href="#" class="pfn-link" @click.prevent="verDetalle = !verDetalle">{{ verDetalle ? "Cerrar" : (draft.description ? "Editar" : "Escribir") }}</a>
+          </div>
+          <v-textarea v-if="verDetalle" v-model="draft.description" :disabled="busy" density="comfortable" variant="outlined" auto-grow rows="3" hide-details class="pfx-detalle" />
+
+          <!-- ══ PROMOCIÓN (ancho completo) ══ -->
               <div class="pfp-section pfp-promo-section mt-4" :class="{ 'pfp-promo-on': draft.is_promo }">
                 <div class="pfp-section-head" style="--accent:#02498b">
                   <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-tag-heart</v-icon></div>
@@ -454,7 +481,7 @@
               </div>
 
 
-                <div class="pfp-section pfp-step2-videos mt-4">
+          <div class="pfp-section pfp-step2-videos mt-4">
                   <div class="pfp-section-head" style="--accent:#ef4444">
                     <div class="pfp-section-icon"><v-icon size="16" color="white">mdi-youtube</v-icon></div>
                     <div>
@@ -510,290 +537,47 @@
                 </div>
 
 
-              </div>
 
-              <!-- Fotos y cómo se ve en el POS -->
-              <aside class="pfn-aside">
-                <section class="pfn-caja">
-                  <div class="pfn-banda"><span>Fotos</span><small v-if="imagesCount" class="num">{{ imagesCount }} en cola</small></div>
-                  <ProductImagesPanel :product-id="draft?.id || null" v-model="queuedImages" @changed="onQueuedChanged" />
-                </section>
-                <span class="pfn-aside__tit">Así se ve en el POS</span>
-                <div class="pfn-caja pfn-vista">
-                  <span v-if="rubroVista" class="pfn-vista__rubro">{{ rubroVista }}</span>
-                  <span class="pfn-vista__nombre">{{ draft.name || "Descripción del producto" }}</span>
-                  <span class="pfn-vista__s num">{{ [draft.brand, draft.code || nextCodePreview].filter(Boolean).join(" · ") }}</span>
-                  <span class="pfn-vista__stock num" :class="stockTotalForm > 3 ? 'is-bien' : stockTotalForm > 0 ? 'is-bajo' : 'is-sin'"><i></i>{{ stockTotalForm > 0 ? `${stockTotalForm} en stock` : "sin stock" }}</span>
-                  <span class="pfn-vista__precio num">$ {{ fmtPeso(num(draft.price_discount, 0) || num(draft.price_list, 0)) }}</span>
-                  <span v-if="num(draft.price_discount, 0) && num(draft.price_list, 0) > num(draft.price_discount, 0)" class="pfn-vista__s num">lista $ {{ fmtPeso(draft.price_list) }}</span>
-                </div>
-                <dl v-if="gananciaLista" class="pfn-caja pfn-ganancia num">
-                  <dt>Ganancia en lista</dt><dd>$ {{ fmtPeso(gananciaLista.pesos) }} · {{ gananciaLista.pct }} %</dd>
-                  <dt>IVA incluido</dt><dd>$ {{ fmtPeso(gananciaLista.iva) }}</dd>
-                </dl>
-              </aside>
-            </div>
-
-            <!-- ══ STEP 3 ══ -->
-            <div v-if="false">
-              <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
-                <div>
-                  <div class="text-h6 font-weight-black">Resumen final</div>
-                  <div class="text-caption text-medium-emphasis">Revisá todo antes de {{ isEdit ? 'guardar' : 'crear' }}</div>
-                </div>
-                <v-chip :color="isReadyToCreate ? 'success' : 'warning'" variant="flat" size="small">
-                  <v-icon start size="13">{{ isReadyToCreate ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
-                  {{ isReadyToCreate ? 'Listo para ' + (isEdit ? 'guardar' : 'crear') : 'Faltan datos' }}
-                </v-chip>
-              </div>
-
-              <v-alert v-if="products.error" type="error" variant="tonal" density="compact" class="mb-4">
-                {{ products.error }}
-              </v-alert>
-
-              <!-- ════ HERO PREVIEW ════ -->
-              <div class="pfp-hero">
-                <!-- Galería: foto principal + miniaturas -->
-                <div class="pfp-hero-gallery">
-                  <div class="pfp-hero-main">
-                    <img v-if="summaryHero" :src="summaryHero.url" alt="" />
-                    <div v-else class="pfp-hero-empty">
-                      <v-icon size="48">mdi-image-off-outline</v-icon>
-                      <span>Sin imagen</span>
-                    </div>
-                    <div class="pfp-hero-badges">
-                      <span v-if="draft.is_kit" class="pfp-hero-kit-badge">
-                        <v-icon size="13" color="white">mdi-package-variant</v-icon>
-                        KIT · {{ arr(draft.kit_items).length }} productos
-                      </span>
-                      <span v-if="draft.is_promo" class="pfp-hero-promo-badge">PROMO</span>
-                    </div>
-                  </div>
-                  <div v-if="summaryImages.length > 1" class="pfp-hero-thumbs">
-                    <div
-                      v-for="(im, i) in summaryImages.slice(0, 6)"
-                      :key="i"
-                      class="pfp-hero-thumb"
-                      :class="{ 'is-primary': im === summaryHero }"
-                    >
-                      <img :src="im.url" alt="" />
-                    </div>
-                    <div v-if="summaryImages.length > 6" class="pfp-hero-thumb pfp-hero-thumb--more">
-                      +{{ summaryImages.length - 6 }}
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Info principal -->
-                <div class="pfp-hero-info">
-                  <div class="pfp-hero-cat" v-if="getCategoryNameById(getCategoryIdFromDraft(draft))">
-                    {{ getCategoryNameById(getCategoryIdFromDraft(draft)) }}
-                    <span v-if="getSubcategoryNameById(getSubcategoryIdFromDraft(draft))">
-                      · {{ getSubcategoryNameById(getSubcategoryIdFromDraft(draft)) }}
-                    </span>
-                  </div>
-                  <div class="pfp-hero-name">{{ safe(draft.name) || "Producto sin nombre" }}</div>
-                  <div class="pfp-hero-brand" v-if="draft.brand || draft.model">
-                    <span v-if="draft.brand">{{ draft.brand }}</span>
-                    <span v-if="draft.brand && draft.model"> · </span>
-                    <span v-if="draft.model">{{ draft.model }}</span>
-                  </div>
-
-                  <!-- Precio destacado -->
-                  <div class="pfp-hero-price-block">
-                    <div v-if="num(draft.price_list) > num(draft.price_discount) && num(draft.price_discount) > 0" class="pfp-hero-price-old">
-                      $ {{ fmtNum(draft.price_list) }}
-                    </div>
-                    <div class="pfp-hero-price-row">
-                      <div class="pfp-hero-price-main">$ {{ fmtNum(num(draft.price_discount) || num(draft.price_list)) }}</div>
-                      <div v-if="num(draft.price_list) > num(draft.price_discount) && num(draft.price_discount) > 0" class="pfp-hero-price-off">
-                        {{ Math.round(((num(draft.price_list) - num(draft.price_discount)) / num(draft.price_list)) * 100) }}% OFF
-                      </div>
-                    </div>
-                    <div v-if="num(draft.price_reseller) > 0" class="pfp-hero-price-reseller">
-                      Revendedor: <b>$ {{ fmtNum(draft.price_reseller) }}</b>
-                    </div>
-                  </div>
-
-                  <!-- Chips de estado -->
-                  <div class="pfp-hero-chips">
-                    <v-chip :color="draft.is_active ? 'success' : 'warning'" size="small" variant="flat">
-                      <v-icon start size="14">{{ draft.is_active ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
-                      {{ draft.is_active ? 'Activo' : 'Inactivo' }}
-                    </v-chip>
-                    <v-chip v-if="draft.is_kit" color="#7c3aed" size="small" variant="flat">
-                      <v-icon start size="14">mdi-package-variant</v-icon>
-                      Kit · {{ arr(draft.kit_items).length }} productos
-                    </v-chip>
-                    <v-chip v-if="draft.is_promo" color="warning" size="small" variant="flat">
-                      <v-icon start size="14">mdi-tag-heart</v-icon>
-                      En promoción
-                    </v-chip>
-                    <v-chip v-if="draft.track_stock" size="small" variant="tonal">
-                      <v-icon start size="14">mdi-package-check</v-icon>
-                      Controla stock
-                    </v-chip>
-                    <v-chip v-if="stockPreviewList.length" size="small" variant="tonal" color="cyan">
-                      <v-icon start size="14">mdi-warehouse</v-icon>
-                      {{ totalStockSummary }} unidades
-                    </v-chip>
-                  </div>
-
-                  <!-- Identificadores -->
-                  <div class="pfp-hero-ids">
-                    <span class="pfp-hero-id"><b>SKU:</b> {{ safe(finalSku) }}</span>
-                    <span class="pfp-hero-id"><b>Código:</b> {{ safe(draft.code || nextCodePreview) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- ════ DETALLES ════ -->
-              <div class="pfp-summary-grid">
-                <div class="d-flex flex-column ga-4">
-                  <!-- Descripción -->
-                  <div v-if="draft.description" class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16">mdi-text-long</v-icon> Descripción</div>
-                    <div class="pfp-sum-desc-block">{{ draft.description }}</div>
-                  </div>
-
-                  <!-- Precios desglosados -->
-                  <div class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="success">mdi-cash-multiple</v-icon> Precios</div>
-                    <div class="pfp-price-row-grid">
-                      <div class="pfp-price-item" v-for="p in priceItems" :key="p.label">
-                        <div class="pfp-price-label">{{ p.label }}</div>
-                        <div class="pfp-price-val" :class="{ muted: !p.val }">{{ p.val ? `$ ${fmtNum(p.val)}` : '—' }}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Promoción -->
-                  <div class="pfp-sum-card" v-if="draft.is_promo">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="warning">mdi-tag-heart</v-icon> Promoción</div>
-                    <div class="pfp-promo-summary">
-                      <div v-if="promoTimeOn" class="pfp-promo-summary-row">
-                        <v-icon size="14" color="warning">mdi-clock-outline</v-icon>
-                        <span>
-                          Por tiempo:
-                          <b v-if="num(draft.promo_price)">$ {{ fmtNum(draft.promo_price) }}</b>
-                          <span v-else class="text-medium-emphasis">precio sin definir</span>
-                          <span v-if="draft.promo_starts_at || draft.promo_ends_at" class="text-medium-emphasis">
-                            ({{ fmtPromoRange }})
-                          </span>
-                        </span>
-                      </div>
-                      <div v-if="promoQtyOn" class="pfp-promo-summary-row">
-                        <v-icon size="14" color="warning">mdi-package-variant-closed</v-icon>
-                        <span>
-                          Por cantidad: desde <b>{{ draft.promo_qty_threshold || '?' }}</b> u.
-                          <span v-if="draft.promo_qty_discount">
-                            – descuento
-                            <b v-if="draft.promo_qty_mode === 'percent'">{{ draft.promo_qty_discount }}%</b>
-                            <b v-else>$ {{ fmtNum(draft.promo_qty_discount) }}</b>
-                          </span>
-                        </span>
-                      </div>
-                      <div v-if="!promoTimeOn && !promoQtyOn" class="text-caption text-medium-emphasis">
-                        Marcado en promoción pero sin reglas configuradas — sólo se mostrará la etiqueta.
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Media -->
-                  <div class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="pink">mdi-image-multiple</v-icon> Media</div>
-                    <div class="pfp-media-badges">
-                      <span class="pfp-media-badge" :class="{ active: summaryImages.length }"><v-icon size="14">mdi-image</v-icon> {{ summaryImages.length }} imágenes</span>
-                      <span class="pfp-media-badge" :class="{ active: queuedYoutubeVideos.length }"><v-icon size="14">mdi-youtube</v-icon> {{ queuedYoutubeVideos.length }} YouTube</span>
-                      <span class="pfp-media-badge" :class="{ active: queuedVideoFiles.length }"><v-icon size="14">mdi-file-video</v-icon> {{ queuedVideoFiles.length }} archivos</span>
-                    </div>
-                  </div>
-
-                  <!-- Kit / combo -->
-                  <div class="pfp-sum-card pfp-sum-kit" v-if="draft.is_kit">
-                    <div class="pfp-sum-card-head">
-                      <v-icon size="16" color="#7c3aed">mdi-package-variant</v-icon>
-                      Kit / Combo
-                      <v-chip size="x-small" color="#7c3aed" variant="flat" class="ml-auto">
-                        {{ arr(draft.kit_items).length }} {{ arr(draft.kit_items).length === 1 ? 'producto' : 'productos' }}
-                      </v-chip>
-                    </div>
-
-                    <div v-if="!arr(draft.kit_items).length" class="pfp-sum-kit-empty">
-                      <v-icon size="14" color="warning">mdi-alert</v-icon>
-                      El kit no tiene componentes definidos.
-                    </div>
-
-                    <div v-else class="pfp-sum-kit-list">
-                      <div v-for="it in draft.kit_items" :key="it.component_id" class="pfp-sum-kit-row">
-                        <v-avatar size="32" rounded="lg" class="pfp-sum-kit-thumb">
-                          <v-img v-if="it.image_url" :src="it.image_url" cover />
-                          <v-icon v-else size="16">mdi-package-variant-closed</v-icon>
-                        </v-avatar>
-                        <div class="pfp-sum-kit-info">
-                          <div class="pfp-sum-kit-name">{{ it.name }}</div>
-                          <div class="pfp-sum-kit-meta">SKU {{ it.sku || '—' }} · $ {{ fmtNum(it.price_list) }} c/u</div>
-                        </div>
-                        <span class="pfp-sum-kit-qty">×{{ it.qty || 1 }}</span>
-                      </div>
-                    </div>
-
-                    <div v-if="kitSavings" class="pfp-sum-kit-savings">
-                      <div class="pfp-sum-kit-savings-row">
-                        <span class="text-medium-emphasis">Suelto:</span>
-                        <b class="text-decoration-line-through text-medium-emphasis">$ {{ fmtNum(kitSavings.componentsTotal) }}</b>
-                      </div>
-                      <div class="pfp-sum-kit-savings-row">
-                        <span class="text-medium-emphasis">Kit:</span>
-                        <b>$ {{ fmtNum(kitSavings.kitPrice) }}</b>
-                      </div>
-                      <div v-if="kitSavings.savings > 0" class="pfp-sum-kit-savings-final">
-                        <v-icon size="14" color="success">mdi-trending-down</v-icon>
-                        Ahorro: <b class="text-success">$ {{ fmtNum(kitSavings.savings) }} ({{ kitSavings.savingsPct }}%)</b>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="d-flex flex-column ga-4">
-                  <!-- Stock por sucursal -->
-                  <div v-if="stockPreviewList.length" class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16" color="cyan">mdi-warehouse</v-icon> Stock por sucursal</div>
-                    <div class="pfp-stock-list">
-                      <div v-for="r in stockPreviewList" :key="r.branch_id" class="pfp-stock-item">
-                        <span><v-icon size="13" class="mr-1">mdi-store-outline</v-icon>{{ r.branch_name }}</span>
-                        <span class="font-weight-bold">{{ r.qty }} u.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Código de barras -->
-                  <div class="pfp-sum-card">
-                    <div class="pfp-sum-card-head"><v-icon size="16">mdi-barcode</v-icon> Código de barras</div>
-                    <ProductBarcodeCard :value="draft?.code || ''" :preview="nextCodePreview || ''" :label="draft?.id ? 'REAL' : 'PREVIEW'" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </template>
-        </div><!-- /pfp-content -->
-      </main>
-    </div><!-- /pfp-layout -->
-
-    <!-- ══ FOOTER ══ -->
-    <div class="pfp-footer">
-      <div class="pfp-footer-inner">
-        <div class="pfp-footer-info">
-          <span v-if="draft?.id">Producto #{{ draft.id }}</span>
         </div>
-        <div class="pfp-footer-btns">
-          <a href="#" class="pfn-cancelar" @click.prevent="onCancel">Cancelar</a>
-          <v-btn color="primary" variant="flat" rounded="lg" @click="isEdit ? saveAll() : createAll()"
-            :loading="busy" :disabled="busy" class="pfp-btn-save">
-            {{ isEdit ? 'Guardar cambios' : 'Guardar producto' }}
-          </v-btn>
+      </section>
+
+      <!-- Así se ve en el POS -->
+      <aside class="pfx-aside">
+        <span class="pfx-aside__tit">Así se ve en el POS</span>
+        <div class="pfx-vista">
+          <div class="pfx-vista__foto">
+            <img v-if="fotoVista" :src="fotoVista" alt="" />
+            <v-icon v-else size="40">mdi-image-outline</v-icon>
+          </div>
+          <div class="pfx-vista__info">
+            <span v-if="rubroVista" class="pfn-vista__rubro">{{ rubroVista }}</span>
+            <span class="pfn-vista__nombre">{{ draft.name || "Descripción del producto" }}</span>
+            <span class="pfn-vista__s num">{{ [draft.brand, draft.code || nextCodePreview].filter(Boolean).join(" · ") }}</span>
+            <span class="pfn-vista__stock num" :class="stockTotalForm > 3 ? 'is-bien' : stockTotalForm > 0 ? 'is-bajo' : 'is-sin'"><i></i>{{ stockTotalForm > 0 ? `${stockTotalForm} en stock` : "sin stock" }}</span>
+            <span class="pfx-vista__precio num">$ {{ fmtPeso(num(draft.price_discount, 0) || num(draft.price_list, 0)) }}
+              <small v-if="num(draft.price_discount, 0) && num(draft.price_list, 0) > num(draft.price_discount, 0)">lista $ {{ fmtPeso(draft.price_list) }}</small>
+            </span>
+          </div>
         </div>
+        <dl v-if="gananciaLista" class="pfx-ganancia num">
+          <dt>Ganancia en lista</dt><dd>$ {{ fmtPeso(gananciaLista.pesos) }} · {{ gananciaLista.pct }} %</dd>
+          <dt>IVA incluido</dt><dd>$ {{ fmtPeso(gananciaLista.iva) }}</dd>
+        </dl>
+      </aside>
+    </div>
+
+    <!-- Pie fijo: un solo botón -->
+    <div class="pfx-pie">
+      <div class="pfx-pie__in">
+        <a v-if="step > 1" href="#" class="pfx-ant" @click.prevent="prevStep"><v-icon size="20">mdi-chevron-left</v-icon>Anterior</a>
+        <a v-else href="#" class="pfx-ant" @click.prevent="onCancel">Cancelar</a>
+        <span class="pfx-esp"></span>
+        <a v-if="step < 4 && (isEdit || step >= 2)" href="#" class="pfn-link" @click.prevent="guardar">{{ isEdit ? "Guardar ya" : "Guardar ya" }}</a>
+        <span class="pfx-pie__n num">Paso {{ step }} de 4</span>
+        <v-btn color="primary" variant="flat" class="pfx-sig" :loading="busy" :disabled="busy" @click="step < 4 ? nextStep() : guardar()">
+          {{ step < 4 ? "Siguiente" : (isEdit ? "Guardar cambios" : "Guardar producto") }}
+          <v-icon v-if="step < 4" end size="20">mdi-chevron-right</v-icon>
+        </v-btn>
       </div>
     </div>
 
@@ -853,9 +637,10 @@ const { mdAndUp, lgAndUp } = useDisplay();
 
 /* ── Steps ── */
 const STEPS = [
-  { value: 1, title: "Producto",      sub: "Datos, precios y estado",  icon: "mdi-package-variant" },
-  { value: 2, title: "Stock & Media", sub: "Inventario e imágenes",    icon: "mdi-image-multiple"  },
-  { value: 3, title: "Confirmar",     sub: "Resumen y guardar",        icon: "mdi-check-circle"    },
+  { value: 1, title: "Lo básico", sub: "obligatorio" },
+  { value: 2, title: "Stock", sub: "opcional" },
+  { value: 3, title: "Fotos", sub: "opcional" },
+  { value: 4, title: "Más datos", sub: "opcional" },
 ];
 
 /* ── Mode ── */
@@ -1142,6 +927,17 @@ function setMoneda(m) {
   draft.value.cost_currency = m;
   if (m === "USD" && !(num(draft.value?.fx_rate, 0) > 0)) traerCotizacion();
 }
+
+/* ── Pasos: guardar desde cualquier paso y detalle plegable ── */
+const verDetalle = ref(false);
+function guardar() { return isEdit.value ? saveAll() : createAll(); }
+const fotoVista = computed(() => {
+  const q = arr(queuedImages.value)[0];
+  if (q) return q.url || q.preview || (q instanceof File ? URL.createObjectURL(q) : "");
+  const imgs = arr(draft.value?.images);
+  const f = imgs[0];
+  return f ? (typeof f === "string" ? f : f.url || f.image_url || "") : "";
+});
 
 /* ── Vista previa de la derecha ── */
 const GARANTIAS = [
@@ -1509,7 +1305,7 @@ function canGoTo(target) { const t = toInt(target, 1); if (t <= 1) return true; 
 function goToStep(target) {
   const t = toInt(target, 1);
   if (!canGoTo(t)) return;
-  step.value = Math.min(3, Math.max(1, t));
+  step.value = Math.min(4, Math.max(1, t));
   if (mainRef.value) mainRef.value.scrollTop = 0;
 }
 function prevStep() { step.value = Math.max(1, step.value - 1); if (mainRef.value) mainRef.value.scrollTop = 0; }
@@ -1519,7 +1315,7 @@ function nextStep() {
     const errs = validateDatos();
     if (errs) return showValidation(errs, "Completá estos campos antes de continuar:");
   }
-  step.value = Math.min(3, step.value + 1);
+  step.value = Math.min(4, step.value + 1);
   if (mainRef.value) mainRef.value.scrollTop = 0;
 }
 
@@ -2662,4 +2458,126 @@ async function saveAll() {
 .pfp-root .pfp-section-title { color: #ffffff !important; font-size: 15px !important; font-weight: 800 !important; }
 .pfp-root .pfp-section-sub { color: rgba(255, 255, 255, 0.8) !important; }
 .pfp-root .pfp-section-head .v-btn { color: #ffffff !important; }
+</style>
+
+<style>
+/* ══ Alta y edición en 4 pasos (maqueta ProductoPaso1-4). Prefijo pfx, sin scoped ══ */
+.pos-container:has(.pfx) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.pfx {
+  --x-fondo: #d6e6f3; --x-caja: #ffffff; --x-borde: #d3dde7; --x-campo: #c9d5e1; --x-linea: #eef2f6;
+  --x-texto: #0f172a; --x-suave: #5a6678; --x-tenue: #94a3b8; --x-acento: #0f6fae;
+  min-height: calc(100vh - 56px); background: var(--x-fondo) !important; color: var(--x-texto);
+  display: flex; flex-direction: column; box-sizing: border-box;
+}
+.v-theme--dark .pfx {
+  --x-fondo: #0b0f14; --x-caja: #151c25; --x-borde: #253141; --x-campo: #33425a; --x-linea: #222c39;
+  --x-texto: #e5edf5; --x-suave: #9aa8b8; --x-tenue: #64748b; --x-acento: #5aaee0;
+}
+.pfx > .pfx-cab, .pfx > .pfx-pasos, .pfx > .pfx-cuerpo, .pfx > .pfx-cargando { max-width: 1240px; width: calc(100% - 56px); margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.pfx .num { font-variant-numeric: tabular-nums; }
+
+.pfx-cab { display: flex; flex-direction: column; gap: 2px; padding: 20px 0 14px; }
+.pfx-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--x-acento); text-decoration: none; margin-left: -4px; }
+.pfx-volver:hover { text-decoration: underline; }
+.pfx-titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.pfx-sub { font-size: 14px; font-weight: 600; color: var(--x-suave); }
+
+/* barra de pasos */
+.pfx-pasos { display: flex; align-items: center; padding: 14px 20px; border-radius: 12px; background: var(--x-caja); border: 1px solid var(--x-borde); margin-bottom: 18px !important; }
+.pfx-paso { display: flex; align-items: center; gap: 10px; flex-shrink: 0; border: 0; background: transparent; padding: 0; font-family: inherit; color: inherit; cursor: pointer; text-align: left; }
+.pfx-paso:disabled { cursor: default; }
+.pfx-paso__n { width: 34px; height: 34px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; box-sizing: border-box; background: var(--x-caja); color: var(--x-tenue); border: 2px solid var(--x-campo); }
+.pfx-paso.is-actual .pfx-paso__n { background: #0f6fae; color: #ffffff; border-color: #0f6fae; box-shadow: 0 0 0 4px rgba(15, 111, 174, 0.18); }
+.pfx-paso.is-hecho .pfx-paso__n { background: #2E9E7B; color: #ffffff; border-color: #2E9E7B; }
+.pfx-paso__txt { display: flex; flex-direction: column; }
+.pfx-paso__tit { font-size: 15px; font-weight: 800; color: var(--x-tenue); }
+.pfx-paso.is-actual .pfx-paso__tit { color: var(--x-texto); }
+.pfx-paso.is-hecho .pfx-paso__tit { color: #1f7a5f; }
+.pfx-paso__sub { font-size: 12px; color: var(--x-tenue); }
+.pfx-paso__linea { flex: 1; height: 2px; margin: 0 16px; background: var(--x-borde); min-width: 16px; }
+.pfx-paso__linea.is-hecho { background: #2E9E7B; }
+
+/* cuerpo */
+.pfx-cargando { display: flex; justify-content: center; padding: 60px 0; }
+.pfx-cuerpo { display: flex; gap: 24px; align-items: flex-start; padding-bottom: 24px; }
+.pfx-tarjeta { flex: 1; min-width: 0; padding: 24px 28px; border-radius: 12px; background: var(--x-caja); border: 1px solid var(--x-borde); box-sizing: border-box; }
+.pfx-paso-cont { display: flex; flex-direction: column; gap: 18px; }
+.pfx-enc h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.pfx-enc p { margin: 2px 0 0; font-size: 14px; color: var(--x-suave); }
+.pfx-g { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.pfx-g--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pfx-g--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pfx-g--precio { grid-template-columns: 130px repeat(2, minmax(0, 1fr)) 120px minmax(0, 1fr); }
+.pfx-g--abajo { align-items: end; }
+.pfx-c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pfx-c > label { font-size: 13px; font-weight: 700; color: var(--x-texto); opacity: .85; }
+.pfx-c > label i { font-style: normal; font-weight: 600; color: var(--x-tenue); }
+.pfx-sep { height: 1px; background: var(--x-linea); }
+.pfx-fijo { height: 46px; display: flex; align-items: center; padding: 0 14px; border-radius: 10px; background: var(--x-fondo); font-size: 15px; font-weight: 700; color: var(--x-suave); }
+.pfx-barras { position: relative; }
+.pfx-barras__btn { position: absolute !important; right: 6px; top: 50%; transform: translateY(-50%); min-width: 0 !important; }
+.pfx-nota { font-size: 13px; font-weight: 700; color: var(--x-suave); margin-top: -6px; }
+.pfx-cuenta { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--x-suave); padding-bottom: 4px; }
+.pfx-sw { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; color: var(--x-texto); cursor: pointer; }
+.pfx-toggles { display: flex; gap: 26px; padding-bottom: 6px; }
+.pfx-stock { border: 1px solid var(--x-borde); border-radius: 10px; overflow: hidden; }
+.pfx-fotos .pi-root { gap: 14px !important; }
+.pfx-fotos .pi-root > div:first-of-type > div:first-child { display: none !important; }
+.pfx-fotos .pi-dropzone { background: var(--x-caja) !important; border: 2px dashed #8cc0e3 !important; border-radius: 12px !important; min-height: 180px; }
+.pfx-fila { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--x-linea); }
+.pfx-fila > .v-icon { color: var(--x-tenue); }
+.pfx-fila__txt { flex: 1; display: flex; flex-direction: column; }
+.pfx-fila__txt b { font-size: 15px; }
+.pfx-fila__txt small { font-size: 13px; color: var(--x-suave); }
+.pfx-detalle { margin-top: -6px; }
+.pfx .pfp-section { border: 0 !important; border-bottom: 1px solid var(--x-linea) !important; border-radius: 0 !important; background: transparent !important; margin: 0 !important; }
+.pfx .pfp-section .pfp-section-head { background: transparent !important; padding: 12px 0 !important; }
+.pfx .pfp-section .pfp-section-title { color: var(--x-texto) !important; font-weight: 700 !important; font-size: 15px !important; }
+.pfx .pfp-section .pfp-section-head .v-btn { color: var(--x-acento) !important; }
+.pfx .pfp-section .pfp-section-body { padding: 4px 0 14px !important; }
+
+/* campos de Vuetify con la medida de la maqueta */
+.pfx .v-field { border-radius: 10px !important; font-size: 16px; }
+.pfx .v-field--variant-outlined .v-field__outline { --v-field-border-opacity: .28; }
+.pfx .v-field--focused .v-field__outline { --v-field-border-width: 2px; }
+.pfx .pfx-calculado .v-field { background: rgba(15, 111, 174, 0.07); }
+.pfx .pfx-calculado input { font-weight: 800; color: #0a466e; }
+.v-theme--dark .pfx .pfx-calculado input { color: #9cc9ea; }
+
+/* vista previa */
+.pfx-aside { width: 300px; flex-shrink: 0; position: sticky; top: 8px; display: flex; flex-direction: column; gap: 10px; }
+.pfx-aside__tit { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--x-suave); }
+.pfx-vista { border-radius: 12px; overflow: hidden; background: var(--x-caja); border: 1px solid var(--x-borde); }
+.pfx-vista__foto { height: 170px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-bottom: 1px solid var(--x-linea); color: #b7c4d3; }
+.pfx-vista__foto img { max-width: 100%; height: 160px; object-fit: contain; }
+.pfx-vista__info { padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+.pfx-vista__precio { margin-top: 6px; font-size: 22px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
+.pfx-vista__precio small { font-size: 12px; font-weight: 600; color: var(--x-suave); }
+.pfx-ganancia { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--x-caja); border: 1px solid var(--x-borde); font-size: 14px; }
+.pfx-ganancia dt { color: var(--x-suave); font-weight: 600; }
+.pfx-ganancia dd { margin: 0; text-align: right; font-weight: 800; }
+
+/* pie fijo */
+.pfx-pie { position: sticky; bottom: 0; margin-top: auto; z-index: 5; background: var(--x-caja); border-top: 1px solid var(--x-borde); }
+.pfx-pie__in { max-width: 1240px; width: calc(100% - 56px); margin: 0 auto; display: flex; align-items: center; gap: 18px; padding: 14px 0; }
+.pfx-ant { display: inline-flex; align-items: center; gap: 2px; font-size: 15px; font-weight: 700; color: var(--x-suave); text-decoration: none; }
+.pfx-ant:hover { color: var(--x-texto); }
+.pfx-esp { flex: 1; }
+.pfx-pie__n { font-size: 13px; font-weight: 700; color: var(--x-tenue); }
+.pfx-sig { height: 46px !important; padding: 0 26px !important; border-radius: 10px !important; font-size: 15px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
+
+@media (max-width: 1100px) {
+  .pfx-cuerpo { flex-direction: column; }
+  .pfx-aside { width: 100%; position: static; }
+  .pfx-g--precio { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .pfx > .pfx-cab, .pfx > .pfx-pasos, .pfx > .pfx-cuerpo, .pfx-pie__in { width: calc(100% - 24px); }
+  .pfx-tarjeta { padding: 18px 14px; }
+  .pfx-g--2, .pfx-g--3, .pfx-g--precio { grid-template-columns: minmax(0, 1fr); }
+  .pfx-paso__txt { display: none; }
+  .pfx-paso.is-actual .pfx-paso__txt { display: flex; }
+  .pfx-pie__n { display: none; }
+  .pfx-pie { bottom: 64px; }
+}
 </style>
