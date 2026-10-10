@@ -19,157 +19,171 @@
 
     <v-alert v-if="error" type="error" variant="tonal" density="compact" closable @click:close="error = ''">{{ error }}</v-alert>
 
-    <!-- NUEVO REEL -->
-    <div v-if="vista === 'nuevo'" class="ct-armar">
-      <!-- Catálogo -->
-      <section class="ct-col ct-cat">
-        <label class="sp-busca__campo">
-          <v-icon size="20" class="sp-busca__ic">mdi-magnify</v-icon>
-          <input v-model="buscar" class="sp-busca__input" type="search" placeholder="Buscar por nombre, marca o código" />
-        </label>
-        <div class="ct-chips">
-          <button type="button" class="ct-chip" :class="{ 'is-on': !categoria }" @click="categoria = null">Todas<b class="num">{{ catalogo.length }}</b></button>
-          <button v-for="c in categoriasVisibles" :key="c.nombre" type="button" class="ct-chip" :class="{ 'is-on': categoria === c.nombre }" @click="categoria = c.nombre">{{ c.texto }}<b class="num">{{ c.cantidad }}</b></button>
-          <v-menu v-if="categoriasResto.length" location="bottom start">
-            <template #activator="{ props: p }">
-              <button type="button" class="ct-chip" :class="{ 'is-on': categoriaEnResto }" v-bind="p">{{ categoriaEnResto ? textoCategoria(categoria) : "Más categorías" }}<v-icon size="18">mdi-chevron-down</v-icon></button>
-            </template>
-            <v-list density="compact" max-height="360">
-              <v-list-item v-for="c in categoriasResto" :key="c.nombre" @click="categoria = c.nombre">
-                <v-list-item-title>{{ c.texto }} <span class="ct-menu-n num">{{ c.cantidad }}</span></v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </div>
-        <div class="ct-cuenta"><span class="num">{{ cargandoCatalogo ? "Cargando productos…" : `${filtrados.length} con stock` }}</span><span class="num">{{ seleccion.length }} de {{ TOPE }} en el reel</span></div>
-        <div class="ct-grilla">
-          <button
-            v-for="p in visibles"
-            :key="p.id"
-            type="button"
-            class="ct-prod"
-            :class="{ 'is-on': ordenDe(p.id), 'is-lleno': !ordenDe(p.id) && seleccion.length >= TOPE }"
-            :title="p.nombre"
-            @click="alternar(p)"
-          >
-            <span v-if="ordenDe(p.id)" class="ct-prod__n">{{ ordenDe(p.id) }}</span>
-            <span v-else class="ct-prod__mas"><v-icon size="20">mdi-plus</v-icon></span>
-            <img :src="p.imagen" alt="" loading="lazy" />
-            <span class="ct-prod__t">{{ p.titulo }}</span>
-            <span class="ct-prod__p num">{{ pesos(p.precio) }}</span>
-            <span class="ct-prod__s num">{{ p.cuotas ? `${p.cuotas.cantidad} cuotas de ${pesos(p.cuotas.valor)} · ` : "" }}stock {{ p.stock }}</span>
+    <!-- NUEVO REEL: tres pasos navegables -->
+    <template v-if="vista === 'nuevo'">
+      <div class="ct-pasos">
+        <button v-for="(s, i) in PASOS" :key="i" type="button" class="ct-paso" :class="{ 'is-on': paso === i + 1, 'is-ok': paso > i + 1 && seleccion.length }" :disabled="i > 0 && !seleccion.length" @click="paso = i + 1">
+          <b><v-icon v-if="paso > i + 1 && seleccion.length" size="20">mdi-check</v-icon><template v-else>{{ i + 1 }}</template></b>
+          <span><strong>{{ s.t }}</strong><small>{{ i === 0 ? `${seleccion.length} ${seleccion.length === 1 ? "elegido" : "elegidos"}` : s.s }}</small></span>
+        </button>
+      </div>
+
+      <!-- 1. Productos -->
+      <div v-if="paso === 1" class="ct-p1">
+        <section class="ct-col">
+          <label class="sp-busca__campo">
+            <v-icon size="20" class="sp-busca__ic">mdi-magnify</v-icon>
+            <input v-model="buscar" class="sp-busca__input" type="search" placeholder="Buscar por nombre, marca o código" />
+          </label>
+          <div class="ct-chips">
+            <button type="button" class="ct-chip" :class="{ 'is-on': !categoria }" @click="categoria = null">Todas<b class="num">{{ catalogo.length }}</b></button>
+            <button v-for="c in categoriasVisibles" :key="c.nombre" type="button" class="ct-chip" :class="{ 'is-on': categoria === c.nombre }" @click="categoria = c.nombre">{{ c.texto }}<b class="num">{{ c.cantidad }}</b></button>
+            <v-menu v-if="categoriasResto.length" location="bottom start">
+              <template #activator="{ props: p }">
+                <button type="button" class="ct-chip" :class="{ 'is-on': categoriaEnResto }" v-bind="p">{{ categoriaEnResto ? textoCategoria(categoria) : "Más categorías" }}<v-icon size="18">mdi-chevron-down</v-icon></button>
+              </template>
+              <v-list density="compact" max-height="360">
+                <v-list-item v-for="c in categoriasResto" :key="c.nombre" @click="categoria = c.nombre">
+                  <v-list-item-title>{{ c.texto }} <span class="ct-menu-n num">{{ c.cantidad }}</span></v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
+          <div class="ct-cuenta"><span class="num">{{ cargandoCatalogo ? "Cargando productos…" : `${filtrados.length} con stock` }}</span></div>
+          <div class="ct-grilla">
+            <button
+              v-for="p in visibles"
+              :key="p.id"
+              type="button"
+              class="ct-prod"
+              :class="{ 'is-on': ordenDe(p.id), 'is-lleno': !ordenDe(p.id) && seleccion.length >= TOPE }"
+              :title="p.nombre"
+              @click="alternar(p)"
+            >
+              <span v-if="ordenDe(p.id)" class="ct-prod__n">{{ ordenDe(p.id) }}</span>
+              <span v-else class="ct-prod__mas"><v-icon size="20">mdi-plus</v-icon></span>
+              <img :src="p.imagen" alt="" loading="lazy" />
+              <span class="ct-prod__t">{{ p.titulo }}</span>
+              <span class="ct-prod__p num">{{ pesos(p.precio) }}</span>
+              <span class="ct-prod__s num">{{ p.cuotas ? `${p.cuotas.cantidad} cuotas de ${pesos(p.cuotas.valor)} · ` : "" }}stock {{ p.stock }}</span>
+            </button>
+          </div>
+          <div v-if="visibles.length < filtrados.length" v-intersect="masProductos" class="ct-sentinela"></div>
+          <div v-if="!cargandoCatalogo && !filtrados.length" class="ct-vacio">Sin productos</div>
+        </section>
+        <aside class="ct-col ct-enreel">
+          <div class="sp-caja">
+            <div class="se-banda"><span>En el reel</span><small class="num">{{ seleccion.length }} de {{ TOPE }}</small></div>
+            <div
+              v-for="(p, i) in seleccion"
+              :key="p.id"
+              class="ct-sel"
+              :class="{ 'is-arrastrando': arrastrando === i, 'is-destino': destino === i && arrastrando !== i }"
+              draggable="true"
+              @dragstart="arrastrando = i"
+              @dragover.prevent="destino = i"
+              @drop.prevent="soltar(i)"
+              @dragend="arrastrando = null; destino = null"
+            >
+              <span class="ct-sel__n">{{ i + 1 }}</span>
+              <img :src="p.imagen" alt="" />
+              <div class="ct-sel__t"><b>{{ p.titulo }}</b><span class="num">{{ pesos(p.precio) }}</span></div>
+              <v-icon size="20" class="ct-es__drag">mdi-drag</v-icon>
+              <button type="button" title="Quitar" @click="quitar(p.id)"><v-icon size="20">mdi-close</v-icon></button>
+            </div>
+            <div v-if="!seleccion.length" class="ct-vacio">Sin productos</div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- 2. Escenas -->
+      <div v-else-if="paso === 2" class="ct-p2">
+        <div class="ct-tira">
+          <button type="button" class="ct-ti" :class="{ 'is-on': activa === 'intro' }" @click="activa = 'intro'">
+            <EscenaReel tipo="intro" :fuente="fuente" :ancho="46" />
+            <span><small>Portada · {{ fmtSeg(T.intro) }} s</small><b>Logo de la marca</b></span>
+          </button>
+          <button v-for="(p, i) in seleccion" :key="p.id" type="button" class="ct-ti" :class="{ 'is-on': activa === p.id }" @click="activa = p.id">
+            <EscenaReel tipo="item" :item="encargoItem(p)" :fuente="fuente" :ancho="46" :con-cuotas="opciones.cuotas" />
+            <span><small>Escena {{ i + 1 }} · {{ fmtSeg(T.item) }} s</small><b>{{ p.titulo }}</b></span>
+          </button>
+          <button type="button" class="ct-ti" :class="{ 'is-on': activa === 'cierre' }" @click="activa = 'cierre'">
+            <EscenaReel tipo="cierre" :fuente="fuente" :ancho="46" />
+            <span><small>Cierre · {{ fmtSeg(T.cierre) }} s</small><b>{{ fuente?.textos?.llamado || "Cierre" }}</b></span>
           </button>
         </div>
-        <div v-if="visibles.length < filtrados.length" v-intersect="masProductos" class="ct-sentinela"></div>
-        <div v-if="!cargandoCatalogo && !filtrados.length" class="ct-vacio">Sin productos</div>
-      </section>
 
-      <!-- Guion -->
-      <section class="ct-col ct-guion">
-        <div class="sp-caja">
-          <div class="se-banda"><span>Guion del reel</span><small class="num">{{ seleccion.length }} {{ seleccion.length === 1 ? "escena" : "escenas" }} · {{ fmtSeg(duracion) }} s</small></div>
-
-          <!-- Portada -->
-          <div class="ct-es" :class="{ 'is-on': activa === 'intro' }" @click="activa = 'intro'">
-            <div class="ct-es__th"><EscenaReel tipo="intro" :fuente="fuente" :ancho="54" /></div>
-            <div class="ct-es__cuerpo">
-              <span class="ct-es__k">Portada · {{ fmtSeg(T.intro) }} s</span>
-              <b class="ct-es__h">Logo de la marca</b>
-              <div v-if="activa === 'intro' && opciones.voz" class="ct-campo" @click.stop>
-                <label><v-icon size="15">mdi-account-voice</v-icon> Voz</label>
-                <textarea v-model="guion.intro" rows="2" maxlength="300" @input="guion.introEditada = true"></textarea>
-              </div>
-              <span v-else-if="opciones.voz && guion.intro" class="ct-es__v">“{{ guion.intro }}”</span>
-            </div>
-          </div>
-
-          <!-- Productos -->
-          <div
-            v-for="(p, i) in seleccion"
-            :key="p.id"
-            class="ct-es"
-            :class="{ 'is-on': activa === p.id, 'is-arrastrando': arrastrando === i, 'is-destino': destino === i && arrastrando !== i }"
-            draggable="true"
-            @click="activa = p.id"
-            @dragstart="arrastrando = i"
-            @dragover.prevent="destino = i"
-            @drop.prevent="soltar(i)"
-            @dragend="arrastrando = null; destino = null"
-          >
-            <div class="ct-es__th"><EscenaReel tipo="item" :item="encargoItem(p)" :fuente="fuente" :ancho="54" :con-cuotas="opciones.cuotas" /></div>
-            <div class="ct-es__cuerpo">
-              <span class="ct-es__k">Escena {{ i + 1 }} · {{ fmtSeg(T.item) }} s</span>
-              <b class="ct-es__h">{{ p.titulo || "Sin título" }}</b>
-              <div v-if="activa === p.id" class="ct-editor" @click.stop>
-                <div class="ct-campo"><label>Título</label><input v-model="p.titulo" maxlength="90" /></div>
-                <div class="ct-campo"><label>Marca y modelo</label><input v-model="p.etiqueta" maxlength="80" /></div>
-                <div class="ct-campo">
-                  <label>Precio</label>
-                  <div class="ct-precio">
-                    <b class="num">{{ pesos(p.precio) }}</b>
-                    <s v-if="p.precioAnterior > p.precio" class="num">{{ pesos(p.precioAnterior) }}</s>
-                    <span v-if="p.precioAnterior > p.precio" class="num">{{ Math.round((1 - p.precio / p.precioAnterior) * 100) }} % OFF</span>
-                  </div>
+        <div class="sp-caja ct-editor-caja">
+          <div class="se-banda"><span>{{ tituloActiva }}</span><small class="num">{{ fmtSeg(tipoActiva === "intro" ? T.intro : tipoActiva === "cierre" ? T.cierre : T.item) }} s</small></div>
+          <div class="ct-editor">
+            <template v-if="productoActivo">
+              <div class="ct-campo"><label>Título</label><input v-model="productoActivo.titulo" maxlength="90" /></div>
+              <div class="ct-campo"><label>Marca y modelo</label><input v-model="productoActivo.etiqueta" maxlength="80" /></div>
+              <div class="ct-campo">
+                <label>Precio</label>
+                <div class="ct-precio">
+                  <b class="num">{{ pesos(productoActivo.precio) }}</b>
+                  <s v-if="productoActivo.precioAnterior > productoActivo.precio" class="num">{{ pesos(productoActivo.precioAnterior) }}</s>
+                  <span v-if="productoActivo.precioAnterior > productoActivo.precio" class="num">{{ Math.round((1 - productoActivo.precio / productoActivo.precioAnterior) * 100) }} % OFF</span>
                 </div>
-                <div class="ct-campo"><label>Características, una por renglón</label><textarea v-model="p.caracteristicas" rows="3" @input="limitarCaracteristicas(p)"></textarea></div>
-                <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="p.voz" rows="2" maxlength="400" @input="p.vozEditada = true"></textarea></div>
               </div>
-              <span v-else-if="opciones.voz && p.voz" class="ct-es__v">“{{ p.voz }}”</span>
-            </div>
-            <div class="ct-es__ctl">
-              <v-icon size="20" class="ct-es__drag" title="Arrastrar para ordenar">mdi-drag</v-icon>
-              <button type="button" title="Quitar" @click.stop="quitar(p.id)"><v-icon size="20">mdi-close</v-icon></button>
-            </div>
-          </div>
-          <div v-if="!seleccion.length" class="ct-es ct-es--vacia">
-            <div class="ct-es__th ct-es__th--vacia"><v-icon size="22">mdi-plus</v-icon></div>
-            <span>Elegir productos del catálogo</span>
-          </div>
-
-          <!-- Cierre -->
-          <div class="ct-es" :class="{ 'is-on': activa === 'cierre' }" @click="activa = 'cierre'">
-            <div class="ct-es__th"><EscenaReel tipo="cierre" :fuente="fuente" :ancho="54" /></div>
-            <div class="ct-es__cuerpo">
-              <span class="ct-es__k">Cierre · {{ fmtSeg(T.cierre) }} s</span>
-              <b class="ct-es__h">{{ fuente?.textos?.llamado || "Cierre" }}</b>
-              <div v-if="activa === 'cierre' && opciones.voz" class="ct-campo" @click.stop>
-                <label><v-icon size="15">mdi-account-voice</v-icon> Voz</label>
-                <textarea v-model="guion.cierre" rows="3" maxlength="400" @input="guion.cierreEditada = true"></textarea>
-              </div>
-              <span v-else-if="opciones.voz && guion.cierre" class="ct-es__v">“{{ guion.cierre }}”</span>
-            </div>
+              <div class="ct-campo"><label>Características, una por renglón</label><textarea v-model="productoActivo.caracteristicas" rows="3" @input="limitarCaracteristicas(productoActivo)"></textarea></div>
+              <div v-if="opciones.voz" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="productoActivo.voz" rows="3" maxlength="400" @input="productoActivo.vozEditada = true"></textarea></div>
+            </template>
+            <template v-else-if="opciones.voz">
+              <div v-if="activa === 'intro'" class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.intro" rows="3" maxlength="300" @input="guion.introEditada = true"></textarea></div>
+              <div v-else class="ct-campo"><label><v-icon size="15">mdi-account-voice</v-icon> Voz</label><textarea v-model="guion.cierre" rows="4" maxlength="400" @input="guion.cierreEditada = true"></textarea></div>
+            </template>
+            <div v-else class="ct-vacio">Sin voz en off</div>
           </div>
         </div>
-      </section>
 
-      <!-- Vista previa y sonido -->
-      <section class="ct-col ct-prev">
         <div class="ct-prev__tel">
-          <EscenaReel :tipo="tipoActiva" :item="itemActivo" :fuente="fuente" :ancho="240" :con-cuotas="opciones.cuotas" />
+          <EscenaReel :tipo="tipoActiva" :item="itemActivo" :fuente="fuente" :ancho="300" :con-cuotas="opciones.cuotas" />
         </div>
-        <div class="ct-linea">
-          <button type="button" class="is-ext" :class="{ 'is-on': activa === 'intro' }" :style="{ flex: T.intro }" @click="activa = 'intro'">Portada</button>
-          <button v-for="(p, i) in seleccion" :key="p.id" type="button" :class="{ 'is-on': activa === p.id }" :style="{ flex: T.item }" @click="activa = p.id">{{ i + 1 }}</button>
-          <button type="button" class="is-ext" :class="{ 'is-on': activa === 'cierre' }" :style="{ flex: T.cierre }" @click="activa = 'cierre'">Cierre</button>
-        </div>
-        <div class="sp-caja ct-sonido">
-          <span class="ct-lab">Música</span>
-          <div class="ct-seg">
-            <button v-for="o in MUSICAS" :key="String(o.v)" type="button" :class="{ 'is-on': opciones.musica === o.v }" @click="opciones.musica = o.v">{{ o.t }}</button>
+      </div>
+
+      <!-- 3. Sonido y video -->
+      <div v-else class="ct-p3">
+        <div class="sp-caja">
+          <div class="se-banda"><span>El reel</span><small class="num">{{ seleccion.length }} {{ seleccion.length === 1 ? "producto" : "productos" }} · {{ fmtSeg(duracion) }} s</small></div>
+          <div class="ct-story">
+            <button type="button" class="ct-st" @click="verEscena('intro')"><EscenaReel tipo="intro" :fuente="fuente" :ancho="150" /><b>Portada</b><span class="num">{{ fmtSeg(T.intro) }} s</span></button>
+            <button v-for="(p, i) in seleccion" :key="p.id" type="button" class="ct-st" @click="verEscena(p.id)"><EscenaReel tipo="item" :item="encargoItem(p)" :fuente="fuente" :ancho="150" :con-cuotas="opciones.cuotas" /><b>Escena {{ i + 1 }}</b><span class="num">{{ fmtSeg(T.item) }} s</span></button>
+            <button type="button" class="ct-st" @click="verEscena('cierre')"><EscenaReel tipo="cierre" :fuente="fuente" :ancho="150" /><b>Cierre</b><span class="num">{{ fmtSeg(T.cierre) }} s</span></button>
           </div>
-          <label class="ct-sw"><span>Voz en off</span><input v-model="opciones.voz" type="checkbox" @change="sugerir" /><i></i></label>
-          <div v-if="opciones.voz" class="ct-seg">
-            <button v-for="o in RITMOS" :key="o.v" type="button" :class="{ 'is-on': opciones.ritmo === o.v }" @click="opciones.ritmo = o.v">{{ o.t }}</button>
-          </div>
-          <label class="ct-sw"><span>Cuotas y medios de pago</span><input v-model="opciones.cuotas" type="checkbox" @change="sugerir" /><i></i></label>
-          <label class="ct-sw ct-sw--ultimo"><span>Efectos de sonido</span><input v-model="opciones.efectos" type="checkbox" /><i></i></label>
         </div>
-        <button type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando" @click="generar">
+        <div class="ct-p3__abajo">
+          <div class="sp-caja">
+            <div class="se-banda"><span>Música</span></div>
+            <div class="ct-musica">
+              <button v-for="o in MUSICAS" :key="String(o.v)" type="button" :class="{ 'is-on': opciones.musica === o.v }" @click="opciones.musica = o.v"><v-icon size="30">{{ o.i }}</v-icon>{{ o.t }}</button>
+            </div>
+          </div>
+          <div class="sp-caja">
+            <div class="se-banda"><span>Voz y detalles</span></div>
+            <div class="ct-sonido">
+              <label class="ct-sw"><span>Voz en off</span><input v-model="opciones.voz" type="checkbox" @change="sugerir" /><i></i></label>
+              <div v-if="opciones.voz" class="ct-seg">
+                <button v-for="o in RITMOS" :key="o.v" type="button" :class="{ 'is-on': opciones.ritmo === o.v }" @click="opciones.ritmo = o.v">{{ o.t }}</button>
+              </div>
+              <label class="ct-sw"><span>Cuotas y medios de pago</span><input v-model="opciones.cuotas" type="checkbox" @change="sugerir" /><i></i></label>
+              <label class="ct-sw ct-sw--ultimo"><span>Efectos de sonido</span><input v-model="opciones.efectos" type="checkbox" /><i></i></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ct-pie">
+        <button v-if="paso > 1" type="button" class="ct-atras" @click="paso--"><v-icon size="20">mdi-arrow-left</v-icon>Atrás</button>
+        <span v-else></span>
+        <button v-if="paso < 3" type="button" class="ct-generar" :disabled="!seleccion.length" @click="paso++">Siguiente<v-icon size="22">mdi-arrow-right</v-icon></button>
+        <button v-else type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando" @click="generar">
           <v-progress-circular v-if="creando" indeterminate size="22" width="3" />
           <v-icon v-else size="24">mdi-movie-open-outline</v-icon>Generar video
         </button>
-      </section>
-    </div>
+      </div>
+    </template>
 
     <!-- VIDEOS -->
     <div v-else class="ct-videos">
@@ -209,10 +223,15 @@ import "@/modules/products/styles/proveedores.css";
 const TOPE = 6;
 const POR_TANDA = 48;
 const MUSICAS = [
-  { v: "pulso", t: "Pulso" },
-  { v: "calma", t: "Calma" },
-  { v: "urbano", t: "Urbano" },
-  { v: null, t: "Sin música" },
+  { v: "pulso", t: "Pulso", i: "mdi-pulse" },
+  { v: "calma", t: "Calma", i: "mdi-waves" },
+  { v: "urbano", t: "Urbano", i: "mdi-equalizer" },
+  { v: null, t: "Sin música", i: "mdi-volume-off" },
+];
+const PASOS = [
+  { t: "Productos", s: "" },
+  { t: "Escenas", s: "texto y voz" },
+  { t: "Sonido y video", s: "música y generar" },
 ];
 const RITMOS = [
   { v: 0.9, t: "Pausada" },
@@ -233,6 +252,7 @@ const categoria = ref(null);
 const cuantos = ref(POR_TANDA);
 const seleccion = ref([]);
 const activa = ref("intro");
+const paso = ref(1);
 const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEditada: false });
 const opciones = reactive({ musica: "pulso", voz: true, ritmo: 1, cuotas: true, efectos: true });
 const piezas = ref([]);
@@ -288,12 +308,13 @@ function alternar(p) {
   if (seleccion.value.length >= TOPE) return;
   const caracteristicas = String(p.descripcion || "").split(/\s*·\s*|\.\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 3).join("\n");
   seleccion.value.push({ ...p, caracteristicas, voz: "", vozEditada: false });
-  activa.value = p.id;
+  if (activa.value === "intro" && seleccion.value.length === 1) activa.value = p.id;
   sugerir();
 }
 function quitar(id) {
   seleccion.value = seleccion.value.filter((p) => p.id !== id);
   if (activa.value === id) activa.value = "intro";
+  if (!seleccion.value.length) paso.value = 1;
   sugerir();
 }
 function soltar(i) {
@@ -322,6 +343,14 @@ const encargoItem = (p) => ({
   imagen: p.imagen,
   cuotas: opciones.cuotas ? p.cuotas : undefined,
 });
+const productoActivo = computed(() => seleccion.value.find((x) => x.id === activa.value) || null);
+const tituloActiva = computed(() => {
+  if (activa.value === "intro") return "Portada · logo de la marca";
+  if (activa.value === "cierre") return `Cierre · ${fuente.value?.textos?.llamado || "cierre"}`;
+  const i = seleccion.value.findIndex((x) => x.id === activa.value);
+  return i >= 0 ? `Escena ${i + 1} · ${seleccion.value[i].titulo}` : "";
+});
+function verEscena(id) { activa.value = id; paso.value = 2; }
 const tipoActiva = computed(() => (activa.value === "intro" || activa.value === "cierre" ? activa.value : "item"));
 const itemActivo = computed(() => { const p = seleccion.value.find((x) => x.id === activa.value); return p ? encargoItem(p) : null; });
 
@@ -447,10 +476,61 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-tabs button.is-on { background: #0f6fae; color: #fff; }
 .ct-tabs button span { margin-left: 4px; opacity: .8; }
 
-.ct-armar { display: grid; grid-template-columns: minmax(380px, 470px) minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 .ct-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.ct-cat, .ct-prev { position: sticky; top: 12px; }
-.ct-cat { max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 4px; }
+.ct-pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ct-paso { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); text-align: left; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
+.ct-paso:hover:not(:disabled):not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-paso:hover:not(:disabled):not(.is-on) { background: #1a2a3a; }
+.ct-paso:disabled { cursor: default; opacity: .6; }
+.ct-paso b { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--sp-linea); color: var(--sp-suave); font-size: 16px; font-weight: 900; flex-shrink: 0; }
+.ct-paso span { display: flex; flex-direction: column; min-width: 0; }
+.ct-paso strong { font-size: 16px; font-weight: 800; }
+.ct-paso small { font-size: 13px; color: var(--sp-suave); }
+.ct-paso.is-on { border: 2px solid #0f6fae; padding: 11px 15px; background: var(--sp-hover); }
+.ct-paso.is-on b { background: #0f6fae; color: #fff; }
+.ct-paso.is-ok b { background: #2E9E7B; color: #fff; }
+.ct-paso.is-ok b .v-icon { color: #fff; }
+.ct-p1 { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.ct-enreel { position: sticky; top: 12px; }
+.ct-sel { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--sp-linea); background: var(--sp-caja); }
+.ct-sel:last-child { border-bottom: 0; }
+.ct-sel.is-arrastrando { opacity: .4; }
+.ct-sel.is-destino { box-shadow: inset 0 3px 0 #0f6fae; }
+.ct-sel__n { width: 28px; height: 28px; border-radius: 50%; background: #0f6fae; color: #fff; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ct-sel img { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; border: 1px solid var(--sp-linea); background: #fff; flex-shrink: 0; }
+.ct-sel__t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ct-sel__t b { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-sel__t span { font-size: 14px; font-weight: 700; color: var(--sp-suave); }
+.ct-sel button { border: 0; background: transparent; color: var(--sp-suave); cursor: pointer; padding: 2px; border-radius: 6px; display: inline-flex; }
+.ct-sel button:hover { color: #c2413a; background: rgba(194, 65, 58, .1); }
+.ct-p2 { display: grid; grid-template-columns: 250px minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+.ct-tira { display: flex; flex-direction: column; gap: 8px; }
+.ct-ti { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); text-align: left; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; }
+.ct-ti .er { border-radius: 6px; box-shadow: none; border: 1px solid var(--sp-borde); }
+.ct-ti span { display: flex; flex-direction: column; min-width: 0; }
+.ct-ti small { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--sp-suave); }
+.ct-ti b { font-size: 14px; font-weight: 800; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ct-ti:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-ti:hover:not(.is-on) { background: #1a2a3a; }
+.ct-ti.is-on { border: 2px solid #0f6fae; padding: 7px; background: var(--sp-hover); }
+.ct-editor-caja .ct-editor { padding: 6px 18px 18px; }
+.ct-p3 { display: flex; flex-direction: column; gap: 16px; }
+.ct-story { display: flex; justify-content: space-between; gap: 12px; padding: 18px 22px; overflow-x: auto; }
+.ct-st { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: transparent; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; padding: 0; }
+.ct-st b { font-size: 14px; font-weight: 800; }
+.ct-st span { font-size: 13px; color: var(--sp-suave); }
+.ct-st:hover .er { outline: 3px solid #3f8fc6; outline-offset: 3px; }
+.ct-p3__abajo { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
+.ct-musica { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 16px; }
+.ct-musica button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 800 15px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
+.ct-musica button .v-icon { color: #0f6fae; }
+.ct-musica button:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-musica button:hover:not(.is-on) { background: #1a2a3a; }
+.ct-musica button.is-on { border: 2px solid #0f6fae; padding: 15px 7px; background: var(--sp-hover); }
+.ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); position: sticky; bottom: 12px; z-index: 2; }
+.ct-atras { height: 50px; display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 800 16px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
+.ct-atras:hover { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-atras:hover { background: #1a2a3a; }
 .ct-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ct-chip { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 9999px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 700 13px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; white-space: nowrap; }
 .ct-chip b { font-weight: 700; color: var(--sp-suave); }
@@ -460,7 +540,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-chip.is-on b { color: rgba(255, 255, 255, .85); }
 .ct-menu-n { color: #64748b; margin-left: 6px; font-size: 13px; }
 .ct-cuenta { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--sp-suave); }
-.ct-grilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ct-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .ct-prod { position: relative; text-align: left; background: var(--sp-caja); border: 1px solid var(--sp-borde); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; color: var(--sp-texto); font-family: Inter, sans-serif; transition: background .12s, border-color .12s; }
 .ct-prod img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: #fff; }
 .ct-prod__t { font-size: 13px; font-weight: 700; line-height: 1.25; height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -508,10 +588,6 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-precio span { font-size: 13px; font-weight: 800; color: var(--sp-acento); }
 
 .ct-prev__tel { display: flex; justify-content: center; }
-.ct-linea { display: flex; gap: 2px; height: 34px; border-radius: 8px; overflow: hidden; }
-.ct-linea button { min-width: 0; border: 0; background: #3f8fc6; color: #fff; font: 800 12px Inter, sans-serif; cursor: pointer; white-space: nowrap; overflow: hidden; }
-.ct-linea button.is-ext { background: #8cc0e3; color: #0a466e; }
-.ct-linea button.is-on { background: #0a466e; color: #fff; }
 .ct-sonido { padding: 4px 14px 6px; }
 .ct-lab { display: block; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--sp-suave); margin: 10px 0 6px; }
 .ct-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); margin: 6px 0; }
@@ -525,7 +601,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-sw i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
 .ct-sw input:checked + i { background: #0f6fae; }
 .ct-sw input:checked + i::after { left: 21px; }
-.ct-generar { height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; background: #0f6fae; color: #fff !important; font: 800 17px Inter, sans-serif; cursor: pointer; }
+.ct-generar { height: 52px; padding: 0 26px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; background: #0f6fae; color: #fff !important; font: 800 17px Inter, sans-serif; cursor: pointer; }
 .ct-generar .v-icon { color: #fff !important; }
 .ct-generar:hover:not(:disabled) { background: #0a5a90; }
 .ct-generar:disabled { opacity: .5; cursor: default; }
@@ -554,16 +630,18 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-borrar.is-confirmar { background: #c2413a; border-color: #c2413a; color: #fff; }
 .ct-borrar.is-confirmar .v-icon { color: #fff; }
 
-@media (max-width: 1280px) {
-  .ct-armar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .ct-prev { grid-column: 1 / -1; position: static; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; }
-  .ct-prev .ct-linea, .ct-prev .ct-sonido, .ct-prev .ct-generar { grid-column: 2; }
-  .ct-prev__tel { grid-row: 1 / span 3; }
+@media (max-width: 1100px) {
+  .ct-p2 { grid-template-columns: 220px minmax(0, 1fr); }
+  .ct-p2 .ct-prev__tel { grid-column: 1 / -1; }
+  .ct-p3__abajo { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
-  .ct-armar { grid-template-columns: minmax(0, 1fr); }
-  .ct-cat { position: static; max-height: none; overflow: visible; }
-  .ct-prev { display: flex; }
+  .ct-p1, .ct-p2 { grid-template-columns: minmax(0, 1fr); }
+  .ct-enreel { position: static; order: -1; }
+  .ct-tira { flex-direction: row; overflow-x: auto; }
+  .ct-ti { flex-direction: column; min-width: 110px; }
+  .ct-musica { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ct-paso small { display: none; }
   .ct-grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
