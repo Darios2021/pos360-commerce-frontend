@@ -104,6 +104,9 @@ const routes = [
       { path: "pos/impresion", name: "posPrinter", component: () => import("@/modules/pos/pages/PosPrinterSettingsPage.vue") },
 
       { path: "products", name: "products", component: ProductsListPage },
+      { path: "proveedores", name: "suppliers", component: () => import("@/modules/products/pages/SuppliersPage.vue") },
+      { path: "proveedores/nuevo", name: "supplierNew", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
+      { path: "proveedores/:id", name: "supplierEdit", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true } },
       { path: "products/:id/edit", name: "productEdit", component: ProductFormPage, meta: { fullPage: true } },
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },

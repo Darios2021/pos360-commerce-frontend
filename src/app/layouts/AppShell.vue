@@ -208,6 +208,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Productos</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="hasRoute('suppliers')" :to="{ name: 'suppliers' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-truck-outline</v-icon>
+                </template>
+                <v-list-item-title>Proveedores</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Proveedores</v-tooltip>
+              </v-list-item>
+
               <!-- Stock e Inventario removidos: la nueva vista de Productos
                    ya cubre la matriz por sucursal y la gestión de stock. -->
 
