@@ -167,13 +167,14 @@ onMounted(cargar);
 .dl-dot--received, .dl-est--received::before, .dl-est--partial::before { background: #2E9E7B; }
 .dl-est { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
 .dl-est::before { content: ""; }
-.dl-tabla .c-num { width: 180px; }
-.dl-tabla .c-prod { width: 100px; text-align: right; }
-.dl-tabla .c-est { width: 150px; }
-.dl-tabla .c-fechas { width: 240px; }
-.dl-tabla .c-ver { width: 120px; text-align: right; }
+.dl-tabla .c-num { width: 190px; }
+.dl-tabla .c-prod { width: 96px; text-align: right; }
+.dl-tabla .c-est { width: 130px; }
+.dl-tabla .c-fechas { width: 210px; }
+.dl-tabla .c-ver { width: 116px; text-align: right; }
+.dl-tabla td { white-space: nowrap; }
 .dl-tabla tr.is-borrador td { background: rgba(240, 180, 41, 0.07); }
-.dl-nro { color: #0f6fae !important; }
+.dl-nro { color: #0f6fae !important; white-space: nowrap; }
 .dl-ruta { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; flex-wrap: wrap; }
 .dl-ruta > span { display: inline-flex; align-items: center; gap: 5px; }
 .dl-ruta .v-icon { color: var(--sp-suave); }
