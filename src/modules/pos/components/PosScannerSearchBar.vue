@@ -39,7 +39,7 @@
       >
         <!-- Como en Zondito: la tecla y el lector van adentro del campo. -->
         <template #append-inner>
-          <span class="psb-tecla" aria-hidden="true">{{ focusHotkey }}</span>
+          <span v-if="focusHotkey" class="psb-tecla" aria-hidden="true">{{ focusHotkey }}</span>
           <button
             type="button"
             class="scanner-toggle psb-lector"
@@ -183,7 +183,8 @@ const props = defineProps({
   keepFocusOnSubmit: { type: Boolean, default: true },
   focusOnEnable: { type: Boolean, default: true },
   disabledAll: { type: Boolean, default: false },
-  focusHotkey: { type: String, default: "F2" },
+  // F2 abre la ventana Buscar de la barra; el campo ya no tiene atajo propio.
+  focusHotkey: { type: String, default: "" },
   suggestionsEnabled: { type: Boolean, default: true },
   suggestionsMinChars: { type: Number, default: 2 },
   suggestionsDebounceMs: { type: Number, default: 450 },
@@ -523,7 +524,7 @@ function handleToggle() {
 function handleGlobalKeydown(e) {
   if (props.disabledAll) return;
   if (e.repeat) return;
-  if (e.key !== props.focusHotkey) return;
+  if (!props.focusHotkey || e.key !== props.focusHotkey) return;
 
   e.preventDefault();
   emit("focus-hotkey");
