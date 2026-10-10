@@ -739,7 +739,7 @@ const paymentsResolved = computed(() => {
 function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
-function dt(val) { return val ? new Date(val).toLocaleString("es-AR") : "—"; }
+function dt(val) { return val ? new Date(val).toLocaleString("es-AR", { hourCycle: "h23" }) : "—"; }
 function number(v) { const n = Number(v || 0); return Number.isFinite(n) ? n : 0; }
 function toNum(v) { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; }
 

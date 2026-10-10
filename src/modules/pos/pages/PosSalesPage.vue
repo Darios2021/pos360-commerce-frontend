@@ -469,7 +469,7 @@ function money(val) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(val || 0));
 }
 function dt(val) {
-  return val ? new Date(val).toLocaleString("es-AR") : "—";
+  return val ? new Date(val).toLocaleString("es-AR", { hourCycle: "h23" }) : "—";
 }
 function fullUserName(u) {
   const fn = String(u?.first_name || "").trim();
