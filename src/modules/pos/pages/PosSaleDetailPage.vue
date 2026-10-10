@@ -1,567 +1,195 @@
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
-  <div class="sd">
-
-    <!-- HEADER -->
-    <AppPageHeader
-      icon="mdi-receipt-text-outline"
-      :title="`Venta #${sale?.id ?? id}`"
-      :subtitle="sale ? dt(sale.sold_at || sale.created_at) : ''"
-    >
-      <v-chip
-        v-if="sale?.status"
-        size="small"
-        variant="flat"
-        :color="statusColor(sale.status)"
-        class="font-weight-bold"
-      >{{ statusLabel(sale.status) }}</v-chip>
-    </AppPageHeader>
-
-    <!-- ── LOADING ── -->
-    <div v-if="loading" class="sd-loading">
-      <v-progress-circular indeterminate size="32" color="primary" />
-      <span>Cargando venta…</span>
+  <div class="vd">
+    <!-- ── Encabezado ───────────────────────────────────── -->
+    <div class="vd-cab">
+      <div class="vd-cab__txt">
+        <router-link :to="{ name: 'posSales' }" class="vd-volver"><v-icon size="18">mdi-chevron-left</v-icon>Ventas</router-link>
+        <h1 class="vd-cab__titulo num">Venta #{{ sale?.id ?? id }}</h1>
+        <span v-if="sale" class="vd-cab__sub num">{{ subtitulo }}</span>
+      </div>
+      <span v-if="sale?.status" class="vd-estado" :class="`is-${String(sale.status).toLowerCase()}`"><i></i>{{ statusLabel(sale.status) }}</span>
     </div>
 
-    <!-- ── NOT FOUND ── -->
-    <v-alert v-else-if="!sale" type="warning" variant="tonal" class="ma-3">
-      Venta no encontrada.
-    </v-alert>
+    <div v-if="loading" class="vd-caja vd-vacio">
+      <v-progress-circular indeterminate size="28" color="primary" />
+    </div>
+    <div v-else-if="!sale" class="vd-caja vd-vacio">Venta no encontrada</div>
 
-    <!-- ── CONTENT ── -->
     <template v-else>
+      <!-- 1. Productos : tabla cerrada con los totales al pie -->
+      <section class="vd-bloque">
+        <div class="vd-bloque__tit">
+          <span class="vd-h">1. Productos</span>
+          <span class="vd-nota num">{{ (sale.items || []).length }} {{ (sale.items || []).length === 1 ? 'producto' : 'productos' }} · {{ unidadesTexto }}</span>
+        </div>
+        <div class="vd-caja">
+          <div class="vd-tabla-scroll">
+            <table class="vd-tabla">
+              <thead>
+                <tr>
+                  <th class="c-img"></th>
+                  <th>Producto</th>
+                  <th class="c-num">Cantidad</th>
+                  <th class="c-plata">Precio</th>
+                  <th class="c-plata">Total</th>
+                  <th class="c-ver"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in (sale.items || [])" :key="item.id || item.product_id">
+                  <td class="c-img">
+                    <button type="button" class="vd-img" :aria-label="`Imagen de ${productName(item)}`" @click="openImage(item)">
+                      <img v-if="itemImage(item)" :src="itemImage(item)" alt="" />
+                      <v-icon v-else size="20">mdi-image-outline</v-icon>
+                    </button>
+                  </td>
+                  <td>
+                    <div class="vd-b">{{ productName(item) }}</div>
+                    <div v-if="productMetaLine(item)" class="vd-s">{{ productMetaLine(item) }}</div>
+                  </td>
+                  <td class="c-num num">{{ number(item.quantity) }}</td>
+                  <td class="c-plata num">{{ plata(item.unit_price) }}</td>
+                  <td class="c-plata num vd-b">{{ plata(item.line_total) }}</td>
+                  <td class="c-ver">
+                    <router-link v-if="pidOf(item)" :to="{ name: 'productView', params: { id: pidOf(item) } }" class="vd-link">Ver<v-icon size="18">mdi-chevron-right</v-icon></router-link>
+                  </td>
+                </tr>
+                <tr v-if="!(sale.items || []).length">
+                  <td colspan="6" class="vd-vacio">Sin productos en esta venta</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr v-for="t in totales" :key="t.k" :class="{ 'is-total': t.fuerte }">
+                  <td colspan="4" class="vd-tot-k">{{ t.k }}</td>
+                  <td class="c-plata num">{{ t.v }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
 
-      <!-- HERO STRIP -->
-      <div class="sd-hero">
-        <div class="sd-hs">
-          <div class="sd-hs-ico sd-hs-ico--primary"><v-icon size="14" color="white">mdi-currency-usd</v-icon></div>
-          <div>
-            <div class="sd-hs-val">{{ money(sale.total) }}</div>
-            <div class="sd-hs-lbl">Total venta</div>
+      <div class="vd-grilla">
+        <!-- 2. Cobro -->
+        <section class="vd-bloque">
+          <div class="vd-bloque__tit">
+            <span class="vd-h">2. Cobro</span>
+            <span class="vd-nota">{{ paymentsResolved.length === 1 ? '1 pago' : `${paymentsResolved.length} pagos` }}</span>
           </div>
-        </div>
-        <div class="sd-hero-sep" />
-        <div class="sd-hs">
-          <div class="sd-hs-ico sd-hs-ico--green"><v-icon size="14" color="white">mdi-check-circle-outline</v-icon></div>
-          <div>
-            <div class="sd-hs-val">{{ money(sale.paid_total) }}</div>
-            <div class="sd-hs-lbl">Pagado</div>
+          <div class="vd-caja">
+            <div class="vd-banda"><span>Cobrado</span><span class="num">{{ plata(sale.paid_total) }}</span></div>
+            <div class="vd-filas">
+              <div v-for="pm in paymentsResolved" :key="pm.id || `${pm.payment_method_id}_${pm.amount}`" class="vd-pago">
+                <div class="vd-pago__linea">
+                  <span class="vd-medio"><i :style="{ background: colorMedio(pm.method_resolved) }"></i>{{ pm.method_display }}</span>
+                  <span class="vd-pago__monto num">{{ plata(pm.amount) }}</span>
+                </div>
+                <div class="vd-s">{{ paymentHeadline(pm) }}<template v-for="part in paymentSubline(pm)" :key="part"> · {{ part }}</template></div>
+                <dl v-if="hechosPago(pm).length" class="vd-datos vd-datos--chico">
+                  <template v-for="f in hechosPago(pm)" :key="f.label">
+                    <dt>{{ f.label }}</dt><dd class="num">{{ f.value }}</dd>
+                  </template>
+                </dl>
+                <div v-if="pm.note_human" class="vd-s">{{ pm.note_human }}</div>
+              </div>
+              <div v-if="!paymentsResolved.length" class="vd-vacio">Sin pagos registrados</div>
+            </div>
           </div>
-        </div>
-        <div class="sd-hero-sep" />
-        <div class="sd-hs">
-          <div class="sd-hs-ico sd-hs-ico--indigo"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
-          <div>
-            <div class="sd-hs-val">{{ (sale.items || []).length }} ítem{{ (sale.items || []).length === 1 ? '' : 's' }}</div>
-            <div class="sd-hs-lbl">Productos</div>
+        </section>
+
+        <!-- 3. Datos de la venta y cliente -->
+        <section class="vd-bloque">
+          <div class="vd-bloque__tit"><span class="vd-h">3. Datos</span></div>
+          <div class="vd-caja">
+            <div class="vd-banda"><span>Venta</span><span class="num">{{ invoiceTypeResolved && invoiceTypeResolved !== '—' ? invoiceTypeResolved : '' }}</span></div>
+            <dl class="vd-datos">
+              <dt>Fecha</dt><dd class="num">{{ dt(sale.sold_at || sale.created_at) }}</dd>
+              <template v-if="branchLabelResolved"><dt>Sucursal</dt><dd>{{ branchLabelResolved }}</dd></template>
+              <template v-if="userLabel(sale) !== '—'"><dt>Cajero</dt><dd>{{ userLabel(sale) }}</dd></template>
+              <template v-if="sale.sale_number"><dt>Número</dt><dd class="num">#{{ sale.sale_number }}</dd></template>
+              <dt>Fiscal</dt><dd>{{ invoiceModeLabelResolved }}</dd>
+              <dt>Tipo de cliente</dt><dd>{{ customerTypeLabelResolved }}</dd>
+              <template v-if="sale.note"><dt>Nota</dt><dd>{{ sale.note }}</dd></template>
+            </dl>
+            <div class="vd-banda vd-banda--sec"><span>Cliente</span></div>
+            <dl class="vd-datos">
+              <dt>Nombre</dt><dd>{{ customerNameResolved }}</dd>
+              <template v-if="customerDocResolved"><dt>Documento</dt><dd class="num">{{ customerDocResolved }}</dd></template>
+              <template v-if="customerPhoneResolved"><dt>Teléfono</dt><dd class="num">{{ customerPhoneResolved }}</dd></template>
+              <template v-if="customerEmailResolved"><dt>Correo</dt><dd>{{ customerEmailResolved }}</dd></template>
+            </dl>
           </div>
-        </div>
-        <div class="sd-hero-sep" />
-        <div class="sd-hs">
-          <div class="sd-hs-ico sd-hs-ico--purple"><v-icon size="14" color="white">mdi-account-outline</v-icon></div>
-          <div>
-            <div class="sd-hs-val">{{ customerNameResolved }}</div>
-            <div class="sd-hs-lbl">Cliente</div>
-          </div>
-        </div>
-        <div class="sd-hero-sep" />
-        <div class="sd-hs">
-          <div class="sd-hs-ico sd-hs-ico--teal"><v-icon size="14" color="white">mdi-store-outline</v-icon></div>
-          <div>
-            <div class="sd-hs-val">{{ branchLabelResolved || '—' }}</div>
-            <div class="sd-hs-lbl">Sucursal</div>
-          </div>
-        </div>
+        </section>
       </div>
 
-      <!-- TABS -->
-      <v-tabs v-model="activeTab" color="primary" density="compact" class="sd-tabs">
-        <v-tab value="resumen">
-          <v-icon start size="14">mdi-receipt-text-outline</v-icon>Resumen
-        </v-tab>
-        <v-tab value="productos">
-          <v-icon start size="14">mdi-package-variant</v-icon>
-          Productos
-          <v-chip v-if="(sale.items || []).length" size="x-small" class="ml-1" color="primary" variant="tonal">
-            {{ (sale.items || []).length }}
-          </v-chip>
-        </v-tab>
-        <v-tab value="pagos">
-          <v-icon start size="14">mdi-cash-multiple</v-icon>
-          Pagos
-          <v-chip v-if="paymentsResolved.length" size="x-small" class="ml-1" color="primary" variant="tonal">
-            {{ paymentsResolved.length }}
-          </v-chip>
-        </v-tab>
-        <v-tab value="devoluciones">
-          <v-icon start size="14">mdi-swap-horizontal</v-icon>
-          Historial
-          <v-chip v-if="refunds.length + exchanges.length" size="x-small" class="ml-1" color="orange" variant="tonal">
-            {{ refunds.length + exchanges.length }}
-          </v-chip>
-        </v-tab>
-      </v-tabs>
-
-      <v-tabs-window v-model="activeTab">
-
-        <!-- ── RESUMEN ── -->
-        <v-tabs-window-item value="resumen" class="sd-tab">
-
-          <div class="sd-info-grid">
-
-            <!-- ▸ VENTA -->
-            <div class="sd-card sd-card--primary">
-              <div class="sd-card-head">
-                <div class="sd-badge sd-badge--primary">
-                  <v-icon size="14" color="white">mdi-receipt-text-outline</v-icon>
-                </div>
-                <span class="sd-card-ttl">Datos de la venta</span>
-              </div>
-              <div class="sd-irows">
-                <div class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-calendar-outline</v-icon>
-                  <span class="sd-ir-k">Fecha</span>
-                  <span class="sd-ir-v">{{ dt(sale.sold_at || sale.created_at) }}</span>
-                </div>
-                <div v-if="branchLabelResolved" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-store-outline</v-icon>
-                  <span class="sd-ir-k">Sucursal</span>
-                  <span class="sd-ir-v">{{ branchLabelResolved }}</span>
-                </div>
-                <div v-if="userLabel(sale) !== '—'" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-account-outline</v-icon>
-                  <span class="sd-ir-k">Cajero</span>
-                  <span class="sd-ir-v">{{ userLabel(sale) }}</span>
-                </div>
-                <div v-if="sale?.sale_number" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-pound</v-icon>
-                  <span class="sd-ir-k">Número</span>
-                  <span class="sd-ir-v">#{{ sale.sale_number }}</span>
-                </div>
-                <div class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-layers-outline</v-icon>
-                  <span class="sd-ir-k">Estado</span>
-                  <v-chip size="x-small" variant="flat" :color="statusColor(sale.status)" class="font-weight-bold">
-                    {{ statusLabel(sale.status) }}
-                  </v-chip>
-                </div>
-                <div class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-file-document-outline</v-icon>
-                  <span class="sd-ir-k">Fiscal</span>
-                  <span class="sd-ir-v">{{ invoiceModeLabelResolved }}</span>
-                </div>
-                <div v-if="invoiceTypeResolved && invoiceTypeResolved !== '—'" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-printer-outline</v-icon>
-                  <span class="sd-ir-k">Comprobante</span>
-                  <span class="sd-ir-v">{{ invoiceTypeResolved }}</span>
-                </div>
-                <div class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-account-group-outline</v-icon>
-                  <span class="sd-ir-k">Tipo cliente</span>
-                  <span class="sd-ir-v">{{ customerTypeLabelResolved }}</span>
-                </div>
-                <div v-if="sale.note" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-note-text-outline</v-icon>
-                  <span class="sd-ir-k">Nota</span>
-                  <span class="sd-ir-v">{{ sale.note }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- ▸ CLIENTE -->
-            <div class="sd-card sd-card--purple">
-              <div class="sd-card-head">
-                <div class="sd-badge sd-badge--purple">
-                  <v-icon size="14" color="white">mdi-account-circle-outline</v-icon>
-                </div>
-                <span class="sd-card-ttl">Cliente</span>
-              </div>
-              <div class="sd-cust-avatar">
-                <span class="sd-cust-initials">{{ customerInitials }}</span>
-              </div>
-              <div class="sd-cust-name">{{ customerNameResolved }}</div>
-
-              <div v-if="showCustomerDataBlock" class="sd-irows mt-2">
-                <div v-if="customerDocResolved" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-card-account-details-outline</v-icon>
-                  <span class="sd-ir-k">Documento</span>
-                  <span class="sd-ir-v">{{ customerDocResolved }}</span>
-                </div>
-                <div v-if="customerPhoneResolved" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-phone-outline</v-icon>
-                  <span class="sd-ir-k">Teléfono</span>
-                  <span class="sd-ir-v">{{ customerPhoneResolved }}</span>
-                </div>
-                <div v-if="customerEmailResolved" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-email-outline</v-icon>
-                  <span class="sd-ir-k">Email</span>
-                  <span class="sd-ir-v">{{ customerEmailResolved }}</span>
-                </div>
-              </div>
-              <div v-else class="sd-no-data">
-                <v-icon size="13" class="mr-1">mdi-information-slab-circle-outline</v-icon>
-                Venta sin datos adicionales de cliente
-              </div>
-            </div>
-
-            <!-- ▸ PAGO PRINCIPAL -->
-            <div class="sd-card sd-card--green" v-if="paymentsResolved.length">
-              <div class="sd-card-head">
-                <div class="sd-badge sd-badge--green">
-                  <v-icon size="14" color="white">mdi-cash-check</v-icon>
-                </div>
-                <span class="sd-card-ttl">Pago</span>
-                <v-chip v-if="paymentsResolved.length > 1" size="x-small" variant="tonal" class="ml-auto">
-                  {{ paymentsResolved.length }} métodos
-                </v-chip>
-              </div>
-
-              <div class="sd-pay-main">
-                <v-chip
-                  size="large"
-                  variant="flat"
-                  :color="payColor(paymentsResolved[0].method_resolved)"
-                  class="font-weight-bold"
-                >
-                  <v-icon start size="16">{{ payIcon(paymentsResolved[0].method_resolved) }}</v-icon>
-                  {{ paymentsResolved[0].method_display }}
-                </v-chip>
-                <div class="sd-pay-big">{{ money(paymentsResolved[0].amount) }}</div>
-              </div>
-
-              <div class="sd-irows">
-                <div v-if="paymentsResolved[0].installments > 1" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-credit-card-clock-outline</v-icon>
-                  <span class="sd-ir-k">Cuotas</span>
-                  <span class="sd-ir-v">{{ paymentsResolved[0].installments }}x</span>
-                </div>
-                <div v-if="paymentsResolved[0].installment_amount && paymentsResolved[0].installments > 1" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-calculator-variant-outline</v-icon>
-                  <span class="sd-ir-k">Valor cuota</span>
-                  <span class="sd-ir-v">{{ money(paymentsResolved[0].installment_amount) }}</span>
-                </div>
-                <div v-if="paymentsResolved[0].card_type_label" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-credit-card-outline</v-icon>
-                  <span class="sd-ir-k">Tipo</span>
-                  <span class="sd-ir-v">{{ paymentsResolved[0].card_type_label }}</span>
-                </div>
-                <div v-if="paymentsResolved[0].card_brand" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-contactless-payment</v-icon>
-                  <span class="sd-ir-k">Marca</span>
-                  <span class="sd-ir-v">{{ paymentsResolved[0].card_brand }}</span>
-                </div>
-                <div v-if="paymentsResolved[0].price_basis_label" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-tag-outline</v-icon>
-                  <span class="sd-ir-k">Base precio</span>
-                  <span class="sd-ir-v">{{ paymentsResolved[0].price_basis_label }}</span>
-                </div>
-                <div v-if="paymentsResolved[0].reference" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-pound</v-icon>
-                  <span class="sd-ir-k">Referencia</span>
-                  <span class="sd-ir-v sd-mono">{{ paymentsResolved[0].reference }}</span>
-                </div>
-                <div v-if="paymentsResolved.length > 1" class="sd-ir">
-                  <v-icon size="13" class="sd-ir-ico">mdi-plus-circle-outline</v-icon>
-                  <span class="sd-ir-k">Otros</span>
-                  <span class="sd-ir-v">+{{ paymentsResolved.length - 1 }} pago{{ paymentsResolved.length > 2 ? 's' : '' }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pago fallback (sin pagos) -->
-            <div v-else class="sd-card sd-card--green sd-card--empty">
-              <div class="sd-card-head">
-                <div class="sd-badge sd-badge--green"><v-icon size="14" color="white">mdi-cash-check</v-icon></div>
-                <span class="sd-card-ttl">Pago</span>
-              </div>
-              <div class="sd-no-data">
-                <v-icon size="13" class="mr-1">mdi-information-slab-circle-outline</v-icon>
-                Sin pagos registrados
-              </div>
-            </div>
-
-          </div>
-
-          <!-- TOTALES STRIP -->
-          <div class="sd-totals">
-            <div v-if="hasValue(sale.subtotal) && Number(sale.subtotal) !== Number(sale.total)" class="sd-tot">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-format-list-bulleted</v-icon>Subtotal</div>
-              <div class="sd-tot-v">{{ money(sale.subtotal) }}</div>
-            </div>
-            <div v-if="Number(sale.discount_total || 0) > 0" class="sd-tot sd-tot--neg">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-tag-outline</v-icon>Descuento</div>
-              <div class="sd-tot-v">-{{ money(sale.discount_total) }}</div>
-            </div>
-            <div v-if="Number(sale.tax_total || 0) > 0" class="sd-tot">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-percent-outline</v-icon>Impuestos</div>
-              <div class="sd-tot-v">{{ money(sale.tax_total) }}</div>
-            </div>
-            <div class="sd-tot sd-tot--main">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-sigma</v-icon>Total</div>
-              <div class="sd-tot-v">{{ money(sale.total) }}</div>
-            </div>
-            <div class="sd-tot sd-tot--ok">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-check-circle-outline</v-icon>Pagado</div>
-              <div class="sd-tot-v">{{ money(sale.paid_total) }}</div>
-            </div>
-            <div v-if="Number(sale.change_total || 0) > 0" class="sd-tot">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-minus</v-icon>Vuelto</div>
-              <div class="sd-tot-v">{{ money(sale.change_total) }}</div>
-            </div>
-            <div v-if="refundsTotal > 0" class="sd-tot sd-tot--warn">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-refund</v-icon>Devuelto</div>
-              <div class="sd-tot-v">-{{ money(refundsTotal) }}</div>
-            </div>
-            <div v-if="showNetSummary" class="sd-tot sd-tot--neto">
-              <div class="sd-tot-k"><v-icon size="11" class="mr-1">mdi-cash-check</v-icon>Neto</div>
-              <div class="sd-tot-v">{{ money(netTotal) }}</div>
-            </div>
-          </div>
-
-          <!-- Anulación: en la vista completa de la venta, nunca en una ventana emergente -->
-          <section v-if="isAdmin && sale.status !== 'CANCELLED'" class="sd-anular">
-            <div class="sd-anular__txt">
-              <span class="sd-anular__tit">Anular la venta</span>
-              <span class="sd-anular__sub">Se restaura el stock, la venta queda como anulada y no cuenta en el arqueo.</span>
-            </div>
-            <v-btn
-              v-if="!confirmandoAnular"
-              variant="tonal"
-              color="error"
-              prepend-icon="mdi-cancel"
-              @click="confirmandoAnular = true"
-            >Anular venta</v-btn>
-            <div v-else class="sd-anular__confirma">
-              <v-btn
-                variant="flat"
-                color="error"
-                prepend-icon="mdi-cancel"
-                :loading="anulando"
-                @click="anularVenta"
-              >Confirmar anulación de #{{ sale.id }}</v-btn>
-              <a href="#" class="sd-anular__no" @click.prevent="confirmandoAnular = false">No anular</a>
-            </div>
-          </section>
-
-        </v-tabs-window-item>
-
-        <!-- ── PRODUCTOS ── -->
-        <v-tabs-window-item value="productos" class="sd-tab">
-          <div class="sd-tab-head">
-            <div class="sd-tab-head-left">
-              <div class="sd-badge sd-badge--indigo"><v-icon size="14" color="white">mdi-package-variant</v-icon></div>
-              <span class="sd-tab-ttl">
-                {{ (sale.items || []).length }} producto{{ (sale.items || []).length === 1 ? '' : 's' }}
+      <!-- 4. Devoluciones y cambios -->
+      <section class="vd-bloque">
+        <div class="vd-bloque__tit">
+          <span class="vd-h">4. Devoluciones y cambios</span>
+          <span class="vd-nota">{{ refunds.length + exchanges.length ? `${refunds.length + exchanges.length} movimientos` : 'ninguno' }}</span>
+        </div>
+        <div class="vd-caja">
+          <div class="vd-filas">
+            <div v-for="r in refunds" :key="`r${r.id}`" class="vd-mov">
+              <span class="vd-mov__tipo">Devolución</span>
+              <span class="vd-mov__txt">
+                <span class="vd-b num">{{ dt(r.created_at) }}</span>
+                <span class="vd-s">{{ refundMethodLabel(r) }}<template v-if="r.reference"> · Ref: {{ r.reference }}</template><template v-if="r.reason"> · {{ r.reason }}</template></span>
               </span>
+              <span class="vd-mov__monto num">- {{ plata(r.amount) }}</span>
             </div>
-            <v-chip v-if="productsLoading" size="x-small" color="indigo" variant="tonal">
-              <v-progress-circular size="10" width="2" indeterminate class="mr-1" />Cargando…
-            </v-chip>
-          </div>
-
-          <div class="sd-items-list">
-            <div
-              v-for="item in (sale.items || [])"
-              :key="item.id || item.product_id"
-              class="sd-item-row"
-            >
-              <div class="sd-item-img" @click="openImage(item)" title="Ver imagen">
-                <img v-if="itemImage(item)" :src="itemImage(item)" class="sd-img" />
-                <v-icon v-else size="22" color="medium-emphasis">mdi-image-outline</v-icon>
-              </div>
-
-              <div class="sd-item-body">
-                <div class="sd-item-name">{{ productName(item) }}</div>
-                <div v-if="productMetaLine(item)" class="sd-item-meta">{{ productMetaLine(item) }}</div>
-                <div class="sd-item-chips">
-                  <v-chip
-                    v-if="availabilityLabel(item) !== '—'"
-                    size="x-small"
-                    variant="flat"
-                    :color="availabilityColor(item)"
-                  >{{ availabilityLabel(item) }}</v-chip>
-                  <v-chip v-if="categoryLabel(item)" size="x-small" variant="outlined">{{ categoryLabel(item) }}</v-chip>
-                </div>
-              </div>
-
-              <div class="sd-item-nums">
-                <div class="sd-item-qty">× {{ number(item.quantity) }}</div>
-                <div class="sd-item-unit">{{ money(item.unit_price) }} c/u</div>
-                <div class="sd-item-total">{{ money(item.line_total) }}</div>
-              </div>
-
-              <v-btn size="x-small" variant="tonal" color="primary" @click="goToProduct(item.product_id)" title="Ver producto">
-                <v-icon size="13">mdi-open-in-new</v-icon>
-              </v-btn>
-            </div>
-          </div>
-
-          <div v-if="!(sale.items || []).length" class="sd-empty">
-            <v-icon size="32" color="medium-emphasis">mdi-package-variant-remove</v-icon>
-            <span>Sin productos en esta venta</span>
-          </div>
-        </v-tabs-window-item>
-
-        <!-- ── PAGOS ── -->
-        <v-tabs-window-item value="pagos" class="sd-tab">
-          <div class="sd-tab-head">
-            <div class="sd-tab-head-left">
-              <div class="sd-badge sd-badge--green"><v-icon size="14" color="white">mdi-cash-multiple</v-icon></div>
-              <span class="sd-tab-ttl">
-                {{ paymentsResolved.length }} pago{{ paymentsResolved.length === 1 ? '' : 's' }} registrado{{ paymentsResolved.length === 1 ? '' : 's' }}
+            <div v-for="x in exchanges" :key="`x${x.id}`" class="vd-mov">
+              <span class="vd-mov__tipo">Cambio</span>
+              <span class="vd-mov__txt">
+                <span class="vd-b num">{{ dt(x.created_at) }}</span>
+                <span class="vd-s num">Original {{ plata(x.original_total) }} · Nuevo {{ plata(x.new_total) }} · Devuelto {{ plata(x.returned_amount) }}<template v-if="x.note"> · {{ x.note }}</template></span>
               </span>
+              <span class="vd-mov__monto num">Dif. {{ plata(x.diff) }}</span>
             </div>
+            <div v-if="!refunds.length && !exchanges.length" class="vd-vacio">Sin devoluciones ni cambios</div>
           </div>
+        </div>
+      </section>
 
-          <v-alert v-if="!paymentsResolved.length" type="info" variant="tonal" class="rounded-xl">
-            Sin pagos registrados para esta venta.
-          </v-alert>
-
-          <div v-else class="sd-pays">
-            <div
-              v-for="pm in paymentsResolved"
-              :key="pm.id || `${pm.payment_method_id}_${pm.amount}`"
-              class="sd-pay-card"
-            >
-              <div class="sd-pay-card-head">
-                <div class="sd-pay-chips">
-                  <v-chip size="small" variant="flat" :color="payColor(pm.method_resolved)" class="font-weight-bold">
-                    <v-icon start size="14">{{ payIcon(pm.method_resolved) }}</v-icon>
-                    {{ pm.method_display }}
-                  </v-chip>
-                  <v-chip v-if="pm.card_type_label" size="small" variant="outlined">{{ pm.card_type_label }}</v-chip>
-                  <v-chip v-if="pm.card_brand" size="small" variant="outlined">{{ pm.card_brand }}</v-chip>
-                  <v-chip v-if="pm.installments > 1" size="small" variant="outlined">
-                    <v-icon start size="12">mdi-credit-card-clock-outline</v-icon>
-                    {{ pm.installments }} cuotas
-                  </v-chip>
-                </div>
-                <div class="sd-pay-amount-box">
-                  <div class="sd-pay-albl">Cobrado</div>
-                  <div class="sd-pay-aval">{{ money(pm.amount) }}</div>
-                </div>
-              </div>
-
-              <div class="sd-pay-headline">{{ paymentHeadline(pm) }}</div>
-              <div v-if="paymentSubline(pm).length" class="sd-pay-subline">
-                <span v-for="part in paymentSubline(pm)" :key="part">{{ part }}</span>
-              </div>
-
-              <div v-if="paymentFacts(pm).filter(f => !['Método','Cuotas'].includes(f.label)).length" class="sd-facts">
-                <div
-                  v-for="fact in paymentFacts(pm).filter(f => !['Método','Cuotas'].includes(f.label))"
-                  :key="fact.label"
-                  class="sd-fact"
-                >
-                  <div class="sd-fact-lbl">{{ fact.label }}</div>
-                  <div class="sd-fact-val">{{ fact.value }}</div>
-                </div>
-              </div>
-
-              <div v-if="pm.note_human" class="sd-pay-note">
-                <v-icon size="13" class="mr-1 opacity-40">mdi-note-text-outline</v-icon>
-                {{ pm.note_human }}
-              </div>
-            </div>
-          </div>
-        </v-tabs-window-item>
-
-        <!-- ── HISTORIAL ── -->
-        <v-tabs-window-item value="devoluciones" class="sd-tab">
-
-          <!-- Devoluciones -->
-          <div class="sd-tab-head">
-            <div class="sd-tab-head-left">
-              <div class="sd-badge sd-badge--orange"><v-icon size="14" color="white">mdi-cash-refund</v-icon></div>
-              <span class="sd-tab-ttl">Devoluciones ({{ refunds.length }})</span>
-            </div>
-          </div>
-
-          <v-alert v-if="!refunds.length" type="info" variant="tonal" density="compact" class="mb-4 rounded-xl">
-            No hay devoluciones para esta venta.
-          </v-alert>
-          <div v-else class="sd-hist-list mb-4">
-            <div v-for="r in refunds" :key="r.id" class="sd-hist-card sd-hist-card--orange">
-              <div class="sd-hist-row">
-                <div>
-                  <div class="sd-hist-date">
-                    <v-icon size="12" class="mr-1 opacity-50">mdi-calendar-outline</v-icon>
-                    {{ dt(r.created_at) }}
-                  </div>
-                  <div class="sd-hist-meta">
-                    <v-icon size="12" class="mr-1 opacity-50">mdi-bank-transfer-out</v-icon>
-                    Medio: <b>{{ refundMethodLabel(r) }}</b>
-                    <span v-if="r.reference"> · Ref: {{ r.reference }}</span>
-                  </div>
-                  <div v-if="r.reason" class="sd-hist-meta">
-                    <v-icon size="12" class="mr-1 opacity-50">mdi-comment-outline</v-icon>
-                    {{ r.reason }}
-                  </div>
-                </div>
-                <v-chip size="small" variant="flat" color="orange" class="font-weight-bold">
-                  {{ money(r.amount) }}
-                </v-chip>
-              </div>
-            </div>
-          </div>
-
-          <!-- Cambios -->
-          <div class="sd-tab-head mt-2">
-            <div class="sd-tab-head-left">
-              <div class="sd-badge sd-badge--teal"><v-icon size="14" color="white">mdi-swap-horizontal</v-icon></div>
-              <span class="sd-tab-ttl">Cambios ({{ exchanges.length }})</span>
-            </div>
-          </div>
-
-          <v-alert v-if="!exchanges.length" type="info" variant="tonal" density="compact" class="rounded-xl">
-            No hay cambios para esta venta.
-          </v-alert>
-          <div v-else class="sd-hist-list">
-            <div v-for="x in exchanges" :key="x.id" class="sd-hist-card sd-hist-card--teal">
-              <div class="sd-hist-row">
-                <div>
-                  <div class="sd-hist-date">
-                    <v-icon size="12" class="mr-1 opacity-50">mdi-calendar-outline</v-icon>
-                    {{ dt(x.created_at) }}
-                  </div>
-                  <div class="sd-hist-meta">
-                    Original: <b>{{ money(x.original_total) }}</b>
-                    · Nuevo: <b>{{ money(x.new_total) }}</b>
-                    · Devuelto: <b>{{ money(x.returned_amount) }}</b>
-                  </div>
-                  <div v-if="x.note" class="sd-hist-meta">
-                    <v-icon size="12" class="mr-1 opacity-50">mdi-comment-outline</v-icon>{{ x.note }}
-                  </div>
-                </div>
-                <v-chip size="small" variant="flat" color="teal" class="font-weight-bold">
-                  Dif: {{ money(x.diff) }}
-                </v-chip>
-              </div>
-            </div>
-          </div>
-
-        </v-tabs-window-item>
-
-      </v-tabs-window>
-
+      <!-- Anulación: en la vista completa de la venta, nunca en una ventana emergente -->
+      <section v-if="isAdmin && sale.status !== 'CANCELLED'" class="vd-anular">
+        <div class="vd-anular__txt">
+          <span class="vd-anular__tit">Anular la venta</span>
+          <span class="vd-s">Se restaura el stock, la venta queda como anulada y no cuenta en el arqueo.</span>
+        </div>
+        <v-btn
+          v-if="!confirmandoAnular"
+          variant="tonal"
+          color="error"
+          prepend-icon="mdi-cancel"
+          @click="confirmandoAnular = true"
+        >Anular venta</v-btn>
+        <div v-else class="vd-anular__confirma">
+          <v-btn
+            variant="flat"
+            color="error"
+            prepend-icon="mdi-cancel"
+            :loading="anulando"
+            @click="anularVenta"
+          >Confirmar anulación de #{{ sale.id }}</v-btn>
+          <a href="#" class="vd-anular__no" @click.prevent="confirmandoAnular = false">No anular</a>
+        </div>
+      </section>
     </template>
 
-    <!-- ── IMAGE DIALOG ── -->
+    <!-- Imagen del producto: solo mirar, nada que editar -->
     <v-dialog v-model="imageDialog" max-width="760">
-      <v-card rounded="xl">
+      <v-card rounded="lg">
         <v-card-title class="d-flex align-center justify-space-between">
           <span class="font-weight-black">{{ productName(imageItem) }}</span>
-          <v-btn icon variant="text" @click="imageDialog = false"><v-icon>mdi-close</v-icon></v-btn>
+          <v-btn icon variant="text" aria-label="Cerrar" @click="imageDialog = false"><v-icon>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-divider />
         <v-card-text>
           <v-img v-if="itemImage(imageItem)" :src="itemImage(imageItem)" cover style="max-height:500px;border-radius:12px;" />
           <v-alert v-else type="info" variant="tonal">Sin imagen para este producto.</v-alert>
-          <div class="d-flex ga-2 mt-3">
-            <v-btn variant="tonal" color="primary" @click="goToProduct(imageItem?.product_id)" :disabled="!imageItem?.product_id">
-              <v-icon start>mdi-open-in-new</v-icon>Ver producto
-            </v-btn>
-          </div>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -575,7 +203,6 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
 import { useProductsStore } from "../../../app/store/products.store";
-import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import { useAuthStore } from "../../../app/store/auth.store";
 
 const route = useRoute();
@@ -1045,291 +672,134 @@ async function anularVenta() {
   }
 }
 
+// ===== Rediseño: encabezado, totales y cobro =====
+const plata = (v) => "$ " + Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 2 });
+const subtitulo = computed(() => {
+  const s = sale.value;
+  if (!s) return "";
+  return [dt(s.sold_at || s.created_at), branchLabelResolved.value, userLabel(s) !== "—" ? userLabel(s) : ""].filter(Boolean).join(" · ");
+});
+const unidadesTexto = computed(() => {
+  const n = (sale.value?.items || []).reduce((a, it) => a + number(it.quantity), 0);
+  const r = Math.round(n * 100) / 100;
+  return `${r.toLocaleString("es-AR")} ${r === 1 ? "unidad" : "unidades"}`;
+});
+const totales = computed(() => {
+  const s = sale.value || {};
+  const t = [];
+  if (hasValue(s.subtotal) && Number(s.subtotal) !== Number(s.total)) t.push({ k: "Subtotal", v: plata(s.subtotal) });
+  if (Number(s.discount_total || 0) > 0) t.push({ k: "Descuento", v: "- " + plata(s.discount_total) });
+  if (Number(s.tax_total || 0) > 0) t.push({ k: "Impuestos", v: plata(s.tax_total) });
+  t.push({ k: "Total", v: plata(s.total), fuerte: true });
+  if (Number(s.paid_total || 0) !== Number(s.total || 0)) t.push({ k: "Pagado", v: plata(s.paid_total) });
+  if (Number(s.change_total || 0) > 0) t.push({ k: "Vuelto", v: plata(s.change_total) });
+  if (refundsTotal.value > 0) t.push({ k: "Devuelto", v: "- " + plata(refundsTotal.value) });
+  if (showNetSummary.value) t.push({ k: "Neto", v: plata(netTotal.value), fuerte: true });
+  return t;
+});
+const COLOR_MEDIO = { MERCADOPAGO: "#0a466e", QR: "#0a466e", CASH: "#0f6fae", TRANSFER: "#3f8fc6", CARD: "#8cc0e3", CREDIT_SJT: "#5b7083" };
+function colorMedio(m) { return COLOR_MEDIO[String(m || "").toUpperCase()] || "#C3C9D6"; }
+function hechosPago(pm) { return paymentFacts(pm).filter((f) => !["Método", "Cuotas"].includes(f.label)); }
+
 onMounted(load);
 watch(id, () => load());
 </script>
 
-<style scoped>
-.sd { display: flex; flex-direction: column; min-height: 100%; }
+<style>
+/* Vista de la venta. Sin scoped: todo cuelga de .vd; tema oscuro con
+   .v-theme--dark .vd. Mismos tokens que el listado y el tablero. */
+.pos-container:has(.vd) { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.vd {
+  --vd-fondo: #d6e6f3; --vd-caja: #ffffff; --vd-borde: #d3dde7; --vd-linea: #e3eaf1;
+  --vd-texto: #0f172a; --vd-suave: #5a6678; --vd-banda: #0f6fae; --vd-banda-borde: #0d5f96;
+  --vd-acento: #0f6fae; --vd-pie: #f3f8fc;
+  padding: 22px 28px 40px; min-height: calc(100vh - 72px); box-sizing: border-box;
+  background: var(--vd-fondo); color: var(--vd-texto);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.v-theme--dark .vd {
+  --vd-fondo: #0b0f14; --vd-caja: #151c25; --vd-borde: #253141; --vd-linea: #222c39;
+  --vd-texto: #e5edf5; --vd-suave: #9aa8b8; --vd-banda: #0f5f96; --vd-banda-borde: #0c4f7d;
+  --vd-acento: #5aaee0; --vd-pie: #1a2430;
+}
+.vd > * { max-width: 1300px; width: 100%; margin-left: auto; margin-right: auto; }
+.vd .num { font-variant-numeric: tabular-nums; }
 
-/* ── TOP BAR ── */
-.sd-bar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  position: sticky; top: 0; z-index: 10;
-}
-.sd-back { flex-shrink: 0; margin-left: -4px; }
-.sd-bar-title { font-size: 16px; font-weight: 500; }
-.sd-bar-sub { font-size: 11px; opacity: 0.45; margin-top: 1px; }
+.vd-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.vd-cab__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vd-volver { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--vd-acento); text-decoration: none; margin-left: -4px; }
+.vd-volver:hover { text-decoration: underline; }
+.vd-cab__titulo { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.vd-cab__sub { font-size: 14px; font-weight: 600; color: var(--vd-suave); }
+.vd-estado { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; background: var(--vd-caja); border: 1px solid var(--vd-borde); font-size: 15px; font-weight: 800; color: var(--vd-suave); }
+.vd-estado i { width: 10px; height: 10px; border-radius: 9999px; background: #C3C9D6; display: block; }
+.vd-estado.is-paid { color: #1f7a5f; } .vd-estado.is-paid i { background: #2E9E7B; }
+.vd-estado.is-cancelled { color: #b23b35; } .vd-estado.is-cancelled i { background: #C4453F; }
+.v-theme--dark .vd-estado.is-paid { color: #5fc9a6; }
+.v-theme--dark .vd-estado.is-cancelled { color: #f08a84; }
 
-/* ── LOADING ── */
-.sd-loading { display: flex; align-items: center; gap: 12px; padding: 40px 20px; opacity: 0.7; font-size: 14px; }
+.vd-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.vd-bloque { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.vd-bloque__tit { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vd-h { font-size: 22px; font-weight: 800; }
+.vd-nota { font-size: 13px; color: var(--vd-suave); }
+.vd-caja { border-radius: 12px; overflow: hidden; background: var(--vd-caja); border: 1px solid var(--vd-borde); flex: 1; }
+.vd-banda { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--vd-banda); color: #ffffff; font-size: 14px; font-weight: 700; }
+.vd-banda > span:first-child { font-size: 15px; font-weight: 800; }
+.vd-banda--sec { border-top: 1px solid var(--vd-banda-borde); }
+.vd-b { font-weight: 700; }
+.vd-s { font-size: 13px; color: var(--vd-suave); }
+.vd-link { display: inline-flex; align-items: center; font-size: 14px; font-weight: 800; color: var(--vd-acento); text-decoration: none; white-space: nowrap; }
+.vd-link:hover { text-decoration: underline; }
+.vd-vacio { padding: 28px 16px; text-align: center; font-size: 15px; font-weight: 600; color: var(--vd-suave); }
 
-/* ── HERO STRIP ── */
-.sd-hero {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 0;
-  padding: 12px 16px;
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.sd-hs { flex: 1; min-width: 110px; display: flex; align-items: center; gap: 10px; padding: 4px 10px; }
-.sd-hs-ico {
-  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-  display: grid; place-items: center;
-}
-.sd-hs-ico--primary { background: rgb(var(--v-theme-primary)); }
-.sd-hs-ico--green   { background: rgb(var(--v-theme-success)); }
-.sd-hs-ico--indigo  { background: #5c6bc0; }
-.sd-hs-ico--purple  { background: #9c27b0; }
-.sd-hs-ico--teal    { background: #009688; }
-.sd-hs-val { font-size: 14px; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-.sd-hs-lbl { font-size: 10px; opacity: 0.4; font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; }
-.sd-hero-sep { width: 1px; height: 32px; background: rgba(var(--v-border-color), var(--v-border-opacity)); flex-shrink: 0; }
+/* tabla cerrada */
+.vd-tabla-scroll { overflow-x: auto; }
+.vd-tabla { width: 100%; border-collapse: collapse; min-width: 640px; }
+.vd-tabla th { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #ffffff; background: var(--vd-banda); text-align: left; padding: 11px 12px; border: 1px solid var(--vd-banda-borde); border-top: 0; }
+.vd-tabla td { padding: 9px 12px; border: 1px solid var(--vd-linea); vertical-align: middle; font-size: 14px; }
+.vd-tabla th:first-child, .vd-tabla td:first-child { border-left: 0; }
+.vd-tabla th:last-child, .vd-tabla td:last-child { border-right: 0; }
+.vd-tabla tfoot td { background: var(--vd-pie); font-weight: 700; }
+.vd-tabla tfoot tr.is-total td { font-size: 17px; font-weight: 800; }
+.vd-tabla .c-img { width: 64px; }
+.vd-tabla .c-num { width: 100px; text-align: right; }
+.vd-tabla .c-plata { width: 140px; text-align: right; white-space: nowrap; }
+.vd-tabla .c-ver { width: 72px; }
+.vd-tot-k { text-align: right; }
+.vd-img { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--vd-borde); background: var(--vd-pie); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; padding: 0; color: var(--vd-suave); }
+.vd-img img { width: 100%; height: 100%; object-fit: cover; }
 
-/* ── TABS ── */
-.sd-tabs {
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  position: sticky; top: 49px; z-index: 9;
-}
+/* cobro y datos */
+.vd-filas { display: flex; flex-direction: column; padding: 4px 16px 8px; }
+.vd-pago { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--vd-linea); }
+.vd-pago:last-child { border-bottom: 0; }
+.vd-pago__linea { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vd-pago__monto { font-size: 20px; font-weight: 800; }
+.vd-medio { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; }
+.vd-medio i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+.vd-datos { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; padding: 14px 16px; }
+.vd-datos--chico { padding: 6px 0 0; gap: 4px 14px; font-size: 13px; }
+.vd-datos dt { font-size: 14px; font-weight: 600; color: var(--vd-suave); }
+.vd-datos dd { margin: 0; font-size: 14px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+.vd-datos--chico dt, .vd-datos--chico dd { font-size: 13px; }
 
-/* ── TAB ── */
-.sd-tab { padding: 14px 16px 24px; }
-.sd-tab-head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
-}
-.sd-tab-head-left { display: flex; align-items: center; gap: 9px; }
-.sd-tab-ttl { font-size: 13px; font-weight: 500; }
+/* devoluciones y cambios */
+.vd-mov { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--vd-linea); }
+.vd-mov:last-child { border-bottom: 0; }
+.vd-mov__tipo { width: 96px; flex-shrink: 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--vd-suave); }
+.vd-mov__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vd-mov__monto { font-size: 16px; font-weight: 800; white-space: nowrap; }
 
-/* ── SHARED BADGE ── */
-.sd-badge {
-  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-  display: grid; place-items: center;
-}
-.sd-badge--primary { background: rgb(var(--v-theme-primary)); }
-.sd-badge--purple  { background: #9c27b0; }
-.sd-badge--green   { background: rgb(var(--v-theme-success)); }
-.sd-badge--indigo  { background: #5c6bc0; }
-.sd-badge--orange  { background: rgb(var(--v-theme-warning)); }
-.sd-badge--teal    { background: #009688; }
+/* anular */
+.vd-anular { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(196, 69, 63, 0.35); background: var(--vd-caja); box-sizing: border-box; }
+.vd-anular__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vd-anular__tit { font-size: 15px; font-weight: 800; }
+.vd-anular__confirma { display: flex; align-items: center; gap: 14px; }
+.vd-anular__no { font-size: 14px; font-weight: 700; color: var(--vd-suave); }
 
-/* ── INFO GRID (3 cols) ── */
-.sd-info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 10px;
+@media (max-width: 900px) {
+  .vd { padding: 16px 16px 96px; }
+  .vd-grilla { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* ── CARD ── */
-.sd-card {
-  position: relative;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  overflow: hidden;
-}
-.sd-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  border-radius: 14px 0 0 14px;
-}
-.sd-card--primary::before { background: rgb(var(--v-theme-primary)); }
-.sd-card--purple::before  { background: #9c27b0; }
-.sd-card--green::before   { background: rgb(var(--v-theme-success)); }
-.sd-card--empty { opacity: 0.75; }
-
-.sd-card-head {
-  display: flex; align-items: center; gap: 9px;
-  margin-bottom: 12px;
-}
-.sd-card-ttl { font-size: 12px; font-weight: 500; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.06em; flex: 1; }
-
-/* Customer panel */
-.sd-cust-avatar {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: rgba(#9c27b0, 0.12);
-  background: rgba(var(--v-theme-primary), 0.1);
-  display: grid; place-items: center;
-  margin-bottom: 8px;
-}
-.sd-cust-initials { font-size: 16px; font-weight: 500; }
-.sd-cust-name { font-size: 17px; font-weight: 500; line-height: 1.2; margin-bottom: 2px; }
-
-/* Pay panel */
-.sd-pay-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 10px; }
-.sd-pay-big { font-size: 22px; font-weight: 500; }
-
-/* Info rows with icons */
-.sd-irows { display: flex; flex-direction: column; }
-.sd-ir {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 0;
-  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
-}
-.sd-ir:last-child { border-bottom: none; }
-.sd-ir-ico { opacity: 0.35; flex-shrink: 0; }
-.sd-ir-k { font-size: 11px; font-weight: 400; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.04em; flex: 1; min-width: 0; }
-.sd-ir-v { font-size: 13px; font-weight: 400; text-align: right; word-break: break-word; }
-.sd-mono { font-family: monospace; font-size: 12px; }
-
-.sd-no-data {
-  display: flex; align-items: center;
-  font-size: 12px; opacity: 0.4;
-  padding: 8px 0;
-}
-
-/* ── TOTALES STRIP ── */
-.sd-totals {
-  display: flex; flex-wrap: wrap;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgb(var(--v-theme-surface));
-}
-.sd-tot {
-  flex: 1; min-width: 110px;
-  padding: 12px 14px;
-  border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.sd-tot:last-child { border-right: none; }
-.sd-tot-k {
-  display: flex; align-items: center;
-  font-size: 10px; font-weight: 500;
-  opacity: 0.4; text-transform: uppercase; letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-.sd-tot-v { font-size: 17px; font-weight: 500; }
-.sd-tot--main { background: rgba(var(--v-theme-primary), 0.05); }
-.sd-tot--main .sd-tot-v { color: rgb(var(--v-theme-primary)); }
-.sd-tot--ok .sd-tot-v { color: rgb(var(--v-theme-success)); }
-.sd-tot--neg .sd-tot-v { color: rgb(var(--v-theme-warning)); }
-.sd-tot--warn .sd-tot-v { color: rgb(var(--v-theme-warning)); }
-.sd-tot--neto { background: rgba(var(--v-theme-success), 0.04); }
-.sd-tot--neto .sd-tot-v { color: rgb(var(--v-theme-success)); }
-
-/* ── ITEMS LIST ── */
-.sd-items-list { display: flex; flex-direction: column; gap: 8px; }
-.sd-item-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-}
-.sd-item-img {
-  width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0;
-  overflow: hidden; cursor: zoom-in;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  display: grid; place-items: center;
-}
-.sd-img { width: 100%; height: 100%; object-fit: cover; }
-.sd-item-body { flex: 1; min-width: 0; }
-.sd-item-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
-.sd-item-meta { font-size: 11px; opacity: 0.5; margin-top: 2px; }
-.sd-item-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
-.sd-item-nums { text-align: right; flex-shrink: 0; }
-.sd-item-qty { font-size: 15px; font-weight: 500; }
-.sd-item-unit { font-size: 11px; opacity: 0.5; }
-.sd-item-total { font-size: 14px; font-weight: 500; color: rgb(var(--v-theme-primary)); }
-
-.sd-empty {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 32px; opacity: 0.45; font-size: 13px;
-}
-
-/* ── PAYMENTS ── */
-.sd-pays { display: flex; flex-direction: column; gap: 10px; }
-.sd-pay-card {
-  padding: 14px 16px; border-radius: 14px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-}
-.sd-pay-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
-.sd-pay-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.sd-pay-amount-box {
-  padding: 8px 12px; border-radius: 10px;
-  background: rgba(var(--v-theme-primary), 0.07);
-  border: 1px solid rgba(var(--v-theme-primary), 0.15);
-  text-align: right; flex-shrink: 0;
-}
-.sd-pay-albl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.45; }
-.sd-pay-aval { font-size: 18px; font-weight: 500; }
-.sd-pay-headline { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
-.sd-pay-subline { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; opacity: 0.5; margin-bottom: 8px; }
-
-.sd-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px; margin-top: 10px;
-}
-.sd-fact {
-  padding: 9px 11px; border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-}
-.sd-fact-lbl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.4; }
-.sd-fact-val { font-size: 13px; font-weight: 400; margin-top: 3px; }
-.sd-pay-note {
-  display: flex; align-items: center;
-  margin-top: 10px; padding: 9px 11px; border-radius: 10px;
-  font-size: 12px; opacity: 0.65;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  border: 1px dashed rgba(var(--v-border-color), calc(var(--v-border-opacity) * 1.5));
-}
-
-/* ── HISTORIAL ── */
-.sd-hist-list { display: flex; flex-direction: column; gap: 8px; }
-.sd-hist-card {
-  padding: 12px 14px; border-radius: 12px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  position: relative; overflow: hidden;
-}
-.sd-hist-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
-.sd-hist-card--orange::before { background: rgb(var(--v-theme-warning)); }
-.sd-hist-card--teal::before   { background: #009688; }
-.sd-hist-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.sd-hist-date { font-size: 13px; font-weight: 400; }
-.sd-hist-meta { font-size: 12px; opacity: 0.55; margin-top: 3px; }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 860px) {
-  .sd-info-grid { grid-template-columns: 1fr 1fr; }
-  .sd-card--green { grid-column: 1 / -1; }
-}
-@media (max-width: 560px) {
-  .sd-info-grid { grid-template-columns: 1fr; }
-  .sd-card--green { grid-column: auto; }
-  .sd-hero { overflow-x: auto; flex-wrap: nowrap; }
-  .sd-hs { min-width: 100px; }
-  .sd-tab { padding: 10px 12px 20px; }
-  .sd-totals { overflow-x: auto; flex-wrap: nowrap; }
-  .sd-tot { min-width: 100px; }
-}
-
-.sd-anular {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(196, 69, 63, 0.35);
-  background: rgba(196, 69, 63, 0.05);
-}
-.sd-anular__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.sd-anular__tit { font-size: 15px; font-weight: 800; }
-.sd-anular__sub { font-size: 13px; color: rgba(var(--v-theme-on-surface), 0.65); }
-.sd-anular__confirma { display: flex; align-items: center; gap: 14px; }
-.sd-anular__no { font-size: 14px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.7); }
 </style>
