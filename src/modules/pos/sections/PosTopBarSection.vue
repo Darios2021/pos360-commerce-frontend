@@ -11,7 +11,6 @@
       :caja-open="!!isCajaOpen"
       @help="abrir('ayuda')"
       @find-product="abrir('buscar')"
-      @search="abrir('consulta')"
       @refresh="handleRefresh"
       @show-cart="abrir('carrito')"
       @pay="handlePay"
@@ -23,7 +22,6 @@
 
     <!-- Ventanas de la barra (maqueta aprobada 10/10) -->
     <PosBuscarDialog v-model="buscarOpen" :branch-id="sucursal" @agregar="agregar" />
-    <PosPrecioDialog v-model="consultaOpen" :branch-id="sucursal" @agregar="agregar" />
     <PosCarritoDialog v-model="showCartDialog" :pos-store="posStore" @cobrar="cobrarDesdeCarrito" />
     <PosVaciarDialog v-model="vaciarOpen" :pos-store="posStore" @vaciado="toast('Carrito vaciado')" />
     <PosMovimientosDialog v-model="movementsOpen" :caja-id="Number(currentCashRegister?.id || 0)" :sucursal="sucursal" />
@@ -36,7 +34,6 @@
 import { computed, ref } from "vue";
 import PosTopBar from "../components/PosTopBar.vue";
 import PosBuscarDialog from "../components/modales/PosBuscarDialog.vue";
-import PosPrecioDialog from "../components/modales/PosPrecioDialog.vue";
 import PosCarritoDialog from "../components/modales/PosCarritoDialog.vue";
 import PosVaciarDialog from "../components/modales/PosVaciarDialog.vue";
 import PosMovimientosDialog from "../components/modales/PosMovimientosDialog.vue";
@@ -79,7 +76,6 @@ const activeStates = computed(() => ({
   F1: !!helpOpen.value,
   F2: !!buscarOpen.value,
   F3: !!clienteOpen.value,
-  F4: !!consultaOpen.value,
   F6: !!showCartDialog.value,
   F8: !!vaciarOpen.value,
   F9: !!checkoutDialog.value,

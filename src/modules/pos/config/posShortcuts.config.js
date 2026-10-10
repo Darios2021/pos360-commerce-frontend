@@ -46,8 +46,6 @@ export const POS_SHORTCUTS = [
     description: "Nombre, código o lector", tooltip: "Buscar producto (F2)", allowInInput: true, toggle: true },
   { key: "F9", event: "pay", label: "Cobrar", icon: "mdi-cash-register", color: "hk-pay", group: "clave", clave: true,
     description: "Medio, vuelto y comprobante", tooltip: "Cobrar (F9)", allowInInput: true, toggle: true },
-  { key: "F4", event: "search", label: "Consulta", icon: "mdi-tag-outline", color: "hk-search", group: "venta",
-    description: "Precios y stock por sucursal", tooltip: "Consulta de precio (F4)", allowInInput: true, toggle: true },
   { key: "F6", event: "show-cart", label: "Carrito", icon: "mdi-cart-outline", color: "hk-cart", group: "venta",
     description: "Cantidades y quitar", tooltip: "Carrito (F6)", allowInInput: true, toggle: true },
   { key: "F3", event: "new-customer", label: "Cliente", icon: "mdi-account-plus-outline", color: "hk-customer", group: "venta",

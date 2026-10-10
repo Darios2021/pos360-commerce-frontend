@@ -1,7 +1,8 @@
 <!-- src/modules/pos/components/modales/PosBuscarDialog.vue -->
 <!-- F2 Buscar producto: nombre, código o lector. Flechas eligen, + y −
      cambian la cantidad, Enter agrega y deja la ventana lista para el
-     siguiente producto. -->
+     siguiente producto. A la derecha, la ficha del elegido: los tres precios
+     y el stock por sucursal (antes era F4 Consulta; el usuario las unificó). -->
 <template>
   <PosModal
     :model-value="modelValue"
@@ -9,7 +10,7 @@
     sub="Nombre, código o lector"
     tecla="F2"
     icono="mdi-magnify"
-    :ancho="960"
+    :ancho="1200"
     :accion="actual ? `Agregar ${cantidad} al carrito` : 'Agregar al carrito'"
     accion-icono="mdi-cart-plus"
     :accion-deshabilitada="!actual || sinStock(actual)"
@@ -25,7 +26,8 @@
         <v-progress-circular v-if="cargando" indeterminate size="22" width="3" color="primary" />
       </label>
 
-      <div v-if="filas.length" ref="listaRef" class="pb-lista">
+      <div v-if="filas.length" class="pb-cols">
+      <div ref="listaRef" class="pb-lista">
         <div
           v-for="(p, i) in filas"
           :key="p.id"
@@ -50,6 +52,26 @@
             <small v-if="lista(p) > contado(p)" class="num">lista {{ pesos(lista(p)) }}</small>
           </span>
         </div>
+      </div>
+
+      <aside v-if="actual" class="pb-ficha">
+        <span class="pm-foto pb-ficha__foto"><img v-if="productImage(actual)" :src="productImage(actual)" alt="" /><v-icon v-else size="44">mdi-image-outline</v-icon></span>
+        <span class="pb-ficha__meta">{{ [actual.brand, actual.code || actual.sku].filter(Boolean).join(" · ") }}</span>
+        <span class="pb-ficha__nombre">{{ actual.name }}</span>
+        <div class="pb-tres">
+          <div class="pb-pr is-on"><span class="pm-lab">Contado</span><b class="num">{{ pesos(contado(actual)) }}</b></div>
+          <div class="pb-pr"><span class="pm-lab">Lista</span><b class="num">{{ pesos(lista(actual)) }}</b></div>
+          <div class="pb-pr"><span class="pm-lab">Revendedor</span><b class="num" :class="{ 'pb-tenue': !(Number(actual.price_reseller) > 0) }">{{ Number(actual.price_reseller) > 0 ? pesos(actual.price_reseller) : "—" }}</b></div>
+        </div>
+        <span class="pm-lab">Stock por sucursal</span>
+        <div v-if="sucursales.length" class="pb-sucs">
+          <div v-for="s in sucursales" :key="s.branch_id" class="pb-suc" :class="{ 'is-esta': Number(s.branch_id) === Number(branchId) }">
+            <span class="pm-c1">{{ s.branch_name }}</span>
+            <b class="num" :class="{ 'pb-tenue': !(Number(s.current_qty) > 0) }">{{ Number(s.current_qty) || 0 }}</b>
+          </div>
+        </div>
+        <span v-else class="pm-stock" :class="claseStock(actual)"><i></i>{{ textoStock(actual) }}</span>
+      </aside>
       </div>
       <div v-else-if="q.trim().length >= 2 && !cargando" class="pm-vacio">Sin resultados para «{{ q.trim() }}»</div>
     </div>
@@ -79,6 +101,8 @@ const sel = ref(0);
 const cantidad = ref(1);
 const cargando = ref(false);
 const actual = computed(() => filas.value[sel.value] || null);
+const sucursales = ref([]);
+const stockCache = new Map();
 
 const pesos = (n) => `$ ${Math.round(Number(n || 0)).toLocaleString("es-AR")}`;
 const contado = (p) => Number(p?.price_discount ?? p?.effective_price ?? p?.price ?? 0);
@@ -157,12 +181,46 @@ useTeclasModal(abierto, (e) => {
 });
 
 watch(abierto, (v) => { if (!v) { clearTimeout(reloj); } });
+
+// Stock por sucursal del elegido, con una espera corta para no pedirlo en
+// cada flecha.
+let relojStock = null;
+watch(actual, (p) => {
+  clearTimeout(relojStock);
+  const id = Number(p?.id || 0);
+  if (!id) { sucursales.value = []; return; }
+  if (stockCache.has(id)) { sucursales.value = stockCache.get(id); return; }
+  sucursales.value = [];
+  relojStock = setTimeout(async () => {
+    try {
+      const r = await http.get(`/products/${id}/branches`);
+      const filasSuc = (Array.isArray(r?.data?.data) ? r.data.data : []).filter((s) => Number(s.enabled) || Number(s.current_qty));
+      stockCache.set(id, filasSuc);
+      if (Number(actual.value?.id) === id) sucursales.value = filasSuc;
+    } catch { /* queda el stock de esta sucursal */ }
+  }, 220);
+});
 </script>
 
 <style>
 .pb { display: flex; flex-direction: column; gap: 14px; padding: 18px 22px; }
 .pb-cuenta { font-size: 13px; font-weight: 700; color: #5a6678; white-space: nowrap; }
-.pb-lista { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+.pb-cols { display: flex; gap: 18px; align-items: flex-start; }
+.pb-lista { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; max-height: 58vh; overflow-y: auto; }
+.pb-ficha { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: #f8fbfd; border: 1px solid #e3eaf1; }
+.pb-ficha__foto { width: 100%; height: 170px; }
+.pb-ficha__meta { font-size: 12px; font-weight: 700; color: #5a6678; }
+.pb-ficha__nombre { font-size: 18px; font-weight: 900; line-height: 1.2; }
+.pb-tres { display: flex; flex-direction: column; gap: 8px; }
+.pb-pr { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 12px; border-radius: 10px; border: 1px solid #d3dde7; background: #ffffff; }
+.pb-pr b { font-size: 22px; font-weight: 900; }
+.pb-pr.is-on { background: #eef7fd; border: 2px solid #0f6fae; }
+.pb-pr.is-on .pm-lab { color: #0a466e; }
+.pb-sucs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pb-suc { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid #d3dde7; background: #ffffff; font-size: 12px; font-weight: 700; color: #5a6678; }
+.pb-suc b { font-size: 17px; font-weight: 900; color: #0f172a; }
+.pb-suc.is-esta { background: #eef7fd; border: 2px solid #0f6fae; }
+.pb-tenue { color: #94a3b8 !important; }
 .pb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .pb-nombre { font-size: 16px; font-weight: 800; }
 .pb-sub { font-size: 13px; color: #5a6678; }
