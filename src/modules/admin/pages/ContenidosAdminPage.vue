@@ -9,7 +9,7 @@
     <div class="sp-cab ct-cab">
       <div class="sp-cab__txt">
         <h1 class="sp-cab__titulo">Gestión de contenidos</h1>
-        <span class="sp-cab__sub">{{ vista === "videos" ? `${piezas.length} ${piezas.length === 1 ? "video" : "videos"}` : "Reel 9:16 para Instagram, Facebook y WhatsApp" }}</span>
+        <span class="sp-cab__sub">{{ vista === "videos" ? `${piezas.length} ${piezas.length === 1 ? "video" : "videos"}` : "Reel 9:16 para Instagram, Facebook y WhatsApp" }}<template v-if="textoCupo"> · {{ textoCupo }}</template></span>
       </div>
       <div class="ct-tabs" role="tablist">
         <button type="button" role="tab" :class="{ 'is-on': vista === 'nuevo' }" @click="irA('nuevo')">Nuevo reel</button>
@@ -225,10 +225,13 @@
         <button v-if="paso > 1" type="button" class="ct-atras" @click="paso--"><v-icon size="20">mdi-arrow-left</v-icon>Atrás</button>
         <span v-else></span>
         <button v-if="paso < 4" type="button" class="ct-generar" :disabled="paso >= 2 && !seleccion.length" @click="paso++">Siguiente<v-icon size="22">mdi-arrow-right</v-icon></button>
-        <button v-else type="button" class="ct-generar" :disabled="!seleccion.length || !fuente || creando || (formato === 'problema' && !apertura.titular.trim())" @click="generar">
-          <v-progress-circular v-if="creando" indeterminate size="22" width="3" />
-          <v-icon v-else size="24">mdi-movie-open-outline</v-icon>Generar video
-        </button>
+        <div v-else class="ct-pie__fin">
+          <span v-if="sinCupo" class="ct-cupo-agotado">Límite de {{ cupo.nombreMes }} alcanzado</span>
+          <button type="button" class="ct-generar" :disabled="sinCupo || !seleccion.length || !fuente || creando || (formato === 'problema' && !apertura.titular.trim())" @click="generar">
+            <v-progress-circular v-if="creando" indeterminate size="22" width="3" />
+            <v-icon v-else size="24">mdi-movie-open-outline</v-icon>Generar video
+          </button>
+        </div>
       </div>
     </template>
 
@@ -379,7 +382,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getCupo, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -707,6 +710,15 @@ function sugerir() {
   }, 250);
 }
 
+/* Cupo mensual de videos (limite null = sin tope). Cuentan en cola, renderizando y
+   listos; fallidos y cancelados no. Se relee cuando un video entra, falla o se cancela. */
+const cupo = ref(null);
+const sinCupo = computed(() => cupo.value?.limite != null && cupo.value.quedan <= 0);
+const textoCupo = computed(() => (cupo.value?.limite != null ? `${cupo.value.usados} de ${cupo.value.limite} videos de ${cupo.value.nombreMes}` : ""));
+async function cargarCupo() {
+  try { cupo.value = await getCupo(); } catch { /* sin dato de cupo no se bloquea nada */ }
+}
+
 async function generar() {
   creando.value = true;
   error.value = "";
@@ -717,7 +729,10 @@ async function generar() {
     datos.titulo = "";
     datos.descripcion = "";
     irA("videos");
-  } catch (e) { error.value = mensaje(e); } finally { creando.value = false; }
+  } catch (e) {
+    if (e?.response?.data?.cupo) cupo.value = e.response.data.cupo;
+    error.value = mensaje(e);
+  } finally { creando.value = false; cargarCupo(); }
 }
 
 /* Redes y publicación */
@@ -807,6 +822,7 @@ async function cancelar(v) {
     const n = await cancelarPieza(v.id);
     const i = piezas.value.findIndex((x) => x.id === v.id);
     if (i >= 0) piezas.value[i] = { ...piezas.value[i], ...n };
+    cargarCupo();
   } catch (e) {
     if (e?.response?.status === 404) piezas.value = piezas.value.filter((x) => x.id !== v.id);
     else error.value = mensaje(e);
@@ -886,6 +902,7 @@ function seguir() {
           const antes = piezas.value[i];
           const volvioACola = n.estado === "en_cola" || /^en cola/i.test(n.etapa || "");
           if (n.estado === "renderizando" && !volvioACola && Number(n.progreso) < Number(antes.progreso)) n.progreso = antes.progreso;
+          if (n.estado !== antes.estado && (n.estado === "error" || n.estado === "cancelada")) cargarCupo();
           piezas.value[i] = n;
         }
       } catch (e) {
@@ -905,6 +922,7 @@ onMounted(async () => {
   cargarRedes();
   cargarPublicar();
   cargarPromos();
+  cargarCupo();
   listarVoces().then((l) => {
     voces.value = l;
     opciones.locutor = (l.find((v) => v.porDefecto) || l[0])?.id || null;
@@ -996,6 +1014,8 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-musica button:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
 :is(.v-theme--dark, .v-theme--adminDark) .ct-musica button:hover:not(.is-on) { background: #1a2a3a; }
 .ct-musica button.is-on { border: 2px solid #0f6fae; padding: 15px 7px; background: var(--sp-hover); }
+.ct-pie__fin { display: flex; align-items: center; gap: 14px; }
+.ct-cupo-agotado { font: 800 14px Inter, sans-serif; color: #c2413a; }
 .ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
 .ct-atras { height: 50px; display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 800 16px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
 .ct-atras:hover { background: #cfe5f5; border-color: #3f8fc6; }

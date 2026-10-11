@@ -73,3 +73,9 @@ export async function publicarPieza(id, publicacion) {
   const { data } = await http.post(`${BASE}/piezas/${id}/publicaciones`, publicacion);
   return data;
 }
+
+// Cupo mensual de videos: {mes, limite, usados, quedan, renueva, nombreMes}; limite null = sin tope.
+export async function getCupo() {
+  const { data } = await http.get(`${BASE}/cupo`);
+  return data;
+}
