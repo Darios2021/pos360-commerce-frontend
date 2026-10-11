@@ -180,146 +180,50 @@
         </div>
       </div>
 
-      <!-- 4. Sonido y video: paquetes, línea de tiempo del sonido y panel en el lugar (spec SONIDO, aprobada 11/10) -->
+      <!-- 4. Sonido y video: estilo prearmado (efectos y animación incluidos), música y voz -->
       <div v-else class="ct-p3">
         <div class="sp-caja">
-          <div class="se-banda ct-son-banda">
+          <div class="se-banda">
             <span>Sonido</span>
-            <button v-if="modoLinea" type="button" class="ct-escuchar" :aria-label="sonando === 'combo' ? 'Detener' : 'Escuchar'" @click="escucharCombo('combo', opciones)">
-              <v-icon size="18">{{ sonando === "combo" ? "mdi-stop" : "mdi-play" }}</v-icon>{{ sonando === "combo" ? "Detener" : "Escuchar" }}<span class="num">{{ fmtSeg(total) }} s</span>
-            </button>
-            <small v-else class="num">{{ fmtSeg(total) }} s</small>
+            <small class="num">{{ fmtSeg(total) }} s</small>
           </div>
           <div class="ct-son">
-            <template v-if="modoLinea">
-              <!-- Paquetes -->
-              <div class="ct-paqs" role="radiogroup" aria-label="Paquete de sonido">
-                <div v-for="p in fichasPaquete" :key="p.id" class="ct-paq" :class="{ 'is-on': p.on, 'is-pers': p.id === 'pers' }" role="radio" tabindex="0" :aria-checked="p.on" @click="p.elegir()" @keydown.enter.prevent="p.elegir()" @keydown.space.prevent="p.elegir()">
-                  <button type="button" class="ct-oir" :class="{ 'is-sonando': sonando === `paq:${p.id}` }" :aria-label="`${sonando === `paq:${p.id}` ? 'Detener' : 'Escuchar'} ${p.nombre}`" @click.stop="escucharCombo(`paq:${p.id}`, p.estado)"><v-icon size="18">{{ sonando === `paq:${p.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+            <!-- Estilos prearmados: cada uno trae su animación y sus efectos -->
+            <template v-if="fichasPaquete.length">
+              <span class="ct-rot">Estilo</span>
+              <div class="ct-paqs" role="radiogroup" aria-label="Estilo del video">
+                <div v-for="p in fichasPaquete" :key="p.id" class="ct-paq" :class="{ 'is-on': p.on }" role="radio" tabindex="0" :aria-checked="p.on" @click="p.elegir()" @keydown.enter.prevent="p.elegir()" @keydown.space.prevent="p.elegir()">
+                  <button type="button" class="ct-oir" :class="{ 'is-sonando': sonando === `paq:${p.id}` }" :aria-label="`${sonando === `paq:${p.id}` ? 'Detener' : 'Escuchar'} ${p.nombre}`" @click.stop="escucharEstilo(p)"><v-icon size="18">{{ sonando === `paq:${p.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
                   <span class="ct-paq__t"><strong>{{ p.nombre }}</strong><small>{{ p.sub }}</small></span>
                   <v-icon v-if="p.on" size="20" class="ct-paq__ok">mdi-check-circle</v-icon>
                 </div>
               </div>
-
-              <!-- Línea de tiempo -->
-              <div class="ct-tl-scroll">
-                <div class="ct-tl">
-                  <div></div>
-                  <div class="ct-tl__area" :style="columnas">
-                    <component :is="e.k === 'remate' ? 'div' : 'button'" v-for="e in escenas" :key="e.k" :type="e.k === 'remate' ? undefined : 'button'" class="ct-tl__esc" :class="{ 'is-rem': e.k === 'remate', 'is-vivo': escenaViva === e.k }" @click="e.k !== 'remate' && verEscena(e.k)">
-                      <EscenaReel v-if="e.k !== 'remate'" :tipo="e.tipo" :item="e.p ? encargoItem(e.p) : null" :apertura="aperturaVista" :cierre="cierreOpc" :fuente="fuente" :ancho="22" :con-cuotas="opciones.cuotas" class="ct-tl__mini" />
-                      <b>{{ e.lbl }}</b><span class="num">{{ fmtSeg(e.d) }} s</span>
-                    </component>
-                  </div>
-                  <div></div>
-
-                  <div class="ct-tl__lab">Música</div>
-                  <div class="ct-tl__area" :style="columnas">
-                    <button type="button" class="ct-pista" :class="[opciones.musica ? 'is-mus' : 'is-nada', { 'is-edit': panel === 'musica' }]" @click="abrir('musica')">
-                      <template v-if="opciones.musica"><span class="ct-ondas"><i v-for="(h, k) in [6, 11, 8, 14, 9, 12, 5]" :key="k" :style="{ height: `${h}px` }"></i></span>{{ nombreMusica(opciones.musica) }}<small>{{ musicaDe(opciones.musica)?.estilo }}</small></template>
-                      <template v-else>Sin música</template>
-                    </button>
-                  </div>
-                  <div></div>
-
-                  <div class="ct-tl__lab">Voz</div>
-                  <div class="ct-tl__area" :style="columnas">
-                    <template v-if="opciones.voz">
-                      <button v-for="(e, i) in escenasConVoz" :key="e.k" type="button" class="ct-pista is-voz" :class="{ 'is-edit': panel === 'voz' }" @click="abrir('voz')">
-                        <template v-if="i === 0"><v-icon size="16">mdi-account-voice</v-icon>{{ nombreLocutor(opciones.locutor) }}<small>{{ textoRitmo(opciones.ritmo) }}</small></template>
-                      </button>
-                    </template>
-                    <button v-else type="button" class="ct-pista is-nada" :class="{ 'is-edit': panel === 'voz' }" :style="{ gridColumn: `1 / ${escenasConVoz.length + 1}` }" @click="abrir('voz')">Sin voz</button>
-                  </div>
-                  <div></div>
-
-                  <div class="ct-tl__lab">Efectos
-                    <span v-if="fuenteSonido.oscuro" class="ct-mini-sw" role="switch" tabindex="0" :aria-checked="opciones.oscuro" @click="alternarOscuro" @keydown.enter.prevent="alternarOscuro" @keydown.space.prevent="alternarOscuro"><i></i>Oscuro</span>
-                  </div>
-                  <div class="ct-tl__area" :style="columnas">
-                    <div v-for="e in escenas" :key="e.k" class="ct-efs">
-                      <component :is="opcionesDe(m).length ? 'button' : 'div'" v-for="m in e.ef" :key="m" :type="opcionesDe(m).length ? 'button' : undefined" class="ct-ficha" :class="{ 'is-nada': callado(m, opciones.ef[m]), 'is-edit': panel === m, 'is-fija': !opcionesDe(m).length }" @click="opcionesDe(m).length && abrir(m)">
-                        <span class="ct-rot">{{ MOMENTO_TXT[m] }}</span><b>{{ valorTxt(m, opciones.ef[m]) }}</b>
-                      </component>
-                    </div>
-                  </div>
-                  <div class="ct-tl__slot">
-                    <button v-if="!opciones.ef.remate && opcionesDe('remate').length" type="button" class="ct-ficha is-mas" :class="{ 'is-edit': panel === 'remate' }" aria-label="Remate" @click="abrir('remate')"><b>+ Remate</b></button>
-                  </div>
-
-                  <div class="ct-tl__cabezal-caja">
-                    <div v-if="cabezal !== null" class="ct-tl__cabezal" :style="{ left: `${(cabezal / total) * 100}%` }"></div>
-                  </div>
-                </div>
+            </template>
+            <span class="ct-rot">Música</span>
+            <div class="ct-ops" role="radiogroup" aria-label="Música">
+              <div v-for="o in opsMusica" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
+                <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                <span v-else class="ct-op__hueco"><v-icon size="18">mdi-volume-off</v-icon></span>
+                <span class="ct-op__t"><strong>{{ o.nombre }}</strong><small v-if="o.sub">{{ o.sub }}</small></span>
+                <v-icon size="19" class="ct-op__rd">{{ o.on ? "mdi-radiobox-marked" : "mdi-radiobox-blank" }}</v-icon>
               </div>
-
-              <!-- Panel de edición, en el lugar -->
-              <div v-if="panel" class="ct-panel">
-                <div class="ct-panel__cab">
-                  <h4>{{ panel === "musica" ? "Música" : panel === "voz" ? "Voz" : MOMENTO_TXT[panel] }}<small v-if="vecesDe(panel) > 1">{{ vecesDe(panel) }} escenas</small></h4>
-                  <span v-if="panel === 'voz'" class="ct-mini-sw" role="switch" tabindex="0" :aria-checked="opciones.voz" @click="alternarVoz" @keydown.enter.prevent="alternarVoz" @keydown.space.prevent="alternarVoz"><i></i>Voz en off</span>
-                  <button type="button" class="ct-panel__x" aria-label="Cerrar" @click="panel = null"><v-icon size="18">mdi-close</v-icon></button>
-                </div>
-                <template v-if="panel === 'voz'">
-                  <template v-if="opciones.voz">
-                    <div class="ct-voces2">
-                      <div v-for="g in gruposVoz" :key="g.t" class="ct-voces2__col">
-                        <span class="ct-rot">{{ g.t }}</span>
-                        <div class="ct-ops ct-ops--col" role="radiogroup" :aria-label="g.t">
-                          <div v-for="o in g.ops" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
-                            <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-                            <span v-else class="ct-op__hueco"><v-icon size="18">mdi-volume-off</v-icon></span>
-                            <span class="ct-op__t"><strong>{{ o.nombre }}</strong><small v-if="o.sub">{{ o.sub }}</small></span>
-                            <v-icon size="19" class="ct-op__rd">{{ o.on ? "mdi-radiobox-marked" : "mdi-radiobox-blank" }}</v-icon>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="ct-fila"><span class="ct-rot">Ritmo</span><span class="ct-seg ct-seg--chico"><button v-for="r in RITMOS" :key="r.v" type="button" :class="{ 'is-on': opciones.ritmo === r.v }" @click="elegirRitmo(r.v)">{{ r.t }}</button></span></div>
-                  </template>
-                </template>
-                <template v-else>
-                  <div class="ct-ops" role="radiogroup" :aria-label="panel === 'musica' ? 'Música' : MOMENTO_TXT[panel]">
-                    <div v-for="o in opsPanel" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
-                      <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra, o.oscuro)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+            </div>
+            <div class="ct-fila"><span class="ct-rot">Voz</span><span class="ct-mini-sw" role="switch" tabindex="0" :aria-checked="opciones.voz" @click="alternarVoz" @keydown.enter.prevent="alternarVoz" @keydown.space.prevent="alternarVoz"><i></i>Voz en off</span></div>
+            <template v-if="opciones.voz">
+              <div class="ct-voces2">
+                <div v-for="g in gruposVoz" :key="g.t" class="ct-voces2__col">
+                  <span class="ct-rot">{{ g.t }}</span>
+                  <div class="ct-ops ct-ops--col" role="radiogroup" :aria-label="g.t">
+                    <div v-for="o in g.ops" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
+                      <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
                       <span v-else class="ct-op__hueco"><v-icon size="18">mdi-volume-off</v-icon></span>
                       <span class="ct-op__t"><strong>{{ o.nombre }}</strong><small v-if="o.sub">{{ o.sub }}</small></span>
                       <v-icon size="19" class="ct-op__rd">{{ o.on ? "mdi-radiobox-marked" : "mdi-radiobox-blank" }}</v-icon>
                     </div>
                   </div>
-                  <div v-if="hayMas"><button type="button" class="ct-mas" @click="mas = !mas"><v-icon size="18">{{ masAbierto ? "mdi-chevron-up" : "mdi-chevron-down" }}</v-icon>{{ masAbierto ? "Menos sonidos" : "Más sonidos" }}</button></div>
-                </template>
-              </div>
-            </template>
-
-            <!-- Sin GET /recursos: los selectores de voz y música de siempre (suena el clásico) -->
-            <template v-else>
-              <span class="ct-rot">Música</span>
-              <div class="ct-ops" role="radiogroup" aria-label="Música">
-                <div v-for="o in opsMusica" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
-                  <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-                  <span v-else class="ct-op__hueco"><v-icon size="18">mdi-volume-off</v-icon></span>
-                  <span class="ct-op__t"><strong>{{ o.nombre }}</strong><small v-if="o.sub">{{ o.sub }}</small></span>
-                  <v-icon size="19" class="ct-op__rd">{{ o.on ? "mdi-radiobox-marked" : "mdi-radiobox-blank" }}</v-icon>
                 </div>
               </div>
-              <div class="ct-fila"><span class="ct-rot">Voz</span><span class="ct-mini-sw" role="switch" tabindex="0" :aria-checked="opciones.voz" @click="alternarVoz" @keydown.enter.prevent="alternarVoz" @keydown.space.prevent="alternarVoz"><i></i>Voz en off</span></div>
-              <template v-if="opciones.voz">
-                <div class="ct-voces2">
-                  <div v-for="g in gruposVoz" :key="g.t" class="ct-voces2__col">
-                    <span class="ct-rot">{{ g.t }}</span>
-                    <div class="ct-ops ct-ops--col" role="radiogroup" :aria-label="g.t">
-                      <div v-for="o in g.ops" :key="o.key" class="ct-op" :class="{ 'is-on': o.on }" role="radio" tabindex="0" :aria-checked="o.on" @click="o.elegir()" @keydown.enter.prevent="o.elegir()" @keydown.space.prevent="o.elegir()">
-                        <button v-if="o.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === o.oir }" :aria-label="`${sonando === o.oir ? 'Detener' : 'Escuchar'} ${o.nombre}`" @click.stop="escucharUno(o.oir, o.muestra)"><v-icon size="18">{{ sonando === o.oir ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-                        <span v-else class="ct-op__hueco"><v-icon size="18">mdi-volume-off</v-icon></span>
-                        <span class="ct-op__t"><strong>{{ o.nombre }}</strong><small v-if="o.sub">{{ o.sub }}</small></span>
-                        <v-icon size="19" class="ct-op__rd">{{ o.on ? "mdi-radiobox-marked" : "mdi-radiobox-blank" }}</v-icon>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ct-fila"><span class="ct-rot">Ritmo</span><span class="ct-seg ct-seg--chico"><button v-for="r in RITMOS" :key="r.v" type="button" :class="{ 'is-on': opciones.ritmo === r.v }" @click="elegirRitmo(r.v)">{{ r.t }}</button></span></div>
-              </template>
+              <div class="ct-fila"><span class="ct-rot">Ritmo</span><span class="ct-seg ct-seg--chico"><button v-for="r in RITMOS" :key="r.v" type="button" :class="{ 'is-on': opciones.ritmo === r.v }" @click="elegirRitmo(r.v)">{{ r.t }}</button></span></div>
             </template>
           </div>
         </div>
@@ -517,7 +421,6 @@ const CIERRE_OPC = [
 const POR_TANDA = 48;
 // Momentos del sonido, en el orden en que suenan (encargo.sonidos del servicio).
 const MOMENTOS = ["apertura", "producto", "precio", "oferta", "transicion", "subida", "cierre", "remate"];
-const MOMENTO_TXT = { apertura: "Apertura", producto: "Producto", precio: "Precio", oferta: "Oferta", transicion: "Transición", subida: "Subida", cierre: "Cierre", remate: "Remate" };
 const T_REMATE = 2;
 // Valor de cada momento: "o" = Original (el sonido de siempre), null = Sin sonido, id = ese efecto.
 const efOriginal = () => Object.fromEntries(MOMENTOS.map((m) => [m, m === "remate" ? null : "o"]));
@@ -599,19 +502,18 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola", cancelada: "Cancelado" }[v.estado] || `Generando ${v.progreso || 0} %`);
-/* SONIDO del reel (spec SONIDO-diseno §B): paquetes, línea de tiempo y panel.
-   Lo que se puede elegir sale de GET /recursos (o, mientras el servicio no lo
-   publique, de los paquetes y el mapa clásico de GET /sonidos). Sin nada de eso
-   quedan los selectores de voz y música de siempre y suena el clásico. */
+/* SONIDO del reel: tres estilos prearmados (los paquetes del servicio), música y voz.
+   Decisión del usuario (11/10): el comercio no arma el video detalle por detalle; cada estilo
+   trae sus efectos puestos (no se muestran ni se eligen), Viral por defecto, y se puede lanzar
+   sin tocar nada. Lo que se puede elegir sale de GET /recursos (o de GET /sonidos); sin
+   estilos quedan sólo música y voz y suena el clásico. */
 const fuenteSonido = computed(() => {
   const r = recursos.value;
   if (r?.activo) {
     return {
       voces: r.voces || [], musicas: r.musicas || [], efectos: r.efectos || [],
-      oscuro: (r.estilos || []).some((e) => e.id === "oscuro"),
       paquetes: r.paquetes || [], clasico: r.clasico || null,
-      cinematica: (r.plantillas || []).find((p) => p.porDefecto)?.id || "revista",
-      // El servicio ya entiende musica: null y la clave oferta (§A).
+      // El servicio ya entiende musica: null y la clave oferta.
       nuevo: Boolean(r.paquetes || r.clasico),
     };
   }
@@ -619,57 +521,53 @@ const fuenteSonido = computed(() => {
   if (!s.paquetes && !s.clasico) return null;
   return {
     voces: voces.value, musicas: s.sonidos.filter((x) => x.tipo === "musica"), efectos: s.sonidos.filter((x) => x.tipo === "efecto"),
-    oscuro: s.sonidos.some((x) => x.tipo === "filtro" && x.id === "oscuro"),
-    paquetes: s.paquetes || [], clasico: s.clasico || null, cinematica: "revista", nuevo: true,
+    paquetes: s.paquetes || [], clasico: s.clasico || null, nuevo: true,
   };
 });
-const modoLinea = computed(() => Boolean(fuenteSonido.value));
+const paquetes = computed(() => fuenteSonido.value?.paquetes || []);
 const listaVoces = computed(() => fuenteSonido.value?.voces || voces.value);
 const listaMusicas = computed(() => fuenteSonido.value?.musicas || sonidos.value.sonidos.filter((x) => x.tipo === "musica"));
-const listaEfectos = computed(() => fuenteSonido.value?.efectos || []);
 const musicaDe = (id) => listaMusicas.value.find((x) => x.id === id);
-const efectoDe = (id) => listaEfectos.value.find((x) => x.id === id);
+const efectoDe = (id) => (fuenteSonido.value?.efectos || []).find((x) => x.id === id);
 const nombreMusica = (id) => (id ? musicaDe(id)?.nombre || String(id).replace(/^./, (c) => c.toUpperCase()) : "Sin música");
 const nombreLocutor = (id) => listaVoces.value.find((x) => x.id === id)?.nombre || nombreVoz(id);
-const textoRitmo = (v) => RITMOS.find((r) => r.v === v)?.t || "";
 
-// El sonido de siempre de un momento en la plantilla del comercio. null: ese momento no suena en el clásico.
+// Cada estilo fija también la animación (decisión del usuario, 11/10): Viral en Cartel con la
+// variante automática, Clásico y Tranquilo en Revista. Se manda sólo si está habilitada.
+const ANIMACION_ESTILO = { viral: "cartel", clasico: "revista", tranquilo: "revista" };
+const animacion = computed(() => {
+  const c = ANIMACION_ESTILO[paquete.value];
+  const habilitadas = recursos.value?.plantillas?.map((p) => p.id);
+  return c && (!habilitadas || habilitadas.includes(c)) ? c : undefined;
+});
+
+// El sonido de siempre de un momento en la animación del video (para escuchar un estilo).
 const tieneLogo = computed(() => Boolean(fuente.value?.marca?.logo));
-function original(m) {
-  if (m === "remate") return null;
+function original(m, cinematica = animacion.value) {
   const fs = fuenteSonido.value;
-  if (!fs?.clasico) return m === "producto" ? null : { nombre: "", muestra: null };
-  const c = fs.clasico[fs.cinematica]?.[m];
+  if (m === "remate" || !fs?.clasico) return null;
+  const cin = cinematica || (recursos.value?.plantillas || []).find((p) => p.porDefecto)?.id || "revista";
+  const c = fs.clasico[cin]?.[m];
   if (!c) return null;
-  return m === "apertura" && !tieneLogo.value && c.sinLogo ? c.sinLogo : c;
+  return m === "apertura" && !tieneLogo.value && c.sinLogo !== undefined ? c.sinLogo : c;
 }
 const callado = (m, v) => v === null || (v === "o" && !original(m));
-function valorTxt(m, v) {
-  if (v === null) return m === "remate" ? "Sin remate" : "Sin sonido";
-  if (v === "o") return original(m) ? "Original" : "Sin sonido";
-  return efectoDe(v)?.nombre || v;
-}
-// Efectos habilitados para un momento (la oferta acepta los de precio mientras el catálogo no la nombre).
-const opcionesDe = (m) => listaEfectos.value.filter((e) => (e.momentos || []).includes(m) || (m === "oferta" && (e.momentos || []).includes("precio")));
 
 /* Escenas: mismas cuentas que la duración del video. */
 const enOferta = (p) => Number(p.precioAnterior) > Number(p.precio);
 function escenasDe(st) {
-  const out = [{ k: "intro", tipo: "intro", lbl: "Portada", d: T.value.intro, ef: ["apertura"] }];
-  seleccion.value.forEach((p, i) => out.push({ k: p.id, tipo: "item", lbl: `Escena ${i + 1}`, d: T.value.item, p, i, ef: [i === 0 ? "producto" : "transicion", enOferta(p) ? "oferta" : "precio"] }));
-  out.push({ k: "cierre", tipo: "cierre", lbl: "Cierre", d: T.value.cierre, ef: ["subida", "cierre"] });
-  if (st.ef.remate) out.push({ k: "remate", tipo: "remate", lbl: "Remate", d: T_REMATE, ef: ["remate"] });
+  const out = [{ tipo: "intro", d: T.value.intro, ef: ["apertura"] }];
+  seleccion.value.forEach((p, i) => out.push({ tipo: "item", d: T.value.item, p, i, ef: [i === 0 ? "producto" : "transicion", enOferta(p) ? "oferta" : "precio"] }));
+  out.push({ tipo: "cierre", d: T.value.cierre, ef: ["subida", "cierre"] });
+  if (st.ef.remate) out.push({ tipo: "remate", d: T_REMATE, ef: ["remate"] });
   let t = 0;
   for (const e of out) { e.t0 = t; t += e.d; }
   return out;
 }
-const escenas = computed(() => escenasDe(opciones));
-const escenasConVoz = computed(() => escenas.value.filter((e) => e.k !== "remate"));
-const total = computed(() => escenas.value.reduce((a, e) => a + e.d, 0));
-const columnas = computed(() => ({ gridTemplateColumns: escenas.value.map((e) => `${e.d}fr`).join(" ") }));
-const vecesDe = (m) => escenas.value.filter((e) => e.ef.includes(m)).length;
+const total = computed(() => escenasDe(opciones).reduce((a, e) => a + e.d, 0));
 
-/* Paquetes. Lo que un paquete no nombra queda en Original; remate y oscuro, apagados. */
+/* Estilos. Elegir uno pone su música, su voz y sus efectos; después música y voz se cambian
+   libres y los efectos siguen siendo los del estilo. */
 function estadoDe(p) {
   const s = p.sonidos || {};
   const conVoz = p.voz != null && p.voz !== false;
@@ -681,48 +579,28 @@ function estadoDe(p) {
     ef: Object.fromEntries(MOMENTOS.map((m) => [m, m in s ? s[m] : m === "remate" ? null : "o"])),
   };
 }
-const copia = (st) => ({ musica: st.musica ?? null, voz: st.voz, locutor: st.locutor, ritmo: st.ritmo, oscuro: st.oscuro, ef: { ...st.ef } });
-const firma = (st) => JSON.stringify([st.musica ?? null, st.voz ? st.locutor : null, st.voz ? st.ritmo : null, MOMENTOS.map((m) => (callado(m, st.ef[m]) ? null : st.ef[m])), Boolean(st.oscuro)]);
 const paquete = ref(null);
-const personalizado = ref(null);
-function aplicar(st) {
+function elegirPaquete(p) {
+  const st = estadoDe(p);
   const antes = opciones.voz;
-  Object.assign(opciones, copia(st));
+  Object.assign(opciones, { ...st, ef: { ...st.ef } });
+  paquete.value = p.id;
   if (opciones.voz && !antes) sugerir();
   if (!opciones.voz && sonando.value?.startsWith("voz:")) cortarMuestra();
 }
-function elegirPaquete(p) { aplicar(estadoDe(p)); paquete.value = p.id; }
-// Tras cada cambio a mano: si coincide con un paquete queda ese; si no, Personalizado (y se recuerda).
-function tocado() {
-  const f = firma(opciones);
-  const p = (fuenteSonido.value?.paquetes || []).find((x) => firma(estadoDe(x)) === f);
-  if (p) { paquete.value = p.id; return; }
-  paquete.value = "pers";
-  personalizado.value = copia(opciones);
-}
-const fichasPaquete = computed(() => {
-  const l = (fuenteSonido.value?.paquetes || []).map((p) => {
-    const st = estadoDe(p);
-    return { id: p.id, nombre: p.nombre, on: paquete.value === p.id, estado: st, elegir: () => elegirPaquete(p),
-      sub: [nombreMusica(st.musica), st.voz ? nombreLocutor(st.locutor) : "Sin voz", p.resumen].filter(Boolean).join(" · ") };
-  });
-  const c = personalizado.value;
-  if (c) {
-    l.push({ id: "pers", nombre: "Personalizado", on: paquete.value === "pers", estado: c,
-      elegir: () => { aplicar(c); paquete.value = "pers"; },
-      sub: `${nombreMusica(c.musica)} · ${c.voz ? nombreLocutor(c.locutor) : "Sin voz"}${c.oscuro ? " · oscuro" : ""}` });
-  }
-  return l;
-});
-// Al cargar: el paquete por defecto, o el primero. Sin paquetes: la voz y la música por defecto, todo en Original.
+const fichasPaquete = computed(() => paquetes.value.map((p) => {
+  const st = estadoDe(p);
+  return { id: p.id, nombre: p.nombre, on: paquete.value === p.id, estado: st, elegir: () => elegirPaquete(p),
+    sub: [nombreMusica(st.musica), st.voz ? nombreLocutor(st.locutor) : "Sin voz", p.resumen].filter(Boolean).join(" · ") };
+}));
+// Al cargar: el estilo por defecto, o el primero. Sin estilos: la voz y la música por defecto, efectos de siempre.
 function sonidoInicial() {
   const fs = fuenteSonido.value;
-  personalizado.value = null;
   if (!fs) return;
   const p = fs.paquetes.find((x) => x.porDefecto) || fs.paquetes[0];
   if (p) return elegirPaquete(p);
   const voz = fs.voces.find((v) => v.porDefecto) || fs.voces[0];
-  aplicar({ musica: fs.musicas.find((m) => m.porDefecto)?.id ?? null, voz: Boolean(voz), locutor: voz?.id || null, ritmo: "normal", oscuro: false, ef: efOriginal() });
+  Object.assign(opciones, { musica: fs.musicas.find((m) => m.porDefecto)?.id ?? null, voz: Boolean(voz), locutor: voz?.id || null, ritmo: "normal", oscuro: false, ef: efOriginal() });
   paquete.value = null;
 }
 async function cargarRecursos() {
@@ -732,20 +610,14 @@ async function cargarRecursos() {
   } catch { recursos.value = null; }
 }
 
-/* Panel de edición (en el lugar, uno a la vez). */
-const panel = ref(null);
-const mas = ref(false);
-function abrir(m) { panel.value = panel.value === m ? null : m; mas.value = false; }
-function elegirEf(m, v) { opciones.ef[m] = v; tocado(); }
-function elegirMusica(id) { opciones.musica = id; tocado(); }
-function elegirLocutor(id) { opciones.locutor = id; tocado(); }
-function elegirRitmo(v) { opciones.ritmo = v; tocado(); }
-function alternarOscuro() { opciones.oscuro = !opciones.oscuro; tocado(); }
+/* Música y voz */
+function elegirMusica(id) { opciones.musica = id; }
+function elegirLocutor(id) { opciones.locutor = id; }
+function elegirRitmo(v) { opciones.ritmo = v; }
 function alternarVoz() {
   opciones.voz = !opciones.voz;
   if (!opciones.voz && sonando.value?.startsWith("voz:")) cortarMuestra();
   sugerir();
-  tocado();
 }
 const opsMusica = computed(() => [
   ...listaMusicas.value.map((x) => ({ key: x.id, nombre: x.nombre, sub: x.estilo, on: opciones.musica === x.id, muestra: x.muestra, oir: `mus:${x.id}`, elegir: () => elegirMusica(x.id) })),
@@ -753,45 +625,24 @@ const opsMusica = computed(() => [
 ]);
 const gruposVoz = computed(() => {
   const op = (v) => ({ key: v.id, nombre: v.nombre, sub: [v.tono, v.edad].filter(Boolean).join(" · "), on: opciones.locutor === v.id, muestra: v.muestra, oir: `voz:${v.id}`, elegir: () => elegirLocutor(v.id) });
-  const masc = listaVoces.value.filter((v) => v.genero === "masculino");
   return [
     { t: "Femeninas", ops: [...listaVoces.value.filter((v) => v.genero === "femenino"), ...listaVoces.value.filter((v) => v.genero !== "femenino" && v.genero !== "masculino")].map(op) },
-    { t: "Masculinas", ops: masc.map(op) },
+    { t: "Masculinas", ops: listaVoces.value.filter((v) => v.genero === "masculino").map(op) },
   ].filter((g) => g.ops.length);
 });
-const esMomento = computed(() => panel.value && panel.value !== "musica" && panel.value !== "voz");
-const restoDe = (m) => listaEfectos.value.filter((e) => !opcionesDe(m).includes(e));
-const hayMas = computed(() => esMomento.value && restoDe(panel.value).length > 0);
-const masAbierto = computed(() => {
-  if (!esMomento.value) return false;
-  const v = opciones.ef[panel.value];
-  return mas.value || restoDe(panel.value).some((e) => e.id === v);
-});
-const opsPanel = computed(() => {
-  const m = panel.value;
-  if (m === "musica") return opsMusica.value;
-  if (!esMomento.value) return [];
-  const v = opciones.ef[m];
-  const op = (e) => ({ key: e.id, nombre: e.nombre, sub: e.descripcion, on: v === e.id, muestra: e.muestra, oir: `ef:${e.id}`, oscuro: opciones.oscuro, elegir: () => elegirEf(m, e.id) });
-  const out = [];
-  const o = original(m);
-  if (o) out.push({ key: "o", nombre: "Original", sub: o.nombre, on: v === "o", muestra: o.muestra, oir: `ef:o:${m}`, oscuro: opciones.oscuro, elegir: () => elegirEf(m, "o") });
-  out.push(...opcionesDe(m).map(op));
-  out.push({ key: "nada", nombre: m === "remate" ? "Sin remate" : "Sin sonido", on: callado(m, v), elegir: () => elegirEf(m, null) });
-  if (masAbierto.value) out.push(...restoDe(m).map(op));
-  return out;
-});
 
-/* Lo que viaja en el encargo (§B.5): sólo los momentos que no están en Original. */
+/* Lo que viaja en el encargo: los efectos del estilo, momento por momento (el servicio los
+   aplica); sólo los que no son los de siempre y sólo los que suenan en este video. */
 function sonidoDelEncargo() {
   const fs = fuenteSonido.value;
   if (!fs) return { musica: opciones.musica || undefined };
-  const presentes = new Set(escenas.value.flatMap((e) => e.ef));
+  const presentes = new Set(escenasDe(opciones).flatMap((e) => e.ef));
   const s = {};
   for (const m of MOMENTOS) if (presentes.has(m) && opciones.ef[m] !== "o") s[m] = opciones.ef[m];
   if (opciones.oscuro) s.oscuro = true;
   const mudo = [...presentes].every((m) => callado(m, opciones.ef[m]));
   return {
+    ...(animacion.value ? { cinematica: animacion.value } : {}),
     // musica: null (Sin música explícito) sólo si el servicio ya lo entiende; si no, omitida como siempre.
     musica: fs.nuevo ? opciones.musica ?? null : opciones.musica || undefined,
     efectos: !mudo,
@@ -799,17 +650,14 @@ function sonidoDelEncargo() {
   };
 }
 
-/* Un solo reproductor para todo: muestras sueltas con <audio> y la combinación con Web Audio.
-   Tocar cualquier ▶ corta lo que suene. */
+/* Un solo reproductor para todo: muestras sueltas con <audio> y la escucha de un estilo con
+   Web Audio (música, voz y sus efectos en su instante). Tocar cualquier ▶ corta lo que suene. */
 const sonando = ref(null);
-const cabezal = ref(null);
-const escenaViva = computed(() => (cabezal.value === null ? null : escenas.value.find((e) => cabezal.value >= e.t0 && cabezal.value < e.t0 + e.d)?.k ?? null));
 let reproductor = null;
 let ctx = null;
 let nodos = [];
 let elementos = [];
 let tiempos = [];
-let cuadro = 0;
 let turno = 0;
 const buffers = new Map();
 function cortarMuestra() {
@@ -818,10 +666,8 @@ function cortarMuestra() {
   nodos.forEach((n) => { try { n.stop(); } catch { /* ya terminó */ } });
   elementos.forEach((a) => { a.pause(); a.removeAttribute("src"); a.load(); });
   tiempos.forEach(clearTimeout);
-  cancelAnimationFrame(cuadro);
   nodos = []; elementos = []; tiempos = [];
   sonando.value = null;
-  cabezal.value = null;
 }
 function contexto() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -861,19 +707,9 @@ function sonarBuffer(b, cuando, { vol = 0.9, oscuro = false, dur = null, fade = 
   nodos.push(s);
   return s;
 }
-async function escucharUno(clave, url, oscuro = false) {
+function escucharUno(clave, url) {
   if (sonando.value === clave) return cortarMuestra();
   cortarMuestra();
-  sonando.value = clave;
-  const yo = turno;
-  if (oscuro) {
-    try {
-      const b = await buffer(url);
-      if (yo !== turno) return;
-      sonarBuffer(b, contexto().currentTime, { oscuro: true }).onended = () => { if (yo === turno) sonando.value = null; };
-      return;
-    } catch { if (yo !== turno) return; /* sin Web Audio: <audio> más lento */ }
-  }
   if (!reproductor) {
     reproductor = new Audio();
     reproductor.preload = "none";
@@ -881,16 +717,15 @@ async function escucharUno(clave, url, oscuro = false) {
     reproductor.addEventListener("error", () => { if (reproductor.getAttribute("src")) sonando.value = null; });
   }
   reproductor.src = url;
-  reproductor.preservesPitch = !oscuro;
-  reproductor.playbackRate = oscuro ? 0.82 : 1;
+  sonando.value = clave;
   reproductor.play().catch(() => { if (sonando.value === clave) sonando.value = null; });
 }
-// Instantes de cada efecto, aproximados a la plantilla vertical (§B.6).
-function eventosDe(st, es) {
+// Instantes de cada efecto, aproximados a la plantilla vertical.
+function eventosDe(st, es, cinematica) {
   const out = [];
   const add = (m, t) => {
     const v = st.ef[m];
-    const url = v === "o" ? original(m)?.muestra : v ? efectoDe(v)?.muestra : null;
+    const url = v === "o" ? original(m, cinematica)?.muestra : v ? efectoDe(v)?.muestra : null;
     if (url) out.push({ url, t: Math.max(0, t), vol: 0.75, oscuro: st.oscuro });
   };
   for (const e of es) {
@@ -904,26 +739,26 @@ function eventosDe(st, es) {
   }
   return out;
 }
-const sinMovimiento = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-async function escucharCombo(clave, st) {
+// Escuchar un estilo con la música y la voz elegidas (la del estilo si es otro), en el largo de este video.
+async function escucharEstilo(f) {
+  const clave = `paq:${f.id}`;
   if (sonando.value === clave) return cortarMuestra();
   cortarMuestra();
   sonando.value = clave;
   const yo = turno;
+  const st = f.on ? { ...opciones } : f.estado;
   const es = escenasDe(st);
   const dur = es.reduce((a, e) => a + e.d, 0);
   const voz = st.voz ? listaVoces.value.find((v) => v.id === st.locutor)?.muestra : null;
   const pistas = [
     st.musica && musicaDe(st.musica)?.muestra ? { url: musicaDe(st.musica).muestra, t: 0, vol: voz ? 0.32 : 0.55, dur, fade: 1.2 } : null,
     voz ? { url: voz, t: 0.5, vol: 1, dur: dur - 0.6 } : null,
-    ...eventosDe(st, es),
+    ...eventosDe(st, es, ANIMACION_ESTILO[f.id]),
   ].filter(Boolean);
   const res = await Promise.allSettled(pistas.map((p) => buffer(p.url)));
   if (yo !== turno) return;
-  let reloj;
   // Una muestra que no se pudo bajar por red (sin CORS) pasa todo a <audio>; una que no existe se saltea.
   if (res.some((r) => r.status === "rejected" && r.reason instanceof TypeError)) {
-    const t0 = performance.now() + 150;
     for (const p of pistas) {
       const a = new Audio(p.url);
       a.volume = Math.min(1, p.vol);
@@ -932,28 +767,15 @@ async function escucharCombo(clave, st) {
       tiempos.push(setTimeout(() => a.play().catch(() => {}), 150 + p.t * 1000));
       if (p.dur) tiempos.push(setTimeout(() => a.pause(), 150 + (p.t + p.dur) * 1000));
     }
-    reloj = () => (performance.now() - t0) / 1000;
   } else {
-    const c = contexto();
-    const inicio = c.currentTime + 0.12;
+    const inicio = contexto().currentTime + 0.12;
     pistas.forEach((p, i) => { if (res[i].status === "fulfilled") sonarBuffer(res[i].value, inicio + p.t, p); });
-    reloj = () => c.currentTime - inicio;
   }
-  const paso = () => {
-    if (yo !== turno) return;
-    const t = reloj();
-    if (t >= dur) return cortarMuestra();
-    const v = Math.max(0, t);
-    cabezal.value = sinMovimiento() ? es.find((e) => v >= e.t0 && v < e.t0 + e.d)?.t0 ?? v : v;
-    cuadro = requestAnimationFrame(paso);
-  };
-  cuadro = requestAnimationFrame(paso);
+  tiempos.push(setTimeout(() => { if (yo === turno) cortarMuestra(); }, 200 + dur * 1000));
 }
 function alOcultar() { if (document.hidden) cortarMuestra(); }
-watch(paso, () => { panel.value = null; cortarMuestra(); });
+watch(paso, cortarMuestra);
 watch(vista, cortarMuestra);
-// Cambiar los productos cambia las escenas: la combinación que suena ya no es la de la pantalla.
-watch(() => seleccion.value.map((p) => p.id).join(","), () => { if (sonando.value === "combo") cortarMuestra(); });
 const nombreVoz = (id) => voces.value.find((x) => x.id === id)?.nombre || String(id || "").replace(/^./, (c) => c.toUpperCase());
 const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
 const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
@@ -1671,12 +1493,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-borrar.is-confirmar { background: #c2413a; border-color: #c2413a; color: #fff; }
 .ct-borrar.is-confirmar .v-icon { color: #fff; }
 
-/* Sonido del reel (spec SONIDO §B): paquetes, línea de tiempo y panel en el lugar. */
-.ct-son-banda { gap: 12px; }
-.ct-escuchar { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 10px; border: 1.5px solid rgba(255, 255, 255, .4); background: rgba(255, 255, 255, .14); color: #fff; font: 700 13.5px Inter, sans-serif; cursor: pointer; }
-.ct-escuchar .v-icon { color: #fff; }
-.ct-escuchar:hover { background: rgba(255, 255, 255, .24); }
-.ct-escuchar .num { opacity: .8; }
+/* Sonido del reel: estilos prearmados, música y voz. */
 .ct-son { padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
 .ct-rot { font-size: 11px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; color: var(--sp-tenue); }
 .ct-oir { flex: none; width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid #0f6fae; background: var(--sp-caja); color: #0f6fae; cursor: pointer; }
@@ -1686,68 +1503,16 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-paq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); cursor: pointer; color: var(--sp-texto); min-width: 0; }
 .ct-paq:hover { border-color: rgba(15, 111, 174, .45); }
 .ct-paq.is-on { border: 2px solid #0f6fae; padding: 9.5px 11.5px; background: rgba(15, 111, 174, .05); }
-.ct-paq.is-pers { border-style: dashed; }
-.ct-paq.is-pers.is-on { border-style: solid; }
 .ct-paq__t { min-width: 0; }
 .ct-paq__t strong { display: block; font-size: 14.5px; font-weight: 900; }
 .ct-paq.is-on .ct-paq__t strong { color: #0f6fae; }
 .ct-paq__t small { display: block; font-size: 11.5px; font-weight: 600; color: var(--sp-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ct-paq__ok { color: #0f6fae !important; }
-.ct-tl-scroll { overflow-x: auto; }
-.ct-tl { position: relative; display: grid; grid-template-columns: 86px minmax(0, 1fr) auto; row-gap: 6px; column-gap: 8px; min-width: 620px; }
-.ct-tl__lab { display: flex; flex-direction: column; justify-content: center; gap: 5px; font-size: 12px; font-weight: 900; color: var(--sp-suave); }
-.ct-tl__area { display: grid; gap: 4px; min-width: 0; }
-.ct-tl__slot { display: flex; align-items: stretch; }
-.ct-tl__esc { position: relative; display: flex; flex-direction: column; justify-content: flex-end; min-height: 52px; padding: 6px 8px; border: 0; border-radius: 10px; background: var(--sp-fondo); color: var(--sp-texto); text-align: left; font-family: Inter, sans-serif; overflow: hidden; cursor: pointer; transition: box-shadow .15s; }
-button.ct-tl__esc:hover { box-shadow: inset 0 0 0 2px rgba(15, 111, 174, .45); }
-.ct-tl__esc b { font-size: 12px; font-weight: 900; }
-.ct-tl__esc span { font-size: 11px; color: var(--sp-suave); }
-.ct-tl__esc.is-vivo { box-shadow: inset 0 0 0 2px #0f6fae; }
-.ct-tl__esc.is-rem { cursor: default; background: repeating-linear-gradient(135deg, var(--sp-fondo) 0 6px, transparent 6px 10px); }
-.ct-tl__mini { position: absolute; top: 6px; right: 8px; border-radius: 4px; box-shadow: none; }
-.ct-pista { min-width: 0; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1.5px solid transparent; border-radius: 10px; color: var(--sp-texto); font: 800 12.5px Inter, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; }
-.ct-pista small { font-weight: 600; color: var(--sp-suave); overflow: hidden; text-overflow: ellipsis; }
-.ct-pista .v-icon { color: #0f6fae; }
-.ct-pista.is-mus { grid-column: 1 / -1; background: rgba(15, 111, 174, .13); }
-.ct-pista.is-voz { background: rgba(15, 111, 174, .08); }
-.ct-pista.is-nada { grid-column: 1 / -1; background: transparent; border: 1.5px dashed var(--sp-borde); color: var(--sp-tenue); }
-.ct-pista:hover { border-color: rgba(15, 111, 174, .45); }
-.ct-pista.is-edit { border-color: #0f6fae; }
-.ct-ondas { display: inline-flex; align-items: center; gap: 2px; height: 14px; }
-.ct-ondas i { width: 2px; border-radius: 1px; background: #0f6fae; opacity: .6; }
-.ct-efs { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.ct-ficha { display: grid; min-width: 0; padding: 4px 8px 5px; border-radius: 9px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); text-align: left; font-family: Inter, sans-serif; cursor: pointer; }
-.ct-ficha .ct-rot { font-size: 9.5px; }
-.ct-ficha b { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-button.ct-ficha:hover { border-color: rgba(15, 111, 174, .45); }
-.ct-ficha.is-edit { border-color: #0f6fae; background: rgba(15, 111, 174, .06); }
-.ct-ficha.is-nada { border-style: dashed; }
-.ct-ficha.is-nada b { color: var(--sp-tenue); font-weight: 700; }
-.ct-ficha.is-fija { cursor: default; }
-.ct-ficha.is-mas { place-items: center; border-style: dashed; padding-inline: 10px; }
-.ct-ficha.is-mas b { color: var(--sp-suave); }
-/* Cuatro filas de tres celdas con lugar fijo, así el cabezal se superpone sin correrlas. */
-.ct-tl > :nth-child(3n + 1) { grid-column: 1; }
-.ct-tl > :nth-child(3n + 2) { grid-column: 2; }
-.ct-tl > :nth-child(3n) { grid-column: 3; }
-.ct-tl > :nth-child(-n + 3) { grid-row: 1; }
-.ct-tl > :nth-child(n + 4):nth-child(-n + 6) { grid-row: 2; }
-.ct-tl > :nth-child(n + 7):nth-child(-n + 9) { grid-row: 3; }
-.ct-tl > :nth-child(n + 10):nth-child(-n + 12) { grid-row: 4; }
-.ct-tl > .ct-tl__cabezal-caja { grid-column: 2; grid-row: 1 / 5; position: relative; pointer-events: none; }
-.ct-tl__cabezal { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: #0f6fae; }
-.ct-tl__cabezal::before { content: ""; position: absolute; top: -3px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: #0f6fae; }
 .ct-mini-sw { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 800; color: var(--sp-suave); cursor: pointer; user-select: none; }
 .ct-mini-sw i { position: relative; flex-shrink: 0; width: 28px; height: 16px; border-radius: 8px; background: var(--sp-tenue); transition: background .15s; }
 .ct-mini-sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; }
 .ct-mini-sw[aria-checked="true"] i { background: #0f6fae; }
 .ct-mini-sw[aria-checked="true"] i::after { transform: translateX(12px); }
-.ct-panel { display: grid; gap: 10px; padding: 12px; border-radius: 12px; border: 1.5px solid rgba(15, 111, 174, .35); background: rgba(15, 111, 174, .03); }
-.ct-panel__cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.ct-panel__cab h4 { margin: 0 auto 0 0; font-size: 14px; font-weight: 900; }
-.ct-panel__cab h4 small { margin-left: 6px; font-size: 12px; font-weight: 700; color: var(--sp-suave); }
-.ct-panel__x { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-suave); cursor: pointer; }
-.ct-panel__x:hover { border-color: rgba(15, 111, 174, .45); color: var(--sp-texto); }
 .ct-ops { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 6px; }
 .ct-ops--col { grid-template-columns: minmax(0, 1fr); }
 .ct-op { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; min-width: 0; padding: 7px 10px 7px 7px; border-radius: 11px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); cursor: pointer; }
@@ -1765,8 +1530,6 @@ button.ct-ficha:hover { border-color: rgba(15, 111, 174, .45); }
 .ct-fila { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ct-seg--chico { margin: 0; }
 .ct-seg--chico button { flex: none; padding: 5px 12px; }
-.ct-mas { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-suave); font: 700 13.5px Inter, sans-serif; cursor: pointer; }
-.ct-mas:hover { border-color: rgba(15, 111, 174, .45); color: var(--sp-texto); }
 .ct-datos__cuotas { grid-column: 1 / -1; }
 :is(.v-theme--dark, .v-theme--adminDark) :is(.ct-oir, .ct-ops .ct-op__rd) { border-color: var(--sp-acento); }
 
