@@ -53,6 +53,12 @@ export async function listarVoces() {
   return Array.isArray(data) ? data : [];
 }
 
+// Catálogo de sonidos (efectos, filtro, músicas) con su muestra y el mapa viral.
+export async function listarSonidos() {
+  const { data } = await http.get(`${BASE}/sonidos`);
+  return { sonidos: Array.isArray(data?.sonidos) ? data.sonidos : [], viral: data?.viral || {} };
+}
+
 // Corta un video en cola o dibujándose: queda en estado "cancelada".
 export async function cancelarPieza(id) {
   const { data } = await http.post(`${BASE}/piezas/${id}/cancelar`);

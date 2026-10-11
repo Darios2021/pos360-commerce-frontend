@@ -200,8 +200,30 @@
         <div class="ct-p3__abajo">
           <div class="sp-caja">
             <div class="se-banda"><span>Música</span></div>
-            <div class="ct-musica">
-              <button v-for="o in MUSICAS" :key="String(o.v)" type="button" :class="{ 'is-on': opciones.musica === o.v }" @click="opciones.musica = o.v"><v-icon size="30">{{ o.i }}</v-icon>{{ o.t }}</button>
+            <div class="ct-musica" role="radiogroup" aria-label="Música">
+              <div v-for="o in musicas" :key="String(o.v)" class="ct-voz" :class="{ 'is-on': opciones.musica === o.v }">
+                <button v-if="o.muestra" type="button" class="ct-voz__oir" :class="{ 'is-sonando': sonando === `sonido:${o.v}` }" :aria-label="sonando === `sonido:${o.v}` ? `Detener ${o.t}` : `Escuchar ${o.t}`" @click="escuchar(`sonido:${o.v}`, o.muestra)"><v-icon size="20">{{ sonando === `sonido:${o.v}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                <span v-else class="ct-voz__oir ct-voz__oir--nada"><v-icon size="20">mdi-volume-off</v-icon></span>
+                <button type="button" class="ct-voz__elegir" role="radio" :aria-checked="opciones.musica === o.v" @click="opciones.musica = o.v">
+                  <strong>{{ o.t }}</strong>
+                  <span v-if="o.estilo" class="ct-voz__rasgos">{{ o.estilo }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="se-banda"><span>Efectos</span></div>
+            <div class="ct-sonido">
+              <div class="ct-seg" role="radiogroup" aria-label="Efectos">
+                <button v-for="o in EFECTOS" :key="String(o.v)" type="button" role="radio" :aria-checked="opciones.efectos === o.v" :class="{ 'is-on': opciones.efectos === o.v }" @click="opciones.efectos = o.v">{{ o.t }}</button>
+              </div>
+              <div v-if="opciones.efectos === 'viral' && efectosVirales.length" class="ct-voces ct-efectos">
+                <div v-for="o in efectosVirales" :key="o.id" class="ct-voz">
+                  <button type="button" class="ct-voz__oir" :class="{ 'is-sonando': sonando === `sonido:${o.id}` }" :aria-label="sonando === `sonido:${o.id}` ? `Detener ${o.nombre}` : `Escuchar ${o.nombre}`" @click="escuchar(`sonido:${o.id}`, o.muestra)"><v-icon size="20">{{ sonando === `sonido:${o.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                  <div class="ct-voz__elegir ct-voz__elegir--fijo">
+                    <strong>{{ o.nombre }}</strong>
+                    <span class="ct-voz__rasgos">{{ o.momentos }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="sp-caja">
@@ -210,7 +232,7 @@
               <label class="ct-sw"><span>Voz en off</span><input v-model="opciones.voz" type="checkbox" @change="sugerir" /><i></i></label>
               <div v-if="opciones.voz && voces.length > 1" class="ct-voces" role="radiogroup" aria-label="Voz">
                 <div v-for="o in voces" :key="o.id" class="ct-voz" :class="{ 'is-on': opciones.locutor === o.id }">
-                  <button v-if="o.muestra" type="button" class="ct-voz__oir" :class="{ 'is-sonando': sonando === o.id }" :aria-label="sonando === o.id ? `Detener ${o.nombre}` : `Escuchar ${o.nombre}`" @click="escucharVoz(o)"><v-icon size="20">{{ sonando === o.id ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                  <button v-if="o.muestra" type="button" class="ct-voz__oir" :class="{ 'is-sonando': sonando === `voz:${o.id}` }" :aria-label="sonando === `voz:${o.id}` ? `Detener ${o.nombre}` : `Escuchar ${o.nombre}`" @click="escuchar(`voz:${o.id}`, o.muestra)"><v-icon size="20">{{ sonando === `voz:${o.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
                   <button type="button" class="ct-voz__elegir" role="radio" :aria-checked="opciones.locutor === o.id" @click="opciones.locutor = o.id">
                     <strong>{{ o.nombre }}</strong>
                     <span v-if="o.tono || o.edad" class="ct-voz__rasgos">{{ [o.tono, o.edad].filter(Boolean).join(" · ") }}</span>
@@ -221,8 +243,7 @@
               <div v-if="opciones.voz" class="ct-seg">
                 <button v-for="o in RITMOS" :key="o.v" type="button" :class="{ 'is-on': opciones.ritmo === o.v }" @click="opciones.ritmo = o.v">{{ o.t }}</button>
               </div>
-              <label class="ct-sw"><span>Cuotas y medios de pago</span><input v-model="opciones.cuotas" type="checkbox" @change="sugerir" /><i></i></label>
-              <label class="ct-sw ct-sw--ultimo"><span>Efectos de sonido</span><input v-model="opciones.efectos" type="checkbox" /><i></i></label>
+              <label class="ct-sw ct-sw--ultimo"><span>Cuotas y medios de pago</span><input v-model="opciones.cuotas" type="checkbox" @change="sugerir" /><i></i></label>
             </div>
           </div>
         </div>
@@ -389,7 +410,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getCupo, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getCupo, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -410,11 +431,25 @@ const CIERRE_OPC = [
   { k: "llamado", t: "Llamado" },
 ];
 const POR_TANDA = 48;
+// Respaldo si el catálogo del servicio no responde (las ids de siempre, sin muestra).
 const MUSICAS = [
-  { v: "pulso", t: "Pulso", i: "mdi-pulse" },
-  { v: "calma", t: "Calma", i: "mdi-waves" },
-  { v: "urbano", t: "Urbano", i: "mdi-equalizer" },
-  { v: null, t: "Sin música", i: "mdi-volume-off" },
+  { v: "pulso", t: "Pulso" },
+  { v: "calma", t: "Calma" },
+  { v: "urbano", t: "Urbano" },
+];
+const EFECTOS = [
+  { v: "clasico", t: "Clásicos" },
+  { v: "viral", t: "Virales" },
+  { v: null, t: "Sin efectos" },
+];
+// Momentos del estilo viral, en el orden en que suenan.
+const MOMENTOS_VIRAL = [
+  ["apertura", "Apertura"],
+  ["producto", "Producto"],
+  ["precio", "Precio"],
+  ["precioOferta", "Oferta"],
+  ["subida", "Subida"],
+  ["cierre", "Cierre"],
 ];
 const PASOS = [
   { t: "Formato", s: "" },
@@ -459,8 +494,24 @@ const editando = ref(null);
 const borrador = reactive({ titulo: "", descripcion: "" });
 const guardando = ref(false);
 const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEditada: false });
-const opciones = reactive({ musica: "pulso", voz: true, locutor: null, ritmo: 1, cuotas: true, efectos: true });
+const opciones = reactive({ musica: "pulso", voz: true, locutor: null, ritmo: 1, cuotas: true, efectos: "clasico" });
 const voces = ref([]);
+const sonidos = ref({ sonidos: [], viral: {} });
+const musicas = computed(() => {
+  const l = sonidos.value.sonidos.filter((x) => x.tipo === "musica").map((x) => ({ v: x.id, t: x.nombre, estilo: x.estilo, muestra: x.muestra }));
+  return [...(l.length ? l : MUSICAS), { v: null, t: "Sin música" }];
+});
+// Los efectos del estilo viral, uno por sonido, con los momentos en que entra.
+const efectosVirales = computed(() => {
+  const porId = new Map();
+  for (const [k, t] of MOMENTOS_VIRAL) {
+    const s = sonidos.value.sonidos.find((x) => x.id === sonidos.value.viral[k] && x.muestra);
+    if (!s) continue;
+    if (!porId.has(s.id)) porId.set(s.id, { id: s.id, nombre: s.nombre, muestra: s.muestra, momentos: [] });
+    porId.get(s.id).momentos.push(t);
+  }
+  return [...porId.values()].map((x) => ({ ...x, momentos: x.momentos.join(" · ") }));
+});
 const piezas = ref([]);
 const auth = useAuthStore();
 const esSuper = computed(() => Boolean(auth.isSuperAdmin));
@@ -490,15 +541,15 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola", cancelada: "Cancelado" }[v.estado] || `Generando ${v.progreso || 0} %`);
-// Muestra de cada voz: un solo reproductor, al tocar otra se corta la anterior.
+// Muestras de voces, músicas y efectos: un solo reproductor, al tocar otra se corta la anterior.
 const sonando = ref(null);
 let reproductor = null;
 function cortarMuestra() {
   if (reproductor) { reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load(); }
   sonando.value = null;
 }
-function escucharVoz(v) {
-  if (sonando.value === v.id) return cortarMuestra();
+function escuchar(clave, url) {
+  if (sonando.value === clave) return cortarMuestra();
   cortarMuestra();
   if (!reproductor) {
     reproductor = new Audio();
@@ -506,11 +557,12 @@ function escucharVoz(v) {
     reproductor.addEventListener("ended", () => { sonando.value = null; });
     reproductor.addEventListener("error", () => { if (reproductor.getAttribute("src")) sonando.value = null; });
   }
-  reproductor.src = v.muestra;
-  sonando.value = v.id;
-  reproductor.play().catch(() => { if (sonando.value === v.id) sonando.value = null; });
+  reproductor.src = url;
+  sonando.value = clave;
+  reproductor.play().catch(() => { if (sonando.value === clave) sonando.value = null; });
 }
-watch(() => opciones.voz, (activa) => { if (!activa) cortarMuestra(); });
+watch(() => opciones.voz, (activa) => { if (!activa && sonando.value?.startsWith("voz:")) cortarMuestra(); });
+watch(() => opciones.efectos, () => { if (efectosVirales.value.some((x) => sonando.value === `sonido:${x.id}`)) cortarMuestra(); });
 const nombreVoz = (id) => voces.value.find((x) => x.id === id)?.nombre || String(id || "").replace(/^./, (c) => c.toUpperCase());
 const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
 const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
@@ -701,7 +753,8 @@ function armarEncargo() {
     sucursales: f.sucursales || [],
     redes: f.redes || [],
     musica: opciones.musica || undefined,
-    efectos: opciones.efectos,
+    efectos: opciones.efectos !== null,
+    sonidos: opciones.efectos === "viral" ? { estilo: "viral" } : undefined,
     items,
     voz: {
       activa: opciones.voz,
@@ -955,6 +1008,7 @@ onMounted(async () => {
     voces.value = l;
     opciones.locutor = (l.find((v) => v.porDefecto) || l[0])?.id || null;
   }).catch(() => { voces.value = []; });
+  listarSonidos().then((c) => { sonidos.value = c; }).catch(() => {});
   try {
     piezas.value = await listarPiezas(30);
     seguir();
@@ -1036,12 +1090,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-st > span { font-size: 13px; color: var(--sp-suave); }
 .ct-st:hover .er { outline: 3px solid #3f8fc6; outline-offset: 3px; }
 .ct-p3__abajo { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
-.ct-musica { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 16px; }
-.ct-musica button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); font: 800 15px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
-.ct-musica button .v-icon { color: #0f6fae; }
-.ct-musica button:hover:not(.is-on) { background: #cfe5f5; border-color: #3f8fc6; }
-:is(.v-theme--dark, .v-theme--adminDark) .ct-musica button:hover:not(.is-on) { background: #1a2a3a; }
-.ct-musica button.is-on { border: 2px solid #0f6fae; padding: 15px 7px; background: var(--sp-hover); }
+.ct-musica { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; padding: 14px 14px 10px; }
 .ct-pie__fin { display: flex; align-items: center; gap: 14px; }
 .ct-cupo-agotado { font: 800 14px Inter, sans-serif; color: #c2413a; }
 .ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
@@ -1123,6 +1172,11 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-voz__oir:hover, .ct-voz__oir.is-sonando { background: #0f6fae; color: #fff; }
 .ct-voz__elegir { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; color: var(--sp-texto); cursor: pointer; font-family: Inter, sans-serif; }
 .ct-voz__elegir strong { font-size: 14px; font-weight: 800; }
+.ct-voz__elegir--fijo { cursor: default; }
+.ct-voz__oir--nada { border-color: var(--sp-borde); color: var(--sp-suave); cursor: default; }
+.ct-voz__oir--nada:hover { background: transparent; color: var(--sp-suave); }
+.ct-efectos { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.ct-voz__elegir--fijo .ct-voz__rasgos { text-transform: none; }
 .ct-voz.is-on .ct-voz__elegir strong { color: #0f6fae; }
 .ct-voz__rasgos { font-size: 12px; font-weight: 700; text-transform: capitalize; opacity: .75; }
 .ct-voz__elegir small { font-size: 12px; line-height: 1.35; opacity: .7; }
