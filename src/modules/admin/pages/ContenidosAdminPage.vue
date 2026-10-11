@@ -935,7 +935,6 @@ const tituloActiva = computed(() => {
   const i = seleccion.value.findIndex((x) => x.id === activa.value);
   return i >= 0 ? `Escena ${i + 1} · ${seleccion.value[i].titulo}` : "";
 });
-function verEscena(id) { activa.value = id; paso.value = 3; }
 const tipoActiva = computed(() => (activa.value === "intro" || activa.value === "cierre" ? activa.value : "item"));
 const itemActivo = computed(() => { const p = seleccion.value.find((x) => x.id === activa.value); return p ? encargoItem(p) : null; });
 
