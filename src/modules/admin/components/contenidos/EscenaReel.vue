@@ -7,7 +7,8 @@
     <!-- Portada -->
     <div v-if="tipo === 'intro' && apertura?.titular" class="er-portada er-portada--titular">
       <img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" class="er-logo-chico" />
-      <div class="er-apertura"><b>{{ apertura.titular }}</b><span v-if="apertura.bajada">{{ apertura.bajada }}</span></div>
+      <div class="er-apertura" :class="{ 'er-apertura--foto': foto }"><b>{{ apertura.titular }}</b><span v-if="apertura.bajada">{{ apertura.bajada }}</span></div>
+      <div v-if="foto" class="er-foto"><img :src="foto" alt="" /></div>
     </div>
     <div v-else-if="tipo === 'intro'" class="er-portada">
       <img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" class="er-logo" />
@@ -34,7 +35,7 @@
     <div v-else-if="tipo === 'cierre'" class="er-cierre">
       <div class="er-cierre__marca"><img v-if="fuente?.marca?.logo" :src="fuente.marca.logo" alt="" /></div>
       <div class="er-cierre__papel">
-        <b v-if="cierre.llamado !== false" class="er-llamado">{{ fuente?.textos?.llamado || "Vení a visitarnos" }}</b>
+        <b v-if="cierre.llamado !== false" class="er-llamado">{{ typeof cierre.llamado === "string" ? cierre.llamado : fuente?.textos?.llamado || "Vení a visitarnos" }}</b>
         <div v-for="s in cierre.sucursales === false ? [] : fuente?.sucursales || []" :key="s.nombre" class="er-suc">
           <v-icon class="er-pin">mdi-map-marker</v-icon>
           <div><b>{{ s.nombre }}</b><span>{{ s.direccion }}</span></div>
@@ -58,6 +59,8 @@ const props = defineProps({
   ancho: { type: Number, default: 270 },
   conCuotas: { type: Boolean, default: true },
   apertura: { type: Object, default: null },
+  // Portada con titular: foto del primer producto abajo (creador por campañas).
+  foto: { type: String, default: "" },
   cierre: { type: Object, default: () => ({}) },
 });
 
@@ -83,6 +86,9 @@ const renglones = computed(() => String(props.item?.descripcion || "").split(/\s
 .er-apertura { margin-top: 62%; display: flex; flex-direction: column; gap: .8em; color: #fff; }
 .er-apertura b { font-family: "Archivo Narrow", Inter, sans-serif; font-size: 3.2em; font-weight: 900; line-height: .95; text-transform: uppercase; }
 .er-apertura span { font-size: 1.2em; font-weight: 600; opacity: .9; }
+.er-apertura--foto { margin-top: 18%; position: relative; z-index: 1; }
+.er-foto { position: absolute; left: 14%; right: 14%; bottom: 7%; height: 36%; border-radius: .8em; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 .8em 1.8em rgba(0, 0, 0, .3); }
+.er-foto img { width: 86%; height: 86%; object-fit: contain; }
 .er-logo { width: 72%; max-height: 30%; object-fit: contain; }
 .er-nombre { color: #fff; font-size: 2em; font-weight: 900; text-align: center; padding: 0 1em; }
 .er-arriba { height: 52%; display: flex; align-items: center; justify-content: center; }

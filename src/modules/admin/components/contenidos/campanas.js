@@ -1,0 +1,195 @@
+// Creador de videos por campañas (spec VIDEOS-campanas-diseno.md, frente C).
+// Lógica sin pantalla: productos que propone cada campaña, plantillas de textos
+// (respaldo cuando el servicio no devuelve `textos`) y el medidor de la voz.
+// Las campañas habilitadas, ya agrupadas y con su chip, las manda el servicio
+// en GET /recursos (`videos.campanas`); "Libre" la agrega la pantalla.
+
+export const DUR = { portada: 2.6, itemVarios: 3, itemUno: 7, cierre: 3.4 };
+export const CPS = 16; // caracteres dichos por segundo a ritmo normal, si la voz no trae `cps`
+export const RITMOS = [
+  { v: "pausada", t: "Pausada", velocidad: 0.9 },
+  { v: "normal", t: "Normal", velocidad: 1 },
+  { v: "agil", t: "Ágil", velocidad: 1.12 },
+];
+export const TOPE_PRODUCTOS = 6;
+export const DESCUENTO_MIN = 25; // POS 360: descuento que cuenta como oferta (más los marcados como promo)
+export const DIAS_NUEVO = 30; // "Nuevos": alta en el catálogo en los últimos 30 días
+export const GRUPOS = [
+  { k: "ahora", t: "Esta semana" },
+  { k: "siempre", t: "Siempre" },
+  { k: "vienen", t: "Se vienen" },
+];
+
+const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// La campaña de siempre: productos y textos a elección. No viaja al servicio.
+export const LIBRE = {
+  id: "libre",
+  nombre: "Libre",
+  grupo: "siempre",
+  libre: true,
+  productos: { regla: "masVendidos", n: 3 },
+  textos: {
+    titular: "Mirá lo que hay",
+    bajada: "En {local}",
+    etiqueta: "",
+    vozIntro: "Mirá lo que tenemos en {local}.",
+    vozItem: "{producto}, {precio}.",
+    vozCierre: "Escribinos por WhatsApp.",
+    llamado: "Te esperamos",
+    caption: "{productos} en {local}.",
+  },
+};
+
+export const pesos = (n) => (n == null ? "" : `$ ${Math.round(Number(n) || 0).toLocaleString("es-AR")}`);
+export const seg = (n) => `${Number(n).toLocaleString("es-AR", { maximumFractionDigits: 1 })} s`;
+export const descuentoDe = (p) => (Number(p?.precioAnterior) > Number(p?.precio) && Number(p?.precio) > 0 ? Math.round((1 - p.precio / p.precioAnterior) * 100) : 0);
+const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+export const esNuevo = (p, hoy = Date.now()) => Boolean(p?.alta) && hoy - Date.parse(p.alta) <= DIAS_NUEVO * 864e5;
+export const tienePlan = (p) => Boolean(p?.cuotas && Number(p.cuotas.cantidad) > 1 && Number(p.cuotas.valor) > 0);
+const vendidos = (p) => Number(p?.vendidos30d) || 0;
+const porVendidos = (l) => l.slice().sort((a, b) => vendidos(b) - vendidos(a));
+
+/* ── Medidor: lo que dura una línea dicha ── */
+// Los precios se dicen largos ("once mil quinientos pesos"): cuentan más que sus cifras.
+export const dicho = (t) => String(t || "")
+  .replace(/\$\s?[\d.]+/g, (m) => "x".repeat(m.replace(/\D/g, "").length * 3 + 6))
+  .replace(/\d+/g, (m) => "x".repeat(m.length * 3));
+export const durVoz = (t, { cps = CPS, ritmo = "normal" } = {}) => {
+  const r = RITMOS.find((x) => x.v === ritmo)?.velocidad ?? 1;
+  return dicho(t).length / ((Number(cps) || CPS) * r);
+};
+export const durEscena = (tipo, cuantos) => (tipo === "portada" ? DUR.portada : tipo === "cierre" ? DUR.cierre : cuantos === 1 ? DUR.itemUno : DUR.itemVarios);
+
+/* ── Productos que propone cada campaña ── */
+// filtro: "sug" (la regla de la campaña), "vend", "off", "nue", "cuo".
+export function propuestos(c, catalogo, { filtro = "sug", promoIds = new Set(), hoy = Date.now() } = {}) {
+  const ps = catalogo.slice();
+  const off = (l) => l.filter((p) => descuentoDe(p) > 0).sort((a, b) => descuentoDe(b) - descuentoDe(a));
+  const promo = (l) => l.filter((p) => promoIds.has(String(p.id))).sort((a, b) => descuentoDe(b) - descuentoDe(a));
+  const nue = (l) => l.filter((p) => esNuevo(p, hoy)).sort((a, b) => Date.parse(b.alta) - Date.parse(a.alta));
+  const cuo = (l) => l.filter(tienePlan).sort((a, b) => b.precio - a.precio);
+  const primero = (arriba) => { const ids = new Set(arriba.map((p) => p.id)); return [...arriba, ...porVendidos(ps.filter((p) => !ids.has(p.id)))]; };
+  if (filtro === "vend") return porVendidos(ps);
+  if (filtro === "off") return off(ps);
+  if (filtro === "nue") return nue(ps);
+  if (filtro === "cuo") return cuo(ps);
+  const r = c?.productos?.regla;
+  if (r === "descuento") {
+    // POS 360: los marcados como promo y los de 25 % o más primero (spec §6 de los hallazgos).
+    const fuertes = [...promo(ps), ...off(ps).filter((p) => descuentoDe(p) >= DESCUENTO_MIN)];
+    const vistos = new Set();
+    return primero([...fuertes, ...off(ps)].filter((p) => (vistos.has(p.id) ? false : vistos.add(p.id))));
+  }
+  if (r === "promo") return primero([...promo(ps), ...off(ps)].filter((p, i, a) => a.findIndex((x) => x.id === p.id) === i));
+  if (r === "nuevos") return primero(nue(ps));
+  if (r === "conCuotas") return primero(cuo(ps));
+  if (r === "categoria") {
+    const claves = String(c.productos.filtro || "").split(/,|\by\b/).map((x) => normalizar(x).trim().replace(/s$/, "")).filter(Boolean);
+    const de = claves.length ? ps.filter((p) => claves.some((k) => normalizar(`${p.categoria} ${p.titulo}`).includes(k))) : [];
+    return primero(porVendidos(de));
+  }
+  return porVendidos(ps);
+}
+// "Sugeridos" del selector suma los marcados como promo (POS 360).
+export function sugeridos(c, catalogo, opts = {}) {
+  const l = propuestos(c, catalogo, opts);
+  const promo = catalogo.filter((p) => opts.promoIds?.has(String(p.id)));
+  const ids = new Set();
+  return [...l.slice(0, 12), ...promo, ...l.slice(12)].filter((p) => (ids.has(p.id) ? false : ids.add(p.id)));
+}
+
+/* ── Plantillas (respaldo local, mismas reglas que el servicio, spec §1.3) ── */
+const PIDE_CUOTAS = /\{(cuotas|valorCuota)\}/;
+const fechaLarga = (iso) => { const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`); return `${d.getDate()} de ${MESES[d.getMonth()]}`; };
+export function llenar(t, x) {
+  return String(t || "")
+    .replace(/\{(\w+)\}/g, (_, k) => (x[k] == null ? "" : x[k]))
+    .replace(/Antes\s*,\s*ahora/g, "Ahora")
+    .replace(/\.\s*Antes\s*\./g, ".")
+    .replace(/\s+([.,:])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+export function contexto(c, prods, fuente, hoy = new Date()) {
+  const cats = {};
+  let top = "";
+  for (const p of prods) { if (!p.categoria) continue; cats[p.categoria] = (cats[p.categoria] || 0) + 1; if (!top || cats[p.categoria] > cats[top]) top = p.categoria; }
+  const conPlan = prods.find(tienePlan);
+  const whatsapp = (fuente?.redes || []).find((r) => r.red === "whatsapp")?.texto || fuente?.textos?.contacto || "";
+  return {
+    local: fuente?.marca?.nombre || "",
+    dia: DIAS[hoy.getDay()],
+    fecha: c?.proxima ? fechaLarga(c.proxima) : "",
+    hasta: c?.hasta ? fechaLarga(c.hasta) : "",
+    categoria: String(top || "").toLowerCase(),
+    offMax: Math.max(0, ...prods.map(descuentoDe)) || null,
+    cuotas: conPlan ? conPlan.cuotas.cantidad : null,
+    n: prods.length,
+    productos: prods.map((p) => p.titulo).join(", "),
+    precio: prods[0] ? pesos(prods[0].precio) : "",
+    whatsapp,
+  };
+}
+export function contextoItem(base, p) {
+  return {
+    ...base,
+    producto: p.titulo,
+    precio: pesos(p.precio),
+    antes: descuentoDe(p) ? pesos(p.precioAnterior) : "",
+    off: descuentoDe(p) || null,
+    caracteristica: String(p.descripcion || "").split(/\s*·\s*|\.\s+/)[0] || "",
+    // Cuotas sólo con plan vigente del producto: nunca se inventan.
+    cuotas: tienePlan(p) ? p.cuotas.cantidad : null,
+    valorCuota: tienePlan(p) ? pesos(p.cuotas.valor) : null,
+    stock: Number.isFinite(Number(p.stock)) ? Number(p.stock) : null,
+  };
+}
+// Una plantilla que pide un dato que no hay (cuotas sin plan, descuento sin precio anterior) no se usa.
+const faltaDato = (t, x) => [...String(t || "").matchAll(/\{(\w+)\}/g)].some(([, k]) => x[k] == null || x[k] === "");
+export function etiquetaDe(c, x) {
+  let t = c.textos?.etiqueta || "";
+  if (PIDE_CUOTAS.test(t) && x.cuotas == null) t = x.off ? "{off} % OFF" : "";
+  if (faltaDato(t, x)) t = x.off ? "{off} % OFF" : "";
+  return llenar(t, x).slice(0, 24);
+}
+export function variantesItem(c, x) {
+  const v = [c.textos?.vozItem, "{producto}. Antes {antes}, ahora {precio}.", "{producto}: {cuotas} cuotas de {valorCuota}.", "{producto}, {precio}.", "{producto}."];
+  return v.filter((t) => t && !faltaDato(t, x)).map((t) => llenar(t, x)).filter((t, i, a) => t && a.indexOf(t) === i);
+}
+export const primeraQueEntra = (l, d, medir) => { for (let i = 0; i < l.length; i++) if (medir(l[i]) <= d) return i; return Math.max(0, l.length - 1); };
+export function variantesPortada(c, base, titular, bajada) {
+  const t = c.textos || {};
+  return [llenar(t.vozIntro, base), [titular, bajada].filter(Boolean).join(". ") + ".", base.local ? `En ${base.local}: ${String(titular).toLowerCase()}.` : ""]
+    .concat(titular ? [`${titular}.`] : [])
+    .filter((x, i, a) => x && x !== "." && a.indexOf(x) === i);
+}
+export function variantesCierre(c, base, llamado) {
+  const t = c.textos || {};
+  return [llenar(t.vozCierre, base), `${llamado}. Escribinos al WhatsApp.`, base.local ? `Te esperamos en ${base.local}.` : "", llamado ? `${llamado}.` : ""]
+    .filter((x, i, a) => x && a.indexOf(x) === i);
+}
+// Los textos de toda la campaña con las plantillas (respaldo de POST /guion).
+export function textosLocales(c, prods, fuente, medir, hoy = new Date()) {
+  const base = contexto(c, prods, fuente, hoy);
+  const t = c.textos || {};
+  const titular = llenar(faltaDato(t.titular, base) ? c.nombre : t.titular, base).slice(0, 40);
+  const bajada = llenar(faltaDato(t.bajada, base) ? "" : t.bajada, base).slice(0, 60);
+  const llamado = llenar(t.llamado, base).slice(0, 30);
+  const d = durEscena("item", prods.length);
+  // Cada línea entra en su escena: la primera variante que entra, de la más rica a la más corta.
+  const entra = (l, dur) => l[primeraQueEntra(l, dur, medir)] || "";
+  return {
+    origen: "local",
+    apertura: { titular, bajada, voz: entra(variantesPortada(c, base, titular, bajada), DUR.portada) },
+    escenas: prods.map((p) => {
+      const x = contextoItem(base, p);
+      const vs = variantesItem(c, x);
+      return { id: p.id, etiqueta: etiquetaDe(c, x), voz: vs[primeraQueEntra(vs, d, medir)] || "" };
+    }),
+    cierre: { llamado, voz: entra(variantesCierre(c, base, llamado), DUR.cierre) },
+    publicacion: llenar(faltaDato(t.caption, base) ? "{productos} en {local}." : t.caption, base),
+    titulo: `${c.nombre}${base.fecha ? ` · ${base.fecha}` : ""}`,
+  };
+}

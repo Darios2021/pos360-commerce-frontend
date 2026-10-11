@@ -1,5 +1,7 @@
 <!-- /admin/contenidos — Gestión de contenidos: reels 9:16 hechos por el servicio
      de contenidos con el catálogo de la tienda (maqueta aprobada 10/10).
+     Si el servicio publica las campañas del comercio, Nuevo reel es el creador por
+     campañas (CreadorCampanas, maqueta aprobada 11/10); si no, los cuatro pasos. 
      Nuevo reel: catálogo con categorías, guion escena por escena (portada,
      productos, cierre) con la voz de cada una, vista previa y sonido.
      Videos: lo generado, con su avance. Vista completa, sin modales; la clave
@@ -18,10 +20,17 @@
       </div>
     </div>
 
+    <div v-if="aviso" class="ct-aviso" role="status">{{ aviso }}</div>
     <v-alert v-if="error" type="error" variant="tonal" density="compact" closable @click:close="error = ''">{{ error }}</v-alert>
 
-    <!-- NUEVO REEL: tres pasos navegables -->
-    <template v-if="vista === 'nuevo'">
+    <!-- NUEVO REEL por campañas: si el servicio publica las campañas del comercio (spec VIDEOS-campanas) -->
+    <template v-if="vista === 'nuevo' && conCampanas">
+      <div v-if="recursos.activo === false" class="sp-caja ct-vacio">Los videos no están habilitados para este local.</div>
+      <CreadorCampanas v-else :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" />
+    </template>
+
+    <!-- NUEVO REEL: cuatro pasos navegables (servicio sin campañas) -->
+    <template v-else-if="vista === 'nuevo'">
       <div class="ct-pasos">
         <button v-for="(s, i) in PASOS" :key="i" type="button" class="ct-paso" :class="{ 'is-on': paso === i + 1, 'is-ok': paso > i + 1 && (i === 0 || seleccion.length) }" :disabled="i > 1 && !seleccion.length" @click="paso = i + 1">
           <b><v-icon v-if="paso > i + 1 && (i === 0 || seleccion.length)" size="20">mdi-check</v-icon><template v-else>{{ i + 1 }}</template></b>
@@ -399,6 +408,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
+import CreadorCampanas from "@/modules/admin/components/contenidos/CreadorCampanas.vue";
 import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getCupo, getRecursos, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
@@ -541,6 +551,28 @@ function sonidoInicial() {
   const voz = fs.voces.find((v) => v.porDefecto) || fs.voces[0];
   if (voz) opciones.locutor = voz.id;
   opciones.musica = fs.musicas.find((m) => m.porDefecto)?.id ?? null;
+}
+// Creador por campañas: sólo si GET /recursos trae `campanas` (con el servicio viejo, los cuatro pasos de siempre).
+const conCampanas = computed(() => Array.isArray(recursos.value?.campanas));
+const aviso = ref("");
+let avisoReloj;
+function avisar(t) { aviso.value = t; clearTimeout(avisoReloj); avisoReloj = setTimeout(() => { aviso.value = ""; }, 2600); }
+function alGenerar(p) {
+  piezas.value = [p, ...piezas.value];
+  seguir();
+  cargarCupo();
+  irA("videos");
+  avisar("Video en preparación");
+}
+function alFallarCampana(e) {
+  if (e?.response?.data?.cupo) cupo.value = e.response.data.cupo;
+  error.value = mensaje(e);
+  cargarCupo();
+}
+// El operador apagó la campaña (o un estilo o una voz) con la pantalla abierta.
+async function alNoHabilitado() {
+  await cargarRecursos();
+  error.value = "Esa opción ya no está disponible.";
 }
 async function cargarRecursos() {
   try {
@@ -1057,7 +1089,7 @@ onMounted(async () => {
   } catch (e) { error.value = mensaje(e); }
 });
 document.addEventListener("visibilitychange", alOcultar);
-onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMuestra(); document.removeEventListener("visibilitychange", alOcultar); });
+onBeforeUnmount(() => { clearTimeout(avisoReloj); clearTimeout(reloj); clearTimeout(demoraGuion); cortarMuestra(); document.removeEventListener("visibilitychange", alOcultar); });
 </script>
 
 <style>
@@ -1127,6 +1159,7 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-ti.is-on { border: 2px solid #0f6fae; padding: 7px; background: var(--sp-hover); }
 .ct-editor-caja .ct-editor { padding: 6px 18px 18px; }
 .ct-p3 { display: flex; flex-direction: column; gap: 16px; }
+.ct-aviso { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50; padding: 10px 16px; border-radius: 12px; background: #13202e; color: #fff; font: 800 14px Inter, sans-serif; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
 .ct-pie__fin { display: flex; align-items: center; gap: 14px; }
 .ct-cupo-agotado { font: 800 14px Inter, sans-serif; color: #c2413a; }
 .ct-pie { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
