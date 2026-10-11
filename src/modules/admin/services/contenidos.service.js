@@ -53,10 +53,16 @@ export async function listarVoces() {
   return Array.isArray(data) ? data : [];
 }
 
-// Catálogo de sonidos (efectos, filtro, músicas) con su muestra y el mapa viral.
+// Catálogo de sonidos (efectos, filtro, músicas) con su muestra y el mapa viral; también
+// los paquetes y el mapa clásico cuando el servicio los publica (sin GET /recursos).
 export async function listarSonidos() {
   const { data } = await http.get(`${BASE}/sonidos`);
-  return { sonidos: Array.isArray(data?.sonidos) ? data.sonidos : [], viral: data?.viral || {} };
+  return {
+    sonidos: Array.isArray(data?.sonidos) ? data.sonidos : [],
+    viral: data?.viral || {},
+    ...(Array.isArray(data?.paquetes) ? { paquetes: data.paquetes } : {}),
+    ...(data?.clasico ? { clasico: data.clasico } : {}),
+  };
 }
 
 // Corta un video en cola o dibujándose: queda en estado "cancelada".
@@ -85,5 +91,12 @@ export async function publicarPieza(id, publicacion) {
 // Cupo mensual de videos: {mes, limite, usados, quedan, renueva, nombreMes}; limite null = sin tope.
 export async function getCupo() {
   const { data } = await http.get(`${BASE}/cupo`);
+  return data;
+}
+
+// Lo habilitado para el comercio: { cuenta, videos: { activo, voces, musicas, estilos, efectos,
+// plantillas, paquetes, clasico, cupo } } con cada muestra en URL absoluta (spec de recursos §2).
+export async function getRecursos() {
+  const { data } = await http.get(`${BASE}/recursos`);
   return data;
 }
