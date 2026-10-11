@@ -208,8 +208,15 @@
             <div class="se-banda"><span>Voz y detalles</span></div>
             <div class="ct-sonido">
               <label class="ct-sw"><span>Voz en off</span><input v-model="opciones.voz" type="checkbox" @change="sugerir" /><i></i></label>
-              <div v-if="opciones.voz && voces.length > 1" class="ct-seg">
-                <button v-for="o in voces" :key="o.id" type="button" :class="{ 'is-on': opciones.locutor === o.id }" @click="opciones.locutor = o.id">{{ o.nombre }}</button>
+              <div v-if="opciones.voz && voces.length > 1" class="ct-voces" role="radiogroup" aria-label="Voz">
+                <div v-for="o in voces" :key="o.id" class="ct-voz" :class="{ 'is-on': opciones.locutor === o.id }">
+                  <button v-if="o.muestra" type="button" class="ct-voz__oir" :class="{ 'is-sonando': sonando === o.id }" :aria-label="sonando === o.id ? `Detener ${o.nombre}` : `Escuchar ${o.nombre}`" @click="escucharVoz(o)"><v-icon size="20">{{ sonando === o.id ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                  <button type="button" class="ct-voz__elegir" role="radio" :aria-checked="opciones.locutor === o.id" @click="opciones.locutor = o.id">
+                    <strong>{{ o.nombre }}</strong>
+                    <span v-if="o.tono || o.edad" class="ct-voz__rasgos">{{ [o.tono, o.edad].filter(Boolean).join(" · ") }}</span>
+                    <small v-if="o.descripcion">{{ o.descripcion }}</small>
+                  </button>
+                </div>
               </div>
               <div v-if="opciones.voz" class="ct-seg">
                 <button v-for="o in RITMOS" :key="o.v" type="button" :class="{ 'is-on': opciones.ritmo === o.v }" @click="opciones.ritmo = o.v">{{ o.t }}</button>
@@ -483,6 +490,27 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola", cancelada: "Cancelado" }[v.estado] || `Generando ${v.progreso || 0} %`);
+// Muestra de cada voz: un solo reproductor, al tocar otra se corta la anterior.
+const sonando = ref(null);
+let reproductor = null;
+function cortarMuestra() {
+  if (reproductor) { reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load(); }
+  sonando.value = null;
+}
+function escucharVoz(v) {
+  if (sonando.value === v.id) return cortarMuestra();
+  cortarMuestra();
+  if (!reproductor) {
+    reproductor = new Audio();
+    reproductor.preload = "none";
+    reproductor.addEventListener("ended", () => { sonando.value = null; });
+    reproductor.addEventListener("error", () => { if (reproductor.getAttribute("src")) sonando.value = null; });
+  }
+  reproductor.src = v.muestra;
+  sonando.value = v.id;
+  reproductor.play().catch(() => { if (sonando.value === v.id) sonando.value = null; });
+}
+watch(() => opciones.voz, (activa) => { if (!activa) cortarMuestra(); });
 const nombreVoz = (id) => voces.value.find((x) => x.id === id)?.nombre || String(id || "").replace(/^./, (c) => c.toUpperCase());
 const enProceso = (v) => v.estado === "en_cola" || v.estado === "renderizando";
 const fmtEntero = (n) => Number(n || 0).toLocaleString("es-AR");
@@ -932,7 +960,7 @@ onMounted(async () => {
     seguir();
   } catch (e) { error.value = mensaje(e); }
 });
-onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
+onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMuestra(); });
 </script>
 
 <style>
@@ -1088,6 +1116,16 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); });
 .ct-seg button { flex: 1; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; font: 700 13px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; white-space: nowrap; }
 .ct-seg button:hover:not(.is-on) { background: var(--sp-hover); }
 .ct-seg button.is-on { background: #0f6fae; color: #fff; }
+.ct-voces { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin: 6px 0; }
+.ct-voz { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 12px; background: var(--sp-caja); border: 1px solid var(--sp-borde); }
+.ct-voz.is-on { border-color: #0f6fae; box-shadow: inset 0 0 0 1px #0f6fae; }
+.ct-voz__oir { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #0f6fae; border-radius: 50%; background: transparent; color: #0f6fae; cursor: pointer; }
+.ct-voz__oir:hover, .ct-voz__oir.is-sonando { background: #0f6fae; color: #fff; }
+.ct-voz__elegir { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; color: var(--sp-texto); cursor: pointer; font-family: Inter, sans-serif; }
+.ct-voz__elegir strong { font-size: 14px; font-weight: 800; }
+.ct-voz.is-on .ct-voz__elegir strong { color: #0f6fae; }
+.ct-voz__rasgos { font-size: 12px; font-weight: 700; text-transform: capitalize; opacity: .75; }
+.ct-voz__elegir small { font-size: 12px; line-height: 1.35; opacity: .7; }
 .ct-sw { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--sp-linea); font-size: 15px; font-weight: 700; cursor: pointer; }
 .ct-sw--ultimo { border-bottom: 0; }
 .ct-sw input { display: none; }

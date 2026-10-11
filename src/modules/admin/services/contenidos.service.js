@@ -45,7 +45,9 @@ export async function editarPieza(id, cambios) {
   return data;
 }
 
-// Locutores disponibles para la voz en off: [{ id, nombre, porDefecto }].
+// Locutores disponibles para la voz en off: [{ id, nombre, porDefecto,
+// descripcion, genero, edad, tono, proveedor, muestra }]. `muestra` es la URL
+// absoluta y pública del MP3 de prueba (la arma la API).
 export async function listarVoces() {
   const { data } = await http.get(`${BASE}/voces`);
   return Array.isArray(data) ? data : [];
