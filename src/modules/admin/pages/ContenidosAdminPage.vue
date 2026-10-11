@@ -185,15 +185,16 @@
         <div class="sp-caja">
           <div class="se-banda">
             <span>Sonido</span>
-            <small class="num">{{ fmtSeg(total) }} s</small>
+            <small class="num">{{ fmtSeg(duracion) }} s</small>
           </div>
           <div class="ct-son">
             <!-- Estilos prearmados: cada uno trae su animación y sus efectos -->
-            <template v-if="fichasPaquete.length">
+            <template v-if="fichasEstilo.length">
               <span class="ct-rot">Estilo</span>
               <div class="ct-paqs" role="radiogroup" aria-label="Estilo del video">
-                <div v-for="p in fichasPaquete" :key="p.id" class="ct-paq" :class="{ 'is-on': p.on }" role="radio" tabindex="0" :aria-checked="p.on" @click="p.elegir()" @keydown.enter.prevent="p.elegir()" @keydown.space.prevent="p.elegir()">
-                  <button type="button" class="ct-oir" :class="{ 'is-sonando': sonando === `paq:${p.id}` }" :aria-label="`${sonando === `paq:${p.id}` ? 'Detener' : 'Escuchar'} ${p.nombre}`" @click.stop="escucharEstilo(p)"><v-icon size="18">{{ sonando === `paq:${p.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                <div v-for="p in fichasEstilo" :key="p.id" class="ct-paq" :class="{ 'is-on': p.on }" role="radio" tabindex="0" :aria-checked="p.on" :title="p.descripcion" @click="p.elegir()" @keydown.enter.prevent="p.elegir()" @keydown.space.prevent="p.elegir()">
+                  <img v-if="p.miniatura" :src="p.miniatura" alt="" class="ct-paq__mini" loading="lazy" />
+                  <button v-if="p.muestra" type="button" class="ct-oir" :class="{ 'is-sonando': sonando === `paq:${p.id}` }" :aria-label="`${sonando === `paq:${p.id}` ? 'Detener' : 'Escuchar'} ${p.nombre}`" @click.stop="escucharUno(`paq:${p.id}`, p.muestra)"><v-icon size="18">{{ sonando === `paq:${p.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
                   <span class="ct-paq__t"><strong>{{ p.nombre }}</strong><small>{{ p.sub }}</small></span>
                   <v-icon v-if="p.on" size="20" class="ct-paq__ok">mdi-check-circle</v-icon>
                 </div>
@@ -419,11 +420,6 @@ const CIERRE_OPC = [
   { k: "llamado", t: "Llamado" },
 ];
 const POR_TANDA = 48;
-// Momentos del sonido, en el orden en que suenan (encargo.sonidos del servicio).
-const MOMENTOS = ["apertura", "producto", "precio", "oferta", "transicion", "subida", "cierre", "remate"];
-const T_REMATE = 2;
-// Valor de cada momento: "o" = Original (el sonido de siempre), null = Sin sonido, id = ese efecto.
-const efOriginal = () => Object.fromEntries(MOMENTOS.map((m) => [m, m === "remate" ? null : "o"]));
 const PASOS = [
   { t: "Formato", s: "" },
   { t: "Productos", s: "" },
@@ -468,7 +464,7 @@ const editando = ref(null);
 const borrador = reactive({ titulo: "", descripcion: "" });
 const guardando = ref(false);
 const guion = reactive({ intro: "", introEditada: false, cierre: "", cierreEditada: false });
-const opciones = reactive({ musica: "pulso", voz: true, locutor: null, ritmo: "normal", cuotas: true, oscuro: false, ef: efOriginal() });
+const opciones = reactive({ paquete: null, musica: "pulso", voz: true, locutor: null, ritmo: "normal", cuotas: true });
 const voces = ref([]);
 const sonidos = ref({ sonidos: [], viral: {} });
 // Lo habilitado para el comercio (GET /recursos). null: el servicio no lo publica o no respondió.
@@ -502,106 +498,49 @@ const fecha = (iso) => {
   return d.toDateString() === hoy.toDateString() ? `Hoy ${hora}` : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
 };
 const estadoTexto = (v) => ({ lista: "Listo", error: "No se pudo generar", en_cola: "En cola", cancelada: "Cancelado" }[v.estado] || `Generando ${v.progreso || 0} %`);
-/* SONIDO del reel: tres estilos prearmados (los paquetes del servicio), música y voz.
+/* SONIDO del reel: tres estilos de video prearmados (paquetes del servicio), música y voz.
    Decisión del usuario (11/10): el comercio no arma el video detalle por detalle; cada estilo
-   trae sus efectos puestos (no se muestran ni se eligen), Viral por defecto, y se puede lanzar
-   sin tocar nada. Lo que se puede elegir sale de GET /recursos (o de GET /sonidos); sin
-   estilos quedan sólo música y voz y suena el clásico. */
+   trae su animación y sus efectos (no se muestran ni se eligen), Viral por defecto, y se puede
+   lanzar sin tocar nada. El encargo manda `paquete` y el servicio resuelve el resto. Lo que se
+   puede elegir sale de GET /recursos; sin estilos quedan sólo música y voz (Revista, como siempre). */
 const fuenteSonido = computed(() => {
   const r = recursos.value;
-  if (r?.activo) {
-    return {
-      voces: r.voces || [], musicas: r.musicas || [], efectos: r.efectos || [],
-      paquetes: r.paquetes || [], clasico: r.clasico || null,
-      // El servicio ya entiende musica: null y la clave oferta.
-      nuevo: Boolean(r.paquetes || r.clasico),
-    };
-  }
-  const s = sonidos.value;
-  if (!s.paquetes && !s.clasico) return null;
-  return {
-    voces: voces.value, musicas: s.sonidos.filter((x) => x.tipo === "musica"), efectos: s.sonidos.filter((x) => x.tipo === "efecto"),
-    paquetes: s.paquetes || [], clasico: s.clasico || null, nuevo: true,
-  };
+  if (!r?.activo) return null;
+  // Los estilos de video traen su animación (antes `estilos` era otra lista: clásico/viral/oscuro).
+  return { estilos: (r.estilos || []).filter((e) => e?.animacion), voces: r.voces || [], musicas: r.musicas || [] };
 });
-const paquetes = computed(() => fuenteSonido.value?.paquetes || []);
-const listaVoces = computed(() => fuenteSonido.value?.voces || voces.value);
-const listaMusicas = computed(() => fuenteSonido.value?.musicas || sonidos.value.sonidos.filter((x) => x.tipo === "musica"));
+const estilosVideo = computed(() => fuenteSonido.value?.estilos || []);
+const listaVoces = computed(() => (fuenteSonido.value?.voces.length ? fuenteSonido.value.voces : voces.value));
+const listaMusicas = computed(() => (fuenteSonido.value?.musicas.length ? fuenteSonido.value.musicas : sonidos.value.sonidos.filter((x) => x.tipo === "musica")));
 const musicaDe = (id) => listaMusicas.value.find((x) => x.id === id);
-const efectoDe = (id) => (fuenteSonido.value?.efectos || []).find((x) => x.id === id);
 const nombreMusica = (id) => (id ? musicaDe(id)?.nombre || String(id).replace(/^./, (c) => c.toUpperCase()) : "Sin música");
 const nombreLocutor = (id) => listaVoces.value.find((x) => x.id === id)?.nombre || nombreVoz(id);
 
-// Cada estilo fija también la animación (decisión del usuario, 11/10): Viral en Cartel con la
-// variante automática, Clásico y Tranquilo en Revista. Se manda sólo si está habilitada.
-const ANIMACION_ESTILO = { viral: "cartel", clasico: "revista", tranquilo: "revista" };
-const animacion = computed(() => {
-  const c = ANIMACION_ESTILO[paquete.value];
-  const habilitadas = recursos.value?.plantillas?.map((p) => p.id);
-  return c && (!habilitadas || habilitadas.includes(c)) ? c : undefined;
-});
-
-// El sonido de siempre de un momento en la animación del video (para escuchar un estilo).
-const tieneLogo = computed(() => Boolean(fuente.value?.marca?.logo));
-function original(m, cinematica = animacion.value) {
-  const fs = fuenteSonido.value;
-  if (m === "remate" || !fs?.clasico) return null;
-  const cin = cinematica || (recursos.value?.plantillas || []).find((p) => p.porDefecto)?.id || "revista";
-  const c = fs.clasico[cin]?.[m];
-  if (!c) return null;
-  return m === "apertura" && !tieneLogo.value && c.sinLogo !== undefined ? c.sinLogo : c;
-}
-const callado = (m, v) => v === null || (v === "o" && !original(m));
-
-/* Escenas: mismas cuentas que la duración del video. */
-const enOferta = (p) => Number(p.precioAnterior) > Number(p.precio);
-function escenasDe(st) {
-  const out = [{ tipo: "intro", d: T.value.intro, ef: ["apertura"] }];
-  seleccion.value.forEach((p, i) => out.push({ tipo: "item", d: T.value.item, p, i, ef: [i === 0 ? "producto" : "transicion", enOferta(p) ? "oferta" : "precio"] }));
-  out.push({ tipo: "cierre", d: T.value.cierre, ef: ["subida", "cierre"] });
-  if (st.ef.remate) out.push({ tipo: "remate", d: T_REMATE, ef: ["remate"] });
-  let t = 0;
-  for (const e of out) { e.t0 = t; t += e.d; }
-  return out;
-}
-const total = computed(() => escenasDe(opciones).reduce((a, e) => a + e.d, 0));
-
-/* Estilos. Elegir uno pone su música, su voz y sus efectos; después música y voz se cambian
-   libres y los efectos siguen siendo los del estilo. */
-function estadoDe(p) {
-  const s = p.sonidos || {};
-  const conVoz = p.voz != null && p.voz !== false;
-  return {
-    musica: p.musica ?? null, voz: conVoz,
-    locutor: conVoz ? p.voz.locutor || opciones.locutor : opciones.locutor,
-    ritmo: conVoz ? p.voz.ritmo || "normal" : opciones.ritmo,
-    oscuro: Boolean(s.oscuro),
-    ef: Object.fromEntries(MOMENTOS.map((m) => [m, m in s ? s[m] : m === "remate" ? null : "o"])),
-  };
-}
-const paquete = ref(null);
-function elegirPaquete(p) {
-  const st = estadoDe(p);
+/* Estilos. Elegir uno pone su música, su voz y su ritmo (ya resueltos para el comercio);
+   después música y voz se cambian libres. */
+function elegirEstilo(e) {
   const antes = opciones.voz;
-  Object.assign(opciones, { ...st, ef: { ...st.ef } });
-  paquete.value = p.id;
+  opciones.paquete = e.id;
+  opciones.musica = e.musica ?? null;
+  if (e.voz?.locutor) { opciones.voz = true; opciones.locutor = e.voz.locutor; }
+  opciones.ritmo = e.voz?.ritmo || "normal";
   if (opciones.voz && !antes) sugerir();
-  if (!opciones.voz && sonando.value?.startsWith("voz:")) cortarMuestra();
 }
-const fichasPaquete = computed(() => paquetes.value.map((p) => {
-  const st = estadoDe(p);
-  return { id: p.id, nombre: p.nombre, on: paquete.value === p.id, estado: st, elegir: () => elegirPaquete(p),
-    sub: [nombreMusica(st.musica), st.voz ? nombreLocutor(st.locutor) : "Sin voz", p.resumen].filter(Boolean).join(" · ") };
-}));
-// Al cargar: el estilo por defecto, o el primero. Sin estilos: la voz y la música por defecto, efectos de siempre.
+const fichasEstilo = computed(() => estilosVideo.value.map((e) => ({
+  id: e.id, nombre: e.nombre, descripcion: e.descripcion, muestra: e.muestra, miniatura: e.miniatura,
+  on: opciones.paquete === e.id, elegir: () => elegirEstilo(e),
+  sub: [nombreMusica(e.musica), e.voz?.locutor ? nombreLocutor(e.voz.locutor) : "Sin voz", e.animacion?.nombre].filter(Boolean).join(" · "),
+})));
+// Al cargar: el estilo por defecto, o el primero. Sin estilos: la voz y la música por defecto del comercio.
 function sonidoInicial() {
   const fs = fuenteSonido.value;
+  opciones.paquete = null;
   if (!fs) return;
-  const p = fs.paquetes.find((x) => x.porDefecto) || fs.paquetes[0];
-  if (p) return elegirPaquete(p);
+  const e = fs.estilos.find((x) => x.porDefecto) || fs.estilos[0];
+  if (e) return elegirEstilo(e);
   const voz = fs.voces.find((v) => v.porDefecto) || fs.voces[0];
-  Object.assign(opciones, { musica: fs.musicas.find((m) => m.porDefecto)?.id ?? null, voz: Boolean(voz), locutor: voz?.id || null, ritmo: "normal", oscuro: false, ef: efOriginal() });
-  paquete.value = null;
+  if (voz) opciones.locutor = voz.id;
+  opciones.musica = fs.musicas.find((m) => m.porDefecto)?.id ?? null;
 }
 async function cargarRecursos() {
   try {
@@ -631,81 +570,19 @@ const gruposVoz = computed(() => {
   ].filter((g) => g.ops.length);
 });
 
-/* Lo que viaja en el encargo: los efectos del estilo, momento por momento (el servicio los
-   aplica); sólo los que no son los de siempre y sólo los que suenan en este video. */
-function sonidoDelEncargo() {
-  const fs = fuenteSonido.value;
-  if (!fs) return { musica: opciones.musica || undefined };
-  const presentes = new Set(escenasDe(opciones).flatMap((e) => e.ef));
-  const s = {};
-  for (const m of MOMENTOS) if (presentes.has(m) && opciones.ef[m] !== "o") s[m] = opciones.ef[m];
-  if (opciones.oscuro) s.oscuro = true;
-  const mudo = [...presentes].every((m) => callado(m, opciones.ef[m]));
-  return {
-    ...(animacion.value ? { cinematica: animacion.value } : {}),
-    // musica: null (Sin música explícito) sólo si el servicio ya lo entiende; si no, omitida como siempre.
-    musica: fs.nuevo ? opciones.musica ?? null : opciones.musica || undefined,
-    efectos: !mudo,
-    sonidos: !mudo && Object.keys(s).length ? s : undefined,
-  };
-}
+/* Lo que viaja en el encargo: el estilo (el servicio pone animación y efectos) y la música;
+   sin estilo, la música como siempre (omitida = la del comercio). */
+const sonidoDelEncargo = () => (opciones.paquete
+  ? { paquete: opciones.paquete, musica: opciones.musica ?? null }
+  : { musica: opciones.musica || undefined });
 
-/* Un solo reproductor para todo: muestras sueltas con <audio> y la escucha de un estilo con
-   Web Audio (música, voz y sus efectos en su instante). Tocar cualquier ▶ corta lo que suene. */
+/* Un solo reproductor para todas las muestras (estilos, músicas y voces): tocar cualquier ▶
+   corta lo que suene. */
 const sonando = ref(null);
 let reproductor = null;
-let ctx = null;
-let nodos = [];
-let elementos = [];
-let tiempos = [];
-let turno = 0;
-const buffers = new Map();
 function cortarMuestra() {
-  turno++;
   if (reproductor) { reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load(); }
-  nodos.forEach((n) => { try { n.stop(); } catch { /* ya terminó */ } });
-  elementos.forEach((a) => { a.pause(); a.removeAttribute("src"); a.load(); });
-  tiempos.forEach(clearTimeout);
-  nodos = []; elementos = []; tiempos = [];
   sonando.value = null;
-}
-function contexto() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (ctx.state === "suspended") ctx.resume();
-  return ctx;
-}
-function buffer(url) {
-  if (!buffers.has(url)) {
-    const p = fetch(url).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
-      .then((b) => new Promise((ok, ko) => contexto().decodeAudioData(b, ok, ko)));
-    p.catch(() => buffers.delete(url));
-    buffers.set(url, p);
-  }
-  return buffers.get(url);
-}
-// Aproximación del filtro oscuro del render: más lento y con eco.
-function sonarBuffer(b, cuando, { vol = 0.9, oscuro = false, dur = null, fade = 0 } = {}) {
-  const c = contexto();
-  const s = c.createBufferSource();
-  s.buffer = b;
-  if (oscuro) s.playbackRate.value = 0.82;
-  const g = c.createGain();
-  g.gain.value = vol;
-  s.connect(g);
-  g.connect(c.destination);
-  if (oscuro) {
-    const d = c.createDelay(1); d.delayTime.value = 0.14;
-    const fb = c.createGain(); fb.gain.value = 0.35;
-    const mezcla = c.createGain(); mezcla.gain.value = 0.5;
-    g.connect(d); d.connect(fb); fb.connect(d); d.connect(mezcla); mezcla.connect(c.destination);
-  }
-  s.start(cuando);
-  if (dur) {
-    if (fade) { g.gain.setValueAtTime(vol, cuando + dur - fade); g.gain.linearRampToValueAtTime(0, cuando + dur); }
-    s.stop(cuando + dur);
-  }
-  nodos.push(s);
-  return s;
 }
 function escucharUno(clave, url) {
   if (sonando.value === clave) return cortarMuestra();
@@ -719,59 +596,6 @@ function escucharUno(clave, url) {
   reproductor.src = url;
   sonando.value = clave;
   reproductor.play().catch(() => { if (sonando.value === clave) sonando.value = null; });
-}
-// Instantes de cada efecto, aproximados a la plantilla vertical.
-function eventosDe(st, es, cinematica) {
-  const out = [];
-  const add = (m, t) => {
-    const v = st.ef[m];
-    const url = v === "o" ? original(m, cinematica)?.muestra : v ? efectoDe(v)?.muestra : null;
-    if (url) out.push({ url, t: Math.max(0, t), vol: 0.75, oscuro: st.oscuro });
-  };
-  for (const e of es) {
-    if (e.tipo === "intro") add("apertura", 0.15);
-    else if (e.tipo === "cierre") { add("subida", e.t0 - 1.1); add("cierre", e.t0 - 0.08); }
-    else if (e.tipo === "remate") add("remate", e.t0 + 0.05);
-    else {
-      if (e.i === 0) add("producto", e.t0 + 0.3); else add("transicion", e.t0 - 0.08);
-      add(enOferta(e.p) ? "oferta" : "precio", e.t0 + 1.25);
-    }
-  }
-  return out;
-}
-// Escuchar un estilo con la música y la voz elegidas (la del estilo si es otro), en el largo de este video.
-async function escucharEstilo(f) {
-  const clave = `paq:${f.id}`;
-  if (sonando.value === clave) return cortarMuestra();
-  cortarMuestra();
-  sonando.value = clave;
-  const yo = turno;
-  const st = f.on ? { ...opciones } : f.estado;
-  const es = escenasDe(st);
-  const dur = es.reduce((a, e) => a + e.d, 0);
-  const voz = st.voz ? listaVoces.value.find((v) => v.id === st.locutor)?.muestra : null;
-  const pistas = [
-    st.musica && musicaDe(st.musica)?.muestra ? { url: musicaDe(st.musica).muestra, t: 0, vol: voz ? 0.32 : 0.55, dur, fade: 1.2 } : null,
-    voz ? { url: voz, t: 0.5, vol: 1, dur: dur - 0.6 } : null,
-    ...eventosDe(st, es, ANIMACION_ESTILO[f.id]),
-  ].filter(Boolean);
-  const res = await Promise.allSettled(pistas.map((p) => buffer(p.url)));
-  if (yo !== turno) return;
-  // Una muestra que no se pudo bajar por red (sin CORS) pasa todo a <audio>; una que no existe se saltea.
-  if (res.some((r) => r.status === "rejected" && r.reason instanceof TypeError)) {
-    for (const p of pistas) {
-      const a = new Audio(p.url);
-      a.volume = Math.min(1, p.vol);
-      if (p.oscuro) { a.preservesPitch = false; a.playbackRate = 0.82; }
-      elementos.push(a);
-      tiempos.push(setTimeout(() => a.play().catch(() => {}), 150 + p.t * 1000));
-      if (p.dur) tiempos.push(setTimeout(() => a.pause(), 150 + (p.t + p.dur) * 1000));
-    }
-  } else {
-    const inicio = contexto().currentTime + 0.12;
-    pistas.forEach((p, i) => { if (res[i].status === "fulfilled") sonarBuffer(res[i].value, inicio + p.t, p); });
-  }
-  tiempos.push(setTimeout(() => { if (yo === turno) cortarMuestra(); }, 200 + dur * 1000));
 }
 function alOcultar() { if (document.hidden) cortarMuestra(); }
 watch(paso, cortarMuestra);
@@ -1499,10 +1323,11 @@ onBeforeUnmount(() => { clearTimeout(reloj); clearTimeout(demoraGuion); cortarMu
 .ct-oir .v-icon { color: inherit; }
 .ct-oir:hover, .ct-oir.is-sonando { background: #0f6fae; color: #fff; }
 .ct-paqs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.ct-paq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); cursor: pointer; color: var(--sp-texto); min-width: 0; }
+.ct-paq { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--sp-borde); background: var(--sp-caja); cursor: pointer; color: var(--sp-texto); min-width: 0; }
 .ct-paq:hover { border-color: rgba(15, 111, 174, .45); }
 .ct-paq.is-on { border: 2px solid #0f6fae; padding: 9.5px 11.5px; background: rgba(15, 111, 174, .05); }
-.ct-paq__t { min-width: 0; }
+.ct-paq__t { flex: 1; min-width: 0; }
+.ct-paq__mini { width: 28px; height: 50px; object-fit: cover; border-radius: 5px; background: var(--sp-fondo); }
 .ct-paq__t strong { display: block; font-size: 14.5px; font-weight: 900; }
 .ct-paq.is-on .ct-paq__t strong { color: #0f6fae; }
 .ct-paq__t small { display: block; font-size: 11.5px; font-weight: 600; color: var(--sp-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
