@@ -440,6 +440,8 @@ async function printTicket() {
     );
     if (por === "directa") {
       snack.value = { show: true, text: "Ticket enviado a la impresora.", color: "success" };
+    } else if (por === "fallo-bluetooth") {
+      snack.value = { show: true, text: "La impresora no respondió. Revisá que esté prendida y cerca.", color: "error" };
     }
   } finally {
     printing.value = false;

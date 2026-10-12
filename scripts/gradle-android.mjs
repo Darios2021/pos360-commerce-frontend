@@ -15,6 +15,15 @@ if (!existsSync(cwd)) {
 }
 
 const cmd = isWin ? "gradlew.bat" : "./gradlew";
+
+// Gradle de Capacitor 8 necesita JDK 21. En la maquina de desarrollo el JDK
+// del sistema es otro (26) y el plugin de Android no trabaja con el: si no
+// vino JAVA_HOME, se usa el JDK 21 del toolchain movil (orchestrator/METODO-MOVIL.md).
+const home = process.env.HOME || "";
+const JDK21 = resolve(home, "development/jdk-21.0.12+8");
+if (!process.env.JAVA_HOME && existsSync(JDK21)) process.env.JAVA_HOME = JDK21;
+const SDK = resolve(home, "Android/Sdk");
+if (!process.env.ANDROID_HOME && existsSync(SDK)) process.env.ANDROID_HOME = SDK;
 console.log(`📦 [gradle-android] Ejecutando ${cmd} ${task} en ${cwd}`);
 
 const result = spawnSync(cmd, [task], {

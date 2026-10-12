@@ -7,12 +7,28 @@
     <AppPageHeader
       icon="mdi-printer-pos-outline"
       title="Impresión"
-      subtitle="Ticket de venta en esta computadora"
+      :subtitle="enApk ? 'Ticket de venta en este teléfono' : 'Ticket de venta en esta computadora'"
     />
 
     <div class="imp-grid">
       <v-card class="imp-card" rounded="lg" elevation="0">
-        <div class="imp-section">
+        <!-- APK: termica emparejada por Bluetooth (app/native/impresoraBluetooth.js) -->
+        <div v-if="enApk" class="imp-section">
+          <div class="imp-label">Impresora Bluetooth</div>
+          <v-radio-group v-if="impresorasBt.length" v-model="direccionBt" hide-details density="comfortable">
+            <v-radio v-for="i in impresorasBt" :key="i.direccion" :value="i.direccion" :label="i.nombre" />
+          </v-radio-group>
+          <div v-else class="imp-estado is-off">
+            <v-icon size="18">mdi-bluetooth-off</v-icon>
+            <span>{{ errorBt || 'No hay impresoras emparejadas' }}</span>
+          </div>
+          <div class="imp-ayuda">
+            Primero emparejá la impresora en Ajustes del teléfono › Bluetooth.
+            <v-btn variant="text" size="small" prepend-icon="mdi-refresh" :loading="buscandoBt" @click="buscarBt">Buscar</v-btn>
+          </div>
+        </div>
+
+        <div v-if="!enApk" class="imp-section">
           <div class="imp-label">Modo</div>
           <v-btn-toggle v-model="ajustes.modo" mandatory density="comfortable" color="primary" variant="outlined" divided>
             <v-btn value="navegador">Navegador</v-btn>
@@ -28,7 +44,7 @@
           </v-btn-toggle>
         </div>
 
-        <div class="imp-section">
+        <div v-if="!enApk" class="imp-section">
           <div class="imp-label">Programa de impresión</div>
           <div class="imp-estado" :class="estado ? 'is-ok' : 'is-off'">
             <v-icon size="18">{{ estado ? 'mdi-check-circle' : 'mdi-close-circle' }}</v-icon>
@@ -38,7 +54,7 @@
           </div>
         </div>
 
-        <div class="imp-section">
+        <div v-if="!enApk" class="imp-section">
           <div class="imp-label">Instalación en Windows (PowerShell)</div>
           <div class="imp-comando">
             <code>{{ COMANDO_INSTALAR }}</code>
@@ -47,10 +63,12 @@
         </div>
 
         <div class="imp-section">
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-printer" :loading="imprimiendo" @click="prueba">
+          <v-btn color="primary" variant="flat" prepend-icon="mdi-printer" :loading="imprimiendo" :disabled="enApk && !direccionBt" @click="prueba">
             Ticket de prueba
           </v-btn>
         </div>
+
+        <AjustesTelefono />
       </v-card>
 
       <v-card class="imp-card" rounded="lg" elevation="0">
@@ -80,9 +98,42 @@ import {
   imprimirTicket,
   leerAjustesImpresion,
 } from "../utils/impresion";
+import { isCapacitor } from "@/app/utils/runtime";
+import { emparejadas } from "@/app/native/impresoraBluetooth";
+import AjustesTelefono from "@/app/native/AjustesTelefono.vue";
 
 const ajustes = reactive(leerAjustesImpresion());
 watch(ajustes, (a) => guardarAjustesImpresion({ ...a }));
+
+// En la APK la unica salida es la termica Bluetooth: no hay programa local
+// ni cuadro de impresion.
+const enApk = isCapacitor();
+const impresorasBt = ref([]);
+const errorBt = ref("");
+const buscandoBt = ref(false);
+const direccionBt = computed({
+  get: () => ajustes.bluetooth?.direccion || "",
+  set: (d) => {
+    const i = impresorasBt.value.find((x) => x.direccion === d);
+    ajustes.bluetooth = i ? { ...i } : null;
+  },
+});
+async function buscarBt() {
+  buscandoBt.value = true;
+  errorBt.value = "";
+  try {
+    impresorasBt.value = await emparejadas();
+  } catch (e) {
+    impresorasBt.value = [];
+    errorBt.value = e?.message || "No se pudo leer el Bluetooth";
+  } finally {
+    buscandoBt.value = false;
+  }
+}
+if (enApk) {
+  ajustes.modo = "bluetooth";
+  onMounted(buscarBt);
+}
 
 const PRUEBA = {
   id: 0,
@@ -117,7 +168,7 @@ async function consultar() {
   estado.value = await estadoProgramaLocal();
   consultando.value = false;
 }
-onMounted(consultar);
+if (!enApk) onMounted(consultar);
 
 const snack = ref({ show: false, text: "", color: "success" });
 
@@ -137,6 +188,8 @@ async function prueba() {
     const por = await imprimirTicket(datosPrueba, porElNavegador);
     if (por === "directa") {
       snack.value = { show: true, text: "Ticket de prueba enviado a la impresora.", color: "success" };
+    } else if (por === "fallo-bluetooth") {
+      snack.value = { show: true, text: "La impresora no respondió. Revisá que esté prendida y cerca.", color: "error" };
     } else if (ajustes.modo === "directa") {
       snack.value = { show: true, text: "El programa de impresión no respondió: salió por el navegador.", color: "warning" };
     }
@@ -189,6 +242,11 @@ function porElNavegador() {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .imp-section + .imp-section { margin-top: 20px; }
+.imp-ayuda {
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), .6);
+}
 .imp-label {
   font-size: 12px;
   font-weight: 600;

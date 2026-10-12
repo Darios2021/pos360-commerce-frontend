@@ -24,10 +24,10 @@ dist-ssr
 *.sw?
 
 # Capacitor / Android
-# La carpeta android/ es proyecto Gradle generado por `npx cap add android`.
-# Se regenera con `cap sync` — no se commitea para no inflar el repo (52MB)
-# ni el tar de deploy CapRover.
-/android/
+# android/ SI se versiona desde la v2 (2026-10-12): permisos, version, firma y
+# el plugin de impresion Bluetooth viven ahi. Lo pesado (build/, .gradle/) y
+# lo que no va a git (key.properties, *.jks, google-services.json) lo ignora
+# android/.gitignore.
 *.apk
 *.aab
 *.keystore

@@ -7,9 +7,13 @@
 import { isCapacitor } from "@/app/utils/runtime";
 
 let _bio = null;
+// OJO: el plugin de Capacitor es un Proxy que responde a cualquier propiedad,
+// tambien a `then`. Si una funcion async lo devuelve tal cual, el await lo toma
+// por una promesa, llama a plugin.then() (que no existe) y queda colgado para
+// siempre. Por eso se devuelve envuelto: { plugin }.
 async function getBio() {
-  if (!isCapacitor()) return null;
-  if (_bio) return _bio;
+  if (!isCapacitor()) return { plugin: null };
+  if (_bio) return { plugin: _bio };
   try {
     const mod = await import("@aparajita/capacitor-biometric-auth");
     _bio = mod.BiometricAuth;
@@ -17,14 +21,14 @@ async function getBio() {
     console.warn("[biometric] plugin no disponible:", e?.message);
     _bio = null;
   }
-  return _bio;
+  return { plugin: _bio };
 }
 
 /**
  * @returns {Promise<{ available: boolean, reason?: string, biometryType?: string }>}
  */
 export async function checkBiometricAvailability() {
-  const bio = await getBio();
+  const { plugin: bio } = await getBio();
   if (!bio) return { available: false, reason: "no_capacitor" };
   try {
     const r = await bio.checkBiometry();
@@ -48,7 +52,7 @@ export async function checkBiometricAvailability() {
  *   (ej. "Ingresá tu huella para abrir Sj Tecnología")
  */
 export async function authenticateBiometric(opts = {}) {
-  const bio = await getBio();
+  const { plugin: bio } = await getBio();
   if (!bio) return false;
   try {
     await bio.authenticate({

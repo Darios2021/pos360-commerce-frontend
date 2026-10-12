@@ -10,6 +10,7 @@
 import axios from "axios";
 import { loadAuth, clearAuth } from "../utils/storage";
 import { marcarCaido, marcarEnLinea, esFalloDeRed } from "@/app/store/conexion.state";
+import * as catalogoOffline from "@/app/native/catalogoOffline";
 
 function trimEndSlashes(s) {
   return String(s || "").replace(/\/+$/, "");
@@ -95,13 +96,21 @@ http.interceptors.response.use(
     // El servidor contesto: haya lo que haya pasado con la red antes, ahora hay
     // conexion. Es la unica senal confiable, mas que navigator.onLine.
     marcarEnLinea();
+    // APK: copia del catalogo para buscar sin conexion (app/native/catalogoOffline.js)
+    if (catalogoOffline.esBusquedaDeCatalogo(r.config)) catalogoOffline.refrescarSiHaceFalta(http, r.config);
     return r;
   },
-  (err) => {
+  async (err) => {
     const status = Number(err?.response?.status || 0);
 
-    if (esFalloDeRed(err)) marcarCaido();
-    else marcarEnLinea();
+    if (esFalloDeRed(err)) {
+      marcarCaido();
+      // APK sin red: la busqueda del POS se contesta con la copia del catalogo.
+      if (catalogoOffline.esBusquedaDeCatalogo(err.config)) {
+        const copia = await catalogoOffline.respuestaSinConexion(err.config);
+        if (copia) return copia;
+      }
+    } else marcarEnLinea();
 
     if (status === 401) {
       try {

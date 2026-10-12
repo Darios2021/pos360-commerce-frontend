@@ -17,9 +17,13 @@ const KEY_BIO = "shop_biometric_enabled"; // "1" / "0"
 
 // Carga lazy del plugin para no romper en SSR/web
 let _prefs = null;
+// OJO: el plugin de Capacitor es un Proxy que responde a cualquier propiedad,
+// tambien a `then`. Si una funcion async lo devuelve tal cual, el await lo toma
+// por una promesa, llama a plugin.then() (que no existe) y queda colgado para
+// siempre. Por eso se devuelve envuelto: { plugin }.
 async function getPrefs() {
-  if (!isCapacitor()) return null;
-  if (_prefs) return _prefs;
+  if (!isCapacitor()) return { plugin: null };
+  if (_prefs) return { plugin: _prefs };
   try {
     const mod = await import("@capacitor/preferences");
     _prefs = mod.Preferences;
@@ -27,11 +31,11 @@ async function getPrefs() {
     console.warn("[tokenStorage] @capacitor/preferences no disponible:", e?.message);
     _prefs = null;
   }
-  return _prefs;
+  return { plugin: _prefs };
 }
 
 async function pGet(key) {
-  const prefs = await getPrefs();
+  const { plugin: prefs } = await getPrefs();
   if (prefs) {
     try {
       const { value } = await prefs.get({ key });
@@ -48,7 +52,7 @@ async function pGet(key) {
 }
 
 async function pSet(key, value) {
-  const prefs = await getPrefs();
+  const { plugin: prefs } = await getPrefs();
   if (prefs) {
     try {
       await prefs.set({ key, value: String(value ?? "") });
@@ -61,7 +65,7 @@ async function pSet(key, value) {
 }
 
 async function pRemove(key) {
-  const prefs = await getPrefs();
+  const { plugin: prefs } = await getPrefs();
   if (prefs) {
     try {
       await prefs.remove({ key });

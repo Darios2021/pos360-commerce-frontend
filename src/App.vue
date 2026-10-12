@@ -4,13 +4,19 @@
   <div :class="rootScopeClass">
     <router-view />
     <AppVersionAviso v-if="rootScopeClass === 'scope-app'" />
+    <ArranqueApk v-if="enApk" />
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, defineAsyncComponent } from "vue";
 import { useRoute } from "vue-router";
 import AppVersionAviso from "@/app/components/AppVersionAviso.vue";
+import { isCapacitor } from "@/app/utils/runtime";
+
+// APK: cerrojo de huella y avisos push al abrir (app/native/)
+const ArranqueApk = defineAsyncComponent(() => import("@/app/native/ArranqueApk.vue"));
+const enApk = isCapacitor();
 
 const route = useRoute();
 

@@ -7,7 +7,7 @@
 //    quedaría apuntando al WebView local (404) en vez del backend.
 //  - VITE_ENABLE_PRERENDER=0  (prerender no aplica para APK)
 import { spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 const PROD_API = "https://sanjuantecnologia.com/api/v1";
@@ -16,6 +16,19 @@ process.env.VITE_SHOP_BASE = "/";
 process.env.VITE_API_BASE_URL = PROD_API;
 process.env.VITE_PUBLIC_API_BASE_URL = PROD_API;
 process.env.VITE_ENABLE_PRERENDER = "0";
+
+// La version de la APK (android/app/build.gradle) viaja con el registro del
+// telefono para saber que version tiene cada uno.
+try {
+  const gradle = readFileSync(resolve(process.cwd(), "android/app/build.gradle"), "utf8");
+  process.env.VITE_APP_VERSION = (gradle.match(/versionName\s+"([^"]+)"/) || [])[1] || "";
+} catch { /* sin android/ todavia */ }
+
+// Avisos push: solo con el proyecto de Firebase presente. Sin el archivo, la
+// app no llama a register() (sin Firebase eso cierra la app en Android).
+const GOOGLE_SERVICES = resolve(process.cwd(), "android/app/google-services.json");
+process.env.VITE_APK_PUSH = existsSync(GOOGLE_SERVICES) ? "1" : "0";
+console.log(`🔔 [build-apk] avisos push: ${process.env.VITE_APK_PUSH === "1" ? "SI" : "NO (falta android/app/google-services.json)"}`);
 
 console.log("📦 [build-apk] Compilando bundle para APK con base /");
 

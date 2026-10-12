@@ -4,6 +4,8 @@ import http from "../../../app/api/http";
 import vuetify from "../../../app/plugins/vuetify";
 
 import { usePosStore } from "../../../app/store/pos.store";
+import { conexion } from "../../../app/store/conexion.state";
+import { isCapacitor } from "../../../app/utils/runtime";
 import { useAuthStore } from "../../../app/store/auth.store";
 
 import { usePosBranch } from "../composables/usePosBranch";
@@ -323,6 +325,16 @@ export function usePosSalesFlow() {
 
   async function openCheckoutSafe() {
     logCajaState("before-open-checkout");
+
+    // APK sin conexion no se cobra: es una decision, no un olvido. Cobrar sin
+    // servidor exige numeracion y stock reservados del lado de la API, y este
+    // POS ya tuvo cobros duplicados. Se puede buscar y armar la venta (con la
+    // copia del catalogo), no cerrarla. En la web del mostrador no se bloquea:
+    // ahi sigue el aviso de PosEstadoConexion y la clave anti-duplicado.
+    if (isCapacitor() && !conexion.enLinea) {
+      toast("Sin conexión");
+      return;
+    }
 
     if (needsBranchPick.value) {
       toast("Falta la sucursal");
