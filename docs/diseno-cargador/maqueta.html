@@ -284,7 +284,8 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
 .dif-ok{color:var(--verde)}
 
 /* ================= Cargador: piezas nuevas ================= */
-.ctl{width:300px}
+.ctl{width:300px;max-height:calc(100vh - 48px);overflow:auto}
+.idx{max-height:none}
 .idx button{display:flex;align-items:center;gap:6px}
 .idx button span{flex:1}
 .tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;flex:none}
@@ -353,10 +354,6 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
 .ln .nota{margin-top:8px;height:40px;font-size:15px;border-radius:8px}
 .prog{height:8px;border-radius:4px;background:var(--pista);overflow:hidden;margin-top:10px}
 .prog s{display:block;height:100%;background:var(--r1);border-radius:4px}
-.cmp-cc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
-.cmp-cc div{background:var(--variante);border-radius:10px;padding:10px 4px}
-.cmp-cc b{display:block;font-size:22px;font-weight:800}
-.cmp-cc span{font-size:12px;color:var(--suave);font-weight:600}
 .dif{font-weight:800;font-size:16px;min-width:44px;text-align:right}
 
 /* QR de la derivación */
@@ -373,6 +370,7 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
 /* Accesos de Inicio */
 .accesos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .acc{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:92px;padding:14px;background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);text-align:left;position:relative}
+[data-rol="cajero"] .accesos .acc:last-child{grid-column:1/-1}
 .acc b{font-size:15px;font-weight:700}
 .acc .ico{width:36px;height:36px}
 .acc .bd{position:absolute;top:12px;right:12px;min-width:22px;height:22px;border-radius:11px;background:var(--rojo);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 6px}
@@ -435,8 +433,8 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
     <div class="g"><b>Rol</b><div class="seg" data-k="rol"><button data-v="admin" class="on">Dueño</button><button data-v="cajero">Cajero</button></div></div>
     <div class="g"><b>Plataforma</b><div class="seg" data-k="plat"><button data-v="web" class="on">Webapp</button><button data-v="apk">APK</button></div></div>
     <div class="g"><b>Lectura simulada del lector</b><div class="seg tres" data-k="lect"><button data-v="producto" class="on">Producto</button><button data-v="nuevo">Código nuevo</button><button data-v="qr">QR derivación</button></div></div>
-    <div class="g ix"><b>Pantallas</b><div class="idx" id="idx"></div></div>
     <div class="g ix"><b>Datos de esta pantalla</b><ul class="apibox" id="api"></ul></div>
+    <div class="g ix"><b>Pantallas</b><div class="idx" id="idx"></div></div>
   </aside>
 
   <div class="tel" id="tel" data-rol="admin" data-plat="web">
@@ -672,7 +670,7 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
       <div class="cu">
         <div class="cmp"><label>Depósito</label><select class="inp" style="font-size:16px"><option>Centro · Depósito principal</option></select></div>
         <div class="cmp"><label>Rubro</label><select class="inp" style="font-size:16px"><option>Todos</option><option>Cargadores</option><option>Cables</option><option>Audio</option></select></div>
-        <div class="cmp-cc"><div><b class="num" data-c-n>0</b><span>Contados</span></div><div><b class="num" data-c-ok>0</b><span>Iguales</span></div><div><b class="num" data-c-dif style="color:var(--rojo)">0</b><span>Con diferencia</span></div></div>
+        <div class="chips" id="chipsC"></div>
         <div class="pz">
           <div class="pz-h"><h3>Contados</h3><span>Sistema · Contado</span></div>
           <div id="lineasC"></div>
@@ -946,9 +944,10 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
     let ok = 0, dif = 0;
     const filas = [];
     st.conteo.forEach((c, id) => { const p = P(id); const d = c - p.s; d ? dif++ : ok++;
+      if (st.filtroC === "ok" && d) return; if (st.filtroC === "dif" && !d) return;
       filas.push(`<div class="ln"><span class="tx"><b>${p.n}</b><small class="num">Sistema ${p.s}</small></span><span class="stp"><button data-cq="${id}" data-d="-1" aria-label="Menos"><svg class="i s20"><use href="#menos"/></svg></button><span class="num">${c}</span><button data-cq="${id}" data-d="1" aria-label="Más"><svg class="i s20"><use href="#mas1"/></svg></button></span><span class="dif num" style="color:${d ? (d < 0 ? "var(--rojo)" : "var(--ocre)") : "var(--verde)"}">${d ? (d > 0 ? "+" : "−") + Math.abs(d) : "="}</span></div>`); });
     $("#lineasC").innerHTML = filas.join("") || `<div class="ln"><span class="tx"><small>Sin productos contados</small></span></div>`;
-    $("[data-c-n]").textContent = st.conteo.size; $("[data-c-ok]").textContent = ok; $("[data-c-dif]").textContent = dif;
+    $("#chipsC").innerHTML = [["", "Todos", st.conteo.size], ["ok", "Iguales", ok], ["dif", "Con diferencia", dif]].map(([v, t, n]) => `<button class="chip ${(st.filtroC || "") === v ? "on" : ""}" data-fc="${v}">${t} ${n}</button>`).join("");
     const b = $('[data-go="conteo-revisar"]'); b.toggleAttribute("disabled", !st.conteo.size);
   }
   function pintarRevisar() {
@@ -1060,6 +1059,7 @@ textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
     const rad = t.closest("[data-radio]");
     if (rad && t.classList.contains("op")) { $$(".op", rad).forEach(o => o.classList.toggle("on", o === t)); if (rad.dataset.radio === "destino") st.destino = t.dataset.v; return; }
     if (t.closest("#chipsP") && t.dataset.f) { st.filtroP = t.dataset.f; pintarProductos(); return; }
+    if (t.dataset.fc !== undefined) { st.filtroC = t.dataset.fc; pintarConteo(); return; }
     if (t.dataset.fd !== undefined) { st.filtroD = t.dataset.fd; pintarDerivaciones(); return; }
     if (t.dataset.aviso) { toast(t.dataset.aviso); return; }
     if (t.dataset.prod) { verProducto(+t.dataset.prod); return; }
