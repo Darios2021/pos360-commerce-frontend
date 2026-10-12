@@ -31,7 +31,9 @@
           <small>{{ sucMovil(t.fromWarehouse) }} → {{ sucMovil(t.toWarehouse) }} · {{ cuandoMovil(t) }}</small>
           <span class="m-est" :class="recibeMovil(t) ? 'az' : estMovil(t).c" style="margin-top: 6px">{{ recibeMovil(t) ? "Por recibir" : estMovil(t).t }}</span>
         </span>
-        <span class="der"><b class="num">{{ fmt((t.items || []).length) }}</b><small>{{ (t.items || []).length === 1 ? "producto" : "productos" }}</small></span>
+        <!-- Unidades (units_total de la API, maqueta "14 u."); la API vieja no lo trae: cantidad de productos. -->
+        <span v-if="t.units_total != null" class="der"><b class="num">{{ u(t.units_total) }}</b></span>
+        <span v-else class="der"><b class="num">{{ fmt((t.items || []).length) }}</b><small>{{ (t.items || []).length === 1 ? "producto" : "productos" }}</small></span>
         <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
       </router-link>
       <div v-if="total > limit" class="dlm-pag">
@@ -129,7 +131,7 @@ import "@/modules/products/styles/proveedores.css";
 import { useDisplay } from "vuetify";
 import MovilAviso from "@/app/components/movil/MovilAviso.vue";
 import { nuevaDerivacion } from "@/modules/cargador/state/derivacion";
-import { cuando } from "@/modules/cargador/lib/formato";
+import { cuando, u } from "@/modules/cargador/lib/formato";
 import { ESTADOS as ESTADOS_MOVIL } from "@/modules/cargador/lib/derivaciones";
 
 const { mobile } = useDisplay();

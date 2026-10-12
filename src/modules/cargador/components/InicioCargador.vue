@@ -68,6 +68,7 @@ const porRecibir = computed(() => pendingForMe.value.filter((t) => Number(t.to_b
 const unidades = reactive({});
 watch(porRecibir, async (lista) => {
   for (const t of lista.slice(0, 3)) {
+    if (t.units_total != null) { unidades[t.id] = t.units_total; continue; } // del listado
     if (unidades[t.id] != null) continue;
     try { unidades[t.id] = unidadesEnviadas(await traerDerivacion(t.id)); } catch { /* sin unidades */ }
   }
