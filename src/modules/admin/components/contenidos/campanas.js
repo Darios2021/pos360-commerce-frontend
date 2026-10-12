@@ -20,6 +20,16 @@ export const GRUPOS = [
   { k: "vienen", t: "Se vienen" },
 ];
 
+/* Sonido que ofrece el creador: exactamente lo que habilitó la consola en GET /recursos
+   (estilos, voces y músicas), en el orden del servicio. La pantalla no agrega ni recorta:
+   sólo descarta lo que no es una opción (sin id). Antes la música salía únicamente del
+   estilo elegido y con tres estilos quedaban tres músicas de las 19 habilitadas. */
+const esOpcion = (x) => Boolean(x) && typeof x === "object" && x.id != null && x.id !== "";
+export function opcionesSonido(r) {
+  const de = (l) => (Array.isArray(l) ? l.filter(esOpcion) : []);
+  return { estilos: de(r?.estilos), voces: de(r?.voces), musicas: de(r?.musicas) };
+}
+
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 

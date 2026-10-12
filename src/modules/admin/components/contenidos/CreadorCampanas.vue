@@ -118,12 +118,24 @@
               <span>Estilo</span>
               <div class="cc-son-op"><button v-for="s in estilos" :key="s.id" type="button" class="cc-pas" :aria-pressed="son.paquete === s.id" @click="elegirEstilo(s)">{{ s.nombre }}</button></div>
             </div>
+            <div class="cc-son-fila">
+              <span>Música</span>
+              <div class="cc-voces" role="radiogroup" aria-label="Música">
+                <span v-for="m in musicas" :key="m.id" class="cc-vozop" :aria-pressed="son.musica === m.id">
+                  <b role="radio" tabindex="0" :aria-checked="son.musica === m.id" @click="elegirMusica(m.id)" @keydown.enter.prevent="elegirMusica(m.id)" @keydown.space.prevent="elegirMusica(m.id)">{{ m.nombre || m.id }}</b>
+                  <button v-if="m.muestra" type="button" class="cc-oir" :class="{ 'is-sonando': sonando === `mus:${m.id}` }" :aria-label="`${sonando === `mus:${m.id}` ? 'Detener' : 'Escuchar'} ${m.nombre || m.id}`" @click="oir(`mus:${m.id}`, m.muestra)"><v-icon size="16">{{ sonando === `mus:${m.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                </span>
+                <span class="cc-vozop" :aria-pressed="!son.musica">
+                  <b role="radio" tabindex="0" :aria-checked="!son.musica" @click="elegirMusica(null)" @keydown.enter.prevent="elegirMusica(null)" @keydown.space.prevent="elegirMusica(null)">Sin música</b>
+                </span>
+              </div>
+            </div>
             <div v-if="conVoz" class="cc-son-fila">
               <span>Voz</span>
               <div class="cc-voces">
                 <span v-for="v in voces" :key="v.id" class="cc-vozop" :aria-pressed="son.locutor === v.id">
-                  <b role="button" tabindex="0" @click="elegirVoz(v.id)" @keydown.enter.prevent="elegirVoz(v.id)" @keydown.space.prevent="elegirVoz(v.id)">{{ v.nombre }}</b>
-                  <button v-if="v.muestra" type="button" class="cc-oir" :class="{ 'is-sonando': sonando === v.id }" :aria-label="`${sonando === v.id ? 'Detener' : 'Escuchar'} ${v.nombre}`" @click="oir(v)"><v-icon size="16">{{ sonando === v.id ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+                  <b role="button" tabindex="0" @click="elegirVoz(v.id)" @keydown.enter.prevent="elegirVoz(v.id)" @keydown.space.prevent="elegirVoz(v.id)">{{ v.nombre || v.id }}</b>
+                  <button v-if="v.muestra" type="button" class="cc-oir" :class="{ 'is-sonando': sonando === `voz:${v.id}` }" :aria-label="`${sonando === `voz:${v.id}` ? 'Detener' : 'Escuchar'} ${v.nombre || v.id}`" @click="oir(`voz:${v.id}`, v.muestra)"><v-icon size="16">{{ sonando === `voz:${v.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
                 </span>
               </div>
             </div>
@@ -151,7 +163,7 @@ import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import { crearPieza, sugerirGuion } from "@/modules/admin/services/contenidos.service";
 import {
   GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, durEscena, durVoz, esNuevo, llenar, pesos,
-  primeraQueEntra, propuestos, seg, sugeridos, textosLocales, tienePlan, variantesCierre, variantesItem, variantesPortada, contextoItem,
+  opcionesSonido, primeraQueEntra, propuestos, seg, sugeridos, textosLocales, tienePlan, variantesCierre, variantesItem, variantesPortada, contextoItem,
 } from "@/modules/admin/components/contenidos/campanas";
 
 const props = defineProps({
@@ -185,11 +197,14 @@ const tarjetas = computed(() => {
 });
 
 /* ── Sonido: estilos y voces habilitados; la campaña los preelige ── */
-const estilos = computed(() => (props.recursos.estilos || []).filter((e) => e?.animacion));
-const voces = computed(() => props.recursos.voces || []);
+// Todo lo que habilitó la consola, sin recortes: la campaña y el estilo sólo preeligen.
+const sonido = computed(() => opcionesSonido(props.recursos));
+const estilos = computed(() => sonido.value.estilos);
+const voces = computed(() => sonido.value.voces);
+const musicas = computed(() => sonido.value.musicas);
 const conVoz = computed(() => voces.value.length > 0);
 const son = reactive({ paquete: null, musica: null, locutor: null, ritmo: "normal" });
-const musicaDe = (id) => (props.recursos.musicas || []).find((m) => m.id === id);
+const musicaDe = (id) => musicas.value.find((m) => m.id === id);
 const nombreMusica = computed(() => (son.musica ? musicaDe(son.musica)?.nombre || String(son.musica).replace(/^./, (x) => x.toUpperCase()) : "Sin música"));
 const cps = computed(() => voces.value.find((v) => v.id === son.locutor)?.cps);
 const medir = (t) => durVoz(t, { cps: cps.value, ritmo: son.ritmo });
@@ -197,7 +212,7 @@ const medir = (t) => durVoz(t, { cps: cps.value, ritmo: son.ritmo });
 function sonidoDe(c) {
   const est = estilos.value.find((e) => e.id === c.estilo) || estilos.value.find((e) => e.porDefecto) || estilos.value[0] || null;
   son.paquete = est?.id || null;
-  son.musica = c.musica !== undefined ? c.musica : est?.musica ?? (props.recursos.musicas || []).find((m) => m.porDefecto)?.id ?? null;
+  son.musica = c.musica !== undefined ? c.musica : est?.musica ?? musicas.value.find((m) => m.porDefecto)?.id ?? null;
   const loc = c.voz?.locutor || est?.voz?.locutor;
   son.locutor = voces.value.some((v) => v.id === loc) ? loc : (voces.value.find((v) => v.porDefecto) || voces.value[0])?.id || null;
   son.ritmo = c.voz?.ritmo || est?.voz?.ritmo || "normal";
@@ -206,6 +221,7 @@ function elegirEstilo(s) {
   son.paquete = s.id;
   son.musica = s.id === camp.value?.estilo && camp.value?.musica !== undefined ? camp.value.musica : s.musica ?? null;
 }
+function elegirMusica(id) { son.musica = id; }
 function elegirVoz(id) { son.locutor = id; reajustar(); }
 function elegirRitmo(v) { son.ritmo = v; reajustar(); }
 
@@ -278,7 +294,7 @@ function abrirEdicion(ed) {
   camp.value = c;
   sonidoDe(c);
   if (enc.paquete && estilos.value.some((e) => e.id === enc.paquete)) son.paquete = enc.paquete;
-  if (enc.musica === null || (props.recursos.musicas || []).some((m) => m.id === enc.musica)) son.musica = enc.musica;
+  if (enc.musica === null || musicas.value.some((m) => m.id === enc.musica)) son.musica = enc.musica;
   if (voces.value.some((v) => v.id === enc.voz?.locutor)) son.locutor = enc.voz.locutor;
   const vel = Number(enc.voz?.velocidad);
   if (vel) son.ritmo = RITMOS.reduce((a, r) => (Math.abs(r.velocidad - vel) < Math.abs(a.velocidad - vel) ? r : a)).v;
@@ -505,24 +521,25 @@ function reelDe(e, ancho) {
   return { tipo: "item", item: { ...e.prod, etiqueta: e.etiqueta, descripcion: descripcionDe(e) }, conCuotas: tienePlan(e.prod), fuente: props.fuente, ancho };
 }
 
-/* ── Muestras de voz: un solo reproductor ── */
+/* ── Muestras de música y voz: un solo reproductor. La clave lleva el tipo (mus:/voz:)
+   porque una música y una voz pueden compartir id. ── */
 const sonando = ref(null);
 let reproductor = null;
 function cortarMuestra() {
   if (reproductor) { reproductor.pause(); reproductor.removeAttribute("src"); reproductor.load(); }
   sonando.value = null;
 }
-function oir(v) {
-  if (sonando.value === v.id) return cortarMuestra();
+function oir(clave, muestra) {
+  if (sonando.value === clave) return cortarMuestra();
   cortarMuestra();
   if (!reproductor) {
     reproductor = new Audio();
     reproductor.preload = "none";
     reproductor.addEventListener("ended", () => { sonando.value = null; });
   }
-  reproductor.src = v.muestra;
-  sonando.value = v.id;
-  reproductor.play().catch(() => { if (sonando.value === v.id) sonando.value = null; });
+  reproductor.src = muestra;
+  sonando.value = clave;
+  reproductor.play().catch(() => { if (sonando.value === clave) sonando.value = null; });
 }
 
 /* ── Generar ── */
@@ -687,8 +704,8 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-son-fila:last-child { border-bottom: 0; }
 .cc-son-fila > span { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--sp-suave); }
 .cc-son-op { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.cc-voces { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-.cc-voces::-webkit-scrollbar { display: none; }
+/* Todas las opciones a la vista: envuelven en filas, sin tira con scroll oculto. */
+.cc-voces { display: flex; flex-wrap: wrap; gap: 6px; }
 .cc-vozop { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--sp-borde); background: var(--sp-caja); border-radius: 9px; padding: 3px 4px 3px 10px; font-size: 13px; font-weight: 700; color: var(--sp-suave); white-space: nowrap; }
 .cc-vozop b { font-weight: 700; cursor: pointer; }
 .cc-vozop[aria-pressed="true"] { border-color: var(--cc-pri); color: var(--cc-pri); background: var(--cc-pri-bg); }
