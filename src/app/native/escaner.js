@@ -69,3 +69,41 @@ export async function escanear() {
     throw e;
   }
 }
+
+/**
+ * Lectura continua con la camara dibujada detras de la vista (cargador:
+ * lector central y lector por lote). Usa startScan() + el evento
+ * barcodesScanned del mismo plugin; la pantalla de la app queda encima, con
+ * el fondo transparente (clase barcode-scanner-active, ver movil.css).
+ * Devuelve una funcion para cortar, o null si el telefono no puede.
+ */
+export async function lecturaContinua(onCodigo) {
+  const { plugin: p } = await plugin();
+  if (!p) return null;
+  try {
+    const { supported } = await p.isSupported();
+    if (!supported) return null;
+    let { camera } = await p.checkPermissions();
+    if (camera !== "granted" && camera !== "limited") ({ camera } = await p.requestPermissions());
+    if (camera !== "granted" && camera !== "limited") return null;
+    document.documentElement.classList.add("barcode-scanner-active");
+    document.body.classList.add("barcode-scanner-active");
+    await p.addListener("barcodesScanned", (ev) => {
+      for (const b of ev?.barcodes || []) {
+        const raw = String(b?.rawValue || "").trim();
+        if (raw) onCodigo(raw);
+      }
+    });
+    await p.startScan();
+    return async () => {
+      document.documentElement.classList.remove("barcode-scanner-active");
+      document.body.classList.remove("barcode-scanner-active");
+      try { await p.removeAllListeners(); } catch { /* ya cortado */ }
+      try { await p.stopScan(); } catch { /* ya cortado */ }
+    };
+  } catch {
+    document.documentElement.classList.remove("barcode-scanner-active");
+    document.body.classList.remove("barcode-scanner-active");
+    return null;
+  }
+}

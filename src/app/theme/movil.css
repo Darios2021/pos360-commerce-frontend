@@ -39,6 +39,8 @@
   --m-gris: #c3c9d6;
   --m-sombra: 0 1px 2px rgba(16, 24, 40, 0.08);
   --m-avatar: #121e47;
+  --m-ocre: #bc7f12;
+  --m-ocre-tinte: rgba(188, 127, 18, 0.14);
 }
 
 .v-theme--adminDark,
@@ -71,6 +73,8 @@
   --m-gris: #4a4f61;
   --m-sombra: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
   --m-avatar: #2a4a6e;
+  --m-ocre: #d99414;
+  --m-ocre-tinte: rgba(188, 127, 18, 0.14);
 }
 
 /* ---------- Vista ---------- */
@@ -299,3 +303,140 @@ select.m-inp { font-size: 16px; }
 }
 .mv-ib .v-icon { color: var(--m-banda-ink); }
 .mv-ib:active { background: rgba(255, 255, 255, 0.14) !important; }
+
+/* ================= Cargador (rama diseno-cargador, maqueta aprobada) =================
+   Piezas nuevas del teléfono como cargador y consultor. Medidas tomadas de
+   docs/diseno-cargador/maqueta.html (rama diseno-cargador). */
+
+/* Píldora de sucursal en la banda */
+.m-pill.suc i { background: #a6d8fa; }
+
+/* Estados extra */
+.m-est.oc { background: var(--m-ocre-tinte); color: var(--m-ocre); }
+.m-est.az { background: var(--m-accion-tinte); color: var(--m-accion-txt); }
+.m-mini { font-size: 12px; color: var(--m-suave); }
+
+/* Recorrido origen → destino */
+.m-ruta { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; flex-wrap: wrap; }
+.m-ruta .v-icon { color: var(--m-suave); }
+
+/* Ficha corta de consulta */
+.m-ficha-foto { height: 170px; background: linear-gradient(135deg, #dfe7ef, #b8c7d6); display: grid; place-items: center; color: #5a6678; overflow: hidden; }
+.m-ficha-foto img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.v-theme--adminDark .m-ficha-foto,
+.v-theme--dark .m-ficha-foto { background: linear-gradient(135deg, #2a3340, #1c232c); color: #a1a4ab; }
+.m-precio-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.m-estampa { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--m-variante); color: var(--m-suave); font-size: 12px; font-weight: 700; }
+.m-codigo-grande { font-size: 26px; font-weight: 800; letter-spacing: 0.04em; text-align: center; padding: 18px 0 6px; overflow-wrap: anywhere; }
+.m-barras {
+  height: 56px; margin: 0 auto; width: 220px; max-width: 100%; opacity: 0.85; border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--m-tinta) 0 2px, transparent 2px 4px, var(--m-tinta) 4px 5px, transparent 5px 8px, var(--m-tinta) 8px 11px, transparent 11px 12px);
+}
+
+/* Líneas de derivación, recepción y conteo */
+.m-ln { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--m-linea2); }
+.m-ln:first-child { border-top: 0; }
+.m-ln .tx { flex: 1; min-width: 0; }
+.m-ln .tx b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-ln .tx small { display: block; font-size: 13px; color: var(--m-suave); margin-top: 2px; }
+.m-ln .tx small.no { color: var(--m-rojo); font-weight: 600; }
+.m-ln.apagada .tx b { color: var(--m-suave); }
+.m-ln .nota { margin-top: 8px; height: 40px; font-size: 15px; border-radius: 8px; flex-basis: 100%; }
+.m-ln .quitar { width: 40px; height: 40px; display: grid; place-items: center; color: var(--m-suave); flex: none; }
+.m-ln .quitar .v-icon { color: var(--m-suave); }
+.m-prog { height: 8px; border-radius: 4px; background: var(--m-pista); overflow: hidden; margin-top: 10px; }
+.m-prog s { display: block; height: 100%; background: var(--m-r1); border-radius: 4px; }
+.m-dif { font-weight: 800; font-size: 16px; min-width: 44px; text-align: right; flex: none; }
+
+/* QR de la derivación */
+.m-qrbox { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 16px 16px; }
+.m-qrbox .qr { width: 184px; height: 184px; background: #fff; border-radius: 8px; padding: 10px; box-sizing: border-box; }
+.m-qrbox .qr svg { width: 100%; height: 100%; display: block; }
+.m-qrbox b { font-size: 17px; font-weight: 800; letter-spacing: 0.02em; }
+
+/* Resultado (recepción registrada) */
+.m-hecho { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px 8px; text-align: center; }
+.m-hecho .circ { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--m-verde-tinte); color: var(--m-verde); }
+.m-hecho .circ .v-icon { color: inherit; }
+.m-hecho .circ.oc { background: var(--m-ocre-tinte); color: var(--m-ocre); }
+.m-hecho h3 { font-size: 21px; font-weight: 800; margin: 0; }
+
+/* Accesos de Inicio */
+.m-accesos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.m-accesos.impar > :last-child { grid-column: 1 / -1; }
+.m-acc {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 92px; padding: 14px;
+  background: var(--m-pieza); border-radius: 12px; box-shadow: var(--m-sombra); text-align: left; position: relative;
+  color: var(--m-tinta); text-decoration: none; box-sizing: border-box;
+}
+.m-acc b { font-size: 15px; font-weight: 700; }
+.m-acc .m-ico { width: 36px; height: 36px; }
+
+/* Fotos del producto */
+.m-fotos { display: flex; gap: 8px; overflow-x: auto; }
+.m-ftile {
+  width: 96px; height: 96px; border-radius: 12px; flex: none; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; position: relative; overflow: hidden; box-sizing: border-box;
+}
+.m-ftile.add { border: 1.5px dashed var(--m-accion); color: var(--m-accion-txt); background: var(--m-accion-tinte); cursor: pointer; }
+.m-ftile.add .v-icon { color: var(--m-accion-txt); }
+.m-ftile.img { background: linear-gradient(135deg, #dfe7ef, #b8c7d6); color: #5a6678; }
+.m-ftile.img img { width: 100%; height: 100%; object-fit: cover; }
+.m-ftile.img em { position: absolute; left: 6px; bottom: 6px; font-style: normal; font-size: 11px; font-weight: 700; background: rgba(15, 23, 42, 0.7); color: #fff; padding: 2px 6px; border-radius: 4px; }
+.m-ftile.img .quitar { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 50%; background: rgba(15, 23, 42, 0.7); display: grid; place-items: center; }
+.m-ftile.img .quitar .v-icon { color: #fff; }
+/* Input de archivo renderizado y recortado: abrir por <label for> anda en todos los teléfonos */
+.m-archivo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Lector: pantalla oscura, modos y hoja de lote */
+.m-lector { background: #000 !important; color: #fff; }
+.m-lector .mv-tb { background: #0b0c0e; color: #fff; }
+.m-visor {
+  flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #3a3f47, #0b0c0e 70%);
+}
+.m-visor video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.m-marco { width: 280px; height: 170px; position: relative; }
+.m-marco.qr { width: 220px; height: 220px; }
+.m-marco::before {
+  content: ""; position: absolute; inset: 0; border: 3px solid #fff; border-radius: 12px;
+  clip-path: polygon(0 0, 22% 0, 22% 3px, 3px 3px, 3px 22%, 0 22%, 0 78%, 3px 78%, 3px calc(100% - 3px), 22% calc(100% - 3px), 22% 100%, 78% 100%, 78% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 78%, 100% 78%, 100% 22%, calc(100% - 3px) 22%, calc(100% - 3px) 3px, 78% 3px, 78% 0, 100% 0, 100% 100%, 0 100%);
+}
+.m-marco .rayo { position: absolute; left: 8px; right: 8px; top: 50%; height: 2px; background: #ff5a4f; box-shadow: 0 0 12px #ff5a4f; animation: m-rayo 1.8s ease-in-out infinite; }
+@keyframes m-rayo { 0%, 100% { transform: translateY(-60px); } 50% { transform: translateY(60px); } }
+.m-visor .estado { position: absolute; left: 16px; right: 16px; bottom: 24px; text-align: center; font-size: 14px; font-weight: 600; color: #c9cdd4; }
+.m-esc-pie { flex: none; padding: 20px 16px 28px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; gap: 10px; background: #0b0c0e; }
+.m-esc-pie .m-lnk { color: #a6d8fa !important; }
+.m-esc-modos { display: flex; gap: 4px; background: #1b1e23; border-radius: 10px; padding: 4px; width: 100%; box-sizing: border-box; }
+.m-esc-modos button { flex: 1; height: 40px; border-radius: 8px; color: #c9cdd4; font-size: 14px; font-weight: 700; text-align: center; }
+.m-esc-modos button.on { background: #fff; color: #0b0c0e; }
+.m-hoja {
+  flex: none; background: var(--m-pieza); color: var(--m-tinta); border-radius: 14px 14px 0 0; padding: 14px 16px 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px;
+}
+.m-hoja .ult { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+.m-hoja .ult .tx { flex: 1; min-width: 0; }
+.m-hoja .ult b { display: block; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-hoja .ult small { display: block; font-size: 13px; color: var(--m-suave); }
+.m-hoja .ult small.no { color: var(--m-rojo); font-weight: 600; }
+.m-hoja .mas1 { min-width: 44px; height: 32px; border-radius: 8px; background: var(--m-verde-tinte); color: var(--m-verde); font-weight: 800; display: grid; place-items: center; font-size: 15px; flex: none; }
+.m-hoja .mas1.no { background: var(--m-rojo-tinte); color: var(--m-rojo); }
+.m-hoja .res { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); padding-top: 10px; }
+.m-hoja .res b { font-size: 18px; color: var(--m-tinta); font-weight: 800; }
+
+/* Cuerpo de las pantallas del lector: visor a todo el ancho y la hoja pegada abajo */
+.m-cu.lec-cu { padding: 0; gap: 0; overflow: hidden; }
+.m-cu.lec-cu > .m-visor { flex: 1 1 auto; }
+
+/* Barra inferior: lector al centro */
+.m-bola { width: 60px; height: 60px; border-radius: 50%; background: var(--m-accion); color: #fff; display: grid; place-items: center; margin-top: -30px; border: 4px solid var(--m-canvas); box-shadow: 0 6px 14px rgba(15, 111, 174, 0.35); box-sizing: border-box; }
+.m-bola .v-icon { color: #fff; }
+
+/* APK: mientras el lector nativo dibuja la cámara detrás de la vista, todo lo demás queda transparente */
+html.barcode-scanner-active,
+body.barcode-scanner-active,
+body.barcode-scanner-active .v-application,
+body.barcode-scanner-active .v-main,
+body.barcode-scanner-active .m-lector,
+body.barcode-scanner-active .m-visor { background: transparent !important; }
+body.barcode-scanner-active .m-visor video { display: none; }

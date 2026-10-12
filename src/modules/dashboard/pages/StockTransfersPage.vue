@@ -3,7 +3,46 @@
      estados con su cantidad y tabla cerrada con el recorrido origen → destino
      y las fechas de cada paso. Cada fila abre la derivación en su vista. -->
 <template>
-  <div class="sp dl">
+  <!-- Teléfono (maqueta diseno-cargador, "derivaciones"): buscador con QR,
+       chips con su cantidad (suman Todas) y filas que abren Recibir, el
+       borrador o el detalle. El "+" va en la banda. -->
+  <div v-if="mobile" class="dlm m-vista">
+    <Teleport to="#m-barra-acc" defer>
+      <button type="button" class="mv-ib" aria-label="Nueva derivación" @click="nuevaMovil">
+        <v-icon size="24">mdi-plus</v-icon>
+      </button>
+    </Teleport>
+    <label class="m-bus">
+      <v-icon size="20">mdi-magnify</v-icon>
+      <input v-model="q" type="search" enterkeyhint="search" placeholder="Número o nota" aria-label="Número o nota" @input="buscar" />
+      <router-link :to="{ name: 'lector', query: { modo: 'consultar' } }" class="cam" aria-label="Escanear QR"><v-icon size="24">mdi-qrcode-scan</v-icon></router-link>
+    </label>
+    <div class="m-chips">
+      <button v-for="c in chipsMovil" :key="c.v" type="button" class="m-chip num" :class="{ on: estado === c.v }" @click="estado = c.v; page = 1; cargar()">{{ c.t }} {{ fmt(c.n) }}</button>
+    </div>
+    <div v-if="error" class="m-error">{{ error }}</div>
+    <div class="m-pz">
+      <div v-if="cargando && !filas.length" class="m-vacio">Cargando…</div>
+      <div v-else-if="!filas.length" class="m-vacio">Sin derivaciones</div>
+      <router-link v-for="t in filas" :key="t.id" :to="rutaMovil(t)" class="m-it">
+        <span class="m-ico"><v-icon size="20">{{ recibeMovil(t) ? "mdi-truck-outline" : "mdi-swap-horizontal" }}</v-icon></span>
+        <span class="tx">
+          <b class="num">{{ t.number }}</b>
+          <small>{{ sucMovil(t.fromWarehouse) }} → {{ sucMovil(t.toWarehouse) }} · {{ cuandoMovil(t) }}</small>
+          <span class="m-est" :class="recibeMovil(t) ? 'az' : estMovil(t).c" style="margin-top: 6px">{{ recibeMovil(t) ? "Por recibir" : estMovil(t).t }}</span>
+        </span>
+        <span class="der"><b class="num">{{ fmt((t.items || []).length) }}</b><small>{{ (t.items || []).length === 1 ? "producto" : "productos" }}</small></span>
+        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+      </router-link>
+      <div v-if="total > limit" class="dlm-pag">
+        <button type="button" class="m-lnk" :disabled="page <= 1" @click="page--; cargar()">Anteriores</button>
+        <span class="m-sub num">{{ page }} de {{ Math.ceil(total / limit) }}</span>
+        <button type="button" class="m-lnk" :disabled="page * limit >= total" @click="page++; cargar()">Siguientes</button>
+      </div>
+    </div>
+    <MovilAviso />
+  </div>
+  <div v-else class="sp dl">
     <div class="sp-cab">
       <div class="sp-cab__txt">
         <h1 class="sp-cab__titulo">Derivaciones</h1>
@@ -87,6 +126,13 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { listTransfers } from "../service/stockTransfer.api";
 import "@/modules/products/styles/proveedores.css";
+import { useDisplay } from "vuetify";
+import MovilAviso from "@/app/components/movil/MovilAviso.vue";
+import { nuevaDerivacion } from "@/modules/cargador/state/derivacion";
+import { cuando } from "@/modules/cargador/lib/formato";
+import { ESTADOS as ESTADOS_MOVIL } from "@/modules/cargador/lib/derivaciones";
+
+const { mobile } = useDisplay();
 
 const router = useRouter();
 // Los avisos del Inicio llegan con ?estado=dispatched (Por recibir).
@@ -142,11 +188,46 @@ function abrir(e, t) {
   if (e.type === "click") router.push(ruta(t));
 }
 
+// ── Teléfono ──
+// Recibidas incluye las recibidas con diferencias y Canceladas las rechazadas:
+// así las cantidades de los chips suman Todas.
+const GRUPOS_MOVIL = { received: ["received", "partial"], cancelled: ["cancelled", "rejected"] };
+const chipsMovil = computed(() => {
+  const c = porEstado.value || {};
+  const lista = [
+    { v: "", t: "Todas", n: totalTodas.value },
+    { v: "draft", t: "Borrador", n: n(c.draft) },
+    { v: "dispatched", t: "En camino", n: n(c.dispatched) },
+    { v: "received", t: "Recibidas", n: n(c.received) + n(c.partial) },
+    { v: "cancelled", t: "Canceladas", n: n(c.cancelled) + n(c.rejected) },
+  ];
+  const resto = totalTodas.value - lista.slice(1).reduce((a, x) => a + x.n, 0);
+  return resto > 0 ? [...lista, { v: "__otras", t: "Otras", n: resto }] : lista;
+});
+const sucMovil = (w) => w?.branch?.name || w?.name || "";
+const recibeMovil = (t) => t.status === "dispatched" && Number(t.to_branch_id) === miSucursal.value;
+const estMovil = (t) => ESTADOS_MOVIL[t.status] || { t: t.status, c: "gr" };
+const cuandoMovil = (t) => cuando(t.dispatched_at || t.created_at);
+function rutaMovil(t) {
+  if (recibeMovil(t)) return { name: "derivRecibir", params: { id: t.id } };
+  if (t.status === "draft") return { name: "derivNueva", query: { borrador: t.id } };
+  return { name: "derivDetalle", params: { id: t.id } };
+}
+function nuevaMovil() {
+  nuevaDerivacion();
+  router.push({ name: "derivNueva" });
+}
+function estadoParaApi() {
+  if (!estado.value || estado.value === "__otras") return undefined;
+  if (mobile.value && GRUPOS_MOVIL[estado.value]) return GRUPOS_MOVIL[estado.value];
+  return estado.value;
+}
+
 async function cargar() {
   cargando.value = true;
   error.value = "";
   try {
-    const { data } = await listTransfers({ status: estado.value || undefined, search: q.value.trim() || undefined, page: page.value, limit });
+    const { data } = await listTransfers({ status: estadoParaApi(), search: q.value.trim() || undefined, page: page.value, limit });
     filas.value = data?.transfers || [];
     total.value = Number(data?.total || 0);
     totalTodas.value = Number(data?.total_all ?? data?.total ?? 0);
@@ -164,6 +245,9 @@ onMounted(cargar);
 </script>
 
 <style>
+.dlm { display: flex; flex-direction: column; gap: 12px; background: transparent; }
+.dlm-pag { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; border-top: 1px solid var(--m-linea2); }
+.dlm-pag .m-lnk[disabled] { opacity: 0.4; }
 .dl-estados { display: flex; gap: 6px; flex-wrap: wrap; }
 .dl-estados button { height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font: 700 14px Inter, sans-serif; cursor: pointer; }
 .dl-estados button b { font-weight: 800; opacity: .7; }

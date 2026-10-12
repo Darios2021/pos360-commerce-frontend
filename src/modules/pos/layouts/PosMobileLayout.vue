@@ -14,6 +14,15 @@
 -->
 <template>
   <div class="vn m-vista">
+    <!-- Vista completa (maqueta diseno-cargador): Vender salió de la barra
+         inferior; se entra desde Inicio o Más y se vuelve con la flecha. -->
+    <header class="mv-tb mv-tb--atras">
+      <button type="button" class="mv-ib" aria-label="Volver" @click="volver"><v-icon size="24">mdi-chevron-left</v-icon></button>
+      <h2 class="mv-tit">Vender</h2>
+      <router-link :to="{ name: 'caja' }" class="m-pill" :class="{ cerrada: !isCajaOpen }">
+        <i></i><span>{{ isCajaOpen ? (currentCashRegisterId ? `Caja #${currentCashRegisterId}` : "Caja abierta") : "Caja cerrada" }}</span>
+      </router-link>
+    </header>
     <div class="vn-cu">
       <label class="m-bus">
         <v-icon size="20">mdi-magnify</v-icon>
@@ -99,6 +108,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import http from "@/app/api/http";
 import BarcodeScannerDialog from "@/app/components/BarcodeScannerDialog.vue";
 import MovilAviso from "@/app/components/movil/MovilAviso.vue";
@@ -112,6 +122,7 @@ const {
   cartItems,
   cartCount,
   isCajaOpen,
+  currentCashRegisterId,
   activeBranchId,
   openCheckoutSafe,
   handleAddConsultaToCart,
@@ -148,6 +159,37 @@ const {
 });
 
 const scannerOpen = ref(false);
+const route = useRoute();
+const router = useRouter();
+function volver() {
+  if (window.history.state?.back) router.back();
+  else router.replace({ name: "home" });
+}
+
+// "Agregar a la venta" desde la consulta de producto: /app/pos?agregar=<id>.
+async function agregarDesdeConsulta() {
+  const id = Number(route.query.agregar || 0);
+  if (!id) return;
+  router.replace({ query: { ...route.query, agregar: undefined } });
+  // La caja se carga en paralelo: se espera a saber si está abierta (hasta 4 s).
+  if (!isCajaOpen.value) {
+    await new Promise((listo) => {
+      const corte = setTimeout(() => { parar(); listo(); }, 4000);
+      const parar = watch(isCajaOpen, (v) => { if (v) { clearTimeout(corte); parar(); listo(); } });
+    });
+  }
+  try {
+    const params = { ids: String(id), limit: 1 };
+    if (activeBranchId?.value) params.branch_id = activeBranchId.value;
+    const { data } = await http.get("/pos/products", { params });
+    const filas = Array.isArray(data) ? data : data?.data || data?.items || [];
+    const p = filas.find((x) => Number(x.id) === id);
+    if (p) agregar(p);
+    else toast("Sin stock para vender");
+  } catch {
+    toast("Sin conexión");
+  }
+}
 const categorias = ref([]);
 const rubros = computed(() =>
   (categorias.value || []).filter((c) => c && c.id && c.name && c.is_active !== false && !c.parent_id)
@@ -220,11 +262,15 @@ onMounted(async () => {
     categorias.value = [];
   }
   await searchNow({ force: true });
+  agregarDesdeConsulta();
 });
 </script>
 
 <style scoped>
 .vn {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   height: 100%;

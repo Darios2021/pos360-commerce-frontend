@@ -1,41 +1,48 @@
 <!--
-  AppBottomNav: barra inferior del teléfono (rediseño móvil aprobado, informe 2.1).
-
-  Cinco destinos según el rol:
-    dueño (admin, super_admin, owner): Inicio · Vender · Ventas · Productos · Más
-    cajero (cajero, vendedor, sin rol): Vender · Ventas · Caja · Productos · Más
-
-  El escáner dejó de ser un botón central: es el ícono de código de barras
-  dentro del buscador de Vender, Productos y el campo "Código de barras". El
-  badge de Más suma derivaciones por recibir y pedidos web sin preparar.
+  AppBottomNav: barra inferior del teléfono como cargador y consultor
+  (maqueta diseno-cargador). La misma para el dueño y el cajero:
+    Inicio · Productos · Escanear (botón central) · Derivaciones · Más
+  Vender salió de la barra: está en Inicio y en Más, con su flujo de siempre.
+  Badge de Derivaciones: por recibir en la sucursal del usuario. Badge de
+  Más: pedidos web sin preparar.
 -->
 <template>
   <nav class="bn" aria-label="Navegación principal">
-    <button
-      v-for="item in items"
-      :key="item.name"
-      type="button"
-      class="bn__it"
-      :class="{ on: isActive(item) }"
-      :aria-current="isActive(item) ? 'page' : undefined"
-      @click="go(item)"
-    >
-      <span class="bn__ic">
-        <v-icon size="24">{{ item.icon }}</v-icon>
-        <span v-if="item.badge > 0" class="bn__bd">{{ item.badge > 9 ? "9+" : item.badge }}</span>
-      </span>
-      <span class="bn__lab">{{ item.label }}</span>
-    </button>
+    <template v-for="item in items" :key="item.name">
+      <button
+        v-if="item.lector"
+        type="button"
+        class="bn__it bn__lector"
+        aria-label="Escanear"
+        @click="go(item)"
+      >
+        <span class="m-bola"><v-icon size="28">mdi-barcode-scan</v-icon></span>
+        <span class="bn__lab">{{ item.label }}</span>
+      </button>
+      <button
+        v-else
+        type="button"
+        class="bn__it"
+        :class="{ on: isActive(item) }"
+        :aria-current="isActive(item) ? 'page' : undefined"
+        @click="go(item)"
+      >
+        <span class="bn__ic">
+          <v-icon size="24">{{ item.icon }}</v-icon>
+          <span v-if="item.badge > 0" class="bn__bd">{{ item.badge > 9 ? "9+" : item.badge }}</span>
+        </span>
+        <span class="bn__lab">{{ item.label }}</span>
+      </button>
+    </template>
   </nav>
 </template>
 
 <script setup>
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useAuthStore } from "@/app/store/auth.store";
 
 const props = defineProps({
-  /** Derivaciones por recibir. */
+  /** Derivaciones por recibir en la sucursal del usuario. */
   transferUnreadCount: { type: Number, default: 0 },
   /** Pedidos web sin preparar. */
   pedidosPendientes: { type: Number, default: 0 },
@@ -43,57 +50,33 @@ const props = defineProps({
 
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
 
-const INICIO = {
-  name: "home",
-  label: "Inicio",
-  icon: "mdi-home-outline",
-  to: { name: "home" },
-};
-const VENDER = {
-  name: "pos",
-  label: "Vender",
-  icon: "mdi-cash-register",
-  to: { name: "pos" },
-  activeNames: ["pos", "posCarrito"],
-};
-const VENTAS = {
-  name: "posSales",
-  label: "Ventas",
-  icon: "mdi-receipt-text-outline",
-  to: { name: "posSales" },
-  activeNames: ["posSales", "posSaleDetail"],
-};
-const CAJA = {
-  name: "caja",
-  label: "Caja",
-  icon: "mdi-cash-multiple",
-  to: { name: "caja" },
-};
-const PRODUCTOS = {
-  name: "products",
-  label: "Productos",
-  icon: "mdi-package-variant-closed",
-  to: { name: "products" },
-  activeNames: ["products", "productNew", "productEdit", "productView", "productProfile"],
-};
-
-const masBadge = computed(() => Number(props.transferUnreadCount || 0) + Number(props.pedidosPendientes || 0));
-
-const items = computed(() => {
-  const mas = { name: "mas", label: "Más", icon: "mdi-menu", to: { name: "mas" }, badge: masBadge.value };
-  return auth.isCajero
-    ? [VENDER, VENTAS, CAJA, PRODUCTOS, mas]
-    : [INICIO, VENDER, VENTAS, PRODUCTOS, mas];
-});
+const items = computed(() => [
+  { name: "home", label: "Inicio", icon: "mdi-home-outline", to: { name: "home" } },
+  {
+    name: "products",
+    label: "Productos",
+    icon: "mdi-package-variant-closed",
+    to: { name: "products" },
+    activeNames: ["products", "productNew", "productEdit", "productView", "productProfile", "productoConsulta"],
+  },
+  { name: "lector", label: "Escanear", lector: true, to: { name: "lector" } },
+  {
+    name: "transfers",
+    label: "Derivaciones",
+    icon: "mdi-swap-horizontal",
+    to: { name: "transfers" },
+    badge: Number(props.transferUnreadCount || 0),
+  },
+  { name: "mas", label: "Más", icon: "mdi-menu", to: { name: "mas" }, badge: Number(props.pedidosPendientes || 0) },
+]);
 
 function isActive(item) {
   if (Array.isArray(item.activeNames)) return item.activeNames.includes(route.name);
   return route.name === item.name;
 }
 function go(item) {
-  if (route.name === item.name) return;
+  if (route.name === item.name && !route.query?.estado && !route.query?.stock) return;
   router.push(item.to);
 }
 </script>
@@ -159,4 +142,7 @@ function go(item) {
   place-items: center;
 }
 .bn__lab { white-space: nowrap; }
+.bn { overflow: visible; }
+.bn__lector { color: var(--m-tinta); }
+.bn__lector:active .m-bola { background: var(--m-accion-osc); }
 </style>

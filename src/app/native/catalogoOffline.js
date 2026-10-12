@@ -26,6 +26,15 @@ const TOPE = 5000; // el maximo que acepta la API por pagina
 
 const RUTA = /\/pos\/products\/?$/;
 
+// Se apaga desde Más › Catálogo sin conexión (pantalla del cargador).
+const CLAVE_ACTIVO = "pos360.catalogo_sin_conexion";
+export function catalogoActivo() {
+  try { return localStorage.getItem(CLAVE_ACTIVO) !== "0"; } catch { return true; }
+}
+export function activarCatalogo(v) {
+  try { localStorage.setItem(CLAVE_ACTIVO, v ? "1" : "0"); } catch { /* modo privado */ }
+}
+
 let _db = null;
 function abrir() {
   if (_db) return _db;
@@ -64,6 +73,7 @@ function claveDe(params = {}) {
 /** Es una busqueda de catalogo del POS (no el detalle de un producto). */
 export function esBusquedaDeCatalogo(config) {
   if (!isCapacitor()) return false;
+  if (!catalogoActivo()) return false;
   if (String(config?.method || "get").toLowerCase() !== "get") return false;
   if (config?._copiaCatalogo) return false; // la propia descarga de la copia
   return RUTA.test(String(config?.url || "").split("?")[0]);
@@ -168,4 +178,41 @@ export async function buscarCodigo(codigo) {
     }
   } catch { /* sin copia */ }
   return null;
+}
+
+/** Igual que buscarCodigo, con la hora de la copia (la consulta la muestra). */
+export async function buscarCodigoConCopia(codigo) {
+  if (!isCapacitor() || !catalogoActivo()) return null;
+  try {
+    const q = sinAcentos(codigo).trim();
+    if (!q) return null;
+    const db = await abrir();
+    const todas = await new Promise((ok) => {
+      const r = db.transaction(TIENDA).objectStore(TIENDA).getAll();
+      r.onsuccess = () => ok(r.result || []);
+      r.onerror = () => ok([]);
+    });
+    for (const copia of todas) {
+      const p = copia.filas.find((f) => [f.barcode, f.sku, f.code].some((c) => c && sinAcentos(c) === q));
+      if (p) return { producto: p, guardada: copia.guardada };
+    }
+  } catch { /* sin copia */ }
+  return null;
+}
+
+/** Hora de la copia más nueva guardada en este teléfono (o null). */
+export async function ultimaCopia() {
+  if (!isCapacitor()) return null;
+  try {
+    const db = await abrir();
+    const todas = await new Promise((ok) => {
+      const r = db.transaction(TIENDA).objectStore(TIENDA).getAll();
+      r.onsuccess = () => ok(r.result || []);
+      r.onerror = () => ok([]);
+    });
+    const t = Math.max(0, ...todas.map((c) => Number(c?.guardada || 0)));
+    return t || null;
+  } catch {
+    return null;
+  }
 }
