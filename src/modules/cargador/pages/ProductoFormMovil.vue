@@ -124,7 +124,7 @@ import { num } from "../lib/formato";
 import { avisar } from "../lib/aviso";
 import { olvidarCodigo } from "../lib/codigo";
 import { cargarDepositos } from "../lib/depositos";
-import { tomarCodigoCapturado } from "../state/captura";
+import { guardarFotosPendientes, tomarCodigoCapturado, tomarFotosPendientes } from "../state/captura";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,6 +188,8 @@ function quitarFoto(i) {
 /* ── Código con el lector ── */
 function escanearCodigo() {
   try { sessionStorage.setItem(BORRADOR, JSON.stringify({ ruta: route.fullPath, f: { ...f }, stock: stock.value })); } catch { /* sin storage */ }
+  // Las fotos nuevas esperan en memoria (un File no va a sessionStorage).
+  guardarFotosPendientes(route.fullPath, fotosNuevas.value.map((x) => x.file));
   router.push({ name: "lector", query: { para: "campo" } });
 }
 
@@ -247,10 +249,12 @@ async function cargar() {
     // Volvió del lector: se recupera lo cargado y se toma el código leído.
     let b = null;
     try { b = JSON.parse(sessionStorage.getItem(BORRADOR) || "null"); sessionStorage.removeItem(BORRADOR); } catch { b = null; }
+    const fotos = tomarFotosPendientes(route.fullPath);
     if (b && b.ruta === route.fullPath) {
       Object.assign(f, b.f);
       if (Array.isArray(b.stock) && b.stock.length) stock.value = b.stock;
     }
+    if (fotos.length) fotosNuevas.value = fotos.map((file) => ({ file, url: URL.createObjectURL(file) }));
     const leido = tomarCodigoCapturado();
     if (leido) f.barcode = leido;
   } finally {
