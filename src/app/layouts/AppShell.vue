@@ -150,6 +150,16 @@
             <v-tooltip v-if="rail" activator="parent" location="right">Dashboard</v-tooltip>
           </v-list-item>
 
+          <!-- Asistente (mostrador): sólo si la plataforma lo habilitó en la ficha del comercio. -->
+          <v-list-item v-if="usaAsistente" :to="{ name: 'asistente' }" class="nav-item">
+            <template #prepend>
+              <v-icon size="18">mdi-forum-outline</v-icon>
+              <span class="nav-corto">Asistente</span>
+            </template>
+            <v-list-item-title>Asistente</v-list-item-title>
+            <v-tooltip v-if="rail" activator="parent" location="right">Asistente</v-tooltip>
+          </v-list-item>
+
           <v-list-item :to="{ name: 'pos' }" exact class="nav-item">
             <template #prepend>
               <v-icon size="18">mdi-point-of-sale</v-icon>
@@ -579,6 +589,7 @@ import AppBottomNav from "@/app/components/AppBottomNav.vue";
 import AppApkPrompt from "@/app/components/AppApkPrompt.vue";
 import { useDisplay } from "vuetify";
 import { getCurrentCashRegister } from "@/modules/pos/services/posCashRegisters.service";
+import http from "@/app/api/http";
 
 const { mobile } = useDisplay();
 
@@ -682,6 +693,20 @@ function toggleDark() {
 
 onMounted(() => {
   themeStore.syncFromStorage?.();
+});
+
+/* ===== Asistente (mostrador) =====
+   Lo habilita la plataforma en la ficha del comercio (consola), no este sistema. Se pregunta
+   una vez: sin 200 (no configurado, ficha apagada, servicio caído) la entrada no aparece. */
+const usaAsistente = ref(false);
+onMounted(async () => {
+  try {
+    const { data } = await http.get("asistente/estado");
+    // Un rol sin ninguna consulta permitida no ve la entrada.
+    usaAsistente.value = (data?.puede || []).length > 0;
+  } catch {
+    usaAsistente.value = false;
+  }
 });
 
 /* ===== Transfer notifications badge in nav ===== */

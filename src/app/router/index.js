@@ -97,6 +97,8 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: "", name: "home", component: DashboardHome },
+      // Asistente (mostrador): lo que consulta cada rol lo recorta el servidor.
+      { path: "asistente", name: "asistente", component: () => import("@/modules/asistente/pages/AsistentePage.vue") },
 
       { path: "pos", name: "pos", component: PosPage },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
