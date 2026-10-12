@@ -13,6 +13,7 @@
     "apk:sync": "node scripts/build-apk.mjs && cap sync android",
     "apk:open": "cap open android",
     "apk:build": "node scripts/build-apk.mjs && cap sync android && node scripts/gradle-android.mjs assembleDebug",
+    "apk:version": "node scripts/generar-version-apk.mjs",
     "apk:build:release": "node scripts/build-apk.mjs && cap sync android && node scripts/gradle-android.mjs assembleRelease"
   },
   "dependencies": {

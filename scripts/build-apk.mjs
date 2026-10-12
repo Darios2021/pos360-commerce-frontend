@@ -22,6 +22,8 @@ process.env.VITE_ENABLE_PRERENDER = "0";
 try {
   const gradle = readFileSync(resolve(process.cwd(), "android/app/build.gradle"), "utf8");
   process.env.VITE_APP_VERSION = (gradle.match(/versionName\s+"([^"]+)"/) || [])[1] || "";
+  // versionCode: lo compara el aviso de actualizacion con /app/download/version.json
+  process.env.VITE_APP_VERSION_CODE = (gradle.match(/versionCode\s+(\d+)/) || [])[1] || "";
 } catch { /* sin android/ todavia */ }
 
 // Avisos push: solo con el proyecto de Firebase presente. Sin el archivo, la

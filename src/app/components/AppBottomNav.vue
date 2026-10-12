@@ -88,8 +88,9 @@ function go(item) {
   right: 0;
   bottom: 0;
   z-index: 1006;
-  height: calc(64px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* --m-sab: barra de gestos (movil.css) */
+  height: calc(64px + var(--m-sab, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: var(--m-sab, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   display: flex;
   background: var(--m-pieza);

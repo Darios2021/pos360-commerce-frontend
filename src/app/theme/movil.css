@@ -432,11 +432,56 @@ select.m-inp { font-size: 16px; }
 .m-bola { width: 60px; height: 60px; border-radius: 50%; background: var(--m-accion); color: #fff; display: grid; place-items: center; margin-top: -30px; border: 4px solid var(--m-canvas); box-shadow: 0 6px 14px rgba(15, 111, 174, 0.35); box-sizing: border-box; }
 .m-bola .v-icon { color: #fff; }
 
-/* APK: mientras el lector nativo dibuja la cámara detrás de la vista, todo lo demás queda transparente */
+/* APK: mientras el lector nativo (startScan) dibuja la cámara DETRÁS del
+   WebView, la página entera queda sin pintar (visibility: hidden no pinta
+   fondos) y solo se ven la barra de la vista, el marco y los controles.
+   Patrón de la documentación de @capacitor-mlkit/barcode-scanning. */
 html.barcode-scanner-active,
-body.barcode-scanner-active,
-body.barcode-scanner-active .v-application,
-body.barcode-scanner-active .v-main,
-body.barcode-scanner-active .m-lector,
-body.barcode-scanner-active .m-visor { background: transparent !important; }
+html.barcode-scanner-active body { background: transparent !important; }
+body.barcode-scanner-active { visibility: hidden; }
+body.barcode-scanner-active .m-lector .mv-tb,
+body.barcode-scanner-active .m-visor .m-marco,
+body.barcode-scanner-active .m-visor .estado,
+body.barcode-scanner-active .m-esc-pie,
+body.barcode-scanner-active .m-hoja,
+body.barcode-scanner-active .m-aviso,
+body.barcode-scanner-active .apk-barra-estado,
+body.barcode-scanner-active .apk-banda,
+body.barcode-scanner-active .apk-bloq { visibility: visible; }
 body.barcode-scanner-active .m-visor video { display: none; }
+/* Pie del lector sobre la cámara: semitransparente para no taparla */
+body.barcode-scanner-active .m-esc-pie { background: rgba(11, 12, 14, 0.72); }
+
+/* Lector sin permiso de cámara, o escáner de Google cancelado */
+.m-permiso { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #fff; }
+.m-permiso .v-icon { color: #c9cdd4; }
+.m-permiso b { font-size: 17px; font-weight: 700; }
+.m-permiso .m-btn { width: auto; min-width: 200px; padding: 0 20px; }
+
+/* ─── Bordes del sistema (APK de borde a borde, Android 15/16) ──────────────
+ * Con targetSdk 35+ la vista se dibuja debajo de la barra de estado y de la
+ * de gestos. Capacitor 8 (plugin SystemBars, insetsHandling "css") deja los
+ * márgenes en env(safe-area-inset-*) y además en --safe-area-inset-*; con un
+ * WebView viejo (< 140) el propio Android corre la vista y los dos dan 0.
+ * --m-sat: alto de la barra de estado. --m-sup: lo que ocupa arriba lo que no
+ * es la app (barra de estado + banda de versión nueva, --apk-banda).
+ * En el navegador todo da 0 salvo en teléfonos con muesca (iOS), que es lo
+ * correcto. */
+:root {
+  --m-sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --m-sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --m-sup: calc(var(--m-sat) + var(--apk-banda, 0px));
+}
+html.apk-aviso-on { --apk-banda: 52px; }
+
+/* Barras superiores del shell (teléfono y tableta) y el cuerpo debajo */
+.v-app-bar.m-appbar,
+.v-app-bar.pos-appbar {
+  padding-top: var(--m-sup);
+  height: calc(56px + var(--m-sup)) !important;
+}
+.v-main.pos-main:not(.pos-main--completa) { padding-top: calc(var(--v-layout-top, 0px) + var(--m-sup)) !important; }
+.v-navigation-drawer.pos-drawer { margin-top: var(--m-sup); }
+.v-main.auth-main { padding-top: var(--m-sup) !important; }
+/* En el lector la franja de la barra de estado sigue a su banda oscura */
+body:has(.m-lector) .apk-barra-estado { background: #0b0c0e; }

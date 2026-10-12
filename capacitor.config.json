@@ -17,6 +17,10 @@
       "backgroundColor": "#1488d1",
       "showSpinner": false,
       "androidSplashResourceName": "splash"
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK"
     }
   }
 }

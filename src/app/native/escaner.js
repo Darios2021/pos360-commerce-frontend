@@ -70,24 +70,37 @@ export async function escanear() {
   }
 }
 
+const CLASE = "barcode-scanner-active";
+function claseCamara(on) {
+  document.documentElement.classList.toggle(CLASE, on);
+  document.body.classList.toggle(CLASE, on);
+}
+
 /**
- * Lectura continua con la camara dibujada detras de la vista (cargador:
+ * Lectura continua con la camara dibujada DETRAS del WebView (cargador:
  * lector central y lector por lote). Usa startScan() + el evento
- * barcodesScanned del mismo plugin; la pantalla de la app queda encima, con
- * el fondo transparente (clase barcode-scanner-active, ver movil.css).
- * Devuelve una funcion para cortar, o null si el telefono no puede.
+ * barcodesScanned del plugin. startScan() usa ML Kit empaquetado en la APK
+ * (com.google.mlkit:barcode-scanning): NO necesita el modulo de Google de
+ * scan(), pero SI el permiso CAMERA en tiempo de ejecucion.
+ * Mientras lee, la clase barcode-scanner-active deja transparente la pagina y
+ * esconde todo menos el marco y los controles (movil.css).
+ * Devuelve { cortar } si arranco, o { motivo: "sin-permiso" | "no-soportado" | "error" }.
  */
 export async function lecturaContinua(onCodigo) {
   const { plugin: p } = await plugin();
-  if (!p) return null;
+  if (!p) return { motivo: "no-soportado" };
   try {
     const { supported } = await p.isSupported();
-    if (!supported) return null;
+    if (!supported) return { motivo: "no-soportado" };
     let { camera } = await p.checkPermissions();
     if (camera !== "granted" && camera !== "limited") ({ camera } = await p.requestPermissions());
-    if (camera !== "granted" && camera !== "limited") return null;
-    document.documentElement.classList.add("barcode-scanner-active");
-    document.body.classList.add("barcode-scanner-active");
+    if (camera !== "granted" && camera !== "limited") return { motivo: "sin-permiso" };
+  } catch {
+    return { motivo: "error" };
+  }
+  try {
+    claseCamara(true);
+    await p.removeAllListeners().catch(() => {});
     await p.addListener("barcodesScanned", (ev) => {
       for (const b of ev?.barcodes || []) {
         const raw = String(b?.rawValue || "").trim();
@@ -95,15 +108,48 @@ export async function lecturaContinua(onCodigo) {
       }
     });
     await p.startScan();
-    return async () => {
-      document.documentElement.classList.remove("barcode-scanner-active");
-      document.body.classList.remove("barcode-scanner-active");
-      try { await p.removeAllListeners(); } catch { /* ya cortado */ }
-      try { await p.stopScan(); } catch { /* ya cortado */ }
+    let cortado = false;
+    return {
+      cortar: async () => {
+        if (cortado) return;
+        cortado = true;
+        claseCamara(false);
+        try { await p.removeAllListeners(); } catch { /* ya cortado */ }
+        try { await p.stopScan(); } catch { /* ya cortado */ }
+      },
     };
   } catch {
-    document.documentElement.classList.remove("barcode-scanner-active");
-    document.body.classList.remove("barcode-scanner-active");
-    return null;
+    claseCamara(false);
+    try { await p.removeAllListeners(); } catch { /* nada */ }
+    try { await p.stopScan(); } catch { /* nada */ }
+    return { motivo: "error" };
   }
+}
+
+/** Abre los ajustes de la app (para dar el permiso de camara negado). */
+export async function abrirAjustes() {
+  const { plugin: p } = await plugin();
+  if (!p) return;
+  try { await p.openSettings(); } catch { /* sin ajustes */ }
+}
+
+/** Linterna del lector nativo (startScan). */
+export async function linternaNativa(encender) {
+  const { plugin: p } = await plugin();
+  if (!p) return false;
+  try {
+    const { available } = await p.isTorchAvailable();
+    if (!available) return false;
+    if (encender) await p.enableTorch();
+    else await p.disableTorch();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function hayLinternaNativa() {
+  const { plugin: p } = await plugin();
+  if (!p) return false;
+  try { return !!(await p.isTorchAvailable()).available; } catch { return false; }
 }

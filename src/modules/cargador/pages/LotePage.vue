@@ -14,7 +14,15 @@
     </template>
     <div class="m-visor">
       <video ref="video" muted playsinline autoplay></video>
-      <div class="m-marco"><div class="rayo"></div></div>
+      <div v-if="estado === 'sin-permiso'" class="m-permiso">
+        <v-icon size="40">mdi-camera-off-outline</v-icon>
+        <b>Cámara sin permiso</b>
+        <button type="button" class="m-btn" @click="permitir">Permitir cámara</button>
+      </div>
+      <div v-else-if="estado === 'pausa'" class="m-permiso">
+        <button type="button" class="m-btn" @click="reanudar">Escanear</button>
+      </div>
+      <div v-else class="m-marco"><div class="rayo"></div></div>
       <div v-if="estado === 'sin-camara'" class="estado">Sin acceso a la cámara</div>
     </div>
     <div class="m-hoja">
@@ -129,7 +137,7 @@ function alLeer(codigo) {
   });
 }
 
-const { video, estado, linterna, puedeLinterna, alternarLinterna } = useLector({ alLeer });
+const { video, estado, linterna, puedeLinterna, alternarLinterna, reanudar, permitir } = useLector({ alLeer });
 
 function volver() {
   if (window.history.state?.back) router.back();

@@ -81,7 +81,8 @@ defineExpose({ cuerpo });
   align-items: center;
   gap: 6px;
   padding: 0 8px 0 16px;
-  padding-top: env(safe-area-inset-top, 0px);
+  /* barra de estado + banda de versión nueva (movil.css) */
+  padding-top: var(--m-sup, env(safe-area-inset-top, 0px));
   box-sizing: content-box;
   background: var(--m-banda);
   color: var(--m-banda-ink);

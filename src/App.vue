@@ -3,7 +3,7 @@
 <template>
   <div :class="rootScopeClass">
     <router-view />
-    <AppVersionAviso v-if="rootScopeClass === 'scope-app'" />
+    <AppVersionAviso v-if="rootScopeClass === 'scope-app' && !enApk" />
     <ArranqueApk v-if="enApk" />
   </div>
 </template>

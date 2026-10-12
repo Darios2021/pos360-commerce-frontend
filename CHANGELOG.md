@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-10-12 · APK 2.2.0: aviso de actualización, barra de estado y cámara del lector
+
+- `android/app/build.gradle`: versionCode **4**, versionName **2.2.0**.
+- Aviso de versión nueva en la APK (`src/app/native/AvisoActualizacion.vue`): lee
+  `/app/download/version.json` al abrir y al volver al frente; banda fija arriba con
+  "Actualizar", o vista completa bloqueante si la instalada es menor que `minimo`.
+  Manifiesto generado por `npm run apk:version` (`scripts/generar-version-apk.mjs`);
+  publicado con 2.2.0 y `minimo` 3. `nginx.conf` lo sirve sin caché y con CORS.
+- Borde a borde (Android 15/16): `plugins.SystemBars` en `capacitor.config.json`, barras
+  del shell, `v-main`, login y vistas completas corridas por la barra de estado
+  (`--m-sat`/`--m-sup` en `movil.css`), franja del color de la banda detrás de la hora.
+- Lector: la cámara de `startScan()` ya no queda tapada (todo oculto con `visibility`
+  salvo marco y controles), permiso de cámara con "Permitir cámara" (ajustes), corte al
+  salir y en segundo plano, linterna nativa, plan B con `scan()` de Google en bucle.
+- `AppVersionAviso` (recarga de la web) ya no se monta dentro de la APK.
+- Detalle: `docs/diseno-cargador/desarrollo.md`, sección "APK 2.2.0".
+
 ## 2026-10-12 · APK 2.1.0 y textos de instalación impersonales
 
 - `android/app/build.gradle`: versionCode **3**, versionName **2.1.0** (el front la toma de ahí

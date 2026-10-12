@@ -80,6 +80,77 @@ Tokens nuevos `--m-ocre` y `--m-ocre-tinte` en los dos temas.
 - El campo "Código de barras" del alta abre el lector con `?para=campo` y vuelve con
   el código (el formulario guarda lo cargado en `sessionStorage` mientras tanto).
 
+### APK 2.2.0: cámara del lector, barra de estado y aviso de versión nueva
+Defectos de la 2.1.0 vistos en el teléfono del usuario y lo que cambió:
+
+**"Escanear" no mostraba la cámara.** `startScan()` de
+`@capacitor-mlkit/barcode-scanning` 8.2.1 dibuja la vista previa de CameraX
+*detrás* del WebView (el plugin pone el WebView transparente,
+`BarcodeScanner.java:393`). La regla vieja dejaba transparentes sólo `html`,
+`body`, `.v-application`, `.v-main`, `.m-lector` y `.m-visor`; cualquier otro
+contenedor con fondo (`#app`, `.scope-app`, `.v-layout`, el canvas de la vista)
+tapaba la cámara. Ahora (`movil.css`, patrón de la documentación del plugin):
+- `body.barcode-scanner-active { visibility: hidden }` (un elemento oculto no
+  pinta su fondo) y `visibility: visible` sólo en la banda de la vista
+  (`.mv-tb`: cerrar y linterna), el marco, el estado, el pie de modos, la hoja
+  del lote, el aviso breve y las piezas de la APK. `html` y `body` transparentes.
+- Permiso: `startScan()`, a diferencia de `scan()`, necesita CAMERA en tiempo de
+  ejecución. `lecturaContinua()` hace `checkPermissions` / `requestPermissions`;
+  si se niega, el lector muestra "Cámara sin permiso" con "Permitir cámara"
+  (`openSettings()`), y al volver de los ajustes reintenta solo.
+- Corte: `stopScan` + `removeAllListeners` y se saca la clase al salir de la
+  vista (cerrar, atrás del sistema: desmonta), al pasar a segundo plano
+  (`visibilitychange` / evento `pause` de Capacitor) y vuelve a arrancar al
+  regresar (`resume`).
+- Módulo de Google: `startScan()` usa ML Kit empaquetado
+  (`com.google.mlkit:barcode-scanning:17.3.0` en el `build.gradle` del plugin);
+  `isGoogleBarcodeScannerModuleAvailable` / `installGoogleBarcodeScannerModule`
+  son sólo para `scan()`.
+- Linterna en la APK: `enableTorch` / `disableTorch` del plugin.
+- Plan B, ya en el código: si `startScan()` falla (no por permiso),
+  `useLector` pasa a `scan()`, la pantalla propia de Google (sin permiso de la
+  app), en bucle: cada lectura se entrega y se vuelve a abrir; al cancelarla el
+  visor muestra "Escanear" para retomar. Si tampoco está el módulo de Google, la
+  cámara web de siempre.
+- Probado en Chrome sin interfaz con un plugin simulado (`window.Capacitor` con
+  `PluginHeaders` falsos): orden de llamadas, clase puesta y quitada, alfa 0 en
+  el visor, corte y regreso con `pause`/`resume`. **Falta verlo en un teléfono.**
+
+**La banda superior quedaba debajo de la hora, el wifi y la batería.** Con
+targetSdk 35/36 Android dibuja la app de borde a borde. En Capacitor 8 ya no
+existe `android.adjustMarginsForEdgeToEdge` (era de la 7): lo reemplaza el
+plugin de núcleo **SystemBars** (`capacitor.config.json` ->
+`plugins.SystemBars`, `insetsHandling: "css"`, `style: "DARK"` = íconos claros).
+Con `viewport-fit=cover` (está en `index.html`) y WebView 140 o más, el WebView
+queda debajo de las barras y los márgenes llegan por
+`env(safe-area-inset-*)` y por `--safe-area-inset-*`; con un WebView más viejo
+el propio Android corre la vista y ambos dan 0.
+- `movil.css`: `--m-sat` (barra de estado), `--m-sab` (barra de gestos) y
+  `--m-sup` (barra de estado + banda de versión). Las barras del shell
+  (`.m-appbar`, `.pos-appbar`) crecen hacia arriba con `--m-sup`, `.v-main`,
+  el menú lateral, el login y `MovilVista` se corren lo mismo; la barra
+  inferior usa `--m-sab`.
+- `ArranqueApk.vue` pinta una franja del color de la banda detrás de la barra de
+  estado (oscura en el lector) y deja la barra de gestos según el tema.
+- En el navegador todo da 0 (salvo teléfonos con muesca, que es lo correcto).
+  Probado simulando 28 px arriba y 20 px abajo.
+
+**Aviso de versión nueva** (`app/native/AvisoActualizacion.vue`, montado por
+`ArranqueApk`): al abrir y al volver al frente pide
+`https://sanjuantecnologia.com/app/download/version.json` sin caché
+(`CapacitorHttp`, sin CORS; si no, `fetch`) y compara `versionCode` con el de la
+APK (`VITE_APP_VERSION_CODE`, de `build.gradle` vía `build-apk.mjs`). Mayor:
+banda fija arriba "Versión X disponible" + "Actualizar" (abre el APK en el
+navegador del teléfono), se oculta con la cruz hasta el próximo arranque o
+regreso, o 30 minutos. Instalada menor que `minimo`: vista completa sin salida
+con "Actualizar". Sin red o manifiesto roto: nada.
+- El manifiesto se genera con `npm run apk:version` (o `-- --minimo N`) desde
+  `build.gradle`, y se publica junto con el APK firmado, en el mismo commit.
+- `nginx.conf` lo sirve como JSON, `no-store` y con
+  `Access-Control-Allow-Origin: *`. Tras el deploy:
+  `curl -sI -H 'Origin: https://localhost' https://sanjuantecnologia.com/app/download/version.json`.
+- Las APK 2.0.0 y 2.1.0 no tienen este aviso: se enteran sólo por fuera.
+
 ### Alta y edición
 Una sola vista con scroll. Obligatorios los de `ProductFormPage`: nombre, rubro y
 subrubro del rubro. Precio lista = costo + % de ganancia + IVA (la regla del
@@ -162,6 +233,8 @@ Catálogo sin conexión con "Actualizado HH:MM" (interruptor real: apaga la copi
 - La cámara real no se pudo probar (Chrome sin interfaz no tiene `BarcodeDetector`;
   NUNCA se abrió emulador). `startScan()` con la vista transparente hay que verlo en
   un teléfono con la APK; también compartir el PNG del QR y la etiqueta Bluetooth.
+  (2.2.0: corregido el fondo que tapaba la cámara y agregado el permiso, ver
+  "APK 2.2.0"; sigue sin probarse en un teléfono.)
 - Las fotos tomadas antes de ir al lector desde el campo "Código de barras" no se
   conservan (un archivo no entra en `sessionStorage`); el resto del formulario sí.
 - El filtro Rubro del conteo filtra los renglones cuyo rubro conoce el teléfono
