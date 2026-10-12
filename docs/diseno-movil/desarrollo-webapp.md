@@ -62,7 +62,7 @@ Componente común `src/app/components/movil/MovilVista.vue` (banda con flecha, c
 ## 3. Lo que no se pudo o quedó distinto de la maqueta
 
 **Necesita API (hacerlo aparte):**
-- Anular venta: el motivo y la observación viajan en el cuerpo del `DELETE /pos/sales/:id`, pero `deleteSale` no los lee (sólo agrega "ANULADA por usuario #N" a `note`). Falta que la API guarde `reason` y `note`.
+- ~~Anular venta: motivo y observación~~ Resuelto en la rama `ajustes-cargador` de la API (2026-10-12): `deleteSale` guarda `reason` y `note` en `sales.cancel_reason` y `sales.cancel_note`, los suma a la nota de la venta y `GET /pos/sales/:id` los devuelve en `data.cancellation` (contrato en `docs/conteos-y-codigo.md` de la API).
 - "Ayer a esta hora" y columnas por hora: `dashboard/overview` no tiene período "hoy" ni comparación con ayer. Se arman en el teléfono con `GET /pos/sales` (pagadas de hoy, hasta 200) y `GET /pos/sales/stats` de ayer hasta la misma hora. Con más de 200 ventas en el día las columnas quedan cortas: conviene un `salesByHourToday` y `yesterdaySameTime` en el overview.
 - Recargo de cuotas: se muestra "Recargo N %" si el plan del medio lo tiene cargado (`surcharge_percent`), pero, igual que en escritorio, el total no lo suma (la regla vigente es precio lista en 2 o más cuotas). Si el recargo tiene que cobrarse, es un cambio de regla en los dos cobros.
 - Contador de pedidos web sin preparar: se pide `GET /admin/shop/orders?status=created&limit=1` y se lee `meta.total`. Funciona, pero un endpoint de conteo sería más liviano.

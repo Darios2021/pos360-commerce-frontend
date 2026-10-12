@@ -2,8 +2,8 @@
   Anular venta en el teléfono (maqueta pantalla 10). Resumen, motivo,
   observación y el botón rojo. Mismo pedido que el escritorio
   (DELETE /pos/sales/:id: anula, restaura el stock, no cuenta en el arqueo).
-  El motivo y la observación viajan en el cuerpo, pero la API todavía no los
-  guarda (pendiente de API, ver docs/diseno-movil/desarrollo-webapp.md).
+  El motivo y la observación viajan en el cuerpo; la API los guarda en
+  sales.cancel_reason y sales.cancel_note (y en la nota de la venta).
 -->
 <template>
   <MovilVista :titulo="`Anular venta #${id}`" :volver="{ name: 'posSaleDetail', params: { id } }">

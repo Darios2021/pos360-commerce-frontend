@@ -78,7 +78,9 @@ Tokens nuevos `--m-ocre` y `--m-ocre-tinte` en los dos temas.
   403 `FORBIDDEN_SCOPE` = "Producto no habilitado en la sucursal"; sin red en la
   APK, la copia del catálogo con su hora (la consulta muestra la estampa).
 - El campo "Código de barras" del alta abre el lector con `?para=campo` y vuelve con
-  el código (el formulario guarda lo cargado en `sessionStorage` mientras tanto).
+  el código (el formulario guarda lo cargado en `sessionStorage` mientras tanto, y
+  las fotos nuevas en memoria, `state/captura.js`: un `File` no entra en
+  `sessionStorage`).
 
 ### APK 2.2.0: cámara del lector, barra de estado y aviso de versión nueva
 Defectos de la 2.1.0 vistos en el teléfono del usuario y lo que cambió:
@@ -177,6 +179,10 @@ teléfonos. "Dar de baja el producto" abre una vista completa con botón rojo.
   lo que no viene en la derivación se rechaza en la hoja y no viaja.
   `POST /:id/receive` con `item_id`, `qty_received` y `note`; el estado (Recibida o
   Recibida con diferencias) lo decide la API.
+- Listado del teléfono: cada fila muestra las unidades enviadas (`units_total` de
+  `GET /stock/transfers`, "14 u." como la maqueta); con la API vieja, la cantidad
+  de productos. Inicio (Por recibir) usa el mismo campo y sólo pide el detalle si
+  falta.
 - Chips del listado: Recibidas incluye `partial` y Canceladas `rejected` (se pide con
   `status[]`), así las cantidades suman Todas; si aparece otro estado, chip "Otras".
 
@@ -190,6 +196,11 @@ teléfonos. "Dar de baja el producto" abre una vista completa con botón rojo.
   dos teléfonos cuentan juntos.
 - Diferencias: dueño `POST /:id/apply { motivo }`, cajero `POST /:id/submit { motivo }`.
   Motivo obligatorio (el botón no se habilita sin motivo).
+- Filtro Rubro: el rubro de cada renglón sale de `product.category_id` del
+  servidor (y, con la API vieja, del producto leído en el teléfono).
+- `/app/conteo?id=N` abre ese conteo si sigue abierto (lo usa el aviso push
+  "Conteo para aprobar" que la API manda al dueño y al administrador cuando un
+  cajero envía).
 - Rechazos en la hoja del lote: `PRODUCT_NO_STOCK_TRACK` = "No controla stock",
   y los demás códigos con su texto (`textoError`).
 - Con la API vieja (`/stock/counts` da el 404 de ruta inexistente) el conteo queda
@@ -226,21 +237,29 @@ Catálogo sin conexión con "Actualizado HH:MM" (interruptor real: apaga la copi
   `/app/mas` dan **0 píxeles** de diferencia (con la fecha del encabezado oculta).
 
 ## 3. Lo que no se pudo o quedó distinto
-- **Unidades en el listado de derivaciones:** `GET /stock/transfers` trae los ítems
-  sólo con `id`, sin `qty_sent`. El listado muestra la cantidad de productos; el
-  bloque Por recibir de Inicio sí muestra unidades (pide el detalle de las 3
-  primeras). Falta en la API un `units_total` en el listado.
 - La cámara real no se pudo probar (Chrome sin interfaz no tiene `BarcodeDetector`;
   NUNCA se abrió emulador). `startScan()` con la vista transparente hay que verlo en
   un teléfono con la APK; también compartir el PNG del QR y la etiqueta Bluetooth.
   (2.2.0: corregido el fondo que tapaba la cámara y agregado el permiso, ver
   "APK 2.2.0"; sigue sin probarse en un teléfono.)
-- Las fotos tomadas antes de ir al lector desde el campo "Código de barras" no se
-  conservan (un archivo no entra en `sessionStorage`); el resto del formulario sí.
-- El filtro Rubro del conteo filtra los renglones cuyo rubro conoce el teléfono
-  (los renglones del servidor no traen la categoría).
+- Las fotos tomadas antes de ir al lector se conservan en memoria: si la página se
+  recarga en el medio (o Android cierra el WebView), se pierden; el resto del
+  formulario no.
 - "Agregar a la venta" depende de `GET /pos/products?ids=`; en la API simulada la
   validación de stock del POS lo rechazó ("Producto sin stock en este depósito."),
   que es el aviso de siempre del mostrador: verificar en `demo-qa`.
 - El escáner viejo de Productos (`BarcodeScannerDialog`) quedó montado sin uso en el
   teléfono: el ícono del buscador ahora abre el lector central.
+
+## 4. Ajustes (rama `ajustes-cargador`, 2026-10-12)
+Con la rama `ajustes-cargador` de `pos360-commerce-api`:
+- Derivaciones: unidades (`units_total`) en el listado del teléfono y en Por
+  recibir de Inicio, en lugar de la cantidad de productos.
+- Alta de producto: la foto tomada ya no se pierde al ir al lector desde
+  "Código de barras" y volver.
+- Conteo: el filtro Rubro filtra también los renglones del servidor
+  (`product.category_id`); `/app/conteo?id=N` abre el conteo del aviso push.
+- Anular venta (teléfono): la API ya guarda motivo y observación.
+- Verificación: `npx vite build` y `npm run test:sonido`. La API se probó con
+  `script/probar-conteos.js` contra una MySQL descartable. La pantalla no se
+  recorrió en un teléfono.
