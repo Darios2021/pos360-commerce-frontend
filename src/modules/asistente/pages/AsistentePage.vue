@@ -123,11 +123,16 @@ const colorUso = computed(() => (fraccion.value >= 1 ? "var(--as-rojo)" : fracci
 const usd = (n) => Number(n || 0).toFixed(2).replace(".", ",");
 const renueva = computed(() => diaMes(estado.value?.renueva || renuevaPorDefecto()));
 
+/**
+ * Las de mostrador ya vienen recortadas por rol y con las fuentes como etiquetas
+ * ("más vendidos"): se usan tal cual. Las de respaldo nombran herramientas y se
+ * filtran por lo que el rol puede consultar.
+ */
 const sugeridas = computed(() => {
   const e = estado.value;
-  const base = e?.sugeridas?.length ? e.sugeridas : SUGERIDAS[rol.value] || [];
+  if (e?.sugeridas?.length) return e.sugeridas.filter((s) => s?.pregunta).map((s) => ({ pregunta: s.pregunta, fuentes: s.fuentes || [] }));
   const puede = new Set((e?.puede || []).map((p) => p.nombre));
-  return base.filter((s) => !e?.puede || s.fuentes.every((f) => puede.has(f)));
+  return (SUGERIDAS[rol.value] || []).filter((s) => !e?.puede || s.fuentes.every((f) => puede.has(f)));
 });
 
 const esperando = computed(() => turnos.value.some((t) => t.estado === "consultando" || t.estado === "llegando"));
