@@ -14,7 +14,9 @@ if (!existsSync(cwd)) {
   process.exit(1);
 }
 
-const cmd = isWin ? "gradlew.bat" : "./gradlew";
+// En Linux/Mac se llama con `sh`: el repo tiene core.fileMode=false y gradlew
+// puede llegar sin permiso de ejecucion ("./gradlew: Permission denied").
+const cmd = isWin ? "gradlew.bat" : "sh ./gradlew";
 
 // Gradle de Capacitor 8 necesita JDK 21. En la maquina de desarrollo el JDK
 // del sistema es otro (26) y el plugin de Android no trabaja con el: si no
