@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="asis-tarjeta">
-    <div class="asis-cuerpo">
+    <div class="asis-cuerpo asis-tabla-marco">
       <table class="asis-tabla">
         <thead>
           <tr><th v-for="(c, k) in columnas" :key="k" scope="col" :class="{ n: numerica(k) }">{{ c }}</th></tr>

@@ -9,7 +9,7 @@
         <circle v-for="(g, k) in d.gajos" :key="k" cx="60" cy="60" :r="DONA.R" fill="none" :stroke="g.color" :stroke-width="DONA.ARO"
           :stroke-dasharray="g.trazo" :stroke-dashoffset="g.desplazamiento" transform="rotate(-90 60 60)"
           :style="{ animationDelay: `${k * 60}ms` }" />
-        <text class="tot num" x="60" y="62" text-anchor="middle">{{ valor(d.total, unidad) }}</text>
+        <text class="tot num" x="60" y="62" text-anchor="middle">{{ centroDona(d.total, unidad) }}</text>
         <text class="tot-e" x="60" y="76" text-anchor="middle">total</text>
       </svg>
       <div class="asis-ley">
@@ -27,7 +27,7 @@
 <script setup>
 import { computed } from "vue";
 import AsisTarjeta from "./AsisTarjeta.vue";
-import { DONA, gajos, valor } from "../lib/dibujo";
+import { centroDona, DONA, gajos, valor } from "../lib/dibujo";
 
 const props = defineProps({
   titulo: { type: String, required: true },

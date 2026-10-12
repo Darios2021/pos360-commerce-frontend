@@ -39,6 +39,30 @@ export function corto(n, unidad = "ars") {
   return pesos(n);
 }
 
+/**
+ * La segunda cifra de una fila, con su unidad a la vista: "$ 300.000" o "2 u.".
+ * Sin `detalle_unidad`, la contraria a la de la fila (pesos ↔ unidades), que es
+ * lo que manda el modelo en un ranking por facturación o por cantidad.
+ */
+export function detalle(n, unidadDetalle, unidadFila = "u") {
+  const u = unidadDetalle || (unidadFila === "ars" ? "u" : "ars");
+  return u === "u" ? `${fmt(n)} u.` : valor(n, u);
+}
+
+/** El total en el hueco de la dona: entero si entra, corto si no ("$ 1,5 M"). */
+export function centroDona(total, unidad) {
+  const largo = valor(total, unidad);
+  return largo.length > 9 ? corto(total, unidad) : largo;
+}
+
+/** Columnas con muchas barras: sólo se rotulan la mayor y las destacadas, para que las cifras no se pisen. */
+export const COLUMNAS_DENSAS = 7;
+export function rotularColumna(k, items, destacar = []) {
+  if (items.length <= COLUMNAS_DENSAS) return true;
+  const max = Math.max(...items.map((i) => i.valor));
+  return destacar.includes(k) || items[k].valor === max;
+}
+
 // ── Escalas ──
 
 /** Ancho de una barra en %, con piso de 4 % sólo si hay algo que dibujar. */

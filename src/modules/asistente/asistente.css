@@ -43,7 +43,7 @@
   --as-aviso-problema: #fbe3e1;
   --as-sombra: 0 0 0 1px rgba(20, 136, 209, .16), 0 1px 2px rgba(16, 24, 40, .08), 0 6px 16px rgba(20, 136, 209, .08);
   --as-canvas: #eef1f5;
-  container-type: inline-size;
+  container: asis / inline-size;
   color: var(--as-tinta);
 }
 
@@ -183,7 +183,7 @@
 .asis-b-titulo p { margin: 4px 0 0; font-size: 13.5px; color: var(--as-tinta-3); font-weight: 500; }
 .asis-b-texto p { margin: 0; font-size: 15px; line-height: 1.5; max-width: 62ch; color: var(--as-tinta-2); white-space: pre-line; }
 
-.asis-tarjeta { border: 1px solid var(--as-borde-suave); border-radius: 12px; overflow: hidden; background: var(--as-pieza); }
+.asis-tarjeta { border: 1px solid var(--as-borde-suave); border-radius: 12px; overflow: hidden; background: var(--as-pieza); container: tarjeta / inline-size; }
 .asis-banda {
   background: var(--gx-banda); color: var(--gx-banda-ink); padding: 8px 12px;
   display: flex; gap: 10px; align-items: baseline; justify-content: space-between;
@@ -192,11 +192,15 @@
 .asis-banda span { font-size: 12px; font-weight: 600; opacity: .9; text-align: right; }
 .asis-cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 
-.asis-fila { display: grid; grid-template-columns: 64px 1fr; column-gap: 10px; row-gap: 6px; align-items: center; }
-.asis-fila .cifra { font-size: 22px; font-weight: 800; line-height: 1; text-align: right; }
-.asis-fila .et b { display: block; font-size: 15px; font-weight: 700; line-height: 1.25; }
-.asis-fila .et small { display: block; font-size: 13px; color: var(--as-tinta-3); font-weight: 500; }
-.asis-fila .asis-pista { grid-column: 2; }
+/* filas: una sola grilla para todas, la columna de la cifra mide lo que la más larga */
+.asis-filas { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 12px; row-gap: 6px; align-items: center; }
+.asis-filas .cifra { font-size: 22px; font-weight: 800; line-height: 1; text-align: right; white-space: nowrap; }
+.asis-filas.larga .cifra { font-size: 18px; }
+.asis-filas .et { min-width: 0; }
+.asis-filas .et b { display: block; font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.asis-filas .et small { display: block; font-size: 13px; color: var(--as-tinta-3); font-weight: 500; white-space: nowrap; }
+.asis-filas .asis-pista { grid-column: 2; margin-bottom: 6px; }
+.asis-filas .asis-pista:last-child { margin-bottom: 0; }
 
 .asis-pista { height: 8px; border-radius: 4px; background: var(--gx-pista); overflow: hidden; }
 .asis-pista i { display: block; height: 100%; border-radius: 4px; background: var(--gx-p2); transform-origin: left; }
@@ -205,10 +209,16 @@
 .asis-cols { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 4px; align-items: end; height: 170px; }
 .asis-col { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 4px; height: 100%; min-width: 0; }
 .asis-col .v { font-size: 11.5px; font-weight: 700; color: var(--as-tinta-3); white-space: nowrap; }
+/* la cifra es más ancha que la columna: en los extremos se alinea hacia adentro para no salirse de la tarjeta */
+.asis-col:first-child .v { align-self: flex-start; }
+.asis-col:last-child .v { align-self: flex-end; }
 .asis-col .barra { width: 100%; max-width: 26px; border-radius: 4px 4px 2px 2px; background: var(--gx-p3); transform-origin: bottom; }
 .asis-col.dest .barra { background: var(--gx-p1); }
 .asis-col.dest .v, .asis-col.dest .e { color: var(--as-tinta); font-weight: 800; }
 .asis-col .e { font-size: 13px; font-weight: 700; color: var(--as-tinta-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* muchas columnas: etiqueta más chica y sin puntos suspensivos ("ene", "feb" entran enteros) */
+.asis-cols.densa { gap: 3px; }
+.asis-cols.densa .e { font-size: 11px; text-overflow: clip; letter-spacing: -.01em; }
 .asis-vivo .asis-col .barra { animation: asisSube 520ms cubic-bezier(.2, .7, .2, 1) both; }
 
 .asis-dona { display: grid; grid-template-columns: 124px 1fr; gap: 14px; align-items: center; }
@@ -221,7 +231,7 @@
 .asis-ley div { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 13.5px; }
 .asis-ley i { width: 10px; height: 10px; border-radius: 3px; }
 .asis-ley b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asis-ley span { color: var(--as-tinta-3); font-weight: 600; min-width: 34px; text-align: right; }
+.asis-ley span { color: var(--as-tinta-3); font-weight: 600; min-width: 34px; text-align: right; white-space: nowrap; }
 
 .asis-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
 .asis-tabla th {
@@ -229,7 +239,11 @@
   color: var(--as-tinta-3); font-weight: 700; padding: 0 8px 6px;
 }
 .asis-tabla td { padding: 8px; border-top: 1px solid var(--as-borde-suave); font-weight: 600; }
-.asis-tabla .n { text-align: right; font-variant-numeric: tabular-nums; }
+.asis-tabla .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.asis-tabla td:first-child { overflow-wrap: anywhere; }
+.asis-past { white-space: nowrap; }
+/* si en el teléfono no entra, la tabla se desplaza dentro de su tarjeta, nunca la página */
+.asis-tabla-marco { overflow-x: auto; }
 .asis-past { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 .asis-past.problema { background: var(--as-aviso-problema); color: var(--as-rojo); }
 .asis-past.atencion { background: var(--as-aviso-atencion); color: var(--as-ocre); }
@@ -280,9 +294,25 @@
   padding: 12px; border: 1px dashed var(--as-borde); border-radius: 14px;
 }
 
+/* una tarjeta angosta (la mitad de la pieza o el teléfono): por el ancho de la tarjeta */
+
+@container tarjeta (max-width: 340px) {
+  .asis-filas .cifra { font-size: 19px; }
+  .asis-filas.larga .cifra { font-size: 16px; }
+  .asis-filas { column-gap: 10px; }
+  .asis-tarjeta .asis-dona { grid-template-columns: 1fr; justify-items: center; }
+  .asis-tarjeta .asis-dona .asis-ley { width: 100%; }
+  .asis-tabla { font-size: 13px; }
+  .asis-tabla td, .asis-tabla th { padding-left: 5px; padding-right: 5px; }
+  .asis-tabla th { letter-spacing: .02em; font-size: 11px; }
+  .asis-tabla td:first-child { min-width: 6em; }
+  .asis-tabla-marco { padding-left: 6px; padding-right: 6px; }
+  .asis-past { padding: 2px 6px; font-size: 11.5px; }
+}
+
 /* el teléfono: por el ancho de la vista */
 
-@container (max-width: 560px) {
+@container asis (max-width: 560px) {
   .asis-cab { padding: 12px 16px 6px; }
   .asis-cab h1 { font-size: 19px; }
   .asis-uso { width: 150px; }
