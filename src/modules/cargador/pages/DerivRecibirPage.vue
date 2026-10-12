@@ -19,7 +19,7 @@
           <div class="m-sub" style="margin-top: 6px">{{ [`Despachada ${cuando(t.dispatched_at)}`, nombrePersona(t.dispatcher)].filter(Boolean).join(" · ") }}</div>
           <div class="m-precio-fila" style="margin-top: 14px">
             <span class="m-sub">Contadas</span>
-            <b class="num" style="font-size: 20px">{{ cant(totalContado) }} de {{ u(totalEnviado) }}</b>
+            <b class="num" style="font-size: 20px; font-weight: 800">{{ cant(totalContado) }} de {{ u(totalEnviado) }}</b>
           </div>
           <div class="m-prog"><s :style="{ width: Math.min(100, totalEnviado ? (totalContado / totalEnviado) * 100 : 0) + '%' }"></s></div>
         </div>

@@ -1982,6 +1982,8 @@ function branchCssColor(id) {
 }
 /* ── Teléfono ───────────────────────────────────────────────────── */
 .plm { display: flex; flex-direction: column; gap: 12px; background: transparent; }
+/* Teléfono: el canvas y los márgenes del kit móvil (16 px y lugar para la barra inferior). */
+.pl.pl--movil { background: var(--m-canvas); padding: 12px 16px calc(88px + env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 56px); }
 .plm-pag { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; border-top: 1px solid var(--m-linea2); }
 .plm-pag .m-lnk[disabled] { opacity: 0.4; }
 

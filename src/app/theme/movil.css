@@ -424,6 +424,10 @@ select.m-inp { font-size: 16px; }
 .m-hoja .res { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); padding-top: 10px; }
 .m-hoja .res b { font-size: 18px; color: var(--m-tinta); font-weight: 800; }
 
+/* Cuerpo de las pantallas del lector: visor a todo el ancho y la hoja pegada abajo */
+.m-cu.lec-cu { padding: 0; gap: 0; overflow: hidden; }
+.m-cu.lec-cu > .m-visor { flex: 1 1 auto; }
+
 /* Barra inferior: lector al centro */
 .m-bola { width: 60px; height: 60px; border-radius: 50%; background: var(--m-accion); color: #fff; display: grid; place-items: center; margin-top: -30px; border: 4px solid var(--m-canvas); box-shadow: 0 6px 14px rgba(15, 111, 174, 0.35); box-sizing: border-box; }
 .m-bola .v-icon { color: #fff; }

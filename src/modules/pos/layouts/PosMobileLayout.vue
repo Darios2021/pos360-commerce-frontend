@@ -171,6 +171,13 @@ async function agregarDesdeConsulta() {
   const id = Number(route.query.agregar || 0);
   if (!id) return;
   router.replace({ query: { ...route.query, agregar: undefined } });
+  // La caja se carga en paralelo: se espera a saber si está abierta (hasta 4 s).
+  if (!isCajaOpen.value) {
+    await new Promise((listo) => {
+      const corte = setTimeout(() => { parar(); listo(); }, 4000);
+      const parar = watch(isCajaOpen, (v) => { if (v) { clearTimeout(corte); parar(); listo(); } });
+    });
+  }
   try {
     const params = { ids: String(id), limit: 1 };
     if (activeBranchId?.value) params.branch_id = activeBranchId.value;

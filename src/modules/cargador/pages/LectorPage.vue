@@ -96,7 +96,3 @@ const { video, estado, linterna, puedeLinterna, alternarLinterna, olvidarUltimo 
 });
 </script>
 
-<style>
-.lec-cu { padding: 0 !important; gap: 0 !important; overflow: hidden !important; }
-.lec-cu > .m-visor { flex: 1 1 auto !important; }
-</style>

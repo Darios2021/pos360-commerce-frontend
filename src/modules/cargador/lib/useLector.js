@@ -29,11 +29,13 @@ export function useLector({ alLeer, pausaIguales = 1500, activo = () => true } =
   let cortarNativo = null;
   let vivo = true;
 
-  function entregar(raw) {
+  function entregar(raw, { siempre = false } = {}) {
     const c = String(raw || "").trim();
     if (!c || !vivo || !activo()) return;
     const ahora = Date.now();
-    if (c === ultimo && ahora - ultimoEn < pausaIguales) return;
+    // La cámara ve el mismo código muchas veces por segundo; la pistola no:
+    // cada Enter es una lectura a propósito.
+    if (!siempre && c === ultimo && ahora - ultimoEn < pausaIguales) return;
     ultimo = c;
     ultimoEn = ahora;
     try { navigator.vibrate?.(40); } catch { /* sin vibrador */ }
@@ -117,7 +119,7 @@ export function useLector({ alLeer, pausaIguales = 1500, activo = () => true } =
     if (ahora - tecleoEn > 300) tecleo = "";
     tecleoEn = ahora;
     if (e.key === "Enter") {
-      if (tecleo.length >= 3) entregar(tecleo);
+      if (tecleo.length >= 3) entregar(tecleo, { siempre: true });
       tecleo = "";
       return;
     }

@@ -28,7 +28,7 @@
         <span class="m-ico"><v-icon size="20">{{ recibeMovil(t) ? "mdi-truck-outline" : "mdi-swap-horizontal" }}</v-icon></span>
         <span class="tx">
           <b class="num">{{ t.number }}</b>
-          <small>{{ suc(t.fromWarehouse) }} → {{ suc(t.toWarehouse) }} · {{ cuandoMovil(t) }}</small>
+          <small>{{ sucMovil(t.fromWarehouse) }} → {{ sucMovil(t.toWarehouse) }} · {{ cuandoMovil(t) }}</small>
           <span class="m-est" :class="recibeMovil(t) ? 'az' : estMovil(t).c" style="margin-top: 6px">{{ recibeMovil(t) ? "Por recibir" : estMovil(t).t }}</span>
         </span>
         <span class="der"><b class="num">{{ fmt((t.items || []).length) }}</b><small>{{ (t.items || []).length === 1 ? "producto" : "productos" }}</small></span>
@@ -204,6 +204,7 @@ const chipsMovil = computed(() => {
   const resto = totalTodas.value - lista.slice(1).reduce((a, x) => a + x.n, 0);
   return resto > 0 ? [...lista, { v: "__otras", t: "Otras", n: resto }] : lista;
 });
+const sucMovil = (w) => w?.branch?.name || w?.name || "";
 const recibeMovil = (t) => t.status === "dispatched" && Number(t.to_branch_id) === miSucursal.value;
 const estMovil = (t) => ESTADOS_MOVIL[t.status] || { t: t.status, c: "gr" };
 const cuandoMovil = (t) => cuando(t.dispatched_at || t.created_at);
