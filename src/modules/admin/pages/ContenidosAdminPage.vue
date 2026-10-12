@@ -27,7 +27,7 @@
     <!-- NUEVO REEL por campañas: si el servicio publica las campañas del comercio (spec VIDEOS-campanas) -->
     <template v-if="vista === 'nuevo' && conCampanas">
       <div v-if="recursos.activo === false" class="sp-caja ct-vacio">Los videos no están habilitados para este local.</div>
-      <div v-else-if="route.query.editar && !edicion" class="sp-caja ct-vacio">{{ abriendo ? "Cargando…" : "El video no está disponible" }}</div>
+      <div v-else-if="(route.query.editar || route.query.desde) && !edicion" class="sp-caja ct-vacio">{{ abriendo ? "Cargando…" : "El video no está disponible" }}</div>
       <CreadorCampanas v-else :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
     </template>
 
@@ -405,10 +405,16 @@
             <v-icon size="20">mdi-delete-outline</v-icon><span v-if="confirmar === v.id">Confirmar</span>
           </button>
         </div>
-        <button v-if="v.estado === 'lista' && v.editable && conCampanas" type="button" class="ct-editar" :disabled="!quedanEdiciones(v) || abriendo === v.id" @click="abrirEdicion(v)">
+        <button v-if="v.estado === 'lista' && v.editable && conCampanas && quedanEdiciones(v)" type="button" class="ct-editar" :disabled="abriendo === v.id" @click="abrirEdicion(v)">
           <v-progress-circular v-if="abriendo === v.id" indeterminate size="18" width="2" />
           <v-icon v-else size="20">mdi-movie-edit-outline</v-icon>Editar video
           <span class="ct-editar__n num">{{ quedanEdiciones(v) }} de {{ v.ediciones?.tope ?? 2 }}</span>
+        </button>
+        <!-- Sin ediciones: el mismo encargo como video nuevo (cuenta en el cupo). -->
+        <button v-else-if="v.estado === 'lista' && v.editable && conCampanas" type="button" class="ct-editar" :disabled="sinCupo || abriendo === v.id" @click="abrirDesde(v)">
+          <v-progress-circular v-if="abriendo === v.id" indeterminate size="18" width="2" />
+          <v-icon v-else size="20">mdi-content-copy</v-icon>Nuevo video desde este
+          <span class="ct-editar__n">usa cupo</span>
         </button>
       </div>
     </div>
@@ -991,32 +997,31 @@ const recuperando = ref(null);
 let catalogoListo = Promise.resolve();
 const quedanEdiciones = (v) => v.ediciones?.quedan ?? Math.max(0, (v.ediciones?.tope ?? 2) - (v.ediciones?.hechas || 0));
 function abrirEdicion(v) {
-  if (!quedanEdiciones(v)) return;
+  if (!quedanEdiciones(v)) return abrirDesde(v);
   irA("nuevo", { editar: v.id });
 }
+// "Nuevo video desde este": el creador con el mismo encargo, sin deRevision (cuenta en el cupo).
+function abrirDesde(v) { irA("nuevo", { desde: v.id }); }
 async function cargarEdicion() {
-  const id = route.query.editar ? String(route.query.editar) : "";
+  const desde = !route.query.editar && Boolean(route.query.desde);
+  const id = String(route.query.editar || route.query.desde || "");
   if (vista.value !== "nuevo" || !id) { edicion.value = null; return; }
-  if (edicion.value?.id === id) return;
+  if (edicion.value?.id === id && Boolean(edicion.value.nuevo) === desde) return;
   edicion.value = null;
   abriendo.value = id;
   error.value = "";
   try {
     const [r] = await Promise.all([encargoPieza(id), catalogoListo]);
-    if (route.query.editar !== id) return;
+    if (String(route.query.editar || route.query.desde || "") !== id) return;
     const v = piezas.value.find((x) => x.id === id);
-    // Sin ediciones (se llegó por el enlace): el servicio la rechazaría con 409.
-    if (r.ediciones && !r.ediciones.quedan) {
-      error.value = `Este video ya usó sus ${r.ediciones.tope} ediciones.`;
-      irA("videos");
-      return;
-    }
-    edicion.value = { ...r, titulo: v?.titulo || r.encargo?.titulo || "" };
+    // Sin ediciones (se llegó por el enlace): el servicio la rechazaría con 409; va como video nuevo.
+    if (!desde && r.ediciones && !r.ediciones.quedan) { irA("nuevo", { desde: id }); return; }
+    edicion.value = { ...r, titulo: v?.titulo || r.encargo?.titulo || "", ...(desde ? { nuevo: true } : {}) };
   } catch (e) {
     error.value = mensaje(e);
   } finally { if (abriendo.value === id) abriendo.value = null; }
 }
-watch(() => [vista.value, route.query.editar], cargarEdicion);
+watch(() => [vista.value, route.query.editar, route.query.desde], cargarEdicion);
 async function recuperar(v) {
   recuperando.value = v.id;
   try {

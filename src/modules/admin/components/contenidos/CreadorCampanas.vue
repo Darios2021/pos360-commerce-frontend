@@ -41,12 +41,12 @@
             <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
             <v-icon v-else size="22">mdi-movie-open-outline</v-icon>Generar video
           </button>
-          <span v-if="sinCupo && !editando" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
+          <span v-if="sinCupo && !editaMisma" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
         </aside>
 
         <div class="cc-col">
           <div class="cc-pieza cc-cab">
-            <div class="cc-cab__t"><b>{{ editando ? editando.titulo || camp.nombre : camp.nombre }}</b><span v-if="editando" class="cc-chip num">Edición {{ editando.numero }} de {{ editando.tope }}</span><span v-else-if="camp.chip" class="cc-chip">{{ camp.chip }}</span></div>
+            <div class="cc-cab__t"><b>{{ editando ? editando.titulo || camp.nombre : camp.nombre }}</b><span v-if="editaMisma" class="cc-chip num">Edición {{ editando.numero }} de {{ editando.tope }}</span><span v-else-if="camp.chip" class="cc-chip">{{ camp.chip }}</span></div>
             <button v-if="editando" type="button" class="cc-lnk" @click="descartar">Descartar</button>
             <button v-else type="button" class="cc-lnk" @click="cerrar">Otra campaña</button>
           </div>
@@ -211,8 +211,10 @@ function elegirRitmo(v) { son.ritmo = v; reajustar(); }
 
 /* ── Armado ── */
 const camp = ref(null);
-// Video que se está editando: { id, titulo, numero, tope }. null = video nuevo.
+// Video que se está editando: { id, titulo, numero, tope, nuevo }. null = video nuevo.
+// Con `nuevo` ("Nuevo video desde este") se precarga igual pero sale otro video, que usa cupo.
 const editando = ref(null);
+const editaMisma = computed(() => Boolean(editando.value && !editando.value.nuevo));
 const esc = ref([]);
 const cargando = ref(false);
 const creando = ref(false);
@@ -229,7 +231,7 @@ const total = computed(() => esc.value.reduce((a, e) => a + durDe(e), 0));
 const nItem = (i) => esc.value.slice(0, i).filter((e) => e.tipo === "item").length + 1;
 const pasa = (e) => conVoz.value && medir(e.voz) > durDe(e) + 0.05;
 const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <= 0);
-const puedeGenerar = computed(() => !creando.value && (editando.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
+const puedeGenerar = computed(() => !creando.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
 const datoCierre = computed(() => {
@@ -299,7 +301,7 @@ function abrirEdicion(ed) {
   ];
   publicacion.titulo = enc.titulo || ed.titulo || c.nombre;
   publicacion.texto = enc.descripcion || "";
-  editando.value = { id: ed.id, titulo: ed.titulo || enc.titulo || "", numero: (ed.ediciones?.hechas || 0) + 1, tope: ed.ediciones?.tope || 2 };
+  editando.value = { id: ed.id, titulo: ed.titulo || enc.titulo || "", numero: (ed.ediciones?.hechas || 0) + 1, tope: ed.ediciones?.tope || 2, nuevo: Boolean(ed.nuevo) };
   eligiendo.value = null;
   cargando.value = false;
   pedido++;
@@ -557,7 +559,7 @@ async function generar() {
   // Lo que la pantalla necesita para reabrir este armado tal cual (Editar video).
   const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0) };
   try {
-    const p = await crearPieza({ ...encargo, pantalla, ...(editando.value ? { deRevision: editando.value.id } : {}) });
+    const p = await crearPieza({ ...encargo, pantalla, ...(editaMisma.value ? { deRevision: editando.value.id } : {}) });
     camp.value = null;
     esc.value = [];
     editando.value = null;
