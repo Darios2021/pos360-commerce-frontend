@@ -327,7 +327,7 @@ const branding = ref({
   updated_at: null,
 });
 
-// 🇦🇷 Decoración estacional configurable desde /admin/shop/branding/identity.
+// 🇦🇷 Decoración estacional configurable desde /admin/shop/branding/compartir.
 // Si está vacío en branding, no se muestra nada.
 const holidayOverlayUrl = computed(() =>
   withVersion(branding.value?.holiday_overlay_url || "", branding.value?.updated_at)
@@ -506,7 +506,7 @@ watch(
 
 /* =========================
    🎩 DECORACIÓN ESTACIONAL
-   Imagen/video subido desde /admin/shop/branding/identity
+   Imagen/video subido desde /admin/shop/branding/compartir
    que aparece AL LADO del logo del shop. Usado para banderas,
    mascotas, gorritos del mundial, etc.
 ========================= */

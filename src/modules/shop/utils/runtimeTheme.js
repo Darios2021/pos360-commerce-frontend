@@ -53,7 +53,8 @@ function bestOnColor(bgHex) {
 
 export function normalizeTheme(input = {}) {
   const primary = clampHex6(input.primary) || "#0e2134";
-  const secondary = clampHex6(input.secondary) || "#3483fa";
+  // La vista Marca guarda el acento como `accent`; la API lo publica también como `secondary`.
+  const secondary = clampHex6(input.accent) || clampHex6(input.secondary) || "#3483fa";
 
   // opcionales (si tu backend los manda, los usamos; si no, no tocamos)
   const background = clampHex6(input.background || "") || "";

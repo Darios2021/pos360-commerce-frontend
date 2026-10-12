@@ -1,9 +1,8 @@
 // src/app/router/shopAdmin.routes.js
 // ✅ COPY-PASTE FINAL COMPLETO (cuelga bajo /app/*)
 
-const ShopBrandingHubView = () => import("@/modules/admin/pages/ShopBrandingHubView.vue");
-const BrandingIdentityView = () => import("@/modules/admin/pages/BrandingIdentityView.vue");
-const BrandingThemeView = () => import("@/modules/admin/pages/BrandingThemeView.vue");
+const BrandMarcaView = () => import("@/modules/admin/pages/BrandMarcaView.vue");
+const BrandingShareView = () => import("@/modules/admin/pages/BrandingShareView.vue");
 const BrandingContactView = () => import("@/modules/admin/pages/BrandingContactView.vue");
 const BrandingSocialView = () => import("@/modules/admin/pages/BrandingSocialView.vue");
 
@@ -29,22 +28,20 @@ const EmailPromoBlocksView = () => import("@/modules/admin/pages/EmailPromoBlock
 const ShopQAView = () => import("@/modules/admin/pages/ShopQAView.vue");
 
 export const shopAdminRoutes = [
+  // Marca: nombre, logos, colores y tipografía en una sola vista.
   {
     path: "admin/shop/branding",
     name: "shopBranding",
-    component: ShopBrandingHubView,
+    component: BrandMarcaView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
+  // Pantallas viejas: pueden quedar marcadores o enlaces.
+  { path: "admin/shop/branding/identity", redirect: { name: "shopBranding" } },
+  { path: "admin/shop/branding/theme", redirect: { name: "shopBranding" } },
   {
-    path: "admin/shop/branding/identity",
-    name: "shopBrandingIdentity",
-    component: BrandingIdentityView,
-    meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
-  },
-  {
-    path: "admin/shop/branding/theme",
-    name: "shopBrandingTheme",
-    component: BrandingThemeView,
+    path: "admin/shop/branding/compartir",
+    name: "shopBrandingShare",
+    component: BrandingShareView,
     meta: { requiresAuth: true, roles: ["admin", "super_admin"] },
   },
   {

@@ -5,7 +5,6 @@
     <AppPageHeader
       icon="mdi-card-account-mail-outline"
       title="Contacto del negocio"
-      :back-to="{ name: 'shopBranding' }"
     >
       <template #subtitle>
         Datos institucionales que aparecen en el pie de los emails CRM y en la metadata del shop.

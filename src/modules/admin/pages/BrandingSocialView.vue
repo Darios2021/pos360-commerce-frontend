@@ -6,7 +6,6 @@
       icon="mdi-share-variant-outline"
       title="Íconos de redes sociales"
       subtitle="Subí PNG cuadrado por red social (recomendado 64×64 o 128×128 con fondo transparente). Si no subís ninguno, los emails usan iniciales coloreadas como fallback."
-      :back-to="{ name: 'shopBranding' }"
     >
       <v-btn variant="text" size="small" prepend-icon="mdi-refresh" :loading="loadingSocialIcons" @click="loadSocialIcons">
         Recargar

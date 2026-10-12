@@ -452,20 +452,28 @@
 
           <v-expand-transition>
             <div v-show="navOpen.tienda" class="nav-section">
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBranding')" :to="{ name: 'shopBranding' }" exact class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-palette-outline</v-icon>
                 </template>
-                <v-list-item-title>Branding</v-list-item-title>
-                <v-tooltip v-if="rail" activator="parent" location="right">Branding</v-tooltip>
+                <v-list-item-title>Marca</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Marca</v-tooltip>
               </v-list-item>
 
-              <v-list-item v-if="isSuperAdmin && hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" class="nav-item">
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBrandingContact')" :to="{ name: 'shopBrandingContact' }" class="nav-item">
                 <template #prepend>
-                  <v-icon size="18">mdi-receipt-text-outline</v-icon>
+                  <v-icon size="18">mdi-card-account-phone-outline</v-icon>
                 </template>
-                <v-list-item-title>Pedidos</v-list-item-title>
-                <v-tooltip v-if="rail" activator="parent" location="right">Pedidos</v-tooltip>
+                <v-list-item-title>Contacto</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Contacto</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBrandingSocial')" :to="{ name: 'shopBrandingSocial' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-share-variant-outline</v-icon>
+                </template>
+                <v-list-item-title>Redes</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Redes</v-tooltip>
               </v-list-item>
 
               <v-list-item v-if="isSuperAdmin && hasRoute('adminBranches')" :to="{ name: 'adminBranches' }" class="nav-item">
@@ -474,6 +482,22 @@
                 </template>
                 <v-list-item-title>Sucursales</v-list-item-title>
                 <v-tooltip v-if="rail" activator="parent" location="right">Sucursales</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopBrandingShare')" :to="{ name: 'shopBrandingShare' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-image-text</v-icon>
+                </template>
+                <v-list-item-title>Vista al compartir</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Vista al compartir</v-tooltip>
+              </v-list-item>
+
+              <v-list-item v-if="isSuperAdmin && hasRoute('shopOrders')" :to="{ name: 'shopOrders' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-receipt-text-outline</v-icon>
+                </template>
+                <v-list-item-title>Pedidos</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Pedidos</v-tooltip>
               </v-list-item>
 
               <v-list-item v-if="isSuperAdmin && hasRoute('shopPaymentsSettings')" :to="{ name: 'shopPaymentsSettings' }" class="nav-item">
@@ -715,7 +739,7 @@ const SECCIONES = {
   gestion: ["products", "suppliers", "costsMissing", "budgets", "serviceOrders", "categories", "productsLabels", "transfers", "adminCashRegisters", "reports"],
   crm: ["adminCustomers", "emailPromoBlocks", "adminContenidos"],
   sistema: ["users", "priceSettings", "adminPaymentMethods", "adminFiscal", "adminTelegram"],
-  tienda: ["shopBranding", "shopOrders", "adminBranches", "shopPaymentsSettings", "shopLinks", "shopQA", "adminGaleriaMultimedia"],
+  tienda: ["shopBranding", "shopBrandingContact", "shopBrandingSocial", "shopBrandingShare", "shopOrders", "adminBranches", "shopPaymentsSettings", "shopLinks", "shopQA", "adminGaleriaMultimedia"],
 };
 const seccionActiva = computed(() => {
   const p = route.path;

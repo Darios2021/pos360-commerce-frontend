@@ -6,7 +6,9 @@
 // GET  /api/v1/admin/shop/branding
 // PUT  /api/v1/admin/shop/branding
 // POST /api/v1/admin/shop/branding/logo        (multipart: file)
-// POST /api/v1/admin/shop/branding/favicon     (multipart: file)
+// POST /api/v1/admin/shop/branding/logo-light  (multipart: file; DELETE la quita)
+// POST /api/v1/admin/shop/branding/logo-dark   (multipart: file; DELETE la quita)
+// POST /api/v1/admin/shop/branding/favicon     (multipart: file; DELETE lo quita)
 // POST /api/v1/admin/shop/branding/og-image    (multipart: file)
 
 import http from "@/app/api/http";
@@ -38,6 +40,21 @@ export async function uploadShopFavicon(file) {
   const r = await http.post("/admin/shop/branding/favicon", fd, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return r.data?.item || null;
+}
+
+// Imágenes de la vista Marca: recurso = logo | logo-light | logo-dark | favicon.
+export async function uploadShopImage(recurso, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await http.post(`/admin/shop/branding/${recurso}`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return r.data?.item || null;
+}
+
+export async function removeShopImage(recurso) {
+  const r = await http.delete(`/admin/shop/branding/${recurso}`);
   return r.data?.item || null;
 }
 
