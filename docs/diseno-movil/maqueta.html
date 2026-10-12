@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>POS 360 Móvil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  Maqueta del rediseño móvil del backoffice de POS 360 (/app).
+  Rama diseno-movil, docs/diseno-movil/. Especificación en informe.md.
+  Tokens tomados del código: acción #0f6fae (cobro.css, asistente.css),
+  marca #1488d1, navy #121e47, canvas claro #c5cbd2 (vuetify.js).
+  En oscuro el canvas va por debajo de las piezas (en vuetify.js está invertido).
+-->
+<style>
+:root{
+  --canvas:#c5cbd2; --pieza:#ffffff; --variante:#eef2f6; --linea:#d3dde7; --linea2:#e3eaf1;
+  --tinta:#0f172a; --suave:#5a6678; --sobre-canvas:#28313e;
+  --accion:#0f6fae; --accion-osc:#0a466e; --accion-tinte:#eef7fd; --accion-hover:#cfe5f5; --accion-txt:#0f6fae;
+  --banda:#0f6fae; --banda-ink:#ffffff; --marca:#1488d1; --navy:#121e47;
+  --verde:#2e9e7b; --verde-tinte:#e3f4ee; --rojo:#c2413a; --rojo-tinte:#fdeceb; --ocre:#BC7F12;
+  --pista:rgba(15,23,42,.07);
+  --r1:#0f6fae; --r2:#3d8cc4; --r3:#79b2da; --r4:#b3d3ea; --r5:#d9e8f4;
+  --gris:#c3c9d6;
+  --sombra:0 1px 2px rgba(16,24,40,.08);
+  --page:#9aa3ad; --page-ink:#0f172a;
+}
+:root[data-theme="dark"]{
+  --canvas:#111317; --pieza:#1f232a; --variante:#2a2f38; --linea:#343943; --linea2:#2c3038;
+  --tinta:#e6e7eb; --suave:#a1a4ab; --sobre-canvas:#b9bdc5;
+  --accion:#1488d1; --accion-osc:#0f6fae; --accion-tinte:rgba(58,165,230,.14); --accion-hover:rgba(58,165,230,.24); --accion-txt:#6cb6e6;
+  --banda:#173a5e; --banda-ink:#e3f1fc; --marca:#3aa5e6;
+  --verde:#3fb68f; --verde-tinte:rgba(63,182,143,.16); --rojo:#e2625b; --rojo-tinte:rgba(226,98,91,.16); --ocre:#D99414;
+  --pista:rgba(255,255,255,.08);
+  --r1:#a6d8fa; --r2:#3aa5e6; --r3:#1c6699; --r4:#203a52; --r5:#1a2a3a;
+  --gris:#4a4f61;
+  --sombra:0 1px 0 rgba(255,255,255,.04) inset;
+  --page:#07080a; --page-ink:#e6e7eb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--page);color:var(--page-ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s20{width:20px;height:20px} svg.i.s18{width:18px;height:18px} svg.i.s28{width:28px;height:28px} svg.i.s40{width:40px;height:40px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Página de la maqueta (fuera del teléfono) ---------- */
+.mq{display:flex;gap:28px;justify-content:center;align-items:flex-start;padding:24px 16px;min-height:100%}
+.ctl{width:250px;flex:none;position:sticky;top:24px;font-size:13px}
+.ctl h1{font-size:17px;font-weight:800;margin-bottom:14px}
+.ctl .g{margin-bottom:14px}
+.ctl .g b{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;opacity:.75}
+.seg{display:flex;border:1px solid rgba(0,0,0,.25);border-radius:8px;overflow:hidden}
+[data-theme="dark"] .seg{border-color:rgba(255,255,255,.2)}
+.seg button{flex:1;padding:7px 4px;font-size:13px;font-weight:600}
+.seg button.on{background:#0f6fae;color:#fff}
+.idx{display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 290px);overflow:auto}
+.idx button{text-align:left;padding:6px 8px;border-radius:6px;font-size:13px}
+.idx button.on{background:rgba(15,111,174,.18);font-weight:700}
+.idx i{font-style:normal;display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin:10px 0 2px}
+
+/* ---------- Teléfono ---------- */
+.tel{width:390px;height:844px;flex:none;position:relative;overflow:hidden;background:var(--canvas);color:var(--tinta);
+  border-radius:14px;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column}
+@media (max-width:720px){
+  .mq{flex-direction:column;padding:0;gap:0;height:100dvh;min-height:0}
+  .ctl{width:100%;position:static;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 12px}
+  .ctl h1,.idx,.ctl .g.ix{display:none}
+  .ctl .g{margin:0;flex:1;min-width:150px}
+  .tel{width:100%;height:auto;flex:1;min-height:0;border-radius:0;box-shadow:none}
+}
+.estado{height:24px;flex:none;background:var(--banda);color:var(--banda-ink);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:12px;font-weight:600}
+.scr{display:none;flex:1;flex-direction:column;min-height:0}
+.scr.on{display:flex}
+.scr.oscura{background:#000}
+
+/* Barra superior */
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 16px;background:var(--banda);color:var(--banda-ink)}
+.tb.atras{padding-left:4px}
+.tb h2{font-size:19px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.tb .ib{width:44px;height:44px;display:grid;place-items:center;border-radius:10px;position:relative}
+.tb .ib:active{background:rgba(255,255,255,.14)}
+.tb .ib .pt{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:#ffb4ae;box-shadow:0 0 0 2px var(--banda)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.14);color:var(--banda-ink);white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;background:#7fe0bd}
+.pill.cerrada i{background:#ffb4ae}
+
+/* Cuerpo */
+.cu{flex:1;overflow-y:auto;padding:12px 16px 24px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.cu > *{flex-shrink:0}
+.rot{font-size:13px;font-weight:700;color:var(--sobre-canvas);text-transform:uppercase;letter-spacing:.05em;margin:6px 2px -4px}
+.pz{background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);overflow:hidden}
+.pz-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:14px 16px 4px}
+.pz-h h3{font-size:16px;font-weight:800}
+.pz-h span{font-size:13px;color:var(--suave)}
+.pz-b{padding:8px 16px 16px}
+.pz-f{padding:0 16px 16px}
+
+/* Filas (forma del estándar: cifra, etiqueta, barra fina abajo) */
+.fila{padding:10px 0;border-top:1px solid var(--linea2)}
+.fila:first-child{border-top:0}
+.fila .l{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fila .l b{font-size:15px;font-weight:600}
+.fila .l .num{font-size:17px;font-weight:800}
+.fila .l small{display:block;font-size:13px;color:var(--suave);font-weight:400;margin-top:1px}
+.barra{height:8px;border-radius:4px;background:var(--pista);margin-top:8px;overflow:hidden}
+.barra s{display:block;height:100%;border-radius:4px;background:var(--r1)}
+.cifra{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:14px;color:var(--suave)}
+
+/* Columnas por hora */
+.cols{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:12px}
+.cols div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.cols s{display:block;width:100%;max-width:18px;border-radius:3px 3px 0 0;background:var(--r2)}
+.cols s.max{background:var(--r1)}
+.cols span{font-size:11px;color:var(--suave)}
+
+/* Lista de ítems que se abren */
+.it{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:60px;border-top:1px solid var(--linea2);width:100%;text-align:left}
+.it:first-child{border-top:0}
+.it:active{background:var(--accion-tinte)}
+.it .tx{flex:1;min-width:0}
+.it .tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .tx small{display:block;font-size:13px;color:var(--suave);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .der{text-align:right;flex:none}
+.it .der b{display:block;font-size:16px;font-weight:800}
+.it .der small{display:block;font-size:12px;color:var(--suave);margin-top:2px}
+.it .chev{color:var(--suave)}
+.ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accion-tinte);color:var(--accion-txt);flex:none}
+.foto{width:52px;height:52px;border-radius:10px;background:var(--variante);display:grid;place-items:center;color:var(--suave);flex:none;position:relative}
+.foto .q{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--accion);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+.est{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:700}
+.est.ok{background:var(--verde-tinte);color:var(--verde)}
+.est.no{background:var(--rojo-tinte);color:var(--rojo)}
+.est.gr{background:var(--variante);color:var(--suave)}
+.anulada b,.anulada .der b{color:var(--suave);text-decoration:line-through}
+
+/* Buscador */
+.bus{display:flex;align-items:center;gap:8px;height:48px;background:var(--pieza);border-radius:10px;padding:0 4px 0 12px;box-shadow:var(--sombra);border:1px solid var(--linea)}
+.bus input{flex:1;border:0;outline:0;background:none;font-size:16px;min-width:0}
+.bus input::placeholder{color:var(--suave)}
+.bus .cam{width:44px;height:40px;border-radius:8px;display:grid;place-items:center;color:var(--accion-txt)}
+.bus .cam:active{background:var(--accion-tinte)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:36px;padding:0 14px;border-radius:8px;background:var(--pieza);border:1px solid var(--linea);font-size:14px;font-weight:600;white-space:nowrap;flex:none}
+.chip.on{background:var(--accion);border-color:var(--accion);color:#fff}
+
+/* Botones */
+.btn{width:100%;height:52px;border-radius:10px;background:var(--accion);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{background:var(--accion-osc)}
+.btn.rojo{background:var(--rojo)}
+.btn[disabled]{opacity:.45}
+.lnk{color:var(--accion-txt);font-size:15px;font-weight:600;padding:10px 0;display:inline-flex;align-items:center;gap:6px}
+.lnk.rojo{color:var(--rojo)}
+.centro{text-align:center}
+
+/* Pie fijo de las vistas completas */
+.pie{flex:none;background:var(--pieza);border-top:1px solid var(--linea);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.pie .res{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.pie .res span{font-size:14px;color:var(--suave)}
+.pie .res b{font-size:22px;font-weight:800}
+
+/* Barra de carrito sobre la navegación */
+.carro{flex:none;display:flex;align-items:center;gap:12px;background:var(--pieza);border-top:1px solid var(--linea);padding:10px 16px}
+.carro .tt{flex:1;text-align:left}
+.carro .tt small{display:block;font-size:13px;color:var(--suave)}
+.carro .tt b{font-size:20px;font-weight:800}
+.carro .btn{width:150px}
+
+/* Navegación inferior */
+.bn{flex:none;height:64px;display:flex;background:var(--pieza);border-top:1px solid var(--linea);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bn button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:var(--suave);position:relative}
+.bn button.on{color:var(--accion-txt)}
+.bn button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--accion-txt)}
+.bn .bd{position:absolute;top:8px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--rojo);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.oculto{display:none!important}
+
+/* Campos */
+.cmp{display:flex;flex-direction:column;gap:6px}
+.cmp label{font-size:14px;font-weight:600;color:var(--suave)}
+.inp{height:52px;border-radius:10px;border:1px solid var(--linea);background:var(--pieza);padding:0 14px;font-size:17px;outline:0;width:100%}
+.inp:focus{border-color:var(--accion);box-shadow:0 0 0 3px var(--accion-hover)}
+.inp.grande{height:64px;font-size:28px;font-weight:800}
+textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
+.inpw{position:relative}
+.inpw .pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:800;color:var(--suave)}
+.inpw.grande .pre{font-size:24px}
+.inpw .inp{padding-left:34px}
+.inpw .act{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;display:grid;place-items:center;color:var(--accion-txt)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Opciones (tarjetas grandes con borde azul al elegir, como el cobro de escritorio) */
+.ops{display:flex;flex-direction:column;gap:8px}
+.op{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 14px;background:var(--pieza);border:1.5px solid var(--linea);border-radius:12px;text-align:left;width:100%}
+.op .tx{flex:1}
+.op .tx b{display:block;font-size:16px;font-weight:700}
+.op .tx small{display:block;font-size:13px;color:var(--suave);margin-top:2px}
+.op .rd{width:22px;height:22px;border-radius:50%;border:2px solid var(--linea);flex:none}
+.op.on{border-color:var(--accion);background:var(--accion-tinte)}
+.op.on .rd{border:7px solid var(--accion)}
+.rejilla{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rejilla .op{flex-direction:column;align-items:flex-start;gap:8px;min-height:88px}
+
+/* Pasos del cobro */
+.pasos{display:flex;gap:6px;padding:12px 16px 0}
+.pasos s{flex:1;height:4px;border-radius:2px;background:var(--linea)}
+.pasos s.ok{background:var(--accion)}
+.paso-t{padding:8px 16px 0;font-size:13px;color:var(--sobre-canvas);font-weight:600}
+.total-cobro{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;background:var(--pieza);border-bottom:1px solid var(--linea)}
+.total-cobro span{font-size:14px;color:var(--suave);font-weight:600}
+.total-cobro b{font-size:28px;font-weight:800;letter-spacing:-.02em}
+
+/* Definiciones */
+.dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-size:15px}
+.dl dt{color:var(--suave)}
+.dl dd{text-align:right;font-weight:600}
+.dl dd.f{font-size:18px;font-weight:800}
+.sep{height:1px;background:var(--linea2);grid-column:1/-1}
+
+/* Stepper de cantidad */
+.stp{display:flex;align-items:center;border:1px solid var(--linea);border-radius:10px;height:40px}
+.stp button{width:40px;height:40px;display:grid;place-items:center;color:var(--accion-txt)}
+.stp span{min-width:28px;text-align:center;font-weight:800;font-size:16px}
+
+/* Escáner */
+.visor{flex:1;position:relative;background:radial-gradient(circle at 50% 45%,#3a3f47,#0b0c0e 70%);display:flex;align-items:center;justify-content:center}
+.marco{width:280px;height:170px;position:relative}
+.marco::before,.marco::after{content:"";position:absolute;inset:0;border:3px solid #fff;border-radius:12px;clip-path:polygon(0 0,22% 0,22% 3px,3px 3px,3px 22%,0 22%,0 78%,3px 78%,3px calc(100% - 3px),22% calc(100% - 3px),22% 100%,78% 100%,78% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 78%,100% 78%,100% 22%,calc(100% - 3px) 22%,calc(100% - 3px) 3px,78% 3px,78% 0,100% 0,100% 100%,0 100%)}
+.marco .rayo{position:absolute;left:8px;right:8px;top:50%;height:2px;background:#ff5a4f;box-shadow:0 0 12px #ff5a4f;animation:rayo 1.8s ease-in-out infinite}
+@keyframes rayo{0%,100%{transform:translateY(-60px)}50%{transform:translateY(60px)}}
+.esc-pie{padding:20px 16px 28px;display:flex;justify-content:center;background:#0b0c0e}
+.esc-pie .lnk{color:#a6d8fa}
+.tb.negra{background:#0b0c0e;color:#fff}
+
+/* Aviso breve */
+.toast{position:absolute;left:16px;right:16px;bottom:150px;background:#1f2937;color:#fff;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:5}
+.toast.on{opacity:1;transform:none}
+
+/* Asistente */
+.burbuja{align-self:flex-end;max-width:85%;background:var(--accion);color:#fff;border-radius:12px 12px 4px 12px;padding:10px 14px;font-size:15px}
+.resp{background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);padding:14px 16px}
+.resp h4{font-size:15px;font-weight:800;margin-bottom:6px}
+.entrada{flex:none;display:flex;gap:8px;align-items:flex-end;padding:10px 12px;background:var(--pieza);border-top:1px solid var(--linea)}
+.entrada textarea{flex:1;height:48px;border-radius:10px;border:1px solid var(--linea);background:var(--canvas);padding:12px;font-size:16px;resize:none;outline:0}
+.entrada .env{width:48px;height:48px;border-radius:10px;background:var(--accion);color:#fff;display:grid;place-items:center;flex:none}
+
+/* Login */
+.login{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px 20px}
+.marca{font-size:28px;font-weight:800;letter-spacing:-.02em;color:var(--sobre-canvas);text-align:center;margin-bottom:12px}
+.marca small{display:block;font-size:14px;font-weight:600;letter-spacing:0;margin-top:2px}
+.sw{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600;padding:4px 0}
+.sw .t{width:48px;height:28px;border-radius:14px;background:var(--linea);position:relative;transition:.15s}
+.sw .t::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw.on .t{background:var(--accion)}
+.sw.on .t::after{left:23px}
+.huella{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:var(--accion-tinte);color:var(--accion-txt);margin:0 auto}
+.avatar{width:72px;height:72px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:26px;font-weight:800;margin:0 auto}
+[data-theme="dark"] .avatar{background:#2a4a6e}
+
+/* Foto de producto */
+.fotos{display:flex;gap:8px;overflow-x:auto}
+.ftile{width:96px;height:96px;border-radius:12px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600}
+.ftile.add{border:1.5px dashed var(--accion);color:var(--accion-txt);background:var(--accion-tinte)}
+.ftile.img{background:linear-gradient(135deg,#dfe7ef,#b8c7d6);color:#5a6678;position:relative}
+[data-theme="dark"] .ftile.img{background:linear-gradient(135deg,#2a3340,#1c232c);color:#a1a4ab}
+.ftile.img em{position:absolute;left:6px;bottom:6px;font-style:normal;font-size:11px;font-weight:700;background:rgba(15,23,42,.7);color:#fff;padding:2px 6px;border-radius:4px}
+.ficha-foto{height:220px;background:linear-gradient(135deg,#dfe7ef,#b8c7d6);display:grid;place-items:center;color:#5a6678}
+[data-theme="dark"] .ficha-foto{background:linear-gradient(135deg,#2a3340,#1c232c);color:#a1a4ab}
+
+/* Más */
+.mas .it{min-height:52px;padding:10px 16px}
+.mas .it .ic2{color:var(--accion-txt)}
+.apk-only{}
+[data-plat="web"] .apk-only{display:none!important}
+[data-plat="apk"] .web-only{display:none!important}
+[data-rol="cajero"] .admin-only{display:none!important}
+[data-rol="admin"] .cajero-only{display:none!important}
+.dif-neg{color:var(--rojo)}
+.dif-ok{color:var(--verde)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="vender" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="10" rx="2"/><path d="M6 10V5h8v5M7 14h2M11 14h2M15 14h2M7 17h10"/></symbol>
+  <symbol id="ventas" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="caja" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 9.5h.01M18 15.5h.01"/></symbol>
+  <symbol id="caja2" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M8 8V5h8v3M4 13h16"/></symbol>
+  <symbol id="box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/></symbol>
+  <symbol id="mas" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="scan" viewBox="0 0 24 24"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"/></symbol>
+  <symbol id="atras" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="campana" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="mas1" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="menos" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="efectivo" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="tarjeta" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+  <symbol id="transf" viewBox="0 0 24 24"><path d="M4 8h15l-3-3M20 16H5l3 3"/></symbol>
+  <symbol id="qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h3v3h-3zM20 17v3h-3"/></symbol>
+  <symbol id="mixto" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/></symbol>
+  <symbol id="imprimir" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="compartir" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="huella" viewBox="0 0 24 24"><path d="M12 11v3a7 7 0 0 1-1.2 4M8.6 6.2A6 6 0 0 1 18 11v2.5M6.3 8.7A6 6 0 0 0 6 11v3M15 14.5a11 11 0 0 1-1.3 4.8M9 11a3 3 0 0 1 6 0v1.5M9 14.5a8 8 0 0 1-.9 3.3"/></symbol>
+  <symbol id="luna" viewBox="0 0 24 24"><path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z"/></symbol>
+  <symbol id="salir" viewBox="0 0 24 24"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="flash" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+  <symbol id="cerrar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="enviar" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2-7z"/></symbol>
+  <symbol id="usuario" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="usuarios" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/></symbol>
+  <symbol id="tienda" viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M10 20v-6h4v6"/></symbol>
+  <symbol id="engranaje" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9L7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="camion" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="archivo" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="etiqueta" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/></symbol>
+  <symbol id="grafico" viewBox="0 0 24 24"><path d="M5 20V11M11 20V5M17 20v-7M3 20h18"/></symbol>
+  <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="imagen" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 8"/></symbol>
+  <symbol id="camara" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="filtro" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></symbol>
+  <symbol id="editar" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
+</svg>
+
+<div class="mq">
+  <aside class="ctl">
+    <h1>POS 360 · Móvil</h1>
+    <div class="g"><b>Tema</b><div class="seg" data-k="theme"><button data-v="light" class="on">Claro</button><button data-v="dark">Oscuro</button></div></div>
+    <div class="g"><b>Rol</b><div class="seg" data-k="rol"><button data-v="admin" class="on">Dueño</button><button data-v="cajero">Cajero</button></div></div>
+    <div class="g"><b>Plataforma</b><div class="seg" data-k="plat"><button data-v="web" class="on">Webapp</button><button data-v="apk">APK</button></div></div>
+    <div class="g ix"><b>Pantallas</b><div class="idx" id="idx"></div></div>
+  </aside>
+
+  <div class="tel" id="tel" data-rol="admin" data-plat="web">
+    <div class="estado"><span>11:42</span><span>4G · 82 %</span></div>
+
+    <!-- ===================== LOGIN ===================== -->
+    <section class="scr" data-s="login" data-full>
+      <div class="login web-only">
+        <div class="marca">POS 360<small>San Juan Tecnología</small></div>
+        <div class="cmp"><label>Usuario o email</label><input class="inp" value="lucia.gomez"></div>
+        <div class="cmp"><label>Contraseña</label><input class="inp" type="password" value="••••••••"></div>
+        <button class="sw on" data-toggle><span>Mantener sesión</span><span class="t"></span></button>
+        <button class="btn" data-go="@inicio">Entrar</button>
+      </div>
+      <div class="login apk-only">
+        <div class="avatar">LG</div>
+        <div class="centro"><div style="font-size:19px;font-weight:800">Lucía Gómez</div><div class="sub">Sucursal Centro</div></div>
+        <button class="huella" data-go="@inicio" aria-label="Entrar con huella"><svg class="i s40"><use href="#huella"/></svg></button>
+        <button class="btn" data-go="@inicio">Entrar con huella</button>
+        <div class="centro"><button class="lnk" data-go="login-pass">Usar contraseña</button></div>
+      </div>
+    </section>
+    <section class="scr" data-s="login-pass" data-full>
+      <div class="login">
+        <div class="marca">POS 360<small>San Juan Tecnología</small></div>
+        <div class="cmp"><label>Usuario o email</label><input class="inp" value="lucia.gomez"></div>
+        <div class="cmp"><label>Contraseña</label><input class="inp" type="password" value="••••••••"></div>
+        <button class="sw on" data-toggle><span>Entrar con huella la próxima vez</span><span class="t"></span></button>
+        <button class="btn" data-go="@inicio">Entrar</button>
+      </div>
+    </section>
+
+    <!-- ===================== INICIO (dueño) ===================== -->
+    <section class="scr" data-s="inicio" data-tab="inicio">
+      <div class="tb"><h2>Inicio</h2><span class="pill">Centro</span><button class="ib" data-go="avisos" aria-label="Avisos"><svg class="i"><use href="#campana"/></svg><span class="pt"></span></button></div>
+      <div class="cu">
+        <button class="pz it" data-go="caja" style="border:0">
+          <span class="ico"><svg class="i"><use href="#caja"/></svg></span>
+          <span class="tx"><b data-caja-tit>Caja #312 abierta</b><small data-caja-sub>Desde 08:12 · Lucía Gómez</small></span>
+          <span class="der"><b class="num" data-caja-esp>$ 412.300</b><small>Efectivo esperado</small></span>
+        </button>
+
+        <div class="pz">
+          <div class="pz-h"><h3>Ventas de hoy</h3><span>38 ventas</span></div>
+          <div class="pz-b">
+            <div class="cifra num">$ 1.284.300</div>
+            <div class="sub">Ayer a esta hora: $ 1.106.900</div>
+            <div class="cols" id="cols"></div>
+          </div>
+        </div>
+
+        <div class="pz">
+          <div class="pz-h"><h3>Medios de pago</h3><span>Hoy</span></div>
+          <div class="pz-b" id="medios"></div>
+        </div>
+
+        <div class="rot">Pendientes</div>
+        <div class="pz">
+          <button class="it" data-go="pedidos"><span class="ico"><svg class="i"><use href="#tienda"/></svg></span><span class="tx"><b>Pedidos web</b><small>Sin preparar</small></span><span class="der"><b class="num">2</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it" data-go="mas"><span class="ico"><svg class="i"><use href="#camion"/></svg></span><span class="tx"><b>Derivaciones</b><small>Por recibir</small></span><span class="der"><b class="num">1</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it" data-go="productos" data-filtro="sin"><span class="ico"><svg class="i"><use href="#box"/></svg></span><span class="tx"><b>Sin stock</b><small>Centro</small></span><span class="der"><b class="num">14</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot">Últimas ventas</div>
+        <div class="pz" id="ultimas"></div>
+      </div>
+    </section>
+
+    <!-- ===================== AVISOS ===================== -->
+    <section class="scr" data-s="avisos" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Avisos</h2></div>
+      <div class="cu">
+        <div class="rot">Hoy</div>
+        <div class="pz">
+          <button class="it" data-go="pedidos"><span class="ico"><svg class="i"><use href="#tienda"/></svg></span><span class="tx"><b>Pedido web #2041</b><small>Retira en Centro · 11:38</small></span><span class="der"><b class="num">$ 63.900</b></span></button>
+          <button class="it" data-go="ventas"><span class="ico"><svg class="i"><use href="#ventas"/></svg></span><span class="tx"><b>Venta #10479 anulada</b><small>Caja #312 · 10:55</small></span><span class="der"><b class="num">$ 14.500</b></span></button>
+          <button class="it" data-go="mas"><span class="ico"><svg class="i"><use href="#camion"/></svg></span><span class="tx"><b>Derivación #88 despachada</b><small>Rivadavia a Centro · 09:40</small></span><span class="der"><b class="num">6 u.</b></span></button>
+        </div>
+        <div class="rot">Ayer</div>
+        <div class="pz">
+          <button class="it" data-go="cajas-adm"><span class="ico"><svg class="i"><use href="#caja"/></svg></span><span class="tx"><b>Cierre de caja #311</b><small>Diferencia · 20:31</small></span><span class="der"><b class="num dif-neg">− $ 2.300</b></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== VENDER ===================== -->
+    <section class="scr" data-s="vender" data-tab="vender">
+      <div class="tb"><h2>Vender</h2><button class="pill" data-go="caja" data-caja-pill><i></i><span>Caja #312</span></button></div>
+      <div class="cu">
+        <div class="bus"><svg class="i s20" style="color:var(--suave)"><use href="#buscar"/></svg><input placeholder="Buscar producto o código" id="busV"><button class="cam" data-go="escaner" data-origen="vender" aria-label="Escanear"><svg class="i"><use href="#scan"/></svg></button></div>
+        <div class="chips" data-chips><button class="chip on">Todos</button><button class="chip">Cables</button><button class="chip">Cargadores</button><button class="chip">Audio</button><button class="chip">Fundas</button><button class="chip">Almacenamiento</button></div>
+        <div class="pz" id="listaV"></div>
+      </div>
+      <button class="carro" data-go="carrito"><span class="tt"><small data-cant>3 artículos</small><b class="num" data-total>$ 31.900</b></span><span class="btn" data-go="cobrar-1">Cobrar</span></button>
+    </section>
+
+    <!-- ===================== CARRITO ===================== -->
+    <section class="scr" data-s="carrito" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Venta en curso</h2><button class="ib" data-vaciar aria-label="Vaciar"><svg class="i"><use href="#cerrar"/></svg></button></div>
+      <div class="cu">
+        <div class="pz" id="listaC"></div>
+        <div class="pz"><div class="pz-b"><dl class="dl"><dt>Cliente</dt><dd>Consumidor final</dd><dt>Precio</dt><dd>Lista</dd></dl></div></div>
+      </div>
+      <div class="pie"><div class="res"><span data-cant>3 artículos</span><b class="num" data-total>$ 31.900</b></div><button class="btn" data-go="cobrar-1">Cobrar</button></div>
+    </section>
+
+    <!-- ===================== COBRAR 1: medio ===================== -->
+    <section class="scr" data-s="cobrar-1" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cobrar</h2></div>
+      <div class="total-cobro"><span>Total</span><b class="num" data-total>$ 31.900</b></div>
+      <div class="pasos"><s class="ok"></s><s></s><s></s><s></s></div>
+      <div class="paso-t">Medio de pago</div>
+      <div class="cu">
+        <div class="rejilla" data-radio="medio">
+          <button class="op on" data-v="Efectivo"><svg class="i s28"><use href="#efectivo"/></svg><span class="tx"><b>Efectivo</b></span></button>
+          <button class="op" data-v="Débito"><svg class="i s28"><use href="#tarjeta"/></svg><span class="tx"><b>Débito</b></span></button>
+          <button class="op" data-v="Crédito"><svg class="i s28"><use href="#tarjeta"/></svg><span class="tx"><b>Crédito</b></span></button>
+          <button class="op" data-v="Transferencia"><svg class="i s28"><use href="#transf"/></svg><span class="tx"><b>Transferencia</b></span></button>
+          <button class="op" data-v="Mercado Pago"><svg class="i s28"><use href="#qr"/></svg><span class="tx"><b>Mercado Pago</b></span></button>
+          <button class="op" data-v="Mixto"><svg class="i s28"><use href="#mixto"/></svg><span class="tx"><b>Mixto</b></span></button>
+        </div>
+      </div>
+      <div class="pie"><button class="btn" data-go="cobrar-2">Siguiente</button></div>
+    </section>
+
+    <!-- ===================== COBRAR 2: pago ===================== -->
+    <section class="scr" data-s="cobrar-2" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cobrar</h2></div>
+      <div class="total-cobro"><span>Total</span><b class="num" data-total>$ 31.900</b></div>
+      <div class="pasos"><s class="ok"></s><s class="ok"></s><s></s><s></s></div>
+      <div class="paso-t" data-medio-t>Efectivo</div>
+      <div class="cu">
+        <div data-panel="Efectivo">
+          <div class="cmp"><label>Efectivo recibido</label><div class="inpw grande"><span class="pre">$</span><input class="inp grande num" id="recibido" inputmode="numeric" value="40.000"></div></div>
+          <div class="chips" style="margin-top:12px" id="rapidos"></div>
+          <div class="pz" style="margin-top:12px"><div class="pz-b"><dl class="dl"><dt>Vuelto</dt><dd class="f num" id="vuelto">$ 8.100</dd></dl></div></div>
+        </div>
+        <div data-panel="Crédito" class="oculto">
+          <div class="rot" style="margin-bottom:6px">Cuotas</div>
+          <div class="ops" data-radio="cuotas">
+            <button class="op on" data-v="1"><span class="tx"><b>1 pago</b></span><span class="der"><b class="num" data-cuota="1">$ 31.900</b></span><span class="rd"></span></button>
+            <button class="op" data-v="3"><span class="tx"><b>3 cuotas</b><small>Recargo 12 %</small></span><span class="der"><b class="num" data-cuota="3">$ 11.909</b></span><span class="rd"></span></button>
+            <button class="op" data-v="6"><span class="tx"><b>6 cuotas</b><small>Recargo 24 %</small></span><span class="der"><b class="num" data-cuota="6">$ 6.592</b></span><span class="rd"></span></button>
+          </div>
+        </div>
+        <div data-panel="otro" class="oculto">
+          <div class="pz"><div class="pz-b"><dl class="dl"><dt>Importe</dt><dd class="f num" data-total>$ 31.900</dd><dt>Medio</dt><dd data-medio>Débito</dd></dl></div></div>
+          <div class="cmp" style="margin-top:12px"><label>Número de operación</label><input class="inp" inputmode="numeric" placeholder="Opcional"></div>
+        </div>
+      </div>
+      <div class="pie"><button class="btn" data-go="cobrar-3">Siguiente</button></div>
+    </section>
+
+    <!-- ===================== COBRAR 3: comprobante ===================== -->
+    <section class="scr" data-s="cobrar-3" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cobrar</h2></div>
+      <div class="total-cobro"><span>Total</span><b class="num" data-total>$ 31.900</b></div>
+      <div class="pasos"><s class="ok"></s><s class="ok"></s><s class="ok"></s><s></s></div>
+      <div class="paso-t">Comprobante</div>
+      <div class="cu">
+        <div class="ops" data-radio="comp">
+          <button class="op on" data-v="Sin comprobante ARCA"><span class="tx"><b>No fiscal</b><small>Sin comprobante ARCA</small></span><span class="rd"></span></button>
+          <button class="op" data-v="Factura B"><span class="tx"><b>Factura B</b><small>Consumidor final / Exento</small></span><span class="rd"></span></button>
+          <button class="op" data-v="Factura A"><span class="tx"><b>Factura A</b><small>Responsable inscripto</small></span><span class="rd"></span></button>
+          <button class="op" data-v="Factura C"><span class="tx"><b>Factura C</b><small>Monotributo</small></span><span class="rd"></span></button>
+        </div>
+        <div id="cliente-campos" class="oculto" style="display:flex;flex-direction:column;gap:12px">
+          <div class="rot">Cliente</div>
+          <div class="cmp"><label>DNI / CUIT / CUIL</label><div class="inpw"><input class="inp" style="padding-left:14px" inputmode="numeric" value="30-71234567-9"><button class="act" aria-label="Buscar"><svg class="i s20"><use href="#buscar"/></svg></button></div></div>
+          <div class="cmp"><label>Nombre / Razón social</label><input class="inp" value="Estudio Contable Ruiz SRL"></div>
+          <div class="cmp"><label>Teléfono</label><input class="inp" inputmode="tel" placeholder="Opcional"></div>
+        </div>
+      </div>
+      <div class="pie"><button class="btn" data-go="cobrar-4">Siguiente</button></div>
+    </section>
+
+    <!-- ===================== COBRAR 4: confirmar ===================== -->
+    <section class="scr" data-s="cobrar-4" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cobrar</h2></div>
+      <div class="pasos"><s class="ok"></s><s class="ok"></s><s class="ok"></s><s class="ok"></s></div>
+      <div class="paso-t">Confirmar</div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl">
+          <dt>Total a cobrar</dt><dd class="f num" data-total>$ 31.900</dd>
+          <div class="sep"></div>
+          <dt>Medio de pago</dt><dd data-medio>Efectivo</dd>
+          <dt data-solo-efvo>Recibido</dt><dd data-solo-efvo class="num" data-recibido>$ 40.000</dd>
+          <dt data-solo-efvo>Vuelto</dt><dd data-solo-efvo class="num" data-vuelto>$ 8.100</dd>
+          <dt>Comprobante</dt><dd data-comp>Sin comprobante ARCA</dd>
+          <dt>Cliente</dt><dd data-cliente>Consumidor final</dd>
+        </dl></div></div>
+        <div class="pz" id="resumenC"></div>
+      </div>
+      <div class="pie"><button class="btn" data-confirmar>Confirmar venta</button></div>
+    </section>
+
+    <!-- ===================== VENTA REGISTRADA ===================== -->
+    <section class="scr" data-s="venta-ok" data-full>
+      <div class="tb"><h2>Venta #10483</h2><button class="ib" data-go="vender" aria-label="Cerrar"><svg class="i"><use href="#cerrar"/></svg></button></div>
+      <div class="cu" style="justify-content:center;align-items:stretch">
+        <div class="centro" style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:8px">
+          <span class="huella" style="background:var(--verde-tinte);color:var(--verde)"><svg class="i s40"><use href="#check"/></svg></span>
+          <div style="font-size:20px;font-weight:800">Venta registrada</div>
+          <div class="cifra num" data-total>$ 31.900</div>
+          <div class="sub" data-ok-sub>Efectivo · Vuelto $ 8.100</div>
+        </div>
+        <button class="btn apk-only"><svg class="i s20"><use href="#imprimir"/></svg>Imprimir ticket</button>
+        <button class="btn web-only"><svg class="i s20"><use href="#compartir"/></svg>Compartir ticket</button>
+        <div class="centro"><button class="lnk">Enviar por email</button></div>
+        <div class="centro"><button class="lnk" data-go="vender" data-nueva>Nueva venta</button></div>
+      </div>
+    </section>
+
+    <!-- ===================== ESCÁNER ===================== -->
+    <section class="scr oscura" data-s="escaner" data-full>
+      <div class="tb negra atras"><button class="ib" data-back aria-label="Cerrar"><svg class="i"><use href="#cerrar"/></svg></button><h2>Escanear</h2><button class="ib" aria-label="Linterna"><svg class="i"><use href="#flash"/></svg></button></div>
+      <button class="visor" data-leer><div class="marco"><div class="rayo"></div></div></button>
+      <div class="esc-pie"><button class="lnk" data-go="vender">Ingresar código</button></div>
+    </section>
+
+    <!-- ===================== VENTAS ===================== -->
+    <section class="scr" data-s="ventas" data-tab="ventas">
+      <div class="tb"><h2>Ventas</h2><span class="pill cajero-only">Caja #312</span><button class="ib" data-go="filtros" aria-label="Filtros"><svg class="i"><use href="#filtro"/></svg></button></div>
+      <div class="cu">
+        <div class="chips" data-chips><button class="chip on">Hoy</button><button class="chip">Ayer</button><button class="chip">7 días</button><button class="chip">Este mes</button><button class="chip">Fecha</button></div>
+        <div class="pz">
+          <div class="pz-h"><h3>Total</h3><span>38 ventas · 1 anulada</span></div>
+          <div class="pz-b"><div class="cifra num">$ 1.284.300</div><div id="medios2"></div></div>
+        </div>
+        <div class="rot">11:00 a 12:00</div>
+        <div class="pz" id="listaVentas"></div>
+        <div class="rot">10:00 a 11:00</div>
+        <div class="pz" id="listaVentas2"></div>
+      </div>
+    </section>
+
+    <!-- ===================== FILTROS DE VENTAS ===================== -->
+    <section class="scr" data-s="filtros" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Filtros</h2></div>
+      <div class="cu">
+        <div class="rot">Medio de pago</div>
+        <div class="chips" style="flex-wrap:wrap" data-multi><button class="chip">Efectivo 21</button><button class="chip">Débito 8</button><button class="chip">Transferencia 5</button><button class="chip">Mercado Pago 3</button><button class="chip">Crédito 1</button></div>
+        <div class="rot admin-only">Cajero</div>
+        <div class="chips admin-only" style="flex-wrap:wrap" data-multi><button class="chip">Lucía Gómez 24</button><button class="chip">Matías Ríos 14</button></div>
+        <div class="rot">Estado</div>
+        <div class="chips" style="flex-wrap:wrap" data-multi><button class="chip">Pagada 37</button><button class="chip">Anulada 1</button></div>
+        <div class="rot">Comprobante</div>
+        <div class="chips" style="flex-wrap:wrap" data-multi><button class="chip">No fiscal 30</button><button class="chip">Factura B 7</button><button class="chip">Factura A 1</button></div>
+      </div>
+      <div class="pie"><button class="btn" data-back>Ver 38 ventas</button></div>
+    </section>
+
+    <!-- ===================== DETALLE DE VENTA ===================== -->
+    <section class="scr" data-s="venta" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Venta #10482</h2><span class="est ok" style="background:rgba(255,255,255,.16);color:#fff">Pagada</span></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl">
+          <dt>Fecha</dt><dd>11/10/2026 11:31</dd><dt>Cajero</dt><dd>Lucía Gómez</dd><dt>Caja</dt><dd>#312 · Centro</dd><dt>Comprobante</dt><dd>Factura B 0003-00001842</dd><dt>Cliente</dt><dd>Consumidor final</dd>
+        </dl></div></div>
+        <div class="pz"><div class="pz-h"><h3>Artículos</h3><span>3</span></div>
+          <div class="it"><span class="tx"><b>Auriculares Bluetooth TWS</b><small>1 × $ 32.000</small></span><span class="der"><b class="num">$ 32.000</b></span></div>
+          <div class="it"><span class="tx"><b>Cable USB-C a USB-C 1 m</b><small>2 × $ 6.500</small></span><span class="der"><b class="num">$ 13.000</b></span></div>
+        </div>
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl"><dt>Débito</dt><dd class="num">$ 45.000</dd><div class="sep"></div><dt>Total</dt><dd class="f num">$ 45.000</dd></dl></div></div>
+        <button class="btn apk-only"><svg class="i s20"><use href="#imprimir"/></svg>Reimprimir ticket</button>
+        <button class="btn web-only"><svg class="i s20"><use href="#compartir"/></svg>Compartir ticket</button>
+        <div class="centro admin-only"><button class="lnk rojo" data-go="anular">Anular venta</button></div>
+      </div>
+    </section>
+
+    <!-- ===================== ANULAR VENTA ===================== -->
+    <section class="scr" data-s="anular" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Anular venta #10482</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl"><dt>Total</dt><dd class="f num">$ 45.000</dd><dt>Medio de pago</dt><dd>Débito</dd><dt>Comprobante</dt><dd>Factura B 0003-00001842</dd><dt>Stock que vuelve</dt><dd>3 artículos</dd></dl></div></div>
+        <div class="rot">Motivo</div>
+        <div class="ops" data-radio="motivo">
+          <button class="op" data-v="1"><span class="tx"><b>Error de carga</b></span><span class="rd"></span></button>
+          <button class="op" data-v="2"><span class="tx"><b>Devolución del cliente</b></span><span class="rd"></span></button>
+          <button class="op" data-v="3"><span class="tx"><b>Cobro duplicado</b></span><span class="rd"></span></button>
+          <button class="op" data-v="4"><span class="tx"><b>Otro</b></span><span class="rd"></span></button>
+        </div>
+        <div class="cmp"><label>Observación</label><textarea class="inp"></textarea></div>
+      </div>
+      <div class="pie"><button class="btn rojo" data-back>Anular venta #10482</button></div>
+    </section>
+
+    <!-- ===================== CAJA ===================== -->
+    <section class="scr" data-s="caja" data-tab="caja">
+      <div class="tb"><h2>Caja</h2><span class="pill" data-caja-pill2><i></i><span>Abierta</span></span></div>
+      <div class="cu" data-caja-abierta>
+        <div class="pz">
+          <div class="pz-h"><h3>Caja #312</h3><span>Centro · desde 08:12</span></div>
+          <div class="pz-b">
+            <div class="sub">Efectivo esperado</div>
+            <div class="cifra num">$ 412.300</div>
+            <div class="barra" style="display:flex;gap:2px;background:none"><s style="width:5%;background:var(--r3)"></s><s style="width:93%"></s><s style="width:2%;background:var(--gris)"></s></div>
+            <div style="margin-top:12px">
+              <div class="fila"><div class="l"><b>Fondo inicial</b><span class="num">$ 20.000</span></div></div>
+              <div class="fila"><div class="l"><b>Ventas en efectivo</b><span class="num">$ 402.300</span></div></div>
+              <div class="fila"><div class="l"><b>Ingresos</b><span class="num">$ 0</span></div></div>
+              <div class="fila"><div class="l"><b>Egresos</b><span class="num">− $ 10.000</span></div></div>
+            </div>
+          </div>
+          <div class="pz-f"><button class="btn" data-go="caja-cerrar">Cerrar caja</button></div>
+        </div>
+        <div class="pz">
+          <div class="pz-h"><h3>Cobrado en el turno</h3><span>31 ventas</span></div>
+          <div class="pz-b" id="medios3"></div>
+        </div>
+        <div class="pz">
+          <div class="pz-h"><h3>Movimientos</h3><span>1</span></div>
+          <div class="it"><span class="ico"><svg class="i"><use href="#transf"/></svg></span><span class="tx"><b>Pago a proveedor</b><small>09:20 · Lucía Gómez</small></span><span class="der"><b class="num">− $ 10.000</b></span></div>
+          <div class="pz-f"><button class="btn" data-go="caja-mov">Registrar movimiento</button></div>
+        </div>
+      </div>
+      <div class="cu oculto" data-caja-cerrada>
+        <div class="pz">
+          <div class="pz-h"><h3>Caja cerrada</h3><span>Centro</span></div>
+          <div class="pz-b"><dl class="dl"><dt>Último cierre</dt><dd>#312 · 11/10 11:58</dd><dt>Diferencia</dt><dd class="num dif-ok">$ 0</dd></dl></div>
+          <div class="pz-f"><button class="btn" data-go="caja-abrir">Abrir caja</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ABRIR CAJA ===================== -->
+    <section class="scr" data-s="caja-abrir" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Abrir caja</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl"><dt>Cajero</dt><dd>Lucía Gómez</dd><dt>Sucursal</dt><dd>Centro</dd><dt>Hora</dt><dd>11:42</dd></dl></div></div>
+        <div class="cmp"><label>Efectivo para empezar el turno</label><div class="inpw grande"><span class="pre">$</span><input class="inp grande num" id="fondo" inputmode="numeric" value="20.000"></div></div>
+        <div class="cmp"><label>Observación</label><textarea class="inp" placeholder="Opcional"></textarea></div>
+      </div>
+      <div class="pie"><button class="btn" data-abrir>Abrir caja con <span class="num" id="fondoTxt">$ 20.000</span></button></div>
+    </section>
+
+    <!-- ===================== CERRAR CAJA (ARQUEO) ===================== -->
+    <section class="scr" data-s="caja-cerrar" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cerrar caja #312</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl"><dt>Debería haber</dt><dd class="f num">$ 412.300</dd><dt>Ventas</dt><dd class="num">31</dd><dt>Facturado</dt><dd class="num">$ 1.012.400</dd><dt>Fondo inicial</dt><dd class="num">$ 20.000</dd></dl></div></div>
+        <div class="cmp"><label>Efectivo contado</label><div class="inpw grande"><span class="pre">$</span><input class="inp grande num" id="contado" inputmode="numeric" value="410.000"></div></div>
+        <div class="pz"><div class="pz-b" style="padding-top:16px"><dl class="dl"><dt>Diferencia</dt><dd class="f num" id="dif">− $ 2.300</dd></dl></div></div>
+        <div class="cmp" id="motivoDif"><label>Motivo de la diferencia</label><textarea class="inp"></textarea></div>
+        <div class="pz"><div class="pz-h"><h3>Cobrado en el turno</h3><span>31 ventas</span></div><div class="pz-b" id="medios4"></div></div>
+      </div>
+      <div class="pie"><button class="btn" data-cerrar>Cerrar la caja</button></div>
+    </section>
+
+    <!-- ===================== MOVIMIENTO DE CAJA ===================== -->
+    <section class="scr" data-s="caja-mov" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Movimiento de caja</h2></div>
+      <div class="cu">
+        <div class="seg" style="border-color:var(--linea);background:var(--pieza)" data-k="mov"><button data-v="Egreso" class="on" style="height:44px">Egreso</button><button data-v="Ingreso" style="height:44px">Ingreso</button></div>
+        <div class="cmp"><label>Importe</label><div class="inpw grande"><span class="pre">$</span><input class="inp grande num" id="movImp" inputmode="numeric" value="5.000"></div></div>
+        <div class="rot">Motivo</div>
+        <div class="ops" data-radio="movmot">
+          <button class="op on" data-v="1"><span class="tx"><b>Pago a proveedor</b></span><span class="rd"></span></button>
+          <button class="op" data-v="2"><span class="tx"><b>Retiro de efectivo</b></span><span class="rd"></span></button>
+          <button class="op" data-v="3"><span class="tx"><b>Gastos del local</b></span><span class="rd"></span></button>
+          <button class="op" data-v="4"><span class="tx"><b>Cambio para la caja</b></span><span class="rd"></span></button>
+          <button class="op" data-v="5"><span class="tx"><b>Depósito</b></span><span class="rd"></span></button>
+        </div>
+        <div class="cmp"><label>Otro motivo</label><input class="inp" placeholder="Opcional"></div>
+      </div>
+      <div class="pie"><button class="btn" data-back>Registrar <span id="movTxt">egreso de $ 5.000</span></button></div>
+    </section>
+
+    <!-- ===================== PRODUCTOS ===================== -->
+    <section class="scr" data-s="productos" data-tab="productos">
+      <div class="tb"><h2>Productos</h2><button class="ib admin-only" data-go="producto-nuevo" aria-label="Nuevo producto"><svg class="i"><use href="#mas1"/></svg></button></div>
+      <div class="cu">
+        <div class="bus"><svg class="i s20" style="color:var(--suave)"><use href="#buscar"/></svg><input placeholder="Buscar nombre, SKU o código"><button class="cam" data-go="escaner" data-origen="productos" aria-label="Escanear"><svg class="i"><use href="#scan"/></svg></button></div>
+        <div class="chips" data-chips id="chipsP"><button class="chip on" data-f="todos">Todos 412</button><button class="chip" data-f="con">Con stock 398</button><button class="chip" data-f="sin">Sin stock 14</button></div>
+        <div class="pz" id="listaP"></div>
+      </div>
+    </section>
+
+    <!-- ===================== FICHA DE PRODUCTO ===================== -->
+    <section class="scr" data-s="producto" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Producto</h2></div>
+      <div class="cu" style="padding-top:0;padding-left:0;padding-right:0">
+        <div class="ficha-foto"><svg class="i s40"><use href="#box"/></svg></div>
+        <div style="padding:0 16px;display:flex;flex-direction:column;gap:12px">
+          <div class="pz"><div class="pz-b" style="padding-top:16px">
+            <div style="font-size:19px;font-weight:800" data-p-nom>Cargador 20 W USB-C</div>
+            <div class="sub" data-p-cod>Código 7791234000028 · Cargadores</div>
+            <div class="cifra num" style="margin-top:10px" data-p-pre>$ 18.900</div>
+            <div class="sub">Precio contado</div>
+            <dl class="dl" style="margin-top:12px"><dt>Precio lista</dt><dd class="num" data-p-lis>$ 21.200</dd><dt class="admin-only">Costo</dt><dd class="num admin-only">$ 11.300</dd></dl>
+          </div></div>
+          <div class="pz"><div class="pz-h"><h3>Stock por sucursal</h3><span class="num">34 u.</span></div>
+            <div class="pz-b">
+              <div class="fila"><div class="l"><b>Centro</b><span class="num" data-p-stk>9</span></div><div class="barra"><s style="width:26%"></s></div></div>
+              <div class="fila"><div class="l"><b>Rivadavia</b><span class="num">4</span></div><div class="barra"><s style="width:12%"></s></div></div>
+              <div class="fila"><div class="l"><b>Depósito</b><span class="num">21</span></div><div class="barra"><s style="width:62%"></s></div></div>
+            </div>
+          </div>
+          <button class="btn admin-only" data-go="producto-editar">Editar producto</button>
+          <button class="btn cajero-only" data-agregar-ficha>Agregar a la venta</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== NUEVO / EDITAR PRODUCTO ===================== -->
+    <section class="scr" data-s="producto-nuevo" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2 data-form-tit>Nuevo producto</h2></div>
+      <div class="cu">
+        <div class="rot">Fotos</div>
+        <div class="fotos" id="fotos"><button class="ftile add" data-foto><svg class="i s28"><use href="#camara"/></svg>Agregar foto</button></div>
+        <div class="rot">Datos</div>
+        <div class="cmp"><label>Descripción</label><input class="inp" data-f-nom placeholder="Nombre del producto"></div>
+        <div class="cmp"><label>Código de barras</label><div class="inpw"><input class="inp num" style="padding-left:14px" data-f-cod placeholder="Escanear o escribir"><button class="act" data-go="escaner" data-origen="form" aria-label="Escanear"><svg class="i s20"><use href="#scan"/></svg></button></div></div>
+        <div class="dos"><div class="cmp"><label>Rubro</label><select class="inp" style="font-size:16px"><option>Cargadores</option><option>Cables</option><option>Audio</option></select></div><div class="cmp"><label>Marca</label><input class="inp" placeholder="Opcional"></div></div>
+        <div class="rot">Precios</div>
+        <div class="dos"><div class="cmp"><label>Costo</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-costo value="" inputmode="numeric"></div></div><div class="cmp"><label>% de ganancia</label><input class="inp num" value="67" inputmode="numeric"></div></div>
+        <div class="dos"><div class="cmp"><label>Precio contado</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-pre inputmode="numeric"></div></div><div class="cmp"><label>Precio lista</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-lis inputmode="numeric"></div></div></div>
+        <div class="rot">Stock</div>
+        <div class="dos"><div class="cmp"><label>Centro</label><input class="inp num" value="0" inputmode="numeric"></div><div class="cmp"><label>Depósito</label><input class="inp num" value="0" inputmode="numeric"></div></div>
+        <button class="sw on" data-toggle><span>Activo</span><span class="t"></span></button>
+        <button class="sw on" data-toggle><span>Controla stock</span><span class="t"></span></button>
+        <div class="centro" data-form-baja style="display:none"><button class="lnk rojo">Dar de baja el producto</button></div>
+      </div>
+      <div class="pie"><button class="btn" data-back>Guardar producto</button></div>
+    </section>
+
+    <!-- ===================== ASISTENTE ===================== -->
+    <section class="scr" data-s="asistente" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Asistente</h2><span class="pill admin-only num">USD 4,10 de 20</span></div>
+      <div class="cu" id="hilo">
+        <div class="rot">Sugeridas</div>
+        <div class="pz" id="sugeridas"></div>
+      </div>
+      <div class="entrada"><textarea placeholder="Ventas, caja, cierres, stock" id="preg"></textarea><button class="env" data-preguntar aria-label="Preguntar"><svg class="i"><use href="#enviar"/></svg></button></div>
+    </section>
+
+    <!-- ===================== PEDIDOS WEB (ejemplo de Tienda) ===================== -->
+    <section class="scr" data-s="pedidos" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Pedidos</h2></div>
+      <div class="cu">
+        <div class="chips" data-chips><button class="chip on">Sin preparar 2</button><button class="chip">Listos 5</button><button class="chip">Entregados 41</button></div>
+        <div class="pz">
+          <button class="it"><span class="tx"><b>#2041 · Martín Sosa</b><small>Retira en Centro · Mercado Pago aprobado</small></span><span class="der"><b class="num">$ 63.900</b><small>11:38</small></span></button>
+          <button class="it"><span class="tx"><b>#2040 · Carla Funes</b><small>Envío · Transferencia a confirmar</small></span><span class="der"><b class="num">$ 18.900</b><small>10:02</small></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CAJAS (admin) ===================== -->
+    <section class="scr" data-s="cajas-adm" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cajas</h2></div>
+      <div class="cu">
+        <div class="rot">Abiertas</div>
+        <div class="pz">
+          <button class="it" data-go="caja"><span class="tx"><b>#312 · Centro</b><small>Lucía Gómez · desde 08:12</small></span><span class="der"><b class="num">$ 412.300</b><small>Esperado</small></span></button>
+          <button class="it"><span class="tx"><b>#313 · Rivadavia</b><small>Matías Ríos · desde 09:01</small></span><span class="der"><b class="num">$ 96.400</b><small>Esperado</small></span></button>
+        </div>
+        <div class="rot">Cerradas</div>
+        <div class="pz">
+          <button class="it"><span class="tx"><b>#311 · Centro</b><small>10/10 20:31 · Lucía Gómez</small></span><span class="der"><b class="num dif-neg">− $ 2.300</b><small>Diferencia</small></span></button>
+          <button class="it"><span class="tx"><b>#310 · Rivadavia</b><small>10/10 20:05 · Matías Ríos</small></span><span class="der"><b class="num">$ 0</b><small>Diferencia</small></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== MÁS ===================== -->
+    <section class="scr" data-s="mas" data-tab="mas">
+      <div class="tb"><h2>Más</h2></div>
+      <div class="cu mas">
+        <div class="pz"><button class="it"><span class="avatar" style="width:44px;height:44px;font-size:16px;margin:0">LG</span><span class="tx"><b>Lucía Gómez</b><small data-rol-txt>Dueño · Centro</small></span><svg class="i s20 chev"><use href="#chev"/></svg></button></div>
+
+        <div class="rot">Operación</div>
+        <div class="pz">
+          <button class="it" data-go="asistente"><svg class="i ic2"><use href="#chat"/></svg><span class="tx"><b>Asistente</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it admin-only" data-go="caja"><svg class="i ic2"><use href="#caja"/></svg><span class="tx"><b>Caja</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#camion"/></svg><span class="tx"><b>Derivaciones</b></span><span class="est no">1</span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#archivo"/></svg><span class="tx"><b>Presupuestos</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#imprimir"/></svg><span class="tx"><b>Impresión</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot admin-only">Gestión</div>
+        <div class="pz admin-only">
+          <button class="it" data-go="cajas-adm"><svg class="i ic2"><use href="#caja2"/></svg><span class="tx"><b>Cajas</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#grafico"/></svg><span class="tx"><b>Reportes</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#camion"/></svg><span class="tx"><b>Proveedores</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#etiqueta"/></svg><span class="tx"><b>Categorías</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#etiqueta"/></svg><span class="tx"><b>Etiquetas</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot admin-only">CRM</div>
+        <div class="pz admin-only">
+          <button class="it"><svg class="i ic2"><use href="#usuarios"/></svg><span class="tx"><b>Clientes</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#video"/></svg><span class="tx"><b>Gestión de contenidos</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot admin-only">Tienda</div>
+        <div class="pz admin-only">
+          <button class="it" data-go="pedidos"><svg class="i ic2"><use href="#tienda"/></svg><span class="tx"><b>Pedidos</b></span><span class="est no">2</span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#chat"/></svg><span class="tx"><b>Consultas web</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#imagen"/></svg><span class="tx"><b>Marca</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot admin-only">Sistema</div>
+        <div class="pz admin-only">
+          <button class="it"><svg class="i ic2"><use href="#usuarios"/></svg><span class="tx"><b>Usuarios</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#tarjeta"/></svg><span class="tx"><b>Medios de pago</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#engranaje"/></svg><span class="tx"><b>Parámetros de precios</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#archivo"/></svg><span class="tx"><b>Fiscal</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+
+        <div class="rot">Cuenta</div>
+        <div class="pz">
+          <button class="it sw" data-tema style="justify-content:flex-start"><svg class="i ic2"><use href="#luna"/></svg><span class="tx"><b>Modo oscuro</b></span><span class="t"></span></button>
+          <button class="it sw apk-only on" data-toggle style="justify-content:flex-start"><svg class="i ic2"><use href="#huella"/></svg><span class="tx"><b>Entrar con huella</b></span><span class="t"></span></button>
+          <button class="it sw apk-only on" data-toggle style="justify-content:flex-start"><svg class="i ic2"><use href="#campana"/></svg><span class="tx"><b>Avisos de ventas y pedidos</b></span><span class="t"></span></button>
+          <button class="it" data-go="login" style="color:var(--rojo)"><svg class="i"><use href="#salir"/></svg><span class="tx"><b>Cerrar sesión</b></span></button>
+        </div>
+      </div>
+    </section>
+
+    <nav class="bn" id="bn" aria-label="Navegación principal"></nav>
+    <div class="toast" id="toast"><svg class="i s20"><use href="#check"/></svg><span></span></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const tel = $("#tel");
+  const pesos = n => (n < 0 ? "− " : "") + "$ " + Math.abs(Math.round(n)).toLocaleString("es-AR");
+
+  const PRODUCTOS = [
+    { id: 1, n: "Cable USB-C a USB-C 1 m", c: "7791234000011", r: "Cables", p: 6500, s: 24 },
+    { id: 2, n: "Cargador 20 W USB-C", c: "7791234000028", r: "Cargadores", p: 18900, s: 9 },
+    { id: 3, n: "Auriculares Bluetooth TWS", c: "7791234000035", r: "Audio", p: 32000, s: 5 },
+    { id: 4, n: "Funda iPhone 15 silicona", c: "7791234000042", r: "Fundas", p: 9800, s: 0 },
+    { id: 5, n: "Mouse inalámbrico", c: "7791234000059", r: "Periféricos", p: 14500, s: 12 },
+    { id: 6, n: "Pendrive 64 GB", c: "7791234000066", r: "Almacenamiento", p: 11200, s: 18 },
+    { id: 7, n: "Templado Samsung A15", c: "7791234000073", r: "Fundas", p: 5000, s: 40 },
+    { id: 8, n: "Parlante portátil 10 W", c: "7791234000080", r: "Audio", p: 41500, s: 3 },
+  ];
+  const carrito = new Map([[1, 2], [2, 1]]);
+  const st = { pila: [], rol: "admin", plat: "web", medio: "Efectivo", comp: "Sin comprobante ARCA", caja: true, filtroP: "todos", origenEsc: "vender", productoId: 2 };
+
+  /* ---------- Navegación ---------- */
+  const TABS = {
+    admin: [["inicio", "Inicio", "home"], ["vender", "Vender", "vender"], ["ventas", "Ventas", "ventas"], ["productos", "Productos", "box"], ["mas", "Más", "mas"]],
+    cajero: [["vender", "Vender", "vender"], ["ventas", "Ventas", "ventas"], ["caja", "Caja", "caja"], ["productos", "Productos", "box"], ["mas", "Más", "mas"]],
+  };
+  const NOMBRES = {
+    login: "Ingreso", "login-pass": "Ingreso con contraseña", inicio: "Inicio (dueño)", avisos: "Avisos", vender: "Vender", carrito: "Venta en curso",
+    "cobrar-1": "Cobrar 1 · Medio de pago", "cobrar-2": "Cobrar 2 · Pago", "cobrar-3": "Cobrar 3 · Comprobante", "cobrar-4": "Cobrar 4 · Confirmar", "venta-ok": "Venta registrada",
+    escaner: "Escáner", ventas: "Ventas", filtros: "Filtros de ventas", venta: "Detalle de venta", anular: "Anular venta",
+    caja: "Caja", "caja-abrir": "Abrir caja", "caja-cerrar": "Cerrar caja (arqueo)", "caja-mov": "Movimiento de caja", "cajas-adm": "Cajas",
+    productos: "Productos", producto: "Ficha de producto", "producto-nuevo": "Nuevo producto", asistente: "Asistente", pedidos: "Pedidos web", mas: "Más",
+  };
+  const GRUPOS = [["Entrada", ["login", "login-pass"]], ["Dueño", ["inicio", "avisos", "cajas-adm", "pedidos"]], ["Vender y cobrar", ["vender", "escaner", "carrito", "cobrar-1", "cobrar-2", "cobrar-3", "cobrar-4", "venta-ok"]], ["Ventas", ["ventas", "filtros", "venta", "anular"]], ["Caja", ["caja", "caja-abrir", "caja-cerrar", "caja-mov"]], ["Productos", ["productos", "producto", "producto-nuevo"]], ["Otros", ["asistente", "mas"]]];
+
+  function ir(id, push = true) {
+    if (id === "@inicio") id = st.rol === "admin" ? "inicio" : "vender";
+    if (id === "producto-editar") { prepararForm(true); id = "producto-nuevo"; }
+    else if (id === "producto-nuevo") prepararForm(false);
+    const actual = $(".scr.on");
+    if (actual && push && actual.dataset.s !== id) st.pila.push(actual.dataset.s);
+    $$(".scr").forEach(s => s.classList.toggle("on", s.dataset.s === id));
+    const scr = $(`.scr[data-s="${id}"]`);
+    const full = scr.hasAttribute("data-full");
+    $("#bn").classList.toggle("oculto", full);
+    const tab = scr.dataset.tab;
+    $$("#bn button").forEach(b => b.classList.toggle("on", b.dataset.go === tab));
+    $$("#idx button").forEach(b => b.classList.toggle("on", b.dataset.go === id));
+    const cu = $(".cu", scr); if (cu && push) cu.scrollTop = 0;
+    if (id.startsWith("cobrar") || id === "venta-ok") pintarCobro();
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  function volver() { const p = st.pila.pop(); ir(p || "@inicio", false); }
+
+  function pintarNav() {
+    $("#bn").innerHTML = TABS[st.rol].map(([id, t, ic]) =>
+      `<button data-go="${id}"><svg class="i"><use href="#${ic}"/></svg>${t}${id === "mas" && st.rol === "admin" ? '<span class="bd">3</span>' : ""}</button>`).join("");
+  }
+  function pintarIndice() {
+    $("#idx").innerHTML = GRUPOS.map(([g, ids]) => `<i>${g}</i>` + ids.map(id => `<button data-go="${id}">${NOMBRES[id]}</button>`).join("")).join("");
+  }
+
+  /* ---------- Datos de muestra ---------- */
+  const thumb = (q) => `<span class="foto"><svg class="i"><use href="#box"/></svg>${q ? `<span class="q">${q}</span>` : ""}</span>`;
+  function pintarVender() {
+    $("#listaV").innerHTML = PRODUCTOS.map(p => `<button class="it" data-add="${p.id}" ${p.s ? "" : "disabled style='opacity:.55'"}>${thumb(carrito.get(p.id))}<span class="tx"><b>${p.n}</b><small>${p.s ? p.s + " u. · " : ""}${p.c}</small></span><span class="der"><b class="num">${pesos(p.p)}</b>${p.s ? "" : '<span class="est gr">Sin stock</span>'}</span></button>`).join("");
+  }
+  function pintarCarrito() {
+    let cant = 0, tot = 0;
+    const filas = [];
+    carrito.forEach((q, id) => { const p = PRODUCTOS.find(x => x.id === id); cant += q; tot += q * p.p;
+      filas.push(`<div class="it">${thumb()}<span class="tx"><b>${p.n}</b><small class="num">${pesos(p.p)}</small><span class="stp" style="margin-top:8px;width:max-content"><button data-q="${id}" data-d="-1" aria-label="Menos"><svg class="i s20"><use href="#${q === 1 ? "cerrar" : "menos"}"/></svg></button><span>${q}</span><button data-q="${id}" data-d="1" aria-label="Más"><svg class="i s20"><use href="#mas1"/></svg></button></span></span><span class="der"><b class="num">${pesos(q * p.p)}</b></span></div>`); });
+    $("#listaC").innerHTML = filas.join("") || `<div class="it"><span class="tx"><b>Sin artículos</b></span></div>`;
+    $("#resumenC").innerHTML = `<div class="pz-h"><h3>Artículos</h3><span>${cant}</span></div>` + [...carrito].map(([id, q]) => { const p = PRODUCTOS.find(x => x.id === id); return `<div class="it"><span class="tx"><b>${p.n}</b><small>${q} × ${pesos(p.p)}</small></span><span class="der"><b class="num">${pesos(q * p.p)}</b></span></div>`; }).join("");
+    $$("[data-total]").forEach(e => e.textContent = pesos(tot));
+    $$("[data-cant]").forEach(e => e.textContent = cant === 1 ? "1 artículo" : cant + " artículos");
+    $$('[data-go="cobrar-1"]').forEach(b => { b.toggleAttribute("disabled", !cant); b.style.opacity = cant ? "" : ".45"; });
+    st.total = tot; st.cant = cant;
+    pintarVender(); pintarRapidos(); calcVuelto();
+  }
+  function pintarRapidos() {
+    const t = st.total || 0, r = [t, Math.ceil(t / 1000) * 1000, Math.ceil(t / 10000) * 10000, Math.ceil(t / 20000) * 20000];
+    $("#rapidos").innerHTML = [...new Set(r)].map((v, i) => `<button class="chip" data-rec="${v}">${i === 0 ? "Exacto" : pesos(v)}</button>`).join("");
+  }
+  function calcVuelto() {
+    const rec = Number(($("#recibido").value || "0").replace(/\D/g, ""));
+    st.recibido = rec; st.vuelto = rec - (st.total || 0);
+    $("#vuelto").textContent = st.vuelto >= 0 ? pesos(st.vuelto) : "Falta " + pesos(-st.vuelto);
+    $("#vuelto").className = "f num" + (st.vuelto < 0 ? " dif-neg" : "");
+  }
+  function pintarCobro() {
+    $$("[data-medio]").forEach(e => e.textContent = st.medio);
+    $("[data-medio-t]").textContent = st.medio;
+    const panel = ["Efectivo", "Crédito"].includes(st.medio) ? st.medio : "otro";
+    $$("[data-panel]").forEach(p => p.classList.toggle("oculto", p.dataset.panel !== panel));
+    $$("[data-solo-efvo]").forEach(e => e.classList.toggle("oculto", st.medio !== "Efectivo"));
+    $("[data-recibido]").textContent = pesos(st.recibido || 0);
+    $("[data-vuelto]").textContent = pesos(Math.max(0, st.vuelto || 0));
+    $("[data-comp]").textContent = st.comp;
+    const fiscalA = st.comp === "Factura A";
+    $("#cliente-campos").classList.toggle("oculto", !fiscalA);
+    $("[data-cliente]").textContent = fiscalA ? "Estudio Contable Ruiz SRL" : "Consumidor final";
+    $("[data-ok-sub]").textContent = st.medio + (st.medio === "Efectivo" ? " · Vuelto " + pesos(Math.max(0, st.vuelto || 0)) : "");
+    const t = st.total || 0;
+    [["1", 1, 1], ["3", 3, 1.12], ["6", 6, 1.24]].forEach(([k, n, f]) => { const e = $(`[data-cuota="${k}"]`); if (e) e.textContent = (n > 1 ? n + " × " : "") + pesos(t * f / n); });
+  }
+
+  const MEDIOS = [["Efectivo", 612400, 21], ["Débito", 338900, 8], ["Transferencia", 201000, 5], ["Mercado Pago", 99500, 3], ["Crédito", 32500, 1]];
+  function filasMedios(lista) {
+    const max = Math.max(...lista.map(m => m[1]));
+    return lista.map(([n, v, c]) => `<div class="fila"><div class="l"><b>${n}<small>${c} ${c === 1 ? "venta" : "ventas"}</small></b><span class="num">${pesos(v)}</span></div><div class="barra"><s style="width:${Math.max(4, v / max * 100)}%"></s></div></div>`).join("");
+  }
+  function pintarTablero() {
+    const horas = [[9, 42], [10, 118], [11, 196], [12, 88], [13, 40], [14, 0], [15, 0], [16, 0], [17, 0], [18, 0], [19, 0], [20, 0]];
+    const max = Math.max(...horas.map(h => h[1]));
+    $("#cols").innerHTML = horas.map(([h, v]) => `<div><s class="${v === max ? "max" : ""}" style="height:${v ? Math.max(4, v / max * 85) : 0}%"></s><span>${h}</span></div>`).join("");
+    $("#medios").innerHTML = filasMedios(MEDIOS);
+    $("#medios2").innerHTML = filasMedios(MEDIOS);
+    $("#medios3").innerHTML = filasMedios([["Efectivo", 402300, 17], ["Débito", 301100, 7], ["Transferencia", 201000, 4], ["Mercado Pago", 75500, 2], ["Crédito", 32500, 1]]);
+    $("#medios4").innerHTML = $("#medios3").innerHTML;
+    const V = [["#10482", "11:31", "Débito", 45000, "Lucía Gómez"], ["#10481", "11:18", "Efectivo", 18900, "Lucía Gómez"], ["#10480", "11:04", "Transferencia", 63900, "Matías Ríos"]];
+    const V2 = [["#10479", "10:55", "Efectivo", 14500, "Lucía Gómez", 1], ["#10478", "10:41", "Mercado Pago", 32000, "Matías Ríos"], ["#10477", "10:12", "Efectivo", 6500, "Lucía Gómez"]];
+    const fila = ([n, h, m, v, c, an]) => `<button class="it ${an ? "anulada" : ""}" data-go="venta"><span class="tx"><b>${n} · ${h}</b><small>${m}${st.rol === "admin" ? " · " + c : ""}</small></span><span class="der"><b class="num">${pesos(v)}</b>${an ? '<span class="est gr">Anulada</span>' : ""}</span><svg class="i s20 chev"><use href="#chev"/></svg></button>`;
+    $("#ultimas").innerHTML = V.map(fila).join("") + `<div class="pz-f centro"><button class="lnk" data-go="ventas">Ver todas</button></div>`;
+    $("#listaVentas").innerHTML = V.map(fila).join("");
+    $("#listaVentas2").innerHTML = V2.map(fila).join("");
+  }
+  function pintarProductos() {
+    const l = PRODUCTOS.filter(p => st.filtroP === "todos" || (st.filtroP === "sin" ? !p.s : p.s));
+    $("#listaP").innerHTML = l.map(p => `<button class="it" data-prod="${p.id}">${thumb()}<span class="tx"><b>${p.n}</b><small>${p.r} · ${p.c}</small></span><span class="der"><b class="num">${pesos(p.p)}</b>${p.s ? `<small>${p.s} u.</small>` : '<span class="est no">Sin stock</span>'}</span></button>`).join("");
+    $$("#chipsP .chip").forEach(c => c.classList.toggle("on", c.dataset.f === st.filtroP));
+  }
+  function verProducto(id) {
+    const p = PRODUCTOS.find(x => x.id === id); st.productoId = id;
+    $("[data-p-nom]").textContent = p.n; $("[data-p-cod]").textContent = `Código ${p.c} · ${p.r}`;
+    $("[data-p-pre]").textContent = pesos(p.p); $("[data-p-lis]").textContent = pesos(p.p * 1.12); $("[data-p-stk]").textContent = p.s;
+    ir("producto");
+  }
+  function prepararForm(editar) {
+    const p = PRODUCTOS.find(x => x.id === st.productoId);
+    $("[data-form-tit]").textContent = editar ? "Editar producto" : "Nuevo producto";
+    $("[data-f-nom]").value = editar ? p.n : ""; $("[data-f-cod]").value = editar ? p.c : "";
+    $("[data-f-pre]").value = editar ? p.p : ""; $("[data-f-lis]").value = editar ? Math.round(p.p * 1.12) : ""; $("[data-f-costo]").value = editar ? Math.round(p.p / 1.67) : "";
+    $("[data-form-baja]").style.display = editar ? "" : "none";
+    $("#fotos").innerHTML = (editar ? `<div class="ftile img"><svg class="i s28"><use href="#box"/></svg><em>Principal</em></div>` : "") + `<button class="ftile add" data-foto><svg class="i s28"><use href="#camara"/></svg>Agregar foto</button>`;
+  }
+  const SUG = { admin: ["¿Cuánto se vendió hoy y con qué medios?", "¿Cómo viene la caja abierta?", "¿Qué conviene para vender más?", "¿Qué cierres de la semana tuvieron diferencia?", "¿Qué fue lo más vendido en 30 días?", "¿Qué margen dejaron las ventas del mes?"],
+    cajero: ["¿Cómo viene la caja abierta?", "¿Cuánto se vendió hoy y con qué medios?", "¿Qué productos están sin stock?"] };
+  function pintarAsistente() {
+    $("#hilo").innerHTML = `<div class="rot">Sugeridas</div><div class="pz">${SUG[st.rol].map(s => `<button class="it" data-sug>${'<svg class="i ic2" style="color:var(--accion-txt)"><use href="#chat"/></svg>'}<span class="tx"><b style="white-space:normal">${s}</b></span></button>`).join("")}</div>`;
+  }
+  function responder(q) {
+    $("#hilo").innerHTML = `<div class="burbuja">${q}</div><div class="resp"><h4>Hoy, hasta las 11:42</h4><div class="cifra num">$ 1.284.300</div><div class="sub">38 ventas · ticket promedio $ 33.797</div>${filasMedios(MEDIOS.slice(0, 3))}</div>`;
+  }
+
+  function toast(t) { const e = $("#toast"); $("span", e).textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove("on"), 1600); }
+
+  function pintarCaja() {
+    $("[data-caja-abierta]").classList.toggle("oculto", !st.caja);
+    $("[data-caja-cerrada]").classList.toggle("oculto", st.caja);
+    $$("[data-caja-pill],[data-caja-pill2]").forEach(p => p.classList.toggle("cerrada", !st.caja));
+    $("[data-caja-pill] span").textContent = st.caja ? "Caja #312" : "Caja cerrada";
+    $("[data-caja-pill2] span").textContent = st.caja ? "Abierta" : "Cerrada";
+    $("[data-caja-tit]").textContent = st.caja ? "Caja #312 abierta" : "Caja cerrada";
+    $("[data-caja-sub]").textContent = st.caja ? "Desde 08:12 · Lucía Gómez" : "Centro";
+    $("[data-caja-esp]").textContent = st.caja ? "$ 412.300" : "";
+  }
+  function calcArqueo() {
+    const c = Number(($("#contado").value || "0").replace(/\D/g, "")), d = c - 412300;
+    $("#dif").textContent = d === 0 ? "$ 0" : (d > 0 ? "+ " : "") + pesos(d);
+    $("#dif").className = "f num " + (d === 0 ? "dif-ok" : "dif-neg");
+    $("#motivoDif").classList.toggle("oculto", d === 0);
+  }
+  function calcMov() {
+    const v = Number(($("#movImp").value || "0").replace(/\D/g, ""));
+    $("#movTxt").textContent = (st.mov || "Egreso").toLowerCase() + " de " + pesos(v);
+  }
+
+  /* ---------- Eventos ---------- */
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button,[data-go]"); if (!t) return;
+    const seg = t.closest(".seg");
+    if (seg && t.dataset.v) {
+      $$("button", seg).forEach(b => b.classList.toggle("on", b === t));
+      const k = seg.dataset.k, v = t.dataset.v;
+      if (k === "theme") { document.documentElement.dataset.theme = v; $$("[data-tema]").forEach(x => x.classList.toggle("on", v === "dark")); }
+      if (k === "rol") { st.rol = v; tel.dataset.rol = v; pintarNav(); pintarTablero(); pintarAsistente(); $("[data-rol-txt]").textContent = (v === "admin" ? "Dueño" : "Cajero") + " · Centro"; st.pila = []; ir("@inicio", false); }
+      if (k === "plat") { st.plat = v; tel.dataset.plat = v; }
+      if (k === "mov") { st.mov = v; calcMov(); }
+      return;
+    }
+    if (t.hasAttribute("data-tema")) { const d = document.documentElement.dataset.theme !== "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; t.classList.toggle("on", d); $$('[data-k="theme"] button').forEach(b => b.classList.toggle("on", b.dataset.v === (d ? "dark" : "light"))); return; }
+    if (t.hasAttribute("data-toggle")) { t.classList.toggle("on"); return; }
+    const rad = t.closest("[data-radio]");
+    if (rad && t.classList.contains("op")) {
+      $$(".op", rad).forEach(o => o.classList.toggle("on", o === t));
+      if (rad.dataset.radio === "medio") st.medio = t.dataset.v;
+      if (rad.dataset.radio === "comp") st.comp = t.dataset.v;
+      pintarCobro(); return;
+    }
+    if (t.closest("[data-chips]") && t.classList.contains("chip")) {
+      if (t.dataset.f) { st.filtroP = t.dataset.f; pintarProductos(); return; }
+      $$(".chip", t.parentNode).forEach(c => c.classList.toggle("on", c === t)); return;
+    }
+    if (t.closest("[data-multi]") && t.classList.contains("chip")) { t.classList.toggle("on"); return; }
+    if (t.dataset.add) { const id = +t.dataset.add; carrito.set(id, (carrito.get(id) || 0) + 1); pintarCarrito(); toast(PRODUCTOS.find(p => p.id === id).n + " agregado"); return; }
+    if (t.dataset.q) { const id = +t.dataset.q, q = (carrito.get(id) || 0) + +t.dataset.d; q > 0 ? carrito.set(id, q) : carrito.delete(id); pintarCarrito(); return; }
+    if (t.hasAttribute("data-vaciar")) { carrito.clear(); pintarCarrito(); return; }
+    if (t.dataset.rec) { $("#recibido").value = Number(t.dataset.rec).toLocaleString("es-AR"); calcVuelto(); return; }
+    if (t.dataset.prod) { verProducto(+t.dataset.prod); return; }
+    if (t.hasAttribute("data-agregar-ficha")) { carrito.set(st.productoId, (carrito.get(st.productoId) || 0) + 1); pintarCarrito(); ir("vender"); toast("Agregado a la venta"); return; }
+    if (t.hasAttribute("data-confirmar")) { t.disabled = true; setTimeout(() => { t.disabled = false; ir("venta-ok"); }, 450); return; }
+    if (t.hasAttribute("data-nueva")) { carrito.clear(); pintarCarrito(); st.pila = []; }
+    if (t.hasAttribute("data-abrir")) { st.caja = true; pintarCaja(); st.pila = []; ir("caja", false); toast("Caja #314 abierta"); return; }
+    if (t.hasAttribute("data-cerrar")) { st.caja = false; pintarCaja(); st.pila = []; ir("caja", false); toast("Caja #312 cerrada"); return; }
+    if (t.hasAttribute("data-foto")) { t.insertAdjacentHTML("beforebegin", `<div class="ftile img"><svg class="i s28"><use href="#box"/></svg>${$("#fotos .img") ? "" : "<em>Principal</em>"}</div>`); return; }
+    if (t.hasAttribute("data-leer")) {
+      if (st.origenEsc === "productos") { verProducto(2); }
+      else if (st.origenEsc === "form") { volver(); $("[data-f-cod]").value = "7791234000097"; }
+      else { carrito.set(2, (carrito.get(2) || 0) + 1); pintarCarrito(); volver(); toast("Cargador 20 W USB-C agregado"); }
+      return;
+    }
+    if (t.hasAttribute("data-sug")) { responder($("b", t).textContent); return; }
+    if (t.hasAttribute("data-preguntar")) { const q = $("#preg").value.trim(); if (q) { responder(q); $("#preg").value = ""; } return; }
+    if (t.hasAttribute("data-back")) { volver(); return; }
+    if (t.dataset.go) {
+      if (t.dataset.go === "cobrar-1" && !st.cant) return;
+      if (t.dataset.origen) st.origenEsc = t.dataset.origen;
+      if (t.dataset.filtro) { st.filtroP = t.dataset.filtro; pintarProductos(); }
+      if (t.closest(".carro") && t.dataset.go === "carrito" && e.target.closest(".btn")) return;
+      if (t.dataset.go === "asistente") pintarAsistente();
+      const enIdx = !!t.closest("#idx"), enNav = !!t.closest("#bn");
+      if (enIdx || enNav) st.pila = [];
+      ir(t.dataset.go, !(enIdx || enNav));
+    }
+  });
+  const miles = e => { const d = e.target.value.replace(/\D/g, ""); e.target.value = d ? Number(d).toLocaleString("es-AR") : ""; };
+  ["#recibido", "#contado", "#movImp", "#fondo"].forEach(id => $(id).addEventListener("input", miles));
+  $("#recibido").addEventListener("input", calcVuelto);
+  $("#contado").addEventListener("input", calcArqueo);
+  $("#movImp").addEventListener("input", calcMov);
+  $("#fondo").addEventListener("input", e => $("#fondoTxt").textContent = pesos(Number(e.target.value.replace(/\D/g, "")) || 0));
+  $("#preg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("[data-preguntar]").click(); } });
+
+  pintarNav(); pintarIndice(); pintarTablero(); pintarCarrito(); pintarProductos(); pintarAsistente(); pintarCaja(); calcArqueo(); calcMov();
+  const ini = (location.hash || "").slice(1);
+  const q = new URLSearchParams(location.search);
+  if (q.get("tema") === "oscuro") $('[data-k="theme"] [data-v="dark"]').click();
+  if (q.get("rol") === "cajero") $('[data-k="rol"] [data-v="cajero"]').click();
+  if (q.get("plat") === "apk") $('[data-k="plat"] [data-v="apk"]').click();
+  ir(NOMBRES[ini] ? ini : "inicio", false);
+})();
+</script>
+</body>
+</html>
