@@ -27,10 +27,14 @@ export function avisosActivos() {
 }
 
 let _plugin = null;
+// OJO: el plugin de Capacitor es un Proxy que responde a cualquier propiedad,
+// tambien a `then`. Si una funcion async lo devuelve tal cual, el await lo toma
+// por una promesa, llama a plugin.then() (que no existe) y queda colgado para
+// siempre. Por eso se devuelve envuelto: { plugin }.
 async function plugin() {
-  if (!AVISOS_CONFIGURADOS) return null;
+  if (!AVISOS_CONFIGURADOS) return { plugin: null };
   if (!_plugin) _plugin = (await import("@capacitor/push-notifications")).PushNotifications;
-  return _plugin;
+  return { plugin: _plugin };
 }
 
 let _escuchando = false;
@@ -41,7 +45,7 @@ let _escuchando = false;
  * Devuelve true si quedo registrado.
  */
 export async function iniciarAvisos(router, { branch_id = null } = {}) {
-  const P = await plugin();
+  const { plugin: P } = await plugin();
   if (!P || !avisosActivos()) return false;
   try {
     let { receive } = await P.checkPermissions();
@@ -77,7 +81,7 @@ export async function apagarAvisos() {
     await http.delete(`/me/devices/${encodeURIComponent(token)}`).catch(() => {});
     try { localStorage.removeItem(CLAVE_TOKEN); } catch { /* */ }
   }
-  const P = await plugin();
+  const { plugin: P } = await plugin();
   await P?.unregister?.().catch(() => {});
 }
 

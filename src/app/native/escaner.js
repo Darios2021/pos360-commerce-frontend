@@ -16,21 +16,25 @@
 import { isCapacitor } from "@/app/utils/runtime";
 
 let _plugin = null;
+// OJO: el plugin de Capacitor es un Proxy que responde a cualquier propiedad,
+// tambien a `then`. Si una funcion async lo devuelve tal cual, el await lo toma
+// por una promesa, llama a plugin.then() (que no existe) y queda colgado para
+// siempre. Por eso se devuelve envuelto: { plugin }.
 async function plugin() {
-  if (!isCapacitor()) return null;
-  if (_plugin) return _plugin;
+  if (!isCapacitor()) return { plugin: null };
+  if (_plugin) return { plugin: _plugin };
   try {
     const mod = await import("@capacitor-mlkit/barcode-scanning");
     _plugin = mod.BarcodeScanner;
   } catch {
     _plugin = null;
   }
-  return _plugin;
+  return { plugin: _plugin };
 }
 
 /** True si se puede usar el escaner de Google en este telefono. */
 export async function disponible() {
-  const p = await plugin();
+  const { plugin: p } = await plugin();
   if (!p) return false;
   try {
     const { supported } = await p.isSupported();
@@ -53,7 +57,7 @@ export async function disponible() {
  * atras sin leer nada.
  */
 export async function escanear() {
-  const p = await plugin();
+  const { plugin: p } = await plugin();
   if (!p) return null;
   try {
     const { barcodes } = await p.scan({ autoZoom: true });

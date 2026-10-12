@@ -19,6 +19,7 @@
 
 import { ticketEscPos } from "./escpos";
 import { imprimirBytes } from "@/app/native/impresoraBluetooth";
+import { isCapacitor } from "@/app/utils/runtime";
 
 const CLAVE = "pos360.impresion";
 export const AJUSTES_DE_FABRICA = { modo: "navegador", anchoPapel: 80, bluetooth: null };
@@ -27,7 +28,9 @@ const MODOS = ["navegador", "directa", "bluetooth"];
 export function leerAjustesImpresion() {
   try {
     const g = JSON.parse(localStorage.getItem(CLAVE) || "null");
-    if (!g) return { ...AJUSTES_DE_FABRICA };
+    // En la APK no hay cuadro de impresion: de fabrica es Bluetooth, y si
+    // todavia no se eligio impresora el ticket avisa en vez de no hacer nada.
+    if (!g) return { ...AJUSTES_DE_FABRICA, modo: isCapacitor() ? "bluetooth" : "navegador" };
     return {
       modo: MODOS.includes(g.modo) ? g.modo : "navegador",
       anchoPapel: Number(g.anchoPapel) === 58 ? 58 : 80,
