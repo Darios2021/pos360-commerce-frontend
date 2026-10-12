@@ -67,9 +67,14 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { isMobileBrowser } from "@/app/utils/runtime";
 
-// El prompt es permanente: NO persiste el "seguir en navegador" en
-// localStorage. Cada refresh / re-login vuelve a mostrarlo. Solo se
-// oculta dentro de la sesión actual del SPA (no atraviesa reloads).
+// "Seguir en el navegador" vale para toda la sesión de la pestaña
+// (sessionStorage): antes se volvía a abrir en cada navegación y en el
+// teléfono no dejaba usar la webapp. Una pestaña nueva lo vuelve a ofrecer.
+const CLAVE_OMITIDO = "pos.apkPrompt.omitido";
+function leerOmitido() {
+  try { return sessionStorage.getItem(CLAVE_OMITIDO) === "1"; } catch { return false; }
+}
+const omitido = ref(leerOmitido());
 const LOGO =
   "https://storage-files.cingulado.org/pos360/products/224/1768522749202-af8d19f07dd9.webp";
 
@@ -78,6 +83,7 @@ const router = useRouter();
 const visible = ref(false);
 
 function shouldShow() {
+  if (omitido.value) return false;
   if (!isMobileBrowser()) return false;
   if (route.name === "appInstall") return false;
   if (route.meta?.public) return false;
@@ -85,13 +91,14 @@ function shouldShow() {
 }
 
 function onSkip() {
-  // Cierra solo la sesión SPA actual. Sin localStorage. Si el usuario
-  // recarga la página o vuelve a entrar, el prompt aparece de nuevo.
   visible.value = false;
+  omitido.value = true;
+  try { sessionStorage.setItem(CLAVE_OMITIDO, "1"); } catch {}
 }
 
 function goInstall() {
   visible.value = false;
+  omitido.value = true;
   router.push({ name: "appInstall" });
 }
 
