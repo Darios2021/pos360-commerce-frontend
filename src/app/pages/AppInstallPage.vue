@@ -26,6 +26,13 @@
           Descargar APK
         </v-btn>
 
+        <!-- Versión 2 (oct. 2026): firma nueva. Android no la instala encima de
+             la anterior; hay que desinstalar la vieja una sola vez. -->
+        <p class="install-hero__warn">
+          <v-icon size="16">mdi-information-outline</v-icon>
+          ¿Ya tenés la app? Esta vez desinstalá la anterior antes de instalar la nueva.
+        </p>
+
         <p v-if="!isAndroid" class="install-hero__warn">
           <v-icon size="16">mdi-information-outline</v-icon>
           Esta app es solo para Android. Si estás en iPhone, seguí usando la web.

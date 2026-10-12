@@ -121,6 +121,18 @@
               />
             </div>
 
+            <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
+            <v-switch
+              v-if="huellaOk"
+              v-model="conHuella"
+              label="Entrar con huella la próxima vez"
+              color="primary"
+              density="compact"
+              hide-details
+              inset
+              class="login-remember"
+            />
+
             <v-btn
               type="submit"
               block
@@ -153,6 +165,7 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
+import { huellaDisponible, activarHuella } from "@/app/native/huella";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -167,6 +180,11 @@ const identifier = ref("");
 const password   = ref("");
 const showPwd    = ref(false);
 const remember   = ref(true);
+
+// APK: ofrecer la huella solo si el telefono la tiene configurada.
+const huellaOk  = ref(false);
+const conHuella = ref(true);
+huellaDisponible().then((ok) => { huellaOk.value = ok; });
 
 const loading = ref(false);
 const error   = ref(null);
@@ -187,6 +205,7 @@ async function submit() {
       password: password.value,
       remember: remember.value,
     });
+    if (huellaOk.value) activarHuella(conHuella.value && remember.value);
     router.replace({ name: "home" });
   } catch (e) {
     error.value = e?.friendlyMessage || e?.message || "Credenciales incorrectas";

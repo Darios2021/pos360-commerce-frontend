@@ -2,6 +2,7 @@ import { ref, computed } from "vue";
 import http from "../../../app/api/http";
 
 import { usePosStore } from "../../../app/store/pos.store";
+import { conexion } from "../../../app/store/conexion.state";
 import { useAuthStore } from "../../../app/store/auth.store";
 
 import { usePosBranch } from "../composables/usePosBranch";
@@ -286,6 +287,14 @@ export function usePosSalesFlow() {
 
   async function openCheckoutSafe() {
     logCajaState("before-open-checkout");
+
+    // Sin conexion no se cobra: es una decision, no un olvido. Cobrar sin
+    // servidor exige numeracion y stock reservados del lado de la API, y este
+    // POS ya tuvo cobros duplicados. Se puede buscar y armar la venta, no cerrarla.
+    if (!conexion.enLinea) {
+      toast("Sin conexión");
+      return;
+    }
 
     if (needsBranchPick.value) {
       toast("Elegí una sucursal antes de vender");

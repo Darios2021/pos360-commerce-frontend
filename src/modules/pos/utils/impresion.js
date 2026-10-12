@@ -12,19 +12,27 @@
 // Los ajustes se guardan en ESTA computadora: cada mostrador tiene su
 // impresora. Se cambian en Punto de Venta › Impresion, con un ticket de prueba.
 // Mecanica tomada de Sazonik (utils/impresion.ts).
+//
+// En la APK hay un tercer modo, "bluetooth": el mismo ticket ESC/POS va a una
+// termica emparejada con el telefono (app/native/impresoraBluetooth.js). En el
+// telefono no existe el programa local ni el cuadro de impresion de Chrome.
 
 import { ticketEscPos } from "./escpos";
+import { imprimirBytes } from "@/app/native/impresoraBluetooth";
 
 const CLAVE = "pos360.impresion";
-export const AJUSTES_DE_FABRICA = { modo: "navegador", anchoPapel: 80 };
+export const AJUSTES_DE_FABRICA = { modo: "navegador", anchoPapel: 80, bluetooth: null };
+const MODOS = ["navegador", "directa", "bluetooth"];
 
 export function leerAjustesImpresion() {
   try {
     const g = JSON.parse(localStorage.getItem(CLAVE) || "null");
     if (!g) return { ...AJUSTES_DE_FABRICA };
     return {
-      modo: g.modo === "directa" ? "directa" : "navegador",
+      modo: MODOS.includes(g.modo) ? g.modo : "navegador",
       anchoPapel: Number(g.anchoPapel) === 58 ? 58 : 80,
+      // { nombre, direccion } de la termica emparejada (solo APK)
+      bluetooth: g.bluetooth?.direccion ? { nombre: String(g.bluetooth.nombre || ""), direccion: String(g.bluetooth.direccion) } : null,
     };
   } catch {
     return { ...AJUSTES_DE_FABRICA };
@@ -95,6 +103,11 @@ async function imprimirDirecto(datos, a) {
 export async function imprimirTicket(datos, porElNavegador) {
   const a = leerAjustesImpresion();
   if (a.modo === "directa" && await imprimirDirecto(datos, a)) return "directa";
+  if (a.modo === "bluetooth") {
+    // 'directa' para la pantalla: la impresora ya lo recibio, no se abre cuadro.
+    if (await imprimirBytes(a.bluetooth?.direccion, ticketEscPos(datos, a.anchoPapel))) return "directa";
+    return "fallo-bluetooth";
+  }
   porElNavegador?.();
   return "navegador";
 }

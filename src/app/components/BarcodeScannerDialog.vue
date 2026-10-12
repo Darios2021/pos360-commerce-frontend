@@ -102,8 +102,14 @@
         <div class="bsc__no-cam-icon">
           <v-icon size="44">mdi-barcode-scan</v-icon>
         </div>
-        <div class="bsc__no-cam-title">Lector de código</div>
-        <div class="bsc__no-cam-desc">
+        <div class="bsc__no-cam-title">{{ usaNativo ? 'Escanear' : 'Lector de código' }}</div>
+        <div v-if="usaNativo" class="bsc__no-cam-desc">
+          <v-btn color="primary" size="large" prepend-icon="mdi-barcode-scan" :disabled="searching" @click="escanearConNativo">
+            Escanear
+          </v-btn>
+          <div class="mt-3">o Ingresar código</div>
+        </div>
+        <div v-else class="bsc__no-cam-desc">
           Tu navegador no soporta cámara. Escribí o pegá el código.
         </div>
 
@@ -154,6 +160,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useProductsStore } from "@/app/store/products.store";
+import * as escanerNativo from "@/app/native/escaner";
+import { buscarCodigo } from "@/app/native/catalogoOffline";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -200,9 +208,32 @@ const captureCount = ref(0);
 //   'error'       — fallo distinto de denied (sin cámara, hardware, etc)
 const cameraState = ref("idle");
 
+// En la APK, si el telefono tiene el escaner de Google, se usa ese y no la
+// camara web (ver app/native/escaner.js).
+const usaNativo = ref(false);
+
 const hasNativeApi = computed(
-  () => typeof window !== "undefined" && "BarcodeDetector" in window
+  () => !usaNativo.value && typeof window !== "undefined" && "BarcodeDetector" in window
 );
+
+async function escanearConNativo() {
+  if (searching.value) return;
+  try {
+    const code = await escanerNativo.escanear();
+    if (!open.value) return;
+    if (!code) {
+      // Volvio atras sin leer: en continuo se cierra todo; si no, queda la
+      // pantalla con "Escanear" e "Ingresar código".
+      if (props.continuous && captureCount.value > 0) close();
+      return;
+    }
+    await handleCode(code);
+    // En continuo se vuelve a abrir el escaner para el siguiente producto.
+    if (props.continuous && open.value) setTimeout(escanearConNativo, 500);
+  } catch {
+    setResult("error", "Sin acceso a la cámara");
+  }
+}
 
 let stream = null;
 let detector = null;
@@ -316,7 +347,13 @@ async function handleCode(code) {
   try {
     const r = await products.fetchList({ q, limit: 1 });
     const items = (r?.items || r?.data || (Array.isArray(r) ? r : [])) ?? [];
-    const found = items[0];
+    let found = items[0];
+    // fetchList devuelve null si la llamada fallo. En la APK sin red se busca
+    // el codigo en la copia del catalogo (app/native/catalogoOffline.js).
+    if (r == null) {
+      found = await buscarCodigo(q);
+      if (!found) throw new Error("sin conexion");
+    }
     if (found?.id) {
       if (props.mode === "emit-product") {
         emit("product", found);
@@ -384,7 +421,10 @@ watch(open, async (v) => {
     manualCode.value = "";
     lastResult.value = null;
     captureCount.value = 0;
-    if (hasNativeApi.value) {
+    usaNativo.value = await escanerNativo.disponible();
+    if (usaNativo.value) {
+      escanearConNativo();
+    } else if (hasNativeApi.value) {
       await nextTick();
       await startCamera();
     } else {
