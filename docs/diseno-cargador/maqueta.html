@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>POS 360 Cargador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  Maqueta del teléfono como cargador y consultor de datos (webapp /app y APK).
+  Rama diseno-cargador, docs/diseno-cargador/. Base visual y tokens: rama
+  diseno-movil (docs/diseno-movil/maqueta.html), ya aprobada.
+  Datos de muestra inventados. Las marcas "Existe / Nueva" de la API viven en
+  el panel lateral, fuera del teléfono: la interfaz no explica.
+-->
+<style>
+:root{
+  --canvas:#c5cbd2; --pieza:#ffffff; --variante:#eef2f6; --linea:#d3dde7; --linea2:#e3eaf1;
+  --tinta:#0f172a; --suave:#5a6678; --sobre-canvas:#28313e;
+  --accion:#0f6fae; --accion-osc:#0a466e; --accion-tinte:#eef7fd; --accion-hover:#cfe5f5; --accion-txt:#0f6fae;
+  --banda:#0f6fae; --banda-ink:#ffffff; --marca:#1488d1; --navy:#121e47;
+  --verde:#2e9e7b; --verde-tinte:#e3f4ee; --rojo:#c2413a; --rojo-tinte:#fdeceb; --ocre:#BC7F12;
+  --pista:rgba(15,23,42,.07);
+  --r1:#0f6fae; --r2:#3d8cc4; --r3:#79b2da; --r4:#b3d3ea; --r5:#d9e8f4;
+  --gris:#c3c9d6;
+  --sombra:0 1px 2px rgba(16,24,40,.08);
+  --page:#9aa3ad; --page-ink:#0f172a;
+}
+:root[data-theme="dark"]{
+  --canvas:#111317; --pieza:#1f232a; --variante:#2a2f38; --linea:#343943; --linea2:#2c3038;
+  --tinta:#e6e7eb; --suave:#a1a4ab; --sobre-canvas:#b9bdc5;
+  --accion:#1488d1; --accion-osc:#0f6fae; --accion-tinte:rgba(58,165,230,.14); --accion-hover:rgba(58,165,230,.24); --accion-txt:#6cb6e6;
+  --banda:#173a5e; --banda-ink:#e3f1fc; --marca:#3aa5e6;
+  --verde:#3fb68f; --verde-tinte:rgba(63,182,143,.16); --rojo:#e2625b; --rojo-tinte:rgba(226,98,91,.16); --ocre:#D99414;
+  --pista:rgba(255,255,255,.08);
+  --r1:#a6d8fa; --r2:#3aa5e6; --r3:#1c6699; --r4:#203a52; --r5:#1a2a3a;
+  --gris:#4a4f61;
+  --sombra:0 1px 0 rgba(255,255,255,.04) inset;
+  --page:#07080a; --page-ink:#e6e7eb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--page);color:var(--page-ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s20{width:20px;height:20px} svg.i.s18{width:18px;height:18px} svg.i.s28{width:28px;height:28px} svg.i.s40{width:40px;height:40px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Página de la maqueta (fuera del teléfono) ---------- */
+.mq{display:flex;gap:28px;justify-content:center;align-items:flex-start;padding:24px 16px;min-height:100%}
+.ctl{width:250px;flex:none;position:sticky;top:24px;font-size:13px}
+.ctl h1{font-size:17px;font-weight:800;margin-bottom:14px}
+.ctl .g{margin-bottom:14px}
+.ctl .g b{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;opacity:.75}
+.seg{display:flex;border:1px solid rgba(0,0,0,.25);border-radius:8px;overflow:hidden}
+[data-theme="dark"] .seg{border-color:rgba(255,255,255,.2)}
+.seg button{flex:1;padding:7px 4px;font-size:13px;font-weight:600}
+.seg button.on{background:#0f6fae;color:#fff}
+.idx{display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 290px);overflow:auto}
+.idx button{text-align:left;padding:6px 8px;border-radius:6px;font-size:13px}
+.idx button.on{background:rgba(15,111,174,.18);font-weight:700}
+.idx i{font-style:normal;display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin:10px 0 2px}
+
+/* ---------- Teléfono ---------- */
+.tel{width:390px;height:844px;flex:none;position:relative;overflow:hidden;background:var(--canvas);color:var(--tinta);
+  border-radius:14px;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column}
+@media (max-width:720px){
+  .mq{flex-direction:column;padding:0;gap:0;height:100dvh;min-height:0}
+  .ctl{width:100%;position:static;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 12px}
+  .ctl h1,.idx,.ctl .g.ix{display:none}
+  .ctl .g{margin:0;flex:1;min-width:150px}
+  .tel{width:100%;height:auto;flex:1;min-height:0;border-radius:0;box-shadow:none}
+}
+.estado{height:24px;flex:none;background:var(--banda);color:var(--banda-ink);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:12px;font-weight:600}
+.scr{display:none;flex:1;flex-direction:column;min-height:0}
+.scr.on{display:flex}
+.scr.oscura{background:#000}
+
+/* Barra superior */
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:6px;padding:0 8px 0 16px;background:var(--banda);color:var(--banda-ink)}
+.tb.atras{padding-left:4px}
+.tb h2{font-size:19px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.tb .ib{width:44px;height:44px;display:grid;place-items:center;border-radius:10px;position:relative}
+.tb .ib:active{background:rgba(255,255,255,.14)}
+.tb .ib .pt{position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:#ffb4ae;box-shadow:0 0 0 2px var(--banda)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;font-size:13px;font-weight:600;background:rgba(255,255,255,.14);color:var(--banda-ink);white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;background:#7fe0bd}
+.pill.cerrada i{background:#ffb4ae}
+
+/* Cuerpo */
+.cu{flex:1;overflow-y:auto;padding:12px 16px 24px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.cu > *{flex-shrink:0}
+.rot{font-size:13px;font-weight:700;color:var(--sobre-canvas);text-transform:uppercase;letter-spacing:.05em;margin:6px 2px -4px}
+.pz{background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);overflow:hidden}
+.pz-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:14px 16px 4px}
+.pz-h h3{font-size:16px;font-weight:800}
+.pz-h span{font-size:13px;color:var(--suave)}
+.pz-b{padding:8px 16px 16px}
+.pz-f{padding:0 16px 16px}
+
+/* Filas (forma del estándar: cifra, etiqueta, barra fina abajo) */
+.fila{padding:10px 0;border-top:1px solid var(--linea2)}
+.fila:first-child{border-top:0}
+.fila .l{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fila .l b{font-size:15px;font-weight:600}
+.fila .l .num{font-size:17px;font-weight:800}
+.fila .l small{display:block;font-size:13px;color:var(--suave);font-weight:400;margin-top:1px}
+.barra{height:8px;border-radius:4px;background:var(--pista);margin-top:8px;overflow:hidden}
+.barra s{display:block;height:100%;border-radius:4px;background:var(--r1)}
+.cifra{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.sub{font-size:14px;color:var(--suave)}
+
+/* Columnas por hora */
+.cols{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:12px}
+.cols div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.cols s{display:block;width:100%;max-width:18px;border-radius:3px 3px 0 0;background:var(--r2)}
+.cols s.max{background:var(--r1)}
+.cols span{font-size:11px;color:var(--suave)}
+
+/* Lista de ítems que se abren */
+.it{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:60px;border-top:1px solid var(--linea2);width:100%;text-align:left}
+.it:first-child{border-top:0}
+.it:active{background:var(--accion-tinte)}
+.it .tx{flex:1;min-width:0}
+.it .tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .tx small{display:block;font-size:13px;color:var(--suave);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .der{text-align:right;flex:none}
+.it .der b{display:block;font-size:16px;font-weight:800}
+.it .der small{display:block;font-size:12px;color:var(--suave);margin-top:2px}
+.it .chev{color:var(--suave)}
+.ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accion-tinte);color:var(--accion-txt);flex:none}
+.foto{width:52px;height:52px;border-radius:10px;background:var(--variante);display:grid;place-items:center;color:var(--suave);flex:none;position:relative}
+.foto .q{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--accion);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+.est{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:700}
+.est.ok{background:var(--verde-tinte);color:var(--verde)}
+.est.no{background:var(--rojo-tinte);color:var(--rojo)}
+.est.gr{background:var(--variante);color:var(--suave)}
+.anulada b,.anulada .der b{color:var(--suave);text-decoration:line-through}
+
+/* Buscador */
+.bus{display:flex;align-items:center;gap:8px;height:48px;background:var(--pieza);border-radius:10px;padding:0 4px 0 12px;box-shadow:var(--sombra);border:1px solid var(--linea)}
+.bus input{flex:1;border:0;outline:0;background:none;font-size:16px;min-width:0}
+.bus input::placeholder{color:var(--suave)}
+.bus .cam{width:44px;height:40px;border-radius:8px;display:grid;place-items:center;color:var(--accion-txt)}
+.bus .cam:active{background:var(--accion-tinte)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:36px;padding:0 14px;border-radius:8px;background:var(--pieza);border:1px solid var(--linea);font-size:14px;font-weight:600;white-space:nowrap;flex:none}
+.chip.on{background:var(--accion);border-color:var(--accion);color:#fff}
+
+/* Botones */
+.btn{width:100%;height:52px;border-radius:10px;background:var(--accion);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{background:var(--accion-osc)}
+.btn.rojo{background:var(--rojo)}
+.btn[disabled]{opacity:.45}
+.lnk{color:var(--accion-txt);font-size:15px;font-weight:600;padding:10px 0;display:inline-flex;align-items:center;gap:6px}
+.lnk.rojo{color:var(--rojo)}
+.centro{text-align:center}
+
+/* Pie fijo de las vistas completas */
+.pie{flex:none;background:var(--pieza);border-top:1px solid var(--linea);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.pie .res{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.pie .res span{font-size:14px;color:var(--suave)}
+.pie .res b{font-size:22px;font-weight:800}
+
+/* Barra de carrito sobre la navegación */
+.carro{flex:none;display:flex;align-items:center;gap:12px;background:var(--pieza);border-top:1px solid var(--linea);padding:10px 16px}
+.carro .tt{flex:1;text-align:left}
+.carro .tt small{display:block;font-size:13px;color:var(--suave)}
+.carro .tt b{font-size:20px;font-weight:800}
+.carro .btn{width:150px}
+
+/* Navegación inferior */
+.bn{flex:none;height:64px;display:flex;background:var(--pieza);border-top:1px solid var(--linea);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bn button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600;color:var(--suave);position:relative}
+.bn button.on{color:var(--accion-txt)}
+.bn button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--accion-txt)}
+.bn .bd{position:absolute;top:8px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--rojo);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.oculto{display:none!important}
+
+/* Campos */
+.cmp{display:flex;flex-direction:column;gap:6px}
+.cmp label{font-size:14px;font-weight:600;color:var(--suave)}
+.inp{height:52px;border-radius:10px;border:1px solid var(--linea);background:var(--pieza);padding:0 14px;font-size:17px;outline:0;width:100%}
+.inp:focus{border-color:var(--accion);box-shadow:0 0 0 3px var(--accion-hover)}
+.inp.grande{height:64px;font-size:28px;font-weight:800}
+textarea.inp{height:88px;padding:12px 14px;resize:none;font-size:16px}
+.inpw{position:relative}
+.inpw .pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:800;color:var(--suave)}
+.inpw.grande .pre{font-size:24px}
+.inpw .inp{padding-left:34px}
+.inpw .act{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;display:grid;place-items:center;color:var(--accion-txt)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Opciones (tarjetas grandes con borde azul al elegir, como el cobro de escritorio) */
+.ops{display:flex;flex-direction:column;gap:8px}
+.op{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 14px;background:var(--pieza);border:1.5px solid var(--linea);border-radius:12px;text-align:left;width:100%}
+.op .tx{flex:1}
+.op .tx b{display:block;font-size:16px;font-weight:700}
+.op .tx small{display:block;font-size:13px;color:var(--suave);margin-top:2px}
+.op .rd{width:22px;height:22px;border-radius:50%;border:2px solid var(--linea);flex:none}
+.op.on{border-color:var(--accion);background:var(--accion-tinte)}
+.op.on .rd{border:7px solid var(--accion)}
+.rejilla{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rejilla .op{flex-direction:column;align-items:flex-start;gap:8px;min-height:88px}
+
+/* Pasos del cobro */
+.pasos{display:flex;gap:6px;padding:12px 16px 0}
+.pasos s{flex:1;height:4px;border-radius:2px;background:var(--linea)}
+.pasos s.ok{background:var(--accion)}
+.paso-t{padding:8px 16px 0;font-size:13px;color:var(--sobre-canvas);font-weight:600}
+.total-cobro{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;background:var(--pieza);border-bottom:1px solid var(--linea)}
+.total-cobro span{font-size:14px;color:var(--suave);font-weight:600}
+.total-cobro b{font-size:28px;font-weight:800;letter-spacing:-.02em}
+
+/* Definiciones */
+.dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-size:15px}
+.dl dt{color:var(--suave)}
+.dl dd{text-align:right;font-weight:600}
+.dl dd.f{font-size:18px;font-weight:800}
+.sep{height:1px;background:var(--linea2);grid-column:1/-1}
+
+/* Stepper de cantidad */
+.stp{display:flex;align-items:center;border:1px solid var(--linea);border-radius:10px;height:40px}
+.stp button{width:40px;height:40px;display:grid;place-items:center;color:var(--accion-txt)}
+.stp span{min-width:28px;text-align:center;font-weight:800;font-size:16px}
+
+/* Escáner */
+.visor{flex:1;position:relative;background:radial-gradient(circle at 50% 45%,#3a3f47,#0b0c0e 70%);display:flex;align-items:center;justify-content:center}
+.marco{width:280px;height:170px;position:relative}
+.marco::before,.marco::after{content:"";position:absolute;inset:0;border:3px solid #fff;border-radius:12px;clip-path:polygon(0 0,22% 0,22% 3px,3px 3px,3px 22%,0 22%,0 78%,3px 78%,3px calc(100% - 3px),22% calc(100% - 3px),22% 100%,78% 100%,78% calc(100% - 3px),calc(100% - 3px) calc(100% - 3px),calc(100% - 3px) 78%,100% 78%,100% 22%,calc(100% - 3px) 22%,calc(100% - 3px) 3px,78% 3px,78% 0,100% 0,100% 100%,0 100%)}
+.marco .rayo{position:absolute;left:8px;right:8px;top:50%;height:2px;background:#ff5a4f;box-shadow:0 0 12px #ff5a4f;animation:rayo 1.8s ease-in-out infinite}
+@keyframes rayo{0%,100%{transform:translateY(-60px)}50%{transform:translateY(60px)}}
+.esc-pie{padding:20px 16px 28px;display:flex;justify-content:center;background:#0b0c0e}
+.esc-pie .lnk{color:#a6d8fa}
+.tb.negra{background:#0b0c0e;color:#fff}
+
+/* Aviso breve */
+.toast{position:absolute;left:16px;right:16px;bottom:150px;background:#1f2937;color:#fff;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:5}
+.toast.on{opacity:1;transform:none}
+
+/* Asistente */
+.burbuja{align-self:flex-end;max-width:85%;background:var(--accion);color:#fff;border-radius:12px 12px 4px 12px;padding:10px 14px;font-size:15px}
+.resp{background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);padding:14px 16px}
+.resp h4{font-size:15px;font-weight:800;margin-bottom:6px}
+.entrada{flex:none;display:flex;gap:8px;align-items:flex-end;padding:10px 12px;background:var(--pieza);border-top:1px solid var(--linea)}
+.entrada textarea{flex:1;height:48px;border-radius:10px;border:1px solid var(--linea);background:var(--canvas);padding:12px;font-size:16px;resize:none;outline:0}
+.entrada .env{width:48px;height:48px;border-radius:10px;background:var(--accion);color:#fff;display:grid;place-items:center;flex:none}
+
+/* Login */
+.login{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px 20px}
+.marca{font-size:28px;font-weight:800;letter-spacing:-.02em;color:var(--sobre-canvas);text-align:center;margin-bottom:12px}
+.marca small{display:block;font-size:14px;font-weight:600;letter-spacing:0;margin-top:2px}
+.sw{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600;padding:4px 0}
+.sw .t{width:48px;height:28px;border-radius:14px;background:var(--linea);position:relative;transition:.15s}
+.sw .t::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw.on .t{background:var(--accion)}
+.sw.on .t::after{left:23px}
+.huella{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:var(--accion-tinte);color:var(--accion-txt);margin:0 auto}
+.avatar{width:72px;height:72px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:26px;font-weight:800;margin:0 auto}
+[data-theme="dark"] .avatar{background:#2a4a6e}
+
+/* Foto de producto */
+.fotos{display:flex;gap:8px;overflow-x:auto}
+.ftile{width:96px;height:96px;border-radius:12px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600}
+.ftile.add{border:1.5px dashed var(--accion);color:var(--accion-txt);background:var(--accion-tinte)}
+.ftile.img{background:linear-gradient(135deg,#dfe7ef,#b8c7d6);color:#5a6678;position:relative}
+[data-theme="dark"] .ftile.img{background:linear-gradient(135deg,#2a3340,#1c232c);color:#a1a4ab}
+.ftile.img em{position:absolute;left:6px;bottom:6px;font-style:normal;font-size:11px;font-weight:700;background:rgba(15,23,42,.7);color:#fff;padding:2px 6px;border-radius:4px}
+.ficha-foto{height:220px;background:linear-gradient(135deg,#dfe7ef,#b8c7d6);display:grid;place-items:center;color:#5a6678}
+[data-theme="dark"] .ficha-foto{background:linear-gradient(135deg,#2a3340,#1c232c);color:#a1a4ab}
+
+/* Más */
+.mas .it{min-height:52px;padding:10px 16px}
+.mas .it .ic2{color:var(--accion-txt)}
+.apk-only{}
+[data-plat="web"] .apk-only{display:none!important}
+[data-plat="apk"] .web-only{display:none!important}
+[data-rol="cajero"] .admin-only{display:none!important}
+[data-rol="admin"] .cajero-only{display:none!important}
+.dif-neg{color:var(--rojo)}
+.dif-ok{color:var(--verde)}
+
+/* ================= Cargador: piezas nuevas ================= */
+.ctl{width:300px}
+.idx button{display:flex;align-items:center;gap:6px}
+.idx button span{flex:1}
+.tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;flex:none}
+.tag.ex{background:#d7efe6;color:#1d6e55}
+.tag.nu{background:#f8e6c4;color:#7a5208}
+.tag.mx{background:#dbe7f3;color:#0a466e}
+[data-theme="dark"] .tag.ex{background:rgba(63,182,143,.2);color:#7fd8b8}
+[data-theme="dark"] .tag.nu{background:rgba(217,148,20,.22);color:#f0c46e}
+[data-theme="dark"] .tag.mx{background:rgba(58,165,230,.2);color:#a6d8fa}
+.apibox{margin-top:6px;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:10px;font-size:12px;line-height:1.45;background:rgba(255,255,255,.35)}
+[data-theme="dark"] .apibox{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
+.apibox li{list-style:none;display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-top:1px solid rgba(0,0,0,.08)}
+[data-theme="dark"] .apibox li{border-color:rgba(255,255,255,.08)}
+.apibox li:first-child{border-top:0}
+.apibox code{font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all}
+.seg.tres button{font-size:12px}
+
+/* Navegación con el lector al centro */
+.bn{position:relative;overflow:visible}
+.bn button.lector{color:var(--tinta)}
+.bn .bola{width:60px;height:60px;border-radius:50%;background:var(--accion);color:#fff;display:grid;place-items:center;margin-top:-30px;border:4px solid var(--canvas);box-shadow:0 6px 14px rgba(15,111,174,.35)}
+.bn button.lector:active .bola{background:var(--accion-osc)}
+.bn button.lector::before{display:none}
+
+/* Banda: píldora de sucursal */
+.pill.suc i{background:#a6d8fa}
+
+/* Escáner central y por lote */
+.esc-modos{display:flex;gap:4px;background:#1b1e23;border-radius:10px;padding:4px;width:100%}
+.esc-modos button{flex:1;height:40px;border-radius:8px;color:#c9cdd4;font-size:14px;font-weight:700}
+.esc-modos button.on{background:#fff;color:#0b0c0e}
+.esc-pie{flex-direction:column;align-items:center;gap:10px}
+.marco.qr{width:220px;height:220px}
+.hoja{flex:none;background:var(--pieza);color:var(--tinta);border-radius:14px 14px 0 0;padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.hoja .ult{display:flex;align-items:center;gap:12px}
+.hoja .ult .tx{flex:1;min-width:0}
+.hoja .ult b{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hoja .ult small{display:block;font-size:13px;color:var(--suave)}
+.hoja .mas1{min-width:44px;height:32px;border-radius:8px;background:var(--verde-tinte);color:var(--verde);font-weight:800;display:grid;place-items:center;font-size:15px}
+.hoja .mas1.no{background:var(--rojo-tinte);color:var(--rojo)}
+.hoja .res{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--suave);border-top:1px solid var(--linea2);padding-top:10px}
+.hoja .res b{font-size:18px;color:var(--tinta);font-weight:800}
+
+/* Estados */
+.est.oc{background:rgba(188,127,18,.14);color:var(--ocre)}
+.est.az{background:var(--accion-tinte);color:var(--accion-txt)}
+.mini{font-size:12px;color:var(--suave)}
+.ruta{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700}
+.ruta svg{color:var(--suave)}
+
+/* Ficha corta de consulta */
+.ficha-foto.corta{height:170px}
+.precio-fila{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.estampa{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;background:var(--variante);color:var(--suave);font-size:12px;font-weight:700}
+.codigo-grande{font-size:26px;font-weight:800;letter-spacing:.04em;text-align:center;padding:18px 0 6px}
+.barras{height:56px;margin:0 auto;width:220px;background:repeating-linear-gradient(90deg,var(--tinta) 0 2px,transparent 2px 4px,var(--tinta) 4px 5px,transparent 5px 8px,var(--tinta) 8px 11px,transparent 11px 12px);opacity:.85;border-radius:2px}
+
+/* Líneas de derivación, recepción y conteo */
+.ln{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--linea2)}
+.ln:first-child{border-top:0}
+.ln .tx{flex:1;min-width:0}
+.ln .tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln .tx small{display:block;font-size:13px;color:var(--suave);margin-top:2px}
+.ln .tx small.no{color:var(--rojo);font-weight:600}
+.ln.apagada .tx b{color:var(--suave)}
+.ln .nota{margin-top:8px;height:40px;font-size:15px;border-radius:8px}
+.prog{height:8px;border-radius:4px;background:var(--pista);overflow:hidden;margin-top:10px}
+.prog s{display:block;height:100%;background:var(--r1);border-radius:4px}
+.cmp-cc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.cmp-cc div{background:var(--variante);border-radius:10px;padding:10px 4px}
+.cmp-cc b{display:block;font-size:22px;font-weight:800}
+.cmp-cc span{font-size:12px;color:var(--suave);font-weight:600}
+.dif{font-weight:800;font-size:16px;min-width:44px;text-align:right}
+
+/* QR de la derivación */
+.qrbox{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 16px 16px}
+.qrbox svg#qrDer{width:184px;height:184px;background:#fff;border-radius:8px;padding:10px}
+.qrbox b{font-size:17px;font-weight:800;letter-spacing:.02em}
+
+/* Resultado de recepción */
+.hecho{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px 8px;text-align:center}
+.hecho .circ{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:var(--verde-tinte);color:var(--verde)}
+.hecho .circ.oc{background:rgba(188,127,18,.14);color:var(--ocre)}
+.hecho h3{font-size:21px;font-weight:800}
+
+/* Accesos de Inicio */
+.accesos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acc{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:92px;padding:14px;background:var(--pieza);border-radius:12px;box-shadow:var(--sombra);text-align:left;position:relative}
+.acc b{font-size:15px;font-weight:700}
+.acc .ico{width:36px;height:36px}
+.acc .bd{position:absolute;top:12px;right:12px;min-width:22px;height:22px;border-radius:11px;background:var(--rojo);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 6px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="vender" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="10" rx="2"/><path d="M6 10V5h8v5M7 14h2M11 14h2M15 14h2M7 17h10"/></symbol>
+  <symbol id="ventas" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="caja" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 9.5h.01M18 15.5h.01"/></symbol>
+  <symbol id="caja2" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M8 8V5h8v3M4 13h16"/></symbol>
+  <symbol id="box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/></symbol>
+  <symbol id="mas" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="scan" viewBox="0 0 24 24"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"/></symbol>
+  <symbol id="atras" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="campana" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="mas1" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="menos" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="efectivo" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="tarjeta" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+  <symbol id="transf" viewBox="0 0 24 24"><path d="M4 8h15l-3-3M20 16H5l3 3"/></symbol>
+  <symbol id="qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h3v3h-3zM20 17v3h-3"/></symbol>
+  <symbol id="mixto" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/></symbol>
+  <symbol id="imprimir" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="compartir" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="huella" viewBox="0 0 24 24"><path d="M12 11v3a7 7 0 0 1-1.2 4M8.6 6.2A6 6 0 0 1 18 11v2.5M6.3 8.7A6 6 0 0 0 6 11v3M15 14.5a11 11 0 0 1-1.3 4.8M9 11a3 3 0 0 1 6 0v1.5M9 14.5a8 8 0 0 1-.9 3.3"/></symbol>
+  <symbol id="luna" viewBox="0 0 24 24"><path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z"/></symbol>
+  <symbol id="salir" viewBox="0 0 24 24"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="flash" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+  <symbol id="cerrar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="enviar" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-2-7z"/></symbol>
+  <symbol id="usuario" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="usuarios" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/></symbol>
+  <symbol id="tienda" viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M10 20v-6h4v6"/></symbol>
+  <symbol id="engranaje" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9L7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="camion" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="archivo" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="etiqueta" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/></symbol>
+  <symbol id="grafico" viewBox="0 0 24 24"><path d="M5 20V11M11 20V5M17 20v-7M3 20h18"/></symbol>
+  <symbol id="video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="imagen" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 8"/></symbol>
+  <symbol id="camara" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="filtro" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></symbol>
+  <symbol id="editar" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
+  <symbol id="conteo" viewBox="0 0 24 24"><path d="M9 4h6v3H9zM7 5H5v16h14V5h-2M8 12l2 2 4-4M8 17h8"/></symbol>
+  <symbol id="alerta" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"/></symbol>
+  <symbol id="flecha" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</svg>
+
+<div class="mq">
+  <aside class="ctl">
+    <h1>POS 360 · Cargador</h1>
+    <div class="g"><b>Tema</b><div class="seg" data-k="theme"><button data-v="light" class="on">Claro</button><button data-v="dark">Oscuro</button></div></div>
+    <div class="g"><b>Rol</b><div class="seg" data-k="rol"><button data-v="admin" class="on">Dueño</button><button data-v="cajero">Cajero</button></div></div>
+    <div class="g"><b>Plataforma</b><div class="seg" data-k="plat"><button data-v="web" class="on">Webapp</button><button data-v="apk">APK</button></div></div>
+    <div class="g"><b>Lectura simulada del lector</b><div class="seg tres" data-k="lect"><button data-v="producto" class="on">Producto</button><button data-v="nuevo">Código nuevo</button><button data-v="qr">QR derivación</button></div></div>
+    <div class="g ix"><b>Pantallas</b><div class="idx" id="idx"></div></div>
+    <div class="g ix"><b>Datos de esta pantalla</b><ul class="apibox" id="api"></ul></div>
+  </aside>
+
+  <div class="tel" id="tel" data-rol="admin" data-plat="web">
+    <div class="estado"><span>11:42</span><span>4G · 82 %</span></div>
+
+    <!-- ===================== INICIO ===================== -->
+    <section class="scr" data-s="inicio" data-tab="inicio">
+      <div class="tb"><h2>Inicio</h2><span class="pill suc"><i></i>Centro</span><button class="ib" data-go="derivaciones" data-filtro-d="dispatched" aria-label="Por recibir"><svg class="i"><use href="#campana"/></svg><span class="pt"></span></button></div>
+      <div class="cu">
+        <div class="pz">
+          <div class="pz-h"><h3>Por recibir</h3><span class="num">2 derivaciones</span></div>
+          <button class="it" data-go="deriv-recibir"><span class="ico"><svg class="i s20"><use href="#camion"/></svg></span><span class="tx"><b class="num">DER-2026-000131</b><small>Desde Depósito central · ayer 18:20</small></span><span class="der"><b class="num">14 u.</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it" data-go="deriv-recibir"><span class="ico"><svg class="i s20"><use href="#camion"/></svg></span><span class="tx"><b class="num">DER-2026-000129</b><small>Desde Rivadavia · ayer 12:05</small></span><span class="der"><b class="num">3 u.</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+        <div class="accesos">
+          <button class="acc" data-go="deriv-nueva" data-nueva-d><span class="ico"><svg class="i s20"><use href="#transf"/></svg></span><b>Nueva derivación</b></button>
+          <button class="acc" data-go="conteo"><span class="ico"><svg class="i s20"><use href="#conteo"/></svg></span><b>Conteo</b></button>
+          <button class="acc admin-only" data-go="producto-form" data-cod-nuevo=""><span class="ico"><svg class="i s20"><use href="#mas1"/></svg></span><b>Nuevo producto</b></button>
+          <button class="acc" data-go="vender"><span class="ico"><svg class="i s20"><use href="#vender"/></svg></span><b>Vender</b></button>
+        </div>
+        <div class="pz">
+          <div class="pz-h"><h3>Últimas lecturas</h3><span>Hoy</span></div>
+          <div id="lecturas"></div>
+        </div>
+        <div class="pz">
+          <div class="pz-h"><h3>Pendientes</h3></div>
+          <button class="it" data-go="productos" data-filtro="sin"><span class="tx"><b>Sin stock en Centro</b></span><span class="der"><b class="num">14</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it" data-go="derivaciones" data-filtro-d="draft"><span class="tx"><b>Derivaciones en borrador</b></span><span class="der"><b class="num">1</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LECTOR CENTRAL ===================== -->
+    <section class="scr oscura" data-s="escaner" data-full>
+      <div class="tb negra atras"><button class="ib" data-back aria-label="Cerrar"><svg class="i"><use href="#cerrar"/></svg></button><h2>Escanear</h2><button class="ib" aria-label="Linterna"><svg class="i"><use href="#flash"/></svg></button></div>
+      <button class="visor" data-leer aria-label="Leer código"><div class="marco"><div class="rayo"></div></div></button>
+      <div class="esc-pie">
+        <div class="esc-modos" id="modos"><button data-modo="consultar" class="on">Consultar</button><button data-modo="derivar">Derivar</button><button data-modo="contar">Contar</button></div>
+        <button class="lnk" data-go="ingresar">Ingresar código</button>
+      </div>
+    </section>
+
+    <!-- ===================== INGRESAR CÓDIGO ===================== -->
+    <section class="scr" data-s="ingresar" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Ingresar código</h2></div>
+      <div class="cu">
+        <div class="cmp"><label>Código de barras, SKU o número de derivación</label><input class="inp num" inputmode="numeric" value="7791234000028"></div>
+      </div>
+      <div class="pie"><button class="btn" data-leer>Buscar</button></div>
+    </section>
+
+    <!-- ===================== RESULTADO: PRODUCTO ===================== -->
+    <section class="scr" data-s="resultado" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Producto</h2><button class="ib" data-go="escaner" aria-label="Escanear otro"><svg class="i"><use href="#scan"/></svg></button></div>
+      <div class="cu" style="padding:0 0 24px">
+        <div class="ficha-foto corta"><svg class="i s40"><use href="#box"/></svg></div>
+        <div style="padding:0 16px;display:flex;flex-direction:column;gap:12px;margin-top:12px">
+          <div class="pz"><div class="pz-b" style="padding-top:16px">
+            <div style="font-size:19px;font-weight:800" data-p-nom>Cargador 20 W USB-C</div>
+            <div class="sub num" data-p-cod>7791234000028 · Cargadores</div>
+            <div class="precio-fila" style="margin-top:12px"><div><div class="cifra num" data-p-pre>$ 18.900</div><div class="sub">Precio descuento</div></div><span class="estampa apk-only"><svg class="i s18"><use href="#reloj"/></svg>09:10</span></div>
+            <dl class="dl" style="margin-top:12px"><dt>Precio lista</dt><dd class="num" data-p-lis>$ 21.200</dd><dt>Precio revendedor</dt><dd class="num" data-p-rev>$ 16.400</dd><dt class="admin-only">Costo</dt><dd class="num admin-only" data-p-cos>$ 11.300</dd></dl>
+          </div></div>
+          <div class="pz"><div class="pz-h"><h3>Stock por sucursal</h3><span class="num" data-p-tot>34 u.</span></div>
+            <div class="pz-b" id="stockSuc"></div>
+          </div>
+          <div class="pz"><div class="pz-h"><h3>Datos</h3></div>
+            <div class="pz-b"><dl class="dl"><dt>SKU</dt><dd class="num">CAR-0028</dd><dt>Rubro</dt><dd>Cargadores</dd><dt>Subrubro</dt><dd>Pared</dd><dt>Marca</dt><dd>Genérica</dd><dt>Estado</dt><dd><span class="est ok">Activo</span></dd></dl></div>
+          </div>
+          <button class="btn admin-only" data-go="producto-form" data-editar>Editar producto</button>
+          <button class="btn cajero-only" data-go="escaner">Escanear otro</button>
+          <div class="centro"><button class="lnk" data-go="deriv-nueva" data-agregar-d>Derivar</button></div>
+          <div class="centro" style="margin-top:-12px"><button class="lnk" data-go="vender" data-a-venta>Agregar a la venta</button></div>
+          <div class="centro apk-only" style="margin-top:-12px"><button class="lnk" data-aviso="Etiqueta enviada a la impresora">Imprimir etiqueta</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RESULTADO: CÓDIGO NO ENCONTRADO ===================== -->
+    <section class="scr" data-s="no-encontrado" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Código no encontrado</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b">
+          <div class="codigo-grande num" data-cod-leido>7790895000997</div>
+          <div class="barras"></div>
+          <div class="centro" style="margin-top:12px"><span class="est gr">Sin producto con este código</span></div>
+        </div></div>
+        <button class="btn admin-only" data-go="producto-form" data-cod-nuevo="7790895000997">Crear producto</button>
+        <button class="btn cajero-only" data-go="escaner">Escanear otro</button>
+        <div class="centro admin-only"><button class="lnk" data-go="escaner">Escanear otro</button></div>
+      </div>
+    </section>
+
+    <!-- ===================== ALTA / EDICIÓN DE PRODUCTO ===================== -->
+    <section class="scr" data-s="producto-form" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2 data-form-tit>Nuevo producto</h2></div>
+      <div class="cu">
+        <div class="cmp"><label>Código de barras</label><div class="inpw"><input class="inp num" style="padding-left:14px" data-f-cod placeholder="Escanear o escribir"><button class="act" data-go="escaner" aria-label="Escanear"><svg class="i s20"><use href="#scan"/></svg></button></div></div>
+        <div class="rot">Fotos</div>
+        <div class="fotos" id="fotos"><button class="ftile add" data-foto><svg class="i s28"><use href="#camara"/></svg>Tomar foto</button></div>
+        <div class="rot">Datos</div>
+        <div class="cmp"><label>Nombre</label><input class="inp" data-f-nom placeholder="Nombre del producto"></div>
+        <div class="dos"><div class="cmp"><label>Rubro</label><select class="inp" style="font-size:16px" data-f-rub><option></option><option>Cargadores</option><option>Cables</option><option>Audio</option></select></div><div class="cmp"><label>Subrubro</label><select class="inp" style="font-size:16px" data-f-sub><option></option><option>Pared</option><option>Auto</option><option>Inalámbrico</option></select></div></div>
+        <div class="dos"><div class="cmp"><label>Marca</label><input class="inp" data-f-mar></div><div class="cmp"><label>Modelo</label><input class="inp"></div></div>
+        <div class="rot">Precios</div>
+        <div class="dos"><div class="cmp"><label>Costo</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-costo inputmode="numeric"></div></div><div class="cmp"><label>% de ganancia</label><input class="inp num" value="67" data-f-mk inputmode="numeric"></div></div>
+        <div class="dos"><div class="cmp"><label>Precio lista</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-lis inputmode="numeric" readonly style="background:var(--variante)"></div></div><div class="cmp"><label>Precio descuento</label><div class="inpw"><span class="pre">$</span><input class="inp num" data-f-pre inputmode="numeric"></div></div></div>
+        <div class="rot">Stock</div>
+        <div class="dos"><div class="cmp"><label>Centro</label><input class="inp num" value="0" data-f-stk inputmode="numeric"></div><div class="cmp"><label>Depósito central</label><input class="inp num" value="0" inputmode="numeric"></div></div>
+        <button class="sw on" data-toggle><span>Activo</span><span class="t"></span></button>
+        <div class="centro" data-form-baja style="display:none"><button class="lnk rojo">Dar de baja el producto</button></div>
+      </div>
+      <div class="pie"><button class="btn" data-guardar-prod>Guardar producto</button></div>
+    </section>
+
+    <!-- ===================== PRODUCTOS ===================== -->
+    <section class="scr" data-s="productos" data-tab="productos">
+      <div class="tb"><h2>Productos</h2><button class="ib admin-only" data-go="producto-form" data-cod-nuevo="" aria-label="Nuevo producto"><svg class="i"><use href="#mas1"/></svg></button></div>
+      <div class="cu">
+        <div class="bus"><svg class="i s20" style="color:var(--suave)"><use href="#buscar"/></svg><input placeholder="Buscar nombre, SKU o código"><button class="cam" data-go="escaner" aria-label="Escanear"><svg class="i"><use href="#scan"/></svg></button></div>
+        <div class="chips" data-chips id="chipsP"><button class="chip on" data-f="todos">Todos 412</button><button class="chip" data-f="con">Con stock 398</button><button class="chip" data-f="sin">Sin stock 14</button></div>
+        <div class="pz" id="listaP"></div>
+      </div>
+    </section>
+
+    <!-- ===================== DERIVACIONES ===================== -->
+    <section class="scr" data-s="derivaciones" data-tab="derivaciones">
+      <div class="tb"><h2>Derivaciones</h2><button class="ib" data-go="deriv-nueva" data-nueva-d aria-label="Nueva derivación"><svg class="i"><use href="#mas1"/></svg></button></div>
+      <div class="cu">
+        <div class="bus"><svg class="i s20" style="color:var(--suave)"><use href="#buscar"/></svg><input placeholder="Número o nota"><button class="cam" data-go="escaner" aria-label="Escanear QR"><svg class="i"><use href="#qr"/></svg></button></div>
+        <div class="chips" id="chipsD"></div>
+        <div class="pz" id="listaD"></div>
+      </div>
+    </section>
+
+    <!-- ===================== NUEVA DERIVACIÓN ===================== -->
+    <section class="scr" data-s="deriv-nueva" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Nueva derivación</h2></div>
+      <div class="cu">
+        <div class="cmp"><label>Origen</label><select class="inp" style="font-size:16px"><option>Centro · Depósito principal</option><option class="admin-only">Depósito central</option><option class="admin-only">Rivadavia · Depósito principal</option></select></div>
+        <div class="rot">Destino</div>
+        <div class="ops" data-radio="destino">
+          <button class="op on" data-v="Rivadavia"><span class="tx"><b>Rivadavia</b></span><span class="rd"></span></button>
+          <button class="op" data-v="Santa Lucía"><span class="tx"><b>Santa Lucía</b></span><span class="rd"></span></button>
+          <button class="op" data-v="Depósito central"><span class="tx"><b>Depósito central</b></span><span class="rd"></span></button>
+        </div>
+        <div class="pz">
+          <div class="pz-h"><h3>Productos</h3><span class="num" data-d-res>0</span></div>
+          <div id="lineasD"></div>
+          <div class="pz-f" style="padding-top:12px"><button class="btn" data-go="escaner-lote" data-lote="derivar"><svg class="i s20"><use href="#scan"/></svg>Escanear productos</button></div>
+        </div>
+        <div class="cmp"><label>Nota</label><input class="inp" placeholder="Opcional"></div>
+        <div class="centro"><button class="lnk" data-borrador>Guardar borrador</button></div>
+      </div>
+      <div class="pie"><button class="btn" data-despachar>Despachar</button></div>
+    </section>
+
+    <!-- ===================== LECTOR POR LOTE ===================== -->
+    <section class="scr oscura" data-s="escaner-lote" data-full>
+      <div class="tb negra atras"><button class="ib" data-back aria-label="Cerrar"><svg class="i"><use href="#cerrar"/></svg></button><h2 data-lote-tit>Derivación a Rivadavia</h2><button class="ib" aria-label="Linterna"><svg class="i"><use href="#flash"/></svg></button></div>
+      <button class="visor" data-leer-lote aria-label="Leer código"><div class="marco"><div class="rayo"></div></div></button>
+      <div class="hoja">
+        <div class="ult" id="ultLote"></div>
+        <div class="res"><span data-lote-sub>0 productos</span><b class="num" data-lote-u>0 u.</b></div>
+        <button class="btn" data-back>Listo</button>
+      </div>
+    </section>
+
+    <!-- ===================== DETALLE DE DERIVACIÓN (con QR) ===================== -->
+    <section class="scr" data-s="deriv-detalle" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2 class="num">DER-2026-000132</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div class="ruta">Centro<svg class="i s18"><use href="#flecha"/></svg><span data-dest>Rivadavia</span></div><span class="est az" data-d-est>En camino</span></div>
+          <div class="sub" style="margin-top:6px">Despachada hoy 11:48 · Lucía Gómez</div>
+        </div></div>
+        <div class="pz qrbox">
+          <svg id="qrDer" viewBox="0 0 29 29" shape-rendering="crispEdges" aria-label="QR de la derivación"></svg>
+          <b class="num">DER-2026-000132</b>
+          <button class="btn web-only" style="margin-top:6px"><svg class="i s20"><use href="#compartir"/></svg>Compartir QR</button>
+          <button class="btn apk-only" style="margin-top:6px" data-aviso="Etiqueta enviada a la impresora"><svg class="i s20"><use href="#imprimir"/></svg>Imprimir etiqueta</button>
+        </div>
+        <div class="pz"><div class="pz-h"><h3>Productos</h3><span class="num" data-det-res></span></div><div id="lineasDet"></div></div>
+        <div class="centro"><button class="lnk rojo" data-go="deriv-cancelar">Cancelar derivación</button></div>
+      </div>
+    </section>
+
+    <!-- ===================== CANCELAR DERIVACIÓN ===================== -->
+    <section class="scr" data-s="deriv-cancelar" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Cancelar derivación</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px">
+          <div class="num" style="font-size:19px;font-weight:800">DER-2026-000132</div>
+          <div class="ruta" style="margin-top:6px">Centro<svg class="i s18"><use href="#flecha"/></svg>Rivadavia</div>
+          <dl class="dl" style="margin-top:12px"><dt>Estado</dt><dd>En camino</dd><dt>Unidades</dt><dd class="num" data-can-u>7</dd></dl>
+        </div></div>
+      </div>
+      <div class="pie"><button class="btn rojo" data-cancelar-d>Cancelar derivación</button></div>
+    </section>
+
+    <!-- ===================== RECIBIR DERIVACIÓN ===================== -->
+    <section class="scr" data-s="deriv-recibir" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2 class="num">DER-2026-000131</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-b" style="padding-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><div class="ruta">Depósito central<svg class="i s18"><use href="#flecha"/></svg>Centro</div><span class="est az">En camino</span></div>
+          <div class="sub" style="margin-top:6px">Despachada ayer 18:20 · Matías Ríos</div>
+          <div class="precio-fila" style="margin-top:14px"><span class="sub">Contadas</span><b class="num" style="font-size:20px" data-rec-prog>0 de 14 u.</b></div>
+          <div class="prog"><s data-rec-bar style="width:0"></s></div>
+        </div></div>
+        <div class="pz">
+          <div class="pz-h"><h3>Productos</h3><span class="num">4</span></div>
+          <div id="lineasR"></div>
+          <div class="pz-f" style="padding-top:12px"><button class="btn" data-go="escaner-lote" data-lote="recibir"><svg class="i s20"><use href="#scan"/></svg>Escanear</button></div>
+        </div>
+      </div>
+      <div class="pie"><div class="res"><span data-rec-dif>Sin diferencias</span><b class="num" data-rec-u>0 u.</b></div><button class="btn" data-recibir>Confirmar recepción</button></div>
+    </section>
+
+    <!-- ===================== RECEPCIÓN REGISTRADA ===================== -->
+    <section class="scr" data-s="deriv-ok" data-full>
+      <div class="tb atras"><button class="ib" data-go="derivaciones" data-raiz aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2 class="num">DER-2026-000131</h2></div>
+      <div class="cu">
+        <div class="hecho"><span class="circ" data-ok-circ><svg class="i s40"><use href="#check"/></svg></span><h3 data-ok-tit>Recibida</h3><div class="sub num" data-ok-sub>14 u. sumadas al stock de Centro</div></div>
+        <div class="pz" data-ok-difs><div class="pz-h"><h3>Diferencias</h3></div><div id="lineasOk"></div></div>
+        <button class="btn" data-go="inicio" data-raiz>Volver a Inicio</button>
+      </div>
+    </section>
+
+    <!-- ===================== CONTEO ===================== -->
+    <section class="scr" data-s="conteo" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Conteo</h2><span class="pill suc"><i></i>Centro</span></div>
+      <div class="cu">
+        <div class="cmp"><label>Depósito</label><select class="inp" style="font-size:16px"><option>Centro · Depósito principal</option></select></div>
+        <div class="cmp"><label>Rubro</label><select class="inp" style="font-size:16px"><option>Todos</option><option>Cargadores</option><option>Cables</option><option>Audio</option></select></div>
+        <div class="cmp-cc"><div><b class="num" data-c-n>0</b><span>Contados</span></div><div><b class="num" data-c-ok>0</b><span>Iguales</span></div><div><b class="num" data-c-dif style="color:var(--rojo)">0</b><span>Con diferencia</span></div></div>
+        <div class="pz">
+          <div class="pz-h"><h3>Contados</h3><span>Sistema · Contado</span></div>
+          <div id="lineasC"></div>
+          <div class="pz-f" style="padding-top:12px"><button class="btn" data-go="escaner-lote" data-lote="contar"><svg class="i s20"><use href="#scan"/></svg>Escanear</button></div>
+        </div>
+      </div>
+      <div class="pie"><button class="btn" data-go="conteo-revisar">Revisar diferencias</button></div>
+    </section>
+
+    <!-- ===================== CONTEO: REVISAR Y APLICAR ===================== -->
+    <section class="scr" data-s="conteo-revisar" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Diferencias</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="pz-h"><h3>Centro · Depósito principal</h3><span class="num" data-cr-n></span></div><div id="lineasCR"></div></div>
+        <div class="cmp"><label>Motivo</label><input class="inp" value="Conteo de góndola"></div>
+      </div>
+      <div class="pie"><button class="btn admin-only" data-aplicar>Aplicar conteo</button><button class="btn cajero-only" data-aplicar>Enviar para aprobar</button></div>
+    </section>
+
+    <!-- ===================== VENDER (sigue disponible) ===================== -->
+    <section class="scr" data-s="vender" data-full>
+      <div class="tb atras"><button class="ib" data-back aria-label="Volver"><svg class="i"><use href="#atras"/></svg></button><h2>Vender</h2><span class="pill"><i></i>Caja #314</span></div>
+      <div class="cu">
+        <div class="bus"><svg class="i s20" style="color:var(--suave)"><use href="#buscar"/></svg><input placeholder="Buscar o escanear"><button class="cam" data-go="escaner" aria-label="Escanear"><svg class="i"><use href="#scan"/></svg></button></div>
+        <div class="pz" id="listaV"></div>
+      </div>
+      <div class="carro"><span class="tt"><small data-v-cant>1 artículo</small><b class="num" data-v-tot>$ 18.900</b></span><button class="btn">Cobrar</button></div>
+    </section>
+
+    <!-- ===================== MÁS ===================== -->
+    <section class="scr mas" data-s="mas" data-tab="mas">
+      <div class="tb"><h2>Más</h2></div>
+      <div class="cu">
+        <div class="pz"><div class="it"><span class="avatar" style="width:44px;height:44px;font-size:16px;margin:0">LG</span><span class="tx"><b>Lucía Gómez</b><small data-rol-txt>Dueño · Centro</small></span></div></div>
+        <div class="rot">Stock</div>
+        <div class="pz">
+          <button class="it" data-go="conteo"><svg class="i ic2"><use href="#conteo"/></svg><span class="tx"><b>Conteo</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it" data-go="derivaciones"><svg class="i ic2"><use href="#transf"/></svg><span class="tx"><b>Derivaciones</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#etiqueta"/></svg><span class="tx"><b>Etiquetas</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+        <div class="rot">Mostrador</div>
+        <div class="pz">
+          <button class="it" data-go="vender"><svg class="i ic2"><use href="#vender"/></svg><span class="tx"><b>Vender</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#ventas"/></svg><span class="tx"><b>Ventas</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+          <button class="it"><svg class="i ic2"><use href="#caja"/></svg><span class="tx"><b>Caja</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>
+        </div>
+        <div class="rot">Cuenta</div>
+        <div class="pz">
+          <button class="it sw" data-tema style="justify-content:flex-start"><svg class="i ic2"><use href="#luna"/></svg><span class="tx"><b>Modo oscuro</b></span><span class="t"></span></button>
+          <button class="it sw apk-only on" data-toggle style="justify-content:flex-start"><svg class="i ic2"><use href="#huella"/></svg><span class="tx"><b>Entrar con huella</b></span><span class="t"></span></button>
+          <button class="it sw apk-only on" data-toggle style="justify-content:flex-start"><svg class="i ic2"><use href="#box"/></svg><span class="tx"><b>Catálogo sin conexión</b><small>Actualizado 09:10</small></span><span class="t"></span></button>
+          <button class="it" style="color:var(--rojo)"><svg class="i"><use href="#salir"/></svg><span class="tx"><b>Cerrar sesión</b></span></button>
+        </div>
+      </div>
+    </section>
+
+    <nav class="bn" id="bn" aria-label="Navegación principal"></nav>
+    <div class="toast" id="toast"><svg class="i s20"><use href="#check"/></svg><span></span></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const tel = $("#tel");
+  const pesos = n => (n < 0 ? "− " : "") + "$ " + Math.abs(Math.round(n)).toLocaleString("es-AR");
+  const u = n => n + " u.";
+
+  // Datos de muestra (inventados)
+  const PRODUCTOS = [
+    { id: 1, n: "Cable USB-C a USB-C 1 m", c: "7791234000011", r: "Cables", p: 6500, s: 24 },
+    { id: 2, n: "Cargador 20 W USB-C", c: "7791234000028", r: "Cargadores", p: 18900, s: 9 },
+    { id: 3, n: "Auriculares Bluetooth TWS", c: "7791234000035", r: "Audio", p: 32000, s: 5 },
+    { id: 4, n: "Funda iPhone 15 silicona", c: "7791234000042", r: "Fundas", p: 9800, s: 0 },
+    { id: 5, n: "Mouse inalámbrico", c: "7791234000059", r: "Periféricos", p: 14500, s: 12 },
+    { id: 6, n: "Pendrive 64 GB", c: "7791234000066", r: "Almacenamiento", p: 11200, s: 18 },
+    { id: 7, n: "Templado Samsung A15", c: "7791234000073", r: "Fundas", p: 5000, s: 40 },
+    { id: 8, n: "Parlante portátil 10 W", c: "7791234000080", r: "Audio", p: 41500, s: 3 },
+  ];
+  const P = id => PRODUCTOS.find(p => p.id === id);
+  const STOCK_SUC = { 2: [["Centro", 9, 1], ["Rivadavia", 4], ["Santa Lucía", 0], ["Depósito central", 21]] };
+
+  const st = {
+    pila: [], rol: "admin", plat: "web", lect: "producto", modo: "consultar", lote: "derivar", filtroP: "todos", filtroD: "", productoId: 2,
+    deriv: new Map(), destino: "Rivadavia", lecturaIdx: 0, ultimo: null,
+    recibir: [{ id: 1, env: 6, cont: 0 }, { id: 5, env: 4, cont: 0 }, { id: 6, env: 3, cont: 0 }, { id: 7, env: 1, cont: 0 }],
+    conteo: new Map(), lecturas: [[2, "11:40"], [3, "11:32"], [7, "10:58"]],
+  };
+
+  /* ---------- Marcas de API por pantalla (panel lateral, fuera del teléfono) ---------- */
+  const EX = "ex", NU = "nu", MX = "mx";
+  const API = {
+    inicio: [MX, [
+      [EX, "<code>GET /stock/transfers?status=dispatched</code> por recibir, con <code>count_by_status</code>"],
+      [EX, "<code>GET /products?stock=without</code> sin stock"],
+      [EX, "Últimas lecturas: guardadas en el teléfono, sin API"],
+    ]],
+    escaner: [EX, [
+      [EX, "APK: ML Kit <code>scan()</code> (EAN, Code 128, QR). Webapp: <code>BarcodeDetector</code> con <code>qr_code</code>"],
+      [EX, "Ruteo de la lectura en el teléfono: <code>DER-AAAA-NNNNNN</code> va a Recibir; el resto, a Consultar, Derivar o Contar según el modo"],
+    ]],
+    ingresar: [EX, [[EX, "Mismo ruteo que el lector"]]],
+    resultado: [MX, [
+      [EX, "<code>GET /products?q=&lt;código&gt;</code>: busca con LIKE en nombre, SKU, barcode, code, marca y modelo. El teléfono se queda con la coincidencia exacta de barcode, SKU o code"],
+      [NU, "Conviene <code>GET /products/by-code/:code</code> exacto (incluye inactivos): evita traer parecidos y es una sola fila"],
+      [EX, "<code>GET /products/:id/branches</code> stock por sucursal"],
+      [EX, "APK sin conexión: <code>catalogoOffline.js</code> (precio y stock de la última sincronización, con la hora)"],
+      [EX, "Imprimir etiqueta: <code>impresoraBluetooth.js</code> + <code>labelPdf58.js</code>"],
+    ]],
+    "no-encontrado": [EX, [[EX, "Misma búsqueda; 0 coincidencias exactas. El alta lleva el código cargado"]]],
+    "producto-form": [EX, [
+      [EX, "<code>POST /products</code> (o <code>PATCH /products/:id</code>). Obligatorios: nombre, rubro y subrubro, como en <code>ProductFormPage</code>"],
+      [EX, "Foto: <code>&lt;input capture=\"environment\"&gt;</code> (ya en <code>ProductImagesPanel</code>) y después <code>POST /products/:id/images</code>: dos llamadas en secuencia"],
+      [EX, "Stock inicial: <code>POST /stock/init</code> por sucursal (sólo administrador)"],
+      [EX, "Rubros y subrubros: <code>GET /categories</code>, <code>/subcategories</code>"],
+    ]],
+    productos: [EX, [[EX, "<code>GET /products</code> con <code>stock</code> y <code>q</code> (pantalla ya en producción)"]]],
+    derivaciones: [EX, [[EX, "<code>GET /stock/transfers</code> con <code>status</code>, <code>search</code> y <code>count_by_status</code>"]]],
+    "deriv-nueva": [EX, [
+      [EX, "Origen = depósito (<code>from_warehouse_id</code>); destino = sucursal (<code>to_branch_id</code>). La API resuelve el depósito destino"],
+      [EX, "Producto leído: <code>GET /products?q=&amp;branch_id=&amp;in_stock=1</code> (<code>searchProducts</code>). Sin stock en origen: la línea queda apagada"],
+      [EX, "<code>POST /stock/transfers</code> crea el borrador; <code>POST /:id/dispatch</code> lo despacha (422 si falta stock en origen)"],
+      [EX, "Guardar borrador: <code>POST</code> o <code>PUT /stock/transfers/:id</code>"],
+    ]],
+    "escaner-lote": [EX, [
+      [EX, "Lectura continua: <code>startScan()</code> + evento <code>barcodesScanned</code> del mismo plugin ML Kit, en lugar de <code>scan()</code>. Trabajo del teléfono, sin API"],
+      [EX, "Webapp: <code>BarcodeDetector</code> en bucle con pausa entre lecturas iguales"],
+    ]],
+    "deriv-detalle": [EX, [
+      [EX, "<code>GET /stock/transfers/:id</code>"],
+      [EX, "QR armado en el teléfono con <code>qrcode</code> (ya es dependencia). Contenido: el número <code>DER-AAAA-NNNNNN</code>"],
+      [EX, "Cancelar: <code>POST /:id/cancel</code> (no si ya está recibida o cancelada)"],
+    ]],
+    "deriv-cancelar": [EX, [[EX, "<code>POST /stock/transfers/:id/cancel</code>"]]],
+    "deriv-recibir": [EX, [
+      [EX, "QR leído: <code>GET /stock/transfers?search=DER-...</code> (LIKE sobre <code>number</code>) y <code>GET /:id</code>"],
+      [EX, "Cada lectura suma 1 al ítem en el teléfono. Un producto que no viene en la derivación no se puede sumar: la API no acepta ítems nuevos al recibir"],
+      [EX, "<code>POST /:id/receive</code> con <code>receptions: [{ item_id, qty_received, note }]</code>. Sólo desde <code>dispatched</code>"],
+    ]],
+    "deriv-ok": [EX, [[EX, "Estado que devuelve la API: <code>received</code> si todo coincide, <code>partial</code> (Recibida con diferencias) si no. El teléfono no lo elige"]]],
+    conteo: [MX, [
+      [EX, "Stock del sistema: <code>GET /stock?warehouse_id=</code>"],
+      [EX, "Conteo en curso guardado en el teléfono"],
+      [NU, "Para retomarlo en otro teléfono o contar entre dos personas hace falta guardarlo en el servidor"],
+    ]],
+    "conteo-revisar": [MX, [
+      [EX, "Aplicar (dueño): <code>POST /stock/init</code> por producto, fija la cantidad. Sólo administrador. No guarda motivo ni el conteo"],
+      [NU, "Recomendado: <code>POST /stock/counts</code> en lote, con motivo, autor y diferencias, que registre un movimiento <code>adjustment</code>"],
+      [NU, "Enviar para aprobar (cajero): no existe; depende de <code>/stock/counts</code>"],
+    ]],
+    vender: [EX, [[EX, "Venta del teléfono ya en producción (<code>PosMobileLayout</code>), sin cambios. Sale de la barra y queda en Más e Inicio"]]],
+    mas: [EX, [[EX, "Mismos permisos del menú de escritorio"]]],
+  };
+  const NOMBRES = {
+    inicio: "Inicio", escaner: "Lector (botón central)", ingresar: "Ingresar código", resultado: "Consulta de producto", "no-encontrado": "Código no encontrado",
+    "producto-form": "Alta / edición de producto", productos: "Productos", derivaciones: "Derivaciones", "deriv-nueva": "Nueva derivación",
+    "escaner-lote": "Lector por lote", "deriv-detalle": "Derivación despachada (QR)", "deriv-cancelar": "Cancelar derivación",
+    "deriv-recibir": "Recibir derivación", "deriv-ok": "Recepción registrada", conteo: "Conteo", "conteo-revisar": "Conteo: diferencias", vender: "Vender", mas: "Más",
+  };
+  const GRUPOS = [["Barra", ["inicio", "productos", "escaner", "derivaciones", "mas"]], ["Consultar y cargar", ["ingresar", "resultado", "no-encontrado", "producto-form"]],
+    ["Derivar", ["deriv-nueva", "escaner-lote", "deriv-detalle", "deriv-cancelar"]], ["Recibir", ["deriv-recibir", "deriv-ok"]], ["Conteo", ["conteo", "conteo-revisar"]], ["Mostrador", ["vender"]]];
+  const TAG = { ex: "Existe", nu: "Nueva", mx: "Mixta" };
+
+  /* ---------- Navegación ---------- */
+  const TABS = [["inicio", "Inicio", "home"], ["productos", "Productos", "box"], ["escaner", "Escanear", "scan"], ["derivaciones", "Derivaciones", "transf"], ["mas", "Más", "mas"]];
+  function ir(id, push = true) {
+    if (id === "producto-form") prepararForm();
+    const actual = $(".scr.on");
+    if (actual && push && actual.dataset.s !== id) st.pila.push(actual.dataset.s);
+    $$(".scr").forEach(s => s.classList.toggle("on", s.dataset.s === id));
+    const scr = $(`.scr[data-s="${id}"]`);
+    $("#bn").classList.toggle("oculto", scr.hasAttribute("data-full"));
+    $$("#bn button").forEach(b => b.classList.toggle("on", b.dataset.go === scr.dataset.tab));
+    $$("#idx button").forEach(b => b.classList.toggle("on", b.dataset.go === id));
+    const cu = $(".cu", scr); if (cu && push) cu.scrollTop = 0;
+    pintarApi(id);
+    if (id === "escaner-lote") pintarLote();
+    if (id === "deriv-nueva") pintarDeriv();
+    if (id === "deriv-recibir") pintarRecibir();
+    if (id === "conteo") pintarConteo();
+    if (id === "conteo-revisar") pintarRevisar();
+    if (id === "deriv-detalle") pintarDetalle();
+    if (id === "inicio") pintarLecturas();
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  function volver() { const p = st.pila.pop(); ir(p || "inicio", false); }
+  function pintarNav() {
+    $("#bn").innerHTML = TABS.map(([id, t, ic]) => id === "escaner"
+      ? `<button class="lector" data-go="escaner" aria-label="Escanear"><span class="bola"><svg class="i s28"><use href="#scan"/></svg></span>${t}</button>`
+      : `<button data-go="${id}"><svg class="i"><use href="#${ic}"/></svg>${t}${id === "derivaciones" ? '<span class="bd">2</span>' : ""}</button>`).join("");
+  }
+  function pintarIndice() {
+    $("#idx").innerHTML = GRUPOS.map(([g, ids]) => `<i>${g}</i>` + ids.map(id => `<button data-go="${id}"><span>${NOMBRES[id]}</span><em class="tag ${API[id][0]}">${TAG[API[id][0]]}</em></button>`).join("")).join("");
+  }
+  function pintarApi(id) {
+    const a = API[id]; if (!a) return;
+    $("#api").innerHTML = a[1].map(([t, txt]) => `<li><em class="tag ${t}">${TAG[t]}</em><span>${txt}</span></li>`).join("");
+  }
+  const toast = msg => { const t = $("#toast"); $("span", t).textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 1800); };
+
+  /* ---------- Pintado ---------- */
+  const thumb = q => `<span class="foto"><svg class="i"><use href="#box"/></svg>${q ? `<span class="q">${q}</span>` : ""}</span>`;
+  function pintarLecturas() {
+    $("#lecturas").innerHTML = st.lecturas.slice(0, 4).map(([id, h]) => { const p = P(id); return `<button class="it" data-prod="${id}">${thumb()}<span class="tx"><b>${p.n}</b><small class="num">${h} · ${p.c}</small></span><span class="der"><b class="num">${pesos(p.p)}</b><small>${p.s ? u(p.s) : "Sin stock"}</small></span></button>`; }).join("");
+  }
+  function pintarProductos() {
+    const l = PRODUCTOS.filter(p => st.filtroP === "todos" || (st.filtroP === "sin" ? !p.s : p.s));
+    $("#listaP").innerHTML = l.map(p => `<button class="it" data-prod="${p.id}">${thumb()}<span class="tx"><b>${p.n}</b><small>${p.r} · ${p.c}</small></span><span class="der"><b class="num">${pesos(p.p)}</b>${p.s ? `<small>${u(p.s)}</small>` : '<span class="est no">Sin stock</span>'}</span></button>`).join("");
+    $$("#chipsP .chip").forEach(c => c.classList.toggle("on", c.dataset.f === st.filtroP));
+  }
+  function verProducto(id) {
+    const p = P(id); st.productoId = id;
+    if (!st.lecturas.length || st.lecturas[0][0] !== id) st.lecturas.unshift([id, "11:42"]);
+    $("[data-p-nom]").textContent = p.n; $("[data-p-cod]").textContent = `${p.c} · ${p.r}`;
+    $("[data-p-pre]").textContent = pesos(p.p); $("[data-p-lis]").textContent = pesos(Math.round(p.p * 1.12 / 100) * 100);
+    $("[data-p-rev]").textContent = pesos(Math.round(p.p * .87 / 100) * 100); $("[data-p-cos]").textContent = pesos(Math.round(p.p * .6 / 100) * 100);
+    const filas = STOCK_SUC[id] || [["Centro", p.s, 1], ["Rivadavia", Math.round(p.s / 2)], ["Santa Lucía", 0], ["Depósito central", p.s * 2]];
+    const max = Math.max(1, ...filas.map(f => f[1])), tot = filas.reduce((a, f) => a + f[1], 0);
+    $("#stockSuc").innerHTML = filas.map(([n, q, mia]) => `<div class="fila"><div class="l"><b>${n}${mia ? ' <span class="est az" style="margin-left:6px">Esta</span>' : ""}</b><span class="num">${q}</span></div><div class="barra"><s style="width:${q ? Math.max(3, q / max * 100) : 0}%"></s></div></div>`).join("");
+    $("[data-p-tot]").textContent = u(tot);
+    ir("resultado");
+  }
+
+  // Derivación nueva
+  function pintarDeriv() {
+    const filas = []; let tot = 0, prods = 0;
+    st.deriv.forEach((q, id) => { const p = P(id); const sin = !p.s; if (!sin) { tot += q; prods++; }
+      filas.push(sin
+        ? `<div class="ln apagada">${thumb()}<span class="tx"><b>${p.n}</b><small class="no">Sin stock en Centro</small></span><button class="ib" data-quitar-d="${id}" aria-label="Quitar" style="width:40px;height:40px;display:grid;place-items:center;color:var(--suave)"><svg class="i s20"><use href="#cerrar"/></svg></button></div>`
+        : `<div class="ln">${thumb()}<span class="tx"><b>${p.n}</b><small class="num">${p.s} en Centro</small></span><span class="stp"><button data-dq="${id}" data-d="-1" aria-label="Menos"><svg class="i s20"><use href="#${q === 1 ? "cerrar" : "menos"}"/></svg></button><span class="num">${q}</span><button data-dq="${id}" data-d="1" aria-label="Más"><svg class="i s20"><use href="#mas1"/></svg></button></span></div>`); });
+    $("#lineasD").innerHTML = filas.join("") || `<div class="ln"><span class="tx"><small>Sin productos</small></span></div>`;
+    $("[data-d-res]").textContent = prods ? `${prods} · ${u(tot)}` : "0";
+    const b = $("[data-despachar]"); b.textContent = tot ? `Despachar ${tot === 1 ? "1 unidad" : tot + " unidades"}` : "Despachar"; b.toggleAttribute("disabled", !tot);
+    st.totDeriv = tot;
+  }
+  function pintarDetalle() {
+    $$("[data-dest]").forEach(e => e.textContent = st.destino);
+    const filas = []; let tot = 0;
+    st.deriv.forEach((q, id) => { const p = P(id); if (!p.s) return; tot += q; filas.push(`<div class="ln">${thumb()}<span class="tx"><b>${p.n}</b><small class="num">${p.c}</small></span><b class="num">${u(q)}</b></div>`); });
+    $("#lineasDet").innerHTML = filas.join("");
+    $("[data-det-res]").textContent = u(tot); $("[data-can-u]").textContent = tot;
+    pintarQR();
+  }
+  // QR de muestra (patrón fijo; la app lo arma con la librería qrcode)
+  function pintarQR() {
+    const n = 29; let s = ""; let x = 7;
+    const rnd = () => (x = (x * 1103515245 + 12345) & 0x7fffffff) % 100;
+    const finder = (cx, cy) => `<rect x="${cx}" y="${cy}" width="7" height="7" fill="#000"/><rect x="${cx + 1}" y="${cy + 1}" width="5" height="5" fill="#fff"/><rect x="${cx + 2}" y="${cy + 2}" width="3" height="3" fill="#000"/>`;
+    const enFinder = (i, j) => (i < 8 && j < 8) || (i > n - 9 && j < 8) || (i < 8 && j > n - 9);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (!enFinder(i, j) && rnd() < 47) s += `<rect x="${i}" y="${j}" width="1" height="1" fill="#000"/>`;
+    $("#qrDer").innerHTML = `<rect width="${n}" height="${n}" fill="#fff"/>` + s + finder(0, 0) + finder(n - 7, 0) + finder(0, n - 7);
+  }
+
+  // Recepción
+  function pintarRecibir() {
+    let env = 0, cont = 0, dif = 0;
+    $("#lineasR").innerHTML = st.recibir.map(it => { const p = P(it.id); env += it.env; cont += it.cont; const d = it.cont - it.env; if (it.cont && d) dif++;
+      const est = !it.cont ? `<small class="num">Enviadas ${it.env}</small>` : d === 0 ? `<small class="num">Enviadas ${it.env}</small><small><span class="est ok" style="margin-top:4px">Completo</span></small>` : d < 0 ? `<small class="num">Enviadas ${it.env}</small><small><span class="est no" style="margin-top:4px">Faltan ${-d}</span></small>` : `<small class="num">Enviadas ${it.env}</small><small><span class="est oc" style="margin-top:4px">Sobran ${d}</span></small>`;
+      return `<div class="ln" style="flex-wrap:wrap">${thumb()}<span class="tx"><b>${p.n}</b>${est}</span><span class="stp"><button data-rq="${it.id}" data-d="-1" aria-label="Menos"><svg class="i s20"><use href="#menos"/></svg></button><span class="num">${it.cont}</span><button data-rq="${it.id}" data-d="1" aria-label="Más"><svg class="i s20"><use href="#mas1"/></svg></button></span>${it.cont && d ? `<input class="inp nota" placeholder="Nota" style="flex-basis:100%">` : ""}</div>`; }).join("");
+    $("[data-rec-prog]").textContent = `${cont} de ${u(env)}`;
+    $("[data-rec-bar]").style.width = Math.min(100, cont / env * 100) + "%";
+    const sinContar = st.recibir.filter(i => !i.cont).length;
+    $("[data-rec-dif]").textContent = dif || sinContar ? [dif ? `${dif} con diferencia` : "", sinContar ? `${sinContar} sin contar` : ""].filter(Boolean).join(" · ") : "Sin diferencias";
+    $("[data-rec-dif]").style.color = dif || sinContar ? "var(--rojo)" : "";
+    $("[data-rec-u]").textContent = u(cont);
+  }
+
+  // Conteo
+  function pintarConteo() {
+    let ok = 0, dif = 0;
+    const filas = [];
+    st.conteo.forEach((c, id) => { const p = P(id); const d = c - p.s; d ? dif++ : ok++;
+      filas.push(`<div class="ln"><span class="tx"><b>${p.n}</b><small class="num">Sistema ${p.s}</small></span><span class="stp"><button data-cq="${id}" data-d="-1" aria-label="Menos"><svg class="i s20"><use href="#menos"/></svg></button><span class="num">${c}</span><button data-cq="${id}" data-d="1" aria-label="Más"><svg class="i s20"><use href="#mas1"/></svg></button></span><span class="dif num" style="color:${d ? (d < 0 ? "var(--rojo)" : "var(--ocre)") : "var(--verde)"}">${d ? (d > 0 ? "+" : "−") + Math.abs(d) : "="}</span></div>`); });
+    $("#lineasC").innerHTML = filas.join("") || `<div class="ln"><span class="tx"><small>Sin productos contados</small></span></div>`;
+    $("[data-c-n]").textContent = st.conteo.size; $("[data-c-ok]").textContent = ok; $("[data-c-dif]").textContent = dif;
+    const b = $('[data-go="conteo-revisar"]'); b.toggleAttribute("disabled", !st.conteo.size);
+  }
+  function pintarRevisar() {
+    const filas = []; let n = 0;
+    st.conteo.forEach((c, id) => { const p = P(id); const d = c - p.s; if (!d) return; n++;
+      filas.push(`<div class="ln">${thumb()}<span class="tx"><b>${p.n}</b><small class="num">Sistema ${p.s} · Contado ${c}</small></span><span class="dif num" style="color:${d < 0 ? "var(--rojo)" : "var(--ocre)"}">${(d > 0 ? "+" : "−") + Math.abs(d)}</span></div>`); });
+    $("#lineasCR").innerHTML = filas.join("") || `<div class="ln"><span class="tx"><b>Sin diferencias</b></span></div>`;
+    $("[data-cr-n]").textContent = n === 1 ? "1 producto" : n + " productos";
+  }
+
+  // Lector por lote
+  const SECUENCIA = { derivar: [2, 2, 5, 1, 4, 2], recibir: [1, 1, 1, 5, 5, 6, 6, 6, 7, 1, 1, 1, 5, 5], contar: [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 7] };
+  function pintarLote() {
+    const tit = { derivar: "Derivación a " + st.destino, recibir: "DER-2026-000131", contar: "Conteo · Centro" }[st.lote];
+    $("[data-lote-tit]").textContent = tit;
+    let prods = 0, tot = 0;
+    if (st.lote === "derivar") st.deriv.forEach((q, id) => { if (P(id).s) { prods++; tot += q; } });
+    if (st.lote === "recibir") st.recibir.forEach(i => { if (i.cont) prods++; tot += i.cont; });
+    if (st.lote === "contar") st.conteo.forEach(q => { prods++; tot += q; });
+    $("[data-lote-sub]").textContent = prods === 1 ? "1 producto" : prods + " productos";
+    $("[data-lote-u]").textContent = u(tot);
+    const ul = st.ultimo;
+    $("#ultLote").innerHTML = ul ? `${thumb()}<span class="tx"><b>${P(ul.id).n}</b><small class="${ul.no ? "" : "num"}" style="${ul.no ? "color:var(--rojo);font-weight:600" : ""}">${ul.no || ul.txt}</small></span><span class="mas1 ${ul.no ? "no" : ""}">${ul.no ? "×" : "+1"}</span>` : `<span class="tx"><small>Sin lecturas</small></span>`;
+  }
+  function leerLote() {
+    const seq = SECUENCIA[st.lote]; const id = seq[st.lecturaIdx % seq.length]; st.lecturaIdx++;
+    if (st.lote === "derivar") {
+      if (!P(id).s) { st.deriv.set(id, 1); st.ultimo = { id, no: "Sin stock en Centro" }; }
+      else { const q = (st.deriv.get(id) || 0) + 1; st.deriv.set(id, Math.min(q, P(id).s)); st.ultimo = { id, txt: `${st.deriv.get(id)} de ${P(id).s} en Centro` }; }
+    }
+    if (st.lote === "recibir") {
+      const it = st.recibir.find(i => i.id === id);
+      if (it) { it.cont++; st.ultimo = { id, txt: `${it.cont} de ${it.env}` }; } else st.ultimo = { id, no: "No viene en esta derivación" };
+    }
+    if (st.lote === "contar") { st.conteo.set(id, (st.conteo.get(id) || 0) + 1); st.ultimo = { id, txt: `Contados ${st.conteo.get(id)} · Sistema ${P(id).s}` }; }
+    pintarLote();
+  }
+
+  // Formulario
+  function prepararForm() {
+    const ed = st.editar;
+    $("[data-form-tit]").textContent = ed ? "Editar producto" : "Nuevo producto";
+    $("[data-form-baja]").style.display = ed ? "" : "none";
+    $("[data-guardar-prod]").textContent = ed ? "Guardar cambios" : "Guardar producto";
+    const p = ed ? P(st.productoId) : null;
+    $("[data-f-cod]").value = ed ? p.c : (st.codNuevo || "");
+    $("[data-f-nom]").value = ed ? p.n : "";
+    $("[data-f-rub]").value = ed ? "Cargadores" : ""; $("[data-f-sub]").value = ed ? "Pared" : "";
+    $("[data-f-mar]").value = ed ? "Genérica" : "";
+    $("[data-f-costo]").value = ed ? Math.round(p.p * .6).toLocaleString("es-AR") : "";
+    $("[data-f-pre]").value = ed ? p.p.toLocaleString("es-AR") : "";
+    $("[data-f-stk]").value = ed ? p.s : 0;
+    calcLista();
+    $$("#fotos .img").forEach(x => x.remove());
+    if (ed) $("[data-foto]").insertAdjacentHTML("beforebegin", `<div class="ftile img"><svg class="i s28"><use href="#box"/></svg><em>Principal</em></div>`);
+  }
+  function calcLista() {
+    const c = Number(($("[data-f-costo]").value || "").replace(/\D/g, "")), m = Number($("[data-f-mk]").value || 0);
+    $("[data-f-lis]").value = c ? Math.round(c * (1 + m / 100)).toLocaleString("es-AR") : "";
+  }
+
+  function pintarVender() {
+    $("#listaV").innerHTML = PRODUCTOS.slice(0, 6).map(p => `<div class="it" ${p.s ? "" : "style='opacity:.55'"}>${thumb(p.id === 2 ? 1 : 0)}<span class="tx"><b>${p.n}</b><small>${p.s ? u(p.s) + " · " : ""}${p.c}</small></span><span class="der"><b class="num">${pesos(p.p)}</b>${p.s ? "" : '<span class="est gr">Sin stock</span>'}</span></div>`).join("");
+  }
+  const DERIVS = [
+    ["DER-2026-000132", "Centro", "Rivadavia", 7, "dispatched", "hoy 11:48", "detalle"],
+    ["DER-2026-000131", "Depósito central", "Centro", 14, "dispatched", "ayer 18:20", "recibir"],
+    ["DER-2026-000130", "Centro", "Santa Lucía", 5, "draft", "ayer 16:02", "nueva"],
+    ["DER-2026-000129", "Rivadavia", "Centro", 3, "dispatched", "ayer 12:05", "recibir"],
+    ["DER-2026-000127", "Centro", "Rivadavia", 9, "partial", "10/10", "detalle"],
+    ["DER-2026-000126", "Depósito central", "Centro", 22, "received", "10/10", "detalle"],
+    ["DER-2026-000124", "Centro", "Santa Lucía", 2, "cancelled", "09/10", "detalle"],
+  ];
+  const EST = { draft: ["Borrador", "oc"], dispatched: ["En camino", "az"], received: ["Recibida", "ok"], partial: ["Recibida con diferencias", "oc"], cancelled: ["Cancelada", "gr"] };
+  function pintarDerivaciones() {
+    const cuenta = { "": 23, draft: 1, dispatched: 5, received: 15, cancelled: 2 };
+    const ch = [["", "Todas"], ["draft", "Borrador"], ["dispatched", "En camino"], ["received", "Recibidas"], ["cancelled", "Canceladas"]];
+    $("#chipsD").innerHTML = ch.map(([v, t]) => `<button class="chip ${st.filtroD === v ? "on" : ""}" data-fd="${v}">${t} ${cuenta[v]}</button>`).join("");
+    const l = DERIVS.filter(d => !st.filtroD || d[4] === st.filtroD || (st.filtroD === "received" && d[4] === "partial"));
+    $("#listaD").innerHTML = l.map(([n, o, de, q, e, f, dest]) => { const recibo = dest === "recibir";
+      return `<button class="it" data-abrir-d="${dest}" data-dest-n="${de}"><span class="ico">${recibo ? '<svg class="i s20"><use href="#camion"/></svg>' : '<svg class="i s20"><use href="#transf"/></svg>'}</span><span class="tx"><b class="num">${n}</b><small>${o} → ${de} · ${f}</small><span class="est ${EST[e][1]}" style="margin-top:6px">${recibo ? "Por recibir" : EST[e][0]}</span></span><span class="der"><b class="num">${u(q)}</b></span><svg class="i s20 chev"><use href="#chev"/></svg></button>`; }).join("");
+  }
+
+  /* ---------- Lectura del lector central ---------- */
+  function leerCentral() {
+    if (st.lect === "qr") { st.pila = []; ir("deriv-recibir", false); st.pila = ["inicio"]; toast("DER-2026-000131"); return; }
+    if (st.lect === "nuevo") { ir("no-encontrado"); return; }
+    if (st.modo === "derivar") { const id = 2; st.deriv.set(id, (st.deriv.get(id) || 0) + 1); ir("deriv-nueva"); toast("Cargador 20 W USB-C agregado"); return; }
+    if (st.modo === "contar") { st.conteo.set(2, (st.conteo.get(2) || 0) + 1); ir("conteo"); toast("Cargador 20 W USB-C contado"); return; }
+    verProducto(2);
+  }
+
+  /* ---------- Eventos ---------- */
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button,[data-go]"); if (!t) return;
+    const seg = t.closest(".seg");
+    if (seg && t.dataset.v) {
+      $$("button", seg).forEach(b => b.classList.toggle("on", b === t));
+      const k = seg.dataset.k, v = t.dataset.v;
+      if (k === "theme") { document.documentElement.dataset.theme = v; $$("[data-tema]").forEach(x => x.classList.toggle("on", v === "dark")); }
+      if (k === "rol") { st.rol = v; tel.dataset.rol = v; $("[data-rol-txt]").textContent = (v === "admin" ? "Dueño" : "Cajero") + " · Centro"; }
+      if (k === "plat") { st.plat = v; tel.dataset.plat = v; }
+      if (k === "lect") st.lect = v;
+      return;
+    }
+    if (t.dataset.modo) { st.modo = t.dataset.modo; $$("#modos button").forEach(b => b.classList.toggle("on", b === t)); return; }
+    if (t.hasAttribute("data-tema")) { const d = document.documentElement.dataset.theme !== "dark"; document.documentElement.dataset.theme = d ? "dark" : "light"; t.classList.toggle("on", d); $$('[data-k="theme"] button').forEach(b => b.classList.toggle("on", b.dataset.v === (d ? "dark" : "light"))); return; }
+    if (t.hasAttribute("data-toggle")) { t.classList.toggle("on"); return; }
+    const rad = t.closest("[data-radio]");
+    if (rad && t.classList.contains("op")) { $$(".op", rad).forEach(o => o.classList.toggle("on", o === t)); if (rad.dataset.radio === "destino") st.destino = t.dataset.v; return; }
+    if (t.closest("#chipsP") && t.dataset.f) { st.filtroP = t.dataset.f; pintarProductos(); return; }
+    if (t.dataset.fd !== undefined) { st.filtroD = t.dataset.fd; pintarDerivaciones(); return; }
+    if (t.dataset.aviso) { toast(t.dataset.aviso); return; }
+    if (t.dataset.prod) { verProducto(+t.dataset.prod); return; }
+    if (t.hasAttribute("data-leer")) { leerCentral(); return; }
+    if (t.hasAttribute("data-leer-lote")) { leerLote(); return; }
+    if (t.dataset.dq) { const id = +t.dataset.dq, q = (st.deriv.get(id) || 0) + +t.dataset.d; q > 0 ? st.deriv.set(id, Math.min(q, P(id).s)) : st.deriv.delete(id); pintarDeriv(); return; }
+    if (t.dataset.quitarD) { st.deriv.delete(+t.dataset.quitarD); pintarDeriv(); return; }
+    if (t.dataset.rq) { const it = st.recibir.find(i => i.id === +t.dataset.rq); it.cont = Math.max(0, it.cont + +t.dataset.d); pintarRecibir(); return; }
+    if (t.dataset.cq) { const id = +t.dataset.cq, q = (st.conteo.get(id) || 0) + +t.dataset.d; q >= 0 ? st.conteo.set(id, q) : 0; pintarConteo(); return; }
+    if (t.hasAttribute("data-despachar")) { if (!st.totDeriv) return; st.pila = ["derivaciones"]; ir("deriv-detalle", false); toast("Derivación despachada"); return; }
+    if (t.hasAttribute("data-borrador")) { st.pila = []; ir("derivaciones", false); toast("Borrador guardado"); return; }
+    if (t.hasAttribute("data-cancelar-d")) { st.pila = []; ir("derivaciones", false); toast("Derivación cancelada"); return; }
+    if (t.hasAttribute("data-recibir")) {
+      const difs = st.recibir.filter(i => i.cont !== i.env), tot = st.recibir.reduce((a, i) => a + i.cont, 0);
+      $("[data-ok-tit]").textContent = difs.length ? "Recibida con diferencias" : "Recibida";
+      $("[data-ok-circ]").className = "circ" + (difs.length ? " oc" : "");
+      $("[data-ok-circ]").innerHTML = `<svg class="i s40"><use href="#${difs.length ? "alerta" : "check"}"/></svg>`;
+      $("[data-ok-sub]").textContent = `${u(tot)} sumadas al stock de Centro`;
+      $("[data-ok-difs]").style.display = difs.length ? "" : "none";
+      $("#lineasOk").innerHTML = difs.map(i => `<div class="ln"><span class="tx"><b>${P(i.id).n}</b><small class="num">Enviadas ${i.env} · Recibidas ${i.cont}</small></span><span class="dif num" style="color:${i.cont < i.env ? "var(--rojo)" : "var(--ocre)"}">${(i.cont > i.env ? "+" : "−") + Math.abs(i.cont - i.env)}</span></div>`).join("");
+      st.pila = []; ir("deriv-ok", false); return;
+    }
+    if (t.hasAttribute("data-aplicar")) { st.pila = []; st.conteo.clear(); ir("inicio", false); toast(st.rol === "admin" ? "Conteo aplicado" : "Conteo enviado"); return; }
+    if (t.hasAttribute("data-guardar-prod")) { if (st.editar) { volver(); toast("Cambios guardados"); } else { st.pila = []; ir("inicio", false); toast("Producto creado"); } return; }
+    if (t.hasAttribute("data-foto")) { t.insertAdjacentHTML("beforebegin", `<div class="ftile img"><svg class="i s28"><use href="#box"/></svg>${$("#fotos .img") ? "" : "<em>Principal</em>"}</div>`); return; }
+    if (t.dataset.abrirD) {
+      st.destino = t.dataset.destN;
+      const d = t.dataset.abrirD;
+      if (d === "nueva") { st.deriv = new Map([[1, 2], [6, 3]]); }
+      if (d === "detalle" && !st.deriv.size) st.deriv = new Map([[2, 3], [5, 2], [1, 2]]);
+      ir(d === "recibir" ? "deriv-recibir" : d === "nueva" ? "deriv-nueva" : "deriv-detalle"); return;
+    }
+    if (t.hasAttribute("data-back")) { volver(); return; }
+    if (t.dataset.go) {
+      const go = t.dataset.go;
+      if (t.dataset.lote) { st.lote = t.dataset.lote; st.ultimo = null; st.lecturaIdx = 0; }
+      if (t.hasAttribute("data-editar")) st.editar = true;
+      if (t.dataset.codNuevo !== undefined) { st.editar = false; st.codNuevo = t.dataset.codNuevo; }
+      if (t.hasAttribute("data-nueva-d")) st.deriv = new Map();
+      if (t.hasAttribute("data-agregar-d")) st.deriv = new Map([[st.productoId, 1]]);
+      if (t.dataset.filtro) { st.filtroP = t.dataset.filtro; pintarProductos(); }
+      if (t.dataset.filtroD !== undefined) { st.filtroD = t.dataset.filtroD; pintarDerivaciones(); }
+      const raiz = !!t.closest("#idx") || !!t.closest("#bn") || t.hasAttribute("data-raiz");
+      if (raiz) st.pila = [];
+      ir(go, !raiz);
+    }
+  });
+  $("[data-f-costo]").addEventListener("input", e => { const d = e.target.value.replace(/\D/g, ""); e.target.value = d ? Number(d).toLocaleString("es-AR") : ""; calcLista(); });
+  $("[data-f-mk]").addEventListener("input", calcLista);
+
+  pintarNav(); pintarIndice(); pintarProductos(); pintarDerivaciones(); pintarVender(); pintarLecturas();
+  const q = new URLSearchParams(location.search);
+  if (q.get("tema") === "oscuro") $('[data-k="theme"] [data-v="dark"]').click();
+  if (q.get("rol") === "cajero") $('[data-k="rol"] [data-v="cajero"]').click();
+  if (q.get("plat") === "apk") $('[data-k="plat"] [data-v="apk"]').click();
+  if (q.get("lect")) { const b = $(`[data-k="lect"] [data-v="${q.get("lect")}"]`); if (b) b.click(); }
+  if (q.get("modo")) { const b = $(`#modos [data-modo="${q.get("modo")}"]`); if (b) b.click(); }
+  if (q.get("demo") === "1") {
+    st.deriv = new Map([[2, 3], [5, 2], [1, 2], [4, 1]]);
+    st.recibir[0].cont = 6; st.recibir[1].cont = 3; st.recibir[2].cont = 3;
+    st.conteo = new Map([[2, 8], [3, 5], [7, 37], [1, 24]]);
+    st.lote = q.get("lote") || "derivar"; st.ultimo = { id: 2, txt: "3 de 9 en Centro" };
+    if (st.lote === "recibir") st.ultimo = { id: 8, no: "No viene en esta derivación" };
+    if (st.lote === "contar") st.ultimo = { id: 7, txt: "Contados 37 · Sistema 40" };
+  }
+  if (q.get("form") === "editar") { st.editar = true; }
+  else if (q.get("cod")) { st.codNuevo = q.get("cod"); }
+  const ini = (location.hash || "").slice(1);
+  if (ini === "resultado") { verProducto(2); return; }
+  ir(NOMBRES[ini] ? ini : "inicio", false);
+})();
+</script>
+</body>
+</html>
