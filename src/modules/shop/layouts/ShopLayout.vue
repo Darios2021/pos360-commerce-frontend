@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, nextTick, ref, watch } from "vue";
+import { computed, onMounted, onBeforeUnmount, nextTick, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
 import ShopHeader from "@/modules/shop/components/ShopHeader.vue";
@@ -116,9 +116,37 @@ async function applyShopThemeFromServer() {
   }
 }
 
+/* ── Burbuja del chatbot (productos/mostrador, chat.cingulado.org) ─────────
+   Sólo en la tienda pública: /app es la misma SPA y ahí no va. Si la ficha del
+   comercio en la consola no la activa para este dominio, el servicio contesta
+   404/403 y no aparece nada. Sólo ve el catálogo público. Va a la izquierda
+   porque a la derecha está el botón de WhatsApp, y en el teléfono por encima
+   de la barra inferior. */
+const CHAT_URL = import.meta.env.VITE_MOSTRADOR_URL || "https://chat.cingulado.org";
+const CHAT_COMERCIO = import.meta.env.VITE_MOSTRADOR_COMERCIO || "sjt.sanjuantecnologia";
+function montarBurbuja() {
+  if (document.getElementById("mostrador-burbuja-script")) return;
+  const s = document.createElement("script");
+  s.id = "mostrador-burbuja-script";
+  s.src = `${CHAT_URL}/burbuja.js`;
+  s.defer = true;
+  s.dataset.comercio = CHAT_COMERCIO;
+  s.dataset.lado = "izquierda";
+  s.dataset.abajo = isMobile.value ? "84" : "16";
+  document.body.appendChild(s);
+}
+function desmontarBurbuja() {
+  document.getElementById("mostrador-burbuja-script")?.remove();
+  document.getElementById("mostrador-burbuja")?.remove();
+  try { delete window.__mostrador; } catch { window.__mostrador = undefined; }
+}
+
 onMounted(() => {
   applyShopThemeFromServer();
+  montarBurbuja();
 });
+// Al salir de la tienda (por ejemplo a /app) la burbuja se va con ella.
+onBeforeUnmount(desmontarBurbuja);
 </script>
 
 <style scoped>
