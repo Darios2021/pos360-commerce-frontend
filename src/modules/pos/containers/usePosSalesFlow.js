@@ -1,5 +1,7 @@
 import { ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import http from "../../../app/api/http";
+import vuetify from "../../../app/plugins/vuetify";
 
 import { usePosStore } from "../../../app/store/pos.store";
 import { useAuthStore } from "../../../app/store/auth.store";
@@ -16,6 +18,13 @@ let shared;
 let initPromise = null;
 let initDone = false;
 
+// Teléfono: lo sensible va en vista completa con ruta propia (rediseño móvil
+// aprobado, informe 2.2 y 4.3). El mismo disparador que en escritorio abre una
+// ventana, en el teléfono hace router.push. En escritorio no cambia nada.
+function esMovil() {
+  return !!vuetify?.display?.mobile?.value;
+}
+
 function toArr(data) {
   if (!data) return [];
   if (Array.isArray(data)) return data;
@@ -27,6 +36,18 @@ function toArr(data) {
 
 export function usePosSalesFlow() {
   if (shared) return shared;
+
+  // El singleton se arma dentro del setup de un componente del POS.
+  let router = null;
+  try { router = useRouter(); } catch { router = null; }
+  function irA(name) {
+    if (router) {
+      router.push({ name }).catch(() => {});
+      return;
+    }
+    // Si el singleton nació fuera de un setup, se usa la instancia del router.
+    import("../../../app/router").then((m) => m.default.push({ name })).catch(() => {});
+  }
 
   const posStore = usePosStore();
   const auth = useAuthStore();
@@ -119,6 +140,10 @@ export function usePosSalesFlow() {
     closeCaja,
     refreshCaja,
     canSellWithCaja,
+    totalsSummary,
+    addMovement,
+    loadingClose: cajaLoadingClose,
+    loadingOpen: cajaLoadingOpen,
   } = usePosCashRegister({
     // La misma sucursal que muestra la pantalla (branchName de usePosBranch):
     // la elegida en el POS, si no la principal del usuario, si no la guardada.
@@ -127,7 +152,9 @@ export function usePosSalesFlow() {
   });
 
   const cashierName = computed(() => {
+    const completo = [auth?.user?.first_name, auth?.user?.last_name].filter(Boolean).join(" ").trim();
     return (
+      completo ||
       auth?.user?.name ||
       auth?.user?.username ||
       auth?.me?.name ||
@@ -135,6 +162,16 @@ export function usePosSalesFlow() {
       "Caja"
     );
   });
+
+  // Abrir caja, cerrar caja: ventana en escritorio, vista completa en el teléfono.
+  function abrirCajaUI() {
+    if (esMovil()) return irA("cajaAbrir");
+    openCajaConfig();
+  }
+  async function cerrarCajaUI() {
+    if (esMovil()) return irA("cajaCerrar");
+    await openCajaArqueo();
+  }
 
   const loadingGlobal = computed(
     () => cajaBusy.value || checkoutSubmitting.value
@@ -288,12 +325,13 @@ export function usePosSalesFlow() {
     logCajaState("before-open-checkout");
 
     if (needsBranchPick.value) {
-      toast("Elegí una sucursal antes de vender");
+      toast("Falta la sucursal");
       return;
     }
 
+    // Sin artículos el botón Cobrar queda deshabilitado; esto es un resguardo.
     if (!cartItems.value.length) {
-      toast("Agregá productos al carrito antes de cobrar");
+      toast("Sin artículos");
       return;
     }
 
@@ -303,8 +341,8 @@ export function usePosSalesFlow() {
     }
 
     if (!canProceedWithCaja.value) {
-      toast("Debés abrir una caja antes de registrar la venta");
-      openCajaConfig();
+      toast("Sin caja abierta");
+      abrirCajaUI();
       return;
     }
 
@@ -325,6 +363,12 @@ export function usePosSalesFlow() {
     }
 
     await openCheckout({ onSnack: toast });
+
+    // En el teléfono el cobro es la vista /app/pos/cobrar, no la ventana.
+    if (esMovil() && checkoutDialog.value) {
+      checkoutDialog.value = false;
+      irA("posCobrar");
+    }
   }
 
   async function handleGoPayFromCart() {
@@ -343,11 +387,11 @@ export function usePosSalesFlow() {
     }
 
     if (!isCajaOpen.value) {
-      toast("No hay caja abierta");
+      toast("Sin caja abierta");
       return;
     }
 
-    await openCajaArqueo();
+    await cerrarCajaUI();
   }
 
   async function reloadSummaryFromArqueo() {
@@ -425,8 +469,8 @@ export function usePosSalesFlow() {
       }
 
       if (!canProceedWithCaja.value) {
-        toast("Debés abrir una caja antes de registrar la venta");
-        openCajaConfig();
+        toast("Sin caja abierta");
+        abrirCajaUI();
         return;
       }
 
@@ -496,9 +540,10 @@ export function usePosSalesFlow() {
       checkoutDialog.value = false;
       showCartDialog.value = false;
 
-      // ✅ abrir recibo automáticamente después de cada venta
+      // ✅ abrir recibo automáticamente después de cada venta (en el
+      // teléfono la vista Cobrar muestra "Venta registrada" en su lugar)
       receiptSale.value = result?.sale || posStore?.last_sale || null;
-      receiptOpen.value = true;
+      receiptOpen.value = !esMovil();
 
       // ✅ limpiar estado visual
       resetCheckoutUiState();
@@ -509,23 +554,26 @@ export function usePosSalesFlow() {
         await loadPaymentMethods(activeBranchId.value || null).catch(() => {});
       }
 
-      toast("✅ Venta registrada correctamente");
+      // En el teléfono la vista Cobrar ya lo dice en grande.
+      if (!esMovil()) toast("Venta registrada");
       return result;
     } catch (err) {
       console.error("[POS] checkout confirm error", err);
 
       if (err?.code === "CAJA_NO_ABIERTA") {
-        toast(err?.message || "No hay caja abierta");
+        toast("Sin caja abierta");
         await refreshCaja().catch(() => {});
-        openCajaConfig();
+        abrirCajaUI();
         return;
       }
 
       toast(
         err?.response?.data?.message ||
           err?.message ||
-          "Error al confirmar la venta"
+          "La venta no se registró"
       );
+      // La vista Cobrar del teléfono necesita saber que falló para ofrecer Reintentar.
+      if (esMovil()) throw err;
     } finally {
       checkoutSubmitting.value = false;
     }
@@ -539,7 +587,7 @@ export function usePosSalesFlow() {
     const raw = String(query || "").trim();
 
     if (needsBranchPick.value) {
-      toast("Seleccioná una sucursal antes de consultar");
+      toast("Falta la sucursal");
       return;
     }
 
@@ -578,7 +626,7 @@ export function usePosSalesFlow() {
       }
 
       if (!consultaItems.value.length) {
-        toast(`Sin resultados para "${raw}"`);
+        toast("Código no encontrado");
       }
     } catch (err) {
       console.error("[POS] consulta search error", err);
@@ -599,12 +647,12 @@ export function usePosSalesFlow() {
 
   function handleAddConsultaToCart(product) {
     if (needsBranchPick.value) {
-      toast("Elegí una sucursal antes de agregar productos");
+      toast("Falta la sucursal");
       return;
     }
 
     if (!canProceedWithCaja.value) {
-      toast("Abrí una caja antes de vender");
+      toast("Sin caja abierta");
       return;
     }
 
@@ -612,7 +660,7 @@ export function usePosSalesFlow() {
       posStore.addToCart(product);
     }
 
-    toast(`Agregado: ${product?.name || product?.sku || product?.code || "Producto"}`);
+    toast(`${product?.name || product?.sku || product?.code || "Producto"} agregado`);
   }
 
   function handleSelectConsultaItem(product) {
@@ -623,7 +671,7 @@ export function usePosSalesFlow() {
     const code = String(scannerTestCode.value || "").trim();
 
     if (!code) {
-      toast("Ingresá un código");
+      toast("Falta el código");
       return;
     }
 
@@ -761,13 +809,18 @@ export function usePosSalesFlow() {
     confirmActiveBranchChange,
     clearCustomer,
 
-    openCajaConfig,
+    // Los disparadores públicos ya deciden ventana (escritorio) o vista (teléfono).
+    openCajaConfig: abrirCajaUI,
     closeCajaConfig,
-    openCajaArqueo,
+    openCajaArqueo: cerrarCajaUI,
     closeCajaArqueo,
     openCaja,
     closeCaja,
     refreshCaja,
+    totalsSummary,
+    addMovement,
+    loadingClose: cajaLoadingClose,
+    loadingOpen: cajaLoadingOpen,
 
     loadPaymentMethods,
     openCheckoutSafe,

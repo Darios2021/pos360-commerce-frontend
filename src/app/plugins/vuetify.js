@@ -14,6 +14,11 @@ const vuetify = createVuetify({
   locale: { locale: "es", fallback: "en", messages: { es } },
   date: { locale: { es: "es-AR" } },
 
+  // Un solo corte de "teléfono" en todo el sistema: por debajo de md (960 px).
+  // El valor por defecto de Vuetify es lg (1280), así que una notebook con
+  // zoom o una tablet apaisada caían en la barra inferior y perdían el menú.
+  display: { mobileBreakpoint: "md" },
+
   defaults: {
     VOverlay: { scrim: false },
     VDialog: { scrim: true },
@@ -47,8 +52,8 @@ const vuetify = createVuetify({
 
       // ── Dark mode REAL (estilo Linear / Vercel / GitHub) ──────────────────
       // Grises neutros casi negros con un tinte frío sutil. NO navy saturado.
-      //   background      → casi negro, tinte cool muy leve
-      //   surface         → cards / sheets, un escalón arriba
+      //   background      → canvas, el tono más oscuro
+      //   surface         → cards / sheets, un escalón ancho arriba
       //   surface-bright  → modales, popovers, overlays elevados
       //   primary         → brand un poco más vivo para contraste sobre dark
       // ----------------------------------------------------------------------
@@ -58,11 +63,13 @@ const vuetify = createVuetify({
           primary:          "#3aa5e6",
           secondary:        "#1488d1",
           sidebar:          "#1488d1",
-          background:       "#1a1d23",
-          surface:          "#0d0f13",
-          "surface-bright": "#14171d",
-          "surface-light":  "#14171d",
-          "surface-variant":"#1f2228",
+          // Canvas más oscuro que las piezas, con un escalón ancho
+          // (rediseño móvil aprobado, informe 4.1). Antes estaba invertido.
+          background:       "#111317",
+          surface:          "#1f232a",
+          "surface-bright": "#262a32",
+          "surface-light":  "#262a32",
+          "surface-variant":"#2a2f38",
           "on-background":  "#e6e7eb",
           "on-surface":     "#e6e7eb",
           "on-surface-variant": "#a1a4ab",
@@ -84,11 +91,13 @@ const vuetify = createVuetify({
         colors: {
           primary:          "#3aa5e6",
           secondary:        "#1488d1",
-          background:       "#1a1d23",
-          surface:          "#0d0f13",
-          "surface-bright": "#14171d",
-          "surface-light":  "#14171d",
-          "surface-variant":"#1f2228",
+          // Canvas más oscuro que las piezas, con un escalón ancho
+          // (rediseño móvil aprobado, informe 4.1). Antes estaba invertido.
+          background:       "#111317",
+          surface:          "#1f232a",
+          "surface-bright": "#262a32",
+          "surface-light":  "#262a32",
+          "surface-variant":"#2a2f38",
           "on-background":  "#e6e7eb",
           "on-surface":     "#e6e7eb",
           "on-surface-variant": "#a1a4ab",

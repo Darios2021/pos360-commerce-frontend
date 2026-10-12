@@ -70,7 +70,7 @@
       @click="pickFiles"
     >
       <v-icon size="40" :color="isDragOver ? 'primary' : undefined" class="pi-dropzone-icon">mdi-cloud-upload-outline</v-icon>
-      <div class="pi-dropzone-text">Arrastrá imágenes o tocá aquí</div>
+      <div class="pi-dropzone-text">Agregar foto</div>
       <div class="pi-dropzone-hint">JPG · PNG · WEBP</div>
       <v-btn color="teal-darken-1" variant="tonal" size="small" class="mt-3" @click.stop="openCamera">
         <v-icon start size="16">mdi-camera</v-icon>
@@ -113,7 +113,7 @@
 
             <div class="d-flex ga-1">
               <v-btn
-                size="x-small"
+                :size="mobile ? 'default' : 'x-small'"
                 variant="tonal"
                 @click="openCropperForQueued(q)"
                 :disabled="busy"
@@ -123,7 +123,7 @@
               </v-btn>
 
               <v-btn
-                size="x-small"
+                :size="mobile ? 'default' : 'x-small'"
                 variant="tonal"
                 color="error"
                 @click="removeQueuedByKey(q.key)"
@@ -163,7 +163,7 @@
 
             <div class="d-flex ga-1">
               <v-btn
-                size="x-small"
+                :size="mobile ? 'default' : 'x-small'"
                 variant="tonal"
                 @click="setPrimary(img)"
                 :disabled="busy || img.is_primary"
@@ -173,7 +173,7 @@
               </v-btn>
 
               <v-btn
-                size="x-small"
+                :size="mobile ? 'default' : 'x-small'"
                 variant="tonal"
                 color="primary"
                 @click="openCropperForRemote(img)"
@@ -184,7 +184,7 @@
               </v-btn>
 
               <v-btn
-                size="x-small"
+                :size="mobile ? 'default' : 'x-small'"
                 variant="tonal"
                 color="error"
                 @click="removeImage(img)"
@@ -221,6 +221,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import http from "../../../../app/api/http";
 import ImageCropperDialog from "../dialogs/ImageCropperDialog.vue";
+import { useDisplay } from "vuetify";
+
+// Teléfono: principal, recortar y eliminar con área táctil normal (QA 1.4).
+const { mobile } = useDisplay();
 
 const API = {
   list: (id) => `/products/${id}/images`,

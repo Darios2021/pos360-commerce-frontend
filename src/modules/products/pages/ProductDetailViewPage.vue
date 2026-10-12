@@ -13,7 +13,7 @@
       </div>
       <div v-if="raw" class="pd-cab__der">
         <span class="pd-estado" :class="productForUIFixed.is_active !== false ? 'is-activo' : 'is-inactivo'"><i></i>{{ productForUIFixed.is_active !== false ? "Activo" : "Inactivo" }}</span>
-        <v-btn color="primary" variant="flat" prepend-icon="mdi-pencil-outline" class="pd-editar" :to="{ name: 'productEdit', params: { id: productId } }">Editar</v-btn>
+        <v-btn v-if="!mobile" color="primary" variant="flat" prepend-icon="mdi-pencil-outline" class="pd-editar" :to="{ name: 'productEdit', params: { id: productId } }">Editar</v-btn>
       </div>
     </div>
 
@@ -82,6 +82,7 @@
           </div>
           <dl class="pd-datos num">
             <template v-if="Number(raw.price_installer) > 0"><dt>Instalador</dt><dd>$ {{ fmtPrice(raw.price_installer) }}</dd></template>
+            <template v-if="!mobile || puedeVerCosto">
             <dt>Costo</dt>
             <dd>
               <template v-if="costo > 0 && raw.cost_currency === 'USD'">US$ {{ Number(costo).toLocaleString("es-AR") }}<span v-if="Number(raw.fx_rate) > 0" class="pd-suave"> · dólar $ {{ fmtPrice(raw.fx_rate) }}</span></template>
@@ -90,6 +91,7 @@
             </dd>
             <dt>Margen</dt>
             <dd><template v-if="costoPesos > 0 && Number(productForUIFixed.price_discount) > 0">{{ Math.round(((Number(productForUIFixed.price_discount) - costoPesos) / Number(productForUIFixed.price_discount)) * 100) }} % <span class="pd-suave">en contado</span></template><span v-else class="pd-tenue">sin costo no se calcula</span></dd>
+            </template>
           </dl>
         </div>
 
@@ -170,6 +172,13 @@
           </template>
         </div>
       </section>
+    </div>
+
+    <!-- Teléfono (maqueta pantalla 16): un botón al pie. El dueño edita; el
+         cajero suma el producto a la venta en curso. -->
+    <div v-if="mobile && raw" class="pd-movil m-vista">
+      <router-link v-if="puedeVerCosto" :to="{ name: 'productEdit', params: { id: productId } }" class="m-btn">Editar producto</router-link>
+      <button v-else type="button" class="m-btn" @click="agregarAVenta">Agregar a la venta</button>
     </div>
 
     <!-- Hidden A4 for printing -->
@@ -279,6 +288,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
+import { usePosSalesFlow } from "@/modules/pos/containers/usePosSalesFlow";
 
 import { useProductsStore } from "@/app/store/products.store";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -296,6 +307,24 @@ const route = useRoute();
 const router = useRouter();
 const products = useProductsStore();
 const auth = useAuthStore();
+
+// Teléfono: el dueño ve el costo y edita; el cajero agrega a la venta.
+const { mobile } = useDisplay();
+const puedeVerCosto = computed(() => auth.isAdmin === true);
+const flowMovil = mobile.value && !puedeVerCosto.value ? usePosSalesFlow() : null;
+function agregarAVenta() {
+  const flow = flowMovil || usePosSalesFlow();
+  const p = raw.value || {};
+  flow.handleAddConsultaToCart({
+    ...p,
+    price: Number(p.price_discount || p.price_list || p.price || 0),
+    price_discount: Number(p.price_discount || 0),
+    price_list: Number(p.price_list || 0),
+    qty: Number(p.stock_qty ?? p.qty ?? p.stock ?? 0),
+    available_qty: Number(p.stock_qty ?? p.qty ?? p.stock ?? 0),
+  });
+  router.push({ name: "pos" });
+}
 
 const loading = ref(false);
 const error = ref("");
@@ -1510,6 +1539,8 @@ watch(branchId, fetchProduct);
   border-top: 1px dashed rgba(124, 58, 237, 0.25);
   font-size: 13px;
 }
+
+.pd-movil { padding: 12px 0 8px; background: transparent; }
 </style>
 
 <style>

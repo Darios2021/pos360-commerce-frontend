@@ -158,8 +158,19 @@
         </section>
       </div>
 
+      <!-- Teléfono (maqueta pantalla 9): un botón, Compartir ticket, y debajo
+           el enlace Anular venta, que abre su vista completa. -->
+      <div v-if="mobile" class="vd-movil m-vista">
+        <button type="button" class="m-btn" :disabled="compartiendo" @click="onCompartir">
+          <v-icon size="20">mdi-share-variant-outline</v-icon>Compartir ticket
+        </button>
+        <div v-if="isAdmin && sale.status !== 'CANCELLED'" class="m-centro">
+          <router-link :to="{ name: 'posSaleAnular', params: { id: sale.id } }" class="m-lnk rojo">Anular venta</router-link>
+        </div>
+      </div>
+
       <!-- Anulación: en la vista completa de la venta, nunca en una ventana emergente -->
-      <section v-if="isAdmin && sale.status !== 'CANCELLED'" class="vd-anular">
+      <section v-if="!mobile && isAdmin && sale.status !== 'CANCELLED'" class="vd-anular">
         <div class="vd-anular__txt">
           <span class="vd-anular__tit">Anular la venta</span>
           <span class="vd-s">Se restaura el stock, la venta queda como anulada y no cuenta en el arqueo.</span>
@@ -206,7 +217,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 import http from "../../../app/api/http";
+import { compartirTicket } from "../utils/compartirTicket";
 import { useProductsStore } from "../../../app/store/products.store";
 import { useAuthStore } from "../../../app/store/auth.store";
 
@@ -662,6 +675,21 @@ async function load() {
 // ===== Anular (antes vivía en un diálogo del listado) =====
 const auth = useAuthStore();
 const isAdmin = computed(() => auth.isAdmin === true);
+
+// Teléfono: el ticket se comparte (no hay impresora local en un teléfono).
+const { mobile } = useDisplay();
+const compartiendo = ref(false);
+async function onCompartir() {
+  if (!sale.value) return;
+  compartiendo.value = true;
+  try {
+    await compartirTicket({ ...sale.value, items: items.value }, { branchName: sale.value?.branch?.name || sale.value?.branch_name || "" });
+  } catch {
+    snack.value = { show: true, text: "No se pudo compartir el ticket" };
+  } finally {
+    compartiendo.value = false;
+  }
+}
 const confirmandoAnular = ref(false);
 const anulando = ref(false);
 async function anularVenta() {
@@ -879,6 +907,9 @@ watch(id, () => load());
 .vd-mov:last-child { border-bottom: 0; }
 .vd-mov__txt { display: flex; flex-direction: column; min-width: 0; }
 .vd-mov__monto { font-size: 16px; font-weight: 800; white-space: nowrap; }
+
+/* teléfono */
+.vd-movil { display: flex; flex-direction: column; gap: 4px; background: transparent; }
 
 /* anular */
 .vd-anular { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(196, 69, 63, 0.35); background: var(--vd-caja); box-sizing: border-box; }

@@ -110,14 +110,15 @@ const { mobile } = useDisplay();
   --z-primario-tinta: #7dc0ec;
 }
 
-/* MOBILE: en mobile el v-main ya reserva el padding-bottom para el bottom-nav,
-   así que el root toma 100% del v-main (sin restar nada extra). */
-@media (max-width: 600px) {
+/* TELÉFONO (por debajo del corte md, el mismo de useDisplay().mobile): Vender
+   ocupa el alto entre la banda de 56 px y la barra inferior de 64 px. */
+@media (max-width: 959.98px) {
   .pos-root {
-    height: 100%;
+    height: calc(100dvh - var(--v-layout-top, 56px) - 64px - env(safe-area-inset-bottom, 0px));
     min-height: 0;
     max-height: none;
-    padding: 6px;
+    padding: 0;
+    background: var(--m-canvas);
   }
   .pos-page-header { display: none; }
 }

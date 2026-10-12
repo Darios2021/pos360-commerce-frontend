@@ -26,7 +26,7 @@ export const ROUTE_TREE = {
   adminCashRegisterDetail:  { label: "Detalle de caja", section: "Gestión", parent: { label: "Cajas", to: { name: "adminCashRegisters" } } },
   adminTelegram:            { label: "Alertas Telegram",section: "Configuración" },
   users:                    { label: "Usuarios",        section: "Configuración" },
-  profile:                  { label: "Mi perfil" },
+  profile:                  { label: "Perfil" },
   shopBranding:             { label: "Marca",           section: "Tienda" },
   shopBrandingContact:      { label: "Contacto",        section: "Tienda" },
   shopBrandingSocial:       { label: "Redes",           section: "Tienda" },
