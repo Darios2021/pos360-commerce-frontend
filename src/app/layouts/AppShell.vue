@@ -17,15 +17,35 @@
       >
         <h1 class="m-appbar__tit">{{ tituloMovil }}</h1>
         <div id="m-barra-acc" class="m-appbar__acc"></div>
+        <!-- Asistente a un toque en las pantallas principales (sólo si el comercio lo tiene habilitado). -->
         <router-link
-          v-if="cajaNav"
+          v-if="usaAsistente && bandaMovil.asistente"
+          :to="{ name: 'asistente' }"
+          class="mv-ib"
+          aria-label="Asistente"
+          title="Asistente"
+        >
+          <v-icon size="24">mdi-forum-outline</v-icon>
+        </router-link>
+        <span v-if="bandaMovil.sucursal && sucursalMovil" class="m-pill suc"><i></i><span>{{ sucursalMovil }}</span></span>
+        <router-link
+          v-if="bandaMovil.caja && cajaNav"
           :to="{ name: 'caja' }"
           class="m-pill"
           :class="{ cerrada: !cajaNav.abierta }"
         >
           <i></i><span>{{ textoPildoraCaja }}</span>
         </router-link>
-        <TransferNotificationBell class="m-appbar__campana" />
+        <router-link
+          v-if="bandaMovil.campana === 'derivaciones'"
+          :to="{ name: 'transfers', query: { estado: 'dispatched' } }"
+          class="mv-ib m-appbar__aviso"
+          aria-label="Por recibir"
+        >
+          <v-icon size="24">mdi-bell-outline</v-icon>
+          <span v-if="porRecibirMio > 0" class="pt"></span>
+        </router-link>
+        <TransferNotificationBell v-else-if="bandaMovil.campana" class="m-appbar__campana" />
       </v-app-bar>
 
       <v-app-bar
@@ -592,7 +612,7 @@
       <!-- ================= BOTTOM NAV (solo mobile) ================= -->
       <AppBottomNav
         v-if="mobile && navInferiorVisible"
-        :transfer-unread-count="transferUnreadCount"
+        :transfer-unread-count="porRecibirMio"
         :pedidos-pendientes="pedidosPendientes"
       />
 
@@ -724,6 +744,7 @@ const TITULOS_MOVIL = {
   mas: "Más",
   caja: "Caja",
   asistente: "Asistente",
+  transfers: "Derivaciones",
   profile: "Perfil",
   shopOrders: "Pedidos",
 };
@@ -790,6 +811,24 @@ onMounted(async () => {
 // sin importar si ya las abrió — se va solo cuando se recepciona.
 const { pendingForMe: transferPending } = useTransferNotifications();
 const transferUnreadCount = computed(() => transferPending.value.length);
+// Teléfono: sólo las que vienen a la sucursal del usuario (pendingForMe le da todas al admin).
+const porRecibirMio = computed(() =>
+  transferPending.value.filter((t) => Number(t.to_branch_id) === Number(auth.branchId || 0)).length
+);
+
+// Banda del teléfono por pantalla (maqueta diseno-cargador): Inicio lleva la
+// sucursal y el aviso de por recibir; Productos y Derivaciones su "+";
+// Más sólo el título. El resto (Ventas, Caja...) sigue con la caja y la campana.
+const bandaMovil = computed(() => {
+  const n = String(route.name || "");
+  if (n === "home") return { asistente: true, sucursal: true, caja: false, campana: "derivaciones" };
+  if (n === "products" || n === "transfers") return { asistente: true, sucursal: false, caja: false, campana: false };
+  if (n === "mas" || n === "asistente") return { asistente: false, sucursal: false, caja: false, campana: false };
+  return { asistente: true, sucursal: false, caja: true, campana: true };
+});
+const sucursalMovil = computed(() =>
+  (auth.branches || []).find((b) => Number(b.id) === Number(auth.branchId || 0))?.name || ""
+);
 
 /* ===== Roles / Ámbitos =====
  * - isAdmin       → "puede actuar como admin" (super_admin O admin de sucursal).
@@ -1757,6 +1796,8 @@ function onLogout() {
 }
 .m-appbar__acc { display: flex; align-items: center; }
 .m-appbar__acc:empty { display: none; }
+.m-appbar__aviso { position: relative; }
+.m-appbar__aviso .pt { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #ffb4ae; box-shadow: 0 0 0 2px var(--m-banda); }
 .m-appbar__campana :deep(.v-btn) { width: 44px !important; height: 44px !important; border-radius: 10px !important; color: var(--m-banda-ink) !important; }
 
 /* =========================

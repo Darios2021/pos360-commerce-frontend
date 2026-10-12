@@ -41,7 +41,6 @@ import LoginPage from "@/modules/auth/pages/LoginPage.vue";
 // inexistente y el sintoma parecia del lazy loading, que no tenia nada que
 // ver.
 const ProfilePage = () => import("@/modules/account/pages/ProfilePage.vue");
-const DashboardHome = () => import("@/modules/dashboard/pages/DashboardHome.vue");
 
 const PosPage = () => import("@/modules/pos/pages/PosPage.vue");
 const PosSalesPage = () => import("@/modules/pos/pages/PosSalesPage.vue");
@@ -49,7 +48,7 @@ const PosSaleDetailPage = () => import("@/modules/pos/pages/PosSaleDetailPage.vu
 
 const ProductsListPage = () => import("@/modules/products/pages/ProductsListPage.vue");
 const BulkLabelsPage = () => import("@/modules/products/pages/BulkLabelsPage.vue");
-const ProductFormPage = () => import("@/modules/products/pages/ProductFormPage.vue");
+const ProductoFormRuta = () => import("@/modules/cargador/pages/ProductoFormRuta.vue");
 const ProductProfilePage = () => import("@/modules/products/pages/ProductProfilePage.vue");
 const ProductDetailViewPage = () => import("@/modules/products/pages/ProductDetailViewPage.vue");
 
@@ -97,11 +96,13 @@ const routes = [
     component: AppShell,
     meta: { requiresAuth: true },
     children: [
-      { path: "", name: "home", component: DashboardHome },
+      // Inicio: tablero en escritorio, Inicio del cargador en el teléfono (InicioRuta elige).
+      { path: "", name: "home", component: () => import("@/modules/cargador/pages/InicioRuta.vue") },
       // Asistente (mostrador): lo que consulta cada rol lo recorta el servidor.
       { path: "asistente", name: "asistente", component: () => import("@/modules/asistente/pages/AsistentePage.vue"), meta: { fullPage: true } },
 
-      { path: "pos", name: "pos", component: PosPage },
+      // En el teléfono Vender es vista completa (banda con flecha y caja, sin barra inferior).
+      { path: "pos", name: "pos", component: PosPage, meta: { movilCompleta: true } },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
 
@@ -117,6 +118,22 @@ const routes = [
       { path: "caja/abrir", name: "cajaAbrir", component: () => import("@/modules/pos/pages/movil/CajaAbrirPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
       { path: "caja/cerrar", name: "cajaCerrar", component: () => import("@/modules/pos/pages/movil/CajaCerrarPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
       { path: "caja/movimiento", name: "cajaMovimiento", component: () => import("@/modules/pos/pages/movil/CajaMovimientoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      // ── Teléfono como cargador y consultor (maqueta diseno-cargador) ─────
+      // Lector central, consulta, alta con el código, derivaciones por lote,
+      // recepción y conteo. Sólo existen en el teléfono (guard más abajo).
+      { path: "escanear", name: "lector", component: () => import("@/modules/cargador/pages/LectorPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "escanear/codigo", name: "lectorCodigo", component: () => import("@/modules/cargador/pages/IngresarCodigoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "escanear/no-encontrado/:codigo", name: "codigoNoEncontrado", component: () => import("@/modules/cargador/pages/CodigoNoEncontradoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "products/:id/consulta", name: "productoConsulta", component: () => import("@/modules/cargador/pages/ProductoConsultaPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "products/:id/baja", name: "productoBaja", component: () => import("@/modules/cargador/pages/ProductoBajaPage.vue"), meta: { soloMovil: true, movilCompleta: true, roles: ["admin", "super_admin", "superadmin", "root", "owner"] } },
+      { path: "derivaciones/nueva", name: "derivNueva", component: () => import("@/modules/cargador/pages/DerivNuevaPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "derivaciones/lote", name: "lote", component: () => import("@/modules/cargador/pages/LotePage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "derivaciones/:id", name: "derivDetalle", component: () => import("@/modules/cargador/pages/DerivDetallePage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "derivaciones/:id/cancelar", name: "derivCancelar", component: () => import("@/modules/cargador/pages/DerivCancelarPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "derivaciones/:id/recibir", name: "derivRecibir", component: () => import("@/modules/cargador/pages/DerivRecibirPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "derivaciones/:id/recibida", name: "derivRecibida", component: () => import("@/modules/cargador/pages/DerivRecibidaPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "conteo", name: "conteo", component: () => import("@/modules/cargador/pages/ConteoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "conteo/diferencias", name: "conteoDiferencias", component: () => import("@/modules/cargador/pages/ConteoDiferenciasPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
       // Impresion del ticket en esta PC: todos los cajeros, cada mostrador la suya.
       { path: "pos/impresion", name: "posPrinter", component: () => import("@/modules/pos/pages/PosPrinterSettingsPage.vue") },
 
@@ -127,8 +144,9 @@ const routes = [
       { path: "proveedores/nuevo", name: "supplierNew", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       { path: "proveedores/:id", name: "supplierEdit", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       // En el teléfono, nuevo y editar producto son vista completa (sin barras del shell).
-      { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true, movilCompleta: true } },
-      { path: "products/:id/edit", name: "productEdit", component: ProductFormPage, meta: { fullPage: true, movilCompleta: true } },
+      // En el teléfono el formulario es la vista única del cargador (ProductoFormRuta elige).
+      { path: "products/new", name: "productNew", component: ProductoFormRuta, meta: { fullPage: true, movilCompleta: true } },
+      { path: "products/:id/edit", name: "productEdit", component: ProductoFormRuta, meta: { fullPage: true, movilCompleta: true } },
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
@@ -754,23 +772,33 @@ router.beforeEach((to, from) => {
     return { name: "login" };
   }
 
-  // En el teléfono el cajero arranca en Vender y el dueño en Inicio (informe
-  // 2.1). Sólo al entrar: desde Más el cajero igual puede abrir Inicio.
-  if (
-    to.name === "home" &&
-    vuetify.display?.mobile?.value &&
-    auth.isCajero &&
-    (!from?.name || from.name === "login")
-  ) {
-    return { name: "pos" };
-  }
+  // En el teléfono (cargador) el dueño y el cajero arrancan en Inicio: la
+  // regla anterior que mandaba al cajero a Vender quedó sin efecto con la
+  // maqueta diseno-cargador (Vender está en Inicio y en Más).
+  const enTelefono = !!vuetify.display?.mobile?.value;
 
   // Las vistas del teléfono no existen en escritorio: cada una vuelve a su
   // equivalente (el mostrador abre sus ventanas de siempre).
-  if (to.meta?.soloMovil && !vuetify.display?.mobile?.value) {
-    if (to.name === "posSaleAnular") return { name: "posSaleDetail", params: { id: to.params.id } };
+  if (to.meta?.soloMovil && !enTelefono) {
+    const id = to.params?.id;
+    if (to.name === "posSaleAnular") return { name: "posSaleDetail", params: { id } };
     if (to.name === "mas") return { name: "home" };
+    if (["lector", "lectorCodigo", "codigoNoEncontrado"].includes(to.name)) return { name: "home" };
+    if (to.name === "productoConsulta") return { name: "productView", params: { id } };
+    if (to.name === "productoBaja") return { name: "productEdit", params: { id } };
+    if (to.name === "derivNueva") return { name: "transferNew" };
+    if (["derivDetalle", "derivCancelar", "derivRecibir", "derivRecibida"].includes(to.name)) return { name: "transferView", params: { id } };
+    if (to.name === "lote") return { name: "transfers" };
+    if (["conteo", "conteoDiferencias"].includes(to.name)) return { name: "stock" };
     return { name: "pos" };
+  }
+
+  // Y al revés: en el teléfono las derivaciones y la ficha de producto de
+  // escritorio abren sus vistas del cargador.
+  if (enTelefono) {
+    if (to.name === "transferNew") return { name: "derivNueva" };
+    if (to.name === "transferView") return { name: "derivDetalle", params: { id: to.params.id } };
+    if (to.name === "productView") return { name: "productoConsulta", params: { id: to.params.id } };
   }
 
   const roles = to.meta?.roles;

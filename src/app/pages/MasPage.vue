@@ -1,5 +1,11 @@
 <!--
-  Más: todo lo que no entra en la barra inferior del teléfono (informe 2.1).
+  Más (maqueta diseno-cargador): arriba la cuenta y el Asistente; después
+  Stock (Conteo, Derivaciones, Etiquetas) y Mostrador (Vender, Ventas, Caja)
+  como en la maqueta, y el resto de los módulos del menú de escritorio con
+  sus permisos (no se quitó ninguno). Al final Cuenta: modo oscuro, en la
+  APK huella y catálogo sin conexión, y cerrar sesión.
+
+  Antes: todo lo que no entra en la barra inferior del teléfono (informe 2.1).
   Lista agrupada como el menú de escritorio (Operación, Gestión, CRM, Tienda,
   Sistema, Cuenta) con los mismos permisos: hasRoute, isAdmin, isSuperAdmin y
   usaAsistente. Arriba la ficha de la cuenta; al final Modo oscuro y Cerrar
@@ -15,10 +21,19 @@
       </router-link>
     </div>
 
+    <!-- El asistente a la vista, no dentro de un grupo (sólo si el comercio lo tiene). -->
+    <div v-if="usaAsistente && hasRoute('asistente')" class="m-pz">
+      <router-link :to="{ name: 'asistente' }" class="m-it mas-it">
+        <v-icon size="24" class="mas-ic">mdi-forum-outline</v-icon>
+        <span class="tx"><b>Asistente</b></span>
+        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+      </router-link>
+    </div>
+
     <template v-for="g in grupos" :key="g.titulo">
       <div class="m-rot">{{ g.titulo }}</div>
       <div class="m-pz">
-        <router-link v-for="it in g.items" :key="it.name" :to="{ name: it.name }" class="m-it mas-it">
+        <router-link v-for="it in g.items" :key="it.name" :to="it.to || { name: it.name }" class="m-it mas-it">
           <v-icon size="24" class="mas-ic">{{ it.icon }}</v-icon>
           <span class="tx"><b>{{ it.label }}</b></span>
           <span v-if="it.badge > 0" class="m-est no num">{{ it.badge }}</span>
@@ -32,6 +47,16 @@
       <button type="button" class="m-it mas-it m-sw" :class="{ on: isDark }" @click="toggleDark">
         <v-icon size="24" class="mas-ic">mdi-weather-night</v-icon>
         <span class="tx"><b>Modo oscuro</b></span>
+        <span class="t"></span>
+      </button>
+      <button v-if="huellaOk" type="button" class="m-it mas-it m-sw" :class="{ on: conHuella }" @click="cambiarHuella">
+        <v-icon size="24" class="mas-ic">mdi-fingerprint</v-icon>
+        <span class="tx"><b>Entrar con huella</b></span>
+        <span class="t"></span>
+      </button>
+      <button v-if="enApk" type="button" class="m-it mas-it m-sw" :class="{ on: conCatalogo }" @click="cambiarCatalogo">
+        <v-icon size="24" class="mas-ic">mdi-package-variant-closed</v-icon>
+        <span class="tx"><b>Catálogo sin conexión</b><small v-if="conCatalogo && copiaHora">Actualizado {{ copiaHora }}</small></span>
         <span class="t"></span>
       </button>
       <button type="button" class="m-it mas-it mas-salir" @click="onLogout">
@@ -50,6 +75,9 @@ import { useAuthStore } from "@/app/store/auth.store";
 import { useThemeStore } from "@/app/store/theme.store";
 import { setDarkMode } from "@/app/theme/darkMode";
 import { useTransferNotifications } from "@/modules/dashboard/composables/useTransferNotifications";
+import { isCapacitor } from "@/app/utils/runtime";
+import { huellaDisponible, huellaActiva, activarHuella } from "@/app/native/huella";
+import { catalogoActivo, activarCatalogo, ultimaCopia } from "@/app/native/catalogoOffline";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -75,7 +103,29 @@ onMounted(async () => {
 });
 
 const { pendingForMe } = useTransferNotifications();
-const derivaciones = computed(() => pendingForMe.value.length);
+// Por recibir en la sucursal del usuario (el composable le da todas al admin).
+const derivaciones = computed(() => pendingForMe.value.filter((t) => Number(t.to_branch_id) === Number(auth.branchId || 0)).length);
+
+// APK: huella y catálogo sin conexión (mismos ajustes que Impresión).
+const enApk = isCapacitor();
+const huellaOk = ref(false);
+const conHuella = ref(huellaActiva());
+if (enApk) huellaDisponible().then((ok) => { huellaOk.value = ok; }).catch(() => {});
+function cambiarHuella() {
+  conHuella.value = !conHuella.value;
+  activarHuella(conHuella.value);
+}
+const conCatalogo = ref(catalogoActivo());
+const copiaHora = ref("");
+if (enApk) ultimaCopia().then((t) => {
+  if (!t) return;
+  const d = new Date(t);
+  copiaHora.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+});
+function cambiarCatalogo() {
+  conCatalogo.value = !conCatalogo.value;
+  activarCatalogo(conCatalogo.value);
+}
 
 // Pedidos web sin preparar (mismo criterio que el badge de la barra).
 const pedidos = ref(0);
@@ -100,14 +150,24 @@ function it(name, label, icon, cond = true, badge = 0) {
 const grupos = computed(() => {
   const g = [
     {
+      titulo: "Stock",
+      items: [
+        it("conteo", "Conteo", "mdi-clipboard-check-outline"),
+        it("transfers", "Derivaciones", "mdi-swap-horizontal", true, derivaciones.value),
+        it("productsLabels", "Etiquetas", "mdi-tag-outline"),
+      ],
+    },
+    {
+      titulo: "Mostrador",
+      items: [
+        it("pos", "Vender", "mdi-cash-register"),
+        it("posSales", "Ventas", "mdi-receipt-text-outline"),
+        it("caja", "Caja", "mdi-cash-multiple"),
+      ],
+    },
+    {
       titulo: "Operación",
       items: [
-        // El cajero no tiene Inicio en la barra: queda acá, como en el menú de escritorio.
-        it("home", "Inicio", "mdi-home-outline", isCajero.value),
-        it("asistente", "Asistente", "mdi-forum-outline", usaAsistente.value),
-        // El dueño entra a la Caja desde acá; el cajero la tiene en la barra.
-        it("caja", "Caja", "mdi-cash-multiple", !isCajero.value),
-        it("transfers", "Derivaciones", "mdi-truck-fast-outline", true, derivaciones.value),
         it("budgets", "Presupuestos", "mdi-file-document-edit-outline"),
         it("posPrinter", "Impresión", "mdi-printer-pos-outline"),
       ],
@@ -120,7 +180,6 @@ const grupos = computed(() => {
         it("suppliers", "Proveedores", "mdi-truck-outline"),
         it("costsMissing", "Costos faltantes", "mdi-cash-edit", isAdmin.value),
         it("categories", "Categorías", "mdi-shape-outline"),
-        it("productsLabels", "Etiquetas", "mdi-printer-pos"),
       ],
     },
     {

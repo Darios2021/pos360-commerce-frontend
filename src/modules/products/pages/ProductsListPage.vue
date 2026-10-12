@@ -22,9 +22,9 @@
           @input="debouncedSearch"
           @keyup.enter="applyFilters"
         />
-        <button type="button" class="cam" aria-label="Escanear" @click.prevent="lpScanOpen = true">
+        <router-link :to="{ name: 'lector', query: { modo: 'consultar' } }" class="cam" aria-label="Escanear">
           <v-icon size="24">mdi-barcode-scan</v-icon>
-        </button>
+        </router-link>
       </label>
       <div class="m-chips">
         <button type="button" class="m-chip num" :class="{ on: f.stock !== 'with' && f.stock !== 'without' }" @click="elegirStockMovil('all')">Todos {{ fmtInt(Number(stats.with_stock || 0) + Number(stats.without_stock || 0)) }}</button>
@@ -34,7 +34,7 @@
       <div class="m-pz">
         <div v-if="loading && !items.length" class="m-vacio">Cargando…</div>
         <div v-else-if="!items.length" class="m-vacio">Sin resultados</div>
-        <router-link v-for="item in items" :key="item.id" :to="{ name: 'productView', params: { id: item.id } }" class="m-it">
+        <router-link v-for="item in items" :key="item.id" :to="{ name: 'productoConsulta', params: { id: item.id } }" class="m-it">
           <span class="m-foto">
             <img v-if="getProductImage(item)" :src="getProductImage(item)" alt="" loading="lazy" />
             <v-icon v-else size="24">mdi-package-variant-closed</v-icon>
