@@ -55,7 +55,7 @@
         </div>
 
         <div class="login-side__foot">
-          © {{ year }} · POS 360 — Desarrollado por <b>SAN JUAN TECNOLOGÍA</b>
+          © {{ year }} · POS 360 · San Juan Tecnología
         </div>
       </aside>
 
@@ -64,8 +64,6 @@
         <div class="login-card">
           <div class="login-card__head">
             <img :src="LOGO_BLUE" alt="POS 360" class="login-logo" />
-            <h2 class="login-title">Bienvenido de nuevo</h2>
-            <p class="login-sub">Ingresá con tu cuenta para continuar</p>
           </div>
 
           <v-alert
@@ -290,7 +288,7 @@ async function submit() {
   flex-direction: column;
   justify-content: center;
   padding: 40px;
-  border-radius: 24px;
+  border-radius: 14px;
   background: #1488d1;
   color: #fff;
   box-shadow:
@@ -416,7 +414,7 @@ async function submit() {
   max-width: 460px;
   padding: 36px 32px;
   background: #ffffff;
-  border-radius: 22px;
+  border-radius: 14px;
   border: 1px solid rgba(18, 30, 71, 0.08);
   box-shadow:
     0 20px 60px rgba(0,0,0,0.10),
@@ -530,7 +528,7 @@ async function submit() {
 
 @media (max-width: 600px) {
   .login-shell { padding: 12px; }
-  .login-card { padding: 28px 22px; border-radius: 18px; }
+  .login-card { padding: 28px 22px; border-radius: 14px; }
   .login-title { font-size: 20px; }
 }
 </style>

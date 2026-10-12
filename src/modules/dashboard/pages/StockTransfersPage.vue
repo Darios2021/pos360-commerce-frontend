@@ -83,12 +83,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { listTransfers } from "../service/stockTransfer.api";
 import "@/modules/products/styles/proveedores.css";
 
 const router = useRouter();
+// Los avisos del Inicio llegan con ?estado=dispatched (Por recibir).
+const routeActual = useRoute();
 const auth = useAuthStore();
 const ESTADOS = [
   { v: "", t: "Todas" },
@@ -104,7 +106,7 @@ const total = ref(0);
 const totalTodas = ref(0);
 const porEstado = ref({});
 const q = ref("");
-const estado = ref("");
+const estado = ref(["draft", "dispatched", "received", "cancelled"].includes(String(routeActual.query.estado || "")) ? String(routeActual.query.estado) : "");
 const page = ref(1);
 const limit = 30;
 const cargando = ref(false);

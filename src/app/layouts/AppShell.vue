@@ -4,7 +4,32 @@
   <v-app>
     <v-layout>
       <!-- ================= HEADER ================= -->
+      <!-- ================= HEADER TELÉFONO (rediseño móvil aprobado) =================
+           Banda azul de 56 px con el título de la sección y, a la derecha, la
+           píldora de caja y la campana. Las vistas completas (meta.movilCompleta)
+           traen su propia banda con flecha de volver: ahí no se muestra. -->
       <v-app-bar
+        v-if="mobile && !esVistaCompleta"
+        flat
+        elevation="0"
+        height="56"
+        class="m-appbar"
+      >
+        <h1 class="m-appbar__tit">{{ tituloMovil }}</h1>
+        <div id="m-barra-acc" class="m-appbar__acc"></div>
+        <router-link
+          v-if="cajaNav"
+          :to="{ name: 'caja' }"
+          class="m-pill"
+          :class="{ cerrada: !cajaNav.abierta }"
+        >
+          <i></i><span>{{ textoPildoraCaja }}</span>
+        </router-link>
+        <TransferNotificationBell class="m-appbar__campana" />
+      </v-app-bar>
+
+      <v-app-bar
+        v-else-if="!mobile"
         flat
         elevation="0"
         height="56"
@@ -96,7 +121,7 @@
               </span>
             </div>
             <router-link :to="{ name: 'profile' }" class="mc-op" role="menuitem" @click="accountMenu = false">
-              <v-icon size="20">mdi-account-outline</v-icon>Mi perfil
+              <v-icon size="20">mdi-account-outline</v-icon>Perfil
             </router-link>
             <div class="mc-sep" />
             <button type="button" class="mc-op" role="menuitem" @click="onLogout">
@@ -549,9 +574,14 @@
       <!-- ================= MAIN ================= -->
       <v-main
         class="pos-main"
-        :class="{ 'pos-main--full': $route.meta.fullPage, 'pos-main--mobile': mobile }"
+        :class="{
+          'pos-main--full': $route.meta.fullPage || esVistaCompleta,
+          'pos-main--mobile': mobile,
+          'pos-main--nav': mobile && navInferiorVisible,
+          'pos-main--completa': esVistaCompleta,
+        }"
       >
-        <template v-if="$route.meta.fullPage">
+        <template v-if="$route.meta.fullPage || esVistaCompleta">
           <router-view />
         </template>
         <v-container v-else fluid class="pos-container">
@@ -561,8 +591,9 @@
 
       <!-- ================= BOTTOM NAV (solo mobile) ================= -->
       <AppBottomNav
-        v-if="mobile"
+        v-if="mobile && navInferiorVisible"
         :transfer-unread-count="transferUnreadCount"
+        :pedidos-pendientes="pedidosPendientes"
       />
 
       <!-- ================= PROMPT DESCARGA APK (mobile web, no APK Capacitor) ================= -->
@@ -644,7 +675,7 @@ async function cargarCajaNav() {
       const bid = Number(c.branch_id || 0);
       const sucursal = c.branch_name || c.branch?.name
         || (auth.branches || []).find((b) => Number(b.id) === bid)?.name || "";
-      cajaNav.value = { abierta: true, desde, sucursal };
+      cajaNav.value = { abierta: true, desde, sucursal, id: Number(c.id) || null };
     } else {
       cajaNav.value = { abierta: false, desde: "", sucursal: "" };
     }
@@ -677,6 +708,51 @@ const route = useRoute();
 const themeStore = useThemeStore();
 
 const isDashboard = computed(() => route.name === "home");
+
+// ─── Teléfono: título de la banda, vistas completas y barra inferior ──────
+// Las vistas completas (cobro, caja, anular...) traen su propia banda con
+// flecha de volver y no muestran la barra inferior (informe 2.1 y 4.2).
+const esVistaCompleta = computed(() => mobile.value && route.meta?.movilCompleta === true);
+const navInferiorVisible = computed(() => !esVistaCompleta.value && route.meta?.movilSinNav !== true);
+const TITULOS_MOVIL = {
+  home: "Inicio",
+  pos: "Vender",
+  posSales: "Ventas",
+  posSaleDetail: "Venta",
+  products: "Productos",
+  productView: "Producto",
+  mas: "Más",
+  caja: "Caja",
+  asistente: "Asistente",
+  profile: "Perfil",
+  shopOrders: "Pedidos",
+};
+const tituloMovil = computed(() => {
+  const n = String(route.name || "");
+  return TITULOS_MOVIL[n] || route.meta?.title || getBreadcrumbs(n, route.query, {}).slice(-1)[0]?.label || "POS 360";
+});
+
+// En la pantalla Caja la píldora dice el estado; en las demás, el número.
+const textoPildoraCaja = computed(() => {
+  const c = cajaNav.value;
+  if (!c) return "";
+  if (route.name === "caja") return c.abierta ? "Abierta" : "Cerrada";
+  return c.abierta ? (c.id ? `Caja #${c.id}` : "Caja abierta") : "Caja cerrada";
+});
+
+// Pedidos web sin preparar (badge de Más). Si el pedido falla o el rol no
+// tiene acceso a la tienda, queda en 0 y el badge suma solo derivaciones.
+const pedidosPendientes = ref(0);
+async function cargarPedidosPendientes() {
+  if (!mobile.value || !auth.isSuperAdmin) { pedidosPendientes.value = 0; return; }
+  try {
+    const { data } = await http.get("/admin/shop/orders", { params: { page: 1, limit: 1, status: "created" } });
+    const total = Number(data?.meta?.total ?? data?.total ?? data?.data?.total ?? 0);
+    pedidosPendientes.value = Number.isFinite(total) ? total : 0;
+  } catch {
+    pedidosPendientes.value = 0;
+  }
+}
 // ─── Breadcrumbs ──────────────────────────────────────────────────────────────
 // Árbol de rutas centralizado en utils/routeTree.js (también lo usa AppPageHeader).
 const TAB_LABELS = { sales: "Ventas", stock: "Stock", inventory: "Inventario", cash: "Caja" };
@@ -1013,16 +1089,24 @@ onMounted(() => {
   clockTimer = setInterval(() => { updateClock(); actualizarFechaCorta(); }, 30000);
   actualizarFechaCorta();
   cargarCajaNav();
-  cajaTimer = setInterval(cargarCajaNav, 60000);
+  cargarPedidosPendientes();
+  cajaTimer = setInterval(() => { cargarCajaNav(); cargarPedidosPendientes(); }, 60000);
+  window.addEventListener("pos:caja-cambio", onCajaCambio);
   document.addEventListener("fullscreenchange", onFullscreenChange);
 });
 
 onBeforeUnmount(() => {
   clearInterval(cajaTimer);
+  window.removeEventListener("pos:caja-cambio", onCajaCambio);
   document.removeEventListener("fullscreenchange", onFullscreenChange);
 });
-// Al salir del POS la caja pudo abrirse o cerrarse
-watch(() => route.name, (nuevo, viejo) => { if (nuevo === "pos" || viejo === "pos") cargarCajaNav(); });
+// Al salir del POS o de las vistas de caja, la caja pudo abrirse o cerrarse
+const RUTAS_CAJA = ["pos", "caja", "cajaAbrir", "cajaCerrar", "cajaMovimiento", "posCobrar"];
+watch(() => route.name, (nuevo, viejo) => {
+  if (RUTAS_CAJA.includes(nuevo) || RUTAS_CAJA.includes(viejo)) cargarCajaNav();
+});
+// La caja también cambia desde las vistas completas del teléfono.
+function onCajaCambio() { cargarCajaNav(); }
 
 onBeforeUnmount(() => {
   window.removeEventListener("storage", onStorage);
@@ -1182,7 +1266,7 @@ function onLogout() {
   display: flex !important;
   flex-direction: column !important;
 }
-/* Dark: drawer en negro profundo (mismo que surface) — flota sobre background */
+/* Dark: el menú queda en el tono más profundo, por debajo de las piezas */
 .v-theme--dark .pos-drawer,
 .v-theme--adminDark .pos-drawer,
 .v-theme--shopDark .pos-drawer {
@@ -1641,18 +1725,39 @@ function onLogout() {
   max-width: 1400px;
 }
 
-/* ─── Mobile: reservar espacio para el bottom-nav ────────────────────────── */
+/* ─── Teléfono: márgenes de 16 px y lugar para la barra inferior ─────────── */
+.pos-main--mobile {
+  background: var(--m-canvas);
+}
 .pos-main--mobile .pos-container {
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 24px;
 }
-/* fullPage en mobile (POS, ProductFormPage): el child ya gestiona su altura.
-   Sumamos un bottom-padding al contenedor del main para que el bottom-nav
-   no tape el contenido. */
-.pos-main--mobile.pos-main--full {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+.pos-main--mobile.pos-main--nav .pos-container {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
+/* fullPage en el teléfono (POS, ProductFormPage): el child ya gestiona su
+   altura; se reserva el alto de la barra inferior para que no lo tape. */
+.pos-main--mobile.pos-main--full.pos-main--nav {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+/* Vistas completas: sin barras del shell, la vista ocupa toda la pantalla. */
+.pos-main--completa { padding-top: 0 !important; padding-bottom: 0 !important; }
+
+/* ─── Banda superior del teléfono ─────────────────────────────────────── */
+.m-appbar {
+  background: var(--m-banda) !important;
+  color: var(--m-banda-ink) !important;
+}
+.m-appbar :deep(.v-toolbar__content) { gap: 6px; padding: 0 8px 0 16px; }
+.m-appbar__tit {
+  flex: 1; min-width: 0; margin: 0; font: 700 19px Inter, sans-serif; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--m-banda-ink);
+}
+.m-appbar__acc { display: flex; align-items: center; }
+.m-appbar__acc:empty { display: none; }
+.m-appbar__campana :deep(.v-btn) { width: 44px !important; height: 44px !important; border-radius: 10px !important; color: var(--m-banda-ink) !important; }
 
 /* =========================
    Avatar

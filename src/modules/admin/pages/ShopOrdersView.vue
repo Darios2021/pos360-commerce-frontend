@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import ShopOrdersHeader from "@/modules/admin/components/shop-orders/ShopOrdersHeader.vue";
 import ShopOrdersFilters from "@/modules/admin/components/shop-orders/ShopOrdersFilters.vue";
@@ -62,6 +62,8 @@ import { adminUpdateShopOrderStatus } from "@/modules/shop/service/admin.shopOrd
 import { orderStatusLabel } from "@/modules/admin/utils/shopOrdersUi";
 
 const router = useRouter();
+// Los avisos del Inicio llegan con ?status=created (Sin preparar).
+const routeActual = useRoute();
 
 // --------------------
 // Headers
@@ -101,7 +103,7 @@ const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
 
 const filters = ref({
   q: "",
-  status: null,
+  status: routeActual.query.status ? String(routeActual.query.status) : null,
   fulfillment_type: null,
   branch_id: null,
 });

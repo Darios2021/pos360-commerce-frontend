@@ -1,7 +1,10 @@
 <template>
   <div class="pos-dialogs">
 
+    <!-- En el teléfono cobro, abrir y cerrar caja son vistas completas con
+         ruta propia (rediseño móvil): estas ventanas son sólo del mostrador. -->
     <CheckoutDialog
+      v-if="!mobile"
       v-model:open="checkoutDialog"
       :total="checkoutTotal"
       :total-preview="checkoutTotalPreview"
@@ -28,6 +31,7 @@
     />
 
     <ReceiptDialog
+      v-if="!mobile"
       v-model:open="receiptOpen"
       :sale="receiptSale"
       :company-name="receiptCompanyName"
@@ -43,6 +47,7 @@
     />
 
     <PosCajaConfigDialog
+      v-if="!mobile"
       v-model:open="cajaConfigOpen"
       :opening-amount="openingAmount"
       :note="openingNote"
@@ -64,6 +69,7 @@
     />
 
     <PosCajaArqueoDialog
+      v-if="!mobile"
       v-model:open="cajaArqueoOpen"
       :is-caja-open="isCajaOpen"
       @reload="reloadSummaryFromArqueo"
@@ -74,7 +80,8 @@
     />
 
 
-    <PosWizardDialog v-model="wizardOpen" :first-run="wizardFirstRun" />
+    <!-- El tour explica la pantalla: en el teléfono no se muestra (la interfaz no explica). -->
+    <PosWizardDialog v-if="!mobile" v-model="wizardOpen" :first-run="wizardFirstRun" />
 
 
     <v-dialog v-model="scannerTestOpen" max-width="460">
@@ -118,7 +125,9 @@
       </v-card>
     </v-dialog>
 
+    <!-- En el teléfono el aviso breve lo pinta MovilAviso, arriba de la barra de cobro. -->
     <v-snackbar
+      v-if="!mobile"
       v-model="snack.show"
       :timeout="snack.timeout || 3200"
       :color="snack.color || undefined"
@@ -138,6 +147,9 @@ import PosCajaArqueoDialog from "../components/PosCajaArqueoDialog.vue";
 import PosBranchSwitchDialog from "../components/PosBranchSwitchDialog.vue";
 import { usePosSalesFlow } from "../containers/usePosSalesFlow";
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 // ── Mini wizard del POS ───────────────────────────────────────────────
 // Auto-show la primera vez (flag en localStorage). Se relanza desde el
@@ -150,7 +162,7 @@ function openWizard() {
 }
 onMounted(() => {
   try {
-    if (!localStorage.getItem("pos.wizard.seen")) {
+    if (!mobile.value && !localStorage.getItem("pos.wizard.seen")) {
       wizardFirstRun.value = true;
       wizardOpen.value = true;
     }

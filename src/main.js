@@ -80,6 +80,8 @@ import vuetify from "./app/plugins/vuetify";
 import VueApexCharts from "vue3-apexcharts";
 
 import "./style.css";
+// Kit del rediseño móvil (tokens --m-* y piezas del teléfono), una sola vez.
+import "@/app/theme/movil.css";
 import "@/modules/shop/styles/shop.css";
 
 import { applyThemeAtomic, wireThemeReactivity } from "@/app/theme/themeManager";

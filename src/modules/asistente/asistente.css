@@ -58,7 +58,7 @@
   --gx-banda: #173a5e;
   --gx-banda-ink: #e3f1fc;
 
-  --as-pieza: #14171d;
+  --as-pieza: #1f232a;
   --as-borde: rgba(255, 255, 255, .13);
   --as-borde-suave: rgba(255, 255, 255, .08);
   --as-tinta: #e6e7eb;
@@ -75,7 +75,7 @@
   --as-aviso-atencion: rgba(217, 148, 20, .15);
   --as-aviso-problema: rgba(196, 69, 63, .20);
   --as-sombra: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 22px rgba(0, 0, 0, .55);
-  --as-canvas: #1a1d23;
+  --as-canvas: #111317;
 }
 
 .asis .num { font-variant-numeric: tabular-nums; }

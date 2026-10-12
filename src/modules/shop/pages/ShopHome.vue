@@ -225,7 +225,8 @@ const router = useRouter();
 /* Mobile: separamos las cards de los grids de promo (Brands Xiaomi+XAEA
    y Teléfonos+Auriculares) para intercalarlas entre otros bloques de
    la home en lugar de mostrarlas apiladas como un par. */
-const { mobile: isMobileView } = useDisplay();
+// El corte global de teléfono pasó a md (960); la tienda conserva el suyo (menos de 1280).
+const { mdAndDown: isMobileView } = useDisplay();
 
 const loading = ref(false);
 const loadingMore = ref(false);

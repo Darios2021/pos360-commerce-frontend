@@ -43,7 +43,7 @@
       </header>
 
       <!-- Cámara + área de scan -->
-      <div v-if="hasNativeApi" class="bsc__camera">
+      <div v-if="hasNativeApi && !manualForzado" class="bsc__camera">
         <video
           ref="videoRef"
           class="bsc__video"
@@ -58,7 +58,7 @@
           <div v-if="cameraState !== 'streaming' && cameraState !== 'denied'" class="bsc__loading">
             <div class="bsc__loading-spinner" aria-hidden="true" />
             <div class="bsc__loading-text">
-              {{ cameraState === 'requesting' ? 'Permití el acceso a la cámara' : 'Iniciando cámara…' }}
+              Iniciando cámara…
             </div>
           </div>
         </Transition>
@@ -68,9 +68,7 @@
           <div v-if="cameraState === 'denied'" class="bsc__loading bsc__loading--denied">
             <v-icon size="42" color="white">mdi-camera-off-outline</v-icon>
             <div class="bsc__loading-text">
-              No tengo permiso para usar la cámara.
-              <br />
-              Habilitalo en los Ajustes del teléfono.
+              Sin acceso a la cámara
             </div>
           </div>
         </Transition>
@@ -97,21 +95,23 @@
         </Transition>
       </div>
 
-      <!-- Fallback: cámara no soportada — único caso que mantiene input manual -->
+      <!-- Con cámara: el enlace para escribir el código a mano (maqueta pantalla 7). -->
+      <div v-if="hasNativeApi && !manualForzado" class="bsc__pie">
+        <button type="button" class="bsc__ingresar" @click="ingresarCodigo">Ingresar código</button>
+      </div>
+
+      <!-- Sin cámara, o con "Ingresar código": input manual -->
       <div v-else class="bsc__no-cam">
         <div class="bsc__no-cam-icon">
           <v-icon size="44">mdi-barcode-scan</v-icon>
         </div>
-        <div class="bsc__no-cam-title">Lector de código</div>
-        <div class="bsc__no-cam-desc">
-          Tu navegador no soporta cámara. Escribí o pegá el código.
-        </div>
+        <div class="bsc__no-cam-title">Ingresar código</div>
 
         <div class="bsc__no-cam-form">
           <v-text-field
             ref="manualInputRef"
             v-model="manualCode"
-            placeholder="Ej: 7791234567890"
+            placeholder="Código"
             variant="outlined"
             density="comfortable"
             hide-details
@@ -154,6 +154,14 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useProductsStore } from "@/app/store/products.store";
+
+// "Ingresar código": se apaga la cámara y se muestra el campo manual.
+const manualForzado = ref(false);
+function ingresarCodigo() {
+  manualForzado.value = true;
+  try { stopCamera?.(); } catch {}
+  nextTick(() => manualInputRef.value?.focus?.());
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -327,12 +335,12 @@ async function handleCode(code) {
           setResult("ok", `+ ${found.name}`);
           setTimeout(() => { lastResult.value = null; }, 1100);
         } else {
-          setResult("ok", `${found.name} — abriendo…`);
+          setResult("ok", found.name);
           setTimeout(() => close(), 250);
         }
       } else {
         // navigate (default)
-        setResult("ok", `${found.name} — abriendo…`);
+        setResult("ok", found.name);
         setTimeout(() => {
           close();
           router.push({ name: "productView", params: { id: found.id } });
@@ -345,18 +353,18 @@ async function handleCode(code) {
         emit("scanned", q);
         emit("product", null);
         if (props.continuous) {
-          setResult("error", `“${q}” no está en el catálogo`);
+          setResult("error", "Código no encontrado");
           setTimeout(() => { lastResult.value = null; }, 1500);
         } else {
-          setResult("info", `Código “${q}” no está en el catálogo. Lo cargué en el form.`);
+          setResult("info", "Código no encontrado");
           setTimeout(() => close(), 1000);
         }
       } else {
-        setResult("error", `No se encontró producto con código “${q}”`);
+        setResult("error", "Código no encontrado");
       }
     }
   } catch (e) {
-    setResult("error", "Error de conexión. Probá de nuevo.");
+    setResult("error", "Sin conexión");
   } finally {
     searching.value = false;
   }
@@ -381,6 +389,7 @@ function setResult(kind, text) {
 // ── Lifecycle ────────────────────────────────────────────────────────
 watch(open, async (v) => {
   if (v) {
+    manualForzado.value = false;
     manualCode.value = "";
     lastResult.value = null;
     captureCount.value = 0;
@@ -445,6 +454,8 @@ function close() {
 .bsc__torch.is-on { background: rgba(255, 220, 90, 0.25); color: #ffe27a; }
 .bsc__torch:disabled { opacity: 0.35; cursor: not-allowed; }
 
+.bsc__pie { display: flex; justify-content: center; padding: 20px 16px calc(28px + env(safe-area-inset-bottom, 0px)); background: #0b0c0e; }
+.bsc__ingresar { border: 0; background: transparent; color: #a6d8fa; font: 600 15px Inter, system-ui, sans-serif; padding: 10px 0; cursor: pointer; }
 .bsc__title {
   font-size: 16px;
   font-weight: 500;

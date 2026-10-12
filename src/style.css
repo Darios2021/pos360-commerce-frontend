@@ -182,10 +182,10 @@ body,
 
 /* =========================================================
    MODO OSCURO — estética flotante
-   - Background: gris oscuro (definido en vuetify.js → #1a1d23).
-   - Surface (cards/sheets): negro más profundo (#0d0f13).
+   - Background (canvas): el tono más oscuro (vuetify.js → #111317).
+   - Surface (cards/sheets): un escalón ancho arriba (#1f232a).
      El contraste natural entre ambos crea el efecto "flotante" sin
-     necesidad de bordes — las cards se despegan solas del fondo.
+     necesidad de bordes: las cards se despegan solas del fondo.
 ========================================================= */
 .v-theme--dark,
 .v-theme--adminDark,

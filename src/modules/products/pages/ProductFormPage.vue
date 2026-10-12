@@ -138,7 +138,7 @@
           </div>
           </div></section>
           <section class="pfx-seg"><div class="pfx-banda"><span>Control de stock</span></div><div class="pfx-seg__in">
-          <div class="pfx-g pfx-g--abajo" style="grid-template-columns: 200px 1fr">
+          <div class="pfx-g pfx-g--abajo pfx-g--200">
             <div class="pfx-c"><label>Stock mínimo <i>· opcional</i></label>
               <v-text-field v-model="draft.min_stock" :disabled="busy" density="comfortable" variant="outlined" type="number" min="0" hide-details />
             </div>
@@ -2621,6 +2621,9 @@ async function saveAll() {
 .pfx-pie__n { font-size: 13px; font-weight: 700; color: var(--x-tenue); }
 .pfx-sig { height: 46px !important; padding: 0 26px !important; border-radius: 10px !important; font-size: 15px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
 
+/* Antes iba inline y le ganaba a la media query del teléfono (QA 1.4). */
+.pfx-g--200 { grid-template-columns: 200px 1fr; }
+
 @media (max-width: 1100px) {
   .pfx-cuerpo { flex-direction: column; }
   .pfx-aside { width: 100%; position: static; }
@@ -2629,10 +2632,11 @@ async function saveAll() {
 @media (max-width: 760px) {
   .pfx > .pfx-cab, .pfx > .pfx-pasos, .pfx > .pfx-cuerpo, .pfx-pie__in { width: calc(100% - 24px); }
   .pfx-tarjeta { padding: 18px 14px; }
-  .pfx-g--2, .pfx-g--3, .pfx-g--4, .pfx-g--precio { grid-template-columns: minmax(0, 1fr); }
+  .pfx-g--2, .pfx-g--3, .pfx-g--4, .pfx-g--precio, .pfx-g--200 { grid-template-columns: minmax(0, 1fr); }
   .pfx-paso__txt { display: none; }
   .pfx-paso.is-actual .pfx-paso__txt { display: flex; }
   .pfx-pie__n { display: none; }
-  .pfx-pie { bottom: 64px; }
+  /* En el teléfono el formulario es vista completa: sin barra inferior abajo. */
+  .pfx-pie { bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 </style>

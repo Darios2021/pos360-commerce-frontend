@@ -13,6 +13,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { showRouteOverlay, hideRouteOverlay } from "@/modules/shop/service/routeOverlay.state";
 import { isCapacitor } from "@/app/utils/runtime";
+import vuetify from "@/app/plugins/vuetify";
 
 // Layouts
 import AppShell from "@/app/layouts/AppShell.vue";
@@ -103,6 +104,19 @@ const routes = [
       { path: "pos", name: "pos", component: PosPage },
       { path: "pos/sales", name: "posSales", component: PosSalesPage },
       { path: "pos/sales/:id", name: "posSaleDetail", component: PosSaleDetailPage },
+
+      // ── Teléfono (rediseño móvil aprobado, informe 4.3) ──────────────────
+      // Lo sensible va en vista completa, con ruta y flecha de volver. En
+      // escritorio estas rutas no se muestran: el mostrador sigue con sus
+      // ventanas de la barra de teclas (guard más abajo).
+      { path: "mas", name: "mas", component: () => import("@/app/pages/MasPage.vue"), meta: { soloMovil: true } },
+      { path: "pos/venta", name: "posCarrito", component: () => import("@/modules/pos/pages/movil/PosVentaEnCursoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "pos/cobrar", name: "posCobrar", component: () => import("@/modules/pos/pages/movil/PosCobrarPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "pos/sales/:id/anular", name: "posSaleAnular", component: () => import("@/modules/pos/pages/movil/PosAnularVentaPage.vue"), meta: { soloMovil: true, movilCompleta: true, roles: ["admin", "super_admin", "superadmin", "root", "owner"] } },
+      { path: "caja", name: "caja", component: () => import("@/modules/pos/pages/movil/CajaPage.vue"), meta: { soloMovil: true } },
+      { path: "caja/abrir", name: "cajaAbrir", component: () => import("@/modules/pos/pages/movil/CajaAbrirPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "caja/cerrar", name: "cajaCerrar", component: () => import("@/modules/pos/pages/movil/CajaCerrarPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
+      { path: "caja/movimiento", name: "cajaMovimiento", component: () => import("@/modules/pos/pages/movil/CajaMovimientoPage.vue"), meta: { soloMovil: true, movilCompleta: true } },
       // Impresion del ticket en esta PC: todos los cajeros, cada mostrador la suya.
       { path: "pos/impresion", name: "posPrinter", component: () => import("@/modules/pos/pages/PosPrinterSettingsPage.vue") },
 
@@ -112,8 +126,9 @@ const routes = [
       { path: "parametros-precios", name: "priceSettings", component: () => import("@/modules/settings/pages/ParametrosPreciosPage.vue"), meta: { roles: ["admin", "super_admin"] } },
       { path: "proveedores/nuevo", name: "supplierNew", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
       { path: "proveedores/:id", name: "supplierEdit", component: () => import("@/modules/products/pages/SupplierEditPage.vue") },
-      { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true } },
-      { path: "products/:id/edit", name: "productEdit", component: ProductFormPage, meta: { fullPage: true } },
+      // En el teléfono, nuevo y editar producto son vista completa (sin barras del shell).
+      { path: "products/new", name: "productNew", component: ProductFormPage, meta: { fullPage: true, movilCompleta: true } },
+      { path: "products/:id/edit", name: "productEdit", component: ProductFormPage, meta: { fullPage: true, movilCompleta: true } },
       { path: "products/:id/view", name: "productView", component: ProductDetailViewPage },
       { path: "products/:id", name: "productProfile", component: ProductProfilePage },
 
@@ -737,6 +752,25 @@ router.beforeEach((to, from) => {
 
   if (to.meta?.requiresAuth && !auth.isAuthed) {
     return { name: "login" };
+  }
+
+  // En el teléfono el cajero arranca en Vender y el dueño en Inicio (informe
+  // 2.1). Sólo al entrar: desde Más el cajero igual puede abrir Inicio.
+  if (
+    to.name === "home" &&
+    vuetify.display?.mobile?.value &&
+    auth.isCajero &&
+    (!from?.name || from.name === "login")
+  ) {
+    return { name: "pos" };
+  }
+
+  // Las vistas del teléfono no existen en escritorio: cada una vuelve a su
+  // equivalente (el mostrador abre sus ventanas de siempre).
+  if (to.meta?.soloMovil && !vuetify.display?.mobile?.value) {
+    if (to.name === "posSaleAnular") return { name: "posSaleDetail", params: { id: to.params.id } };
+    if (to.name === "mas") return { name: "home" };
+    return { name: "pos" };
   }
 
   const roles = to.meta?.roles;

@@ -1,6 +1,6 @@
 <template>
   <div class="dash">
-    <v-alert v-if="error" type="error" variant="tonal" rounded="xl" class="mb-4" density="compact">
+    <v-alert v-if="error" type="error" variant="tonal" rounded="lg" class="mb-4" density="compact">
       {{ error }}
     </v-alert>
 
@@ -9,7 +9,7 @@
       v-if="analyticsError && !loadingAnalytics"
       type="warning"
       variant="tonal"
-      rounded="xl"
+      rounded="lg"
       class="mb-4"
       density="compact"
       closable
@@ -100,9 +100,9 @@ const userDisplayName = computed(() => {
   return full || u.username || u.email || "Usuario";
 });
 
-// Mobile detection (md breakpoint = < 960px)
+// Teléfono: el mismo corte que AppShell (mobileBreakpoint md, menos de 960 px).
 const display = useDisplay();
-const isMobile = computed(() => display.smAndDown.value);
+const isMobile = computed(() => display.mobile.value);
 
 
 // ─── Router ───────────────────────────────────────────────────────────────────

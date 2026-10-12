@@ -1,7 +1,63 @@
 <!-- src/modules/products/pages/ProductsListPage.vue -->
 
 <template>
-  <div class="pl">
+  <div class="pl" :class="{ 'pl--movil': mobile }">
+    <!-- ── Teléfono (maqueta aprobada, pantalla 15) ───────────────────────
+         Buscador con escáner, chips con su cantidad y filas. El dueño tiene
+         el "+" en la barra superior para Nuevo producto. -->
+    <div v-if="mobile" class="plm m-vista">
+      <Teleport v-if="isAdmin" to="#m-barra-acc" defer>
+        <button type="button" class="mv-ib" aria-label="Nuevo producto" @click="openCreate">
+          <v-icon size="24">mdi-plus</v-icon>
+        </button>
+      </Teleport>
+      <label class="m-bus">
+        <v-icon size="20">mdi-magnify</v-icon>
+        <input
+          v-model="f.q"
+          type="search"
+          enterkeyhint="search"
+          placeholder="Buscar nombre, SKU o código"
+          aria-label="Buscar nombre, SKU o código"
+          @input="debouncedSearch"
+          @keyup.enter="applyFilters"
+        />
+        <button type="button" class="cam" aria-label="Escanear" @click.prevent="lpScanOpen = true">
+          <v-icon size="24">mdi-barcode-scan</v-icon>
+        </button>
+      </label>
+      <div class="m-chips">
+        <button type="button" class="m-chip num" :class="{ on: f.stock !== 'with' && f.stock !== 'without' }" @click="elegirStockMovil('all')">Todos {{ fmtInt(Number(stats.with_stock || 0) + Number(stats.without_stock || 0)) }}</button>
+        <button type="button" class="m-chip num" :class="{ on: f.stock === 'with' }" @click="elegirStockMovil('with')">Con stock {{ fmtInt(stats.with_stock) }}</button>
+        <button type="button" class="m-chip num" :class="{ on: f.stock === 'without' }" @click="elegirStockMovil('without')">Sin stock {{ fmtInt(stats.without_stock) }}</button>
+      </div>
+      <div class="m-pz">
+        <div v-if="loading && !items.length" class="m-vacio">Cargando…</div>
+        <div v-else-if="!items.length" class="m-vacio">Sin resultados</div>
+        <router-link v-for="item in items" :key="item.id" :to="{ name: 'productView', params: { id: item.id } }" class="m-it">
+          <span class="m-foto">
+            <img v-if="getProductImage(item)" :src="getProductImage(item)" alt="" loading="lazy" />
+            <v-icon v-else size="24">mdi-package-variant-closed</v-icon>
+          </span>
+          <span class="tx">
+            <b>{{ item.name }}</b>
+            <small class="num">{{ [item?.category?.name || item?.rubro, item.barcode || item.sku || item.code].filter(Boolean).join(" · ") }}</small>
+          </span>
+          <span class="der">
+            <b class="num">{{ precioContado(item) ? `$ ${fmtPrice(precioContado(item))}` : "Sin precio" }}</b>
+            <small v-if="getStockQty(item) > 0" class="num">{{ fmtInt(getStockQty(item)) }} u.</small>
+            <span v-else class="m-est no">Sin stock</span>
+          </span>
+        </router-link>
+        <div v-if="(meta.pages || 1) > 1" class="plm-pag">
+          <button type="button" class="m-lnk" :disabled="page <= 1" @click="page -= 1; fetchNow()">Anteriores</button>
+          <span class="m-sub num">{{ page }} de {{ meta.pages }}</span>
+          <button type="button" class="m-lnk" :disabled="page >= meta.pages" @click="page += 1; fetchNow()">Siguientes</button>
+        </div>
+      </div>
+    </div>
+
+    <template v-else>
     <!-- ── Encabezado ───────────────────────────────────── -->
     <div class="pl-cab">
       <div class="pl-cab__txt">
@@ -64,7 +120,7 @@
       </v-menu>
     </div>
 
-    <BarcodeScannerDialog v-if="!smAndUp" v-model="lpScanOpen" title="Buscar producto" />
+    <BarcodeScannerDialog v-if="!smAndUp && !mobile" v-model="lpScanOpen" title="Buscar producto" />
 
     <!-- Actualizar precios en dólares: se confirma acá mismo, no en una ventana -->
     <div v-if="usdConfirm" class="pl-usd">
@@ -214,6 +270,11 @@
       <v-pagination v-model="page" :length="meta.pages || 1" :total-visible="smAndUp ? 7 : 4" density="comfortable" size="small" @update:modelValue="fetchNow" />
     </div>
 
+    </template>
+
+    <!-- Escáner del teléfono: abre la ficha del producto leído -->
+    <BarcodeScannerDialog v-if="mobile" v-model="lpScanOpen" title="Escanear" />
+
     <!-- ── Panel de filtros: convive con el listado, no es un modal ── -->
     <Transition name="pl-panel">
       <aside v-if="panelAbierto" class="pl-panel" aria-label="Filtros">
@@ -329,7 +390,12 @@ const route = useRoute();
 const products = useProductsStore();
 const auth = useAuthStore();
 const categories = useCategoriesStore();
-const { smAndUp } = useDisplay();
+const { smAndUp, mobile } = useDisplay();
+function elegirStockMovil(v) {
+  f.value.stock = v;
+  page.value = 1;
+  applyFilters();
+}
 
 const isAdmin = computed(() => {
   const r = auth.roles || [];
@@ -1914,6 +1980,11 @@ function branchCssColor(id) {
   .lp-stats   { grid-template-columns: repeat(2, 1fr); }
   .lp-methods { grid-template-columns: repeat(3, 1fr); }
 }
+/* ── Teléfono ───────────────────────────────────────────────────── */
+.plm { display: flex; flex-direction: column; gap: 12px; background: transparent; }
+.plm-pag { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px; border-top: 1px solid var(--m-linea2); }
+.plm-pag .m-lnk[disabled] { opacity: 0.4; }
+
 /* ── FAB Nuevo producto (solo mobile) ──────────────────────────── */
 .lp-fab-new {
   position: fixed;
