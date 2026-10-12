@@ -1,0 +1,311 @@
+/* ============================================================
+   EL ASISTENTE (modules/asistente)
+
+   La pieza de respuesta y sus bloques. Copia de los estilos de Zondito
+   (sazonik/design-system/styles.css, sección "EL ASISTENTE"), con la
+   paleta de POS 360. Los gráficos usan sólo las variables --gx-* y tres
+   semánticos (ocre, rojo, verde): cambiar de marca es cambiar esos valores.
+   Sin `scoped`: lo usan la página y sus componentes; el prefijo .asis- lo aísla.
+   El ancho del teléfono se decide por el ancho de la vista (container query).
+
+   Rampa azul del logo (#1488d1 / #121e47; oscuro #3aa5e6). Validada con el
+   script de dataviz: CVD PASA en claro (ΔE 11) y en oscuro (ΔE 14,5). Como
+   paleta categórica de un solo tono no llega al piso de 15 a simple vista:
+   la dona lo compensa con separación entre gajos y leyenda con etiqueta,
+   monto y porcentaje (la misma decisión que Zondito y SAZONIK).
+   ============================================================ */
+
+.asis {
+  --gx-p1: #0b4f7e;
+  --gx-p2: #1488d1;
+  --gx-p3: #6cb6e6;
+  --gx-p4: #b3d8f2;
+  --gx-gris: #8d96a3;
+  --gx-pista: rgba(18, 30, 71, .08);
+  --gx-banda: #121e47;
+  --gx-banda-ink: #ffffff;
+
+  --as-pieza: #ffffff;
+  --as-borde: rgba(20, 136, 209, .32);
+  --as-borde-suave: rgba(18, 30, 71, .10);
+  --as-tinta: #101828;
+  --as-tinta-2: #344054;
+  --as-tinta-3: #5b6577;
+  --as-acento: #0f6fae;
+  --as-acento-tinta: #0b5e94;
+  --as-marca: #1488d1;
+  --as-pregunta: #dceefa;
+  --as-ocre: #BC7F12;
+  --as-rojo: #C4453F;
+  --as-verde: #2E9E7B;
+  --as-aviso-info: rgba(18, 30, 71, .05);
+  --as-aviso-atencion: #fbefd9;
+  --as-aviso-problema: #fbe3e1;
+  --as-sombra: 0 0 0 1px rgba(20, 136, 209, .16), 0 1px 2px rgba(16, 24, 40, .08), 0 6px 16px rgba(20, 136, 209, .08);
+  --as-canvas: #eef1f5;
+  container-type: inline-size;
+  color: var(--as-tinta);
+}
+
+.v-theme--adminDark .asis,
+.v-theme--shopDark .asis {
+  --gx-p1: #a6d8fa;
+  --gx-p2: #3aa5e6;
+  --gx-p3: #1c6699;
+  --gx-p4: #203a52;
+  --gx-gris: #5b616b;
+  --gx-pista: rgba(255, 255, 255, .08);
+  --gx-banda: #173a5e;
+  --gx-banda-ink: #e3f1fc;
+
+  --as-pieza: #14171d;
+  --as-borde: rgba(255, 255, 255, .13);
+  --as-borde-suave: rgba(255, 255, 255, .08);
+  --as-tinta: #e6e7eb;
+  --as-tinta-2: #d2d5dc;
+  --as-tinta-3: #a1a4ab;
+  --as-acento: #1488d1;
+  --as-acento-tinta: #8fcbf2;
+  --as-marca: #3aa5e6;
+  --as-pregunta: rgba(58, 165, 230, .18);
+  --as-ocre: #D99414;
+  --as-rojo: #e2625b;
+  --as-verde: #3fb68f;
+  --as-aviso-info: rgba(230, 231, 235, .06);
+  --as-aviso-atencion: rgba(217, 148, 20, .15);
+  --as-aviso-problema: rgba(196, 69, 63, .20);
+  --as-sombra: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 8px 22px rgba(0, 0, 0, .55);
+  --as-canvas: #1a1d23;
+}
+
+.asis .num { font-variant-numeric: tabular-nums; }
+
+/* En el teléfono, AppShell reserva 72 px abajo para su menú (pos-main--mobile.pos-main--full). */
+.pos-main--mobile .asis-vista {
+  --asis-alto: calc(100dvh - var(--v-layout-top, 56px) - var(--v-layout-bottom, 0px) - 72px - env(safe-area-inset-bottom, 0px));
+}
+
+/* la vista: cabecera, hilo que se desplaza solo y entrada abajo */
+
+/* Alto fijo al de la ventana menos la barra de arriba (y el menú de abajo en el
+   teléfono): así el que se desplaza es el hilo y la página no se mueve. Va
+   también como max-height porque AppShell le pone `flex: 1` y eso pisa height. */
+.asis-vista {
+  --asis-alto: calc(100dvh - var(--v-layout-top, 56px) - var(--v-layout-bottom, 0px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: var(--asis-alto);
+  max-height: var(--asis-alto);
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  background: var(--as-canvas);
+}
+
+.asis-cab { display: flex; align-items: center; gap: 12px; padding: 16px 24px 8px; min-width: 0; }
+.asis-cab h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+
+.asis-mudo {
+  width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: var(--as-tinta-3);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.asis-mudo:hover { background: var(--as-pregunta); color: var(--as-tinta); }
+.asis-mudo:focus-visible { outline: 2px solid var(--as-marca); outline-offset: 2px; }
+.asis-mudo .v-icon { font-size: 20px; }
+
+.asis-uso {
+  margin-left: auto; width: 180px; display: grid; grid-template-columns: auto 1fr;
+  column-gap: 8px; row-gap: 5px; align-items: baseline;
+}
+.asis-uso b { font-size: 17px; font-weight: 800; white-space: nowrap; }
+.asis-uso span { font-size: 12.5px; color: var(--as-tinta-3); font-weight: 600; text-align: right; white-space: nowrap; }
+.asis-uso .asis-pista { grid-column: 1 / -1; }
+
+.asis-hilo {
+  overflow-y: auto; padding: 8px 24px 20px; display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: none; min-height: 0; overscroll-behavior: contain;
+}
+.asis-hilo::-webkit-scrollbar { display: none; }
+.asis-hilo > * { width: 100%; max-width: 860px; margin-inline: auto; }
+
+/* vacío: preguntas sugeridas, pegadas abajo */
+
+.asis-sugeridas { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.asis-sug {
+  text-align: left; border: 1px solid var(--as-borde); background: var(--as-pieza); border-radius: 12px;
+  padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; color: var(--as-tinta);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.asis-sug:hover { background: var(--as-pregunta); box-shadow: inset 0 0 0 2px var(--as-marca); }
+.asis-sug:focus-visible { outline: 2px solid var(--as-marca); outline-offset: 2px; }
+.asis-sug:disabled { opacity: .5; cursor: default; }
+.asis-sug b { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.asis-sug small { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--as-acento-tinta); }
+
+/* pregunta */
+
+.asis-pregunta { display: flex; justify-content: flex-end; }
+.asis-pregunta p {
+  margin: 0; max-width: min(560px, 82%); background: var(--as-pregunta); padding: 10px 14px;
+  border-radius: 12px 12px 4px 12px; font-size: 15px; font-weight: 600; line-height: 1.4;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+/* qué está consultando */
+
+.asis-pasos { display: flex; flex-direction: column; gap: 6px; padding-left: 2px; }
+.asis-paso { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--as-tinta-3); }
+.asis-paso.activo { color: var(--as-tinta); }
+.asis-paso i { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
+.asis-paso.activo i::before,
+.asis-redactando::before {
+  content: ""; width: 8px; height: 8px; border-radius: 9999px; background: var(--as-marca);
+  animation: asisLate 1.1s ease-in-out infinite;
+}
+.asis-paso.hecho i svg { width: 14px; height: 14px; stroke: var(--as-verde); fill: none; stroke-width: 2.5; }
+.asis-redactando { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--as-tinta-3); }
+
+/* la pieza de respuesta */
+
+.asis-respuesta {
+  background: var(--as-pieza); border-radius: 14px; box-shadow: var(--as-sombra); padding: 18px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; align-items: start;
+}
+.asis-respuesta > * { grid-column: 1 / -1; min-width: 0; }
+.asis-respuesta > .asis-par { grid-column: auto; }
+.asis-pie {
+  display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; font-weight: 600; color: var(--as-tinta-3);
+  border-top: 1px solid var(--as-borde-suave); padding-top: 10px;
+}
+
+.asis-b-titulo h3 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; text-wrap: balance; }
+.asis-b-titulo p { margin: 4px 0 0; font-size: 13.5px; color: var(--as-tinta-3); font-weight: 500; }
+.asis-b-texto p { margin: 0; font-size: 15px; line-height: 1.5; max-width: 62ch; color: var(--as-tinta-2); white-space: pre-line; }
+
+.asis-tarjeta { border: 1px solid var(--as-borde-suave); border-radius: 12px; overflow: hidden; background: var(--as-pieza); }
+.asis-banda {
+  background: var(--gx-banda); color: var(--gx-banda-ink); padding: 8px 12px;
+  display: flex; gap: 10px; align-items: baseline; justify-content: space-between;
+}
+.asis-banda b { font-size: 14.5px; font-weight: 800; }
+.asis-banda span { font-size: 12px; font-weight: 600; opacity: .9; text-align: right; }
+.asis-cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+.asis-fila { display: grid; grid-template-columns: 64px 1fr; column-gap: 10px; row-gap: 6px; align-items: center; }
+.asis-fila .cifra { font-size: 22px; font-weight: 800; line-height: 1; text-align: right; }
+.asis-fila .et b { display: block; font-size: 15px; font-weight: 700; line-height: 1.25; }
+.asis-fila .et small { display: block; font-size: 13px; color: var(--as-tinta-3); font-weight: 500; }
+.asis-fila .asis-pista { grid-column: 2; }
+
+.asis-pista { height: 8px; border-radius: 4px; background: var(--gx-pista); overflow: hidden; }
+.asis-pista i { display: block; height: 100%; border-radius: 4px; background: var(--gx-p2); transform-origin: left; }
+.asis-vivo .asis-pista i { animation: asisCrece 520ms cubic-bezier(.2, .7, .2, 1) both; }
+
+.asis-cols { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 4px; align-items: end; height: 170px; }
+.asis-col { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 4px; height: 100%; min-width: 0; }
+.asis-col .v { font-size: 11.5px; font-weight: 700; color: var(--as-tinta-3); white-space: nowrap; }
+.asis-col .barra { width: 100%; max-width: 26px; border-radius: 4px 4px 2px 2px; background: var(--gx-p3); transform-origin: bottom; }
+.asis-col.dest .barra { background: var(--gx-p1); }
+.asis-col.dest .v, .asis-col.dest .e { color: var(--as-tinta); font-weight: 800; }
+.asis-col .e { font-size: 13px; font-weight: 700; color: var(--as-tinta-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asis-vivo .asis-col .barra { animation: asisSube 520ms cubic-bezier(.2, .7, .2, 1) both; }
+
+.asis-dona { display: grid; grid-template-columns: 124px 1fr; gap: 14px; align-items: center; }
+.asis-dona svg { width: 124px; height: 124px; display: block; }
+.asis-dona .tot { font-size: 15px; font-weight: 800; fill: var(--as-tinta); }
+.asis-dona .tot-e { font-size: 9.5px; font-weight: 600; fill: var(--as-tinta-3); }
+.asis-vivo .asis-dona circle { animation: asisAro 620ms cubic-bezier(.2, .7, .2, 1) both; }
+
+.asis-ley { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.asis-ley div { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 13.5px; }
+.asis-ley i { width: 10px; height: 10px; border-radius: 3px; }
+.asis-ley b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asis-ley span { color: var(--as-tinta-3); font-weight: 600; min-width: 34px; text-align: right; }
+
+.asis-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.asis-tabla th {
+  text-align: left; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--as-tinta-3); font-weight: 700; padding: 0 8px 6px;
+}
+.asis-tabla td { padding: 8px; border-top: 1px solid var(--as-borde-suave); font-weight: 600; }
+.asis-tabla .n { text-align: right; font-variant-numeric: tabular-nums; }
+.asis-past { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+.asis-past.problema { background: var(--as-aviso-problema); color: var(--as-rojo); }
+.asis-past.atencion { background: var(--as-aviso-atencion); color: var(--as-ocre); }
+
+.asis-b-lista h4 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
+.asis-b-lista ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.asis-b-lista li { display: grid; grid-template-columns: 10px 1fr; gap: 10px; align-items: baseline; }
+.asis-b-lista li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--gx-p2); transform: translateY(-1px); }
+.asis-b-lista li b { display: block; font-size: 15px; font-weight: 700; }
+.asis-b-lista li span { display: block; font-size: 14px; color: var(--as-tinta-2); line-height: 1.45; }
+
+.asis-aviso {
+  display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; background: var(--as-aviso-info);
+}
+.asis-aviso svg { width: 18px; height: 18px; fill: none; stroke: var(--as-tinta-3); stroke-width: 2; }
+.asis-aviso.atencion { background: var(--as-aviso-atencion); }
+.asis-aviso.atencion svg { stroke: var(--as-ocre); }
+.asis-aviso.problema { background: var(--as-aviso-problema); }
+.asis-aviso.problema svg { stroke: var(--as-rojo); }
+.asis-aviso p { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.4; }
+.asis-aviso button {
+  border: 0; background: var(--as-acento); color: #fff; font-weight: 700; font-size: 14px;
+  border-radius: 10px; padding: 8px 14px; cursor: pointer;
+}
+.asis-aviso button:focus-visible { outline: 2px solid var(--as-marca); outline-offset: 2px; }
+
+/* entrada */
+
+.asis-entrada { padding: 12px 24px 16px; }
+.asis-entrada form {
+  max-width: 860px; margin: 0 auto; display: flex; gap: 8px; align-items: end;
+  background: var(--as-pieza); border: 1px solid var(--as-borde); border-radius: 14px; padding: 6px; box-shadow: var(--as-sombra);
+}
+.asis-entrada textarea {
+  flex: 1; min-width: 0; resize: none; background: transparent; padding: 9px 10px; font: inherit;
+  font-size: 15px; line-height: 1.4; max-height: 120px; color: var(--as-tinta); border: 0; outline: none;
+}
+.asis-entrada textarea::placeholder { color: var(--as-tinta-3); }
+.asis-entrada form:focus-within { box-shadow: var(--as-sombra), 0 0 0 2px var(--as-marca); }
+.asis-entrada button {
+  border: 0; background: var(--as-acento); color: #fff; font-weight: 700; font-size: 14.5px;
+  border-radius: 10px; height: 40px; padding: 0 16px; cursor: pointer; flex: none;
+}
+.asis-entrada button:disabled { opacity: .45; cursor: default; }
+.asis-pausa {
+  max-width: 860px; margin: 0 auto; text-align: center; font-size: 14px; font-weight: 700; color: var(--as-tinta-3);
+  padding: 12px; border: 1px dashed var(--as-borde); border-radius: 14px;
+}
+
+/* el teléfono: por el ancho de la vista */
+
+@container (max-width: 560px) {
+  .asis-cab { padding: 12px 16px 6px; }
+  .asis-cab h1 { font-size: 19px; }
+  .asis-uso { width: 150px; }
+  .asis-uso b { font-size: 15px; }
+  .asis-hilo { padding: 6px 12px 16px; }
+  .asis-sugeridas { grid-template-columns: 1fr; }
+  .asis-respuesta { grid-template-columns: 1fr; padding: 14px; gap: 14px; }
+  .asis-respuesta > .asis-par { grid-column: 1 / -1; }
+  .asis-dona { grid-template-columns: 108px 1fr; }
+  .asis-dona svg { width: 108px; height: 108px; }
+  .asis-entrada { padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* movimiento: cada pieza entra una vez; lo único que se mueve esperando es el punto */
+
+.asis-entra { animation: asisEntra 200ms cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes asisEntra { from { opacity: 0; transform: translateY(6px); } }
+@keyframes asisCrece { from { transform: scaleX(0); } }
+@keyframes asisSube { from { transform: scaleY(0); } }
+@keyframes asisAro { from { stroke-dasharray: 0 400; } }
+@keyframes asisLate { 50% { opacity: .3; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .asis-entra, .asis-vivo .asis-pista i, .asis-vivo .asis-col .barra, .asis-vivo .asis-dona circle { animation: none !important; }
+  .asis-paso.activo i::before, .asis-redactando::before { animation: none; }
+}
