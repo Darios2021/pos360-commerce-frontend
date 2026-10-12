@@ -54,14 +54,14 @@ El QA se hizo **leyendo el código** de `origin/main` (frontend `717cae3`) y de 
 
 ### 1.4 Otros hallazgos
 
-- `vuetify.js`: falta `display.mobileBreakpoint`. Vuetify 3 toma `mobile` por debajo de `lg` (1280 px). Por eso **una notebook de 1366 con zoom o una tablet apaisada ya cae en la barra inferior** y pierde el drawer. Fijar `mobileBreakpoint: 'md'` (menos de 960) y usar el mismo corte en todo el sistema.
+- `vuetify.js`: falta `display.mobileBreakpoint`. El valor por defecto de Vuetify es `'lg'` (verificado en `node_modules/vuetify/lib/composables/display.js:9`). Vuetify 3 toma `mobile` por debajo de `lg` (1280 px). Por eso **una notebook de 1366 con zoom o una tablet apaisada ya cae en la barra inferior** y pierde el drawer. Además conviven dos cortes en la misma pantalla: `AppShell` usa `mobile` (menos de 1280) y `DashboardHome` usa `smAndDown` (menos de 960). Entre 960 y 1279 px se ve la barra inferior con el tablero de escritorio. Hay que fijar `mobileBreakpoint: 'md'` y usar ese corte en todo el sistema.
 - `index.html:5`: el viewport no declara `interactive-widget=resizes-content`. En Android `dvh` no se achica con el teclado y los pies fijos (cobro, asistente, formulario de producto) pueden quedar tapados.
 - `ProductFormPage.vue:141`: el `grid-template-columns:200px 1fr` inline le gana a la media query. `:2635`: pie con `bottom:64px`.
 - `ProductImagesPanel.vue:165-195`: los botones de principal, recortar y eliminar foto son `x-small`.
 - `StockTransfersPage.vue:97` y `TransferPage.vue`: tablas de 760 a 900 px sin vista en tarjetas. `DashboardTransferenciasTab.vue` y `TransferForm.vue` ya tenían vista móvil, pero **ninguna ruta los usa** (código muerto).
 - `ShopOrdersTable.vue:10`: unas 16 columnas sin vista móvil. `UsersPage.vue:761`: tabla de 900 px.
 - `ProductProfilePage` (`router:118`) no tiene enlaces que lleguen a ella; parece huérfana.
-- El login del backoffice **no tiene huella**. `biometric.js` solo se usa en el login del shop (`ShopLogin.vue:128`) y en `main.js:147`.
+- **La pantalla de ingreso del backoffice no tiene huella.** La APK Capacitor actual pide huella al arrancar (`main.js:132-160`, «Ingresá con tu huella para abrir Sj Tecnología»), pero ese bloqueo hidrata la sesión del **shop** (`useShopAuthStore`), no la del backoffice (`useAuthStore`). También usa `biometric.js` el login del shop (`ShopLogin.vue:128`).
 - La API emite por socket solo `transfer:dispatched|received|cancelled` (`stockTransfer.service.js`). No hay eventos de venta ni de pedido, ni push (FCM).
 - La impresión de tickets (`pos/utils/impresion.js`) manda ESC/POS a un programa local por `fetch`. En un teléfono ese programa no existe.
 
@@ -203,7 +203,7 @@ Los tokens salen del código. Se definen una vez como variables CSS (webapp) y c
 
 El método del workspace (`orchestrator/METODO-MOVIL.md`) dice que **Capacitor sirve solo para distribución interna** y que para Play va Flutter, porque Play rechaza una web empaquetada por la política de funcionalidad mínima. El pedido es Flutter en `movil/`. Antes de escribir código, el usuario tiene que decidir:
 
-1. **El destino.** ¿Google Play, o sigue por descarga directa (sideload) para el personal del comercio? Si es sideload, Capacitor alcanza y Flutter es un costo que no hace falta pagar. Si es Play (por ejemplo, para el SaaS de POS 360 con varios comercios), va Flutter.
+1. **El destino.** ¿Google Play, o sigue por descarga directa (sideload) para el personal del comercio? Si es sideload, Capacitor alcanza y Flutter es un costo que no hace falta pagar: Capacitor ya da cámara y huella, y lo que falta (impresión Bluetooth, push y caché sin conexión) se le puede sumar con plugins. Si es Play (por ejemplo, para el SaaS de POS 360 con varios comercios), va Flutter.
 2. **La transición.** Qué pasa con la APK Capacitor instalada hoy en los teléfonos: se reemplaza con el mismo `applicationId` `com.sanjuantecnologia.app` (requiere la misma firma), o la nueva usa otro ID y conviven un tiempo.
 3. **La página `/app/install` y el aviso `AppApkPrompt`.** Si la app pasa a Play, la página apunta a la ficha de Play y el aviso deja de ser invasivo (R4).
 
