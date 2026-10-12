@@ -35,6 +35,19 @@ export async function verPieza(id) {
   return data;
 }
 
+// "Editar video": lo que se mandó al crear (encargo y estado de la pantalla) y las ediciones
+// que quedan. Pesa (fotos): se pide sólo al tocar Editar.
+export async function encargoPieza(id) {
+  const { data } = await http.get(`${BASE}/piezas/${id}/encargo`);
+  return data;
+}
+
+// Vuelve a la versión anterior a la última edición (hasta publicar la nueva).
+export async function recuperarPieza(id) {
+  const { data } = await http.post(`${BASE}/piezas/${id}/recuperar`);
+  return data;
+}
+
 export async function borrarPieza(id) {
   await http.delete(`${BASE}/piezas/${id}`);
 }
