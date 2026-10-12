@@ -4,7 +4,8 @@
      campañas (CreadorCampanas, maqueta aprobada 11/10); si no, los cuatro pasos. 
      Nuevo reel: catálogo con categorías, guion escena por escena (portada,
      productos, cierre) con la voz de cada una, vista previa y sonido.
-     Videos: lo generado, con su avance. Vista completa, sin modales; la clave
+     Videos: lo generado, con su avance. Editar video reabre el creador por campañas
+     con el encargo de la pieza (2 ediciones sin cupo; la anterior se recupera hasta publicar). Vista completa, sin modales; la clave
      del servicio la pone la API. -->
 <template>
   <div class="sp ct">
@@ -26,7 +27,8 @@
     <!-- NUEVO REEL por campañas: si el servicio publica las campañas del comercio (spec VIDEOS-campanas) -->
     <template v-if="vista === 'nuevo' && conCampanas">
       <div v-if="recursos.activo === false" class="sp-caja ct-vacio">Los videos no están habilitados para este local.</div>
-      <CreadorCampanas v-else :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" />
+      <div v-else-if="route.query.editar && !edicion" class="sp-caja ct-vacio">{{ abriendo ? "Cargando…" : "El video no está disponible" }}</div>
+      <CreadorCampanas v-else :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
     </template>
 
     <!-- NUEVO REEL: cuatro pasos navegables (servicio sin campañas) -->
@@ -380,6 +382,11 @@
           <p v-if="v.descripcion" class="ct-video__desc">{{ v.descripcion }}</p>
           <p v-if="v.items?.length" class="ct-video__items">{{ v.items.map((x) => x.titulo).join(" · ") }}</p>
           <p v-if="v.voz?.usada" class="ct-video__items"><v-icon size="14">mdi-account-voice</v-icon> {{ nombreVoz(v.voz.usada) }}<template v-if="v.voz.respaldo"> · respaldo de {{ nombreVoz(v.voz.pedida) }}</template></p>
+          <p v-if="v.edicionFallida && v.estado === 'lista'" class="ct-video__fallo"><v-icon size="16">mdi-alert-circle-outline</v-icon>La edición no se pudo hacer; quedó el video anterior.</p>
+          <div v-if="v.versiones?.length && v.estado === 'lista'" class="ct-video__version">
+            <span>Versión anterior</span>
+            <button type="button" class="ct-lnk" :disabled="recuperando === v.id" @click="recuperar(v)">Recuperar</button>
+          </div>
         </div>
         <div v-if="enProceso(v)" class="ct-video__pie">
           <span class="ct-video__esp"></span>
@@ -398,6 +405,11 @@
             <v-icon size="20">mdi-delete-outline</v-icon><span v-if="confirmar === v.id">Confirmar</span>
           </button>
         </div>
+        <button v-if="v.estado === 'lista' && v.editable && conCampanas" type="button" class="ct-editar" :disabled="!quedanEdiciones(v) || abriendo === v.id" @click="abrirEdicion(v)">
+          <v-progress-circular v-if="abriendo === v.id" indeterminate size="18" width="2" />
+          <v-icon v-else size="20">mdi-movie-edit-outline</v-icon>Editar video
+          <span class="ct-editar__n num">{{ quedanEdiciones(v) }} de {{ v.ediciones?.tope ?? 2 }}</span>
+        </button>
       </div>
     </div>
   </div>
@@ -409,7 +421,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import CreadorCampanas from "@/modules/admin/components/contenidos/CreadorCampanas.vue";
-import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, getCupo, getRecursos, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, encargoPieza, recuperarPieza, getCupo, getRecursos, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -557,8 +569,11 @@ const conCampanas = computed(() => Array.isArray(recursos.value?.campanas));
 const aviso = ref("");
 let avisoReloj;
 function avisar(t) { aviso.value = t; clearTimeout(avisoReloj); avisoReloj = setTimeout(() => { aviso.value = ""; }, 2600); }
+// Un video nuevo entra arriba; uno editado vuelve con el mismo id y reemplaza al de la lista.
 function alGenerar(p) {
-  piezas.value = [p, ...piezas.value];
+  const i = piezas.value.findIndex((x) => x.id === p.id);
+  if (i >= 0) piezas.value[i] = p;
+  else piezas.value = [p, ...piezas.value];
   seguir();
   cargarCupo();
   irA("videos");
@@ -566,6 +581,10 @@ function alGenerar(p) {
 }
 function alFallarCampana(e) {
   if (e?.response?.data?.cupo) cupo.value = e.response.data.cupo;
+  // Ediciones agotadas (409): la tarjeta se actualiza con lo que dice el servicio.
+  const ed = e?.response?.data?.ediciones;
+  const id = route.query.editar;
+  if (ed && id) { const i = piezas.value.findIndex((x) => x.id === id); if (i >= 0) piezas.value[i] = { ...piezas.value[i], ediciones: ed }; }
   error.value = mensaje(e);
   cargarCupo();
 }
@@ -964,6 +983,50 @@ async function publicar() {
   } catch (e) { error.value = mensaje(e); } finally { publicando.value = false; }
 }
 
+/* Editar video: el encargo se pide al tocar Editar (pesa) y el creador se abre con
+   ?editar=<id>, así recargar la página vuelve al mismo armado. */
+const edicion = ref(null);
+const abriendo = ref(null);
+const recuperando = ref(null);
+let catalogoListo = Promise.resolve();
+const quedanEdiciones = (v) => v.ediciones?.quedan ?? Math.max(0, (v.ediciones?.tope ?? 2) - (v.ediciones?.hechas || 0));
+function abrirEdicion(v) {
+  if (!quedanEdiciones(v)) return;
+  irA("nuevo", { editar: v.id });
+}
+async function cargarEdicion() {
+  const id = route.query.editar ? String(route.query.editar) : "";
+  if (vista.value !== "nuevo" || !id) { edicion.value = null; return; }
+  if (edicion.value?.id === id) return;
+  edicion.value = null;
+  abriendo.value = id;
+  error.value = "";
+  try {
+    const [r] = await Promise.all([encargoPieza(id), catalogoListo]);
+    if (route.query.editar !== id) return;
+    const v = piezas.value.find((x) => x.id === id);
+    // Sin ediciones (se llegó por el enlace): el servicio la rechazaría con 409.
+    if (r.ediciones && !r.ediciones.quedan) {
+      error.value = `Este video ya usó sus ${r.ediciones.tope} ediciones.`;
+      irA("videos");
+      return;
+    }
+    edicion.value = { ...r, titulo: v?.titulo || r.encargo?.titulo || "" };
+  } catch (e) {
+    error.value = mensaje(e);
+  } finally { if (abriendo.value === id) abriendo.value = null; }
+}
+watch(() => [vista.value, route.query.editar], cargarEdicion);
+async function recuperar(v) {
+  recuperando.value = v.id;
+  try {
+    const n = await recuperarPieza(v.id);
+    const i = piezas.value.findIndex((x) => x.id === v.id);
+    if (i >= 0) piezas.value[i] = n;
+    avisar("Versión anterior recuperada");
+  } catch (e) { error.value = mensaje(e); } finally { recuperando.value = null; }
+}
+
 /* Videos */
 async function cancelar(v) {
   if (confirmar.value !== v.id) {
@@ -1072,7 +1135,8 @@ onMounted(async () => {
   try {
     fuente.value = await getFuente();
   } catch (e) { error.value = mensaje(e); }
-  cargarCatalogo();
+  catalogoListo = cargarCatalogo();
+  cargarEdicion();
   cargarRedes();
   cargarPublicar();
   cargarPromos();
@@ -1341,6 +1405,17 @@ onBeforeUnmount(() => { clearTimeout(avisoReloj); clearTimeout(reloj); clearTime
 .ct-video__cancelar { border: 0; background: transparent; font: 700 14px Inter, sans-serif; color: var(--sp-suave); cursor: pointer; padding: 0 6px; }
 .ct-datos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; padding: 10px 16px 16px; }
 .ct-video__esp { flex: 1; }
+.ct-editar { height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-acento); font: 800 15px Inter, sans-serif; cursor: pointer; white-space: nowrap; }
+.ct-editar .v-icon { color: var(--sp-acento); }
+.ct-editar:hover:not(:disabled) { background: #cfe5f5; border-color: #3f8fc6; }
+:is(.v-theme--dark, .v-theme--adminDark) .ct-editar:hover:not(:disabled) { background: #1a2a3a; }
+.ct-editar:disabled { cursor: default; color: var(--sp-suave); opacity: .6; }
+.ct-editar:disabled .v-icon { color: var(--sp-suave); }
+.ct-editar__n { padding: 1px 8px; border-radius: 9999px; background: var(--sp-linea); color: var(--sp-suave); font-size: 12.5px; font-weight: 800; }
+.ct-video__fallo { margin: 0; display: flex; align-items: flex-start; gap: 6px; font-size: 13px; font-weight: 700; line-height: 1.35; color: #a0522d; }
+.ct-video__fallo .v-icon { color: inherit; margin-top: 1px; }
+.ct-video__version { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; color: var(--sp-suave); }
+.ct-video__version .ct-lnk { font-size: 14px; padding: 2px 4px; }
 .ct-bajar { flex: 1; border: 0; cursor: pointer; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; background: #0f6fae; color: #fff !important; font: 800 15px Inter, sans-serif; text-decoration: none; white-space: nowrap; }
 .ct-bajar .v-icon { color: #fff !important; }
 .ct-bajar:hover { background: #0a5a90; }

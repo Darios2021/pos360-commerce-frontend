@@ -3,7 +3,10 @@
      (guion entero editable en línea + reel vivo + Generar). Todo lo escribe el sistema:
      2 clics y 0 campos para lanzar. Lo que la consola no habilita no aparece: las
      campañas, estilos y voces salen de GET /recursos. Sin modales: el selector de
-     productos se abre en la misma fila. -->
+     productos se abre en la misma fila.
+     Editar video (contrato CONTENIDO-editar-video): con `edicion` abre el armado con el
+     encargo del video ya hecho, sin pedir textos nuevos, y Generar lo rehace sobre la
+     misma pieza (deRevision): no mira el cupo. -->
 <template>
   <div class="cc">
     <!-- ESTADO 1: campañas -->
@@ -38,13 +41,14 @@
             <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
             <v-icon v-else size="22">mdi-movie-open-outline</v-icon>Generar video
           </button>
-          <span v-if="sinCupo" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
+          <span v-if="sinCupo && !editando" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
         </aside>
 
         <div class="cc-col">
           <div class="cc-pieza cc-cab">
-            <div class="cc-cab__t"><b>{{ camp.nombre }}</b><span v-if="camp.chip" class="cc-chip">{{ camp.chip }}</span></div>
-            <button type="button" class="cc-lnk" @click="cerrar">Otra campaña</button>
+            <div class="cc-cab__t"><b>{{ editando ? editando.titulo || camp.nombre : camp.nombre }}</b><span v-if="editando" class="cc-chip num">Edición {{ editando.numero }} de {{ editando.tope }}</span><span v-else-if="camp.chip" class="cc-chip">{{ camp.chip }}</span></div>
+            <button v-if="editando" type="button" class="cc-lnk" @click="descartar">Descartar</button>
+            <button v-else type="button" class="cc-lnk" @click="cerrar">Otra campaña</button>
           </div>
 
           <div class="cc-pieza cc-guion">
@@ -157,8 +161,10 @@ const props = defineProps({
   catalogo: { type: Array, default: () => [] },
   promoIds: { type: Object, default: () => new Set() },
   cupo: { type: Object, default: null },
+  // Editar video: { id, titulo, encargo, pantalla?, ediciones } (GET /piezas/:id/encargo).
+  edicion: { type: Object, default: null },
 });
-const emit = defineEmits(["generado", "error", "no-habilitado"]);
+const emit = defineEmits(["generado", "error", "no-habilitado", "descartar"]);
 const route = useRoute();
 const router = useRouter();
 
@@ -205,6 +211,8 @@ function elegirRitmo(v) { son.ritmo = v; reajustar(); }
 
 /* ── Armado ── */
 const camp = ref(null);
+// Video que se está editando: { id, titulo, numero, tope }. null = video nuevo.
+const editando = ref(null);
 const esc = ref([]);
 const cargando = ref(false);
 const creando = ref(false);
@@ -221,7 +229,7 @@ const total = computed(() => esc.value.reduce((a, e) => a + durDe(e), 0));
 const nItem = (i) => esc.value.slice(0, i).filter((e) => e.tipo === "item").length + 1;
 const pasa = (e) => conVoz.value && medir(e.voz) > durDe(e) + 0.05;
 const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <= 0);
-const puedeGenerar = computed(() => !creando.value && !sinCupo.value && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
+const puedeGenerar = computed(() => !creando.value && (editando.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
 const datoCierre = computed(() => {
@@ -247,10 +255,65 @@ function abrir(c, { conRuta = true } = {}) {
 }
 function cerrar() {
   camp.value = null;
+  editando.value = null;
   esc.value = [];
   cortarMuestra();
   const { campana, vista, ...resto } = route.query;
   router.replace({ query: resto });
+}
+
+/* ── Editar video: el armado con el encargo guardado, sin pedir textos al servicio ──
+   La campaña sale del estado que guardó la pantalla o del encargo; si ya no está
+   habilitada, Libre. Los productos se buscan en el catálogo por id (precio y stock de
+   hoy); si no están, se arman con lo que dice el encargo. Lo que se precarga cuenta
+   como escrito: sólo "Otra versión" o un producto nuevo piden textos. */
+function abrirEdicion(ed) {
+  const enc = ed.encargo || {};
+  const pan = ed.pantalla?.creador === "campanas" ? ed.pantalla : null;
+  const idCamp = pan ? pan.campana : enc.campana;
+  const c = campanas.value.find((x) => x.id === idCamp) || LIBRE;
+  cortarMuestra();
+  camp.value = c;
+  sonidoDe(c);
+  if (enc.paquete && estilos.value.some((e) => e.id === enc.paquete)) son.paquete = enc.paquete;
+  if (enc.musica === null || (props.recursos.musicas || []).some((m) => m.id === enc.musica)) son.musica = enc.musica;
+  if (voces.value.some((v) => v.id === enc.voz?.locutor)) son.locutor = enc.voz.locutor;
+  const vel = Number(enc.voz?.velocidad);
+  if (vel) son.ritmo = RITMOS.reduce((a, r) => (Math.abs(r.velocidad - vel) < Math.abs(a.velocidad - vel) ? r : a)).v;
+  const g = enc.voz?.guion || {};
+  const escrito = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v).map(([k]) => [k, true]));
+  const variantes = pan?.variantes || [];
+  const portada = { titular: enc.apertura?.titular || "", bajada: enc.apertura?.bajada || "", voz: g.intro || "" };
+  const cierre = { llamado: enc.textos?.llamado || "", voz: g.cierre || "" };
+  const its = (enc.items || []).slice(0, TOPE_PRODUCTOS).map((it, i) => {
+    const prod = props.catalogo.find((p) => it.id != null && String(p.id) === String(it.id))
+      || { id: it.id ?? `encargo-${i}`, titulo: it.titulo, nombre: it.titulo, precio: it.precio, precioAnterior: it.precioAnterior, imagen: it.imagen, cuotas: it.cuotas, descripcion: it.descripcion, categoria: it.categoria, stock: it.stock };
+    const txt = { etiqueta: it.etiqueta || "", voz: g.items?.[i] || "" };
+    const caracteristicas = String(it.descripcion || "").split(/\s*·\s*/).filter(Boolean).slice(0, 3);
+    return nueva("item", { prod, ...txt, caracteristicas, editado: escrito(txt), variante: variantes[i + 1] || 0 });
+  });
+  esc.value = [
+    nueva("portada", { ...portada, editado: escrito(portada), variante: variantes[0] || 0 }),
+    ...its,
+    nueva("cierre", { ...cierre, editado: escrito(cierre), variante: variantes.at(-1) || 0 }),
+  ];
+  publicacion.titulo = enc.titulo || ed.titulo || c.nombre;
+  publicacion.texto = enc.descripcion || "";
+  editando.value = { id: ed.id, titulo: ed.titulo || enc.titulo || "", numero: (ed.ediciones?.hechas || 0) + 1, tope: ed.ediciones?.tope || 2 };
+  eligiendo.value = null;
+  cargando.value = false;
+  pedido++;
+  t.value = 0;
+  play.value = true;
+  nextTick(crecer);
+  window.scrollTo({ top: 0 });
+}
+function descartar() {
+  camp.value = null;
+  esc.value = [];
+  editando.value = null;
+  cortarMuestra();
+  emit("descartar");
 }
 
 /* Textos: los escribe el servicio (POST /guion con la campaña); sin `textos` en la respuesta
@@ -316,7 +379,7 @@ function aplicar(tx, solo = null) {
       if (Array.isArray(s.caracteristicas)) e.caracteristicas = s.caracteristicas.filter(Boolean).slice(0, 3);
     }
   }
-  if (!solo) {
+  if (!solo && !editando.value) {
     publicacion.titulo = tx.titulo || camp.value.nombre;
     publicacion.texto = tx.publicacion || "";
   }
@@ -491,10 +554,13 @@ async function generar() {
       guion: { intro: portada.voz.trim() || undefined, items: items.value.map((e) => e.voz.trim()), cierre: cierre.voz.trim() || undefined },
     },
   };
+  // Lo que la pantalla necesita para reabrir este armado tal cual (Editar video).
+  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0) };
   try {
-    const p = await crearPieza(encargo);
+    const p = await crearPieza({ ...encargo, pantalla, ...(editando.value ? { deRevision: editando.value.id } : {}) });
     camp.value = null;
     esc.value = [];
+    editando.value = null;
     emit("generado", p);
   } catch (e) {
     if (e?.response?.status === 403 && e.response.data?.codigo === "recurso_no_habilitado") { emit("no-habilitado"); cerrar(); }
@@ -504,12 +570,17 @@ async function generar() {
 
 /* Recargar la página con ?campana= vuelve al armado cuando ya está el catálogo. */
 watch(() => [route.query.campana, props.catalogo.length, campanas.value.length], ([id]) => {
+  if (props.edicion) return;
   if (!id) { if (camp.value) { camp.value = null; esc.value = []; } return; }
   if (camp.value?.id === id || !props.catalogo.length) return;
   const c = campanas.value.find((x) => x.id === id);
   if (c) abrir(c, { conRuta: false });
 }, { immediate: true });
-watch(() => props.recursos, () => { if (camp.value && !campanas.value.some((c) => c.id === camp.value.id)) cerrar(); });
+watch(() => props.recursos, () => { if (camp.value && !editando.value && !campanas.value.some((c) => c.id === camp.value.id)) cerrar(); });
+watch(() => props.edicion, (ed) => {
+  if (ed) abrirEdicion(ed);
+  else if (editando.value) { camp.value = null; esc.value = []; editando.value = null; }
+}, { immediate: true });
 
 function alOcultar() { if (document.hidden) cortarMuestra(); }
 document.addEventListener("visibilitychange", alOcultar);
