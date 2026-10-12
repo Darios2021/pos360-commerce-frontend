@@ -51,6 +51,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import http from "@/app/api/http";
 import MovilVista from "@/app/components/movil/MovilVista.vue";
 import MovilAviso from "@/app/components/movil/MovilAviso.vue";
@@ -59,9 +60,10 @@ import { cant } from "../lib/formato";
 import { avisar } from "../lib/aviso";
 import { cargarDepositos, depositoPropio, depositos, rotuloDeposito } from "../lib/depositos";
 import { textoError } from "../services/conteos.service";
-import { conteo, diferencia, fijarContado, nuevoConteo, refrescarConteo, retomarBorrador } from "../state/conteo";
+import { abrirConteo, conteo, diferencia, fijarContado, nuevoConteo, refrescarConteo, retomarBorrador } from "../state/conteo";
 
 const auth = useAuthStore();
+const route = useRoute();
 const filtro = ref("");
 const rubros = ref([]);
 const error = ref("");
@@ -100,6 +102,8 @@ watch(() => conteo.warehouseId, (n, o) => {
 onMounted(async () => {
   const lista = await cargarDepositos();
   if (!conteo.warehouseId) conteo.warehouseId = depositoPropio(lista, auth.branchId)?.id || null;
+  // ?id= viene del aviso push "Conteo para aprobar": abre ese conteo.
+  if (route.query.id) await abrirConteo(route.query.id);
   await refrescarConteo();
   await retomarBorrador({ esAdmin: auth.isAdmin });
   try {

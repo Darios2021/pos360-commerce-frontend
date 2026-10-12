@@ -18,7 +18,8 @@ const INICIAL = {
   motivo: "",
   // [{ product_id, name, code, image, sistema, contado }]
   lineas: [],
-  // product_id -> category_id, para el filtro por rubro (los renglones del servidor no lo traen)
+  // product_id -> category_id, para el filtro por rubro (los renglones del
+  // servidor lo traen en product.category_id; la API vieja no)
   rubros: {},
 };
 
@@ -41,6 +42,12 @@ export function tomarDelServidor(c) {
   if (c.warehouse_id) conteo.warehouseId = c.warehouse_id;
   if (c.motivo && !conteo.motivo) conteo.motivo = c.motivo;
   if (Array.isArray(c.items)) {
+    const rubros = { ...conteo.rubros };
+    for (const it of c.items) {
+      const cat = Number(it.product?.category_id || 0);
+      if (cat) rubros[it.product_id] = cat;
+    }
+    conteo.rubros = rubros;
     conteo.lineas = c.items.map((it) => {
       const p = it.product || {};
       return {
@@ -108,6 +115,21 @@ export async function refrescarConteo() {
   } catch (e) {
     if (e.status === 404) nuevoConteo(conteo.warehouseId);
   }
+}
+
+/**
+ * Abre un conteo puntual (el aviso push de "Conteo para aprobar" trae su id).
+ * Sólo si sigue abierto; el que había en el teléfono queda en el servidor.
+ */
+export async function abrirConteo(id) {
+  const nid = Number(id || 0);
+  if (!nid || Number(conteo.servidorId) === nid) return;
+  try {
+    const c = await api.obtenerConteo(nid);
+    if (!c || !["draft", "pending"].includes(c.status)) return;
+    nuevoConteo(c.warehouse_id || null);
+    tomarDelServidor(c);
+  } catch { /* sin red o sin acceso: sigue el conteo del teléfono */ }
 }
 
 /** Sin conteo en este teléfono: retoma el borrador abierto del depósito, si hay. */
