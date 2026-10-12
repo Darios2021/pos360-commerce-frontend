@@ -8,9 +8,10 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Subir versionCode en cada APK que se publique: Android no instala
-        // encima uno igual o menor. 1 = mayo 2026 (firmado con llave debug ajena).
-        versionCode 2
-        versionName "2.0.0"
+        // encima uno igual o menor. 1 = mayo 2026 (firmado con llave debug ajena),
+        // 2 = 2.0.0, 3 = 2.1.0 (cargador movil).
+        versionCode 3
+        versionName "2.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

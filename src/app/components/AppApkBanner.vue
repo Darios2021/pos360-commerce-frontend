@@ -3,8 +3,8 @@
     <div class="apk-banner__inner">
       <v-icon class="apk-banner__icon" size="22">mdi-android</v-icon>
       <div class="apk-banner__text">
-        <strong>Descargá la app</strong>
-        <span class="apk-banner__sub">Mejor experiencia desde tu Android</span>
+        <strong>App para Android</strong>
+        <span class="apk-banner__sub">Más rápida y en pantalla completa</span>
       </div>
       <v-btn
         :to="{ name: 'appInstall' }"
@@ -63,9 +63,9 @@ function onDismiss() {
 }
 
 function onInstall() {
-  // Si el usuario inicia la descarga, también ocultamos el banner para no
+  // Si el usuario inicia la descarga, también se oculta el banner para no
   // ser repetitivos. Si no se instala, vuelve a aparecer en la próxima sesión
-  // (no aplicamos TTL acá — solo en dismiss explícito).
+  // (sin TTL acá: solo en el cierre explícito).
   visible.value = false;
 }
 

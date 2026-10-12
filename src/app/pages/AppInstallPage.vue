@@ -7,10 +7,9 @@
     <main class="install-page__main">
       <section class="install-hero">
         <v-icon size="48" color="primary" class="install-hero__icon">mdi-android</v-icon>
-        <h1 class="install-hero__title">Instalá San Juan Tecnología</h1>
+        <h1 class="install-hero__title">San Juan Tecnología para Android</h1>
         <p class="install-hero__sub">
-          App Android para una experiencia más rápida, sin barra del navegador y con
-          accesos directos en tu pantalla de inicio.
+          Más rápida, en pantalla completa y con acceso directo.
         </p>
 
         <v-btn
@@ -26,38 +25,36 @@
           Descargar APK
         </v-btn>
 
-        <!-- Versión 2 (oct. 2026): firma nueva. Android no la instala encima de
-             la anterior; hay que desinstalar la vieja una sola vez. -->
+        <!-- Desde la 2.0 la firma es otra: Android no la instala encima de una
+             versión anterior y responde "No se instaló la app". -->
         <p class="install-hero__warn">
           <v-icon size="16">mdi-information-outline</v-icon>
-          ¿Ya tenés la app? Esta vez desinstalá la anterior antes de instalar la nueva.
+          Si hay una versión anterior, desinstalarla primero.
         </p>
 
         <p v-if="!isAndroid" class="install-hero__warn">
           <v-icon size="16">mdi-information-outline</v-icon>
-          Esta app es solo para Android. Si estás en iPhone, seguí usando la web.
+          Solo para Android.
         </p>
       </section>
 
       <section class="install-steps">
-        <h2 class="install-steps__title">Cómo instalarla</h2>
+        <h2 class="install-steps__title">Instalación</h2>
 
         <ol class="install-steps__list">
           <li class="install-step">
             <div class="install-step__num">1</div>
             <div class="install-step__body">
-              <strong>Tocá "Descargar APK"</strong>
-              <span>Se va a guardar el archivo en tu carpeta de descargas.</span>
+              <strong>Descargar el APK</strong>
             </div>
           </li>
 
           <li class="install-step">
             <div class="install-step__num">2</div>
             <div class="install-step__body">
-              <strong>Abrí el archivo descargado</strong>
+              <strong>Abrir el archivo descargado</strong>
               <span>
-                Si Android te pide permiso, tocá <em>"Configuración"</em> y activá
-                <em>"Permitir desde esta fuente"</em>.
+                Si Android lo pide: <em>Configuración</em>, <em>Permitir desde esta fuente</em>.
               </span>
             </div>
           </li>
@@ -65,45 +62,18 @@
           <li class="install-step">
             <div class="install-step__num">3</div>
             <div class="install-step__body">
-              <strong>Tocá "Instalar"</strong>
-              <span>El sistema va a verificar la app y la va a instalar en segundos.</span>
+              <strong>Instalar</strong>
             </div>
           </li>
 
           <li class="install-step">
             <div class="install-step__num">4</div>
             <div class="install-step__body">
-              <strong>Abrí la app</strong>
-              <span>Vas a verla en tu pantalla de inicio con el logo de San Juan Tecnología.</span>
+              <strong>Abrir la app</strong>
+              <span>Mismo usuario y contraseña de la web.</span>
             </div>
           </li>
         </ol>
-      </section>
-
-      <section class="install-faq">
-        <details class="install-faq__item">
-          <summary>¿Es seguro instalar APKs?</summary>
-          <p>
-            Sí — esta APK es la app oficial de San Juan Tecnología, descargada
-            directamente desde nuestro dominio. Android te avisa porque no la bajás
-            de Play Store, pero el archivo es el mismo que usamos en producción.
-          </p>
-        </details>
-
-        <details class="install-faq__item">
-          <summary>¿Necesito desinstalar la web?</summary>
-          <p>
-            No. Podés seguir usando la versión web cuando quieras. La APK sólo te
-            da una experiencia más fluida en celular.
-          </p>
-        </details>
-
-        <details class="install-faq__item">
-          <summary>¿Cómo me conecto?</summary>
-          <p>
-            Con tu mismo usuario y contraseña que usás en sanjuantecnologia.com.
-          </p>
-        </details>
       </section>
 
       <footer class="install-page__footer">
@@ -137,7 +107,7 @@ useHead({
     {
       name: "description",
       content:
-        "Descargá e instalá la app Android de San Juan Tecnología. Acceso rápido y mejor experiencia desde tu celular.",
+        "App Android de San Juan Tecnología.",
     },
     { name: "robots", content: "noindex" },
   ],
@@ -215,12 +185,14 @@ useHead({
   height: 48px !important;
 }
 .install-hero__warn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   font-size: 12.5px;
+  line-height: 1.35;
   color: rgba(var(--v-theme-on-surface), 0.6);
   margin: 4px 0 0;
+}
+.install-hero__warn .v-icon {
+  margin-right: 4px;
+  vertical-align: -3px;
 }
 
 /* Steps */
@@ -277,44 +249,6 @@ useHead({
   font-style: normal;
   font-weight: 540;
   color: rgba(var(--v-theme-on-surface), 0.85);
-}
-
-/* FAQ */
-.install-faq {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.install-faq__item {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px;
-  padding: 12px 14px;
-}
-.install-faq__item summary {
-  cursor: pointer;
-  font-size: 13.5px;
-  font-weight: 540;
-  color: rgba(var(--v-theme-on-surface), 0.92);
-  list-style: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.install-faq__item summary::after {
-  content: "+";
-  font-size: 18px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  transition: transform 0.2s;
-}
-.install-faq__item[open] summary::after {
-  content: "−";
-}
-.install-faq__item p {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 /* Footer */

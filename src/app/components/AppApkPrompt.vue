@@ -10,11 +10,8 @@
 
         <div class="apk-prompt__body">
           <h2 id="apk-prompt-title" class="apk-prompt__title">
-            Mejor experiencia con la app
+            App para Android
           </h2>
-          <p class="apk-prompt__sub">
-            Estás usando la versión web. Instalá la app para Android y obtené:
-          </p>
 
           <ul class="apk-prompt__perks">
             <li>
@@ -23,17 +20,24 @@
             </li>
             <li>
               <v-icon size="18" color="primary">mdi-cellphone-link</v-icon>
-              Acceso directo desde el cel
+              Acceso directo en el teléfono
             </li>
             <li>
               <v-icon size="18" color="primary">mdi-barcode-scan</v-icon>
-              Lector de barras nativo
+              Lector de códigos nativo
             </li>
             <li>
               <v-icon size="18" color="primary">mdi-fullscreen</v-icon>
-              Pantalla completa, sin barra del navegador
+              Pantalla completa
             </li>
           </ul>
+
+          <!-- 2.1.0 viene con otra firma: Android no la instala encima de la
+               anterior ("No se instaló la app"). -->
+          <p class="apk-prompt__warn">
+            <v-icon size="16">mdi-information-outline</v-icon>
+            Si hay una versión anterior, desinstalarla primero.
+          </p>
         </div>
 
         <div class="apk-prompt__actions">
@@ -52,9 +56,6 @@
           <button class="apk-prompt__cta-skip" @click="onSkip">
             Seguir en el navegador
           </button>
-          <p class="apk-prompt__cta-note">
-            Te lo vamos a recordar la próxima vez que entres.
-          </p>
         </div>
       </div>
     </div>
@@ -172,14 +173,7 @@ watch(
   font-weight: 540;
   letter-spacing: -0.01em;
   line-height: 1.2;
-  margin: 0 0 8px;
-  text-align: center;
-}
-.apk-prompt__sub {
-  font-size: 14px;
-  line-height: 1.45;
   margin: 0 0 16px;
-  color: rgba(var(--v-theme-on-surface), 0.7);
   text-align: center;
 }
 
@@ -200,6 +194,18 @@ watch(
   padding: 10px 12px;
   background: rgba(var(--v-theme-on-surface), 0.04);
   border-radius: 12px;
+}
+
+.apk-prompt__warn {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+.apk-prompt__warn .v-icon {
+  margin-right: 4px;
+  vertical-align: -3px;
 }
 
 /* Actions */
@@ -229,12 +235,5 @@ watch(
 }
 .apk-prompt__cta-skip:hover {
   color: rgba(var(--v-theme-on-surface), 0.85);
-}
-.apk-prompt__cta-note {
-  margin: 0;
-  text-align: center;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  line-height: 1.3;
 }
 </style>
