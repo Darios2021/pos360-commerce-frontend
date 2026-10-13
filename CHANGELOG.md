@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-10-13 · Micrófono del POS v2: corte automático y búsqueda directa en la grilla
+
+- El dictado se corta solo: al resultado final, a los 1,2 s de silencio tras el último
+  resultado, a los 8 s como tope duro, o a los 5 s si no se detectó voz (aviso «No se escuchó
+  nada»). `onend` y los errores devuelven siempre el botón a reposo.
+- Al terminar se busca directo en la grilla (mismo efecto que Enter), sin abrir el desplegable
+  de sugerencias, y se suelta el foco para que en el celular no salga el teclado. Los parciales
+  se ven en el campo sin disparar sugerencias.
+- Archivos: `usePosDictado.js` (nuevo `alTerminar`, timers) y `PosScannerSearchBar.vue`.
+
 ## 2026-10-13 · Buscador del POS: micrófono para buscar por voz
 
 - Botón de micrófono (44 px) a la izquierda de LECTOR en `PosScannerSearchBar.vue`. Web Speech

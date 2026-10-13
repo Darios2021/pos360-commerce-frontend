@@ -383,13 +383,34 @@ function clearInternal(emitClear = true) {
   hadSuggestionsFetch.value = false;
 }
 
-// Dictado: el texto entra al buscador como si se hubiera tipeado.
+// Dictado. Mientras se habla, el texto se ve en el campo SIN abrir sugerencias;
+// al terminar se busca directo en la grilla (como Enter) y se suelta el foco
+// para que en el celular no se abra el teclado.
+function soltarFoco() {
+  setTimeout(() => {
+    getNativeInput()?.blur?.();
+    isFocused.value = false;
+  }, 60);
+}
+
 const dictado = usePosDictado({
   alTexto: (texto) => {
     qLocal.value = texto;
-    onTyping(texto);
   },
-  alBorrar: () => onClear(),
+  alTerminar: (texto) => {
+    cancelPendingFetch();
+    suggestions.value = [];
+    loadingSugg.value = false;
+    hadSuggestionsFetch.value = false;
+    closeDropdown();
+    qLocal.value = texto;
+    emit("enter", texto);
+    soltarFoco();
+  },
+  alBorrar: () => {
+    clearInternal(true);
+    soltarFoco();
+  },
 });
 
 const micEtiqueta = computed(() => {
@@ -400,6 +421,8 @@ const micEtiqueta = computed(() => {
 function onMic() {
   if (props.disabledAll) return;
   dictado.limpiarError();
+  cancelPendingFetch();
+  closeDropdown();
   dictado.alternar();
 }
 

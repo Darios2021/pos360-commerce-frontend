@@ -5,7 +5,8 @@
 // servicio propio. Mismo patron que useDictado de Alade (es-AR, parciales,
 // sin abrir un getUserMedia propio porque en Android le quita el microfono al
 // reconocimiento), con estas diferencias:
-//   · continuo: se pueden dictar varios productos seguidos hasta tocar de nuevo;
+//   · se corta solo: al resultado final, tras 1,2 s de silencio, a los 8 s o
+//     si en 5 s no se detecto voz; el boton nunca queda rojo colgado;
 //   · el comando "borrar" limpia el campo y corta el dictado;
 //   · se descartan cantidades dichas al principio ("dos coca cola"): el
 //     buscador no agrega al carrito, asi que solo se busca el producto;
@@ -57,15 +58,51 @@ export function esComandoBorrar(texto) {
   return n === "borrar" || n === "borra" || n === "borrar todo";
 }
 
-export function usePosDictado({ alTexto, alBorrar } = {}) {
+// Tiempos del corte automatico (v2, 2026-10-13: "a veces queda abierto").
+export const SILENCIO_MS = 1200; // tras el ultimo resultado
+export const TOPE_MS = 8000; // maximo de una escucha
+export const SIN_VOZ_MS = 5000; // si nunca se detecto voz
+
+/**
+ * alTexto(texto): parciales mientras se habla (solo mostrar, no buscar).
+ * alTerminar(texto): una sola vez al cerrar la escucha, con el texto final.
+ * alBorrar(): comando de voz "borrar".
+ */
+export function usePosDictado({ alTexto, alTerminar, alBorrar } = {}) {
   const soportado = !!resolverReconocedor();
   const escuchando = ref(false);
   const error = ref("");
   let reconocedor = null;
   let finales = "";
+  let parcial = "";
+  let huboVoz = false;
+  let borrado = false;
+  let tSilencio = null;
+  let tTope = null;
+  let tSinVoz = null;
+
+  function limpiarTimers() {
+    clearTimeout(tSilencio);
+    clearTimeout(tTope);
+    clearTimeout(tSinVoz);
+    tSilencio = tTope = tSinVoz = null;
+  }
 
   function cortar() {
     try { reconocedor?.stop(); } catch { /* ya estaba cortado */ }
+  }
+
+  // Cierre unico: el boton vuelve a reposo pase lo que pase (onend, error,
+  // corte del navegador o nuestros timers) y se entrega el texto una vez.
+  function cerrar() {
+    limpiarTimers();
+    const estaba = escuchando.value;
+    escuchando.value = false;
+    if (!estaba) return;
+    if (borrado) return;
+    const texto = limpiarDictado(`${finales} ${parcial}`.replace(/\s+/g, " ").trim());
+    if (texto) alTerminar?.(texto);
+    else if (!huboVoz && !error.value) error.value = "No se escuchó nada. Tocá el micrófono y hablá de nuevo.";
   }
 
   function alternar() {
@@ -77,6 +114,9 @@ export function usePosDictado({ alTexto, alBorrar } = {}) {
 
     error.value = "";
     finales = "";
+    parcial = "";
+    huboVoz = false;
+    borrado = false;
     try {
       const Reconocedor = resolverReconocedor();
       reconocedor = new Reconocedor();
@@ -86,18 +126,23 @@ export function usePosDictado({ alTexto, alBorrar } = {}) {
       reconocedor.maxAlternatives = 1;
 
       reconocedor.onresult = (ev) => {
-        let parcial = "";
+        huboVoz = true;
+        clearTimeout(tSinVoz);
+        let hayFinal = false;
+        parcial = "";
         for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
           const r = ev.results[i];
           if (r.isFinal) {
             const dicho = r[0].transcript;
             if (esComandoBorrar(dicho)) {
               finales = "";
+              borrado = true;
               alBorrar?.();
               cortar();
               return;
             }
             finales += `${finales ? " " : ""}${dicho.trim()}`;
+            hayFinal = true;
           } else {
             parcial += r[0].transcript;
           }
@@ -105,25 +150,33 @@ export function usePosDictado({ alTexto, alBorrar } = {}) {
         if (esComandoBorrar(parcial)) return;
         const texto = limpiarDictado(`${finales} ${parcial}`.trim());
         if (texto) alTexto?.(texto);
+        // Resultado final: se corta. Si solo hay parciales, corta el silencio.
+        if (hayFinal) { cortar(); return; }
+        clearTimeout(tSilencio);
+        tSilencio = setTimeout(cortar, SILENCIO_MS);
       };
-      reconocedor.onend = () => { escuchando.value = false; };
+      reconocedor.onspeechend = () => cortar();
+      reconocedor.onend = cerrar;
       reconocedor.onerror = (ev) => {
         const codigo = ev?.error || "desconocido";
         if (codigo === "aborted") return;
         error.value = MENSAJES[codigo] || `No se pudo usar el dictado (${codigo}).`;
-        escuchando.value = false;
+        cerrar();
       };
       reconocedor.start();
       escuchando.value = true;
+      tTope = setTimeout(cortar, TOPE_MS);
+      tSinVoz = setTimeout(cortar, SIN_VOZ_MS);
     } catch (e) {
       error.value = "No se pudo iniciar el dictado. Probá de nuevo.";
+      limpiarTimers();
       escuchando.value = false;
     }
   }
 
   function limpiarError() { error.value = ""; }
 
-  onBeforeUnmount(() => { try { reconocedor?.abort?.(); } catch { /* nada que cortar */ } });
+  onBeforeUnmount(() => { limpiarTimers(); try { reconocedor?.abort?.(); } catch { /* nada que cortar */ } });
 
   return { soportado, escuchando, error, alternar, limpiarError, detener: cortar };
 }
