@@ -42,6 +42,20 @@
           <span v-if="focusHotkey" class="psb-tecla" aria-hidden="true">{{ focusHotkey }}</span>
           <button
             type="button"
+            class="psb-mic"
+            :class="{ 'is-escuchando': dictado.escuchando.value, 'is-error': !!dictado.error.value, 'is-nodisp': !dictado.soportado }"
+            :disabled="disabledAll || !dictado.soportado"
+            :aria-label="micEtiqueta"
+            :title="micEtiqueta"
+            :aria-pressed="dictado.escuchando.value ? 'true' : 'false'"
+            data-testid="pos-mic"
+            @mousedown.prevent
+            @click.stop="onMic"
+          >
+            <v-icon size="22">{{ dictado.escuchando.value ? "mdi-microphone" : dictado.soportado ? "mdi-microphone-outline" : "mdi-microphone-off" }}</v-icon>
+          </button>
+          <button
+            type="button"
             class="scanner-toggle psb-lector"
             :class="{ active: isOn }"
             :disabled="disabledAll"
@@ -55,6 +69,19 @@
           </button>
         </template>
       </v-text-field>
+
+      <div
+        v-if="dictado.escuchando.value || dictado.error.value || !dictado.soportado"
+        class="psb-voz-aviso"
+        :class="{ 'is-error': !!dictado.error.value }"
+        role="status"
+        aria-live="polite"
+        data-testid="pos-mic-aviso"
+      >
+        <template v-if="dictado.error.value">{{ dictado.error.value }}</template>
+        <template v-else-if="dictado.escuchando.value">Escuchando… dictá el producto. Decí «borrar» o tocá el micrófono para cortar.</template>
+        <template v-else>Este navegador no permite buscar por voz. Probá con Chrome o Edge.</template>
+      </div>
 
       <transition name="search-pill">
         <div v-if="hotkeyActive" class="search-hotkey-pill">
@@ -168,6 +195,7 @@ import {
   onBeforeUnmount,
 } from "vue";
 import http from "../../../app/api/http";
+import { usePosDictado } from "../composables/usePosDictado";
 
 // Necesario porque el <template> tiene 2 root nodes (div + Teleport).
 // Sin esto, Vue intenta inferir a cuál pegarle attrs y emite el warning
@@ -353,6 +381,26 @@ function clearInternal(emitClear = true) {
   closeDropdown();
   suggestions.value = [];
   hadSuggestionsFetch.value = false;
+}
+
+// Dictado: el texto entra al buscador como si se hubiera tipeado.
+const dictado = usePosDictado({
+  alTexto: (texto) => {
+    qLocal.value = texto;
+    onTyping(texto);
+  },
+  alBorrar: () => onClear(),
+});
+
+const micEtiqueta = computed(() => {
+  if (!dictado.soportado) return "Buscar por voz no disponible en este navegador";
+  return dictado.escuchando.value ? "Dejar de escuchar" : "Buscar por voz";
+});
+
+function onMic() {
+  if (props.disabledAll) return;
+  dictado.limpiarError();
+  dictado.alternar();
 }
 
 function onTyping(value) {
@@ -971,6 +1019,51 @@ defineExpose({
   background: linear-gradient(#f8fafc, #cbd5e1);
   border: 1px solid rgba(100, 116, 139, 0.6);
   box-shadow: 0 2px 0 rgba(15, 23, 42, 0.45), 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+.psb-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 12px;
+  background: var(--z-tonal, rgba(15, 23, 42, 0.05));
+  color: var(--z-suave, #64748b);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.psb-mic:hover:not(:disabled) { background: rgba(15, 111, 174, 0.12); color: #0f6fae; }
+.psb-mic:focus-visible { outline: 3px solid #0f6fae; outline-offset: 2px; }
+.psb-mic:disabled { opacity: 0.5; cursor: not-allowed; }
+.psb-mic.is-escuchando {
+  background: #dc2626;
+  color: #fff;
+  animation: psb-mic-pulso 1.2s ease-out infinite;
+}
+.psb-mic.is-error { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+@keyframes psb-mic-pulso {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+  100% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .psb-mic.is-escuchando { animation: none; }
+}
+.psb-voz-aviso {
+  margin: 6px 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--z-suave, #475569);
+}
+.psb-voz-aviso.is-error { color: #b91c1c; }
+:is(.v-theme--dark, .v-theme--adminDark, .v-theme--shopDark) .psb-mic:hover:not(:disabled) { background: rgba(140, 192, 227, 0.18); color: #8cc0e3; }
+:is(.v-theme--dark, .v-theme--adminDark, .v-theme--shopDark) .psb-mic:focus-visible { outline-color: #8cc0e3; }
+:is(.v-theme--dark, .v-theme--adminDark, .v-theme--shopDark) .psb-mic.is-error { background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
+:is(.v-theme--dark, .v-theme--adminDark, .v-theme--shopDark) .psb-voz-aviso.is-error { color: #fca5a5; }
+/* En pantallas angostas la tecla F2 no sirve (no hay teclado) y le saca lugar al micrófono. */
+@media (max-width: 600px) {
+  .psb-tecla { display: none; }
 }
 .psb-lector {
   display: inline-flex;

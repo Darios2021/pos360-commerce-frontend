@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-10-13 · Buscador del POS: micrófono para buscar por voz
+
+- Botón de micrófono (44 px) a la izquierda de LECTOR en `PosScannerSearchBar.vue`. Web Speech
+  API del navegador, es-AR, continuo con parciales: el texto entra al buscador como tipeado y
+  filtra la lista. «borrar» o volver a tocar cortan. El audio no pasa por servidores propios.
+- Nuevo `src/modules/pos/composables/usePosDictado.js` (patrón de `useDictado` de Alade).
+  Descarta la cantidad dicha al principio («dos coca cola» busca «coca cola»): el buscador no agrega al carrito.
+- Sin soporte de voz: botón deshabilitado con aviso. Permiso denegado y otros errores: mensaje en español.
+- En ≤600 px se oculta la tecla F2 para dejar lugar al micrófono.
+- Rama `worktree-pos-mic-busqueda`, sin push ni deploy.
+
 ## 2026-10-12 · APK 2.2.0: aviso de actualización, barra de estado y cámara del lector
 
 - `android/app/build.gradle`: versionCode **4**, versionName **2.2.0**.
