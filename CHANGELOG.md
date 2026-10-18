@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-10-17 · Videos: cierre editable y opción con o sin precio
+
+- Cierre del guion (`CreadorCampanas.vue`): la sucursal y el WhatsApp pasan a ser campos
+  editables por video, precargados con los datos del comercio. Vacío = no sale en el video.
+  Viajan en `sucursales` y `redes` del encargo, así que la voz y el video usan lo editado.
+- Botón «Con precio» en la banda del guion. Apagado, los productos viajan sin precio,
+  precio anterior ni cuotas: la escena, la vista previa y la voz salen sin precio (el
+  servicio de contenido ya dibujaba sin precio cuando no llega). Se piden textos nuevos
+  sin pisar lo escrito a mano. Se guarda en `pantalla.conPrecio` para Editar video.
+
 ## 2026-10-13 · Micrófono del POS v2: corte automático y búsqueda directa en la grilla
 
 - El dictado se corta solo: al resultado final, a los 1,2 s de silencio tras el último

@@ -52,7 +52,13 @@
           </div>
 
           <div class="cc-pieza cc-guion">
-            <div class="cc-banda"><span>Guion</span><small class="num">{{ cuantos }} {{ cuantos === 1 ? "producto" : "productos" }} · {{ seg(total) }}</small></div>
+            <div class="cc-banda">
+              <span>Guion</span>
+              <span class="cc-banda__der">
+                <button type="button" class="cc-pas" :aria-pressed="conPrecio" @click="alternarPrecio">Con precio</button>
+                <small class="num">{{ cuantos }} {{ cuantos === 1 ? "producto" : "productos" }} · {{ seg(total) }}</small>
+              </span>
+            </div>
             <div v-for="(e, i) in esc" :key="e.k" class="cc-esc" :class="{ 'is-activa': i === actual }">
               <button type="button" class="cc-esc__mini" aria-label="Ver escena" @click="irA(i)"><EscenaReel v-bind="reelDe(e, 52)" /></button>
               <div class="cc-esc__cuerpo">
@@ -65,16 +71,21 @@
                   <div class="cc-esc__rot">Producto {{ nItem(i) }} · {{ seg(durDe(e)) }}</div>
                   <div class="cc-esc__prod">
                     <span class="cc-esc__nom">{{ e.prod.titulo }}</span>
-                    <span class="num">{{ pesos(e.prod.precio) }}</span>
-                    <template v-if="descuentoDe(e.prod)"><s class="num">{{ pesos(e.prod.precioAnterior) }}</s><span class="cc-off num">-{{ descuentoDe(e.prod) }} %</span></template>
-                    <span v-if="tienePlan(e.prod)" class="cc-cuo num">{{ e.prod.cuotas.cantidad }} x {{ pesos(e.prod.cuotas.valor) }}</span>
+                    <template v-if="conPrecio">
+                      <span class="num">{{ pesos(e.prod.precio) }}</span>
+                      <template v-if="descuentoDe(e.prod)"><s class="num">{{ pesos(e.prod.precioAnterior) }}</s><span class="cc-off num">-{{ descuentoDe(e.prod) }} %</span></template>
+                      <span v-if="tienePlan(e.prod)" class="cc-cuo num">{{ e.prod.cuotas.cantidad }} x {{ pesos(e.prod.cuotas.valor) }}</span>
+                    </template>
                   </div>
                   <input v-model="e.etiqueta" class="cc-in cc-in--eti" maxlength="24" aria-label="Etiqueta" @input="editar(e, 'etiqueta', i)" />
                 </template>
                 <template v-else>
                   <div class="cc-esc__rot">Cierre · {{ seg(durDe(e)) }}</div>
                   <input v-model="e.llamado" class="cc-in cc-in--tit" maxlength="30" aria-label="Llamado" @input="editar(e, 'llamado', i)" />
-                  <div class="cc-esc__dato">{{ datoCierre }}</div>
+                  <div class="cc-esc__datos">
+                    <label class="cc-dato"><v-icon size="17">mdi-map-marker-outline</v-icon><input v-model="e.sucursal" class="cc-in" maxlength="40" aria-label="Sucursal" @input="editar(e, 'sucursal', i)" /></label>
+                    <label class="cc-dato"><v-icon size="17">mdi-whatsapp</v-icon><input v-model="e.whatsapp" class="cc-in num" maxlength="40" inputmode="tel" aria-label="WhatsApp" @input="editar(e, 'whatsapp', i)" /></label>
+                  </div>
                 </template>
                 <div v-if="conVoz" class="cc-voz">
                   <v-icon size="18">mdi-microphone-outline</v-icon>
@@ -250,11 +261,37 @@ const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <
 const puedeGenerar = computed(() => !creando.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
-const datoCierre = computed(() => {
+// Cierre: la primera sucursal y el WhatsApp salen del comercio y se editan por video;
+// vacío = no se muestra.
+const datosComercio = () => {
   const f = props.fuente || {};
-  const wa = (f.redes || []).find((r) => r.red === "whatsapp")?.texto;
-  return [(f.sucursales || [])[0]?.nombre, wa ? `WhatsApp ${wa}` : ""].filter(Boolean).join(" · ");
-});
+  return { sucursal: (f.sucursales || [])[0]?.nombre || "", whatsapp: (f.redes || []).find((r) => r.red === "whatsapp")?.texto || "" };
+};
+function datosCierre() {
+  const f = props.fuente || {};
+  const sucursales = [...(f.sucursales || [])];
+  const redes = [...(f.redes || [])];
+  const e = esc.value.at(-1);
+  if (e?.tipo !== "cierre") return { sucursales, redes };
+  const nom = String(e.sucursal ?? "").trim();
+  if (!sucursales.length) { if (nom) sucursales.push({ nombre: nom, direccion: "" }); }
+  else if (nom) sucursales[0] = { ...sucursales[0], nombre: nom };
+  else sucursales.shift();
+  const wa = String(e.whatsapp ?? "").trim();
+  const k = redes.findIndex((r) => r.red === "whatsapp");
+  if (k < 0) { if (wa) redes.unshift({ red: "whatsapp", texto: wa }); }
+  else if (wa) redes[k] = { ...redes[k], texto: wa };
+  else redes.splice(k, 1);
+  return { sucursales, redes };
+}
+// Sin precio: el producto viaja sin precio, precio anterior ni cuotas (la escena, la voz y el video).
+const conPrecio = ref(true);
+const prodDe = (p) => (conPrecio.value ? p : { ...p, precio: undefined, precioAnterior: undefined, cuotas: undefined });
+function alternarPrecio() {
+  conPrecio.value = !conPrecio.value;
+  for (const e of esc.value) if (!e.editado.voz) e.variante = 0;
+  pedirTextos();
+}
 // Cierre con cuotas y medios de pago: lo decide la campaña (si habla de cuotas).
 const hablaDeCuotas = (c) => c?.productos?.regla === "conCuotas" || /\{(cuotas|valorCuota)\}/.test(Object.values(c?.textos || {}).join(" "));
 
@@ -263,7 +300,8 @@ function abrir(c, { conRuta = true } = {}) {
   camp.value = c;
   sonidoDe(c);
   const prods = propuestos(c, props.catalogo, promo()).slice(0, Math.min(TOPE_PRODUCTOS, c.productos?.n || 3));
-  esc.value = [nueva("portada", { titular: "", bajada: "" }), ...prods.map(escenaItem), nueva("cierre", { llamado: "" })];
+  conPrecio.value = true;
+  esc.value = [nueva("portada", { titular: "", bajada: "" }), ...prods.map(escenaItem), nueva("cierre", { llamado: "", ...datosComercio() })];
   eligiendo.value = null;
   t.value = 0;
   play.value = true;
@@ -303,6 +341,8 @@ function abrirEdicion(ed) {
   const variantes = pan?.variantes || [];
   const portada = { titular: enc.apertura?.titular || "", bajada: enc.apertura?.bajada || "", voz: g.intro || "" };
   const cierre = { llamado: enc.textos?.llamado || "", voz: g.cierre || "" };
+  const datos = { sucursal: (enc.sucursales || [])[0]?.nombre || "", whatsapp: (enc.redes || []).find((r) => r.red === "whatsapp")?.texto || "" };
+  conPrecio.value = pan?.conPrecio ?? (!(enc.items || []).length || (enc.items || []).some((it) => it.precio != null));
   const its = (enc.items || []).slice(0, TOPE_PRODUCTOS).map((it, i) => {
     const prod = props.catalogo.find((p) => it.id != null && String(p.id) === String(it.id))
       || { id: it.id ?? `encargo-${i}`, titulo: it.titulo, nombre: it.titulo, precio: it.precio, precioAnterior: it.precioAnterior, imagen: it.imagen, cuotas: it.cuotas, descripcion: it.descripcion, categoria: it.categoria, stock: it.stock };
@@ -313,7 +353,7 @@ function abrirEdicion(ed) {
   esc.value = [
     nueva("portada", { ...portada, editado: escrito(portada), variante: variantes[0] || 0 }),
     ...its,
-    nueva("cierre", { ...cierre, editado: escrito(cierre), variante: variantes.at(-1) || 0 }),
+    nueva("cierre", { ...cierre, ...datos, editado: escrito(cierre), variante: variantes.at(-1) || 0 }),
   ];
   publicacion.titulo = enc.titulo || ed.titulo || c.nombre;
   publicacion.texto = enc.descripcion || "";
@@ -345,19 +385,19 @@ const itemGuion = (p) => ({
 function encargoBase() {
   const f = props.fuente || {};
   const c = camp.value;
-  const cuotas = hablaDeCuotas(c);
+  const cuotas = conPrecio.value && hablaDeCuotas(c);
   return {
     ...(c.libre ? { tipo: "destacados" } : { campana: c.id }),
     cuenta: f.cuenta, ajuste: f.ajuste, marca: f.marca, estilo: f.estilo, sellos: f.sellos, textos: f.textos,
     mediosDePago: cuotas ? f.mediosDePago || [] : [],
-    sucursales: f.sucursales || [], redes: f.redes || [],
+    ...datosCierre(),
     cierre: { sucursales: true, redes: true, cuotas, llamado: true },
     ritmo: son.ritmo, locutor: son.locutor || undefined,
   };
 }
 let pedido = 0;
 async function guion(variante = 0) {
-  const prods = items.value.map((e) => e.prod);
+  const prods = items.value.map((e) => prodDe(e.prod));
   let textos = null;
   if (!camp.value.libre) {
     try {
@@ -517,8 +557,9 @@ const descripcionDe = (e) => (e.caracteristicas?.length ? e.caracteristicas.join
 function reelDe(e, ancho) {
   if (!e) return { tipo: "intro", fuente: props.fuente, ancho };
   if (e.tipo === "portada") return { tipo: "intro", apertura: e.titular ? { titular: e.titular, bajada: e.bajada } : null, foto: items.value[0]?.prod.imagen || "", fuente: props.fuente, ancho };
-  if (e.tipo === "cierre") return { tipo: "cierre", cierre: { sucursales: true, redes: true, llamado: e.llamado || true }, fuente: props.fuente, ancho };
-  return { tipo: "item", item: { ...e.prod, etiqueta: e.etiqueta, descripcion: descripcionDe(e) }, conCuotas: tienePlan(e.prod), fuente: props.fuente, ancho };
+  if (e.tipo === "cierre") return { tipo: "cierre", cierre: { sucursales: true, redes: true, llamado: e.llamado || true }, fuente: { ...props.fuente, ...datosCierre() }, ancho };
+  const p = prodDe(e.prod);
+  return { tipo: "item", item: { ...p, etiqueta: e.etiqueta, descripcion: descripcionDe(e) }, conCuotas: tienePlan(p), fuente: props.fuente, ancho };
 }
 
 /* ── Muestras de música y voz: un solo reproductor. La clave lleva el tipo (mus:/voz:)
@@ -562,7 +603,7 @@ async function generar() {
     textos: { ...(f.textos || {}), llamado: cierre.llamado.trim() || f.textos?.llamado },
     ...(son.paquete ? { paquete: son.paquete, musica: son.musica ?? null } : { musica: son.musica || undefined }),
     items: items.value.map((e) => ({
-      ...itemGuion(e.prod),
+      ...itemGuion(prodDe(e.prod)),
       etiqueta: e.etiqueta.trim() || undefined,
       descripcion: descripcionDe(e).slice(0, 300) || undefined,
     })),
@@ -574,7 +615,7 @@ async function generar() {
     },
   };
   // Lo que la pantalla necesita para reabrir este armado tal cual (Editar video).
-  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0) };
+  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0), conPrecio: conPrecio.value };
   try {
     const p = await crearPieza({ ...encargo, pantalla, ...(editaMisma.value ? { deRevision: editando.value.id } : {}) });
     camp.value = null;
@@ -655,7 +696,11 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-esc__prod s { color: var(--sp-suave); font-weight: 600; }
 .cc-off { color: var(--cc-mal); font-weight: 900; }
 .cc-cuo { color: var(--sp-suave); }
-.cc-esc__dato { font-size: 14px; font-weight: 600; color: var(--sp-suave); }
+.cc-esc__datos { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.cc-dato { flex: 1 1 180px; min-width: 0; display: flex; align-items: center; gap: 4px; color: var(--sp-suave); }
+.cc-dato .v-icon { color: inherit; flex: none; }
+.cc-dato .cc-in { margin-left: 0; font-size: 14px; font-weight: 600; color: var(--sp-suave); }
+.cc-banda__der { display: inline-flex; align-items: center; gap: 10px; }
 .cc-in { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 8px; padding: 4px 8px; margin-left: -8px; color: var(--sp-texto); font: inherit; outline: 0; transition: border-color .15s, background .15s; }
 .cc-in:hover { border-color: var(--sp-borde); }
 .cc-in:focus { border-color: var(--cc-pri); background: var(--sp-caja); }
