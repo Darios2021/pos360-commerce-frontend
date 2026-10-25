@@ -30,3 +30,10 @@ export function fmtFecha(v, vacio = "") {
   const d = aFecha(v);
   return d ? d.toLocaleDateString("es-AR") : vacio;
 }
+
+/** Fecha y hora, para el seguimiento de la orden. */
+export function fmtFechaHora(v, vacio = "") {
+  const d = aFecha(v);
+  if (!d) return vacio;
+  return `${d.toLocaleDateString("es-AR")} ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`;
+}

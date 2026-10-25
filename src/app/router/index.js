@@ -174,6 +174,12 @@ const routes = [
         component: () => import("@/modules/service/pages/ServiceOrdersListPage.vue"),
       },
       {
+        path: "service/tecnicos",
+        name: "serviceTechnicians",
+        component: () => import("@/modules/service/pages/ServiceTechniciansPage.vue"),
+        meta: { roles: ["admin", "super_admin"] },
+      },
+      {
         path: "service/:id",
         name: "serviceOrderEdit",
         component: () => import("@/modules/service/pages/ServiceOrderEditorPage.vue"),

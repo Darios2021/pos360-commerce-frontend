@@ -8,6 +8,14 @@
 <template>
   <div class="pa-4">
     <AppPageHeader icon="mdi-tools" title="Servicio tecnico">
+      <v-btn
+        v-if="auth.isAdmin"
+        variant="text"
+        prepend-icon="mdi-account-wrench-outline"
+        :to="{ name: 'serviceTechnicians' }"
+      >
+        Tecnicos
+      </v-btn>
       <v-btn color="primary" prepend-icon="mdi-plus" :loading="creando" @click="onRecibir">
         Recibir equipo
       </v-btn>
@@ -88,6 +96,16 @@
         @update:model-value="cargar"
       />
 
+      <!-- La cola del tecnico: lo que le derivaron a quien mira. -->
+      <v-switch
+        v-model="mios"
+        color="primary"
+        density="compact"
+        hide-details
+        label="Mis equipos"
+        @update:model-value="cargar"
+      />
+
       <!-- Las 645 ordenes del Excel estan pero no molestan: solo aparecen si
            se las pide. En el mostrador se busca por telefono y salen igual. -->
       <v-switch
@@ -110,17 +128,19 @@
             <th>Equipo</th>
             <th>Falla</th>
             <th>Estado</th>
+            <th>Tecnico</th>
             <th class="text-right">Presupuesto</th>
             <th class="text-right">Saldo</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="cargando">
-            <td colspan="8" class="text-center py-8 text-medium-emphasis">Cargando…</td>
+            <td colspan="9" class="text-center py-8 text-medium-emphasis">Cargando…</td>
           </tr>
           <tr v-else-if="!items.length">
-            <td colspan="8" class="text-center py-8 text-medium-emphasis">
-              <template v-if="q || estado">Sin resultados con ese filtro.</template>
+            <td colspan="9" class="text-center py-8 text-medium-emphasis">
+              <template v-if="mios && !q && !estado">Sin equipos derivados.</template>
+              <template v-else-if="q || estado || mios">Sin resultados con ese filtro.</template>
               <template v-else>Todavia no hay ordenes. Empeza recibiendo un equipo.</template>
             </td>
           </tr>
@@ -148,6 +168,10 @@
                 {{ statusLabel(o.status) }}
               </v-chip>
             </td>
+            <td class="text-no-wrap">
+              <span v-if="o.technician_name">{{ o.technician_name }}</span>
+              <span v-else class="text-medium-emphasis">Sin derivar</span>
+            </td>
             <td class="text-right text-no-wrap">{{ money(o.quoted_amount) }}</td>
             <td class="text-right text-no-wrap">
               <span :class="Number(o.balance) > 0 ? 'text-warning font-weight-medium' : 'text-medium-emphasis'">
@@ -170,6 +194,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useAuthStore } from "@/app/store/auth.store";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import KpiCard from "@/modules/dashboard/components/KpiCard.vue";
 import {
@@ -184,6 +209,7 @@ import {
 import { fmtFecha } from "../utils/fechas";
 
 const router = useRouter();
+const auth = useAuthStore();
 
 const items = ref([]);
 const total = ref(0);
@@ -195,6 +221,7 @@ const creando = ref(false);
 const q = ref("");
 const estado = ref(null);
 const historico = ref(false);
+const mios = ref(false);
 
 const statsLoading = ref(false);
 const stats = ref({ total: 0, en_taller: 0, para_entregar: 0, sin_retirar: 0 });
@@ -220,6 +247,7 @@ function params() {
   if (q.value) p.q = q.value;
   if (estado.value) p.status = estado.value;
   if (historico.value) p.incluir_historico = 1;
+  if (mios.value) p.mios = 1;
   return p;
 }
 
@@ -251,7 +279,10 @@ async function cargar() {
 async function cargarStats() {
   statsLoading.value = true;
   try {
-    const { data } = await getOrderStats(historico.value ? { incluir_historico: 1 } : {});
+    const p = {};
+    if (historico.value) p.incluir_historico = 1;
+    if (mios.value) p.mios = 1;
+    const { data } = await getOrderStats(p);
     stats.value = data?.data || stats.value;
   } catch {
     // El resumen es informativo: si falla, el listado sigue sirviendo.

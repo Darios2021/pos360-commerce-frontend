@@ -7,7 +7,13 @@
      estado y que quede registrado quien y cuando).
 
      El saldo NO se edita: sale de presupuesto menos seña. Si fuera editable, la
-     primera diferencia de tipeo desarma la caja. -->
+     primera diferencia de tipeo desarma la caja.
+
+     Seguimiento: el tecnico se elige de los usuarios marcados como tecnicos
+     (no se tipea), cada cambio de estado puede llevar una nota y todo queda en
+     el bloque Seguimiento. Los avisos al cliente salen por WhatsApp: con Cloud
+     API configurada se envian solos; si no, se abre WhatsApp con el texto
+     armado y el mostrador toca Enviar. -->
 <template>
   <div class="pa-4">
     <AppPageHeader
@@ -22,6 +28,17 @@
       <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="volver">Volver</v-btn>
       <v-btn variant="tonal" prepend-icon="mdi-printer-outline" :loading="imprimiendo" @click="imprimir">
         Imprimir orden
+      </v-btn>
+      <v-btn
+        variant="tonal"
+        color="success"
+        prepend-icon="mdi-whatsapp"
+        :loading="enviando === 'comprobante'"
+        :disabled="!orden.customer_phone"
+        :title="orden.customer_phone ? '' : 'Falta el telefono del cliente'"
+        @click="enviarWhatsapp('comprobante')"
+      >
+        Comprobante por WhatsApp
       </v-btn>
       <v-btn color="primary" prepend-icon="mdi-content-save-outline" :loading="guardando" @click="guardar">
         Guardar
@@ -105,13 +122,85 @@
               hide-details
               style="min-width: 230px"
             />
-            <v-text-field v-model="orden.technician_name" label="Tecnico asignado" density="compact" variant="outlined" hide-details style="min-width: 200px" />
+            <v-select
+              v-model="orden.technician_id"
+              :items="itemsTecnico"
+              label="Tecnico"
+              density="compact"
+              variant="outlined"
+              hide-details
+              clearable
+              :placeholder="orden.technician_id ? '' : 'Sin derivar'"
+              :no-data-text="'No hay usuarios marcados como tecnicos'"
+              style="min-width: 220px"
+            />
             <v-text-field v-model="orden.estimated_pickup" label="Retiro probable" type="date" density="compact" variant="outlined" hide-details style="min-width: 180px" />
           </div>
+
+          <!-- Las ordenes del libro viejo traen el tecnico como texto. -->
+          <div v-if="!orden.technician_id && orden.technician_name" class="text-caption text-medium-emphasis mt-2">
+            Tecnico en el libro: {{ orden.technician_name }}
+          </div>
+
+          <!-- La nota viaja con el cambio y queda en el seguimiento. -->
+          <v-text-field
+            v-if="cambiaEstado || cambiaTecnico"
+            v-model="notaCambio"
+            :label="cambiaEstado ? 'Nota del cambio de estado' : 'Nota para el tecnico'"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mt-3"
+          />
+
           <div class="text-caption text-medium-emphasis mt-3">
             Recibido por {{ orden.received_by || "—" }}
             <template v-if="orden.delivered_at"> · entregado el {{ fecha(orden.delivered_at) }}</template>
           </div>
+
+          <!-- Despues de guardar un cambio de estado: avisar al cliente. -->
+          <v-alert
+            v-if="ofrecerAviso"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+            icon="mdi-whatsapp"
+          >
+            <div class="d-flex align-center flex-wrap ga-2">
+              <span class="flex-grow-1">Estado guardado: {{ statusLabel(orden.status) }}.</span>
+              <v-btn
+                size="small"
+                color="success"
+                variant="flat"
+                :loading="enviando === 'estado'"
+                @click="enviarWhatsapp('estado')"
+              >
+                Avisar al cliente
+              </v-btn>
+              <v-btn size="small" variant="text" @click="ofrecerAviso = false">Ahora no</v-btn>
+            </div>
+          </v-alert>
+
+          <!-- El navegador bloquea abrir una pestaña despues de esperar a la
+               API: si paso, queda el enlace para tocarlo. -->
+          <v-alert v-if="linkPendiente" type="info" variant="tonal" density="compact" class="mt-3">
+            <div class="d-flex align-center flex-wrap ga-2">
+              <span class="flex-grow-1">Mensaje listo para enviar.</span>
+              <v-btn
+                size="small"
+                color="success"
+                variant="flat"
+                prepend-icon="mdi-whatsapp"
+                :href="linkPendiente"
+                target="_blank"
+                rel="noopener"
+                @click="linkPendiente = null"
+              >
+                Abrir WhatsApp
+              </v-btn>
+            </div>
+          </v-alert>
         </v-card>
 
         <!-- ── Precio ────────────────────────────────────── -->
@@ -184,6 +273,46 @@
           <div class="d-flex justify-space-between text-body-2">
             <span class="text-medium-emphasis">Costo de repuestos</span>
             <strong>{{ money(orden.parts_cost) }}</strong>
+          </div>
+        </v-card>
+
+        <!-- ── Seguimiento ───────────────────────────────── -->
+        <v-card variant="flat" border rounded="lg" class="pa-4 mt-3">
+          <div class="section-label mb-3">Seguimiento</div>
+
+          <div v-if="!orden.events?.length" class="text-caption text-medium-emphasis py-2">
+            Sin movimientos registrados.
+          </div>
+          <v-timeline v-else side="end" density="compact" align="start" truncate-line="both">
+            <v-timeline-item
+              v-for="ev in eventosOrdenados"
+              :key="ev.id"
+              :dot-color="kindOf(ev).color"
+              :icon="kindOf(ev).icon"
+              size="small"
+            >
+              <div class="text-body-2">
+                <strong>{{ tituloEvento(ev) }}</strong>
+              </div>
+              <div v-if="ev.note" class="text-body-2">{{ ev.note }}</div>
+              <div class="text-caption text-medium-emphasis">
+                {{ fechaHora(ev.created_at) }}<template v-if="ev.user_name"> · {{ ev.user_name }}</template>
+              </div>
+            </v-timeline-item>
+          </v-timeline>
+
+          <div class="d-flex ga-2 mt-3">
+            <v-text-field
+              v-model="nuevaNota"
+              placeholder="Agregar una nota"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @keyup.enter="agregarNota"
+            />
+            <v-btn variant="tonal" :loading="agregandoNota" :disabled="!nuevaNota.trim()" @click="agregarNota">
+              Agregar
+            </v-btn>
           </div>
         </v-card>
       </v-col>
@@ -320,10 +449,14 @@ import { useRoute, useRouter } from "vue-router";
 import AppPageHeader from "@/app/components/AppPageHeader.vue";
 import { listCustomers, createCustomer } from "@/modules/admin/services/customers.service";
 import { exportServiceOrderPdf, loadServiceIdentity } from "../utils/serviceOrderPdf";
-import { fmtFecha } from "../utils/fechas";
+import { fmtFecha, fmtFechaHora } from "../utils/fechas";
 import {
   getOrder,
   updateOrder,
+  addOrderNote,
+  sendOrderWhatsapp,
+  listTechnicians,
+  EVENT_KIND,
   addOrderItem,
   deleteOrderItem,
   searchPrices,
@@ -368,11 +501,28 @@ function money(v) {
   return n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 }
 const fecha = (v) => fmtFecha(v, "—");
+const fechaHora = (v) => fmtFechaHora(v, "—");
+
+// Lo ultimo que se guardo: contra esto se sabe si el estado o el tecnico
+// cambiaron en pantalla y hace falta pedir la nota.
+const guardado = ref({ status: null, technician_id: null });
+const notaCambio = ref("");
+const ofrecerAviso = ref(false);
+
+const cambiaEstado = computed(() => !!guardado.value.status && orden.value.status !== guardado.value.status);
+const cambiaTecnico = computed(
+  () => (orden.value.technician_id || null) !== (guardado.value.technician_id || null)
+);
+
+function aplicar(data) {
+  orden.value = { items: [], events: [], ...(data || {}) };
+  guardado.value = { status: orden.value.status, technician_id: orden.value.technician_id || null };
+}
 
 async function cargar() {
   try {
     const { data } = await getOrder(route.params.id);
-    orden.value = { items: [], ...(data?.data || {}) };
+    aplicar(data?.data);
   } catch (e) {
     notificar(e?.response?.data?.message || "No se pudo cargar la orden.", "error");
   }
@@ -381,13 +531,103 @@ async function cargar() {
 async function guardar() {
   guardando.value = true;
   try {
-    const { data } = await updateOrder(route.params.id, orden.value);
-    orden.value = { items: [], ...(data?.data || {}) };
+    const { events, items, customer, ...cabecera } = orden.value;
+    const { data } = await updateOrder(route.params.id, { ...cabecera, nota: notaCambio.value || undefined });
+    aplicar(data?.data);
+    notaCambio.value = "";
+    // Ofrecer el aviso solo si el estado cambio y hay a quien avisarle.
+    ofrecerAviso.value = !!data?.cambio_estado && !!orden.value.customer_phone;
     notificar("Orden guardada.");
+    return true;
   } catch (e) {
     notificar(e?.response?.data?.message || "No se pudo guardar.", "error");
+    return false;
   } finally {
     guardando.value = false;
+  }
+}
+
+// ── Tecnicos ───────────────────────────────────────────────────────────────
+const tecnicos = ref([]);
+const itemsTecnico = computed(() => {
+  const lista = tecnicos.value.map((t) => ({ title: t.name, value: t.id }));
+  // Una orden derivada a alguien que despues dejo de ser tecnico lo sigue
+  // mostrando: si no, el selector quedaria vacio y parece sin derivar.
+  if (orden.value.technician_id && !lista.some((x) => x.value === orden.value.technician_id)) {
+    lista.push({ title: orden.value.technician_name || `Usuario ${orden.value.technician_id}`, value: orden.value.technician_id });
+  }
+  return lista;
+});
+
+async function cargarTecnicos() {
+  try {
+    const { data } = await listTechnicians();
+    tecnicos.value = data?.data || [];
+  } catch {
+    tecnicos.value = [];
+  }
+}
+
+// ── Seguimiento ────────────────────────────────────────────────────────────
+// Lo mas nuevo arriba: es lo que se busca cuando el cliente llama.
+const eventosOrdenados = computed(() => [...(orden.value.events || [])].reverse());
+
+function kindOf(ev) {
+  return EVENT_KIND[ev.kind] || EVENT_KIND.nota;
+}
+
+function tituloEvento(ev) {
+  if (ev.kind === "ingreso") return "Equipo recibido";
+  if (ev.kind === "estado") return `${statusLabel(ev.from_status)} → ${statusLabel(ev.to_status)}`;
+  if (ev.kind === "tecnico") return ev.technician_name ? `Derivado a ${ev.technician_name}` : "Sin tecnico asignado";
+  if (ev.kind === "aviso") return `WhatsApp al cliente`;
+  return "Nota";
+}
+
+const nuevaNota = ref("");
+const agregandoNota = ref(false);
+async function agregarNota() {
+  const nota = nuevaNota.value.trim();
+  if (!nota) return;
+  agregandoNota.value = true;
+  try {
+    const { data } = await addOrderNote(route.params.id, nota);
+    orden.value.events = data?.data || orden.value.events;
+    nuevaNota.value = "";
+  } catch (e) {
+    notificar(e?.response?.data?.message || "No se pudo agregar la nota.", "error");
+  } finally {
+    agregandoNota.value = false;
+  }
+}
+
+// ── WhatsApp ───────────────────────────────────────────────────────────────
+const enviando = ref(null);
+const linkPendiente = ref(null);
+
+async function enviarWhatsapp(tipo) {
+  enviando.value = tipo;
+  try {
+    // El texto lo arma el servidor con la orden guardada: lo que esta en
+    // pantalla sin guardar no saldria en el mensaje.
+    if (tipo === "comprobante" && !(await guardar())) return;
+    const { data } = await sendOrderWhatsapp(route.params.id, tipo);
+    const r = data?.data || {};
+    if (r.events) orden.value.events = r.events;
+    ofrecerAviso.value = false;
+    if (r.enviado) {
+      notificar("Mensaje enviado por WhatsApp.");
+    } else if (r.link) {
+      // Sin "noopener" en las opciones: con esa opcion window.open devuelve
+      // null siempre y no se distingue de un bloqueo. Se corta a mano.
+      const ventana = window.open(r.link, "_blank");
+      if (ventana) ventana.opener = null;
+      else linkPendiente.value = r.link;
+    }
+  } catch (e) {
+    notificar(e?.response?.data?.message || "No se pudo armar el mensaje.", "error");
+  } finally {
+    enviando.value = null;
   }
 }
 
@@ -582,7 +822,10 @@ async function borrarRenglon(it) {
   }
 }
 
-onMounted(cargar);
+onMounted(() => {
+  cargar();
+  cargarTecnicos();
+});
 </script>
 
 <style scoped>
