@@ -193,7 +193,9 @@ const router = useRouter();
 
 /* ── Campañas: las habilitadas, ya ordenadas por el servicio; "Libre" al final de Siempre ── */
 const campanas = computed(() => [...(props.recursos.campanas || []), LIBRE]);
-const grupos = computed(() => GRUPOS.map((g) => ({ ...g, l: campanas.value.filter((c) => (c.grupo || "siempre") === g.k) })).filter((g) => g.l.length));
+// Las propias del comercio (Campaña a medida) van juntas primero, en "Mis campañas".
+const grupos = computed(() => [{ k: "mias", t: "Mis campañas", l: campanas.value.filter((c) => c.propia) },
+  ...GRUPOS.map((g) => ({ ...g, l: campanas.value.filter((c) => !c.propia && (c.grupo || "siempre") === g.k) }))].filter((g) => g.l.length));
 const promo = () => ({ promoIds: props.promoIds });
 // Tarjeta: la portada de la campaña ya llena, con la foto del primer producto propuesto.
 const tarjetas = computed(() => {

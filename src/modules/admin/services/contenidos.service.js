@@ -113,3 +113,39 @@ export async function getRecursos() {
   const { data } = await http.get(`${BASE}/recursos`);
   return data;
 }
+
+// ── Campaña a medida (2026-10-25): las campañas que arma el propio comercio ──
+// La API fija la cuenta del comercio; sin autonomía habilitada por la plataforma,
+// el servicio contesta 403 con codigo "autonomia_inactiva".
+
+// { campanas: [{ ..., editable, hoy }], autonomia: { campanas, tope, usadas, quedan }, perfil, ia }
+export async function getMisCampanas() {
+  const { data } = await http.get(`${BASE}/campanas`);
+  return data;
+}
+
+// Una frase -> { campana, origen: "ia" | "plantilla", motivo? }. No guarda nada.
+export async function armarBorrador(pedido, { productos = [], variante = 0 } = {}) {
+  const { data } = await http.post(`${BASE}/campanas/borrador`, { pedido, productos, variante });
+  return data;
+}
+
+export async function crearCampana(campana) {
+  const { data } = await http.post(`${BASE}/campanas`, { campana });
+  return data;
+}
+
+export async function guardarCampana(id, campana) {
+  const { data } = await http.put(`${BASE}/campanas/${encodeURIComponent(id)}`, { campana });
+  return data;
+}
+
+export async function borrarCampana(id) {
+  await http.delete(`${BASE}/campanas/${encodeURIComponent(id)}`);
+}
+
+// La estrategia del comercio: { vende, publico, distingue, tono, contacto, evitar }.
+export async function guardarPerfil(perfil) {
+  const { data } = await http.put(`${BASE}/perfil`, { perfil });
+  return data;
+}

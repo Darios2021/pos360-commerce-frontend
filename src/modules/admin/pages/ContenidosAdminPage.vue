@@ -17,6 +17,7 @@
       <div class="ct-tabs" role="tablist">
         <button type="button" role="tab" :class="{ 'is-on': vista === 'nuevo' }" @click="irA('nuevo')">Nuevo reel</button>
         <button type="button" role="tab" :class="{ 'is-on': vista === 'videos' || vista === 'publicar' }" @click="irA('videos')">Videos <span v-if="piezas.length" class="num">{{ piezas.length }}</span></button>
+        <button v-if="autonomo" type="button" role="tab" :class="{ 'is-on': vista === 'campanas' }" @click="irA('campanas')">Mis campañas</button>
         <button type="button" role="tab" :class="{ 'is-on': vista === 'redes' }" @click="irA('redes')">Redes</button>
       </div>
     </div>
@@ -28,7 +29,19 @@
     <template v-if="vista === 'nuevo' && conCampanas">
       <div v-if="recursos.activo === false" class="sp-caja ct-vacio">Los videos no están habilitados para este local.</div>
       <div v-else-if="(route.query.editar || route.query.desde) && !edicion" class="sp-caja ct-vacio">{{ abriendo ? "Cargando…" : "El video no está disponible" }}</div>
-      <CreadorCampanas v-else :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
+      <template v-else>
+        <!-- Campaña a medida: sólo si la plataforma le habilitó al comercio crear las suyas -->
+        <CampanaAMedida v-if="autonomo && !route.query.campana && !route.query.editar && !route.query.desde" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :estado="misCampanas"
+          @revisando="revisandoCampana = $event" @guardada="alGuardarCampana" @estrategia="irA('campanas')" />
+        <CreadorCampanas v-show="!revisandoCampana || route.query.campana" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
+      </template>
+    </template>
+
+    <!-- MIS CAMPAÑAS: las del comercio y su estrategia; editar una abre la revisión entera -->
+    <template v-else-if="vista === 'campanas' && autonomo && recursos">
+      <CampanaAMedida v-if="campanaEditada" :key="campanaEditada.id" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :estado="misCampanas" :editar="campanaEditada"
+        @guardada="alGuardarCampana" @cerrar="irA('campanas')" />
+      <MisCampanas v-else :estado="misCampanas" @nueva="irA('nuevo')" @editar="(c) => irA('campanas', { campanaEditada: c.id })" @cambio="recargarCampanas" />
     </template>
 
     <!-- NUEVO REEL: cuatro pasos navegables (servicio sin campañas) -->
@@ -427,7 +440,9 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import CreadorCampanas from "@/modules/admin/components/contenidos/CreadorCampanas.vue";
-import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, encargoPieza, recuperarPieza, getCupo, getRecursos, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
+import CampanaAMedida from "@/modules/admin/components/contenidos/CampanaAMedida.vue";
+import MisCampanas from "@/modules/admin/components/contenidos/MisCampanas.vue";
+import { borrarPieza, buscarProductos, cancelarPieza, crearPieza, encargoPieza, recuperarPieza, getCupo, getRecursos, getRedes, guardarRedes, publicarPieza, editarPieza, getFuente, getMisCampanas, listarPiezas, listarSonidos, listarVoces, sugerirGuion, verPieza } from "@/modules/admin/services/contenidos.service";
 import "@/modules/products/styles/proveedores.css";
 
 const DESCUENTO_MIN = 25;
@@ -468,7 +483,7 @@ const REDES = [
 ];
 const route = useRoute();
 const router = useRouter();
-const vista = computed(() => (["videos", "redes", "publicar"].includes(route.query.vista) ? route.query.vista : "nuevo"));
+const vista = computed(() => (["videos", "redes", "publicar", "campanas"].includes(route.query.vista) ? route.query.vista : "nuevo"));
 function irA(v, extra = {}) { router.replace({ query: { vista: v === "nuevo" ? undefined : v, ...extra } }); }
 
 const fuente = ref(null);
@@ -572,6 +587,24 @@ function sonidoInicial() {
 }
 // Creador por campañas: sólo si GET /recursos trae `campanas` (con el servicio viejo, los cuatro pasos de siempre).
 const conCampanas = computed(() => Array.isArray(recursos.value?.campanas));
+
+/* Campaña a medida: lo que el comercio puede crear (GET /campanas). Sin autonomía
+   (o con un servicio que todavía no tiene la ruta) no aparece nada: la pantalla queda como siempre. */
+const misCampanas = ref(null);
+const autonomo = computed(() => Boolean(misCampanas.value?.autonomia?.campanas) && conCampanas.value);
+const revisandoCampana = ref(false);
+const campanaEditada = computed(() => (misCampanas.value?.campanas || []).find((c) => c.id === route.query.campanaEditada && c.editable) || null);
+async function recargarCampanas() {
+  try { misCampanas.value = await getMisCampanas(); } catch { misCampanas.value = null; }
+  await cargarRecursos();
+}
+// Guardada: vuelve a pedir lo que ve el comercio y, si pidió armar el video, abre el creador con ella.
+async function alGuardarCampana({ campana, armar }) {
+  await recargarCampanas();
+  revisandoCampana.value = false;
+  if (armar && campana.activa !== false) irA("nuevo", { campana: campana.id });
+  else irA("campanas");
+}
 const aviso = ref("");
 let avisoReloj;
 function avisar(t) { aviso.value = t; clearTimeout(avisoReloj); avisoReloj = setTimeout(() => { aviso.value = ""; }, 2600); }
@@ -1152,6 +1185,7 @@ onMounted(async () => {
   }).catch(() => { voces.value = []; });
   // El sonido arranca cuando se sabe qué hay: recursos del comercio o, si no, el catálogo.
   Promise.allSettled([cargarRecursos(), listarSonidos().then((c) => { sonidos.value = c; })]).then(sonidoInicial);
+  getMisCampanas().then((r) => { misCampanas.value = r; }).catch(() => { misCampanas.value = null; });
   try {
     piezas.value = await listarPiezas(30);
     seguir();
