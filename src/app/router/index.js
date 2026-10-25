@@ -174,6 +174,16 @@ const routes = [
         component: () => import("@/modules/service/pages/ServiceOrdersListPage.vue"),
       },
       {
+        path: "service/nuevo",
+        name: "serviceIntake",
+        component: () => import("@/modules/service/pages/ServiceIntakePage.vue"),
+      },
+      {
+        path: "service/:id/recibido",
+        name: "serviceOrderReceived",
+        component: () => import("@/modules/service/pages/ServiceReceivedPage.vue"),
+      },
+      {
         path: "service/tecnicos",
         name: "serviceTechnicians",
         component: () => import("@/modules/service/pages/ServiceTechniciansPage.vue"),

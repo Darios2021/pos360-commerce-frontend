@@ -35,6 +35,11 @@ export const addOrderNote = (id, nota) => http.post(`/admin/service/orders/${id}
 export const sendOrderWhatsapp = (id, tipo) =>
   http.post(`/admin/service/orders/${id}/whatsapp`, { tipo });
 
+// Buscador de clientes del ingreso: lo puede usar el cajero (el de
+// /admin/customers es de admin) y trae solo nombre, telefono y cuantas
+// reparaciones tiene.
+export const searchServiceCustomers = (q) => http.get("/admin/service/clientes", { params: { q } });
+
 // Tecnicos: la lista para derivar (cualquiera) y la marca de quien es tecnico
 // (solo admin).
 export const listTechnicians = () => http.get("/admin/service/technicians");
@@ -57,13 +62,13 @@ export const mirrorPrice = (id) => http.post(`/admin/service/prices/${id}/espejo
 // recorrido real de un equipo por el taller.
 export const SERVICE_STATUS = [
   { value: "recibido", label: "Recibido", color: "info", icon: "mdi-inbox-arrow-down" },
-  { value: "diagnostico", label: "En diagnostico", color: "info", icon: "mdi-magnify" },
+  { value: "diagnostico", label: "En diagnóstico", color: "info", icon: "mdi-magnify" },
   { value: "presupuestado", label: "Presupuestado", color: "warning", icon: "mdi-cash-clock" },
   { value: "aprobado", label: "Aprobado", color: "warning", icon: "mdi-check-decagram-outline" },
-  { value: "en_reparacion", label: "En reparacion", color: "primary", icon: "mdi-wrench-outline" },
-  { value: "reparado", label: "Reparado, a entregar", color: "success", icon: "mdi-package-variant-closed-check" },
+  { value: "en_reparacion", label: "En reparación", color: "primary", icon: "mdi-wrench-outline" },
+  { value: "reparado", label: "Listo para retirar", color: "success", icon: "mdi-package-variant-closed-check" },
   { value: "entregado", label: "Entregado", color: "teal", icon: "mdi-hand-coin-outline" },
-  { value: "sin_solucion", label: "Sin solucion", color: "error", icon: "mdi-close-octagon-outline" },
+  { value: "sin_solucion", label: "Sin solución", color: "error", icon: "mdi-close-octagon-outline" },
   { value: "no_retirado", label: "Sin retirar", color: "grey", icon: "mdi-clock-alert-outline" },
 ];
 
@@ -85,3 +90,31 @@ export const EVENT_KIND = {
   nota: { label: "Nota", icon: "mdi-note-text-outline", color: "grey" },
   aviso: { label: "WhatsApp", icon: "mdi-whatsapp", color: "success" },
 };
+
+// El recorrido normal de un equipo y el paso que sigue a cada estado. Lo que no
+// esta aca (sin_solucion, no_retirado) se elige aparte.
+export const RECORRIDO = [
+  { value: "recibido", label: "Recibido" },
+  { value: "diagnostico", label: "Diagnóstico" },
+  { value: "presupuestado", label: "Presupuestado" },
+  { value: "aprobado", label: "Aprobado" },
+  { value: "en_reparacion", label: "En reparación" },
+  { value: "reparado", label: "Listo" },
+  { value: "entregado", label: "Entregado" },
+];
+
+export const SIGUIENTE_PASO = {
+  recibido: { to: "diagnostico", label: "Empezar diagnóstico" },
+  diagnostico: { to: "presupuestado", label: "Pasar a Presupuestado" },
+  presupuestado: { to: "aprobado", label: "El cliente aprobó" },
+  aprobado: { to: "en_reparacion", label: "Empezar reparación" },
+  en_reparacion: { to: "reparado", label: "Marcar listo para retirar" },
+  reparado: { to: "entregado", label: "Entregar al cliente" },
+  no_retirado: { to: "entregado", label: "Entregar al cliente" },
+  sin_solucion: { to: "entregado", label: "Entregar al cliente" },
+};
+
+// Fallas y accesorios de un toque en el ingreso: son los que mas se repiten en
+// las 645 ordenes del libro.
+export const FALLAS_FRECUENTES = ["Pantalla", "No carga", "No enciende", "Batería", "Mojado", "Software", "Cámara", "Audio"];
+export const ACCESORIOS = ["Cargador", "Funda", "Chip", "Tarjeta SD"];

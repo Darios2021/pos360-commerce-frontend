@@ -7,7 +7,7 @@
      de los dos. Desmarcar a alguien no cambia las ordenes que ya tiene. -->
 <template>
   <div class="pa-4">
-    <AppPageHeader icon="mdi-account-wrench-outline" title="Tecnicos" subtitle="Servicio tecnico">
+    <AppPageHeader icon="mdi-account-wrench-outline" title="Técnicos" subtitle="Servicio técnico">
       <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="router.push({ name: 'serviceOrders' })">
         Volver
       </v-btn>

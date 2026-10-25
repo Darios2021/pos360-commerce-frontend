@@ -295,8 +295,8 @@
                 <template #prepend>
                   <v-icon size="18">mdi-tools</v-icon>
                 </template>
-                <v-list-item-title>Servicio tecnico</v-list-item-title>
-                <v-tooltip v-if="rail" activator="parent" location="right">Servicio tecnico</v-tooltip>
+                <v-list-item-title>Servicio técnico</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Servicio técnico</v-tooltip>
               </v-list-item>
 
               <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" class="nav-item">
