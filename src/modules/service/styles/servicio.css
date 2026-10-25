@@ -314,29 +314,6 @@
   background: var(--sv-acento-suave);
 }
 
-/* Patron de desbloqueo */
-.sv-patron {
-  display: grid;
-  grid-template-columns: repeat(3, 44px);
-  gap: 8px;
-}
-.sv-patron button {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid var(--sv-borde);
-  background: var(--sv-campo);
-  color: rgb(var(--v-theme-on-surface));
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-.sv-patron button.on {
-  background: var(--sv-acento);
-  border-color: var(--sv-acento);
-  color: rgb(var(--v-theme-on-primary));
-}
-
 /* Pie fijo de una accion */
 .sv-pie {
   position: fixed;

@@ -160,19 +160,9 @@
                 />
               </div>
               <div v-if="bloqueo === 'patron'" class="d-flex align-center ga-4 mt-1">
-                <div class="sv-patron" aria-label="Patrón: tocar los puntos en orden">
-                  <button
-                    v-for="n in 9"
-                    :key="n"
-                    type="button"
-                    :class="{ on: patron.includes(n) }"
-                    @click="tocarPatron(n)"
-                  >
-                    {{ patron.includes(n) ? patron.indexOf(n) + 1 : "" }}
-                  </button>
-                </div>
+                <PatronDesbloqueo v-model="patron" :tam="168" />
                 <div class="text-body-2 sv-suave">
-                  <div>{{ patron.length ? patron.join(" → ") : "Tocar los puntos en orden" }}</div>
+                  <div>{{ patron.length ? patron.join(" → ") : "Dibujar el patrón arrastrando el dedo o el mouse" }}</div>
                   <button v-if="patron.length" type="button" class="sv-enlace mt-1" @click="patron = []">Borrar</button>
                 </div>
               </div>
@@ -275,6 +265,7 @@ import "../styles/servicio.css";
 import { ref, computed, onMounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { fmtFecha } from "../utils/fechas";
+import PatronDesbloqueo from "../components/PatronDesbloqueo.vue";
 import {
   createOrder,
   listOrders,
@@ -387,10 +378,6 @@ const accesorios = ref([]);
 const bloqueo = ref("pin");
 const pin = ref("");
 const patron = ref([]);
-
-function tocarPatron(n) {
-  if (!patron.value.includes(n)) patron.value.push(n);
-}
 
 const precios = ref([]);
 let demoraPrecio = null;
