@@ -291,6 +291,14 @@
                 <v-tooltip v-if="rail" activator="parent" location="right">Presupuestos</v-tooltip>
               </v-list-item>
 
+              <v-list-item v-if="hasRoute('serviceOrders')" :to="{ name: 'serviceOrders' }" class="nav-item">
+                <template #prepend>
+                  <v-icon size="18">mdi-tools</v-icon>
+                </template>
+                <v-list-item-title>Servicio tecnico</v-list-item-title>
+                <v-tooltip v-if="rail" activator="parent" location="right">Servicio tecnico</v-tooltip>
+              </v-list-item>
+
               <v-list-item v-if="hasRoute('categories')" :to="{ name: 'categories' }" class="nav-item">
                 <template #prepend>
                   <v-icon size="18">mdi-shape-outline</v-icon>
@@ -944,7 +952,8 @@ const showConfig = computed(() => {
     hasRoute("adminTelegram") ||
     hasRoute("shopBranding") ||
     hasRoute("users") ||
-    hasRoute("adminCustomers")
+    hasRoute("adminCustomers") ||
+    hasRoute("serviceOrders")
   );
 });
 

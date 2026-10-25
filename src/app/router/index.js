@@ -165,6 +165,20 @@ const routes = [
         component: () => import("@/modules/budgets/pages/BudgetEditorPage.vue"),
       },
 
+      // Servicio tecnico. Sin meta.roles a proposito: el mostrador entero
+      // recibe equipos y consulta el estado de una reparacion, no solo el
+      // admin. Eliminar una orden sigue siendo admin, y eso lo corta la API.
+      {
+        path: "service",
+        name: "serviceOrders",
+        component: () => import("@/modules/service/pages/ServiceOrdersListPage.vue"),
+      },
+      {
+        path: "service/:id",
+        name: "serviceOrderEdit",
+        component: () => import("@/modules/service/pages/ServiceOrderEditorPage.vue"),
+      },
+
       { path: "transfers", name: "transfers", component: StockTransfersPage },
       { path: "transfers/new", name: "transferNew", component: () => import("@/modules/dashboard/pages/TransferPage.vue") },
       { path: "transfers/:id", name: "transferView", component: () => import("@/modules/dashboard/pages/TransferPage.vue") },
