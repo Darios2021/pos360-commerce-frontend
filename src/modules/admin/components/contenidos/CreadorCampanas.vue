@@ -55,8 +55,12 @@
             <div class="cc-banda">
               <span>Guion</span>
               <span class="cc-banda__der">
+                <span class="cc-modo" role="group" aria-label="Qué vende el video">
+                  <button type="button" class="cc-pas" :aria-pressed="!enKit" @click="modoProductos">Productos sueltos</button>
+                  <button type="button" class="cc-pas" :aria-pressed="enKit" @click="modoKit">Kit o servicio</button>
+                </span>
                 <button type="button" class="cc-pas" :aria-pressed="conPrecio" @click="alternarPrecio">Con precio</button>
-                <small class="num">{{ cuantos }} {{ cuantos === 1 ? "producto" : "productos" }} · {{ seg(total) }}</small>
+                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total) }}</small>
               </span>
             </div>
             <div v-for="(e, i) in esc" :key="e.k" class="cc-esc" :class="{ 'is-activa': i === actual }">
@@ -66,6 +70,27 @@
                   <div class="cc-esc__rot">Portada · {{ seg(durDe(e)) }}</div>
                   <input v-model="e.titular" class="cc-in cc-in--tit" maxlength="40" aria-label="Titular" :class="{ 'is-cargando': cargando && !e.titular }" @input="editar(e, 'titular', i)" />
                   <input v-model="e.bajada" class="cc-in cc-in--baj" maxlength="60" aria-label="Bajada" @input="editar(e, 'bajada', i)" />
+                </template>
+                <template v-else-if="e.tipo === 'item' && enKit">
+                  <div class="cc-esc__rot">Kit o servicio · {{ seg(durDe(e)) }}</div>
+                  <div class="cc-kit">
+                    <label class="cc-kit__campo cc-kit__ancho"><span>Nombre</span><input v-model="kit.nombre" class="cc-in" maxlength="90" placeholder="Kit cerco eléctrico instalado" @input="actualizarKit" @change="refrescar()" /></label>
+                    <label v-if="conPrecio" class="cc-kit__campo"><span>Precio</span><input v-model.number="kit.precio" class="cc-in num" type="number" min="0" inputmode="numeric" @input="actualizarKit" @change="refrescar()" /></label>
+                  </div>
+                  <div class="cc-kit__campo">
+                    <span>Incluye</span>
+                    <div class="cc-kit__inc">
+                      <button v-for="p in candidatosKit" :key="p.id" type="button" class="cc-pas" :aria-pressed="kit.incluye.includes(p.id)" @click="alternarIncluido(p)">{{ p.titulo }}</button>
+                    </div>
+                    <input v-model="kit.extra" class="cc-in" maxlength="120" placeholder="Y además (ej. instalación y garantía)" @input="actualizarKit" @change="refrescar()" />
+                  </div>
+                  <span v-if="kitSinFoto" class="cc-cupo">Para el video hace falta incluir al menos un producto con foto.</span>
+                  <div v-if="fotosKit.length > 1" class="cc-kit__campo">
+                    <span>Foto</span>
+                    <div class="cc-kit__fotos">
+                      <button v-for="p in fotosKit" :key="p.id" type="button" class="cc-kit__foto" :aria-pressed="kit.foto === p.id" :aria-label="`Usar la foto de ${p.titulo}`" @click="kit.foto = p.id; actualizarKit()"><img :src="p.imagen" alt="" loading="lazy" /></button>
+                    </div>
+                  </div>
                 </template>
                 <template v-else-if="e.tipo === 'item'">
                   <div class="cc-esc__rot">Producto {{ nItem(i) }} · {{ seg(durDe(e)) }}</div>
@@ -98,7 +123,7 @@
               </div>
               <div class="cc-esc__acc">
                 <button type="button" class="cc-ico" title="Otra versión" aria-label="Otra versión" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
-                <template v-if="e.tipo === 'item'">
+                <template v-if="e.tipo === 'item' && !enKit">
                   <button type="button" class="cc-ico" :class="{ 'is-on': eligiendo === e.k }" title="Cambiar producto" aria-label="Cambiar producto" @click="alternarSelector(e)"><v-icon size="19">mdi-swap-horizontal</v-icon></button>
                   <button v-if="cuantos > 1" type="button" class="cc-ico" title="Quitar" aria-label="Quitar" @click="quitar(i)"><v-icon size="19">mdi-close</v-icon></button>
                 </template>
@@ -120,7 +145,7 @@
                 </div>
               </div>
             </div>
-            <button v-if="cuantos < TOPE_PRODUCTOS" type="button" class="cc-mas" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Producto</button>
+            <button v-if="!enKit && cuantos < TOPE_PRODUCTOS" type="button" class="cc-mas" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Producto</button>
           </div>
 
           <div class="cc-pieza cc-sonido">
@@ -260,7 +285,9 @@ const total = computed(() => esc.value.reduce((a, e) => a + durDe(e), 0));
 const nItem = (i) => esc.value.slice(0, i).filter((e) => e.tipo === "item").length + 1;
 const pasa = (e) => conVoz.value && medir(e.voz) > durDe(e) + 0.05;
 const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <= 0);
-const puedeGenerar = computed(() => !creando.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa));
+// El servicio pide foto en cada ítem: un kit necesita al menos un producto incluido con foto.
+const kitSinFoto = computed(() => enKit.value && !items.value[0]?.prod?.imagen);
+const puedeGenerar = computed(() => !creando.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa) && !kitSinFoto.value);
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
 // Cierre: la primera sucursal y el WhatsApp salen del comercio y se editan por video;
@@ -294,6 +321,76 @@ function alternarPrecio() {
   for (const e of esc.value) if (!e.editado.voz) e.variante = 0;
   pedirTextos();
 }
+/* ── Kit o servicio (2026-10-25, pedido del usuario: "no necesariamente los videos deben
+   ser vendiendo los productos individuales sino el servicio o el kit, y el precio lo puede
+   asignar el usuario"; "dejale las opciones"). Una sola escena con un ítem armado acá:
+   nombre, precio a mano, lo que incluye (productos del catálogo + texto libre) y la foto
+   de uno de ellos. El servicio lo recibe como cualquier ítem (titulo, precio, descripcion,
+   imagen): no hace falta nada del otro lado. */
+const ID_KIT = "kit";
+const enKit = ref(false);
+const kit = reactive({ nombre: "", precio: 0, incluye: [], extra: "", foto: null });
+const porId = (id) => props.catalogo.find((p) => String(p.id) === String(id));
+// Para tildar: los que propone la campaña (y los que ya estaban), hasta 12.
+const candidatosKit = computed(() => {
+  if (!camp.value) return [];
+  const base = propuestos(camp.value, props.catalogo, promo()).slice(0, 12);
+  const extra = kit.incluye.map(porId).filter((p) => p && !base.some((b) => b.id === p.id));
+  return [...extra, ...base];
+});
+const fotosKit = computed(() => kit.incluye.map(porId).filter((p) => p?.imagen));
+const sumaIncluidos = () => Math.round(kit.incluye.map(porId).reduce((a, p) => a + (Number(p?.precio) || 0), 0));
+function prodKit() {
+  const inc = kit.incluye.map(porId).filter(Boolean);
+  const nombres = inc.map((p) => p.titulo);
+  const extra = kit.extra.trim();
+  const lista = [...nombres, ...(extra ? [extra] : [])];
+  const foto = porId(kit.foto) || inc.find((p) => p.imagen) || null;
+  return {
+    id: ID_KIT, titulo: kit.nombre.trim() || camp.value?.nombre || "Kit", nombre: kit.nombre.trim(),
+    precio: Number(kit.precio) > 0 ? Number(kit.precio) : undefined,
+    descripcion: lista.length ? `Incluye: ${lista.join(" · ")}`.slice(0, 300) : undefined,
+    categoria: inc[0]?.categoria, imagen: foto?.imagen || "",
+  };
+}
+function actualizarKit() {
+  const e = items.value[0];
+  if (e) e.prod = prodKit();
+}
+function alternarIncluido(p) {
+  const i = kit.incluye.indexOf(p.id);
+  const sumaAntes = sumaIncluidos();
+  if (i >= 0) kit.incluye.splice(i, 1);
+  else kit.incluye.push(p.id);
+  // El precio sigue a la suma mientras nadie lo haya cambiado a mano.
+  if (!kit.precio || kit.precio === sumaAntes) kit.precio = sumaIncluidos();
+  if (!kit.incluye.includes(kit.foto)) kit.foto = kit.incluye.find((id) => porId(id)?.imagen) ?? null;
+  actualizarKit();
+  refrescar();
+}
+function modoKit() {
+  if (enKit.value || !camp.value) return;
+  const prods = items.value.map((e) => e.prod).filter((p) => p.id !== ID_KIT);
+  kit.incluye = prods.map((p) => p.id);
+  kit.nombre = kit.nombre || camp.value.nombre || "";
+  kit.precio = sumaIncluidos();
+  kit.extra = "";
+  kit.foto = prods.find((p) => p.imagen)?.id ?? null;
+  enKit.value = true;
+  const e = escenaItem(prodKit());
+  esc.value = [esc.value[0], e, esc.value.at(-1)];
+  eligiendo.value = null;
+  refrescar();
+}
+function modoProductos() {
+  if (!enKit.value) return;
+  enKit.value = false;
+  const prods = kit.incluye.map(porId).filter(Boolean).slice(0, TOPE_PRODUCTOS);
+  const lista = prods.length ? prods : propuestos(camp.value, props.catalogo, promo()).slice(0, Math.min(TOPE_PRODUCTOS, camp.value.productos?.n || 3));
+  esc.value = [esc.value[0], ...lista.map(escenaItem), esc.value.at(-1)];
+  refrescar();
+}
+
 // Cierre con cuotas y medios de pago: lo decide la campaña (si habla de cuotas).
 const hablaDeCuotas = (c) => c?.productos?.regla === "conCuotas" || /\{(cuotas|valorCuota)\}/.test(Object.values(c?.textos || {}).join(" "));
 
@@ -303,6 +400,8 @@ function abrir(c, { conRuta = true } = {}) {
   sonidoDe(c);
   const prods = propuestos(c, props.catalogo, promo()).slice(0, Math.min(TOPE_PRODUCTOS, c.productos?.n || 3));
   conPrecio.value = true;
+  enKit.value = false;
+  Object.assign(kit, { nombre: "", precio: 0, incluye: [], extra: "", foto: null });
   esc.value = [nueva("portada", { titular: "", bajada: "" }), ...prods.map(escenaItem), nueva("cierre", { llamado: "", ...datosComercio() })];
   eligiendo.value = null;
   t.value = 0;
@@ -345,6 +444,8 @@ function abrirEdicion(ed) {
   const cierre = { llamado: enc.textos?.llamado || "", voz: g.cierre || "" };
   const datos = { sucursal: (enc.sucursales || [])[0]?.nombre || "", whatsapp: (enc.redes || []).find((r) => r.red === "whatsapp")?.texto || "" };
   conPrecio.value = pan?.conPrecio ?? (!(enc.items || []).length || (enc.items || []).some((it) => it.precio != null));
+  enKit.value = Boolean(pan?.kit);
+  Object.assign(kit, pan?.kit ? { nombre: "", extra: "", foto: null, ...pan.kit, incluye: [...(pan.kit.incluye || [])] } : { nombre: "", precio: 0, incluye: [], extra: "", foto: null });
   const its = (enc.items || []).slice(0, TOPE_PRODUCTOS).map((it, i) => {
     const prod = props.catalogo.find((p) => it.id != null && String(p.id) === String(it.id))
       || { id: it.id ?? `encargo-${i}`, titulo: it.titulo, nombre: it.titulo, precio: it.precio, precioAnterior: it.precioAnterior, imagen: it.imagen, cuotas: it.cuotas, descripcion: it.descripcion, categoria: it.categoria, stock: it.stock };
@@ -555,7 +656,7 @@ const angosto = ref(consulta.matches);
 const alCambiarAncho = (ev) => { angosto.value = ev.matches; };
 consulta.addEventListener("change", alCambiarAncho);
 const clave = (e) => (e ? `${e.k}` : "");
-const descripcionDe = (e) => (e.caracteristicas?.length ? e.caracteristicas.join(" · ") : e.prod?.descripcion || "");
+const descripcionDe = (e) => (e.prod?.id === ID_KIT ? e.prod.descripcion || "" : e.caracteristicas?.length ? e.caracteristicas.join(" · ") : e.prod?.descripcion || "");
 function reelDe(e, ancho) {
   if (!e) return { tipo: "intro", fuente: props.fuente, ancho };
   if (e.tipo === "portada") return { tipo: "intro", apertura: e.titular ? { titular: e.titular, bajada: e.bajada } : null, foto: items.value[0]?.prod.imagen || "", fuente: props.fuente, ancho };
@@ -617,7 +718,8 @@ async function generar() {
     },
   };
   // Lo que la pantalla necesita para reabrir este armado tal cual (Editar video).
-  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0), conPrecio: conPrecio.value };
+  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0), conPrecio: conPrecio.value,
+    ...(enKit.value ? { kit: { nombre: kit.nombre, precio: kit.precio, incluye: kit.incluye, extra: kit.extra, foto: kit.foto } } : {}) };
   try {
     const p = await crearPieza({ ...encargo, pantalla, ...(editaMisma.value ? { deRevision: editando.value.id } : {}) });
     camp.value = null;
@@ -727,6 +829,16 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 
 .cc-elegir { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; border: 1px dashed var(--sp-borde); }
 .cc-filtros { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cc-modo { display: inline-flex; gap: 4px; margin-right: 6px; }
+.cc-kit { display: flex; gap: 10px; flex-wrap: wrap; }
+.cc-kit__campo { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.cc-kit__campo > span { font-size: 12px; font-weight: 700; color: var(--sp-suave); }
+.cc-kit__ancho { flex: 1 1 220px; }
+.cc-kit__inc { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-kit__fotos { display: flex; gap: 6px; flex-wrap: wrap; }
+.cc-kit__foto { width: 52px; height: 52px; padding: 2px; border-radius: 10px; border: 2px solid var(--sp-borde); background: #fff; cursor: pointer; }
+.cc-kit__foto[aria-pressed="true"] { border-color: var(--cc-pri); }
+.cc-kit__foto img { width: 100%; height: 100%; object-fit: contain; }
 .cc-pas { border: 1px solid var(--sp-borde); background: var(--sp-caja); border-radius: 9px; padding: 4px 10px; font-size: 13px; font-weight: 700; color: var(--sp-suave); cursor: pointer; }
 .cc-pas[aria-pressed="true"] { background: var(--cc-pri); border-color: var(--cc-pri); color: var(--cc-pri-ink); }
 .cc-busca { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--sp-borde); border-radius: 9px; padding: 2px 8px; background: var(--sp-caja); color: var(--sp-suave); }
