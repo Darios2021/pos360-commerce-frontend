@@ -35,7 +35,7 @@
           <div v-if="conVoz" class="cc-subt"><v-icon size="18">mdi-microphone-outline</v-icon><span>{{ esc[actual]?.voz }}</span></div>
           <div class="cc-mandos">
             <button type="button" class="cc-ico" :aria-label="play ? 'Detener' : 'Reproducir'" @click="play = !play"><v-icon size="20">{{ play ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-            <span class="num">{{ seg(total + (conLocal && hayLocal ? LOCAL_SEG : 0)) }}</span>
+            <span class="num">{{ seg(total) }}</span>
           </div>
           <button type="button" class="cc-generar cc-generar--ancho" :disabled="!puedeGenerar" @click="generar">
             <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
@@ -62,13 +62,13 @@
                   <button type="button" class="cc-pas" :aria-pressed="enKit" @click="modoKit">Kit o servicio</button>
                 </span>
                 <button type="button" class="cc-pas" :aria-pressed="conPrecio" @click="alternarPrecio">Con precio</button>
-                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total + (conLocal && hayLocal ? LOCAL_SEG : 0)) }}</small>
+                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total) }}</small>
               </span>
             </div>
             <!-- Escena del local (contenido/escenaLocal.js): sólo si el comercio tiene tomas cargadas -->
             <div v-if="hayLocal" class="cc-local">
-              <span class="cc-local__t"><b>Apertura</b><small>la fachada del local con el titular, después la vidriera ({{ seg(LOCAL_SEG) }})</small></span>
-              <span class="cc-modo" role="group" aria-label="Apertura del video">
+              <span class="cc-local__t"><b>Fondo</b><small>el local en movimiento detrás de la portada y de cada producto</small></span>
+              <span class="cc-modo" role="group" aria-label="Fondo del video">
                 <button type="button" class="cc-pas" :aria-pressed="conLocal" @click="conLocal = true">Con el local</button>
                 <button type="button" class="cc-pas" :aria-pressed="!conLocal" @click="conLocal = false">Sin el local</button>
               </span>
@@ -336,8 +336,7 @@ function datosCierre() {
 }
 // Sin precio: el producto viaja sin precio, precio anterior ni cuotas (la escena, la voz y el video).
 const conPrecio = ref(true);
-// Escena del local: el servicio la antepone al reel (5,1 s) si el comercio tiene tomas.
-const LOCAL_SEG = 5.1;
+// Escena del local: el servicio pone las tomas del comercio de fondo (contenido/escenaLocal.js).
 const hayLocal = computed(() => Boolean(props.recursos.escenaLocal));
 const conLocal = ref(false);
 const prodDe = (p) => (conPrecio.value ? p : { ...p, precio: undefined, precioAnterior: undefined, cuotas: undefined });
