@@ -125,8 +125,10 @@ export async function getMisCampanas() {
 }
 
 // Una frase -> { campana, origen: "ia" | "plantilla", motivo? }. No guarda nada.
-export async function armarBorrador(pedido, { productos = [], variante = 0 } = {}) {
-  const { data } = await http.post(`${BASE}/campanas/borrador`, { pedido, productos, variante });
+// productos: los del stock que pueden servir ({ id, titulo, categoria, precio, stock, coincide });
+// quiere: 'productos' | 'kit' | 'ia'. Devuelve { campana, origen, aviso }.
+export async function armarBorrador(pedido, { productos = [], quiere = "ia", variante = 0 } = {}) {
+  const { data } = await http.post(`${BASE}/campanas/borrador`, { pedido, productos, quiere, variante });
   return data;
 }
 

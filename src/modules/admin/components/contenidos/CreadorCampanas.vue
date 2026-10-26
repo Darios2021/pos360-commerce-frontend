@@ -398,11 +398,22 @@ function abrir(c, { conRuta = true } = {}) {
   cortarMuestra();
   camp.value = c;
   sonidoDe(c);
-  const prods = propuestos(c, props.catalogo, promo()).slice(0, Math.min(TOPE_PRODUCTOS, c.productos?.n || 3));
-  conPrecio.value = true;
+  // Con productos elegidos (Campaña a medida), todos los que siguen en stock; si no, los de la regla.
+  const elegidos = (c.productos?.ids || []).map(porId).filter(Boolean);
+  const prods = (elegidos.length ? elegidos : propuestos(c, props.catalogo, promo())).slice(0, Math.min(TOPE_PRODUCTOS, elegidos.length || c.productos?.n || 3));
+  conPrecio.value = c.conPrecio !== false;
   enKit.value = false;
   Object.assign(kit, { nombre: "", precio: 0, incluye: [], extra: "", foto: null });
   esc.value = [nueva("portada", { titular: "", bajada: "" }), ...prods.map(escenaItem), nueva("cierre", { llamado: "", ...datosComercio() })];
+  // Una campaña de kit o servicio arranca armada como kit, con lo que guardó el local.
+  if (c.modo === "kit" && elegidos.length) {
+    Object.assign(kit, { nombre: c.kit?.nombre || c.nombre || "", extra: c.kit?.extra || "", incluye: elegidos.map((p) => p.id) });
+    kit.precio = Number(c.kit?.precio) > 0 ? Number(c.kit.precio) : sumaIncluidos();
+    const foto = porId(c.kit?.foto);
+    kit.foto = foto?.imagen ? foto.id : elegidos.find((p) => p.imagen)?.id ?? null;
+    enKit.value = true;
+    esc.value = [esc.value[0], escenaItem(prodKit()), esc.value.at(-1)];
+  }
   eligiendo.value = null;
   t.value = 0;
   play.value = true;

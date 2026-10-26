@@ -139,6 +139,10 @@ export function propuestos(c, catalogo, { filtro = "sug", promoIds = new Set(), 
   const cuo = (l) => l.filter(tienePlan).sort((a, b) => b.precio - a.precio);
   const primero = (arriba) => { const ids = new Set(arriba.map((p) => p.id)); return [...arriba, ...porVendidos(ps.filter((p) => !ids.has(p.id)))]; };
   if (filtro === "vend") return porVendidos(ps);
+  // Los que eligió el local para la campaña (productos.ids), en su orden y primero. Un id
+  // que ya no está en el stock se saltea.
+  const elegidos = (c?.productos?.ids || []).map((id) => ps.find((p) => String(p.id) === String(id))).filter(Boolean);
+  if (filtro === "sug" && elegidos.length) return primero(elegidos);
   if (filtro === "off") return off(ps);
   if (filtro === "nue") return nue(ps);
   if (filtro === "cuo") return cuo(ps);
