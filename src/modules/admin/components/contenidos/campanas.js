@@ -91,11 +91,37 @@ export function puntaje(pedido, p) {
   const del = textoDe(p);
   return palabrasDe(pedido).filter((w) => del.some((x) => pegan(w, x))).length;
 }
-/** El filtro de una campaña de categoría ("cámaras, alarmas"): coincide alguna de sus partes, con todas sus palabras. */
+const partesDe = (filtro) => String(filtro || "").split(/[,;]|\by\b/).map(palabrasDe).filter((ws) => ws.length);
+const tituloDe = (p) => palabrasDe(p?.titulo || p?.nombre || "");
+/**
+ * El filtro de una campaña de categoría ("cámaras, alarmas"): coincide alguna de sus
+ * partes, con todas sus palabras entre categoría y nombre, o con la primera (la que
+ * nombra el producto) en el nombre. Así "CERCO PERIMETRAL" toma el "ENERGIZADOR DE
+ * CERCO", que el catálogo tiene en ALARMAS DOMICILIARIAS (2026-10-25).
+ */
 export function coincideFiltro(filtro, p) {
   const del = textoDe(p);
-  return String(filtro || "").split(/[,;]|\by\b/).map(palabrasDe).filter((ws) => ws.length)
-    .some((ws) => ws.every((w) => del.some((x) => pegan(w, x))));
+  const tit = tituloDe(p);
+  return partesDe(filtro).some((ws) => ws.every((w) => del.some((x) => pegan(w, x))) || tit.some((x) => pegan(ws[0], x)));
+}
+/** Cuántas palabras del filtro tiene el NOMBRE del producto (la categoría sola no suma). */
+function enNombre(filtro, p) {
+  const tit = tituloDe(p);
+  return Math.max(0, ...partesDe(filtro).map((ws) => ws.filter((w) => tit.some((x) => pegan(w, x))).length));
+}
+/**
+ * Los del filtro, en orden: primero los que lo dicen en el nombre (el producto en
+ * sí), después los que sólo comparten la categoría (accesorios); dentro de cada
+ * grupo, los más vendidos y, a igual venta, los de mayor precio.
+ */
+export function ordenarPorFiltro(filtro, lista) {
+  return lista
+    .filter((p) => coincideFiltro(filtro, p))
+    // Basta con que el nombre lo diga: contar palabras ponía primero el cartel
+    // "PELIGRO (cerco electrico)" antes que el energizador.
+    .map((p) => ({ p, n: enNombre(filtro, p) > 0 ? 1 : 0 }))
+    .sort((a, b) => b.n - a.n || vendidos(b.p) - vendidos(a.p) || (Number(b.p.precio) || 0) - (Number(a.p.precio) || 0))
+    .map((x) => x.p);
 }
 
 /** Las palabras que nombran productos en un pedido ("PUSE CERCOS ELECTRICOS" → "cercos electricos"). */
@@ -129,7 +155,7 @@ export function propuestos(c, catalogo, { filtro = "sug", promoIds = new Set(), 
   if (r === "categoria") {
     // Sólo los de la categoría: completar con los más vendidos mezclaba productos que
     // no tienen nada que ver con la campaña ("Cercos eléctricos" con un cargador).
-    return porVendidos(ps.filter((p) => coincideFiltro(c.productos.filtro, p)));
+    return ordenarPorFiltro(c.productos.filtro, ps);
   }
   return porVendidos(ps);
 }

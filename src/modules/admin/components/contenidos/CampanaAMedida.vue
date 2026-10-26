@@ -124,7 +124,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { pesos, puntaje, coincideFiltro, filtroDePedido } from "@/modules/admin/components/contenidos/campanas";
+import { pesos, puntaje, coincideFiltro, ordenarPorFiltro, filtroDePedido } from "@/modules/admin/components/contenidos/campanas";
 import { armarBorrador, crearCampana, guardarCampana } from "@/modules/admin/services/contenidos.service";
 
 const props = defineProps({
@@ -200,7 +200,7 @@ const muestra = computed(() => {
   const n = Math.min(6, Math.max(1, Number(c.productos.n) || 3));
   // De una categoría: sólo los que coinciden, o ninguno (y la pantalla lo dice). Rellenar
   // con el resto del catálogo mostraba cargadores en una campaña de cercos eléctricos.
-  if (r === "categoria") return claves.length ? ps.filter((p) => coincideFiltro(c.productos.filtro, p)).slice(0, n) : [];
+  if (r === "categoria") return claves.length ? ordenarPorFiltro(c.productos.filtro, ps).slice(0, n) : [];
   let l = ps;
   if (r === "descuento") l = ps.filter((p) => p.precioAnterior > p.precio);
   else if (r === "conCuotas") l = ps.filter((p) => p.cuotas);
