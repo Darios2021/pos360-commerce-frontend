@@ -20,13 +20,13 @@
       <div v-if="palabras.length" class="cm-bloque">
         <span class="cm-rot">EN TU STOCK</span>
         <div v-if="coinciden.length" class="cm-prods">
-          <div v-for="p in coinciden.slice(0, 6)" :key="p.id" class="cm-prod cm-prod--on">
+          <div v-for="p in coinciden.slice(0, 6)" :key="p.id" class="cm-prod" :class="{ 'cm-prod--on': fuerte(p) }">
             <span class="cm-prod__img"><img v-if="p.imagen" :src="p.imagen" alt="" loading="lazy" /></span>
             <span><b>{{ p.titulo }}</b><span class="cm-s num">{{ unidades(p) }}{{ p.precio != null ? ` · ${pesos(p.precio)}` : "" }}</span></span>
           </div>
         </div>
         <span class="cm-s">{{ coinciden.length
-          ? `Coinciden ${coinciden.length} ${coinciden.length === 1 ? "producto" : "productos"} con lo que escribiste. La campaña arranca con estos; después sumás o sacás.`
+          ? `${fuertes.length === 1 ? "Coincide 1 producto" : `Coinciden ${fuertes.length} productos`} con lo que escribiste${coinciden.length > fuertes.length ? " (marcados)" : ""}. La campaña arranca con ${fuertes.length === 1 ? "ese" : "esos"}; después sumás o sacás.`
           : "Ningún producto del stock tiene esas palabras en el nombre. La IA busca entre parecidos y, si no hay, te avisa." }}</span>
       </div>
 
@@ -271,7 +271,10 @@ function cargar(x) {
 function resolverIds() {
   if (!props.catalogo.length) return;
   if (!c.ids.length && c.productos.regla !== "manual") {
-    c.ids = propuestos({ productos: c.productos }, props.catalogo).slice(0, c.modo === "kit" ? 4 : Math.min(TOPE, c.productos.n || 3)).map((p) => String(p.id));
+    // Primero lo que nombra la campaña ("Fundas para tu celu": las fundas); si no, la regla.
+    const n = c.modo === "kit" ? 4 : Math.min(TOPE, c.productos.n || 3);
+    const nombrados = c.productos.regla === "categoria" ? coincidenCon(c.nombre).fuertes : [];
+    c.ids = (nombrados.length ? nombrados : propuestos({ productos: c.productos }, props.catalogo)).slice(0, n).map((p) => String(p.id));
   }
   const antes = c.ids.length;
   c.ids = c.ids.filter((id) => porId(id));
@@ -305,17 +308,24 @@ const ideas = computed(() => {
   return [top[0] && `Promo de ${top[0]} esta semana`, top[1] && `${top[1]} con instalación`, top[2] && `Llegaron ${top[2]} nuevos`].filter(Boolean);
 });
 const palabras = computed(() => palabrasDe(pedido.value));
-// Lo que el pedido nombra EN EL NOMBRE del producto (no en la categoría: "accesorios
+// Lo que un texto nombra EN EL NOMBRE del producto (no en la categoría: "accesorios
 // varios" traía auriculares en una campaña de fundas). La primera palabra es la que
-// nombra el producto: si alguno la tiene, van sólo esos ("fundas para tu celu" no trae
-// los soportes de celular).
-const coinciden = computed(() => {
-  if (!palabras.value.length) return [];
-  const conPuntaje = props.catalogo.map((p) => ({ p, s: puntaje(pedido.value, { titulo: p.titulo }), primera: puntaje(palabras.value[0], { titulo: p.titulo }) > 0 }))
-    .filter((x) => x.s > 0);
-  const lista = conPuntaje.some((x) => x.primera) ? conPuntaje.filter((x) => x.primera) : conPuntaje;
-  return lista.sort((a, b) => b.s - a.s || vendidos(b.p) - vendidos(a.p) || (Number(b.p.stock) || 0) - (Number(a.p.stock) || 0)).map((x) => x.p);
-});
+// nombra el producto: los que la tienen van primero y son los "fuertes" ("fundas para
+// tu celu": las fundas, y después los soportes de celular).
+function coincidenCon(texto) {
+  const ws = palabrasDe(texto);
+  if (!ws.length) return { todos: [], fuertes: [] };
+  const l = props.catalogo
+    .map((p) => ({ p, s: puntaje(texto, { titulo: p.titulo }), primera: puntaje(ws[0], { titulo: p.titulo }) > 0 }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.primera - a.primera || b.s - a.s || vendidos(b.p) - vendidos(a.p) || (Number(b.p.stock) || 0) - (Number(a.p.stock) || 0));
+  const fuertes = l.filter((x) => x.primera);
+  return { todos: l.map((x) => x.p), fuertes: (fuertes.length ? fuertes : l).map((x) => x.p) };
+}
+const delPedido = computed(() => coincidenCon(pedido.value));
+const coinciden = computed(() => delPedido.value.todos);
+const fuertes = computed(() => delPedido.value.fuertes);
+const fuerte = (p) => fuertes.value.some((x) => x.id === p.id);
 // Lo que ve la IA: los que coinciden (marcados) y después los de sus mismas categorías y
 // los que comparten palabras con la categoría, para que pueda completar un kit.
 function stockParaIa() {
@@ -326,7 +336,8 @@ function stockParaIa() {
     .filter((p) => !ids.has(p.id) && (cats.has(p.categoria) || puntaje(pedido.value, { categoria: p.categoria }) > 0))
     .sort((a, b) => vendidos(b) - vendidos(a))
     .slice(0, 40 - nombrados.length);
-  return [...nombrados.map((p) => ({ ...item(p), coincide: true })), ...vecinos.map(item)];
+  const fuertes = new Set(delPedido.value.fuertes.map((p) => p.id));
+  return [...nombrados.map((p) => ({ ...item(p), coincide: fuertes.has(p.id) })), ...vecinos.map(item)];
 }
 const item = (p) => ({ id: String(p.id), titulo: p.titulo, categoria: p.categoria || null, precio: p.precio ?? null, stock: p.stock ?? null });
 
@@ -340,8 +351,8 @@ async function armar(otra = false) {
     cargar(r.campana);
     ajustar();
     // Sin ids del servicio (plantilla vieja), los que coinciden.
-    if (!c.ids.length && coinciden.value.length) {
-      c.ids = coinciden.value.slice(0, c.modo === "kit" ? 4 : 3).map((p) => String(p.id));
+    if (!c.ids.length && delPedido.value.fuertes.length) {
+      c.ids = delPedido.value.fuertes.slice(0, c.modo === "kit" ? 4 : 3).map((p) => String(p.id));
       if (c.modo === "kit") ajustarKit();
     }
     origen.value = r.origen;
@@ -380,8 +391,9 @@ const encontrados = computed(() => {
   if (q.length < 2) return [];
   return props.catalogo.filter((p) => !incluido(p) && normalizar(`${p.titulo} ${p.nombre || ""} ${p.categoria || ""}`).includes(q)).slice(0, 8);
 });
-// Afines a lo elegido: los que comparten palabras del nombre con lo elegido, el nombre de
-// la campaña o el pedido ("cerco" junta energizador, cable y cartel); a igual puntaje,
+// Afines a lo elegido: los que comparten palabras del nombre (o de la categoría) con lo
+// elegido, el nombre de la campaña o el pedido ("cerco" junta energizador, cable, cartel
+// y los aisladores de CERCO PERIMETRAL); a igual puntaje,
 // los de la misma categoría y los más vendidos. La categoría sola no alcanza: en
 // ACCESORIOS VARIOS hay fundas y bolsos de notebook.
 const afines = computed(() => {
@@ -390,7 +402,8 @@ const afines = computed(() => {
   const cats = new Set(elegidos.value.map((p) => p.categoria).filter(Boolean));
   return props.catalogo
     .filter((p) => !incluido(p))
-    .map((p) => ({ p, s: puntaje(claves.join(" "), { titulo: p.titulo }) + (cats.has(p.categoria) ? 0.5 : 0) }))
+    // La categoría cuenta si dice lo mismo ("CERCO PERIMETRAL" para aisladores y jabalinas).
+    .map((p) => ({ p, s: puntaje(claves.join(" "), { titulo: p.titulo }) + Math.min(1, puntaje(claves.join(" "), { categoria: p.categoria })) + (cats.has(p.categoria) ? 0.5 : 0) }))
     .filter((x) => x.s >= 1)
     .sort((a, b) => b.s - a.s || vendidos(b.p) - vendidos(a.p))
     .map((x) => x.p);
