@@ -78,6 +78,9 @@
           <div v-if="muestra.length" class="cm-prods">
             <div v-for="p in muestra" :key="p.id" class="cm-prod"><span class="cm-prod__img"><img v-if="p.imagen" :src="p.imagen" alt="" loading="lazy" /></span><span><b>{{ p.titulo }}</b><span class="num">{{ pesos(p.precio) }}</span></span></div>
           </div>
+          <p v-else-if="c.productos.regla === 'categoria' && c.productos.filtro.trim()" class="cm-mal" role="status">
+            Ningún producto del catálogo coincide con “{{ c.productos.filtro }}”. Probá con otra palabra, como aparece en el nombre del producto.
+          </p>
         </section>
 
         <section class="cm-pieza">
@@ -121,7 +124,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { pesos } from "@/modules/admin/components/contenidos/campanas";
+import { pesos, puntaje, coincideFiltro, filtroDePedido } from "@/modules/admin/components/contenidos/campanas";
 import { armarBorrador, crearCampana, guardarCampana } from "@/modules/admin/services/contenidos.service";
 
 const props = defineProps({
@@ -194,12 +197,15 @@ const muestra = computed(() => {
   const ps = props.catalogo.filter((p) => p.precio != null);
   const r = c.productos.regla;
   const claves = String(c.productos.filtro || "").toLowerCase().split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  const n = Math.min(6, Math.max(1, Number(c.productos.n) || 3));
+  // De una categoría: sólo los que coinciden, o ninguno (y la pantalla lo dice). Rellenar
+  // con el resto del catálogo mostraba cargadores en una campaña de cercos eléctricos.
+  if (r === "categoria") return claves.length ? ps.filter((p) => coincideFiltro(c.productos.filtro, p)).slice(0, n) : [];
   let l = ps;
   if (r === "descuento") l = ps.filter((p) => p.precioAnterior > p.precio);
   else if (r === "conCuotas") l = ps.filter((p) => p.cuotas);
-  else if (r === "categoria" && claves.length) l = ps.filter((p) => claves.some((k) => `${p.categoria} ${p.titulo}`.toLowerCase().includes(k)));
   else if (r === "masVendidos") l = [...ps].sort((a, b) => (b.vendidos30d || 0) - (a.vendidos30d || 0));
-  return (l.length ? l : ps).slice(0, Math.min(6, Math.max(1, Number(c.productos.n) || 3)));
+  return (l.length ? l : ps).slice(0, n);
 });
 const local = computed(() => String(props.fuente?.marca?.nombre || "tu local").toLowerCase().replace(/(^|\s)\p{L}/gu, (m) => m.toUpperCase()));
 function llenarEj(t, p = muestra.value[0]) {
@@ -209,7 +215,35 @@ function llenarEj(t, p = muestra.value[0]) {
   return String(t || "").replace(/\{(\w+)\}/g, (m, k) => (x[k] != null ? String(x[k]) : m));
 }
 
-const muestraParaIa = () => props.catalogo.slice(0, 30).map((p) => ({ titulo: p.titulo, categoria: p.categoria || null }));
+// Lo que la IA ve del catálogo: primero lo que el pedido nombra y después uno de cada
+// categoría, para que conozca cómo se llaman. Antes iban los primeros 30 del catálogo,
+// sin relación con el pedido, y la IA inventaba un filtro que no encontraba nada.
+function muestraParaIa(texto) {
+  const conPuntaje = props.catalogo.map((p) => ({ p, s: puntaje(texto, p) }));
+  const nombrados = conPuntaje.filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 20).map((x) => x.p);
+  const vistas = new Set(nombrados.map((p) => p.categoria));
+  const otras = [];
+  for (const p of props.catalogo) {
+    if (otras.length + nombrados.length >= 30) break;
+    if (p.categoria && !vistas.has(p.categoria)) { vistas.add(p.categoria); otras.push(p); }
+  }
+  return [...nombrados, ...otras].map((p) => ({ titulo: p.titulo, categoria: p.categoria || null }));
+}
+
+// Si el pedido nombra productos que existen y la campaña no los toma (otra regla, o un
+// filtro que no encuentra ninguno), pasa a "De una categoría" con las palabras del pedido.
+function asegurarProductos(texto) {
+  const nombrados = props.catalogo.filter((p) => puntaje(texto, p) > 0);
+  if (!nombrados.length) return;
+  const pr = c.productos;
+  const tomaAlguno = pr.regla === "categoria" && props.catalogo.some((p) => coincideFiltro(pr.filtro, p));
+  if (tomaAlguno || ["descuento", "nuevos", "conCuotas"].includes(pr.regla)) return;
+  const filtro = filtroDePedido(texto);
+  if (filtro && props.catalogo.some((p) => coincideFiltro(filtro, p))) {
+    pr.regla = "categoria";
+    pr.filtro = filtro;
+  }
+}
 const mensaje = (e) => e?.response?.data?.error || e?.response?.data?.message || e?.message || "No se pudo.";
 
 async function armar(otra = false) {
@@ -217,9 +251,10 @@ async function armar(otra = false) {
   error.value = "";
   if (!otra) etapa.value = "armando";
   try {
-    const r = await armarBorrador(pedido.value.trim(), { productos: muestraParaIa(), variante: variante.value });
+    const r = await armarBorrador(pedido.value.trim(), { productos: muestraParaIa(pedido.value), variante: variante.value });
     cargar(r.campana);
     ajustar();
+    asegurarProductos(pedido.value);
     origen.value = r.origen;
     etapa.value = "revision";
   } catch (e) {

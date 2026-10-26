@@ -72,6 +72,37 @@ export const durVoz = (t, { cps = CPS, ritmo = "normal" } = {}) => {
 };
 export const durEscena = (tipo, cuantos) => (tipo === "portada" ? DUR.portada : tipo === "cierre" ? DUR.cierre : cuantos === 1 ? DUR.itemUno : DUR.itemVarios);
 
+/* ── Coincidencia con un pedido o una categoría ── */
+// "cercos eléctricos" tiene que encontrar "CERCO ELECTRICO 1000 MTS": sin tildes ni
+// mayúsculas, palabra por palabra y singular o plural (2026-10-25: con el filtro
+// entero contra el texto, "cercos electrico" no coincidía con nada y la campaña
+// mostraba los más vendidos). Las palabras de relleno del pedido no cuentan.
+const RELLENO = new Set(["de", "del", "la", "las", "el", "los", "un", "una", "unos", "unas", "y", "o", "en", "con", "para", "por", "a", "al",
+  "promo", "promos", "promocion", "oferta", "ofertas", "campana", "video", "videos", "reel", "esta", "este", "semana", "mes", "hoy", "finde",
+  "puse", "quiero", "hace", "hacer", "armar", "todo", "todos", "toda", "todas", "nuevo", "nuevos", "nueva", "nuevas"]);
+const raiz = (w) => (w.length > 4 && w.endsWith("es") ? w.slice(0, -2) : w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
+export const palabrasDe = (t) => normalizar(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !RELLENO.has(w)).map(raiz);
+// Una palabra del pedido coincide con una del producto si una empieza como la otra
+// ("electric" con "electrico", "camar" con "camara").
+const pegan = (a, b) => a.startsWith(b) || b.startsWith(a);
+const textoDe = (p) => palabrasDe(`${p?.categoria || ""} ${p?.titulo || p?.nombre || ""}`);
+/** Cuántas palabras del pedido tiene el producto (0 = no tiene nada que ver). */
+export function puntaje(pedido, p) {
+  const del = textoDe(p);
+  return palabrasDe(pedido).filter((w) => del.some((x) => pegan(w, x))).length;
+}
+/** El filtro de una campaña de categoría ("cámaras, alarmas"): coincide alguna de sus partes, con todas sus palabras. */
+export function coincideFiltro(filtro, p) {
+  const del = textoDe(p);
+  return String(filtro || "").split(/[,;]|\by\b/).map(palabrasDe).filter((ws) => ws.length)
+    .some((ws) => ws.every((w) => del.some((x) => pegan(w, x))));
+}
+
+/** Las palabras que nombran productos en un pedido ("PUSE CERCOS ELECTRICOS" → "cercos electricos"). */
+export function filtroDePedido(pedido) {
+  return normalizar(pedido).split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !RELLENO.has(w)).join(" ");
+}
+
 /* ── Productos que propone cada campaña ── */
 // filtro: "sug" (la regla de la campaña), "vend", "off", "nue", "cuo".
 export function propuestos(c, catalogo, { filtro = "sug", promoIds = new Set(), hoy = Date.now() } = {}) {
@@ -96,9 +127,9 @@ export function propuestos(c, catalogo, { filtro = "sug", promoIds = new Set(), 
   if (r === "nuevos") return primero(nue(ps));
   if (r === "conCuotas") return primero(cuo(ps));
   if (r === "categoria") {
-    const claves = String(c.productos.filtro || "").split(/,|\by\b/).map((x) => normalizar(x).trim().replace(/s$/, "")).filter(Boolean);
-    const de = claves.length ? ps.filter((p) => claves.some((k) => normalizar(`${p.categoria} ${p.titulo}`).includes(k))) : [];
-    return primero(porVendidos(de));
+    // Sólo los de la categoría: completar con los más vendidos mezclaba productos que
+    // no tienen nada que ver con la campaña ("Cercos eléctricos" con un cargador).
+    return porVendidos(ps.filter((p) => coincideFiltro(c.productos.filtro, p)));
   }
   return porVendidos(ps);
 }
