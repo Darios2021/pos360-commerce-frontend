@@ -39,9 +39,11 @@
           </div>
           <button type="button" class="cc-generar cc-generar--ancho" :disabled="!puedeGenerar" @click="generar">
             <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
-            <v-icon v-else size="22">mdi-movie-open-outline</v-icon>Generar video
+            <v-icon v-else size="22">mdi-movie-open-outline</v-icon>{{ textoGenerar }}
           </button>
           <span v-if="sinCupo && !editaMisma" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
+          <span v-else-if="!cargando && vozVacia" class="cc-cupo">Falta escribir lo que dice la voz en alguna escena.</span>
+          <span v-else-if="!cargando && esc.some(pasa)" class="cc-cupo">Una voz es más larga que su escena (la barra en rojo): acortala para generar.</span>
         </aside>
 
         <div class="cc-col">
@@ -103,6 +105,7 @@
                     </template>
                   </div>
                   <input v-model="e.etiqueta" class="cc-in cc-in--eti" maxlength="24" aria-label="Etiqueta" @input="editar(e, 'etiqueta', i)" />
+                  <input :value="(e.caracteristicas || []).join(' · ')" class="cc-in cc-in--car" maxlength="160" aria-label="Características (separadas por ·)" placeholder="Características, separadas por ·" @input="editarCaracteristicas(e, i, $event)" />
                 </template>
                 <template v-else>
                   <div class="cc-esc__rot">Cierre · {{ seg(durDe(e)) }}</div>
@@ -148,6 +151,12 @@
             <button v-if="!enKit && cuantos < TOPE_PRODUCTOS" type="button" class="cc-mas" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Producto</button>
           </div>
 
+          <div class="cc-pieza cc-pub">
+            <div class="cc-banda"><span>Publicación</span><small>lo que acompaña al video en Instagram, Facebook y WhatsApp</small></div>
+            <label class="cc-kit__campo"><span>Título</span><input v-model="publicacion.titulo" class="cc-in" maxlength="80" /></label>
+            <label class="cc-kit__campo"><span>Texto</span><textarea v-model="publicacion.texto" class="cc-in cc-in--pub" rows="3" maxlength="2200" :class="{ 'is-cargando': cargando && !publicacion.texto }"></textarea></label>
+          </div>
+
           <div class="cc-pieza cc-sonido">
             <div class="cc-banda"><span>Sonido</span><small>{{ nombreMusica }}</small></div>
             <div v-if="estilos.length" class="cc-son-fila">
@@ -185,7 +194,7 @@
       <div class="cc-pie-tel">
         <button type="button" class="cc-generar" :disabled="!puedeGenerar" @click="generar">
           <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
-          <v-icon v-else size="22">mdi-movie-open-outline</v-icon>Generar video
+          <v-icon v-else size="22">mdi-movie-open-outline</v-icon>{{ textoGenerar }}
         </button>
       </div>
     </template>
@@ -198,7 +207,7 @@ import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import { crearPieza, sugerirGuion } from "@/modules/admin/services/contenidos.service";
 import {
-  GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, durEscena, durVoz, esNuevo, llenar, pesos,
+  GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, etiquetaDe, durEscena, durVoz, esNuevo, llenar, pesos,
   opcionesSonido, primeraQueEntra, propuestos, seg, sugeridos, textosLocales, tienePlan, variantesCierre, variantesItem, variantesPortada, contextoItem,
 } from "@/modules/admin/components/contenidos/campanas";
 
@@ -275,7 +284,7 @@ const creando = ref(false);
 const eligiendo = ref(null);
 const filtro = ref("sug");
 const buscar = ref("");
-const publicacion = reactive({ titulo: "", texto: "" });
+const publicacion = reactive({ titulo: "", texto: "", fija: false });
 let serie = 0;
 const items = computed(() => esc.value.filter((e) => e.tipo === "item"));
 const cuantos = computed(() => items.value.length);
@@ -287,7 +296,11 @@ const pasa = (e) => conVoz.value && medir(e.voz) > durDe(e) + 0.05;
 const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <= 0);
 // El servicio pide foto en cada ítem: un kit necesita al menos un producto incluido con foto.
 const kitSinFoto = computed(() => enKit.value && !items.value[0]?.prod?.imagen);
-const puedeGenerar = computed(() => !creando.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa) && !kitSinFoto.value);
+// Nada sale sin que el comercio lo vea: con el guion todavía escribiéndose o una voz vacía,
+// no se genera (antes Generar andaba durante la carga y el servicio ponía textos que nadie vio).
+const vozVacia = computed(() => conVoz.value && esc.value.some((e) => !String(e.voz || "").trim()));
+const puedeGenerar = computed(() => !creando.value && !cargando.value && !vozVacia.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa) && !kitSinFoto.value);
+const textoGenerar = computed(() => (cargando.value ? "Escribiendo el guion…" : "Generar video"));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
 // Cierre: la primera sucursal y el WhatsApp salen del comercio y se editan por video;
@@ -414,12 +427,38 @@ function abrir(c, { conRuta = true } = {}) {
     enKit.value = true;
     esc.value = [esc.value[0], escenaItem(prodKit()), esc.value.at(-1)];
   }
+  publicacion.fija = false;
+  if (c.propia && c.autor === "local") textosDeLaCampana(c);
   eligiendo.value = null;
   t.value = 0;
   play.value = true;
   if (conRuta && route.query.campana !== c.id) router.replace({ query: { ...route.query, vista: "nuevo", campana: c.id } });
   pedirTextos();
   window.scrollTo({ top: 0 });
+}
+// Los textos que el comercio revisó en su campaña (Campaña a medida) van tal cual, con los
+// datos de cada producto, y cuentan como escritos: la IA de /guion sólo completa lo que
+// la campaña no dice (características, una voz vacía).
+const sinStock = (v) => String(v || "").replace(/[^.!?]*\{stock\}[^.!?]*[.!?]?/g, "").trim();
+function textosDeLaCampana(c) {
+  // Las unidades en stock no se dicen ("quedan 3"): la frase que las nombra se saca.
+  const t = Object.fromEntries(Object.entries(c.textos || {}).map(([k, v]) => [k, sinStock(v)]));
+  const prods = items.value.map((e) => prodDe(e.prod));
+  const base = contexto(c, prods, props.fuente);
+  const pon = (e, campo, v, max) => { const x = String(v || "").trim().slice(0, max); if (x) { e[campo] = x; e.editado[campo] = true; } };
+  const portada = esc.value[0];
+  const cierre = esc.value.at(-1);
+  pon(portada, "titular", llenar(t.titular, base), 40);
+  pon(portada, "bajada", llenar(t.bajada, base), 60);
+  pon(portada, "voz", llenar(t.vozIntro, base), 200);
+  items.value.forEach((e) => {
+    const x = contextoItem(base, prodDe(e.prod));
+    pon(e, "voz", llenar(t.vozItem, x), 200);
+    if (t.etiqueta) pon(e, "etiqueta", etiquetaDe(c, x), 24);
+  });
+  pon(cierre, "llamado", llenar(t.llamado, base), 30);
+  pon(cierre, "voz", llenar(t.vozCierre, base), 200);
+  if (t.caption) { publicacion.titulo = c.nombre; publicacion.texto = llenar(t.caption, base); publicacion.fija = true; }
 }
 function cerrar() {
   camp.value = null;
@@ -494,7 +533,7 @@ const itemGuion = (p) => ({
   id: p.id, titulo: p.titulo, precio: p.precio, precioAnterior: p.precioAnterior,
   ...(tienePlan(p) ? { cuotas: { cantidad: p.cuotas.cantidad, valor: p.cuotas.valor } } : {}),
   descripcion: p.descripcion || undefined, categoria: p.categoria || undefined,
-  stock: Number.isFinite(Number(p.stock)) ? Number(p.stock) : undefined, imagen: p.imagen,
+  imagen: p.imagen,
 });
 function encargoBase() {
   const f = props.fuente || {};
@@ -548,12 +587,14 @@ function aplicar(tx, solo = null) {
       if (!s) continue;
       pon(e, "etiqueta", s.etiqueta);
       pon(e, "voz", s.voz);
-      if (Array.isArray(s.caracteristicas)) e.caracteristicas = s.caracteristicas.filter(Boolean).slice(0, 3);
+      if (Array.isArray(s.caracteristicas) && !e.editado.caracteristicas) e.caracteristicas = s.caracteristicas.filter(Boolean).slice(0, 3);
     }
   }
   if (!solo && !editando.value) {
-    publicacion.titulo = tx.titulo || camp.value.nombre;
-    publicacion.texto = tx.publicacion || "";
+    if (!publicacion.fija) {
+      publicacion.titulo = tx.titulo || camp.value.nombre;
+      publicacion.texto = tx.publicacion || "";
+    }
   }
   nextTick(crecer);
 }
@@ -630,6 +671,11 @@ function refrescar() {
   pedirTextos();
 }
 
+function editarCaracteristicas(e, i, ev) {
+  e.caracteristicas = String(ev.target.value).split(/\s*·\s*/).map((x) => x.trim()).filter(Boolean).slice(0, 3);
+  e.editado.caracteristicas = true;
+  if (actual.value !== i) irA(i);
+}
 function editar(e, campo, i, ev) {
   e.editado[campo] = true;
   if (ev?.target) crecerUno(ev.target);
@@ -821,6 +867,11 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-in:focus { border-color: var(--cc-pri); background: var(--sp-caja); }
 .cc-in--tit { font-size: 19px; font-weight: 900; letter-spacing: -.01em; }
 .cc-in--baj { font-size: 14.5px; font-weight: 600; color: var(--sp-suave); }
+.cc-in--car { font-size: 13px; color: var(--sp-suave); }
+.cc-pub { display: flex; flex-direction: column; gap: 10px; }
+.cc-pub .cc-kit__campo { padding: 0 16px; }
+.cc-pub .cc-kit__campo:last-child { padding-bottom: 14px; }
+.cc-in--pub { resize: vertical; min-height: 70px; }
 .cc-in--eti { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: var(--cc-pri); }
 .cc-in.is-cargando { background: linear-gradient(90deg, var(--sp-linea) 0%, var(--sp-hover) 50%, var(--sp-linea) 100%); background-size: 200% 100%; animation: cc-esqueleto 1.2s linear infinite; min-height: 28px; }
 @keyframes cc-esqueleto { from { background-position: 200% 0; } to { background-position: -200% 0; } }

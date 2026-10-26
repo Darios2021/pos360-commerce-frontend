@@ -214,7 +214,9 @@ export function contextoItem(base, p) {
     // Cuotas sólo con plan vigente del producto: nunca se inventan.
     cuotas: tienePlan(p) ? p.cuotas.cantidad : null,
     valorCuota: tienePlan(p) ? pesos(p.cuotas.valor) : null,
-    stock: Number.isFinite(Number(p.stock)) ? Number(p.stock) : null,
+    // Las unidades no se dicen en el video (2026-10-26, el usuario: "no estoy de acuerdo que
+    // diga quedan 3"): sin dato, la plantilla que las pide no se usa.
+    stock: null,
   };
 }
 // Una plantilla que pide un dato que no hay (cuotas sin plan, descuento sin precio anterior) no se usa.

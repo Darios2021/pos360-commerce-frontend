@@ -3,7 +3,9 @@
      cuenta en una frase qué quiere ofrecer y ve en el momento qué productos de su stock
      coinciden; la IA elige productos concretos por id (no una categoría), dice qué no
      encontró y escribe los textos. La revisión pide sólo Nombre, Qué ofrece el video,
-     Precio y Vigencia: los textos, la música y la voz se ajustan al armar el video.
+     Precio, Vigencia y Lo que dice el video (editable: el 26/10 el usuario pidió revisar y
+     corregir lo que escribió la IA antes de renderizar). Esos textos van tal cual al armado,
+     donde se eligen música, voz y estilo y se ve cada línea antes de generar.
      Con `editar` abre una campaña ya guardada. Vista completa, sin modales. -->
 <template>
   <!-- 1 · La idea -->
@@ -157,6 +159,22 @@
           </div>
         </section>
 
+        <section class="cm-pieza" aria-labelledby="cm-txt">
+          <div class="cm-fila cm-fila--entre">
+            <h3 id="cm-txt">Lo que dice el video</h3>
+            <span class="cm-s">{{ origen === "ia" ? "Lo escribió la IA: cambiá lo que quieras." : "Cambiá lo que quieras." }}</span>
+          </div>
+          <p class="cm-s" style="margin: 0">Lo que está entre « » se completa solo: «producto» con el nombre de cada uno{{ c.conPrecio ? ", «precio» con su precio" : "" }} y «local» con el nombre del local. Así como queda acá es como sale en el video.</p>
+          <div class="cm-textos">
+            <div v-for="f in CAMPOS_TEXTO" :key="f.k" class="ct-campo" :class="{ 'cm-textos__ancho': f.ancho }">
+              <label :for="`cm-t-${f.k}`">{{ f.k === "vozItem" && c.modo === "kit" ? "Voz del kit" : f.t }}</label>
+              <textarea v-if="f.filas" :id="`cm-t-${f.k}`" :value="mostrar(c.textos[f.k])" :rows="f.filas" :maxlength="f.max" @input="c.textos[f.k] = guardarTexto($event.target.value)"></textarea>
+              <input v-else :id="`cm-t-${f.k}`" :value="mostrar(c.textos[f.k])" :maxlength="f.max" @input="c.textos[f.k] = guardarTexto($event.target.value)" />
+              <span v-if="f.ejemplo && c.textos[f.k] && /\{/.test(c.textos[f.k])" class="cm-ej">Sale: “{{ llenarEj(c.textos[f.k]) }}”</span>
+            </div>
+          </div>
+        </section>
+
         <section class="cm-pieza cm-pieza--fila">
           <div class="cm-bloque">
             <h3>Precio</h3>
@@ -185,11 +203,7 @@
         <span class="cm-rot">{{ c.modo === "kit" ? "LA ESCENA DEL KIT" : "ASÍ ARRANCA EL VIDEO" }}</span>
         <EscenaReel v-if="c.modo === 'kit' && fotoKit" tipo="item" :item="escenaKit" :con-cuotas="false" :fuente="fuente" :ancho="250" />
         <EscenaReel v-else tipo="intro" :apertura="{ titular: llenarEj(c.textos.titular) || c.nombre, bajada: llenarEj(c.textos.bajada) }" :foto="elegidos.find((p) => p.imagen)?.imagen || ''" :fuente="fuente" :ancho="250" />
-        <div class="cm-lado-caja cm-voz">
-          <b>Lo que dice la voz</b>
-          <span v-for="(v, i) in vozMuestra" :key="i">“{{ v }}”</span>
-          <span class="cm-s">Los textos, la música y la voz se ajustan al armar el video.</span>
-        </div>
+        <span class="cm-s cm-angosto">La música, la voz y el estilo se eligen al armar el video, y ahí también se ve y se corrige cada línea antes de generarlo.</span>
         <button v-if="!editar" type="button" class="cm-sec" :disabled="armandoOtra" @click="otraVersion"><v-progress-circular v-if="armandoOtra" indeterminate size="16" width="2" /><v-icon v-else size="18">mdi-refresh</v-icon>Otra versión</button>
       </aside>
     </div>
@@ -231,6 +245,20 @@ const QUIERE = [
   { v: "kit", t: "Un kit o un servicio", d: "Varios productos juntos o un trabajo (instalación, reparación). Precio opcional." },
   { v: "ia", t: "Que decida la IA", d: "Lo elige según lo que escribiste." },
 ];
+// Los textos de la campaña, en el orden en que salen en el video. Las llaves de los
+// marcadores se muestran como « » ({producto} → «producto»), que se leen mejor.
+const CAMPOS_TEXTO = [
+  { k: "titular", t: "Titular de la portada", max: 60 },
+  { k: "bajada", t: "Bajada", max: 90 },
+  { k: "vozIntro", t: "Voz de la portada", max: 200, filas: 2, ancho: true, ejemplo: true },
+  { k: "vozItem", t: "Voz de cada producto", max: 200, filas: 2, ancho: true, ejemplo: true },
+  { k: "vozCierre", t: "Voz del cierre", max: 200, filas: 2, ancho: true, ejemplo: true },
+  { k: "llamado", t: "Botón del cierre", max: 40 },
+  { k: "caption", t: "Texto de la publicación", max: 400, filas: 3, ancho: true, ejemplo: true },
+];
+const mostrar = (t) => String(t || "").replace(/\{(\w+)\}/g, "«$1»");
+const guardarTexto = (t) => String(t || "").replace(/«\s*(\w+)\s*»/g, "{$1}");
+const sinStock = (v) => String(v || "").replace(/[^.!?]*\{stock\}[^.!?]*[.!?]?/g, "").trim();
 const RESUMEN = [["vende", "Vendés"], ["distingue", "Te distingue"], ["contacto", "Contacto"], ["evitar", "Nunca decimos"]];
 const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
 
@@ -263,6 +291,8 @@ function cargar(x) {
     modo: x.modo === "kit" ? "kit" : "productos", conPrecio: x.conPrecio !== false, kit: { ...v.kit, ...(x.kit || {}) },
     estilo: x.estilo, musica: x.musica ?? null, voz: { ...v.voz, ...x.voz }, textos: { ...v.textos, ...x.textos },
   })));
+  // Las unidades en stock no se dicen ("quedan 3").
+  for (const k of Object.keys(c.textos)) c.textos[k] = sinStock(c.textos[k]);
   c.ids = (x.productos?.ids || []).map(String);
   resolverIds();
 }
@@ -450,7 +480,6 @@ function llenarEj(t, p = c.modo === "kit" ? escenaKit.value : elegidos.value[0])
     n: elegidos.value.length, categoria: p?.categoria?.toLowerCase(), caracteristica: c.modo === "kit" ? escenaKit.value.descripcion.replace(/^Incluye: /, "") : undefined };
   return String(t || "").replace(/\{(\w+)\}/g, (m, k) => (x[k] != null ? String(x[k]) : "")).replace(/\s+([.,:!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
 }
-const vozMuestra = computed(() => [llenarEj(c.textos.vozIntro), llenarEj(c.textos.vozItem), llenarEj(c.textos.vozCierre)].filter((v) => v && v.length > 2));
 
 const falta = computed(() => {
   if (c.nombre.trim().length < 2) return "Falta el nombre.";
@@ -588,6 +617,10 @@ function cerrar() {
 .cm-foto { width: 64px; height: 64px; padding: 0; border-radius: 10px; border: 1px solid var(--sp-linea); background: #fff; overflow: hidden; cursor: pointer; }
 .cm-foto[aria-pressed="true"] { border: 3px solid var(--cm-pri); }
 .cm-foto img { width: 100%; height: 100%; object-fit: contain; }
+.cm-textos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cm-textos__ancho { grid-column: 1 / -1; }
+.cm-textos textarea { resize: vertical; }
+.cm-ej { font-size: 13px; color: var(--sp-suave); }
 .cm-pie { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 @media (max-width: 900px) { .cm-lado { position: static; } }
 </style>
