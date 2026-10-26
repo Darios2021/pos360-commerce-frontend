@@ -22,188 +22,189 @@
       </div>
     </div>
 
-    <!-- ESTADO 2: armado -->
+    <!-- ESTADO 2: armado único (lienzo aprobado 26/10, tableros 4 y 5): la campaña y el video
+         en la misma pantalla. Una tarjeta por escena, en el orden en que se renderiza, con lo
+         que se ve y lo que se dice; a la derecha el video vivo y los ajustes. Cada texto está
+         una sola vez: lo que se ve acá es lo que se genera. -->
     <template v-else>
+      <div class="cc-pieza cc-barra">
+        <button v-if="editando" type="button" class="cc-volver" @click="descartar"><v-icon size="18">mdi-chevron-left</v-icon>Descartar</button>
+        <button v-else type="button" class="cc-volver" @click="cerrar"><v-icon size="18">mdi-chevron-left</v-icon>{{ esPropia ? "Mis campañas" : "Campañas" }}</button>
+        <div class="cc-barra__t">
+          <template v-if="esPropia && !editando">
+            <label for="cc-nombre" class="cc-rot">CAMPAÑA</label>
+            <input id="cc-nombre" v-model="form.nombre" class="cc-nombre" maxlength="40" @input="sucio = true" />
+          </template>
+          <template v-else>
+            <span class="cc-rot">{{ editando ? "EDITAR VIDEO" : "CAMPAÑA" }}</span>
+            <b class="cc-nombre cc-nombre--fijo">{{ editando ? editando.titulo || camp.nombre : camp.nombre }}</b>
+          </template>
+        </div>
+        <span v-if="editaMisma" class="cc-chip num">Edición {{ editando.numero }} de {{ editando.tope }}</span>
+        <span v-else-if="camp.chip && !esPropia" class="cc-chip">{{ camp.chip }}</span>
+        <template v-if="esPropia && !editando">
+          <label class="cc-vig"><span class="cc-rot">VIGENCIA</span>
+            <select v-model="form.ventana.tipo" class="cc-sel" @change="sucio = true"><option value="libre">Siempre</option><option value="recurrente">Cada tanto</option><option value="fija">Con fecha</option></select>
+          </label>
+          <input v-if="form.ventana.tipo === 'recurrente'" v-model="form.ventana.cuando" class="cc-sel cc-sel--txt" maxlength="60" placeholder="todos los viernes" aria-label="Cuándo se repite" @input="sucio = true" />
+          <template v-if="form.ventana.tipo === 'fija'">
+            <input v-model="form.ventana.fecha" class="cc-sel" type="date" aria-label="Desde" @input="sucio = true" />
+            <input v-model="form.ventana.hasta" class="cc-sel" type="date" aria-label="Hasta" @input="sucio = true" />
+          </template>
+        </template>
+        <span v-if="cupo?.limite != null && !editaMisma" class="cc-quedan num">Quedan {{ cupo.quedan }} videos<br />este mes</span>
+        <button v-if="esPropia && !editando" type="button" class="cc-sec" :disabled="guardandoCamp" @click="guardarLaCampana">{{ guardandoCamp ? "Guardando…" : sucio ? "Guardar" : "Guardada" }}</button>
+        <button type="button" class="cc-generar cc-generar--barra" :disabled="!puedeGenerar" @click="generar">
+          <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
+          <v-icon v-else size="22">mdi-movie-open-outline</v-icon>{{ textoGenerar }}
+        </button>
+      </div>
+      <p v-if="motivoNoGenera" class="cc-motivo" :class="{ 'cc-motivo--ia': motivoEsIa }" role="status"><v-icon size="18">{{ motivoEsIa ? "mdi-creation-outline" : "mdi-alert-circle-outline" }}</v-icon>{{ motivoNoGenera }}</p>
+      <p v-if="errorCamp" class="cc-motivo" role="alert"><v-icon size="18">mdi-alert-circle-outline</v-icon>{{ errorCamp }}</p>
+
       <div class="cc-armado">
-        <aside class="cc-lado">
-          <div class="cc-tel">
-            <div class="cc-tel__pantalla">
-              <div class="cc-barras"><span v-for="(e, k) in esc" :key="k" :style="{ flex: durDe(e) }"><i :style="{ width: `${avance(k)}%` }"></i></span></div>
-              <EscenaReel :key="`${actual}-${clave(esc[actual])}`" class="cc-entra" v-bind="reelDe(esc[actual], angosto ? 196 : 256)" />
-            </div>
-          </div>
-          <div v-if="conVoz" class="cc-subt"><v-icon size="18">mdi-microphone-outline</v-icon><span>{{ esc[actual]?.voz }}</span></div>
-          <div class="cc-mandos">
-            <button type="button" class="cc-ico" :aria-label="play ? 'Detener' : 'Reproducir'" @click="play = !play"><v-icon size="20">{{ play ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-            <span class="num">{{ seg(total) }}</span>
-          </div>
-          <button type="button" class="cc-generar cc-generar--ancho" :disabled="!puedeGenerar" @click="generar">
-            <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
-            <v-icon v-else size="22">mdi-movie-open-outline</v-icon>{{ textoGenerar }}
-          </button>
-          <span v-if="sinCupo && !editaMisma" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
-          <span v-else-if="!cargando && vozVacia" class="cc-cupo">Falta escribir lo que dice la voz en alguna escena.</span>
-        </aside>
-
         <div class="cc-col">
-          <div class="cc-pieza cc-cab">
-            <div class="cc-cab__t"><b>{{ editando ? editando.titulo || camp.nombre : camp.nombre }}</b><span v-if="editaMisma" class="cc-chip num">Edición {{ editando.numero }} de {{ editando.tope }}</span><span v-else-if="camp.chip" class="cc-chip">{{ camp.chip }}</span></div>
-            <button v-if="editando" type="button" class="cc-lnk" @click="descartar">Descartar</button>
-            <button v-else type="button" class="cc-lnk" @click="cerrar">Otra campaña</button>
+          <div class="cc-pieza cc-linea-t">
+            <div class="cc-linea-t__cab"><b>Así sale el video</b><span class="cc-s num">{{ esc.length }} escenas · <b>{{ seg(total) }}</b>{{ conLocal && hayLocal ? " · con el local de fondo" : "" }} · lo que ves acá es lo que se genera</span></div>
+            <div class="cc-linea-t__barra">
+              <button v-for="(e, i) in esc" :key="`t-${e.k}`" type="button" :style="{ flex: durDe(e) }" :class="{ 'is-activa': i === actual }" @click="verEscena(i)">{{ rotuloCorto(e, i) }}</button>
+            </div>
           </div>
 
-          <div class="cc-pieza cc-guion">
-            <div class="cc-banda">
-              <span>Guion</span>
-              <span class="cc-banda__der">
-                <span class="cc-modo" role="group" aria-label="Qué vende el video">
-                  <button type="button" class="cc-pas" :aria-pressed="!enKit" @click="modoProductos">Productos sueltos</button>
-                  <button type="button" class="cc-pas" :aria-pressed="enKit" @click="modoKit">Kit o servicio</button>
-                </span>
-                <button type="button" class="cc-pas" :aria-pressed="conPrecio" @click="alternarPrecio">Con precio</button>
-                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total) }}</small>
-              </span>
-            </div>
-            <!-- Escena del local (contenido/escenaLocal.js): sólo si el comercio tiene tomas cargadas -->
-            <div v-if="hayLocal" class="cc-local">
-              <span class="cc-local__t"><b>Fondo</b><small>el local en movimiento detrás de la portada y de cada producto</small></span>
-              <span class="cc-modo" role="group" aria-label="Fondo del video">
-                <button type="button" class="cc-pas" :aria-pressed="conLocal" @click="conLocal = true">Con el local</button>
-                <button type="button" class="cc-pas" :aria-pressed="!conLocal" @click="conLocal = false">Sin el local</button>
-              </span>
-            </div>
-            <div v-for="(e, i) in esc" :key="e.k" class="cc-esc" :class="{ 'is-activa': i === actual }">
-              <button type="button" class="cc-esc__mini" aria-label="Ver escena" @click="irA(i)"><EscenaReel v-bind="reelDe(e, 52)" /></button>
-              <div class="cc-esc__cuerpo">
-                <template v-if="e.tipo === 'portada'">
-                  <div class="cc-esc__rot">Portada · {{ seg(durDe(e)) }}</div>
-                  <input v-model="e.titular" class="cc-in cc-in--tit" maxlength="40" aria-label="Titular" :class="{ 'is-cargando': cargando && !e.titular }" @input="editar(e, 'titular', i)" />
-                  <input v-model="e.bajada" class="cc-in cc-in--baj" maxlength="60" aria-label="Bajada" @input="editar(e, 'bajada', i)" />
-                </template>
-                <template v-else-if="e.tipo === 'item' && enKit">
-                  <div class="cc-esc__rot">Kit o servicio · {{ seg(durDe(e)) }}</div>
-                  <div class="cc-kit">
-                    <label class="cc-kit__campo cc-kit__ancho"><span>Nombre</span><input v-model="kit.nombre" class="cc-in" maxlength="90" placeholder="Kit cerco eléctrico instalado" @input="actualizarKit" @change="refrescar()" /></label>
-                    <label v-if="conPrecio" class="cc-kit__campo"><span>Precio</span><input v-model.number="kit.precio" class="cc-in num" type="number" min="0" inputmode="numeric" @input="actualizarKit" @change="refrescar()" /></label>
-                  </div>
-                  <div class="cc-kit__campo">
-                    <span>Incluye</span>
-                    <div class="cc-kit__inc">
-                      <button v-for="p in candidatosKit" :key="p.id" type="button" class="cc-pas" :aria-pressed="kit.incluye.includes(p.id)" @click="alternarIncluido(p)">{{ p.titulo }}</button>
-                    </div>
-                    <input v-model="kit.extra" class="cc-in" maxlength="120" placeholder="Y además (ej. instalación y garantía)" @input="actualizarKit" @change="refrescar()" />
-                  </div>
-                  <span v-if="kitSinFoto" class="cc-cupo">Para el video hace falta incluir al menos un producto con foto.</span>
-                  <div v-if="fotosKit.length > 1" class="cc-kit__campo">
-                    <span>Foto</span>
-                    <div class="cc-kit__fotos">
-                      <button v-for="p in fotosKit" :key="p.id" type="button" class="cc-kit__foto" :aria-pressed="kit.foto === p.id" :aria-label="`Usar la foto de ${p.titulo}`" @click="kit.foto = p.id; actualizarKit()"><img :src="p.imagen" alt="" loading="lazy" /></button>
-                    </div>
-                  </div>
-                </template>
-                <template v-else-if="e.tipo === 'item'">
-                  <div class="cc-esc__rot">Producto {{ nItem(i) }} · {{ seg(durDe(e)) }}</div>
-                  <div class="cc-esc__prod">
-                    <span class="cc-esc__nom">{{ e.prod.titulo }}</span>
-                    <template v-if="conPrecio">
-                      <span class="num">{{ pesos(e.prod.precio) }}</span>
-                      <template v-if="descuentoDe(e.prod)"><s class="num">{{ pesos(e.prod.precioAnterior) }}</s><span class="cc-off num">-{{ descuentoDe(e.prod) }} %</span></template>
-                      <span v-if="tienePlan(e.prod)" class="cc-cuo num">{{ e.prod.cuotas.cantidad }} x {{ pesos(e.prod.cuotas.valor) }}</span>
+          <template v-for="(e, i) in esc" :key="e.k">
+            <section :id="`cc-esc-${i}`" class="cc-pieza cc-esc2" :class="{ 'is-activa': i === actual }">
+              <button type="button" class="cc-esc2__mini" :aria-label="`Ver ${rotulo(e, i)}`" @click="irA(i)"><EscenaReel v-bind="reelDe(e, 100)" /></button>
+              <div class="cc-esc2__cuerpo">
+                <div class="cc-esc2__cab">
+                  <b>{{ i + 1 }} · {{ rotulo(e, i).toUpperCase() }}</b>
+                  <span class="cc-dur num" :class="{ 'is-larga': larga(e) }">{{ seg(durDe(e)) }}{{ larga(e) ? " · larga" : "" }}</span>
+                </div>
+                <div class="cc-esc2__grilla">
+                  <span class="cc-rot">SE VE</span>
+                  <div class="cc-esc2__ve">
+                    <template v-if="e.tipo === 'portada'">
+                      <input v-model="e.titular" class="cc-in2 cc-in2--tit" maxlength="40" aria-label="Titular" :class="{ 'is-cargando': cargando && !e.titular }" @input="editar(e, 'titular', i)" />
+                      <input v-model="e.bajada" class="cc-in2" maxlength="60" aria-label="Bajada" placeholder="Bajada (opcional)" @input="editar(e, 'bajada', i)" />
+                    </template>
+                    <template v-else-if="e.tipo === 'item' && enKit">
+                      <div class="cc-fila2">
+                        <input v-model="kit.nombre" class="cc-in2 cc-in2--tit cc-crece" maxlength="90" aria-label="Nombre del kit o servicio" placeholder="Cerco eléctrico instalado" @input="actualizarKit" @change="refrescar()" />
+                        <label v-if="conPrecio" class="cc-precio-kit"><span>$</span><input v-model.number="kit.precio" class="num" type="number" min="0" inputmode="numeric" aria-label="Precio del kit" @input="actualizarKit" @change="refrescar()" /></label>
+                        <span v-else class="cc-sinprecio">Sin precio · invita a consultar</span>
+                      </div>
+                      <span class="cc-s">Incluye, del stock. Tocá la foto del que va en el video.</span>
+                      <div class="cc-inc">
+                        <span v-for="p in incluidosKit" :key="p.id" class="cc-inc__chip" :class="{ 'is-foto': kit.foto === p.id }">
+                          <button type="button" class="cc-inc__foto" :disabled="!p.imagen" :aria-pressed="kit.foto === p.id" :aria-label="`Usar la foto de ${p.titulo}`" @click="kit.foto = p.id; actualizarKit()"><img v-if="p.imagen" :src="p.imagen" alt="" loading="lazy" /></button>
+                          <span>{{ p.titulo }}</span>
+                          <button type="button" class="cc-inc__x" :aria-label="`Sacar ${p.titulo}`" @click="alternarIncluido(p)"><v-icon size="16">mdi-close</v-icon></button>
+                        </span>
+                        <button type="button" class="cc-inc__mas" :aria-expanded="eligiendo === 'kit'" @click="alternarSelector({ k: 'kit' })"><v-icon size="17">mdi-plus</v-icon>Agregar del stock</button>
+                      </div>
+                      <input v-model="kit.extra" class="cc-in2" maxlength="120" placeholder="Y además (ej. instalación y garantía)" aria-label="Y además" @input="actualizarKit" @change="refrescar()" />
+                      <span v-if="kitSinFoto" class="cc-cupo">Para el video hace falta incluir al menos un producto con foto.</span>
+                    </template>
+                    <template v-else-if="e.tipo === 'item'">
+                      <div class="cc-prodfila">
+                        <span class="cc-prodfila__img"><img v-if="e.prod.imagen" :src="e.prod.imagen" alt="" loading="lazy" /></span>
+                        <span class="cc-prodfila__t"><b>{{ e.prod.titulo }}</b>
+                          <span v-if="conPrecio" class="cc-s num">{{ pesos(e.prod.precio) }}<template v-if="descuentoDe(e.prod)">&nbsp;<s>{{ pesos(e.prod.precioAnterior) }}</s> · -{{ descuentoDe(e.prod) }} %</template><template v-if="tienePlan(e.prod)"> · {{ e.prod.cuotas.cantidad }} x {{ pesos(e.prod.cuotas.valor) }}</template></span>
+                          <span v-else class="cc-s">Sin precio</span>
+                        </span>
+                        <button type="button" class="cc-sec cc-sec--chico" :aria-expanded="eligiendo === e.k" @click="alternarSelector(e)">Cambiar</button>
+                        <button v-if="cuantos > 1" type="button" class="cc-ico" :aria-label="`Quitar ${e.prod.titulo}`" @click="quitar(i)"><v-icon size="18">mdi-close</v-icon></button>
+                      </div>
+                      <div class="cc-fila2">
+                        <input v-model="e.etiqueta" class="cc-in2 cc-in2--eti" maxlength="24" aria-label="Etiqueta" placeholder="Etiqueta" @input="editar(e, 'etiqueta', i)" />
+                        <input :value="(e.caracteristicas || []).join(' · ')" class="cc-in2 cc-crece" maxlength="160" aria-label="Características (separadas por ·)" placeholder="Características, separadas por ·" @input="editarCaracteristicas(e, i, $event)" />
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="cc-fila2">
+                        <input v-model="e.llamado" class="cc-in2 cc-in2--tit cc-crece" maxlength="30" aria-label="Llamado" @input="editar(e, 'llamado', i)" />
+                        <label class="cc-dato2"><v-icon size="17">mdi-map-marker-outline</v-icon><input v-model="e.sucursal" maxlength="40" aria-label="Sucursal" @input="editar(e, 'sucursal', i)" /></label>
+                        <label class="cc-dato2"><v-icon size="17">mdi-whatsapp</v-icon><input v-model="e.whatsapp" class="num" maxlength="40" inputmode="tel" aria-label="WhatsApp" @input="editar(e, 'whatsapp', i)" /></label>
+                      </div>
                     </template>
                   </div>
-                  <input v-model="e.etiqueta" class="cc-in cc-in--eti" maxlength="24" aria-label="Etiqueta" @input="editar(e, 'etiqueta', i)" />
-                  <input :value="(e.caracteristicas || []).join(' · ')" class="cc-in cc-in--car" maxlength="160" aria-label="Características (separadas por ·)" placeholder="Características, separadas por ·" @input="editarCaracteristicas(e, i, $event)" />
-                </template>
-                <template v-else>
-                  <div class="cc-esc__rot">Cierre · {{ seg(durDe(e)) }}</div>
-                  <input v-model="e.llamado" class="cc-in cc-in--tit" maxlength="30" aria-label="Llamado" @input="editar(e, 'llamado', i)" />
-                  <div class="cc-esc__datos">
-                    <label class="cc-dato"><v-icon size="17">mdi-map-marker-outline</v-icon><input v-model="e.sucursal" class="cc-in" maxlength="40" aria-label="Sucursal" @input="editar(e, 'sucursal', i)" /></label>
-                    <label class="cc-dato"><v-icon size="17">mdi-whatsapp</v-icon><input v-model="e.whatsapp" class="cc-in num" maxlength="40" inputmode="tel" aria-label="WhatsApp" @input="editar(e, 'whatsapp', i)" /></label>
-                  </div>
-                </template>
-              </div>
-              <div class="cc-esc__acc">
-                <button type="button" class="cc-ico" title="Otra versión" aria-label="Otra versión" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
-                <template v-if="e.tipo === 'item' && !enKit">
-                  <button type="button" class="cc-ico" :class="{ 'is-on': eligiendo === e.k }" title="Cambiar producto" aria-label="Cambiar producto" @click="alternarSelector(e)"><v-icon size="19">mdi-swap-horizontal</v-icon></button>
-                  <button v-if="cuantos > 1" type="button" class="cc-ico" title="Quitar" aria-label="Quitar" @click="quitar(i)"><v-icon size="19">mdi-close</v-icon></button>
-                </template>
+
+                  <template v-if="conVoz">
+                    <span class="cc-rot">SE DICE</span>
+                    <div class="cc-esc2__dice">
+                      <div class="cc-fila2 cc-fila2--arriba">
+                        <textarea v-model="e.voz" class="cc-in2 cc-voz2 cc-crece" :class="{ 'is-larga': larga(e), 'is-cargando': cargando && !e.voz }" rows="1" maxlength="200" :aria-label="`Voz de ${rotulo(e, i)}`" @input="editar(e, 'voz', i, $event)"></textarea>
+                        <button type="button" class="cc-ico" :aria-label="`Otra versión de ${rotulo(e, i)}`" title="Otra versión" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
+                      </div>
+                      <small v-if="comoSeDice(e.voz)" class="cc-s">Suena: “{{ comoSeDice(e.voz) }}”</small>
+                      <small v-if="larga(e)" class="cc-larga">La escena se alarga a {{ seg(durDe(e)) }} para que entre. Para el ritmo del estilo ({{ seg(baseDe(e)) }}), acortala o tocá Otra versión.</small>
+                    </div>
+                  </template>
+                </div>
               </div>
 
-              <!-- Selector de productos, en la misma fila -->
-              <div v-if="eligiendo === e.k" class="cc-elegir">
+              <!-- Elegir otro producto (o sumar al kit), en la misma tarjeta -->
+              <div v-if="eligiendo === e.k || (eligiendo === 'kit' && e.tipo === 'item' && enKit)" class="cc-elegir">
                 <div class="cc-filtros">
-                  <button v-for="f in filtros" :key="f.v" type="button" class="cc-pas" :aria-pressed="filtro === f.v" @click="filtro = f.v">{{ f.t }}</button>
-                  <label class="cc-busca"><v-icon size="17">mdi-magnify</v-icon><input v-model="buscar" type="search" aria-label="Buscar producto" /></label>
+                  <template v-if="!enKit"><button v-for="f in filtros" :key="f.v" type="button" class="cc-pas" :aria-pressed="filtro === f.v" @click="filtro = f.v">{{ f.t }}</button></template>
+                  <label class="cc-busca"><v-icon size="17">mdi-magnify</v-icon><input v-model="buscar" type="search" aria-label="Buscar en el stock" placeholder="Buscar en el stock" /></label>
                 </div>
                 <div class="cc-prods">
-                  <button v-for="p in opciones" :key="p.id" type="button" class="cc-prod" :class="{ 'is-en': enReel.has(p.id) }" :disabled="enReel.has(p.id) && p.id !== e.prod.id" @click="elegirProducto(i, p)">
+                  <button v-for="p in (enKit ? opcionesKit : opciones)" :key="p.id" type="button" class="cc-prod" :class="{ 'is-en': enKit ? kit.incluye.includes(p.id) : enReel.has(p.id) }" :disabled="!enKit && enReel.has(p.id) && p.id !== e.prod.id" @click="enKit ? alternarIncluido(p) : elegirProducto(i, p)">
                     <span class="cc-prod__img"><img :src="p.imagen" alt="" loading="lazy" /></span>
                     <em v-if="descuentoDe(p)">-{{ descuentoDe(p) }}%</em><em v-else-if="esNuevo(p)">Nuevo</em>
                     <b>{{ p.titulo }}</b><span class="num">{{ pesos(p.precio) }}</span>
                   </button>
-                  <div v-if="!opciones.length" class="cc-vacio">Sin productos</div>
+                  <div v-if="!(enKit ? opcionesKit : opciones).length" class="cc-vacio">Sin productos</div>
                 </div>
               </div>
-            </div>
-            <button v-if="!enKit && cuantos < TOPE_PRODUCTOS" type="button" class="cc-mas" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Producto</button>
-          </div>
+            </section>
+            <button v-if="e.tipo === 'item' && !enKit && i === esc.length - 2 && cuantos < TOPE_PRODUCTOS" type="button" class="cc-agregar" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Agregar producto del stock</button>
+          </template>
 
-          <!-- Lo que dice la voz, todo junto y en orden: es exactamente lo que se va a decir.
-               Cada escena dura lo que su voz (como en el render: la voz nunca se corta). -->
-          <div v-if="conVoz" class="cc-pieza cc-guionvoz">
-            <div class="cc-banda"><span>Lo que dice la voz</span><small class="num">{{ seg(total) }} en total</small></div>
-            <div v-for="(e, i) in esc" :key="`v-${e.k}`" class="cc-linea" :class="{ 'is-activa': i === actual }">
-              <button type="button" class="cc-linea__rot" :aria-label="`Ver ${rotulo(e, i)}`" @click="irA(i)">{{ rotulo(e, i) }}<small class="num">{{ seg(durDe(e)) }}</small></button>
-              <div class="cc-linea__txt">
-                <textarea v-model="e.voz" class="cc-in" rows="1" maxlength="200" :aria-label="`Voz de ${rotulo(e, i)}`" :class="{ 'is-cargando': cargando && !e.voz }" @input="editar(e, 'voz', i, $event)"></textarea>
-                <small v-if="comoSeDice(e.voz)" class="cc-linea__dice">Se dice: “{{ comoSeDice(e.voz) }}”</small>
-                <small v-if="larga(e)" class="cc-linea__larga">Larga: esta escena dura {{ seg(durDe(e)) }} para que entre. Si querés el ritmo del estilo, acortala.</small>
-              </div>
-              <button type="button" class="cc-ico" title="Otra versión" :aria-label="`Otra versión de ${rotulo(e, i)}`" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
-            </div>
-          </div>
-
-          <div class="cc-pieza cc-pub">
-            <div class="cc-banda"><span>Publicación</span><small>lo que acompaña al video en Instagram, Facebook y WhatsApp</small></div>
-            <label class="cc-kit__campo"><span>Título</span><input v-model="publicacion.titulo" class="cc-in" maxlength="80" /></label>
-            <label class="cc-kit__campo"><span>Texto</span><textarea v-model="publicacion.texto" class="cc-in cc-in--pub" rows="3" maxlength="2200" :class="{ 'is-cargando': cargando && !publicacion.texto }"></textarea></label>
-          </div>
-
-          <div class="cc-pieza cc-sonido">
-            <div class="cc-banda"><span>Sonido</span><small>{{ nombreMusica }}</small></div>
-            <div v-if="estilos.length" class="cc-son-fila">
-              <span>Estilo</span>
-              <div class="cc-son-op"><button v-for="s in estilos" :key="s.id" type="button" class="cc-pas" :aria-pressed="son.paquete === s.id" @click="elegirEstilo(s)">{{ s.nombre }}</button></div>
-            </div>
-            <div class="cc-son-fila">
-              <span>Música</span>
-              <div class="cc-voces" role="radiogroup" aria-label="Música">
-                <span v-for="m in musicas" :key="m.id" class="cc-vozop" :aria-pressed="son.musica === m.id">
-                  <b role="radio" tabindex="0" :aria-checked="son.musica === m.id" @click="elegirMusica(m.id)" @keydown.enter.prevent="elegirMusica(m.id)" @keydown.space.prevent="elegirMusica(m.id)">{{ m.nombre || m.id }}</b>
-                  <button v-if="m.muestra" type="button" class="cc-oir" :class="{ 'is-sonando': sonando === `mus:${m.id}` }" :aria-label="`${sonando === `mus:${m.id}` ? 'Detener' : 'Escuchar'} ${m.nombre || m.id}`" @click="oir(`mus:${m.id}`, m.muestra)"><v-icon size="16">{{ sonando === `mus:${m.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-                </span>
-                <span class="cc-vozop" :aria-pressed="!son.musica">
-                  <b role="radio" tabindex="0" :aria-checked="!son.musica" @click="elegirMusica(null)" @keydown.enter.prevent="elegirMusica(null)" @keydown.space.prevent="elegirMusica(null)">Sin música</b>
-                </span>
-              </div>
-            </div>
-            <div v-if="conVoz" class="cc-son-fila">
-              <span>Voz</span>
-              <div class="cc-voces">
-                <span v-for="v in voces" :key="v.id" class="cc-vozop" :aria-pressed="son.locutor === v.id">
-                  <b role="button" tabindex="0" @click="elegirVoz(v.id)" @keydown.enter.prevent="elegirVoz(v.id)" @keydown.space.prevent="elegirVoz(v.id)">{{ v.nombre || v.id }}</b>
-                  <button v-if="v.muestra" type="button" class="cc-oir" :class="{ 'is-sonando': sonando === `voz:${v.id}` }" :aria-label="`${sonando === `voz:${v.id}` ? 'Detener' : 'Escuchar'} ${v.nombre || v.id}`" @click="oir(`voz:${v.id}`, v.muestra)"><v-icon size="16">{{ sonando === `voz:${v.id}` ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-                </span>
-              </div>
-            </div>
-            <div v-if="conVoz" class="cc-son-fila">
-              <span>Ritmo</span>
-              <div class="cc-son-op"><button v-for="r in RITMOS" :key="r.v" type="button" class="cc-pas" :aria-pressed="son.ritmo === r.v" @click="elegirRitmo(r.v)">{{ r.t }}</button></div>
-            </div>
-          </div>
+          <section class="cc-pieza cc-pub2">
+            <div class="cc-linea-t__cab"><b>Texto de la publicación</b><span class="cc-s num">acompaña al video en Instagram, Facebook y WhatsApp · {{ (publicacion.texto || "").length }} de 2200</span></div>
+            <input v-model="publicacion.titulo" class="cc-in2" maxlength="80" aria-label="Título de la publicación" placeholder="Título" />
+            <textarea v-model="publicacion.texto" class="cc-in2 cc-in2--pub" rows="3" maxlength="2200" aria-label="Texto de la publicación" :class="{ 'is-cargando': cargando && !publicacion.texto }"></textarea>
+          </section>
         </div>
+
+        <aside class="cc-lado">
+          <div class="cc-pieza cc-vivo">
+            <div class="cc-tel">
+              <div class="cc-tel__pantalla">
+                <div class="cc-barras"><span v-for="(e, k) in esc" :key="k" :style="{ flex: durDe(e) }"><i :style="{ width: `${avance(k)}%` }"></i></span></div>
+                <EscenaReel :key="`${actual}-${clave(esc[actual])}`" class="cc-entra" v-bind="reelDe(esc[actual], angosto ? 196 : 236)" />
+              </div>
+            </div>
+            <div class="cc-mandos">
+              <button type="button" class="cc-ico" :aria-label="play ? 'Detener' : 'Reproducir'" @click="play = !play"><v-icon size="20">{{ play ? "mdi-stop" : "mdi-play" }}</v-icon></button>
+              <span class="num">{{ seg(Math.min(t, total)) }} / {{ seg(total) }}</span>
+            </div>
+            <div v-if="conVoz && esc[actual]?.voz" class="cc-subt"><v-icon size="18">mdi-microphone-outline</v-icon><span>“{{ esc[actual]?.voz }}”</span></div>
+          </div>
+
+          <div class="cc-pieza cc-ajustes">
+            <b>Ajustes del video</b>
+            <div class="cc-aj"><span class="cc-rot">OFRECE</span>
+              <div class="cc-seg2" role="group" aria-label="Qué ofrece el video"><button type="button" :aria-pressed="!enKit" @click="modoProductos">Productos</button><button type="button" :aria-pressed="enKit" @click="modoKit">Kit o servicio</button></div></div>
+            <div class="cc-aj"><span class="cc-rot">PRECIO</span>
+              <div class="cc-seg2" role="group" aria-label="Precio"><button type="button" :aria-pressed="conPrecio" @click="ponerPrecio(true)">{{ enKit ? "Precio del kit" : "Se muestra" }}</button><button type="button" :aria-pressed="!conPrecio" @click="ponerPrecio(false)">Sin precio</button></div></div>
+            <div v-if="hayLocal" class="cc-aj"><span class="cc-rot">FONDO</span>
+              <div class="cc-seg2" role="group" aria-label="Fondo del video"><button type="button" :aria-pressed="conLocal" @click="conLocal = true">Con el local</button><button type="button" :aria-pressed="!conLocal" @click="conLocal = false">Sin el local</button></div></div>
+            <div v-if="estilos.length" class="cc-aj"><span class="cc-rot">ESTILO</span>
+              <div class="cc-seg2" role="group" aria-label="Estilo"><button v-for="s in estilos" :key="s.id" type="button" :aria-pressed="son.paquete === s.id" @click="elegirEstilo(s)">{{ s.nombre }}</button></div></div>
+            <div class="cc-aj2">
+              <label class="cc-aj"><span class="cc-rot">MÚSICA</span>
+                <span class="cc-fila2 cc-fila2--arriba"><select class="cc-sel cc-crece" :value="son.musica || ''" @change="elegirMusica($event.target.value || null)"><option v-for="m in musicas" :key="m.id" :value="m.id">{{ m.nombre || m.id }}</option><option value="">Sin música</option></select>
+                  <button v-if="musicaDe(son.musica)?.muestra" type="button" class="cc-ico" :aria-label="sonando === `mus:${son.musica}` ? 'Detener la música' : 'Escuchar la música'" @click="oir(`mus:${son.musica}`, musicaDe(son.musica).muestra)"><v-icon size="17">{{ sonando === `mus:${son.musica}` ? "mdi-stop" : "mdi-play" }}</v-icon></button></span></label>
+              <label v-if="conVoz" class="cc-aj"><span class="cc-rot">VOZ</span>
+                <span class="cc-fila2 cc-fila2--arriba"><select class="cc-sel cc-crece" :value="son.locutor" @change="elegirVoz($event.target.value)"><option v-for="v in voces" :key="v.id" :value="v.id">{{ v.nombre || v.id }}</option></select>
+                  <button v-if="vozDe(son.locutor)?.muestra" type="button" class="cc-ico" :aria-label="sonando === `voz:${son.locutor}` ? 'Detener la voz' : 'Escuchar la voz'" @click="oir(`voz:${son.locutor}`, vozDe(son.locutor).muestra)"><v-icon size="17">{{ sonando === `voz:${son.locutor}` ? "mdi-stop" : "mdi-play" }}</v-icon></button></span></label>
+            </div>
+            <div v-if="conVoz" class="cc-aj"><span class="cc-rot">RITMO DE LA VOZ</span>
+              <div class="cc-seg2" role="group" aria-label="Ritmo de la voz"><button v-for="r in RITMOS" :key="r.v" type="button" :aria-pressed="son.ritmo === r.v" @click="elegirRitmo(r.v)">{{ r.t }}</button></div></div>
+          </div>
+        </aside>
       </div>
       <div class="cc-pie-tel">
         <button type="button" class="cc-generar" :disabled="!puedeGenerar" @click="generar">
@@ -219,7 +220,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
-import { crearPieza, sugerirGuion } from "@/modules/admin/services/contenidos.service";
+import { crearPieza, guardarCampana as guardarCampanaApi, sugerirGuion } from "@/modules/admin/services/contenidos.service";
 import {
   GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, etiquetaDe, conTelefonoDicho, durEscena, durVoz, esNuevo, llenar, pesos,
   opcionesSonido, primeraQueEntra, propuestos, seg, sugeridos, textosLocales, tienePlan, variantesCierre, variantesItem, variantesPortada, contextoItem,
@@ -234,15 +235,25 @@ const props = defineProps({
   cupo: { type: Object, default: null },
   // Editar video: { id, titulo, encargo, pantalla?, ediciones } (GET /piezas/:id/encargo).
   edicion: { type: Object, default: null },
+  // Las campañas del comercio tal como las guarda (GET /campanas), prendidas y apagadas:
+  // de acá salen la vigencia y lo que no viaja en /recursos, y se abren también las apagadas.
+  propias: { type: Array, default: () => [] },
+  // Lo que dijo la IA al armar la campaña ("no encontré vidrios templados"), una vez.
+  aviso: { type: String, default: "" },
 });
-const emit = defineEmits(["generado", "error", "no-habilitado", "descartar"]);
+const emit = defineEmits(["generado", "error", "no-habilitado", "descartar", "campana-guardada"]);
 const route = useRoute();
 const router = useRouter();
 
 /* ── Campañas: las habilitadas, ya ordenadas por el servicio; "Libre" al final de Siempre ── */
-const campanas = computed(() => [...(props.recursos.campanas || []), LIBRE]);
+const campanas = computed(() => {
+  const habilitadas = props.recursos.campanas || [];
+  // Las propias apagadas no vienen en /recursos: se abren igual (para editarlas), sin generar.
+  const apagadas = props.propias.filter((c) => c.editable && c.activa === false && !habilitadas.some((h) => h.id === c.id));
+  return [...habilitadas, ...apagadas, LIBRE];
+});
 // Las propias del comercio (Campaña a medida) van juntas primero, en "Mis campañas".
-const grupos = computed(() => [{ k: "mias", t: "Mis campañas", l: campanas.value.filter((c) => c.propia) },
+const grupos = computed(() => [{ k: "mias", t: "Mis campañas", l: campanas.value.filter((c) => c.propia && c.activa !== false) },
   ...GRUPOS.map((g) => ({ ...g, l: campanas.value.filter((c) => !c.propia && (c.grupo || "siempre") === g.k) }))].filter((g) => g.l.length));
 const promo = () => ({ promoIds: props.promoIds });
 // Tarjeta: la portada de la campaña ya llena, con la foto del primer producto propuesto.
@@ -286,6 +297,60 @@ function elegirMusica(id) { son.musica = id; }
 function elegirVoz(id) { son.locutor = id; reajustar(); }
 function elegirRitmo(v) { son.ritmo = v; reajustar(); }
 
+/* ── La campaña propia en la misma pantalla (lienzo 26/10, tablero 4) ── */
+const crudaDe = (id) => props.propias.find((x) => x.id === id) || null;
+const esPropia = computed(() => Boolean(camp.value?.propia && camp.value?.autor === "local"));
+const inactiva = computed(() => esPropia.value && crudaDe(camp.value.id)?.activa === false);
+const form = reactive({ nombre: "", ventana: { tipo: "libre", cuando: "", fecha: "", hasta: "" } });
+const sucio = ref(false);
+const guardandoCamp = ref(false);
+const errorCamp = ref("");
+function cargarForm(c) {
+  const r = crudaDe(c.id) || c;
+  form.nombre = c.nombre || "";
+  Object.assign(form.ventana, { tipo: "libre", cuando: "", fecha: "", hasta: "" }, r.ventana || {});
+  errorCamp.value = "";
+}
+// Lo que ve el armado vuelve a la campaña: productos, modo, precio, sonido y los textos de la
+// portada, el cierre, el kit y la publicación (la voz de cada producto suelto sale de la guía).
+function cuerpoCampana() {
+  const r = crudaDe(camp.value.id) || camp.value;
+  const t = r.textos || camp.value.textos || {};
+  const portada = esc.value[0];
+  const cierre = esc.value.at(-1);
+  const v = form.ventana;
+  const ventana = v.tipo === "fija" ? { tipo: "fija", fecha: v.fecha, ...(v.hasta ? { hasta: v.hasta } : {}) }
+    : v.tipo === "recurrente" ? { tipo: "recurrente", cuando: v.cuando } : { tipo: "libre" };
+  const real = (id) => porId(id) != null;
+  const ids = (enKit.value ? kit.incluye : items.value.map((e) => e.prod.id)).filter(real).map(String).slice(0, enKit.value ? 12 : TOPE_PRODUCTOS);
+  const recorte = (x, n) => String(x || "").trim().slice(0, n);
+  return {
+    activa: r.activa !== false, nombre: recorte(form.nombre, 40) || camp.value.nombre, objetivo: r.objetivo || "", tono: r.tono || "cercano", ventana,
+    productos: { regla: "manual", n: enKit.value ? 1 : Math.max(1, ids.length), ids },
+    modo: enKit.value ? "kit" : "productos", conPrecio: conPrecio.value,
+    ...(enKit.value ? { kit: { nombre: recorte(kit.nombre, 90), precio: conPrecio.value && Number(kit.precio) > 0 ? Number(kit.precio) : null, extra: recorte(kit.extra, 120), foto: kit.foto != null ? String(kit.foto) : null } } : {}),
+    estilo: son.paquete || r.estilo, musica: son.musica || null, voz: { locutor: son.locutor || r.voz?.locutor, ritmo: son.ritmo },
+    textos: { ...t, titular: recorte(portada.titular, 60), bajada: recorte(portada.bajada, 90), vozIntro: recorte(portada.voz, 200),
+      vozCierre: recorte(cierre.voz, 200), llamado: recorte(cierre.llamado, 40), caption: recorte(publicacion.texto, 400),
+      ...(enKit.value && items.value[0] ? { vozItem: recorte(items.value[0].voz, 200) } : {}) },
+  };
+}
+async function guardarLaCampana() {
+  if (!esPropia.value || guardandoCamp.value) return true;
+  errorCamp.value = "";
+  if (form.nombre.trim().length < 2) { errorCamp.value = "Falta el nombre de la campaña."; return false; }
+  guardandoCamp.value = true;
+  try {
+    await guardarCampanaApi(camp.value.id, cuerpoCampana());
+    sucio.value = false;
+    emit("campana-guardada");
+    return true;
+  } catch (e) {
+    errorCamp.value = e?.response?.data?.error || e?.message || "No se pudo guardar la campaña.";
+    return false;
+  } finally { guardandoCamp.value = false; }
+}
+
 /* ── Armado ── */
 const camp = ref(null);
 // Video que se está editando: { id, titulo, numero, tope, nuevo }. null = video nuevo.
@@ -315,6 +380,19 @@ const durDe = (e) => {
   return Math.max(b, Math.round((antes + medir(e.voz) + despues) * 10) / 10);
 };
 const larga = (e) => conVoz.value && durDe(e) > baseDe(e) * 1.6;
+const rotuloCorto = (e, i) => (e.tipo === "item" && !enKit.value ? String(e.prod?.titulo || "").split(/\s+/).slice(0, 2).join(" ") : rotulo(e, i));
+const vozDe = (id) => voces.value.find((v) => v.id === id);
+function verEscena(i) {
+  irA(i);
+  document.getElementById(`cc-esc-${i}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function ponerPrecio(v) { if (conPrecio.value !== v) alternarPrecio(); }
+const incluidosKit = computed(() => kit.incluye.map(porId).filter(Boolean));
+const opcionesKit = computed(() => {
+  const q = normalizar(buscar.value).trim();
+  const l = q ? props.catalogo.filter((p) => normalizar(`${p.titulo} ${p.nombre} ${p.categoria || ""}`).includes(q)) : candidatosKit.value;
+  return l.slice(0, 36);
+});
 const rotulo = (e, i) => (e.tipo === "portada" ? "Portada" : e.tipo === "cierre" ? "Cierre" : enKit.value ? "Kit" : `Producto ${nItem(i)}`);
 const comoSeDice = (t) => { const d = conTelefonoDicho(t); return d !== String(t || "") ? d : ""; };
 const total = computed(() => esc.value.reduce((a, e) => a + durDe(e), 0));
@@ -325,8 +403,16 @@ const kitSinFoto = computed(() => enKit.value && !items.value[0]?.prod?.imagen);
 // Nada sale sin que el comercio lo vea: con el guion todavía escribiéndose o una voz vacía,
 // no se genera (antes Generar andaba durante la carga y el servicio ponía textos que nadie vio).
 const vozVacia = computed(() => conVoz.value && esc.value.some((e) => !String(e.voz || "").trim()));
-const puedeGenerar = computed(() => !creando.value && !cargando.value && !vozVacia.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !kitSinFoto.value);
+const puedeGenerar = computed(() => !creando.value && !cargando.value && !inactiva.value && !vozVacia.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !kitSinFoto.value);
 const textoGenerar = computed(() => (cargando.value ? "Escribiendo el guion…" : "Generar video"));
+// Por qué no se puede generar, en una línea debajo de la barra (o lo que dijo la IA al armar).
+const motivoNoGenera = computed(() => {
+  if (inactiva.value) return "La campaña está apagada: prendela en Mis campañas para generar videos.";
+  if (sinCupo.value && !editaMisma.value) return `Límite de videos de ${props.cupo?.nombreMes || "este mes"} alcanzado.`;
+  if (!cargando.value && vozVacia.value) return "Falta escribir lo que dice la voz en alguna escena.";
+  return props.aviso && esPropia.value ? `La IA dice: ${props.aviso}` : "";
+});
+const motivoEsIa = computed(() => motivoNoGenera.value.startsWith("La IA dice"));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
 // Cierre: la primera sucursal y el WhatsApp salen del comercio y se editan por video;
@@ -458,7 +544,7 @@ function abrir(c, { conRuta = true } = {}) {
     esc.value = [esc.value[0], escenaItem(prodKit()), esc.value.at(-1)];
   }
   publicacion.fija = false;
-  if (c.propia && c.autor === "local") textosDeLaCampana(c);
+  if (c.propia && c.autor === "local") { cargarForm(c); textosDeLaCampana(crudaDe(c.id) ? { ...c, textos: crudaDe(c.id).textos } : c); }
   eligiendo.value = null;
   t.value = 0;
   play.value = true;
@@ -775,6 +861,8 @@ function oir(clave, muestra) {
 /* ── Generar ── */
 async function generar() {
   if (!puedeGenerar.value) return;
+  // Lo que se genera queda también en la campaña (si es del comercio y se tocó algo).
+  if (esPropia.value && !editando.value && sucio.value && !(await guardarLaCampana())) return;
   creando.value = true;
   const f = props.fuente;
   const c = camp.value;
@@ -818,6 +906,10 @@ async function generar() {
     else emit("error", e);
   } finally { creando.value = false; }
 }
+
+// Cualquier cambio en el armado deja la campaña con cambios sin guardar.
+watch(() => [form.nombre, JSON.stringify(form.ventana), esc.value.map((e) => `${e.titular}|${e.bajada}|${e.voz}|${e.llamado}|${e.prod?.id}`).join("~"), JSON.stringify(kit), conPrecio.value, enKit.value, son.paquete, son.musica, son.locutor, son.ritmo, publicacion.texto],
+  () => { if (camp.value) sucio.value = true; });
 
 /* Recargar la página con ?campana= vuelve al armado cuando ya está el catálogo. */
 watch(() => [route.query.campana, props.catalogo.length, campanas.value.length], ([id]) => {
@@ -986,15 +1078,97 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-generar:hover:not(:disabled) { filter: brightness(1.08); }
 .cc-generar:disabled { opacity: .45; cursor: default; }
 .cc-cupo { font-size: 12.5px; font-weight: 800; color: var(--cc-mal); }
+/* Armado único (lienzo 26/10, tableros 4 y 5) */
+.cc-rot { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; color: var(--sp-suave); }
+.cc-s { font-size: 13px; color: var(--sp-suave); }
+.cc-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 16px; }
+.cc-barra__t { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cc-nombre { border: 0; border-bottom: 2px dashed var(--sp-borde); background: transparent; color: var(--sp-texto); font: 900 21px Inter, sans-serif; padding: 1px 0; outline: 0; max-width: 440px; width: 100%; }
+.cc-nombre:focus { border-bottom-color: var(--cc-pri); }
+.cc-nombre--fijo { border-bottom: 0; }
+.cc-volver { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 12px 0 8px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font-weight: 800; font-size: 14px; cursor: pointer; }
+.cc-vig { display: flex; flex-direction: column; gap: 1px; }
+.cc-sel { height: 40px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); padding: 0 10px; font: 700 14px Inter, sans-serif; min-width: 0; }
+.cc-sel--txt { width: 170px; }
+.cc-quedan { font-size: 12.5px; color: var(--sp-suave); text-align: right; line-height: 1.3; }
+.cc-sec { min-height: 46px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); font-weight: 800; font-size: 15px; cursor: pointer; }
+.cc-sec:disabled { opacity: .55; cursor: default; }
+.cc-sec--chico { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+.cc-generar--barra { width: auto; max-width: none; padding: 12px 22px; }
+.cc-motivo { margin: -4px 0 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--cc-mal); background: color-mix(in srgb, var(--cc-mal) 8%, transparent); }
+.cc-motivo--ia { color: var(--sp-texto); font-weight: 600; background: var(--cc-pri-bg); }
+.cc-motivo--ia .v-icon { color: var(--cc-pri); }
+.cc-generar--barra { margin-left: auto; }
+.cc-aj .cc-sel.cc-crece { flex-basis: 0; }
+.cc-linea-t { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.cc-linea-t__cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.cc-linea-t__cab > b { font-size: 16px; }
+.cc-linea-t__cab b { color: var(--sp-texto); }
+.cc-linea-t__barra { display: flex; gap: 4px; height: 34px; }
+.cc-linea-t__barra button { min-width: 0; border: 0; border-radius: 8px; background: var(--cc-pri-bg); color: var(--sp-texto); font: 800 12px Inter, sans-serif; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 0 6px; cursor: pointer; }
+.cc-linea-t__barra button.is-activa { background: var(--cc-pri); color: var(--cc-pri-ink); }
+.cc-esc2 { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 14px; padding: 14px 16px; scroll-margin-top: 90px; }
+.cc-esc2.is-activa { border-color: var(--cc-pri); box-shadow: 0 0 0 1px var(--cc-pri); }
+.cc-esc2__mini { padding: 0; border: 0; background: none; width: 100px; border-radius: 10px; overflow: hidden; cursor: pointer; align-self: start; }
+.cc-esc2__cuerpo { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cc-esc2__cab { display: flex; align-items: center; gap: 10px; }
+.cc-esc2__cab b { font-size: 13px; letter-spacing: .06em; color: var(--cc-pri); }
+.cc-dur { font-size: 12px; font-weight: 700; color: var(--sp-suave); background: var(--sp-hover); border-radius: 6px; padding: 3px 8px; }
+.cc-dur.is-larga { color: #8a5300; background: #fff3dc; }
+.cc-esc2__grilla { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px 12px; align-items: start; }
+.cc-esc2__grilla > .cc-rot { padding-top: 11px; }
+.cc-esc2__ve, .cc-esc2__dice { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cc-esc2 > .cc-elegir { grid-column: 1 / -1; }
+.cc-fila2 { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.cc-fila2--arriba { flex-wrap: nowrap; align-items: flex-start; }
+.cc-crece { flex: 1 1 180px; min-width: 0; }
+.cc-in2 { width: 100%; box-sizing: border-box; min-height: 38px; border-radius: 10px; border: 1px solid var(--sp-borde); background: var(--sp-caja); color: var(--sp-texto); padding: 6px 12px; font: 500 14px/1.4 Inter, sans-serif; outline: 0; }
+.cc-fila2 .cc-in2 { width: auto; }
+.cc-in2:focus { border-color: var(--cc-pri); }
+.cc-in2--tit { font-weight: 800; font-size: 16px; }
+.cc-in2--eti { flex: 0 1 150px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: var(--cc-pri); }
+.cc-in2--pub { resize: vertical; min-height: 80px; }
+.cc-voz2 { resize: none; overflow: hidden; font-weight: 600; font-size: 15px; background: var(--cc-pri-bg); border-color: transparent; }
+.cc-voz2.is-larga { background: #fffaf0; border-color: #f0d49a; }
+.cc-larga { font-size: 12.5px; font-weight: 700; color: #8a5300; }
+.cc-prodfila { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--sp-linea); }
+.cc-prodfila__img { width: 44px; height: 44px; border-radius: 8px; background: #fff; border: 1px solid var(--sp-linea); overflow: hidden; flex-shrink: 0; }
+.cc-prodfila__img img { width: 100%; height: 100%; object-fit: contain; }
+.cc-prodfila__t { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; }
+.cc-prodfila__t b { font-size: 15px; line-height: 1.25; }
+.cc-precio-kit { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--sp-borde); font-weight: 800; }
+.cc-precio-kit input { width: 110px; border: 0; outline: 0; background: transparent; color: var(--sp-texto); font: 800 15px Inter, sans-serif; }
+.cc-sinprecio { display: inline-flex; align-items: center; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px dashed var(--sp-borde); font-size: 13px; font-weight: 600; color: var(--sp-suave); }
+.cc-inc { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-inc__chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 3px; border-radius: 10px; border: 1px solid var(--sp-borde); font-size: 13px; font-weight: 700; max-width: 100%; }
+.cc-inc__chip.is-foto { border: 2px solid var(--cc-pri); background: var(--cc-pri-bg); padding: 2px 3px 2px 2px; }
+.cc-inc__chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.cc-inc__foto { width: 34px; height: 34px; padding: 0; border-radius: 7px; border: 1px solid var(--sp-linea); background: #fff; overflow: hidden; cursor: pointer; flex-shrink: 0; }
+.cc-inc__foto img { width: 100%; height: 100%; object-fit: contain; }
+.cc-inc__x { width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--sp-suave); cursor: pointer; display: grid; place-items: center; }
+.cc-inc__mas, .cc-agregar { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 2px dashed var(--sp-borde); background: transparent; color: var(--cc-pri); font-weight: 800; font-size: 13.5px; cursor: pointer; }
+.cc-agregar { align-self: center; min-height: 44px; }
+.cc-dato2 { flex: 1 1 150px; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--sp-borde); color: var(--sp-suave); }
+.cc-dato2 input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--sp-texto); font: 500 14px Inter, sans-serif; }
+.cc-pub2 { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.cc-vivo { padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; }
+.cc-ajustes { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; }
+.cc-ajustes > b { font-size: 16px; }
+.cc-aj { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cc-aj2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cc-seg2 { display: flex; border: 1px solid var(--sp-borde); border-radius: 10px; overflow: hidden; }
+.cc-seg2 button { flex: 1; min-height: 38px; border: 0; background: var(--sp-caja); color: var(--sp-suave); font: 800 13px Inter, sans-serif; cursor: pointer; padding: 0 6px; }
+.cc-seg2 button[aria-pressed="true"] { background: var(--cc-pri); color: var(--cc-pri-ink); }
+.cc :is(.cc-volver, .cc-sec, .cc-seg2 button, .cc-linea-t__barra button, .cc-inc__foto, .cc-inc__x, .cc-inc__mas, .cc-agregar, .cc-esc2__mini):focus-visible { outline: 2px solid var(--cc-pri); outline-offset: 2px; }
 .cc-pie-tel { display: none; }
 
 @media (min-width: 980px) {
-  .cc-armado { grid-template-columns: minmax(0, 1fr) 320px; }
+  .cc-armado { grid-template-columns: minmax(0, 1fr) 340px; }
   .cc-lado { position: sticky; top: 70px; order: 2; }
 }
 @media (max-width: 979px) {
   .cc-tel, .cc-subt { width: 210px; }
-  .cc-generar--ancho { display: none; }
+  .cc-generar--barra { display: none; }
   /* Barra fija al pie (el layout de la app corta el sticky); en el teléfono va sobre la navegación del sistema. */
   .cc-pie-tel { display: flex; justify-content: center; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--sp-fondo); padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 16px rgba(0, 0, 0, .08); }
   .pos-main--mobile .cc-pie-tel { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; }
@@ -1002,8 +1176,11 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 }
 @media (max-width: 600px) {
   .cc-grilla, .cc-grilla--ahora { grid-template-columns: minmax(0, 1fr); }
-  .cc-esc { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; padding: 10px; }
-  .cc-esc__mini { width: 44px; }
+  .cc-esc2 { grid-template-columns: minmax(0, 1fr); }
+  .cc-esc2__mini { display: none; }
+  .cc-esc2__grilla { grid-template-columns: minmax(0, 1fr); }
+  .cc-esc2__grilla > .cc-rot { padding-top: 0; }
+  .cc-aj2 { grid-template-columns: minmax(0, 1fr); }
   .cc-busca { margin-left: 0; }
 }
 </style>

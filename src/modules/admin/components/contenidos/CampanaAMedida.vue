@@ -386,8 +386,13 @@ async function armar(otra = false) {
       if (c.modo === "kit") ajustarKit();
     }
     origen.value = r.origen;
-    avisoIa.value = r.aviso || (r.origen !== "ia" && !c.ids.length ? "No encontré productos del stock con esas palabras: elegilos abajo." : "");
-    etapa.value = "revision";
+    avisoIa.value = r.aviso || (r.origen !== "ia" && !c.ids.length ? "No encontré productos del stock con esas palabras: elegilos en el armado." : "");
+    // Armado único (lienzo 26/10, tablero 4): la campaña se guarda y se abre directo en el
+    // armado del video, donde se ve y se corrige todo. Sin lugar para otra prendida, apagada.
+    c.activa = hayLugar.value;
+    if (otra) { etapa.value = "revision"; return; }
+    await guardar(true);
+    if (error.value) etapa.value = "pedido";
   } catch (e) {
     error.value = mensaje(e);
     if (!otra) etapa.value = "pedido";
@@ -512,7 +517,7 @@ async function guardar(armarVideo) {
   guardando.value = true;
   try {
     const guardada = props.editar ? await guardarCampana(props.editar.id, cuerpo()) : await crearCampana(cuerpo());
-    emit("guardada", { campana: guardada, armar: armarVideo });
+    emit("guardada", { campana: guardada, armar: armarVideo, aviso: avisoIa.value });
     if (!props.editar) { etapa.value = "pedido"; pedido.value = ""; origen.value = ""; avisoIa.value = ""; variante.value = 0; }
   } catch (e) {
     error.value = e?.response?.data?.codigo === "tope_campanas" ? `Tenés ${props.estado.autonomia?.tope} campañas prendidas, el máximo. Apagá una en Mis campañas o guardala apagada.` : mensaje(e);

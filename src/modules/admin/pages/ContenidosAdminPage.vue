@@ -33,15 +33,16 @@
         <!-- Campaña a medida: sólo si la plataforma le habilitó al comercio crear las suyas -->
         <CampanaAMedida v-if="autonomo && !route.query.campana && !route.query.editar && !route.query.desde" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :estado="misCampanas"
           @revisando="revisandoCampana = $event" @guardada="alGuardarCampana" @estrategia="irA('campanas')" />
-        <CreadorCampanas v-show="!revisandoCampana || route.query.campana" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion" @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
+        <CreadorCampanas v-show="!revisandoCampana || route.query.campana" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :promo-ids="promoIds" :cupo="cupo" :edicion="edicion"
+          :propias="misCampanas?.campanas || []" :aviso="avisoCampana" @campana-guardada="recargarCampanas"
+          @generado="alGenerar" @error="alFallarCampana" @no-habilitado="alNoHabilitado" @descartar="irA('videos')" />
       </template>
     </template>
 
     <!-- MIS CAMPAÑAS: las del comercio y su estrategia; editar una abre la revisión entera -->
     <template v-else-if="vista === 'campanas' && autonomo && recursos">
-      <CampanaAMedida v-if="campanaEditada" :key="campanaEditada.id" :fuente="fuente" :recursos="recursos" :catalogo="catalogo" :estado="misCampanas" :editar="campanaEditada"
-        @guardada="alGuardarCampana" @cerrar="irA('campanas')" />
-      <MisCampanas v-else :estado="misCampanas" @nueva="irA('nuevo')" @editar="(c) => irA('campanas', { campanaEditada: c.id })" @cambio="recargarCampanas" />
+      <!-- Editar una campaña abre el armado único (lienzo 26/10, tablero 4): la campaña y el video en la misma pantalla -->
+      <MisCampanas :estado="misCampanas" @nueva="irA('nuevo')" @editar="(c) => irA('nuevo', { campana: c.id })" @cambio="recargarCampanas" />
     </template>
 
     <!-- NUEVO REEL: cuatro pasos navegables (servicio sin campañas) -->
@@ -593,18 +594,21 @@ const conCampanas = computed(() => Array.isArray(recursos.value?.campanas));
 const misCampanas = ref(null);
 const autonomo = computed(() => Boolean(misCampanas.value?.autonomia?.campanas) && conCampanas.value);
 const revisandoCampana = ref(false);
-const campanaEditada = computed(() => (misCampanas.value?.campanas || []).find((c) => c.id === route.query.campanaEditada && c.editable) || null);
 async function recargarCampanas() {
   try { misCampanas.value = await getMisCampanas(); } catch { misCampanas.value = null; }
   await cargarRecursos();
 }
 // Guardada: vuelve a pedir lo que ve el comercio y, si pidió armar el video, abre el creador con ella.
-async function alGuardarCampana({ campana, armar }) {
+// Recién armada (o guardada): se abre en el armado único, con lo que dijo la IA arriba.
+const avisoCampana = ref("");
+async function alGuardarCampana({ campana, aviso = "" }) {
   await recargarCampanas();
   revisandoCampana.value = false;
-  if (armar && campana.activa !== false) irA("nuevo", { campana: campana.id });
-  else irA("campanas");
+  avisoCampana.value = aviso;
+  irA("nuevo", { campana: campana.id });
 }
+// Enlaces viejos (?vista=campanas&campanaEditada=<id>): van al armado de esa campaña.
+watch(() => route.query.campanaEditada, (id) => { if (id) irA("nuevo", { campana: id }); }, { immediate: true });
 const aviso = ref("");
 let avisoReloj;
 function avisar(t) { aviso.value = t; clearTimeout(avisoReloj); avisoReloj = setTimeout(() => { aviso.value = ""; }, 2600); }
