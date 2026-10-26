@@ -52,6 +52,27 @@ export const LIBRE = {
   },
 };
 
+/* Cómo dice la voz un teléfono (igual que contenido, motor/voz.js `telefonoDicho`): la
+   característica cifra por cifra y el resto de a pares desde el final. */
+const CIFRAS = ["cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"];
+const UNI = ["", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce", "trece", "catorce", "quince",
+  "dieciséis", "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno", "veintidós", "veintitrés", "veinticuatro", "veinticinco", "veintiséis", "veintisiete", "veintiocho", "veintinueve"];
+const DEC = ["", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
+const par = (x) => (x.length === 1 || x[0] === "0" ? x.split("").map((c) => CIFRAS[c]).join(" ") : Number(x) < 30 ? UNI[Number(x)] : `${DEC[x[0]]}${x[1] !== "0" ? ` y ${UNI[Number(x[1])]}` : ""}`);
+export function telefonoDicho(numero) {
+  let d = String(numero).replace(/\D/g, "");
+  if (d.length === 13 && d.startsWith("549")) d = d.slice(3);
+  else if (d.length === 12 && d.startsWith("54")) d = d.slice(2);
+  if (d.length !== 10) return null;
+  const area = d.startsWith("11") ? 2 : d.startsWith("2") || d.startsWith("3") ? 3 : 4;
+  const resto = d.slice(area);
+  const pares = [];
+  for (let i = resto.length; i > 0; i -= 2) pares.unshift(resto.slice(Math.max(0, i - 2), i));
+  return [d.slice(0, area).split("").map((c) => CIFRAS[c]).join(" "), ...pares.map(par)].join(", ");
+}
+const TELEFONO = /(?:\+?54[\s-]?9?[\s-]?)?(?<!\d)\(?\d{2,4}\)?[\s-]?\d{2,4}[\s-]?\d{2,4}(?:[\s-]?\d{2,4})?(?!\d)/g;
+export const conTelefonoDicho = (t) => String(t || "").replace(TELEFONO, (m) => telefonoDicho(m) ?? m);
+
 export const pesos = (n) => (n == null ? "" : `$ ${Math.round(Number(n) || 0).toLocaleString("es-AR")}`);
 export const seg = (n) => `${Number(n).toLocaleString("es-AR", { maximumFractionDigits: 1 })} s`;
 export const descuentoDe = (p) => (Number(p?.precioAnterior) > Number(p?.precio) && Number(p?.precio) > 0 ? Math.round((1 - p.precio / p.precioAnterior) * 100) : 0);

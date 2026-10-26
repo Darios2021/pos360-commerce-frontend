@@ -43,7 +43,6 @@
           </button>
           <span v-if="sinCupo && !editaMisma" class="cc-cupo">Límite de {{ cupo?.nombreMes }} alcanzado</span>
           <span v-else-if="!cargando && vozVacia" class="cc-cupo">Falta escribir lo que dice la voz en alguna escena.</span>
-          <span v-else-if="!cargando && esc.some(pasa)" class="cc-cupo">Una voz es más larga que su escena (la barra en rojo): acortala para generar.</span>
         </aside>
 
         <div class="cc-col">
@@ -123,14 +122,6 @@
                     <label class="cc-dato"><v-icon size="17">mdi-whatsapp</v-icon><input v-model="e.whatsapp" class="cc-in num" maxlength="40" inputmode="tel" aria-label="WhatsApp" @input="editar(e, 'whatsapp', i)" /></label>
                   </div>
                 </template>
-                <div v-if="conVoz" class="cc-voz">
-                  <v-icon size="18">mdi-microphone-outline</v-icon>
-                  <textarea v-model="e.voz" class="cc-in" rows="1" maxlength="200" aria-label="Voz" :class="{ 'is-cargando': cargando && !e.voz }" @input="editar(e, 'voz', i, $event)"></textarea>
-                  <div class="cc-medidor" :class="{ 'is-pasa': pasa(e) }">
-                    <span class="cc-medidor__b"><i :style="{ width: `${Math.min(100, Math.round((medir(e.voz) / durDe(e)) * 100))}%` }"></i></span>
-                    <span class="num">{{ seg(Math.round(medir(e.voz) * 10) / 10) }} de {{ seg(durDe(e)) }}</span>
-                  </div>
-                </div>
               </div>
               <div class="cc-esc__acc">
                 <button type="button" class="cc-ico" title="Otra versión" aria-label="Otra versión" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
@@ -157,6 +148,21 @@
               </div>
             </div>
             <button v-if="!enKit && cuantos < TOPE_PRODUCTOS" type="button" class="cc-mas" @click="agregar"><v-icon size="19">mdi-plus</v-icon>Producto</button>
+          </div>
+
+          <!-- Lo que dice la voz, todo junto y en orden: es exactamente lo que se va a decir.
+               Cada escena dura lo que su voz (como en el render: la voz nunca se corta). -->
+          <div v-if="conVoz" class="cc-pieza cc-guionvoz">
+            <div class="cc-banda"><span>Lo que dice la voz</span><small class="num">{{ seg(total) }} en total</small></div>
+            <div v-for="(e, i) in esc" :key="`v-${e.k}`" class="cc-linea" :class="{ 'is-activa': i === actual }">
+              <button type="button" class="cc-linea__rot" :aria-label="`Ver ${rotulo(e, i)}`" @click="irA(i)">{{ rotulo(e, i) }}<small class="num">{{ seg(durDe(e)) }}</small></button>
+              <div class="cc-linea__txt">
+                <textarea v-model="e.voz" class="cc-in" rows="1" maxlength="200" :aria-label="`Voz de ${rotulo(e, i)}`" :class="{ 'is-cargando': cargando && !e.voz }" @input="editar(e, 'voz', i, $event)"></textarea>
+                <small v-if="comoSeDice(e.voz)" class="cc-linea__dice">Se dice: “{{ comoSeDice(e.voz) }}”</small>
+                <small v-if="larga(e)" class="cc-linea__larga">Larga: esta escena dura {{ seg(durDe(e)) }} para que entre. Si querés el ritmo del estilo, acortala.</small>
+              </div>
+              <button type="button" class="cc-ico" title="Otra versión" :aria-label="`Otra versión de ${rotulo(e, i)}`" @click="otraVersion(i)"><v-icon size="19">mdi-refresh</v-icon></button>
+            </div>
           </div>
 
           <div class="cc-pieza cc-pub">
@@ -215,7 +221,7 @@ import { useRoute, useRouter } from "vue-router";
 import EscenaReel from "@/modules/admin/components/contenidos/EscenaReel.vue";
 import { crearPieza, sugerirGuion } from "@/modules/admin/services/contenidos.service";
 import {
-  GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, etiquetaDe, durEscena, durVoz, esNuevo, llenar, pesos,
+  GRUPOS, LIBRE, RITMOS, TOPE_PRODUCTOS, contexto, descuentoDe, etiquetaDe, conTelefonoDicho, durEscena, durVoz, esNuevo, llenar, pesos,
   opcionesSonido, primeraQueEntra, propuestos, seg, sugeridos, textosLocales, tienePlan, variantesCierre, variantesItem, variantesPortada, contextoItem,
 } from "@/modules/admin/components/contenidos/campanas";
 
@@ -297,17 +303,29 @@ let serie = 0;
 const items = computed(() => esc.value.filter((e) => e.tipo === "item"));
 const cuantos = computed(() => items.value.length);
 const enReel = computed(() => new Set(items.value.map((e) => e.prod.id)));
-const durDe = (e) => durEscena(e?.tipo, cuantos.value);
+// Como el render (contenido, plantillas/vertical.js `ritmo`): la escena dura lo suyo o lo que
+// tarda su voz, lo que sea más. Antes la pantalla medía contra el tiempo fijo y bloqueaba
+// Generar con una voz que el render igual hacía entrar.
+const VOZ_ESCENA = { portada: [0.5, 0.5], item: [0.4, 0.5], cierre: [0.35, 0.9] };
+const baseDe = (e) => durEscena(e?.tipo, cuantos.value);
+const durDe = (e) => {
+  const b = baseDe(e);
+  if (!conVoz.value || !String(e?.voz || "").trim()) return b;
+  const [antes, despues] = VOZ_ESCENA[e.tipo] || [0.4, 0.5];
+  return Math.max(b, Math.round((antes + medir(e.voz) + despues) * 10) / 10);
+};
+const larga = (e) => conVoz.value && durDe(e) > baseDe(e) * 1.6;
+const rotulo = (e, i) => (e.tipo === "portada" ? "Portada" : e.tipo === "cierre" ? "Cierre" : enKit.value ? "Kit" : `Producto ${nItem(i)}`);
+const comoSeDice = (t) => { const d = conTelefonoDicho(t); return d !== String(t || "") ? d : ""; };
 const total = computed(() => esc.value.reduce((a, e) => a + durDe(e), 0));
 const nItem = (i) => esc.value.slice(0, i).filter((e) => e.tipo === "item").length + 1;
-const pasa = (e) => conVoz.value && medir(e.voz) > durDe(e) + 0.05;
 const sinCupo = computed(() => props.cupo?.limite != null && props.cupo.quedan <= 0);
 // El servicio pide foto en cada ítem: un kit necesita al menos un producto incluido con foto.
 const kitSinFoto = computed(() => enKit.value && !items.value[0]?.prod?.imagen);
 // Nada sale sin que el comercio lo vea: con el guion todavía escribiéndose o una voz vacía,
 // no se genera (antes Generar andaba durante la carga y el servicio ponía textos que nadie vio).
 const vozVacia = computed(() => conVoz.value && esc.value.some((e) => !String(e.voz || "").trim()));
-const puedeGenerar = computed(() => !creando.value && !cargando.value && !vozVacia.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !esc.value.some(pasa) && !kitSinFoto.value);
+const puedeGenerar = computed(() => !creando.value && !cargando.value && !vozVacia.value && (editaMisma.value || !sinCupo.value) && cuantos.value > 0 && Boolean(props.fuente) && !kitSinFoto.value);
 const textoGenerar = computed(() => (cargando.value ? "Escribiendo el guion…" : "Generar video"));
 const nueva = (tipo, extra = {}) => ({ k: ++serie, tipo, voz: "", variante: 0, editado: {}, ...extra });
 const escenaItem = (p) => nueva("item", { prod: p, etiqueta: "", caracteristicas: [] });
@@ -628,10 +646,8 @@ function otraVersion(i) {
   pedirTextos(e);
   irA(i);
 }
-// Al cambiar ritmo o voz: si una línea del sistema deja de entrar, se pide de nuevo.
-function reajustar() {
-  if (esc.value.some((e) => !e.editado.voz && pasa(e))) pedirTextos();
-}
+// Al cambiar ritmo o voz no hace falta pedir textos: cada escena se estira con su voz (durDe).
+function reajustar() {}
 
 /* Productos */
 const filtros = computed(() => [
@@ -695,7 +711,7 @@ function editar(e, campo, i, ev) {
   if (actual.value !== i) irA(i);
 }
 const crecerUno = (el) => { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; };
-function crecer() { document.querySelectorAll(".cc-voz textarea").forEach(crecerUno); }
+function crecer() { document.querySelectorAll(".cc-linea textarea").forEach(crecerUno); }
 
 /* ── Vista previa viva ── */
 const t = ref(0);
@@ -892,15 +908,19 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-in--eti { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; color: var(--cc-pri); }
 .cc-in.is-cargando { background: linear-gradient(90deg, var(--sp-linea) 0%, var(--sp-hover) 50%, var(--sp-linea) 100%); background-size: 200% 100%; animation: cc-esqueleto 1.2s linear infinite; min-height: 28px; }
 @keyframes cc-esqueleto { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-.cc-voz { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 4px 6px; align-items: start; background: var(--cc-pri-bg); border-radius: 10px; padding: 6px 8px 7px; }
-.cc-voz > .v-icon { margin-top: 6px; color: var(--cc-pri); }
-.cc-voz .cc-in { margin-left: 0; font-size: 14.5px; font-weight: 600; resize: none; overflow: hidden; line-height: 1.35; padding: 4px 6px; min-height: 30px; display: block; }
-.cc-medidor { grid-column: 2; display: flex; align-items: center; gap: 8px; padding: 0 6px; }
-.cc-medidor__b { flex: 1; height: 4px; border-radius: 2px; background: var(--sp-linea); overflow: hidden; max-width: 220px; }
-.cc-medidor__b i { display: block; height: 100%; background: var(--cc-ok); border-radius: 2px; transition: width .2s; }
-.cc-medidor span:last-child { font-size: 12px; font-weight: 800; color: var(--cc-ok); white-space: nowrap; }
-.cc-medidor.is-pasa .cc-medidor__b i { background: var(--cc-mal); }
-.cc-medidor.is-pasa span:last-child { color: var(--cc-mal); }
+.cc-vozop { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--sp-borde); background: var(--sp-caja); border-radius: 9px; padding: 3px 4px 3px 10px; font-size: 13px; font-weight: 700; color: var(--sp-suave); white-space: nowrap; }
+.cc-vozop b { font-weight: 700; cursor: pointer; }
+.cc-vozop[aria-pressed="true"] { border-color: var(--cc-pri); color: var(--cc-pri); background: var(--cc-pri-bg); }
+.cc-guionvoz { display: flex; flex-direction: column; }
+.cc-linea { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 16px; border-top: 1px solid var(--sp-linea); }
+.cc-linea.is-activa { background: var(--cc-pri-bg); }
+.cc-linea__rot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; padding: 6px 0; text-align: left; font: 800 13px Inter, sans-serif; color: var(--sp-texto); cursor: pointer; }
+.cc-linea__rot small { font-size: 12px; font-weight: 700; color: var(--sp-suave); }
+.cc-linea__txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cc-linea .cc-in { font-size: 15px; font-weight: 600; resize: none; overflow: hidden; line-height: 1.4; padding: 6px 8px; min-height: 34px; border-radius: 8px; border: 1px solid var(--sp-borde); background: var(--sp-caja); }
+.cc-linea__dice { font-size: 12.5px; color: var(--sp-suave); }
+.cc-linea__larga { font-size: 12.5px; font-weight: 700; color: var(--cc-aviso, #8a5300); }
+@media (max-width: 640px) { .cc-linea { grid-template-columns: minmax(0, 1fr) auto; } .cc-linea__rot { grid-column: 1 / -1; flex-direction: row; gap: 8px; padding: 0; } }
 .cc-esc__acc { display: flex; flex-direction: column; gap: 4px; }
 .cc-ico { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--sp-borde); background: var(--sp-caja); display: grid; place-items: center; color: var(--sp-suave); cursor: pointer; }
 .cc-ico .v-icon { color: inherit; }
@@ -944,9 +964,6 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-son-op { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 /* Todas las opciones a la vista: envuelven en filas, sin tira con scroll oculto. */
 .cc-voces { display: flex; flex-wrap: wrap; gap: 6px; }
-.cc-vozop { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--sp-borde); background: var(--sp-caja); border-radius: 9px; padding: 3px 4px 3px 10px; font-size: 13px; font-weight: 700; color: var(--sp-suave); white-space: nowrap; }
-.cc-vozop b { font-weight: 700; cursor: pointer; }
-.cc-vozop[aria-pressed="true"] { border-color: var(--cc-pri); color: var(--cc-pri); background: var(--cc-pri-bg); }
 .cc-oir { width: 24px; height: 24px; border-radius: 6px; border: 0; display: grid; place-items: center; background: transparent; color: inherit; cursor: pointer; }
 .cc-oir .v-icon { color: inherit; }
 .cc-oir.is-sonando { background: var(--cc-pri); color: var(--cc-pri-ink); }
