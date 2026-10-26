@@ -35,7 +35,7 @@
           <div v-if="conVoz" class="cc-subt"><v-icon size="18">mdi-microphone-outline</v-icon><span>{{ esc[actual]?.voz }}</span></div>
           <div class="cc-mandos">
             <button type="button" class="cc-ico" :aria-label="play ? 'Detener' : 'Reproducir'" @click="play = !play"><v-icon size="20">{{ play ? "mdi-stop" : "mdi-play" }}</v-icon></button>
-            <span class="num">{{ seg(total) }}</span>
+            <span class="num">{{ seg(total + (conLocal && hayLocal ? LOCAL_SEG : 0)) }}</span>
           </div>
           <button type="button" class="cc-generar cc-generar--ancho" :disabled="!puedeGenerar" @click="generar">
             <v-progress-circular v-if="creando" indeterminate size="20" width="3" />
@@ -62,7 +62,15 @@
                   <button type="button" class="cc-pas" :aria-pressed="enKit" @click="modoKit">Kit o servicio</button>
                 </span>
                 <button type="button" class="cc-pas" :aria-pressed="conPrecio" @click="alternarPrecio">Con precio</button>
-                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total) }}</small>
+                <small class="num">{{ enKit ? `kit de ${kit.incluye.length}` : `${cuantos} ${cuantos === 1 ? "producto" : "productos"}` }} · {{ seg(total + (conLocal && hayLocal ? LOCAL_SEG : 0)) }}</small>
+              </span>
+            </div>
+            <!-- Escena del local (contenido/escenaLocal.js): sólo si el comercio tiene tomas cargadas -->
+            <div v-if="hayLocal" class="cc-local">
+              <span class="cc-local__t"><b>Apertura</b><small>la fachada del local con el titular, después la vidriera ({{ seg(LOCAL_SEG) }})</small></span>
+              <span class="cc-modo" role="group" aria-label="Apertura del video">
+                <button type="button" class="cc-pas" :aria-pressed="conLocal" @click="conLocal = true">Con el local</button>
+                <button type="button" class="cc-pas" :aria-pressed="!conLocal" @click="conLocal = false">Sin el local</button>
               </span>
             </div>
             <div v-for="(e, i) in esc" :key="e.k" class="cc-esc" :class="{ 'is-activa': i === actual }">
@@ -328,6 +336,10 @@ function datosCierre() {
 }
 // Sin precio: el producto viaja sin precio, precio anterior ni cuotas (la escena, la voz y el video).
 const conPrecio = ref(true);
+// Escena del local: el servicio la antepone al reel (5,1 s) si el comercio tiene tomas.
+const LOCAL_SEG = 5.1;
+const hayLocal = computed(() => Boolean(props.recursos.escenaLocal));
+const conLocal = ref(false);
 const prodDe = (p) => (conPrecio.value ? p : { ...p, precio: undefined, precioAnterior: undefined, cuotas: undefined });
 function alternarPrecio() {
   conPrecio.value = !conPrecio.value;
@@ -415,6 +427,7 @@ function abrir(c, { conRuta = true } = {}) {
   const elegidos = (c.productos?.ids || []).map(porId).filter(Boolean);
   const prods = (elegidos.length ? elegidos : propuestos(c, props.catalogo, promo())).slice(0, Math.min(TOPE_PRODUCTOS, elegidos.length || c.productos?.n || 3));
   conPrecio.value = c.conPrecio !== false;
+  conLocal.value = false;
   enKit.value = false;
   Object.assign(kit, { nombre: "", precio: 0, incluye: [], extra: "", foto: null });
   esc.value = [nueva("portada", { titular: "", bajada: "" }), ...prods.map(escenaItem), nueva("cierre", { llamado: "", ...datosComercio() })];
@@ -494,6 +507,7 @@ function abrirEdicion(ed) {
   const cierre = { llamado: enc.textos?.llamado || "", voz: g.cierre || "" };
   const datos = { sucursal: (enc.sucursales || [])[0]?.nombre || "", whatsapp: (enc.redes || []).find((r) => r.red === "whatsapp")?.texto || "" };
   conPrecio.value = pan?.conPrecio ?? (!(enc.items || []).length || (enc.items || []).some((it) => it.precio != null));
+  conLocal.value = Boolean(pan?.escenaLocal ?? enc.escenaLocal);
   enKit.value = Boolean(pan?.kit);
   Object.assign(kit, pan?.kit ? { nombre: "", extra: "", foto: null, ...pan.kit, incluye: [...(pan.kit.incluye || [])] } : { nombre: "", precio: 0, incluye: [], extra: "", foto: null });
   const its = (enc.items || []).slice(0, TOPE_PRODUCTOS).map((it, i) => {
@@ -757,6 +771,7 @@ async function generar() {
   const encargo = {
     ...base,
     plantilla: cuantos.value === 1 ? "producto" : "destacados",
+    ...(conLocal.value && hayLocal.value ? { escenaLocal: true } : {}),
     titulo: (publicacion.titulo || c.nombre).slice(0, 80),
     descripcion: publicacion.texto ? publicacion.texto.slice(0, 2200) : undefined,
     apertura: { titular: portada.titular.trim(), bajada: portada.bajada.trim() },
@@ -775,7 +790,7 @@ async function generar() {
     },
   };
   // Lo que la pantalla necesita para reabrir este armado tal cual (Editar video).
-  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0), conPrecio: conPrecio.value,
+  const pantalla = { creador: "campanas", campana: c.id, variantes: esc.value.map((e) => e.variante || 0), conPrecio: conPrecio.value, escenaLocal: conLocal.value && hayLocal.value,
     ...(enKit.value ? { kit: { nombre: kit.nombre, precio: kit.precio, incluye: kit.incluye, extra: kit.extra, foto: kit.foto } } : {}) };
   try {
     const p = await crearPieza({ ...encargo, pantalla, ...(editaMisma.value ? { deRevision: editando.value.id } : {}) });
@@ -867,6 +882,9 @@ onBeforeUnmount(() => { clearInterval(reloj); cortarMuestra(); document.removeEv
 .cc-in:focus { border-color: var(--cc-pri); background: var(--sp-caja); }
 .cc-in--tit { font-size: 19px; font-weight: 900; letter-spacing: -.01em; }
 .cc-in--baj { font-size: 14.5px; font-weight: 600; color: var(--sp-suave); }
+.cc-local { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sp-linea); }
+.cc-local__t { display: flex; flex-direction: column; gap: 2px; }
+.cc-local__t small { font-size: 13px; color: var(--sp-suave); }
 .cc-in--car { font-size: 13px; color: var(--sp-suave); }
 .cc-pub { display: flex; flex-direction: column; gap: 10px; }
 .cc-pub .cc-kit__campo { padding: 0 16px; }
