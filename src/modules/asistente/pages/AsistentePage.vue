@@ -78,6 +78,8 @@
 <script setup>
 import "../asistente.css";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+const ruta = useRoute();
 import http from "@/app/api/http";
 import { loadAuth, clearAuth } from "@/app/utils/storage";
 import { marcarCaido, marcarEnLinea } from "@/app/store/conexion.state";
@@ -185,6 +187,9 @@ onMounted(async () => {
     const { data } = await http.get("asistente/estado");
     estado.value = data;
     if (data?.gasto?.agotado) pausa.value = true;
+    // Desde un aviso del tablero: llega con ?q= y se pregunta sola.
+    const q = String(ruta.query.q || "").trim();
+    if (q && !pausa.value) { await nextTick(); enviar(q.slice(0, 300)); }
   } catch (e) {
     const s = e?.response?.status;
     aviso.value = s === 404 ? "El asistente no está habilitado para este comercio." : "El asistente no está disponible en este momento.";

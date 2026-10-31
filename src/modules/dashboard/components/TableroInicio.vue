@@ -51,6 +51,9 @@
     <v-progress-linear v-if="loading || loadingAnalytics" indeterminate color="primary" height="3" class="tb-carga" />
 
     <div class="tb-grilla">
+      <!-- Asistente POS 360: avisos de lo que pide atención (solo escritorio) -->
+      <AsistenteAvisos :selected-branch="selectedBranch" :stock="stock" />
+
       <!-- 1. Ventas en el tiempo : columnas -->
       <section class="tb-bloque">
         <div class="tb-bloque__tit"><span class="tb-h">1. {{ serie.titulo }}</span><span class="tb-nota">{{ serie.nota }}</span></div>
@@ -247,6 +250,7 @@
 </template>
 
 <script setup>
+import AsistenteAvisos from "./AsistenteAvisos.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { adminListCashRegisters } from "@/modules/pos/services/posCashRegisters.service";
 
