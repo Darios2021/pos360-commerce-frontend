@@ -7,13 +7,15 @@
   <div class="lg m-vista">
     <!-- ══ MARCA (solo escritorio) ══ -->
     <aside class="lg-side">
+      <img :src="LOGO" alt="" aria-hidden="true" class="lg-side__agua" />
+
       <div class="lg-side__cuerpo">
-        <div class="lg-side__marca">POS 360</div>
-        <h1 class="lg-side__tit">Punto de venta, stock y tienda online para comercios.</h1>
+        <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
+        <h1 class="lg-side__tit">Punto de venta, stock y tienda online <span>para comercios.</span></h1>
 
         <ul class="lg-side__lista">
           <li v-for="f in FUNCIONES" :key="f.t">
-            <span class="lg-side__ico"><v-icon size="20">{{ f.i }}</v-icon></span>
+            <span class="lg-side__ico"><v-icon size="24">{{ f.i }}</v-icon></span>
             <span class="lg-side__tx"><b>{{ f.t }}</b><small>{{ f.d }}</small></span>
           </li>
         </ul>
@@ -182,47 +184,75 @@ async function submit() {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* ══ Banda de marca ══ */
+/* ══ Banda de marca ══
+   Banda del kit (--m-banda) que baja al navy del logo (#121e47, --m-avatar en claro).
+   El logo va en blanco arriba y gigante como marca de agua. */
 .lg-side {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 32px;
-  padding: 48px 56px 24px;
-  background: var(--m-banda);
+  padding: 48px 64px 24px;
+  background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 78%);
   color: var(--m-banda-ink);
 }
-.lg-side__cuerpo { margin: auto 0; max-width: 480px; }
-.lg-side__marca { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
-.lg-side__tit {
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  margin: 0 0 32px;
+.lg-side > :not(.lg-side__agua) { position: relative; z-index: 1; }
+.lg-side__agua {
+  position: absolute;
+  width: 720px;
+  right: -250px;
+  bottom: -150px;
+  filter: brightness(0) invert(1);
+  opacity: 0.05;
+  pointer-events: none;
+  user-select: none;
 }
-.lg-side__lista { list-style: none; margin: 0; padding: 0; }
+.lg-side__cuerpo { margin: auto 0; max-width: 560px; }
+.lg-side__logo {
+  display: block;
+  width: 220px;
+  margin: -26px 0 18px -6px; /* el archivo trae aire arriba y abajo */
+  filter: brightness(0) invert(1);
+}
+.lg-side__tit {
+  font-size: clamp(36px, 3.4vw, 50px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin: 0 0 40px;
+}
+.lg-side__tit span { color: #a6d8fa; }
+.lg-side__lista {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 .lg-side__lista li {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
-  min-height: 60px;
-  padding: 12px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .lg-side__ico {
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   flex: none;
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--m-accion);
   color: #fff;
 }
 .lg-side__ico .v-icon { color: #fff; }
-.lg-side__tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lg-side__tx b { font-size: 15px; font-weight: 600; color: #fff; }
-.lg-side__tx small { font-size: 13px; opacity: 0.8; }
+.lg-side__tx { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lg-side__tx b { font-size: 16px; font-weight: 800; color: #fff; }
+.lg-side__tx small { font-size: 13px; line-height: 1.4; opacity: 0.78; }
 
 /* ══ Ingreso ══ */
 .lg-main {
@@ -235,18 +265,18 @@ async function submit() {
 }
 .lg-pz {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   margin: auto 0;
-  padding: 24px 20px;
+  padding: 28px 28px 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 .lg-logo {
   display: block;
-  width: 120px; height: 120px;
-  object-fit: contain;
-  margin: 0 auto 4px;
+  display: none; /* en escritorio el logo ya está en la banda */
+  width: 170px;
+  margin: -20px auto -8px; /* el archivo trae aire arriba y abajo */
 }
 .lg-error {
   display: flex;
@@ -279,17 +309,24 @@ async function submit() {
 .lg-pie--canvas {
   display: none;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   margin-top: 16px;
   color: var(--m-sobre-canvas);
 }
 
 /* Teléfono (corte del kit: menos de 960 px): sin banda, pieza a lo ancho */
+@media (max-width: 1180px) {
+  .lg-side { padding: 40px 40px 24px; }
+  .lg-side__lista { grid-template-columns: 1fr; }
+  .lg-side__lista li { flex-direction: row; align-items: center; padding: 14px; }
+}
+
 @media (max-width: 959.98px) {
   .lg { grid-template-columns: 1fr; }
   .lg-side { display: none; }
   .lg-main { padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
   .lg-pie--canvas { display: flex; }
-  .lg-logo { width: 104px; height: 104px; }
+  .lg-logo { display: block; }
+  .lg-pz { padding: 24px 20px 16px; }
 }
 </style>
