@@ -8,11 +8,6 @@
       <div class="lg-side__grid" aria-hidden="true" />
       <div class="lg-side__glow" aria-hidden="true" />
 
-      <div class="lg-side__top">
-        <span class="lg-mark">POS 360</span>
-        <span class="lg-mark__by">San Juan Tecnología</span>
-      </div>
-
       <div class="lg-side__hero">
         <h1 class="lg-title">
           Tu negocio automatizado<br />
@@ -252,11 +247,7 @@ async function submit() {
 }
 .lg-side > :not([aria-hidden]) { position: relative; z-index: 1; }
 
-.lg-side__top { display: flex; align-items: baseline; gap: 12px; }
-.lg-mark { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
-.lg-mark__by { font-size: 12.5px; color: rgba(255,255,255,.6); }
-
-.lg-side__hero { max-width: 520px; }
+.lg-side__hero { max-width: 520px; margin: auto 0; }
 .lg-title {
   font-size: clamp(32px, 3.6vw, 46px);
   font-weight: 600;
