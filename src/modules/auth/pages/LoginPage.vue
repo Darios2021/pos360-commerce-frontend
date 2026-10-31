@@ -29,7 +29,10 @@
         </ul>
       </div>
 
-      <div class="lg-side__foot">© {{ year }} · POS 360 · San Juan Tecnología</div>
+      <footer class="lg-foot lg-foot--dark lg-side__foot">
+        <span class="lg-foot__brand"><b>POS 360</b> por San Juan Sistemas</span>
+        <span class="lg-foot__copy">© {{ year }}</span>
+      </footer>
     </aside>
 
     <!-- ══ FORMULARIO ══ -->
@@ -128,7 +131,10 @@
         </p>
       </div>
 
-      <div class="lg-main__foot">© {{ year }} · POS 360 · San Juan Tecnología</div>
+      <footer class="lg-foot lg-foot--light lg-main__foot">
+        <span class="lg-foot__brand"><b>POS 360</b> por San Juan Sistemas</span>
+        <span class="lg-foot__copy">© {{ year }}</span>
+      </footer>
     </main>
   </div>
 </template>
@@ -284,7 +290,22 @@ async function submit() {
 .lg-feats__tx b { font-size: 14px; font-weight: 600; }
 .lg-feats__tx small { font-size: 12.5px; line-height: 1.4; color: rgba(255,255,255,.62); }
 
-.lg-side__foot { font-size: 12px; color: rgba(255,255,255,.5); }
+/* Pie: marca a la izquierda, año a la derecha, separado por una línea fina */
+.lg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 18px;
+  font-size: 12.5px;
+  letter-spacing: .1px;
+}
+.lg-foot__brand b { font-weight: 700; letter-spacing: .3px; margin-right: 2px; }
+.lg-foot__copy { font-variant-numeric: tabular-nums; }
+.lg-foot--dark { border-top: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.55); }
+.lg-foot--dark b { color: #fff; }
+.lg-foot--light { border-top: 1px solid var(--line); color: #8a93a5; }
+.lg-foot--light b { color: var(--tx); }
 
 /* ══ FORMULARIO ══ */
 .lg-main {
@@ -378,7 +399,7 @@ async function submit() {
 .lg-help a { color: var(--cel); font-weight: 600; text-decoration: none; }
 .lg-help a:hover { text-decoration: underline; }
 
-.lg-main__foot { display: none; font-size: 12px; color: #9aa3b2; margin-top: 24px; }
+.lg-main__foot { display: none; width: 100%; max-width: 380px; margin-top: 28px; }
 
 /* ══ RESPONSIVE ══ */
 @media (max-width: 1100px) {
@@ -389,7 +410,7 @@ async function submit() {
   .lg { grid-template-columns: 1fr; }
   .lg-side { display: none; }
   .lg-main { padding: calc(32px + env(safe-area-inset-top, 0px)) 22px 20px; }
-  .lg-main__foot { display: block; }
+  .lg-main__foot { display: flex; }
   .lg-logo { width: 108px; height: 108px; }
 }
 </style>
