@@ -749,6 +749,9 @@ const TITULOS_MOVIL = {
   transfers: "Derivaciones",
   profile: "Perfil",
   shopOrders: "Pedidos",
+  serviceOrders: "Órdenes",
+  serviceOrderEdit: "Orden",
+  adminCashRegisters: "Cajas",
 };
 const tituloMovil = computed(() => {
   const n = String(route.name || "");

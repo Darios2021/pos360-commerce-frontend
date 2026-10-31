@@ -9,7 +9,31 @@
      (`whereGrupo` en service.controller.js). Las ordenes del libro viejo
      entran en las vistas si siguen abiertas, y al buscar. -->
 <template>
-  <div class="sv">
+  <!-- Teléfono (Órdenes, lienzo aprobado el 2026-10-31): chips con las mismas
+       vistas que filtran en la API y una fila por orden. El técnico arranca en
+       "Mis equipos". -->
+  <div v-if="mobile" class="svl m-vista">
+    <div class="m-chips">
+      <button v-for="v in VISTAS" :key="v.value" type="button" class="m-chip num" :class="{ on: vista === v.value && !q }" @click="elegirVista(v.value)">{{ CORTO[v.value] }} {{ statsCargando ? "" : grupos[v.value] ?? 0 }}</button>
+    </div>
+    <div v-if="!soloTecnico" class="m-chips">
+      <button v-for="a in AMBITOS" :key="a.value" type="button" class="m-chip" :class="{ on: ambito === a.value }" @click="elegirAmbito(a.value)">{{ a.label }}</button>
+    </div>
+    <div class="m-pz">
+      <div v-if="cargando && !items.length" class="m-it"><span class="tx"><small>Cargando…</small></span></div>
+      <div v-else-if="!items.length" class="m-it"><span class="tx"><small>No hay órdenes en esta vista.</small></span></div>
+      <router-link v-for="o in items" :key="o.id" :to="{ name: 'serviceOrderEdit', params: { id: o.id } }" class="svl-it">
+        <div class="svl-l1"><b class="num">#{{ o.numero_visible || o.number || o.id }} · {{ equipoDe(o) }}</b><span class="m-est" :class="o.status === 'reparado' ? 'ok' : ''">{{ statusLabel(o.status) }}</span></div>
+        <small>{{ [o.reported_fault, o.customer_name].filter(Boolean).join(" · ") }}</small>
+        <div class="svl-l3 num"><span>{{ dias(o) === 0 ? "Hoy" : dias(o) === 1 ? "Hace 1 día" : `Hace ${dias(o)} días` }}</span><span v-if="Number(o.quoted_amount) > 0">{{ money(o.quoted_amount) }}</span></div>
+      </router-link>
+    </div>
+    <div v-if="paginas > 1" class="svl-pag">
+      <button type="button" class="m-lnk" :disabled="pagina <= 1" @click="pagina -= 1; cargar()">Anteriores</button>
+      <button type="button" class="m-lnk" :disabled="pagina >= paginas" @click="pagina += 1; cargar()">Siguientes</button>
+    </div>
+  </div>
+  <div v-else class="sv">
     <div class="sv-cabecera" style="align-items: center">
       <h1 class="sv-h1">Servicio técnico</h1>
       <div class="d-flex ga-2 flex-wrap">
@@ -100,10 +124,15 @@
 <script setup>
 import "../styles/servicio.css";
 import { ref, onMounted } from "vue";
+import { useDisplay } from "vuetify";
+import { useEsTecnico } from "@/app/composables/useEsTecnico";
 import { useAuthStore } from "@/app/store/auth.store";
 import { listOrders, getOrderStats, statusLabel, statusColor } from "../services/service.service";
 
 const auth = useAuthStore();
+const { mobile } = useDisplay();
+const { soloTecnico, listo: tecnicoListo } = useEsTecnico();
+const CORTO = { taller: "En el taller", listos: "Listos", aprobacion: "Presupuestadas", sin_retirar: "Sin retirar" };
 
 const VISTAS = [
   { value: "taller", label: "En el taller", color: "rgb(var(--v-theme-primary))" },
@@ -213,7 +242,9 @@ function limpiarBusqueda() {
   cargar();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // El técnico, en el teléfono, ve sus equipos.
+  if (mobile.value) { await tecnicoListo; if (soloTecnico.value) ambito.value = "mios"; }
   cargar();
   cargarStats();
 });
@@ -316,4 +347,14 @@ a.tabla-fila:hover {
   color: rgba(var(--v-theme-on-surface), 0.66);
   border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
+
+/* ── Teléfono ── */
+.svl { display: flex; flex-direction: column; gap: 12px; }
+.svl-it { display: block; padding: 12px 14px; border-top: 1px solid var(--m-linea2); color: var(--m-tinta); text-decoration: none; }
+.svl-it:first-child { border-top: 0; }
+.svl-l1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.svl-l1 b { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svl-it small { display: block; margin-top: 3px; font-size: 13px; color: var(--m-suave); }
+.svl-l3 { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--m-suave); }
+.svl-pag { display: flex; justify-content: space-between; }
 </style>

@@ -14,7 +14,75 @@
      El saldo NO se edita: sale de presupuesto menos seña. Si fuera editable, la
      primera diferencia de tipeo desarma la caja. -->
 <template>
-  <div class="sv" style="max-width: 1160px">
+  <!-- Teléfono (Órdenes del técnico, lienzo aprobado el 2026-10-31): recorrido de
+       los 7 estados, el paso de ahora con lo que pide y un solo botón, el equipo,
+       la falla y el cobro. Lo demás (renglones, notas, imprimir) en escritorio. -->
+  <div v-if="mobile" class="svm m-vista">
+    <div class="m-pz"><div class="svm-rec">
+      <template v-for="(r, i) in RECORRIDO" :key="r.value">
+        <i v-if="i" :class="{ ok: i <= idxRecorrido }"></i>
+        <span :class="{ ok: i < idxRecorrido, ac: i === idxRecorrido }"></span>
+      </template>
+    </div>
+    <div class="svm-rect">
+      <span v-for="(r, i) in RECORRIDO" :key="r.value" :class="{ ac: i === idxRecorrido }">{{ RECORTE[r.value] }}</span>
+    </div></div>
+
+    <div class="m-pz">
+      <div class="m-pz-h"><h3>{{ ahora.titulo }}</h3></div>
+      <div class="m-pz-b svm-paso">
+        <p v-if="ahora.texto" class="svm-txt">{{ ahora.texto }}</p>
+        <div v-if="ahora.pide.includes('tecnico')" class="m-cmp">
+          <label>Técnico</label>
+          <select v-model="paso.tecnico" class="m-inp">
+            <option :value="null" disabled>Elegir</option>
+            <option v-for="t in tecnicosItems" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </div>
+        <div v-if="ahora.pide.includes('reporte')" class="m-cmp">
+          <label>Informe técnico</label>
+          <textarea v-model="paso.reporte" class="m-inp" rows="4" placeholder="Qué tiene y qué se hizo"></textarea>
+        </div>
+        <div v-if="ahora.pide.includes('presupuesto')" class="m-cmp">
+          <label>Presupuesto</label>
+          <input v-model.number="paso.presupuesto" class="m-inp num" type="number" inputmode="numeric" min="0" placeholder="$" />
+        </div>
+        <button v-if="ahora.boton" type="button" class="m-btn" :disabled="!pasoListo || avanzando" @click="avanzar">{{ ahora.boton }}</button>
+        <button v-if="ahora.secundario" type="button" class="m-lnk svm-sec" :disabled="avanzando" @click="ahora.secundario.accion()">{{ ahora.secundario.label }}</button>
+      </div>
+    </div>
+
+    <div class="m-pz">
+      <div class="m-pz-h"><h3>Equipo</h3><span v-if="orden.created_at" class="num">{{ diasTexto }}</span></div>
+      <div class="m-pz-b"><dl class="svm-dl">
+        <dt>Equipo</dt><dd>{{ equipo || "Sin dato" }}</dd>
+        <template v-if="orden.device_imei || orden.device_serial"><dt>{{ orden.device_imei ? "IMEI" : "Serie" }}</dt><dd class="num">{{ orden.device_imei || orden.device_serial }}</dd></template>
+        <template v-if="orden.device_accessories"><dt>Accesorios</dt><dd>{{ orden.device_accessories }}</dd></template>
+        <dt>Cliente</dt><dd>{{ orden.customer_name || "Sin dato" }}</dd>
+      </dl></div>
+    </div>
+
+    <div class="m-pz">
+      <div class="m-pz-h"><h3>Falla</h3></div>
+      <div class="m-pz-b"><p class="svm-txt">{{ orden.reported_fault || "Sin dato" }}</p></div>
+      <template v-if="orden.technical_report">
+        <div class="m-pz-h"><h3>Informe técnico</h3></div>
+        <div class="m-pz-b"><p class="svm-txt">{{ orden.technical_report }}</p></div>
+      </template>
+    </div>
+
+    <div v-if="Number(orden.quoted_amount) > 0" class="m-pz"><div class="m-pz-b"><dl class="svm-dl">
+      <dt>Presupuesto</dt><dd class="num">{{ money(orden.quoted_amount) }}</dd>
+      <dt>Seña</dt><dd class="num">{{ money(orden.deposit) }}</dd>
+      <dt class="svm-tot">Saldo</dt><dd class="svm-tot num">{{ money(saldo) }}</dd>
+    </dl></div></div>
+
+    <div v-if="orden.customer_phone" class="m-centro">
+      <button type="button" class="m-lnk" :disabled="!!enviando" @click="enviarWhatsapp('estado')">Avisar por WhatsApp</button>
+    </div>
+    <v-snackbar v-model="aviso.show" :timeout="2800" :color="aviso.color">{{ aviso.text }}</v-snackbar>
+  </div>
+  <div v-else class="sv" style="max-width: 1160px">
     <router-link :to="{ name: 'serviceOrders' }" class="sv-volver">
       <v-icon size="18">mdi-chevron-left</v-icon> Servicio técnico
     </router-link>
@@ -305,10 +373,19 @@ import {
   searchPrices,
   SERVICE_STATUS,
   statusLabel,
+  RECORRIDO,
 } from "../services/service.service";
+import { useDisplay } from "vuetify";
 
 const route = useRoute();
 const orden = ref({ items: [], events: [] });
+const { mobile } = useDisplay();
+// Recorrido del teléfono: los 7 estados; sin solución y no retirado quedan en "Listo".
+const RECORTE = { recibido: "Recib.", diagnostico: "Diagn.", presupuestado: "Presup.", aprobado: "Aprob.", en_reparacion: "Repar.", reparado: "Listo", entregado: "Entreg." };
+const idxRecorrido = computed(() => {
+  const st = ["no_retirado", "sin_solucion"].includes(orden.value.status) ? "reparado" : orden.value.status;
+  return Math.max(0, RECORRIDO.findIndex((r) => r.value === st));
+});
 
 const aviso = ref({ show: false, text: "", color: "success" });
 function notificar(text, color = "success") {
@@ -868,4 +945,23 @@ onMounted(async () => {
     text-align: left !important;
   }
 }
+
+/* ── Teléfono ── */
+.svm { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+.svm-rec { display: flex; align-items: center; padding: 16px 16px 8px; }
+.svm-rec i { flex: 1; height: 2px; background: var(--m-linea); }
+.svm-rec i.ok { background: var(--m-accion); }
+.svm-rec span { width: 12px; height: 12px; border-radius: 50%; background: var(--m-linea); flex: none; }
+.svm-rec span.ok { background: var(--m-accion); }
+.svm-rec span.ac { width: 16px; height: 16px; background: var(--m-pieza); border: 3px solid var(--m-accion); }
+.svm-rect { display: flex; justify-content: space-between; padding: 0 8px 12px; font-size: 11px; font-weight: 600; color: var(--m-suave); }
+.svm-rect .ac { color: var(--m-accion-txt); }
+.svm-paso { display: flex; flex-direction: column; gap: 12px; }
+.svm-txt { margin: 0; font-size: 15px; line-height: 1.45; color: var(--m-tinta); white-space: pre-line; }
+.svm-sec { align-self: center; color: var(--m-rojo) !important; }
+.svm-dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0; font-size: 15px; }
+.svm-dl dt { color: var(--m-suave); }
+.svm-dl dd { margin: 0; text-align: right; font-weight: 600; }
+.svm-tot { font-weight: 800 !important; padding-top: 6px; border-top: 1px solid var(--m-linea2); }
+.svm textarea.m-inp { height: auto; min-height: 96px; padding: 12px 14px; }
 </style>
