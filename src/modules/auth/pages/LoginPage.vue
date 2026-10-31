@@ -10,7 +10,7 @@
     <aside class="lg-side">
       <div class="lg-side__cuerpo">
         <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
-        <h1 class="lg-side__tit">Sistema de gestión para comercios de <span>electrónica e informática.</span></h1>
+        <h1 class="lg-side__tit">Del mostrador <span>al servicio técnico.</span></h1>
 
         <LoginFlujo class="lg-side__flujo" />
       </div>
