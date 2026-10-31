@@ -12,12 +12,7 @@
         <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
         <h1 class="lg-side__tit">Sistema de gestión <span>para comercios.</span></h1>
 
-        <ul class="lg-side__mods">
-          <li v-for="m in MODULOS" :key="m.t">
-            <v-icon size="20">{{ m.i }}</v-icon>
-            <span>{{ m.t }}</span>
-          </li>
-        </ul>
+        <LoginFlujo class="lg-side__flujo" />
       </div>
 
       <footer class="lg-pie lg-pie--banda">
@@ -111,6 +106,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { huellaDisponible, activarHuella } from "@/app/native/huella";
+import LoginFlujo from "@/modules/auth/components/LoginFlujo.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -118,21 +114,6 @@ const auth = useAuthStore();
 // Logo POS 360 (carrito celeste, fondo transparente). En la banda va en blanco por filtro.
 const LOGO = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
 
-// Módulos reales del sistema (rutas de src/app/router/index.js).
-const MODULOS = [
-  { i: "mdi-cash-register", t: "Punto de venta y caja" },
-  { i: "mdi-package-variant-closed", t: "Productos, stock e inventario" },
-  { i: "mdi-swap-horizontal", t: "Derivaciones entre sucursales" },
-  { i: "mdi-truck-outline", t: "Proveedores y costos" },
-  { i: "mdi-file-document-outline", t: "Presupuestos" },
-  { i: "mdi-wrench-outline", t: "Servicio técnico" },
-  { i: "mdi-account-group-outline", t: "Clientes y promociones" },
-  { i: "mdi-storefront-outline", t: "Tienda online y pedidos" },
-  { i: "mdi-movie-open-outline", t: "Videos y campañas" },
-  { i: "mdi-chat-question-outline", t: "Asistente del negocio" },
-  { i: "mdi-chart-box-outline", t: "Reportes" },
-  { i: "mdi-barcode-scan", t: "App Android con lector" },
-];
 
 const identifier = ref("");
 const password   = ref("");
@@ -207,38 +188,24 @@ async function submit() {
 .lg-side__cuerpo { margin: auto 0; max-width: 580px; }
 .lg-side__logo {
   display: block;
-  width: 220px;
-  margin: -26px 0 16px -6px; /* el archivo trae aire arriba y abajo */
+  width: 180px;
+  margin: -22px 0 10px -5px; /* el archivo trae aire arriba y abajo */
   filter: brightness(0) invert(1);
 }
 .lg-side__tit {
-  font-size: clamp(36px, 3.4vw, 50px);
+  font-size: clamp(32px, 2.9vw, 44px);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.03em;
   color: #fff;
-  margin: 0 0 36px;
+  margin: 0 0 28px;
 }
 .lg-side__tit span { color: #a6d8fa; }
 
-/* Módulos: lista liviana en dos columnas, sin cajas */
-.lg-side__mods {
-  list-style: none; margin: 0; padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 32px;
-}
-.lg-side__mods li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-}
-.lg-side__mods .v-icon { color: #a6d8fa; flex: none; }
+/* Flujo de canales (LoginFlujo.vue): se achica con zoom si falta lugar */
+.lg-side__flujo { margin-top: 8px; }
+@media (max-height: 880px) { .lg-side__flujo { zoom: 0.85; } }
+@media (max-height: 760px) { .lg-side__flujo { zoom: 0.72; } }
 
 /* ══ Ingreso ══ */
 .lg-main {
@@ -312,8 +279,7 @@ async function submit() {
 
 @media (max-width: 1180px) {
   .lg-side { padding: 40px 40px 24px; }
-  .lg-side__mods { column-gap: 20px; }
-  .lg-side__mods li { font-size: 14px; gap: 10px; }
+  .lg-side__flujo { zoom: 0.8; }
 }
 
 /* Teléfono (corte del kit): franja de marca arriba, ingreso debajo */
@@ -327,7 +293,7 @@ async function submit() {
   .lg-side__cuerpo { margin: 0; }
   .lg-side__logo { width: 168px; margin: -20px auto -20px; }
   .lg-side__tit,
-  .lg-side__mods,
+  .lg-side__flujo,
   .lg-pie--banda { display: none; }
   .lg-main { padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
   .lg-form { margin: 0 0 auto; }
