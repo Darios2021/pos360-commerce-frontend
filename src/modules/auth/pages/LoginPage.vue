@@ -11,6 +11,10 @@
       <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
 
       <div class="lg-side__cuerpo">
+        <div class="lg-side__tit">
+          <h1>Ecosistema basado en <span>automatización</span></h1>
+          <p>Cada venta, compra online, reparación o consulta actualiza sola el stock, la caja, los comprobantes y los avisos.</p>
+        </div>
         <LoginFlujo class="lg-side__flujo" />
       </div>
 
@@ -187,15 +191,10 @@ async function submit() {
   flex: none;
   filter: brightness(0) invert(1);
 }
-.lg-side__tit {
-  font-size: clamp(32px, 2.9vw, 44px);
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  color: #fff;
-  margin: 0 0 28px;
-}
-.lg-side__tit span { color: #a6d8fa; }
+.lg-side__tit { text-align: center; margin: 0 auto 28px; max-width: 720px; }
+.lg-side__tit h1 { margin: 0; font-size: clamp(26px, 2.2vw, 34px); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; color: #fff; }
+.lg-side__tit h1 span { color: #a6d8fa; }
+.lg-side__tit p { margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, 0.72); }
 
 /* Flujo de canales (LoginFlujo.vue): se achica con zoom si falta lugar */
 .lg-side__flujo { margin: 0; }
