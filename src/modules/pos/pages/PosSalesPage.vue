@@ -1,6 +1,8 @@
 <!-- src/modules/pos/pages/PosSalesPage.vue -->
 <template>
-  <div class="vt">
+  <!-- Teléfono: pantalla propia (VentasMovil, plan del 2026-10-31) -->
+  <VentasMovil v-if="esTelefono" />
+  <div v-else class="vt">
     <!-- ── Encabezado ───────────────────────────────────── -->
     <div class="vt-cab">
       <div class="vt-cab__txt">
@@ -209,6 +211,10 @@
 </template>
 
 <script setup>
+import { useDisplay } from "vuetify";
+import VentasMovil from "@/modules/pos/components/VentasMovil.vue";
+const { width: anchoPantalla } = useDisplay();
+const esTelefono = computed(() => anchoPantalla.value < 960);
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../../../app/api/http";
