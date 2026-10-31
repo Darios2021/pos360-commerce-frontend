@@ -13,7 +13,7 @@
       <div class="lg-side__cuerpo">
         <div class="lg-side__tit">
           <h1>Ecosistema basado en <span>automatización</span></h1>
-          <p>Cada venta, compra online, reparación o consulta actualiza sola el stock, la caja, los comprobantes y los avisos.</p>
+          <p>Tienda online conectada al stock del local, cobros con Mercado Pago y un asistente de IA que responde las consultas del negocio cruzando ventas y stock.</p>
         </div>
         <LoginFlujo class="lg-side__flujo" />
       </div>

@@ -68,7 +68,7 @@ const CANALES = [
   { ic: "mdi-wrench-outline", t: "Servicio técnico", act: "Reparación", dst: ["comp", "aviso"],
     pasos: { comp: "Orden registrada", aviso: "WhatsApp al cliente" } },
   { ic: "mdi-forum-outline", t: "Asistente IA", act: "Consulta", dst: ["stock", "caja"], lee: true,
-    pasos: { stock: "Leyendo stock", caja: "Leyendo ventas" }, fin: "Respuesta enviada" },
+    pasos: { stock: "Cruzando stock", caja: "con ventas del mes" }, fin: "Respuesta lista" },
 ];
 
 // Geometría (px del escenario; la página lo achica con zoom si falta lugar)
