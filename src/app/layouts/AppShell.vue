@@ -624,11 +624,6 @@
         :pedidos-pendientes="pedidosPendientes"
       />
 
-      <!-- ================= PROMPT DESCARGA APK (mobile web, no APK Capacitor) ================= -->
-      <!-- Modal bottom-sheet permanente: aparece cada vez que un usuario
-           Android web entra al backoffice. No persiste el dismiss — vuelve
-           a aparecer en cada refresh / re-login. -->
-      <AppApkPrompt />
     </v-layout>
   </v-app>
 </template>
@@ -645,7 +640,6 @@ import { loadAuth } from "../utils/storage";
 import { setDarkMode } from "@/app/theme/darkMode";
 import { getBreadcrumbs } from "@/app/utils/routeTree";
 import AppBottomNav from "@/app/components/AppBottomNav.vue";
-import AppApkPrompt from "@/app/components/AppApkPrompt.vue";
 import { useDisplay } from "vuetify";
 import { getCurrentCashRegister } from "@/modules/pos/services/posCashRegisters.service";
 import http from "@/app/api/http";

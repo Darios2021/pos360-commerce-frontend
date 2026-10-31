@@ -59,6 +59,12 @@
         <span class="tx"><b>Catálogo sin conexión</b><small v-if="conCatalogo && copiaHora">Actualizado {{ copiaHora }}</small></span>
         <span class="t"></span>
       </button>
+      <!-- Instalar la APK es opcional: se ofrece acá, no en una ventana al entrar. -->
+      <router-link v-if="enAndroidWeb" :to="{ name: 'appInstall' }" class="m-it mas-it">
+        <v-icon size="24" class="mas-ic">mdi-android</v-icon>
+        <span class="tx"><b>App para Android</b></span>
+        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+      </router-link>
       <button type="button" class="m-it mas-it mas-salir" @click="onLogout">
         <v-icon size="24">mdi-logout-variant</v-icon>
         <span class="tx"><b>Cerrar sesión</b></span>
@@ -75,7 +81,7 @@ import { useAuthStore } from "@/app/store/auth.store";
 import { useThemeStore } from "@/app/store/theme.store";
 import { setDarkMode } from "@/app/theme/darkMode";
 import { useTransferNotifications } from "@/modules/dashboard/composables/useTransferNotifications";
-import { isCapacitor } from "@/app/utils/runtime";
+import { isCapacitor, isMobileBrowser } from "@/app/utils/runtime";
 import { huellaDisponible, huellaActiva, activarHuella } from "@/app/native/huella";
 import { catalogoActivo, activarCatalogo, ultimaCopia } from "@/app/native/catalogoOffline";
 
@@ -108,6 +114,7 @@ const derivaciones = computed(() => pendingForMe.value.filter((t) => Number(t.to
 
 // APK: huella y catálogo sin conexión (mismos ajustes que Impresión).
 const enApk = isCapacitor();
+const enAndroidWeb = isMobileBrowser();
 const huellaOk = ref(false);
 const conHuella = ref(huellaActiva());
 if (enApk) huellaDisponible().then((ok) => { huellaOk.value = ok; }).catch(() => {});
