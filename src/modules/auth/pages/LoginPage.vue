@@ -69,9 +69,6 @@
           </div>
         </div>
 
-        <button type="button" class="m-sw" :class="{ on: remember }" role="switch" :aria-checked="remember" @click="remember = !remember">
-          <span>Mantener sesión</span><span class="t"></span>
-        </button>
 
         <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
         <button
@@ -117,6 +114,7 @@ const LOGO = "https://storage-files.cingulado.org/pos360/media/1777400527242-60f
 const identifier = ref("");
 const password   = ref("");
 const showPwd    = ref(false);
+// Sin interruptor en pantalla: la sesión se mantiene siempre.
 const remember   = ref(true);
 const userEl     = ref(null);
 const passEl     = ref(null);
