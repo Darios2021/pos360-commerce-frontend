@@ -1,428 +1,212 @@
 <!-- src/modules/auth/components/LoginFlujo.vue -->
-<!-- Flujo de entrada para la banda del login: los canales de POS 360 a la izquierda,
-     líneas que se juntan en un tronco y una sola tarjeta horizontal "Hoy en el negocio" (grilla de 3 × 2) que recibe
-     los paquetes de todos los canales y los combina. Un canal por vez cada 3 s: se
-     enciende con un destello que dice qué hace, manda su paquete y al llegar su fila de
-     la tarjeta suma el dato; el total y el ticket promedio (Asistente IA) se recalculan.
-     Forma y animación tomadas del hero de fu.do (slide 01); colores de la marca POS 360
-     y radios del kit (techo 14). Datos de ejemplo: es una ilustración, no lee el sistema. -->
+<!-- Flujo de automatización de la banda del login, en "plano de subte" y de izquierda a derecha:
+     cuatro canales por donde entra una operación (columna izquierda), un núcleo de IA donde
+     POS 360 la procesa y cuatro cosas que actualiza solo (columna derecha). Las líneas son
+     tramos rectos con esquinas redondeadas que se juntan en un tronco por lado.
+     Cada operación enciende su canal, el paquete viaja al núcleo y de ahí a los destinos que
+     toca, en el orden en que el sistema los resuelve; el aro del núcleo se completa con cada
+     paso y adentro se lee qué está haciendo. Junto al círculo activo aparece qué es ("Venta",
+     "Notificación"). El asistente IA solo lee: el paquete vuelve desde stock y caja por líneas
+     punteadas, esos destinos se encienden solo en el borde y la respuesta regresa al canal.
+     Las acciones salen del código de la API (stock, caja, comprobante, avisos push, Mercado
+     Pago, WhatsApp de la orden, asistente de solo lectura). Es una ilustración: no lee datos. -->
 <template>
   <div class="fl" aria-hidden="true">
     <div class="fl-stage">
-      <!-- Líneas y haces -->
-      <svg class="fl-lines" :viewBox="`0 0 ${LW} ${H}`" preserveAspectRatio="none" fill="none">
-        <defs>
-          <linearGradient id="flHaz" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stop-color="#a6d8fa" />
-            <stop offset="100%" stop-color="#ffffff" />
-          </linearGradient>
-          <filter id="flBrillo" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
-          </filter>
-        </defs>
-        <path v-for="(d, i) in PATHS" :key="'l' + i" class="fl-line" :d="d" pathLength="1" :style="{ '--i': i }" />
-        <!-- Línea encendida mientras viaja su paquete -->
-        <path v-for="(d, i) in PATHS" :key="'a' + i" class="fl-activa" :d="d" :style="{ '--i': i }" />
-        <!-- Paquete: estela con halo, estela clara y cabeza blanca que recorre la misma línea -->
-        <path v-for="(d, i) in PATHS" :key="'g' + i" class="fl-haz fl-haz--brillo" :d="d" pathLength="1" :style="{ '--i': i }" />
-        <path v-for="(d, i) in PATHS" :key="'c' + i" class="fl-haz fl-haz--nucleo" :d="d" pathLength="1" :style="{ '--i': i }" />
-        <circle
-          v-for="(d, i) in PATHS"
-          :key="'p' + i"
-          class="fl-cabeza"
-          r="4.5"
-          :style="{ '--i': i, offsetPath: `path('${d}')` }"
-        />
-        <!-- Llegada a la tarjeta -->
-        <circle class="fl-llegada" :cx="LW" :cy="C" r="6" />
+      <svg class="fl-capa" :viewBox="`0 0 ${W} ${H}`">
+        <path v-for="(d, i) in lineasE" :key="'e' + i" :ref="el => (pathE[i] = el)" :d="d"
+          class="fl-ln" :class="{ on: activo === i }" />
+        <path v-for="(d, k) in lineasS" :key="'s' + k" :ref="el => (pathS[k] = el)" :d="d"
+          class="fl-ln" :class="{ on: hechos.has(k), lee: leidos.has(k) }" />
+        <circle v-show="paq.ve" class="fl-paq" :cx="paq.x" :cy="paq.y" r="4.5" />
       </svg>
 
       <!-- Canales -->
-      <ul class="fl-rail">
-        <li v-for="(c, i) in CANALES" :key="c.t" class="fl-tile" :style="{ '--i': i }" :title="c.t">
-          <span class="fl-tile__ico"><v-icon size="22">{{ c.i }}</v-icon></span>
-          <span class="fl-tile__tx"><b>{{ c.t }}</b><small>{{ c.d }}</small></span>
-        </li>
-      </ul>
+      <div v-for="(c, i) in CANALES" :key="c.t" class="fl-c fl-ent" :class="{ on: activo === i, resp: respondio === i }"
+        :style="pos(PE[i])">
+        <v-icon size="23">{{ c.ic }}</v-icon>
+        <span class="fl-rot">{{ c.act }}</span>
+      </div>
 
-      <!-- Tarjeta que recibe y combina -->
-      <div class="fl-stack">
-        <article ref="cardEl" class="fl-card">
-          <header class="fl-chead">
-            <span class="fl-ctotal" :class="{ sube: [0, 1, 3].includes(llego) }">
-              <small>Ventas de hoy</small>
-              <b class="m-num">{{ pesos(totalVentas) }}</b>
-            </span>
-            <span class="fl-chora m-num">{{ hora }}</span>
-          </header>
-
-          <div class="fl-grilla">
-            <div v-for="(f, i) in filas" :key="f.t" class="fl-celda" :class="{ llega: llego === i }">
-              <span class="fl-celda__rot"><v-icon size="14">{{ CANALES[i].i }}</v-icon>{{ f.t }}</span>
-              <span class="fl-celda__v m-num">{{ f.v }}</span>
-            </div>
-          </div>
-        </article>
-        <!-- Contorno medido sobre la tarjeta real (sin estirar), así sigue su radio de 12 px -->
-        <svg v-if="caja.w" class="fl-trace" :viewBox="`0 0 ${caja.w} ${caja.h}`" fill="none">
-          <rect x="1" y="1" :width="caja.w - 2" :height="caja.h - 2" rx="11" ry="11" pathLength="1" class="fl-trace-rect" />
+      <!-- Núcleo de IA -->
+      <div class="fl-nucleo" :class="{ llega }" :style="{ left: HX - HR + 'px', top: HY - HR + 'px', width: HR * 2 + 'px', height: HR * 2 + 'px' }">
+        <div class="fl-aura"></div>
+        <svg class="fl-aro" viewBox="0 0 158 158">
+          <circle class="pista" cx="79" cy="79" r="76" />
+          <circle class="avance" cx="79" cy="79" r="76" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="100 - avance" />
         </svg>
+        <div class="fl-in">
+          <div class="fl-chispa"><v-icon size="22">mdi-creation</v-icon></div>
+          <span :key="paso" class="fl-paso">{{ paso }}</span>
+        </div>
+      </div>
+
+      <!-- Destinos -->
+      <div v-for="(d, k) in DESTINOS" :key="d.k" class="fl-c fl-dst" :class="{ on: hechos.has(k), leido: leidos.has(k) }"
+        :style="pos(PD[k])">
+        <v-icon size="23">{{ d.ic }}</v-icon>
+        <span class="fl-rot">{{ d.rot }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { reactive, ref, onMounted, onBeforeUnmount } from "vue";
 
-// Geometría: 6 canales de 56 px con 24 px entre sí; las líneas van del borde del
-// canal (x 0) al mazo (x LW), juntándose en el centro vertical con curvas de radio R.
-const TILE = 56, GAP = 24, LW = 140, R = 16;
-const N = 6;                                   // canales
-const H = N * TILE + (N - 1) * GAP;          // 456
-const C = H / 2;                               // tronco
-const XV = [80, 66, 52];                    // bajada de afuera hacia adentro
-
-const PATHS = Array.from({ length: N }, (_, i) => {
-  const y = i * (TILE + GAP) + TILE / 2;
-  if (y === C) return `M0 ${y} L${LW} ${C}`;   // el del medio va derecho
-  const arriba = y < C;
-  const xv = XV[arriba ? i : N - 1 - i];
-  return arriba
-    ? `M0 ${y} L${xv - R} ${y} A${R} ${R} 0 0 1 ${xv} ${y + R} L${xv} ${C - R} A${R} ${R} 0 0 0 ${xv + R} ${C} L${LW} ${C}`
-    : `M0 ${y} L${xv - R} ${y} A${R} ${R} 0 0 0 ${xv} ${y - R} L${xv} ${C + R} A${R} ${R} 0 0 1 ${xv + R} ${C} L${LW} ${C}`;
-});
-
+const DESTINOS = [
+  { k: "stock", ic: "mdi-package-variant-closed", rot: "Stock" },
+  { k: "caja", ic: "mdi-cash-multiple", rot: "Cobro" },
+  { k: "comp", ic: "mdi-receipt-text-outline", rot: "Comprobante" },
+  { k: "aviso", ic: "mdi-bell-outline", rot: "Notificación" },
+];
+const PASO = { stock: "Stock descontado", caja: "Movimiento en caja", comp: "Comprobante generado", aviso: "Aviso al dueño" };
 const CANALES = [
-  { i: "mdi-cash-register", t: "Mostrador", d: "Venta, cobro y caja" },
-  { i: "mdi-storefront-outline", t: "Tienda online", d: "Pedidos web" },
-  { i: "mdi-file-document-outline", t: "Presupuestos", d: "Cotizaciones" },
-  { i: "mdi-wrench-outline", t: "Servicio técnico", d: "Órdenes de reparación" },
-  { i: "mdi-swap-horizontal", t: "Derivaciones", d: "Stock entre sucursales" },
-  { i: "mdi-forum-outline", t: "Asistente IA", d: "Consultas del negocio" },
+  { ic: "mdi-cash-register", t: "Mostrador", act: "Venta", dst: ["stock", "caja", "comp", "aviso"] },
+  { ic: "mdi-storefront-outline", t: "Tienda online", act: "Compra online", dst: ["caja", "stock", "aviso"],
+    pasos: { caja: "Pago con Mercado Pago" } },
+  { ic: "mdi-wrench-outline", t: "Servicio técnico", act: "Reparación", dst: ["comp", "aviso"],
+    pasos: { comp: "Orden registrada", aviso: "WhatsApp al cliente" } },
+  { ic: "mdi-forum-outline", t: "Asistente IA", act: "Consulta", dst: ["stock", "caja"], lee: true,
+    pasos: { stock: "Leyendo stock", caja: "Leyendo ventas" }, fin: "Respuesta enviada" },
 ];
 
-// Estado de la tarjeta. Cada llegada suma un movimiento del canal; al terminar la
-// vuelta (18 s) vuelve al punto de partida para que los números no crezcan sin fin.
-const BASE = () => ({
-  mostrador: { n: 17, p: 257300 },
-  tienda: { n: 4, p: 48900 },
-  presup: { n: 2, p: 214000 },
-  servicio: { n: 3, p: 118000 },
-  deriv: { n: 1, u: 8 },
-});
-const est = reactive(BASE());
-// Cada paso suma lo que trae el paquete.
-const PASO = [
-  () => { est.mostrador.n += 1; est.mostrador.p += 39500; },
-  () => { est.tienda.n += 1; est.tienda.p += 66600; },
-  () => { est.presup.n += 1; est.presup.p += 866500; },
-  () => { est.servicio.n += 1; est.servicio.p += 96000; },
-  () => { est.deriv.n += 1; est.deriv.u += 15; },
-  () => {}, // el asistente no suma: el ticket promedio se recalcula con lo que juntaron los demás
-];
+// Geometría (px del escenario; la página lo achica con zoom si falta lugar)
+const W = 760, H = 420, HX = 380, HY = 210, HR = 70, DC = 28, XE = 144, GAPY = 104;
+const fila = (k, n) => HY + (k - (n - 1) / 2) * GAPY;
+const PE = CANALES.map((_, k) => ({ x: XE, y: fila(k, CANALES.length) }));
+const PD = DESTINOS.map((_, k) => ({ x: W - XE, y: fila(k, DESTINOS.length) }));
+const pos = p => ({ left: p.x - DC + "px", top: p.y - DC + "px" });
+function codo(x1, y1, x2, y2, xm) {
+  if (Math.abs(y2 - y1) < 1) return `M${x1} ${y1} H${x2}`;
+  const r = Math.min(16, Math.abs(y2 - y1) / 2), s = y2 > y1 ? 1 : -1, d = x2 > x1 ? 1 : -1;
+  return `M${x1} ${y1} H${xm - d * r} Q${xm} ${y1} ${xm} ${y1 + s * r} V${y2 - s * r} Q${xm} ${y2} ${xm + d * r} ${y2} H${x2}`;
+}
+const XT = (XE + DC + HX - HR) / 2;
+const lineasE = PE.map(p => codo(p.x + DC, p.y, HX - HR - 9, HY, XT));
+const lineasS = PD.map(p => codo(HX + HR + 9, HY, p.x - DC, p.y, W - XT));
 
-const totalVentas = computed(() => est.mostrador.p + est.tienda.p + est.servicio.p);
-const operaciones = computed(() => est.mostrador.n + est.tienda.n + est.servicio.n);
-const filas = computed(() => [
-  { t: "Mostrador", d: `${est.mostrador.n} ventas`, v: pesos(est.mostrador.p) },
-  { t: "Tienda online", d: `${est.tienda.n} pedidos`, v: pesos(est.tienda.p) },
-  { t: "Presupuestos", d: `${est.presup.n} abiertos`, v: pesos(est.presup.p) },
-  { t: "Servicio técnico", d: `${est.servicio.n} órdenes`, v: pesos(est.servicio.p) },
-  { t: "Derivaciones", d: `${est.deriv.n} en camino`, v: `${est.deriv.u} u.` },
-  { t: "Ticket promedio", d: "", v: pesos(Math.round(totalVentas.value / operaciones.value)) },
-]);
+// Estado
+const pathE = [], pathS = [];
+const activo = ref(-1), respondio = ref(-1), llega = ref(false), paso = ref(""), avance = ref(0);
+const hechos = reactive(new Set()), leidos = reactive(new Set());
+const paq = reactive({ x: 0, y: 0, ve: false });
 
-// Reloj de la ilustración, alineado con las animaciones CSS: el paquete del canal i
-// llega a los 2,8 s + i × 3 s y la vuelta dura 18 s.
-const LLEGA = 2800, RANURA = 3000, VUELTA = 18000;
-const llego = ref(-1);
-const cardEl = ref(null);
-const caja = reactive({ w: 0, h: 0 });
-let ro = null;
-const minutos = ref(24);
-const hora = computed(() => `19:${String(minutos.value).padStart(2, "0")}`);
-let t0 = 0, ultimo = -1, timer = null;
+const VIAJE = 900, TRAMO = 650, PAUSA = 120, PERIODO = 6000;
+let timers = [], reloj = null, raf = 0, i = 0;
+const T = (f, ms) => timers.push(setTimeout(f, ms));
+
+function mover(path, ms, rev = false) {
+  if (!path) return;
+  cancelAnimationFrame(raf);
+  const L = path.getTotalLength(), t0 = performance.now();
+  paq.ve = true;
+  const f = t => {
+    const k = Math.min(1, (t - t0) / ms), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    const q = path.getPointAtLength(L * (rev ? 1 - e : e));
+    paq.x = q.x; paq.y = q.y;
+    if (k < 1) raf = requestAnimationFrame(f); else paq.ve = false;
+  };
+  raf = requestAnimationFrame(f);
+}
+
+function evento(n) {
+  timers.forEach(clearTimeout); timers = [];
+  const c = CANALES[n];
+  const orden = c.dst.map(k => DESTINOS.findIndex(d => d.k === k)), cant = orden.length;
+  const rot = k => (c.pasos && c.pasos[k]) || PASO[k];
+  activo.value = n; respondio.value = -1; hechos.clear(); leidos.clear(); avance.value = 0; paso.value = c.t;
+  mover(pathE[n], VIAJE);
+  T(() => {
+    llega.value = false; requestAnimationFrame(() => (llega.value = true));
+    orden.forEach((di, k) => T(() => {
+      paso.value = rot(c.dst[k]);
+      if (c.lee) {
+        leidos.add(di);
+        mover(pathS[di], TRAMO, true);
+        T(() => (avance.value = ((k + 1) / cant) * 100), TRAMO);
+      } else {
+        mover(pathS[di], TRAMO);
+        T(() => { hechos.add(di); avance.value = ((k + 1) / cant) * 100; }, TRAMO);
+      }
+    }, 250 + k * (TRAMO + PAUSA)));
+    if (c.lee) T(() => {
+      paso.value = c.fin;
+      mover(pathE[n], VIAJE, true);
+      T(() => (respondio.value = n), VIAJE);
+    }, 250 + cant * (TRAMO + PAUSA));
+  }, VIAJE);
+}
+
+function estatico() {         // sin animación: muestra la venta de mostrador ya resuelta
+  const c = CANALES[0];
+  activo.value = 0; paso.value = PASO.aviso; avance.value = 100;
+  c.dst.forEach(k => hechos.add(DESTINOS.findIndex(d => d.k === k)));
+}
+
 onMounted(() => {
-  // Tamaño real de la tarjeta para el contorno (cambia con el zoom y la fuente).
-  ro = new ResizeObserver(([e]) => {
-    caja.w = Math.round(e.target.offsetWidth);
-    caja.h = Math.round(e.target.offsetHeight);
-  });
-  if (cardEl.value) ro.observe(cardEl.value);
-  t0 = performance.now();
-  timer = setInterval(() => {
-    const t = performance.now() - t0 - LLEGA;
-    if (t < 0) return;
-    const paso = Math.floor(t / RANURA);          // pasos desde el inicio
-    if (paso === ultimo) return;
-    ultimo = paso;
-    const i = paso % CANALES.length;
-    if (i === 0 && paso > 0) Object.assign(est, BASE());
-    PASO[i]();
-    minutos.value = 24 + (paso % CANALES.length) * 4;
-    llego.value = i;
-    setTimeout(() => { if (llego.value === i) llego.value = -1; }, 1800);
-  }, 100);
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return estatico();
+  evento(i);
+  reloj = setInterval(() => { i = (i + 1) % CANALES.length; evento(i); }, PERIODO);
 });
-onBeforeUnmount(() => { clearInterval(timer); ro?.disconnect(); });
-
-const pesos = (n) => "$ " + n.toLocaleString("es-AR");
+onBeforeUnmount(() => { clearInterval(reloj); timers.forEach(clearTimeout); cancelAnimationFrame(raf); });
 </script>
 
 <style scoped>
-.fl { width: 100%; }
-.fl-stage {
-  position: relative;
-  width: 792px;
-  height: 456px;
-  max-width: 100%;
-}
+.fl { width: 100%; display: flex; justify-content: center; }
+.fl-stage { position: relative; width: 760px; height: 420px; flex: none; color: #fff; }
+.fl-capa { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 
-/* ── Líneas ── */
-.fl-lines {
-  position: absolute;
-  left: 196px;
-  top: 0;
-  width: 140px;
-  height: 456px;
-  overflow: visible;
-  z-index: 1;
-}
-.fl-line {
-  stroke: rgba(255, 255, 255, 0.2);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 1;
-  animation: fl-trazo 0.55s ease-out calc(0.35s + var(--i) * 0.07s) both;
-}
-/* Línea del canal que está mandando: se enciende durante el viaje */
-.fl-activa {
-  stroke: #a6d8fa;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  opacity: 0;
-  animation: fl-activa 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
-}
+/* Líneas: punteado tenue que corre hacia la derecha; llenas al activarse; punteadas fijas si solo se leen */
+.fl-ln { fill: none; stroke: rgba(255, 255, 255, 0.18); stroke-width: 1.5; stroke-dasharray: 2 7; animation: fl-corre 1.6s linear infinite; transition: stroke 0.3s; }
+.fl-ln.on { stroke: #a6d8fa; stroke-width: 2; stroke-dasharray: none; }
+.fl-ln.lee { stroke: #a6d8fa; stroke-width: 2; stroke-dasharray: 5 5; animation: none; }
+@keyframes fl-corre { to { stroke-dashoffset: -18px; } }
+.fl-paq { fill: #fff; filter: drop-shadow(0 0 6px #6fc0f2); }
 
-/* Paquete. La estela y la cabeza usan los mismos tiempos (0 a 10 % de la vuelta,
-   lineal) para que la cabeza vaya siempre en la punta de la estela. */
-.fl-haz {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 0.16 0.84;
-  stroke-dashoffset: 0.16;
-  opacity: 0;
-  animation: fl-haz 18s linear calc(1s + var(--i) * 3s) infinite backwards;
-}
-.fl-haz--nucleo { stroke: url(#flHaz); stroke-width: 3; }
-.fl-haz--brillo { stroke: #6fc0f2; stroke-width: 10; filter: url(#flBrillo); }
-.fl-cabeza {
-  fill: #fff;
-  offset-rotate: 0deg;
-  offset-distance: 0%;
-  opacity: 0;
-  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #6fc0f2);
-  animation: fl-cabeza 18s linear calc(1s + var(--i) * 3s) infinite backwards;
-}
-/* Anillo en la entrada de la tarjeta cuando llega cada paquete (cada 3 s) */
-.fl-llegada {
-  fill: none;
-  stroke: #a6d8fa;
-  stroke-width: 2;
-  transform-box: fill-box;
-  transform-origin: center;
-  opacity: 0;
-  animation: fl-llegada 3s ease-out 2.8s infinite both;
-}
+/* Círculos de canales y destinos */
+.fl-c { position: absolute; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16); transition: border-color 0.3s, background 0.3s, box-shadow 0.3s; }
+.fl-c .v-icon { color: rgba(166, 216, 250, 0.75); transition: color 0.3s; }
+.fl-c.on { border-color: #6fc0f2; background: rgba(111, 192, 242, 0.18); box-shadow: 0 0 18px rgba(111, 192, 242, 0.35); }
+.fl-c.on .v-icon { color: #fff; }
+.fl-dst.leido { border-color: #6fc0f2; box-shadow: 0 0 12px rgba(111, 192, 242, 0.22); }
+.fl-dst.leido .v-icon { color: #a6d8fa; }
+.fl-ent.resp { animation: fl-resp 0.7s ease-out; }
+@keyframes fl-resp { from { box-shadow: 0 0 0 0 rgba(166, 216, 250, 0.6); } to { box-shadow: 0 0 0 14px rgba(166, 216, 250, 0); } }
 
-/* ── Canales ── */
-.fl-rail {
-  position: absolute;
-  left: 0; top: 0;
-  margin: 0; padding: 0; list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  z-index: 5;
-}
-.fl-tile {
-  position: relative;
-  width: 196px; height: 56px;
-  box-sizing: border-box;
-  padding: 0 12px 0 14px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  animation:
-    fl-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--i) * 0.07s) both,
-    fl-tile-on 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
-}
-.fl-tile__ico { flex: none; display: grid; place-items: center; }
-.fl-tile__ico .v-icon { color: #a6d8fa; }
-.fl-tile__tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
-.fl-tile__tx b { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fl-tile__tx small {
-  font-size: 11.5px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  animation: fl-destello-desc 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
-}
+/* Rótulo de la actividad: solo mientras el círculo está activo */
+.fl-rot { position: absolute; top: 50%; font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.35s, transform 0.35s; text-shadow: 0 1px 8px rgba(5, 15, 40, 0.6); }
+.fl-ent .fl-rot { right: calc(100% + 12px); transform: translate(6px, -50%); }
+.fl-dst .fl-rot { left: calc(100% + 12px); transform: translate(-6px, -50%); }
+.fl-c.on .fl-rot, .fl-dst.leido .fl-rot { opacity: 1; transform: translate(0, -50%); }
+.fl-dst.leido .fl-rot { color: #a6d8fa; font-weight: 600; }
 
-/* Canal que manda (ranuras de 3 s, 6 canales = 18 s): se aclara el fondo, el borde
-   pasa a celeste y su descripción también. Sale el paquete y al llegar suma en la tarjeta. */
-
-/* ── Tarjeta que recibe y combina ── */
-.fl-stack {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  width: 440px;
-  transform: translateY(-50%);
-  z-index: 4;
-}
-.fl-card {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 16px 18px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: var(--m-pieza);
-  color: var(--m-tinta);
-  border-radius: 12px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 28px rgba(4, 10, 35, 0.28), 0 40px 60px rgba(4, 10, 35, 0.22);
-  animation: fl-entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
-}
-
-/* Encabezado: solo el total del día y la hora */
-.fl-chead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 2px 4px 0; }
-.fl-ctotal { display: flex; flex-direction: column; line-height: 1.15; }
-.fl-ctotal small { font-size: 12px; font-weight: 600; color: var(--m-suave); }
-.fl-ctotal b { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; transition: color 0.6s; }
-.fl-ctotal.sube b { color: var(--m-accion); transition: color 0.15s; }
-.fl-chora { font-size: 12px; color: var(--m-suave); padding-bottom: 4px; }
-
-/* Grilla de canales: rótulo y cifra, separados por líneas finas */
-.fl-grilla {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--m-linea2);
-}
-.fl-celda {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px 4px 10px;
-  border-bottom: 1px solid var(--m-linea2);
-  transition: background 0.6s;
-}
-.fl-celda:nth-child(3n + 2),
-.fl-celda:nth-child(3n + 3) { padding-left: 14px; border-left: 1px solid var(--m-linea2); }
-.fl-celda:nth-last-child(-n + 3) { border-bottom: 0; padding-bottom: 4px; }
-.fl-celda__rot {
-  display: flex; align-items: center; gap: 5px; min-width: 0;
-  font-size: 11.5px; font-weight: 600; color: var(--m-suave);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.fl-celda__rot .v-icon { color: var(--m-suave); flex: none; opacity: 0.8; transition: color 0.6s; }
-.fl-celda__v { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; transition: color 0.6s; }
-/* Llega el paquete del canal: su cifra y su ícono pasan al azul de acción */
-.fl-celda.llega .fl-celda__v,
-.fl-celda.llega .fl-celda__rot .v-icon { color: var(--m-accion); opacity: 1; transition: color 0.15s; }
-
-/* Contorno que se dibuja alrededor de la tarjeta de arriba */
-.fl-trace {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 50;
-}
-.fl-trace-rect {
-  stroke: #6fc0f2;
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: fl-contorno 3s linear 2.8s infinite both;
-}
-
-/* ── Animaciones (mismos tiempos que el original) ── */
-@keyframes fl-pop {
-  0% { opacity: 0; transform: scale(0.4) translateY(6px); }
-  100% { opacity: 1; transform: none; }
-}
-@keyframes fl-trazo {
-  0% { stroke-dashoffset: 1; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes fl-haz {
-  0% { stroke-dashoffset: 0.16; opacity: 0; }
-  0.4% { opacity: 1; }
-  10% { stroke-dashoffset: -0.84; opacity: 1; }
-  11% { stroke-dashoffset: -0.84; opacity: 0; }
-  100% { stroke-dashoffset: -0.84; opacity: 0; }
-}
-@keyframes fl-cabeza {
-  0% { offset-distance: 0%; opacity: 0; }
-  0.4% { opacity: 1; }
-  10% { offset-distance: 100%; opacity: 1; }
-  11% { offset-distance: 100%; opacity: 0; }
-  100% { offset-distance: 100%; opacity: 0; }
-}
-@keyframes fl-activa {
-  0% { opacity: 0; }
-  2% { opacity: 0.55; }
-  10% { opacity: 0.55; }
-  14% { opacity: 0; }
-  100% { opacity: 0; }
-}
-@keyframes fl-llegada {
-  0% { opacity: 0.9; transform: scale(0.4); }
-  35% { opacity: 0; transform: scale(2.6); }
-  100% { opacity: 0; transform: scale(2.6); }
-}
-@keyframes fl-entra {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: none; }
-}
-@keyframes fl-destello-desc {
-  0% { color: rgba(255, 255, 255, 0.55); }
-  1.2% { color: #a6d8fa; }
-  14.6% { color: #a6d8fa; }
-  16.4% { color: rgba(255, 255, 255, 0.55); }
-  100% { color: rgba(255, 255, 255, 0.55); }
-}
-@keyframes fl-tile-on {
-  0% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
-  1.2% { background: rgba(255, 255, 255, 0.12); border-color: #6fc0f2; }
-  14.6% { background: rgba(255, 255, 255, 0.12); border-color: #6fc0f2; }
-  16.4% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
-  100% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
-}
-@keyframes fl-contorno {
-  0% { stroke-dashoffset: 1; opacity: 1; }
-  92% { stroke-dashoffset: 0; opacity: 1; }
-  96% { stroke-dashoffset: 0; opacity: 0; }
-  96.01% { stroke-dashoffset: 1; opacity: 0; }
-  100% { stroke-dashoffset: 1; opacity: 0; }
-}
+/* Núcleo de IA: vidrio oscuro, brillo que respira, chispa y aro de avance */
+.fl-nucleo { position: absolute; border-radius: 50%; display: grid; place-items: center; text-align: center; isolation: isolate;
+  background: radial-gradient(circle at 50% 40%, rgba(20, 40, 90, 0.55), rgba(10, 20, 60, 0.75) 70%);
+  border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(6px); }
+.fl-nucleo.llega { animation: fl-llega 0.6s ease-out; }
+@keyframes fl-llega { from { box-shadow: 0 0 0 0 rgba(166, 216, 250, 0.55); } to { box-shadow: 0 0 0 18px rgba(166, 216, 250, 0); } }
+.fl-aura { position: absolute; inset: -10px; border-radius: 50%; z-index: -1; filter: blur(14px); opacity: 0.45;
+  background: radial-gradient(circle, #6fc0f2, rgba(20, 136, 209, 0.35) 60%, transparent 72%); animation: fl-respira 4s ease-in-out infinite; }
+@keyframes fl-respira { 50% { opacity: 0.7; transform: scale(1.04); } }
+.fl-aro { position: absolute; inset: -9px; width: calc(100% + 18px); height: calc(100% + 18px); transform: rotate(-90deg); }
+.fl-aro circle { fill: none; stroke-width: 3; }
+.fl-aro .pista { stroke: rgba(255, 255, 255, 0.08); }
+.fl-aro .avance { stroke: #a6d8fa; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; filter: drop-shadow(0 0 4px rgba(111, 192, 242, 0.6)); }
+.fl-in { width: 112px; }
+.fl-chispa { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 8px; display: grid; place-items: center;
+  background: radial-gradient(circle, rgba(166, 216, 250, 0.35), rgba(166, 216, 250, 0.08)); box-shadow: 0 0 14px rgba(111, 192, 242, 0.5);
+  animation: fl-late 2.4s ease-in-out infinite; }
+.fl-chispa .v-icon { color: #a6d8fa; }
+@keyframes fl-late { 50% { box-shadow: 0 0 22px rgba(111, 192, 242, 0.8); } }
+.fl-paso { display: block; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.85); line-height: 1.3; min-height: 32px;
+  animation: fl-entra 0.3s ease-out; }
+@keyframes fl-entra { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-line, .fl-tile, .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect, .fl-tile__tx small { animation: none; }
-  .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect { opacity: 0; }
-  .fl-card { animation: none; }
+  .fl-ln, .fl-aura, .fl-chispa, .fl-paso, .fl-nucleo.llega { animation: none; }
 }
 </style>

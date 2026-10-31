@@ -14,10 +14,6 @@
         <LoginFlujo class="lg-side__flujo" />
       </div>
 
-      <footer class="lg-pie lg-pie--banda">
-        <span><b>POS 360</b> · <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
-        <span class="m-num">© {{ year }}</span>
-      </footer>
     </aside>
 
     <!-- ══ INGRESO ══ -->
@@ -179,11 +175,11 @@ async function submit() {
   flex-direction: column;
   justify-content: space-between;
   gap: 32px;
-  padding: 48px 56px 24px;
+  padding: 48px 56px;
   background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 80%);
   color: var(--m-banda-ink);
 }
-.lg-side__cuerpo { margin: auto 0; max-width: 780px; }
+.lg-side__cuerpo { margin: auto; max-width: 900px; width: 100%; }
 /* En escritorio la banda es solo el flujo; el logo va sobre el formulario.
    El de la banda se muestra únicamente en la franja del teléfono. */
 .lg-side__logo {
@@ -203,7 +199,9 @@ async function submit() {
 
 /* Flujo de canales (LoginFlujo.vue): se achica con zoom si falta lugar */
 .lg-side__flujo { margin: 0; }
+@media (min-width: 1700px) { .lg-side__flujo { zoom: 1.15; } }
 @media (max-width: 1520px) { .lg-side__flujo { zoom: 0.92; } }
+@media (max-width: 1400px) { .lg-side__flujo { zoom: 0.82; } }
 @media (max-height: 880px) { .lg-side__flujo { zoom: 0.85; } }
 @media (max-height: 760px) { .lg-side__flujo { zoom: 0.72; } }
 @media (max-width: 1080px) and (min-width: 960px) { .lg-side__flujo { zoom: 0.68 !important; } }
@@ -292,8 +290,7 @@ async function submit() {
 }
 .lg-pie b { font-weight: 700; }
 .lg-pie a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
-.lg-pie--banda { border-top: 1px solid rgba(255, 255, 255, 0.18); opacity: 0.85; }
-.lg-pie--main { display: none; max-width: 380px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); }
+.lg-pie--main { max-width: 440px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); }
 
 @media (max-width: 1180px) {
   .lg-side { padding: 40px 40px 24px; }
