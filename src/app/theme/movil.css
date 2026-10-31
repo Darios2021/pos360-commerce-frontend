@@ -5,6 +5,9 @@
  * pantallas del teléfono (barra, pieza, fila, botón, campo, opción, pie).
  * Todo va con el prefijo m- para no chocar con el escritorio, que no cambia.
  *
+ * Marca (logo oficial y variantes): src/app/components/MarcaPos360.vue, archivos en
+ * src/app/theme/marca/ y guía en docs/marca.md.
+ *
  * Radios: pieza y opción 12, botón y campo 10, chip 8, estado 6. Techo 14.
  * Los círculos (avatar, punto, badge) no cuentan.
  */
