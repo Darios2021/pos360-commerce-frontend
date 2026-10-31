@@ -8,9 +8,9 @@
   <div class="lg m-vista">
     <!-- ══ MARCA ══ -->
     <aside class="lg-side">
-      <div class="lg-side__cuerpo">
-        <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
+      <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
 
+      <div class="lg-side__cuerpo">
         <LoginFlujo class="lg-side__flujo" />
       </div>
 
@@ -23,6 +23,7 @@
     <!-- ══ INGRESO ══ -->
     <main class="lg-main">
       <form class="lg-form" novalidate @submit.prevent="submit">
+        <div class="lg-form__cab"><img :src="LOGO" alt="POS 360" class="lg-form__logo" /></div>
         <h2 class="lg-h">Ingresar</h2>
 
         <div v-if="error" class="lg-error" role="alert">
@@ -183,10 +184,11 @@ async function submit() {
   color: var(--m-banda-ink);
 }
 .lg-side__cuerpo { margin: auto 0; max-width: 780px; }
+/* En escritorio la banda es solo el flujo; el logo va sobre el formulario.
+   El de la banda se muestra únicamente en la franja del teléfono. */
 .lg-side__logo {
-  display: block;
-  width: 180px;
-  margin: -22px 0 24px -5px; /* el archivo trae aire arriba y abajo */
+  display: none;
+  flex: none;
   filter: brightness(0) invert(1);
 }
 .lg-side__tit {
@@ -200,7 +202,7 @@ async function submit() {
 .lg-side__tit span { color: #a6d8fa; }
 
 /* Flujo de canales (LoginFlujo.vue): se achica con zoom si falta lugar */
-.lg-side__flujo { margin-top: 8px; }
+.lg-side__flujo { margin: 0; }
 @media (max-width: 1520px) { .lg-side__flujo { zoom: 0.92; } }
 @media (max-height: 880px) { .lg-side__flujo { zoom: 0.85; } }
 @media (max-height: 760px) { .lg-side__flujo { zoom: 0.72; } }
@@ -211,19 +213,36 @@ async function submit() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
   padding: 32px 40px 24px;
-  background: var(--m-pieza);
+  background: var(--m-variante);
 }
+/* Tarjeta de ingreso: pieza con borde sobre el fondo variante del kit */
 .lg-form {
   width: 100%;
-  max-width: 380px;
+  max-width: 440px;
   margin: auto 0;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  padding: 0 28px 28px;
+  background: var(--m-pieza);
+  border: 1px solid var(--m-linea);
+  border-radius: 14px;
+}
+/* Encabezado de la tarjeta con el logo a color, separado por una línea */
+.lg-form__cab {
+  margin: 0 -28px 2px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--m-linea2);
+}
+.lg-form__logo {
+  display: block;
+  width: 104px;
+  margin: -6px 0 -8px -1px; /* el archivo trae aire arriba y abajo */
 }
 .lg-h {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--m-tinta);
@@ -289,13 +308,15 @@ async function submit() {
     align-items: center;
     gap: 0;
   }
-  .lg-side__cuerpo { margin: 0; }
-  .lg-side__logo { width: 168px; margin: -20px auto -20px; }
+  .lg-side__cuerpo { display: none; }
+  .lg-side__logo { display: block; width: 168px; margin: -20px auto; }
+  .lg-form__cab { display: none; }
+  .lg-main { background: var(--m-pieza); }
   .lg-side__tit,
   .lg-side__flujo,
   .lg-pie--banda { display: none; }
   .lg-main { padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
-  .lg-form { margin: 0 0 auto; }
+  .lg-form { margin: 0 0 auto; max-width: none; padding: 0; background: none; border: 0; border-radius: 0; }
   .lg-pie--main { display: flex; margin-top: 32px; }
 }
 </style>
