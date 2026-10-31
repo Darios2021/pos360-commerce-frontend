@@ -53,3 +53,17 @@ usuario y anotar en el `CHANGELOG.md`.
   servicio de IA con visión en la API; tiene costo por foto. El diseño ya está aprobado.
 - **Registro de «se quedó sin stock» por evento**, para que entre en la actividad del Inicio.
 - Probar en un teléfono real: cámara, teclado en pantalla y zona segura del iPhone.
+
+## Estado al 2026-10-31 (programado en local, sin verificar con sesión)
+
+| Fase | Commit | Qué quedó |
+|---|---|---|
+| 1 | `b2e747e` | `AppBottomNav.vue` por perfil; `MasPage.vue` sin Vender, con Servicio técnico y Caja. |
+| 2 | `1e6fa64` | `InicioMovil.vue` (reemplaza a `DashboardMobileHome` en `DashboardHome`); `useEsTecnico.js`. |
+| 3 | `850ca24`, siguiente | `VentasMovil.vue` en `PosSalesPage` (< 960 px); detalle de venta en piezas del kit. Anular ya era vista completa (`PosAnularVentaPage`). |
+| 4 y 5 | `c9ba22c` | Ficha sin "Agregar a la venta"; el "+" de Productos abre el lector; "Sin código" en el lector. El alta sigue en el formulario de pasos (la vista única con scroll queda pendiente). |
+| 6 | `e05eb6a` | Pedidos web y Cajas del dueño en formato teléfono. Avisos (pantalla 3) no se hizo: la actividad del Inicio cubre lo mismo; confirmar con el usuario si sigue haciendo falta. |
+| 7 | `4ca2b5e` | Órdenes: listado con las vistas de la API (En el taller, Listos, Presupuestadas, Sin retirar) y ficha con recorrido de 7 estados y el paso de ahora. |
+| 8 | — | Sin hacer: ventanas emergentes a vista completa y barrido de textos. |
+
+Falta verlo en el teléfono con sesión iniciada (dueño, admin, cajero y técnico) antes de publicar.
