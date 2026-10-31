@@ -30,7 +30,7 @@
       </div>
 
       <footer class="lg-foot lg-foot--dark lg-side__foot">
-        <span class="lg-foot__brand"><b>POS 360</b> por San Juan Sistemas</span>
+        <span class="lg-foot__brand"><b>POS 360</b> por <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
         <span class="lg-foot__copy">© {{ year }}</span>
       </footer>
     </aside>
@@ -132,7 +132,7 @@
       </div>
 
       <footer class="lg-foot lg-foot--light lg-main__foot">
-        <span class="lg-foot__brand"><b>POS 360</b> por San Juan Sistemas</span>
+        <span class="lg-foot__brand"><b>POS 360</b> por <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
         <span class="lg-foot__copy">© {{ year }}</span>
       </footer>
     </main>
@@ -301,6 +301,9 @@ async function submit() {
   letter-spacing: .1px;
 }
 .lg-foot__brand b { font-weight: 700; letter-spacing: .3px; margin-right: 2px; }
+.lg-foot__brand a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; transition: color .15s; }
+.lg-foot--dark .lg-foot__brand a:hover { color: #fff; }
+.lg-foot--light .lg-foot__brand a:hover { color: var(--cel); }
 .lg-foot__copy { font-variant-numeric: tabular-nums; }
 .lg-foot--dark { border-top: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.55); }
 .lg-foot--dark b { color: #fff; }
