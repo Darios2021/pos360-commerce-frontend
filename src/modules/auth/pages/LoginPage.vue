@@ -87,8 +87,7 @@
       </form>
 
       <footer class="lg-pie lg-pie--main">
-        <span><b>POS 360</b> · <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
-        <span class="m-num">© {{ year }}</span>
+        <span>© {{ year }} <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a>. Todos los derechos reservados.</span>
       </footer>
     </main>
   </div>
@@ -288,9 +287,9 @@ async function submit() {
   font-size: 13px;
   width: 100%;
 }
-.lg-pie b { font-weight: 700; }
-.lg-pie a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
-.lg-pie--main { max-width: 440px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); }
+.lg-pie a { color: var(--m-tinta); font-weight: 600; text-decoration: none; }
+.lg-pie a:hover { color: var(--m-accion); text-decoration: underline; text-underline-offset: 3px; }
+.lg-pie--main { max-width: 440px; justify-content: center; text-align: center; font-size: 12px; color: var(--m-suave); }
 
 @media (max-width: 1180px) {
   .lg-side { padding: 40px 40px 24px; }
