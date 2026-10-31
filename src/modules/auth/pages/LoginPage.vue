@@ -1,139 +1,107 @@
 <!-- src/modules/auth/pages/LoginPage.vue -->
-<!-- Login v2: pantalla partida a sangre. Marca a la izquierda (navy del logo),
-     formulario a la derecha sobre blanco. En celular queda solo el formulario. -->
+<!-- Ingreso según el kit de POS 360 (src/app/theme/movil.css) y la maqueta aprobada
+     (docs/diseno-movil, pantalla 1 "Ingreso"): Usuario o email, Contraseña,
+     Mantener sesión y Entrar. Tokens --m-* para los dos temas, sin hex sueltos
+     salvo el blanco sobre la banda. En escritorio suma la banda de marca a la izquierda. -->
 <template>
-  <div class="lg">
-    <!-- ══ MARCA ══ -->
+  <div class="lg m-vista">
+    <!-- ══ MARCA (solo escritorio) ══ -->
     <aside class="lg-side">
-      <div class="lg-side__grid" aria-hidden="true" />
-      <div class="lg-side__glow" aria-hidden="true" />
+      <div class="lg-side__cuerpo">
+        <div class="lg-side__marca">POS 360</div>
+        <h1 class="lg-side__tit">Punto de venta, stock y tienda online para comercios.</h1>
 
-      <div class="lg-side__hero">
-        <h1 class="lg-title">
-          Tu negocio automatizado<br />
-          <span>y bajo control.</span>
-        </h1>
-        <p class="lg-lead">
-          Ventas, stock y monitoreo en una sola plataforma, con procesos
-          automáticos y control remoto en tiempo real.
-        </p>
-
-        <ul class="lg-feats">
-          <li v-for="f in FEATS" :key="f.t">
-            <span class="lg-feats__ico"><v-icon size="18">{{ f.i }}</v-icon></span>
-            <span class="lg-feats__tx">
-              <b>{{ f.t }}</b>
-              <small>{{ f.d }}</small>
-            </span>
+        <ul class="lg-side__lista">
+          <li v-for="f in FUNCIONES" :key="f.t">
+            <span class="lg-side__ico"><v-icon size="20">{{ f.i }}</v-icon></span>
+            <span class="lg-side__tx"><b>{{ f.t }}</b><small>{{ f.d }}</small></span>
           </li>
         </ul>
       </div>
 
-      <footer class="lg-foot lg-foot--dark lg-side__foot">
-        <span class="lg-foot__brand"><b>POS 360</b> por <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
-        <span class="lg-foot__copy">© {{ year }}</span>
+      <footer class="lg-pie lg-pie--banda">
+        <span><b>POS 360</b> · <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
+        <span class="m-num">© {{ year }}</span>
       </footer>
     </aside>
 
-    <!-- ══ FORMULARIO ══ -->
+    <!-- ══ INGRESO ══ -->
     <main class="lg-main">
-      <div class="lg-form-wrap">
+      <form class="lg-pz m-pz" novalidate @submit.prevent="submit">
         <img :src="LOGO" alt="POS 360" class="lg-logo" />
 
-        <h2 class="lg-h">Ingresar</h2>
-        <p class="lg-sub">Con tu usuario o email de POS 360.</p>
+        <div v-if="error" class="lg-error" role="alert">
+          <v-icon size="20">mdi-alert-circle-outline</v-icon>
+          <span>{{ error }}</span>
+        </div>
 
-        <v-alert
-          v-if="error"
-          type="error"
-          variant="tonal"
-          density="comfortable"
-          class="mb-4 lg-alert"
-          closable
-          @click:close="error = null"
-        >
-          {{ error }}
-        </v-alert>
-
-        <v-form @submit.prevent="submit" class="lg-form">
-          <label class="lg-lbl" for="lg-user">Usuario o email</label>
-          <v-text-field
+        <div class="m-cmp">
+          <label for="lg-user">Usuario o email</label>
+          <input
             id="lg-user"
             v-model="identifier"
-            placeholder="usuario@comercio.com"
-            variant="outlined"
-            density="comfortable"
-            prepend-inner-icon="mdi-account-outline"
+            class="m-inp"
+            type="text"
             autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
             autofocus
             :disabled="loading"
-            hide-details="auto"
-            class="lg-input"
           />
+        </div>
 
-          <label class="lg-lbl" for="lg-pass">Contraseña</label>
-          <v-text-field
-            id="lg-pass"
-            v-model="password"
-            placeholder="••••••••"
-            :type="showPwd ? 'text' : 'password'"
-            variant="outlined"
-            density="comfortable"
-            prepend-inner-icon="mdi-lock-outline"
-            :append-inner-icon="showPwd ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-            @click:append-inner="showPwd = !showPwd"
-            autocomplete="current-password"
-            :disabled="loading"
-            hide-details="auto"
-            class="lg-input"
-            @keyup.enter="submit"
-          />
+        <div class="m-cmp">
+          <label for="lg-pass">Contraseña</label>
+          <div class="m-inpw sinpre">
+            <input
+              id="lg-pass"
+              v-model="password"
+              class="m-inp"
+              :type="showPwd ? 'text' : 'password'"
+              autocomplete="current-password"
+              :disabled="loading"
+            />
+            <button
+              type="button"
+              class="act"
+              :aria-label="showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              @click="showPwd = !showPwd"
+            >
+              <v-icon size="22">{{ showPwd ? "mdi-eye-off-outline" : "mdi-eye-outline" }}</v-icon>
+            </button>
+          </div>
+        </div>
 
-          <v-checkbox
-            v-model="remember"
-            label="Mantener sesión iniciada"
-            density="compact"
-            hide-details
-            color="primary"
-            class="lg-check"
-          />
+        <button type="button" class="m-sw" :class="{ on: remember }" role="switch" :aria-checked="remember" @click="remember = !remember">
+          <span>Mantener sesión</span><span class="t"></span>
+        </button>
 
-          <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
-          <v-switch
-            v-if="huellaOk"
-            v-model="conHuella"
-            label="Entrar con huella la próxima vez"
-            color="primary"
-            density="compact"
-            hide-details
-            inset
-            class="lg-check"
-          />
+        <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
+        <button
+          v-if="huellaOk"
+          type="button"
+          class="m-sw"
+          :class="{ on: conHuella }"
+          role="switch"
+          :aria-checked="conHuella"
+          @click="conHuella = !conHuella"
+        >
+          <span>Entrar con huella la próxima vez</span><span class="t"></span>
+        </button>
 
-          <v-btn
-            type="submit"
-            block
-            size="large"
-            variant="flat"
-            rounded="lg"
-            :loading="loading"
-            :disabled="!canSubmit"
-            class="lg-cta"
-          >
-            Entrar
-            <v-icon end size="18">mdi-arrow-right</v-icon>
-          </v-btn>
-        </v-form>
+        <button type="submit" class="m-btn lg-btn" :disabled="!canSubmit">
+          <v-progress-circular v-if="loading" indeterminate size="22" width="2" />
+          <template v-else>Entrar</template>
+        </button>
 
-        <p class="lg-help">
-          ¿Problemas para ingresar?
-          <a href="mailto:soporte@sanjuantecnologia.com">Contactar soporte</a>
-        </p>
-      </div>
+        <div class="m-centro">
+          <a class="m-lnk" href="mailto:soporte@sanjuantecnologia.com">Contactar soporte</a>
+        </div>
+      </form>
 
-      <footer class="lg-foot lg-foot--light lg-main__foot">
-        <span class="lg-foot__brand"><b>POS 360</b> por <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
-        <span class="lg-foot__copy">© {{ year }}</span>
+      <footer class="lg-pie lg-pie--canvas">
+        <span><b>POS 360</b> · <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
+        <span class="m-num">© {{ year }}</span>
       </footer>
     </main>
   </div>
@@ -148,8 +116,15 @@ import { huellaDisponible, activarHuella } from "@/app/native/huella";
 const router = useRouter();
 const auth = useAuthStore();
 
-// Logo POS 360 (carrito celeste): va sobre fondo blanco.
+// Logo POS 360 (carrito celeste).
 const LOGO = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
+
+const FUNCIONES = [
+  { i: "mdi-storefront-outline", t: "Mostrador y tienda online", d: "Un solo catálogo y un solo stock para los dos." },
+  { i: "mdi-package-variant-closed", t: "Stock por sucursal", d: "Derivaciones entre sucursales y productos sin stock." },
+  { i: "mdi-cash-register", t: "Caja", d: "Apertura, ingresos, egresos y cierre con arqueo." },
+  { i: "mdi-chart-box-outline", t: "Reportes", d: "Ventas por día, por medio de pago y por sucursal." },
+];
 
 const identifier = ref("");
 const password   = ref("");
@@ -166,16 +141,16 @@ const error   = ref(null);
 
 const year = new Date().getFullYear();
 
-const FEATS = [
-  { i: "mdi-storefront-outline", t: "Venta omnicanal", d: "Punto de venta y tienda online sincronizados." },
-  { i: "mdi-package-variant-closed", t: "Stock en red", d: "Stock real por sucursal y alertas de reposición." },
-  { i: "mdi-monitor-eye", t: "Monitoreo remoto", d: "Consultas y estado del sistema al instante." },
-  { i: "mdi-chart-box-outline", t: "Reportes de gestión", d: "Ventas y cierres de caja automáticos." },
-];
-
 const canSubmit = computed(
   () => !!identifier.value.trim() && !!password.value && !loading.value
 );
+
+// Textos de error del kit (informe 5, Ingreso).
+function mensajeDeError(e) {
+  if (!e?.response) return "Sin conexión";
+  if (e.status === 401 || e.response.status === 401) return "Usuario o contraseña incorrectos";
+  return e?.friendlyMessage || "Usuario o contraseña incorrectos";
+}
 
 async function submit() {
   if (!canSubmit.value) return;
@@ -190,230 +165,131 @@ async function submit() {
     if (huellaOk.value) activarHuella(conHuella.value && remember.value);
     router.replace({ name: "home" });
   } catch (e) {
-    error.value = e?.friendlyMessage || e?.message || "Credenciales incorrectas";
+    error.value = mensajeDeError(e);
   } finally {
     loading.value = false;
   }
 }
 </script>
-<style scoped>
-/* Paleta del logo: navy #121e47 y celeste #1488d1. Login siempre en claro. */
-.lg {
-  --navy: #121e47;
-  --cel: #1488d1;
-  --tx: #121e47;
-  --tx2: #5b6478;
-  --line: #dfe4ec;
 
-  color-scheme: light;
+<style scoped>
+/* Todo sale de los tokens --m-* de movil.css: claro y oscuro sin reglas aparte. */
+.lg {
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(420px, 1fr);
-  background: #fff;
-  color: var(--tx);
-
-  /* Tokens Vuetify locales: inputs y checkbox no heredan el modo oscuro */
-  --v-theme-surface: 255, 255, 255;
-  --v-theme-on-surface: 18, 30, 71;
-  --v-theme-background: 255, 255, 255;
-  --v-theme-on-background: 18, 30, 71;
-  --v-border-color: 18, 30, 71;
-  --v-border-opacity: 0.14;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* ══ MARCA ══ */
+/* ══ Banda de marca ══ */
 .lg-side {
-  position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 40px;
-  padding: 48px 56px;
-  background: var(--navy);
-  color: #fff;
+  gap: 32px;
+  padding: 48px 56px 24px;
+  background: var(--m-banda);
+  color: var(--m-banda-ink);
 }
-.lg-side__grid {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
-}
-.lg-side__glow {
-  position: absolute;
-  width: 640px; height: 640px;
-  right: -220px; bottom: -260px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(20,136,209,.55), transparent 65%);
-  filter: blur(20px);
-}
-.lg-side > :not([aria-hidden]) { position: relative; z-index: 1; }
-
-.lg-side__hero { max-width: 520px; margin: auto 0; }
-.lg-title {
-  font-size: clamp(32px, 3.6vw, 46px);
-  font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -1px;
-  margin: 0 0 18px;
-}
-.lg-title span { color: #6fc0f2; }
-.lg-lead {
-  font-size: 15px;
-  line-height: 1.55;
-  color: rgba(255,255,255,.75);
+.lg-side__cuerpo { margin: auto 0; max-width: 480px; }
+.lg-side__marca { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+.lg-side__tit {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   margin: 0 0 32px;
-  max-width: 440px;
 }
-
-.lg-feats {
-  list-style: none; margin: 0; padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px 28px;
-}
-.lg-feats li { display: flex; gap: 12px; align-items: flex-start; }
-.lg-feats__ico {
-  flex-shrink: 0;
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  border-radius: 9px;
-  background: rgba(20,136,209,.22);
-  border: 1px solid rgba(111,192,242,.25);
-  color: #8fd0f7;
-}
-.lg-feats__tx { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.lg-feats__tx b { font-size: 14px; font-weight: 600; }
-.lg-feats__tx small { font-size: 12.5px; line-height: 1.4; color: rgba(255,255,255,.62); }
-
-/* Pie: marca a la izquierda, año a la derecha, separado por una línea fina */
-.lg-foot {
+.lg-side__lista { list-style: none; margin: 0; padding: 0; }
+.lg-side__lista li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 18px;
-  font-size: 12.5px;
-  letter-spacing: .1px;
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
-.lg-foot__brand b { font-weight: 700; letter-spacing: .3px; margin-right: 2px; }
-.lg-foot__brand a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; transition: color .15s; }
-.lg-foot--dark .lg-foot__brand a:hover { color: #fff; }
-.lg-foot--light .lg-foot__brand a:hover { color: var(--cel); }
-.lg-foot__copy { font-variant-numeric: tabular-nums; }
-.lg-foot--dark { border-top: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.55); }
-.lg-foot--dark b { color: #fff; }
-.lg-foot--light { border-top: 1px solid var(--line); color: #8a93a5; }
-.lg-foot--light b { color: var(--tx); }
+.lg-side__ico {
+  width: 40px; height: 40px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.lg-side__ico .v-icon { color: #fff; }
+.lg-side__tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lg-side__tx b { font-size: 15px; font-weight: 600; color: #fff; }
+.lg-side__tx small { font-size: 13px; opacity: 0.8; }
 
-/* ══ FORMULARIO ══ */
+/* ══ Ingreso ══ */
 .lg-main {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 32px 24px;
+  padding: 32px 16px 24px;
+  background: var(--m-canvas);
 }
-.lg-form-wrap {
+.lg-pz {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   margin: auto 0;
-  animation: lgIn .45s cubic-bezier(.4,0,.2,1);
-}
-@keyframes lgIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .lg-logo {
   display: block;
-  width: 132px; height: 132px;
+  width: 120px; height: 120px;
   object-fit: contain;
-  margin: 0 0 18px -6px;
+  margin: 0 auto 4px;
 }
-.lg-h {
-  font-size: 28px;
+.lg-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--m-rojo-tinte);
+  color: var(--m-rojo);
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -.5px;
-  margin: 0 0 4px;
-  color: var(--tx);
 }
-.lg-sub { font-size: 14px; color: var(--tx2); margin: 0 0 26px; }
+.lg-error .v-icon { color: var(--m-rojo); }
+.lg-btn { border: 0; cursor: pointer; margin-top: 4px; }
+.lg-btn:disabled { cursor: default; }
+.m-inp:disabled { opacity: 0.6; }
 
-.lg-form { display: flex; flex-direction: column; }
-.lg-lbl {
+/* ══ Pie ══ */
+.lg-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--tx);
-  margin: 0 0 6px;
 }
-.lg-input { margin-bottom: 16px; }
-.lg-input :deep(.v-field) { border-radius: 10px; background: #f7f9fc; }
-.lg-input :deep(.v-field--focused) {
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(20,136,209,.16);
+.lg-pie b { font-weight: 700; }
+.lg-pie a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
+.lg-pie--banda { border-top: 1px solid rgba(255, 255, 255, 0.18); opacity: 0.85; }
+.lg-pie--canvas {
+  display: none;
+  width: 100%;
+  max-width: 400px;
+  margin-top: 16px;
+  color: var(--m-sobre-canvas);
 }
-.lg-input :deep(.v-field--focused .v-field__outline__start),
-.lg-input :deep(.v-field--focused .v-field__outline__end),
-.lg-input :deep(.v-field--focused .v-field__outline__notch::before),
-.lg-input :deep(.v-field--focused .v-field__outline__notch::after) {
-  border-color: var(--cel) !important;
-}
-.lg-input :deep(input::placeholder) { color: #9aa3b2; opacity: 1; }
 
-.lg-check { margin: -4px 0 8px -8px; }
-.lg-check :deep(.v-label) { font-size: 13.5px; color: var(--tx2); opacity: 1; }
-
-.lg-cta {
-  margin-top: 10px;
-  height: 50px !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  letter-spacing: .2px;
-  text-transform: none;
-  background: var(--cel) !important;
-  color: #fff !important;
-  transition: box-shadow .15s, background .15s;
-}
-.lg-cta:hover:not(.v-btn--disabled):not(.v-btn--loading) {
-  background: #0f78ba !important;
-  box-shadow: 0 8px 22px rgba(20,136,209,.32);
-}
-/* Deshabilitado: gris neutro y legible, no un celeste lavado */
-.lg-cta.v-btn--disabled {
-  background: #e9edf3 !important;
-  color: #8a93a5 !important;
-  opacity: 1;
-}
-.lg-cta.v-btn--disabled :deep(.v-btn__overlay) { opacity: 0; }
-
-.lg-alert :deep(.v-alert__content) { font-size: 13px; }
-
-.lg-help {
-  margin: 28px 0 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
-  color: var(--tx2);
-}
-.lg-help a { color: var(--cel); font-weight: 600; text-decoration: none; }
-.lg-help a:hover { text-decoration: underline; }
-
-.lg-main__foot { display: none; width: 100%; max-width: 380px; margin-top: 28px; }
-
-/* ══ RESPONSIVE ══ */
-@media (max-width: 1100px) {
-  .lg-side { padding: 40px; }
-  .lg-feats { grid-template-columns: 1fr; gap: 16px; }
-}
-@media (max-width: 860px) {
+/* Teléfono (corte del kit: menos de 960 px): sin banda, pieza a lo ancho */
+@media (max-width: 959.98px) {
   .lg { grid-template-columns: 1fr; }
   .lg-side { display: none; }
-  .lg-main { padding: calc(32px + env(safe-area-inset-top, 0px)) 22px 20px; }
-  .lg-main__foot { display: flex; }
-  .lg-logo { width: 108px; height: 108px; }
+  .lg-main { padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .lg-pie--canvas { display: flex; }
+  .lg-logo { width: 104px; height: 104px; }
 }
 </style>
