@@ -30,7 +30,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import http from "@/app/api/http";
-import { useAuthStore } from "@/app/store/auth.store";
+import { useEsTecnico } from "@/app/composables/useEsTecnico";
 import { useRoute, useRouter } from "vue-router";
 
 const props = defineProps({
@@ -43,29 +43,16 @@ const props = defineProps({
 const route = useRoute();
 const router = useRouter();
 
-const auth = useAuthStore();
 
-// Técnico: la marca vive en service_technicians; se pregunta una vez por sesión.
-const esTecnico = ref(false);
+// Técnico (sin rol de admin): Órdenes en lugar de Ventas.
+const { soloTecnico } = useEsTecnico();
 const usaAsistente = ref(false);
 onMounted(async () => {
-  const uid = Number(auth.user?.id || 0);
-  const cache = sessionStorage.getItem("bn:tecnico:" + uid);
-  if (cache != null) esTecnico.value = cache === "1";
-  else {
-    try {
-      const { data } = await http.get("admin/service/technicians");
-      const lista = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      esTecnico.value = lista.some((t) => Number(t.id) === uid);
-    } catch { esTecnico.value = false; }
-    try { sessionStorage.setItem("bn:tecnico:" + uid, esTecnico.value ? "1" : "0"); } catch {}
-  }
   try {
     const { data } = await http.get("asistente/estado");
     usaAsistente.value = (data?.puede || []).length > 0;
   } catch { usaAsistente.value = false; }
 });
-const soloTecnico = computed(() => esTecnico.value && auth.isAdmin !== true);
 
 const items = computed(() => [
   { name: "home", label: "Inicio", icon: "mdi-home-outline", to: { name: "home" } },

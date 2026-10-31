@@ -23,24 +23,16 @@
       </div>
     </v-alert>
 
-    <!-- ── MOBILE: vista app-móvil simplificada ─────────────── -->
-    <DashboardMobileHome
+    <!-- ── MOBILE: Inicio por perfil (banda del día y actividad) ── -->
+    <InicioMovil
       v-if="isMobile"
-      :loading="loading"
-      :loading-analytics="loadingAnalytics"
       :is-super-admin="isSuperAdmin"
       :is-admin="isAdmin"
       :scope-label="scopeLabel"
-      :scope-icon="scopeIcon"
-      :role-badge="roleBadge"
-      :user-name="userDisplayName"
       :branches="branches"
       :selected-branch="effectiveBranchId"
       :sales="ui.sales"
       :stock="ui.stock"
-      :inv="ui.inventory"
-      :last-sales="ui.sales.lastSales || []"
-      @refresh="refresh"
       @branch-change="onBranchChange"
     />
 
@@ -71,7 +63,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import TableroInicio from "../components/TableroInicio.vue";
-import DashboardMobileHome from "../components/DashboardMobileHome.vue";
+import InicioMovil from "../components/InicioMovil.vue";
 import { useDisplay } from "vuetify";
 
 import {
