@@ -6,7 +6,30 @@
   - Acciones rápidas para cambiar estado en la fila (vía PATCH .../status).
 -->
 <template>
-  <v-container class="mx-auto sho-container" fluid>
+  <!-- Teléfono (pantalla 19, plan del 2026-10-31): chips por estado con su
+       cantidad y una fila por pedido; tocarla abre el pedido completo. -->
+  <div v-if="mobile" class="shm m-vista">
+    <div class="m-chips">
+      <button v-for="c in CHIPS_MOVIL" :key="c.v" type="button" class="m-chip num" :class="{ on: filters.status === c.v }" @click="elegirEstado(c.v)">{{ c.t }} {{ conteos[c.v] ?? "" }}</button>
+    </div>
+    <div class="m-pz">
+      <div v-if="loading && !rows.length" class="m-it"><span class="tx"><small>Cargando…</small></span></div>
+      <div v-else-if="!rows.length" class="m-it"><span class="tx"><small>No hay pedidos en este estado.</small></span></div>
+      <button v-for="o in rows" :key="o.id" type="button" class="m-it shm-it" @click="goDetail(o)">
+        <span class="tx">
+          <b class="num">#{{ o.public_code || o.id }} · {{ String(o.customer_name || "").trim() || "Cliente" }}</b>
+          <small>{{ [o.fulfillment_type === "delivery" ? "Envío" : o.branch_name ? `Retira en ${o.branch_name}` : "Retiro", o.payment_method_title, pagoTxt(o)].filter(Boolean).join(" · ") }}</small>
+        </span>
+        <span class="der"><b class="num">$ {{ Math.round(Number(o.total || 0)).toLocaleString("es-AR") }}</b><small class="num">{{ horaPedido(o.created_at) }}</small></span>
+        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+      </button>
+    </div>
+    <div v-if="(meta.pages || 1) > 1" class="shm-pag">
+      <button type="button" class="m-lnk" :disabled="meta.page <= 1" @click="onPage(meta.page - 1)">Anteriores</button>
+      <button type="button" class="m-lnk" :disabled="meta.page >= meta.pages" @click="onPage(meta.page + 1)">Siguientes</button>
+    </div>
+  </div>
+  <v-container v-else class="mx-auto sho-container" fluid>
     <!-- Header -->
     <ShopOrdersHeader :loading="loading" @reload="reload" />
 
@@ -50,6 +73,8 @@
 </template>
 
 <script setup>
+import { useDisplay } from "vuetify";
+import http from "@/app/api/http";
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -99,6 +124,36 @@ const fulfillmentItems = [
 // State
 // --------------------
 const rows = ref([]);
+
+// ── Teléfono ──
+const { mobile } = useDisplay();
+const CHIPS_MOVIL = [
+  { v: "created", t: "Sin preparar" },
+  { v: "processing", t: "Preparando" },
+  { v: "ready", t: "Listos" },
+  { v: "delivered", t: "Entregados" },
+];
+const conteos = ref({});
+async function cargarConteos() {
+  const r = await Promise.all(CHIPS_MOVIL.map((c) =>
+    http.get("/admin/shop/orders", { params: { page: 1, limit: 1, status: c.v } })
+      .then(({ data }) => Number(data?.meta?.total || 0)).catch(() => null)));
+  conteos.value = Object.fromEntries(CHIPS_MOVIL.map((c, i) => [c.v, r[i]]));
+}
+function elegirEstado(v) { filters.value = { ...filters.value, status: v }; reload(); }
+function pagoTxt(o) {
+  const st = String(o.payment_status || "").toLowerCase();
+  if (!st) return "";
+  if (["approved", "paid", "accredited"].includes(st)) return "cobrado";
+  if (["pending", "in_process", "pending_proof"].includes(st)) return "cobro a confirmar";
+  if (["rejected", "cancelled"].includes(st)) return "cobro rechazado";
+  return "";
+}
+function horaPedido(v) {
+  const d = new Date(v); if (Number.isNaN(d.getTime())) return "";
+  const dd = (x) => String(x).padStart(2, "0");
+  return d.toDateString() === new Date().toDateString() ? `${dd(d.getHours())}:${dd(d.getMinutes())}` : `${dd(d.getDate())}/${dd(d.getMonth() + 1)}`;
+}
 const meta = ref({ page: 1, limit: 20, total: 0, pages: 1 });
 
 const filters = ref({
@@ -198,6 +253,9 @@ async function onChangeStatus({ item, status }) {
 // Init
 // --------------------
 onMounted(async () => {
+  // En el teléfono se arranca por "Sin preparar" (lo que pide una acción).
+  if (mobile.value && !filters.value.status) filters.value = { ...filters.value, status: "created" };
+  if (mobile.value) cargarConteos();
   await api.loadBranches();
   await api.fetchOrders(filters.value);
 });
@@ -220,4 +278,8 @@ onMounted(async () => {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   overflow: hidden;
 }
+.shm { display: flex; flex-direction: column; gap: 12px; }
+.shm-it { width: 100%; text-align: left; }
+.shm .der { display: flex; flex-direction: column; align-items: flex-end; }
+.shm-pag { display: flex; justify-content: space-between; }
 </style>

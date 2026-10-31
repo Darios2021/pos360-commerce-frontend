@@ -4,7 +4,34 @@
      cantidad y la tabla cerrada. Cierre administrativo y eliminar van en el
      detalle de cada caja, no en ventanas. -->
 <template>
-  <div class="sp cj">
+  <!-- Teléfono (pantalla 20, plan del 2026-10-31): abiertas con lo esperado y
+       cerradas con su diferencia; el rojo sólo cuando falta plata. -->
+  <div v-if="mobile" class="cjm m-vista">
+    <div class="m-chips">
+      <button v-for="o in PERIODOS.filter((x) => x.v !== 'elegir')" :key="o.v" type="button" class="m-chip" :class="{ on: periodo === o.v }" @click="periodo = o.v">{{ o.t }}</button>
+    </div>
+    <template v-if="abiertas.length">
+      <div class="m-rot">Abiertas</div>
+      <div class="m-pz">
+        <router-link v-for="c in abiertas" :key="c.id" :to="ruta(c)" class="m-it">
+          <span class="tx"><b class="num">#{{ c.id }} · {{ c.branch_name || "Sucursal" }}</b><small>{{ c.opened_by_name || "Sin cajero" }} · desde {{ desdeTxt(c.opened_at) }}</small></span>
+          <span class="der"><b class="num">{{ pesos(c.expected_cash ?? c.sales_total) }}</b><small>{{ c.expected_cash != null ? "Esperado" : "Vendido" }}</small></span>
+          <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+        </router-link>
+      </div>
+    </template>
+    <div class="m-rot">Cerradas</div>
+    <div class="m-pz">
+      <div v-if="cargando && !cerradas.length" class="m-it"><span class="tx"><small>Cargando…</small></span></div>
+      <div v-else-if="!cerradas.length" class="m-it"><span class="tx"><small>No hay cajas cerradas en el período.</small></span></div>
+      <router-link v-for="c in cerradas" :key="c.id" :to="ruta(c)" class="m-it">
+        <span class="tx"><b class="num">#{{ c.id }} · {{ c.branch_name || "Sucursal" }}</b><small class="num">{{ fechaHora(c.closed_at) }} · {{ c.opened_by_name || "Sin cajero" }}</small></span>
+        <span class="der"><b class="num" :class="{ 'cjm-rojo': n(c.difference_cash) < 0 }">{{ dif(c.difference_cash) }}</b><small>Diferencia</small></span>
+        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
+      </router-link>
+    </div>
+  </div>
+  <div v-else class="sp cj">
     <div class="sp-cab">
       <div class="sp-cab__txt">
         <h1 class="sp-cab__titulo">Cajas</h1>
@@ -91,6 +118,7 @@
 </template>
 
 <script setup>
+import { useDisplay } from "vuetify";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "@/app/api/http";
@@ -120,6 +148,8 @@ const estado = ref("");
 const page = ref(1);
 const limit = 25;
 const filas = ref([]);
+const cerradas = computed(() => filas.value.filter((c) => c.status !== "OPEN"));
+const { mobile } = useDisplay();
 const abiertas = ref([]);
 const meta = ref({ total: 0 });
 const kpis = ref({});
@@ -271,4 +301,7 @@ onMounted(() => {
 .cj-pag button { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--sp-borde); background: var(--sp-caja); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .cj-pag button:disabled { opacity: .4; cursor: default; }
 @media (max-width: 900px) { .cj-franja { grid-template-columns: 1fr; } }
+.cjm { display: flex; flex-direction: column; gap: 12px; }
+.cjm .der { display: flex; flex-direction: column; align-items: flex-end; }
+.cjm-rojo { color: var(--m-rojo); }
 </style>
