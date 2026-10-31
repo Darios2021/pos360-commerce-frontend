@@ -19,7 +19,7 @@
     <!-- ══ INGRESO ══ -->
     <main class="lg-main">
       <form class="lg-form" novalidate @submit.prevent="submit">
-        <div class="lg-form__cab"><img :src="LOGO" alt="POS 360" class="lg-form__logo" /></div>
+        <div class="lg-form__cab"><MarcaPos360 class="lg-form__logo" /></div>
         <h2 class="lg-h">Ingresar</h2>
 
         <div v-if="error" class="lg-error" role="alert">
@@ -99,6 +99,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { huellaDisponible, activarHuella } from "@/app/native/huella";
 import LoginFlujo from "@/modules/auth/components/LoginFlujo.vue";
+import MarcaPos360 from "@/app/components/MarcaPos360.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -233,11 +234,7 @@ async function submit() {
   padding: 16px 28px;
   border-bottom: 1px solid var(--m-linea2);
 }
-.lg-form__logo {
-  display: block;
-  width: 104px;
-  margin: -6px 0 -8px -1px; /* el archivo trae aire arriba y abajo */
-}
+.lg-form__logo { height: 34px; }
 .lg-h {
   font-size: 26px;
   font-weight: 800;
