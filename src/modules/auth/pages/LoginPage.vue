@@ -96,9 +96,6 @@
           <template v-else>Entrar</template>
         </button>
 
-        <div class="m-centro">
-          <a class="m-lnk" href="mailto:soporte@sanjuantecnologia.com">Contactar soporte</a>
-        </div>
       </form>
 
       <footer class="lg-pie lg-pie--canvas">
@@ -267,7 +264,7 @@ async function submit() {
   width: 100%;
   max-width: 420px;
   margin: auto 0;
-  padding: 28px 28px 20px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -327,6 +324,6 @@ async function submit() {
   .lg-main { padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
   .lg-pie--canvas { display: flex; }
   .lg-logo { display: block; }
-  .lg-pz { padding: 24px 20px 16px; }
+  .lg-pz { padding: 24px 20px; }
 }
 </style>
