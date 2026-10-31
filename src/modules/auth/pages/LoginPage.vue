@@ -10,7 +10,6 @@
     <aside class="lg-side">
       <div class="lg-side__cuerpo">
         <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
-        <h1 class="lg-side__tit">Del mostrador <span>al servicio técnico.</span></h1>
 
         <LoginFlujo class="lg-side__flujo" />
       </div>
@@ -189,7 +188,7 @@ async function submit() {
 .lg-side__logo {
   display: block;
   width: 180px;
-  margin: -22px 0 10px -5px; /* el archivo trae aire arriba y abajo */
+  margin: -22px 0 24px -5px; /* el archivo trae aire arriba y abajo */
   filter: brightness(0) invert(1);
 }
 .lg-side__tit {
