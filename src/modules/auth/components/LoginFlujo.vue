@@ -1,7 +1,9 @@
 <!-- src/modules/auth/components/LoginFlujo.vue -->
 <!-- Flujo de entrada para la banda del login: los canales de POS 360 a la izquierda,
-     líneas que se juntan en un tronco y un haz de luz que viaja hasta un mazo de
-     tarjetas que rota cada 2,4 s (venta, pedido web, orden de servicio, presupuesto).
+     líneas que se juntan en un tronco y una sola tarjeta "Hoy en el negocio" que recibe
+     los paquetes de todos los canales y los combina. Un canal por vez cada 3 s: se
+     enciende con un destello que dice qué hace, manda su paquete y al llegar su fila de
+     la tarjeta suma el dato; el total y el ticket promedio (Asistente IA) se recalculan.
      Forma y animación tomadas del hero de fu.do (slide 01); colores de la marca POS 360
      y radios del kit (techo 14). Datos de ejemplo: es una ilustración, no lee el sistema. -->
 <template>
@@ -31,19 +33,19 @@
         </li>
       </ul>
 
-      <!-- Mazo de tarjetas -->
+      <!-- Tarjeta que recibe y combina -->
       <div class="fl-stack">
-        <article v-for="(t, i) in TARJETAS" :key="t.id" class="fl-card" :style="{ '--i': i }">
+        <article class="fl-card">
           <header class="fl-chead">
-            <span class="fl-cico"><v-icon size="20">{{ t.i }}</v-icon></span>
-            <span class="fl-cmeta"><b>{{ t.id }}</b><small>{{ t.canal }} · Hoy, {{ t.hora }}</small></span>
-            <span class="fl-ctotal m-num">{{ total(t) }}</span>
+            <span class="fl-cico"><v-icon size="20">mdi-store-outline</v-icon></span>
+            <span class="fl-cmeta"><b>Hoy en el negocio</b><small>Sucursal Centro · {{ hora }}</small></span>
+            <span class="fl-ctotal m-num" :class="{ sube: [0, 1, 3].includes(llego) }">{{ pesos(totalVentas) }}</span>
           </header>
-          <div v-for="it in t.items" :key="it.n" class="fl-item">
-            <span class="fl-thumb"><v-icon size="20">{{ it.i }}</v-icon></span>
+          <div v-for="(f, i) in filas" :key="f.t" class="fl-item" :class="{ llega: llego === i }">
+            <span class="fl-thumb"><v-icon size="20">{{ CANALES[i].i }}</v-icon></span>
             <span class="fl-ibody">
-              <span class="fl-itop"><b>{{ it.n }}</b><span class="m-num">{{ valor(it) }}</span></span>
-              <small>{{ it.d }}</small>
+              <span class="fl-itop"><b>{{ f.t }}</b><span class="m-num">{{ f.v }}</span></span>
+              <small>{{ f.d }}</small>
             </span>
           </div>
         </article>
@@ -56,13 +58,15 @@
 </template>
 
 <script setup>
+import { reactive, computed, ref, onMounted, onBeforeUnmount } from "vue";
+
 // Geometría: 6 canales de 56 px con 24 px entre sí; las líneas van del borde del
 // canal (x 0) al mazo (x LW), juntándose en el centro vertical con curvas de radio R.
-const TILE = 56, GAP = 24, LW = 164, R = 16;
+const TILE = 56, GAP = 24, LW = 314, R = 20;
 const N = 6;                                   // canales
 const H = N * TILE + (N - 1) * GAP;          // 456
 const C = H / 2;                               // tronco
-const XV = [96, 80, 64];                       // bajada de afuera hacia adentro
+const XV = [178, 154, 130];                    // bajada de afuera hacia adentro
 
 const PATHS = Array.from({ length: N }, (_, i) => {
   const y = i * (TILE + GAP) + TILE / 2;
@@ -83,67 +87,61 @@ const CANALES = [
   { i: "mdi-forum-outline", t: "Asistente IA", d: "Preguntas sobre ventas, caja y cierre" },
 ];
 
-// Una tarjeta por canal y en el mismo orden: cuando llega el paquete del canal i,
-// entra al mazo la tarjeta i.
-const TARJETAS = [
-  {
-    id: "Venta #1043", canal: "Mostrador", hora: "19:24", i: "mdi-cash-register",
-    items: [
-      { n: "Auriculares bluetooth", d: "Negro · 1 u.", p: 18000, i: "mdi-headphones" },
-      { n: "Cargador USB-C", d: "65 W · 1 u.", p: 9500, i: "mdi-power-plug-outline" },
-      { n: "Cable HDMI", d: "2 m · 1 u.", p: 12000, i: "mdi-cable-data" },
-    ],
-  },
-  {
-    id: "Pedido web #388", canal: "Tienda online", hora: "19:31", i: "mdi-storefront-outline",
-    items: [
-      { n: "Zapatillas urbanas", d: "Talle 42 · 1 u.", p: 54900, i: "mdi-shoe-sneaker" },
-      { n: "Medias", d: "Pack x3", p: 7200, i: "mdi-tshirt-crew-outline" },
-      { n: "Envío a domicilio", d: "Capital", p: 4500, i: "mdi-truck-outline" },
-    ],
-  },
-  {
-    id: "Presupuesto #77", canal: "Presupuestos", hora: "19:35", i: "mdi-file-document-outline",
-    items: [
-      { n: "Notebook 15\"", d: "16 GB · 512 GB", p: 820000, i: "mdi-laptop" },
-      { n: "Mouse inalámbrico", d: "1 u.", p: 14500, i: "mdi-mouse" },
-      { n: "Mochila para notebook", d: "1 u.", p: 32000, i: "mdi-bag-personal-outline" },
-    ],
-  },
-  {
-    id: "Orden #212", canal: "Servicio técnico", hora: "19:40", i: "mdi-wrench-outline",
-    items: [
-      { n: "Cambio de pantalla", d: "Celular · repuesto incluido", p: 85000, i: "mdi-cellphone-cog" },
-      { n: "Vidrio templado", d: "Colocado", p: 6000, i: "mdi-shield-outline" },
-      { n: "Limpieza de puerto", d: "Carga", p: 5000, i: "mdi-broom" },
-    ],
-  },
-  {
-    id: "Derivación #54", canal: "Centro a Rivadavia", hora: "19:44", i: "mdi-swap-horizontal",
-    items: [
-      { n: "Auriculares bluetooth", d: "Negro", u: 6, i: "mdi-headphones" },
-      { n: "Cargador USB-C", d: "65 W", u: 4, i: "mdi-power-plug-outline" },
-      { n: "Cable HDMI", d: "2 m", u: 5, i: "mdi-cable-data" },
-    ],
-  },
-  {
-    id: "¿Ventas de hoy?", canal: "Asistente IA", hora: "19:48", i: "mdi-forum-outline",
-    tot: "$ 412.300",
-    items: [
-      { n: "Mostrador", d: "18 ventas", v: "$ 296.800", i: "mdi-cash-register" },
-      { n: "Tienda online", d: "5 pedidos", v: "$ 115.500", i: "mdi-storefront-outline" },
-      { n: "Ticket promedio", d: "23 operaciones", v: "$ 17.926", i: "mdi-receipt-text-outline" },
-    ],
-  },
+// Estado de la tarjeta. Cada llegada suma un movimiento del canal; al terminar la
+// vuelta (18 s) vuelve al punto de partida para que los números no crezcan sin fin.
+const BASE = () => ({
+  mostrador: { n: 17, p: 257300 },
+  tienda: { n: 4, p: 48900 },
+  presup: { n: 2, p: 214000 },
+  servicio: { n: 3, p: 118000 },
+  deriv: { n: 1, u: 8 },
+});
+const est = reactive(BASE());
+const PASO = [
+  () => { est.mostrador.n += 1; est.mostrador.p += 39500; },
+  () => { est.tienda.n += 1; est.tienda.p += 66600; },
+  () => { est.presup.n += 1; est.presup.p += 866500; },
+  () => { est.servicio.n += 1; est.servicio.p += 96000; },
+  () => { est.deriv.n += 1; est.deriv.u += 15; },
+  () => { /* el asistente no suma: recalcula con lo que juntaron los demás */ },
 ];
 
-// Ventas y presupuestos suman pesos; la derivación suma unidades; el asistente trae su respuesta.
-const valor = (it) => it.v ?? (it.u != null ? `${it.u} u.` : pesos(it.p));
-const total = (t) =>
-  t.tot ? t.tot
-  : t.items[0].u != null
-    ? `${t.items.reduce((s, it) => s + it.u, 0)} u.`
-    : pesos(t.items.reduce((s, it) => s + it.p, 0));
+const totalVentas = computed(() => est.mostrador.p + est.tienda.p + est.servicio.p);
+const operaciones = computed(() => est.mostrador.n + est.tienda.n + est.servicio.n);
+const filas = computed(() => [
+  { t: "Mostrador", d: `${est.mostrador.n} ventas`, v: pesos(est.mostrador.p) },
+  { t: "Tienda online", d: `${est.tienda.n} pedidos`, v: pesos(est.tienda.p) },
+  { t: "Presupuestos", d: `${est.presup.n} abiertos`, v: pesos(est.presup.p) },
+  { t: "Servicio técnico", d: `${est.servicio.n} órdenes`, v: pesos(est.servicio.p) },
+  { t: "Derivaciones", d: `${est.deriv.n} en camino`, v: `${est.deriv.u} u.` },
+  { t: "Asistente IA", d: "Ticket promedio de hoy", v: pesos(Math.round(totalVentas.value / operaciones.value)) },
+]);
+
+// Reloj de la ilustración, alineado con las animaciones CSS: el paquete del canal i
+// llega a los 2,8 s + i × 3 s y la vuelta dura 18 s.
+const LLEGA = 2800, RANURA = 3000, VUELTA = 18000;
+const llego = ref(-1);
+const minutos = ref(24);
+const hora = computed(() => `19:${String(minutos.value).padStart(2, "0")}`);
+let t0 = 0, ultimo = -1, timer = null;
+onMounted(() => {
+  t0 = performance.now();
+  timer = setInterval(() => {
+    const t = performance.now() - t0 - LLEGA;
+    if (t < 0) return;
+    const paso = Math.floor(t / RANURA);          // pasos desde el inicio
+    if (paso === ultimo) return;
+    ultimo = paso;
+    const i = paso % CANALES.length;
+    if (i === 0 && paso > 0) Object.assign(est, BASE());
+    PASO[i]();
+    minutos.value = 24 + (paso % CANALES.length) * 4;
+    llego.value = i;
+    setTimeout(() => { if (llego.value === i) llego.value = -1; }, 1400);
+  }, 100);
+});
+onBeforeUnmount(() => clearInterval(timer));
+
 const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 </script>
 
@@ -151,7 +149,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 .fl { width: 100%; }
 .fl-stage {
   position: relative;
-  width: 530px;
+  width: 680px;
   height: 456px;
   max-width: 100%;
 }
@@ -161,7 +159,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   position: absolute;
   left: 56px;
   top: 0;
-  width: 164px;
+  width: 314px;
   height: 456px;
   overflow: visible;
   z-index: 1;
@@ -182,7 +180,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   stroke-dasharray: 0.13 0.87;
   stroke-dashoffset: 0.13;
   opacity: 0;
-  animation: fl-haz 14.4s linear calc(1s + var(--i) * 2.4s) infinite backwards;
+  animation: fl-haz 18s linear calc(1s + var(--i) * 3s) infinite backwards;
 }
 .fl-haz--nucleo { stroke: url(#flHaz); stroke-width: 2.5; }
 .fl-haz--brillo { stroke: #1488d1; stroke-width: 7; filter: url(#flBrillo); }
@@ -209,8 +207,8 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 .fl-tile { position: relative; }
 .fl-tile .v-icon { color: #0f6fae; }
 
-/* Secuencia, un canal por vez en ranuras de 2,4 s (6 canales = 14,4 s):
-   se enciende el canal y su destello de texto, sale el paquete por su línea (1,2 s)
+/* Secuencia, un canal por vez en ranuras de 3 s (6 canales = 18 s):
+   se enciende el canal y su destello de texto, sale el paquete por su línea (1,8 s)
    y al llegar entra su tarjeta al mazo. */
 .fl-tile::after {
   content: "";
@@ -220,7 +218,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   border: 2px solid #6fc0f2;
   box-shadow: 0 0 16px rgba(111, 192, 242, 0.55);
   opacity: 0;
-  animation: fl-destello 14.4s ease-in-out calc(1s + var(--i) * 2.4s) infinite backwards;
+  animation: fl-destello 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
   pointer-events: none;
 }
 .fl-destello {
@@ -239,7 +237,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   line-height: 1.3;
   opacity: 0;
   transform: translate(-6px, -50%);
-  animation: fl-destello-tx 14.4s ease-in-out calc(1s + var(--i) * 2.4s) infinite backwards;
+  animation: fl-destello-tx 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
   pointer-events: none;
   z-index: 5;
 }
@@ -267,11 +265,9 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   border: 1px solid var(--m-linea);
   border-radius: 12px;
   box-shadow: 0 11px 24px rgba(0, 0, 0, 0.14), 0 44px 44px rgba(0, 0, 0, 0.1);
-  animation: fl-mazo 14.4s ease-in-out calc(2.2s + var(--i) * 2.4s) infinite backwards;
+  gap: 4px;
+  animation: fl-entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
 }
-.fl-card:first-child { position: relative; }
-.fl-card:not(:first-child) { position: absolute; top: 0; left: 0; right: 0; }
-.fl-card > * { animation: fl-contenido 14.4s ease-in-out calc(2.2s + var(--i) * 2.4s) infinite backwards; }
 
 .fl-chead {
   display: flex;
@@ -292,9 +288,24 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 .fl-cmeta small { font-size: 11px; color: var(--m-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fl-ctotal { font-size: 15px; font-weight: 800; white-space: nowrap; }
 
-.fl-item { display: flex; align-items: center; gap: 10px; }
+.fl-chead { margin-bottom: 6px; }
+.fl-item {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 -8px; padding: 5px 8px;
+  border-radius: 10px;
+  transition: background 0.5s;
+}
+.fl-item .m-num { transition: color 0.5s; }
+/* Llega el paquete del canal: la fila se ilumina y su valor cambia */
+.fl-item.llega { background: var(--m-accion-tinte); transition: background 0.15s; }
+.fl-item.llega .m-num { color: var(--m-accion); font-weight: 800; transition: color 0.15s; }
+.fl-item.llega .fl-thumb { background: var(--m-accion); }
+.fl-item.llega .fl-thumb .v-icon { color: #fff; }
+.fl-ctotal { transition: color 0.5s; }
+.fl-ctotal.sube { color: var(--m-accion); transition: color 0.15s; }
 .fl-thumb {
-  width: 40px; height: 40px; flex: none;
+  width: 36px; height: 36px; flex: none;
+  transition: background 0.3s;
   border-radius: 10px;
   display: grid; place-items: center;
   background: var(--m-variante);
@@ -322,7 +333,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   vector-effect: non-scaling-stroke;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: fl-contorno 2.4s linear 2.2s infinite both;
+  animation: fl-contorno 3s linear 2.8s infinite both;
 }
 
 /* ── Animaciones (mismos tiempos que el original) ── */
@@ -337,27 +348,13 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 @keyframes fl-haz {
   0% { stroke-dashoffset: 0.13; opacity: 0; }
   0.8% { opacity: 1; }
-  7.6% { opacity: 1; }
-  8.33% { stroke-dashoffset: -1; opacity: 0; }
+  9.3% { opacity: 1; }
+  10% { stroke-dashoffset: -1; opacity: 0; }
   100% { stroke-dashoffset: -1; opacity: 0; }
 }
-@keyframes fl-mazo {
-  0%     { transform: translateY(-20px) scale(1);    opacity: 0; z-index: 40; }
-  1.4%   { transform: translateY(0) scale(1);        opacity: 1; z-index: 40; }
-  16.67% { transform: translateY(0) scale(1);        opacity: 1; z-index: 40; }
-  19%    { transform: translateY(18px) scale(0.96);  opacity: 1; z-index: 30; }
-  33.33% { transform: translateY(18px) scale(0.96);  opacity: 1; z-index: 30; }
-  35.7%  { transform: translateY(36px) scale(0.92);  opacity: 1; z-index: 20; }
-  50%    { transform: translateY(36px) scale(0.92);  opacity: 1; z-index: 20; }
-  52.4%  { transform: translateY(54px) scale(0.88);  opacity: 0; z-index: 10; }
-  100%   { transform: translateY(-20px) scale(1);    opacity: 0; z-index: 10; }
-}
-@keyframes fl-contenido {
-  0% { opacity: 0; }
-  1.4% { opacity: 1; }
-  16.67% { opacity: 1; }
-  17.4% { opacity: 0; }
-  100% { opacity: 0; }
+@keyframes fl-entra {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes fl-destello {
   0% { opacity: 0; }
@@ -384,7 +381,6 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 @media (prefers-reduced-motion: reduce) {
   .fl-line, .fl-tile, .fl-haz, .fl-trace-rect, .fl-tile::after, .fl-destello { animation: none; }
   .fl-haz, .fl-trace-rect { opacity: 0; }
-  .fl-card, .fl-card > * { animation: none; }
-  .fl-card:not(:first-child) { opacity: 0; }
+  .fl-card { animation: none; }
 }
 </style>

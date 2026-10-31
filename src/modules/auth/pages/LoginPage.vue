@@ -171,7 +171,7 @@ async function submit() {
   min-height: 100dvh;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   background: var(--m-pieza);
 }
 
@@ -185,7 +185,7 @@ async function submit() {
   background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 80%);
   color: var(--m-banda-ink);
 }
-.lg-side__cuerpo { margin: auto 0; max-width: 580px; }
+.lg-side__cuerpo { margin: auto 0; max-width: 700px; }
 .lg-side__logo {
   display: block;
   width: 180px;
@@ -206,6 +206,7 @@ async function submit() {
 .lg-side__flujo { margin-top: 8px; }
 @media (max-height: 880px) { .lg-side__flujo { zoom: 0.85; } }
 @media (max-height: 760px) { .lg-side__flujo { zoom: 0.72; } }
+@media (max-width: 1080px) and (min-width: 960px) { .lg-side__flujo { zoom: 0.68 !important; } }
 
 /* ══ Ingreso ══ */
 .lg-main {
