@@ -1,161 +1,140 @@
 <!-- src/modules/auth/pages/LoginPage.vue -->
+<!-- Login v2: pantalla partida a sangre. Marca a la izquierda (navy del logo),
+     formulario a la derecha sobre blanco. En celular queda solo el formulario. -->
 <template>
-  <div class="login-shell">
-    <!-- Fondo decorativo (blobs animados) -->
-    <div class="login-bg">
-      <span class="blob blob--a" />
-      <span class="blob blob--b" />
-      <span class="blob blob--c" />
-    </div>
+  <div class="lg">
+    <!-- ══ MARCA ══ -->
+    <aside class="lg-side">
+      <div class="lg-side__grid" aria-hidden="true" />
+      <div class="lg-side__glow" aria-hidden="true" />
 
-    <div class="login-grid">
+      <div class="lg-side__top">
+        <span class="lg-mark">POS 360</span>
+        <span class="lg-mark__by">San Juan Tecnología</span>
+      </div>
 
-      <!-- ══ PANEL IZQUIERDO — branding + value props ══ -->
-      <aside class="login-side">
-        <div class="login-side__hero">
-          <h1 class="hero-title">
-            Tu negocio<br />
-            <span class="hero-accent">automatizado y bajo control.</span>
-          </h1>
-          <p class="hero-sub">
-            Ecosistema de gestión con procesos automatizados y control remoto en
-            tiempo real. Centralizá ventas, stock y monitoreo desde una sola plataforma.
-          </p>
+      <div class="lg-side__hero">
+        <h1 class="lg-title">
+          Tu negocio automatizado<br />
+          <span>y bajo control.</span>
+        </h1>
+        <p class="lg-lead">
+          Ventas, stock y monitoreo en una sola plataforma, con procesos
+          automáticos y control remoto en tiempo real.
+        </p>
 
-          <ul class="hero-features">
-            <li>
-              <v-icon size="20" class="feat-ico">mdi-storefront-outline</v-icon>
-              <div class="feat-body">
-                <div class="feat-title">Venta Omnicanal</div>
-                <div class="feat-desc">Punto de venta rápido y tienda online sincronizada.</div>
-              </div>
-            </li>
-            <li>
-              <v-icon size="20" class="feat-ico">mdi-truck-fast-outline</v-icon>
-              <div class="feat-body">
-                <div class="feat-title">Logística en Red</div>
-                <div class="feat-desc">Control de stock real y alertas de reposición.</div>
-              </div>
-            </li>
-            <li>
-              <v-icon size="20" class="feat-ico">mdi-monitor-eye</v-icon>
-              <div class="feat-body">
-                <div class="feat-title">Monitoreo Remoto</div>
-                <div class="feat-desc">Consultas y estados de sistema al instante.</div>
-              </div>
-            </li>
-            <li>
-              <v-icon size="20" class="feat-ico">mdi-chart-box-outline</v-icon>
-              <div class="feat-body">
-                <div class="feat-title">Reportes de Gestión</div>
-                <div class="feat-desc">Analítica de ventas y cierres operativos automáticos.</div>
-              </div>
-            </li>
-          </ul>
-        </div>
-
-        <div class="login-side__foot">
-          © {{ year }} · POS 360 · San Juan Tecnología
-        </div>
-      </aside>
-
-      <!-- ══ PANEL DERECHO — formulario ══ -->
-      <main class="login-main">
-        <div class="login-card">
-          <div class="login-card__head">
-            <img :src="LOGO_BLUE" alt="POS 360" class="login-logo" />
-          </div>
-
-          <v-alert
-            v-if="error"
-            type="error"
-            variant="tonal"
-            density="comfortable"
-            class="mb-4 login-alert"
-            closable
-            @click:close="error = null"
-          >
-            {{ error }}
-          </v-alert>
-
-          <v-form @submit.prevent="submit" class="login-form">
-            <v-text-field
-              v-model="identifier"
-              label="Usuario o email"
-              variant="outlined"
-              density="comfortable"
-              prepend-inner-icon="mdi-account-outline"
-              autocomplete="username"
-              autofocus
-              :disabled="loading"
-              hide-details="auto"
-              class="login-input"
-            />
-
-            <v-text-field
-              v-model="password"
-              :label="'Contraseña'"
-              :type="showPwd ? 'text' : 'password'"
-              variant="outlined"
-              density="comfortable"
-              prepend-inner-icon="mdi-lock-outline"
-              :append-inner-icon="showPwd ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-              @click:append-inner="showPwd = !showPwd"
-              autocomplete="current-password"
-              :disabled="loading"
-              hide-details="auto"
-              class="login-input"
-              @keyup.enter="submit"
-            />
-
-            <div class="login-row">
-              <v-checkbox
-                v-model="remember"
-                label="Mantener sesión"
-                density="compact"
-                hide-details
-                color="primary"
-                class="login-remember"
-              />
-            </div>
-
-            <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
-            <v-switch
-              v-if="huellaOk"
-              v-model="conHuella"
-              label="Entrar con huella la próxima vez"
-              color="primary"
-              density="compact"
-              hide-details
-              inset
-              class="login-remember"
-            />
-
-            <v-btn
-              type="submit"
-              block
-              size="large"
-              color="primary"
-              variant="flat"
-              rounded="lg"
-              :loading="loading"
-              :disabled="!canSubmit"
-              class="login-cta"
-            >
-              <v-icon start size="18">mdi-login</v-icon>
-              Entrar
-            </v-btn>
-          </v-form>
-
-          <div class="login-foot">
-            <span class="login-foot__hint">
-              ¿Problemas para ingresar?
-              <a href="mailto:soporte@sanjuantecnologia.com">Contactar soporte</a>
+        <ul class="lg-feats">
+          <li v-for="f in FEATS" :key="f.t">
+            <span class="lg-feats__ico"><v-icon size="18">{{ f.i }}</v-icon></span>
+            <span class="lg-feats__tx">
+              <b>{{ f.t }}</b>
+              <small>{{ f.d }}</small>
             </span>
-          </div>
-        </div>
-      </main>
-    </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="lg-side__foot">© {{ year }} · POS 360 · San Juan Tecnología</div>
+    </aside>
+
+    <!-- ══ FORMULARIO ══ -->
+    <main class="lg-main">
+      <div class="lg-form-wrap">
+        <img :src="LOGO" alt="POS 360" class="lg-logo" />
+
+        <h2 class="lg-h">Ingresar</h2>
+        <p class="lg-sub">Con tu usuario o email de POS 360.</p>
+
+        <v-alert
+          v-if="error"
+          type="error"
+          variant="tonal"
+          density="comfortable"
+          class="mb-4 lg-alert"
+          closable
+          @click:close="error = null"
+        >
+          {{ error }}
+        </v-alert>
+
+        <v-form @submit.prevent="submit" class="lg-form">
+          <label class="lg-lbl" for="lg-user">Usuario o email</label>
+          <v-text-field
+            id="lg-user"
+            v-model="identifier"
+            placeholder="usuario@comercio.com"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-account-outline"
+            autocomplete="username"
+            autofocus
+            :disabled="loading"
+            hide-details="auto"
+            class="lg-input"
+          />
+
+          <label class="lg-lbl" for="lg-pass">Contraseña</label>
+          <v-text-field
+            id="lg-pass"
+            v-model="password"
+            placeholder="••••••••"
+            :type="showPwd ? 'text' : 'password'"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-lock-outline"
+            :append-inner-icon="showPwd ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+            @click:append-inner="showPwd = !showPwd"
+            autocomplete="current-password"
+            :disabled="loading"
+            hide-details="auto"
+            class="lg-input"
+            @keyup.enter="submit"
+          />
+
+          <v-checkbox
+            v-model="remember"
+            label="Mantener sesión iniciada"
+            density="compact"
+            hide-details
+            color="primary"
+            class="lg-check"
+          />
+
+          <!-- APK: cerrojo de huella al abrir la app (app/native/huella.js) -->
+          <v-switch
+            v-if="huellaOk"
+            v-model="conHuella"
+            label="Entrar con huella la próxima vez"
+            color="primary"
+            density="compact"
+            hide-details
+            inset
+            class="lg-check"
+          />
+
+          <v-btn
+            type="submit"
+            block
+            size="large"
+            variant="flat"
+            rounded="lg"
+            :loading="loading"
+            :disabled="!canSubmit"
+            class="lg-cta"
+          >
+            Entrar
+            <v-icon end size="18">mdi-arrow-right</v-icon>
+          </v-btn>
+        </v-form>
+
+        <p class="lg-help">
+          ¿Problemas para ingresar?
+          <a href="mailto:soporte@sanjuantecnologia.com">Contactar soporte</a>
+        </p>
+      </div>
+
+      <div class="lg-main__foot">© {{ year }} · POS 360 · San Juan Tecnología</div>
+    </main>
   </div>
 </template>
 
@@ -168,11 +147,8 @@ import { huellaDisponible, activarHuella } from "@/app/native/huella";
 const router = useRouter();
 const auth = useAuthStore();
 
-// Logo POS 360 — Versión final (logo redondo con gradiente brand #1488d1 → #121e47)
-// Es el mismo logo en ambos paneles para mantener consistencia de marca.
-const LOGO_FINAL = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
-const LOGO_BLUE  = LOGO_FINAL; // card derecha (fondo claro)
-const LOGO_WHITE = LOGO_FINAL; // panel izquierdo (fondo navy)
+// Logo POS 360 (carrito celeste): va sobre fondo blanco.
+const LOGO = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
 
 const identifier = ref("");
 const password   = ref("");
@@ -188,6 +164,13 @@ const loading = ref(false);
 const error   = ref(null);
 
 const year = new Date().getFullYear();
+
+const FEATS = [
+  { i: "mdi-storefront-outline", t: "Venta omnicanal", d: "Punto de venta y tienda online sincronizados." },
+  { i: "mdi-package-variant-closed", t: "Stock en red", d: "Stock real por sucursal y alertas de reposición." },
+  { i: "mdi-monitor-eye", t: "Monitoreo remoto", d: "Consultas y estado del sistema al instante." },
+  { i: "mdi-chart-box-outline", t: "Reportes de gestión", d: "Ventas y cierres de caja automáticos." },
+];
 
 const canSubmit = computed(
   () => !!identifier.value.trim() && !!password.value && !loading.value
@@ -212,342 +195,210 @@ async function submit() {
   }
 }
 </script>
-
 <style scoped>
-/* ══ BRAND PALETTE ══
-   Definidos como CSS vars para tocar el sistema entero desde un lugar.
-   - --brand-deep:  navy oscuro del logo (#121e47)
-   - --brand-light: celeste vivo del logo (#1488d1)
-*/
-.login-shell {
-  --brand-deep:  #121e47;
-  --brand-light: #1488d1;
-  --brand-deep-rgb:  18, 30, 71;
-  --brand-light-rgb: 20, 136, 209;
+/* Paleta del logo: navy #121e47 y celeste #1488d1. Login siempre en claro. */
+.lg {
+  --navy: #121e47;
+  --cel: #1488d1;
+  --tx: #121e47;
+  --tx2: #5b6478;
+  --line: #dfe4ec;
 
-  /* Login siempre en modo claro: ignorar tema global */
   color-scheme: light;
-  color: #1a1a1a;
-
-  position: relative;
   min-height: 100vh;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(ellipse at top left,  rgba(var(--brand-light-rgb), 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(var(--brand-deep-rgb),  0.10), transparent 55%),
-    linear-gradient(135deg, #f4f7fb 0%, #e8eef8 100%);
-  overflow: hidden;
-  padding: 24px;
-}
-
-/* Fondo decorativo: blobs con blur en colores marca */
-.login-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.50;
-  animation: floatY 12s ease-in-out infinite;
-}
-.blob--a {
-  width: 380px; height: 380px;
-  top: -120px; left: -80px;
-  background: radial-gradient(circle, var(--brand-deep), transparent 70%);
-}
-.blob--b {
-  width: 460px; height: 460px;
-  bottom: -160px; right: -120px;
-  background: radial-gradient(circle, var(--brand-light), transparent 70%);
-  animation-delay: -4s;
-}
-.blob--c {
-  width: 300px; height: 300px;
-  top: 35%; right: 30%;
-  background: radial-gradient(circle, #4ba9e0, transparent 70%);
-  opacity: 0.28;
-  animation-delay: -8s;
-}
-@keyframes floatY {
-  0%, 100% { transform: translateY(0) translateX(0); }
-  50%      { transform: translateY(-20px) translateX(15px); }
-}
-
-/* ══ GRID 2 columnas ══ */
-.login-grid {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 1100px;
   display: grid;
-  grid-template-columns: 1fr 460px;
-  gap: 32px;
-  align-items: stretch;
-  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  grid-template-columns: minmax(0, 1.1fr) minmax(420px, 1fr);
+  background: #fff;
+  color: var(--tx);
+
+  /* Tokens Vuetify locales: inputs y checkbox no heredan el modo oscuro */
+  --v-theme-surface: 255, 255, 255;
+  --v-theme-on-surface: 18, 30, 71;
+  --v-theme-background: 255, 255, 255;
+  --v-theme-on-background: 18, 30, 71;
+  --v-border-color: 18, 30, 71;
+  --v-border-opacity: 0.14;
 }
 
-@media (max-width: 960px) {
-  .login-grid { grid-template-columns: 1fr; max-width: 480px; }
-}
-
-/* ══ PANEL IZQUIERDO — gradiente exacto del logo ══ */
-.login-side {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 40px;
-  border-radius: 14px;
-  background: #1488d1;
-  color: #fff;
-  box-shadow:
-    0 20px 60px rgba(18, 30, 71, 0.35),
-    0 4px 12px rgba(18, 30, 71, 0.20);
+/* ══ MARCA ══ */
+.lg-side {
   position: relative;
   overflow: hidden;
-  min-height: 580px;
-}
-
-@media (max-width: 960px) {
-  .login-side { display: none; }
-}
-
-.login-side__top { z-index: 1; position: relative; }
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-/* Logo blanco flotante en el panel izquierdo (fondo azul) */
-.brand-logo {
-  width: 56px; height: 56px;
-  object-fit: contain;
-  display: block;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.30));
-  flex-shrink: 0;
-}
-.brand-text { line-height: 1.1; }
-.brand-title { font-size: 17px; font-weight: 500; }
-.brand-tagline { font-size: 11.5px; opacity: 0.85; }
-
-.login-side__hero { z-index: 1; position: relative; }
-.hero-title {
-  font-size: clamp(28px, 3.4vw, 38px);
-  font-weight: 500;
-  line-height: 1.1;
-  margin-bottom: 14px;
-  letter-spacing: -0.5px;
-}
-.hero-accent {
-  background: linear-gradient(90deg, #ffffff 0%, #a5d4f5 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.hero-sub {
-  font-size: 13.5px;
-  opacity: 0.88;
-  margin-bottom: 24px;
-  max-width: 92%;
-  line-height: 1.5;
-}
-.hero-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 48px 56px;
+  background: var(--navy);
+  color: #fff;
 }
-.hero-features li {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  padding: 12px 14px;
-  border-radius: 12px;
-  backdrop-filter: blur(6px);
-  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+.lg-side__grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
 }
-.hero-features li:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.20);
-  transform: translateX(2px);
+.lg-side__glow {
+  position: absolute;
+  width: 640px; height: 640px;
+  right: -220px; bottom: -260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20,136,209,.55), transparent 65%);
+  filter: blur(20px);
+}
+.lg-side > :not([aria-hidden]) { position: relative; z-index: 1; }
+
+.lg-side__top { display: flex; align-items: baseline; gap: 12px; }
+.lg-mark { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+.lg-mark__by { font-size: 12.5px; color: rgba(255,255,255,.6); }
+
+.lg-side__hero { max-width: 520px; }
+.lg-title {
+  font-size: clamp(32px, 3.6vw, 46px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -1px;
+  margin: 0 0 18px;
+}
+.lg-title span { color: #6fc0f2; }
+.lg-lead {
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(255,255,255,.75);
+  margin: 0 0 32px;
+  max-width: 440px;
 }
 
-.feat-ico {
+.lg-feats {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px 28px;
+}
+.lg-feats li { display: flex; gap: 12px; align-items: flex-start; }
+.lg-feats__ico {
   flex-shrink: 0;
-  margin-top: 2px;
-  padding: 6px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(20, 136, 209, 0.45), rgba(255, 255, 255, 0.10));
-  color: #fff !important;
-  width: 32px; height: 32px;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  background: rgba(20,136,209,.22);
+  border: 1px solid rgba(111,192,242,.25);
+  color: #8fd0f7;
 }
+.lg-feats__tx { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lg-feats__tx b { font-size: 14px; font-weight: 600; }
+.lg-feats__tx small { font-size: 12.5px; line-height: 1.4; color: rgba(255,255,255,.62); }
 
-.feat-body {
+.lg-side__foot { font-size: 12px; color: rgba(255,255,255,.5); }
+
+/* ══ FORMULARIO ══ */
+.lg-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.feat-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  color: #ffffff;
-  line-height: 1.2;
-}
-.feat-desc {
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.login-side__foot {
-  z-index: 1; position: relative;
-  font-size: 11.5px;
-  opacity: 0.75;
-  margin-top: 32px;
-}
-
-/* ══ PANEL DERECHO — Formulario ══ */
-.login-main {
-  display: flex;
   align-items: center;
   justify-content: center;
+  padding: 48px 32px 24px;
 }
-.login-card {
+.lg-form-wrap {
   width: 100%;
-  max-width: 460px;
-  padding: 36px 32px;
-  background: #ffffff;
-  border-radius: 14px;
-  border: 1px solid rgba(18, 30, 71, 0.08);
-  box-shadow:
-    0 20px 60px rgba(0,0,0,0.10),
-    0 4px 12px rgba(0,0,0,0.06);
+  max-width: 380px;
+  margin: auto 0;
+  animation: lgIn .45s cubic-bezier(.4,0,.2,1);
 }
-.login-card__head {
-  text-align: center;
-  margin-bottom: 22px;
+@keyframes lgIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
 }
-.login-logo {
-  width: 160px; height: 160px;
-  margin: 0 auto 16px;
-  object-fit: contain;
+.lg-logo {
   display: block;
+  width: 132px; height: 132px;
+  object-fit: contain;
+  margin: 0 0 18px -6px;
 }
-.login-title {
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-  margin-bottom: 4px;
-  color: #121e47;
+.lg-h {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+  margin: 0 0 4px;
+  color: var(--tx);
 }
-.login-sub {
+.lg-sub { font-size: 14px; color: var(--tx2); margin: 0 0 26px; }
+
+.lg-form { display: flex; flex-direction: column; }
+.lg-lbl {
   font-size: 13px;
-  color: rgba(18, 30, 71, 0.6);
-  margin: 0;
+  font-weight: 600;
+  color: var(--tx);
+  margin: 0 0 6px;
 }
+.lg-input { margin-bottom: 16px; }
+.lg-input :deep(.v-field) { border-radius: 10px; background: #f7f9fc; }
+.lg-input :deep(.v-field--focused) {
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(20,136,209,.16);
+}
+.lg-input :deep(.v-field--focused .v-field__outline__start),
+.lg-input :deep(.v-field--focused .v-field__outline__end),
+.lg-input :deep(.v-field--focused .v-field__outline__notch::before),
+.lg-input :deep(.v-field--focused .v-field__outline__notch::after) {
+  border-color: var(--cel) !important;
+}
+.lg-input :deep(input::placeholder) { color: #9aa3b2; opacity: 1; }
 
-/* Form */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.login-input :deep(.v-field) {
-  border-radius: 12px;
-}
-.login-input :deep(.v-field--focused) {
-  box-shadow: 0 0 0 3px rgba(20, 136, 209, 0.18);
-}
-.login-input :deep(.v-field--focused .v-field__outline__start),
-.login-input :deep(.v-field--focused .v-field__outline__end),
-.login-input :deep(.v-field--focused .v-field__outline__notch::before),
-.login-input :deep(.v-field--focused .v-field__outline__notch::after) {
-  border-color: #1488d1 !important;
-}
+.lg-check { margin: -4px 0 8px -8px; }
+.lg-check :deep(.v-label) { font-size: 13.5px; color: var(--tx2); opacity: 1; }
 
-.login-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: -4px;
-}
-.login-remember :deep(.v-label) { font-size: 13px; }
-
-.login-cta {
-  margin-top: 6px;
-  height: 48px !important;
-  font-size: 14.5px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.3px;
+.lg-cta {
+  margin-top: 10px;
+  height: 50px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: .2px;
   text-transform: none;
-  background: #1488d1 !important;
+  background: var(--cel) !important;
   color: #fff !important;
-  box-shadow: 0 8px 22px rgba(20, 136, 209, 0.35) !important;
-  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  transition: box-shadow .15s, background .15s;
 }
-.login-cta:hover:not(.v-btn--disabled):not(.v-btn--loading) {
-  transform: translateY(-1px);
-  filter: brightness(1.06);
-  box-shadow: 0 12px 30px rgba(20, 136, 209, 0.45) !important;
+.lg-cta:hover:not(.v-btn--disabled):not(.v-btn--loading) {
+  background: #0f78ba !important;
+  box-shadow: 0 8px 22px rgba(20,136,209,.32);
 }
-.login-cta.v-btn--disabled {
-  opacity: 0.55;
+/* Deshabilitado: gris neutro y legible, no un celeste lavado */
+.lg-cta.v-btn--disabled {
+  background: #e9edf3 !important;
+  color: #8a93a5 !important;
+  opacity: 1;
 }
+.lg-cta.v-btn--disabled :deep(.v-btn__overlay) { opacity: 0; }
 
-.login-alert :deep(.v-alert__content) { font-size: 13px; }
+.lg-alert :deep(.v-alert__content) { font-size: 13px; }
 
-.login-foot {
-  text-align: center;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px dashed rgba(18, 30, 71, 0.18);
+.lg-help {
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--tx2);
 }
-.login-foot__hint {
-  font-size: 12px;
-  color: rgba(18, 30, 71, 0.55);
-}
-.login-foot__hint a {
-  color: #1488d1;
-  font-weight: 400;
-  text-decoration: none;
-}
-.login-foot__hint a:hover { text-decoration: underline; }
+.lg-help a { color: var(--cel); font-weight: 600; text-decoration: none; }
+.lg-help a:hover { text-decoration: underline; }
 
-/* Login forzado a tema claro: tokens Vuetify locales para que inputs,
-   checkbox, alerts y demás componentes no hereden el dark mode global. */
-.login-shell,
-:is(.v-theme--dark, .v-theme--adminDark) .login-shell {
-  --v-theme-surface: 255, 255, 255;
-  --v-theme-on-surface: 26, 26, 26;
-  --v-theme-background: 255, 255, 255;
-  --v-theme-on-background: 26, 26, 26;
-  --v-border-color: 18, 30, 71;
-  --v-border-opacity: 0.12;
-  background:
-    radial-gradient(ellipse at top left,  rgba(var(--brand-light-rgb), 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(var(--brand-deep-rgb),  0.10), transparent 55%),
-    linear-gradient(135deg, #f4f7fb 0%, #e8eef8 100%);
-}
+.lg-main__foot { display: none; font-size: 12px; color: #9aa3b2; margin-top: 24px; }
 
-@media (max-width: 600px) {
-  .login-shell { padding: 12px; }
-  .login-card { padding: 28px 22px; border-radius: 14px; }
-  .login-title { font-size: 20px; }
+/* ══ RESPONSIVE ══ */
+@media (max-width: 1100px) {
+  .lg-side { padding: 40px; }
+  .lg-feats { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 860px) {
+  .lg { grid-template-columns: 1fr; }
+  .lg-side { display: none; }
+  .lg-main { padding: calc(32px + env(safe-area-inset-top, 0px)) 22px 20px; }
+  .lg-main__foot { display: block; }
+  .lg-logo { width: 108px; height: 108px; }
 }
 </style>
