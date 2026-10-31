@@ -30,7 +30,11 @@
       <div v-if="!paraCampo" class="m-esc-modos" role="tablist">
         <button v-for="m in MODOS" :key="m.v" type="button" role="tab" :class="{ on: modo === m.v }" :aria-selected="modo === m.v" @click="elegir(m.v)">{{ m.t }}</button>
       </div>
-      <router-link :to="{ name: 'lectorCodigo', query: { modo, para: route.query.para } }" replace class="m-lnk">Ingresar código</router-link>
+      <div class="lc-links">
+        <router-link :to="{ name: 'lectorCodigo', query: { modo, para: route.query.para } }" replace class="m-lnk">Ingresar código</router-link>
+        <!-- Alta sin código (plan del 2026-10-31): el producto se crea y el sistema le genera el suyo -->
+        <router-link v-if="!paraCampo && modo === 'consultar' && auth.isAdmin" :to="{ name: 'productNew' }" replace class="m-lnk">Sin código</router-link>
+      </div>
     </div>
     <MovilAviso alto="150px" />
   </MovilVista>
@@ -104,3 +108,7 @@ const { video, estado, linterna, puedeLinterna, alternarLinterna, olvidarUltimo,
 });
 </script>
 
+
+<style scoped>
+.lc-links { display: flex; justify-content: center; gap: 28px; }
+</style>

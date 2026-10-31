@@ -788,7 +788,10 @@ function openEdit(id) {
   router.push({ name: "productEdit", params: { id: pid } });
 }
 function openCreate() {
-  router.push({ name: "productNew" });
+  // Teléfono: el alta empieza por el escáner (si el código existe abre la ficha;
+  // si no, "Crear producto" con el código puesto). "Sin código" va directo al alta.
+  if (mobile.value && router.hasRoute("lector")) router.push({ name: "lector", query: { modo: "consultar" } });
+  else router.push({ name: "productNew" });
 }
 
 /* Click en KPI "Promos activas" → toggle filtro promo=active */

@@ -2,7 +2,7 @@
   Consulta de producto (maqueta, "resultado"): foto, nombre, código y rubro,
   precio grande, los otros precios (el costo sólo el dueño), stock por
   sucursal y datos. Dueño: "Editar producto"; cajero: "Escanear otro".
-  Enlaces Derivar y Agregar a la venta; en la APK, Imprimir etiqueta y la
+  Enlace Derivar (en el teléfono no se vende: sin "Agregar a la venta"); en la APK, Imprimir etiqueta y la
   hora de la copia si el dato salió del catálogo sin conexión.
 -->
 <template>
@@ -78,7 +78,6 @@
         <router-link v-if="esAdmin" :to="{ name: 'productEdit', params: { id: p.id } }" class="m-btn">Editar producto</router-link>
         <router-link v-else :to="{ name: 'lector', query: { modo: 'consultar' } }" replace class="m-btn">Escanear otro</router-link>
         <div class="m-centro"><button type="button" class="m-lnk" @click="derivar">Derivar</button></div>
-        <div class="m-centro pc-pegado"><router-link :to="{ name: 'pos', query: { agregar: p.id } }" class="m-lnk">Agregar a la venta</router-link></div>
         <div v-if="enApk" class="m-centro pc-pegado"><button type="button" class="m-lnk" @click="imprimir">Imprimir etiqueta</button></div>
       </div>
     </template>
