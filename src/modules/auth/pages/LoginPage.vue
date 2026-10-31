@@ -181,11 +181,11 @@ async function submit() {
   flex-direction: column;
   justify-content: space-between;
   gap: 32px;
-  padding: 48px 64px 24px;
+  padding: 48px 56px 24px;
   background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 80%);
   color: var(--m-banda-ink);
 }
-.lg-side__cuerpo { margin: auto 0; max-width: 700px; }
+.lg-side__cuerpo { margin: auto 0; max-width: 780px; }
 .lg-side__logo {
   display: block;
   width: 180px;
@@ -204,6 +204,7 @@ async function submit() {
 
 /* Flujo de canales (LoginFlujo.vue): se achica con zoom si falta lugar */
 .lg-side__flujo { margin-top: 8px; }
+@media (max-width: 1520px) { .lg-side__flujo { zoom: 0.92; } }
 @media (max-height: 880px) { .lg-side__flujo { zoom: 0.85; } }
 @media (max-height: 760px) { .lg-side__flujo { zoom: 0.72; } }
 @media (max-width: 1080px) and (min-width: 960px) { .lg-side__flujo { zoom: 0.68 !important; } }
@@ -280,7 +281,7 @@ async function submit() {
 
 @media (max-width: 1180px) {
   .lg-side { padding: 40px 40px 24px; }
-  .lg-side__flujo { zoom: 0.8; }
+  .lg-side__flujo { zoom: 0.74; }
 }
 
 /* Teléfono (corte del kit): franja de marca arriba, ingreso debajo */
