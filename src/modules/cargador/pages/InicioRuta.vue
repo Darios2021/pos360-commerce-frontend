@@ -1,17 +1,15 @@
 <!--
-  Inicio: en el teléfono el Inicio del cargador (maqueta diseno-cargador);
-  en escritorio el tablero de siempre (DashboardHome), sin cambios.
+  Inicio: siempre DashboardHome. En el teléfono, DashboardHome muestra
+  InicioMovil (banda del día y actividad, uno por perfil; plan del 2026-10-31);
+  en escritorio, el tablero de siempre. InicioCargador (maqueta diseno-cargador,
+  con Vender) quedó afuera: en el teléfono no se vende.
 -->
 <template>
-  <InicioCargador v-if="mobile" />
-  <DashboardHome v-else />
+  <DashboardHome />
 </template>
 
 <script setup>
 import { defineAsyncComponent } from "vue";
-import { useDisplay } from "vuetify";
 
 const DashboardHome = defineAsyncComponent(() => import("@/modules/dashboard/pages/DashboardHome.vue"));
-const InicioCargador = defineAsyncComponent(() => import("../components/InicioCargador.vue"));
-const { mobile } = useDisplay();
 </script>
