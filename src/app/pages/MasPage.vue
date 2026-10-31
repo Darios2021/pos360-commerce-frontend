@@ -1,8 +1,9 @@
 <!--
-  Más (maqueta diseno-cargador): arriba la cuenta y el Asistente; después
-  Stock (Conteo, Derivaciones, Etiquetas) y Mostrador (Vender, Ventas, Caja)
-  como en la maqueta, y el resto de los módulos del menú de escritorio con
-  sus permisos (no se quitó ninguno). Al final Cuenta: modo oscuro, en la
+  Más (plan del teléfono, 2026-10-31): arriba la cuenta; después Stock
+  (Conteo, Derivaciones, Etiquetas) y Operación (Servicio técnico, Caja,
+  Presupuestos, Impresión), y el resto de los módulos del menú de escritorio
+  con sus permisos. En el teléfono no se vende: Vender salió; Ventas y el
+  Asistente están en la barra inferior. Al final Cuenta: modo oscuro, en la
   APK huella y catálogo sin conexión, y cerrar sesión.
 
   Antes: todo lo que no entra en la barra inferior del teléfono (informe 2.1).
@@ -21,14 +22,6 @@
       </router-link>
     </div>
 
-    <!-- El asistente a la vista, no dentro de un grupo (sólo si el comercio lo tiene). -->
-    <div v-if="usaAsistente && hasRoute('asistente')" class="m-pz">
-      <router-link :to="{ name: 'asistente' }" class="m-it mas-it">
-        <v-icon size="24" class="mas-ic">mdi-forum-outline</v-icon>
-        <span class="tx"><b>Asistente</b></span>
-        <v-icon size="20" class="chev">mdi-chevron-right</v-icon>
-      </router-link>
-    </div>
 
     <template v-for="g in grupos" :key="g.titulo">
       <div class="m-rot">{{ g.titulo }}</div>
@@ -97,16 +90,6 @@ function hasRoute(name) {
   try { return router.hasRoute(name) === true; } catch { return false; }
 }
 
-// Asistente: igual que el menú de escritorio, sólo si el servidor lo habilitó.
-const usaAsistente = ref(false);
-onMounted(async () => {
-  try {
-    const { data } = await http.get("asistente/estado");
-    usaAsistente.value = (data?.puede || []).length > 0;
-  } catch {
-    usaAsistente.value = false;
-  }
-});
 
 const { pendingForMe } = useTransferNotifications();
 // Por recibir en la sucursal del usuario (el composable le da todas al admin).
@@ -165,16 +148,12 @@ const grupos = computed(() => {
       ],
     },
     {
-      titulo: "Mostrador",
-      items: [
-        it("pos", "Vender", "mdi-cash-register"),
-        it("posSales", "Ventas", "mdi-receipt-text-outline"),
-        it("caja", "Caja", "mdi-cash-multiple"),
-      ],
-    },
-    {
+      // En el teléfono no se vende (2026-10-31): Vender sale; Ventas y Asistente
+      // están en la barra. Servicio técnico y Caja quedan acá.
       titulo: "Operación",
       items: [
+        it("serviceOrders", "Servicio técnico", "mdi-wrench-outline"),
+        it("caja", "Caja", "mdi-cash-multiple"),
         it("budgets", "Presupuestos", "mdi-file-document-edit-outline"),
         it("posPrinter", "Impresión", "mdi-printer-pos-outline"),
       ],

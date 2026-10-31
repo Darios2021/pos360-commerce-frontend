@@ -1,26 +1,16 @@
 <!--
-  AppBottomNav: barra inferior del teléfono como cargador y consultor
-  (maqueta diseno-cargador). La misma para el dueño y el cajero:
-    Inicio · Productos · Escanear (botón central) · Derivaciones · Más
-  Vender salió de la barra: está en Inicio y en Más, con su flujo de siempre.
-  Badge de Derivaciones: por recibir en la sucursal del usuario. Badge de
-  Más: pedidos web sin preparar.
+  AppBottomNav: barra inferior del teléfono (plan del 2026-10-31,
+  docs/diseno-movil/plan-telefono-2026-10-31.md). En el teléfono no se vende.
+    Dueño, admin y cajero: Inicio · Ventas · Productos · Asistente · Más
+    Técnico (sin rol de admin): Inicio · Órdenes · Productos · Asistente · Más
+  El escáner vive en el buscador de Productos; Derivaciones, Caja y Servicio
+  técnico, en Más. Asistente sólo si el servidor lo habilita para el usuario.
+  Badge de Más: pedidos web sin preparar más derivaciones por recibir.
 -->
 <template>
   <nav class="bn" aria-label="Navegación principal">
     <template v-for="item in items" :key="item.name">
       <button
-        v-if="item.lector"
-        type="button"
-        class="bn__it bn__lector"
-        aria-label="Escanear"
-        @click="go(item)"
-      >
-        <span class="m-bola"><v-icon size="28">mdi-barcode-scan</v-icon></span>
-        <span class="bn__lab">{{ item.label }}</span>
-      </button>
-      <button
-        v-else
         type="button"
         class="bn__it"
         :class="{ on: isActive(item) }"
@@ -38,7 +28,9 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
+import http from "@/app/api/http";
+import { useAuthStore } from "@/app/store/auth.store";
 import { useRoute, useRouter } from "vue-router";
 
 const props = defineProps({
@@ -51,8 +43,37 @@ const props = defineProps({
 const route = useRoute();
 const router = useRouter();
 
+const auth = useAuthStore();
+
+// Técnico: la marca vive en service_technicians; se pregunta una vez por sesión.
+const esTecnico = ref(false);
+const usaAsistente = ref(false);
+onMounted(async () => {
+  const uid = Number(auth.user?.id || 0);
+  const cache = sessionStorage.getItem("bn:tecnico:" + uid);
+  if (cache != null) esTecnico.value = cache === "1";
+  else {
+    try {
+      const { data } = await http.get("admin/service/technicians");
+      const lista = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      esTecnico.value = lista.some((t) => Number(t.id) === uid);
+    } catch { esTecnico.value = false; }
+    try { sessionStorage.setItem("bn:tecnico:" + uid, esTecnico.value ? "1" : "0"); } catch {}
+  }
+  try {
+    const { data } = await http.get("asistente/estado");
+    usaAsistente.value = (data?.puede || []).length > 0;
+  } catch { usaAsistente.value = false; }
+});
+const soloTecnico = computed(() => esTecnico.value && auth.isAdmin !== true);
+
 const items = computed(() => [
   { name: "home", label: "Inicio", icon: "mdi-home-outline", to: { name: "home" } },
+  soloTecnico.value
+    ? { name: "serviceOrders", label: "Órdenes", icon: "mdi-wrench-outline", to: { name: "serviceOrders" },
+        activeNames: ["serviceOrders", "serviceOrderEdit", "serviceIntake", "serviceOrderReceived"] }
+    : { name: "posSales", label: "Ventas", icon: "mdi-receipt-text-outline", to: { name: "posSales" },
+        activeNames: ["posSales", "posSaleDetail"] },
   {
     name: "products",
     label: "Productos",
@@ -60,16 +81,12 @@ const items = computed(() => [
     to: { name: "products" },
     activeNames: ["products", "productNew", "productEdit", "productView", "productProfile", "productoConsulta"],
   },
-  { name: "lector", label: "Escanear", lector: true, to: { name: "lector" } },
+  usaAsistente.value ? { name: "asistente", label: "Asistente", icon: "mdi-creation", to: { name: "asistente" } } : null,
   {
-    name: "transfers",
-    label: "Derivaciones",
-    icon: "mdi-swap-horizontal",
-    to: { name: "transfers" },
-    badge: Number(props.transferUnreadCount || 0),
+    name: "mas", label: "Más", icon: "mdi-menu", to: { name: "mas" },
+    badge: Number(props.pedidosPendientes || 0) + Number(props.transferUnreadCount || 0),
   },
-  { name: "mas", label: "Más", icon: "mdi-menu", to: { name: "mas" }, badge: Number(props.pedidosPendientes || 0) },
-]);
+].filter((it) => it && router.hasRoute(it.to.name)));
 
 function isActive(item) {
   if (Array.isArray(item.activeNames)) return item.activeNames.includes(route.name);
@@ -144,6 +161,4 @@ function go(item) {
 }
 .bn__lab { white-space: nowrap; }
 .bn { overflow: visible; }
-.bn__lector { color: var(--m-tinta); }
-.bn__lector:active .m-bola { background: var(--m-accion-osc); }
 </style>
