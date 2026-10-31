@@ -267,43 +267,28 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   position: relative;
   width: 196px; height: 56px;
   box-sizing: border-box;
-  padding: 0 12px 0 8px;
+  padding: 0 12px 0 14px;
   border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(8, 14, 40, 0.28);
-  animation: fl-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--i) * 0.07s) both;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  animation:
+    fl-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--i) * 0.07s) both,
+    fl-tile-on 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
 }
-.fl-tile__ico {
-  width: 38px; height: 38px; flex: none;
-  border-radius: 10px;
-  display: grid; place-items: center;
-  background: var(--m-accion-tinte, #eef7fd);
-}
-.fl-tile__ico .v-icon { color: #0f6fae; }
-.fl-tile__tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.fl-tile__tx b { font-size: 13px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-tile__ico { flex: none; display: grid; place-items: center; }
+.fl-tile__ico .v-icon { color: #a6d8fa; }
+.fl-tile__tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.fl-tile__tx b { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fl-tile__tx small {
-  font-size: 11px; color: #5a6678; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  opacity: 0.6;
+  font-size: 11.5px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   animation: fl-destello-desc 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
 }
 
-/* Destello: un canal por vez en ranuras de 3 s (6 canales = 18 s). Se enciende el
-   contorno de la pastilla y su descripción, sale el paquete y al llegar suma en la tarjeta. */
-.fl-tile::after {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border-radius: 14px;
-  border: 2px solid #6fc0f2;
-  box-shadow: 0 0 16px rgba(111, 192, 242, 0.55);
-  opacity: 0;
-  animation: fl-destello 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
-  pointer-events: none;
-}
+/* Canal que manda (ranuras de 3 s, 6 canales = 18 s): se aclara el fondo, el borde
+   pasa a celeste y su descripción también. Sale el paquete y al llegar suma en la tarjeta. */
 
 /* ── Tarjeta que recibe y combina ── */
 .fl-stack {
@@ -468,19 +453,19 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   0% { opacity: 0; transform: translateY(12px); }
   100% { opacity: 1; transform: none; }
 }
-@keyframes fl-destello {
-  0% { opacity: 0; }
-  1.2% { opacity: 1; }
-  14.6% { opacity: 1; }
-  16.4% { opacity: 0; }
-  100% { opacity: 0; }
-}
 @keyframes fl-destello-desc {
-  0% { opacity: 0.6; color: #5a6678; }
-  1.2% { opacity: 1; color: #0f6fae; }
-  14.6% { opacity: 1; color: #0f6fae; }
-  16.4% { opacity: 0.6; color: #5a6678; }
-  100% { opacity: 0.6; color: #5a6678; }
+  0% { color: rgba(255, 255, 255, 0.55); }
+  1.2% { color: #a6d8fa; }
+  14.6% { color: #a6d8fa; }
+  16.4% { color: rgba(255, 255, 255, 0.55); }
+  100% { color: rgba(255, 255, 255, 0.55); }
+}
+@keyframes fl-tile-on {
+  0% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
+  1.2% { background: rgba(255, 255, 255, 0.12); border-color: #6fc0f2; }
+  14.6% { background: rgba(255, 255, 255, 0.12); border-color: #6fc0f2; }
+  16.4% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
+  100% { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
 }
 @keyframes fl-contorno {
   0% { stroke-dashoffset: 1; opacity: 1; }
@@ -491,7 +476,7 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-line, .fl-tile, .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect, .fl-tile::after, .fl-tile__tx small { animation: none; }
+  .fl-line, .fl-tile, .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect, .fl-tile__tx small { animation: none; }
   .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect { opacity: 0; }
   .fl-card { animation: none; }
 }
