@@ -3,7 +3,7 @@
      (docs/diseno-movil, pantalla 1 "Ingreso"): Usuario o email, Contraseña,
      Mantener sesión y Entrar. Tokens --m-* para los dos temas.
      Escritorio: banda de marca a la izquierda y panel de ingreso a altura completa.
-     Teléfono (menos de 960 px): franja de marca arriba con el logo y el ingreso debajo. -->
+     Teléfono (menos de 960 px): sin la banda; la misma tarjeta de ingreso sobre el fondo variante. -->
 <template>
   <div class="lg m-vista">
     <!-- ══ MARCA ══ -->
@@ -300,23 +300,16 @@ async function submit() {
   .lg-side__flujo { zoom: 0.74; }
 }
 
-/* Teléfono (corte del kit): franja de marca arriba, ingreso debajo */
+/* Teléfono (corte del kit): la misma tarjeta sobre el fondo variante, sin la banda */
 @media (max-width: 959.98px) {
-  .lg { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .lg-side {
-    padding: calc(32px + env(safe-area-inset-top, 0px)) 16px 32px;
-    align-items: center;
-    gap: 0;
+  .lg { grid-template-columns: 1fr; }
+  .lg-side { display: none; }
+  .lg-main {
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   }
-  .lg-side__cuerpo { display: none; }
-  .lg-side__logo { display: block; width: 168px; margin: -20px auto; }
-  .lg-form__cab { display: none; }
-  .lg-main { background: var(--m-pieza); }
-  .lg-side__tit,
-  .lg-side__flujo,
-  .lg-pie--banda { display: none; }
-  .lg-main { padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
-  .lg-form { margin: 0 0 auto; max-width: none; padding: 0; background: none; border: 0; border-radius: 0; }
-  .lg-pie--main { display: flex; margin-top: 32px; }
+  .lg-form { max-width: 440px; padding: 0 20px 20px; }
+  .lg-form__cab { margin: 0 -20px 2px; padding: 14px 20px; }
+  .lg-pie--main { display: flex; max-width: 440px; }
 }
+
 </style>
