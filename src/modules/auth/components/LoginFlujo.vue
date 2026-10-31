@@ -49,28 +49,19 @@
       <div class="fl-stack">
         <article ref="cardEl" class="fl-card">
           <header class="fl-chead">
-            <span class="fl-cico"><v-icon size="20">mdi-store-outline</v-icon></span>
-            <span class="fl-cmeta"><b>Hoy en el negocio</b><small>Sucursal Centro · {{ hora }}</small></span>
             <span class="fl-ctotal" :class="{ sube: [0, 1, 3].includes(llego) }">
               <small>Ventas de hoy</small>
               <b class="m-num">{{ pesos(totalVentas) }}</b>
             </span>
+            <span class="fl-chora m-num">{{ hora }}</span>
           </header>
 
           <div class="fl-grilla">
             <div v-for="(f, i) in filas" :key="f.t" class="fl-celda" :class="{ llega: llego === i }">
-              <span class="fl-celda__rot"><v-icon size="15">{{ CANALES[i].i }}</v-icon>{{ f.t }}</span>
+              <span class="fl-celda__rot"><v-icon size="14">{{ CANALES[i].i }}</v-icon>{{ f.t }}</span>
               <span class="fl-celda__v m-num">{{ f.v }}</span>
-              <small class="fl-celda__det">{{ f.d }}</small>
-              <em v-if="llego === i && delta" class="fl-celda__delta m-num">{{ delta }}</em>
             </div>
           </div>
-
-          <footer class="fl-cpie">
-            <span class="fl-cpie__punto" :class="{ on: llego >= 0 }"></span>
-            <span v-if="ultimaEntrada">Última entrada: <b>{{ ultimaEntrada }}</b> · {{ hora }}</span>
-            <span v-else>Recibe de 6 canales</span>
-          </footer>
         </article>
         <!-- Contorno medido sobre la tarjeta real (sin estirar), así sigue su radio de 12 px -->
         <svg v-if="caja.w" class="fl-trace" :viewBox="`0 0 ${caja.w} ${caja.h}`" fill="none">
@@ -121,14 +112,14 @@ const BASE = () => ({
   deriv: { n: 1, u: 8 },
 });
 const est = reactive(BASE());
-// Cada paso suma lo que trae el paquete y devuelve el texto del cambio.
+// Cada paso suma lo que trae el paquete.
 const PASO = [
-  () => { est.mostrador.n += 1; est.mostrador.p += 39500; return "+ $ 39.500"; },
-  () => { est.tienda.n += 1; est.tienda.p += 66600; return "+ $ 66.600"; },
-  () => { est.presup.n += 1; est.presup.p += 866500; return "+ 1"; },
-  () => { est.servicio.n += 1; est.servicio.p += 96000; return "+ $ 96.000"; },
-  () => { est.deriv.n += 1; est.deriv.u += 15; return "+ 15 u."; },
-  () => "recalculado", // el asistente no suma: recalcula con lo que juntaron los demás
+  () => { est.mostrador.n += 1; est.mostrador.p += 39500; },
+  () => { est.tienda.n += 1; est.tienda.p += 66600; },
+  () => { est.presup.n += 1; est.presup.p += 866500; },
+  () => { est.servicio.n += 1; est.servicio.p += 96000; },
+  () => { est.deriv.n += 1; est.deriv.u += 15; },
+  () => {}, // el asistente no suma: el ticket promedio se recalcula con lo que juntaron los demás
 ];
 
 const totalVentas = computed(() => est.mostrador.p + est.tienda.p + est.servicio.p);
@@ -139,7 +130,7 @@ const filas = computed(() => [
   { t: "Presupuestos", d: `${est.presup.n} abiertos`, v: pesos(est.presup.p) },
   { t: "Servicio técnico", d: `${est.servicio.n} órdenes`, v: pesos(est.servicio.p) },
   { t: "Derivaciones", d: `${est.deriv.n} en camino`, v: `${est.deriv.u} u.` },
-  { t: "Asistente IA", d: "Ticket promedio", v: pesos(Math.round(totalVentas.value / operaciones.value)) },
+  { t: "Ticket promedio", d: "", v: pesos(Math.round(totalVentas.value / operaciones.value)) },
 ]);
 
 // Reloj de la ilustración, alineado con las animaciones CSS: el paquete del canal i
@@ -149,8 +140,6 @@ const llego = ref(-1);
 const cardEl = ref(null);
 const caja = reactive({ w: 0, h: 0 });
 let ro = null;
-const delta = ref("");
-const ultimaEntrada = ref("");
 const minutos = ref(24);
 const hora = computed(() => `19:${String(minutos.value).padStart(2, "0")}`);
 let t0 = 0, ultimo = -1, timer = null;
@@ -170,8 +159,7 @@ onMounted(() => {
     ultimo = paso;
     const i = paso % CANALES.length;
     if (i === 0 && paso > 0) Object.assign(est, BASE());
-    delta.value = PASO[i]();
-    ultimaEntrada.value = CANALES[i].t;
+    PASO[i]();
     minutos.value = 24 + (paso % CANALES.length) * 4;
     llego.value = i;
     setTimeout(() => { if (llego.value === i) llego.value = -1; }, 1800);
@@ -295,17 +283,17 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   position: absolute;
   right: 0;
   top: 50%;
-  width: 456px;
+  width: 440px;
   transform: translateY(-50%);
   z-index: 4;
 }
 .fl-card {
   box-sizing: border-box;
   width: 100%;
-  padding: 16px;
+  padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   background: var(--m-pieza);
   color: var(--m-tinta);
   border-radius: 12px;
@@ -313,28 +301,19 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   animation: fl-entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
 }
 
-/* Encabezado */
-.fl-chead { display: flex; align-items: center; gap: 12px; }
-.fl-cico {
-  width: 40px; height: 40px; flex: none;
-  border-radius: 10px;
-  display: grid; place-items: center;
-  background: var(--m-accion);
-}
-.fl-cico .v-icon { color: #fff; }
-.fl-cmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
-.fl-cmeta b { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fl-cmeta small { font-size: 12px; color: var(--m-suave); font-variant-numeric: tabular-nums; }
-.fl-ctotal { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
-.fl-ctotal small { font-size: 11px; font-weight: 600; color: var(--m-suave); }
-.fl-ctotal b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; transition: color 0.6s; }
+/* Encabezado: solo el total del día y la hora */
+.fl-chead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 2px 4px 0; }
+.fl-ctotal { display: flex; flex-direction: column; line-height: 1.15; }
+.fl-ctotal small { font-size: 12px; font-weight: 600; color: var(--m-suave); }
+.fl-ctotal b { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; transition: color 0.6s; }
 .fl-ctotal.sube b { color: var(--m-accion); transition: color 0.15s; }
+.fl-chora { font-size: 12px; color: var(--m-suave); padding-bottom: 4px; }
 
-/* Grilla de canales */
+/* Grilla de canales: rótulo y cifra, separados por líneas finas */
 .fl-grilla {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  border-top: 1px solid var(--m-linea2);
 }
 .fl-celda {
   position: relative;
@@ -342,51 +321,23 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding: 10px 12px 10px;
-  border-radius: 10px;
-  background: var(--m-variante);
-  box-shadow: inset 0 0 0 1px transparent;
-  transition: background 0.6s, box-shadow 0.6s;
+  padding: 12px 4px 10px;
+  border-bottom: 1px solid var(--m-linea2);
+  transition: background 0.6s;
 }
+.fl-celda:nth-child(3n + 2),
+.fl-celda:nth-child(3n + 3) { padding-left: 14px; border-left: 1px solid var(--m-linea2); }
+.fl-celda:nth-last-child(-n + 3) { border-bottom: 0; padding-bottom: 4px; }
 .fl-celda__rot {
   display: flex; align-items: center; gap: 5px; min-width: 0;
   font-size: 11.5px; font-weight: 600; color: var(--m-suave);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.fl-celda__rot .v-icon { color: var(--m-suave); flex: none; transition: color 0.6s; }
-.fl-celda__v { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; transition: color 0.6s; }
-.fl-celda__det { font-size: 11px; color: var(--m-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Lo que trajo el paquete, arriba a la derecha de la celda */
-.fl-celda__delta {
-  position: absolute; top: -9px; right: 8px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--m-accion);
-  color: #fff;
-  font-style: normal; font-size: 10.5px; font-weight: 800; white-space: nowrap;
-  box-shadow: 0 4px 10px rgba(15, 111, 174, 0.3);
-  animation: fl-delta 1.8s ease-out both;
-}
-/* Llega el paquete del canal: la celda se enciende y su cifra cambia */
-.fl-celda.llega {
-  background: var(--m-pieza);
-  box-shadow: inset 0 0 0 2px var(--m-accion), 0 6px 16px rgba(15, 111, 174, 0.18);
-  transition: background 0.15s, box-shadow 0.15s;
-}
+.fl-celda__rot .v-icon { color: var(--m-suave); flex: none; opacity: 0.8; transition: color 0.6s; }
+.fl-celda__v { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; transition: color 0.6s; }
+/* Llega el paquete del canal: su cifra y su ícono pasan al azul de acción */
 .fl-celda.llega .fl-celda__v,
-.fl-celda.llega .fl-celda__rot .v-icon { color: var(--m-accion); transition: color 0.15s; }
-
-/* Pie: qué fue lo último que entró */
-.fl-cpie {
-  display: flex; align-items: center; gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--m-linea2);
-  font-size: 12px; color: var(--m-suave);
-  font-variant-numeric: tabular-nums;
-}
-.fl-cpie b { color: var(--m-tinta); font-weight: 700; }
-.fl-cpie__punto { width: 6px; height: 6px; border-radius: 50%; background: var(--m-gris); flex: none; transition: background 0.3s; }
-.fl-cpie__punto.on { background: var(--m-accion); }
+.fl-celda.llega .fl-celda__rot .v-icon { color: var(--m-accion); opacity: 1; transition: color 0.15s; }
 
 /* Contorno que se dibuja alrededor de la tarjeta de arriba */
 .fl-trace {
@@ -442,12 +393,6 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   0% { opacity: 0.9; transform: scale(0.4); }
   35% { opacity: 0; transform: scale(2.6); }
   100% { opacity: 0; transform: scale(2.6); }
-}
-@keyframes fl-delta {
-  0% { opacity: 0; transform: translateY(4px); }
-  15% { opacity: 1; transform: none; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
 }
 @keyframes fl-entra {
   0% { opacity: 0; transform: translateY(12px); }
