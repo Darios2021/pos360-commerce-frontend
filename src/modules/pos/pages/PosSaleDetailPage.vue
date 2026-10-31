@@ -1,6 +1,49 @@
 <!-- src/modules/pos/pages/PosSaleDetailPage.vue -->
 <template>
-  <div class="vd">
+  <!-- Teléfono (pantalla 9, plan del 2026-10-31): datos, artículos y pagos en
+       piezas del kit; "Compartir ticket" y el enlace "Anular venta". -->
+  <div v-if="mobile" class="vdm m-vista">
+    <div v-if="loading" class="m-pz"><div class="m-it"><span class="tx"><small>Cargando…</small></span></div></div>
+    <div v-else-if="!sale" class="m-pz"><div class="m-it"><span class="tx"><small>Venta no encontrada</small></span></div></div>
+    <template v-else>
+      <div class="vdm-est">
+        <span class="m-est" :class="sale.status === 'CANCELLED' ? 'no' : 'ok'">{{ statusLabel(sale.status) }}</span>
+        <span class="num">{{ subtitulo }}</span>
+      </div>
+      <div class="m-pz"><div class="m-pz-b vdm-dl">
+        <dl>
+          <dt>Fecha</dt><dd class="num">{{ dt(sale.sold_at) }}</dd>
+          <dt>Cajero</dt><dd>{{ userLabel(sale) }}</dd>
+          <template v-if="sale.cash_register_id"><dt>Caja</dt><dd class="num">#{{ sale.cash_register_id }}{{ branchLabelResolved ? " · " + branchLabelResolved : "" }}</dd></template>
+          <dt>Comprobante</dt><dd>{{ invoiceModeLabelResolved || "No fiscal" }}</dd>
+          <dt>Cliente</dt><dd>{{ customerNameResolved || "Consumidor final" }}</dd>
+        </dl>
+      </div></div>
+      <div class="m-pz">
+        <div class="m-pz-h"><h3>Artículos</h3><span class="num">{{ items.length }}</span></div>
+        <div v-for="item in items" :key="item.id" class="m-it">
+          <span class="tx"><b>{{ productName(item) }}</b><small class="num">{{ number(item.quantity) }} × {{ plata(item.unit_price) }}</small></span>
+          <span class="der"><b class="num">{{ plata(item.line_total) }}</b></span>
+        </div>
+      </div>
+      <div class="m-pz"><div class="m-pz-b vdm-dl">
+        <dl>
+          <template v-for="pg in paymentsResolved" :key="pg.id"><dt>{{ paymentHeadline(pg) }}</dt><dd class="num">{{ plata(pg.amount) }}</dd></template>
+          <dt class="vdm-tot">Total</dt><dd class="vdm-tot num">{{ plata(sale.total) }}</dd>
+        </dl>
+      </div></div>
+      <div v-if="sale.status === 'CANCELLED' && (sale.cancel_reason || payload?.cancellation?.reason)" class="m-pz"><div class="m-pz-b vdm-dl">
+        <dl><dt>Motivo de la anulación</dt><dd>{{ payload?.cancellation?.reason || sale.cancel_reason }}</dd></dl>
+      </div></div>
+      <button type="button" class="m-btn" :disabled="compartiendo" @click="onCompartir">
+        <v-icon size="20">mdi-share-variant-outline</v-icon>Compartir ticket
+      </button>
+      <div v-if="isAdmin && sale.status !== 'CANCELLED'" class="m-centro">
+        <router-link :to="{ name: 'posSaleAnular', params: { id: sale.id } }" class="m-lnk rojo">Anular venta</router-link>
+      </div>
+    </template>
+  </div>
+  <div v-else class="vd">
     <!-- ── Encabezado ───────────────────────────────────── -->
     <div class="vd-cab">
       <div class="vd-cab__txt">
@@ -939,4 +982,12 @@ watch(id, () => load());
   .vd-avatar { width: 54px; height: 54px; font-size: 20px; }
   .vd-vendio__nombre { font-size: 19px; }
 }
+
+/* ── Teléfono ── */
+.vdm { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+.vdm-est { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--m-sobre-canvas); }
+.vdm-dl dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0; padding-top: 4px; font-size: 15px; }
+.vdm-dl dt { color: var(--m-suave); }
+.vdm-dl dd { margin: 0; text-align: right; font-weight: 600; color: var(--m-tinta); }
+.vdm-tot { font-weight: 800 !important; font-size: 17px; color: var(--m-tinta) !important; padding-top: 6px; border-top: 1px solid var(--m-linea2); }
 </style>
