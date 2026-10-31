@@ -157,7 +157,7 @@ const avisos = computed(() => {
   const g = d.taller?.grupos || {};
   if (Number(g.sin_retirar) > 0) {
     out.push({
-      k: "sinretirar", icon: "mdi-wrench-clock",
+      k: "sinretirar", icon: "mdi-wrench-outline",
       titulo: `${g.sin_retirar === 1 ? "Un equipo reparado" : `${g.sin_retirar} equipos reparados`} sin retirar hace más de 15 días`,
       sub: "Conviene volver a avisar al cliente por WhatsApp",
       to: ruta("serviceOrders"),
@@ -165,7 +165,7 @@ const avisos = computed(() => {
   }
   if (Number(g.aprobacion) > 0) {
     out.push({
-      k: "presup", icon: "mdi-file-document-clock-outline",
+      k: "presup", icon: "mdi-file-document-outline",
       titulo: `${g.aprobacion === 1 ? "Un presupuesto espera" : `${g.aprobacion} presupuestos esperan`} la respuesta del cliente`,
       sub: "Servicio técnico",
       to: ruta("serviceOrders"),
@@ -185,7 +185,7 @@ const avisos = computed(() => {
   const sin = Number(props.stock?.outOfStockCount || 0);
   if (sin > 0) {
     out.push({
-      k: "stock", icon: "mdi-package-variant-closed-remove",
+      k: "stock", icon: "mdi-package-variant-closed",
       titulo: sin === 1 ? "Un producto sin stock" : `${sin.toLocaleString("es-AR")} productos sin stock`,
       sub: "Revisá cuáles se venden y conviene reponer",
       to: ruta("products", { query: { stock: "without" } }),
