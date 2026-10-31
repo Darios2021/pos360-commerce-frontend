@@ -14,15 +14,27 @@
         <defs>
           <linearGradient id="flHaz" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stop-color="#a6d8fa" />
-            <stop offset="100%" stop-color="#1488d1" />
+            <stop offset="100%" stop-color="#ffffff" />
           </linearGradient>
           <filter id="flBrillo" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
           </filter>
         </defs>
         <path v-for="(d, i) in PATHS" :key="'l' + i" class="fl-line" :d="d" pathLength="1" :style="{ '--i': i }" />
+        <!-- Línea encendida mientras viaja su paquete -->
+        <path v-for="(d, i) in PATHS" :key="'a' + i" class="fl-activa" :d="d" :style="{ '--i': i }" />
+        <!-- Paquete: estela con halo, estela clara y cabeza blanca que recorre la misma línea -->
         <path v-for="(d, i) in PATHS" :key="'g' + i" class="fl-haz fl-haz--brillo" :d="d" pathLength="1" :style="{ '--i': i }" />
         <path v-for="(d, i) in PATHS" :key="'c' + i" class="fl-haz fl-haz--nucleo" :d="d" pathLength="1" :style="{ '--i': i }" />
+        <circle
+          v-for="(d, i) in PATHS"
+          :key="'p' + i"
+          class="fl-cabeza"
+          r="4.5"
+          :style="{ '--i': i, offsetPath: `path('${d}')` }"
+        />
+        <!-- Llegada a la tarjeta -->
+        <circle class="fl-llegada" :cx="LW" :cy="C" r="6" />
       </svg>
 
       <!-- Canales -->
@@ -198,17 +210,48 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   stroke-dasharray: 1;
   animation: fl-trazo 0.55s ease-out calc(0.35s + var(--i) * 0.07s) both;
 }
+/* Línea del canal que está mandando: se enciende durante el viaje */
+.fl-activa {
+  stroke: #a6d8fa;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  animation: fl-activa 18s ease-in-out calc(1s + var(--i) * 3s) infinite backwards;
+}
+
+/* Paquete. La estela y la cabeza usan los mismos tiempos (0 a 10 % de la vuelta,
+   lineal) para que la cabeza vaya siempre en la punta de la estela. */
 .fl-haz {
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  stroke-dasharray: 0.13 0.87;
-  stroke-dashoffset: 0.13;
+  stroke-dasharray: 0.16 0.84;
+  stroke-dashoffset: 0.16;
   opacity: 0;
   animation: fl-haz 18s linear calc(1s + var(--i) * 3s) infinite backwards;
 }
-.fl-haz--nucleo { stroke: url(#flHaz); stroke-width: 2.5; }
-.fl-haz--brillo { stroke: #1488d1; stroke-width: 7; filter: url(#flBrillo); }
+.fl-haz--nucleo { stroke: url(#flHaz); stroke-width: 3; }
+.fl-haz--brillo { stroke: #6fc0f2; stroke-width: 10; filter: url(#flBrillo); }
+.fl-cabeza {
+  fill: #fff;
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #6fc0f2);
+  animation: fl-cabeza 18s linear calc(1s + var(--i) * 3s) infinite backwards;
+}
+/* Anillo en la entrada de la tarjeta cuando llega cada paquete (cada 3 s) */
+.fl-llegada {
+  fill: none;
+  stroke: #a6d8fa;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: fl-llegada 3s ease-out 2.8s infinite both;
+}
 
 /* ── Canales ── */
 .fl-rail {
@@ -390,11 +433,30 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
   100% { stroke-dashoffset: 0; }
 }
 @keyframes fl-haz {
-  0% { stroke-dashoffset: 0.13; opacity: 0; }
-  0.8% { opacity: 1; }
-  9.3% { opacity: 1; }
-  10% { stroke-dashoffset: -1; opacity: 0; }
-  100% { stroke-dashoffset: -1; opacity: 0; }
+  0% { stroke-dashoffset: 0.16; opacity: 0; }
+  0.4% { opacity: 1; }
+  10% { stroke-dashoffset: -0.84; opacity: 1; }
+  11% { stroke-dashoffset: -0.84; opacity: 0; }
+  100% { stroke-dashoffset: -0.84; opacity: 0; }
+}
+@keyframes fl-cabeza {
+  0% { offset-distance: 0%; opacity: 0; }
+  0.4% { opacity: 1; }
+  10% { offset-distance: 100%; opacity: 1; }
+  11% { offset-distance: 100%; opacity: 0; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes fl-activa {
+  0% { opacity: 0; }
+  2% { opacity: 0.55; }
+  10% { opacity: 0.55; }
+  14% { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes fl-llegada {
+  0% { opacity: 0.9; transform: scale(0.4); }
+  35% { opacity: 0; transform: scale(2.6); }
+  100% { opacity: 0; transform: scale(2.6); }
 }
 @keyframes fl-delta {
   0% { opacity: 0; transform: translateY(4px); }
@@ -429,8 +491,8 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-line, .fl-tile, .fl-haz, .fl-trace-rect, .fl-tile::after, .fl-tile__tx small { animation: none; }
-  .fl-haz, .fl-trace-rect { opacity: 0; }
+  .fl-line, .fl-tile, .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect, .fl-tile::after, .fl-tile__tx small { animation: none; }
+  .fl-haz, .fl-cabeza, .fl-activa, .fl-llegada, .fl-trace-rect { opacity: 0; }
   .fl-card { animation: none; }
 }
 </style>
