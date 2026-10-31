@@ -35,7 +35,7 @@
 
       <!-- Tarjeta que recibe y combina -->
       <div class="fl-stack">
-        <article class="fl-card">
+        <article ref="cardEl" class="fl-card">
           <header class="fl-chead">
             <span class="fl-cico"><v-icon size="20">mdi-store-outline</v-icon></span>
             <span class="fl-cmeta"><b>Hoy en el negocio</b><small>Sucursal Centro · {{ hora }}</small></span>
@@ -60,8 +60,9 @@
             <span v-else>Recibe de 6 canales</span>
           </footer>
         </article>
-        <svg class="fl-trace" viewBox="0 0 300 100" preserveAspectRatio="none" fill="none">
-          <rect x="1" y="1" width="298" height="98" rx="12" ry="12" pathLength="1" class="fl-trace-rect" />
+        <!-- Contorno medido sobre la tarjeta real (sin estirar), así sigue su radio de 12 px -->
+        <svg v-if="caja.w" class="fl-trace" :viewBox="`0 0 ${caja.w} ${caja.h}`" fill="none">
+          <rect x="1" y="1" :width="caja.w - 2" :height="caja.h - 2" rx="11" ry="11" pathLength="1" class="fl-trace-rect" />
         </svg>
       </div>
     </div>
@@ -133,12 +134,21 @@ const filas = computed(() => [
 // llega a los 2,8 s + i × 3 s y la vuelta dura 18 s.
 const LLEGA = 2800, RANURA = 3000, VUELTA = 18000;
 const llego = ref(-1);
+const cardEl = ref(null);
+const caja = reactive({ w: 0, h: 0 });
+let ro = null;
 const delta = ref("");
 const ultimaEntrada = ref("");
 const minutos = ref(24);
 const hora = computed(() => `19:${String(minutos.value).padStart(2, "0")}`);
 let t0 = 0, ultimo = -1, timer = null;
 onMounted(() => {
+  // Tamaño real de la tarjeta para el contorno (cambia con el zoom y la fuente).
+  ro = new ResizeObserver(([e]) => {
+    caja.w = Math.round(e.target.offsetWidth);
+    caja.h = Math.round(e.target.offsetHeight);
+  });
+  if (cardEl.value) ro.observe(cardEl.value);
   t0 = performance.now();
   timer = setInterval(() => {
     const t = performance.now() - t0 - LLEGA;
@@ -155,7 +165,7 @@ onMounted(() => {
     setTimeout(() => { if (llego.value === i) llego.value = -1; }, 1800);
   }, 100);
 });
-onBeforeUnmount(() => clearInterval(timer));
+onBeforeUnmount(() => { clearInterval(timer); ro?.disconnect(); });
 
 const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 </script>
@@ -353,7 +363,8 @@ const pesos = (n) => "$ " + n.toLocaleString("es-AR");
 /* Contorno que se dibuja alrededor de la tarjeta de arriba */
 .fl-trace {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   overflow: visible;
