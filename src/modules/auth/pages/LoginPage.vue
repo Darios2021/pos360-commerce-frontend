@@ -1,22 +1,21 @@
 <!-- src/modules/auth/pages/LoginPage.vue -->
 <!-- Ingreso según el kit de POS 360 (src/app/theme/movil.css) y la maqueta aprobada
      (docs/diseno-movil, pantalla 1 "Ingreso"): Usuario o email, Contraseña,
-     Mantener sesión y Entrar. Tokens --m-* para los dos temas, sin hex sueltos
-     salvo el blanco sobre la banda. En escritorio suma la banda de marca a la izquierda. -->
+     Mantener sesión y Entrar. Tokens --m-* para los dos temas.
+     Escritorio: banda de marca a la izquierda y panel de ingreso a altura completa.
+     Teléfono (menos de 960 px): franja de marca arriba con el logo y el ingreso debajo. -->
 <template>
   <div class="lg m-vista">
-    <!-- ══ MARCA (solo escritorio) ══ -->
+    <!-- ══ MARCA ══ -->
     <aside class="lg-side">
-      <img :src="LOGO" alt="" aria-hidden="true" class="lg-side__agua" />
-
       <div class="lg-side__cuerpo">
         <img :src="LOGO" alt="POS 360" class="lg-side__logo" />
-        <h1 class="lg-side__tit">Punto de venta, stock y tienda online <span>para comercios.</span></h1>
+        <h1 class="lg-side__tit">Sistema de gestión <span>para comercios.</span></h1>
 
-        <ul class="lg-side__lista">
-          <li v-for="f in FUNCIONES" :key="f.t">
-            <span class="lg-side__ico"><v-icon size="24">{{ f.i }}</v-icon></span>
-            <span class="lg-side__tx"><b>{{ f.t }}</b><small>{{ f.d }}</small></span>
+        <ul class="lg-side__mods">
+          <li v-for="m in MODULOS" :key="m.t">
+            <v-icon size="20">{{ m.i }}</v-icon>
+            <span>{{ m.t }}</span>
           </li>
         </ul>
       </div>
@@ -29,8 +28,8 @@
 
     <!-- ══ INGRESO ══ -->
     <main class="lg-main">
-      <form class="lg-pz m-pz" novalidate @submit.prevent="submit">
-        <img :src="LOGO" alt="POS 360" class="lg-logo" />
+      <form class="lg-form" novalidate @submit.prevent="submit">
+        <h2 class="lg-h">Ingresar</h2>
 
         <div v-if="error" class="lg-error" role="alert">
           <v-icon size="20">mdi-alert-circle-outline</v-icon>
@@ -41,8 +40,9 @@
           <label for="lg-user">Usuario o email</label>
           <input
             id="lg-user"
+            ref="userEl"
             v-model="identifier"
-            class="m-inp"
+            class="m-inp lg-inp"
             type="text"
             autocomplete="username"
             autocapitalize="none"
@@ -57,8 +57,9 @@
           <div class="m-inpw sinpre">
             <input
               id="lg-pass"
+              ref="passEl"
               v-model="password"
-              class="m-inp"
+              class="m-inp lg-inp"
               :type="showPwd ? 'text' : 'password'"
               autocomplete="current-password"
               :disabled="loading"
@@ -91,14 +92,13 @@
           <span>Entrar con huella la próxima vez</span><span class="t"></span>
         </button>
 
-        <button type="submit" class="m-btn lg-btn" :disabled="!canSubmit">
+        <button type="submit" class="m-btn lg-btn" :disabled="loading">
           <v-progress-circular v-if="loading" indeterminate size="22" width="2" />
           <template v-else>Entrar</template>
         </button>
-
       </form>
 
-      <footer class="lg-pie lg-pie--canvas">
+      <footer class="lg-pie lg-pie--main">
         <span><b>POS 360</b> · <a href="https://sanjuansistemas.com/" target="_blank" rel="noopener">San Juan Sistemas</a></span>
         <span class="m-num">© {{ year }}</span>
       </footer>
@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/app/store/auth.store";
 import { huellaDisponible, activarHuella } from "@/app/native/huella";
@@ -115,20 +115,31 @@ import { huellaDisponible, activarHuella } from "@/app/native/huella";
 const router = useRouter();
 const auth = useAuthStore();
 
-// Logo POS 360 (carrito celeste).
+// Logo POS 360 (carrito celeste, fondo transparente). En la banda va en blanco por filtro.
 const LOGO = "https://storage-files.cingulado.org/pos360/media/1777400527242-60fdb9fd89279d42.webp";
 
-const FUNCIONES = [
-  { i: "mdi-storefront-outline", t: "Mostrador y tienda online", d: "Un solo catálogo y un solo stock para los dos." },
-  { i: "mdi-package-variant-closed", t: "Stock por sucursal", d: "Derivaciones entre sucursales y productos sin stock." },
-  { i: "mdi-cash-register", t: "Caja", d: "Apertura, ingresos, egresos y cierre con arqueo." },
-  { i: "mdi-chart-box-outline", t: "Reportes", d: "Ventas por día, por medio de pago y por sucursal." },
+// Módulos reales del sistema (rutas de src/app/router/index.js).
+const MODULOS = [
+  { i: "mdi-cash-register", t: "Punto de venta y caja" },
+  { i: "mdi-package-variant-closed", t: "Productos, stock e inventario" },
+  { i: "mdi-swap-horizontal", t: "Derivaciones entre sucursales" },
+  { i: "mdi-truck-outline", t: "Proveedores y costos" },
+  { i: "mdi-file-document-outline", t: "Presupuestos" },
+  { i: "mdi-wrench-outline", t: "Servicio técnico" },
+  { i: "mdi-account-group-outline", t: "Clientes y promociones" },
+  { i: "mdi-storefront-outline", t: "Tienda online y pedidos" },
+  { i: "mdi-movie-open-outline", t: "Videos y campañas" },
+  { i: "mdi-chat-question-outline", t: "Asistente del negocio" },
+  { i: "mdi-chart-box-outline", t: "Reportes" },
+  { i: "mdi-barcode-scan", t: "App Android con lector" },
 ];
 
 const identifier = ref("");
 const password   = ref("");
 const showPwd    = ref(false);
 const remember   = ref(true);
+const userEl     = ref(null);
+const passEl     = ref(null);
 
 // APK: ofrecer la huella solo si el telefono la tiene configurada.
 const huellaOk  = ref(false);
@@ -140,10 +151,6 @@ const error   = ref(null);
 
 const year = new Date().getFullYear();
 
-const canSubmit = computed(
-  () => !!identifier.value.trim() && !!password.value && !loading.value
-);
-
 // Textos de error del kit (informe 5, Ingreso).
 function mensajeDeError(e) {
   if (!e?.response) return "Sin conexión";
@@ -152,7 +159,11 @@ function mensajeDeError(e) {
 }
 
 async function submit() {
-  if (!canSubmit.value) return;
+  if (loading.value) return;
+  // El botón queda siempre activo: si falta un dato, el foco va a ese campo.
+  if (!identifier.value.trim()) { userEl.value?.focus(); return; }
+  if (!password.value) { passEl.value?.focus(); return; }
+
   loading.value = true;
   error.value = null;
   try {
@@ -172,45 +183,32 @@ async function submit() {
 </script>
 
 <style scoped>
-/* Todo sale de los tokens --m-* de movil.css: claro y oscuro sin reglas aparte. */
+/* Todo sale de los tokens --m-* de movil.css: claro y oscuro sin reglas aparte.
+   Único color fuera de tokens: el navy del logo (#121e47) al pie del degradé de la banda. */
 .lg {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  background: var(--m-pieza);
 }
 
-/* ══ Banda de marca ══
-   Banda del kit (--m-banda) que baja al navy del logo (#121e47, --m-avatar en claro).
-   El logo va en blanco arriba y gigante como marca de agua. */
+/* ══ Banda de marca ══ */
 .lg-side {
-  position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 32px;
   padding: 48px 64px 24px;
-  background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 78%);
+  background: linear-gradient(160deg, var(--m-banda) 0%, #121e47 80%);
   color: var(--m-banda-ink);
 }
-.lg-side > :not(.lg-side__agua) { position: relative; z-index: 1; }
-.lg-side__agua {
-  position: absolute;
-  width: 720px;
-  right: -250px;
-  bottom: -150px;
-  filter: brightness(0) invert(1);
-  opacity: 0.05;
-  pointer-events: none;
-  user-select: none;
-}
-.lg-side__cuerpo { margin: auto 0; max-width: 560px; }
+.lg-side__cuerpo { margin: auto 0; max-width: 580px; }
 .lg-side__logo {
   display: block;
   width: 220px;
-  margin: -26px 0 18px -6px; /* el archivo trae aire arriba y abajo */
+  margin: -26px 0 16px -6px; /* el archivo trae aire arriba y abajo */
   filter: brightness(0) invert(1);
 }
 .lg-side__tit {
@@ -219,62 +217,60 @@ async function submit() {
   line-height: 1.08;
   letter-spacing: -0.03em;
   color: #fff;
-  margin: 0 0 40px;
+  margin: 0 0 36px;
 }
 .lg-side__tit span { color: #a6d8fa; }
-.lg-side__lista {
+
+/* Módulos: lista liviana en dos columnas, sin cajas */
+.lg-side__mods {
   list-style: none; margin: 0; padding: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  column-gap: 32px;
 }
-.lg-side__lista li {
+.lg-side__mods li {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  padding: 18px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-.lg-side__ico {
-  width: 44px; height: 44px;
-  flex: none;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--m-accion);
+  padding: 11px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 15px;
+  font-weight: 600;
   color: #fff;
 }
-.lg-side__ico .v-icon { color: #fff; }
-.lg-side__tx { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.lg-side__tx b { font-size: 16px; font-weight: 800; color: #fff; }
-.lg-side__tx small { font-size: 13px; line-height: 1.4; opacity: 0.78; }
+.lg-side__mods .v-icon { color: #a6d8fa; flex: none; }
 
 /* ══ Ingreso ══ */
 .lg-main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 16px 24px;
-  background: var(--m-canvas);
+  padding: 32px 40px 24px;
+  background: var(--m-pieza);
 }
-.lg-pz {
+.lg-form {
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   margin: auto 0;
-  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
-.lg-logo {
-  display: block;
-  display: none; /* en escritorio el logo ya está en la banda */
-  width: 170px;
-  margin: -20px auto -8px; /* el archivo trae aire arriba y abajo */
+.lg-h {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--m-tinta);
+  margin: 0 0 6px;
 }
+/* Campo relleno con la variante del kit; al enfocar pasa a pieza con borde de acción */
+.lg-inp {
+  background: var(--m-variante);
+  border-color: transparent;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.lg-inp:focus { background: var(--m-pieza); }
+.lg-inp:disabled { opacity: 0.6; }
 .lg-error {
   display: flex;
   align-items: center;
@@ -287,9 +283,17 @@ async function submit() {
   font-weight: 600;
 }
 .lg-error .v-icon { color: var(--m-rojo); }
-.lg-btn { border: 0; cursor: pointer; margin-top: 4px; }
-.lg-btn:disabled { cursor: default; }
-.m-inp:disabled { opacity: 0.6; }
+.lg-btn {
+  border: 0;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.lg-btn:hover:not(:disabled) {
+  background: var(--m-accion-osc) !important;
+  box-shadow: 0 6px 18px rgba(15, 111, 174, 0.28);
+}
+.lg-btn:disabled { opacity: 1; cursor: default; }
 
 /* ══ Pie ══ */
 .lg-pie {
@@ -299,31 +303,34 @@ async function submit() {
   gap: 16px;
   padding-top: 14px;
   font-size: 13px;
+  width: 100%;
 }
 .lg-pie b { font-weight: 700; }
 .lg-pie a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
 .lg-pie--banda { border-top: 1px solid rgba(255, 255, 255, 0.18); opacity: 0.85; }
-.lg-pie--canvas {
-  display: none;
-  width: 100%;
-  max-width: 420px;
-  margin-top: 16px;
-  color: var(--m-sobre-canvas);
-}
+.lg-pie--main { display: none; max-width: 380px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); }
 
-/* Teléfono (corte del kit: menos de 960 px): sin banda, pieza a lo ancho */
 @media (max-width: 1180px) {
   .lg-side { padding: 40px 40px 24px; }
-  .lg-side__lista { grid-template-columns: 1fr; }
-  .lg-side__lista li { flex-direction: row; align-items: center; padding: 14px; }
+  .lg-side__mods { column-gap: 20px; }
+  .lg-side__mods li { font-size: 14px; gap: 10px; }
 }
 
+/* Teléfono (corte del kit): franja de marca arriba, ingreso debajo */
 @media (max-width: 959.98px) {
-  .lg { grid-template-columns: 1fr; }
-  .lg-side { display: none; }
-  .lg-main { padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
-  .lg-pie--canvas { display: flex; }
-  .lg-logo { display: block; }
-  .lg-pz { padding: 24px 20px; }
+  .lg { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .lg-side {
+    padding: calc(32px + env(safe-area-inset-top, 0px)) 16px 32px;
+    align-items: center;
+    gap: 0;
+  }
+  .lg-side__cuerpo { margin: 0; }
+  .lg-side__logo { width: 168px; margin: -20px auto -20px; }
+  .lg-side__tit,
+  .lg-side__mods,
+  .lg-pie--banda { display: none; }
+  .lg-main { padding: 28px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .lg-form { margin: 0 0 auto; }
+  .lg-pie--main { display: flex; margin-top: 32px; }
 }
 </style>
