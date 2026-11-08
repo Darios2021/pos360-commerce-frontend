@@ -12,7 +12,7 @@
     La pregunta va a /api/v1/asistente/mensaje (stream de bloques); el historial, a
     /api/v1/asistente/conversaciones, que reenvía a mostrador con el permiso delegado.
   -->
-  <div class="ap" :class="{ 'ap--movil': movil, 'ap--ventana': ventana, 'ap--cerrada': ventana && !lateral, 'ap--vacio': ventana && !turnos.length && !aviso }">
+  <div class="ap asis" :class="{ 'ap--movil': movil, 'ap--ventana': ventana, 'ap--cerrada': ventana && !lateral, 'ap--vacio': ventana && !turnos.length && !aviso }">
     <svg width="0" height="0" class="ap-defs" aria-hidden="true">
       <defs>
         <linearGradient id="ap-grad" x1="0" y1="0" x2="1" y2="1">
