@@ -769,7 +769,7 @@ async function borrarConversacion(c) {
 .ap--vacio .ap-chips { order: 2; flex-wrap: wrap; justify-content: center; padding-top: 16px; overflow: visible; }
 .ap--vacio .ap-nota { order: 3; margin-top: auto; }
 
-.gm { position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 320px; display: flex; flex-direction: column; padding: 8px; background: var(--ap-sup); transition: width .2s ease; overflow: hidden; }
+.gm { position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 320px; display: flex; flex-direction: column; padding: 8px; background: var(--ap-sup); border-right: 1px solid var(--m-gris); transition: width .2s ease; overflow: hidden; }
 .gm--cerrada { width: 72px; }
 .gm-top { display: flex; align-items: center; gap: 4px; min-height: 48px; padding-left: 8px; }
 .gm--cerrada .gm-top { padding-left: 4px; }
