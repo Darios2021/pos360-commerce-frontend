@@ -91,6 +91,15 @@ const routes = [
     ],
   },
 
+  // Asistente en escritorio (2026-11-08, como Alade /ia): pestaña propia, sin el
+  // menú del sistema. Desde la app se abre en una ventana nueva (ver el guard).
+  {
+    path: "/app/ia",
+    name: "asistenteVentana",
+    component: () => import("@/modules/asistente/pages/AsistenteVentana.vue"),
+    meta: { requiresAuth: true },
+  },
+
   {
     path: "/app",
     component: AppShell,
@@ -806,6 +815,20 @@ router.beforeEach((to, from) => {
   // regla anterior que mandaba al cajero a Vender quedó sin efecto con la
   // maqueta diseno-cargador (Vender está en Inicio y en Más).
   const enTelefono = !!vuetify.display?.mobile?.value;
+
+  // Asistente: en el teléfono, dentro de la app con la barra de abajo. En
+  // escritorio va en su propia pestaña: desde la app se abre una ventana nueva
+  // y la app queda donde estaba; si se entra por la dirección, o el navegador
+  // bloquea la ventana, se abre en la misma.
+  if (to.name === "asistenteVentana" && enTelefono) return { name: "asistente", query: to.query };
+  if (to.name === "asistente" && !enTelefono) {
+    const destino = { name: "asistenteVentana", query: to.query };
+    if (from.matched.length) {
+      const w = window.open(router.resolve(destino).href, "_blank");
+      if (w) { w.opener = null; return false; }
+    }
+    return destino;
+  }
 
   // Las vistas del teléfono no existen en escritorio: cada una vuelve a su
   // equivalente (el mostrador abre sus ventanas de siempre).

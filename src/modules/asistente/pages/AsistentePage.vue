@@ -12,7 +12,7 @@
     La pregunta va a /api/v1/asistente/mensaje (stream de bloques); el historial, a
     /api/v1/asistente/conversaciones, que reenvía a mostrador con el permiso delegado.
   -->
-  <div class="ap" :class="{ 'ap--movil': movil }">
+  <div class="ap" :class="{ 'ap--movil': movil, 'ap--ventana': ventana, 'ap--cerrada': ventana && !lateral, 'ap--vacio': ventana && !turnos.length && !aviso }">
     <svg width="0" height="0" class="ap-defs" aria-hidden="true">
       <defs>
         <linearGradient id="ap-grad" x1="0" y1="0" x2="1" y2="1">
@@ -25,7 +25,7 @@
 
     <!-- ── Barra ── -->
     <div class="ap-barra">
-      <button v-if="!aviso" type="button" class="ap-ib" aria-label="Conversaciones" @click="abrirHistorial">
+      <button v-if="!aviso && !ventana" type="button" class="ap-ib" aria-label="Conversaciones" @click="abrirHistorial">
         <v-icon size="24">mdi-menu</v-icon>
       </button>
       <div class="ap-tit">
@@ -42,7 +42,7 @@
       <button v-if="movil && !aviso" type="button" class="ap-ib" aria-label="Nueva conversación" :disabled="esperando || !turnos.length" @click="nueva">
         <v-icon size="22">mdi-square-edit-outline</v-icon>
       </button>
-      <button v-else-if="!aviso && turnos.length" type="button" class="ap-nueva" :disabled="esperando" @click="nueva">
+      <button v-else-if="!aviso && !ventana && turnos.length" type="button" class="ap-nueva" :disabled="esperando" @click="nueva">
         <v-icon size="20">mdi-square-edit-outline</v-icon>Nueva conversación
       </button>
     </div>
@@ -55,8 +55,8 @@
         <div v-else-if="!turnos.length" class="ap-inicio">
           <span class="ap-estrella ap-estrella--grande ap-estrella--fin"><svg viewBox="0 0 24 24"><path :d="ESTRELLA" fill="url(#ap-grad)" /></svg></span>
           <h1 class="ap-saludo"><span class="ap-grad">{{ saludo }}</span></h1>
-          <p class="ap-sub">¿Qué querés saber del negocio?</p>
-          <div v-if="!movil && estado" class="ap-tarjetas">
+          <p v-if="!ventana" class="ap-sub">¿Qué querés saber del negocio?</p>
+          <div v-if="!movil && !ventana && estado" class="ap-tarjetas">
             <button v-for="(s, i) in sugeridas" :key="s.pregunta" type="button" class="ap-sug" :disabled="pausa"
               :style="{ animationDelay: `${120 + i * 60}ms` }" @click="enviar(s.pregunta)">
               <span class="ap-sug-txt">{{ s.pregunta }}</span>
@@ -107,7 +107,8 @@
 
     <!-- ── Campo ── -->
     <div v-if="!aviso" class="ap-pie">
-      <div v-if="movil && !turnos.length && estado" class="ap-chips">
+      <!-- Las preguntas frecuentes en chips: sobre el campo en el teléfono, debajo en la ventana (como Gemini). -->
+      <div v-if="(movil || ventana) && !turnos.length && estado" class="ap-chips">
         <button v-for="s in sugeridas" :key="s.pregunta" type="button" class="ap-chip" :disabled="pausa" @click="enviar(s.pregunta)">
           <v-icon size="18">{{ iconoDe(s.fuentes) }}</v-icon>{{ s.pregunta }}
         </button>
@@ -132,9 +133,9 @@
     </div>
 
     <!-- ── Conversaciones guardadas ── -->
-    <transition name="ap-fondo"><div v-if="hist.abierto" class="ap-dr-fondo" @click="cerrarHistorial" /></transition>
+    <transition name="ap-fondo"><div v-if="hist.abierto && !ventana" class="ap-dr-fondo" @click="cerrarHistorial" /></transition>
     <transition name="ap-dr">
-      <aside v-if="hist.abierto" class="ap-dr" aria-label="Conversaciones">
+      <aside v-if="hist.abierto && !ventana" class="ap-dr" aria-label="Conversaciones">
         <div class="ap-dr-top">
           <h2>Conversaciones</h2>
           <button type="button" class="ap-ib" aria-label="Cerrar" @click="cerrarHistorial"><v-icon size="24">mdi-close</v-icon></button>
@@ -173,6 +174,53 @@
         <p class="ap-dr-pie">Se guardan {{ hist.dias || 90 }} días. Las ves desde cualquier teléfono o computadora con tu usuario.</p>
       </aside>
     </transition>
+
+    <!-- ── Ventana de escritorio: la barra lateral de Gemini, como Alade /ia ──
+         Arriba el nombre, Buscar y Cerrar; Nueva conversación; la lista; abajo,
+         volver al sistema. Cerrada queda la franja de íconos (se recuerda). -->
+    <aside v-if="ventana" class="gm" :class="{ 'gm--cerrada': !lateral }" aria-label="Conversaciones">
+      <div class="gm-top">
+        <template v-if="lateral">
+          <button type="button" class="gm-marca" @click="nueva">Asistente POS 360</button>
+          <button type="button" class="ap-ib" aria-label="Buscar conversaciones" @click="alternarBuscar"><v-icon size="22">mdi-magnify</v-icon></button>
+          <button type="button" class="ap-ib" aria-label="Cerrar barra lateral" @click="alternarLateral"><v-icon size="22">mdi-dock-left</v-icon></button>
+        </template>
+        <button v-else type="button" class="ap-ib" aria-label="Abrir barra lateral" @click="alternarLateral"><v-icon size="24">mdi-menu</v-icon></button>
+      </div>
+      <label v-if="lateral && buscarAbierto" class="gm-bus">
+        <v-icon size="20">mdi-magnify</v-icon>
+        <input ref="campoBuscar" v-model="hist.buscar" type="search" placeholder="Buscar conversaciones" aria-label="Buscar conversaciones" autocomplete="off" />
+      </label>
+      <button type="button" class="gm-fila gm-nav" :class="{ on: !conversacion && !turnos.length }" :aria-label="lateral ? undefined : 'Nueva conversación'" :disabled="esperando" @click="nueva">
+        <v-icon size="22">mdi-square-edit-outline</v-icon><span v-if="lateral">Nueva conversación</span>
+      </button>
+      <div v-if="lateral" class="gm-lista">
+        <div class="gm-sec">Conversaciones</div>
+        <p v-if="hist.cargando && !hist.items.length" class="gm-nota">Cargando…</p>
+        <p v-else-if="hist.error" class="gm-nota">{{ hist.error }}</p>
+        <p v-else-if="!hist.items.length" class="gm-nota">{{ hist.buscar.trim() ? "No hay conversaciones con eso." : "Todavía no hay conversaciones." }}</p>
+        <template v-for="c in hist.items" :key="c.id">
+          <form v-if="hist.renombrando === c.id" class="ap-dr-ren" @submit.prevent="guardarNombre(c)">
+            <input v-model="hist.nombre" maxlength="120" aria-label="Nombre de la conversación" />
+            <button type="submit">Guardar</button>
+          </form>
+          <div v-else-if="hist.borrando === c.id" class="ap-dr-borrar">
+            <span>¿Borrar esta conversación?</span>
+            <button type="button" class="rojo" @click="borrarConversacion(c)">Borrar</button>
+            <button type="button" @click="hist.borrando = null">Cancelar</button>
+          </div>
+          <div v-else class="gm-fila" :class="{ on: c.id === conversacion }">
+            <button type="button" class="gm-i" :title="c.titulo" @click="abrirConversacion(c)">{{ c.titulo }}</button>
+            <button type="button" class="gm-mas" :aria-label="`Cambiar el nombre de ${c.titulo}`" @click="renombrar(c)"><v-icon size="18">mdi-pencil-outline</v-icon></button>
+            <button type="button" class="gm-mas" :aria-label="`Borrar ${c.titulo}`" @click="hist.borrando = c.id"><v-icon size="18">mdi-delete-outline</v-icon></button>
+          </div>
+        </template>
+      </div>
+      <div v-else class="gm-lista" />
+      <router-link class="gm-fila gm-nav gm-pie" :to="{ name: 'home' }" :aria-label="lateral ? undefined : 'Ir al sistema'">
+        <v-icon size="22">mdi-view-dashboard-outline</v-icon><span v-if="lateral">Ir al sistema</span>
+      </router-link>
+    </aside>
   </div>
 </template>
 
@@ -200,9 +248,26 @@ const TEXTO_ERROR = "Sin conexión con el asistente. La pregunta quedó sin resp
 const TEXTO_LARGO = "La conversación llegó a su largo máximo. La próxima pregunta empieza una nueva.";
 const MOTIVOS_DE_FALLA = ["falla", "rechazo", "vueltas"];
 
+const props = defineProps({ ventana: { type: Boolean, default: false } });
 const ruta = useRoute();
 const auth = useAuthStore();
-const { mobile: movil } = useDisplay();
+const { mobile } = useDisplay();
+/* Escritorio: el asistente va en su propia pestaña (/app/ia), sin el menú del sistema. */
+const ventana = computed(() => props.ventana);
+const movil = computed(() => !ventana.value && mobile.value);
+/* La barra lateral de la ventana, abierta o en franja (se recuerda). */
+const lateral = ref(typeof window === "undefined" || window.localStorage.getItem("asis-lateral") !== "0");
+function alternarLateral() {
+  lateral.value = !lateral.value;
+  try { window.localStorage.setItem("asis-lateral", lateral.value ? "1" : "0"); } catch { /* sin almacenamiento */ }
+}
+const buscarAbierto = ref(false);
+const campoBuscar = ref(null);
+function alternarBuscar() {
+  buscarAbierto.value = !buscarAbierto.value;
+  if (buscarAbierto.value) nextTick(() => campoBuscar.value?.focus());
+  else if (hist.buscar) hist.buscar = "";
+}
 const estado = ref(null);
 const aviso = ref("");
 /** { id, pregunta, estado: consultando|llegando|listo|error|tope, pasos, bloques, consultado, hora, vivo } */
@@ -308,6 +373,8 @@ onMounted(async () => {
     }
     estado.value = data;
     if (data?.gasto?.agotado) pausa.value = true;
+    // En la ventana la lista está siempre a la vista: se carga al entrar.
+    if (ventana.value) cargarHistorial();
     // Desde un aviso del tablero: llega con ?q= y se pregunta sola.
     const q = String(ruta.query.q || "").trim();
     if (q && !pausa.value) { await nextTick(); enviar(q.slice(0, 300)); }
@@ -365,6 +432,7 @@ async function enviar(pregunta) {
   texto.value = "";
   if (entrada.value) entrada.value.style.height = "";
   sonar("envio");
+  const eraNueva = !conversacion.value;
   try {
     let r;
     try {
@@ -389,6 +457,7 @@ async function enviar(pregunta) {
   } catch {
     cambiar(id, (x) => (x.estado === "listo" || x.estado === "tope" ? x : { ...x, estado: "error", pasos: [], bloques: [] }));
   } finally {
+    if (eraNueva && conversacion.value && ventana.value) cargarHistorial();
     await nextTick();
     if (!movil.value) entrada.value?.focus?.();
   }
@@ -682,6 +751,48 @@ async function borrarConversacion(c) {
 .ap-dr-borrar button.rojo { background: var(--m-rojo); color: #fff; }
 .ap-dr-nota { margin: 14px 8px; font-size: 14px; color: var(--m-suave); }
 .ap-dr-pie { margin: 0; padding: 8px; font-size: 12px; color: var(--m-suave); border-top: 1px solid var(--m-linea2); }
+
+/* Ventana de escritorio (2026-11-08, modelo Gemini como Alade /ia): barra lateral de
+   320 px en el color de superficie, el resto en el fondo; filas de 44 px en píldora;
+   vacía, el saludo y el campo al medio con las fichas debajo. */
+.ap--ventana { position: fixed; inset: 0; height: 100dvh; min-height: 0; margin: 0; padding: 8px 16px 8px 336px; border: 0; border-radius: 0; transition: padding-left .2s ease; }
+.ap--ventana.ap--cerrada { padding-left: 88px; }
+.ap--ventana .ap-barra { padding-left: 4px; }
+.ap--ventana .ap-tit b { font-size: 20px; font-weight: 400; }
+.ap--ventana .ap-saludo { font-size: 32px; font-weight: 400; letter-spacing: 0; text-align: center; }
+.ap--ventana .ap-inicio .ap-estrella { margin: 0 auto; }
+.ap--ventana .ap-chip { font-weight: 500; }
+.ap--vacio .ap-conv { flex: 1 1 auto; display: flex; }
+.ap--vacio .ap-col { flex: 1; justify-content: flex-end; min-height: 0; }
+.ap--vacio .ap-inicio { margin: 0; padding-bottom: 8px; }
+.ap--vacio .ap-pie { flex: 1; display: flex; flex-direction: column; }
+.ap--vacio .ap-chips { order: 2; flex-wrap: wrap; justify-content: center; padding-top: 16px; overflow: visible; }
+.ap--vacio .ap-nota { order: 3; margin-top: auto; }
+
+.gm { position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 320px; display: flex; flex-direction: column; padding: 8px; background: var(--ap-sup); transition: width .2s ease; overflow: hidden; }
+.gm--cerrada { width: 72px; }
+.gm-top { display: flex; align-items: center; gap: 4px; min-height: 48px; padding-left: 8px; }
+.gm--cerrada .gm-top { padding-left: 4px; }
+.gm-marca { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: var(--m-tinta); font: 500 19px Inter, system-ui, sans-serif; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.gm .ap-ib:hover { background: var(--ap-sup-hover); color: var(--m-tinta); }
+.gm-bus { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 4px 0 6px; padding: 0 16px; border-radius: 9999px; background: var(--m-pieza); color: var(--m-suave); }
+.gm-bus input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--m-tinta); font: 400 15px Inter, system-ui, sans-serif; }
+.gm-fila { position: relative; display: flex; align-items: center; min-height: 44px; border-radius: 9999px; color: var(--m-tinta); transition: background-color .15s ease; }
+.gm-fila:hover { background: var(--ap-sup-hover); }
+.gm-fila.on { background: var(--m-accion-tinte); }
+.gm-fila.on .gm-i { color: var(--m-accion-txt); font-weight: 600; }
+.gm-nav { gap: 14px; width: 100%; margin-top: 16px; padding: 0 12px; border: 0; background-color: transparent; font: 400 16px Inter, system-ui, sans-serif; text-align: left; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.gm-nav:disabled { opacity: .5; cursor: default; }
+.gm--cerrada .gm-nav { width: 48px; padding: 0 12px; }
+.gm-nav .v-icon { color: var(--m-suave); }
+.gm-lista { flex: 1; overflow-y: auto; margin-top: 12px; scrollbar-width: thin; }
+.gm-sec { padding: 8px 16px; font-size: 14px; color: var(--m-suave); }
+.gm-nota { margin: 8px 16px; font-size: 14px; color: var(--m-suave); }
+.gm-i { flex: 1; min-width: 0; min-height: 44px; padding: 0 4px 0 16px; border: 0; background: none; color: inherit; font: 400 15px Inter, system-ui, sans-serif; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.gm-mas { flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; background: none; color: var(--m-suave); display: grid; place-items: center; cursor: pointer; opacity: 0; }
+.gm-fila:hover .gm-mas, .gm-fila:focus-within .gm-mas { opacity: 1; }
+.gm-mas:hover { background: var(--m-pieza); color: var(--m-tinta); }
+.gm-pie { margin-top: 4px; }
 
 .ap-dr-enter-active, .ap-dr-leave-active { transition: transform .25s cubic-bezier(.2,.7,.2,1); }
 .ap-dr-enter-from, .ap-dr-leave-to { transform: translateX(-100%); }
