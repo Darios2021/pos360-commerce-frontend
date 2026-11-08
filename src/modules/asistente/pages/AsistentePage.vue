@@ -714,7 +714,7 @@ async function borrarConversacion(c) {
 .ap-chips::-webkit-scrollbar { display: none; }
 .ap-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border: 1px solid var(--m-linea); border-radius: 19px; background: var(--m-pieza); color: var(--m-tinta); font: 500 14px Inter, system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
 .ap-chip .v-icon { color: var(--m-accion-txt); }
-.ap-entrada { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 20px; border-radius: 28px; background: var(--ap-sup); border: 1px solid transparent; transition: border-color .2s, background-color .2s, box-shadow .2s; }
+.ap-entrada { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 20px; border-radius: 28px; background: var(--ap-sup); border: 1px solid var(--m-gris); transition: border-color .2s, background-color .2s, box-shadow .2s; }
 .ap-entrada--activa { background: var(--m-pieza); border-color: var(--m-accion); box-shadow: 0 2px 10px rgba(15, 111, 174, .12); }
 .ap-campo { flex: 1; min-height: 40px; max-height: 160px; padding: 9px 0; border: 0; outline: 0; background: none; resize: none; color: var(--m-tinta); font: 400 16px/1.4 Inter, system-ui, sans-serif; }
 .ap-acc-campo { display: flex; gap: 4px; }
