@@ -149,6 +149,7 @@ export function horaSanJuan(d = new Date()) {
 export const ETIQUETAS = {
   estado_caja: "caja abierta", ventas: "ventas", cajas: "cierres", arqueo_de_caja: "arqueo",
   mas_vendidos: "más vendidos", margenes: "márgenes", stock: "stock",
+  ventas_por: "ventas agrupadas", rotacion: "rotación de productos", clientes: "clientes que más compran", auditoria: "auditoría",
 };
 export const etiquetaDe = (nombre) => ETIQUETAS[nombre] || String(nombre).replace(/_/g, " ");
 
@@ -197,6 +198,10 @@ const str = (x) => typeof x === "string" && x.length > 0;
 const num = (x) => typeof x === "number" && Number.isFinite(x);
 const UNIDADES = ["ars", "u", "%"];
 const fuentes = (f) => [].concat(f ?? []).filter(str);
+/** Foto de producto: sólo una URL http(s). Mostrador ya descartó las que no vinieron de una consulta. */
+const foto = (x) => (typeof x === "string" && /^https?:\/\//i.test(x) ? x : undefined);
+/** Cuántos quedaron afuera del tope del servicio ("y N más"). */
+const resto = (x) => (Number.isInteger(x?.resto) && x.resto > 0 ? x.resto : undefined);
 
 /**
  * El servicio ya valida; esto sólo evita que un bloque mal formado rompa la
@@ -220,11 +225,13 @@ export function normalizar(x) {
       if (x.tipo === "filas") {
         return {
           tipo: "filas", ...base,
-          items: items.slice(0, 8).map((i) => ({
+          items: items.slice(0, 10).map((i) => ({
             etiqueta: i.etiqueta, valor: i.valor,
             detalle_valor: num(i.detalle_valor) ? i.detalle_valor : undefined,
             detalle_unidad: UNIDADES.includes(i.detalle_unidad) ? i.detalle_unidad : undefined,
+            foto: foto(i.foto),
           })),
+          resto: resto(x),
         };
       }
       if (x.tipo === "columnas") {
@@ -238,14 +245,14 @@ export function normalizar(x) {
     case "tabla": {
       if (!Array.isArray(x.columnas) || !Array.isArray(x.filas)) return null;
       const columnas = x.columnas.filter(str).slice(0, 4);
-      const filas = x.filas.filter(Array.isArray).slice(0, 6)
+      const filas = x.filas.filter(Array.isArray).slice(0, 10)
         .map((f) => f.slice(0, columnas.length).map((c) => (num(c) ? c : String(c ?? ""))));
-      return columnas.length && filas.length ? { tipo: "tabla", fuente: fuentes(x.fuente), columnas, filas } : null;
+      return columnas.length && filas.length ? { tipo: "tabla", fuente: fuentes(x.fuente), columnas, filas, resto: resto(x) } : null;
     }
     case "lista": {
-      const items = Array.isArray(x.items) ? x.items.filter((i) => i && str(i.titulo)).slice(0, 5)
-        .map((i) => ({ titulo: i.titulo, detalle: str(i.detalle) ? i.detalle : "" })) : [];
-      return items.length ? { tipo: "lista", titulo: str(x.titulo) ? x.titulo : undefined, fuente: fuentes(x.fuente), items } : null;
+      const items = Array.isArray(x.items) ? x.items.filter((i) => i && str(i.titulo)).slice(0, 8)
+        .map((i) => ({ titulo: i.titulo, detalle: str(i.detalle) ? i.detalle : "", foto: foto(i.foto) })) : [];
+      return items.length ? { tipo: "lista", titulo: str(x.titulo) ? x.titulo : undefined, fuente: fuentes(x.fuente), items, resto: resto(x) } : null;
     }
     case "aviso":
       return str(x.texto) && ["info", "atencion", "problema"].includes(x.nivel)

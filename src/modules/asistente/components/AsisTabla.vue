@@ -19,6 +19,7 @@
           </tr>
         </tbody>
       </table>
+      <p v-if="resto > 0" class="asis-resto">y {{ resto }} más</p>
     </div>
   </div>
 </template>
@@ -30,8 +31,10 @@ import { fmt } from "../lib/dibujo";
 const props = defineProps({
   /** Como mucho 4. */
   columnas: { type: Array, required: true },
-  /** Como mucho 6. */
+  /** Como mucho 10. */
   filas: { type: Array, required: true },
+  /** Cuántas filas quedaron afuera del tope. */
+  resto: { type: Number, default: 0 },
 });
 const estado = computed(() => props.columnas.findIndex((c) => /^estado$/i.test(String(c).trim())));
 const numerica = (k) => props.filas.some((f) => typeof f[k] === "number");

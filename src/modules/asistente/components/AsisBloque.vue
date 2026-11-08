@@ -2,11 +2,11 @@
 <template>
   <AsisTitulo v-if="b.tipo === 'titulo'" :texto="b.texto" :alcance="b.alcance" />
   <AsisTexto v-else-if="b.tipo === 'texto'" :texto="b.texto" />
-  <AsisFilas v-else-if="b.tipo === 'filas'" :titulo="b.titulo" :alcance="b.alcance" :unidad="b.unidad" :items="b.items" />
+  <AsisFilas v-else-if="b.tipo === 'filas'" :titulo="b.titulo" :alcance="b.alcance" :unidad="b.unidad" :items="b.items" :resto="b.resto" />
   <AsisColumnas v-else-if="b.tipo === 'columnas'" :titulo="b.titulo" :alcance="b.alcance" :unidad="b.unidad" :items="b.items" :destacar="b.destacar" />
   <AsisDona v-else-if="b.tipo === 'dona'" :titulo="b.titulo" :alcance="b.alcance" :unidad="b.unidad" :items="b.items" />
-  <AsisTabla v-else-if="b.tipo === 'tabla'" :columnas="b.columnas" :filas="b.filas" />
-  <AsisLista v-else-if="b.tipo === 'lista'" :titulo="b.titulo" :items="b.items" />
+  <AsisTabla v-else-if="b.tipo === 'tabla'" :columnas="b.columnas" :filas="b.filas" :resto="b.resto" />
+  <AsisLista v-else-if="b.tipo === 'lista'" :titulo="b.titulo" :items="b.items" :resto="b.resto" />
   <AsisAviso v-else-if="b.tipo === 'aviso'" :nivel="b.nivel" :texto="b.texto" />
 </template>
 
