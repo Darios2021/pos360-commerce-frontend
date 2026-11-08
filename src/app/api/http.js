@@ -90,6 +90,28 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+// Una sola vez aunque fallen varios pedidos juntos (el tablero dispara muchos).
+let cerrandoSesion = false;
+async function cerrarSesionVencida() {
+  if (cerrandoSesion) return;
+  cerrandoSesion = true;
+  try {
+    const [{ useAuthStore }, { default: router }] = await Promise.all([
+      import("@/app/store/auth.store"),
+      import("@/app/router"),
+    ]);
+    useAuthStore().logout();
+    const actual = router.currentRoute.value;
+    if (actual?.name !== "login" && !actual?.meta?.public) {
+      await router.replace({ name: "login" });
+    }
+  } catch {
+    /* sin router todavia: el guard lo resuelve en la proxima navegacion */
+  } finally {
+    cerrandoSesion = false;
+  }
+}
+
 // Friendly errors
 http.interceptors.response.use(
   (r) => {
@@ -116,6 +138,11 @@ http.interceptors.response.use(
       try {
         clearAuth?.();
       } catch {}
+      // Sesion vencida: el pedido llevaba token y el servidor lo rechazo.
+      // Borrar solo el localStorage dejaba el store "authed" y la pantalla
+      // mostrando el 401; se cierra la sesion y se vuelve al ingreso.
+      const llevabaToken = !!(err?.config?.headers?.Authorization || err?.config?.headers?.authorization);
+      if (llevabaToken) cerrarSesionVencida();
     }
 
     const msg =
